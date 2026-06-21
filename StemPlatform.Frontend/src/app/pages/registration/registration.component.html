@@ -1,0 +1,816 @@
+<div class="page-canvas fade-in" [class.gateway-active]="regState !== 'new'">
+
+  <!-- =========================================================
+       BACKGROUND VIDEO LOOP
+       ========================================================= -->
+  <div class="video-bg-container">
+    <video autoplay muted loop playsinline class="video-bg">
+      <source src="assets/stem_slideshow.mp4" type="video/mp4">
+    </video>
+    <div class="video-overlay"></div>
+  </div>
+
+  <!-- =========================================================
+       GATEWAY SCREEN
+       ========================================================= -->
+  <div *ngIf="regState === 'gateway'" class="gateway-screen">
+    <button class="back-link-btn" routerLink="/">
+      <span class="material-symbols-outlined">arrow_back</span> Return to Homepage
+    </button>
+
+    <div class="gateway-header">
+      <div class="landing-brand-logo-wrap">
+        <div class="brand-crest">
+          <div class="crest-shield">
+            <span class="material-symbols-outlined shield-icon">local_library</span>
+          </div>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">NTIC</span>
+          <span class="brand-sub">GHANA NATIONAL COMPETITION</span>
+        </div>
+      </div>
+      <span class="academic-sub" style="margin-top: 6px;">Official Registration Portal</span>
+      <h2>Championship Entry Gateway</h2>
+      <p class="gateway-lead">Welcome to the National Technology & Innovation Championship registration. Choose your entry path below.</p>
+    </div>
+
+    <div class="gateway-grid">
+      <!-- Card 1: New Registration -->
+      <div class="gateway-card new-reg" (click)="selectNewRegistration()">
+        <div class="gateway-card-crest">
+          <span class="material-symbols-outlined">add_circle</span>
+        </div>
+        <div class="gateway-card-body">
+          <h3>New Registration</h3>
+          <p>Begin a fresh application for a School, Student squad, Certified Instructor, or Corporate Sponsor.</p>
+          <ul class="gateway-features">
+            <li>
+              <span class="material-symbols-outlined feat-icon">check_circle</span> 
+              <span>Create new institutional or student account</span>
+            </li>
+            <li>
+              <span class="material-symbols-outlined feat-icon">check_circle</span> 
+              <span>Upload accreditation and credentials</span>
+            </li>
+            <li>
+              <span class="material-symbols-outlined feat-icon">check_circle</span> 
+              <span>Select competition tracks & arenas</span>
+            </li>
+          </ul>
+        </div>
+        <div class="gateway-card-footer">
+          <button class="btn btn-primary btn-full">Start Application</button>
+        </div>
+      </div>
+
+      <!-- Card 2: Continue Registration -->
+      <div class="gateway-card continue-reg" (click)="selectContinueRegistration()">
+        <div class="gateway-card-crest">
+          <span class="material-symbols-outlined">history</span>
+        </div>
+        <div class="gateway-card-body">
+          <h3>Resume Registration</h3>
+          <p>Resume a saved draft application. Requires identity verification via OTP sent to your email or phone.</p>
+          <ul class="gateway-features">
+            <li>
+              <span class="material-symbols-outlined feat-icon">check_circle</span> 
+              <span>Retrieve partially filled forms</span>
+            </li>
+            <li>
+              <span class="material-symbols-outlined feat-icon">check_circle</span> 
+              <span>Secure OTP identification</span>
+            </li>
+            <li>
+              <span class="material-symbols-outlined feat-icon">check_circle</span> 
+              <span>Edit or finalize pending drafts</span>
+            </li>
+          </ul>
+        </div>
+        <div class="gateway-card-footer">
+          <button class="btn btn-secondary btn-full">Resume Application</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       CONTINUE SELECT SCREEN (EMAIL / MOBILE METHOD)
+       ========================================================= -->
+  <div *ngIf="regState === 'continue_select'" class="otp-screen">
+    <button class="back-link-btn" (click)="goBackToGateway()">
+      <span class="material-symbols-outlined">arrow_back</span> Back to Gateway
+    </button>
+
+    <div class="otp-card">
+      <div class="otp-card-header">
+        <div class="shield-crest">
+          <span class="material-symbols-outlined shield-icon">shield_person</span>
+        </div>
+        <h3>Verify Identity</h3>
+        <p>Choose verification channel to retrieve your draft registration.</p>
+      </div>
+
+      <div class="otp-method-selector">
+        <button class="method-tab" [class.active]="verificationMethod === 'email'" (click)="setVerificationMethod('email')">
+          <span class="material-symbols-outlined">mail</span> Email Address
+        </button>
+        <button class="method-tab" [class.active]="verificationMethod === 'mobile'" (click)="setVerificationMethod('mobile')">
+          <span class="material-symbols-outlined">phone_iphone</span> Mobile Number
+        </button>
+      </div>
+
+      <div class="otp-card-body">
+        <div class="form-group" *ngIf="verificationMethod === 'email'">
+          <label class="form-label">Registered E-mail Address</label>
+          <div class="academic-input-wrap">
+            <span class="material-symbols-outlined input-icon-ac">mail</span>
+            <input type="email" class="form-control" [(ngModel)]="verificationInput" placeholder="name@school.edu.gh" style="padding-left: 44px;" (keyup.enter)="sendOTP()">
+          </div>
+        </div>
+
+        <div class="form-group" *ngIf="verificationMethod === 'mobile'">
+          <label class="form-label">Registered Mobile Number</label>
+          <div class="academic-input-wrap">
+            <span class="material-symbols-outlined input-icon-ac">phone</span>
+            <input type="tel" class="form-control" [(ngModel)]="verificationInput" placeholder="+233 24 000 0000" style="padding-left: 44px;" (keyup.enter)="sendOTP()">
+          </div>
+        </div>
+
+        <div class="error-banner" *ngIf="otpError">
+          <span class="material-symbols-outlined">warning</span>
+          <span>{{ otpError }}</span>
+        </div>
+
+        <button class="btn btn-primary btn-full" (click)="sendOTP()">
+          <span>Request Verification Code</span>
+          <span class="material-symbols-outlined">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       OTP VERIFICATION SCREEN
+       ========================================================= -->
+  <div *ngIf="regState === 'otp_verification'" class="otp-screen">
+    <button class="back-link-btn" (click)="selectContinueRegistration()">
+      <span class="material-symbols-outlined">arrow_back</span> Change contact details
+    </button>
+
+    <div class="otp-card">
+      <div class="otp-card-header">
+        <div class="lock-crest">
+          <span class="material-symbols-outlined lock-icon">lock_open</span>
+        </div>
+        <h3>Enter Security Code</h3>
+        <p>A 6-digit verification code has been sent to your {{ verificationMethod }}: <strong>{{ verificationInput }}</strong>.</p>
+      </div>
+
+      <div class="otp-card-body text-center">
+        <!-- OTP Box Inputs -->
+        <div class="otp-input-wrapper">
+          <div class="otp-boxes">
+            <div class="otp-box" *ngFor="let char of [0,1,2,3,4,5]; let i = index" [class.filled]="otpCode.length > i" [class.active]="otpCode.length === i">
+              {{ otpCode[i] || '' }}
+            </div>
+          </div>
+          <input type="text" maxlength="6" [(ngModel)]="otpCode" class="otp-hidden-input" autofocus (input)="otpError = ''" (keyup.enter)="verifyOTP()">
+        </div>
+
+        <div class="test-tip" *ngIf="showTestCodeTip">
+          <span class="material-symbols-outlined">lightbulb</span>
+          <span>Testing Code: Enter <strong>123456</strong> to verify.</span>
+        </div>
+
+        <div class="error-banner" *ngIf="otpError">
+          <span class="material-symbols-outlined">warning</span>
+          <span>{{ otpError }}</span>
+        </div>
+
+        <div class="timer-row">
+          <span *ngIf="resendTimer > 0">Resend code in <strong>{{ resendTimer }}s</strong></span>
+          <button class="resend-btn" *ngIf="resendTimer === 0" (click)="resendOTPCode()">Resend Verification Code</button>
+        </div>
+
+        <button class="btn btn-secondary btn-full" (click)="verifyOTP()" [disabled]="otpCode.length !== 6">
+          <span>Verify & Resume</span>
+          <span class="material-symbols-outlined">task_alt</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       SUCCESS LOADER SCREEN
+       ========================================================= -->
+  <div *ngIf="regState === 'resume_success'" class="otp-screen">
+    <div class="success-card">
+      <div class="shield-scan-wrap">
+        <div class="scanning-shield">
+          <span class="material-symbols-outlined">verified_user</span>
+          <div class="scan-laser"></div>
+        </div>
+      </div>
+      <h3>Identity Verified</h3>
+      <p>Your draft application details have been securely retrieved. Loading workspace...</p>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       REGISTRATION FORM (FORM STATE)
+       ========================================================= -->
+  <div *ngIf="regState === 'new'" class="registration-form-container">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title-main">
+          Registration
+          <span *ngIf="schoolForm.name.includes('Draft')" class="badge warning" style="vertical-align: middle; margin-left: 8px;">Draft Resumed</span>
+        </h1>
+        <p class="page-subtitle">Register schools, students, and instructors onto the platform</p>
+      </div>
+      <div style="display:flex; gap:12px;">
+        <button class="btn btn-subtle" (click)="goBackToGateway()">
+          <span class="material-symbols-outlined">logout</span>
+          Gateway
+        </button>
+        <button class="btn btn-primary">
+          <span class="material-symbols-outlined">download</span>
+          Export List
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <div class="tab-item" [class.active]="activeTab==='school'" (click)="activeTab='school'">
+        <span class="material-symbols-outlined">account_balance</span>
+        School Registration
+      </div>
+      <div class="tab-item" [class.active]="activeTab==='student'" (click)="activeTab='student'">
+        <span class="material-symbols-outlined">person</span>
+        Student Registration
+      </div>
+      <div class="tab-item" [class.active]="activeTab==='instructor'" (click)="activeTab='instructor'">
+        <span class="material-symbols-outlined">badge</span>
+        Instructor Registration
+      </div>
+      <div class="tab-item" [class.active]="activeTab==='sponsor'" (click)="activeTab='sponsor'">
+        <span class="material-symbols-outlined">handshake</span>
+        Sponsor Registration
+      </div>
+    </div>
+
+    <!-- ══ SCHOOL TAB ══ -->
+    <div *ngIf="activeTab==='school'" class="tab-content-grid">
+      <div class="card">
+        <div class="card-header">
+          <h3>Institutional Registration</h3>
+          <span class="badge primary">Step 1 of 3</span>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">School Name *</label>
+            <input class="form-control" type="text" placeholder="e.g., Achimota Senior High School" [(ngModel)]="schoolForm.name" name="schoolName">
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select class="form-control form-select" [(ngModel)]="schoolForm.category" name="schoolCategory">
+                <option value="Public High School">Public High School</option>
+                <option value="Private Academy">Private Academy</option>
+                <option value="Charter School">Charter School</option>
+                <option value="Technical School">Technical School</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Region</label>
+              <select class="form-control form-select" [(ngModel)]="schoolForm.region" name="schoolRegion">
+                <option value="Greater Accra">Greater Accra</option>
+                <option value="Ashanti">Ashanti</option>
+                <option value="Eastern">Eastern</option>
+                <option value="Western">Western</option>
+                <option value="Northern">Northern</option>
+                <option value="Central">Central</option>
+                <option value="Volta">Volta</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">District</label>
+              <input class="form-control" type="text" placeholder="District" [(ngModel)]="schoolForm.district" name="schoolDistrict">
+            </div>
+            <div class="form-group">
+              <label class="form-label">School Telephone</label>
+              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="schoolForm.tel" name="schoolTel">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">School Email</label>
+            <input class="form-control" type="email" placeholder="school@edu.gh" [(ngModel)]="schoolForm.email" name="schoolEmail">
+          </div>
+          <div class="form-group">
+            <label class="form-label">GPS Address</label>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-subtle btn-sm" (click)="detectGps()"><span class="material-symbols-outlined">my_location</span>Detect GPS</button>
+              <input class="form-control" type="text" placeholder="LAT, LONG" readonly style="flex:1;" [(ngModel)]="schoolForm.gps" name="schoolGps">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">School Logo</label>
+            <div class="upload-zone">
+              <span class="material-symbols-outlined upload-icon">cloud_upload</span>
+              <p>Drag & drop or <strong>Browse</strong></p>
+              <span>PNG, JPG (Max 5MB)</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Accreditation Documents</label>
+            <div class="upload-zone">
+              <span class="material-symbols-outlined upload-icon">folder_open</span>
+              <p>Registration Certificate, Accreditation Documents</p>
+              <span>PDF, DOCX (Max 10MB)</span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-subtle">Save Draft</button>
+            <button class="btn btn-primary">Continue <span class="material-symbols-outlined">arrow_forward</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Registered Schools -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Registered Schools</h3>
+          <span class="badge secondary">47 Schools</span>
+        </div>
+        <div class="table-border-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>School</th>
+                <th>Region</th>
+                <th>Students</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Achimota SHS</strong></td><td>Greater Accra</td><td>42</td><td><span class="badge success">Active</span></td></tr>
+              <tr><td><strong>Wesley Girls' SHS</strong></td><td>Central</td><td>38</td><td><span class="badge success">Active</span></td></tr>
+              <tr><td><strong>PRESEC Legon</strong></td><td>Greater Accra</td><td>56</td><td><span class="badge success">Active</span></td></tr>
+              <tr><td><strong>Prempeh College</strong></td><td>Ashanti</td><td>49</td><td><span class="badge success">Active</span></td></tr>
+              <tr><td><strong>Mfantsipim School</strong></td><td>Central</td><td>35</td><td><span class="badge warning">Pending</span></td></tr>
+              <tr><td><strong>Holy Child SHS</strong></td><td>Central</td><td>31</td><td><span class="badge success">Active</span></td></tr>
+              <tr><td><strong>Aburi Girls SHS</strong></td><td>Eastern</td><td>27</td><td><span class="badge warning">Pending</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ STUDENT TAB ══ -->
+    <div *ngIf="activeTab==='student'" class="tab-content-grid">
+      <div class="card">
+        <div class="card-header" style="flex-wrap: wrap; gap: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 style="margin: 0;">Student Registration</h3>
+            <p style="font-size:12px; color:var(--on-surface-variant); margin-top:2px;">Register students individually or as a competing team under your school</p>
+          </div>
+          <div style="display: flex; gap: 4px; background: var(--surface-container); padding: 4px; border-radius: 8px;">
+            <button class="btn btn-sm" [class.btn-primary]="studentRegMode==='single'" [class.btn-subtle]="studentRegMode!=='single'" (click)="studentRegMode='single'" style="padding: 4px 12px; font-size:12px;">Single Student</button>
+            <button class="btn btn-sm" [class.btn-primary]="studentRegMode==='group'" [class.btn-subtle]="studentRegMode!=='group'" (click)="studentRegMode='group'" style="padding: 4px 12px; font-size:12px;">Group / Team</button>
+          </div>
+        </div>
+
+        <!-- Single Student Form -->
+        <div class="card-body" *ngIf="studentRegMode==='single'">
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Full Name *</label>
+              <input class="form-control" type="text" placeholder="First Last Name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Student ID</label>
+              <input class="form-control" type="text" placeholder="STU-XXXX">
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Date of Birth</label>
+              <input class="form-control" type="date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Gender</label>
+              <select class="form-control form-select">
+                <option>Male</option>
+                <option>Female</option>
+                <option>Prefer not to say</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">School *</label>
+              <select class="form-control form-select">
+                <option>Achimota SHS</option>
+                <option>Wesley Girls</option>
+                <option>PRESEC Legon</option>
+                <option>Prempeh College</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Class / Form</label>
+              <select class="form-control form-select">
+                <option>Form 1</option>
+                <option>Form 2</option>
+                <option>Form 3</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Guardian Name & Contact</label>
+            <input class="form-control" type="text" placeholder="Guardian full name & phone number">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Competition Track *</label>
+            <div class="track-selection-grid">
+              <label *ngFor="let track of tracks" style="cursor:pointer;">
+                <input type="radio" name="track" [value]="track.id" [(ngModel)]="selectedTrack" style="display:none;">
+                <div class="track-radio-card" [class.selected]="selectedTrack===track.id">
+                  <span class="material-symbols-outlined">{{track.icon}}</span>
+                  <div class="track-label">{{track.label}}</div>
+                </div>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Skills Assessment</label>
+            <div class="table-border-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Domain</th>
+                    <th style="text-align:center">Novice</th>
+                    <th style="text-align:center">Intermediate</th>
+                    <th style="text-align:center">Advanced</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Algorithm Design</td>
+                    <td style="text-align:center"><input type="radio" name="alg" style="accent-color:var(--primary)"></td>
+                    <td style="text-align:center"><input type="radio" name="alg" checked style="accent-color:var(--primary)"></td>
+                    <td style="text-align:center"><input type="radio" name="alg" style="accent-color:var(--primary)"></td>
+                  </tr>
+                  <tr>
+                    <td>Hardware / Robotics</td>
+                    <td style="text-align:center"><input type="radio" name="hw" style="accent-color:var(--primary)"></td>
+                    <td style="text-align:center"><input type="radio" name="hw" style="accent-color:var(--primary)"></td>
+                    <td style="text-align:center"><input type="radio" name="hw" checked style="accent-color:var(--primary)"></td>
+                  </tr>
+                  <tr>
+                    <td>Data & AI</td>
+                    <td style="text-align:center"><input type="radio" name="ai" checked style="accent-color:var(--primary)"></td>
+                    <td style="text-align:center"><input type="radio" name="ai" style="accent-color:var(--primary)"></td>
+                    <td style="text-align:center"><input type="radio" name="ai" style="accent-color:var(--primary)"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <!-- GDPA Compliance -->
+          <div class="gdpa-security-box">
+            <span class="material-symbols-outlined ds-icon">verified_user</span>
+            <p>
+              <strong>Ghana Data Protection Act (Act 843)</strong> — I consent to the processing of student personal data strictly for competition and training purposes.
+            </p>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-subtle">Save Draft</button>
+            <button class="btn btn-secondary">
+              <span class="material-symbols-outlined">task_alt</span>
+              Validate Registration
+            </button>
+          </div>
+        </div>
+
+        <!-- Group / Team Form -->
+        <div class="card-body" *ngIf="studentRegMode==='group'">
+          <div class="form-group">
+            <label class="form-label">Team / Group Name *</label>
+            <input class="form-control" type="text" placeholder="e.g., PRESEC Coding Alpha">
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">School / Institution *</label>
+              <select class="form-control form-select">
+                <option>Achimota SHS</option>
+                <option>Wesley Girls</option>
+                <option>PRESEC Legon</option>
+                <option>Prempeh College</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Target Competition Track *</label>
+              <select class="form-control form-select">
+                <option>Coding</option>
+                <option>Robotics</option>
+                <option>AI</option>
+                <option>Cybersecurity</option>
+                <option>Innovation</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin: 24px 0 12px; border-bottom: 1px solid var(--outline-variant); padding-bottom: 8px;">
+            <h4 style="font-size: 14px; font-weight: 700; color: var(--on-surface);">Team Members (Group Registry)</h4>
+            <p style="font-size: 11px; color: var(--on-surface-variant);">Schools must register at least 3 members and up to 5 members per group.</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Team Lead *</label>
+            <div class="grid-2">
+              <input class="form-control" type="text" placeholder="Full Name (Lead)">
+              <input class="form-control" type="email" placeholder="Email (Lead)">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Team Member 2 *</label>
+            <div class="grid-2">
+              <input class="form-control" type="text" placeholder="Full Name">
+              <input class="form-control" type="email" placeholder="Email">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Team Member 3 *</label>
+            <div class="grid-2">
+              <input class="form-control" type="text" placeholder="Full Name">
+              <input class="form-control" type="email" placeholder="Email">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Team Member 4 (Optional)</label>
+            <div class="grid-2">
+              <input class="form-control" type="text" placeholder="Full Name">
+              <input class="form-control" type="email" placeholder="Email">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Team Member 5 (Optional)</label>
+            <div class="grid-2">
+              <input class="form-control" type="text" placeholder="Full Name">
+              <input class="form-control" type="email" placeholder="Email">
+            </div>
+          </div>
+
+          <!-- GDPA Compliance -->
+          <div class="gdpa-security-box" style="margin-top: 20px;">
+            <span class="material-symbols-outlined ds-icon">verified_user</span>
+            <p>
+              <strong>Ghana Data Protection Act (Act 843)</strong> — We consent to processing the group personal data of all registered students for competition purposes.
+            </p>
+          </div>
+
+          <div class="form-actions" style="margin-top: 20px;">
+            <button class="btn btn-subtle">Save Draft</button>
+            <button class="btn btn-primary">Register Group Team</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Registered Students -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Recently Registered Students</h3>
+          <span class="badge primary">1,248 Total</span>
+        </div>
+        <div class="table-border-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>ID</th>
+                <th>School</th>
+                <th>Track</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let s of recentStudents">
+                <td><strong>{{s.name}}</strong></td>
+                <td><span class="code-sm" style="color:var(--on-surface-variant)">{{s.id}}</span></td>
+                <td>{{s.school}}</td>
+                <td><span class="track-chip" [class]="s.track">{{s.track}}</span></td>
+                <td style="color:var(--on-surface-variant); font-size:12px;">{{s.date}}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ INSTRUCTOR TAB ══ -->
+    <div *ngIf="activeTab==='instructor'" class="tab-content-grid">
+      <div class="card">
+        <div class="card-header">
+          <h3>Instructor Registration</h3>
+        </div>
+        <div class="card-body">
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Full Name *</label>
+              <input class="form-control" type="text" placeholder="Full Name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact *</label>
+              <input class="form-control" type="tel" placeholder="+233...">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email *</label>
+            <input class="form-control" type="email" placeholder="instructor@email.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Address</label>
+            <input class="form-control" type="text" placeholder="City, Region">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Highest Qualification</label>
+            <select class="form-control form-select">
+              <option>BSc</option>
+              <option>MSc</option>
+              <option>PhD</option>
+              <option>HND</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Institution</label>
+            <input class="form-control" type="text" placeholder="Current Institution">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Expertise Areas</label>
+            <div class="expertise-chip-list">
+              <label *ngFor="let area of ['Python','JavaScript','C#','AI','Robotics','Cybersecurity','Data Science']" class="expertise-chip-label">
+                <input type="checkbox">
+                {{area}}
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Documents</label>
+            <div class="upload-zone">
+              <span class="material-symbols-outlined upload-icon">upload_file</span>
+              <p>CV, Certificates, National ID</p>
+              <span>PDF (Max 10MB each)</span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-subtle">Save Draft</button>
+            <button class="btn btn-primary">Register Instructor</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Instructors -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Active Instructors</h3>
+          <span class="badge secondary">23 Active</span>
+        </div>
+        <div class="table-border-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Expertise</th>
+                <th>Students</th>
+                <th>Rating</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Dr. Kwame Amponsah</strong></td><td><span class="track-chip coding">Coding</span></td><td>82</td><td>⭐ 4.9</td></tr>
+              <tr><td><strong>Eng. Abena Asante</strong></td><td><span class="track-chip robotics">Robotics</span></td><td>55</td><td>⭐ 4.7</td></tr>
+              <tr><td><strong>Ms. Adwoa Boateng</strong></td><td><span class="track-chip ai">AI</span></td><td>68</td><td>⭐ 4.8</td></tr>
+              <tr><td><strong>Mr. Yaw Mensah</strong></td><td><span class="track-chip cyber">Cybersecurity</span></td><td>43</td><td>⭐ 4.6</td></tr>
+              <tr><td><strong>Ms. Ama Owusu</strong></td><td><span class="track-chip innovation">Innovation</span></td><td>71</td><td>⭐ 5.0</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SPONSOR TAB ══ -->
+    <div *ngIf="activeTab==='sponsor'" class="tab-content-grid">
+      <div class="card">
+        <div class="card-header">
+          <h3 style="margin: 0;">Corporate Sponsor Registration</h3>
+        </div>
+        <div class="card-body">
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Company / Sponsor Name *</label>
+              <input class="form-control" type="text" placeholder="e.g., Tullow Ghana PLC">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Industry / Sector</label>
+              <select class="form-control form-select">
+                <option>Energy & Mining</option>
+                <option>Telecommunications</option>
+                <option>Banking & Finance</option>
+                <option>Technology & Consulting</option>
+                <option>Manufacturing</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">CSR Representative Name *</label>
+              <input class="form-control" type="text" placeholder="Representative Name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact Number *</label>
+              <input class="form-control" type="tel" placeholder="+233...">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Corporate Email Address *</label>
+            <input class="form-control" type="email" placeholder="csr@company.com">
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Sponsorship Commitment (₵) *</label>
+              <input class="form-control" type="text" placeholder="e.g., 50,000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Sponsorship Tier</label>
+              <select class="form-control form-select">
+                <option>Platinum Partner (₵ 100k+)</option>
+                <option>Gold Partner (₵ 50k - ₵ 100k)</option>
+                <option>Silver Partner (₵ 20k - ₵ 50k)</option>
+                <option>Bronze / General Sponsor (< ₵ 20k)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Supported Competition Arenas</label>
+            <div class="expertise-chip-list">
+              <label *ngFor="let arena of ['Coding Track','Robotics Arena','AI & ML Challenge','Cyber Security CTF','Open Innovation']" class="expertise-chip-label">
+                <input type="checkbox" checked>
+                {{arena}}
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">CSR / Partnership Logo</label>
+            <div class="upload-zone">
+              <span class="material-symbols-outlined upload-icon">cloud_upload</span>
+              <p>Upload corporate logo for website display & banners</p>
+              <span>PNG, SVG (Max 3MB)</span>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-subtle">Save Draft</button>
+            <button class="btn btn-primary">Register Corporate Sponsor</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Sponsors Table -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Active Sponsors Portfolio</h3>
+          <span class="badge secondary">{{ sponsors.length }} Sponsors</span>
+        </div>
+        <div class="table-border-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Sponsor</th>
+                <th>Tier</th>
+                <th>Supported Arenas</th>
+                <th>Commitment</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let sp of sponsors">
+                <td><strong>{{ sp.name }}</strong></td>
+                <td><span class="badge secondary">{{ sp.tier }}</span></td>
+                <td><span style="font-size:12px; color:var(--on-surface-variant);">{{ sp.support }}</span></td>
+                <td><strong style="color:var(--primary);">{{ sp.amount }}</strong></td>
+                <td><span class="badge success">{{ sp.status }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

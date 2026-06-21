@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sponsor &amp; CSR Impact Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&amp;family=Jetbrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=JetBrains+Mono:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"primary-fixed-dim": "#a9c7ff", "surface-container-lowest": "#050f1c", "tertiary-fixed-dim": "#4edea3", "on-primary": "#003063", "on-secondary": "#29313b", "on-surface": "#d9e3f6", "on-secondary-container": "#b1b9c6", "secondary-container": "#424a55", "on-primary-fixed-variant": "#00468b", "surface-variant": "#2b3544", "on-surface-variant": "#c2c7c8", "error-container": "#93000a", outline: "#8c9293", secondary: "#bfc7d4", "on-background": "#d9e3f6", "on-tertiary-fixed-variant": "#005236", "on-tertiary-container": "#00a371", "inverse-on-surface": "#27313f", "outline-variant": "#424849", "surface-container-highest": "#2b3544", "secondary-fixed-dim": "#bfc7d4", "surface-container": "#16202e", error: "#ffb4ab", "surface-container-high": "#212b39", "surface-container-low": "#121c2a", "on-primary-container": "#5290ea", "surface-tint": "#a9c7ff", "on-error-container": "#ffdad6", "primary-fixed": "#d6e3ff", "surface-dim": "#091421", "surface-bright": "#303a48", "inverse-surface": "#d9e3f6", primary: "#a9c7ff", "secondary-fixed": "#dbe3f1", "on-tertiary": "#003824", "on-secondary-fixed-variant": "#3f4752", "on-tertiary-fixed": "#002113", "tertiary-container": "#002f1e", surface: "#091421", "on-secondary-fixed": "#141c26", "tertiary-fixed": "#6ffbbe", "primary-container": "#002854", "on-error": "#690005", tertiary: "#4edea3", "inverse-primary": "#085db4", "on-primary-fixed": "#001b3d", background: "#091421"}, borderRadius: {DEFAULT: "0.125rem", lg: "0.25rem", xl: "0.5rem", full: "0.75rem"}, spacing: {xl: "32px", "margin-mobile": "16px", "2xl": "48px", "margin-desktop": "32px", base: "4px", xs: "4px", md: "16px", gutter: "24px", sm: "8px", lg: "24px"}, fontFamily: {"body-md": ["Inter"], "display-lg": ["Inter"], "headline-lg": ["Inter"], "title-md": ["Inter"], "body-lg": ["Inter"], "headline-lg-mobile": ["Inter"], "label-md": ["JetBrains Mono"], "code-sm": ["JetBrains Mono"], headline: ["Inter"], display: ["Inter"], body: ["Inter"], label: ["Jetbrains Mono"]}, fontSize: {"body-md": ["14px", {lineHeight: "20px", letterSpacing: "0.25px", fontWeight: "400"}], "display-lg": ["57px", {lineHeight: "64px", letterSpacing: "-0.02em", fontWeight: "700"}], "headline-lg": ["32px", {lineHeight: "40px", letterSpacing: "0", fontWeight: "600"}], "title-md": ["16px", {lineHeight: "24px", letterSpacing: "0.15px", fontWeight: "600"}], "body-lg": ["16px", {lineHeight: "24px", letterSpacing: "0.5px", fontWeight: "400"}], "headline-lg-mobile": ["24px", {lineHeight: "32px", letterSpacing: "0", fontWeight: "600"}], "label-md": ["12px", {lineHeight: "16px", letterSpacing: "0.5px", fontWeight: "500"}], "code-sm": ["11px", {lineHeight: "16px", letterSpacing: "0", fontWeight: "400"}]}}}};</script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #031427; color: #d3e4fe; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .material-symbols-outlined.fill { font-variation-settings: 'FILL' 1; }
+        .card-border { border: 1px solid rgba(66, 72, 73, 0.2); }
+        .chart-grid { stroke: rgba(66, 72, 73, 0.2); stroke-dasharray: 4; }
+        .chart-line { stroke: #b7cacd; stroke-width: 2; fill: none; }
+        .chart-line-secondary { stroke: #4edea3; stroke-width: 2; fill: none; }
+        .chart-area { fill: url(#gradientPrimary); opacity: 0.1; }
+        .donut-segment-1 { stroke: #b7cacd; }
+        .donut-segment-2 { stroke: #4edea3; }
+        .donut-segment-3 { stroke: #2e4b50; }
+        .donut-bg { stroke: rgba(66, 72, 73, 0.2); }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col md:flex-row overflow-x-hidden selection:bg-primary selection:text-on-primary">
+<!-- TopAppBar (Web) -->
+<header class="hidden md:flex justify-between items-center h-16 w-full pl-[256px] pr-8 z-30 bg-surface dark:bg-surface border-b border-outline-variant/20 docked full-width top-0 fixed">
+<div class="flex items-center gap-md">
+<h1 class="font-headline-lg text-headline-lg font-bold text-primary">STEM Competition Platform</h1>
+</div>
+<div class="flex items-center gap-lg">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="bg-surface-container-high border border-outline-variant rounded-DEFAULT py-xs pl-xl pr-sm text-body-md font-body-md text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all w-64" placeholder="Search..." type="text"/>
+</div>
+<div class="flex items-center gap-sm">
+<button class="p-xs rounded-full hover:bg-surface-container-highest/10 dark:hover:bg-surface-container-highest/10 text-on-surface-variant transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-xs rounded-full hover:bg-surface-container-highest/10 dark:hover:bg-surface-container-highest/10 text-on-surface-variant transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined">apps</span>
+</button>
+<button class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant ml-sm active:scale-[0.98] transition-transform">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A professional corporate avatar of a business executive in a modern, well-lit office environment. The lighting is bright and modern, creating a clean, high-end corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBY7lnVYmH3YNmK5tMZmbJRQHq5_gKtR-ev9kO5YfHf2r7jHnCZKWHFcY3zIV__9g1Hy3ePTLiv869b0lfBzLAACiSWP5YE5MEZksg23e3Faz1ZqlaVfeyRQggKh10n9Zg2NQ5OgXXmdOFj9QQ4T0npFyiINZ-sVQulc0jrm3Azk_Wt91uRDu6FDTO1ZVQGUx-4vvUX710n9wRlgGA2YMC7pNZ46DNehcyDo6ncmgE_By1IIWIb9z9XOzSPF1-W_F0ivYAvnzZz96K6"/>
+</button>
+</div>
+</div>
+</header>
+<!-- SideNavBar (Web) -->
+<nav class="hidden md:flex fixed left-0 top-0 h-full flex-col z-40 bg-surface-container-low dark:bg-surface-container-low h-full w-60 border-r border-outline-variant/20 pt-16">
+<div class="p-lg border-b border-outline-variant/20 mb-sm">
+<div class="flex items-center gap-sm mb-xs">
+<div class="w-8 h-8 rounded-DEFAULT bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined fill">science</span>
+</div>
+<h2 class="font-title-md text-title-md text-on-surface font-semibold truncate">STEM Portal</h2>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant">Competition Manager</p>
+</div>
+<div class="px-md pb-md">
+<button class="w-full bg-primary text-on-primary font-title-md text-title-md py-sm px-md rounded-DEFAULT flex items-center justify-center gap-sm hover:bg-primary-fixed active:scale-[0.98] transition-all">
+<span class="material-symbols-outlined">add</span>
+                New Challenge
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto py-sm px-sm space-y-xs">
+<a class="flex items-center gap-md px-md py-sm rounded-DEFAULT text-on-surface-variant hover:bg-secondary-container dark:hover:bg-secondary-container transition-colors active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-DEFAULT text-on-surface-variant hover:bg-secondary-container dark:hover:bg-secondary-container transition-colors active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">how_to_reg</span>
+<span class="font-body-md text-body-md">Registration</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-DEFAULT text-on-surface-variant hover:bg-secondary-container dark:hover:bg-secondary-container transition-colors active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-body-md text-body-md">LMS</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-DEFAULT text-on-surface-variant hover:bg-secondary-container dark:hover:bg-secondary-container transition-colors active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-body-md text-body-md">Leaderboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-DEFAULT text-tertiary dark:text-tertiary-fixed-dim font-bold bg-secondary-container/50 active:scale-[0.98] transition-transform duration-200" href="#">
+<span class="material-symbols-outlined fill">handshake</span>
+<span class="font-body-md text-body-md">Sponsors</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-DEFAULT text-on-surface-variant hover:bg-secondary-container dark:hover:bg-secondary-container transition-colors active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span class="font-body-md text-body-md">Reports</span>
+</a>
+</div>
+<div class="mt-auto border-t border-outline-variant/20 p-sm space-y-xs bg-surface-container-low dark:bg-surface-container-low">
+<a class="flex items-center gap-md px-md py-sm rounded-DEFAULT text-on-surface-variant hover:bg-secondary-container dark:hover:bg-secondary-container transition-colors active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm rounded-DEFAULT text-on-surface-variant hover:bg-secondary-container dark:hover:bg-secondary-container transition-colors active:scale-[0.98]" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-body-md text-body-md">Support</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 md:ml-60 pt-16 w-full min-h-screen bg-background">
+<div class="max-w-[1440px] mx-auto p-margin-mobile md:p-margin-desktop space-y-lg">
+<!-- Header -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-sm mb-xl">
+<div>
+<div class="flex items-center gap-sm mb-xs">
+<span class="text-tertiary font-label-md text-label-md px-sm py-[2px] bg-tertiary-container rounded-DEFAULT uppercase tracking-wider">Executive Report</span>
+<span class="text-on-surface-variant font-label-md text-label-md flex items-center gap-xs"><span class="material-symbols-outlined text-[16px]">calendar_today</span> Q3 2024</span>
+</div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">CSR Impact Overview</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-xs max-w-2xl">Real-time metrics demonstrating the reach and efficacy of corporate sponsorship within the STEM Competition Platform ecosystem.</p>
+</div>
+<div class="flex gap-sm w-full md:w-auto mt-sm md:mt-0">
+<button class="flex-1 md:flex-none px-md py-sm border border-outline-variant text-on-surface rounded-DEFAULT font-title-md text-title-md flex items-center justify-center gap-xs hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-[18px]">download</span> Export PDF
+                    </button>
+</div>
+</div>
+<!-- Top Row: Impact Tiles -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md lg:gap-lg">
+<!-- Tile 1 -->
+<div class="bg-surface-container rounded-lg p-lg card-border relative overflow-hidden group hover:bg-surface-container-high transition-colors">
+<div class="absolute top-0 right-0 p-md opacity-20 group-hover:opacity-40 transition-opacity">
+<span class="material-symbols-outlined text-[64px] text-tertiary">payments</span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-sm relative z-10">Total Financial Contribution</p>
+<div class="flex items-baseline gap-sm relative z-10 mb-xs">
+<h3 class="font-display-lg text-display-lg text-on-surface">$2.4M</h3>
+</div>
+<div class="flex items-center gap-xs relative z-10">
+<span class="flex items-center text-tertiary font-label-md text-label-md bg-tertiary-container/30 px-xs py-[2px] rounded-DEFAULT">
+<span class="material-symbols-outlined text-[14px]">trending_up</span> +12.5%
+                        </span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">vs. previous year</span>
+</div>
+</div>
+<!-- Tile 2 -->
+<div class="bg-surface-container rounded-lg p-lg card-border relative overflow-hidden group hover:bg-surface-container-high transition-colors">
+<div class="absolute top-0 right-0 p-md opacity-20 group-hover:opacity-40 transition-opacity">
+<span class="material-symbols-outlined text-[64px] text-primary">corporate_fare</span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-sm relative z-10">Schools Supported</p>
+<div class="flex items-baseline gap-sm relative z-10 mb-xs">
+<h3 class="font-display-lg text-display-lg text-on-surface">342</h3>
+</div>
+<div class="flex items-center gap-xs relative z-10">
+<span class="flex items-center text-tertiary font-label-md text-label-md bg-tertiary-container/30 px-xs py-[2px] rounded-DEFAULT">
+<span class="material-symbols-outlined text-[14px]">add</span> 45 New
+                        </span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">this quarter</span>
+</div>
+</div>
+<!-- Tile 3 -->
+<div class="bg-surface-container rounded-lg p-lg card-border relative overflow-hidden group hover:bg-surface-container-high transition-colors">
+<div class="absolute top-0 right-0 p-md opacity-20 group-hover:opacity-40 transition-opacity">
+<span class="material-symbols-outlined text-[64px] text-secondary">diversity_3</span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-sm relative z-10">Female Participation</p>
+<div class="flex items-baseline gap-sm relative z-10 mb-xs">
+<h3 class="font-display-lg text-display-lg text-on-surface">48%</h3>
+</div>
+<div class="flex items-center gap-xs relative z-10">
+<span class="flex items-center text-tertiary font-label-md text-label-md bg-tertiary-container/30 px-xs py-[2px] rounded-DEFAULT">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span> +3.2 pts
+                        </span>
+<span class="font-code-sm text-code-sm text-on-surface-variant">above industry avg</span>
+</div>
+</div>
+</div>
+<!-- Middle Row: Analytics Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-md lg:gap-lg">
+<!-- Regional Diversity Donut -->
+<div class="bg-surface-container rounded-lg p-lg card-border lg:col-span-1 flex flex-col">
+<h4 class="font-title-md text-title-md text-on-surface mb-md">Regional Impact</h4>
+<div class="flex-1 flex flex-col items-center justify-center relative min-h-[240px]">
+<svg class="w-48 h-48 -rotate-90" viewbox="0 0 100 100">
+<circle class="donut-bg" cx="50" cy="50" fill="transparent" r="40" stroke-width="12"></circle>
+<!-- Urban (45%) -->
+<circle class="donut-segment-1" cx="50" cy="50" fill="transparent" r="40" stroke-dasharray="113.1 251.2" stroke-dashoffset="0" stroke-width="12"></circle>
+<!-- Suburban (35%) -->
+<circle class="donut-segment-2" cx="50" cy="50" fill="transparent" r="40" stroke-dasharray="87.9 251.2" stroke-dashoffset="-113.1" stroke-width="12"></circle>
+<!-- Rural (20%) -->
+<circle class="donut-segment-3" cx="50" cy="50" fill="transparent" r="40" stroke-dasharray="50.2 251.2" stroke-dashoffset="-201" stroke-width="12"></circle>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+<span class="font-title-md text-title-md text-on-surface">3 Regions</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Active</span>
+</div>
+</div>
+<div class="mt-md space-y-xs">
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-xs"><div class="w-3 h-3 rounded-full bg-primary"></div><span class="font-body-md text-body-md text-on-surface-variant">Urban Hubs</span></div>
+<span class="font-label-md text-label-md text-on-surface">45%</span>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-xs"><div class="w-3 h-3 rounded-full bg-tertiary"></div><span class="font-body-md text-body-md text-on-surface-variant">Suburban Districts</span></div>
+<span class="font-label-md text-label-md text-on-surface">35%</span>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-xs"><div class="w-3 h-3 rounded-full bg-secondary-container"></div><span class="font-body-md text-body-md text-on-surface-variant">Rural Communities</span></div>
+<span class="font-label-md text-label-md text-on-surface">20%</span>
+</div>
+</div>
+</div>
+<!-- Learning Hours Trend -->
+<div class="bg-surface-container rounded-lg p-lg card-border lg:col-span-2 flex flex-col">
+<div class="flex justify-between items-start mb-lg">
+<div>
+<h4 class="font-title-md text-title-md text-on-surface">Engagement Metrics</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Cumulative learning &amp; mentoring hours</p>
+</div>
+<div class="flex gap-sm">
+<div class="flex items-center gap-xs"><div class="w-3 h-3 rounded-full bg-primary"></div><span class="font-label-md text-label-md text-on-surface-variant">Learning</span></div>
+<div class="flex items-center gap-xs"><div class="w-3 h-3 rounded-full bg-tertiary"></div><span class="font-label-md text-label-md text-on-surface-variant">Mentoring</span></div>
+</div>
+</div>
+<div class="flex-1 relative min-h-[240px] w-full">
+<svg class="w-full h-full preserve-aspect-ratio-none" viewbox="0 0 800 240">
+<defs>
+<lineargradient id="gradientPrimary" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#b7cacd" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="#b7cacd" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<!-- Grid lines -->
+<line class="chart-grid" x1="0" x2="800" y1="200" y2="200"></line>
+<line class="chart-grid" x1="0" x2="800" y1="150" y2="150"></line>
+<line class="chart-grid" x1="0" x2="800" y1="100" y2="100"></line>
+<line class="chart-grid" x1="0" x2="800" y1="50" y2="50"></line>
+<!-- Area & Line for Learning -->
+<path class="chart-area" d="M0,180 L100,160 L200,120 L300,140 L400,90 L500,110 L600,60 L700,80 L800,30 L800,200 L0,200 Z"></path>
+<path class="chart-line" d="M0,180 L100,160 L200,120 L300,140 L400,90 L500,110 L600,60 L700,80 L800,30"></path>
+<!-- Line for Mentoring -->
+<path class="chart-line-secondary" d="M0,190 L100,180 L200,170 L300,150 L400,160 L500,130 L600,140 L700,100 L800,90"></path>
+<!-- Data Points (Learning) -->
+<circle cx="400" cy="90" fill="#031427" r="4" stroke="#b7cacd" stroke-width="2"></circle>
+<circle cx="800" cy="30" fill="#031427" r="4" stroke="#b7cacd" stroke-width="2"></circle>
+</svg>
+<!-- Y-Axis Labels -->
+<div class="absolute left-0 top-0 h-[200px] flex flex-col justify-between text-on-surface-variant font-code-sm text-code-sm -ml-8">
+<span>10k</span><span>7.5k</span><span>5k</span><span>2.5k</span><span>0</span>
+</div>
+<!-- X-Axis Labels -->
+<div class="absolute bottom-0 left-0 w-full flex justify-between text-on-surface-variant font-code-sm text-code-sm pt-sm border-t border-outline-variant/20 px-xs">
+<span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Row: Projects & Success Stories -->
+<div>
+<div class="flex justify-between items-end mb-md border-b border-outline-variant/20 pb-sm">
+<h4 class="font-headline-lg text-headline-lg text-on-surface">Sponsored Portfolios &amp; Success</h4>
+<a class="font-title-md text-title-md text-primary hover:text-primary-fixed transition-colors flex items-center gap-xs" href="#">
+                        View All <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-md">
+<!-- Project Card 1 -->
+<div class="bg-surface-container rounded-lg card-border overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform duration-300">
+<div class="h-32 bg-surface-variant relative">
+<img alt="Robotics Project" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" data-alt="A top-down view of a complex, intricate robotics mechanism being assembled on a dark workbench. The lighting is focused, highlighting the metallic components and wires. Modern tech aesthetic, deep blues and steel grays." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnDgv-Y5wm3JkjMsJ_PiyuBngOynAaqsFWwjwFGpCbH2xF97-A6S3Sxrro-7PU6Hqshx61P_Q54O3OZ5pCEZdZAeEEBHqs1cD1xAm9BGDznUtFej_UW9VGB8lFchmbz2WimusVlfs_a7ItRXfjP5OZRMAenVULsyrg-b3qgB84WbeKEAuUmYRHfvJIJ24NWIK56DpKTrEITO0UASElkhTKTErA_0WB5OX-w42MPEI_meC-6ofN7dzFaqKukx4ChyK7YsIMAy1ArU0m"/>
+<div class="absolute top-sm right-sm bg-surface/80 backdrop-blur-sm px-xs py-[2px] rounded-DEFAULT border border-outline-variant/50">
+<span class="font-code-sm text-code-sm text-tertiary">Robotics</span>
+</div>
+</div>
+<div class="p-md">
+<h5 class="font-title-md text-title-md text-on-surface mb-xs truncate">Autonomous Nav-Bot</h5>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 text-sm mb-md">Team Delta developed a low-cost autonomous navigation system for disaster relief scenarios.</p>
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-code-sm text-[10px]">T1</div>
+<span class="font-label-md text-label-md text-on-surface-variant">Oakridge High School</span>
+</div>
+</div>
+</div>
+<!-- Project Card 2 -->
+<div class="bg-surface-container rounded-lg card-border overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform duration-300">
+<div class="h-32 bg-surface-variant relative">
+<img alt="Data Science Project" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" data-alt="A glowing computer screen showing lines of code and data visualizations in dark mode. The room is dimly lit, focusing on the screen's glow. High-tech, analytical atmosphere with teal and green accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAIusGCsmC50kd_OYqMZ8K4KHXoMYquebaOwtPX7w8FKiVKktdWYiauyn_2B62JodIYdusjxOrD7COklRyeI0s3J4nZLPYuG5-nx3nchyEAsVhnXiSQ-6GtX0J0AYMoXR4ts2zMiqzedgv3X0UeZMRwT7PzlxuMP3Mg6dJX3tZOkb7DsbEuNIJUCFRtMnHxXjPWrgvBn941eO4j-8UIFFy70AYA3iMichN5n2QrmQX9gGBZj_joQ60jqv4MtQOArRIMcQjZ2syud13s"/>
+<div class="absolute top-sm right-sm bg-surface/80 backdrop-blur-sm px-xs py-[2px] rounded-DEFAULT border border-outline-variant/50">
+<span class="font-code-sm text-code-sm text-primary">Data Sci</span>
+</div>
+</div>
+<div class="p-md">
+<h5 class="font-title-md text-title-md text-on-surface mb-xs truncate">Urban Heat Mapping</h5>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2 text-sm mb-md">Analysis of local satellite data to identify urban heat islands and propose green roof locations.</p>
+<div class="flex items-center gap-sm">
+<div class="w-6 h-6 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-code-sm text-[10px]">E4</div>
+<span class="font-label-md text-label-md text-on-surface-variant">Eastside Academy</span>
+</div>
+</div>
+</div>
+<!-- Video Testimonial 1 -->
+<div class="bg-surface-container rounded-lg card-border overflow-hidden group cursor-pointer lg:col-span-2 relative">
+<div class="absolute inset-0 bg-gradient-to-t from-surface-dim to-transparent z-10"></div>
+<img alt="Student Video" class="w-full h-full object-cover absolute inset-0 opacity-60 group-hover:opacity-80 transition-opacity" data-alt="A close-up portrait of a diverse high school student wearing safety goggles in a science lab, looking confidently at the camera. The background is slightly blurred showing lab equipment. Professional corporate video lighting, dark mode aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAmOmbLI8yyCR1zyPFTHsDOfd1U0zXWP1R65qdmNu0wIPjENre0DUJIB2n11foJjf3cvwnmik9xgh7m2c3_5aJhkganLr90UF2wUzNz-jeZxii1UYrL19P8ULPQooJcLgn-k7YgEyJ___Em0IdC37B3FOrQoJrom8PWauTJQbg5-24kuJXTg45yV_tfB7lUHG3cdBN-L3UCqC8_vjwESaKcB448OelxCtP81oHGR9UjF-NycWh-wXi7_5LJBRq4j4RVwbQbpqLL6sUW"/>
+<div class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+<div class="w-12 h-12 rounded-full bg-primary/20 backdrop-blur-sm flex items-center justify-center border border-primary/50 group-hover:bg-primary/40 transition-colors">
+<span class="material-symbols-outlined text-primary text-[24px] ml-1">play_arrow</span>
+</div>
+</div>
+<div class="relative z-20 h-full flex flex-col justify-end p-md">
+<span class="text-tertiary font-label-md text-label-md mb-xs flex items-center gap-xs"><span class="material-symbols-outlined text-[14px]">star</span> Featured Success Story</span>
+<h5 class="font-title-md text-title-md text-on-surface mb-xs">How the sponsorship changed my career trajectory.</h5>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-md">"Access to enterprise-grade lab equipment allowed our team to test hypotheses we only read about in textbooks."</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

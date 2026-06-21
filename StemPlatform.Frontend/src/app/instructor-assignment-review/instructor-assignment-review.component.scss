@@ -1,0 +1,251 @@
+// Clinical Clarity Tokens (Derived from Meditrack design system)
+$primary-blue: #0056B3;
+$primary-blue-hover: #003f87;
+$surface-bg: #F3FAFF;
+$surface-container: #DBF1FE;
+$card-white: #FFFFFF;
+$text-primary: #071E27;
+$text-secondary: #424752;
+$border-soft: #C2C6D4;
+$shadow-ambient: 0px 4px 20px rgba(0, 0, 0, 0.04);
+$shadow-elevated: 0px 10px 30px rgba(0, 86, 179, 0.08);
+
+.review-dashboard-container {
+  display: flex;
+  gap: 24px;
+  padding: 32px;
+  background-color: $surface-bg;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  color: $text-primary;
+
+  @media (max-width: 1023px) {
+    flex-direction: column;
+  }
+}
+
+.split-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+// Card styling applying "Clinical-Chic" elevation & rounded corners
+.clinical-card {
+  background-color: $card-white;
+  border: 1px solid $border-soft;
+  border-radius: 1rem;
+  box-shadow: $shadow-ambient;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px;
+    border-bottom: 1px solid $border-soft;
+
+    .track-avatar {
+      width: 48px;
+      height: 48px;
+      background: $surface-container;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: $primary-blue;
+    }
+
+    h3 {
+      margin: 0;
+      font-weight: 700;
+      font-size: 20px;
+      color: $primary-blue;
+      letter-spacing: -0.01em;
+    }
+    p {
+      margin: 4px 0 0 0;
+      font-size: 14px;
+      color: $text-secondary;
+    }
+  }
+
+  .card-content {
+    padding: 24px;
+    flex: 1;
+  }
+
+  .card-actions {
+    padding: 24px;
+    border-top: 1px solid $border-soft;
+  }
+}
+
+// Chips/Badges
+.metadata-tags {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+
+  .clinical-chip {
+    background-color: $surface-container;
+    color: $primary-blue;
+    padding: 6px 16px;
+    border-radius: 9999px; // Pill shape
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+
+    &.status-pending {
+      background-color: #FFF3E0;
+      color: #E65100;
+    }
+  }
+}
+
+// Code Viewer Formatting
+.source-code-placeholder {
+  margin-bottom: 24px;
+
+  h4 {
+    margin: 0 0 12px 0;
+    color: $text-primary;
+    font-weight: 600;
+  }
+
+  .code-frame {
+    background-color: #F1F5F9;
+    border-radius: 0.5rem;
+    padding: 16px;
+    border: 1px solid $border-soft;
+
+    p { margin: 0 0 8px 0; font-size: 14px; }
+
+    .code-viewer {
+      font-family: 'JetBrains Mono', monospace;
+      color: $text-secondary;
+      background: $card-white;
+      padding: 16px;
+      border-radius: 0.25rem;
+      margin: 0;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+  }
+}
+
+.video-reference {
+  h4 { margin: 0 0 8px 0; }
+  .clinical-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: $primary-blue;
+    text-decoration: none;
+    font-weight: 600;
+    padding: 12px;
+    border: 1px solid $primary-blue;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    
+    &:hover {
+      background: $surface-container;
+    }
+  }
+}
+
+// Form Elements
+.review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    label {
+      font-weight: 600;
+      font-size: 14px;
+      color: $text-primary;
+    }
+
+    input, textarea {
+      padding: 12px 16px;
+      border: 1px solid $border-soft;
+      border-radius: 0.5rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      transition: all 0.2s;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-blue;
+        box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.1);
+      }
+    }
+
+    .error {
+      color: #ba1a1a;
+      font-size: 12px;
+    }
+  }
+}
+
+// Buttons
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+
+  button {
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  .btn-approve {
+    background-color: $primary-blue;
+    color: $card-white;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 12px 24px;
+    font-weight: 600;
+
+    &:hover:not([disabled]) {
+      background-color: $primary-blue-hover;
+      box-shadow: $shadow-elevated;
+    }
+  }
+
+  .btn-resubmit {
+    color: $primary-blue;
+    border: 1px solid $primary-blue;
+    border-radius: 0.5rem;
+    padding: 12px 24px;
+    font-weight: 600;
+    background-color: transparent;
+
+    &:hover:not([disabled]) {
+      background-color: $surface-container;
+    }
+  }
+}
+
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh;
+  color: $text-secondary;
+  font-size: 18px;
+  font-weight: 500;
+}

@@ -1,0 +1,134 @@
+<div class="page-canvas fade-in">
+  <div class="page-header with-action">
+    <div><h1 class="page-title-main">Learning Management System</h1><p class="page-subtitle">Manage courses, track progress, and review weekly assignments</p></div>
+    <button class="btn btn-primary"><span class="material-symbols-outlined">add</span>New Course</button>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item" [class.active]="activeTab==='courses'" (click)="activeTab='courses'">
+      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">library_books</span>Training Tracks
+    </div>
+    <div class="tab-item" [class.active]="activeTab==='assignments'" (click)="activeTab='assignments'">
+      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">assignment</span>Assignment Review
+      <span class="badge error" style="margin-left:8px;">42</span>
+    </div>
+  </div>
+
+  <!-- ══ COURSES ══ -->
+  <div *ngIf="activeTab==='courses'">
+    <!-- Track Filter Pills -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+      <button class="btn btn-primary btn-sm">All Tracks</button>
+      <button class="btn btn-subtle btn-sm"><span class="track-chip coding" style="padding:0;">●</span> Coding</button>
+      <button class="btn btn-subtle btn-sm"><span class="track-chip robotics" style="padding:0;">●</span> Robotics</button>
+      <button class="btn btn-subtle btn-sm"><span class="track-chip ai" style="padding:0;">●</span> AI</button>
+      <button class="btn btn-subtle btn-sm"><span class="track-chip cyber" style="padding:0;">●</span> Cybersecurity</button>
+      <button class="btn btn-subtle btn-sm"><span class="track-chip innovation" style="padding:0;">●</span> Innovation</button>
+    </div>
+
+    <div class="grid-3">
+      <div *ngFor="let c of courses" class="card" style="cursor:pointer;transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='var(--shadow-elevated)'" onmouseout="this.style.boxShadow=''">
+        <div class="card-body">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+            <div style="width:48px;height:48px;border-radius:12px;background:var(--surface-container);display:flex;align-items:center;justify-content:center;">
+              <span class="material-symbols-outlined" style="font-size:24px;color:var(--primary)">{{c.icon}}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+              <span class="badge" [class]="c.status==='active' ? 'success' : 'primary'">{{c.status | titlecase}}</span>
+              <span class="badge neutral">{{c.level}}</span>
+            </div>
+          </div>
+          <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">{{c.title}}</h3>
+          <p style="font-size:12px;color:var(--on-surface-variant);margin-bottom:16px;">{{c.modules}} Modules &bull; {{c.enrolled}} enrolled</p>
+          <div *ngIf="c.completion > 0">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+              <span style="color:var(--on-surface-variant)">Cohort Completion</span>
+              <span style="font-weight:700;color:var(--secondary)">{{c.completion}}%</span>
+            </div>
+            <div class="progress-bar secondary"><div class="progress-fill" [style.width.%]="c.completion"></div></div>
+          </div>
+          <div *ngIf="c.completion === 0" style="font-size:12px;color:var(--on-surface-variant);padding:8px 0;">Enrollment Open</div>
+          <div style="display:flex;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid var(--outline-variant);">
+            <span class="track-chip" [class]="c.track">{{c.track}}</span>
+            <button class="btn btn-ghost btn-sm" style="margin-left:auto;">Manage</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ASSIGNMENTS ══ -->
+  <div *ngIf="activeTab==='assignments'" style="display:grid;grid-template-columns:1fr 420px;gap:20px;">
+    <div class="card">
+      <div class="card-header"><h3>Pending Submissions</h3></div>
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr><th>Student</th><th>Assignment</th><th>Track</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let s of submissions">
+              <td>
+                <div style="font-weight:600;">{{s.student}}</div>
+                <div style="font-size:12px;color:var(--on-surface-variant)">{{s.school}}</div>
+              </td>
+              <td>
+                <div style="font-weight:500;font-size:14px;">{{s.assignment}}</div>
+                <div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--on-surface-variant);margin-top:2px;">{{s.file}}</div>
+              </td>
+              <td><span class="track-chip" [class]="s.track">{{s.track}}</span></td>
+              <td style="font-size:12px;color:var(--on-surface-variant)">{{s.time}}</td>
+              <td>
+                <span class="badge" [class]="s.status==='pending'?'warning':s.status==='approved'?'success':'error'">{{s.status}}</span>
+              </td>
+              <td>
+                <div style="display:flex;gap:4px;">
+                  <button class="btn btn-secondary btn-sm">Approve</button>
+                  <button class="btn btn-subtle btn-sm">Review</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Assignment Review Panel -->
+    <div class="card">
+      <div class="card-header"><h3>Review Panel</h3></div>
+      <div class="card-body">
+        <div style="background:var(--surface-container-low);border-radius:8px;padding:14px;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;">KA</div>
+            <div>
+              <div style="font-weight:700;font-size:14px;">Kwame Asante</div>
+              <div style="font-size:12px;color:var(--on-surface-variant)">STU-0012 &bull; Achimota SHS</div>
+            </div>
+            <span class="track-chip coding" style="margin-left:auto;">coding</span>
+          </div>
+          <div style="font-weight:600;font-size:15px;margin-bottom:4px;">Dijkstra's Algorithm Implementation</div>
+          <div style="background:var(--surface-container-lowest);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--on-surface-variant);">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;color:var(--secondary);"><span class="material-symbols-outlined" style="font-size:16px;">code</span> pathfinder_v2.py</div>
+            <pre style="margin:0;white-space:pre-wrap;">def dijkstra(graph, start):
+    dist = dict.fromkeys(graph, float('inf'))
+    dist[start] = 0
+    pq = [(0, start)]
+    while pq:
+        d, u = heappop(pq)
+        ...</pre>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Score (0 – 100)</label>
+          <input class="form-control" type="number" min="0" max="100" placeholder="Enter score">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Instructor Feedback & Comments</label>
+          <textarea class="form-control" rows="5" placeholder="Write detailed feedback for the student..."></textarea>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-subtle" style="flex:1;justify-content:center;"><span class="material-symbols-outlined">replay</span>Request Resubmission</button>
+          <button class="btn btn-secondary" style="flex:1;justify-content:center;"><span class="material-symbols-outlined">task_alt</span>Approve</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

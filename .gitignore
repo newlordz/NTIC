@@ -1,0 +1,24 @@
+# Dependency directories
+node_modules/
+.venv/
+env/
+venv/
+ENV/
+bin/
+obj/
+dist/
+.angular/
+
+# IDE and System files
+.vscode/
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.DS_Store
+Thumbs.db
+
+# OpenH264 DLL
+openh264-*.dll

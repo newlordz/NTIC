@@ -1,0 +1,434 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>STEM Portal - Leaderboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#727784",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#424752",
+                        "surface-variant": "#cfe6f2",
+                        "on-primary-fixed-variant": "#004491",
+                        "secondary-container": "#85f6e5",
+                        "on-surface": "#071e27",
+                        "on-secondary-container": "#007166",
+                        "on-secondary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#bac9d3",
+                        "primary-fixed-dim": "#acc7ff",
+                        "surface-container": "#dbf1fe",
+                        "secondary-fixed-dim": "#67d9c9",
+                        "surface-container-highest": "#cfe6f2",
+                        "inverse-on-surface": "#dff4ff",
+                        "outline-variant": "#c2c6d4",
+                        "on-tertiary-container": "#c3d2dd",
+                        "on-tertiary-fixed-variant": "#3b4951",
+                        "on-background": "#071e27",
+                        "secondary": "#006a60",
+                        "on-secondary-fixed": "#00201c",
+                        "surface": "#f3faff",
+                        "tertiary-container": "#4d5b64",
+                        "on-secondary-fixed-variant": "#005048",
+                        "on-tertiary-fixed": "#0f1d25",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#003f87",
+                        "secondary-fixed": "#85f6e5",
+                        "surface-dim": "#c7dde9",
+                        "surface-bright": "#f3faff",
+                        "inverse-surface": "#1e333c",
+                        "surface-tint": "#115cb9",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#d7e2ff",
+                        "on-primary-container": "#bbd0ff",
+                        "surface-container-low": "#e6f6ff",
+                        "surface-container-high": "#d5ecf8",
+                        "error": "#ba1a1a",
+                        "background": "#f3faff",
+                        "inverse-primary": "#acc7ff",
+                        "on-primary-fixed": "#001a40",
+                        "tertiary": "#36444c",
+                        "primary-container": "#0056b3",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#d6e5ef"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "12px",
+                        "margin": "32px",
+                        "lg": "48px",
+                        "base": "8px",
+                        "xs": "4px",
+                        "xl": "80px",
+                        "md": "24px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "body-lg": ["Inter", "sans-serif"],
+                        "label-md": ["Inter", "sans-serif"],
+                        "title-md": ["Inter", "sans-serif"],
+                        "code-sm": ["JetBrains Mono", "monospace"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "title-md": ["16px", { "lineHeight": "24px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: theme('colors.background'); color: theme('colors.on-background'); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .material-symbols-outlined[data-weight="fill"] { font-variation-settings: 'FILL' 1; }
+        
+        .ambient-hover:hover {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border-color: theme('colors.primary');
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex text-body-md font-body-md">
+<!-- SideNavBar Component -->
+<nav class="fixed left-0 top-0 h-full flex flex-col z-40 w-60 border-r border-outline-variant/30 bg-surface-container-lowest">
+<!-- Header -->
+<div class="p-lg border-b border-outline-variant/20 flex flex-col gap-sm">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center overflow-hidden">
+<img alt="Organization Logo" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3jTUCOfXlSMgnuMvbI36hVe4ZMZBmmU1ubHx4JZyI7rBToYaRQC7oDt-XJGUWZvJJthKYTxkkpx9hIGIn7y0jJD0j0umFsprEN9oXCKxzAY4rO-xtHXIFnUfuCR8Jraym1QWGZAQ18sgQb414MXaUMbqjFWAJjQMwa3V5WQdXlgCQripS4qkUerhzOArVnNR5NKuYaPx4gpOCQzzrDmoLGRo7DhopcGtIXHF3p0vvNm9U78AvGb0XB2fyCA_ogi90_Zlosgs90ALv">
+</div>
+<div>
+<h1 class="font-headline-lg text-primary text-lg leading-tight font-bold">STEM Portal</h1>
+<p class="font-label-md text-on-surface-variant text-[12px]">Competition Manager</p>
+</div>
+</div>
+<button class="mt-md w-full py-2 bg-primary text-on-primary rounded-lg hover:bg-primary/90 transition-colors active:scale-[0.98] flex items-center justify-center gap-2 font-title-md text-sm">
+<span class="material-symbols-outlined text-sm">add</span> New Challenge
+        </button>
+</div>
+<!-- Main Tabs -->
+<div class="flex-1 overflow-y-auto py-md px-sm flex flex-col gap-xs">
+<a class="flex items-center gap-md px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="how_to_reg">how_to_reg</span>
+<span class="font-medium">Registration</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="school">school</span>
+<span class="font-medium">LMS</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 rounded-lg bg-surface-container-low text-primary font-bold transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="leaderboard" data-weight="fill">leaderboard</span>
+<span>Leaderboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="handshake">handshake</span>
+<span class="font-medium">Sponsors</span>
+</a>
+<a class="flex items-center gap-md px-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span class="font-medium">Reports</span>
+</a>
+</div>
+<!-- Footer Tabs -->
+<div class="p-sm border-t border-outline-variant/20 flex flex-col gap-xs bg-surface-container-lowest">
+<a class="flex items-center gap-md px-md py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+<span class="font-body-md text-sm">Settings</span>
+</a>
+<a class="flex items-center gap-md px-md py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="help">help</span>
+<span class="font-body-md text-sm">Support</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 ml-60 flex flex-col min-h-screen bg-surface">
+<!-- TopAppBar Component -->
+<header class="flex justify-between items-center h-16 w-full pl-lg pr-8 z-30 sticky top-0 border-b border-outline-variant/20 bg-surface-container-lowest">
+<!-- Left: Search -->
+<div class="flex items-center w-96">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface border border-outline-variant/30 rounded-lg py-2 pl-10 pr-4 text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-body-md text-sm" placeholder="Search schools, students, challenges..." type="text">
+</div>
+</div>
+<!-- Center -->
+<div class="hidden xl:block">
+<span class="font-title-md text-on-surface-variant text-sm">STEM Competition Platform</span>
+</div>
+<!-- Right: Actions & Profile -->
+<div class="flex items-center gap-sm">
+<button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-low transition-colors relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+<button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined" data-icon="apps">apps</span>
+</button>
+<div class="h-6 w-px bg-outline-variant/30 mx-2"></div>
+<button class="flex items-center gap-2 p-1 pr-3 rounded-full border border-outline-variant/30 hover:bg-surface-container-low transition-colors">
+<div class="w-8 h-8 rounded-full bg-primary-fixed overflow-hidden">
+<img alt="User Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC5TLjBpnj1kIEGHIwcLiKCc6yA7S77fbPSjqBuBKCsGfJo8Q5x2x3XXqmfuimrSzYmCH4bM4jbxUduRSARJOItONUH_pdJJRDWqD8qkOgU_E7dKIdjCML2KI4jQtcpv9-Lhy9ZSq_iEtrdy3Hsed8RQbT1fZrlFBFbFA3FHRDpPuqahmLJ7Qd0-zNpsN2D8O60dmaOKeeCZJ0Xp_JYPeiYtuyYzje4Iy8v-_VQcA7T_PioEOEENPrUw8XN6mOG4c-8LNKn5RASqUN9">
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]" data-icon="expand_more">expand_more</span>
+</button>
+</div>
+</header>
+<!-- Stage Container -->
+<div class="flex-1 p-gutter max-w-[1440px] mx-auto w-full overflow-y-auto">
+<!-- Page Header -->
+<div class="mb-xl flex justify-between items-end">
+<div>
+<h2 class="font-headline-lg text-on-surface mb-xs">Global Leaderboard</h2>
+<p class="font-body-lg text-on-surface-variant">Live rankings for the National Advanced Robotics Challenge.</p>
+</div>
+<div class="flex gap-md">
+<button class="px-4 py-2 border border-outline-variant rounded-lg text-on-surface font-title-md text-sm hover:bg-surface-container-high transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">filter_list</span> Filter
+                </button>
+<button class="px-4 py-2 bg-primary text-on-primary rounded-lg font-title-md text-sm hover:bg-primary/90 transition-colors">
+                    Export CSV
+                </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-12 gap-gutter">
+<!-- Center/Main Column: Podium & Table (Span 8) -->
+<div class="col-span-12 xl:col-span-8 flex flex-col gap-gutter">
+<!-- Podium Hero -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-lg relative overflow-hidden flex flex-col items-center justify-end min-h-[360px] shadow-sm">
+<div class="absolute inset-0 opacity-20 pointer-events-none" style="background-image: radial-gradient(circle at 50% 0%, theme('colors.primary-fixed') 0%, transparent 70%);"></div>
+<div class="flex items-end justify-center gap-md w-full relative z-10 h-full mt-8">
+<!-- 2nd Place -->
+<div class="flex flex-col items-center w-1/4 group cursor-pointer">
+<div class="relative mb-4">
+<div class="w-16 h-16 rounded-full bg-white border-2 border-outline-variant p-1 shadow-lg z-10 relative">
+<img class="w-full h-full rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBOyrNLI3WrxLLWSxbhqlqJW1p-z3tr9RJhjGUhCObwC4-M6gbj6sRtyaTj4f50P6UxVGeP2_FaBfiUpAnnqnKJq-aw1P99TJx9bIOb1bulQSNz8N0sZI3myUwTOfrFbGK_arrbG6ge899D0gF65R59suWUJOeKxD8R5GfyYjjph7sUGPmkxyv3N_Mhy20AHA5d2tIp9H3XyrEPSPhtqsO6YFtecLDup875pvYv980q2w4dMhB25g94CH53twymTRxiYrcaDMaH5PeA">
+</div>
+<div class="absolute -top-3 -right-3 w-8 h-8 bg-surface-container-high rounded-full flex items-center justify-center border border-outline-variant font-label-md text-sm font-bold text-on-surface">2</div>
+</div>
+<div class="bg-surface-container-low border border-outline-variant/30 rounded-t-lg w-full flex flex-col items-center justify-start pt-4 pb-2 h-[120px] group-hover:bg-surface-container transition-colors">
+<span class="font-title-md text-sm text-center px-2 truncate w-full text-on-surface">Newton Academy</span>
+<span class="font-code-sm text-sm text-primary mt-2">12,450 pts</span>
+</div>
+</div>
+<!-- 1st Place -->
+<div class="flex flex-col items-center w-1/3 group cursor-pointer -mt-12">
+<div class="relative mb-4">
+<div class="w-20 h-20 rounded-full bg-white border-2 border-primary p-1 shadow-[0_0_20px_rgba(0,86,179,0.1)] z-10 relative">
+<img class="w-full h-full rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBf_s87gaZIPlZFb-m0Ej5SWGZSEJv4IUGxzngiTfmmCV70eH3gFAOo2dl8SMUym5aJD1qNfwSgKyUjFElVPVOM-zFcoWpH7DlpgEbmo-rmx3s47e1gv6odPfZARZkvaZQtv8PTrxbDnqcj9HE8dDUF0CY4QcVDwtLORgqg87WgW-RzUjMRIoTSSQ5WflYwPsX-BNfaHDcUqYvp5WQVvvkNidcZzsUnpJmuji6FxLZOTVgE9Sp_QqAz3igoVtAoo3ojCs6SKCN5hKxI">
+</div>
+<div class="absolute -top-4 -right-4 w-10 h-10 bg-primary text-on-primary rounded-full flex items-center justify-center border border-primary font-label-md text-[16px] font-bold shadow-lg">1</div>
+<span class="material-symbols-outlined absolute -top-10 left-1/2 -translate-x-1/2 text-primary text-[36px]">military_tech</span>
+</div>
+<div class="bg-primary-container border border-primary/20 rounded-t-lg w-full flex flex-col items-center justify-start pt-6 pb-2 h-[180px] group-hover:bg-primary group-hover:text-white transition-colors shadow-sm">
+<span class="font-title-md text-base text-center px-2 truncate w-full font-bold">Apex Tech High</span>
+<span class="font-code-sm text-sm mt-2 font-bold">14,200 pts</span>
+</div>
+</div>
+<!-- 3rd Place -->
+<div class="flex flex-col items-center w-1/4 group cursor-pointer">
+<div class="relative mb-4">
+<div class="w-16 h-16 rounded-full bg-white border-2 border-outline-variant p-1 shadow-lg z-10 relative">
+<img class="w-full h-full rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA88jnFkjLDmmiuFYHQDNHVovuv1J_AWAWT8XuSlk3GkgGW4_8dHpJSymL4QGSIH_wcOVQatUjMONVutMusJz6S3tCT9RrLxYmaPfcXFPRWUJoOo4wJe5yi-xjJZD3_KdFU_uLbNeKsdvqJf8Xk1oHjPAso9ojE6vBNjbMuImP2s_hjhWnxa0SViBM58wwsiOT0dcHctUX-iMpGuec-z6l6Ji_oHl23ggAXWnKA-3MBBoNvSV7yfjNoNQ3ry4HehEMqGMoHvaCkVbAs">
+</div>
+<div class="absolute -top-3 -right-3 w-8 h-8 bg-surface-container-high rounded-full flex items-center justify-center border border-outline-variant font-label-md text-sm font-bold text-on-surface">3</div>
+</div>
+<div class="bg-surface-container-low border border-outline-variant/30 rounded-t-lg w-full flex flex-col items-center justify-start pt-4 pb-2 h-[100px] group-hover:bg-surface-container transition-colors">
+<span class="font-title-md text-sm text-center px-2 truncate w-full text-on-surface">Curie Inst.</span>
+<span class="font-code-sm text-sm text-primary mt-2">11,800 pts</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Table -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl flex flex-col overflow-hidden shadow-sm">
+<div class="p-lg border-b border-outline-variant/20 flex justify-between items-center bg-surface-container-low/50">
+<h3 class="font-title-md text-on-surface">Full Standings (Rank 4-50)</h3>
+<div class="flex gap-2 items-center">
+<button class="p-1 hover:bg-surface-container rounded transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-[20px]">chevron_left</span></button>
+<span class="font-label-md text-sm text-on-surface-variant px-2">Page 1 of 5</span>
+<button class="p-1 hover:bg-surface-container rounded transition-colors text-on-surface-variant"><span class="material-symbols-outlined text-[20px]">chevron_right</span></button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant/10 bg-surface-container-low/30 font-label-md text-on-surface-variant text-[12px] uppercase tracking-wider">
+<th class="py-4 px-6 font-bold w-20 text-center">Rank</th>
+<th class="py-4 px-6 font-bold">School / Organization</th>
+<th class="py-4 px-6 font-bold text-center">Attendance</th>
+<th class="py-4 px-6 font-bold text-center">Assign. Avg</th>
+<th class="py-4 px-6 font-bold text-right text-primary">Total Points</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-sm text-on-surface">
+<!-- Row 4 -->
+<tr class="border-b border-outline-variant/5 hover:bg-surface-container-low transition-colors">
+<td class="py-4 px-6 text-center font-code-sm text-on-surface-variant">04</td>
+<td class="py-4 px-6 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface border border-outline-variant/30 overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuApI6ZzbY1qFknwU0nP6Kc3vYudvy9QrKBpUdZSRvi-NkWZWVwkwuB8d0bx4yEbmwhHMq2TPl3YHXs-2_--mxQMnEzunbXbZiwvkUPbbiH5XRG27CXIlrSZDCAX9dxKZ5aHnT9lGxuzBHZ7ish6tRNbZYi3hPGCw422_SJoXvk_7rHchUwLFitjP3cbQZVyIIHTVMNhW-E52niCJBzReyQOYf1sVjSSfNVWM6YMZeLVuGoT3VQ0iivOrIkEyLs3IV2j0O4eyn-w-ynk">
+</div>
+<span class="font-semibold">Tesla Magnet School</span>
+</td>
+<td class="py-4 px-6 text-center">
+<span class="inline-flex items-center gap-1 bg-surface-container px-2 py-1 rounded-full font-code-sm text-[11px] border border-outline-variant/20">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 98%
+                                        </span>
+</td>
+<td class="py-4 px-6 text-center">
+<div class="flex items-center justify-center gap-2">
+<span class="font-code-sm">92.4</span>
+<div class="w-16 h-1.5 bg-surface-variant rounded-full overflow-hidden"><div class="h-full bg-primary w-[92%]"></div></div>
+</div>
+</td>
+<td class="py-4 px-6 text-right font-code-sm font-bold text-primary">11,240</td>
+</tr>
+<!-- Row 5 -->
+<tr class="border-b border-outline-variant/5 hover:bg-surface-container-low transition-colors">
+<td class="py-4 px-6 text-center font-code-sm text-on-surface-variant">05</td>
+<td class="py-4 px-6 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface border border-outline-variant/30 overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaWglYVIYNSTGexO-T6q2bUb5khSGGwQAprk4A8dQowHNIDY0TK_kpdnL6X0DrS3W6ctwHsu79pqKKew9Pts-mGq0VVKJYP7Fv6yNRB7inIIo4qPSrHgj8l2eNn_TjmkAzbCRzfwxEJdPRca7hp_cGS1-DMGAQckJzxbf7VpfbTqHmvAiFrOnLWZZkxmuhyrMVRqw1_2Jojs9OSMrSq-fNMEVPOoiFcskOpZoWRf7CVVXdNhPXAa20WFLO-u8_0LHDNCnUMZCowZ1j">
+</div>
+<span class="font-semibold">Pioneer STEM Academy</span>
+</td>
+<td class="py-4 px-6 text-center">
+<span class="inline-flex items-center gap-1 bg-surface-container px-2 py-1 rounded-full font-code-sm text-[11px] border border-outline-variant/20">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> 95%
+                                        </span>
+</td>
+<td class="py-4 px-6 text-center">
+<div class="flex items-center justify-center gap-2">
+<span class="font-code-sm">88.7</span>
+<div class="w-16 h-1.5 bg-surface-variant rounded-full overflow-hidden"><div class="h-full bg-primary w-[88%]"></div></div>
+</div>
+</td>
+<td class="py-4 px-6 text-right font-code-sm font-bold text-primary">10,950</td>
+</tr>
+<!-- Row 6 -->
+<tr class="border-b border-outline-variant/5 hover:bg-surface-container-low transition-colors">
+<td class="py-4 px-6 text-center font-code-sm text-on-surface-variant">06</td>
+<td class="py-4 px-6 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface border border-outline-variant/30 overflow-hidden flex-shrink-0">
+<img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCX2PxV5gEsHzJoIoGRf1HTqYwwZO8Sp4KEqjGVZtZRTC5JgSOWK6CAswtCpNnx6ikM68RykMnyG6OgPANp18POcv2hr8NjyzNG--FC7AD_TeLLPkHqiPEtLm0my0Dy6dnkZ59UUKxydUY5eJb84bjVn4EO0XA49YtFI3-84vjZHYOIcKpQBHaxU4eAJPfeEpCtg01esYe6qniGPlYNXlJBC33FPWUHLimthabDLI7C4CBT0TEVoVZoZ20tPRmzrMoHeZqWNqM6IZSQ">
+</div>
+<span class="font-semibold">Da Vinci Charter</span>
+</td>
+<td class="py-4 px-6 text-center">
+<span class="inline-flex items-center gap-1 bg-surface-container px-2 py-1 rounded-full font-code-sm text-[11px] border border-outline-variant/20">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span> 82%
+                                        </span>
+</td>
+<td class="py-4 px-6 text-center">
+<div class="flex items-center justify-center gap-2">
+<span class="font-code-sm">94.1</span>
+<div class="w-16 h-1.5 bg-surface-variant rounded-full overflow-hidden"><div class="h-full bg-primary w-[94%]"></div></div>
+</div>
+</td>
+<td class="py-4 px-6 text-right font-code-sm font-bold text-primary">10,810</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Right Column: Talent Discovery Panel -->
+<div class="col-span-12 xl:col-span-4 flex flex-col gap-gutter">
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-lg sticky top-20 shadow-sm">
+<div class="flex items-center gap-2 mb-6 border-b border-outline-variant/20 pb-4">
+<span class="material-symbols-outlined text-primary">star</span>
+<h3 class="font-title-md text-on-surface">Talent Discovery</h3>
+<span class="ml-auto bg-primary text-on-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">LIVE</span>
+</div>
+<p class="font-body-md text-sm text-on-surface-variant mb-6">Highlighting outstanding individual performance across specific challenge categories.</p>
+<div class="flex flex-col gap-4">
+<!-- Category Winner Card 1 -->
+<div class="bg-surface border border-outline-variant/30 rounded-xl p-4 ambient-hover transition-all">
+<div class="flex justify-between items-start mb-3">
+<div class="bg-primary/10 text-primary px-2 py-1 rounded-lg font-bold text-[10px] border border-primary/20 uppercase tracking-wider">
+                                    Algorithm Design
+                                </div>
+<span class="material-symbols-outlined text-primary text-[18px]">workspace_premium</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary-fixed overflow-hidden border border-outline-variant/30">
+<img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAodHl4FGwooTWZMcBBtwAyX9dTu5L6lRMGakyOTDcjYxW4J4edkAWfThH5Sln5OvOE-dp8_fpPRHmH698VvV_dDmUg4MF6sTh91YcDuG7T2CMaz83ctIB_hcnJDYoxq38dq6EhVqIwKkGMHvKwNFSmlCFYx5Ga8uvs8852Zsx7fo6pTOfBtqsmk1AcZcDib7UynZxbkkMmx4REFa_7TcwzN7tN-CDJWdwyCfT9qVPviEmJULSO14HV5xHYTWOKFKKPTm39GL6Dpb0f">
+</div>
+<div>
+<h4 class="font-bold text-on-surface">Sarah J.</h4>
+<p class="font-code-sm text-[11px] text-on-surface-variant">Newton Academy • Grade 11</p>
+</div>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/10 flex justify-between items-center">
+<span class="text-[12px] text-on-surface-variant">Efficiency Score</span>
+<span class="font-code-sm text-primary font-bold">99.8%</span>
+</div>
+</div>
+<!-- Category Winner Card 2 -->
+<div class="bg-surface border border-outline-variant/30 rounded-xl p-4 ambient-hover transition-all">
+<div class="flex justify-between items-start mb-3">
+<div class="bg-secondary/10 text-secondary px-2 py-1 rounded-lg font-bold text-[10px] border border-secondary/20 uppercase tracking-wider">
+                                    Robotics - CAD
+                                </div>
+<span class="material-symbols-outlined text-secondary text-[18px]">emoji_events</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden border border-outline-variant/30 flex items-center justify-center text-on-surface-variant font-code-sm">
+                                    MK
+                                </div>
+<div>
+<h4 class="font-bold text-on-surface">Marcus K.</h4>
+<p class="font-code-sm text-[11px] text-on-surface-variant">Apex Tech High • Grade 12</p>
+</div>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/10 flex justify-between items-center">
+<span class="text-[12px] text-on-surface-variant">Design Integrity</span>
+<span class="font-code-sm text-secondary font-bold">98.5%</span>
+</div>
+</div>
+<!-- Category Winner Card 3 -->
+<div class="bg-surface-container-low border border-outline-variant/20 rounded-xl p-4 opacity-70">
+<div class="flex justify-between items-start mb-3">
+<div class="bg-outline-variant/30 text-on-surface-variant px-2 py-1 rounded-lg font-bold text-[10px] uppercase tracking-wider">
+                                    Data Analysis
+                                </div>
+<span class="material-symbols-outlined text-outline text-[18px]">trending_up</span>
+</div>
+<div class="flex items-center justify-center py-4">
+<p class="font-code-sm text-[11px] text-on-surface-variant text-center italic">Challenge currently active.<br>Winner pending calculation.</p>
+</div>
+</div>
+</div>
+<button class="w-full mt-6 py-2 border border-primary text-primary rounded-lg font-bold text-sm hover:bg-primary/5 transition-colors">
+                        View All Categories
+                    </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

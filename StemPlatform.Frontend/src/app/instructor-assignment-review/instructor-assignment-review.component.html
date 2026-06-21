@@ -1,0 +1,92 @@
+<div class="review-dashboard-container" *ngIf="activeSubmission$ | async as submission; else loadingOrEmpty">
+  
+  <!-- LEFT PANEL: Submission Profile Details -->
+  <div class="split-panel submission-details">
+    <div class="clinical-card">
+      <div class="card-header">
+        <div class="track-avatar">
+            <span class="material-symbols-outlined">smart_toy</span>
+        </div>
+        <div class="header-titles">
+          <h3>Student Submission Profile</h3>
+          <p>ID: {{ submission.studentId }}</p>
+        </div>
+      </div>
+
+      <div class="card-content">
+        <div class="metadata-tags">
+          <!-- Thematic Pill-shaped chips -->
+          <span class="clinical-chip">{{ submission.track }} Track</span>
+          <span class="clinical-chip status-pending">Status: {{ submission.status }}</span>
+        </div>
+
+        <div class="source-code-placeholder">
+          <h4>Source Code Details</h4>
+          <div class="code-frame">
+            <p><strong>Path:</strong> <code>{{ submission.sourceCodePath }}</code></p>
+            <!-- Simulated Code Viewer -->
+            <pre class="code-viewer"><code>
+// Initializing entry point for {{ submission.track }} module...
+void executeStemLogic() {{ '{' }}
+  motorController.init();
+  while(true) {{ '{' }}
+    navigate();
+  {{ '}' }}
+{{ '}' }}
+            </code></pre>
+          </div>
+        </div>
+
+        <div class="video-reference" *ngIf="submission.videoUrl">
+          <h4>Demonstration Video</h4>
+          <a [href]="submission.videoUrl" target="_blank" class="clinical-link">
+             <span class="material-symbols-outlined">play_circle</span>
+             View External Video Submission
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL: Action Management Form -->
+  <div class="split-panel action-management">
+    <div class="clinical-card form-card">
+      <div class="card-header">
+        <div class="header-titles">
+          <h3>Instructor Review & Grading</h3>
+        </div>
+      </div>
+
+      <div class="card-content">
+        <form [formGroup]="reviewForm" class="review-form">
+          <div class="form-field clinical-input">
+            <label>Analytical & Practical Score (0-100)</label>
+            <input type="number" formControlName="score" placeholder="Enter score">
+            <span class="error" *ngIf="reviewForm.get('score')?.touched && reviewForm.get('score')?.hasError('required')">Score is required</span>
+          </div>
+
+          <div class="form-field clinical-input">
+            <label>Instructor Comments / Feedback</label>
+            <textarea formControlName="feedback" rows="6" placeholder="Provide detailed assessment..."></textarea>
+            <span class="error" *ngIf="reviewForm.get('feedback')?.touched && reviewForm.get('feedback')?.hasError('required')">Feedback is required</span>
+          </div>
+        </form>
+      </div>
+
+      <div class="card-actions action-buttons">
+        <button class="btn-resubmit" (click)="onSubmitDecision('Request Resubmission')" [disabled]="reviewForm.invalid">
+          Request Resubmission
+        </button>
+        <button class="btn-approve" (click)="onSubmitDecision('Approve')" [disabled]="reviewForm.invalid">
+          Approve Submission
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ng-template #loadingOrEmpty>
+  <div class="empty-state">
+    <p>No pending submissions available in the queue.</p>
+  </div>
+</ng-template>

@@ -1,0 +1,125 @@
+<div class="page-canvas fade-in">
+  <div class="page-header with-action">
+    <div><h1 class="page-title-main">Global Leaderboard</h1><p class="page-subtitle">Live rankings — National Advanced STEM Challenge 2026</p></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-subtle btn-sm"><span class="material-symbols-outlined">filter_list</span>Filter</button>
+      <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">download</span>Export CSV</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;">
+    <div style="display:flex;flex-direction:column;gap:20px;">
+      <!-- Podium -->
+      <div class="card">
+        <div class="card-header"><h3>Top 3 Schools — National Championship</h3><span class="badge primary" style="display:flex;align-items:center;gap:4px;"><span class="material-symbols-outlined" style="font-size:14px;">circle</span>LIVE</span></div>
+        <div class="card-body" style="overflow:hidden;position:relative;">
+          <!-- Radial glow background -->
+          <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 0%, rgba(0,63,135,0.06) 0%, transparent 70%);pointer-events:none;"></div>
+          <div class="podium-container" style="position:relative;">
+            <!-- 2nd -->
+            <div class="podium-slot">
+              <div class="podium-avatar">NA<div class="rank-badge">2</div></div>
+              <div class="podium-bar second">
+                <div class="school-name">Newton Academy</div>
+                <div class="school-pts">12,450 pts</div>
+              </div>
+            </div>
+            <!-- 1st -->
+            <div class="podium-slot">
+              <span class="material-symbols-outlined fill" style="font-size:32px;color:var(--primary);margin-bottom:4px;">military_tech</span>
+              <div class="podium-avatar first">AT<div class="rank-badge gold">1</div></div>
+              <div class="podium-bar first">
+                <div class="school-name" style="font-weight:700;">Apex Tech High</div>
+                <div class="school-pts" style="font-size:18px;">14,200 pts</div>
+              </div>
+            </div>
+            <!-- 3rd -->
+            <div class="podium-slot">
+              <div class="podium-avatar">CI<div class="rank-badge">3</div></div>
+              <div class="podium-bar third">
+                <div class="school-name">Curie Inst.</div>
+                <div class="school-pts">11,800 pts</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full Table -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Full Standings (Rank 4–50)</h3>
+          <div style="display:flex;gap:4px;align-items:center;">
+            <button class="btn btn-subtle btn-sm"><span class="material-symbols-outlined">chevron_left</span></button>
+            <span style="font-size:12px;color:var(--on-surface-variant);padding:0 8px;">Page 1 of 5</span>
+            <button class="btn btn-subtle btn-sm"><span class="material-symbols-outlined">chevron_right</span></button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr><th style="text-align:center;width:60px;">Rank</th><th>School / Organization</th><th>Region</th><th style="text-align:center">Attendance</th><th style="text-align:center">Assign. Avg</th><th style="text-align:right;color:var(--primary)">Total Points</th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of standings">
+                <td style="text-align:center;font-family:'JetBrains Mono',monospace;color:var(--on-surface-variant);">0{{row.rank}}</td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:32px;height:32px;border-radius:6px;background:var(--surface-container);border:1px solid var(--outline-variant);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--on-surface-variant);">{{row.school.slice(0,2).toUpperCase()}}</div>
+                    <span style="font-weight:600;">{{row.school}}</span>
+                  </div>
+                </td>
+                <td style="color:var(--on-surface-variant);font-size:13px;">{{row.region}}</td>
+                <td style="text-align:center;">
+                  <span style="background:var(--surface-container);padding:3px 10px;border-radius:20px;font-size:11px;font-family:'JetBrains Mono',monospace;display:inline-flex;align-items:center;gap:4px;">
+                    <span style="width:6px;height:6px;border-radius:50%;background:var(--secondary);display:inline-block;"></span>{{row.attendance}}
+                  </span>
+                </td>
+                <td style="text-align:center;">
+                  <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:13px;">{{row.avg}}</span>
+                    <div style="width:50px;height:4px;background:var(--surface-container);border-radius:2px;overflow:hidden;">
+                      <div style="height:100%;background:var(--primary);border-radius:2px;" [style.width.%]="row.avg"></div>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--primary);">{{row.pts | number}}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Talent Discovery Panel -->
+    <div class="card" style="align-self:start;position:sticky;top:20px;">
+      <div class="card-header">
+        <h3 style="display:flex;align-items:center;gap:6px;"><span class="material-symbols-outlined fill" style="color:var(--primary)">star</span>Talent Discovery</h3>
+        <span class="badge primary" style="display:flex;align-items:center;gap:4px;"><span class="material-symbols-outlined" style="font-size:12px;">circle</span>LIVE</span>
+      </div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--on-surface-variant);margin-bottom:16px;">Highlighting outstanding individual performance across challenge categories.</p>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div *ngFor="let item of [
+            {cat:'Algorithm Design', name:'Sarah J.', school:'Newton Academy • Grade 11', score:'99.8%', color:'primary'},
+            {cat:'Robotics - CAD', name:'Marcus K.', school:'Apex Tech High • Grade 12', score:'98.5%', color:'secondary'},
+            {cat:'Top Female Coder', name:'Abena M.', school:'Wesley Girls • Grade 11', score:'97.2%', color:'primary'},
+            {cat:'AI Development', name:'Kofi A.', school:'PRESEC Legon • Grade 12', score:'96.8%', color:'ai'}
+          ]" style="background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:10px;padding:14px;transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='var(--shadow-elevated)'" onmouseout="this.style.boxShadow=''">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+              <span class="badge" [class]="item.color" style="font-size:10px;">{{item.cat}}</span>
+              <span class="material-symbols-outlined fill" style="font-size:18px;color:var(--primary)">workspace_premium</span>
+            </div>
+            <div style="font-weight:700;font-size:14px;margin-bottom:2px;">{{item.name}}</div>
+            <div style="font-size:11px;color:var(--on-surface-variant);margin-bottom:8px;">{{item.school}}</div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding-top:8px;border-top:1px solid var(--outline-variant);">
+              <span style="color:var(--on-surface-variant)">Score</span>
+              <span style="font-weight:700;color:var(--primary);">{{item.score}}</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:12px;">View All Categories</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,1152 @@
+<div class="landing-page" (click)="closeMegaMenu()">
+
+  <!-- ══════════════════════════════════════════
+       SEARCH OVERLAY (Harvard Style)
+  ══════════════════════════════════════════ -->
+  <div class="search-overlay" [class.open]="isSearchOpen">
+    <button class="close-search" (click)="toggleSearch(false)">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+    <div class="search-content">
+      <div class="search-field-wrap">
+        <span class="material-symbols-outlined search-icon-main">search</span>
+        <input 
+          type="text" 
+          placeholder="Search the NTIC portal..." 
+          [(ngModel)]="searchQuery"
+          (input)="onSearchInput()"
+          #searchInput
+          class="search-input-field"
+        >
+      </div>
+
+      <div class="search-suggestions" *ngIf="!searchQuery">
+        <h4>Trending Searches</h4>
+        <div class="trend-tags">
+          <button *ngFor="let term of trendingSearches" (click)="selectTrending(term)">
+            {{ term }}
+          </button>
+        </div>
+      </div>
+
+      <div class="search-results" *ngIf="searchQuery">
+        <h4 *ngIf="filteredSearchResults.length > 0">Suggested Matches</h4>
+        <h4 *ngIf="filteredSearchResults.length === 0">No direct matches found. Try searching:</h4>
+        
+        <ul class="results-list" *ngIf="filteredSearchResults.length > 0">
+          <li *ngFor="let result of filteredSearchResults">
+            <a href="#portal" (click)="toggleSearch(false)">
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+              <span>Go to {{ result }}</span>
+            </a>
+          </li>
+        </ul>
+
+        <ul class="results-list" *ngIf="filteredSearchResults.length === 0">
+          <li *ngFor="let term of trendingSearches">
+            <a href="#portal" (click)="toggleSearch(false)">
+              <span class="material-symbols-outlined">search</span>
+              <span>Search for "{{ term }}"</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STICKY HEADER & MEGA MENU
+  ══════════════════════════════════════════ -->
+  <header class="landing-header">
+    <!-- Top Utility Bar (Harvard style) -->
+    <div class="utility-bar">
+      <div class="utility-container">
+        <div class="utility-right">
+          <a href="#about" class="ut-link">News & Events</a>
+          <span class="ut-sep">|</span>
+          <a href="#stats" class="ut-link">Impact Metrics</a>
+          <span class="ut-sep">|</span>
+          <button class="search-trigger" (click)="toggleSearch(true); $event.stopPropagation()">
+            <span class="material-symbols-outlined">search</span>
+            <span>Search</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Navigation Bar -->
+    <div class="header-container">
+      <a class="brand" href="/">
+        <div class="brand-crest">
+          <div class="crest-shield">
+            <span class="material-symbols-outlined shield-icon">local_library</span>
+          </div>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">NTIC</span>
+          <span class="brand-sub">GHANA NATIONAL COMPETITION</span>
+        </div>
+      </a>
+
+      <nav class="nav-links">
+        <!-- Hover/Click dropdown for Academics/Tracks -->
+        <div class="nav-item-dropdown" (click)="$event.stopPropagation()">
+          <button class="nav-link dropdown-toggle" [class.active]="activeMegaMenu === 'tracks'" (click)="toggleMegaMenu('tracks')">
+            <span>Competition</span>
+            <span class="material-symbols-outlined arrow-icon">keyboard_arrow_down</span>
+          </button>
+          
+          <div class="mega-menu" [class.open]="activeMegaMenu === 'tracks'">
+            <div class="mega-menu-grid">
+              <div class="mega-col intro-col">
+                <h3>The 5 Core Arenas</h3>
+                <p>High school squads specialize in a track, preparing projects and competing under strict national rules.</p>
+                <a href="#tracks" class="mega-cta-link" (click)="closeMegaMenu()">
+                  <span>All Tracks Guide</span>
+                  <span class="material-symbols-outlined">arrow_right_alt</span>
+                </a>
+              </div>
+              <div class="mega-col links-col">
+                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                  <span class="material-symbols-outlined mc-icon coding">data_object</span>
+                  <div>
+                    <strong>Coding & Algorithms</strong>
+                    <span>Timed code sprints & optimizations.</span>
+                  </div>
+                </a>
+                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                  <span class="material-symbols-outlined mc-icon robotics">memory</span>
+                  <div>
+                    <strong>Robotics & IoT</strong>
+                    <span>Autonomous bot navigational engineering.</span>
+                  </div>
+                </a>
+                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                  <span class="material-symbols-outlined mc-icon ai">model_training</span>
+                  <div>
+                    <strong>Artificial Intelligence</strong>
+                    <span>Crop diagnostics and transport logistics ML.</span>
+                  </div>
+                </a>
+              </div>
+              <div class="mega-col links-col">
+                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                  <span class="material-symbols-outlined mc-icon cyber">security</span>
+                  <div>
+                    <strong>Cybersecurity CTF</strong>
+                    <span>Defensive systems and cipher challenges.</span>
+                  </div>
+                </a>
+                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                  <span class="material-symbols-outlined mc-icon innovation">tips_and_updates</span>
+                  <div>
+                    <strong>Open Innovation</strong>
+                    <span>Pitching clean energy & healthcare tech.</span>
+                  </div>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <a href="#about" class="nav-link">Concept</a>
+        <a href="#stats" class="nav-link">Sponsors</a>
+        <a href="#portal" class="nav-link portal-highlight">Portal</a>
+      </nav>
+
+      <div class="header-cta">
+        <a routerLink="/registration" class="btn btn-crimson btn-sm">Apply now</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════
+       HERO SLIDESHOW SECTION (Harvard Style)
+  ══════════════════════════════════════════ -->
+  <section class="hero-section">
+    <div class="slideshow-container">
+      <div 
+        *ngFor="let slide of slides; let i = index" 
+        class="slide-item" 
+        [class.active]="i === activeSlideIndex"
+        [style.background-image]="(slide.video || slide.isVideoEdit) ? 'none' : 'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + slide.image + ')'"
+      >
+        <!-- Background Video if present -->
+        <video 
+          *ngIf="slide.video" 
+          class="slide-video-bg" 
+          [src]="slide.video"
+          autoplay 
+          [muted]="true" 
+          loop 
+          playsinline
+        >
+        </video>
+
+        <!-- Browser-Native Video Edit Montage if present -->
+        <div *ngIf="slide.isVideoEdit" class="video-edit-container">
+          <div 
+            class="video-edit-frame" 
+            [class.active]="activeFrame === 1"
+            [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + image1Url + ')'"
+          ></div>
+          <div 
+            class="video-edit-frame" 
+            [class.active]="activeFrame === 2"
+            [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + image2Url + ')'"
+          ></div>
+          <div class="video-edit-overlay"></div>
+        </div>
+        <!-- Overlay Text Block -->
+        <div class="hero-text-card">
+          <span class="card-eyebrow">
+            <span class="live-dot"></span>
+            {{ slide.tag }}
+          </span>
+          <h1>{{ slide.title }}</h1>
+          <p>{{ slide.description }}</p>
+          <div class="card-actions">
+            <a [href]="slide.ctaLink" class="btn btn-gold btn-lg">
+              <span>{{ slide.ctaText }}</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </a>
+            <a routerLink="/registration" class="btn btn-white-trans btn-lg">
+              <span>Apply now</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slideshow Navigation Controls -->
+    <div class="slideshow-controls" *ngIf="slides.length > 1">
+      <button class="slide-nav-btn prev" (click)="prevSlide()">
+        <span class="material-symbols-outlined">chevron_left</span>
+      </button>
+      <button class="slide-nav-btn next" (click)="nextSlide()">
+        <span class="material-symbols-outlined">chevron_right</span>
+      </button>
+    </div>
+
+    <!-- Slideshow Pagination Indicator Dots -->
+    <div class="slideshow-pagination" *ngIf="slides.length > 1">
+      <button 
+        *ngFor="let slide of slides; let i = index" 
+        class="pag-dot" 
+        [class.active]="i === activeSlideIndex"
+        (click)="setSlide(i)"
+      >
+        <span class="pag-dot-label">0{{ i + 1 }}</span>
+        <span class="pag-dot-bar"></span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       WHY WE EXIST / MISSION STATEMENT (Harvard Style)
+  ══════════════════════════════════════════ -->
+  <section id="about" class="concept-section">
+    <div class="container">
+      <div class="section-header-academic">
+        <div class="academic-title-wrap">
+          <span class="academic-sub">Our Purpose</span>
+          <h2><span class="word">Why</span> <span class="word">We</span> <span class="word">Exist</span></h2>
+        </div>
+        <p class="academic-desc-lead">Our Statement of Operation defines what we do, why you should support, and who reaps the rewards of our national NTIC ecosystem.</p>
+      </div>
+
+      <div class="concept-grid">
+        <!-- What We Do -->
+        <div class="why-exist-card">
+          <div class="card-icon-wrap bg-primary">
+            <span class="material-symbols-outlined">menu_book</span>
+          </div>
+          <div class="card-content">
+            <h3>Statement of Operation</h3>
+            <p>We build and run Ghana’s premier National Technology and Innovation Championship (NTIC), integrating high-school teams from all 16 regions. Through rigorous coursework, sandbox tasks, and competitive arenas, we turn classrooms into innovation labs.</p>
+            <a href="#tracks" class="read-more-link">
+              <span>Explore Tracks</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Why Support -->
+        <div class="why-exist-card featured">
+          <div class="featured-badge">Key Focus</div>
+          <div class="card-icon-wrap bg-crimson">
+            <span class="material-symbols-outlined">volunteer_activism</span>
+          </div>
+          <div class="card-content">
+            <h3>Why Support Champions?</h3>
+            <p>A thriving nation depends on scientific literacy and technical leadership. Your support supplies physical robotics kits, funds regional travel, provides university scholarships, and empowers high school students to build local solutions.</p>
+            <a (click)="openSupportModal('team')" class="read-more-link" style="cursor: pointer;">
+              <span>Ways to Sponsor</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Who Benefits -->
+        <div class="why-exist-card">
+          <div class="card-icon-wrap bg-gold">
+            <span class="material-symbols-outlined">groups_3</span>
+          </div>
+          <div class="card-content">
+            <h3>Who Reaps the Rewards?</h3>
+            <p>The benefits ripple from the classroom to the nation. Students gain elite computational skills, educators receive certified modern training, local industries discover top-tier engineering talent, and Ghana accelerates its technological independence.</p>
+            <a href="#stats" class="read-more-link">
+              <span>View Impact Metrics</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SPOTLIGHT / STORIES GRID (Harvard style)
+  ══════════════════════════════════════════ -->
+  <section class="spotlight-section">
+    <div class="container">
+      <div class="section-header-academic">
+        <div class="academic-title-wrap">
+          <span class="academic-sub">Spotlight &amp; Research</span>
+          <h2><span class="word">Championship</span> <span class="word">Stories</span></h2>
+        </div>
+        <p class="academic-desc-lead">Explore how Ghana's next generation of scientists, developers, and engineers are scaling technical hurdles, building local industries, and defining the future.</p>
+      </div>
+      <div class="spotlight-grid">
+        <div class="spotlight-card">
+          <div class="card-img-wrap">
+            <img src="assets/stem_image_1.jpeg" alt="Robotics Lab Ghana">
+            <span class="story-tag">Robotics</span>
+          </div>
+          <div class="card-content">
+            <span class="story-date">
+              <span class="material-symbols-outlined story-date-icon">calendar_today</span>
+              <span>June 18, 2026</span>
+              <span class="story-date-sep">•</span>
+              <span class="material-symbols-outlined story-date-icon">schedule</span>
+              <span>6 min read</span>
+            </span>
+            <h3>PRESEC Legon Squad Unveils Autonomous Cocoapod Harvester Bot</h3>
+            <p>The defending champions showcased their latest robot designed to classify pod ripeness and pick them without human intervention, boosting harvest efficiency for cocoa farmers.</p>
+            <a href="#tracks" class="read-more-link">
+              <span>Read The Story</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Story 2 -->
+        <div class="spotlight-card">
+          <div class="card-img-wrap">
+            <img src="assets/stem_image_6.jpeg" alt="Coding competition">
+            <span class="story-tag coding">Coding</span>
+          </div>
+          <div class="card-content">
+            <span class="story-date">
+              <span class="material-symbols-outlined story-date-icon">calendar_today</span>
+              <span>June 14, 2026</span>
+              <span class="story-date-sep">•</span>
+              <span class="material-symbols-outlined story-date-icon">schedule</span>
+              <span>4 min read</span>
+            </span>
+            <h3>Wesley Girls' High School Triumphs in Algorithm Sprint</h3>
+            <p>Using optimized memory strategies in Python, the squad cleared 8 advanced problems in record time to secure their place in the national semi-finals.</p>
+            <a href="#tracks" class="read-more-link">
+              <span>Explore Coding track</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Story 3 -->
+        <div class="spotlight-card">
+          <div class="card-img-wrap">
+            <img src="assets/stem_image_11.jpeg" alt="Cybersecurity sandbox">
+            <span class="story-tag cyber">Cybersecurity</span>
+          </div>
+          <div class="card-content">
+            <span class="story-date">
+              <span class="material-symbols-outlined story-date-icon">calendar_today</span>
+              <span>June 10, 2026</span>
+              <span class="story-date-sep">•</span>
+              <span class="material-symbols-outlined story-date-icon">schedule</span>
+              <span>5 min read</span>
+            </span>
+            <h3>Cyber Security Heats: The Sandbox Capture The Flag</h3>
+            <p>Teams from Prempeh College and Tamale SHS go head-to-head in a sandboxed CTF challenge to audit secure database links against mock intrusions.</p>
+            <a href="#tracks" class="read-more-link">
+              <span>View Leaderboard</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       ACADEMIC DEPARTMENTS (Tracks Section)
+  ══════════════════════════════════════════ -->
+  <section id="tracks" class="departments-section">
+    <div class="container">
+      <div class="section-header-academic text-center">
+        <span class="academic-sub font-crimson">The Technical Pillars</span>
+        <h2>Competition Track Arenas</h2>
+        <p class="academic-desc-lead center">Styled after academic departments, each arena tests specific disciplines and demands deep practical application.</p>
+      </div>
+
+      <div class="departments-grid">
+        <!-- Coding -->
+        <div class="dept-card coding">
+          <div class="dept-badge">Track 01</div>
+          <div class="dept-header-wrap">
+            <span class="material-symbols-outlined dept-icon">data_object</span>
+            <h3>Coding &amp; Algorithms</h3>
+          </div>
+          <p>Sprints in Python, C++, and Java. Tests data structures, algorithm optimization, and competitive speed-solving.</p>
+          <ul class="dept-bullet-list">
+            <li>Speed &amp; Accuracy challenge</li>
+            <li>Computational Complexity limits</li>
+            <li>Dynamic programming tests</li>
+          </ul>
+          <a [routerLink]="['/registration']" [queryParams]="{ track: 'coding' }" class="dept-cta">Explore Tracks</a>
+        </div>
+
+        <!-- Robotics -->
+        <div class="dept-card robotics">
+          <div class="dept-badge">Track 02</div>
+          <div class="dept-header-wrap">
+            <span class="material-symbols-outlined dept-icon">memory</span>
+            <h3>Robotics &amp; IoT</h3>
+          </div>
+          <p>Navigating autonomous bots through agricultural and logistics tasks with sensors, actuators, and embedded boards.</p>
+          <ul class="dept-bullet-list">
+            <li>Lego EV3 &amp; Arduino integrations</li>
+            <li>Real-world mapping algorithms</li>
+            <li>Sensor-actuator optimization</li>
+          </ul>
+          <a [routerLink]="['/registration']" [queryParams]="{ track: 'robotics' }" class="dept-cta">Explore Tracks</a>
+        </div>
+
+        <!-- AI -->
+        <div class="dept-card ai">
+          <div class="dept-badge">Track 03</div>
+          <div class="dept-header-wrap">
+            <span class="material-symbols-outlined dept-icon">model_training</span>
+            <h3>Artificial Intelligence</h3>
+          </div>
+          <p>Train models to solve local agricultural, diagnostic, and climate problems using modern Machine Learning pipelines.</p>
+          <ul class="dept-bullet-list">
+            <li>Crop disease computer vision</li>
+            <li>Weather pattern neural networks</li>
+            <li>Logistic routing prediction</li>
+          </ul>
+          <a [routerLink]="['/registration']" [queryParams]="{ track: 'ai' }" class="dept-cta">Explore Tracks</a>
+        </div>
+
+        <!-- Cyber -->
+        <div class="dept-card cyber">
+          <div class="dept-badge">Track 04</div>
+          <div class="dept-header-wrap">
+            <span class="material-symbols-outlined dept-icon">security</span>
+            <h3>Cybersecurity CTF</h3>
+          </div>
+          <p>Capture the Flag sprints testing cryptographic decryption, network intrusion logs audit, and secure server builds.</p>
+          <ul class="dept-bullet-list">
+            <li>SQL Injection defense</li>
+            <li>Cipher decryption cycles</li>
+            <li>Sandboxed firewall setups</li>
+          </ul>
+          <a [routerLink]="['/registration']" [queryParams]="{ track: 'cyber' }" class="dept-cta">Explore Tracks</a>
+        </div>
+
+        <!-- Innovation -->
+        <div class="dept-card innovation">
+          <div class="dept-badge">Track 05</div>
+          <div class="dept-header-wrap">
+            <span class="material-symbols-outlined dept-icon">tips_and_updates</span>
+            <h3>Open Innovation</h3>
+          </div>
+          <p>Research, prototype, and pitch creative systems addressing healthcare, green power, and waste in Ghana.</p>
+          <ul class="dept-bullet-list">
+            <li>Renewable power generation</li>
+            <li>Public health data dashboards</li>
+            <li>Alumni &amp; Sponsor pitches</li>
+          </ul>
+          <a [routerLink]="['/registration']" [queryParams]="{ track: 'innovation' }" class="dept-cta">Explore Tracks</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       LIVE SCOREBOARD (NSMQ Spirit)
+  ══════════════════════════════════════════ -->
+  <section class="live-scoreboard-section">
+    <div class="container">
+      <div class="scoreboard-card-container">
+        <div class="scoreboard-info">
+          <span class="academic-sub">Real-time Standing</span>
+          <h2>The Leaderboard</h2>
+          <p>Points aggregate dynamically as student squads complete courses, submit assignments, and compete in the track heats.</p>
+          
+          <!-- Track Filters Tabs -->
+          <div class="leaderboard-tabs">
+            <button 
+              class="tab-btn" 
+              [class.active]="activeLeaderboardFilter === 'all'"
+              (click)="changeLeaderboardFilter('all')"
+            >
+              <span class="material-symbols-outlined tab-icon">emoji_events</span>
+              <span>All Heats</span>
+            </button>
+            <button 
+              class="tab-btn" 
+              [class.active]="activeLeaderboardFilter === 'coding'"
+              (click)="changeLeaderboardFilter('coding')"
+            >
+              <span class="material-symbols-outlined tab-icon">data_object</span>
+              <span>Coding</span>
+            </button>
+            <button 
+              class="tab-btn" 
+              [class.active]="activeLeaderboardFilter === 'robotics'"
+              (click)="changeLeaderboardFilter('robotics')"
+            >
+              <span class="material-symbols-outlined tab-icon">memory</span>
+              <span>Robotics</span>
+            </button>
+            <button 
+              class="tab-btn" 
+              [class.active]="activeLeaderboardFilter === 'ai'"
+              (click)="changeLeaderboardFilter('ai')"
+            >
+              <span class="material-symbols-outlined tab-icon">model_training</span>
+              <span>AI</span>
+            </button>
+            <button 
+              class="tab-btn" 
+              [class.active]="activeLeaderboardFilter === 'cyber'"
+              (click)="changeLeaderboardFilter('cyber')"
+            >
+              <span class="material-symbols-outlined tab-icon">security</span>
+              <span>Cyber</span>
+            </button>
+          </div>
+
+          <div class="scoreboard-status">
+            <span class="live-dot pulse"></span>
+            <span>Live standings · Accredited by MoE &amp; GES</span>
+          </div>
+        </div>
+
+        <div class="scoreboard-table-card" [class.transitioning]="isLeaderboardTransitioning">
+          <div class="sc-header">
+            <span class="material-symbols-outlined sc-trophy">emoji_events</span>
+            <span>Top Performing Schools — {{ activeLeaderboardFilter === 'all' ? 'All Heats' : (activeLeaderboardFilter | titlecase) }}</span>
+          </div>
+          
+          <div class="sc-rows-container">
+            <div 
+              *ngFor="let entry of filteredLeaderboard; let idx = index" 
+              class="sc-row"
+              [class.first-place]="entry.displayRank === '01'"
+              [class.second-place]="entry.displayRank === '02'"
+              [class.third-place]="entry.displayRank === '03'"
+            >
+              <div class="sc-rank">
+                <span class="rank-badge">
+                  <span class="badge-num" *ngIf="entry.displayRank !== '01' && entry.displayRank !== '02' && entry.displayRank !== '03'">{{ entry.displayRank }}</span>
+                  <span class="medal-icon" *ngIf="entry.displayRank === '01'">🏆</span>
+                  <span class="medal-icon" *ngIf="entry.displayRank === '02'">🥈</span>
+                  <span class="medal-icon" *ngIf="entry.displayRank === '03'">🥉</span>
+                </span>
+              </div>
+              <div class="sc-school">
+                <strong>{{ entry.schoolName }}</strong>
+                <span>{{ entry.location }}</span>
+                
+                <!-- Performance Bar (fills up dynamically when scoreboard is in-view) -->
+                <div class="score-progress-track">
+                  <div class="score-progress-bar" [style.width]="(entry.displayPoints / (activeLeaderboardFilter === 'all' ? 500 : 150) * 100) + '%'"></div>
+                </div>
+              </div>
+              <div class="sc-points">
+                <span class="pts-val">{{ entry.displayPoints }}</span>
+                <span class="pts-unit">pts</span>
+              </div>
+            </div>
+          </div>
+
+          <a routerLink="/leaderboard" class="full-leaderboard-btn">
+            <span>View Full Leaderboard (180+ Schools)</span>
+            <span class="material-symbols-outlined">arrow_right_alt</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       STATS BLOCK
+  ══════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════════
+       ACADEMIC STATS STRIP (Interactive Node Tree Graph)
+  ══════════════════════════════════════════ -->
+  <section id="stats" class="academic-stats-tree-section">
+    <div class="container">
+      <div class="tree-wrapper">
+        
+        <!-- SVG Connecting Lines -->
+        <svg class="tree-svg-lines" viewBox="0 0 1200 540" preserveAspectRatio="xMidYMid slice">
+          <!-- Main connecting lines -->
+          <path d="M 600 270 L 150 100" class="tree-line line-regions" [class.highlighted]="hoveredNode === 'regions'" />
+          <path d="M 600 270 L 600 60" class="tree-line line-mentors" [class.highlighted]="hoveredNode === 'mentors'" />
+          <path d="M 600 270 L 1050 100" class="tree-line line-schools" [class.highlighted]="hoveredNode === 'schools'" />
+          <path d="M 600 270 L 150 440" class="tree-line line-students" [class.highlighted]="hoveredNode === 'students'" />
+          <path d="M 600 270 L 600 480" class="tree-line line-projects" [class.highlighted]="hoveredNode === 'projects'" />
+          <path d="M 600 270 L 1050 440" class="tree-line line-grants" [class.highlighted]="hoveredNode === 'grants'" />
+ 
+          <!-- Animated energy pulse overlays (flowing outwards from center) -->
+          <path d="M 600 270 L 150 100" class="tree-line-pulse pulse-regions" [class.highlighted]="hoveredNode === 'regions'" />
+          <path d="M 600 270 L 600 60" class="tree-line-pulse pulse-mentors" [class.highlighted]="hoveredNode === 'mentors'" />
+          <path d="M 600 270 L 1050 100" class="tree-line-pulse pulse-schools" [class.highlighted]="hoveredNode === 'schools'" />
+          <path d="M 600 270 L 150 440" class="tree-line-pulse pulse-students" [class.highlighted]="hoveredNode === 'students'" />
+          <path d="M 600 270 L 600 480" class="tree-line-pulse pulse-projects" [class.highlighted]="hoveredNode === 'projects'" />
+          <path d="M 600 270 L 1050 440" class="tree-line-pulse pulse-grants" [class.highlighted]="hoveredNode === 'grants'" />
+        </svg>
+
+        <!-- Center Hub Node representing the championship -->
+        <div class="tree-hub-node">
+          <div class="hub-pulse-ring"></div>
+          <div class="hub-pulse-ring-2"></div>
+          <div class="hub-inner">
+            <span class="material-symbols-outlined hub-icon">hub</span>
+            <span class="hub-label">NTIC</span>
+            <span class="hub-sublabel">2026 Impact</span>
+          </div>
+        </div>
+
+        <!-- Node 1: Regions -->
+        <div 
+          class="tree-node node-regions" 
+          [class.active]="hoveredNode === 'regions'"
+          (mouseenter)="hoveredNode = 'regions'"
+          (mouseleave)="hoveredNode = null"
+        >
+          <div class="node-circle">
+            <div class="node-icon-wrap">
+              <span class="material-symbols-outlined">map</span>
+            </div>
+            <div class="node-number">{{ regionsCount }}</div>
+            <div class="node-title">Regions Represented</div>
+          </div>
+          <div class="node-tooltip">
+            <div class="tooltip-arrow"></div>
+            <strong>16 Regions Covered</strong>
+            <p>From the Upper West to Volta Region, linking remote and municipal districts to national coding and robotics opportunities.</p>
+          </div>
+        </div>
+
+        <!-- Node 5: Mentors (NEW, Top-Center) -->
+        <div 
+          class="tree-node node-mentors" 
+          [class.active]="hoveredNode === 'mentors'"
+          (mouseenter)="hoveredNode = 'mentors'"
+          (mouseleave)="hoveredNode = null"
+        >
+          <div class="node-circle">
+            <div class="node-icon-wrap">
+              <span class="material-symbols-outlined">psychology</span>
+            </div>
+            <div class="node-number">{{ mentorsCount }}+</div>
+            <div class="node-title">Certified Mentors</div>
+          </div>
+          <div class="node-tooltip">
+            <div class="tooltip-arrow"></div>
+            <strong>800+ Educators Trained</strong>
+            <p>School instructors and regional coordinators equipped with advanced curriculum training in robotics, IoT, and machine learning.</p>
+          </div>
+        </div>
+
+        <!-- Node 2: Schools -->
+        <div 
+          class="tree-node node-schools" 
+          [class.active]="hoveredNode === 'schools'"
+          (mouseenter)="hoveredNode = 'schools'"
+          (mouseleave)="hoveredNode = null"
+        >
+          <div class="node-circle">
+            <div class="node-icon-wrap">
+              <span class="material-symbols-outlined">school</span>
+            </div>
+            <div class="node-number">{{ schoolsCount }}+</div>
+            <div class="node-title">Schools Enrolled</div>
+          </div>
+          <div class="node-tooltip">
+            <div class="tooltip-arrow"></div>
+            <strong>180+ High Schools</strong>
+            <p>Active enrollment of top-tier schools and regional technical academies, creating a collaborative learning community.</p>
+          </div>
+        </div>
+
+        <!-- Node 3: Students -->
+        <div 
+          class="tree-node node-students" 
+          [class.active]="hoveredNode === 'students'"
+          (mouseenter)="hoveredNode = 'students'"
+          (mouseleave)="hoveredNode = null"
+        >
+          <div class="node-circle">
+            <div class="node-icon-wrap">
+              <span class="material-symbols-outlined">groups</span>
+            </div>
+            <div class="node-number">{{ studentsCount }}K+</div>
+            <div class="node-title">Active Students</div>
+          </div>
+          <div class="node-tooltip">
+            <div class="tooltip-arrow"></div>
+            <strong>12,000+ Active Students</strong>
+            <p>Students actively collaborating, developing algorithms, training models, and deploying smart hardware on the LMS.</p>
+          </div>
+        </div>
+
+        <!-- Node 6: Projects (NEW, Bottom-Center) -->
+        <div 
+          class="tree-node node-projects" 
+          [class.active]="hoveredNode === 'projects'"
+          (mouseenter)="hoveredNode = 'projects'"
+          (mouseleave)="hoveredNode = null"
+        >
+          <div class="node-circle">
+            <div class="node-icon-wrap">
+              <span class="material-symbols-outlined">rocket_launch</span>
+            </div>
+            <div class="node-number">{{ projectsCount }}K+</div>
+            <div class="node-title">NTIC Innovations</div>
+          </div>
+          <div class="node-tooltip">
+            <div class="tooltip-arrow"></div>
+            <strong>1,500+ Smart Prototypes</strong>
+            <p>Unique hardware models, automated agricultural systems, and software solutions designed by students to address local issues.</p>
+          </div>
+        </div>
+
+        <!-- Node 4: Grants -->
+        <div 
+          class="tree-node node-grants" 
+          [class.active]="hoveredNode === 'grants'"
+          (mouseenter)="hoveredNode = 'grants'"
+          (mouseleave)="hoveredNode = null"
+        >
+          <div class="node-circle">
+            <div class="node-icon-wrap">
+              <span class="material-symbols-outlined">payments</span>
+            </div>
+            <div class="node-number">₵{{ grantsCount }}M+</div>
+            <div class="node-title">Scholarships &amp; Grants</div>
+          </div>
+          <div class="node-tooltip">
+            <div class="tooltip-arrow"></div>
+            <strong>₵2M+ Support Fund</strong>
+            <p>Direct sponsorship, equipment packages, and tertiary engineering scholarships provided by our state and corporate partners.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SUPPORT A CHAMPION SECTION (Harvard Style)
+  ══════════════════════════════════════════ -->
+  <section class="support-section">
+    <div class="container">
+      <div class="section-header-academic text-center">
+        <span class="academic-sub">Make an Impact</span>
+        <h2>Support a Champion</h2>
+        <p class="academic-desc-lead center">Empower school squads, fund technical arenas, or share programmatic suggestions to help shape Ghana's technological frontier.</p>
+      </div>
+
+      <div class="support-grid">
+        <!-- Option 1: By Mail -->
+        <div class="support-card" (click)="openSupportModal('mail')">
+          <div class="card-icon-wrap">
+            <span class="material-symbols-outlined">mail</span>
+          </div>
+          <div class="card-content">
+            <h3>Inquire via Mail</h3>
+            <p>Send institutional correspondence, coordinate equipment deliveries, or mail donation checks directly to our central coordination registry.</p>
+            <span class="read-more-link">
+              <span>Get Mail Details</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Option 2: Sponsor Team -->
+        <div class="support-card" (click)="openSupportModal('team')">
+          <div class="card-icon-wrap">
+            <span class="material-symbols-outlined">diversity_1</span>
+          </div>
+          <div class="card-content">
+            <h3>Sponsor a Team</h3>
+            <p>Directly fund microcontrollers, sensor kits, and laptop devices for high-need school squads preparing for active tracks.</p>
+            <span class="read-more-link">
+              <span>Sponsor a Squad</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Option 3: Sponsor Competition -->
+        <div class="support-card" (click)="openSupportModal('competition')">
+          <div class="card-icon-wrap">
+            <span class="material-symbols-outlined">emoji_events</span>
+          </div>
+          <div class="card-content">
+            <h3>Sponsor Competition</h3>
+            <p>Partner with us as a corporate or individual underwriter for regional qualifier events and the national grand final arena.</p>
+            <span class="read-more-link">
+              <span>Sponsor Events</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Option 4: Suggestions -->
+        <div class="support-card" (click)="openSupportModal('suggestion')">
+          <div class="card-icon-wrap">
+            <span class="material-symbols-outlined">reviews</span>
+          </div>
+          <div class="card-content">
+            <h3>Submit Suggestions</h3>
+            <p>Share syllabus advice, volunteer offers, or platform feedback with our academic committee to guide our roadmap.</p>
+            <span class="read-more-link">
+              <span>Submit Ideas</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       PORTAL ACCESS & SECURE LOGIN (Harvard Style)
+  ══════════════════════════════════════════ -->
+  <section id="portal" class="academic-portal-section">
+    <div class="container">
+      <div class="portal-grid-academic">
+        
+        <!-- Left Column: Quick Directory to Portals -->
+        <div class="portal-dir">
+          <span class="academic-sub">Gateways</span>
+          <h2>Secure Portals Directory</h2>
+          <p class="dir-lead">Select your designated academic or administrative group to access your personalized dashboard environment.</p>
+
+          <div class="academic-roles-list">
+            <button 
+              *ngFor="let role of roles" 
+              class="academic-role-row"
+              [class.active]="activeRoleId === role.id"
+              (click)="selectRole(role.id, true)"
+            >
+              <div class="role-crest-icon">
+                <span class="material-symbols-outlined">{{ role.icon }}</span>
+              </div>
+              <div class="role-crest-info">
+                <h4>{{ role.name }}</h4>
+                <p>{{ role.description }}</p>
+              </div>
+              <span class="material-symbols-outlined action-arrow">chevron_right</span>
+            </button>
+          </div>
+        </div>
+ 
+        <!-- Right Column: Login Card -->
+        <div class="academic-login-card-wrap">
+          <div class="academic-login-card">
+            
+            <div class="login-header-shield">
+              <div class="shield-crest" [class.scanning]="isScanning">
+                <span class="material-symbols-outlined">shield_person</span>
+                <div class="scan-laser"></div>
+                <div class="radar-sweep"></div>
+              </div>
+              <h3>Secure Sign In</h3>
+              <p>Entering the <strong>{{ activeRole.name }}</strong></p>
+            </div>
+ 
+            <form (ngSubmit)="login()" #loginForm="ngForm" class="academic-form">
+              <div class="form-group-academic">
+                <label for="email">Institutional E-mail</label>
+                <div class="academic-input-wrap">
+                  <span class="material-symbols-outlined input-icon-ac">mail</span>
+                  <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    [(ngModel)]="email" 
+                    required 
+                    placeholder="name&#64;school.edu.gh"
+                    class="ac-input"
+                  >
+                </div>
+              </div>
+ 
+              <div class="form-group-academic">
+                <div class="ac-label-row">
+                  <label for="password">Security Password</label>
+                  <a class="forgot-ac-link">Reset Credentials</a>
+                </div>
+                <div class="academic-input-wrap">
+                  <span class="material-symbols-outlined input-icon-ac">lock</span>
+                  <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    [(ngModel)]="password" 
+                    required 
+                    placeholder="••••••••••••"
+                    class="ac-input"
+                  >
+                </div>
+              </div>
+ 
+              <label class="ac-remember-wrap">
+                <input type="checkbox" name="keepSignedIn" checked>
+                <span>Remember my institutional ID on this device</span>
+              </label>
+ 
+              <button type="submit" class="btn btn-crimson btn-full" [disabled]="isLoggingIn || !loginForm.form.valid">
+                <ng-container *ngIf="!isLoggingIn">
+                  <span>Enter Authorized Workspace</span>
+                  <span class="material-symbols-outlined">login</span>
+                </ng-container>
+                <ng-container *ngIf="isLoggingIn">
+                  <span class="ac-spinner"></span>
+                  <span>Verifying Credentials...</span>
+                </ng-container>
+              </button>
+            </form>
+ 
+            <!-- Telemetry Console -->
+            <div class="telemetry-console" *ngIf="telemetryLogs.length > 0">
+              <div class="console-header">
+                <span class="console-dot red"></span>
+                <span class="console-dot yellow"></span>
+                <span class="console-dot green"></span>
+                <span class="console-title">Security Telemetry</span>
+              </div>
+              <div class="console-body">
+                <div class="console-line" *ngFor="let log of telemetryLogs">
+                  <span class="console-prompt">&gt;</span> {{ log }}
+                </div>
+                <div class="console-line active-line">
+                  <span class="console-prompt">&gt;</span><span class="console-cursor"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="gdpa-footer-shield">
+              <span class="material-symbols-outlined">verified_user</span>
+              <p>All communication paths are secure and encrypted. Regulated under Ghana Data Protection Act 2012 (Act 843).</p>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       FOOTER (Harvard Style)
+  ══════════════════════════════════════════ -->
+  <footer class="academic-footer">
+    <div class="container">
+      
+      <div class="footer-top-crest">
+        <div class="footer-seal-wrap">
+          <div class="footer-seal">
+            <span class="material-symbols-outlined">menu_book</span>
+            <span class="seal-text">VERITAS</span>
+          </div>
+        </div>
+        <div class="footer-crest-text">
+          <h3>National Technology and Innovation Championship</h3>
+          <p>Accredited School Competition Platform of the Republic of Ghana</p>
+        </div>
+      </div>
+
+      <div class="footer-cols-grid">
+        <div class="footer-brief">
+          <p>Designed to replicate the scholastic integrity of top-tier academic systems, enabling students to construct pathways from local innovation to global engineering programs.</p>
+          <div class="contact-info-ac">
+            <p><strong>Contact:</strong> info&#64;ntic.gov.gh</p>
+            <p><strong>Hotline:</strong> +233 (0) 302 999 888</p>
+          </div>
+        </div>
+
+        <div class="footer-nav-col">
+          <h4>Competition Info</h4>
+          <ul>
+            <li><a href="#about">About The Heats</a></li>
+            <li><a href="#tracks">Tracks &amp; Syllabus</a></li>
+            <li><a routerLink="/leaderboard">School Leaderboard</a></li>
+            <li><a href="#portal">Rules &amp; Regulations</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-nav-col">
+          <h4>Portals</h4>
+          <ul>
+            <li><a href="#portal">Student Courses</a></li>
+            <li><a href="#portal">Instructor Mentoring</a></li>
+            <li><a href="#portal">School Admins Directory</a></li>
+            <li><a href="#portal">Judge Rubrics</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-nav-col">
+          <h4>Legal &amp; Admin</h4>
+          <ul>
+            <li><a href="#">Ministry of Education</a></li>
+            <li><a href="#">Ghana Education Service</a></li>
+            <li><a href="#">GDPA Data Shield Notice</a></li>
+            <li><a href="#">Terms &amp; Accessibility</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom-bar">
+        <p>&copy; 2026 Ministry of Education, Republic of Ghana. All rights reserved. Coordinated by the Science &amp; Technology Division.</p>
+        <div class="data-shield-badge">
+          <span class="ds-icon">🛡️</span>
+          <span>GDPA PROTECTED · Act 843</span>
+        </div>
+      </div>
+
+    </div>
+  </footer>
+  <!-- ══════════════════════════════════════════
+       SUPPORT A CHAMPION MODAL
+  ══════════════════════════════════════════ -->
+  <div class="support-modal-backdrop" [class.open]="isSupportModalOpen" (click)="closeSupportModal()">
+    <div class="support-modal-card" (click)="$event.stopPropagation()">
+      <button class="close-modal-btn" (click)="closeSupportModal()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+
+      <!-- Content based on selected type -->
+      <div class="modal-body" *ngIf="!supportSubmitted">
+        
+        <!-- Header -->
+        <div class="modal-header-crest">
+          <span class="material-symbols-outlined crest-icon">
+            {{ activeSupportType === 'mail' ? 'mail' : 
+               activeSupportType === 'team' ? 'diversity_1' : 
+               activeSupportType === 'competition' ? 'emoji_events' : 'reviews' }}
+          </span>
+          <h3>
+            {{ activeSupportType === 'mail' ? 'Inquire via Mail' : 
+               activeSupportType === 'team' ? 'Sponsor a Registered Team' : 
+               activeSupportType === 'competition' ? 'Sponsor Competition' : 'Submit Suggestions' }}
+          </h3>
+          <p class="modal-subtitle">Direct correspondence path to the NTIC National Committee</p>
+        </div>
+
+        <form (ngSubmit)="submitSupportForm()" #modalForm="ngForm" class="academic-form">
+          <div class="form-row-ac">
+            <div class="form-group-academic">
+              <label for="sup-name">Full Name / Organization</label>
+              <div class="academic-input-wrap">
+                <span class="material-symbols-outlined input-icon-ac">person</span>
+                <input type="text" id="sup-name" name="sup-name" [(ngModel)]="supportForm.name" required placeholder="Dr. Kwame Mensah" class="ac-input">
+              </div>
+            </div>
+            <div class="form-group-academic">
+              <label for="sup-email">Contact E-mail</label>
+              <div class="academic-input-wrap">
+                <span class="material-symbols-outlined input-icon-ac">mail</span>
+                <input type="email" id="sup-email" name="sup-email" [(ngModel)]="supportForm.email" required placeholder="kwame@mensah.com" class="ac-input">
+              </div>
+            </div>
+          </div>
+
+          <!-- Specific Fields for Sponsor Team -->
+          <div *ngIf="activeSupportType === 'team'" class="form-group-academic">
+            <label for="sup-school">Select Target School Squad</label>
+            <div class="academic-input-wrap">
+              <span class="material-symbols-outlined input-icon-ac">school</span>
+              <select id="sup-school" name="sup-school" [(ngModel)]="supportForm.schoolName" class="ac-input select-ac">
+                <option value="Presbyterian Boys' Sec. School (PRESEC)">Presbyterian Boys' Sec. School (PRESEC) - Legon</option>
+                <option value="Achimota School">Achimota School - Greater Accra</option>
+                <option value="Prempeh College">Prempeh College - Kumasi</option>
+                <option value="Wesley Girls' High School">Wesley Girls' High School - Cape Coast</option>
+                <option value="Tamale SHS">Tamale SHS - Northern Region</option>
+                <option value="Other">Other / General Team Allocation Fund</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Specific Fields for Sponsor Competition -->
+          <div *ngIf="activeSupportType === 'competition'" class="form-group-academic">
+            <label for="sup-tier">Championship Sponsorship Level</label>
+            <div class="academic-input-wrap">
+              <span class="material-symbols-outlined input-icon-ac">payments</span>
+              <select id="sup-tier" name="sup-tier" [(ngModel)]="supportForm.competitionTier" class="ac-input select-ac">
+                <option value="regional">Regional Qualification Arena (₵25,000+)</option>
+                <option value="national">National Final Seminars & Heats (₵50,000+)</option>
+                <option value="grand_finale">Grand Finale Trophy & Innovation Cash Prizes (₵100,000+)</option>
+                <option value="general">General Logistics & Lab Equipment Grant (Any amount)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Message Field -->
+          <div class="form-group-academic">
+            <label for="sup-message">
+              {{ activeSupportType === 'mail' ? 'Mailing Address & Query Details' : 
+                 activeSupportType === 'suggestion' ? 'Your Ideas / Syllabus Suggestions' : 'Support / Partnership Message' }}
+            </label>
+            <div class="academic-input-wrap textarea-wrap">
+              <span class="material-symbols-outlined input-icon-ac">edit_note</span>
+              <textarea id="sup-message" name="sup-message" [(ngModel)]="supportForm.message" required rows="4" placeholder="Share your details with our desk..." class="ac-input ac-textarea"></textarea>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-crimson btn-full" [disabled]="!modalForm.form.valid">
+            <span>Send Institutional Request</span>
+            <span class="material-symbols-outlined">send</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Success Screen -->
+      <div class="modal-body success-screen" *ngIf="supportSubmitted">
+        <div class="success-crest-check">
+          <span class="material-symbols-outlined check-icon">check_circle</span>
+        </div>
+        <h3>Request Lodged Successfully</h3>
+        <p>Your support ticket has been encrypted and securely delivered to the National NTIC Secretariat. An officer will reply to your registered contact channel shortly.</p>
+        
+        <div class="ticket-receipt">
+          <div class="receipt-row"><span>Receipt ID:</span> <strong>NTIC-{{ 100000 + (activeSupportType ? activeSupportType.charCodeAt(0) : 77) }}-2026</strong></div>
+          <div class="receipt-row"><span>Status:</span> <strong class="badge-status">SECURE_QUEUED</strong></div>
+        </div>
+
+        <button class="btn btn-crimson btn-full" (click)="closeSupportModal()">
+          <span>Return to Homepage</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,10 @@
+{
+  "name": "stem-platform",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "npm start --prefix StemPlatform.Frontend",
+    "build": "npm run build --prefix StemPlatform.Frontend",
+    "test": "npm run test --prefix StemPlatform.Frontend"
+  }
+}
