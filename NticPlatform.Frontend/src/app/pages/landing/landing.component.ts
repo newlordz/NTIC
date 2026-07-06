@@ -1472,6 +1472,19 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // ── TRACK CODE PREVIEW & ARENA SIMULATION ─────────────────────
+  navigateToRegistration(track: string | null = null): void {
+    const selectedTrack = track || this.activeTrackPreview || null;
+    if (this.codeTypeInterval) clearInterval(this.codeTypeInterval);
+    if (this.arenaInterval) clearInterval(this.arenaInterval);
+    this.isTrackModalOpen = false;
+    this.activeTrackPreview = null;
+    if (selectedTrack) {
+      this.router.navigate(['/registration'], { queryParams: { track: selectedTrack } });
+    } else {
+      this.router.navigate(['/registration']);
+    }
+  }
+
   setTrackPreview(track: string | null, openModal = true): void {
     this.activeTrackPreview = track;
     if (this.codeTypeInterval) clearInterval(this.codeTypeInterval);

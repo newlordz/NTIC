@@ -1039,9 +1039,9 @@
                   <span class="material-symbols-outlined icon-pulse">lightbulb</span>
                   <span>Interact with the real-time teleoperation deck on the right while watching the simulation respond instantly on the left!</span>
                 </div>
-                <a [routerLink]="['/registration']" [queryParams]="{ track: activeTrackPreview }" class="arena-register-btn" (click)="setTrackPreview(null)">
+                <button type="button" class="arena-register-btn" (click)="navigateToRegistration(activeTrackPreview)">
                   Register for {{ activeTrackPreview | titlecase }} Arena →
-                </a>
+                </button>
               </div>
 
             </div>

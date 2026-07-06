@@ -183,8 +183,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       this.showAdminPaths = params['admin'] === 'true';
       if (params['track']) {
         this.selectedTrack = params['track'];
-        this.activeTab = 'school';
-        this.regState = 'new'; // Bypass gateway for specific track clicks
+        this.regState = 'gateway';
+        this.isPathModalOpen = true; // Open Select Registration Path popup immediately
       } else if (params['tab']) {
         this.activeTab = params['tab'] === 'student' ? 'school' : params['tab'];
         this.regState = 'new';
