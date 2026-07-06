@@ -1,0 +1,2088 @@
+<div class="landing-page" (click)="closeMegaMenu()">
+
+  <!-- ══════════════════════════════════════════
+       SEARCH OVERLAY (Harvard Style)
+  ══════════════════════════════════════════ -->
+  <div class="search-overlay" [class.open]="isSearchOpen">
+    <button class="close-search" (click)="toggleSearch(false)">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+    <div class="search-content">
+      <div class="search-field-wrap">
+        <span class="material-symbols-outlined search-icon-main">search</span>
+        <input 
+          type="text" 
+          placeholder="Search the NTIC portal..." 
+          [(ngModel)]="searchQuery"
+          (input)="onSearchInput()"
+          #searchInput
+          class="search-input-field"
+        >
+      </div>
+
+      <div class="search-suggestions" *ngIf="!searchQuery">
+        <h4>Trending Searches</h4>
+        <div class="trend-tags">
+          <button *ngFor="let term of trendingSearches" (click)="selectTrending(term)">
+            {{ term }}
+          </button>
+        </div>
+      </div>
+
+      <div class="search-results" *ngIf="searchQuery">
+        <h4 *ngIf="filteredSearchResults.length > 0">Suggested Matches</h4>
+        <h4 *ngIf="filteredSearchResults.length === 0">No direct matches found. Try searching:</h4>
+        
+        <ul class="results-list" *ngIf="filteredSearchResults.length > 0">
+          <li *ngFor="let result of filteredSearchResults">
+            <a 
+              [routerLink]="result === 'Registration Form' ? '/registration' : null" 
+              [href]="result !== 'Registration Form' ? 'javascript:void(0)' : null"
+              (click)="toggleSearch(false); result !== 'Registration Form' ? openLoginModal($event) : null"
+            >
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+              <span>Go to {{ result }}</span>
+            </a>
+          </li>
+        </ul>
+
+        <ul class="results-list" *ngIf="filteredSearchResults.length === 0">
+          <li *ngFor="let term of trendingSearches">
+            <a 
+              [routerLink]="term === 'Registration Form' ? '/registration' : null" 
+              [href]="term !== 'Registration Form' ? 'javascript:void(0)' : null"
+              (click)="toggleSearch(false); term !== 'Registration Form' ? openLoginModal($event) : null"
+            >
+              <span class="material-symbols-outlined">search</span>
+              <span>Search for "{{ term }}"</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       STICKY HEADER & MEGA MENU
+  ══════════════════════════════════════════ -->
+  <header class="landing-header">
+    <!-- Top Utility Bar (Harvard style) -->
+    <div class="utility-bar">
+      <div class="utility-container">
+        <div class="utility-right">
+          <button class="theme-toggle-btn ut-link" (click)="themeService.toggleTheme()" style="background:none; border:none; color:inherit; font:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:4px; padding:0; outline:none;">
+            <span class="material-symbols-outlined" style="font-size:14px;">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
+            <span>{{ themeService.isDarkMode ? 'Light' : 'Dark' }}</span>
+          </button>
+          <span class="ut-sep">|</span>
+          <a href="#about" class="ut-link">News & Events</a>
+          <span class="ut-sep">|</span>
+          <a href="#stats" class="ut-link">Impact Metrics</a>
+          <span class="ut-sep">|</span>
+          <button class="search-trigger" (click)="toggleSearch(true); $event.stopPropagation()">
+            <span class="material-symbols-outlined">search</span>
+            <span>Search</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Navigation Bar -->
+    <div class="header-container">
+      <a class="brand" href="/">
+        <div class="brand-crest">
+          <div class="crest-shield">
+            <span class="material-symbols-outlined shield-icon">local_library</span>
+          </div>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">NTIC</span>
+          <span class="brand-sub">GHANA NATIONAL COMPETITION</span>
+        </div>
+      </a>
+
+      <nav class="nav-links">
+        <!-- Hover/Click dropdown for Academics/Tracks -->
+        <div class="nav-item-dropdown" (click)="$event.stopPropagation()">
+          <button class="nav-link dropdown-toggle" [class.active]="activeMegaMenu === 'tracks'" (click)="toggleMegaMenu('tracks')">
+            <span>Competition</span>
+            <span class="material-symbols-outlined arrow-icon">keyboard_arrow_down</span>
+          </button>
+          
+          <div class="mega-menu" [class.open]="activeMegaMenu === 'tracks'">
+            <div class="mega-menu-grid">
+              <div class="mega-col intro-col">
+                <h3>The 5 Core Arenas</h3>
+                <p>High school squads specialize in a track, preparing projects and competing under strict national rules.</p>
+                <a href="#tracks" class="mega-cta-link" (click)="closeMegaMenu()">
+                  <span>All Tracks Guide</span>
+                  <span class="material-symbols-outlined">arrow_right_alt</span>
+                </a>
+              </div>
+              <div class="mega-col links-col">
+                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                  <span class="material-symbols-outlined mc-icon coding">data_object</span>
+                  <div>
+                    <strong>Coding & Algorithms</strong>
+                    <span>Timed code sprints & optimizations.</span>
+                  </div>
+                </a>
+                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                  <span class="material-symbols-outlined mc-icon robotics">memory</span>
+                  <div>
+                    <strong>Robotics & IoT</strong>
+                    <span>Autonomous bot navigational engineering.</span>
+                  </div>
+                </a>
+                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                  <span class="material-symbols-outlined mc-icon ai">model_training</span>
+                  <div>
+                    <strong>Artificial Intelligence</strong>
+                    <span>Crop diagnostics and transport logistics ML.</span>
+                  </div>
+                </a>
+              </div>
+              <div class="mega-col links-col">
+                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                  <span class="material-symbols-outlined mc-icon cyber">security</span>
+                  <div>
+                    <strong>Cybersecurity CTF</strong>
+                    <span>Defensive systems and cipher challenges.</span>
+                  </div>
+                </a>
+                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                  <span class="material-symbols-outlined mc-icon innovation">tips_and_updates</span>
+                  <div>
+                    <strong>Open Innovation</strong>
+                    <span>Pitching clean energy & healthcare tech.</span>
+                  </div>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <a href="#about" class="nav-link">Concept</a>
+        <a href="#tracks" class="nav-link">Competition Track Arenas</a>
+        <a href="javascript:void(0)" (click)="openLoginModal($event)" class="nav-link portal-highlight">Login</a>
+      </nav>
+
+      <div class="header-cta">
+        <a routerLink="/registration" class="btn btn-crimson btn-sm">Apply now</a>
+      </div>
+    </div>
+  </header>
+
+
+  <!-- ══════════════════════════════════════════
+       HERO SLIDESHOW SECTION (Harvard Style)
+  ══════════════════════════════════════════ -->
+  <section class="hero-section">
+    <div class="slideshow-container">
+      <div 
+        *ngFor="let slide of slides; let i = index" 
+        class="slide-item" 
+        [class.active]="i === activeSlideIndex"
+        [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + slide.image + ')'"
+      >
+        <!-- Background Video if present -->
+        <video 
+          *ngIf="slide.video" 
+          class="slide-video-bg" 
+          [src]="slide.video"
+          autoplay 
+          [muted]="true" 
+          loop 
+          playsinline
+        >
+        </video>
+
+        <!-- Browser-Native Video Edit Montage if present -->
+        <div *ngIf="slide.isVideoEdit" class="video-edit-container">
+          <div 
+            class="video-edit-frame" 
+            [class.active]="activeFrame === 1"
+            [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + image1Url + ')'"
+          ></div>
+          <div 
+            class="video-edit-frame" 
+            [class.active]="activeFrame === 2"
+            [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + image2Url + ')'"
+          ></div>
+          <div class="video-edit-overlay"></div>
+        </div>
+        <!-- Overlay Text Block -->
+        <div class="hero-text-card">
+          <span class="card-eyebrow">
+            <span class="live-dot"></span>
+            {{ slide.tag }}
+          </span>
+          <h1>{{ slide.title }}</h1>
+          <p>{{ slide.description }}</p>
+          <div class="card-actions">
+            <a [href]="(slide.ctaLink && slide.ctaLink.startsWith('#')) ? 'javascript:void(0)' : slide.ctaLink" (click)="(slide.ctaLink && slide.ctaLink.startsWith('#')) ? openLoginModal($event) : null" class="btn btn-gold btn-lg">
+              <span>{{ slide.ctaText }}</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </a>
+            <a routerLink="/registration" class="btn btn-white-trans btn-lg">
+              <span>Apply now</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slideshow Navigation Controls -->
+    <div class="slideshow-controls" *ngIf="slides.length > 1">
+      <button class="slide-nav-btn prev" (click)="prevSlide()">
+        <span class="material-symbols-outlined">chevron_left</span>
+      </button>
+      <button class="slide-nav-btn next" (click)="nextSlide()">
+        <span class="material-symbols-outlined">chevron_right</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       COMPETITION COUNTDOWN CLOCK
+  ══════════════════════════════════════════ -->
+  <section class="countdown-section scroll-animate fade-up">
+    <div class="countdown-inner">
+      <div class="countdown-label">
+        <span class="live-dot pulse"></span>
+        <span>Next National Heat Begins In</span>
+      </div>
+      <div class="countdown-clock">
+        <div class="flip-unit stagger-1" id="cd-days">
+          <div class="flip-card">
+            <span class="flip-top">{{ countdownDays | number:'2.0-0' }}</span>
+          </div>
+          <span class="flip-label">Days</span>
+        </div>
+        <div class="flip-sep stagger-2">:</div>
+        <div class="flip-unit stagger-3" id="cd-hours">
+          <div class="flip-card">
+            <span class="flip-top">{{ countdownHours | number:'2.0-0' }}</span>
+          </div>
+          <span class="flip-label">Hours</span>
+        </div>
+        <div class="flip-sep stagger-4">:</div>
+        <div class="flip-unit stagger-5" id="cd-mins">
+          <div class="flip-card">
+            <span class="flip-top">{{ countdownMins | number:'2.0-0' }}</span>
+          </div>
+          <span class="flip-label">Mins</span>
+        </div>
+        <div class="flip-sep stagger-6">:</div>
+        <div class="flip-unit stagger-7" id="cd-secs">
+          <div class="flip-card" [class.tick]="countdownTick">
+            <span class="flip-top">{{ countdownSecs | number:'2.0-0' }}</span>
+          </div>
+          <span class="flip-label">Secs</span>
+        </div>
+      </div>
+      <a routerLink="/registration" class="countdown-cta stagger-8">
+        <span class="material-symbols-outlined">emoji_events</span>
+        <span>Register Before Deadline</span>
+        <span class="material-symbols-outlined">arrow_right_alt</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       WHY WE EXIST / MISSION STATEMENT (Harvard Style)
+  ══════════════════════════════════════════ -->
+  <section id="about" class="concept-section">
+    <div class="container">
+      <div class="section-header-academic">
+        <div class="academic-title-wrap">
+          <span class="academic-sub">Our Purpose</span>
+          <h2><span class="word">Why</span> <span class="word">We</span> <span class="word">Exist</span></h2>
+        </div>
+        <p class="academic-desc-lead">Our Statement of Operation defines what we do, why you should support, and who reaps the rewards of our national NTIC ecosystem.</p>
+      </div>
+
+      <div class="concept-grid">
+        <!-- What We Do -->
+        <div class="why-exist-card">
+          <div class="card-icon-wrap bg-primary">
+            <span class="material-symbols-outlined">menu_book</span>
+          </div>
+          <div class="card-content">
+            <h3>Statement of Operation</h3>
+            <p>We build and run Ghana’s premier National Technology and Innovation Championship (NTIC), integrating high-school teams from all 16 regions. Through rigorous coursework, sandbox tasks, and competitive arenas, we turn classrooms into innovation labs.</p>
+            <a href="#tracks" class="read-more-link">
+              <span>Explore Tracks</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Why Support -->
+        <div class="why-exist-card featured">
+          <div class="featured-badge">Key Focus</div>
+          <div class="card-icon-wrap bg-crimson">
+            <span class="material-symbols-outlined">volunteer_activism</span>
+          </div>
+          <div class="card-content">
+            <h3>Why Support Champions?</h3>
+            <p>A thriving nation depends on scientific literacy and technical leadership. Your support supplies physical robotics kits, funds regional travel, provides university scholarships, and empowers high school students to build local solutions.</p>
+            <a (click)="openSupportModal('team')" class="read-more-link" style="cursor: pointer;">
+              <span>Ways to Sponsor</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Who Benefits -->
+        <div class="why-exist-card">
+          <div class="card-icon-wrap bg-gold">
+            <span class="material-symbols-outlined">groups_3</span>
+          </div>
+          <div class="card-content">
+            <h3>Who Reaps the Rewards?</h3>
+            <p>The benefits ripple from the classroom to the nation. Students gain elite computational skills, educators receive certified modern training, local industries discover top-tier engineering talent, and Ghana accelerates its technological independence.</p>
+            <a href="#stats" class="read-more-link">
+              <span>View Impact Metrics</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SPOTLIGHT / STORIES — Auto-sliding Carousel (admin-controlled)
+  ══════════════════════════════════════════ -->
+  <section class="spotlight-section scroll-animate fade-up">
+    <div class="container">
+      <div class="section-header-academic">
+        <div class="academic-title-wrap">
+          <span class="academic-sub">Spotlight &amp; Research</span>
+          <h2><span class="word">Championship</span> <span class="word">Stories</span></h2>
+        </div>
+        <p class="academic-desc-lead">Explore how Ghana's next generation of scientists, developers, and engineers are scaling technical hurdles, building local industries, and defining the future.</p>
+      </div>
+    </div>
+    <!-- Full-width sliding marquee -->
+    <div class="stories-marquee-wrap" [class.static-wrap]="contentService.championshipStories.length < 4">
+      <div class="stories-marquee" [class.static-marquee]="contentService.championshipStories.length < 4" [style.animation-duration]="(contentService.championshipStories.length * 8) + 's'">
+        <!-- Set A -->
+        <div *ngFor="let story of contentService.championshipStories" class="spotlight-card">
+          <div class="card-img-wrap">
+            <img [src]="story.image" [alt]="story.title" onerror="this.src='assets/ntic_image_1.jpeg'">
+            <span class="story-tag" [class]="story.tagColor">{{ story.tag }}</span>
+          </div>
+          <div class="card-content">
+            <span class="story-date">
+              <span class="material-symbols-outlined story-date-icon">calendar_today</span>
+              <span>{{ story.date }}</span>
+              <span class="story-date-sep">•</span>
+              <span class="material-symbols-outlined story-date-icon">schedule</span>
+              <span>{{ story.readTime }}</span>
+            </span>
+            <h3>{{ story.title }}</h3>
+            <p>{{ story.body }}</p>
+            <a href="#tracks" class="read-more-link">
+              <span>Read The Story</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </a>
+          </div>
+        </div>
+        <!-- Set B (duplicate for seamless loop, only when >= 4 items) -->
+        <ng-container *ngIf="contentService.championshipStories.length >= 4">
+          <div *ngFor="let story of contentService.championshipStories" class="spotlight-card">
+            <div class="card-img-wrap">
+              <img [src]="story.image" [alt]="story.title" onerror="this.src='assets/ntic_image_1.jpeg'">
+              <span class="story-tag" [class]="story.tagColor">{{ story.tag }}</span>
+            </div>
+            <div class="card-content">
+              <span class="story-date">
+                <span class="material-symbols-outlined story-date-icon">calendar_today</span>
+                <span>{{ story.date }}</span>
+                <span class="story-date-sep">•</span>
+                <span class="material-symbols-outlined story-date-icon">schedule</span>
+                <span>{{ story.readTime }}</span>
+              </span>
+              <h3>{{ story.title }}</h3>
+              <p>{{ story.body }}</p>
+              <a href="#tracks" class="read-more-link">
+                <span>Read The Story</span>
+                <span class="material-symbols-outlined">arrow_right_alt</span>
+              </a>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       CHAMPIONSHIP JOURNEY (AI Animated Slideshow)
+  ══════════════════════════════════════════ -->
+  <section class="story-section scroll-animate fade-up">
+    <div class="container">
+      <div class="story-header text-center">
+        <span class="academic-sub scroll-animate fade-up">Our Core Philosophy</span>
+        <h2>
+          <span class="animated-word w1">Research.</span>
+          <span class="animated-word w2">Innovate.</span>
+          <span class="animated-word w3">Build.</span>
+        </h2>
+        <p class="scroll-animate fade-up" style="transition-delay: 0.3s">A glimpse into the real faces and moments that define our pursuit of excellence.</p>
+      </div>
+      <div class="philosophy-grid">
+        <!-- Card 1: Research -->
+        <div class="philosophy-card">
+          <div class="card-image" style="background-image: url('assets/ntic_image_14.jpeg')"></div>
+          <div class="card-overlay">
+            <h3>Research</h3>
+            <div class="card-line"></div>
+            <p>Pushing the boundaries of what is known to uncover new possibilities.</p>
+          </div>
+        </div>
+        
+        <!-- Card 2: Innovate -->
+        <div class="philosophy-card">
+          <div class="card-image" style="background-image: url('assets/ntic_image_25.jpeg')"></div>
+          <div class="card-overlay">
+            <h3>Innovate</h3>
+            <div class="card-line"></div>
+            <p>Designing intelligent, creative solutions for tomorrow's challenges.</p>
+          </div>
+        </div>
+
+        <!-- Card 3: Build -->
+        <div class="philosophy-card">
+          <div class="card-image" style="background-image: url('assets/ntic_image_33.jpeg')"></div>
+          <div class="card-overlay">
+            <h3>Build</h3>
+            <div class="card-line"></div>
+            <p>Turning abstract ideas into concrete reality through engineering.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       ALUMNI WALL OF FAME (Infinite Marquee — admin controlled)
+  ══════════════════════════════════════════ -->
+  <section class="alumni-section scroll-animate fade-up">
+    <div class="container">
+      <div class="alumni-header">
+        <span class="material-symbols-outlined alumni-crown">workspace_premium</span>
+        <span class="academic-sub">Hall of Fame</span>
+        <h2>National Technology and Innovation Champions</h2>
+      </div>
+    </div>
+    <div class="alumni-track-wrap" [class.static-wrap]="contentService.activeHallOfFameEntries.length < 4">
+      <div class="alumni-marquee" [class.static-marquee]="contentService.activeHallOfFameEntries.length < 4">
+        <!-- Set A - driven by ContentService -->
+        <div *ngFor="let entry of contentService.activeHallOfFameEntries" class="alumni-card" [class]="entry.trackClass">
+          <div class="alumni-avatar">{{ entry.initials }}</div>
+          <div class="alumni-info">
+            <strong>{{ entry.name }}</strong>
+            <span>{{ entry.school }} · {{ entry.year }}</span>
+            <span class="alumni-badge" [class]="entry.trackClass.replace('-track','') ">{{ entry.badge }}</span>
+          </div>
+        </div>
+        <!-- Set B (duplicate for seamless loop, only needed when >= 4 items) -->
+        <ng-container *ngIf="contentService.activeHallOfFameEntries.length >= 4">
+          <div *ngFor="let entry of contentService.activeHallOfFameEntries" class="alumni-card" [class]="entry.trackClass">
+            <div class="alumni-avatar">{{ entry.initials }}</div>
+            <div class="alumni-info">
+              <strong>{{ entry.name }}</strong>
+              <span>{{ entry.school }} · {{ entry.year }}</span>
+              <span class="alumni-badge" [class]="entry.trackClass.replace('-track','') ">{{ entry.badge }}</span>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       ACADEMIC DEPARTMENTS (Tracks Section)
+  ══════════════════════════════════════════ -->
+  <section id="tracks" class="departments-section">
+    <div class="container">
+      <div class="section-header-academic text-center">
+        <span class="academic-sub font-crimson">The Technical Pillars</span>
+        <h2>Competition Track Arenas</h2>
+        <p class="academic-desc-lead center">Click any track to see a live code preview. Each arena tests specific disciplines and demands deep practical application.</p>
+      </div>
+
+      <div class="tracks-with-preview">
+        <div class="departments-grid">
+          <!-- Coding -->
+          <div class="dept-card coding" [class.active-track]="activeTrackPreview === 'coding'" (click)="setTrackPreview('coding')">
+            <div class="dept-header-wrap">
+              <span class="material-symbols-outlined dept-icon">data_object</span>
+              <h3>Coding &amp; Algorithms</h3>
+            </div>
+            <p>Sprints in Python, C++, and Java. Tests data structures, algorithm optimization, and competitive speed-solving.</p>
+            <ul class="dept-bullet-list">
+              <li>Speed &amp; Accuracy challenge</li>
+              <li>Computational Complexity limits</li>
+              <li>Dynamic programming tests</li>
+            </ul>
+            <div class="dept-actions-row">
+              <span class="dept-preview-btn">Preview Solution &rarr;</span>
+              <a [routerLink]="['/registration']" [queryParams]="{ track: 'coding' }" class="dept-cta" (click)="$event.stopPropagation()">Explore Tracks</a>
+            </div>
+          </div>
+
+          <!-- Robotics -->
+          <div class="dept-card robotics" [class.active-track]="activeTrackPreview === 'robotics'" (click)="setTrackPreview('robotics')">
+            <div class="dept-header-wrap">
+              <span class="material-symbols-outlined dept-icon">memory</span>
+              <h3>Robotics &amp; IoT</h3>
+            </div>
+            <p>Navigating autonomous bots through agricultural and logistics tasks with sensors, actuators, and embedded boards.</p>
+            <ul class="dept-bullet-list">
+              <li>Lego EV3 &amp; Arduino integrations</li>
+              <li>Real-world mapping algorithms</li>
+              <li>Sensor-actuator optimization</li>
+            </ul>
+            <div class="dept-actions-row">
+              <span class="dept-preview-btn">Preview Solution &rarr;</span>
+              <a [routerLink]="['/registration']" [queryParams]="{ track: 'robotics' }" class="dept-cta" (click)="$event.stopPropagation()">Explore Tracks</a>
+            </div>
+          </div>
+
+          <!-- AI -->
+          <div class="dept-card ai" [class.active-track]="activeTrackPreview === 'ai'" (click)="setTrackPreview('ai')">
+            <div class="dept-header-wrap">
+              <span class="material-symbols-outlined dept-icon">model_training</span>
+              <h3>Artificial Intelligence</h3>
+            </div>
+            <p>Train models to solve local agricultural, diagnostic, and climate problems using modern Machine Learning pipelines.</p>
+            <ul class="dept-bullet-list">
+              <li>Crop disease computer vision</li>
+              <li>Weather pattern neural networks</li>
+              <li>Logistic routing prediction</li>
+            </ul>
+            <div class="dept-actions-row">
+              <span class="dept-preview-btn">Preview Solution &rarr;</span>
+              <a [routerLink]="['/registration']" [queryParams]="{ track: 'ai' }" class="dept-cta" (click)="$event.stopPropagation()">Explore Tracks</a>
+            </div>
+          </div>
+
+          <!-- Cyber -->
+          <div class="dept-card cyber" [class.active-track]="activeTrackPreview === 'cyber'" (click)="setTrackPreview('cyber')">
+            <div class="dept-header-wrap">
+              <span class="material-symbols-outlined dept-icon">security</span>
+              <h3>Cybersecurity CTF</h3>
+            </div>
+            <p>Capture the Flag sprints testing cryptographic decryption, network intrusion logs audit, and secure server builds.</p>
+            <ul class="dept-bullet-list">
+              <li>SQL Injection defense</li>
+              <li>Cipher decryption cycles</li>
+              <li>Sandboxed firewall setups</li>
+            </ul>
+            <div class="dept-actions-row">
+              <span class="dept-preview-btn">Preview Solution &rarr;</span>
+              <a [routerLink]="['/registration']" [queryParams]="{ track: 'cyber' }" class="dept-cta" (click)="$event.stopPropagation()">Explore Tracks</a>
+            </div>
+          </div>
+
+          <!-- Innovation -->
+          <div class="dept-card innovation" [class.active-track]="activeTrackPreview === 'innovation'" (click)="setTrackPreview('innovation')">
+            <div class="dept-header-wrap">
+              <span class="material-symbols-outlined dept-icon">tips_and_updates</span>
+              <h3>Open Innovation</h3>
+            </div>
+            <p>Research, prototype, and pitch creative systems addressing healthcare, green power, and waste in Ghana.</p>
+            <ul class="dept-bullet-list">
+              <li>Renewable power generation</li>
+              <li>Public health data dashboards</li>
+              <li>Alumni &amp; Sponsor pitches</li>
+            </ul>
+            <div class="dept-actions-row">
+              <span class="dept-preview-btn">Preview Solution &rarr;</span>
+              <a [routerLink]="['/registration']" [queryParams]="{ track: 'innovation' }" class="dept-cta" (click)="$event.stopPropagation()">Explore Tracks</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Arena Showcase Modal Popup -->
+        <div *ngIf="isTrackModalOpen && activeTrackPreview" class="code-modal-backdrop" (click)="setTrackPreview(null)">
+          <div class="code-modal-content arena-modal visual-showcase-modal" (click)="$event.stopPropagation()">
+            <div class="code-preview-panel open arena-panel" [style.--track-rgb]="activeTrackPreview === 'coding' ? '0, 136, 204' : activeTrackPreview === 'robotics' ? '212, 160, 23' : activeTrackPreview === 'ai' ? '156, 39, 176' : activeTrackPreview === 'cyber' ? '183, 28, 28' : '0, 127, 95'">
+              
+              <!-- Modal Top Title Bar -->
+              <div class="arena-modal-header">
+                <div class="arena-title-left">
+                  <div class="arena-icon-box">
+                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'robotics'">smart_toy</span>
+                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'coding'">data_object</span>
+                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'ai'">psychology</span>
+                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'cyber'">security</span>
+                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'innovation'">bolt</span>
+                  </div>
+                  <div>
+                    <h3 class="arena-main-title">{{ trackModalTitles[activeTrackPreview] }}</h3>
+                    <p class="arena-sub-title">{{ trackModalSubtitles[activeTrackPreview] }}</p>
+                  </div>
+                </div>
+                <button class="close-preview arena-close" (click)="setTrackPreview(null)">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <!-- Modal Full-Width Visual Showcase Body (Split Cockpit) -->
+              <div class="arena-showcase-body">
+                
+                <!-- Live Track Animation & Telemetry Dashboard -->
+                <div class="arena-sim-box full-width-arena">
+                  <div class="sim-box-header">
+                    <span class="sim-label">⚡ LIVE INTERACTIVE TELEMETRY &amp; TELEOPERATION SIMULATION</span>
+                    <span class="sim-status-badge" [style.color]="arenaState[activeTrackPreview]?.statusColor" [style.border-color]="arenaState[activeTrackPreview]?.statusColor">
+                      ● {{ arenaState[activeTrackPreview]?.status }}
+                    </span>
+                  </div>
+
+                  <!-- 1. Robotics Autonomous Rover Arena -->
+                  <div *ngIf="activeTrackPreview === 'robotics'" class="track-sim-content robotics-sim split-cockpit">
+                    <!-- Left Column: Visual Robot Stage & Terminal -->
+                    <div class="cockpit-left">
+                      <div class="visual-stage rover-stage">
+                        <div class="stage-grid-bg"></div>
+                        
+                        <!-- Animated Obstacle Rock -->
+                        <div class="stage-obstacle" [class.danger]="arenaState.robotics?.distance < 20">
+                          <div class="obstacle-body">🪨</div>
+                          <div class="obstacle-dist-tag">{{ arenaState.robotics?.distance }} cm</div>
+                        </div>
+
+                        <!-- Animated Autonomous Rover -->
+                        <div class="rover-bot-wrap" 
+                             [style.left.%]="arenaState.robotics?.posX || 50" 
+                             [style.top.%]="arenaState.robotics?.posY || 50"
+                             [style.transform]="'translate(-50%, -50%) rotate(' + ((arenaState.robotics?.angle || 90) - 90) + 'deg)'">
+                          <div class="rover-chassis">
+                            <div class="rover-solar-panel"></div>
+                            <div class="rover-lidar-beam" [style.transform]="'rotate(' + arenaState.robotics?.radarSweep + 'deg)'"></div>
+                            <div class="rover-camera-eye" [class.alert]="arenaState.robotics?.distance < 20"></div>
+                            <div class="rover-claw-arm" *ngIf="arenaState.robotics?.clawOpen">🦾 Sample Grabbed</div>
+                          </div>
+                          <div class="rover-wheel w-fl"></div>
+                          <div class="rover-wheel w-fr"></div>
+                          <div class="rover-wheel w-rl"></div>
+                          <div class="rover-wheel w-rr"></div>
+                        </div>
+
+                        <div class="stage-target-flag">🏁 Target Point</div>
+                      </div>
+
+                      <div class="sim-log-terminal mt-3">
+                        <span class="log-cursor">></span> {{ arenaState.robotics?.log }}
+                      </div>
+                    </div>
+
+                    <!-- Right Column: Teleoperation Controls & Readings -->
+                    <div class="cockpit-right">
+                      <div class="interactive-control-deck">
+                        <div class="deck-title">🎮 ROVER MANUAL FLIGHT &amp; TELEOPERATION DECK</div>
+                        <div class="deck-grid robotics-controls">
+                          <!-- Directional D-Pad -->
+                          <div class="dpad-group">
+                            <button class="dpad-btn up" (click)="triggerArenaAction('robotics', 'forward')" title="Drive North">⬆️ Drive North</button>
+                            <div class="dpad-middle">
+                              <button class="dpad-btn left" (click)="triggerArenaAction('robotics', 'left')" title="Steer West (Full Left 90°)">⬅️ Turn West (90°)</button>
+                              <button class="dpad-btn center" (click)="triggerArenaAction('robotics', 'stop')" title="Emergency Brake">🛑 Brake</button>
+                              <button class="dpad-btn right" (click)="triggerArenaAction('robotics', 'right')" title="Steer East (Full Right 90°)">➡️ Turn East (90°)</button>
+                            </div>
+                            <button class="dpad-btn down" (click)="triggerArenaAction('robotics', 'reverse')" title="Drive South">⬇️ Drive South</button>
+                          </div>
+                          <!-- Robotic Arm & Sensors -->
+                          <div class="action-buttons-group">
+                            <button class="action-btn primary-act" (click)="triggerArenaAction('robotics', 'claw')">
+                              <span class="material-symbols-outlined">precision_manufacturing</span>
+                              <span>{{ arenaState.robotics?.clawOpen ? '📦 Release Claw Cargo' : '🦾 Deploy Claw &amp; Grab Sample' }}</span>
+                            </button>
+                            <button class="action-btn warning-act" (click)="triggerArenaAction('robotics', 'obstacle')">
+                              <span class="material-symbols-outlined">warning</span>
+                              <span>⚠️ Spawn Grid Obstacle</span>
+                            </button>
+                            <button class="action-btn success-act" (click)="triggerArenaAction('robotics', 'calibrate')">
+                              <span class="material-symbols-outlined">radar</span>
+                              <span>⚡ Calibrate LIDAR 360°</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Telemetry Dash -->
+                      <div class="radar-container mt-3">
+                        <div class="radar-circle">
+                          <div class="radar-sweep" [style.transform]="'rotate(' + arenaState.robotics?.radarSweep + 'deg)'"></div>
+                          <div class="radar-target" *ngIf="arenaState.robotics?.distance < 20"></div>
+                          <span class="radar-center-dot"></span>
+                        </div>
+                        <div class="radar-readings">
+                          <div class="reading-pill"><strong>{{ arenaState.robotics?.distance }} cm</strong><span>Obstacle Echo</span></div>
+                          <div class="reading-pill"><strong>{{ arenaState.robotics?.angle }}°</strong><span>Servo Aim</span></div>
+                          <div class="reading-pill"><strong>{{ arenaState.robotics?.motorSpeed }}%</strong><span>Wheel RPM</span></div>
+                          <div class="reading-pill"><strong>{{ arenaState.robotics?.cargo || 'None' }}</strong><span>Cargo Bay</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 2. Coding Algorithms Benchmark Animation -->
+                  <div *ngIf="activeTrackPreview === 'coding'" class="track-sim-content coding-sim split-cockpit">
+                    <!-- Left Column -->
+                    <div class="cockpit-left">
+                      <div class="visual-stage algo-stage">
+                        <div class="algo-header-row">
+                          <span>⚡ DYNAMIC DATA SORTING &amp; PATHFINDING VISUALIZER</span>
+                          <span class="live-tag pulse">LIVE RUNNING</span>
+                        </div>
+                        
+                        <!-- Sorting Bar Animation -->
+                        <div class="sorting-bars-wrap">
+                          <div class="sort-bar b1" [style.height.%]="arenaState.coding?.bars?.[0] || 35"></div>
+                          <div class="sort-bar b2" [style.height.%]="arenaState.coding?.bars?.[1] || 60"></div>
+                          <div class="sort-bar b3" [style.height.%]="arenaState.coding?.bars?.[2] || 25"></div>
+                          <div class="sort-bar b4" [style.height.%]="arenaState.coding?.bars?.[3] || 85"></div>
+                          <div class="sort-bar b5" [style.height.%]="arenaState.coding?.bars?.[4] || 45"></div>
+                          <div class="sort-bar b6" [style.height.%]="arenaState.coding?.bars?.[5] || 95"></div>
+                          <div class="sort-bar b7" [style.height.%]="arenaState.coding?.bars?.[6] || 50"></div>
+                          <div class="sort-bar b8" [style.height.%]="arenaState.coding?.bars?.[7] || 75"></div>
+                          <div class="sort-bar b9" [style.height.%]="arenaState.coding?.bars?.[8] || 30"></div>
+                          <div class="sort-bar b10" [style.height.%]="arenaState.coding?.bars?.[9] || 90"></div>
+                          <div class="sort-bar b11" [style.height.%]="arenaState.coding?.bars?.[10] || 65"></div>
+                          <div class="sort-bar b12" [style.height.%]="arenaState.coding?.bars?.[11] || 80"></div>
+                        </div>
+
+                        <!-- Big-O Complexity Graph -->
+                        <div class="complexity-graph mt-3">
+                          <div class="graph-bar-row">
+                            <span>O(1) Constant</span><div class="bar-track"><div class="bar-fill fast" style="width: 15%"></div></div>
+                          </div>
+                          <div class="graph-bar-row">
+                            <span>O(log N) Binary</span><div class="bar-track"><div class="bar-fill medium" style="width: 35%"></div></div>
+                          </div>
+                          <div class="graph-bar-row active-bar">
+                            <span>O(N log N) Optimal [ACTIVE]</span><div class="bar-track"><div class="bar-fill current" style="width: 75%"></div></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="sim-log-terminal mt-3">
+                        <span class="log-cursor">></span> {{ arenaState.coding?.log }}
+                      </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="cockpit-right">
+                      <div class="interactive-control-deck">
+                        <div class="deck-title">⚡ ALGORITHM SPEED &amp; MEMORY BENCHMARK CONTROLS</div>
+                        <div class="deck-grid coding-controls">
+                          <button class="action-btn primary-act" (click)="triggerArenaAction('coding', 'bubble')">
+                            <span class="material-symbols-outlined">sort</span>
+                            <span>▶️ Run QuickSort O(N log N)</span>
+                          </button>
+                          <button class="action-btn info-act" (click)="triggerArenaAction('coding', 'reverse')">
+                            <span class="material-symbols-outlined">swap_vert</span>
+                            <span>💥 Invert Data Stream</span>
+                          </button>
+                          <button class="action-btn warning-act" (click)="triggerArenaAction('coding', 'randomize')">
+                            <span class="material-symbols-outlined">shuffle</span>
+                            <span>🎲 Randomize Array Bars</span>
+                          </button>
+                          <button class="action-btn danger-act" (click)="triggerArenaAction('coding', 'stress')">
+                            <span class="material-symbols-outlined">speed</span>
+                            <span>🔥 10,000x DP Stress Test</span>
+                          </button>
+                          <button class="action-btn success-act" (click)="triggerArenaAction('coding', 'optimize')">
+                            <span class="material-symbols-outlined">memory</span>
+                            <span>✨ Flush Cache &amp; GC</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="radar-readings mt-3">
+                        <div class="reading-pill"><strong>{{ arenaState.coding?.benchmarkMs }} ms</strong><span>Exec Speed</span></div>
+                        <div class="reading-pill"><strong>{{ arenaState.coding?.memory }}</strong><span>RAM Usage</span></div>
+                        <div class="reading-pill"><strong>{{ arenaState.coding?.opsSec }}</strong><span>Throughput</span></div>
+                        <div class="reading-pill"><strong>0 Errors</strong><span>Tests Passed</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 3. AI Computer Vision Scan Animation -->
+                  <div *ngIf="activeTrackPreview === 'ai'" class="track-sim-content ai-sim split-cockpit">
+                    <!-- Left Column -->
+                    <div class="cockpit-left">
+                      <div class="visual-stage ai-stage">
+                        <div class="ai-sample-container">
+                          <div class="sample-leaf-icon">{{ arenaState.ai?.sampleIcon || '🌿' }}</div>
+                          <div class="laser-scanner-bar"></div>
+                          <div class="bounding-box-target">
+                            <span class="box-tag">{{ arenaState.ai?.label }} ({{ arenaState.ai?.confidence }}%)</span>
+                          </div>
+                          <div class="bounding-box-secondary">
+                            <span class="box-tag">Sample: {{ arenaState.ai?.sampleName || 'Cocoa Pod' }}</span>
+                          </div>
+                        </div>
+                        
+                        <!-- Neural Synapse Network -->
+                        <div class="neural-synapse-row">
+                          <div class="layer-col">
+                            <span class="synapse-node active"></span><span class="synapse-node"></span><span class="synapse-node active"></span>
+                          </div>
+                          <div class="synapse-arrow">⚡ ➔ ⚡</div>
+                          <div class="layer-col">
+                            <span class="synapse-node active"></span><span class="synapse-node active"></span><span class="synapse-node"></span><span class="synapse-node active"></span>
+                          </div>
+                          <div class="synapse-arrow">⚡ ➔ ⚡</div>
+                          <div class="layer-col">
+                            <span class="synapse-node output-node active"></span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="sim-log-terminal mt-3">
+                        <span class="log-cursor">></span> {{ arenaState.ai?.log }}
+                      </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="cockpit-right">
+                      <div class="interactive-control-deck">
+                        <div class="deck-title">🔬 SELECT DIAGNOSTIC CROP SAMPLE TO FEED VISION SCANNER</div>
+                        <div class="deck-grid ai-controls">
+                          <button class="sample-btn" [class.active]="arenaState.ai?.sampleIcon === '🌿'" (click)="triggerArenaAction('ai', 'sample_cocoa')">
+                            <span class="s-icon">🌿</span>
+                            <span>Cocoa Pod (Healthy)</span>
+                          </button>
+                          <button class="sample-btn" [class.active]="arenaState.ai?.sampleIcon === '🌽'" (click)="triggerArenaAction('ai', 'sample_maize')">
+                            <span class="s-icon">🌽</span>
+                            <span>Maize (Rust Mildew)</span>
+                          </button>
+                          <button class="sample-btn" [class.active]="arenaState.ai?.sampleIcon === '🥔'" (click)="triggerArenaAction('ai', 'sample_potato')">
+                            <span class="s-icon">🥔</span>
+                            <span>Potato (Blight Virus)</span>
+                          </button>
+                          <button class="sample-btn" [class.active]="arenaState.ai?.sampleIcon === '🍅'" (click)="triggerArenaAction('ai', 'sample_tomato')">
+                            <span class="s-icon">🍅</span>
+                            <span>Tomato (Leaf Spot)</span>
+                          </button>
+                        </div>
+                        <div class="ai-bottom-actions mt-3">
+                          <button class="action-btn primary-act" (click)="triggerArenaAction('ai', 'scan')">
+                            <span class="material-symbols-outlined">center_focus_strong</span>
+                            <span>🚀 Deep Vision Neural Scan</span>
+                          </button>
+                          <button class="action-btn success-act" (click)="triggerArenaAction('ai', 'epoch')">
+                            <span class="material-symbols-outlined">model_training</span>
+                            <span>⚡ Step Training Epoch (+1)</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="radar-readings mt-3">
+                        <div class="reading-pill"><strong>{{ arenaState.ai?.confidence }}%</strong><span>Confidence</span></div>
+                        <div class="reading-pill"><strong>Epoch {{ arenaState.ai?.epoch }}/50</strong><span>Training Cycle</span></div>
+                        <div class="reading-pill"><strong>{{ arenaState.ai?.loss }}</strong><span>Val Loss</span></div>
+                        <div class="reading-pill"><strong>ResNet-50</strong><span>Backbone</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 4. Cybersecurity CTF Intrusion Matrix Animation -->
+                  <div *ngIf="activeTrackPreview === 'cyber'" class="track-sim-content cyber-sim split-cockpit">
+                    <!-- Left Column -->
+                    <div class="cockpit-left">
+                      <div class="visual-stage cyber-stage">
+                        <div class="cyber-shield-center">
+                          <div class="shield-forcefield f-outer"></div>
+                          <div class="shield-forcefield f-inner"></div>
+                          <div class="core-server-node">
+                            <span class="material-symbols-outlined">security</span>
+                          </div>
+                          <div class="shield-blast-ripple"></div>
+                        </div>
+
+                        <div class="attack-vector left-attack">
+                          <span>DDoS Flood Surge</span>
+                          <div class="laser-projectile"></div>
+                        </div>
+                        <div class="attack-vector right-attack">
+                          <span>SQL Injection Probe</span>
+                          <div class="laser-projectile"></div>
+                        </div>
+                      </div>
+
+                      <div class="sim-log-terminal mt-3">
+                        <span class="log-cursor">></span> {{ arenaState.cyber?.log }}
+                      </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="cockpit-right">
+                      <div class="interactive-control-deck">
+                        <div class="deck-title">🛡️ CTF CYBER WARFARE INTERCEPTION COMMAND DECK</div>
+                        <div class="deck-grid cyber-controls">
+                          <button class="action-btn success-act" (click)="triggerArenaAction('cyber', 'defend')">
+                            <span class="material-symbols-outlined">shield_lock</span>
+                            <span>🛡️ Intercept SQLi Payload</span>
+                          </button>
+                          <button class="action-btn primary-act" (click)="triggerArenaAction('cyber', 'ddos')">
+                            <span class="material-symbols-outlined">lan</span>
+                            <span>⚡ Deploy DDoS Scrubbing Filter</span>
+                          </button>
+                          <button class="action-btn info-act" (click)="triggerArenaAction('cyber', 'honeypot')">
+                            <span class="material-symbols-outlined">phishing</span>
+                            <span>🍯 Activate Honeypot Trap</span>
+                          </button>
+                          <button class="action-btn warning-act" (click)="triggerArenaAction('cyber', 'cipher')">
+                            <span class="material-symbols-outlined">key</span>
+                            <span>🔐 Rotate Quantum Cipher Keys</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="firewall-grid mt-3">
+                        <div class="shield-status">
+                          <span class="material-symbols-outlined shield-icon">gpp_maybe</span>
+                          <div>
+                            <h4>{{ arenaState.cyber?.firewall }}</h4>
+                            <p>Active Cipher: {{ arenaState.cyber?.encryption }}</p>
+                          </div>
+                        </div>
+                        <div class="radar-readings mt-2">
+                          <div class="reading-pill"><strong>{{ arenaState.cyber?.packetsSec }}</strong><span>Pkts / sec</span></div>
+                          <div class="reading-pill"><strong>{{ arenaState.cyber?.blockedCount }}</strong><span>Blocked</span></div>
+                          <div class="reading-pill"><strong>AES-256</strong><span>SSL Shield</span></div>
+                          <div class="reading-pill"><strong>0.00ms</strong><span>Latency</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 5. Open Innovation Green Tech Animation -->
+                  <div *ngIf="activeTrackPreview === 'innovation'" class="track-sim-content innovation-sim split-cockpit">
+                    <!-- Left Column -->
+                    <div class="cockpit-left">
+                      <div class="visual-stage innovation-stage">
+                        <div class="green-sources-row">
+                          <div class="turbine-box">
+                            <div class="turbine-blades animated-blades">⚙️</div>
+                            <div class="turbine-pole"></div>
+                            <span>Wind Farm: {{ arenaState.innovation?.windKw || '14.2' }} kW</span>
+                          </div>
+                          <div class="solar-box">
+                            <div class="sun-icon animated-sun">☀️</div>
+                            <div class="solar-array">🟦🟦🟦</div>
+                            <span>Solar Array: {{ arenaState.innovation?.solarKw }} kW</span>
+                          </div>
+                        </div>
+
+                        <div class="power-flow-line animated-flow"></div>
+
+                        <div class="smart-city-destination">
+                          <div class="city-icon">🏥</div>
+                          <span>Smart City Hospital Grid</span>
+                          <div class="battery-storage-meter">🔋 {{ arenaState.innovation?.battery }}% Stored</div>
+                        </div>
+                      </div>
+
+                      <div class="sim-log-terminal mt-3">
+                        <span class="log-cursor">></span> {{ arenaState.innovation?.log }}
+                      </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="cockpit-right">
+                      <div class="interactive-control-deck">
+                        <div class="deck-title">🌍 GREEN TECH POWER DISTRIBUTION &amp; GRID SYNCHRONIZATION</div>
+                        <div class="deck-grid innovation-controls">
+                          <button class="action-btn primary-act" (click)="triggerArenaAction('innovation', 'solar')">
+                            <span class="material-symbols-outlined">wb_sunny</span>
+                            <span>☀️ Tilt Solar Panels (+15°)</span>
+                          </button>
+                          <button class="action-btn info-act" (click)="triggerArenaAction('innovation', 'wind')">
+                            <span class="material-symbols-outlined">air</span>
+                            <span>💨 Boost Wind Turbine Pitch</span>
+                          </button>
+                          <button class="action-btn success-act" (click)="triggerArenaAction('innovation', 'hospital')">
+                            <span class="material-symbols-outlined">local_hospital</span>
+                            <span>🏥 Power Emergency Hospital Ward</span>
+                          </button>
+                          <button class="action-btn warning-act" (click)="triggerArenaAction('innovation', 'sync')">
+                            <span class="material-symbols-outlined">sync</span>
+                            <span>🌍 Sync Municipal IoT Nodes</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="radar-readings mt-3">
+                        <div class="reading-pill"><strong>{{ arenaState.innovation?.solarKw }} kW</strong><span>Array Output</span></div>
+                        <div class="reading-pill"><strong>{{ arenaState.innovation?.co2Saved }} kg</strong><span>CO₂ Saved</span></div>
+                        <div class="reading-pill"><strong>{{ arenaState.innovation?.efficiency }}</strong><span>Efficiency</span></div>
+                        <div class="reading-pill"><strong>{{ arenaState.innovation?.hospitalPower || 'Normal (100%)' }}</strong><span>Hospital Ward</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Modal Bottom Action Footer -->
+              <div class="arena-modal-footer">
+                <div class="footer-info">
+                  <span class="material-symbols-outlined icon-pulse">lightbulb</span>
+                  <span>Interact with the real-time teleoperation deck on the right while watching the simulation respond instantly on the left!</span>
+                </div>
+                <a [routerLink]="['/registration']" [queryParams]="{ track: activeTrackPreview }" class="arena-register-btn" (click)="setTrackPreview(null)">
+                  Register for {{ activeTrackPreview | titlecase }} Arena →
+                </a>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       MINI CODING CHALLENGE WIDGET
+  ══════════════════════════════════════════ -->
+  <section class="challenge-section scroll-animate fade-up">
+    <div class="container">
+      <div class="challenge-grid">
+        <div class="challenge-info">
+          <span class="academic-sub">Daily Problem</span>
+          <h2>Try a Coding Challenge</h2>
+          <p>Solve the current NTIC practice problem. A new challenge rotates every 24 hours — just like the real competition.</p>
+          <div class="challenge-meta">
+            <span class="difficulty-badge" [class]="'diff-' + currentChallenge.difficulty">{{ currentChallenge.difficulty }}</span>
+            <span class="challenge-track-tag"><span class="material-symbols-outlined">data_object</span>{{ currentChallenge.track }}</span>
+            <span class="challenge-time-tag"><span class="material-symbols-outlined">timer</span>{{ currentChallenge.timeLimit }}</span>
+          </div>
+          <div class="challenge-stats-row">
+            <div class="ch-stat stagger-1">
+              <span class="ch-stat-num">{{ currentChallenge.solvedCount }}</span>
+              <span class="ch-stat-label">Solved Today</span>
+            </div>
+            <div class="ch-stat stagger-2">
+              <span class="ch-stat-num">{{ currentChallenge.successRate }}%</span>
+              <span class="ch-stat-label">Success Rate</span>
+            </div>
+            <div class="ch-stat stagger-3">
+              <span class="ch-stat-num">{{ currentChallenge.points }}</span>
+              <span class="ch-stat-label">Points</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="challenge-editor-card stagger-4">
+          <div class="editor-header">
+            <div class="code-dots">
+              <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+            </div>
+            <span class="editor-title">{{ currentChallenge.title }}</span>
+            <button class="next-challenge-btn" (click)="nextChallenge()">
+              <span class="material-symbols-outlined">refresh</span>
+            </button>
+          </div>
+
+          <div class="problem-statement">
+            <p class="typewriter-problem">{{ typedProblem }}</p>
+          </div>
+
+          <div class="code-input-area">
+            <div class="line-numbers">
+              <span *ngFor="let n of codeLineNumbers">{{ n }}</span>
+            </div>
+            <textarea
+              class="code-editor-input"
+              [(ngModel)]="userCode"
+              (input)="onCodeInput()"
+              spellcheck="false"
+              placeholder="# Write your solution here..."
+              rows="6"
+            ></textarea>
+          </div>
+
+          <div class="editor-actions">
+            <button class="run-btn" (click)="runChallenge()" [disabled]="isChallengeRunning">
+              <span class="material-symbols-outlined">{{ isChallengeRunning ? 'hourglass_top' : 'play_arrow' }}</span>
+              <span>{{ isChallengeRunning ? 'Running...' : 'Run Code' }}</span>
+            </button>
+            <button class="hint-btn" (click)="showHint()">
+              <span class="material-symbols-outlined">lightbulb</span>
+              <span>Hint</span>
+            </button>
+          </div>
+
+          <div class="challenge-result" [class.show]="challengeResult !== null" [class.success]="challengeResult === true" [class.fail]="challengeResult === false">
+            <ng-container *ngIf="challengeResult === true">
+              <span class="material-symbols-outlined">check_circle</span>
+              <span>Correct! +{{ currentChallenge.points }} pts — Well done, champion!</span>
+            </ng-container>
+            <ng-container *ngIf="challengeResult === false">
+              <span class="material-symbols-outlined">cancel</span>
+              <span>{{ challengeResultMessage }}</span>
+            </ng-container>
+          </div>
+
+          <div class="hint-box" *ngIf="hintVisible">
+            <span class="material-symbols-outlined">tips_and_updates</span>
+            <span>{{ currentChallenge.hint }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       STRIPE DATA-VIZ ANIMATION (Underwater Sea Leaves & Cyber Fishes)
+  ══════════════════════════════════════════ -->
+  <section class="starburst-section">
+    <canvas #matrixCanvas class="starburst-canvas data-viz__canvas"></canvas>
+  </section>
+  <!-- ══════════════════════════════════════════
+       LIVE SCOREBOARD (NSMQ Spirit)
+  ══════════════════════════════════════════ -->
+  <section class="live-scoreboard-section scroll-animate fade-up">
+    <div class="container">
+      <div class="scoreboard-card-container">
+        <div class="scoreboard-info">
+          <span class="academic-sub">Real-time Standing</span>
+          <h2>The Leaderboard</h2>
+          <p>Points aggregate dynamically as student squads complete courses, submit assignments, and compete in the track heats.</p>
+          
+          <!-- Track Filters Tabs -->
+          <div class="leaderboard-tabs">
+            <button 
+              class="tab-btn" 
+              [class.active]="activeLeaderboardFilter === 'all'"
+              (click)="changeLeaderboardFilter('all')"
+            >
+              <span class="material-symbols-outlined tab-icon">emoji_events</span>
+              <span>All Heats</span>
+            </button>
+            <button 
+              class="tab-btn" 
+              [class.active]="activeLeaderboardFilter === 'coding'"
+              (click)="changeLeaderboardFilter('coding')"
+            >
+              <span class="material-symbols-outlined tab-icon">data_object</span>
+              <span>Coding</span>
+            </button>
+            <button 
+              class="tab-btn" 
+              [class.active]="activeLeaderboardFilter === 'robotics'"
+              (click)="changeLeaderboardFilter('robotics')"
+            >
+              <span class="material-symbols-outlined tab-icon">memory</span>
+              <span>Robotics</span>
+            </button>
+            <button 
+              class="tab-btn" 
+              [class.active]="activeLeaderboardFilter === 'ai'"
+              (click)="changeLeaderboardFilter('ai')"
+            >
+              <span class="material-symbols-outlined tab-icon">model_training</span>
+              <span>AI</span>
+            </button>
+            <button 
+              class="tab-btn" 
+              [class.active]="activeLeaderboardFilter === 'cyber'"
+              (click)="changeLeaderboardFilter('cyber')"
+            >
+              <span class="material-symbols-outlined tab-icon">security</span>
+              <span>Cyber</span>
+            </button>
+          </div>
+
+          <div class="scoreboard-status">
+            <span class="live-dot pulse"></span>
+            <span>Live standings · Accredited by MoE &amp; GES</span>
+          </div>
+        </div>
+
+        <div class="scoreboard-table-card" [class.transitioning]="isLeaderboardTransitioning">
+          <div class="sc-header">
+            <span class="material-symbols-outlined sc-trophy">emoji_events</span>
+            <span>Top Performing Schools — {{ activeLeaderboardFilter === 'all' ? 'All Heats' : (activeLeaderboardFilter | titlecase) }}</span>
+          </div>
+          
+          <div class="sc-rows-container">
+            <div 
+              *ngFor="let entry of filteredLeaderboard; let idx = index" 
+              class="sc-row"
+              [class.first-place]="entry.displayRank === '01'"
+              [class.second-place]="entry.displayRank === '02'"
+              [class.third-place]="entry.displayRank === '03'"
+            >
+              <div class="sc-rank">
+                <span class="rank-badge">
+                  <span class="badge-num" *ngIf="entry.displayRank !== '01' && entry.displayRank !== '02' && entry.displayRank !== '03'">{{ entry.displayRank }}</span>
+                  <span class="medal-icon" *ngIf="entry.displayRank === '01'">🏆</span>
+                  <span class="medal-icon" *ngIf="entry.displayRank === '02'">🥈</span>
+                  <span class="medal-icon" *ngIf="entry.displayRank === '03'">🥉</span>
+                </span>
+              </div>
+              <div class="sc-school">
+                <strong>{{ entry.schoolName }}</strong>
+                <span>{{ entry.location }}</span>
+                
+                <!-- Performance Bar (fills up dynamically when scoreboard is in-view) -->
+                <div class="score-progress-track">
+                  <div class="score-progress-bar" [style.width]="(entry.displayPoints / (activeLeaderboardFilter === 'all' ? 500 : 150) * 100) + '%'"></div>
+                </div>
+              </div>
+              <div class="sc-points">
+                <span class="pts-val">{{ entry.displayPoints }}</span>
+                <span class="pts-unit">pts</span>
+              </div>
+            </div>
+          </div>
+
+          <a routerLink="/leaderboard" class="full-leaderboard-btn">
+            <span>View Full Leaderboard (180+ Schools)</span>
+            <span class="material-symbols-outlined">arrow_right_alt</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       STATS BLOCK
+  ══════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════════
+       ACADEMIC STATS STRIP (Interactive Node Tree Graph)
+  ══════════════════════════════════════════ -->
+  <section id="stats" class="academic-stats-tree-section">
+    <div class="container">
+      <div class="tree-wrapper">
+        
+        <!-- SVG Connecting Lines -->
+        <svg class="tree-svg-lines" viewBox="0 0 1200 540" preserveAspectRatio="xMidYMid slice">
+          <!-- Main connecting lines -->
+          <path d="M 600 270 L 150 100" class="tree-line line-regions" [class.highlighted]="hoveredNode === 'regions'" />
+          <path d="M 600 270 L 600 60" class="tree-line line-mentors" [class.highlighted]="hoveredNode === 'mentors'" />
+          <path d="M 600 270 L 1050 100" class="tree-line line-schools" [class.highlighted]="hoveredNode === 'schools'" />
+          <path d="M 600 270 L 150 440" class="tree-line line-students" [class.highlighted]="hoveredNode === 'students'" />
+          <path d="M 600 270 L 600 480" class="tree-line line-projects" [class.highlighted]="hoveredNode === 'projects'" />
+          <path d="M 600 270 L 1050 440" class="tree-line line-grants" [class.highlighted]="hoveredNode === 'grants'" />
+ 
+          <!-- Animated energy pulse overlays (flowing outwards from center) -->
+          <path d="M 600 270 L 150 100" class="tree-line-pulse pulse-regions" [class.highlighted]="hoveredNode === 'regions'" />
+          <path d="M 600 270 L 600 60" class="tree-line-pulse pulse-mentors" [class.highlighted]="hoveredNode === 'mentors'" />
+          <path d="M 600 270 L 1050 100" class="tree-line-pulse pulse-schools" [class.highlighted]="hoveredNode === 'schools'" />
+          <path d="M 600 270 L 150 440" class="tree-line-pulse pulse-students" [class.highlighted]="hoveredNode === 'students'" />
+          <path d="M 600 270 L 600 480" class="tree-line-pulse pulse-projects" [class.highlighted]="hoveredNode === 'projects'" />
+          <path d="M 600 270 L 1050 440" class="tree-line-pulse pulse-grants" [class.highlighted]="hoveredNode === 'grants'" />
+        </svg>
+
+        <!-- Center Hub Node representing the championship -->
+        <div class="tree-hub-node">
+          <div class="hub-pulse-ring"></div>
+          <div class="hub-pulse-ring-2"></div>
+          <div class="hub-inner">
+            <span class="material-symbols-outlined hub-icon">hub</span>
+            <span class="hub-label">NTIC</span>
+            <span class="hub-sublabel">2026 Impact</span>
+          </div>
+        </div>
+
+        <!-- Node 1: Regions -->
+        <div 
+          class="tree-node node-regions" 
+          [class.active]="hoveredNode === 'regions'"
+          (mouseenter)="hoveredNode = 'regions'"
+          (mouseleave)="hoveredNode = null"
+        >
+          <div class="node-circle">
+            <div class="node-icon-wrap">
+              <span class="material-symbols-outlined">map</span>
+            </div>
+            <div class="node-number">{{ regionsCount }}</div>
+            <div class="node-title">Regions Represented</div>
+          </div>
+          <div class="node-tooltip">
+            <div class="tooltip-arrow"></div>
+            <strong>16 Regions Covered</strong>
+            <p>From the Upper West to Volta Region, linking remote and municipal districts to national coding and robotics opportunities.</p>
+          </div>
+        </div>
+
+        <!-- Node 5: Mentors (NEW, Top-Center) -->
+        <div 
+          class="tree-node node-mentors" 
+          [class.active]="hoveredNode === 'mentors'"
+          (mouseenter)="hoveredNode = 'mentors'"
+          (mouseleave)="hoveredNode = null"
+        >
+          <div class="node-circle">
+            <div class="node-icon-wrap">
+              <span class="material-symbols-outlined">psychology</span>
+            </div>
+            <div class="node-number">{{ mentorsCount }}+</div>
+            <div class="node-title">Certified Mentors</div>
+          </div>
+          <div class="node-tooltip">
+            <div class="tooltip-arrow"></div>
+            <strong>800+ Educators Trained</strong>
+            <p>School instructors and regional coordinators equipped with advanced curriculum training in robotics, IoT, and machine learning.</p>
+          </div>
+        </div>
+
+        <!-- Node 2: Schools -->
+        <div 
+          class="tree-node node-schools" 
+          [class.active]="hoveredNode === 'schools'"
+          (mouseenter)="hoveredNode = 'schools'"
+          (mouseleave)="hoveredNode = null"
+        >
+          <div class="node-circle">
+            <div class="node-icon-wrap">
+              <span class="material-symbols-outlined">school</span>
+            </div>
+            <div class="node-number">{{ schoolsCount }}+</div>
+            <div class="node-title">Schools Enrolled</div>
+          </div>
+          <div class="node-tooltip">
+            <div class="tooltip-arrow"></div>
+            <strong>180+ High Schools</strong>
+            <p>Active enrollment of top-tier schools and regional technical academies, creating a collaborative learning community.</p>
+          </div>
+        </div>
+
+        <!-- Node 3: Students -->
+        <div 
+          class="tree-node node-students" 
+          [class.active]="hoveredNode === 'students'"
+          (mouseenter)="hoveredNode = 'students'"
+          (mouseleave)="hoveredNode = null"
+        >
+          <div class="node-circle">
+            <div class="node-icon-wrap">
+              <span class="material-symbols-outlined">groups</span>
+            </div>
+            <div class="node-number">{{ studentsCount }}K+</div>
+            <div class="node-title">Active Students</div>
+          </div>
+          <div class="node-tooltip">
+            <div class="tooltip-arrow"></div>
+            <strong>12,000+ Active Students</strong>
+            <p>Students actively collaborating, developing algorithms, training models, and deploying smart hardware on the LMS.</p>
+          </div>
+        </div>
+
+        <!-- Node 6: Projects (NEW, Bottom-Center) -->
+        <div 
+          class="tree-node node-projects" 
+          [class.active]="hoveredNode === 'projects'"
+          (mouseenter)="hoveredNode = 'projects'"
+          (mouseleave)="hoveredNode = null"
+        >
+          <div class="node-circle">
+            <div class="node-icon-wrap">
+              <span class="material-symbols-outlined">rocket_launch</span>
+            </div>
+            <div class="node-number">{{ projectsCount }}K+</div>
+            <div class="node-title">NTIC Innovations</div>
+          </div>
+          <div class="node-tooltip">
+            <div class="tooltip-arrow"></div>
+            <strong>1,500+ Smart Prototypes</strong>
+            <p>Unique hardware models, automated agricultural systems, and software solutions designed by students to address local issues.</p>
+          </div>
+        </div>
+
+        <!-- Node 4: Grants -->
+        <div 
+          class="tree-node node-grants" 
+          [class.active]="hoveredNode === 'grants'"
+          (mouseenter)="hoveredNode = 'grants'"
+          (mouseleave)="hoveredNode = null"
+        >
+          <div class="node-circle">
+            <div class="node-icon-wrap">
+              <span class="material-symbols-outlined">payments</span>
+            </div>
+            <div class="node-number">₵{{ grantsCount }}M+</div>
+            <div class="node-title">Scholarships &amp; Grants</div>
+          </div>
+          <div class="node-tooltip">
+            <div class="tooltip-arrow"></div>
+            <strong>₵2M+ Support Fund</strong>
+            <p>Direct sponsorship, equipment packages, and tertiary engineering scholarships provided by our state and corporate partners.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       GHANA REGION MAP
+  ══════════════════════════════════════════ -->
+  <section class="region-map-section scroll-animate fade-up">
+    <div class="container">
+      <div class="section-header-academic text-center">
+        <span class="academic-sub">National Reach</span>
+        <h2>All 16 Regions Competing</h2>
+        <p class="academic-desc-lead center">Hover over a region to see participating schools and top performers.</p>
+      </div>
+      <!-- Interactive Tech Track Filter Pills -->
+      <div class="map-filter-pills text-center">
+        <button *ngFor="let filter of mapFilters" 
+                class="map-filter-btn" 
+                [class.active]="activeMapFilter === filter"
+                (click)="setMapFilter(filter)">
+          <span class="material-symbols-outlined" *ngIf="filter === 'All'">public</span>
+          <span class="material-symbols-outlined" *ngIf="filter === 'Robotics'">precision_manufacturing</span>
+          <span class="material-symbols-outlined" *ngIf="filter === 'Coding'">code</span>
+          <span class="material-symbols-outlined" *ngIf="filter === 'AI'">psychology</span>
+          <span class="material-symbols-outlined" *ngIf="filter === 'Cybersecurity'">security</span>
+          <span class="material-symbols-outlined" *ngIf="filter === 'Innovation'">lightbulb</span>
+          <span>{{ filter === 'All' ? 'All 16 Regions' : filter + ' Leaders' }}</span>
+        </button>
+      </div>
+
+      <div class="region-map-grid">
+        <div class="ghana-svg-wrap">
+          <svg class="ghana-map" viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
+            <!-- Western North -->
+            <path class="gh-region" id="western-north" d="M 60 180 L 100 160 L 130 170 L 140 200 L 120 230 L 80 230 Z" (mouseenter)="hoverRegion('western-north')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('western-north')"/>
+            <!-- Western -->
+            <path class="gh-region" id="western" d="M 60 230 L 120 230 L 130 270 L 100 300 L 55 280 L 45 250 Z" (mouseenter)="hoverRegion('western')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('western')"/>
+            <!-- Central -->
+            <path class="gh-region" id="central" d="M 120 280 L 170 270 L 185 290 L 175 320 L 130 320 L 110 305 Z" (mouseenter)="hoverRegion('central')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('central')"/>
+            <!-- Greater Accra -->
+            <path class="gh-region" id="greater-accra" d="M 185 290 L 230 280 L 240 300 L 220 330 L 185 325 Z" (mouseenter)="hoverRegion('greater-accra')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('greater-accra')"/>
+            <!-- Eastern -->
+            <path class="gh-region" id="eastern" d="M 175 240 L 220 230 L 245 255 L 235 285 L 185 290 L 170 270 Z" (mouseenter)="hoverRegion('eastern')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('eastern')"/>
+            <!-- Ashanti -->
+            <path class="gh-region" id="ashanti" d="M 130 200 L 175 190 L 200 210 L 195 245 L 175 255 L 140 240 L 125 225 Z" (mouseenter)="hoverRegion('ashanti')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('ashanti')"/>
+            <!-- Bono -->
+            <path class="gh-region" id="bono" d="M 100 160 L 145 140 L 165 160 L 175 190 L 130 200 L 100 185 Z" (mouseenter)="hoverRegion('bono')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('bono')"/>
+            <!-- Bono East -->
+            <path class="gh-region" id="bono-east" d="M 165 140 L 210 130 L 225 155 L 210 175 L 185 180 L 175 190 L 165 160 Z" (mouseenter)="hoverRegion('bono-east')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('bono-east')"/>
+            <!-- Ahafo -->
+            <path class="gh-region" id="ahafo" d="M 120 175 L 130 160 L 165 160 L 175 190 L 155 195 L 135 195 Z" (mouseenter)="hoverRegion('ahafo')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('ahafo')"/>
+            <!-- Oti -->
+            <path class="gh-region" id="oti" d="M 225 155 L 270 140 L 285 165 L 270 195 L 245 190 L 225 175 Z" (mouseenter)="hoverRegion('oti')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('oti')"/>
+            <!-- Volta -->
+            <path class="gh-region" id="volta" d="M 245 190 L 280 175 L 310 200 L 295 260 L 265 270 L 245 250 L 240 220 Z" (mouseenter)="hoverRegion('volta')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('volta')"/>
+            <!-- Northern -->
+            <path class="gh-region" id="northern" d="M 145 90 L 200 70 L 250 80 L 270 110 L 265 140 L 225 155 L 210 130 L 165 120 L 145 105 Z" (mouseenter)="hoverRegion('northern')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('northern')"/>
+            <!-- Savannah -->
+            <path class="gh-region" id="savannah" d="M 80 80 L 130 60 L 145 90 L 130 115 L 100 120 L 75 110 Z" (mouseenter)="hoverRegion('savannah')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('savannah')"/>
+            <!-- North East -->
+            <path class="gh-region" id="north-east" d="M 200 70 L 250 55 L 285 75 L 280 110 L 250 115 L 225 100 Z" (mouseenter)="hoverRegion('north-east')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('north-east')"/>
+            <!-- Upper West -->
+            <path class="gh-region" id="upper-west" d="M 60 30 L 110 20 L 130 45 L 115 70 L 80 80 L 55 65 Z" (mouseenter)="hoverRegion('upper-west')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('upper-west')"/>
+            <!-- Upper East -->
+            <path class="gh-region" id="upper-east" d="M 165 25 L 215 15 L 250 30 L 250 55 L 210 65 L 175 60 L 155 45 Z" (mouseenter)="hoverRegion('upper-east')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('upper-east')"/>
+            <!-- Region Labels -->
+            <text class="region-label" x="82" y="208">W. North</text>
+            <text class="region-label" x="72" y="260">West</text>
+            <text class="region-label" x="137" y="300">Central</text>
+            <text class="region-label" x="198" y="308">Accra</text>
+            <text class="region-label" x="192" y="262">Eastern</text>
+            <text class="region-label" x="153" y="225">Ashanti</text>
+            <text class="region-label" x="118" y="175">Bono</text>
+            <text class="region-label" x="185" y="162">Bono E.</text>
+            <text class="region-label" x="135" y="190">Ahafo</text>
+            <text class="region-label" x="248" y="175">Oti</text>
+            <text class="region-label" x="272" y="228">Volta</text>
+            <text class="region-label" x="195" y="108">Northern</text>
+            <text class="region-label" x="90" y="95">Savannah</text>
+            <text class="region-label" x="238" y="88">N. East</text>
+            <text class="region-label" x="72" y="55">U. West</text>
+            <text class="region-label" x="196" y="42">U. East</text>
+          </svg>
+          <!-- Tooltip -->
+          <div class="region-tooltip" [class.visible]="hoveredRegionData !== null && !selectedRegion" *ngIf="hoveredRegionData && !selectedRegion">
+            <strong>{{ hoveredRegionData.name }}</strong>
+            <div class="rtt-row"><span class="material-symbols-outlined">school</span> {{ hoveredRegionData.schools }} Schools</div>
+            <div class="rtt-row"><span class="material-symbols-outlined">emoji_events</span> Top: {{ hoveredRegionData.topSchool }}</div>
+            <div class="rtt-row specialty-row"><span class="material-symbols-outlined">data_object</span> {{ hoveredRegionData.specialty }}</div>
+          </div>
+        </div>
+        <div class="region-legend">
+          <!-- Dynamic Command Spotlight when region is selected -->
+          <div class="region-spotlight-card" *ngIf="getSelectedRegionData() as activeRd; else defaultLegend">
+            <div class="spotlight-header">
+              <span class="spotlight-badge"><span class="material-symbols-outlined">verified</span> Active Spotlight</span>
+              <button class="spotlight-close" (click)="selectRegion(null)" title="Close Spotlight">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <h3>{{ activeRd.name }} Region</h3>
+            <p class="spotlight-sub">{{ activeRd.schools }} STEM Institutions Competing</p>
+            
+            <div class="spotlight-stat-box">
+              <div class="ss-label"><span class="material-symbols-outlined">emoji_events</span> Regional Champion School</div>
+              <div class="ss-value">{{ activeRd.topSchool }}</div>
+            </div>
+
+            <div class="spotlight-stat-box">
+              <div class="ss-label"><span class="material-symbols-outlined">data_object</span> Dominant Tech Specialization</div>
+              <div class="ss-value track-badge">{{ activeRd.specialty }}</div>
+            </div>
+
+            <div class="spotlight-meter-wrap">
+              <div class="sm-header">
+                <span>National Qualification Heat</span>
+                <strong>{{ getQualificationHeat(activeRd) }}% Qualified</strong>
+              </div>
+              <div class="sm-track">
+                <div class="sm-bar" [style.width.%]="getQualificationHeat(activeRd)"></div>
+              </div>
+            </div>
+
+            <button class="spotlight-action-btn" (click)="triggerRegionAction(activeRd)">
+              <span class="material-symbols-outlined">launch</span> Explore {{ activeRd.name }} Squads
+            </button>
+          </div>
+
+          <!-- Default Legend View -->
+          <ng-template #defaultLegend>
+            <h4>Participation Intensity</h4>
+            <div class="legend-scale">
+              <div class="ls-bar"></div>
+              <div class="ls-labels"><span>Low</span><span>High</span></div>
+            </div>
+            <div class="region-list">
+              <div class="rl-item stagger-1" *ngFor="let rd of regionDataList; let i = index; trackBy: trackByRegionId" [class]="'stagger-' + (i % 8 + 1)" (click)="selectRegion(rd.id)" [class.active]="selectedRegion === rd.id">
+                <div class="rl-dot" [style.background]="getRegionColor(rd.schools)"></div>
+                <span>{{ rd.name }}</span>
+                <span class="rl-count">{{ rd.schools }} schools</span>
+              </div>
+            </div>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       SUPPORT A CHAMPION SECTION (Harvard Style)
+  ══════════════════════════════════════════ -->
+  <section class="support-section scroll-animate fade-up">
+    <div class="container">
+      <div class="section-header-academic text-center">
+        <span class="academic-sub">Make an Impact</span>
+        <h2>Support a Champion</h2>
+        <p class="academic-desc-lead center">Empower school squads, fund technical arenas, or share programmatic suggestions to help shape Ghana's technological frontier.</p>
+      </div>
+
+      <div class="support-grid">
+        <!-- Option 1: By Mail -->
+        <div class="support-card" (click)="openSupportModal('mail')">
+          <div class="card-icon-wrap">
+            <span class="material-symbols-outlined">mail</span>
+          </div>
+          <div class="card-content">
+            <h3>Inquire via Mail</h3>
+            <p>Send institutional correspondence, coordinate equipment deliveries, or mail donation checks directly to our central coordination registry.</p>
+            <span class="read-more-link">
+              <span>Get Mail Details</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Option 2: Sponsor Team -->
+        <div class="support-card" (click)="openSupportModal('team')">
+          <div class="card-icon-wrap">
+            <span class="material-symbols-outlined">diversity_1</span>
+          </div>
+          <div class="card-content">
+            <h3>Sponsor a Team</h3>
+            <p>Directly fund microcontrollers, sensor kits, and laptop devices for high-need school squads preparing for active tracks.</p>
+            <span class="read-more-link">
+              <span>Sponsor a Squad</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Option 3: Sponsor Competition -->
+        <div class="support-card" (click)="openSupportModal('competition')">
+          <div class="card-icon-wrap">
+            <span class="material-symbols-outlined">emoji_events</span>
+          </div>
+          <div class="card-content">
+            <h3>Sponsor Competition</h3>
+            <p>Partner with us as a corporate or individual underwriter for regional qualifier events and the national grand final arena.</p>
+            <span class="read-more-link">
+              <span>Sponsor Events</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Option 4: Suggestions -->
+        <div class="support-card" (click)="openSupportModal('suggestion')">
+          <div class="card-icon-wrap">
+            <span class="material-symbols-outlined">reviews</span>
+          </div>
+          <div class="card-content">
+            <h3>Submit Suggestions</h3>
+            <p>Share syllabus advice, volunteer offers, or platform feedback with our academic committee to guide our roadmap.</p>
+            <span class="read-more-link">
+              <span>Submit Ideas</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       UNIFIED LOGIN GATEWAY — PHENOMENAL EDITION
+   ══════════════════════════════════════════ -->
+  <section id="portal" class="unified-gateway-section">
+    <div class="gateway-bg-orb"></div>
+    <div class="gateway-bg-orb orb-2"></div>
+    <div class="gateway-bg-grid"></div>
+    <div class="container">
+      <div class="gateway-content">
+        
+        <div class="gateway-intro">
+          <div class="gateway-crest">
+            <div class="crest-ring"></div>
+            <div class="crest-inner">
+              <span class="material-symbols-outlined">menu_book</span>
+            </div>
+          </div>
+          <span class="gateway-badge">Accredited Portal v2.0</span>
+          <h2>NTIC Gateway</h2>
+          <p class="gateway-desc">Enter your institutional credentials below. The system will automatically identify your role and route you to the appropriate workspace.</p>
+        </div>
+
+        <div class="gateway-card">
+          <div class="gateway-card-inner">
+            
+            <div class="gateway-card-header">
+              <div class="shield-crest" [class.scanning]="isLoggingIn">
+                <span class="material-symbols-outlined">menu_book</span>
+                <span class="radar-sweep"></span>
+                <span class="scan-laser"></span>
+              </div>
+              <h3>NTIC Secure Sign In</h3>
+              <p *ngIf="!detectedRoleName">Authenticate to access your personalized workspace</p>
+              <p *ngIf="detectedRoleName" class="role-detected">
+                <span class="material-symbols-outlined">verified</span>
+                Role identified: <strong>{{ detectedRoleName }}</strong>
+              </p>
+            </div>
+
+            <form (ngSubmit)="login()" #loginForm="ngForm" class="gateway-form">
+              
+              <div class="gf-group">
+                <label for="gw-email">Email or Access Pass</label>
+                <div class="gf-input-wrap">
+                  <span class="material-symbols-outlined gf-icon">mail</span>
+                  <input 
+                    type="text" 
+                    id="gw-email" 
+                    name="email" 
+                    [(ngModel)]="email" 
+                    required 
+                    placeholder="name@school.edu.gh or NTIC ticket"
+                    class="gf-input"
+                    (input)="detectRoleFromInput(email)"
+                    autocomplete="username"
+                  >
+                </div>
+              </div>
+
+              <div class="gf-group">
+                <label for="gw-pass">Password / OTP</label>
+                <div class="gf-input-wrap">
+                  <span class="material-symbols-outlined gf-icon">lock</span>
+                  <input 
+                    [type]="isPasswordVisible ? 'text' : 'password'"
+                    id="gw-pass" 
+                    name="password" 
+                    [(ngModel)]="password" 
+                    [required]="!isAdminEmail"
+                    placeholder="Enter your password or verification code"
+                    class="gf-input"
+                    autocomplete="current-password"
+                  >
+                  <button type="button" class="gf-pass-toggle" (click)="isPasswordVisible = !isPasswordVisible" tabindex="-1">
+                    <span class="material-symbols-outlined">{{ isPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="gf-error" *ngIf="loginError">
+                <span class="material-symbols-outlined">error_outline</span>
+                <span>{{ loginError }}</span>
+              </div>
+
+              <button type="submit" class="gf-submit" [disabled]="isLoggingIn || !loginForm.form.valid">
+                <ng-container *ngIf="!isLoggingIn">
+                  <span>Enter Authorized Workspace</span>
+                  <span class="material-symbols-outlined">arrow_right_alt</span>
+                </ng-container>
+                <ng-container *ngIf="isLoggingIn">
+                  <span class="gf-spinner"></span>
+                  <span>Verifying Credentials...</span>
+                </ng-container>
+              </button>
+
+              <label class="gf-remember">
+                <input type="checkbox" name="keepSignedIn" checked>
+                <span>Remember this device</span>
+              </label>
+            </form>
+
+            <!-- Telemetry Console -->
+            <div class="telemetry-console" *ngIf="telemetryLogs.length > 0">
+              <div class="console-header">
+                <span class="console-dot red"></span>
+                <span class="console-dot yellow"></span>
+                <span class="console-dot green"></span>
+                <span class="console-title">Security Telemetry</span>
+              </div>
+              <div class="console-body" #consoleBody>
+                <div class="console-line" *ngFor="let log of telemetryLogs">
+                  <span class="console-prompt">&gt;</span> {{ log }}
+                </div>
+                <div class="console-line active-line">
+                  <span class="console-prompt">&gt;</span><span class="console-cursor"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="gateway-card-footer">
+              <div class="gcf-status">
+                <span class="gcf-dot"></span>
+                <span>All systems secure. Encrypted channel active.</span>
+              </div>
+              <div class="gcf-shield">
+                <span class="material-symbols-outlined">verified_user</span>
+                <span>GDPA Act 843 Compliant</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       FOOTER (Harvard Style)
+  ══════════════════════════════════════════ -->
+  <footer class="academic-footer">
+    <div class="container">
+      
+      <div class="footer-top-crest">
+        <div class="footer-seal-wrap">
+          <div class="footer-seal">
+            <span class="material-symbols-outlined">menu_book</span>
+            <span class="seal-text">VERITAS</span>
+          </div>
+        </div>
+        <div class="footer-crest-text">
+          <h3>National Technology and Innovation Championship</h3>
+          <p>Accredited School Competition Platform of the Republic of Ghana</p>
+        </div>
+      </div>
+
+      <div class="footer-cols-grid">
+        <div class="footer-brief">
+          <p>Designed to replicate the scholastic integrity of top-tier academic systems, enabling students to construct pathways from local innovation to global engineering programs.</p>
+          <div class="contact-info-ac">
+            <p><strong>Contact:</strong> info&#64;ntic.gov.gh</p>
+            <p><strong>Hotline:</strong> +233 (0) 302 999 888</p>
+          </div>
+        </div>
+
+        <div class="footer-nav-col">
+          <h4>Competition Info</h4>
+          <ul>
+            <li><a href="#about">About The Heats</a></li>
+            <li><a href="#tracks">Tracks &amp; Syllabus</a></li>
+            <li><a routerLink="/leaderboard">School Leaderboard</a></li>
+            <li><a href="#portal">Rules &amp; Regulations</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-nav-col">
+          <h4>Portals</h4>
+          <ul>
+            <li><a href="#portal">Student Courses</a></li>
+            <li><a href="#portal">Instructor Mentoring</a></li>
+            <li><a href="#portal">School Admins Directory</a></li>
+            <li><a href="#portal">Judge Rubrics</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-nav-col">
+          <h4>Legal &amp; Admin</h4>
+          <ul>
+            <li><a href="#">Ministry of Education</a></li>
+            <li><a href="#">Ghana Education Service</a></li>
+            <li><a href="#">GDPA Data Shield Notice</a></li>
+            <li><a href="#">Terms &amp; Accessibility</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom-bar" style="flex-direction: column; gap: 16px; align-items: center;">
+        <p>&copy; 2026 Ministry of Education, Republic of Ghana. All rights reserved. Coordinated by the Science &amp; Technology Division.</p>
+        
+        <div class="data-shield-badge">
+          <span class="ds-icon">🛡️</span>
+          <span>GDPA PROTECTED · Act 843</span>
+        </div>
+      </div>
+
+    </div>
+  </footer>
+  <!-- ══════════════════════════════════════════
+       SUPPORT A CHAMPION MODAL
+  ══════════════════════════════════════════ -->
+  <div class="support-modal-backdrop" [class.open]="isSupportModalOpen" (click)="closeSupportModal()">
+    <div class="support-modal-card" (click)="$event.stopPropagation()">
+      <button class="close-modal-btn" (click)="closeSupportModal()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+
+      <!-- Content based on selected type -->
+      <div class="modal-body" *ngIf="!supportSubmitted">
+        
+        <!-- Header -->
+        <div class="modal-header-crest">
+          <span class="material-symbols-outlined crest-icon">
+            {{ activeSupportType === 'mail' ? 'mail' : 
+               activeSupportType === 'team' ? 'diversity_1' : 
+               activeSupportType === 'competition' ? 'emoji_events' : 'reviews' }}
+          </span>
+          <h3>
+            {{ activeSupportType === 'mail' ? 'Inquire via Mail' : 
+               activeSupportType === 'team' ? 'Sponsor a Registered Team' : 
+               activeSupportType === 'competition' ? 'Sponsor Competition' : 'Submit Suggestions' }}
+          </h3>
+          <p class="modal-subtitle">Direct correspondence path to the NTIC National Committee</p>
+        </div>
+
+        <form (ngSubmit)="submitSupportForm()" #modalForm="ngForm" class="academic-form">
+          <div class="form-row-ac">
+            <div class="form-group-academic">
+              <label for="sup-name">Full Name / Organization</label>
+              <div class="academic-input-wrap">
+                <span class="material-symbols-outlined input-icon-ac">person</span>
+                <input type="text" id="sup-name" name="sup-name" [(ngModel)]="supportForm.name" required placeholder="Dr. Kwame Mensah" class="ac-input">
+              </div>
+            </div>
+            <div class="form-group-academic">
+              <label for="sup-email">Contact E-mail</label>
+              <div class="academic-input-wrap">
+                <span class="material-symbols-outlined input-icon-ac">mail</span>
+                <input type="email" id="sup-email" name="sup-email" [(ngModel)]="supportForm.email" required placeholder="kwame@mensah.com" class="ac-input">
+              </div>
+            </div>
+          </div>
+
+          <!-- Specific Fields for Sponsor Team -->
+          <div *ngIf="activeSupportType === 'team'" class="form-group-academic">
+            <label for="sup-school">Select Target School Squad</label>
+            <div class="academic-input-wrap">
+              <span class="material-symbols-outlined input-icon-ac">school</span>
+              <select id="sup-school" name="sup-school" [(ngModel)]="supportForm.schoolName" class="ac-input select-ac">
+                <option value="Presbyterian Boys' Sec. School (PRESEC)">Presbyterian Boys' Sec. School (PRESEC) - Legon</option>
+                <option value="Achimota School">Achimota School - Greater Accra</option>
+                <option value="Prempeh College">Prempeh College - Kumasi</option>
+                <option value="Wesley Girls' High School">Wesley Girls' High School - Cape Coast</option>
+                <option value="Tamale SHS">Tamale SHS - Northern Region</option>
+                <option value="Other">Other / General Team Allocation Fund</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Specific Fields for Sponsor Competition -->
+          <div *ngIf="activeSupportType === 'competition'" class="form-group-academic">
+            <label for="sup-tier">Championship Sponsorship Level</label>
+            <div class="academic-input-wrap">
+              <span class="material-symbols-outlined input-icon-ac">payments</span>
+              <select id="sup-tier" name="sup-tier" [(ngModel)]="supportForm.competitionTier" class="ac-input select-ac">
+                <option value="regional">Regional Qualification Arena (₵25,000+)</option>
+                <option value="national">National Final Seminars & Heats (₵50,000+)</option>
+                <option value="grand_finale">Grand Finale Trophy & Innovation Cash Prizes (₵100,000+)</option>
+                <option value="general">General Logistics & Lab Equipment Grant (Any amount)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Message Field -->
+          <div class="form-group-academic">
+            <label for="sup-message">
+              {{ activeSupportType === 'mail' ? 'Mailing Address & Query Details' : 
+                 activeSupportType === 'suggestion' ? 'Your Ideas / Syllabus Suggestions' : 'Support / Partnership Message' }}
+            </label>
+            <div class="academic-input-wrap textarea-wrap">
+              <span class="material-symbols-outlined input-icon-ac">edit_note</span>
+              <textarea id="sup-message" name="sup-message" [(ngModel)]="supportForm.message" required rows="4" placeholder="Share your details with our desk..." class="ac-input ac-textarea"></textarea>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-crimson btn-full" [disabled]="!modalForm.form.valid">
+            <span>Send Institutional Request</span>
+            <span class="material-symbols-outlined">send</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Success Screen -->
+      <div class="modal-body success-screen" *ngIf="supportSubmitted">
+        <div class="success-crest-check">
+          <span class="material-symbols-outlined check-icon">check_circle</span>
+        </div>
+        <h3>Request Lodged Successfully</h3>
+        <p>Your support token has been encrypted and securely delivered to the National NTIC Secretariat. An officer will reply to your registered contact channel shortly.</p>
+        
+        <div class="ticket-receipt">
+          <div class="receipt-row"><span>Receipt ID:</span> <strong>NTIC-{{ 100000 + (activeSupportType ? activeSupportType.charCodeAt(0) : 77) }}-2026</strong></div>
+          <div class="receipt-row"><span>Status:</span> <strong class="badge-status">SECURE_QUEUED</strong></div>
+        </div>
+
+        <button class="btn btn-crimson btn-full" (click)="closeSupportModal()">
+          <span>Return to Homepage</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       LOGIN MODAL — STREAMLINED & PHENOMENAL
+   ══════════════════════════════════════════ -->
+  <div class="login-modal-backdrop" [class.open]="isLoginModalOpen" (click)="closeLoginModal()">
+    <div class="login-modal-card" (click)="$event.stopPropagation()">
+      <button class="close-modal-btn" (click)="closeLoginModal()" aria-label="Close modal">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+      
+      <div class="modal-body">
+        
+        <div class="login-modal-header">
+          <div class="lm-crest">
+            <span class="material-symbols-outlined">vpn_key</span>
+          </div>
+          <h2>NTIC Secure Sign In</h2>
+          <p *ngIf="!detectedRoleName">Enter your credentials to access your personalized workspace</p>
+          <p *ngIf="detectedRoleName" class="lm-role-detected">
+            <span class="material-symbols-outlined">verified</span>
+            Role identified: <strong>{{ detectedRoleName }}</strong>
+          </p>
+        </div>
+
+        <form (ngSubmit)="login()" #loginModalForm="ngForm" class="lm-form">
+          
+          <div class="lm-group">
+            <label for="lm-email">Email or Access Pass</label>
+            <div class="lm-input-wrap">
+              <span class="material-symbols-outlined lm-icon">mail</span>
+              <input 
+                type="text" 
+                id="lm-email" 
+                name="email" 
+                [(ngModel)]="email" 
+                required 
+                placeholder="name@school.edu.gh or NTIC ticket code"
+                class="lm-input"
+                (input)="detectRoleFromInput(email)"
+                autocomplete="username"
+              >
+              <span class="lm-input-glow"></span>
+            </div>
+          </div>
+
+          <div class="lm-group">
+            <label for="lm-pass">Password / OTP</label>
+            <div class="lm-input-wrap">
+              <span class="material-symbols-outlined lm-icon">lock</span>
+              <input 
+                [type]="isPasswordVisible ? 'text' : 'password'"
+                id="lm-pass" 
+                name="password" 
+                [(ngModel)]="password" 
+                [required]="!isAdminEmail"
+                placeholder="Enter your password or verification code"
+                class="lm-input"
+                autocomplete="current-password"
+              >
+              <button type="button" class="lm-pass-toggle" (click)="isPasswordVisible = !isPasswordVisible" tabindex="-1">
+                <span class="material-symbols-outlined">{{ isPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
+              </button>
+              <span class="lm-input-glow"></span>
+            </div>
+          </div>
+
+          <div class="lm-error" *ngIf="loginError">
+            <span class="material-symbols-outlined">error_outline</span>
+            <span>{{ loginError }}</span>
+          </div>
+
+          <button type="submit" class="lm-submit" [disabled]="isLoggingIn || !loginModalForm.form.valid">
+            <ng-container *ngIf="!isLoggingIn">
+              <span>Enter Authorized Workspace</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </ng-container>
+            <ng-container *ngIf="isLoggingIn">
+              <span class="lm-spinner"></span>
+              <span>Verifying Credentials...</span>
+            </ng-container>
+          </button>
+
+          <label class="lm-remember">
+            <input type="checkbox" name="keepSignedIn" checked>
+            <span>Remember this device</span>
+          </label>
+        </form>
+
+        <!-- Telemetry Console -->
+        <div class="telemetry-console" *ngIf="telemetryLogs.length > 0">
+          <div class="console-header">
+            <span class="console-dot red"></span>
+            <span class="console-dot yellow"></span>
+            <span class="console-dot green"></span>
+            <span class="console-title">Security Telemetry</span>
+          </div>
+          <div class="console-body">
+            <div class="console-line" *ngFor="let log of telemetryLogs">
+              <span class="console-prompt">&gt;</span> {{ log }}
+            </div>
+            <div class="console-line active-line">
+              <span class="console-prompt">&gt;</span><span class="console-cursor"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       FLOATING ACTION BUTTON
+  ══════════════════════════════════════════ -->
+  <div class="fab-register" [class.visible]="fabVisible">
+    <a routerLink="/registration" class="fab-btn">
+      <span class="material-symbols-outlined fab-icon">emoji_events</span>
+      <span class="fab-text">Register Your School</span>
+    </a>
+  </div>
+
+</div>

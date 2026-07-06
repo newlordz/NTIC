@@ -1,0 +1,481 @@
+<div class="page-canvas fade-in" *ngIf="activeRoleId !== 'student'">
+  <div class="page-header with-action">
+    <div><h1 class="page-title-main">Learning Management System</h1><p class="page-subtitle">Manage courses, track progress, and review weekly assignments</p></div>
+    <button class="btn btn-primary"><span class="material-symbols-outlined">add</span>New Course</button>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item" [class.active]="activeTab==='courses'" (click)="activeTab='courses'">
+      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">library_books</span>Training Tracks
+    </div>
+    <div class="tab-item" [class.active]="activeTab==='assignments'" (click)="activeTab='assignments'">
+      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">assignment</span>Assignment Review
+      <span class="badge error" style="margin-left:8px;">42</span>
+    </div>
+  </div>
+
+  <!-- ══ COURSES ══ -->
+  <div *ngIf="activeTab==='courses'">
+    <!-- Track Filter Pills -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+      <button class="btn btn-primary btn-sm">All Tracks</button>
+      <button class="btn btn-subtle btn-sm"><span class="track-chip coding" style="padding:0;">●</span> Coding</button>
+      <button class="btn btn-subtle btn-sm"><span class="track-chip robotics" style="padding:0;">●</span> Robotics</button>
+      <button class="btn btn-subtle btn-sm"><span class="track-chip ai" style="padding:0;">●</span> AI</button>
+      <button class="btn btn-subtle btn-sm"><span class="track-chip cyber" style="padding:0;">●</span> Cybersecurity</button>
+      <button class="btn btn-subtle btn-sm"><span class="track-chip innovation" style="padding:0;">●</span> Innovation</button>
+    </div>
+
+    <div class="grid-3">
+      <div *ngFor="let c of courses" class="card" style="cursor:pointer;transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='var(--shadow-elevated)'" onmouseout="this.style.boxShadow=''">
+        <div class="card-body">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+            <div style="width:48px;height:48px;border-radius:12px;background:var(--surface-container);display:flex;align-items:center;justify-content:center;">
+              <span class="material-symbols-outlined" style="font-size:24px;color:var(--primary)">{{c.icon}}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+              <span class="badge" [class]="c.status==='active' ? 'success' : 'primary'">{{c.status | titlecase}}</span>
+              <span class="badge neutral">{{c.level}}</span>
+            </div>
+          </div>
+          <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">{{c.title}}</h3>
+          <p style="font-size:12px;color:var(--on-surface-variant);margin-bottom:16px;">{{c.modules}} Modules &bull; {{c.enrolled}} enrolled</p>
+          <div *ngIf="c.completion > 0">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+              <span style="color:var(--on-surface-variant)">Cohort Completion</span>
+              <span style="font-weight:700;color:var(--secondary)">{{c.completion}}%</span>
+            </div>
+            <div class="progress-bar secondary"><div class="progress-fill" [style.width.%]="c.completion"></div></div>
+          </div>
+          <div *ngIf="c.completion === 0" style="font-size:12px;color:var(--on-surface-variant);padding:8px 0;">Enrollment Open</div>
+          <div style="display:flex;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid var(--outline-variant);">
+            <span class="track-chip" [class]="c.track">{{c.track}}</span>
+            <button class="btn btn-ghost btn-sm" style="margin-left:auto;">Manage</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ ASSIGNMENTS ══ -->
+  <div *ngIf="activeTab==='assignments'" style="display:grid;grid-template-columns:1fr 420px;gap:20px;">
+    <div class="card">
+      <div class="card-header"><h3>Pending Submissions</h3></div>
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr><th>Student</th><th>Assignment</th><th>Track</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let s of submissions">
+              <td>
+                <div style="font-weight:600;">{{s.student}}</div>
+                <div style="font-size:12px;color:var(--on-surface-variant)">{{s.school}}</div>
+              </td>
+              <td>
+                <div style="font-weight:500;font-size:14px;">{{s.assignment}}</div>
+                <div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--on-surface-variant);margin-top:2px;">{{s.file}}</div>
+              </td>
+              <td><span class="track-chip" [class]="s.track">{{s.track}}</span></td>
+              <td style="font-size:12px;color:var(--on-surface-variant)">{{s.time}}</td>
+              <td>
+                <span class="badge" [class]="s.status==='pending'?'warning':s.status==='approved'?'success':'error'">{{s.status}}</span>
+              </td>
+              <td>
+                <div style="display:flex;gap:4px;">
+                  <button class="btn btn-secondary btn-sm">Approve</button>
+                  <button class="btn btn-subtle btn-sm">Review</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Assignment Review Panel -->
+    <div class="card">
+      <div class="card-header"><h3>Review Panel</h3></div>
+      <div class="card-body">
+        <div style="background:var(--surface-container-low);border-radius:8px;padding:14px;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;">KA</div>
+            <div>
+              <div style="font-weight:700;font-size:14px;">Kwame Asante</div>
+              <div style="font-size:12px;color:var(--on-surface-variant)">STU-0012 &bull; Achimota SHS</div>
+            </div>
+            <span class="track-chip coding" style="margin-left:auto;">coding</span>
+          </div>
+          <div style="font-weight:600;font-size:15px;margin-bottom:4px;">Dijkstra's Algorithm Implementation</div>
+          <div style="background:var(--surface-container-lowest);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--on-surface-variant);">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;color:var(--secondary);"><span class="material-symbols-outlined" style="font-size:16px;">code</span> pathfinder_v2.py</div>
+            <pre style="margin:0;white-space:pre-wrap;">def dijkstra(graph, start):
+    dist = dict.fromkeys(graph, float('inf'))
+    dist[start] = 0
+    pq = [(0, start)]
+    while pq:
+        d, u = heappop(pq)
+        ...</pre>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Score (0 – 100)</label>
+          <input class="form-control" type="number" min="0" max="100" placeholder="Enter score">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Instructor Feedback & Comments</label>
+          <textarea class="form-control" rows="5" placeholder="Write detailed feedback for the student..."></textarea>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-subtle" style="flex:1;justify-content:center;"><span class="material-symbols-outlined">replay</span>Request Resubmission</button>
+          <button class="btn btn-secondary" style="flex:1;justify-content:center;"><span class="material-symbols-outlined">task_alt</span>Approve</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     STUDENT PORTAL LMS VIEW
+     ========================================================= -->
+<div class="page-canvas fade-in" *ngIf="activeRoleId === 'student'">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title-main">Student Training Portal</h1>
+      <p class="page-subtitle">Welcome back, {{ studentProfile.name }}. Access your coursework, track submissions, and view competition resources.</p>
+    </div>
+  </div>
+
+  <!-- Student Tab Bar -->
+  <div class="tab-bar">
+    <div class="tab-item" [class.active]="studentActiveTab === 'courses'" (click)="studentActiveTab = 'courses'">
+      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:6px;">library_books</span>My Training Tracks
+    </div>
+    <div class="tab-item" [class.active]="studentActiveTab === 'assignments'" (click)="studentActiveTab = 'assignments'">
+      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:6px;">assignment</span>My Assignments
+      <span class="badge success" style="margin-left:8px;" *ngIf="studentSubmissions.length > 0">{{ studentSubmissions.length }}</span>
+    </div>
+    <div class="tab-item" [class.active]="studentActiveTab === 'badge'" (click)="studentActiveTab = 'badge'">
+      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:6px;">badge</span>My Student Pass
+    </div>
+  </div>
+
+  <!-- Split Grid Layout -->
+  <div class="student-portal-grid">
+    
+    <!-- LEFT MAIN COLUMN -->
+    <div class="portal-main-panel">
+      
+      <!-- ══ TAB 1: STUDENT COURSES ══ -->
+      <div *ngIf="studentActiveTab === 'courses'" class="fade-in">
+        <div class="grid-2">
+          <div *ngFor="let course of studentCourses" class="card" style="margin-bottom: 16px;">
+            <div class="card-body">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+                <div style="width:48px; height:48px; border-radius:12px; background:var(--surface-container); display:flex; align-items:center; justify-content:center;">
+                  <span class="material-symbols-outlined" style="font-size:24px; color:var(--primary)">{{ course.icon }}</span>
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+                  <span class="badge success">Active</span>
+                  <span class="badge neutral" style="font-size: 10px;">Intermediate</span>
+                </div>
+              </div>
+              <h3 style="font-size:15px; font-weight:700; margin-bottom:4px;">{{ course.title }}</h3>
+              <p style="font-size:12px; color:var(--on-surface-variant); margin-bottom:16px;">{{ course.module }} &bull; Last active {{ course.lastActive }}</p>
+              
+              <div>
+                <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                  <span style="color:var(--on-surface-variant)">Course Progress</span>
+                  <span style="font-weight:700; color:var(--primary)">{{ course.progress }}%</span>
+                </div>
+                <div class="progress-bar primary" style="height:6px; border-radius:3px; background:var(--surface-container-low); overflow:hidden;">
+                  <div class="progress-fill" [style.width.%]="course.progress" style="height:100%; background:var(--primary); border-radius:3px;"></div>
+                </div>
+              </div>
+              
+              <div style="display:flex; gap:6px; margin-top:16px; padding-top:12px; border-top:1px solid var(--outline-variant); align-items:center;">
+                <span class="track-chip coding">Coding</span>
+                <button class="btn btn-primary btn-sm" style="margin-left:auto; padding:4px 12px; font-size:12px;" onclick="alert('Resuming course syllabus module...')">Resume Course</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Course Syllabus / Outline details -->
+        <div class="card" style="margin-top:16px;">
+          <div class="card-header">
+            <h3>Syllabus Overview — Python Data Structures</h3>
+          </div>
+          <div class="card-body">
+            <p style="font-size:13px; color:var(--on-surface-variant); margin-bottom:16px;">Complete these modules to qualify for the national timed code sprint qualifiers.</p>
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div *ngFor="let mod of [
+                { id: '1', title: 'Module 1: Big O & Complexity Sprints', status: 'completed', desc: 'Analyzing execution steps, auxiliary memory, and run-time optimization.' },
+                { id: '2', title: 'Module 2: Custom List & Stack Engines', status: 'completed', desc: 'Designing linear nodes, stacks, and double-ended queues from scratch.' },
+                { id: '3', title: 'Module 3: Binary Tree Rotations & AVL', status: 'completed', desc: 'Implementing height balance, search traversals, and dynamic index trees.' },
+                { id: '4', title: 'Module 4: Dijkstra & Graph Pathfinders', status: 'active', desc: 'Coding shortest paths, adjacency weights, and priority heap routers.' },
+                { id: '5', title: 'Module 5: Dynamic Programming Sprints', status: 'pending', desc: 'Memoization, tabulation, knapsack solver, and substring scoring.' }
+              ]" style="display:flex; gap:12px; align-items:flex-start; background:var(--surface-container-low); padding:12px; border-radius:10px;">
+                <span class="material-symbols-outlined" style="font-size:20px;" [style.color]="mod.status === 'completed' ? '#10b981' : mod.status === 'active' ? 'var(--primary)' : 'var(--outline)'">
+                  {{ mod.status === 'completed' ? 'check_circle' : mod.status === 'active' ? 'play_circle' : 'lock' }}
+                </span>
+                <div style="flex:1;">
+                  <strong style="font-size:13px; color:var(--on-surface);">{{ mod.title }}</strong>
+                  <p style="font-size:11.5px; color:var(--on-surface-variant); margin:2px 0 0;">{{ mod.desc }}</p>
+                </div>
+                <span class="badge" [class]="mod.status === 'completed' ? 'secondary' : mod.status === 'active' ? 'primary' : 'neutral'">
+                  {{ mod.status | titlecase }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ TAB 2: MY ASSIGNMENTS ══ -->
+      <div *ngIf="studentActiveTab === 'assignments'" class="fade-in">
+        
+        <!-- Submit Assignment Form -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-header">
+            <h3>Submit Assignment Source Code</h3>
+          </div>
+          <div class="card-body">
+            <p style="color:var(--on-surface-variant); font-size:13px; margin-bottom:20px;">
+              Upload your code script files (.py, .ino, .zip, etc.) for evaluation.
+            </p>
+
+            <div class="error-banner" *ngIf="showUploadSuccess" style="background:rgba(16, 185, 129, 0.1); border:1px solid #10b981; color:#10b981; padding:12px; border-radius:8px; display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+              <span class="material-symbols-outlined">check_circle</span>
+              <span>Assignment submitted successfully! Awaiting mentor review.</span>
+            </div>
+
+            <div class="grid-2" style="margin-bottom:16px;">
+              <div class="form-group">
+                <label class="form-label">Select Course Track</label>
+                <select class="form-control form-select" [(ngModel)]="newSubmission.courseTitle">
+                  <option value="Python Data Structures">Python Data Structures</option>
+                  <option value="Web Dev Bootcamp">Web Dev Bootcamp</option>
+                  <option value="Intro to Neural Networks">Intro to Neural Networks</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Assignment Title *</label>
+                <input class="form-control" type="text" placeholder="e.g. Dijkstra's Pathfinder Sprints" [(ngModel)]="newSubmission.assignmentName">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:16px;">
+              <label class="form-label">Filename to Upload *</label>
+              <div class="academic-input-wrap" style="position:relative;">
+                <span class="material-symbols-outlined input-icon-ac" style="top:11px; left:12px; position:absolute; color:var(--on-surface-variant); font-size:18px;">code</span>
+                <input class="form-control" type="text" placeholder="e.g., pathfinder_submission.py" [(ngModel)]="newSubmission.fileName" style="padding-left:40px;">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:20px;">
+              <label class="form-label">Submission Notes / Documentation</label>
+              <textarea class="form-control" rows="3" placeholder="Explain your implementation details, runtime complexity, or test case reports..." [(ngModel)]="newSubmission.notes"></textarea>
+            </div>
+
+            <div class="upload-zone" style="margin-bottom:20px; border: 1.5px dashed var(--outline-variant); background:var(--surface-container-lowest); padding:20px; border-radius:12px; text-align:center;">
+              <span class="material-symbols-outlined upload-icon" style="font-size:32px; color:var(--outline); margin-bottom:8px; display:inline-block;">cloud_upload</span>
+              <p style="font-size:12px; color:var(--on-surface-variant); margin:0;">Drag & drop your source code here or <strong>browse local storage</strong></p>
+              <span style="font-size:10px; color:var(--outline);">Acceptable files: .py, .ino, .cpp, .zip, .pdf (Max 10MB)</span>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end;">
+              <button class="btn btn-primary" (click)="submitAssignment()">
+                <span class="material-symbols-outlined">send</span>
+                Submit Code File
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submission History List -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Submission & Evaluation History</h3>
+          </div>
+          <div class="card-body">
+            <div style="display:flex; flex-direction:column; gap:14px;">
+              <div *ngFor="let sub of studentSubmissions" style="background:var(--surface-container-low); border:1px solid var(--outline-variant); border-radius:12px; padding:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                  <div>
+                    <h4 style="font-size:14px; font-weight:750; color:var(--on-surface); margin:0;">{{ sub.assignment }}</h4>
+                    <span style="font-size:11.5px; color:var(--on-surface-variant);">Submitted on {{ sub.date }}</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="badge" [class]="sub.status === 'approved' ? 'success' : sub.status === 'pending' ? 'warning' : 'error'">
+                      {{ sub.status | uppercase }}
+                    </span>
+                    <strong *ngIf="sub.grade !== null" style="font-size:14px; color:var(--primary);">{{ sub.grade }}/100</strong>
+                  </div>
+                </div>
+
+                <div style="background:var(--surface-container-lowest); border:1px solid var(--outline-variant); border-radius:8px; padding:8px 12px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--on-surface-variant); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                  <span class="material-symbols-outlined" style="font-size:16px; color:var(--primary);">code</span>
+                  {{ sub.file }}
+                </div>
+
+                <div style="background:rgba(0, 63, 135, 0.03); border-left:3px solid var(--primary); border-radius:4px; padding:8px 12px; font-size:11.5px; color:var(--on-surface-variant);">
+                  <strong>Mentor Feedback:</strong> {{ sub.feedback }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ TAB 3: STUDENT ID PASS DETAIL ══ -->
+      <div *ngIf="studentActiveTab === 'badge'" class="fade-in">
+        <div class="card">
+          <div class="card-header">
+            <h3>Accredited Student Digital ID</h3>
+          </div>
+          <div class="card-body">
+            <p style="font-size:13px; color:var(--on-surface-variant); margin-bottom:16px;">
+              This accredited digital ID card verifies your enrollment status and track qualification. It serves as your official championship pass.
+            </p>
+            
+            <div style="background:var(--surface-container-low); padding:16px; border-radius:12px; margin-bottom:20px;">
+              <h4 style="font-size:13px; font-weight:750; color:var(--on-surface); margin:0 0 12px; display:flex; align-items:center; gap:8px;">
+                <span class="material-symbols-outlined" style="color:#10b981;">verified_user</span> MoE Accreditation Data
+              </h4>
+              <ul style="font-size:12px; color:var(--on-surface-variant); padding-left:20px; display:flex; flex-direction:column; gap:8px; margin:0;">
+                <li><strong>Verification Registry:</strong> MoE-GH-NTIC-2026-STU-0012</li>
+                <li><strong>Status:</strong> Verified & Active (Active Competitor)</li>
+                <li><strong>Acquisition Channel:</strong> Registered via Achimota School Administration Portal</li>
+                <li><strong>Privacy Shield:</strong> Compliant with Ghana Data Protection Act 2012 (Act 843).</li>
+              </ul>
+            </div>
+
+            <div style="display:flex; gap:12px;">
+              <button class="btn btn-primary" onclick="alert('Downloading badge PDF...')">
+                <span class="material-symbols-outlined">download</span> Download PDF Badge
+              </button>
+              <button class="btn btn-subtle" onclick="alert('Regenerating digital credentials security keys...')">
+                <span class="material-symbols-outlined">key</span> Regenerate Token Keys
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT SIDEBAR COLUMN -->
+    <div class="portal-sidebar-panel">
+      
+      <!-- Student Badge Card -->
+      <div class="student-badge-container">
+        <div class="student-pass-card">
+          <div class="card-glow-bg"></div>
+          
+          <div class="pass-header">
+            <span class="pass-brand">NTIC CHAMPIONSHIP</span>
+            <span class="pass-status">ACTIVE</span>
+          </div>
+
+          <div class="pass-avatar-wrap">
+            <div class="pass-avatar">
+              <span class="avatar-initials">{{ studentProfile.avatar }}</span>
+            </div>
+          </div>
+
+          <h2 class="pass-name">{{ studentProfile.name }}</h2>
+          <div class="pass-id">{{ studentProfile.id }}</div>
+
+          <div class="pass-school-row">
+            <span class="material-symbols-outlined">school</span>
+            <span class="school-name">{{ studentProfile.school }}</span>
+          </div>
+
+          <div class="pass-track-badge">
+            {{ studentProfile.track }}
+          </div>
+
+          <!-- Skills metrics in badge -->
+          <div class="pass-skills">
+            <div class="skill-row">
+              <span class="skill-label">Algorithm Design</span>
+              <div class="skill-bar-wrap">
+                <div class="skill-bar-fill advanced"></div>
+              </div>
+              <span class="skill-val">Advanced</span>
+            </div>
+            <div class="skill-row">
+              <span class="skill-label">Hardware / IoT</span>
+              <div class="skill-bar-wrap">
+                <div class="skill-bar-fill intermediate"></div>
+              </div>
+              <span class="skill-val">Intermediate</span>
+            </div>
+            <div class="skill-row">
+              <span class="skill-label">Data & AI</span>
+              <div class="skill-bar-wrap">
+                <div class="skill-bar-fill novice"></div>
+              </div>
+              <span class="skill-val">Novice</span>
+            </div>
+          </div>
+
+          <!-- Security Barcode with scanning laser -->
+          <div class="pass-barcode-wrap">
+            <div class="barcode-laser-line"></div>
+            <div class="barcode-lines">
+              <span class="line w2"></span><span class="line w1"></span><span class="line w3"></span>
+              <span class="line w1"></span><span class="line w2"></span><span class="line w3"></span>
+              <span class="line w1"></span><span class="line w3"></span><span class="line w2"></span>
+              <span class="line w2"></span><span class="line w1"></span><span class="line w3"></span>
+            </div>
+            <div class="ticket-code-display" style="font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:700; color:#1e293b; margin-top:2px;">
+              REG-ID-STU-0012-NTIC
+            </div>
+            <span class="compliance-pill">GDPA COMPLIANT · ACT 843</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mentor Panel -->
+      <div class="sidebar-panel-card">
+        <h3><span class="material-symbols-outlined">co_present</span> Assigned Mentor</h3>
+        <div class="mentor-info-row">
+          <div class="mentor-avatar">EM</div>
+          <div class="mentor-meta">
+            <strong>{{ studentProfile.mentor }}</strong>
+            <span>School Coach & Mentor</span>
+          </div>
+        </div>
+        <div class="mentor-contact">
+          <div class="contact-item">
+            <span class="material-symbols-outlined">mail</span>
+            <span>{{ studentProfile.mentorEmail }}</span>
+          </div>
+          <div class="contact-item">
+            <span class="material-symbols-outlined">call</span>
+            <span>+233 24 456 7890</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active heat schedule tracker -->
+      <div class="sidebar-panel-card">
+        <h3><span class="material-symbols-outlined">event</span> Next Track Heat</h3>
+        <div class="heat-info-box">
+          <div class="heat-title">Regional Coding Qualifier</div>
+          <div class="heat-detail">
+            <span class="material-symbols-outlined">calendar_month</span>
+            <span>July 15, 2026 · 9:00 GMT</span>
+          </div>
+          <div class="heat-detail">
+            <span class="material-symbols-outlined">location_on</span>
+            <span>Accra Tech Center Arena</span>
+          </div>
+          <div class="heat-status">CONFIRMED APPLICANT</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>

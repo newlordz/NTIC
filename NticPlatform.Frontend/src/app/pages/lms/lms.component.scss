@@ -1,0 +1,413 @@
+.student-portal-grid {
+  display: grid;
+  grid-template-columns: 1fr 350px;
+  gap: 24px;
+  margin-top: 20px;
+  align-items: start;
+}
+
+@media (max-width: 992px) {
+  .student-portal-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- STUDENT BADGE PASS CARD --- */
+.student-badge-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.student-pass-card {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  color: #1e293b;
+
+  .card-glow-bg {
+    position: absolute;
+    top: -50px;
+    left: -50px;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
+    z-index: 0;
+  }
+
+  .pass-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1.5px solid #f1f5f9;
+    padding-bottom: 10px;
+    margin-bottom: 16px;
+    z-index: 1;
+
+    .pass-brand {
+      font-size: 11px;
+      font-weight: 850;
+      color: var(--primary);
+      letter-spacing: 0.05em;
+    }
+
+    .pass-status {
+      font-size: 8px;
+      font-weight: 800;
+      background: rgba(16, 185, 129, 0.1);
+      color: #10b981;
+      padding: 2px 8px;
+      border-radius: 20px;
+      letter-spacing: 0.04em;
+    }
+  }
+
+  .pass-avatar-wrap {
+    position: relative;
+    margin-bottom: 12px;
+    z-index: 1;
+
+    .pass-avatar {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid #ffffff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+      .avatar-initials {
+        font-size: 24px;
+        font-weight: 800;
+        color: #ffffff;
+      }
+    }
+  }
+
+  .pass-name {
+    font-size: 16px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 4px 0 2px;
+    text-align: center;
+    z-index: 1;
+  }
+
+  .pass-id {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748b;
+    background: #f8fafc;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    z-index: 1;
+  }
+
+  .pass-school-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 14px;
+    z-index: 1;
+
+    .material-symbols-outlined {
+      font-size: 16px;
+      color: #64748b;
+    }
+
+    .school-name {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #475569;
+    }
+  }
+
+  .pass-track-badge {
+    font-size: 9.5px;
+    font-weight: 800;
+    color: #ffffff;
+    background: var(--primary);
+    padding: 4px 14px;
+    border-radius: 12px;
+    letter-spacing: 0.05em;
+    margin-bottom: 18px;
+    text-align: center;
+    width: 100%;
+    z-index: 1;
+    text-transform: uppercase;
+  }
+
+  .pass-skills {
+    width: 100%;
+    margin-bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 1;
+
+    .skill-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+
+      .skill-label {
+        font-size: 9.5px;
+        font-weight: 700;
+        color: #64748b;
+        width: 70px;
+      }
+
+      .skill-bar-wrap {
+        flex: 1;
+        height: 5px;
+        background: #f1f5f9;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+
+      .skill-bar-fill {
+        height: 100%;
+        width: 0;
+        background: var(--primary);
+        border-radius: 3px;
+        transition: width 0.6s ease;
+
+        &.novice { width: 33%; }
+        &.intermediate { width: 66%; }
+        &.advanced { width: 100%; }
+      }
+
+      .skill-val {
+        font-size: 9px;
+        font-weight: 700;
+        color: #475569;
+        width: 60px;
+        text-align: right;
+      }
+    }
+  }
+
+  .pass-barcode-wrap {
+    position: relative;
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    z-index: 1;
+
+    .barcode-laser-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 2px;
+      background: #ef4444;
+      box-shadow: 0 0 6px #ef4444;
+      animation: barcodeScan 3s infinite linear;
+      z-index: 10;
+    }
+
+    .barcode-lines {
+      display: flex;
+      height: 18px;
+      align-items: stretch;
+      gap: 2px;
+      opacity: 0.8;
+
+      .line {
+        background: #0f172a;
+        &.w1 { width: 1px; }
+        &.w2 { width: 2.5px; }
+        &.w3 { width: 4px; }
+      }
+    }
+
+    .compliance-pill {
+      font-size: 7.5px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: #10b981;
+    }
+  }
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* --- SIDEBAR CARDS --- */
+.sidebar-panel-card {
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+
+  h3 {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: var(--on-surface);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--outline-variant);
+    padding-bottom: 8px;
+  }
+
+  .mentor-info-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+
+    .mentor-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(99, 102, 241, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .mentor-meta {
+      display: flex;
+      flex-direction: column;
+      
+      strong {
+        font-size: 13px;
+        color: var(--on-surface);
+      }
+      span {
+        font-size: 11px;
+        color: var(--on-surface-variant);
+      }
+    }
+  }
+
+  .mentor-contact {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--surface-container-low);
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 11px;
+
+    .contact-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--on-surface-variant);
+      
+      .material-symbols-outlined {
+        font-size: 14px;
+      }
+    }
+  }
+
+  .heat-info-box {
+    background: var(--surface-container-low);
+    padding: 12px;
+    border-radius: 10px;
+    border-left: 4px solid #10b981;
+
+    .heat-title {
+      font-size: 12.5px;
+      font-weight: 750;
+      color: var(--on-surface);
+      margin-bottom: 4px;
+    }
+
+    .heat-detail {
+      font-size: 11px;
+      color: var(--on-surface-variant);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .heat-status {
+      font-size: 9px;
+      font-weight: 800;
+      color: #10b981;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  }
+}
+
+/* --- ANIMATIONS --- */
+@keyframes barcodeScan {
+  0% { top: 4px; }
+  50% { top: 22px; }
+  100% { top: 4px; }
+}
+
+/* --- DARK MODE ADJUSTMENTS FOR LMS --- */
+:host-context(body.dark-theme) {
+  .student-pass-card {
+    background: #0f172a !important;
+    border-color: var(--outline-variant) !important;
+    color: #ffffff !important;
+
+    .card-glow-bg {
+      background: radial-gradient(circle, rgba(172, 199, 255, 0.08) 0%, rgba(15, 23, 42, 0) 70%) !important;
+    }
+
+    .pass-header {
+      border-bottom-color: var(--outline-variant) !important;
+      .pass-brand { color: var(--primary) !important; }
+    }
+
+    .pass-avatar {
+      border-color: #0f172a !important;
+    }
+
+    .pass-name { color: #ffffff !important; }
+    .pass-id { background: var(--surface-container-low) !important; color: var(--on-surface-variant) !important; }
+    .pass-school-row {
+      .school-name { color: var(--on-surface-variant) !important; }
+    }
+
+    .pass-skills .skill-row {
+      .skill-bar-wrap { background: var(--surface-container-low) !important; }
+      .skill-val { color: var(--on-surface-variant) !important; }
+    }
+
+    .pass-barcode-wrap {
+      background: #ffffff !important; /* Keep barcode area white for contrast */
+      border-color: var(--outline-variant) !important;
+      .line { background: #0f172a !important; }
+      .ticket-code-display { color: #0f172a !important; }
+    }
+  }
+}

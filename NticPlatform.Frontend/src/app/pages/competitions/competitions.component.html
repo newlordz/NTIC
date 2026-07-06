@@ -1,0 +1,208 @@
+<div class="page-canvas fade-in">
+  <div class="page-header with-action">
+    <div>
+      <h1 class="page-title-main">Competitions</h1>
+      <p class="page-subtitle">Manage all competition tracks, scoring and team registrations</p>
+    </div>
+    <button *ngIf="isAdmin" class="btn btn-primary" (click)="openCreateModal()">
+      <span class="material-symbols-outlined">add</span>Create Competition
+    </button>
+  </div>
+
+  <!-- Quick Stats -->
+  <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
+    <div class="stat-card primary">
+      <div class="stat-bg-icon material-symbols-outlined">emoji_events</div>
+      <div class="stat-label">
+        <span class="material-symbols-outlined">emoji_events</span>Active
+      </div>
+      <div class="stat-value">{{ activeCount }}</div>
+    </div>
+    <div class="stat-card secondary">
+      <div class="stat-bg-icon material-symbols-outlined">groups</div>
+      <div class="stat-label">
+        <span class="material-symbols-outlined">groups</span>Registered Teams
+      </div>
+      <div class="stat-value">{{ totalTeamsCount }}</div>
+    </div>
+    <div class="stat-card error">
+      <div class="stat-bg-icon material-symbols-outlined">gavel</div>
+      <div class="stat-label">
+        <span class="material-symbols-outlined">gavel</span>Pending Judging
+      </div>
+      <div class="stat-value">{{ pendingJudgingCount }}</div>
+    </div>
+    <div class="stat-card tertiary">
+      <div class="stat-bg-icon material-symbols-outlined">military_tech</div>
+      <div class="stat-label">
+        <span class="material-symbols-outlined">military_tech</span>Finals This Week
+      </div>
+      <div class="stat-value">{{ finalsThisWeek }}</div>
+    </div>
+  </div>
+
+  <div class="grid-3" style="gap:16px;">
+    <!-- Empty State -->
+    <div *ngIf="competitions.length === 0" class="empty-state-card">
+      <span class="material-symbols-outlined empty-icon">emoji_events</span>
+      <h3>No Competitions Registered</h3>
+      <p>There are no active competition tracks registered on the platform right now.</p>
+      <button *ngIf="isAdmin" class="btn btn-primary" (click)="openCreateModal()">
+        <span class="material-symbols-outlined">add</span>Create Competition
+      </button>
+    </div>
+
+    <!-- Competition Cards -->
+    <div *ngFor="let c of competitions" class="card" style="cursor:pointer;transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='var(--shadow-elevated)'" onmouseout="this.style.boxShadow=''">
+      <div [class]="'track-chip '+c.track" style="border-radius:12px 12px 0 0;padding:0;height:4px;display:block;width:100%;"></div>
+      <div class="card-body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+          <div style="width:44px;height:44px;border-radius:10px;background:var(--surface-container);display:flex;align-items:center;justify-content:center;">
+            <span class="material-symbols-outlined" style="color:var(--primary)">{{c.icon}}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="badge" [class]="c.status==='active'?'success':'primary'">{{c.status | titlecase}}</span>
+            <button *ngIf="isAdmin" class="btn-delete-comp" (click)="deleteCompetition(c.id, $event)" title="Delete Competition">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </div>
+        </div>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;line-height:1.3;color:var(--on-surface);">{{c.title}}</h3>
+        <p style="font-size:12px;color:var(--on-surface-variant);margin-bottom:14px;">{{c.category}}</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+          <div style="background:var(--surface-container-low);border-radius:8px;padding:8px 10px;">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--on-surface-variant);margin-bottom:2px;">Teams</div>
+            <div style="font-size:16px;font-weight:800;color:var(--primary);">{{c.teams}}</div>
+          </div>
+          <div style="background:var(--surface-container-low);border-radius:8px;padding:8px 10px;">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--on-surface-variant);margin-bottom:2px;">Prize</div>
+            <div style="font-size:16px;font-weight:800;color:var(--secondary);">{{c.prize}}</div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--on-surface-variant);margin-bottom:4px;">
+          <span>Submissions Progress</span><span style="font-weight:700;">{{c.progress}}%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" [style.width.%]="c.progress"></div></div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--outline-variant);">
+          <div style="font-size:12px;color:var(--on-surface-variant);display:flex;align-items:center;gap:4px;">
+            <span class="material-symbols-outlined" style="font-size:14px;">event</span>{{c.deadline}}
+          </div>
+          <button class="btn btn-ghost btn-sm">Manage</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE COMPETITION DIALOG MODAL -->
+<div class="modal-backdrop-comp" [class.open]="isCreateModalOpen" (click)="closeCreateModal()">
+  <div class="modal-card-comp" (click)="$event.stopPropagation()">
+    <div class="modal-header-comp">
+      <h3>Create New Competition</h3>
+      <button class="close-btn" (click)="closeCreateModal()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <form (ngSubmit)="submitCreateForm()" #compForm="ngForm" class="comp-form">
+      <div class="form-group-comp">
+        <label for="title">Competition Title</label>
+        <input 
+          type="text" 
+          id="title" 
+          name="title" 
+          [(ngModel)]="formComp.title" 
+          required 
+          placeholder="e.g. Robotics Grand Prix" 
+          class="input-comp"
+        >
+      </div>
+
+      <div class="form-group-comp">
+        <label for="track">Competition Track</label>
+        <select 
+          id="track" 
+          name="track" 
+          [(ngModel)]="formComp.track" 
+          class="input-comp"
+        >
+          <option value="coding">Coding & Algorithms</option>
+          <option value="robotics">Robotics & IoT</option>
+          <option value="ai">Artificial Intelligence</option>
+          <option value="cyber">Cybersecurity CTF</option>
+          <option value="innovation">Open Innovation</option>
+        </select>
+      </div>
+
+      <div class="form-group-comp">
+        <label for="category">Category Description</label>
+        <input 
+          type="text" 
+          id="category" 
+          name="category" 
+          [(ngModel)]="formComp.category" 
+          required 
+          placeholder="e.g. Line Following & Robotics Heats" 
+          class="input-comp"
+        >
+      </div>
+
+      <div class="form-row-ac" style="display:flex;gap:12px;">
+        <div class="form-group-comp" style="flex:1;">
+          <label for="deadline">Finals Date</label>
+          <input 
+            type="date" 
+            id="deadline" 
+            name="deadline" 
+            [(ngModel)]="formComp.deadline" 
+            required 
+            class="input-comp"
+          >
+        </div>
+        <div class="form-group-comp" style="flex:1;">
+          <label for="prize">Grand Prize Pool</label>
+          <input 
+            type="text" 
+            id="prize" 
+            name="prize" 
+            [(ngModel)]="formComp.prize" 
+            required 
+            placeholder="e.g. ₵ 5,000" 
+            class="input-comp"
+          >
+        </div>
+      </div>
+
+      <div class="form-row-ac" style="display:flex;gap:12px;">
+        <div class="form-group-comp" style="flex:1;">
+          <label for="status">Status</label>
+          <select id="status" name="status" [(ngModel)]="formComp.status" class="input-comp">
+            <option value="registration">Registration Open</option>
+            <option value="active">Active Heats</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+        <div class="form-group-comp" style="flex:1;">
+          <label for="progress">Progress (%)</label>
+          <input 
+            type="number" 
+            id="progress" 
+            name="progress" 
+            [(ngModel)]="formComp.progress" 
+            min="0" 
+            max="100" 
+            required 
+            class="input-comp"
+          >
+        </div>
+      </div>
+
+      <div class="form-actions-comp">
+        <button type="button" class="btn-cancel" (click)="closeCreateModal()">Cancel</button>
+        <button type="submit" class="btn-submit" [disabled]="!compForm.form.valid">Create Track</button>
+      </div>
+    </form>
+  </div>
+</div>

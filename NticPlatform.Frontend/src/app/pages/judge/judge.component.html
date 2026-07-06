@@ -1,0 +1,224 @@
+<div class="judge-arena" @arenaFade>
+  <!-- Epic Arena Header -->
+  <header class="arena-header">
+    <canvas #arenaCanvas class="arena-canvas"></canvas>
+    <div class="arena-gradient"></div>
+    <div class="arena-content">
+      <div class="arena-badge">
+        <span class="gavel-icon material-symbols-outlined">gavel</span>
+        Judging Arena · Live
+      </div>
+      <h1 class="arena-title">
+        Competition
+        <span class="gold-text">Scoring Chamber</span>
+      </h1>
+      <p class="arena-sub">Evaluate NTIC championship submissions with precision rubrics and publish official rankings.</p>
+    </div>
+
+    <div class="arena-stats">
+      <div class="arena-stat" *ngFor="let s of [
+        { label: 'Awaiting Score', value: animatedStats.pending, icon: 'hourglass_top' },
+        { label: 'Teams Scored', value: animatedStats.scored, icon: 'verified' },
+        { label: 'Active Rounds', value: animatedStats.rounds, icon: 'flag' },
+        { label: 'Teams in Round', value: animatedStats.teams, icon: 'groups' }
+      ]; let i = index" [style.animation-delay.ms]="i * 120">
+        <span class="material-symbols-outlined stat-ico">{{ s.icon }}</span>
+        <div>
+          <strong>{{ s.value }}</strong>
+          <span>{{ s.label }}</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Round Selector -->
+  <section class="round-selector">
+    <h2><span class="material-symbols-outlined">trophy</span> Active Rounds</h2>
+    <div class="round-chips" *ngIf="rounds.length > 0">
+      <button
+        *ngFor="let round of rounds"
+        class="round-chip"
+        [class.active]="activeRoundId === round.id"
+        [class.live]="round.status === 'live'"
+        (click)="selectRound(round.id)">
+        <span class="round-status-dot" [class]="round.status"></span>
+        <div class="round-info">
+          <strong>{{ round.name }}</strong>
+          <span>{{ round.teams }} teams · Due {{ round.deadline }}</span>
+        </div>
+        <span class="track-chip" [class]="round.track">{{ round.track }}</span>
+      </button>
+    </div>
+    <div *ngIf="rounds.length === 0" style="padding: 24px; text-align: center; color: var(--on-surface-variant); background: var(--surface-container-low); border-radius: 12px; border: 1px dashed var(--outline-variant); margin-top: 10px;">
+      <span class="material-symbols-outlined" style="font-size: 36px; opacity: 0.5; margin-bottom: 8px;">emoji_events</span>
+      <p style="margin: 0; font-size: 13px;">No active competition rounds found. Register teams under tracks to see them here.</p>
+    </div>
+  </section>
+
+  <!-- Main Arena Grid -->
+  <div class="arena-body">
+    <!-- Team Cards -->
+    <section class="teams-section">
+      <div class="section-toolbar">
+        <h2>Teams to Evaluate</h2>
+        <div class="track-filters">
+          <button [class.active]="trackFilter === 'all'" (click)="trackFilter = 'all'">All</button>
+          <button [class.active]="trackFilter === 'coding'" (click)="trackFilter = 'coding'">Coding</button>
+          <button [class.active]="trackFilter === 'robotics'" (click)="trackFilter = 'robotics'">Robotics</button>
+          <button [class.active]="trackFilter === 'ai'" (click)="trackFilter = 'ai'">AI</button>
+          <button [class.active]="trackFilter === 'cyber'" (click)="trackFilter = 'cyber'">Cyber</button>
+          <button [class.active]="trackFilter === 'innovation'" (click)="trackFilter = 'innovation'">Innovation</button>
+        </div>
+      </div>
+
+      <div class="teams-grid" [@teamCards]="filteredTeams.length">
+        <article
+          *ngFor="let team of filteredTeams"
+          class="team-card"
+          [class.pending]="team.status === 'pending'"
+          [class.scored]="team.status === 'scored'"
+          [class.in-progress]="team.status === 'in-progress'"
+          (click)="team.status !== 'scored' && openScoring(team)">
+          <div class="card-shimmer"></div>
+          <div class="team-card-header">
+            <div class="team-avatar" [class]="team.track">{{ team.avatar }}</div>
+            <div>
+              <h3>{{ team.name }}</h3>
+              <p>{{ team.school }} · {{ team.region }}</p>
+            </div>
+            <span class="eval-status" [class]="team.status">
+              {{ team.status === 'pending' ? 'Awaiting' : team.status === 'scored' ? 'Scored' : 'In Review' }}
+            </span>
+          </div>
+          <div class="project-title">{{ team.projectTitle }}</div>
+          <p class="project-desc">{{ team.description }}</p>
+          <div class="team-card-footer">
+            <span><span class="material-symbols-outlined">schedule</span> {{ team.submittedAt }}</span>
+            <span><span class="material-symbols-outlined">group</span> {{ team.members }} members</span>
+            <span class="track-chip" [class]="team.track">{{ team.track }}</span>
+          </div>
+          <button class="score-btn" *ngIf="team.status !== 'scored'" (click)="openScoring(team); $event.stopPropagation()">
+            <span class="material-symbols-outlined">gavel</span>
+            Begin Scoring
+          </button>
+          <div class="scored-overlay" *ngIf="team.status === 'scored'">
+            <span class="material-symbols-outlined">check_circle</span>
+            Officially Scored
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- Sidebar -->
+    <aside class="arena-sidebar">
+      <div class="sidebar-panel recent-scores">
+        <h3><span class="material-symbols-outlined">leaderboard</span> Recent Scores</h3>
+        <div class="score-entry" *ngFor="let entry of recentScores; let i = index" [style.animation-delay.ms]="i * 100">
+          <div class="score-rank">{{ i + 1 }}</div>
+          <div class="score-info">
+            <strong>{{ entry.team }}</strong>
+            <span class="track-chip" [class]="entry.track">{{ entry.track }}</span>
+          </div>
+          <div class="score-value">{{ entry.score }}</div>
+        </div>
+      </div>
+
+      <div class="sidebar-panel rubric-preview">
+        <h3><span class="material-symbols-outlined">fact_check</span> Scoring Rubric</h3>
+        <div class="rubric-item" *ngFor="let cat of rubric">
+          <span class="material-symbols-outlined">{{ cat.icon }}</span>
+          <div>
+            <strong>{{ cat.label }}</strong>
+            <span>Max {{ cat.maxScore }} pts ({{ cat.weight }}%)</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Scoring Modal Overlay -->
+  <div class="scoring-overlay" *ngIf="showScoringPanel && selectedTeam" @scorePanel>
+    <div class="scoring-backdrop" (click)="closeScoring()"></div>
+    <div class="scoring-panel">
+      <button class="close-panel" (click)="closeScoring()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+
+      <!-- Success Burst -->
+      <div class="success-burst" *ngIf="showSuccessBurst" @burst>
+        <div class="burst-ring"></div>
+        <div class="burst-ring delay"></div>
+        <span class="material-symbols-outlined">emoji_events</span>
+        <strong>Score Published!</strong>
+        <span>{{ totalScore }}/100</span>
+      </div>
+
+      <div class="panel-header" *ngIf="!showSuccessBurst">
+        <div class="panel-team">
+          <div class="team-avatar large" [class]="selectedTeam.track">{{ selectedTeam.avatar }}</div>
+          <div>
+            <h2>{{ selectedTeam.name }}</h2>
+            <p>{{ selectedTeam.projectTitle }}</p>
+          </div>
+        </div>
+        <div class="total-score-ring">
+          <svg viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="70" class="ring-track"/>
+            <circle cx="80" cy="80" r="70" class="ring-fill"
+              [style.stroke-dashoffset]="getTotalRingOffset()"/>
+          </svg>
+          <div class="total-label">
+            <strong>{{ totalScore }}</strong>
+            <span>/ 100</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-body" *ngIf="!showSuccessBurst">
+        <p class="project-brief">{{ selectedTeam.description }}</p>
+
+        <div class="rubric-sliders">
+          <div class="rubric-row" *ngFor="let cat of rubric">
+            <div class="rubric-header">
+              <span class="material-symbols-outlined">{{ cat.icon }}</span>
+              <div>
+                <strong>{{ cat.label }}</strong>
+                <span>{{ cat.weight }}% weight · Max {{ cat.maxScore }}</span>
+              </div>
+              <div class="rubric-score-display">{{ cat.score }}</div>
+            </div>
+            <div class="slider-track">
+              <div class="slider-fill" [style.width.%]="getCategoryPercent(cat)"></div>
+              <input
+                type="range"
+                [min]="0"
+                [max]="cat.maxScore"
+                [value]="cat.score"
+                (input)="onSliderInput(cat, $event)"
+                class="rubric-slider">
+            </div>
+          </div>
+        </div>
+
+        <div class="notes-field">
+          <label>Judge's Official Notes</label>
+          <textarea [(ngModel)]="judgeNotes" rows="3" placeholder="Document your evaluation rationale for audit trail..."></textarea>
+        </div>
+
+        <div class="panel-actions">
+          <button class="btn-cancel" (click)="closeScoring()">Cancel</button>
+          <button class="btn-publish" (click)="submitScore()" [disabled]="totalScore === 0">
+            <span class="material-symbols-outlined">publish</span>
+            Publish Official Score
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="judge-toast" *ngIf="showToast" @toastSlide>
+    <span class="material-symbols-outlined">verified</span>
+    {{ toastMessage }}
+  </div>
+</div>

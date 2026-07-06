@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lumina NTIC | Leaderboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #faf9f7;
+            color: #1a1c1b;
+            scroll-behavior: smooth;
+        }
+        .podium-gradient-1 { background: linear-gradient(135deg, #e4e0ee 0%, #ffffff 100%); }
+        .podium-gradient-2 { background: linear-gradient(135deg, #dce4de 0%, #ffffff 100%); }
+        .podium-gradient-3 { background: linear-gradient(135deg, #f4f3f1 0%, #ffffff 100%); }
+        
+        /* Custom elevation from style guide */
+        .ambient-shadow {
+            box-shadow: 0 8px 30px rgba(182, 173, 201, 0.12);
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Hide scrollbar but keep functionality */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"secondary-fixed": "#8bf3f7", outline: "#6f797a", "surface-bright": "#f9f9ff", "tertiary-fixed": "#ffdeae", "surface-container-highest": "#d8e3fb", "surface-dim": "#cfdaf2", "on-secondary-fixed-variant": "#004f52", "primary-container": "#005b60", "on-primary-container": "#8bd0d6", "on-tertiary-container": "#ffb93a", "secondary-fixed-dim": "#6dd6da", "secondary-container": "#88f0f4", "on-surface-variant": "#3f4849", "tertiary-container": "#6f4b00", "on-tertiary-fixed-variant": "#604100", "inverse-on-surface": "#ecf1ff", "surface-container": "#e7eeff", "surface-tint": "#1b686d", "surface-variant": "#d8e3fb", "on-tertiary-fixed": "#281800", tertiary: "#513600", error: "#ba1a1a", "on-tertiary": "#ffffff", "on-primary-fixed-variant": "#004f54", "on-secondary-fixed": "#002021", "on-secondary": "#ffffff", "on-background": "#111c2d", "surface-container-low": "#f0f3ff", "surface-container-lowest": "#ffffff", "on-error-container": "#93000a", "on-primary": "#ffffff", primary: "#004246", "on-error": "#ffffff", "inverse-primary": "#8dd2d7", "surface-container-high": "#dee8ff", "error-container": "#ffdad6", secondary: "#00696c", "outline-variant": "#bec8c9", "primary-fixed": "#a9eef4", "inverse-surface": "#263143", "primary-fixed-dim": "#8dd2d7", surface: "#f9f9ff", background: "#f9f9ff", "tertiary-fixed-dim": "#ffba3f", "on-surface": "#111c2d", "on-primary-fixed": "#002022", "on-secondary-container": "#006e71"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}, spacing: {"container-max": "1280px", gutter: "24px", "margin-mobile": "16px", unit: "8px", "margin-desktop": "40px", "section-gap": "80px"}, fontFamily: {"body-lg": ["Inter"], "label-sm": ["Inter"], "headline-lg": ["Inter"], "label-md": ["Inter"], "headline-lg-mobile": ["Inter"], "headline-md": ["Inter"], "display-lg": ["Inter"], "body-md": ["Inter"]}, fontSize: {"body-lg": ["18px", {lineHeight: "28px", fontWeight: "400"}], "label-sm": ["12px", {lineHeight: "16px", fontWeight: "600"}], "headline-lg": ["32px", {lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "600"}], "label-md": ["14px", {lineHeight: "20px", letterSpacing: "0.01em", fontWeight: "500"}], "headline-lg-mobile": ["28px", {lineHeight: "36px", fontWeight: "600"}], "headline-md": ["24px", {lineHeight: "32px", fontWeight: "500"}], "display-lg": ["48px", {lineHeight: "56px", letterSpacing: "-0.02em", fontWeight: "600"}], "body-md": ["16px", {lineHeight: "24px", fontWeight: "400"}]}}}};</script>
+</head>
+<body class="bg-background min-h-screen">
+<!-- Sidebar Navigation Shell -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-surface-container-low border-r border-outline-variant flex flex-col p-4 space-y-2 z-50 hidden md:flex">
+<div class="mb-8 px-4 py-2">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Lumina Academy</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant">NTIC Excellence</p>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Active Tab: Leaderboard -->
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant font-medium hover:bg-surface-container-high rounded-xl transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant font-medium hover:bg-surface-container-high rounded-xl transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined">how_to_reg</span>
+<span class="font-label-md text-label-md">Registration</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant font-medium hover:bg-surface-container-high rounded-xl transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-label-md text-label-md">LMS</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-secondary-container bg-secondary-container rounded-xl font-semibold shadow-sm" href="#">
+<span class="material-symbols-outlined">leaderboard</span>
+<span class="font-label-md text-label-md">Leaderboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant font-medium hover:bg-surface-container-high rounded-xl transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined">handshake</span>
+<span class="font-label-md text-label-md">Sponsors</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant font-medium hover:bg-surface-container-high rounded-xl transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span class="font-label-md text-label-md">Reports</span>
+</a>
+</nav>
+<div class="mt-auto space-y-1 pt-4 border-t border-outline-variant">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant font-medium hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant font-medium hover:bg-surface-container-high rounded-xl transition-all" href="#">
+<span class="material-symbols-outlined">contact_support</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+<button class="w-full mt-4 bg-primary text-on-primary py-3 rounded-xl font-semibold hover:bg-secondary transition-colors duration-200">
+                Join Competition
+            </button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="md:ml-64 flex flex-col min-h-screen">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center px-margin-desktop sticky top-0 z-40 w-full h-16 bg-surface-container-lowest shadow-sm">
+<div class="flex items-center gap-8">
+<span class="font-headline-md text-headline-md font-semibold text-primary">Leaderboard</span>
+<div class="hidden lg:flex items-center bg-surface-container-low px-4 py-2 rounded-full w-64 border border-outline-variant">
+<span class="material-symbols-outlined text-outline">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md w-full ml-2" placeholder="Search schools..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-primary hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-primary hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined">help</span>
+</button>
+<div class="h-10 w-10 rounded-full bg-secondary-fixed border-2 border-primary-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional close-up studio portrait of a young educator with a warm, friendly expression, set against a soft blurred academic background. The lighting is natural and inviting, maintaining the clean, minimalist light-mode aesthetic of the Lumina Academy platform. High quality, detailed skin textures, soft focused edges." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6JvcVOCGbWJZw0DZFMsPWIn3zhdEDiDVXG8nsftv74aOUSs3yvDzDuStnxIDucOuMX4IiC8mYF_HCxXlneKBL36A3u97ikbt0dhpWf-PDi3x9kj0BLjzw7_tEY_Y-_Y7DFb0VQGk4ehCbtYBThgmAJE3cuXhca76jGvXSBmDYVg6dSzrFV1Q4LiVVNhiYPHoIiw2MGl13-CB_anfSfWYSMKxYWFZhZchTe3uXQBSwG8wmQToHlA_JRhyK4C1K5t0wvitFu0QIvgtM"/>
+</div>
+</div>
+</header>
+<div class="p-margin-desktop space-y-section-gap max-w-container-max mx-auto w-full">
+<!-- Hero Podium Section -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-end">
+<div class="lg:col-span-12 mb-unit">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Top Achieving Institutions</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Celebrating collective excellence in scientific research and technical innovation across our global network.</p>
+</div>
+<!-- Rank 2 -->
+<div class="lg:col-span-3 order-2 lg:order-1">
+<div class="podium-gradient-2 p-8 rounded-[24px] ambient-shadow flex flex-col items-center text-center space-y-4 transform transition hover:scale-[1.02] duration-300 h-80 justify-end pb-12">
+<div class="w-20 h-20 rounded-2xl bg-white flex items-center justify-center mb-2 shadow-sm">
+<span class="material-symbols-outlined text-4xl text-tertiary">school</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-tertiary">Horizon NTIC</h3>
+<span class="font-label-md text-label-md text-on-tertiary-fixed-variant">Rank #2</span>
+</div>
+<div class="bg-tertiary-fixed px-4 py-1 rounded-full text-on-tertiary-fixed font-bold">
+                            28,450 pts
+                        </div>
+</div>
+</div>
+<!-- Rank 1 -->
+<div class="lg:col-span-4 order-1 lg:order-2">
+<div class="podium-gradient-1 p-10 rounded-[32px] ambient-shadow flex flex-col items-center text-center space-y-6 transform transition hover:scale-[1.02] duration-300 h-96 justify-end pb-16 relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4">
+<span class="material-symbols-outlined text-secondary text-5xl opacity-20" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+</div>
+<div class="w-24 h-24 rounded-3xl bg-white flex items-center justify-center mb-2 shadow-sm border-2 border-secondary-fixed">
+<span class="material-symbols-outlined text-5xl text-secondary">verified</span>
+</div>
+<div>
+<h3 class="font-headline-lg text-headline-lg text-secondary">Lumina Central</h3>
+<span class="font-label-md text-label-md text-on-secondary-fixed-variant">Overall Champions</span>
+</div>
+<div class="bg-secondary-container px-6 py-2 rounded-full text-on-secondary-fixed font-bold text-lg">
+                            32,190 pts
+                        </div>
+</div>
+</div>
+<!-- Rank 3 -->
+<div class="lg:col-span-3 order-3">
+<div class="podium-gradient-3 p-8 rounded-[24px] ambient-shadow flex flex-col items-center text-center space-y-4 transform transition hover:scale-[1.02] duration-300 h-72 justify-end pb-10">
+<div class="w-16 h-16 rounded-2xl bg-white flex items-center justify-center mb-2 shadow-sm">
+<span class="material-symbols-outlined text-3xl text-outline">architecture</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-primary">Vanguard Tech</h3>
+<span class="font-label-md text-label-md text-on-primary-fixed-variant">Rank #3</span>
+</div>
+<div class="bg-surface-container-highest px-4 py-1 rounded-full text-on-surface-variant font-bold">
+                            25,800 pts
+                        </div>
+</div>
+</div>
+<!-- Individual Highlights Sidebar (Desktop only) -->
+<div class="lg:col-span-2 hidden lg:flex flex-col gap-4 order-4">
+<div class="bg-white p-4 rounded-[24px] ambient-shadow border border-outline-variant h-full flex flex-col">
+<h4 class="font-label-md text-label-md text-primary font-bold mb-4 uppercase tracking-wider">Talent Spotlight</h4>
+<div class="space-y-6 flex-1">
+<!-- Talent Item 1 -->
+<div class="group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-secondary-fixed">
+<img class="w-full h-full object-cover" data-alt="A detailed headshot of a brilliant young female scientist wearing minimalist modern glasses and a linen lab coat. She is smiling confidently. The lighting is soft and natural, emphasizing a human-centric, academic environment. High-end portraiture style, creamy bokeh background, soft lavender and sage color palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWjMvhOISnYXmEHLoNFG-xExFTnEpeRHd2OPLqr9JbACbH7CgLTR-Q-HgAfQZp8hSGREUeuRircVEWmazwt3k-aH6T-sOSAVYs-aM9fQRICg7yGjzgWN7zdP-IX-3uYhUvS-NuiGu1Qww7jHx0QeLeNY9aByD7v4hbkdo_x1pLFLvHwe7Ydi_0StyFWS39lghnoR30ZncUPAbHDpUg0oFPPdOKxn8bNbFitSUIFOKfumKwkhxSkFDcJSLan4cJN3nnQlmLdNFDh5sc"/>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-md text-label-md font-bold truncate">Elena Rossi</p>
+<span class="text-[10px] uppercase font-bold text-secondary-fixed-dim bg-secondary/5 px-2 py-0.5 rounded">Robotics</span>
+</div>
+</div>
+</div>
+<!-- Talent Item 2 -->
+<div class="group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-tertiary-fixed">
+<img class="w-full h-full object-cover" data-alt="Close-up professional portrait of a focused young male student with a kind expression. He is dressed in a clean, modern style suitable for a prestigious academy. The background is a bright, airy library with soft natural light. Minimalist aesthetic, soft shadows, warm-neutral tones consistent with Lumina Academy brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhuxI1wUguO2hFI03FrRbfHm90KsKAkoMqb6mKLqxyQvTrWyI1pC-OTr814LUBicPFFEQILQ5LdMeCjCtbyB7IAjNmvoRAggsVMvMiMfFQmheSM_QZN10gZqymX8D0OuW0sKF-GUcKsUPVtfbtBHoRpfmEtYzgeChaYDKsgOa5mu7zjNzjt2TNnDVTwRKn1leo9VhPnykeQwJURyMZvrMq7DpJuSyRHZ0AAb-uo9KuWKvztQMuStUApDGUIa7Sx82vWkwcAdZ2wCdt"/>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-md text-label-md font-bold truncate">Marcus Chen</p>
+<span class="text-[10px] uppercase font-bold text-tertiary-fixed-dim bg-tertiary/5 px-2 py-0.5 rounded">Bio-Gen</span>
+</div>
+</div>
+</div>
+<!-- Talent Item 3 -->
+<div class="group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A professional studio portrait of a young woman with an intelligent and creative gaze. The aesthetic is clean and modern, following the soft-tactile design system. Neutral lighting with a soft secondary lavender glow. The style is sophisticated, minimalist, and emphasizes academic excellence and human warmth." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCOgZpolBc_XSpUpn8Iw85fWO0HyKXfT4bcmIIzOAQ6gxJ9ZLs5mN9qXYkNBonTwwwQoP9NSAW0D1sh__PxUXmO9LPrfTe2h992kB_Hxj-BTHrX7Z-vArNSoGnCL8RhlgolNCjGufoiXwSAai1HcQWiQO1lnkI0E8-DoGSzGa0Zpo6g_rjyI34rUY9k3mpUTR6kiS8Q5ldd2sf6IXVH30mzB6zXm9CKvjWpn7_44ExNTw56VDcyYjxNm-g1siGiHutb1L1JwE70dtg1"/>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-md text-label-md font-bold truncate">Sarah J.</p>
+<span class="text-[10px] uppercase font-bold text-outline-variant bg-surface-container-low px-2 py-0.5 rounded">AI Ethics</span>
+</div>
+</div>
+</div>
+</div>
+<button class="text-secondary font-semibold text-xs mt-4 flex items-center justify-center gap-1 hover:gap-2 transition-all">
+                            View All Achievers <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Leaderboard Standings Table -->
+<section class="bg-white rounded-[24px] ambient-shadow overflow-hidden border border-outline-variant">
+<div class="p-6 border-b border-outline-variant flex justify-between items-center bg-surface-container-lowest">
+<h2 class="font-headline-md text-headline-md text-on-surface">Overall Standings</h2>
+<div class="flex gap-2">
+<button class="bg-surface-container-low px-4 py-2 rounded-full text-label-md font-semibold text-on-surface-variant hover:bg-secondary-container transition-colors">Region: Global</button>
+<button class="bg-surface-container-low px-4 py-2 rounded-full text-label-md font-semibold text-on-surface-variant hover:bg-secondary-container transition-colors">Category: All</button>
+</div>
+</div>
+<div class="overflow-x-auto no-scrollbar">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/50">
+<th class="py-4 px-8 font-label-md text-label-md text-outline">Rank</th>
+<th class="py-4 px-6 font-label-md text-label-md text-outline">Institution</th>
+<th class="py-4 px-6 font-label-md text-label-md text-outline">Status</th>
+<th class="py-4 px-6 font-label-md text-label-md text-outline">Progress</th>
+<th class="py-4 px-8 font-label-md text-label-md text-outline text-right">Points</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/30">
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors cursor-pointer group">
+<td class="py-6 px-8">
+<span class="font-headline-md text-headline-md text-on-surface-variant group-hover:text-primary transition-colors">04</span>
+</td>
+<td class="py-6 px-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-outline">science</span>
+</div>
+<div>
+<p class="font-body-md text-body-md font-semibold">Apex Global Institute</p>
+<p class="font-label-sm text-label-sm text-outline">Zurich, Switzerland</p>
+</div>
+</div>
+</td>
+<td class="py-6 px-6">
+<span class="bg-tertiary/10 text-tertiary px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1 w-fit">
+<span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span> Rising
+                                    </span>
+</td>
+<td class="py-6 px-6 min-w-[200px]">
+<div class="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-tertiary to-secondary-fixed w-[88%] rounded-full"></div>
+</div>
+</td>
+<td class="py-6 px-8 text-right font-headline-md text-headline-md text-on-surface">24,110</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors cursor-pointer group">
+<td class="py-6 px-8">
+<span class="font-headline-md text-headline-md text-on-surface-variant group-hover:text-primary transition-colors">05</span>
+</td>
+<td class="py-6 px-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-outline">biotech</span>
+</div>
+<div>
+<p class="font-body-md text-body-md font-semibold">St. Jude Science High</p>
+<p class="font-label-sm text-label-sm text-outline">London, UK</p>
+</div>
+</div>
+</td>
+<td class="py-6 px-6">
+<span class="bg-secondary/10 text-secondary px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1 w-fit">
+<span class="w-2 h-2 rounded-full bg-secondary"></span> Steady
+                                    </span>
+</td>
+<td class="py-6 px-6 min-w-[200px]">
+<div class="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-tertiary to-secondary-fixed w-[82%] rounded-full"></div>
+</div>
+</td>
+<td class="py-6 px-8 text-right font-headline-md text-headline-md text-on-surface">22,450</td>
+</tr>
+<!-- Row 6 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors cursor-pointer group">
+<td class="py-6 px-8">
+<span class="font-headline-md text-headline-md text-on-surface-variant group-hover:text-primary transition-colors">06</span>
+</td>
+<td class="py-6 px-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-outline">rocket_launch</span>
+</div>
+<div>
+<p class="font-body-md text-body-md font-semibold">Orion Research Academy</p>
+<p class="font-label-sm text-label-sm text-outline">San Francisco, USA</p>
+</div>
+</div>
+</td>
+<td class="py-6 px-6">
+<span class="bg-secondary/10 text-secondary px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1 w-fit">
+<span class="w-2 h-2 rounded-full bg-secondary"></span> Steady
+                                    </span>
+</td>
+<td class="py-6 px-6 min-w-[200px]">
+<div class="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-tertiary to-secondary-fixed w-[79%] rounded-full"></div>
+</div>
+</td>
+<td class="py-6 px-8 text-right font-headline-md text-headline-md text-on-surface">21,900</td>
+</tr>
+<!-- Row 7 -->
+<tr class="hover:bg-surface-container-low/30 transition-colors cursor-pointer group">
+<td class="py-6 px-8">
+<span class="font-headline-md text-headline-md text-on-surface-variant group-hover:text-primary transition-colors">07</span>
+</td>
+<td class="py-6 px-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-outline">waves</span>
+</div>
+<div>
+<p class="font-body-md text-body-md font-semibold">Blue Ocean Ecology</p>
+<p class="font-label-sm text-label-sm text-outline">Singapore</p>
+</div>
+</div>
+</td>
+<td class="py-6 px-6">
+<span class="bg-error/10 text-error px-3 py-1 rounded-full font-label-sm text-label-sm flex items-center gap-1 w-fit">
+<span class="w-2 h-2 rounded-full bg-error"></span> Dropped
+                                    </span>
+</td>
+<td class="py-6 px-6 min-w-[200px]">
+<div class="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-tertiary to-secondary-fixed w-[74%] rounded-full"></div>
+</div>
+</td>
+<td class="py-6 px-8 text-right font-headline-md text-headline-md text-on-surface">20,500</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-6 bg-surface-container-lowest border-t border-outline-variant flex justify-between items-center">
+<p class="font-label-sm text-label-sm text-outline">Showing 4-50 of 512 total participants</p>
+<div class="flex gap-2">
+<button class="p-2 border border-outline-variant rounded-full hover:bg-surface-container-low transition-colors disabled:opacity-30" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="p-2 border border-outline-variant rounded-full hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+</div>
+<!-- Footer -->
+<footer class="mt-auto py-12 px-margin-desktop border-t border-outline-variant bg-white">
+<div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+<div>
+<h5 class="font-headline-md text-headline-md font-bold text-primary">Lumina Academy</h5>
+<p class="font-body-md text-body-md text-on-surface-variant">Nurturing the scientists of tomorrow.</p>
+</div>
+<div class="flex gap-12">
+<div class="space-y-2">
+<p class="font-label-md text-label-md font-bold text-primary">Quick Links</p>
+<ul class="space-y-1">
+<li><a class="font-label-md text-label-md text-on-surface-variant hover:text-primary" href="#">Rules</a></li>
+<li><a class="font-label-md text-label-md text-on-surface-variant hover:text-primary" href="#">History</a></li>
+<li><a class="font-label-md text-label-md text-on-surface-variant hover:text-primary" href="#">Legal</a></li>
+</ul>
+</div>
+<div class="space-y-2">
+<p class="font-label-md text-label-md font-bold text-primary">Support</p>
+<ul class="space-y-1">
+<li><a class="font-label-md text-label-md text-on-surface-variant hover:text-primary" href="#">Help Center</a></li>
+<li><a class="font-label-md text-label-md text-on-surface-variant hover:text-primary" href="#">Contact</a></li>
+<li><a class="font-label-md text-label-md text-on-surface-variant hover:text-primary" href="#">FAQ</a></li>
+</ul>
+</div>
+</div>
+<div class="text-right">
+<p class="font-label-sm text-label-sm text-outline">© 2024 Lumina NTIC Academy.<br/>All rights reserved.</p>
+</div>
+</div>
+</footer>
+</main>
+<!-- Mobile Bottom Navigation -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-container-lowest shadow-2xl flex items-center justify-around px-4 z-50 border-t border-outline-variant">
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] font-bold">Home</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">leaderboard</span>
+<span class="text-[10px] font-bold">Leaderboard</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">school</span>
+<span class="text-[10px] font-bold">Learn</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-bold">Profile</span>
+</button>
+</nav>
+<script>
+        // Micro-interactions for table rows
+        document.querySelectorAll('tr').forEach(row => {
+            row.addEventListener('mouseenter', () => {
+                row.querySelector('.material-symbols-outlined')?.classList.add('scale-110');
+            });
+            row.addEventListener('mouseleave', () => {
+                row.querySelector('.material-symbols-outlined')?.classList.remove('scale-110');
+            });
+        });
+
+        // Search bar focus effect
+        const searchInput = document.querySelector('input[type="text"]');
+        const searchContainer = searchInput?.parentElement;
+        
+        searchInput?.addEventListener('focus', () => {
+            searchContainer.classList.remove('border-outline-variant');
+            searchContainer.classList.add('border-primary');
+            searchContainer.classList.add('shadow-sm');
+        });
+
+        searchInput?.addEventListener('blur', () => {
+            searchContainer.classList.add('border-outline-variant');
+            searchContainer.classList.remove('border-primary');
+            searchContainer.classList.remove('shadow-sm');
+        });
+    </script>
+</body></html>

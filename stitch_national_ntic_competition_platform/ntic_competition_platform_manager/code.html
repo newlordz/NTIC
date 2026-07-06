@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>NTIC Competition Platform - Registration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed-dim": "#b7cacd",
+                        "surface-container-lowest": "#000f21",
+                        "tertiary-fixed-dim": "#4edea3",
+                        "on-primary": "#223336",
+                        "on-secondary": "#173539",
+                        "on-surface": "#d3e4fe",
+                        "on-secondary-container": "#9cbac0",
+                        "secondary-container": "#2e4b50",
+                        "on-primary-fixed-variant": "#384a4d",
+                        "surface-variant": "#26364a",
+                        "on-surface-variant": "#c2c7c8",
+                        "error-container": "#93000a",
+                        "outline": "#8c9293",
+                        "secondary": "#adccd2",
+                        "on-background": "#d3e4fe",
+                        "on-tertiary-fixed-variant": "#005236",
+                        "on-tertiary-container": "#00a371",
+                        "inverse-on-surface": "#213145",
+                        "outline-variant": "#424849",
+                        "surface-container-highest": "#26364a",
+                        "secondary-fixed-dim": "#adccd2",
+                        "surface-container": "#102034",
+                        "error": "#ffb4ab",
+                        "surface-container-high": "#1b2b3f",
+                        "surface-container-low": "#0b1c30",
+                        "on-primary-container": "#809396",
+                        "surface-tint": "#b7cacd",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed": "#d3e6ea",
+                        "surface-dim": "#031427",
+                        "surface-bright": "#2a3a4f",
+                        "inverse-surface": "#d3e4fe",
+                        "primary": "#b7cacd",
+                        "secondary-fixed": "#c9e8ee",
+                        "on-tertiary": "#003824",
+                        "on-secondary-fixed-variant": "#2e4b50",
+                        "on-tertiary-fixed": "#002113",
+                        "tertiary-container": "#002f1e",
+                        "surface": "#031427",
+                        "on-secondary-fixed": "#001f24",
+                        "tertiary-fixed": "#6ffbbe",
+                        "primary-container": "#1a2b2e",
+                        "on-error": "#690005",
+                        "tertiary": "#4edea3",
+                        "inverse-primary": "#506165",
+                        "on-primary-fixed": "#0d1e21",
+                        "background": "#031427"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xl": "32px",
+                        "margin-mobile": "16px",
+                        "2xl": "48px",
+                        "margin-desktop": "32px",
+                        "base": "4px",
+                        "xs": "4px",
+                        "md": "16px",
+                        "gutter": "24px",
+                        "sm": "8px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "title-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "label-md": ["JetBrains Mono"],
+                        "code-sm": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.25px", "fontWeight": "400" }],
+                        "display-lg": ["57px", { "lineHeight": "64px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "0", "fontWeight": "600" }],
+                        "title-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0.15px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "letterSpacing": "0", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.5px", "fontWeight": "500" }],
+                        "code-sm": ["11px", { "lineHeight": "16px", "letterSpacing": "0", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Custom scrollbar for dark mode */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #031427; }
+        ::-webkit-scrollbar-thumb { background: #26364a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #424849; }
+    </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen flex antialiased">
+<!-- Top AppBar (Mobile Only) -->
+<header class="md:hidden flex justify-between items-center h-16 w-full px-margin-mobile z-30 bg-surface border-b border-outline-variant/20 fixed top-0 left-0">
+<div class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">NTIC Portal</div>
+<button class="text-on-surface-variant hover:bg-surface-container-highest/10 p-2 rounded">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</header>
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden md:flex bg-surface-container-low border-r border-outline-variant/20 fixed left-0 top-0 h-full flex-col z-40 w-60">
+<div class="p-lg border-b border-outline-variant/20 flex flex-col items-center">
+<img alt="Organization Logo" class="w-16 h-16 rounded-full bg-surface-container mb-md object-cover" data-alt="A minimalist, geometric logo representing a sophisticated NTIC competition platform. The logo should feature interconnected technical nodes or a stylized atom, using a sleek teal and deep navy color palette against a dark background. It should convey a sense of modern engineering, precision, and academic excellence, suitable for a high-stakes educational environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8tAs7u8zPLYVggUtdiq8oNQpHnBfEIGv3xfrvGGbY7OLYl83nROevQMv2gGg7GQqenAgmtZ-cRbeRbyaySlXgg8UR1MtRBTo7gxqhzlkeo-D9qaOlbyywx7uPFYFwlYcRTJiIeUW1qcqFxTWU90BVpoul-cdLPdjnI0IpB6SKbQbvcGc2jxljb-OxRSPn0My6zuhdbyJyNknUd0WbpmeXZ5-F7JFYFpjYCHKlEl3cQf-RAJbgrNStO2rhuzQIz-rRRmtD5tPiEU6M"/>
+<h1 class="font-headline-lg text-headline-lg text-primary-fixed-dim text-center leading-tight">NTIC Portal</h1>
+<p class="font-label-md text-label-md text-on-surface-variant mt-xs">Competition Manager</p>
+</div>
+<div class="flex-1 overflow-y-auto py-md">
+<ul class="space-y-sm px-sm">
+<li>
+<a class="flex items-center px-md py-sm rounded-lg text-on-surface-variant hover:bg-secondary-container transition-colors active:scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined mr-md">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-md py-sm rounded-lg text-tertiary-fixed-dim font-bold bg-secondary-container/20 hover:bg-secondary-container transition-colors active:scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined fill mr-md text-tertiary-fixed-dim" style="font-variation-settings: 'FILL' 1;">how_to_reg</span>
+<span class="font-body-md text-body-md">Registration</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-md py-sm rounded-lg text-on-surface-variant hover:bg-secondary-container transition-colors active:scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined mr-md">school</span>
+<span class="font-body-md text-body-md">LMS</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-md py-sm rounded-lg text-on-surface-variant hover:bg-secondary-container transition-colors active:scale-[0.98] duration-200" href="#">
+<span class="material-symbols-outlined mr-md">leaderboard</span>
+<span class="font-body-md text-body-md">Leaderboard</span>
+</a>
+</li>
+</ul>
+</div>
+<div class="p-lg border-t border-outline-variant/20">
+<button class="w-full bg-primary-container text-on-primary-container hover:bg-primary-container/80 transition-colors py-sm rounded-lg font-title-md text-title-md flex justify-center items-center">
+<span class="material-symbols-outlined mr-sm">add</span>
+                New Challenge
+            </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 ml-0 md:ml-60 pt-16 md:pt-0 max-w-[1440px] mx-auto w-full">
+<!-- TopAppBar (Desktop) -->
+<header class="hidden md:flex justify-between items-center h-16 w-full px-margin-desktop z-30 bg-surface border-b border-outline-variant/20 sticky top-0">
+<div class="font-headline-lg text-headline-lg font-bold text-primary">NTIC Competition Platform</div>
+<div class="flex items-center gap-md">
+<button class="text-on-surface-variant hover:bg-surface-container-highest/10 p-sm rounded-full transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:bg-surface-container-highest/10 p-sm rounded-full transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined">apps</span>
+</button>
+<button class="text-on-surface-variant hover:bg-surface-container-highest/10 p-sm rounded-full transition-colors active:scale-[0.98]">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Split Pane Layout -->
+<div class="p-margin-mobile md:p-margin-desktop flex flex-col lg:flex-row gap-gutter min-h-[calc(100vh-64px)]">
+<!-- Left Pane: School Registration -->
+<section class="flex-1 bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-lg shadow-sm hover:shadow-md transition-shadow relative overflow-hidden flex flex-col">
+<div class="absolute top-0 left-0 w-full h-1 bg-primary"></div>
+<div class="mb-lg border-b border-outline-variant/20 pb-sm">
+<h2 class="font-headline-lg text-headline-lg text-primary-fixed-dim">Institutional Registration</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-xs">Step 1 of 3: School Profile &amp; Verification</p>
+</div>
+<div class="flex-1 space-y-lg overflow-y-auto pr-sm">
+<!-- Form Group: Identity -->
+<div class="space-y-md">
+<div class="relative group">
+<input class="w-full bg-transparent border border-outline rounded text-on-surface px-md py-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors font-body-lg text-body-lg peer placeholder-transparent" id="schoolName" placeholder="Institution Name" type="text"/>
+<label class="absolute left-md -top-2.5 bg-surface-container-lowest px-1 font-label-md text-label-md text-outline peer-focus:text-primary transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-body-lg peer-placeholder-shown:text-on-surface-variant peer-focus:-top-2.5 peer-focus:text-label-md" for="schoolName">Institution Name</label>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="relative group">
+<select class="w-full bg-transparent border border-outline rounded text-on-surface px-md py-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors font-body-lg text-body-lg appearance-none" id="schoolCategory">
+<option class="bg-surface-container text-on-surface" value="">Select Category</option>
+<option class="bg-surface-container text-on-surface" value="public">Public High School</option>
+<option class="bg-surface-container text-on-surface" value="private">Private Academy</option>
+<option class="bg-surface-container text-on-surface" value="charter">Charter School</option>
+</select>
+<label class="absolute left-md -top-2.5 bg-surface-container-lowest px-1 font-label-md text-label-md text-outline" for="schoolCategory">Category</label>
+<span class="material-symbols-outlined absolute right-md top-3 text-outline pointer-events-none">expand_more</span>
+</div>
+<div class="relative group">
+<select class="w-full bg-transparent border border-outline rounded text-on-surface px-md py-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors font-body-lg text-body-lg appearance-none" id="schoolRegion">
+<option class="bg-surface-container text-on-surface" value="">Select Region</option>
+<option class="bg-surface-container text-on-surface" value="northeast">Northeast Division</option>
+<option class="bg-surface-container text-on-surface" value="midwest">Midwest Division</option>
+<option class="bg-surface-container text-on-surface" value="west">Western Division</option>
+</select>
+<label class="absolute left-md -top-2.5 bg-surface-container-lowest px-1 font-label-md text-label-md text-outline" for="schoolRegion">Region</label>
+<span class="material-symbols-outlined absolute right-md top-3 text-outline pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Location / GPS -->
+<div class="bg-surface-container rounded-lg p-md border border-outline-variant/30 flex items-start gap-md">
+<div class="bg-surface-container-highest p-sm rounded flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-tertiary-fixed-dim">location_on</span>
+</div>
+<div class="flex-1">
+<h3 class="font-title-md text-title-md text-on-surface mb-xs">GPS Verification</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-md">Verify institutional coordinates for regional clustering.</p>
+<div class="flex gap-sm">
+<button class="bg-primary/10 text-primary border border-primary/30 px-md py-sm rounded hover:bg-primary/20 transition-colors font-label-md text-label-md flex items-center gap-xs">
+<span class="material-symbols-outlined" style="font-size: 16px;">my_location</span> Detect
+                                </button>
+<input class="flex-1 bg-surface-container-lowest border border-outline-variant/50 rounded text-on-surface px-sm py-xs font-code-sm text-code-sm focus:border-primary focus:outline-none" placeholder="LAT, LONG" readonly="" type="text"/>
+</div>
+</div>
+</div>
+<!-- Upload Zone -->
+<div>
+<h3 class="font-title-md text-title-md text-on-surface mb-sm">Accreditation Documents</h3>
+<div class="border-2 border-dashed border-outline-variant rounded-lg p-xl flex flex-col items-center justify-center text-center hover:border-primary hover:bg-surface-container-highest/20 transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-4xl text-outline group-hover:text-primary transition-colors mb-sm">cloud_upload</span>
+<p class="font-body-md text-body-md text-on-surface">Drag &amp; drop files or <span class="text-primary font-bold">Browse</span></p>
+<p class="font-label-md text-label-md text-on-surface-variant mt-xs">PDF, DOCX (Max 10MB)</p>
+</div>
+</div>
+</div>
+<div class="mt-lg pt-md border-t border-outline-variant/20 flex justify-end gap-md">
+<button class="px-lg py-sm border border-secondary-container text-secondary rounded font-title-md text-title-md hover:bg-secondary-container/30 transition-colors">Save Draft</button>
+<button class="px-lg py-sm bg-[#2D4A4F] text-on-primary rounded font-title-md text-title-md hover:bg-[#2D4A4F]/90 transition-colors flex items-center gap-xs">
+                        Continue <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+</button>
+</div>
+</section>
+<!-- Right Pane: Student Matrix & Track Selector -->
+<section class="flex-1 flex flex-col gap-gutter">
+<!-- Bio-Data Matrix Container -->
+<div class="bg-surface-container-low border border-outline-variant/20 rounded-xl p-lg flex-1 flex flex-col">
+<div class="flex justify-between items-end mb-md border-b border-outline-variant/20 pb-sm">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-secondary-fixed-dim">Candidate Matrix</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-xs">Team Lead Profile</p>
+</div>
+<div class="bg-surface-container-highest px-sm py-xs rounded font-label-md text-label-md text-tertiary flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-tertiary inline-block"></span> Draft Active
+                        </div>
+</div>
+<div class="grid grid-cols-2 gap-md mb-lg">
+<div class="relative group col-span-2 md:col-span-1">
+<input class="w-full bg-surface border border-outline-variant/50 rounded text-on-surface px-md py-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors font-body-lg text-body-lg peer placeholder-transparent" id="studentName" placeholder="Student Name" type="text"/>
+<label class="absolute left-md -top-2.5 bg-surface-container-low px-1 font-label-md text-label-md text-outline peer-focus:text-primary transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-body-lg peer-placeholder-shown:text-on-surface-variant peer-focus:-top-2.5 peer-focus:text-label-md" for="studentName">Student ID / Name</label>
+</div>
+<div class="relative group col-span-2 md:col-span-1">
+<input class="w-full bg-surface border border-outline-variant/50 rounded text-on-surface px-md py-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors font-body-lg text-body-lg peer placeholder-transparent" id="studentEmail" placeholder="Edu Email" type="email"/>
+<label class="absolute left-md -top-2.5 bg-surface-container-low px-1 font-label-md text-label-md text-outline peer-focus:text-primary transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-body-lg peer-placeholder-shown:text-on-surface-variant peer-focus:-top-2.5 peer-focus:text-label-md" for="studentEmail">.edu Email</label>
+</div>
+</div>
+<h3 class="font-title-md text-title-md text-on-surface mb-sm">Track Specialization</h3>
+<!-- Track Selector Grids -->
+<div class="grid grid-cols-2 md:grid-cols-3 gap-sm mb-lg">
+<!-- Track Card 1 -->
+<label class="cursor-pointer">
+<input class="peer sr-only" name="track" type="radio"/>
+<div class="h-full bg-surface-container border border-outline-variant/30 rounded-lg p-md hover:bg-surface-container-highest transition-colors peer-checked:border-tertiary peer-checked:bg-tertiary-container/20 flex flex-col items-center text-center gap-sm relative overflow-hidden">
+<div class="absolute top-0 right-0 w-0 h-0 border-t-[20px] border-r-[20px] border-t-transparent border-r-transparent peer-checked:border-t-tertiary peer-checked:border-r-tertiary"></div>
+<span class="material-symbols-outlined text-primary-fixed-dim peer-checked:text-tertiary text-3xl">code</span>
+<span class="font-title-md text-title-md text-on-surface">Coding</span>
+</div>
+</label>
+<!-- Track Card 2 -->
+<label class="cursor-pointer">
+<input checked="" class="peer sr-only" name="track" type="radio"/>
+<div class="h-full bg-surface-container border border-outline-variant/30 rounded-lg p-md hover:bg-surface-container-highest transition-colors peer-checked:border-tertiary peer-checked:bg-tertiary-container/20 flex flex-col items-center text-center gap-sm relative overflow-hidden">
+<span class="material-symbols-outlined absolute top-1 right-1 text-tertiary hidden peer-checked:block text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="material-symbols-outlined text-primary-fixed-dim peer-checked:text-tertiary text-3xl">smart_toy</span>
+<span class="font-title-md text-title-md text-on-surface">Robotics</span>
+</div>
+</label>
+<!-- Track Card 3 -->
+<label class="cursor-pointer">
+<input class="peer sr-only" name="track" type="radio"/>
+<div class="h-full bg-surface-container border border-outline-variant/30 rounded-lg p-md hover:bg-surface-container-highest transition-colors peer-checked:border-tertiary peer-checked:bg-tertiary-container/20 flex flex-col items-center text-center gap-sm relative overflow-hidden">
+<span class="material-symbols-outlined absolute top-1 right-1 text-tertiary hidden peer-checked:block text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="material-symbols-outlined text-primary-fixed-dim peer-checked:text-tertiary text-3xl">memory</span>
+<span class="font-title-md text-title-md text-on-surface">AI</span>
+</div>
+</label>
+<!-- Track Card 4 -->
+<label class="cursor-pointer">
+<input class="peer sr-only" name="track" type="radio"/>
+<div class="h-full bg-surface-container border border-outline-variant/30 rounded-lg p-md hover:bg-surface-container-highest transition-colors peer-checked:border-tertiary peer-checked:bg-tertiary-container/20 flex flex-col items-center text-center gap-sm relative overflow-hidden">
+<span class="material-symbols-outlined absolute top-1 right-1 text-tertiary hidden peer-checked:block text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="material-symbols-outlined text-primary-fixed-dim peer-checked:text-tertiary text-3xl">security</span>
+<span class="font-title-md text-title-md text-on-surface">Cyber</span>
+</div>
+</label>
+</div>
+<!-- Experience Matrix -->
+<div class="mt-auto border border-outline-variant/30 rounded-lg overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-highest border-b border-outline-variant/30">
+<th class="p-sm font-label-md text-label-md text-on-surface-variant font-medium">Domain Experience</th>
+<th class="p-sm font-label-md text-label-md text-on-surface-variant font-medium text-center">Novice</th>
+<th class="p-sm font-label-md text-label-md text-on-surface-variant font-medium text-center">Inter</th>
+<th class="p-sm font-label-md text-label-md text-on-surface-variant font-medium text-center">Adv</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md text-on-surface">
+<tr class="border-b border-outline-variant/20 hover:bg-surface-container transition-colors">
+<td class="p-sm">Algorithm Design</td>
+<td class="p-sm text-center"><input class="accent-tertiary" name="exp_alg" type="radio"/></td>
+<td class="p-sm text-center"><input checked="" class="accent-tertiary" name="exp_alg" type="radio"/></td>
+<td class="p-sm text-center"><input class="accent-tertiary" name="exp_alg" type="radio"/></td>
+</tr>
+<tr class="border-b border-outline-variant/20 hover:bg-surface-container transition-colors">
+<td class="p-sm">Hardware Assembly</td>
+<td class="p-sm text-center"><input class="accent-tertiary" name="exp_hw" type="radio"/></td>
+<td class="p-sm text-center"><input class="accent-tertiary" name="exp_hw" type="radio"/></td>
+<td class="p-sm text-center"><input checked="" class="accent-tertiary" name="exp_hw" type="radio"/></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Action Block -->
+<div class="bg-surface-container border border-outline-variant/20 rounded-xl p-md flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-outline">info</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Profile completeness: <strong class="text-primary-fixed-dim">85%</strong></span>
+</div>
+<button class="bg-[#10B981] text-surface-container-lowest px-lg py-sm rounded font-title-md text-title-md hover:bg-[#10B981]/90 transition-colors font-bold flex items-center gap-xs">
+<span class="material-symbols-outlined" style="font-size: 20px;">task_alt</span> Validate Registration
+                     </button>
+</div>
+</section>
+</div>
+</main>
+</body></html>

@@ -1,0 +1,251 @@
+<div class="instructor-portal">
+  <!-- Animated Hero -->
+  <section class="portal-hero">
+    <canvas #heroCanvas class="hero-particles"></canvas>
+    <div class="hero-orbs">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="pulse-dot"></span>
+        Mentor Workspace Live
+      </div>
+      <h1 class="hero-title">
+        <span class="title-line">Instructor</span>
+        <span class="title-accent">Command Center</span>
+      </h1>
+      <p class="hero-sub">Grade submissions, mentor teams, and orchestrate Ghana's NTIC learning tracks.</p>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat" *ngFor="let stat of [
+        { label: 'Pending Reviews', value: animatedStats.pending, icon: 'pending_actions', accent: 'warning' },
+        { label: 'Graded Today', value: animatedStats.reviewed, icon: 'task_alt', accent: 'success' },
+        { label: 'Active Students', value: animatedStats.students, icon: 'groups', accent: 'primary' },
+        { label: 'Live Courses', value: animatedStats.courses, icon: 'library_books', accent: 'secondary' }
+      ]; let i = index" [style.animation-delay.ms]="i * 100">
+        <div class="stat-icon-wrap" [class]="stat.accent">
+          <span class="material-symbols-outlined">{{ stat.icon }}</span>
+        </div>
+        <div class="stat-data">
+          <span class="stat-num">{{ stat.value | number }}</span>
+          <span class="stat-label">{{ stat.label }}</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tab Navigation -->
+  <nav class="portal-tabs">
+    <button
+      *ngFor="let tab of tabs"
+      class="portal-tab"
+      [class.active]="activeTab === tab.id"
+      (click)="setTab(tab.id)">
+      <span class="material-symbols-outlined">{{ tab.icon }}</span>
+      {{ tab.label }}
+      <span class="tab-badge" *ngIf="tab.badge">{{ tab.badge }}</span>
+      <span class="tab-indicator"></span>
+    </button>
+  </nav>
+
+  <!-- ═══ GRADING TAB ═══ -->
+  <div class="tab-content" *ngIf="activeTab === 'grading'" @tabFade>
+    <div class="grading-layout">
+      <!-- Queue Panel -->
+      <div class="queue-panel glass-panel">
+        <div class="panel-header">
+          <h2>Submission Queue</h2>
+          <span class="queue-count">{{ pendingCount }} pending</span>
+        </div>
+
+        <div class="track-filters">
+          <button class="filter-pill" [class.active]="trackFilter === 'all'" (click)="setTrackFilter('all')">All</button>
+          <button class="filter-pill coding" [class.active]="trackFilter === 'coding'" (click)="setTrackFilter('coding')">Coding</button>
+          <button class="filter-pill robotics" [class.active]="trackFilter === 'robotics'" (click)="setTrackFilter('robotics')">Robotics</button>
+          <button class="filter-pill ai" [class.active]="trackFilter === 'ai'" (click)="setTrackFilter('ai')">AI</button>
+          <button class="filter-pill cyber" [class.active]="trackFilter === 'cyber'" (click)="setTrackFilter('cyber')">Cyber</button>
+        </div>
+
+        <div class="submission-list" [@listStagger]="filteredSubmissions.length">
+          <button
+            *ngFor="let sub of filteredSubmissions"
+            class="submission-card"
+            [class.selected]="selectedSubmission?.id === sub.id"
+            [class.priority-high]="sub.priority === 'high'"
+            (click)="selectSubmission(sub)">
+            <div class="sub-avatar" [class]="sub.track">{{ sub.avatar }}</div>
+            <div class="sub-info">
+              <div class="sub-name">{{ sub.student }}</div>
+              <div class="sub-meta">{{ sub.assignment }}</div>
+              <div class="sub-footer">
+                <span class="track-chip" [class]="sub.track">{{ sub.track }}</span>
+                <span class="sub-time">{{ sub.time }}</span>
+              </div>
+            </div>
+            <span class="status-dot" [class]="sub.status"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Review Panel -->
+      <div class="review-panel glass-panel" *ngIf="selectedSubmission" @panelSlide>
+        <div class="panel-header">
+          <div class="reviewer-title">
+            <span class="material-symbols-outlined">rate_review</span>
+            <h2>Live Review</h2>
+          </div>
+          <span class="track-chip" [class]="selectedSubmission.track">{{ selectedSubmission.track }}</span>
+        </div>
+
+        <div class="review-body">
+          <div class="student-profile">
+            <div class="profile-avatar" [class]="selectedSubmission.track">{{ selectedSubmission.avatar }}</div>
+            <div>
+              <h3>{{ selectedSubmission.student }}</h3>
+              <p>{{ selectedSubmission.school }} · {{ selectedSubmission.file }}</p>
+            </div>
+          </div>
+
+          <div class="assignment-title">{{ selectedSubmission.assignment }}</div>
+
+          <div class="code-viewer">
+            <div class="code-header">
+              <span class="material-symbols-outlined">code</span>
+              <span>{{ selectedSubmission.file }}</span>
+              <span class="code-lang">Source Preview</span>
+            </div>
+            <pre class="code-block"><code>{{ selectedSubmission.codeSnippet }}</code></pre>
+          </div>
+
+          <div class="review-controls">
+            <div class="score-ring-wrap">
+              <svg class="score-ring" viewBox="0 0 120 120">
+                <circle class="ring-bg" cx="60" cy="60" r="54"/>
+                <circle class="ring-fill" cx="60" cy="60" r="54"
+                  [style.stroke-dashoffset]="getScoreRingOffset()"/>
+              </svg>
+              <div class="score-display">
+                <input type="number" min="0" max="100" [(ngModel)]="reviewScore" class="score-input">
+                <span class="score-unit">/ 100</span>
+              </div>
+            </div>
+
+            <div class="feedback-wrap">
+              <label>Instructor Feedback</label>
+              <textarea
+                [(ngModel)]="reviewFeedback"
+                rows="4"
+                placeholder="Provide detailed assessment for the student..."></textarea>
+            </div>
+          </div>
+
+          <div class="review-actions">
+            <button class="btn-action resubmit" (click)="requestResubmission()">
+              <span class="material-symbols-outlined">replay</span>
+              Request Resubmission
+            </button>
+            <button class="btn-action approve" (click)="approveSubmission()" [disabled]="!reviewScore">
+              <span class="material-symbols-outlined">task_alt</span>
+              Approve &amp; Publish Score
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity Feed -->
+    <aside class="activity-rail glass-panel">
+      <h3><span class="material-symbols-outlined">bolt</span> Live Activity</h3>
+      <div class="activity-items">
+        <div class="activity-item" *ngFor="let item of activityFeed; let i = index" [style.animation-delay.ms]="i * 120">
+          <div class="activity-icon" [class]="item.track">
+            <span class="material-symbols-outlined">{{ item.icon }}</span>
+          </div>
+          <div>
+            <p>{{ item.text }}</p>
+            <span>{{ item.time }}</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ═══ COURSES TAB ═══ -->
+  <div class="tab-content courses-tab" *ngIf="activeTab === 'courses'" @tabFade>
+    <div class="courses-grid">
+      <div
+        *ngFor="let course of courses; let i = index"
+        class="course-card"
+        [style.animation-delay.ms]="i * 80">
+        <div class="course-glow" [class]="course.track"></div>
+        <div class="course-icon" [class]="course.track">
+          <span class="material-symbols-outlined">{{ course.icon }}</span>
+        </div>
+        <h3>{{ course.title }}</h3>
+        <p>{{ course.modules }} modules · {{ course.enrolled }} enrolled · {{ course.level }}</p>
+        <div class="course-progress">
+          <div class="progress-header">
+            <span>Cohort Progress</span>
+            <strong>{{ course.completion }}%</strong>
+          </div>
+          <div class="progress-track">
+            <div class="progress-bar-fill" [class]="course.track" [style.width.%]="course.completion"></div>
+          </div>
+        </div>
+        <div class="course-footer">
+          <span class="pending-chip" *ngIf="course.pendingReviews">
+            <span class="material-symbols-outlined">pending</span>
+            {{ course.pendingReviews }} to review
+          </span>
+          <button class="manage-btn">Manage Course</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MENTORSHIP TAB ═══ -->
+  <div class="tab-content mentorship-tab" *ngIf="activeTab === 'mentorship'" @tabFade>
+    <div class="teams-grid">
+      <div
+        *ngFor="let team of mentoredTeams; let i = index"
+        class="team-card"
+        [class]="team.status"
+        [style.animation-delay.ms]="i * 100">
+        <div class="team-header">
+          <div class="team-avatar" [class]="team.track">
+            <span class="material-symbols-outlined">groups</span>
+          </div>
+          <div>
+            <h3>{{ team.name }}</h3>
+            <p>{{ team.school }} · {{ team.members }} members</p>
+          </div>
+          <span class="status-badge" [class]="team.status">{{ team.status | titlecase }}</span>
+        </div>
+        <div class="team-progress-ring">
+          <svg viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="34" class="ring-track"/>
+            <circle cx="40" cy="40" r="34" class="ring-value"
+              [style.stroke-dashoffset]="213.6 - (team.progress / 100) * 213.6"/>
+          </svg>
+          <span class="ring-label">{{ team.progress }}%</span>
+        </div>
+        <div class="team-meta">
+          <span><span class="material-symbols-outlined">event</span> Deadline: {{ team.nextDeadline }}</span>
+          <span class="track-chip" [class]="team.track">{{ team.track }}</span>
+        </div>
+        <button class="mentor-btn">
+          <span class="material-symbols-outlined">chat</span>
+          Send Mentor Note
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Toast -->
+  <div class="success-toast" *ngIf="showSuccessToast" @toastPop>
+    <span class="material-symbols-outlined">check_circle</span>
+    {{ toastMessage }}
+  </div>
+</div>

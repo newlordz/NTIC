@@ -1,0 +1,126 @@
+<div [class.app-shell]="!isLandingPage">
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="sidebar" *ngIf="!isLandingPage">
+    <div class="sidebar-brand">
+      <div class="brand-logo">
+        <span class="material-symbols-outlined fill" style="font-size:22px;">rocket_launch</span>
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">NTIC Portal</div>
+        <div class="brand-sub">{{ currentUser?.roleId === 'student' ? 'Student Workspace' : currentUser?.roleId === 'instructor' ? 'Mentor Workspace' : currentUser?.roleId === 'super_admin' ? 'Admin' : 'Competition Manager' }}</div>
+      </div>
+    </div>
+ 
+    <a class="sidebar-new-btn" *ngIf="currentUser?.roleId !== 'student' && currentUser?.roleId !== 'sponsor' && currentUser?.roleId !== 'super_admin'"
+       [routerLink]="currentUser?.roleId === 'judge' ? '/judge' : currentUser?.roleId === 'instructor' ? '/instructor' : currentUser?.roleId === 'school_admin' ? '/dashboard' : '/competitions'"
+       [queryParams]="currentUser?.roleId === 'school_admin' ? { action: 'add_team' } : null">
+      <span class="material-symbols-outlined" style="font-size:18px;">{{ currentUser?.roleId === 'judge' ? 'gavel' : currentUser?.roleId === 'school_admin' ? 'group_add' : currentUser?.roleId === 'instructor' ? 'assignment_turned_in' : 'add' }}</span>
+      {{ currentUser?.roleId === 'instructor' ? 'Grade Work' : currentUser?.roleId === 'school_admin' ? 'Add Team' : currentUser?.roleId === 'judge' ? 'Score Challenge' : 'New Challenge' }}
+    </a>
+ 
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Main</div>
+      <a class="nav-item" *ngIf="hasAccess('dashboard')" routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+        <span class="material-symbols-outlined">dashboard</span>
+        Dashboard
+      </a>
+      <a class="nav-item" *ngIf="hasAccess('roster')" routerLink="/dashboard" [queryParams]="{ action: 'add_team' }" [class.active]="false">
+        <span class="material-symbols-outlined">groups</span>
+        My Teams & Roster
+      </a>
+      <a class="nav-item" *ngIf="hasAccess('registration')" 
+         [routerLink]="currentUser?.roleId === 'super_admin' ? '/dashboard' : '/registration'" 
+         [queryParams]="currentUser?.roleId === 'super_admin' ? { openRegModal: 'true' } : { tab: 'school' }" 
+         routerLinkActive="active">
+        <span class="material-symbols-outlined">how_to_reg</span>
+        Registration
+      </a>
+      <a class="nav-item" *ngIf="hasAccess('lms')" routerLink="/lms" routerLinkActive="active">
+        <span class="material-symbols-outlined">school</span>
+        LMS
+      </a>
+      <a class="nav-item" *ngIf="hasAccess('instructor')" routerLink="/instructor" routerLinkActive="active">
+        <span class="material-symbols-outlined">patient_list</span>
+        Instructor Portal
+      </a>
+      <a class="nav-item" *ngIf="hasAccess('judge')" routerLink="/judge" routerLinkActive="active">
+        <span class="material-symbols-outlined">gavel</span>
+        Judging Arena
+      </a>
+      <a class="nav-item" *ngIf="hasAccess('competitions')" routerLink="/competitions" routerLinkActive="active">
+        <span class="material-symbols-outlined">emoji_events</span>
+        Competitions
+      </a>
+    </div>
+ 
+    <div class="sidebar-section" *ngIf="hasAccess('leaderboard') || hasAccess('talent') || hasAccess('sponsors') || hasAccess('reporting')">
+      <div class="sidebar-section-label">Analytics</div>
+      <a class="nav-item" *ngIf="hasAccess('leaderboard')" routerLink="/leaderboard" routerLinkActive="active">
+        <span class="material-symbols-outlined">leaderboard</span>
+        Leaderboard
+      </a>
+      <a class="nav-item" *ngIf="hasAccess('talent')" routerLink="/talent" routerLinkActive="active">
+        <span class="material-symbols-outlined">stars</span>
+        Talent Discovery
+      </a>
+      <a class="nav-item" *ngIf="hasAccess('sponsors')" routerLink="/sponsors" routerLinkActive="active">
+        <span class="material-symbols-outlined">handshake</span>
+        Sponsors
+      </a>
+      <a class="nav-item" *ngIf="hasAccess('reporting')" routerLink="/reporting" routerLinkActive="active">
+        <span class="material-symbols-outlined">assessment</span>
+        {{ currentUser?.roleId === 'school_admin' ? 'School Reports' : 'Reports' }}
+      </a>
+    </div>
+ 
+    <div class="sidebar-footer">
+      <a class="nav-item" routerLink="/">
+        <span class="material-symbols-outlined">logout</span>
+        Landing Page
+      </a>
+      <div class="divider"></div>
+      <div class="user-profile-chip">
+        <div class="avatar">{{ currentUser?.avatar || 'SA' }}</div>
+        <div class="user-info">
+          <div class="user-name">{{ currentUser?.name || 'Super Admin' }}</div>
+          <div class="user-role">{{ currentUser?.roleName || 'Administrator' }}</div>
+        </div>
+        <span class="material-symbols-outlined" style="margin-left:auto;font-size:18px;color:var(--outline)">expand_more</span>
+      </div>
+    </div>
+  </aside>
+ 
+  <!-- ══ MAIN ══ -->
+  <div [class.main-content]="!isLandingPage">
+    <!-- Top Bar -->
+    <header class="topbar" *ngIf="!isLandingPage">
+      <div class="topbar-left">
+        <span class="page-title">{{ currentTitle }}</span>
+      </div>
+
+      <div class="topbar-right">
+        <button class="icon-btn" (click)="themeService.toggleTheme()" [title]="themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
+          <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
+        </button>
+        <button class="icon-btn">
+          <span class="material-symbols-outlined">notifications</span>
+          <span class="badge"></span>
+        </button>
+        <button class="icon-btn">
+          <span class="material-symbols-outlined">apps</span>
+        </button>
+        <div class="avatar-btn">{{ currentUser?.avatar || 'SA' }}</div>
+      </div>
+    </header>
+ 
+    <!-- Router Outlet -->
+    <router-outlet></router-outlet>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     FLOATING SCROLL TO TOP BUTTON
+══════════════════════════════════════════ -->
+<button class="scroll-to-top-btn" [class.visible]="showScrollToTop" (click)="scrollToTop()" title="Scroll back to top">
+  <span class="material-symbols-outlined">keyboard_arrow_up</span>
+</button>

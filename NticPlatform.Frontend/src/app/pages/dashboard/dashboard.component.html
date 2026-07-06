@@ -1,0 +1,1926 @@
+<div class="page-canvas route-animate">
+
+  <!-- ══════════════════════════════════════════════════════
+       NON-ADMIN DASHBOARDS (Student / Instructor / etc.)
+  ══════════════════════════════════════════════════════ -->
+  <ng-container *ngIf="activeRoleId !== 'super_admin'">
+    <!-- Page Header -->
+    <div class="page-header with-action">
+      <div>
+        <h1 class="page-title-main">{{ dashboardTitle }}</h1>
+        <p class="page-subtitle">{{ dashboardSubtitle }}</p>
+      </div>
+      <div style="display:flex;gap:10px;" *ngIf="activeRoleId === 'instructor'">
+        <button class="btn btn-subtle btn-sm"><span class="material-symbols-outlined">tune</span>Filter</button>
+        <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">assignment_turned_in</span>Grade Submissions</button>
+      </div>
+      <div style="display:flex;gap:10px;" *ngIf="activeRoleId === 'student'">
+        <button class="btn btn-subtle btn-sm"><span class="material-symbols-outlined">school</span>Curriculum</button>
+        <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">upload_file</span>Submit Code</button>
+      </div>
+      <div style="display:flex;gap:10px;" *ngIf="activeRoleId === 'school_admin'">
+        <button class="btn btn-primary btn-sm" (click)="openAddTeamModal()"><span class="material-symbols-outlined">group_add</span>Add Team</button>
+      </div>
+      <div style="display:flex;gap:10px;" *ngIf="activeRoleId === 'judge'">
+        <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">grade</span>Score Guidelines</button>
+      </div>
+      <div style="display:flex;gap:10px;" *ngIf="activeRoleId === 'sponsor'">
+        <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">handshake</span>New CSR Grant</button>
+      </div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="stat-grid stagger">
+      <div *ngFor="let stat of (activeRoleId === 'school_admin' ? schoolAdminStats : stats)" class="stat-card" [class]="stat.color">
+        <div class="stat-bg-icon material-symbols-outlined">{{ stat.icon }}</div>
+        <div class="stat-label"><span class="material-symbols-outlined">{{ stat.icon }}</span>{{ stat.label }}</div>
+        <div class="stat-value">{{ stat.value }}</div>
+        <div class="stat-meta">
+          <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">
+            {{ stat.icon === 'military_tech' || stat.icon === 'workspace_premium' || stat.icon === 'gavel' || stat.icon === 'payments' ? 'star' : 'trending_up' }}
+          </span>
+          {{ stat.meta }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Two Column Layout -->
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;">
+
+      <!-- LEFT COLUMN -->
+      <div>
+        <!-- Student Portal Coursework -->
+        <div *ngIf="activeRoleId === 'student'">
+          <div class="section-title">My Enrolled Courses & Tracks<button class="btn btn-ghost btn-sm">View All</button></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div *ngFor="let track of enrolledTracks" class="card" style="cursor:pointer;">
+              <div class="card-body">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+                  <div style="width:44px;height:44px;border-radius:10px;background:var(--surface-container);display:flex;align-items:center;justify-content:center;">
+                    <span class="material-symbols-outlined" [style.color]="'var(--'+track.color+')'">{{track.icon}}</span>
+                  </div>
+                  <span class="badge secondary">Active</span>
+                </div>
+                <h3 style="font-size:14px;font-weight:700;color:var(--on-surface);margin-bottom:4px;">{{track.name}}</h3>
+                <p style="font-size:12px;color:var(--on-surface-variant);margin-bottom:14px;">{{track.module}} &bull; Last active {{track.lastActive}}</p>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--on-surface-variant);margin-bottom:4px;">
+                  <span>Course Progress</span>
+                  <span style="font-weight:700;" [style.color]="'var(--'+track.color+')'">{{track.progress}}%</span>
+                </div>
+                <div class="progress-bar" [class]="track.color"><div class="progress-fill" [style.width.%]="track.progress"></div></div>
+                <div style="display:flex;justify-content:flex-end;margin-top:12px;padding-top:10px;border-top:1px solid var(--outline-variant); gap:8px;">
+                  <button class="btn btn-ghost btn-sm">Assignments</button>
+                  <button class="btn btn-primary btn-sm" style="padding: 4px 10px; font-size:11px;">Resume</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Instructor Portal Panel -->
+        <div *ngIf="activeRoleId === 'instructor'">
+          <div class="section-title">Active LMS Tracks<button class="btn btn-ghost btn-sm">View All Curriculum</button></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div *ngFor="let track of activeTracks.slice(0, 4)" class="card" style="cursor:pointer;">
+              <div class="card-body">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+                  <div style="width:44px;height:44px;border-radius:10px;background:var(--surface-container);display:flex;align-items:center;justify-content:center;">
+                    <span class="material-symbols-outlined" [style.color]="'var(--'+track.color+')'">{{track.icon}}</span>
+                  </div>
+                  <span class="badge" [class]="track.status === 'Planning' ? 'primary' : 'secondary'">{{track.status}}</span>
+                </div>
+                <h3 style="font-size:14px;font-weight:700;margin-bottom:4px;">{{track.name}}</h3>
+                <p style="font-size:12px;color:var(--on-surface-variant);margin-bottom:14px;">{{track.module}} &bull; {{track.enrolled}} enrolled</p>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--on-surface-variant);margin-bottom:4px;">
+                  <span>Cohort Completion</span>
+                  <span style="font-weight:700;" [style.color]="'var(--'+track.color+')'">{{track.completion}}%</span>
+                </div>
+                <div class="progress-bar" [class]="track.color"><div class="progress-fill" [style.width.%]="track.completion"></div></div>
+                <div style="display:flex;justify-content:flex-end;margin-top:12px;padding-top:10px;border-top:1px solid var(--outline-variant);">
+                  <button class="btn btn-ghost btn-sm">Manage</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- School Admin Portal Panel -->
+        <div *ngIf="activeRoleId === 'school_admin'">
+          <!-- School Profile Crest / Name Header -->
+          <div class="school-profile-banner">
+            <div class="school-crest-avatar">
+              <span class="material-symbols-outlined">account_balance</span>
+            </div>
+            <div class="school-profile-details">
+              <h2>{{ schoolName }}</h2>
+              <span class="school-badge-status">ACCREDITED NTIC MEMBER</span>
+            </div>
+            <button class="btn btn-primary btn-sm" (click)="openAddTeamModal()" style="margin-left: auto;">
+              <span class="material-symbols-outlined">add</span>Register Team
+            </button>
+          </div>
+
+          <!-- School Teams Roster List -->
+          <div class="section-title">School Competition Teams</div>
+          <div class="school-teams-grid" *ngIf="schoolTeams.length > 0">
+            <div *ngFor="let team of schoolTeams" class="card team-roster-card">
+              <div class="card-body">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                  <span class="badge secondary">{{ team.status }}</span>
+                  <span class="team-track-chip" [class]="team.track.toLowerCase()">{{ team.track }}</span>
+                </div>
+                <h3 class="team-card-title">{{ team.name }}</h3>
+                <div class="team-card-meta">
+                  <div><strong>Team Lead:</strong> {{ team.lead }}</div>
+                  <div><strong>Members:</strong> {{ team.members }} active students</div>
+                  <div *ngIf="team.mentor"><strong>Mentor:</strong> {{ team.mentor }}</div>
+                  <div *ngIf="team.motto" style="font-style:italic;color:var(--primary);margin-top:4px;border-top:1px dashed var(--outline-variant);padding-top:4px;">"{{ team.motto }}"</div>
+                  
+                  <!-- Display Roster Chips if available -->
+                  <div *ngIf="team.rosterList && team.rosterList.length > 0" class="roster-chips-container" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--outline-variant);">
+                    <span *ngFor="let student of team.rosterList; let i = index" class="roster-student-chip" [style.background]="i === 0 ? '#fef3c7' : 'var(--surface-container)'" [style.color]="i === 0 ? '#d97706' : 'var(--on-surface)'" style="padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;border:1px solid var(--outline-variant);">
+                      <span class="material-symbols-outlined" style="font-size:13px;">{{ i === 0 ? 'stars' : 'person' }}</span>
+                      {{ student }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Squad Management Footer Bar -->
+                <div class="team-card-actions" style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--outline-variant);">
+                  <button type="button" class="btn-manage-squad edit" (click)="editTeam(team)" style="display:flex;align-items:center;gap:4px;padding:6px 12px;font-size:11.5px;font-weight:700;color:var(--primary);background:rgba(0,63,135,0.06);border:1px solid rgba(0,63,135,0.2);border-radius:8px;cursor:pointer;transition:all 0.2s ease;">
+                    <span class="material-symbols-outlined" style="font-size:15px;">edit_square</span>
+                    Edit Roster & Squad
+                  </button>
+                  <button type="button" class="btn-manage-squad delete" (click)="disbandTeam(team)" style="display:flex;align-items:center;gap:4px;padding:6px 10px;font-size:11.5px;font-weight:700;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;cursor:pointer;transition:all 0.2s ease;">
+                    <span class="material-symbols-outlined" style="font-size:15px;">delete</span>
+                    Disband
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Empty State for Teams -->
+          <div class="school-teams-empty" *ngIf="schoolTeams.length === 0">
+            <span class="material-symbols-outlined">groups</span>
+            <h4>No Teams Registered</h4>
+            <p>Your school hasn't registered any squads under NTIC competition tracks yet.</p>
+            <button class="btn btn-primary" (click)="openAddTeamModal()">
+              <span class="material-symbols-outlined">add</span>Register Your First Team
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div>
+        <!-- Student Portal submissions panel -->
+        <div *ngIf="activeRoleId === 'student'" class="card" style="height:100%;">
+          <div class="card-header"><h3 style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-outlined" style="font-size:18px;">history</span>My Submissions</h3></div>
+          <div style="overflow-y:auto;flex:1;padding:12px;display:flex;flex-direction:column;gap:8px;">
+            <div *ngFor="let sub of mySubmissions" style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;padding:10px;position:relative;overflow:hidden;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                <span style="font-size:13px;font-weight:600;">{{sub.track}}</span>
+                <span class="badge" [class]="sub.status === 'Approved' ? 'secondary' : 'primary'">{{sub.status}}</span>
+              </div>
+              <div style="font-size:11px;color:var(--on-surface-variant);margin-bottom:6px;">Submitted: {{sub.date}}</div>
+              <div style="background:var(--surface-container);padding:5px 8px;border-radius:5px;font-size:11px;font-family:'JetBrains Mono',monospace;margin-bottom:8px;display:flex;align-items:center;gap:4px;">
+                <span class="material-symbols-outlined" style="font-size:14px;color:var(--primary)">code</span>{{sub.file}}
+              </div>
+              <div style="font-size:11px;color:var(--on-surface-variant);background:var(--surface-container-low);padding:6px;border-radius:4px;border-left:2px solid var(--primary);"><strong>Feedback:</strong> {{sub.feedback}}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- School Admin Instructors & Mentors Panel -->
+        <div *ngIf="activeRoleId === 'school_admin'" class="card" style="height:100%;">
+          <div class="card-header">
+            <h3 style="display:flex;align-items:center;gap:8px;margin:0;font-size:14px;">
+              <span class="material-symbols-outlined" style="font-size:18px;">co_present</span>School Mentors
+            </h3>
+          </div>
+          <div style="overflow-y:auto;flex:1;padding:16px;display:flex;flex-direction:column;gap:12px;">
+            <div *ngFor="let inst of schoolInstructors" class="mentor-item-card">
+              <div class="mentor-avatar-initials">{{ getInitials(inst.fullName) }}</div>
+              <div class="mentor-details">
+                <strong>{{ inst.fullName }}</strong>
+                <span>{{ inst.track || 'General STEM' }}</span>
+                <span class="mentor-email">{{ inst.email }}</span>
+              </div>
+            </div>
+            
+            <!-- Empty State for Mentors -->
+            <div *ngIf="schoolInstructors.length === 0" style="text-align:center;padding:32px 16px;color:var(--on-surface-variant);opacity:0.8;">
+              <span class="material-symbols-outlined" style="font-size:36px;opacity:0.3;margin-bottom:8px;">co_present</span>
+              <p style="margin:0;font-size:12px;">No instructors registered for your school yet.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- ══════════════════════════════════════════════════════
+       SUPER ADMIN COMMAND CENTER
+  ══════════════════════════════════════════════════════ -->
+  <ng-container *ngIf="activeRoleId === 'super_admin'">
+
+    <!-- Admin Header -->
+    <div class="admin-header">
+      <div class="admin-header-left">
+        <div class="admin-header-icon">
+          <span class="material-symbols-outlined">shield_person</span>
+        </div>
+        <div>
+          <h1 class="admin-title">Command Center</h1>
+          <p class="admin-subtitle">National NTIC Platform · System Administration & Access Control</p>
+        </div>
+      </div>
+      <div class="admin-header-right">
+        <div class="admin-time-badge">
+          <span class="pulse-dot"></span>
+          <span>All Systems Operational &nbsp;&middot;&nbsp; {{ liveTime }}</span>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="openRegisterModal()">
+          <span class="material-symbols-outlined">person_add</span>Register User
+        </button>
+      </div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="admin-stat-grid">
+      <div *ngFor="let stat of stats; let i = index" class="admin-stat-card" [attr.data-index]="i">
+        <div class="admin-stat-icon"><span class="material-symbols-outlined">{{ stat.icon }}</span></div>
+        <div class="admin-stat-value">{{ stat.value }}</div>
+        <div class="admin-stat-label">{{ stat.label }}</div>
+        <div class="admin-stat-meta">{{ stat.meta }}</div>
+        <div class="admin-stat-glow"></div>
+      </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="admin-tabs">
+      <button class="admin-tab" [class.active]="adminTab === 'overview'" (click)="adminTab = 'overview'">
+        <span class="material-symbols-outlined">dashboard</span>Overview
+      </button>
+      <button class="admin-tab" (click)="openRegisterModal()">
+        <span class="material-symbols-outlined">person_add</span>Register User
+      </button>
+      <button class="admin-tab" [class.active]="adminTab === 'tickets'" (click)="adminTab = 'tickets'">
+        <span class="material-symbols-outlined">token</span>Access Tokens
+        <span class="admin-tab-badge">{{ registeredUsers.length }}</span>
+      </button>
+      <button class="admin-tab" [class.active]="adminTab === 'approvals'" (click)="adminTab = 'approvals'">
+        <span class="material-symbols-outlined">verified_user</span>Pending Approvals
+        <span class="admin-tab-badge warn" *ngIf="pendingApprovals.length > 0">{{ pendingApprovals.length }}</span>
+      </button>
+      <button class="admin-tab cms-tab" [class.active]="adminTab === 'content'" (click)="adminTab = 'content'">
+        <span class="material-symbols-outlined">edit_note</span>Content Manager
+      </button>
+      <button class="admin-tab" [class.active]="adminTab === 'users'" (click)="adminTab = 'users'">
+        <span class="material-symbols-outlined">group</span>Users by Role
+        <span class="admin-tab-badge">{{ registeredUsers.length }}</span>
+      </button>
+    </div>
+
+    <!-- ── TAB: OVERVIEW ── -->
+    <div *ngIf="adminTab === 'overview'" class="admin-tab-body">
+      <div class="admin-two-col">
+
+        <!-- System Infrastructure -->
+        <div>
+          <div class="section-title">
+            System Infrastructure Nodes
+            <span class="status-all-green"><span class="material-symbols-outlined" style="font-size:14px;">circle</span>All Healthy</span>
+          </div>
+          <div class="admin-node-grid">
+            <div *ngFor="let node of systemNodes; let i = index" class="admin-node-card">
+              <div class="admin-node-header">
+                <div class="admin-node-icon">
+                  <span class="material-symbols-outlined">settings_ethernet</span>
+                </div>
+                <div>
+                  <div class="admin-node-name">{{ node.name }}</div>
+                  <div class="admin-node-status">
+                    <span class="pulse-dot green"></span>{{ node.status }}
+                  </div>
+                </div>
+              </div>
+              <div class="admin-node-metrics">
+                <div class="admin-metric">
+                  <span class="admin-metric-label">Latency</span>
+                  <span class="admin-metric-value live-num">{{ getNodeLatency(i) }}ms</span>
+                </div>
+                <div class="admin-metric">
+                  <span class="admin-metric-label">Load</span>
+                  <span class="admin-metric-value live-num">{{ getNodeLoad(i) }}%</span>
+                </div>
+                <!-- Sparkline SVG -->
+                <div class="admin-sparkline">
+                  <svg viewBox="0 0 80 28" width="80" height="28" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient [id]="'sg'+i" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#0056b3" stop-opacity="0.35"/>
+                        <stop offset="100%" stop-color="#0056b3" stop-opacity="0"/>
+                      </linearGradient>
+                    </defs>
+                    <!-- area fill -->
+                    <path [attr.d]="sparklinePath(nodeHistory[i]) + ' L 80,28 L 0,28 Z'"
+                          [attr.fill]="'url(#sg'+i+')'" />
+                    <!-- line -->
+                    <path [attr.d]="sparklinePath(nodeHistory[i])"
+                          fill="none" stroke="#0056b3" stroke-width="1.5"
+                          stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- live dot -->
+                  </svg>
+                </div>
+              </div>
+              <div class="admin-node-bar-wrap">
+                <div class="admin-node-bar" [style.width]="getNodeLoad(i) + '%'"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audit Logs -->
+        <div>
+          <div class="section-title">
+            Live Audit Trail
+            <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+          </div>
+          <div class="admin-audit-list">
+            <div *ngFor="let log of auditLogs" class="admin-audit-item" [class]="log.type">
+              <div class="admin-audit-icon">
+                <span class="material-symbols-outlined">
+                  {{ log.type === 'auth' ? 'login' : log.type === 'ticket' ? 'confirmation_number' : log.type === 'approval' ? 'check_circle' : 'settings' }}
+                </span>
+              </div>
+              <div class="admin-audit-body">
+                <div class="admin-audit-action">{{ log.action }}</div>
+                <div class="admin-audit-meta">{{ log.user }} &middot; {{ log.time }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── TAB: USERS BY ROLE ── -->
+    <div *ngIf="adminTab === 'users'" class="admin-tab-body">
+      <div class="admin-role-section">
+        <div class="section-title">
+          Users by Role
+          <span class="total-users-badge">{{ registeredUsers.length }} total</span>
+        </div>
+        <div class="admin-role-grid">
+          <div *ngFor="let r of roleDistribution" class="admin-role-card" [class]="'role-' + r.role" 
+               (click)="openRoleModal(r.role)" 
+               (mouseenter)="showRoleHover(r.role, $event)" 
+               (mouseleave)="hideRoleHover()"
+               style="cursor:pointer">
+            <div class="admin-role-icon"><span class="material-symbols-outlined">{{ r.icon }}</span></div>
+            <div class="admin-role-info">
+              <div class="admin-role-name">{{ r.label }}</div>
+              <div class="admin-role-bar-wrap">
+                <div class="admin-role-bar" [style.width.%]="r.percent"></div>
+              </div>
+              <div class="admin-role-meta">
+                <span class="admin-role-count">{{ r.count }}</span>
+                <span class="admin-role-pct">{{ r.percent }}%</span>
+              </div>
+            </div>
+            <!-- Hover popover -->
+            <div class="role-hover-popup" *ngIf="hoverUsers.length > 0 && hoverUsers[0]?.role === r.role"
+                 [style.top.px]="hoverPos.y" [style.left.px]="hoverPos.x">
+              <div class="role-hover-header">{{ r.label }}</div>
+              <div class="role-hover-user" *ngFor="let u of hoverUsers">
+                <span class="role-hover-dot" [class]="u.status === 'Active' ? 'active' : 'inactive'"></span>
+                <span class="role-hover-name">{{ u.fullName }}</span>
+                <span class="role-hover-email">{{ u.email }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: TICKETS ── -->
+    <div *ngIf="adminTab === 'tickets'" class="admin-tab-body">
+
+      <div class="admin-tickets-header">
+        <div class="admin-tickets-filters">
+          <button class="admin-filter-btn" [class.active]="ticketFilter === 'all'" (click)="ticketFilter = 'all'">All Users</button>
+          <button class="admin-filter-btn" [class.active]="ticketFilter === 'judge'" (click)="ticketFilter = 'judge'">
+            <span class="material-symbols-outlined">gavel</span>Judges
+          </button>
+          <button class="admin-filter-btn" [class.active]="ticketFilter === 'sponsor'" (click)="ticketFilter = 'sponsor'">
+            <span class="material-symbols-outlined">handshake</span>Sponsors
+          </button>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="openRegisterModal()">
+          <span class="material-symbols-outlined">add</span>New Registration
+        </button>
+      </div>
+
+      <div class="admin-tickets-table">
+        <div class="admin-table-head">
+          <span>User</span>
+          <span>Role</span>
+          <span>Access Token</span>
+          <span>Status</span>
+          <span>Registered</span>
+          <span>Last Login</span>
+          <span>Actions</span>
+        </div>
+        <div *ngFor="let user of filteredRegisteredUsers" class="admin-table-row">
+          <div class="admin-user-cell">
+            <div class="admin-user-avatar" [class]="user.role">
+              {{ getInitials(user.fullName) }}
+            </div>
+            <div>
+              <div class="admin-user-name">{{ user.fullName }}</div>
+              <div class="admin-user-email">{{ user.email }}</div>
+            </div>
+          </div>
+          <div>
+            <span class="admin-role-badge" [class]="user.role">
+              <span class="material-symbols-outlined">{{ user.role === 'judge' ? 'gavel' : 'handshake' }}</span>
+              {{ user.role === 'judge' ? 'Judge' : 'Sponsor' }}
+            </span>
+          </div>
+          <div class="admin-ticket-cell">
+            <code class="admin-ticket-code">{{ user.ticket }}</code>
+            <button class="admin-copy-btn" (click)="copyTicket(user.ticket)" [title]="copiedTicket === user.ticket ? 'Copied!' : 'Copy Ticket'">
+              <span class="material-symbols-outlined">{{ copiedTicket === user.ticket ? 'check' : 'content_copy' }}</span>
+            </button>
+          </div>
+          <div>
+            <span class="admin-status-badge" [class]="user.status.toLowerCase()">{{ user.status }}</span>
+          </div>
+          <div class="admin-date-cell">{{ user.registeredAt }}</div>
+          <div class="admin-date-cell">{{ user.lastLogin }}</div>
+          <div class="admin-actions-cell">
+            <button class="admin-action-btn" title="View Details" (click)="viewUserDetails(user); $event.stopPropagation()">
+              <span class="material-symbols-outlined">open_in_new</span>
+            </button>
+          </div>
+        </div>
+        <div *ngIf="filteredRegisteredUsers.length === 0" class="admin-table-empty">
+          <span class="material-symbols-outlined">person_off</span>
+          No {{ ticketFilter === 'all' ? 'users' : ticketFilter + 's' }} registered yet.
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: PENDING APPROVALS ── -->
+    <div *ngIf="adminTab === 'approvals'" class="admin-tab-body">
+      <div *ngIf="pendingApprovals.length === 0" class="admin-empty-state">
+        <span class="material-symbols-outlined">check_circle</span>
+        <h3>All Clear!</h3>
+        <p>No pending approvals at this time.</p>
+      </div>
+      <div class="admin-approvals-list" *ngIf="pendingApprovals.length > 0">
+        <div *ngFor="let req of pendingApprovals" class="admin-approval-card">
+          <div class="admin-approval-icon">
+            <span class="material-symbols-outlined">{{ req.type === 'School Registration' ? 'account_balance' : req.type === 'Team Addition' ? 'groups' : 'person' }}</span>
+          </div>
+          <div class="admin-approval-info">
+            <div class="admin-approval-type">{{ req.type }}</div>
+            <div class="admin-approval-entity">{{ req.entity }}</div>
+            <div class="admin-approval-contact">{{ req.contact }} &middot; Submitted {{ req.submitted }}</div>
+          </div>
+          <div class="admin-approval-actions">
+            <button class="btn btn-sm admin-preview-btn" (click)="openPreview(req)">
+              <span class="material-symbols-outlined">visibility</span>Preview
+            </button>
+            <button class="btn btn-sm admin-reject-btn" (click)="openReview(req)">
+              <span class="material-symbols-outlined">rate_review</span>Review
+            </button>
+            <button class="btn btn-primary btn-sm" (click)="approveRequest(req)">
+              <span class="material-symbols-outlined">check</span>Approve
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <!-- ── TAB: CONTENT MANAGER ── -->
+  <div *ngIf="adminTab === 'content'" class="admin-tab-body">
+
+    <!-- Sub-Tab Nav -->
+    <div class="cms-sub-tabs">
+      <button class="cms-sub-tab" [class.active]="contentTab === 'stories'" (click)="contentTab = 'stories'">
+        <span class="material-symbols-outlined">newspaper</span>Championship Stories
+        <span class="cms-count-badge">{{ contentService.championshipStories.length }}</span>
+      </button>
+      <button class="cms-sub-tab" [class.active]="contentTab === 'hof'" (click)="contentTab = 'hof'">
+        <span class="material-symbols-outlined">workspace_premium</span>Hall of Fame
+        <span class="cms-count-badge">{{ contentService.hallOfFameEntries.length }}</span>
+      </button>
+      <button class="cms-sub-tab" [class.active]="contentTab === 'leaderboard'" (click)="contentTab = 'leaderboard'">
+        <span class="material-symbols-outlined">leaderboard</span>Leaderboard
+        <span class="cms-count-badge">{{ contentService.leaderboardData.length }}</span>
+      </button>
+      <button class="cms-sub-tab" [class.active]="contentTab === 'talent'" (click)="contentTab = 'talent'">
+        <span class="material-symbols-outlined">stars</span>Talent Discovery
+        <span class="cms-count-badge">{{ contentService.talentDiscovery.length }}</span>
+      </button>
+      <button class="cms-sub-tab" [class.active]="contentTab === 'news'" (click)="contentTab = 'news'">
+        <span class="material-symbols-outlined">campaign</span>News Feed
+        <span class="cms-count-badge">{{ contentService.newsFeedItems.length }}</span>
+      </button>
+      <button class="cms-sub-tab" [class.active]="contentTab === 'stats'" (click)="contentTab = 'stats'">
+        <span class="material-symbols-outlined">analytics</span>Platform Stats
+      </button>
+      <button class="cms-sub-tab" [class.active]="contentTab === 'countdown'" (click)="contentTab = 'countdown'">
+        <span class="material-symbols-outlined">alarm</span>Countdown Timer
+      </button>
+    </div>
+
+    <!-- ── STORIES PANEL ── -->
+    <div *ngIf="contentTab === 'stories'" class="cms-panel">
+      <div class="cms-panel-header">
+        <div>
+          <h3 class="cms-panel-title"><span class="material-symbols-outlined">newspaper</span>Championship Stories</h3>
+          <p class="cms-panel-desc">Stories appear as an auto-sliding carousel on the landing page.</p>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="openStoryForm()">
+          <span class="material-symbols-outlined">add</span>Add Story
+        </button>
+      </div>
+
+      <!-- Add Story Form -->
+      <div class="cms-form-card" *ngIf="storyFormOpen">
+        <div class="cms-form-card-header">
+          <h4>
+            <span class="material-symbols-outlined">edit_note</span>
+            {{ editingStoryId ? 'Edit Championship Story' : 'New Championship Story' }}
+          </h4>
+          <button class="cms-form-close" (click)="closeStoryForm()"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <div class="cms-form-error" *ngIf="storyFormError">{{ storyFormError }}</div>
+        <div class="cms-form-grid">
+          <div class="cms-field">
+            <label>Story Title <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="storyForm.title" placeholder="e.g. PRESEC Unveils Autonomous Harvester Bot">
+          </div>
+          <div class="cms-field">
+            <label>Tag</label>
+            <select [(ngModel)]="storyForm.tag">
+              <option>Robotics</option><option>Coding</option><option>Cybersecurity</option>
+              <option>AI</option><option>Innovation</option><option>General</option>
+            </select>
+          </div>
+          <div class="cms-field">
+            <label>Tag Color</label>
+            <select [(ngModel)]="storyForm.tagColor">
+              <option *ngFor="let tc of tag_colors" [value]="tc.value">{{ tc.label }}</option>
+            </select>
+          </div>
+          <div class="cms-field">
+            <label>Read Time</label>
+            <input type="text" [(ngModel)]="storyForm.readTime" placeholder="5 min read">
+          </div>
+          <div class="cms-field cms-field-full">
+            <label>Story Image</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <input type="text" [(ngModel)]="storyForm.image" placeholder="Image URL, e.g. assets/ntic_image_1.jpeg" style="flex:1;">
+              <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant);">OR</span>
+              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;">
+                <span class="material-symbols-outlined" style="font-size:16px;">upload</span>Import
+                <input type="file" (change)="onStoryImageSelected($event)" accept="image/*" style="display:none;">
+              </label>
+            </div>
+            <!-- Image preview if present -->
+            <div *ngIf="storyForm.image" style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+              <img [src]="storyForm.image" style="width:50px; height:35px; object-fit:cover; border-radius:6px; border:1px solid var(--outline-variant);" onerror="this.style.display='none'">
+              <span style="font-size:11px; color:var(--on-surface-variant); word-break:break-all; max-width:400px; max-height:35px; overflow:hidden;">{{ storyForm.image.startsWith('data:') ? '[Imported Device Image]' : storyForm.image }}</span>
+            </div>
+          </div>
+          <div class="cms-field">
+            <label>Date</label>
+            <input type="text" [(ngModel)]="storyForm.date" placeholder="June 28, 2026">
+          </div>
+          <div class="cms-field cms-field-full">
+            <label>Story Body <span class="req">*</span></label>
+            <textarea rows="3" [(ngModel)]="storyForm.body" placeholder="Brief description of the story..."></textarea>
+          </div>
+        </div>
+        <div class="cms-form-actions">
+          <button class="btn btn-subtle btn-sm" (click)="closeStoryForm()">Cancel</button>
+          <button class="btn btn-primary btn-sm" (click)="submitStoryForm()">
+            <span class="material-symbols-outlined">{{ editingStoryId ? 'save' : 'publish' }}</span>
+            {{ editingStoryId ? 'Save Changes' : 'Publish Story' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Stories List -->
+      <div class="cms-item-list">
+        <div *ngFor="let story of contentService.championshipStories" class="cms-story-item">
+          <div class="cms-story-thumb">
+            <img [src]="story.image" [alt]="story.title" onerror="this.src='assets/ntic_image_1.jpeg'">
+            <span class="story-tag-mini" [class]="story.tagColor">{{ story.tag }}</span>
+          </div>
+          <div class="cms-story-info">
+            <div class="cms-story-meta">{{ story.date }} · {{ story.readTime }}</div>
+            <div class="cms-story-title">{{ story.title }}</div>
+            <div class="cms-story-body">{{ story.body }}</div>
+          </div>
+          <div class="cms-item-actions">
+            <button class="cms-edit-btn" (click)="openEditStoryForm(story)" title="Edit">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button class="cms-delete-btn" (click)="removeStory(story.id)" title="Remove">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </div>
+        </div>
+        <div *ngIf="contentService.championshipStories.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">newspaper</span>
+          <p>No stories yet. Add the first one!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── HALL OF FAME PANEL ── -->
+    <div *ngIf="contentTab === 'hof'" class="cms-panel">
+      <div class="cms-panel-header">
+        <div>
+          <h3 class="cms-panel-title"><span class="material-symbols-outlined">workspace_premium</span>Hall of Fame</h3>
+          <p class="cms-panel-desc">Champions scroll as an infinite marquee on the landing page.</p>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="openHofForm()">
+          <span class="material-symbols-outlined">add</span>Add Champion
+        </button>
+      </div>
+
+      <!-- Add HoF Form -->
+      <div class="cms-form-card" *ngIf="hofFormOpen">
+        <div class="cms-form-card-header">
+          <h4>
+            <span class="material-symbols-outlined">workspace_premium</span>
+            {{ editingHofId ? 'Edit Hall of Fame Entry' : 'New Hall of Fame Entry' }}
+          </h4>
+          <button class="cms-form-close" (click)="closeHofForm()"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <div class="cms-form-error" *ngIf="hofFormError">{{ hofFormError }}</div>
+        <div class="cms-form-grid">
+          <div class="cms-field">
+            <label>Full Name <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="hofForm.name" placeholder="e.g. Kwame Asante">
+          </div>
+          <div class="cms-field">
+            <label>Initials (auto if blank)</label>
+            <input type="text" [(ngModel)]="hofForm.initials" placeholder="KA" maxlength="3">
+          </div>
+          <div class="cms-field">
+            <label>School <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="hofForm.school" placeholder="e.g. PRESEC Legon">
+          </div>
+          <div class="cms-field">
+            <label>Year</label>
+            <input type="text" [(ngModel)]="hofForm.year" placeholder="2026">
+          </div>
+          <div class="cms-field">
+            <label>Award / Badge <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="hofForm.badge" placeholder="🥇 Coding Champion">
+          </div>
+          <div class="cms-field">
+            <label>Track</label>
+            <select [(ngModel)]="hofForm.trackClass">
+              <option *ngFor="let tc of trackClass_options" [value]="tc.value">{{ tc.label }}</option>
+            </select>
+          </div>
+          <div class="cms-field">
+            <label>Expiry Date</label>
+            <input type="date" [(ngModel)]="hofForm.expiryDate">
+          </div>
+        </div>
+        <div class="cms-form-actions">
+          <button class="btn btn-subtle btn-sm" (click)="closeHofForm()">Cancel</button>
+          <button class="btn btn-primary btn-sm" (click)="submitHofForm()">
+            <span class="material-symbols-outlined">{{ editingHofId ? 'save' : 'workspace_premium' }}</span>
+            {{ editingHofId ? 'Save Changes' : 'Add to Hall of Fame' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- HoF List -->
+      <div class="cms-hof-grid">
+        <div *ngFor="let entry of contentService.hallOfFameEntries" class="cms-hof-card" [class]="entry.trackClass">
+          <div class="cms-hof-avatar">{{ entry.initials }}</div>
+          <div class="cms-hof-info">
+            <strong>{{ entry.name }}</strong>
+            <span>{{ entry.school }} · {{ entry.year }}</span>
+            <span class="cms-hof-badge">{{ entry.badge }}</span>
+            
+            <!-- Expiry info and status badge -->
+            <div style="font-size:10.5px; margin-top:6px; display:flex; align-items:center; gap:6px; font-weight:700;">
+              <span class="material-symbols-outlined" style="font-size:13px; color:var(--on-surface-variant);">calendar_today</span>
+              <span *ngIf="entry.expiryDate">Expires: {{ entry.expiryDate }}</span>
+              <span *ngIf="!entry.expiryDate">No Expiry</span>
+              
+              <span *ngIf="entry.expiryDate && isEntryExpired(entry)" style="background:#fee2e2; color:#ef4444; padding:1px 4px; border-radius:4px; font-size:9.5px;">Expired</span>
+              <span *ngIf="!entry.expiryDate || !isEntryExpired(entry)" style="background:#dcfce7; color:#22c55e; padding:1px 4px; border-radius:4px; font-size:9.5px;">Active</span>
+            </div>
+          </div>
+          
+          <div class="cms-item-actions" style="position:absolute; top:12px; right:12px; display:flex; gap:4px;">
+            <button class="cms-edit-btn" (click)="openEditHofForm(entry)" title="Edit">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button class="cms-delete-btn" (click)="removeHofEntry(entry.id)" title="Remove">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </div>
+        </div>
+        <div *ngIf="contentService.hallOfFameEntries.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">workspace_premium</span>
+          <p>No Hall of Fame entries yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── LEADERBOARD PANEL ── -->
+    <div *ngIf="contentTab === 'leaderboard'" class="cms-panel">
+      <div class="cms-panel-header">
+        <div>
+          <h3 class="cms-panel-title"><span class="material-symbols-outlined">leaderboard</span>Leaderboard</h3>
+          <p class="cms-panel-desc">Rankings are auto-sorted by total points and reflected on the landing page.</p>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="openLbForm()">
+          <span class="material-symbols-outlined">add</span>Add School
+        </button>
+      </div>
+
+      <!-- Add / Edit Leaderboard Form -->
+      <div class="cms-form-card" *ngIf="lbFormOpen">
+        <div class="cms-form-card-header">
+          <h4><span class="material-symbols-outlined">leaderboard</span>{{ lbEditId ? 'Edit School' : 'New School Entry' }}</h4>
+          <button class="cms-form-close" (click)="closeLbForm()"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <div class="cms-form-error" *ngIf="lbFormError">{{ lbFormError }}</div>
+        <div class="cms-form-grid">
+          <div class="cms-field cms-field-full">
+            <label>School Name <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="lbForm.schoolName" placeholder="e.g. PRESEC Legon">
+          </div>
+          <div class="cms-field">
+            <label>Location <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="lbForm.location" placeholder="Legon, Greater Accra">
+          </div>
+          <div class="cms-field">
+            <label>Region</label>
+            <input type="text" [(ngModel)]="lbForm.region" placeholder="Accra">
+          </div>
+          <div class="cms-field lb-points-group" style="grid-column:1/-1;">
+            <label style="margin-bottom:8px;display:block;">Track Points (total auto-calculated)</label>
+            <div class="cms-lb-points-row">
+              <div class="cms-lb-point-field">
+                <span>💻 Coding</span>
+                <input type="number" [(ngModel)]="lbForm.trackPoints.coding" (ngModelChange)="onLbTrackChange()" min="0">
+              </div>
+              <div class="cms-lb-point-field">
+                <span>🤖 Robotics</span>
+                <input type="number" [(ngModel)]="lbForm.trackPoints.robotics" (ngModelChange)="onLbTrackChange()" min="0">
+              </div>
+              <div class="cms-lb-point-field">
+                <span>🧠 AI</span>
+                <input type="number" [(ngModel)]="lbForm.trackPoints.ai" (ngModelChange)="onLbTrackChange()" min="0">
+              </div>
+              <div class="cms-lb-point-field">
+                <span>🔐 Cyber</span>
+                <input type="number" [(ngModel)]="lbForm.trackPoints.cyber" (ngModelChange)="onLbTrackChange()" min="0">
+              </div>
+              <div class="cms-lb-point-field total">
+                <span>🏆 Total</span>
+                <input type="number" [ngModel]="lbForm.trackPoints.all" readonly>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cms-form-actions">
+          <button class="btn btn-subtle btn-sm" (click)="closeLbForm()">Cancel</button>
+          <button class="btn btn-primary btn-sm" (click)="submitLbForm()">
+            <span class="material-symbols-outlined">save</span>{{ lbEditId ? 'Save Changes' : 'Add to Leaderboard' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Leaderboard Table -->
+      <div class="cms-lb-table">
+        <div class="cms-lb-head">
+          <span>Rank</span><span>School</span><span>Location</span>
+          <span>Coding</span><span>Robotics</span><span>AI</span><span>Cyber</span>
+          <span>Total</span><span>Actions</span>
+        </div>
+        <div *ngFor="let entry of contentService.leaderboardData" class="cms-lb-row">
+          <span class="cms-lb-rank">{{ entry.rank }}</span>
+          <span class="cms-lb-school">{{ entry.schoolName }}</span>
+          <span class="cms-lb-loc">{{ entry.location }}</span>
+          <span>{{ entry.trackPoints.coding }}</span>
+          <span>{{ entry.trackPoints.robotics }}</span>
+          <span>{{ entry.trackPoints.ai }}</span>
+          <span>{{ entry.trackPoints.cyber }}</span>
+          <span class="cms-lb-total">{{ entry.trackPoints.all }}</span>
+          <span class="cms-lb-actions">
+            <button class="admin-action-btn" title="Edit" (click)="openLbForm(entry)">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button class="cms-delete-btn" title="Remove" (click)="removeLbEntry(entry.id)">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </span>
+        </div>
+        <div *ngIf="contentService.leaderboardData.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">leaderboard</span>
+          <p>No leaderboard entries yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TALENT DISCOVERY PANEL ── -->
+    <div *ngIf="contentTab === 'talent'" class="cms-panel">
+      <div class="cms-panel-header">
+        <div>
+          <h3 class="cms-panel-title"><span class="material-symbols-outlined">stars</span>Talent Discovery Highlights</h3>
+          <p class="cms-panel-desc">Manage the individual high-talent cards that appear on the Leaderboard sidebar.</p>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="openTdForm()">
+          <span class="material-symbols-outlined">add</span>Add Talent Highlight
+        </button>
+      </div>
+
+      <!-- Add / Edit Talent Discovery Form -->
+      <div class="cms-form-card" *ngIf="tdFormOpen">
+        <div class="cms-form-card-header">
+          <h4><span class="material-symbols-outlined">stars</span>{{ tdEditId ? 'Edit Talent Entry' : 'New Talent Highlight' }}</h4>
+          <button class="cms-form-close" (click)="closeTdForm()"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <div class="cms-form-error" *ngIf="tdFormError">{{ tdFormError }}</div>
+        <div class="cms-form-grid">
+          <div class="cms-field">
+            <label>Student Name <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="tdForm.studentName" placeholder="e.g. Sarah J.">
+          </div>
+          <div class="cms-field">
+            <label>Category / Specialization <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="tdForm.category" placeholder="e.g. Algorithm Design">
+          </div>
+          <div class="cms-field">
+            <label>School &amp; Grade <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="tdForm.schoolAndGrade" placeholder="e.g. Newton Academy • Grade 11">
+          </div>
+          <div class="cms-field">
+            <label>Score / Achievement <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="tdForm.score" placeholder="e.g. 99.8%">
+          </div>
+          <div class="cms-field">
+            <label>Badge Theme Color</label>
+            <select [(ngModel)]="tdForm.badgeColor">
+              <option value="primary">Primary (Blue)</option>
+              <option value="secondary">Secondary (Green)</option>
+              <option value="tertiary">Tertiary (Yellow)</option>
+              <option value="error">Error/Alert (Red)</option>
+              <option value="ai">AI (Purple)</option>
+            </select>
+          </div>
+        </div>
+        <div class="cms-form-actions">
+          <button class="btn btn-subtle btn-sm" (click)="closeTdForm()">Cancel</button>
+          <button class="btn btn-primary btn-sm" (click)="submitTdForm()">
+            <span class="material-symbols-outlined">save</span>{{ tdEditId ? 'Save Changes' : 'Publish Highlight' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Talent Grid List -->
+      <div class="cms-item-list">
+        <div *ngFor="let item of contentService.talentDiscovery" class="cms-story-item" style="align-items: center; padding: 16px;">
+          <div style="flex:1;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+              <span class="badge" [class]="item.badgeColor || 'primary'" style="font-size:10px;">{{ item.category }}</span>
+              <span style="font-size:11px; color:var(--on-surface-variant);">Score: <strong>{{ item.score }}</strong></span>
+            </div>
+            <div style="font-weight:700; font-size:15px; margin-bottom:2px; color:var(--on-surface);">{{ item.studentName }}</div>
+            <div style="font-size:12px; color:var(--on-surface-variant);">{{ item.schoolAndGrade }}</div>
+          </div>
+          <div class="cms-item-actions" style="margin-left: auto;">
+            <button class="cms-edit-btn" (click)="openTdForm(item)" title="Edit">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button class="cms-delete-btn" (click)="removeTdEntry(item.id)" title="Remove">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </div>
+        </div>
+        <div *ngIf="contentService.talentDiscovery.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">stars</span>
+          <p>No high-talent highlights registered yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NEWS FEED PANEL ── -->
+    <div *ngIf="contentTab === 'news'" class="cms-panel">
+      <div class="cms-panel-header">
+        <div>
+          <h3 class="cms-panel-title"><span class="material-symbols-outlined">campaign</span>News Feed</h3>
+          <p class="cms-panel-desc">Platform-wide announcements shown in the landing page news ticker.</p>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="openNewsForm()">
+          <span class="material-symbols-outlined">add</span>Add News Item
+        </button>
+      </div>
+
+      <!-- Add News Form -->
+      <div class="cms-form-card" *ngIf="newsFormOpen">
+        <div class="cms-form-card-header">
+          <h4>
+            <span class="material-symbols-outlined">campaign</span>
+            {{ editingNewsId ? 'Edit Announcement' : 'New Announcement' }}
+          </h4>
+          <button class="cms-form-close" (click)="closeNewsForm()"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <div class="cms-form-error" *ngIf="newsFormError">{{ newsFormError }}</div>
+        <div class="cms-form-grid">
+          <div class="cms-field cms-field-full">
+            <label>Headline <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="newsForm.headline" placeholder="Phase 2 Competition Now Open...">
+          </div>
+          <div class="cms-field">
+            <label>Tag</label>
+            <select [(ngModel)]="newsForm.tag">
+              <option>Announcement</option><option>Results</option><option>Sponsorship</option>
+              <option>Update</option><option>Reminder</option>
+            </select>
+          </div>
+          <div class="cms-field">
+            <label>Date</label>
+            <input type="text" [(ngModel)]="newsForm.date" placeholder="Jun 28, 2026">
+          </div>
+          <div class="cms-field">
+            <label>Link URL</label>
+            <input type="text" [(ngModel)]="newsForm.link" placeholder="#">
+          </div>
+        </div>
+        <div class="cms-form-actions">
+          <button class="btn btn-subtle btn-sm" (click)="closeNewsForm()">Cancel</button>
+          <button class="btn btn-primary btn-sm" (click)="submitNewsForm()">
+            <span class="material-symbols-outlined">{{ editingNewsId ? 'save' : 'publish' }}</span>
+            {{ editingNewsId ? 'Save Changes' : 'Publish' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- News List -->
+      <div class="cms-news-list">
+        <div *ngFor="let item of contentService.newsFeedItems" class="cms-news-item">
+          <div class="cms-news-tag">{{ item.tag }}</div>
+          <div class="cms-news-body">
+            <div class="cms-news-headline">{{ item.headline }}</div>
+            <div class="cms-news-date">{{ item.date }}</div>
+          </div>
+          <div class="cms-item-actions" style="display:flex; gap:6px; flex-shrink:0;">
+            <button class="cms-edit-btn" (click)="openEditNewsForm(item)" title="Edit">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button class="cms-delete-btn" (click)="removeNewsItem(item.id)" title="Remove">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </div>
+        </div>
+        <div *ngIf="contentService.newsFeedItems.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">campaign</span>
+          <p>No news items yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PLATFORM STATS PANEL ── -->
+    <div *ngIf="contentTab === 'stats'" class="cms-panel">
+      <div class="cms-panel-header">
+        <div>
+          <h3 class="cms-panel-title"><span class="material-symbols-outlined">analytics</span>Platform Impact Stats</h3>
+          <p class="cms-panel-desc">These numbers animate on the landing page stats tree section.</p>
+        </div>
+        <button class="btn btn-primary btn-sm" *ngIf="!statsEditMode" (click)="openStatsEdit()">
+          <span class="material-symbols-outlined">edit</span>Edit Stats
+        </button>
+        <button class="btn btn-primary btn-sm" *ngIf="statsEditMode" (click)="saveStats()">
+          <span class="material-symbols-outlined">save</span>Save Changes
+        </button>
+      </div>
+
+      <!-- Stats Grid Display / Edit -->
+      <div class="cms-stats-grid">
+        <div class="cms-stat-card">
+          <div class="cms-stat-icon">🗺️</div>
+          <div class="cms-stat-label">Regions</div>
+          <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.regions }}</div>
+          <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.regions" class="cms-stat-input">
+        </div>
+        <div class="cms-stat-card">
+          <div class="cms-stat-icon">👨‍🏫</div>
+          <div class="cms-stat-label">Mentors</div>
+          <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.mentors }}+</div>
+          <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.mentors" class="cms-stat-input">
+        </div>
+        <div class="cms-stat-card">
+          <div class="cms-stat-icon">🏫</div>
+          <div class="cms-stat-label">Schools</div>
+          <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.schools }}+</div>
+          <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.schools" class="cms-stat-input">
+        </div>
+        <div class="cms-stat-card">
+          <div class="cms-stat-icon">🎓</div>
+          <div class="cms-stat-label">Students (K)</div>
+          <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.students }}K+</div>
+          <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.students" class="cms-stat-input">
+        </div>
+        <div class="cms-stat-card">
+          <div class="cms-stat-icon">📁</div>
+          <div class="cms-stat-label">Projects (K)</div>
+          <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.projects }}K+</div>
+          <input *ngIf="statsEditMode" type="number" step="0.1" [(ngModel)]="statsForm.projects" class="cms-stat-input">
+        </div>
+        <div class="cms-stat-card">
+          <div class="cms-stat-icon">💰</div>
+          <div class="cms-stat-label">Grants (₵M)</div>
+          <div class="cms-stat-value" *ngIf="!statsEditMode">₵{{ contentService.platformStats.grants }}M+</div>
+          <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.grants" class="cms-stat-input">
+        </div>
+      </div>
+    </div>
+
+    <!-- ── COUNTDOWN TIMER PANEL ── -->
+    <div *ngIf="contentTab === 'countdown'" class="cms-panel">
+      <div class="cms-panel-header">
+        <div>
+          <h3 class="cms-panel-title"><span class="material-symbols-outlined">alarm</span>Countdown Timer</h3>
+          <p class="cms-panel-desc">Configure the date and time when the next national heat begins. Updates reflect on the landing page in real-time.</p>
+        </div>
+      </div>
+
+      <div class="cms-form-card" style="max-width: 600px; margin-bottom: 24px;">
+        <div class="cms-form-card-header">
+          <h4><span class="material-symbols-outlined">calendar_today</span>Set Target Date & Time</h4>
+        </div>
+        <div class="cms-form-grid" style="margin-top: 16px;">
+          <div class="cms-field cms-field-full">
+            <label>Target Date and Time <span class="req">*</span></label>
+            <input type="datetime-local" [(ngModel)]="countdownInput" class="cms-stat-input" style="width: 100%; max-width: 400px; padding: 10px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-container-highest); color: var(--on-surface);">
+            <p class="cms-panel-desc" style="margin-top: 8px; font-size: 12px;">Format: YYYY-MM-DDThh:mm (Local Time)</p>
+          </div>
+        </div>
+        <div class="cms-form-actions" style="margin-top: 20px; justify-content: flex-start; gap: 12px; border-top: 1px solid var(--outline-variant); padding-top: 16px;">
+          <button class="btn btn-primary btn-sm" (click)="saveCountdown()">
+            <span class="material-symbols-outlined">save</span>Save Target Date
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Preview of the countdown based on selected date -->
+      <div class="cms-form-card" style="max-width: 600px; background: var(--surface-container-low); border: 1px dashed var(--outline);">
+        <div class="cms-form-card-header">
+          <h4><span class="material-symbols-outlined">preview</span>Live Countdown Preview</h4>
+        </div>
+        <div style="padding: 16px 0;">
+          <div style="font-size: 13px; font-weight: 600; color: var(--on-surface-variant); margin-bottom: 12px;">
+            Target Date: {{ countdownInput ? (countdownInput | date:'medium') : 'None Set' }}
+          </div>
+          
+          <div style="display: flex; gap: 16px; align-items: center; justify-content: flex-start;">
+            <div style="text-align: center; background: var(--surface-container); padding: 12px 16px; border-radius: 10px; min-width: 70px; border: 1px solid var(--outline-variant);">
+              <div style="font-size: 24px; font-weight: 800; color: var(--primary); font-family: 'JetBrains Mono', monospace;">{{ previewDays | number:'2.0-0' }}</div>
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-surface-variant); margin-top: 4px; font-weight: 700;">Days</div>
+            </div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--on-surface-variant);">:</div>
+            <div style="text-align: center; background: var(--surface-container); padding: 12px 16px; border-radius: 10px; min-width: 70px; border: 1px solid var(--outline-variant);">
+              <div style="font-size: 24px; font-weight: 800; color: var(--primary); font-family: 'JetBrains Mono', monospace;">{{ previewHours | number:'2.0-0' }}</div>
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-surface-variant); margin-top: 4px; font-weight: 700;">Hours</div>
+            </div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--on-surface-variant);">:</div>
+            <div style="text-align: center; background: var(--surface-container); padding: 12px 16px; border-radius: 10px; min-width: 70px; border: 1px solid var(--outline-variant);">
+              <div style="font-size: 24px; font-weight: 800; color: var(--primary); font-family: 'JetBrains Mono', monospace;">{{ previewMins | number:'2.0-0' }}</div>
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-surface-variant); margin-top: 4px; font-weight: 700;">Mins</div>
+            </div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--on-surface-variant);">:</div>
+            <div style="text-align: center; background: var(--surface-container); padding: 12px 16px; border-radius: 10px; min-width: 70px; border: 1px solid var(--outline-variant);">
+              <div style="font-size: 24px; font-weight: 800; color: var(--primary); font-family: 'JetBrains Mono', monospace;">{{ previewSecs | number:'2.0-0' }}</div>
+              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-surface-variant); margin-top: 4px; font-weight: 700;">Secs</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── PREVIEW MODAL ── -->
+  <div class="ticket-modal-backdrop" *ngIf="activePreviewRequest" (click)="closePreview()">
+    <div class="ticket-modal" (click)="$event.stopPropagation()">
+      <div class="ticket-modal-header">
+        <h3>Preview Application</h3>
+        <button class="ticket-modal-close" (click)="closePreview()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="preview-modal-body">
+        <!-- School Registration Details -->
+        <ng-container *ngIf="activePreviewRequest.type === 'School Registration'">
+          <div class="preview-section-title">School Registry Profile</div>
+          <div class="preview-grid">
+            <div class="preview-field-item"><label>School Name</label><span>{{ activePreviewRequest.entity }}</span></div>
+            <div class="preview-field-item"><label>Region</label><span>{{ activePreviewRequest.details.region }}</span></div>
+            <div class="preview-field-item"><label>School Registry Code</label><code style="font-size:12px; font-weight:700; color:var(--primary);">{{ activePreviewRequest.details.code }}</code></div>
+            <div class="preview-field-item"><label>Contact Headmaster</label><span>{{ activePreviewRequest.contact }}</span></div>
+            <div class="preview-field-item"><label>Phone Number</label><span>{{ activePreviewRequest.details.phone }}</span></div>
+            <div class="preview-field-item"><label>Subscribed Tracks</label><span>{{ activePreviewRequest.details.tracks }}</span></div>
+            <div class="preview-field-item"><label>School IT Infrastructure</label><span>{{ activePreviewRequest.details.infra }}</span></div>
+          </div>
+          <div class="preview-section-title">Submitted Documents (Click to View)</div>
+          <div class="preview-docs-list">
+            <div class="preview-doc-card" *ngFor="let doc of activePreviewRequest.details.docs" (click)="viewDocument(doc, activePreviewRequest.entity)" [title]="'Click to View ' + doc">
+              <span class="material-symbols-outlined doc-icon">picture_as_pdf</span>
+              <span style="flex:1;">{{ doc }}</span>
+              <span class="material-symbols-outlined" style="font-size:16px; color:var(--primary);">open_in_new</span>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- Team Addition Details -->
+        <ng-container *ngIf="activePreviewRequest.type === 'Team Addition'">
+          <div class="preview-section-title">Team Composition</div>
+          <div class="preview-grid">
+            <div class="preview-field-item"><label>Team Name</label><span>{{ activePreviewRequest.entity }}</span></div>
+            <div class="preview-field-item"><label>School / Affiliation</label><span>{{ activePreviewRequest.details.school }}</span></div>
+            <div class="preview-field-item"><label>Region</label><span>{{ activePreviewRequest.details.region }}</span></div>
+            <div class="preview-field-item"><label>Competition Track</label><span>{{ activePreviewRequest.details.track }}</span></div>
+            <div class="preview-field-item"><label>Project Title / Proposal</label><span>{{ activePreviewRequest.details.project }}</span></div>
+            <div class="preview-field-item"><label>Assigned Coach / Mentor</label><span>{{ activePreviewRequest.details.coach }}</span></div>
+            <div class="preview-field-item">
+              <label>Team Members (Squad)</label>
+              <div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
+                <div *ngFor="let m of activePreviewRequest.details.members" style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px;">
+                  <span class="material-symbols-outlined" style="font-size:16px; color:var(--primary);">person</span>
+                  {{ m }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- Instructor Access Details -->
+        <ng-container *ngIf="activePreviewRequest.type === 'Instructor Access'">
+          <div class="preview-section-title">Instructor Credentials</div>
+          <div class="preview-grid">
+            <div class="preview-field-item"><label>Full Name / Title</label><span>{{ activePreviewRequest.entity }}</span></div>
+            <div class="preview-field-item"><label>Institutional Affiliation</label><span>{{ activePreviewRequest.details.institution }}</span></div>
+            <div class="preview-field-item"><label>Contact Email</label><span>{{ activePreviewRequest.contact }}</span></div>
+            <div class="preview-field-item"><label>Certified Credentials</label><span>{{ activePreviewRequest.details.credentials }}</span></div>
+            <div class="preview-field-item"><label>Track Specialization</label><span>{{ activePreviewRequest.details.specialization }}</span></div>
+            <div class="preview-field-item"><label>Mentorship Experience</label><span>{{ activePreviewRequest.details.experience }}</span></div>
+            <div class="preview-field-item">
+              <label>Assigned Curriculums</label>
+              <div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
+                <div *ngFor="let c of activePreviewRequest.details.courses" style="font-size:12.5px; font-weight:600; display:flex; align-items:center; gap:6px;">
+                  <span class="material-symbols-outlined" style="font-size:16px; color:var(--tertiary);">menu_book</span>
+                  {{ c }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+      <div class="ticket-modal-actions">
+        <button class="btn btn-subtle" (click)="closePreview()">Close</button>
+        <button class="btn btn-primary" (click)="approveRequest(activePreviewRequest); closePreview()">
+          <span class="material-symbols-outlined">check</span>Approve Request
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── REVIEW / REJECTION DIALOG ── -->
+  <div class="ticket-modal-backdrop" *ngIf="activeReviewRequest" (click)="closeReview()">
+    <div class="ticket-modal" (click)="$event.stopPropagation()">
+      <div class="ticket-modal-header">
+        <h3>Review & Rejection Reasons</h3>
+        <button class="ticket-modal-close" (click)="closeReview()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="review-modal-body">
+        <div class="review-intro">
+          Reviewing application for <strong>{{ activeReviewRequest.entity }}</strong> ({{ activeReviewRequest.type }}).
+          Please check the issue areas or select reasons for rejection to notify the applicant.
+        </div>
+        
+        <div class="preview-section-title">Rejection Reasons & Issues</div>
+        <div class="rejection-reasons-list">
+          <label *ngFor="let reason of reviewReasons" class="rejection-checkbox-label">
+            <input type="checkbox" [(ngModel)]="selectedReasons[reason]">
+            <span>{{ reason }}</span>
+          </label>
+        </div>
+
+        <div class="rejection-textarea-wrap">
+          <label for="rejectNotes">Additional Admin Notes / Instructions</label>
+          <textarea 
+            id="rejectNotes" 
+            [(ngModel)]="rejectionNotes" 
+            rows="3" 
+            placeholder="Specify what needs to be changed, corrected, or why the application was declined..."
+          ></textarea>
+        </div>
+      </div>
+      <div class="ticket-modal-actions">
+        <button class="btn btn-subtle" (click)="closeReview()">Cancel</button>
+        <button class="btn btn-primary" style="background-color:#dc2626; border-color:#dc2626; color:#ffffff;" (click)="submitRejection()">
+          <span class="material-symbols-outlined">close</span>Confirm Rejection
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DOCUMENT VIEWER MODAL ── -->
+  <div class="ticket-modal-backdrop" *ngIf="activeDocumentName" (click)="closeDocument()" style="z-index: 10000;">
+    <div class="ticket-modal doc-viewer-modal" (click)="$event.stopPropagation()">
+      <div class="ticket-modal-header">
+        <h3 style="display:flex; align-items:center; gap:8px;">
+          <span class="material-symbols-outlined" style="color:var(--primary);">
+            {{ activeDocumentType === 'pdf' ? 'picture_as_pdf' : 'table_view' }}
+          </span>
+          {{ activeDocumentName }}
+        </h3>
+        <button class="ticket-modal-close" (click)="closeDocument()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      
+      <div class="preview-modal-body" style="background:var(--surface-container-low);">
+        
+        <!-- PDF Document Preview: Official Letterhead -->
+        <div class="doc-canvas" *ngIf="activeDocumentType === 'pdf'">
+          <div class="official-letterhead">
+            <h2>Republic of Ghana</h2>
+            <h3>Ministry of Education &amp; Ghana Education Service</h3>
+            <div class="letterhead-seal">★ SECURE SYSTEM VERIFIED ACCREDITATION ★</div>
+          </div>
+          
+          <div class="letter-meta">
+            <span>REF: GES/NTIC-ACC/2026/{{ activeDocumentSchool.substring(0,3).toUpperCase() }}</span>
+            <span>Date: 12 June 2026</span>
+          </div>
+          
+          <div class="letter-title">
+            Certificate of NTIC Accreditation &amp; Operation
+          </div>
+          
+          <div class="letter-body">
+            <p>
+              This official document serves to certify that <strong>{{ activeDocumentSchool }}</strong> has successfully complied with all prerequisite structural and academic guidelines set forth by the Ministry of Education for the 2026 academic calendar.
+            </p>
+            <p>
+              Following a comprehensive audit of the institution's computing infrastructure, administrative capabilities, and curriculum alignment, the GES hereby grants full accreditation. The institution is authorized to register, prepare, and field competitive student squads in the Ghana National Technology and Innovation Championship (NTIC).
+            </p>
+            <p>
+              This validation remains active for the duration of the 2026 competition cycle. All student registries, mentor assignments, and sandbox uploads must conform to the safety and data security frameworks established under the Ghana Data Protection Act (Act 843).
+            </p>
+          </div>
+          
+          <div class="letter-signatures">
+            <div class="sig-block">
+              <strong>Dr. Kwabena Bempah Tandoh</strong>
+              <span>Deputy Director-General, GES</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Spreadsheet Document Preview: IT Inventory -->
+        <div class="spreadsheet-canvas" *ngIf="activeDocumentType === 'spreadsheet'">
+          <div style="font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <span class="material-symbols-outlined" style="font-size:18px; color:#16a34a;">table</span>
+            <span>Lab Inventory Sheet &middot; {{ activeDocumentSchool }}</span>
+          </div>
+          
+          <table class="sheet-table">
+            <thead>
+              <tr>
+                <th>Item ID</th>
+                <th>Hardware / Equipment Name</th>
+                <th>Category</th>
+                <th>Qty</th>
+                <th>Status / Integrity</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>EQ-001</td>
+                <td>Lenovo ThinkCentre M70q (Core i5, 16GB RAM)</td>
+                <td>Computers &amp; ICT</td>
+                <td>32</td>
+                <td><span style="color:#16a34a; font-weight:700;">● Operational</span></td>
+              </tr>
+              <tr>
+                <td>EQ-002</td>
+                <td>Arduino Starter Kits v2 (with Uno boards)</td>
+                <td>Robotics Lab</td>
+                <td>20</td>
+                <td><span style="color:#16a34a; font-weight:700;">● Operational</span></td>
+              </tr>
+              <tr>
+                <td>EQ-003</td>
+                <td>Raspberry Pi 4 Model B (4GB Starter Kits)</td>
+                <td>Microcontrollers</td>
+                <td>12</td>
+                <td><span style="color:#b45309; font-weight:700;">● 10 Active / 2 Maintenance</span></td>
+              </tr>
+              <tr>
+                <td>EQ-004</td>
+                <td>Broadband Router (100Mbps Broadband Fiber)</td>
+                <td>Network Nodes</td>
+                <td>1</td>
+                <td><span style="color:#16a34a; font-weight:700;">● Online</span></td>
+              </tr>
+              <tr>
+                <td>EQ-005</td>
+                <td>Digital Multimeters &amp; Oscilloscopes</td>
+                <td>Testing Gear</td>
+                <td>4</td>
+                <td><span style="color:#16a34a; font-weight:700;">● Calibrated</span></td>
+              </tr>
+              <tr>
+                <td>EQ-006</td>
+                <td>Soldering Workstations &amp; Safety Hoods</td>
+                <td>Prototyping</td>
+                <td>6</td>
+                <td><span style="color:#16a34a; font-weight:700;">● Safe / Active</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+      </div>
+      <div class="ticket-modal-actions">
+        <button class="btn btn-primary" (click)="closeDocument()">Back to Preview</button>
+      </div>
+    </div>
+  </div>
+
+  </ng-container>
+
+  <!-- ── REGISTRATION POPUP MODAL ── -->
+  <div class="ticket-modal-backdrop" *ngIf="isRegModalOpen" (click)="closeRegisterModal()">
+    <div class="ticket-modal reg-popup-modal" (click)="$event.stopPropagation()">
+      <div class="ticket-modal-header">
+        <h3>User Registration Center</h3>
+        <button class="ticket-modal-close" (click)="closeRegisterModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="admin-register-split">
+
+        <!-- LEFT: Form -->
+        <div class="admin-register-left">
+          <!-- Role Picker -->
+          <div class="admin-role-picker">
+            <button class="admin-role-btn" [class.active]="registerRole === 'judge'" (click)="registerRole = 'judge'">
+              <span class="material-symbols-outlined">gavel</span>
+              <span>Register Judge</span>
+            </button>
+            <button class="admin-role-btn" [class.active]="registerRole === 'sponsor'" (click)="registerRole = 'sponsor'">
+              <span class="material-symbols-outlined">handshake</span>
+              <span>Register Sponsor</span>
+            </button>
+          </div>
+
+          <div class="admin-register-form-card">
+            <div class="admin-form-header">
+              <div class="admin-form-icon" [class]="registerRole">
+                <span class="material-symbols-outlined">{{ registerRole === 'judge' ? 'gavel' : 'handshake' }}</span>
+              </div>
+              <div>
+                <h3>{{ registerRole === 'judge' ? 'Register Competition Judge' : 'Register Platform Sponsor' }}</h3>
+                <p>{{ registerRole === 'judge' ? 'A unique access token will be generated upon registration.' : 'The sponsor will receive a dedicated portal token for their CSR dashboard.' }}</p>
+              </div>
+            </div>
+
+            <div class="admin-form-error" *ngIf="regError">
+              <span class="material-symbols-outlined">error</span>{{ regError }}
+            </div>
+            <div class="admin-form-success" *ngIf="regSuccess">
+              <span class="material-symbols-outlined">check_circle</span>User registered successfully! Access token generated.
+            </div>
+
+            <form (ngSubmit)="submitRegistration()" #rf="ngForm">
+              <div class="admin-form-grid">
+                <div class="admin-form-field">
+                  <label>Full Name <span class="req">*</span></label>
+                  <input type="text" [(ngModel)]="regForm.fullName" name="fullName" placeholder="e.g. Dr. Efua Mensah" required>
+                </div>
+                <div class="admin-form-field">
+                  <label>Email Address <span class="req">*</span></label>
+                  <input type="email" [(ngModel)]="regForm.email" name="email" placeholder="e.g. efua@university.edu.gh" required>
+                </div>
+                <div class="admin-form-field">
+                  <label>Organization / Institution <span class="req">*</span></label>
+                  <input type="text" [(ngModel)]="regForm.organization" name="organization" placeholder="e.g. University of Ghana" required>
+                </div>
+                <div class="admin-form-field">
+                  <label>Phone Number</label>
+                  <input type="tel" [(ngModel)]="regForm.phone" name="phone" placeholder="+233 24 000 0000">
+                </div>
+                <div class="admin-form-field" *ngIf="registerRole === 'judge'">
+                  <label style="margin-bottom: 8px; display: block;">Assigned Tracks <span class="req">*</span></label>
+                  <div class="tracks-checkbox-grid" style="display: flex; flex-direction: column; gap: 8px; background: var(--surface-container-lowest); border: 1px solid var(--outline-variant); padding: 12px; border-radius: 8px;">
+                    <label *ngFor="let tr of availableTracks" style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; color: var(--on-surface);">
+                      <input 
+                        type="checkbox" 
+                        [checked]="isRegFormTrackSelected(tr)"
+                        (change)="toggleRegFormTrack(tr)"
+                        style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary);"
+                      >
+                      <span>{{ tr }}</span>
+                    </label>
+                  </div>
+                </div>
+                <div class="admin-form-field" *ngIf="registerRole === 'sponsor'">
+                  <label>Sponsorship Tier</label>
+                  <select [(ngModel)]="regForm.tier" name="tier">
+                    <option value="">— Select Tier —</option>
+                    <option>Platinum</option>
+                    <option>Gold</option>
+                    <option>Silver</option>
+                    <option>Bronze</option>
+                  </select>
+                </div>
+                <div class="admin-form-field admin-form-full">
+                  <label>Notes (optional)</label>
+                  <textarea [(ngModel)]="regForm.notes" name="notes" rows="3" placeholder="Additional context or notes..."></textarea>
+                </div>
+              </div>
+              <div class="admin-form-actions">
+                <button type="button" class="btn btn-subtle" (click)="regForm = {fullName:'',email:'',organization:'',phone:'',track:'',tracks:[],tier:'',notes:''}">Clear</button>
+                <button type="submit" class="btn btn-primary admin-submit-btn" [disabled]="regSubmitting">
+                  <span class="material-symbols-outlined" *ngIf="!regSubmitting">token</span>
+                  <span class="btn-spinner" *ngIf="regSubmitting"></span>
+                  {{ regSubmitting ? 'Registering...' : 'Register & Generate Token' }}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- RIGHT: Live Ticket Preview -->
+        <div class="admin-register-right">
+          <div class="preview-label">
+            <span class="live-badge"><span class="live-dot"></span>LIVE PREVIEW</span>
+          </div>
+
+          <!-- Preview Ticket Card -->
+          <div class="preview-ticket" [class.preview-filled]="regForm.fullName || regForm.organization">
+            <div class="preview-ticket-top" [class]="registerRole">
+              <div class="preview-ticket-logo">
+                <span class="material-symbols-outlined">rocket_launch</span>
+              </div>
+              <div>
+                <div class="preview-ticket-platform">National NTIC Platform</div>
+                <div class="preview-ticket-type">
+                  {{ registerRole === 'judge' ? '⚖ Competition Judge' : '🤝 Platform Sponsor' }}
+                </div>
+              </div>
+              <div class="preview-ticket-year">2026</div>
+            </div>
+            <div class="preview-tear">
+              <span class="preview-tear-notch left"></span>
+              <div class="preview-tear-line"></div>
+              <span class="preview-tear-notch right"></span>
+            </div>
+            <div class="preview-ticket-body">
+              <div class="preview-user-row">
+                <div class="preview-avatar" [class]="registerRole">
+                  <span *ngIf="regForm.fullName">{{ getInitials(regForm.fullName) }}</span>
+                  <span class="material-symbols-outlined" *ngIf="!regForm.fullName" style="font-size:22px;opacity:0.35">person</span>
+                </div>
+                <div>
+                  <div class="preview-name" [class.preview-placeholder]="!regForm.fullName">
+                    {{ regForm.fullName || 'Full Name' }}
+                  </div>
+                  <div class="preview-email" [class.preview-placeholder]="!regForm.email">
+                    {{ regForm.email || 'email@organization.edu.gh' }}
+                  </div>
+                </div>
+              </div>
+              <div class="preview-fields">
+                <div class="preview-field">
+                  <span class="preview-field-label">Organization</span>
+                  <span class="preview-field-value" [class.preview-placeholder]="!regForm.organization">{{ regForm.organization || '—' }}</span>
+                </div>
+                <div class="preview-field" *ngIf="registerRole === 'judge'">
+                  <span class="preview-field-label">Track</span>
+                  <span class="preview-field-value" [class.preview-placeholder]="!regForm.track">{{ regForm.track || '—' }}</span>
+                </div>
+                <div class="preview-field" *ngIf="registerRole === 'sponsor'">
+                  <span class="preview-field-label">Tier</span>
+                  <span class="preview-field-value" [class.preview-placeholder]="!regForm.tier">{{ regForm.tier || '—' }}</span>
+                </div>
+                <div class="preview-field">
+                  <span class="preview-field-label">Phone</span>
+                  <span class="preview-field-value" [class.preview-placeholder]="!regForm.phone">{{ regForm.phone || '—' }}</span>
+                </div>
+              </div>
+              <div class="preview-code-section">
+                <div class="preview-code-label">ACCESS TOKEN</div>
+                <div class="preview-code" [class.preview-code-pending]="!regSuccess" [class.preview-code-live]="regSuccess">
+                  <span *ngIf="!regSuccess && !regSubmitting">
+                    NTIC-{{ registerRole === 'judge' ? 'JDG' : 'SPO' }}-<span class="preview-code-dots">????</span>
+                  </span>
+                  <span *ngIf="regSubmitting" class="preview-code-generating">Generating<span class="dot-pulse">...</span></span>
+                  <span *ngIf="regSuccess && viewTicketUser">{{ viewTicketUser.ticket }}</span>
+                </div>
+                <div class="preview-code-hint" [class.success]="regSuccess">
+                  {{ regSuccess ? '✓ Token generated and active' : 'Will be generated upon registration' }}
+                </div>
+              </div>
+            </div>
+            <div class="preview-shimmer" *ngIf="!regForm.fullName && !regForm.organization && !regForm.email"></div>
+          </div>
+
+          <!-- Progress checklist -->
+          <div class="preview-checklist">
+            <div class="preview-check" [class.done]="!!regForm.fullName">
+              <span class="material-symbols-outlined">{{ regForm.fullName ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              Full Name
+            </div>
+            <div class="preview-check" [class.done]="!!regForm.email">
+              <span class="material-symbols-outlined">{{ regForm.email ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              Email Address
+            </div>
+            <div class="preview-check" [class.done]="!!regForm.organization">
+              <span class="material-symbols-outlined">{{ regForm.organization ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              Organization
+            </div>
+            <div class="preview-check" [class.done]="registerRole === 'judge' ? !!regForm.track : !!regForm.tier">
+              <span class="material-symbols-outlined">{{ (registerRole === 'judge' ? !!regForm.track : !!regForm.tier) ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              {{ registerRole === 'judge' ? 'Track Assignment' : 'Sponsorship Tier' }}
+            </div>
+          </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- ── TICKET MODAL ── -->
+  <div class="ticket-modal-backdrop" *ngIf="viewTicketUser" (click)="closeTicketModal()">
+    <div class="ticket-modal" (click)="$event.stopPropagation()">
+      <div class="ticket-modal-header">
+        <h3>Access Token</h3>
+        <button class="ticket-modal-close" (click)="closeTicketModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="ticket-card">
+        <div class="ticket-card-top">
+          <div class="ticket-org-logo">
+            <span class="material-symbols-outlined">rocket_launch</span>
+          </div>
+          <div>
+            <div class="ticket-platform-name">National NTIC Platform</div>
+            <div class="ticket-role-label" [class]="viewTicketUser?.role">
+              {{ viewTicketUser?.role === 'judge' ? '⚖ Competition Judge' : '🤝 Platform Sponsor' }}
+            </div>
+          </div>
+        </div>
+        <div class="ticket-divider">
+          <span class="ticket-divider-notch left"></span>
+          <div class="ticket-divider-line"></div>
+          <span class="ticket-divider-notch right"></span>
+        </div>
+        <div class="ticket-card-body">
+          <div class="ticket-user-info">
+            <div class="ticket-field">
+              <span class="ticket-field-label">Name</span>
+              <span class="ticket-field-value">{{ viewTicketUser?.fullName }}</span>
+            </div>
+            <div class="ticket-field">
+              <span class="ticket-field-label">Email</span>
+              <span class="ticket-field-value">{{ viewTicketUser?.email }}</span>
+            </div>
+            <div class="ticket-field">
+              <span class="ticket-field-label">Phone</span>
+              <span class="ticket-field-value">{{ viewTicketUser?.phone || '+233 24 555 0192' }}</span>
+            </div>
+            <div class="ticket-field">
+              <span class="ticket-field-label">Organization</span>
+              <span class="ticket-field-value">{{ viewTicketUser?.organization }}</span>
+            </div>
+            <div class="ticket-field" *ngIf="viewTicketUser?.track">
+              <span class="ticket-field-label">Track</span>
+              <span class="ticket-field-value">{{ viewTicketUser?.track }}</span>
+            </div>
+            <div class="ticket-field" *ngIf="viewTicketUser?.tier">
+              <span class="ticket-field-label">Tier</span>
+              <span class="ticket-field-value">{{ viewTicketUser?.tier }}</span>
+            </div>
+          </div>
+          <div class="ticket-code-wrap">
+            <div class="ticket-code-label">ACCESS TOKEN</div>
+            <div class="ticket-code">{{ viewTicketUser?.ticket }}</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Secure OTP & Email Dispatch Status -->
+      <div class="dispatch-status-container animate-fade-in" style="margin-top: 16px; padding: 12px 16px; background: rgba(16, 185, 129, 0.08); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.2); text-align: left; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #059669; margin-bottom: 10px; font-size: 14px;">
+          <span class="material-symbols-outlined" style="font-size: 18px; color: #059669;">verified</span>
+          <span>Security Token &amp; OTP Dispatched</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--on-surface-variant); display: flex; align-items: center; gap: 6px;">
+              <span class="material-symbols-outlined" style="font-size: 15px; color: #10b981;">mail</span>
+              <span>Email:</span>
+            </span>
+            <span style="font-weight: 600; color: var(--on-surface);">Token sent to {{ viewTicketUser?.email }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--on-surface-variant); display: flex; align-items: center; gap: 6px;">
+              <span class="material-symbols-outlined" style="font-size: 15px; color: #10b981;">sms</span>
+              <span>SMS OTP:</span>
+            </span>
+            <span style="font-weight: 600; color: var(--on-surface);">Sent to {{ viewTicketUser?.phone || '+233 24 555 0192' }}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px dashed rgba(16, 185, 129, 0.2); margin-top: 4px;">
+            <span style="color: var(--on-surface-variant); font-weight: 600;">Activation OTP:</span>
+            <span style="font-family: monospace; font-size: 14px; background: var(--surface); border: 1px solid rgba(16, 185, 129, 0.3); padding: 1px 6px; border-radius: 4px; color: #059669; font-weight: 700; letter-spacing: 1px;">{{ viewTicketUser?.otp || '482019' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ticket-modal-actions">
+        <button class="btn btn-subtle" (click)="copyTicket(viewTicketUser?.ticket)">
+          <span class="material-symbols-outlined">{{ copiedTicket === viewTicketUser?.ticket ? 'check' : 'content_copy' }}</span>
+          {{ copiedTicket === viewTicketUser?.ticket ? 'Copied!' : 'Copy Token' }}
+        </button>
+        <button class="btn btn-primary" (click)="closeTicketModal()">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENLIST SQUAD MODAL (PREMIUM SCHOOL ADMIN DESIGN) -->
+  <div class="ticket-modal-backdrop enlist-backdrop" *ngIf="isAddTeamModalOpen" (click)="closeAddTeamModal()">
+    <div class="enlist-modal-card" (click)="$event.stopPropagation()">
+      
+      <!-- Gradient Banner Header -->
+      <div class="enlist-header-banner">
+        <div class="enlist-header-left">
+          <div class="enlist-crest-icon">
+            <span class="material-symbols-outlined">shield_with_house</span>
+          </div>
+          <div>
+            <div class="enlist-badge-tag">{{ editingTeamOriginalName ? 'SQUAD ROSTER MODIFICATION' : 'OFFICIAL NTIC TOURNAMENT REGISTRATION' }}</div>
+            <h3 class="enlist-title">{{ editingTeamOriginalName ? 'Edit Squad Roster' : 'National Squad Enlistment' }}</h3>
+            <p class="enlist-subtitle">{{ editingTeamOriginalName ? 'Update student member names, track assignment, or mentor details.' : 'Register your school\'s competitive STEM team into active tournament brackets.' }}</p>
+          </div>
+        </div>
+        <button class="enlist-close-btn" (click)="closeAddTeamModal()" title="Close modal">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      
+      <form (ngSubmit)="submitAddTeam()" #addTeamForm="ngForm" class="enlist-form-body">
+        
+        <!-- Section 1: Track Selector -->
+        <div class="enlist-section">
+          <label class="enlist-label">1. Select Competition Track <span class="req">*</span></label>
+          <div class="track-cards-grid">
+            <div 
+              class="track-select-card" 
+              [class.active]="teamForm.track === 'Coding'" 
+              (click)="teamForm.track = 'Coding'"
+            >
+              <div class="track-card-icon coding"><span class="material-symbols-outlined">code</span></div>
+              <div class="track-card-name">Coding & Algorithms</div>
+              <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
+            </div>
+
+            <div 
+              class="track-select-card" 
+              [class.active]="teamForm.track === 'Robotics'" 
+              (click)="teamForm.track = 'Robotics'"
+            >
+              <div class="track-card-icon robotics"><span class="material-symbols-outlined">precision_manufacturing</span></div>
+              <div class="track-card-name">Robotics & IoT</div>
+              <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
+            </div>
+
+            <div 
+              class="track-select-card" 
+              [class.active]="teamForm.track === 'AI'" 
+              (click)="teamForm.track = 'AI'"
+            >
+              <div class="track-card-icon ai"><span class="material-symbols-outlined">psychology</span></div>
+              <div class="track-card-name">AI Engineering</div>
+              <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
+            </div>
+
+            <div 
+              class="track-select-card" 
+              [class.active]="teamForm.track === 'Cybersecurity'" 
+              (click)="teamForm.track = 'Cybersecurity'"
+            >
+              <div class="track-card-icon cybersecurity"><span class="material-symbols-outlined">security</span></div>
+              <div class="track-card-name">Cybersecurity CTF</div>
+              <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
+            </div>
+
+            <div 
+              class="track-select-card" 
+              [class.active]="teamForm.track === 'Innovation'" 
+              (click)="teamForm.track = 'Innovation'"
+            >
+              <div class="track-card-icon innovation"><span class="material-symbols-outlined">lightbulb</span></div>
+              <div class="track-card-name">Open Innovation</div>
+              <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Squad Information -->
+        <div class="enlist-section">
+          <label class="enlist-label">2. Squad & Mentor Binding <span class="req">*</span></label>
+          <div class="enlist-fields-grid">
+            
+            <div class="enlist-field">
+              <span class="field-label">Official Squad Name <span class="req">*</span></span>
+              <div class="input-with-icon">
+                <span class="material-symbols-outlined prefix-icon">flag</span>
+                <input 
+                  type="text" 
+                  name="teamName" 
+                  [(ngModel)]="teamForm.name" 
+                  required 
+                  placeholder="e.g. PRESEC Cyber Knights" 
+                  class="enlist-input"
+                >
+              </div>
+              <span class="field-hint">Appears on national leaderboards & official certificates.</span>
+            </div>
+
+            <div class="enlist-field">
+              <span class="field-label">Assigned School Mentor</span>
+              <div class="input-with-icon">
+                <span class="material-symbols-outlined prefix-icon">school</span>
+                <select 
+                  name="teamMentor" 
+                  [(ngModel)]="teamForm.mentor" 
+                  class="enlist-select"
+                >
+                  <option value="">General School Coordinator</option>
+                  <option *ngFor="let inst of schoolInstructors" [value]="inst.fullName">{{ inst.fullName }} ({{ inst.track || 'STEM' }})</option>
+                </select>
+              </div>
+              <span class="field-hint">Supervising instructor for this competition track.</span>
+            </div>
+
+            <div class="enlist-field full-width">
+              <span class="field-label">Student Captain / Team Lead Name <span class="req">*</span></span>
+              <div class="input-with-icon">
+                <span class="material-symbols-outlined prefix-icon">person</span>
+                <input 
+                  type="text" 
+                  name="teamLead" 
+                  [(ngModel)]="teamForm.lead" 
+                  required 
+                  placeholder="e.g. Samuel Osei (Student Captain)" 
+                  class="enlist-input"
+                >
+              </div>
+            </div>
+
+            <div class="enlist-field full-width">
+              <span class="field-label">Project Motto / Innovation Theme <span class="optional">(Optional)</span></span>
+              <div class="input-with-icon">
+                <span class="material-symbols-outlined prefix-icon">tips_and_updates</span>
+                <input 
+                  type="text" 
+                  name="teamMotto" 
+                  [(ngModel)]="teamForm.motto" 
+                  placeholder="e.g. Building an autonomous solar irrigation grid for rural agriculture" 
+                  class="enlist-input"
+                >
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Section 3: Roster Size & Student Names -->
+        <div class="enlist-section">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <label class="enlist-label" style="margin:0;">3. Squad Roster Size & Student Names</label>
+            <span class="size-badge">{{ teamForm.members }} Students Active</span>
+          </div>
+          <div class="roster-size-selector" style="margin-bottom:12px;">
+            <button 
+              type="button" 
+              *ngFor="let size of [3,4,5,6,7,8]" 
+              class="size-pill-btn" 
+              [class.active]="teamForm.members === size" 
+              (click)="onSelectSize(size)"
+            >
+              <span class="material-symbols-outlined" style="font-size:16px;">groups</span>
+              {{ size }} Members
+            </button>
+          </div>
+          <span class="field-hint" style="margin-bottom:12px;">National competition regulations mandate between 3 and 8 students per enlisted squad.</span>
+
+          <!-- Dynamic Member Inputs -->
+          <div *ngIf="additionalMemberIndices.length > 0" class="additional-members-container">
+            <div class="roster-list-header">
+              <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">group_add</span>
+              <span>Enter Full Names of Additional Student Roster Members:</span>
+            </div>
+            <div class="members-input-grid">
+              <div *ngFor="let idx of additionalMemberIndices" class="member-input-row">
+                <span class="member-number-badge">#{{ idx + 2 }}</span>
+                <input 
+                  type="text" 
+                  [name]="'member_' + idx" 
+                  [(ngModel)]="teamForm.memberNames[idx]" 
+                  [placeholder]="'Student Member #' + (idx + 2) + ' Full Name (e.g. Amina Yusuf)'" 
+                  class="enlist-input member-name-input"
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="enlist-footer">
+          <div class="enlist-footer-info">
+            <span class="material-symbols-outlined" style="color:#0ea5e9;font-size:18px;">verified</span>
+            <span>Enlisted squads gain immediate access to LMS arenas & challenge repos.</span>
+          </div>
+          <div class="enlist-actions">
+            <button type="button" class="enlist-btn-cancel" (click)="closeAddTeamModal()">Cancel</button>
+            <button type="submit" class="enlist-btn-submit" [disabled]="!addTeamForm.form.valid">
+              <span class="material-symbols-outlined">{{ editingTeamOriginalName ? 'save' : 'rocket_launch' }}</span>
+              {{ editingTeamOriginalName ? 'Save Roster Changes' : 'Enlist Squad into Tournament' }}
+            </button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- ── ROLE USERS MODAL ── -->
+  <div class="ticket-modal-backdrop" *ngIf="roleModalRole" (click)="closeRoleModal()">
+    <div class="ticket-modal role-users-modal" (click)="$event.stopPropagation()">
+      <div class="ticket-modal-header">
+        <h3>{{ roleModalRole ? (roleModalRole | titlecase) + ' Users' : '' }}</h3>
+        <button class="ticket-modal-close" (click)="closeRoleModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="role-users-list" *ngIf="roleModalUsers.length > 0">
+        <div *ngFor="let user of roleModalUsers" class="role-user-row">
+          <div class="role-user-avatar" [class]="user.role">
+            {{ getInitials(user.fullName) }}
+          </div>
+          <div class="role-user-body">
+            <div class="role-user-name">{{ user.fullName }}</div>
+            <div class="role-user-email">{{ user.email }}</div>
+            <div class="role-user-sub">
+              <span>{{ user.organization }}</span>
+              <span class="role-user-dot">&middot;</span>
+              <span class="role-user-status" [class.active]="user.status === 'Active'">{{ user.status }}</span>
+            </div>
+          </div>
+          <div class="role-user-ticket">
+            <span class="role-user-ticket-code">{{ user.ticket }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="role-users-empty" *ngIf="roleModalUsers.length === 0">
+        <span class="material-symbols-outlined">person_off</span>
+        <p>No users registered for this role.</p>
+      </div>
+
+      <div class="ticket-modal-actions">
+        <span class="role-users-count">{{ roleModalUsers.length }} user{{ roleModalUsers.length !== 1 ? 's' : '' }}</span>
+        <button class="btn btn-primary" (click)="closeRoleModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+</div>
