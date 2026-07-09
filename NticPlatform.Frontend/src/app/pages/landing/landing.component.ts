@@ -1184,9 +1184,9 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   private setupCardParallax(): void {
     if (typeof window === 'undefined') return;
     this.ngZone.runOutsideAngular(() => {
-      const cards = this.elementRef.nativeElement.querySelectorAll('.gateway-card-inner, .login-modal-card, .academic-login-card, .why-exist-card, .support-card, .spotlight-card, .philosophy-card, .alumni-card, .hero-text-card, .scoreboard-table-card, .challenge-editor-card');
+      const cards = this.elementRef.nativeElement.querySelectorAll('.gateway-card-inner, .academic-login-card, .why-exist-card, .support-card, .spotlight-card, .philosophy-card, .alumni-card, .hero-text-card, .scoreboard-table-card, .challenge-editor-card');
       cards.forEach((card: HTMLElement) => {
-        const isLoginCard = card.classList.contains('academic-login-card') || card.classList.contains('gateway-card-inner') || card.classList.contains('login-modal-card');
+        const isLoginCard = card.classList.contains('academic-login-card') || card.classList.contains('gateway-card-inner');
         let rAFId: number | null = null;
         
         const mouseMoveHandler = (event: MouseEvent) => {
@@ -1200,7 +1200,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
             const y = event.clientY - rect.top;
             const cx = rect.width / 2;
             const cy = rect.height / 2;
-            const multiplier = isLoginCard ? -4 : -8;
+            const multiplier = isLoginCard ? -2.5 : -5;
             const rx = ((y - cy) / cy) * multiplier;
             const ry = ((x - cx) / cx) * Math.abs(multiplier);
             
@@ -1208,11 +1208,11 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
             card.style.setProperty('--mouse-y', `${y}px`);
             
             if (isLoginCard) {
-              card.style.transform = `perspective(1100px) rotateX(${rx}deg) rotateY(${ry}deg) translate3d(0, -6px, 15px)`;
+              card.style.transform = `perspective(1200px) rotateX(${rx}deg) rotateY(${ry}deg) translate3d(0, -4px, 10px)`;
             } else {
-              card.style.transform = `perspective(1100px) rotateX(${rx}deg) rotateY(${ry}deg) translateY(-12px) scale(1.018)`;
+              card.style.transform = `perspective(1200px) rotateX(${rx}deg) rotateY(${ry}deg) translateY(-8px) scale(1.012)`;
             }
-            card.style.transition = 'transform 0.08s linear, box-shadow 0.5s ease, border-color 0.5s ease';
+            card.style.transition = 'transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease, border-color 0.4s ease';
           });
         };
 
