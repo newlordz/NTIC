@@ -1,5 +1,8 @@
 :host {
-  display: contents;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .page-canvas {
@@ -10,8 +13,6 @@
   padding: 24px 32px;
   background: #f8fafc;
   flex: 1;
-  overflow-y: auto;
-  min-height: 0;
   position: relative;
   z-index: 1;
 
@@ -94,7 +95,6 @@
     align-items: center;
     min-height: 100vh;
     padding: 32px 24px;
-    overflow: hidden;
 
     .back-link-btn {
       margin-bottom: 16px;
@@ -1401,7 +1401,7 @@ select.form-control {
    BACKGROUND VIDEO LOOP STYLES
    ========================================================= */
 .video-bg-container {
-  position: absolute;
+  position: fixed;
   inset: 0;
   overflow: hidden;
   z-index: 0;
@@ -3672,6 +3672,7 @@ select.form-control {
   align-items: center;
   justify-content: center;
   padding: 24px;
+  overflow-y: auto;
   animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -3681,11 +3682,13 @@ select.form-control {
   border-radius: 24px;
   width: 100%;
   max-width: 800px;
+  max-height: 90vh;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   animation: scaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   
   &::before {
@@ -3810,12 +3813,16 @@ select.form-control {
     --role-accent: var(--primary);
     --role-bg-glow: rgba(0, 63, 135, 0.04);
   }
+  &.role-student {
+    --role-accent: var(--secondary, #006a60);
+    --role-bg-glow: rgba(0, 106, 96, 0.04);
+  }
   &.role-instructor {
-    --role-accent: var(--secondary);
+    --role-accent: var(--tertiary, #d4a017);
     --role-bg-glow: rgba(212, 160, 23, 0.04);
   }
   &.role-judge {
-    --role-accent: var(--tertiary);
+    --role-accent: #7c3aed;
     --role-bg-glow: rgba(142, 68, 173, 0.04);
   }
   &.role-sponsor {
@@ -4203,6 +4210,147 @@ select.form-control {
     transform: scale(1);
     opacity: 1;
   }
+}
+
+
+/* Terms & Conditions Modal */
+.terms-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 24px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.terms-modal-card {
+  background: var(--surface, #ffffff);
+  border-radius: 16px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15);
+  animation: modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.terms-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--outline-variant, #e2e8f0);
+
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--on-surface, #0f172a);
+  }
+}
+
+.terms-close-btn {
+  background: none;
+  border: none;
+  padding: 8px;
+  border-radius: 8px;
+  color: var(--on-surface-variant, #64748b);
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: var(--surface-container-highest, #e2e8f0);
+    color: var(--on-surface, #0f172a);
+  }
+
+  .material-symbols-outlined {
+    font-size: 24px;
+  }
+}
+
+.terms-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  max-height: 60vh;
+
+  h4 {
+    margin: 0 0 16px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--on-surface, #0f172a);
+  }
+
+  ol {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 13.5px;
+    line-height: 1.7;
+    color: var(--on-surface-variant, #475569);
+
+    li {
+      margin-bottom: 12px;
+
+      strong {
+        color: var(--on-surface, #0f172a);
+      }
+    }
+  }
+
+  .terms-note {
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--primary-glow, rgba(0, 63, 135, 0.08));
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: var(--primary-container, #003f87);
+    font-weight: 600;
+    text-align: center;
+  }
+}
+
+.terms-modal-footer {
+  padding: 16px 24px 24px;
+  border-top: 1px solid var(--outline-variant, #e2e8f0);
+  display: flex;
+  justify-content: flex-end;
+
+  .btn {
+    min-width: 140px;
+  }
+}
+
+/* Terms checkbox wrapper */
+.terms-checkbox-wrapper {
+  input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--primary, #003f87);
+      outline-offset: 2px;
+    }
+  }
+
+  a {
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: var(--primary-container, #003f87) !important;
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 

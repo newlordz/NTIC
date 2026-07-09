@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ThemeService } from '../../services/theme.service';
 import { ContentService } from '../../services/content.service';
+import { FileStorageService } from '../../services/file-storage.service';
 
 @Component({
   selector: 'app-registration',
@@ -52,7 +53,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   rightPanelMode = 'preview'; // 'preview' | 'list'
 
-  schoolForm = {
+schoolForm = {
     name: '',
     category: 'Public High School',
     region: 'Greater Accra',
@@ -64,20 +65,23 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     repEmail: '',
     repTel: '',
     students: [] as any[],
-    teams: [] as any[]
+    teams: [] as any[],
+    acceptedTerms: false
   };
 
   studentForm = {
     name: '',
     id: '',
+    email: '',
     dob: '',
     gender: 'Male',
-    school: 'Achimota SHS',
+    school: '',
     class: 'Form 1',
     guardian: '',
+    track: 'coding',
     skills: {
       alg: 'intermediate',
-      hw: 'advanced',
+      hw: 'novice',
       ai: 'novice'
     }
   };
@@ -106,6 +110,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     qualification: 'BSc',
     institution: '',
     isIndependent: false,
+    acceptedTerms: false,
     expertise: {
       Python: false,
       JavaScript: false,
@@ -126,7 +131,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     experience: '',
     bio: '',
     ticketCode: '',
-    otp: ''
+    otp: '',
+    acceptedTerms: false
   };
 
   sponsorForm = {
@@ -137,6 +143,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     email: '',
     amount: '',
     tier: 'Platinum Partner (₵ 100k+)',
+    acceptedTerms: false,
     arenas: {
       'Coding Track': true,
       'Robotics Arena': true,
@@ -173,7 +180,70 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   isSuccessModalOpen = false;
   isSubmitting = false;
 
-  constructor(private route: ActivatedRoute, private router: Router, public themeService: ThemeService, public contentService: ContentService) {}
+  selectedFileIds: { [key: string]: string[] } = {};
+  selectedFileNames: { [key: string]: string[] } = {};
+
+  async onFileSelected(event: any, field: string): Promise<void> {
+    const files: FileList = event.target.files;
+    if (files?.length) {
+      const ids: string[] = [];
+      const names: string[] = [];
+      for (const file of Array.from(files)) {
+        const id = this.fileStorage.generateId();
+        await this.fileStorage.store(id, file);
+        ids.push(id);
+        names.push(file.name);
+      }
+      this.selectedFileIds[field] = [...(this.selectedFileIds[field] || []), ...ids];
+      this.selectedFileNames[field] = [...(this.selectedFileNames[field] || []), ...names];
+    }
+  }
+
+  async removeFile(field: string, index: number): Promise<void> {
+    const id = this.selectedFileIds[field]?.[index];
+    if (id) await this.fileStorage.remove(id);
+    this.selectedFileIds[field]?.splice(index, 1);
+    this.selectedFileNames[field]?.splice(index, 1);
+  }
+
+  // Terms & Conditions
+  acceptedTerms: { [key: string]: boolean } = {
+    school: false,
+    instructor: false,
+    judge: false,
+    sponsor: false,
+    student: false
+  };
+  showTermsModal = false;
+  showPrivacyModal = false;
+  pendingTermsAction: string | null = null;
+
+  openTermsModal(action: string): void {
+    this.pendingTermsAction = action;
+    this.showTermsModal = true;
+  }
+
+  closeTermsModal(): void {
+    this.showTermsModal = false;
+    this.pendingTermsAction = null;
+  }
+
+  acceptTerms(): void {
+    if (this.pendingTermsAction) {
+      this.acceptedTerms[this.pendingTermsAction] = true;
+    }
+    this.closeTermsModal();
+  }
+
+  openPrivacyModal(): void {
+    this.showPrivacyModal = true;
+  }
+
+  closePrivacyModal(): void {
+    this.showPrivacyModal = false;
+  }
+
+  constructor(private route: ActivatedRoute, private router: Router, public themeService: ThemeService, public contentService: ContentService, public fileStorage: FileStorageService) {}
 
   ngOnInit(): void {
     const activeRoleId = localStorage.getItem('activeRoleId');
@@ -378,6 +448,107 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.schoolForm.teams.splice(index, 1);
   }
 
+  competitorMode: 'individual' | 'group' = 'group';
+
+  registerStudent(): void {
+    if (this.competitorMode === 'group') {
+      if (!this.teamForm.name || !this.teamForm.leadName) {
+        alert('Please enter your Group / Team Name and Team Lead full name.');
+        return;
+      }
+      const ticket = `NTIC-GRP-${Math.floor(1000 + Math.random() * 9000)}`;
+      const leadEmail = this.teamForm.leadEmail?.trim() || `${ticket.toLowerCase()}@squad.ntic.gh`;
+      const found = this.contentService.users.find(u =>
+        u.email?.trim().toLowerCase() === leadEmail.toLowerCase()
+      );
+      if (found && this.teamForm.leadEmail?.trim()) {
+        alert('An account with this Team Lead email already exists. Please log in instead.');
+        return;
+      }
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      const membersList = [
+        { name: this.teamForm.leadName, email: leadEmail, role: 'Lead' },
+        ...(this.teamForm.member2Name ? [{ name: this.teamForm.member2Name, email: this.teamForm.member2Email, role: 'Member' }] : []),
+        ...(this.teamForm.member3Name ? [{ name: this.teamForm.member3Name, email: this.teamForm.member3Email, role: 'Member' }] : []),
+        ...(this.teamForm.member4Name ? [{ name: this.teamForm.member4Name, email: this.teamForm.member4Email, role: 'Member' }] : []),
+        ...(this.teamForm.member5Name ? [{ name: this.teamForm.member5Name, email: this.teamForm.member5Email, role: 'Member' }] : [])
+      ];
+
+      const newTeam = {
+        id: `TM-${Date.now()}`,
+        name: this.teamForm.name,
+        schoolName: this.teamForm.school || 'Independent Squad',
+        track: this.teamForm.track || 'Coding',
+        lead: this.teamForm.leadName,
+        members: membersList.length,
+        rosterList: membersList.map(m => m.name),
+        status: 'Approved'
+      };
+      this.contentService.saveTeams([...this.contentService.teams, newTeam]);
+
+      const newUser = {
+        id: `USR-${Date.now()}`,
+        role: 'student' as const,
+        fullName: `${this.teamForm.leadName} (${this.teamForm.name})`,
+        email: leadEmail,
+        phone: '',
+        otp,
+        organization: this.teamForm.name,
+        track: this.teamForm.track || 'Coding',
+        ticket,
+        status: 'Active' as const,
+        registeredAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        lastLogin: 'Just now'
+      };
+      this.contentService.users = [newUser, ...this.contentService.users];
+      this.contentService.saveUsers(this.contentService.users);
+
+      localStorage.setItem('activeRoleId', 'student');
+      localStorage.setItem('activeUserEmail', leadEmail);
+      alert(`Group Registration Successful!\n\nTeam: ${this.teamForm.name}\nAccess Pass: ${ticket}\nPIN: ${otp}\n\nUse these credentials to log in to the Championship Arena.`);
+      this.router.navigate(['/competitions']);
+      return;
+    }
+
+    // Individual Competitor
+    if (!this.studentForm.name) {
+      alert('Please enter your full name to register.');
+      return;
+    }
+    const ticket = `NTIC-STU-${Math.floor(1000 + Math.random() * 9000)}`;
+    const studentEmail = this.studentForm.email?.trim() || `${ticket.toLowerCase()}@stu.ntic.gh`;
+    const found = this.contentService.users.find(u =>
+      u.email?.trim().toLowerCase() === studentEmail.toLowerCase()
+    );
+    if (found && this.studentForm.email?.trim()) {
+      alert('An account with this email already exists. Please log in instead.');
+      return;
+    }
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const newUser = {
+      id: `USR-${Date.now()}`,
+      role: 'student' as const,
+      fullName: this.studentForm.name,
+      email: studentEmail,
+      phone: '',
+      otp,
+      organization: this.studentForm.school || 'Independent Competitor',
+      track: this.selectedTrack,
+      ticket,
+      status: 'Active' as const,
+      registeredAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      lastLogin: 'Just now'
+    };
+    this.contentService.users = [newUser, ...this.contentService.users];
+    this.contentService.saveUsers(this.contentService.users);
+
+    localStorage.setItem('activeRoleId', 'student');
+    localStorage.setItem('activeUserEmail', studentEmail);
+    alert(`Registration successful!\n\nYour Access Pass: ${ticket}\nYour PIN: ${otp}\n\nUse these credentials to log in from the homepage.`);
+    this.router.navigate(['/lms']);
+  }
+
   detectGps(): void {
     this.schoolForm.gps = '5.6037° N, 0.1870° W';
   }
@@ -402,6 +573,18 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     return Object.values(this.instructorForm.expertise).some(v => v);
   }
 
+  saveDraft(): void {
+    const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
+    drafts[this.activeTab] = {
+      instructor: this.activeTab === 'instructor' ? { ...this.instructorForm } : undefined,
+      student: this.activeTab === 'student' ? { ...this.studentForm, selectedTrack: this.selectedTrack } : undefined,
+      school: this.activeTab === 'school' ? { ...this.schoolForm } : undefined,
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem('ntic_drafts', JSON.stringify(drafts));
+    alert('Draft saved successfully!');
+  }
+
   generateJudgeTicket(): void {
     if (!this.judgeForm.ticketCode && this.judgeForm.name) {
       const rand = Math.floor(1000 + Math.random() * 9000);
@@ -417,6 +600,27 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       this.router.navigate(['/sponsors']);
       return;
     }
+    if (role === 'student') {
+      this.activeTab = 'student';
+      this.studentForm = {
+        name: '',
+        id: '',
+        email: '',
+        dob: '',
+        gender: 'Male',
+        school: '',
+        class: 'Form 1',
+        guardian: '',
+        track: 'coding',
+        skills: {
+          alg: 'intermediate',
+          hw: 'novice',
+          ai: 'novice'
+        }
+      };
+      this.regState = 'new';
+      return;
+    }
     this.activeTab = role;
     if (role === 'school') {
       this.clearDraftPrefills();
@@ -429,6 +633,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         qualification: 'BSc',
         institution: '',
         isIndependent: false,
+        acceptedTerms: false,
         expertise: {
           Python: false,
           JavaScript: false,
@@ -449,7 +654,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         experience: '',
         bio: '',
         ticketCode: '',
-        otp: ''
+        otp: '',
+        acceptedTerms: false
       };
     }
     this.regState = 'new';
@@ -476,7 +682,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       repEmail: '',
       repTel: '',
       students: [],
-      teams: []
+      teams: [],
+      acceptedTerms: false
     };
   }
 
@@ -535,7 +742,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           code: this.schoolForm.name.slice(0, 3).toUpperCase() + '-REG-2026',
           tracks: this.schoolForm.teams.map((t: any) => t.track).filter((value: any, index: number, self: any[]) => self.indexOf(value) === index).join(', ') || 'Coding, Robotics',
           teamsList: this.schoolForm.teams,
-          docs: ['Accreditation_' + this.schoolForm.name.replace(/ /g, '_') + '.pdf'],
+          docs: this.selectedFileIds['schoolDocs']?.length
+            ? this.selectedFileIds['schoolDocs'].map((id, i) => `${id}::${this.selectedFileNames['schoolDocs']?.[i] || 'document.pdf'}`)
+            : ['Accreditation_' + this.schoolForm.name.replace(/ /g, '_') + '.pdf'],
           infra: 'IT Lab facility registered, ' + this.schoolForm.students.length + ' students enrolled'
         };
 
@@ -562,6 +771,45 @@ export class RegistrationComponent implements OnInit, OnDestroy {
             });
           });
           this.contentService.saveTeams(currentTeams);
+        }
+
+        // Generate user accounts for all students registered by school admin
+        if (this.schoolForm.students && this.schoolForm.students.length > 0) {
+          const currentUsers = [...this.contentService.users];
+          this.schoolForm.students.forEach((s: any) => {
+            const existingEmail = s.email || `${s.name.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`;
+            if (!currentUsers.find((u: any) => u.email?.trim().toLowerCase() === existingEmail.toLowerCase())) {
+              const ticket = `NTIC-STU-${Math.floor(1000 + Math.random() * 9000)}`;
+              const otp = Math.floor(100000 + Math.random() * 900000).toString();
+              currentUsers.push({
+                id: `USR-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+                role: 'student' as const,
+                fullName: s.name,
+                email: existingEmail,
+                phone: '',
+                otp,
+                organization: this.schoolForm.name,
+                track: s.track || (this.schoolForm.teams.length > 0 ? this.schoolForm.teams[0].track : 'coding'),
+                ticket,
+                status: 'Active' as const,
+                registeredAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                lastLogin: 'Never'
+              });
+            }
+          });
+          this.contentService.saveUsers(currentUsers);
+        }
+
+        // Log student registrations
+        if (this.activeTab === 'school' && this.schoolForm.students?.length) {
+          const currentAudit2 = [...this.contentService.auditLogs];
+          currentAudit2.unshift({
+            action: `${this.schoolForm.students.length} students registered under ${this.schoolForm.name}`,
+            user: this.schoolForm.repEmail || this.schoolForm.email,
+            time: 'Just now',
+            type: 'auth'
+          });
+          this.contentService.saveAuditLogs(currentAudit2);
         }
       } else if (this.activeTab === 'team') {
         approvalType = 'Team Addition';
@@ -599,7 +847,10 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           credentials: this.instructorForm.qualification || 'MSc Computer Science',
           specialization: selectedExpertise || 'Coding, AI',
           experience: 'Mentor with registered history',
-          courses: ['LMS Course 101: Python Intro', 'LMS Course 202: Robotics Base']
+          courses: ['LMS Course 101: Python Intro', 'LMS Course 202: Robotics Base'],
+          docs: this.selectedFileIds['instructorDocs']?.length
+            ? this.selectedFileIds['instructorDocs'].map((id, i) => `${id}::${this.selectedFileNames['instructorDocs']?.[i] || 'document.pdf'}`)
+            : undefined
         };
       } else if (this.activeTab === 'judge') {
         const ticket = 'NTIC-JDG-' + Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -705,7 +956,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       experience: '',
       bio: '',
       ticketCode: '',
-      otp: ''
+      otp: '',
+      acceptedTerms: false
     };
   }
 }

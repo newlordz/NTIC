@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService } from '../../services/content.service';
+import { FileStorageService } from '../../services/file-storage.service';
 
 @Component({
   selector: 'app-lms',
@@ -11,7 +12,10 @@ import { ContentService } from '../../services/content.service';
   styleUrl: './lms.component.scss'
 })
 export class LmsComponent implements OnInit {
-  constructor(public contentService: ContentService) {}
+  selectedUploadFileId = '';
+  selectedUploadFileName = '';
+
+  constructor(public contentService: ContentService, public fileStorage: FileStorageService) {}
 
   activeRoleId = 'student';
   activeTab = 'courses'; // default tab for instructors
@@ -104,6 +108,17 @@ export class LmsComponent implements OnInit {
 
   showUploadSuccess = false;
 
+  async onUploadFileSelected(event: any): Promise<void> {
+    const file = event.target.files?.[0];
+    if (file) {
+      const id = this.fileStorage.generateId();
+      await this.fileStorage.store(id, file);
+      this.selectedUploadFileId = id;
+      this.selectedUploadFileName = file.name;
+      this.newSubmission.fileName = file.name;
+    }
+  }
+
   ngOnInit(): void {
     this.activeRoleId = localStorage.getItem('activeRoleId') || 'student';
     // If student, change the active tab to courses
@@ -127,7 +142,7 @@ export class LmsComponent implements OnInit {
       school: this.studentProfile.school,
       assignment: this.newSubmission.assignmentName,
       track: this.studentProfile.trackId === 'coding' ? 'Coding' : 'Robotics', // fallback
-      file: this.newSubmission.fileName,
+      file: this.selectedUploadFileId ? `${this.selectedUploadFileId}::${this.selectedUploadFileName}` : this.newSubmission.fileName,
       score: null,
       status: 'pending' as const,
       time: 'Just now',
@@ -135,6 +150,15 @@ export class LmsComponent implements OnInit {
     };
     currentSubmissions.unshift(newSub);
     this.contentService.saveSubmissions(currentSubmissions);
+
+    const currentAudit = [...this.contentService.auditLogs];
+    currentAudit.unshift({
+      action: `New submission by ${this.studentProfile.name}: "${this.newSubmission.assignmentName}" — ${this.newSubmission.fileName}`,
+      user: this.studentProfile.email || this.studentProfile.name,
+      time: 'Just now',
+      type: 'approval'
+    });
+    this.contentService.saveAuditLogs(currentAudit);
 
     this.showUploadSuccess = true;
     this.newSubmission = {

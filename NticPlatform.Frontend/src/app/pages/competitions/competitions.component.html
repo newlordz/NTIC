@@ -1,208 +1,433 @@
-<div class="page-canvas fade-in">
-  <div class="page-header with-action">
-    <div>
-      <h1 class="page-title-main">Competitions</h1>
-      <p class="page-subtitle">Manage all competition tracks, scoring and team registrations</p>
+<div class="competitions-page">
+  <!-- Header -->
+  <header class="page-header">
+    <div class="header-left">
+      <h1 class="page-title">
+        <span class="material-symbols-outlined">emoji_events</span>
+        Competition Cycles
+      </h1>
+      <p class="page-subtitle">Create and manage competition rounds — qualifiers, quarter-finals, semi-finals, finals, and championship events</p>
     </div>
-    <button *ngIf="isAdmin" class="btn btn-primary" (click)="openCreateModal()">
-      <span class="material-symbols-outlined">add</span>Create Competition
+    <div class="header-actions">
+      <button class="btn btn-primary" (click)="openCreateModal()">
+        <span class="material-symbols-outlined">add</span>
+        New Competition Cycle
+      </button>
+    </div>
+  </header>
+
+  <!-- Toolbar -->
+  <div class="comp-toolbar">
+    <div class="search-box">
+      <span class="material-symbols-outlined search-icon">search</span>
+      <input type="text" class="search-input" placeholder="Search competitions by title, track, category..." [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()">
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <nav class="comp-tabs" role="tablist">
+    <button *ngFor="let tab of tabs"
+            class="tab-btn"
+            [class.active]="activeTab === tab.id"
+            (click)="setTab(tab.id)">
+      <span class="material-symbols-outlined">{{ tab.icon }}</span>
+      <span>{{ tab.label }}</span>
+      <span *ngIf="getTabCount(tab.id) > 0" class="tab-count">{{ getTabCount(tab.id) }}</span>
     </button>
+  </nav>
+
+  <!-- Grid -->
+  <div class="comp-grid" *ngIf="filteredCompetitions.length > 0; else emptyState">
+    <div class="comp-card" *ngFor="let comp of filteredCompetitions" (click)="openDetailModal(comp)">
+      <div class="comp-card-top">
+        <span class="comp-type-badge" [style.background]="comp.type === 'final' || comp.type === 'championship' ? 'var(--accent-gold, #f59e0b)' : 'var(--primary, #003f87)'">
+          <span class="material-symbols-outlined">{{ typeIcons[comp.type || 'qualifier'] || 'emoji_events' }}</span>
+        </span>
+        <div class="comp-card-header">
+          <h3>{{ comp.title }}</h3>
+          <span class="comp-type-label">{{ getTypeLabel(comp.type || 'qualifier') }}</span>
+        </div>
+      </div>
+
+      <div class="comp-card-body">
+        <div class="comp-meta-row">
+          <span class="meta-item">
+            <span class="material-symbols-outlined">{{ trackIcons[comp.track] || 'emoji_events' }}</span>
+            {{ comp.track === 'all' ? 'Multi-Track' : comp.track | titlecase }}
+          </span>
+          <span class="meta-item">
+            <span class="material-symbols-outlined">group</span>
+            {{ comp.teams }} / {{ comp.maxTeams || '∞' }} teams
+          </span>
+        </div>
+
+        <div class="comp-progress" *ngIf="comp.status !== 'draft'">
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="comp.progress" [style.background]="comp.progress >= 75 ? '#10b981' : comp.progress >= 40 ? '#f59e0b' : '#003f87'"></div>
+          </div>
+          <span class="progress-text">{{ comp.progress }}%</span>
+        </div>
+
+        <div class="comp-phases-preview" *ngIf="comp.phases?.length">
+          <span class="phase-dot" *ngFor="let phase of comp.phases; let i = index"
+                [class.active]="phase.status === 'active'"
+                [class.completed]="phase.status === 'completed'"
+                [title]="phase.name">
+          </span>
+          <span class="phase-count">{{ comp.phases?.length }} phase{{ comp.phases?.length !== 1 ? 's' : '' }}</span>
+        </div>
+      </div>
+
+      <div class="comp-card-footer">
+        <span class="comp-status" [class]="getStatusClass(comp.status)">
+          <span class="material-symbols-outlined">
+            {{ comp.status === 'active' ? 'play_circle' : comp.status === 'registration' ? 'how_to_reg' : comp.status === 'completed' ? 'check_circle' : 'edit_note' }}
+          </span>
+          {{ comp.status | titlecase }}
+        </span>
+        <span class="comp-deadline">
+          <span class="material-symbols-outlined">event</span>
+          {{ comp.status === 'draft' ? 'Created ' + formatDate(comp.createdAt || '') : 'Deadline: ' + formatDate(comp.deadline) }}
+        </span>
+      </div>
+    </div>
   </div>
 
-  <!-- Quick Stats -->
-  <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
-    <div class="stat-card primary">
-      <div class="stat-bg-icon material-symbols-outlined">emoji_events</div>
-      <div class="stat-label">
-        <span class="material-symbols-outlined">emoji_events</span>Active
-      </div>
-      <div class="stat-value">{{ activeCount }}</div>
-    </div>
-    <div class="stat-card secondary">
-      <div class="stat-bg-icon material-symbols-outlined">groups</div>
-      <div class="stat-label">
-        <span class="material-symbols-outlined">groups</span>Registered Teams
-      </div>
-      <div class="stat-value">{{ totalTeamsCount }}</div>
-    </div>
-    <div class="stat-card error">
-      <div class="stat-bg-icon material-symbols-outlined">gavel</div>
-      <div class="stat-label">
-        <span class="material-symbols-outlined">gavel</span>Pending Judging
-      </div>
-      <div class="stat-value">{{ pendingJudgingCount }}</div>
-    </div>
-    <div class="stat-card tertiary">
-      <div class="stat-bg-icon material-symbols-outlined">military_tech</div>
-      <div class="stat-label">
-        <span class="material-symbols-outlined">military_tech</span>Finals This Week
-      </div>
-      <div class="stat-value">{{ finalsThisWeek }}</div>
-    </div>
-  </div>
-
-  <div class="grid-3" style="gap:16px;">
-    <!-- Empty State -->
-    <div *ngIf="competitions.length === 0" class="empty-state-card">
+  <!-- Empty -->
+  <ng-template #emptyState>
+    <div class="comp-empty">
       <span class="material-symbols-outlined empty-icon">emoji_events</span>
-      <h3>No Competitions Registered</h3>
-      <p>There are no active competition tracks registered on the platform right now.</p>
-      <button *ngIf="isAdmin" class="btn btn-primary" (click)="openCreateModal()">
-        <span class="material-symbols-outlined">add</span>Create Competition
+      <h3>No competition cycles yet</h3>
+      <p>Create your first competition cycle — qualifier, quarter-final, semi-final, or the grand finale.</p>
+      <button class="btn btn-primary" (click)="openCreateModal()">
+        <span class="material-symbols-outlined">add</span>
+        Create Competition
       </button>
     </div>
+  </ng-template>
 
-    <!-- Competition Cards -->
-    <div *ngFor="let c of competitions" class="card" style="cursor:pointer;transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='var(--shadow-elevated)'" onmouseout="this.style.boxShadow=''">
-      <div [class]="'track-chip '+c.track" style="border-radius:12px 12px 0 0;padding:0;height:4px;display:block;width:100%;"></div>
-      <div class="card-body">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-          <div style="width:44px;height:44px;border-radius:10px;background:var(--surface-container);display:flex;align-items:center;justify-content:center;">
-            <span class="material-symbols-outlined" style="color:var(--primary)">{{c.icon}}</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span class="badge" [class]="c.status==='active'?'success':'primary'">{{c.status | titlecase}}</span>
-            <button *ngIf="isAdmin" class="btn-delete-comp" (click)="deleteCompetition(c.id, $event)" title="Delete Competition">
-              <span class="material-symbols-outlined">delete</span>
-            </button>
-          </div>
+  <!-- Create/Edit Modal -->
+  <div class="modal-backdrop" *ngIf="isFormModalOpen" (click)="closeFormModal()"></div>
+  <div class="modal-form" *ngIf="isFormModalOpen" (click)="$event.stopPropagation()">
+    <div class="modal-form-header">
+      <h2>{{ editingCompetition ? 'Edit' : 'Create' }} Competition Cycle</h2>
+      <button class="modal-close" (click)="closeFormModal()"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="modal-form-body">
+      <div class="form-row">
+        <div class="form-group flex-2">
+          <label>Title</label>
+          <input type="text" class="form-input" [(ngModel)]="formModel.title" placeholder="e.g. National Qualifier Round" required>
         </div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;line-height:1.3;color:var(--on-surface);">{{c.title}}</h3>
-        <p style="font-size:12px;color:var(--on-surface-variant);margin-bottom:14px;">{{c.category}}</p>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
-          <div style="background:var(--surface-container-low);border-radius:8px;padding:8px 10px;">
-            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--on-surface-variant);margin-bottom:2px;">Teams</div>
-            <div style="font-size:16px;font-weight:800;color:var(--primary);">{{c.teams}}</div>
-          </div>
-          <div style="background:var(--surface-container-low);border-radius:8px;padding:8px 10px;">
-            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--on-surface-variant);margin-bottom:2px;">Prize</div>
-            <div style="font-size:16px;font-weight:800;color:var(--secondary);">{{c.prize}}</div>
-          </div>
-        </div>
-
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--on-surface-variant);margin-bottom:4px;">
-          <span>Submissions Progress</span><span style="font-weight:700;">{{c.progress}}%</span>
-        </div>
-        <div class="progress-bar"><div class="progress-fill" [style.width.%]="c.progress"></div></div>
-
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--outline-variant);">
-          <div style="font-size:12px;color:var(--on-surface-variant);display:flex;align-items:center;gap:4px;">
-            <span class="material-symbols-outlined" style="font-size:14px;">event</span>{{c.deadline}}
-          </div>
-          <button class="btn btn-ghost btn-sm">Manage</button>
+        <div class="form-group">
+          <label>Cycle Type</label>
+          <select class="form-select" [(ngModel)]="formModel.type">
+            <option *ngFor="let t of cycleTypes" [value]="t">{{ getTypeLabel(t) }}</option>
+          </select>
         </div>
       </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <textarea class="form-input" [(ngModel)]="formModel.description" placeholder="Brief description of this competition cycle..." rows="2"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Track</label>
+          <select class="form-select" [(ngModel)]="formModel.track">
+            <option *ngFor="let t of tracks" [value]="t">{{ t === 'all' ? 'Multi-Track' : t.charAt(0).toUpperCase() + t.slice(1) }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <input type="text" class="form-input" [(ngModel)]="formModel.category" placeholder="e.g. Coding Challenge">
+        </div>
+      </div>
+
+      <div class="form-row triple">
+        <div class="form-group">
+          <label>Start Date</label>
+          <input type="date" class="form-input" [(ngModel)]="formModel.startDate">
+        </div>
+        <div class="form-group">
+          <label>End Date</label>
+          <input type="date" class="form-input" [(ngModel)]="formModel.endDate">
+        </div>
+        <div class="form-group">
+          <label>Deadline</label>
+          <input type="date" class="form-input" [(ngModel)]="formModel.deadline" required>
+        </div>
+      </div>
+
+      <div class="form-row triple">
+        <div class="form-group">
+          <label>Prize</label>
+          <input type="text" class="form-input" [(ngModel)]="formModel.prize" placeholder="e.g. ₵10,000 + Trophy">
+        </div>
+        <div class="form-group">
+          <label>Max Teams</label>
+          <input type="number" class="form-input" [(ngModel)]="formModel.maxTeams" min="1">
+        </div>
+        <div class="form-group">
+          <label>Icon</label>
+          <input type="text" class="form-input" [(ngModel)]="formModel.icon" placeholder="material icon name">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group flex-2">
+          <label>Rules</label>
+          <textarea class="form-text" [(ngModel)]="formModel.rules" placeholder="Competition rules, eligibility, format..." rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select class="form-select" [(ngModel)]="formModel.status">
+            <option *ngFor="let s of statuses" [value]="s">{{ s.charAt(0).toUpperCase() + s.slice(1) }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Judging Criteria</label>
+        <textarea class="form-text" [(ngModel)]="formModel.criteria" placeholder="How will entries be judged?..." rows="2"></textarea>
+      </div>
+
+      <!-- Phases section -->
+      <div class="phases-section">
+        <div class="phases-header">
+          <h4>Phases <span class="badge" *ngIf="formModel.phases?.length">{{ formModel.phases.length }}</span></h4>
+          <button class="btn btn-subtle btn-sm" type="button" (click)="openPhaseModal()">
+            <span class="material-symbols-outlined">add</span>
+            Add Phase
+          </button>
+        </div>
+        <div class="phase-list" *ngIf="formModel.phases?.length">
+          <div class="phase-item" *ngFor="let phase of formModel.phases; let i = index">
+            <span class="phase-indicator" [class]="getPhaseTypeClass(phase.type)"></span>
+            <div class="phase-info">
+              <strong>{{ phase.name }}</strong>
+              <span>{{ getTypeLabel(phase.type) }} — {{ formatDate(phase.startDate) }} to {{ formatDate(phase.endDate) }}</span>
+            </div>
+            <span class="phase-status" [class]="getStatusClass(phase.status)">{{ phase.status }}</span>
+            <div class="phase-actions">
+              <button class="btn btn-ghost btn-sm" (click)="openPhaseModal(phase, i)"><span class="material-symbols-outlined">edit</span></button>
+              <button class="btn btn-ghost btn-sm" (click)="removePhase(i)"><span class="material-symbols-outlined">delete</span></button>
+            </div>
+          </div>
+        </div>
+        <p class="phase-empty-hint" *ngIf="!formModel.phases?.length">No phases defined yet. Add registration, submission, judging, and results phases.</p>
+      </div>
+    </div>
+    <div class="modal-form-footer">
+      <button class="btn btn-subtle" (click)="closeFormModal()">Cancel</button>
+      <button class="btn btn-primary" (click)="saveCompetition()" [disabled]="!formModel.title">
+        <span class="material-symbols-outlined">{{ editingCompetition ? 'save' : 'add_circle' }}</span>
+        {{ editingCompetition ? 'Save Changes' : 'Create Competition' }}
+      </button>
     </div>
   </div>
-</div>
 
-<!-- CREATE COMPETITION DIALOG MODAL -->
-<div class="modal-backdrop-comp" [class.open]="isCreateModalOpen" (click)="closeCreateModal()">
-  <div class="modal-card-comp" (click)="$event.stopPropagation()">
-    <div class="modal-header-comp">
-      <h3>Create New Competition</h3>
-      <button class="close-btn" (click)="closeCreateModal()">
-        <span class="material-symbols-outlined">close</span>
-      </button>
+  <!-- Phase Modal -->
+  <div class="modal-backdrop" *ngIf="isPhaseModalOpen" (click)="closePhaseModal()"></div>
+  <div class="modal-sm" *ngIf="isPhaseModalOpen" (click)="$event.stopPropagation()">
+    <div class="modal-form-header">
+      <h2>{{ editingPhase ? 'Edit' : 'Add' }} Phase</h2>
+      <button class="modal-close" (click)="closePhaseModal()"><span class="material-symbols-outlined">close</span></button>
     </div>
-    <form (ngSubmit)="submitCreateForm()" #compForm="ngForm" class="comp-form">
-      <div class="form-group-comp">
-        <label for="title">Competition Title</label>
-        <input 
-          type="text" 
-          id="title" 
-          name="title" 
-          [(ngModel)]="formComp.title" 
-          required 
-          placeholder="e.g. Robotics Grand Prix" 
-          class="input-comp"
-        >
+    <div class="modal-form-body">
+      <div class="form-group">
+        <label>Phase Name</label>
+        <input type="text" class="form-input" [(ngModel)]="phaseModel.name" placeholder="e.g. Project Submission Window">
       </div>
-
-      <div class="form-group-comp">
-        <label for="track">Competition Track</label>
-        <select 
-          id="track" 
-          name="track" 
-          [(ngModel)]="formComp.track" 
-          class="input-comp"
-        >
-          <option value="coding">Coding & Algorithms</option>
-          <option value="robotics">Robotics & IoT</option>
-          <option value="ai">Artificial Intelligence</option>
-          <option value="cyber">Cybersecurity CTF</option>
-          <option value="innovation">Open Innovation</option>
-        </select>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea class="form-text" [(ngModel)]="phaseModel.description" placeholder="What happens in this phase?" rows="2"></textarea>
       </div>
-
-      <div class="form-group-comp">
-        <label for="category">Category Description</label>
-        <input 
-          type="text" 
-          id="category" 
-          name="category" 
-          [(ngModel)]="formComp.category" 
-          required 
-          placeholder="e.g. Line Following & Robotics Heats" 
-          class="input-comp"
-        >
-      </div>
-
-      <div class="form-row-ac" style="display:flex;gap:12px;">
-        <div class="form-group-comp" style="flex:1;">
-          <label for="deadline">Finals Date</label>
-          <input 
-            type="date" 
-            id="deadline" 
-            name="deadline" 
-            [(ngModel)]="formComp.deadline" 
-            required 
-            class="input-comp"
-          >
+      <div class="form-row">
+        <div class="form-group">
+          <label>Type</label>
+          <select class="form-select" [(ngModel)]="phaseModel.type">
+            <option *ngFor="let pt of phaseTypes" [value]="pt">{{ pt.charAt(0).toUpperCase() + pt.slice(1) }}</option>
+          </select>
         </div>
-        <div class="form-group-comp" style="flex:1;">
-          <label for="prize">Grand Prize Pool</label>
-          <input 
-            type="text" 
-            id="prize" 
-            name="prize" 
-            [(ngModel)]="formComp.prize" 
-            required 
-            placeholder="e.g. ₵ 5,000" 
-            class="input-comp"
-          >
-        </div>
-      </div>
-
-      <div class="form-row-ac" style="display:flex;gap:12px;">
-        <div class="form-group-comp" style="flex:1;">
-          <label for="status">Status</label>
-          <select id="status" name="status" [(ngModel)]="formComp.status" class="input-comp">
-            <option value="registration">Registration Open</option>
-            <option value="active">Active Heats</option>
+        <div class="form-group">
+          <label>Status</label>
+          <select class="form-select" [(ngModel)]="phaseModel.status">
+            <option value="pending">Pending</option>
+            <option value="active">Active</option>
             <option value="completed">Completed</option>
           </select>
         </div>
-        <div class="form-group-comp" style="flex:1;">
-          <label for="progress">Progress (%)</label>
-          <input 
-            type="number" 
-            id="progress" 
-            name="progress" 
-            [(ngModel)]="formComp.progress" 
-            min="0" 
-            max="100" 
-            required 
-            class="input-comp"
-          >
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Start Date</label>
+          <input type="date" class="form-input" [(ngModel)]="phaseModel.startDate">
+        </div>
+        <div class="form-group">
+          <label>End Date</label>
+          <input type="date" class="form-input" [(ngModel)]="phaseModel.endDate">
+        </div>
+      </div>
+    </div>
+    <div class="modal-form-footer">
+      <button class="btn btn-subtle" (click)="closePhaseModal()">Cancel</button>
+      <button class="btn btn-sm btn-primary" (click)="savePhase()" [disabled]="!phaseModel.name">
+        <span class="material-symbols-outlined">check</span>
+        {{ editingPhase ? 'Update' : 'Add' }} Phase
+      </button>
+    </div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div class="modal-backdrop" *ngIf="isDetailModalOpen" (click)="closeDetailModal()"></div>
+  <div class="modal-detail" *ngIf="isDetailModalOpen && selectedCompetition" (click)="$event.stopPropagation()">
+    <div class="modal-detail-header">
+      <div class="detail-title-area">
+        <span class="detail-type-badge" [style.background]="selectedCompetition.type === 'final' || selectedCompetition.type === 'championship' ? '#f59e0b' : '#003f87'">
+          <span class="material-symbols-outlined">{{ typeIcons[selectedCompetition.type || 'qualifier'] || 'emoji_events' }}</span>
+        </span>
+        <div>
+          <h2>{{ selectedCompetition.title }}</h2>
+          <p class="detail-subtitle">{{ getTypeLabel(selectedCompetition.type || 'qualifier') }} · {{ selectedCompetition.track === 'all' ? 'Multi-Track' : selectedCompetition.track.charAt(0).toUpperCase() + selectedCompetition.track.slice(1) }}</p>
+        </div>
+      </div>
+      <button class="modal-close" (click)="closeDetailModal()"><span class="material-symbols-outlined">close</span></button>
+    </div>
+
+    <div class="modal-detail-body">
+      <!-- Quick actions -->
+      <div class="detail-actions" *ngIf="selectedCompetition.status !== 'completed'">
+        <button class="btn btn-sm" [class.btn-primary]="selectedCompetition.status === 'draft'" (click)="updateStatus(selectedCompetition, 'registration')" *ngIf="selectedCompetition.status === 'draft'">
+          <span class="material-symbols-outlined">how_to_reg</span>
+          Open Registration
+        </button>
+        <button class="btn btn-sm btn-primary" (click)="updateStatus(selectedCompetition, 'active')" *ngIf="selectedCompetition.status === 'registration'">
+          <span class="material-symbols-outlined">play_circle</span>
+          Activate
+        </button>
+        <button class="btn btn-sm" (click)="updateStatus(selectedCompetition, 'completed')" *ngIf="selectedCompetition.status === 'active'">
+          <span class="material-symbols-outlined">check_circle</span>
+          Mark Completed
+        </button>
+        <button class="btn btn-sm btn-subtle" (click)="openEditModal(selectedCompetition)">
+          <span class="material-symbols-outlined">edit</span>
+          Edit
+        </button>
+        <button class="btn btn-sm btn-subtle" (click)="duplicateCompetition(selectedCompetition)">
+          <span class="material-symbols-outlined">content_copy</span>
+          Duplicate
+        </button>
+      </div>
+
+      <!-- Info grid -->
+      <div class="detail-info-grid">
+        <div class="detail-info-item">
+          <label>Status</label>
+          <span class="comp-status" [class]="getStatusClass(selectedCompetition.status)">
+            <span class="material-symbols-outlined">
+              {{ selectedCompetition.status === 'active' ? 'play_circle' : selectedCompetition.status === 'registration' ? 'how_to_reg' : selectedCompetition.status === 'completed' ? 'check_circle' : 'edit_note' }}
+            </span>
+            {{ selectedCompetition.status | titlecase }}
+          </span>
+        </div>
+        <div class="detail-info-item">
+          <label>Teams</label>
+          <span>{{ selectedCompetition.teams }} / {{ selectedCompetition.maxTeams || '∞' }}</span>
+        </div>
+        <div class="detail-info-item">
+          <label>Prize</label>
+          <span>{{ selectedCompetition.prize || 'TBD' }}</span>
+        </div>
+        <div class="detail-info-item">
+          <label>Deadline</label>
+          <span>{{ formatDate(selectedCompetition.deadline) }}</span>
+        </div>
+        <div class="detail-info-item">
+          <label>Duration</label>
+          <span>{{ formatDate(selectedCompetition.startDate || selectedCompetition.createdAt || '') }} — {{ formatDate(selectedCompetition.endDate || selectedCompetition.deadline || '') }}</span>
+        </div>
+        <div class="detail-info-item">
+          <label>Progress</label>
+          <span>{{ selectedCompetition.progress }}%</span>
         </div>
       </div>
 
-      <div class="form-actions-comp">
-        <button type="button" class="btn-cancel" (click)="closeCreateModal()">Cancel</button>
-        <button type="submit" class="btn-submit" [disabled]="!compForm.form.valid">Create Track</button>
+      <!-- Description -->
+      <div class="detail-section" *ngIf="selectedCompetition.description">
+        <h4>Description</h4>
+        <p>{{ selectedCompetition.description }}</p>
       </div>
-    </form>
+
+      <!-- Rules -->
+      <div class="detail-section" *ngIf="selectedCompetition.rules">
+        <h4>Rules & Format</h4>
+        <p>{{ selectedCompetition.rules }}</p>
+      </div>
+
+      <!-- Criteria -->
+      <div class="detail-section" *ngIf="selectedCompetition.criteria">
+        <h4>Judging Criteria</h4>
+        <p>{{ selectedCompetition.criteria }}</p>
+      </div>
+
+      <!-- Phases Timeline -->
+      <div class="detail-section">
+        <div class="section-header">
+          <h4>Phases Timeline</h4>
+          <button class="btn btn-subtle btn-sm" (click)="openPhaseModal()">
+            <span class="material-symbols-outlined">add</span>
+            Add Phase
+          </button>
+        </div>
+        <div class="timeline" *ngIf="selectedCompetition.phases?.length; else noPhases">
+          <div class="timeline-item" *ngFor="let phase of selectedCompetition.phases; let i = index">
+            <div class="timeline-dot" [class.active]="phase.status === 'active'" [class.completed]="phase.status === 'completed'"></div>
+            <div class="timeline-content">
+              <div class="timeline-top">
+                <div>
+                  <strong>{{ phase.name }}</strong>
+                  <span class="timeline-type">{{ getTypeLabel(phase.type) }}</span>
+                </div>
+                <span class="phase-status-sm" [class]="getStatusClass(phase.status)">{{ phase.status | titlecase }}</span>
+              </div>
+              <p *ngIf="phase.description">{{ phase.description }}</p>
+              <span class="timeline-dates">{{ formatDate(phase.startDate) }} — {{ formatDate(phase.endDate) }}</span>
+            </div>
+            <div class="timeline-actions">
+              <button class="btn btn-ghost btn-sm" (click)="openPhaseModal(phase, i)"><span class="material-symbols-outlined">edit</span></button>
+              <button class="btn btn-ghost btn-sm" (click)="removePhase(i)"><span class="material-symbols-outlined">delete</span></button>
+            </div>
+          </div>
+        </div>
+        <ng-template #noPhases>
+          <p class="phase-empty">No phases defined. Phases help organize registration, submission, judging, and result windows.</p>
+        </ng-template>
+      </div>
+    </div>
+
+    <div class="modal-detail-footer">
+      <button class="btn btn-danger-outline" (click)="confirmDelete(selectedCompetition)">
+        <span class="material-symbols-outlined">delete_outline</span>
+        Delete Cycle
+      </button>
+      <button class="btn btn-subtle" (click)="closeDetailModal()">Close</button>
+    </div>
+  </div>
+
+  <!-- Delete Confirm -->
+  <div class="modal-backdrop" *ngIf="isDeleteConfirmOpen" (click)="cancelDelete()"></div>
+  <div class="modal-confirm" *ngIf="isDeleteConfirmOpen" (click)="$event.stopPropagation()">
+    <span class="material-symbols-outlined confirm-icon">warning_amber</span>
+    <h3>Delete "{{ deletingCompetition?.title }}"?</h3>
+    <p>This will permanently remove this cycle and all its phases. Teams and past results won't be affected.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-subtle" (click)="cancelDelete()">Cancel</button>
+      <button class="btn btn-danger" (click)="deleteCompetition()">
+        <span class="material-symbols-outlined">delete_forever</span>
+        Delete Permanently
+      </button>
+    </div>
   </div>
 </div>

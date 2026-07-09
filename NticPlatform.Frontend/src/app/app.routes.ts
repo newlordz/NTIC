@@ -10,6 +10,7 @@ import { LeaderboardComponent } from './pages/leaderboard/leaderboard.component'
 import { TalentComponent } from './pages/talent/talent.component';
 import { SponsorsComponent } from './pages/sponsors/sponsors.component';
 import { ReportingComponent } from './pages/reporting/reporting.component';
+import { RecordsComponent } from './pages/records/records.component';
 
 export const routes: Routes = [
   { path: '',             component: LandingComponent, pathMatch: 'full' },
@@ -23,5 +24,6 @@ export const routes: Routes = [
   { path: 'talent',       component: TalentComponent },
   { path: 'sponsors',     component: SponsorsComponent },
   { path: 'reporting',    component: ReportingComponent },
+  { path: 'records',      component: RecordsComponent },
   { path: '**',           redirectTo: '' }
 ];

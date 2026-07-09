@@ -349,7 +349,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const currentAudit = [...this.contentService.auditLogs];
     currentAudit.unshift({
       time: 'Just now',
-      user: 'admin@ntic.gov.gh',
+      user: 'admin@ntic.org.gh',
       type: 'system',
       ...log
     });
@@ -360,6 +360,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    if (typeof window !== 'undefined') {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+          mainContent.scrollTop = 0;
+        }
+      }, 0);
+    }
     this.activeRoleId = localStorage.getItem('activeRoleId') || 'student';
     this.loadDashboardData();
 
@@ -467,6 +479,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  onStatCardClick(stat: any): void {
+    if (!stat || !stat.label) return;
+    const label = stat.label.toLowerCase();
+
+    if (this.activeRoleId === 'super_admin') {
+      if (label.includes('registered users') || label.includes('users')) {
+        this.adminTab = 'users';
+      } else if (label.includes('pending approvals') || label.includes('approvals')) {
+        this.adminTab = 'approvals';
+      } else if (label.includes('active tokens') || label.includes('tokens')) {
+        this.adminTab = 'tickets';
+      } else if (label.includes('system health') || label.includes('health')) {
+        this.adminTab = 'overview';
+      }
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 260, behavior: 'smooth' });
+      }
+    }
+  }
+
   get filteredRegisteredUsers(): any[] {
     if (this.ticketFilter === 'all') return this.registeredUsers;
     return this.registeredUsers.filter(u => u.role === this.ticketFilter);
@@ -554,7 +586,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const currentAudit = [...this.contentService.auditLogs];
       currentAudit.unshift({
         action: `${this.registerRole === 'judge' ? 'Judge' : 'Sponsor'} token ${ticket} generated for ${this.regForm.fullName}`,
-        user: 'admin@ntic.gov.gh',
+        user: 'admin@ntic.org.gh',
         time: 'Just now',
         type: 'ticket'
       });
@@ -735,7 +767,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const currentAudit = [...this.contentService.auditLogs];
     currentAudit.unshift({
       action: `${req.type} approved: ${req.entity}`,
-      user: 'admin@ntic.gov.gh',
+      user: 'admin@ntic.org.gh',
       time: 'Just now',
       type: 'approval'
     });
@@ -808,7 +840,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const currentAudit = [...this.contentService.auditLogs];
     currentAudit.unshift({
       action: `${this.activeReviewRequest.type} rejected: ${this.activeReviewRequest.entity} (${logDetails})`,
-      user: 'admin@ntic.gov.gh',
+      user: 'admin@ntic.org.gh',
       time: 'Just now',
       type: 'system'
     });
@@ -907,17 +939,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     
     if (this.editingStoryId) {
       this.contentService.updateStory({ id: this.editingStoryId, ...this.storyForm });
-      this.addAuditLog({ action: `Championship Story updated: "${this.storyForm.title.slice(0, 40)}..."`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Championship Story updated: "${this.storyForm.title.slice(0, 40)}..."`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
     } else {
       this.contentService.addStory({ ...this.storyForm });
-      this.addAuditLog({ action: `Championship Story added: "${this.storyForm.title.slice(0, 40)}..."`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Championship Story added: "${this.storyForm.title.slice(0, 40)}..."`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
     }
     this.storyFormOpen = false;
   }
 
   removeStory(id: string): void {
     this.contentService.removeStory(id);
-    this.addAuditLog({ action: `Championship Story removed (ID: ${id})`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `Championship Story removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
   }
 
   // Hall of Fame
@@ -974,17 +1006,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     
     if (this.editingHofId) {
       this.contentService.updateHofEntry({ id: this.editingHofId, ...this.hofForm });
-      this.addAuditLog({ action: `Hall of Fame entry updated: ${this.hofForm.name}`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Hall of Fame entry updated: ${this.hofForm.name}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
     } else {
       this.contentService.addHofEntry({ ...this.hofForm });
-      this.addAuditLog({ action: `Hall of Fame entry added: ${this.hofForm.name}`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Hall of Fame entry added: ${this.hofForm.name}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
     }
     this.hofFormOpen = false;
   }
   
   removeHofEntry(id: string): void {
     this.contentService.removeHofEntry(id);
-    this.addAuditLog({ action: `Hall of Fame entry removed (ID: ${id})`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `Hall of Fame entry removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
   }
 
   // Leaderboard
@@ -1020,17 +1052,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.onLbTrackChange(); // recalc total
     if (this.lbEditId) {
       this.contentService.updateLeaderboardEntry(this.lbEditId, { ...this.lbForm });
-      this.addAuditLog({ action: `Leaderboard updated: ${this.lbForm.schoolName}`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Leaderboard updated: ${this.lbForm.schoolName}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
     } else {
       this.contentService.addLeaderboardEntry({ ...this.lbForm });
-      this.addAuditLog({ action: `Leaderboard entry added: ${this.lbForm.schoolName}`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Leaderboard entry added: ${this.lbForm.schoolName}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
     }
     this.lbFormOpen = false;
     this.lbEditId = null;
   }
   removeLbEntry(id: string): void {
     this.contentService.removeLeaderboardEntry(id);
-    this.addAuditLog({ action: `Leaderboard entry removed (ID: ${id})`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `Leaderboard entry removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
   }
 
   // Talent Discovery
@@ -1070,10 +1102,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     if (this.tdEditId) {
       this.contentService.updateTalentDiscovery(this.tdEditId, { ...this.tdForm });
-      this.addAuditLog({ action: `Talent Discovery entry updated for ${this.tdForm.studentName}`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Talent Discovery entry updated for ${this.tdForm.studentName}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
     } else {
       this.contentService.addTalentDiscovery({ ...this.tdForm });
-      this.addAuditLog({ action: `Talent Discovery entry added for ${this.tdForm.studentName}`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Talent Discovery entry added for ${this.tdForm.studentName}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
     }
     this.tdFormOpen = false;
     this.tdEditId = null;
@@ -1081,7 +1113,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   removeTdEntry(id: string): void {
     this.contentService.removeTalentDiscovery(id);
-    this.addAuditLog({ action: `Talent Discovery entry removed (ID: ${id})`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `Talent Discovery entry removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
   }
 
   // Platform Stats
@@ -1092,7 +1124,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   saveStats(): void {
     this.contentService.updatePlatformStats({ ...this.statsForm });
     this.statsEditMode = false;
-    this.addAuditLog({ action: 'Platform impact stats updated', user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: 'Platform impact stats updated', user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
   }
 
   clearAllData(): void {
@@ -1119,7 +1151,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       dateStr += ':00';
     }
     this.contentService.updateCountdownDate(dateStr);
-    this.addAuditLog({ action: `Countdown target date updated to ${dateStr}`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `Countdown target date updated to ${dateStr}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
   }
 
   updatePreviewCountdown(): void {
@@ -1170,17 +1202,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     
     if (this.editingNewsId) {
       this.contentService.updateNewsItem({ id: this.editingNewsId, ...this.newsForm });
-      this.addAuditLog({ action: `News item updated: "${this.newsForm.headline.slice(0, 40)}"`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `News item updated: "${this.newsForm.headline.slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
     } else {
       this.contentService.addNewsItem({ ...this.newsForm });
-      this.addAuditLog({ action: `News item published: "${this.newsForm.headline.slice(0, 40)}"`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `News item published: "${this.newsForm.headline.slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
     }
     this.newsFormOpen = false;
   }
 
   removeNewsItem(id: string): void {
     this.contentService.removeNewsItem(id);
-    this.addAuditLog({ action: `News item removed (ID: ${id})`, user: 'admin@ntic.gov.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `News item removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
   }
 
   trackClass_options = [
@@ -1218,28 +1250,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       });
     }, 2000));
 
-    const autoAuditEvents = [
-      { action: 'Heartbeat check passed for all 4 nodes', user: 'system', type: 'system' },
-      { action: 'Student login: kwame.asante@student.ntic.gov.gh', user: 'system', type: 'auth' },
-      { action: 'LMS backup snapshot created successfully', user: 'system', type: 'system' },
-      { action: 'New team submission received: Achimota Coders', user: 'system', type: 'approval' },
-      { action: 'Judge login: y.osei@ug.edu.gh via ticket NTIC-JDG-7X4K', user: 'system', type: 'auth' },
-      { action: 'Analytics engine synced 1,248 student records', user: 'system', type: 'system' },
-      { action: 'Sandbox VM recycled idle container', user: 'system', type: 'system' },
-      { action: 'Sponsor login: sponsorship@tullowghana.com', user: 'system', type: 'auth' },
-      { action: 'Leaderboard recalculated for Phase 2', user: 'system', type: 'system' },
-    ];
-    const scheduleNextAudit = () => {
-      const delay = 8000 + Math.random() * 12000;
-      const timer = setTimeout(() => {
-        const evt = autoAuditEvents[Math.floor(Math.random() * autoAuditEvents.length)];
-        this.addAuditLog({ ...evt, time: 'Just now' });
-        if (this.auditLogs.length > 12) this.auditLogs.pop();
-        scheduleNextAudit();
-      }, delay);
-      this.liveIntervals.push(timer);
-    };
-    scheduleNextAudit();
+    // ── Real audit trail: only actual admin actions are captured ──
   }
 
   // ── SPARKLINE SVG PATH GENERATOR ────────────────────────
@@ -1441,5 +1452,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.contentService.saveAuditLogs(currentAudit);
 
     this.closeAddTeamModal();
+  }
+
+  getRoleLabel(role: string): string {
+    if (!role) return 'User';
+    const r = role.toLowerCase();
+    if (r === 'judge') return 'Judge';
+    if (r === 'sponsor') return 'Sponsor';
+    if (r === 'school_admin' || r === 'school') return 'School Admin';
+    if (r === 'instructor' || r === 'mentor') return 'Instructor';
+    if (r === 'student') return 'Student';
+    if (r === 'super_admin' || r === 'admin') return 'Super Admin';
+    return role.charAt(0).toUpperCase() + role.slice(1);
+  }
+
+  getRoleIcon(role: string): string {
+    if (!role) return 'person';
+    const r = role.toLowerCase();
+    if (r === 'judge') return 'gavel';
+    if (r === 'sponsor') return 'handshake';
+    if (r === 'school_admin' || r === 'school') return 'school';
+    if (r === 'instructor' || r === 'mentor') return 'assignment_ind';
+    if (r === 'student') return 'person';
+    if (r === 'super_admin' || r === 'admin') return 'admin_panel_settings';
+    return 'badge';
   }
 }

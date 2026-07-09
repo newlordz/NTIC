@@ -53,7 +53,7 @@
       </a>
     </div>
  
-    <div class="sidebar-section" *ngIf="hasAccess('leaderboard') || hasAccess('talent') || hasAccess('sponsors') || hasAccess('reporting')">
+    <div class="sidebar-section" *ngIf="hasAccess('leaderboard') || hasAccess('talent') || hasAccess('sponsors') || hasAccess('reporting') || hasAccess('records')">
       <div class="sidebar-section-label">Analytics</div>
       <a class="nav-item" *ngIf="hasAccess('leaderboard')" routerLink="/leaderboard" routerLinkActive="active">
         <span class="material-symbols-outlined">leaderboard</span>
@@ -70,6 +70,10 @@
       <a class="nav-item" *ngIf="hasAccess('reporting')" routerLink="/reporting" routerLinkActive="active">
         <span class="material-symbols-outlined">assessment</span>
         {{ currentUser?.roleId === 'school_admin' ? 'School Reports' : 'Reports' }}
+      </a>
+      <a class="nav-item" *ngIf="hasAccess('records')" routerLink="/records" routerLinkActive="active">
+        <span class="material-symbols-outlined">folder_open</span>
+        Records
       </a>
     </div>
  
@@ -98,18 +102,111 @@
         <span class="page-title">{{ currentTitle }}</span>
       </div>
 
-      <div class="topbar-right">
+      <div class="topbar-right" style="position: relative;">
         <button class="icon-btn" (click)="themeService.toggleTheme()" [title]="themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
           <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
         </button>
-        <button class="icon-btn">
-          <span class="material-symbols-outlined">notifications</span>
-          <span class="badge"></span>
-        </button>
-        <button class="icon-btn">
-          <span class="material-symbols-outlined">apps</span>
-        </button>
-        <div class="avatar-btn">{{ currentUser?.avatar || 'SA' }}</div>
+
+        <!-- Notifications Bell -->
+        <div style="position: relative;">
+          <button class="icon-btn" (click)="toggleNotifications($event)">
+            <span class="material-symbols-outlined">notifications</span>
+            <span class="badge" *ngIf="activeUnreadCount > 0">{{ activeUnreadCount }}</span>
+          </button>
+
+          <!-- Notifications Panel -->
+          <div class="header-dropdown notifications-dropdown" *ngIf="showNotificationsDropdown" (click)="$event.stopPropagation()">
+            <div class="dropdown-header">
+              <div class="dropdown-header-title">
+                <span>Notifications</span>
+                <span class="unread-pill" *ngIf="activeUnreadCount > 0">{{ activeUnreadCount }} new</span>
+              </div>
+              <button class="mark-read-btn" *ngIf="activeUnreadCount > 0" (click)="markAllNotificationsRead($event)">Mark all read</button>
+            </div>
+            <div class="dropdown-list">
+              <div *ngFor="let item of liveNotifications" class="dropdown-notification-item" [class.unread]="item.unread">
+                <div class="notif-icon-wrap">
+                  <span class="material-symbols-outlined">{{ item.icon }}</span>
+                </div>
+                <div class="notif-body">
+                  <div class="notif-category">{{ item.category }} &middot; {{ item.time }}</div>
+                  <div class="notif-title">{{ item.title }}</div>
+                </div>
+                <div class="notif-dot" *ngIf="item.unread"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Apps Suite Launcher -->
+        <div style="position: relative;">
+          <button class="icon-btn" (click)="toggleApps($event)">
+            <span class="material-symbols-outlined">apps</span>
+          </button>
+
+          <div class="header-dropdown apps-dropdown" *ngIf="showAppsDropdown" (click)="$event.stopPropagation()">
+            <div class="dropdown-header">
+              <div class="dropdown-header-title">NTIC Quick Apps</div>
+            </div>
+            <div class="apps-grid">
+              <a *ngIf="hasAccess('dashboard')" routerLink="/dashboard" class="app-item" (click)="showAppsDropdown = false">
+                <div class="app-icon primary"><span class="material-symbols-outlined">dashboard</span></div>
+                <span>Dashboard</span>
+              </a>
+              <a *ngIf="hasAccess('registration')"
+                 [routerLink]="currentUser?.roleId === 'super_admin' ? '/dashboard' : '/registration'"
+                 [queryParams]="currentUser?.roleId === 'super_admin' ? { openRegModal: 'true' } : { tab: 'school' }"
+                 class="app-item" (click)="showAppsDropdown = false">
+                <div class="app-icon secondary"><span class="material-symbols-outlined">how_to_reg</span></div>
+                <span>Registry</span>
+              </a>
+              <a *ngIf="hasAccess('lms')" routerLink="/lms" class="app-item" (click)="showAppsDropdown = false">
+                <div class="app-icon tertiary"><span class="material-symbols-outlined">school</span></div>
+                <span>LMS</span>
+              </a>
+              <a *ngIf="hasAccess('instructor')" routerLink="/instructor" class="app-item" (click)="showAppsDropdown = false">
+                <div class="app-icon primary"><span class="material-symbols-outlined">patient_list</span></div>
+                <span>Instructor</span>
+              </a>
+              <a *ngIf="hasAccess('competitions')" routerLink="/competitions" class="app-item" (click)="showAppsDropdown = false">
+                <div class="app-icon warn"><span class="material-symbols-outlined">emoji_events</span></div>
+                <span>Arena</span>
+              </a>
+              <a *ngIf="hasAccess('judge')" routerLink="/judge" class="app-item" (click)="showAppsDropdown = false">
+                <div class="app-icon error"><span class="material-symbols-outlined">gavel</span></div>
+                <span>Judging</span>
+              </a>
+              <a *ngIf="hasAccess('leaderboard')" routerLink="/leaderboard" class="app-item" (click)="showAppsDropdown = false">
+                <div class="app-icon success"><span class="material-symbols-outlined">leaderboard</span></div>
+                <span>Rankings</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Profile Avatar -->
+        <div style="position: relative;">
+          <div class="avatar-btn" (click)="toggleProfile($event)" style="cursor: pointer;">{{ currentUser?.avatar || 'SA' }}</div>
+
+          <div class="header-dropdown profile-dropdown" *ngIf="showProfileDropdown" (click)="$event.stopPropagation()">
+            <div class="profile-header-card">
+              <div class="profile-avatar-lg">{{ currentUser?.avatar || 'SA' }}</div>
+              <div class="profile-meta">
+                <div class="profile-name">{{ currentUser?.name || 'Super Admin' }}</div>
+                <div class="profile-role">{{ currentUser?.roleName || 'System Administrator' }}</div>
+              </div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <a routerLink="/dashboard" class="profile-action-row" (click)="showProfileDropdown = false">
+              <span class="material-symbols-outlined">admin_panel_settings</span>
+              <span>Command Center</span>
+            </a>
+            <a routerLink="/" class="profile-action-row logout" (click)="showProfileDropdown = false">
+              <span class="material-symbols-outlined">logout</span>
+              <span>Sign Out to Landing</span>
+            </a>
+          </div>
+        </div>
       </div>
     </header>
  

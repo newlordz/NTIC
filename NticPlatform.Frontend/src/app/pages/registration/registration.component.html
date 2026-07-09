@@ -1,10 +1,5 @@
 <div class="page-canvas fade-in" [class.gateway-active]="regState !== 'new'">
 
-  <!-- Theme Toggle for Registration Page -->
-  <button class="btn btn-subtle" (click)="themeService.toggleTheme()" [title]="themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'" style="position: absolute; top: 16px; right: 24px; z-index: 100; padding: 8px;">
-    <span class="material-symbols-outlined" style="margin: 0;">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
-  </button>
-
   <!-- =========================================================
        BACKGROUND VIDEO LOOP
        ========================================================= -->
@@ -21,6 +16,9 @@
   <div *ngIf="regState === 'gateway'" class="gateway-screen">
     <button class="back-link-btn" routerLink="/">
       <span class="material-symbols-outlined">arrow_back</span> Return to Homepage
+    </button>
+    <button class="btn btn-subtle" (click)="themeService.toggleTheme()" [title]="themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'" style="position: absolute; top: 20px; right: 28px; z-index: 10; padding: 8px;">
+      <span class="material-symbols-outlined" style="margin: 0;">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
     </button>
 
     <div class="gateway-header">
@@ -125,9 +123,20 @@
           </div>
         </div>
 
-        <!-- Option 2: Instructor -->
-        <div class="role-option-card role-instructor" (click)="selectRolePath('instructor')">
+        <!-- Option 2: Student Direct Registration -->
+        <div class="role-option-card role-student" (click)="selectRolePath('student')">
           <div class="role-icon-wrapper" style="color: var(--secondary);">
+            <span class="material-symbols-outlined">school</span>
+          </div>
+          <div class="role-details">
+            <h4>Group/Independent Competitor</h4>
+            <p>Register as an individual competitor or join a team. Access competitions, submissions, and leaderboards.</p>
+          </div>
+        </div>
+
+        <!-- Option 3: Instructor -->
+        <div class="role-option-card role-instructor" (click)="selectRolePath('instructor')">
+          <div class="role-icon-wrapper" style="color: var(--tertiary);">
             <span class="material-symbols-outlined">badge</span>
           </div>
           <div class="role-details">
@@ -136,9 +145,9 @@
           </div>
         </div>
 
-        <!-- Option 3: Judge -->
+        <!-- Option 4: Judge -->
         <div *ngIf="showAdminPaths" class="role-option-card role-judge" (click)="selectRolePath('judge')">
-          <div class="role-icon-wrapper" style="color: var(--tertiary);">
+          <div class="role-icon-wrapper" style="color: #7c3aed;">
             <span class="material-symbols-outlined">gavel</span>
           </div>
           <div class="role-details">
@@ -147,7 +156,7 @@
           </div>
         </div>
 
-        <!-- Option 4: Sponsor Direct Access -->
+        <!-- Option 5: Sponsor Direct Access -->
         <div *ngIf="showAdminPaths" class="role-option-card role-sponsor" (click)="selectRolePath('sponsor')">
           <div class="role-icon-wrapper" style="color: var(--error);">
             <span class="material-symbols-outlined">handshake</span>
@@ -295,19 +304,18 @@
       <div>
         <h1 class="page-title-main" style="display:flex; align-items:center; gap:8px;">
           <button class="btn btn-ghost btn-sm" (click)="goBackToGateway()" style="padding: 4px; border-radius: 50%; color:var(--on-surface-variant); display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;"><span class="material-symbols-outlined" style="margin:0;">arrow_back</span></button>
-          {{ activeTab === 'school' ? 'Institution' : activeTab === 'instructor' ? 'Instructor' : activeTab === 'judge' ? 'Judge' : 'Sponsor' }} Registration
+          {{ activeTab === 'school' ? 'Institution' : activeTab === 'instructor' ? 'Instructor' : activeTab === 'judge' ? 'Judge' : activeTab === 'student' ? 'Group/Individual' : 'Sponsor' }} Registration
           <span *ngIf="schoolForm.name.includes('Draft')" class="badge warning" style="vertical-align: middle; margin-left: 8px;">Draft Resumed</span>
         </h1>
-        <p class="page-subtitle">Register onto the national championship platform as a chosen {{ activeTab === 'school' ? 'institution representative' : activeTab }}</p>
+        <p class="page-subtitle">{{ activeTab === 'student' ? 'Register onto the national championship platform as an independent competitor or competition squad' : 'Register onto the national championship platform as a chosen ' + (activeTab === 'school' ? 'institution representative' : activeTab) }}</p>
       </div>
       <div style="display:flex; gap:12px;">
         <button class="btn btn-subtle" (click)="goBackToGateway()">
           <span class="material-symbols-outlined">logout</span>
           Gateway
         </button>
-        <button class="btn btn-primary" *ngIf="isAuthorizedUser">
-          <span class="material-symbols-outlined">download</span>
-          Export List
+        <button class="btn btn-subtle" (click)="themeService.toggleTheme()" [title]="themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'" style="padding: 8px;">
+          <span class="material-symbols-outlined" style="margin: 0;">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
         </button>
       </div>
     </div>
@@ -656,19 +664,31 @@
           <div *ngIf="schoolStep === 4" class="step-content-pane fade-in">
             <div class="form-group">
               <label class="form-label">School Logo</label>
-              <div class="upload-zone">
+              <div class="upload-zone" (click)="schoolLogoInput.click()">
                 <span class="material-symbols-outlined upload-icon">cloud_upload</span>
-                <p>Drag & drop or <strong>Browse</strong></p>
+                <p *ngIf="!selectedFileNames['schoolLogo']?.length">Drag & drop or <strong>Browse</strong></p>
+                <div *ngIf="selectedFileNames['schoolLogo']?.length" style="display:flex;align-items:center;gap:8px;">
+                  <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['schoolLogo'][0] }}</span>
+                  <span class="material-symbols-outlined" (click)="removeFile('schoolLogo', 0); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);">close</span>
+                </div>
                 <span>PNG, JPG (Max 5MB)</span>
               </div>
+              <input #schoolLogoInput type="file" (change)="onFileSelected($event, 'schoolLogo')" accept=".png,.jpg,.jpeg" style="display:none">
             </div>
             <div class="form-group">
               <label class="form-label">Accreditation Documents *</label>
-              <div class="upload-zone">
+              <div class="upload-zone" (click)="accredInput.click()">
                 <span class="material-symbols-outlined upload-icon">folder_open</span>
-                <p>Registration Certificate, Accreditation Documents</p>
+                <p *ngIf="!selectedFileNames['accredDocs']?.length">Registration Certificate, Accreditation Documents</p>
+                <ul *ngIf="selectedFileNames['accredDocs']?.length" style="margin:0;padding:0;list-style:none;text-align:left;">
+                  <li *ngFor="let name of selectedFileNames['accredDocs']; let i = index" style="display:flex;align-items:center;gap:8px;color:var(--primary);font-weight:600;">
+                    {{ name }}
+                    <span class="material-symbols-outlined" (click)="removeFile('accredDocs', i); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);margin-left:auto;">close</span>
+                  </li>
+                </ul>
                 <span>PDF, DOCX (Max 10MB)</span>
               </div>
+              <input #accredInput type="file" multiple (change)="onFileSelected($event, 'accredDocs')" accept=".pdf,.docx" style="display:none">
             </div>
             <div class="form-actions">
               <button class="btn btn-subtle" (click)="goToStep(3)">
@@ -823,7 +843,11 @@
                 </div>
 
                 <div class="preview-submit-actions" *ngIf="schoolForm.name">
-                  <button class="btn btn-primary btn-full submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting">
+                  <label class="terms-checkbox-wrapper" style="display:flex; align-items:flex-start; gap:8px; margin-bottom:12px; font-size:13px; color:var(--on-surface-variant); cursor:pointer;">
+                    <input type="checkbox" [(ngModel)]="schoolForm.acceptedTerms" name="schoolTerms" style="margin-top:2px; accent-color:var(--primary);">
+                    <span>I agree to the <a (click)="openTermsModal('school')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
+                  </label>
+                  <button class="btn btn-primary btn-full submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting || !schoolForm.acceptedTerms">
                     <span *ngIf="!isSubmitting" style="display:flex; align-items:center; gap:8px;">
                       Submit Registry <span class="material-symbols-outlined">check_circle</span>
                     </span>
@@ -927,16 +951,27 @@
 
           <div style="margin-bottom: 20px;">
             <label class="form-label">Documents (CV, Certificates, National ID)</label>
-            <div class="upload-zone">
+            <div class="upload-zone" (click)="instructorDocsInput.click()">
               <span class="material-symbols-outlined upload-icon">upload_file</span>
-              <p>Drag &amp; drop or <strong>Browse</strong></p>
+              <p *ngIf="!selectedFileNames['instructorDocs']?.length">Drag &amp; drop or <strong>Browse</strong></p>
+              <ul *ngIf="selectedFileNames['instructorDocs']?.length" style="margin:0;padding:0;list-style:none;text-align:left;">
+                <li *ngFor="let name of selectedFileNames['instructorDocs']; let i = index" style="display:flex;align-items:center;gap:8px;color:var(--primary);font-weight:600;">
+                  {{ name }}
+                  <span class="material-symbols-outlined" (click)="removeFile('instructorDocs', i); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);margin-left:auto;">close</span>
+                </li>
+              </ul>
               <span>PDF (Max 10MB each)</span>
             </div>
+            <input #instructorDocsInput type="file" multiple (change)="onFileSelected($event, 'instructorDocs')" accept=".pdf" style="display:none">
           </div>
 
           <div style="display: flex; gap: 12px; margin-top: 8px;">
-            <button class="btn btn-subtle">Save Draft</button>
-            <button class="btn btn-primary">
+            <button class="btn btn-subtle" (click)="saveDraft()">Save Draft</button>
+            <label class="terms-checkbox-wrapper" style="display:flex; align-items:center; gap:8px; margin:auto 0; font-size:13px; color:var(--on-surface-variant); cursor:pointer;">
+              <input type="checkbox" [(ngModel)]="instructorForm.acceptedTerms" name="instructorTerms" style="accent-color:var(--primary);">
+              <span>I agree to the <a (click)="openTermsModal('instructor')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
+            </label>
+            <button class="btn btn-primary" (click)="submitRegistration()" [disabled]="!instructorForm.acceptedTerms">
               <span class="material-symbols-outlined">badge</span>
               Register Instructor
             </button>
@@ -1011,6 +1046,289 @@
       </div>
     </div>
 
+    <!-- ══ STUDENT TAB ══ -->
+    <!-- ══ GROUP & INDEPENDENT COMPETITOR TAB ══ -->
+    <div *ngIf="activeTab==='student'" class="tab-content-grid">
+      <div class="card">
+        <div class="card-header" style="flex-wrap: wrap; gap: 12px; justify-content: space-between;">
+          <div>
+            <h3>Group/Individual Registration</h3>
+            <p style="font-size: 12px; color: var(--on-surface-variant); margin: 4px 0 0;">Register as an independent competitor or enlist a 3–5 member competition squad.</p>
+          </div>
+          <div class="competitor-mode-toggle" style="display: flex; gap: 6px; background: var(--surface-container); padding: 4px; border-radius: 10px;">
+            <button type="button" class="btn btn-sm"
+                    [class.btn-primary]="competitorMode === 'group'"
+                    [class.btn-subtle]="competitorMode !== 'group'"
+                    (click)="competitorMode = 'group'">
+              <span class="material-symbols-outlined" style="font-size: 16px;">groups</span>
+              Group / Squad (3–5)
+            </button>
+            <button type="button" class="btn btn-sm"
+                    [class.btn-primary]="competitorMode === 'individual'"
+                    [class.btn-subtle]="competitorMode !== 'individual'"
+                    (click)="competitorMode = 'individual'">
+              <span class="material-symbols-outlined" style="font-size: 16px;">person</span>
+              Individual Competitor
+            </button>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <!-- ── INDIVIDUAL COMPETITOR FORM ── -->
+          <div *ngIf="competitorMode === 'individual'" class="fade-in">
+            <p style="color: var(--on-surface-variant); margin-bottom: 24px;">Register as an independent student competitor. Pick a track and start competing.</p>
+
+            <div class="grid-2" style="margin-bottom: 20px;">
+              <div>
+                <label class="form-label">Full Name *</label>
+                <input class="form-control" type="text" placeholder="Your Full Name" [(ngModel)]="studentForm.name" name="stuName">
+              </div>
+              <div>
+                <label class="form-label">Email *</label>
+                <input class="form-control" type="email" placeholder="you@email.com" [(ngModel)]="studentForm.email" name="stuEmail">
+              </div>
+            </div>
+
+            <div class="grid-2" style="margin-bottom: 20px;">
+              <div>
+                <label class="form-label">Date of Birth</label>
+                <input class="form-control" type="date" [(ngModel)]="studentForm.dob" name="stuDob">
+              </div>
+              <div>
+                <label class="form-label">Gender</label>
+                <select class="form-control form-select" [(ngModel)]="studentForm.gender" name="stuGender">
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid-2" style="margin-bottom: 20px;">
+              <div>
+                <label class="form-label">School / Institution</label>
+                <input class="form-control" type="text" placeholder="Your current school (optional)" [(ngModel)]="studentForm.school" name="stuSchool">
+              </div>
+              <div>
+                <label class="form-label">Class / Form</label>
+                <select class="form-control form-select" [(ngModel)]="studentForm.class" name="stuClass">
+                  <option value="Form 1">Form 1</option>
+                  <option value="Form 2">Form 2</option>
+                  <option value="Form 3">Form 3</option>
+                  <option value="JHS 1">JHS 1</option>
+                  <option value="JHS 2">JHS 2</option>
+                  <option value="JHS 3">JHS 3</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+              <label class="form-label">Guardian Contact</label>
+              <input class="form-control" type="text" placeholder="Guardian name & phone number" [(ngModel)]="studentForm.guardian" name="stuGuardian">
+            </div>
+
+            <div style="margin-bottom: 20px;">
+              <label class="form-label">Competition Track *</label>
+              <div class="track-selection-grid">
+                <label *ngFor="let track of tracks" style="cursor:pointer;">
+                  <input type="radio" name="stuTrack" [value]="track.id" [(ngModel)]="selectedTrack" style="display:none;">
+                  <div class="track-radio-card" [class.selected]="selectedTrack===track.id">
+                    <span class="material-symbols-outlined">{{track.icon}}</span>
+                    <div class="track-label">{{track.label}}</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 8px;">
+              <button class="btn btn-subtle" (click)="saveDraft()">Save Draft</button>
+              <button class="btn btn-primary" (click)="registerStudent()">
+                <span class="material-symbols-outlined">school</span>
+                Register Individual Competitor
+              </button>
+            </div>
+          </div>
+
+          <!-- ── GROUP / SQUAD COMPETITOR FORM ── -->
+          <div *ngIf="competitorMode === 'group'" class="fade-in">
+            <p style="color: var(--on-surface-variant); margin-bottom: 24px;">Register a 3–5 member competition squad. Team leads receive the group token and represent the squad in arena heats.</p>
+
+            <div class="grid-2" style="margin-bottom: 20px;">
+              <div>
+                <label class="form-label">Group / Squad Name *</label>
+                <input class="form-control" type="text" placeholder="e.g., PRESEC Cyber Titans" [(ngModel)]="teamForm.name" name="squadName">
+              </div>
+              <div>
+                <label class="form-label">Affiliation / School (Optional)</label>
+                <input class="form-control" type="text" placeholder="School or Independent Squad" [(ngModel)]="teamForm.school" name="squadSchool">
+              </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+              <label class="form-label">Competition Track *</label>
+              <select class="form-control form-select" [(ngModel)]="teamForm.track" name="squadTrack">
+                <option value="Coding">Coding</option>
+                <option value="Robotics">Robotics</option>
+                <option value="AI">AI</option>
+                <option value="Cybersecurity">Cybersecurity</option>
+                <option value="Innovation">Innovation</option>
+              </select>
+            </div>
+
+            <div style="margin: 20px 0 14px; border-bottom: 1px solid var(--outline-variant); padding-bottom: 8px;">
+              <h4 style="font-size: 13px; font-weight: 700; color: var(--on-surface); margin: 0;">Squad Roster (3 to 5 Competitors)</h4>
+              <p style="font-size: 11px; color: var(--on-surface-variant); margin: 2px 0 0;">Enter each competitor's name (email addresses are optional).</p>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label">Team Lead (Member 1) *</label>
+              <div class="grid-2">
+                <input class="form-control" type="text" placeholder="Team Lead Full Name" [(ngModel)]="teamForm.leadName" name="squadLeadName">
+                <input class="form-control" type="email" placeholder="Team Lead Email (Optional)" [(ngModel)]="teamForm.leadEmail" name="squadLeadEmail">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label">Competitor 2 *</label>
+              <div class="grid-2">
+                <input class="form-control" type="text" placeholder="Competitor 2 Full Name" [(ngModel)]="teamForm.member2Name" name="squadM2Name">
+                <input class="form-control" type="email" placeholder="Competitor 2 Email (Optional)" [(ngModel)]="teamForm.member2Email" name="squadM2Email">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label">Competitor 3 *</label>
+              <div class="grid-2">
+                <input class="form-control" type="text" placeholder="Competitor 3 Full Name" [(ngModel)]="teamForm.member3Name" name="squadM3Name">
+                <input class="form-control" type="email" placeholder="Competitor 3 Email (Optional)" [(ngModel)]="teamForm.member3Email" name="squadM3Email">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label">Competitor 4 (Optional)</label>
+              <div class="grid-2">
+                <input class="form-control" type="text" placeholder="Competitor 4 Full Name" [(ngModel)]="teamForm.member4Name" name="squadM4Name">
+                <input class="form-control" type="email" placeholder="Competitor 4 Email (Optional)" [(ngModel)]="teamForm.member4Email" name="squadM4Email">
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 24px;">
+              <label class="form-label">Competitor 5 (Optional)</label>
+              <div class="grid-2">
+                <input class="form-control" type="text" placeholder="Competitor 5 Full Name" [(ngModel)]="teamForm.member5Name" name="squadM5Name">
+                <input class="form-control" type="email" placeholder="Competitor 5 Email (Optional)" [(ngModel)]="teamForm.member5Email" name="squadM5Email">
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 8px;">
+              <button class="btn btn-subtle" (click)="saveDraft()">Save Draft</button>
+              <button class="btn btn-primary" (click)="registerStudent()">
+                <span class="material-symbols-outlined">groups</span>
+                Register Competition Squad
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Live Preview -->
+      <div class="card right-panel-card">
+        <div class="card-header right-panel-header">
+          <h3 style="font-size: 14px; font-weight: 700; color: var(--on-surface); margin: 0; display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined" style="color: var(--primary);">visibility</span> Registration Preview
+          </h3>
+          <span class="badge success live-pulse-badge">
+            <span class="pulse-dot"></span> Live
+          </span>
+        </div>
+        <div class="card-body-wrapper">
+          <div class="preview-panel-content fade-in" style="display:flex; justify-content:center; align-items:center; height:100%; min-height:360px;">
+            <!-- Placeholder State (Individual) -->
+            <div class="card-placeholder-state" *ngIf="competitorMode === 'individual' && !studentForm.name">
+              <span class="material-symbols-outlined placeholder-icon animate-pulse">school</span>
+              <p class="placeholder-text">Enter your name to generate individual registration preview</p>
+            </div>
+
+            <!-- Placeholder State (Group) -->
+            <div class="card-placeholder-state" *ngIf="competitorMode === 'group' && !teamForm.name">
+              <span class="material-symbols-outlined placeholder-icon animate-pulse">groups</span>
+              <p class="placeholder-text">Enter your squad name to generate group registration preview</p>
+            </div>
+
+            <!-- Active State (Individual) -->
+            <ng-container *ngIf="competitorMode === 'individual' && studentForm.name">
+              <div class="school-preview-card" style="max-width: 300px; margin: 0 auto; text-align: center;">
+                <div class="school-card-crest-wrap">
+                  <div class="school-card-crest">
+                    <span>{{ getInitials(studentForm.name, 'ST') }}</span>
+                  </div>
+                  <div class="school-card-badge-status ready">INDIVIDUAL</div>
+                </div>
+                <h2 class="school-card-name">{{ studentForm.name }}</h2>
+                <div class="school-card-meta">
+                  <span class="school-card-pill category">{{ selectedTrack | titlecase }}</span>
+                  <span class="school-card-pill region" *ngIf="studentForm.class">{{ studentForm.class }}</span>
+                </div>
+                <hr class="card-divider">
+                <div style="padding: 8px 0; text-align: left; font-size: 13px; color: var(--on-surface-variant);">
+                  <div *ngIf="studentForm.email" style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                    <span class="material-symbols-outlined" style="font-size:16px;">mail</span>
+                    <span>{{ studentForm.email }}</span>
+                  </div>
+                  <div *ngIf="studentForm.school" style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                    <span class="material-symbols-outlined" style="font-size:16px;">account_balance</span>
+                    <span>{{ studentForm.school }}</span>
+                  </div>
+                </div>
+                <hr class="card-divider">
+                <p style="font-size: 11px; color: var(--on-surface-variant); padding: 4px 0;">
+                  <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">lock</span>
+                  Your credentials will be displayed after registration
+                </p>
+              </div>
+            </ng-container>
+
+            <!-- Active State (Group Squad) -->
+            <ng-container *ngIf="competitorMode === 'group' && teamForm.name">
+              <div class="school-preview-card" style="max-width: 300px; margin: 0 auto; text-align: center;">
+                <div class="school-card-crest-wrap">
+                  <div class="school-card-crest" style="background: linear-gradient(135deg, #065f46, #10b981);">
+                    <span>{{ getInitials(teamForm.name, 'SQ') }}</span>
+                  </div>
+                  <div class="school-card-badge-status ready">SQUAD REGISTRY</div>
+                </div>
+                <h2 class="school-card-name">{{ teamForm.name }}</h2>
+                <div class="school-card-meta">
+                  <span class="school-card-pill category">{{ teamForm.track | titlecase }}</span>
+                  <span class="school-card-pill region" *ngIf="teamForm.school">{{ teamForm.school }}</span>
+                </div>
+                <hr class="card-divider">
+                <div style="padding: 8px 0; text-align: left; font-size: 13px; color: var(--on-surface-variant);">
+                  <div *ngIf="teamForm.leadName" style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                    <span class="material-symbols-outlined" style="font-size:16px;">badge</span>
+                    <span>Lead: {{ teamForm.leadName }}</span>
+                  </div>
+                  <div *ngIf="teamForm.leadEmail" style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                    <span class="material-symbols-outlined" style="font-size:16px;">mail</span>
+                    <span>{{ teamForm.leadEmail }}</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                    <span class="material-symbols-outlined" style="font-size:16px;">groups</span>
+                    <span>3–5 Competitors Roster</span>
+                  </div>
+                </div>
+                <hr class="card-divider">
+                <p style="font-size: 11px; color: var(--on-surface-variant); padding: 4px 0;">
+                  <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">verified</span>
+                  Squad Access Pass generated upon submission
+                </p>
+              </div>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ══ SPONSOR TAB ══ -->
     <div *ngIf="activeTab==='sponsor'" class="tab-content-grid">
       <div class="card">
@@ -1075,15 +1393,26 @@
           </div>
           <div class="form-group">
             <label class="form-label">CSR / Partnership Logo</label>
-            <div class="upload-zone">
+            <div class="upload-zone" (click)="sponsorLogoInput.click()">
               <span class="material-symbols-outlined upload-icon">cloud_upload</span>
-              <p>Upload corporate logo for website display & banners</p>
+              <p *ngIf="!selectedFileNames['sponsorLogo']?.length">Upload corporate logo for website display & banners</p>
+              <div *ngIf="selectedFileNames['sponsorLogo']?.length" style="display:flex;align-items:center;gap:8px;">
+                <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['sponsorLogo'][0] }}</span>
+                <span class="material-symbols-outlined" (click)="removeFile('sponsorLogo', 0); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);">close</span>
+              </div>
               <span>PNG, SVG (Max 3MB)</span>
             </div>
+            <input #sponsorLogoInput type="file" (change)="onFileSelected($event, 'sponsorLogo')" accept=".png,.svg" style="display:none">
           </div>
+          <label class="terms-checkbox-wrapper" style="display:flex; align-items:flex-start; gap:8px; margin:16px 0; font-size:13px; color:var(--on-surface-variant); cursor:pointer;">
+            <input type="checkbox" [(ngModel)]="sponsorForm.acceptedTerms" name="sponsorTerms" style="margin-top:2px; accent-color:var(--primary);">
+            <span>I agree to the <a (click)="openTermsModal('sponsor')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
+          </label>
           <div class="form-actions">
             <button class="btn btn-subtle">Save Draft</button>
-            <button class="btn btn-primary">Register Corporate Sponsor</button>
+            <button class="btn btn-primary" (click)="submitRegistration()" [disabled]="!sponsorForm.acceptedTerms">
+              Register Corporate Sponsor
+            </button>
           </div>
         </div>
       </div>
@@ -1243,9 +1572,13 @@
             <label class="form-label">Brief Bio / Qualifications</label>
             <textarea class="form-control" rows="3" placeholder="Describe your background and why you are applying as a judge..." style="resize: vertical; font-family: inherit;" [(ngModel)]="judgeForm.bio" name="jdBio"></textarea>
           </div>
+          <label class="terms-checkbox-wrapper" style="display:flex; align-items:flex-start; gap:8px; margin:16px 0; font-size:13px; color:var(--on-surface-variant); cursor:pointer;">
+            <input type="checkbox" [(ngModel)]="judgeForm.acceptedTerms" name="judgeTerms" style="margin-top:2px; accent-color:var(--primary);">
+            <span>I agree to the <a (click)="openTermsModal('judge')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
+          </label>
           <div class="form-actions" style="margin-top: 24px;">
             <button class="btn btn-subtle">Save Draft</button>
-            <button class="btn btn-primary" (click)="submitRegistration()">
+            <button class="btn btn-primary" (click)="submitRegistration()" [disabled]="!judgeForm.acceptedTerms">
               <span class="material-symbols-outlined">gavel</span>
               Submit Judge Application
             </button>
@@ -1439,7 +1772,11 @@
 
       <div class="glass-modal-footer">
         <button class="btn btn-subtle" (click)="closePreviewModal()">Edit Details</button>
-        <button class="btn btn-primary submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting">
+        <label class="terms-checkbox-wrapper" style="display:flex; align-items:center; gap:8px; margin:0 16px; font-size:13px; color:var(--on-surface-variant); cursor:pointer;">
+          <input type="checkbox" [(ngModel)]="schoolForm.acceptedTerms" name="schoolTermsPreview" style="accent-color:var(--primary);">
+          <span>I agree to the <a (click)="openTermsModal('school')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
+        </label>
+        <button class="btn btn-primary submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting || !schoolForm.acceptedTerms">
           <span *ngIf="!isSubmitting" style="display:flex; align-items:center; gap:8px;">
             Confirm & Submit <span class="material-symbols-outlined">check_circle</span>
           </span>
@@ -1493,6 +1830,71 @@
       <button class="btn btn-primary btn-full" (click)="closeSuccessModal()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border:none; box-shadow:0 8px 20px rgba(16, 185, 129, 0.3);">
         Return to Gateway <span class="material-symbols-outlined">arrow_forward</span>
       </button>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       TERMS & CONDITIONS MODAL
+       ========================================================= -->
+  <div class="terms-modal-backdrop" *ngIf="showTermsModal">
+    <div class="terms-modal-card">
+      <div class="terms-modal-header">
+        <h3>Terms & Conditions</h3>
+        <button class="terms-close-btn" (click)="closeTermsModal()" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="terms-modal-body">
+        <h4>NTIC Ghana National Championship - Registration Terms</h4>
+        <ol>
+          <li><strong>Eligibility:</strong> Participants must be enrolled in a recognized Ghanaian educational institution or be an accredited professional for instructor/judge roles.</li>
+          <li><strong>Data Accuracy:</strong> All information provided must be accurate and verifiable. False information may result in disqualification.</li>
+          <li><strong>Code of Conduct:</strong> All participants, instructors, and judges must adhere to the NTIC Code of Conduct promoting respect, integrity, and fair competition.</li>
+          <li><strong>Intellectual Property:</strong> Submissions (code, designs, projects) remain the property of the creator. NTIC reserves the right to showcase submissions for promotional purposes with attribution.</li>
+          <li><strong>Data Privacy:</strong> Personal data is collected solely for championship administration and is protected under Ghana's Data Protection Act (Act 843).</li>
+          <li><strong>Competition Rules:</strong> Participants agree to abide by all competition rules, schedules, and judging criteria as published by NTIC.</li>
+          <li><strong>Disqualification:</strong> NTIC reserves the right to disqualify any entry that violates rules, exhibits plagiarism, or compromises competition integrity.</li>
+          <li><strong>Liability:</strong> NTIC and its partners are not liable for technical failures, data loss, or indirect damages arising from participation.</li>
+          <li><strong>Modifications:</strong> NTIC may update these terms with notice. Continued participation constitutes acceptance.</li>
+          <li><strong>Governing Law:</strong> These terms are governed by the laws of Ghana.</li>
+        </ol>
+        <p class="terms-note">By checking the agreement box, you confirm you have read, understood, and accept these terms.</p>
+      </div>
+      <div class="terms-modal-footer">
+        <button class="btn btn-primary" (click)="acceptTerms()">I Accept</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       PRIVACY POLICY MODAL
+       ========================================================= -->
+  <div class="terms-modal-backdrop" *ngIf="showPrivacyModal">
+    <div class="terms-modal-card">
+      <div class="terms-modal-header">
+        <h3>Privacy Policy</h3>
+        <button class="terms-close-btn" (click)="closePrivacyModal()" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="terms-modal-body">
+        <h4>NTIC Ghana - Data Privacy Notice</h4>
+        <ol>
+          <li><strong>Data Controller:</strong> National Technology & Innovation Championship (NTIC) Ghana, operating under the Ministry of Education.</li>
+          <li><strong>Purpose:</strong> Personal data is collected solely for championship registration, communication, certification, and statutory reporting to the Ministry of Education and Ghana Education Service.</li>
+          <li><strong>Legal Basis:</strong> Processing is based on consent (this registration), contractual necessity (participation agreement), and legal obligation (Act 843).</li>
+          <li><strong>Data Collected:</strong> Name, contact details, institutional affiliation, date of birth, guardian info, academic records, and competition submissions.</li>
+          <li><strong>Retention:</strong> Data is retained for 3 years post-championship for certification and alumni tracking, then anonymized or deleted per Act 843.</li>
+          <li><strong>Sharing:</strong> Data is shared only with authorized NTIC staff, competition judges, and the Ministry of Education. No third-party marketing.</li>
+          <li><strong>Rights:</strong> You may request access, rectification, erasure, or portability of your data by contacting <a href="mailto:privacy&#64;ntic.org.gh" style="color:var(--primary);">privacy&#64;ntic.org.gh</a>.</li>
+          <li><strong>Security:</strong> Data is encrypted in transit (TLS 1.2+) and at rest (AES-256) on Ghana-hosted servers.</li>
+          <li><strong>Cookies:</strong> This platform uses essential session cookies only. No tracking or analytics cookies.</li>
+        </ol>
+        <p class="terms-note">By continuing, you acknowledge this privacy notice.</p>
+      </div>
+      <div class="terms-modal-footer">
+        <button class="btn btn-primary" (click)="closePrivacyModal()">Understood</button>
+      </div>
     </div>
   </div>
 </div>

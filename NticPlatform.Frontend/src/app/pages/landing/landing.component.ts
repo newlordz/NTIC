@@ -97,7 +97,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   detectedRoleName = '';
 
   get isAdminEmail(): boolean {
-    return this.email.trim().toLowerCase() === 'admin@ntic.gov.gh';
+    return this.email.trim().toLowerCase() === 'admin@ntic.org.gh';
   }
 
   // Harvard-style interactive states
@@ -840,7 +840,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         super_admin: 'Administrator'
       };
       this.detectedRoleName = labels[user.role] || 'User';
-    } else if (lookup === 'admin@ntic.gov.gh') {
+    } else if (lookup === 'admin@ntic.org.gh') {
       this.detectedRoleName = 'Administrator';
     } else {
       this.detectedRoleName = '';
@@ -952,9 +952,13 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       const pass = this.password.trim();
 
       // Super admin bypass
-      if (credential === 'admin@ntic.gov.gh') {
+      if (credential === 'admin@ntic.org.gh') {
         localStorage.setItem('activeRoleId', 'super_admin');
         localStorage.setItem('activeUserEmail', credential);
+        this.contentService.saveAuditLogs([
+          { action: 'Admin login: ' + credential, user: credential, time: 'Just now', type: 'auth' },
+          ...this.contentService.auditLogs
+        ]);
         this.router.navigate(['/dashboard']);
         return;
       }
@@ -984,6 +988,10 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
       localStorage.setItem('activeRoleId', finalRole);
       localStorage.setItem('activeUserEmail', credential);
+      this.contentService.saveAuditLogs([
+        { action: `${finalRole} login: ${credential}`, user: credential, time: 'Just now', type: 'auth' },
+        ...this.contentService.auditLogs
+      ]);
 
       const roleRoutes: Record<string, string> = {
         instructor: '/instructor',

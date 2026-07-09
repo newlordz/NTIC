@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -54,6 +54,19 @@ export class AppComponent implements OnInit, OnDestroy {
         parsedUrl === '/landing' ||
         parsedUrl === '' ||
         parsedUrl === '/registration';
+
+      if (typeof window !== 'undefined') {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          const mainContent = document.querySelector('.main-content');
+          if (mainContent) {
+            mainContent.scrollTop = 0;
+          }
+        }, 0);
+      }
     });
   }
 
@@ -137,6 +150,7 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'talent':       return ['instructor', 'sponsor'].includes(role);
       case 'sponsors':     return ['sponsor'].includes(role);
       case 'reporting':    return ['instructor', 'school_admin', 'super_admin'].includes(role);
+      case 'records':      return ['instructor', 'school_admin', 'super_admin'].includes(role);
       default:             return false;
     }
   }
@@ -145,5 +159,68 @@ export class AppComponent implements OnInit, OnDestroy {
     const hash = window.location.hash;
     const seg = hash.replace('#/', '').split('?')[0].split('/')[0] || 'dashboard';
     return this.pageTitles[seg] ?? 'NTIC Portal';
+  }
+
+  showNotificationsDropdown = false;
+  showAppsDropdown = false;
+  showProfileDropdown = false;
+
+  notificationsList = [
+    { id: 1, title: 'New School Admin registered: Prempeh College', time: 'Just now', icon: 'school', unread: true, category: 'Registration' },
+    { id: 2, title: 'Analytics engine synced 1,248 student records', time: '5m ago', icon: 'sync', unread: true, category: 'System' },
+    { id: 3, title: 'Submission graded: Coding Challenge #4', time: '1h ago', icon: 'task_alt', unread: true, category: 'Judging' },
+    { id: 4, title: 'LMS backup snapshot created successfully', time: '2h ago', icon: 'cloud_done', unread: false, category: 'System' }
+  ];
+
+  get liveNotifications(): any[] {
+    const list = [...this.notificationsList];
+    if (this.contentService && this.contentService.pendingApprovals && this.contentService.pendingApprovals.length > 0) {
+      list.unshift({
+        id: 999,
+        title: `${this.contentService.pendingApprovals.length} pending registration approvals awaiting action`,
+        time: 'Live Action Required',
+        icon: 'verified_user',
+        unread: true,
+        category: 'Pending Review'
+      });
+    }
+    return list;
+  }
+
+  get activeUnreadCount(): number {
+    return this.liveNotifications.filter(n => n.unread).length;
+  }
+
+  toggleNotifications(event: MouseEvent): void {
+    event.stopPropagation();
+    this.showNotificationsDropdown = !this.showNotificationsDropdown;
+    this.showAppsDropdown = false;
+    this.showProfileDropdown = false;
+  }
+
+  toggleApps(event: MouseEvent): void {
+    event.stopPropagation();
+    this.showAppsDropdown = !this.showAppsDropdown;
+    this.showNotificationsDropdown = false;
+    this.showProfileDropdown = false;
+  }
+
+  toggleProfile(event: MouseEvent): void {
+    event.stopPropagation();
+    this.showProfileDropdown = !this.showProfileDropdown;
+    this.showNotificationsDropdown = false;
+    this.showAppsDropdown = false;
+  }
+
+  markAllNotificationsRead(event?: MouseEvent): void {
+    if (event) event.stopPropagation();
+    this.notificationsList.forEach(n => n.unread = false);
+  }
+
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    this.showNotificationsDropdown = false;
+    this.showAppsDropdown = false;
+    this.showProfileDropdown = false;
   }
 }

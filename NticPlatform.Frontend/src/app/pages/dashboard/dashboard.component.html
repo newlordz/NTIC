@@ -31,7 +31,10 @@
 
     <!-- Stat Cards -->
     <div class="stat-grid stagger">
-      <div *ngFor="let stat of (activeRoleId === 'school_admin' ? schoolAdminStats : stats)" class="stat-card" [class]="stat.color">
+      <div *ngFor="let stat of (activeRoleId === 'school_admin' ? schoolAdminStats : stats)" 
+           class="stat-card" [class]="stat.color"
+           role="button" tabindex="0" style="cursor: pointer"
+           (click)="onStatCardClick(stat)">
         <div class="stat-bg-icon material-symbols-outlined">{{ stat.icon }}</div>
         <div class="stat-label"><span class="material-symbols-outlined">{{ stat.icon }}</span>{{ stat.label }}</div>
         <div class="stat-value">{{ stat.value }}</div>
@@ -247,10 +250,21 @@
       </div>
     </div>
 
-    <!-- Stat Cards -->
+    <!-- Stat Cards (Clickable Interactive Buttons) -->
     <div class="admin-stat-grid">
-      <div *ngFor="let stat of stats; let i = index" class="admin-stat-card" [attr.data-index]="i">
-        <div class="admin-stat-icon"><span class="material-symbols-outlined">{{ stat.icon }}</span></div>
+      <div *ngFor="let stat of stats; let i = index" 
+           class="admin-stat-card interactive-stat-btn" 
+           [attr.data-index]="i"
+           role="button" tabindex="0"
+           (click)="onStatCardClick(stat)"
+           [title]="'Click to view ' + stat.label">
+        <div class="admin-stat-header-row">
+          <div class="admin-stat-icon"><span class="material-symbols-outlined">{{ stat.icon }}</span></div>
+          <div class="stat-btn-pill">
+            <span>View</span>
+            <span class="material-symbols-outlined">arrow_forward</span>
+          </div>
+        </div>
         <div class="admin-stat-value">{{ stat.value }}</div>
         <div class="admin-stat-label">{{ stat.label }}</div>
         <div class="admin-stat-meta">{{ stat.meta }}</div>
@@ -375,10 +389,8 @@
         </div>
         <div class="admin-role-grid">
           <div *ngFor="let r of roleDistribution" class="admin-role-card" [class]="'role-' + r.role" 
-               (click)="openRoleModal(r.role)" 
-               (mouseenter)="showRoleHover(r.role, $event)" 
-               (mouseleave)="hideRoleHover()"
-               style="cursor:pointer">
+               (click)="openRoleModal(r.role)"
+               title="Click to view all {{ r.label }} users">
             <div class="admin-role-icon"><span class="material-symbols-outlined">{{ r.icon }}</span></div>
             <div class="admin-role-info">
               <div class="admin-role-name">{{ r.label }}</div>
@@ -388,16 +400,6 @@
               <div class="admin-role-meta">
                 <span class="admin-role-count">{{ r.count }}</span>
                 <span class="admin-role-pct">{{ r.percent }}%</span>
-              </div>
-            </div>
-            <!-- Hover popover -->
-            <div class="role-hover-popup" *ngIf="hoverUsers.length > 0 && hoverUsers[0]?.role === r.role"
-                 [style.top.px]="hoverPos.y" [style.left.px]="hoverPos.x">
-              <div class="role-hover-header">{{ r.label }}</div>
-              <div class="role-hover-user" *ngFor="let u of hoverUsers">
-                <span class="role-hover-dot" [class]="u.status === 'Active' ? 'active' : 'inactive'"></span>
-                <span class="role-hover-name">{{ u.fullName }}</span>
-                <span class="role-hover-email">{{ u.email }}</span>
               </div>
             </div>
           </div>
@@ -445,8 +447,8 @@
           </div>
           <div>
             <span class="admin-role-badge" [class]="user.role">
-              <span class="material-symbols-outlined">{{ user.role === 'judge' ? 'gavel' : 'handshake' }}</span>
-              {{ user.role === 'judge' ? 'Judge' : 'Sponsor' }}
+              <span class="material-symbols-outlined">{{ getRoleIcon(user.role) }}</span>
+              {{ getRoleLabel(user.role) }}
             </span>
           </div>
           <div class="admin-ticket-cell">
@@ -1372,6 +1374,7 @@
   </div>
 
   </ng-container>
+</div> <!-- End page-canvas -->
 
   <!-- ── REGISTRATION POPUP MODAL ── -->
   <div class="ticket-modal-backdrop" *ngIf="isRegModalOpen" (click)="closeRegisterModal()">
@@ -1592,7 +1595,7 @@
           <div>
             <div class="ticket-platform-name">National NTIC Platform</div>
             <div class="ticket-role-label" [class]="viewTicketUser?.role">
-              {{ viewTicketUser?.role === 'judge' ? '⚖ Competition Judge' : '🤝 Platform Sponsor' }}
+              {{ getRoleLabel(viewTicketUser?.role) }}
             </div>
           </div>
         </div>
@@ -1885,7 +1888,7 @@
   <div class="ticket-modal-backdrop" *ngIf="roleModalRole" (click)="closeRoleModal()">
     <div class="ticket-modal role-users-modal" (click)="$event.stopPropagation()">
       <div class="ticket-modal-header">
-        <h3>{{ roleModalRole ? (roleModalRole | titlecase) + ' Users' : '' }}</h3>
+        <h3>{{ roleModalRole ? getRoleLabel(roleModalRole) + ' Users' : '' }}</h3>
         <button class="ticket-modal-close" (click)="closeRoleModal()">
           <span class="material-symbols-outlined">close</span>
         </button>
@@ -1922,5 +1925,3 @@
       </div>
     </div>
   </div>
-
-</div>
