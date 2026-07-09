@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Copy package configuration
 COPY package*.json ./
-RUN npm ci
+RUN npm install --no-audit --no-fund
 
 # Copy application source code
 COPY . .
