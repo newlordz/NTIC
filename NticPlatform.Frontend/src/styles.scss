@@ -1964,6 +1964,9 @@ textarea.form-control { resize: vertical; min-height: 100px; }
       gap: 6px;
       border: 1px solid transparent;
       position: relative;
+      background: none;
+      cursor: pointer;
+      font-family: inherit;
 
       &::before {
         content: '';

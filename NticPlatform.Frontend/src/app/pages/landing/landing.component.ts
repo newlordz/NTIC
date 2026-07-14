@@ -156,6 +156,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   openLoginModal(event?: Event): void {
     if (event) {
       event.preventDefault();
+      event.stopPropagation();
     }
     this.isLoginModalOpen = true;
     this.email = '';
@@ -175,6 +176,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   closeLoginModal(event?: Event): void {
     if (event) {
       event.preventDefault();
+      event.stopPropagation();
     }
     this.isLoginModalOpen = false;
     if (typeof document !== 'undefined') {

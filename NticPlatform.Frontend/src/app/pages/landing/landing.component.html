@@ -164,7 +164,7 @@
 
         <a href="#about" class="nav-link">Concept</a>
         <a href="#tracks" class="nav-link">Competition Track Arenas</a>
-        <a href="javascript:void(0)" (click)="openLoginModal($event)" class="nav-link portal-highlight">Login</a>
+        <button type="button" (click)="openLoginModal($event)" class="nav-link portal-highlight">Login</button>
       </nav>
 
       <div class="header-cta">
@@ -2041,17 +2041,17 @@
             <li><a href="#about">About The Heats</a></li>
             <li><a href="#tracks">Tracks &amp; Syllabus</a></li>
             <li><a routerLink="/leaderboard">School Leaderboard</a></li>
-            <li><a href="#portal">Rules &amp; Regulations</a></li>
+            <li><a href="javascript:void(0)" (click)="openLoginModal($event)">Rules &amp; Regulations</a></li>
           </ul>
         </div>
 
         <div class="footer-nav-col">
           <h4>Portals</h4>
           <ul>
-            <li><a href="#portal">Student Courses</a></li>
-            <li><a href="#portal">Instructor Mentoring</a></li>
-            <li><a href="#portal">School Admins Directory</a></li>
-            <li><a href="#portal">Judge Rubrics</a></li>
+            <li><a href="javascript:void(0)" (click)="openLoginModal($event)">Student Courses</a></li>
+            <li><a href="javascript:void(0)" (click)="openLoginModal($event)">Instructor Mentoring</a></li>
+            <li><a href="javascript:void(0)" (click)="openLoginModal($event)">School Admins Directory</a></li>
+            <li><a href="javascript:void(0)" (click)="openLoginModal($event)">Judge Rubrics</a></li>
           </ul>
         </div>
 
