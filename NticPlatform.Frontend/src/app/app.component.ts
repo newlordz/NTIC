@@ -60,6 +60,7 @@ export class AppComponent implements OnInit, OnDestroy {
         parsedUrl === '/registration';
 
       if (typeof window !== 'undefined') {
+        document.body.style.overflow = '';
         window.scrollTo(0, 0);
         document.documentElement.scrollTop = 0;
         document.body.scrollTop = 0;

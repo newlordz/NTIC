@@ -771,6 +771,9 @@ console.log(result);`
   }
 
   ngOnInit(): void {
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+    }
     // Pre-populate track preview with coding snippet (no modal popup on load)
     this.setTrackPreview('coding', false);
 

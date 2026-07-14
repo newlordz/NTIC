@@ -7117,7 +7117,7 @@
   inset: 0;
   background: rgba(0, 30, 60, 0.35);
   backdrop-filter: blur(16px);
-  z-index: 10000;
+  z-index: 999999 !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -7134,7 +7134,7 @@
       opacity: 1;
     }
   }
-}
+
 
 /* ─────────────────────────────────────────────
    LOGIN MODAL — MATCHES HTML STRUCTURE
