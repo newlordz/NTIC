@@ -1,0 +1,40 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NticPlatform.Domain", "src\NticPlatform.Domain\NticPlatform.Domain.csproj", "{11111111-2222-3333-4444-555555555551}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NticPlatform.Application", "src\NticPlatform.Application\NticPlatform.Application.csproj", "{11111111-2222-3333-4444-555555555552}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NticPlatform.Infrastructure", "src\NticPlatform.Infrastructure\NticPlatform.Infrastructure.csproj", "{11111111-2222-3333-4444-555555555553}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NticPlatform.API", "src\NticPlatform.API\NticPlatform.API.csproj", "{11111111-2222-3333-4444-555555555554}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{11111111-2222-3333-4444-555555555551}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11111111-2222-3333-4444-555555555551}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11111111-2222-3333-4444-555555555551}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11111111-2222-3333-4444-555555555551}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11111111-2222-3333-4444-555555555552}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11111111-2222-3333-4444-555555555552}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11111111-2222-3333-4444-555555555552}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11111111-2222-3333-4444-555555555552}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11111111-2222-3333-4444-555555555553}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11111111-2222-3333-4444-555555555553}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11111111-2222-3333-4444-555555555553}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11111111-2222-3333-4444-555555555553}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11111111-2222-3333-4444-555555555554}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11111111-2222-3333-4444-555555555554}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11111111-2222-3333-4444-555555555554}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11111111-2222-3333-4444-555555555554}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

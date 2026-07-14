@@ -78,6 +78,73 @@
               </div>
             </div>
           </div>
+
+          <!-- Selected Course & Cycle Algorithmic Leaderboard -->
+          <div class="card" style="margin-top:20px;">
+            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+              <div>
+                <h3 style="display:flex;align-items:center;gap:8px;margin:0;">
+                  <span class="material-symbols-outlined" style="color:var(--primary);">leaderboard</span>
+                  My Selected Course Leaderboard
+                </h3>
+                <p style="font-size:12px;color:var(--on-surface-variant);margin:2px 0 0 0;">
+                  Algorithmic Score = (45% Course Progress) + (35% Assignment Accuracy) + (20% Streak & Lab Bonus)
+                </p>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <button *ngFor="let tr of enrolledTracks"
+                        class="btn btn-sm"
+                        [class.btn-primary]="selectedCourseLeaderboardTrack === tr.name"
+                        [class.btn-subtle]="selectedCourseLeaderboardTrack !== tr.name"
+                        (click)="selectedCourseLeaderboardTrack = tr.name">
+                  {{ tr.name }}
+                </button>
+              </div>
+            </div>
+            <div class="card-body" style="padding:0;overflow-x:auto;">
+              <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                  <tr style="border-bottom:1px solid var(--outline-variant);background:var(--surface-container-low);text-align:left;color:var(--on-surface-variant);font-size:11px;text-transform:uppercase;">
+                    <th style="padding:10px 14px;">Rank</th>
+                    <th style="padding:10px 14px;">Student & School</th>
+                    <th style="padding:10px 14px;text-align:center;">Progress</th>
+                    <th style="padding:10px 14px;text-align:center;">Accuracy</th>
+                    <th style="padding:10px 14px;text-align:center;">Streak</th>
+                    <th style="padding:10px 14px;text-align:right;">Algorithmic Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let item of activeCourseLeaderboardList"
+                      [style.background]="item.isCurrentUser ? 'var(--primary-container, rgba(0, 63, 135, 0.12))' : 'transparent'"
+                      [style.font-weight]="item.isCurrentUser ? '600' : 'normal'"
+                      style="border-bottom:1px solid var(--outline-variant);">
+                    <td style="padding:12px 14px;">
+                      <span [style.background]="item.rank === 1 ? '#f59e0b' : item.rank === 2 ? '#94a3b8' : item.rank === 3 ? '#b45309' : 'var(--surface-container-high)'"
+                            [style.color]="item.rank <= 3 ? '#fff' : 'var(--on-surface)'"
+                            style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-weight:700;font-size:12px;">
+                        {{ item.rank }}
+                      </span>
+                    </td>
+                    <td style="padding:12px 14px;">
+                      <div>{{ item.name }}</div>
+                      <div style="font-size:11px;color:var(--on-surface-variant);font-weight:400;">{{ item.school }}</div>
+                    </td>
+                    <td style="padding:12px 14px;text-align:center;">{{ item.progressPct }}%</td>
+                    <td style="padding:12px 14px;text-align:center;">{{ item.accuracyPct }}%</td>
+                    <td style="padding:12px 14px;text-align:center;">
+                      <span style="display:inline-flex;align-items:center;gap:2px;color:#f59e0b;">
+                        <span class="material-symbols-outlined" style="font-size:14px;">local_fire_department</span>
+                        {{ item.streakDays }}d
+                      </span>
+                    </td>
+                    <td style="padding:12px 14px;text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;color:var(--primary);">
+                      {{ item.algoScore | number:'1.1-1' }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <!-- Instructor Portal Panel -->
@@ -226,7 +293,7 @@
   <!-- ══════════════════════════════════════════════════════
        SUPER ADMIN COMMAND CENTER
   ══════════════════════════════════════════════════════ -->
-  <ng-container *ngIf="activeRoleId === 'super_admin'">
+  <ng-container *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager' || activeRoleId === 'reviewer' || activeRoleId === 'competition_manager'">
 
     <!-- Admin Header -->
     <div class="admin-header">
@@ -277,23 +344,27 @@
       <button class="admin-tab" [class.active]="adminTab === 'overview'" (click)="adminTab = 'overview'">
         <span class="material-symbols-outlined">dashboard</span>Overview
       </button>
-      <button class="admin-tab" (click)="openRegisterModal()">
+      <button class="admin-tab" *ngIf="activeRoleId === 'super_admin'" (click)="openRegisterModal()">
         <span class="material-symbols-outlined">person_add</span>Register User
       </button>
-      <button class="admin-tab" [class.active]="adminTab === 'tickets'" (click)="adminTab = 'tickets'">
+      <button class="admin-tab" *ngIf="activeRoleId === 'super_admin'" [class.active]="adminTab === 'tickets'" (click)="adminTab = 'tickets'">
         <span class="material-symbols-outlined">token</span>Access Tokens
         <span class="admin-tab-badge">{{ registeredUsers.length }}</span>
       </button>
-      <button class="admin-tab" [class.active]="adminTab === 'approvals'" (click)="adminTab = 'approvals'">
+      <button class="admin-tab" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'" [class.active]="adminTab === 'approvals'" (click)="adminTab = 'approvals'">
         <span class="material-symbols-outlined">verified_user</span>Pending Approvals
         <span class="admin-tab-badge warn" *ngIf="pendingApprovals.length > 0">{{ pendingApprovals.length }}</span>
       </button>
-      <button class="admin-tab cms-tab" [class.active]="adminTab === 'content'" (click)="adminTab = 'content'">
+      <button class="admin-tab cms-tab" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager'" [class.active]="adminTab === 'content'" (click)="adminTab = 'content'">
         <span class="material-symbols-outlined">edit_note</span>Content Manager
       </button>
-      <button class="admin-tab" [class.active]="adminTab === 'users'" (click)="adminTab = 'users'">
+      <button class="admin-tab" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'" [class.active]="adminTab === 'users'" (click)="adminTab = 'users'">
         <span class="material-symbols-outlined">group</span>Users by Role
         <span class="admin-tab-badge">{{ registeredUsers.length }}</span>
+      </button>
+      <button class="admin-tab" *ngIf="activeRoleId === 'super_admin'" [class.active]="adminTab === 'admins'" (click)="adminTab = 'admins'">
+        <span class="material-symbols-outlined">admin_panel_settings</span>Manage Admins
+        <span class="admin-tab-badge">{{ adminUsers.length }}</span>
       </button>
     </div>
 
@@ -403,6 +474,130 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: MANAGE ADMINS ── -->
+    <div *ngIf="adminTab === 'admins'" class="admin-tab-body">
+      <div class="admin-header-actions">
+        <div class="section-title">Manage Admins</div>
+        <button class="btn btn-primary btn-sm" (click)="openAdminModal()">
+          <span class="material-symbols-outlined">add</span>New Admin
+        </button>
+      </div>
+
+      <div *ngIf="adminUsers.length === 0" class="admin-empty-state">
+        <span class="material-symbols-outlined">admin_panel_settings</span>
+        <h3>No Admin Accounts</h3>
+        <p>Create your first admin account to get started.</p>
+      </div>
+
+      <div class="admin-tickets-table admin-table-sm" *ngIf="adminUsers.length > 0">
+        <div class="admin-table-head">
+          <span>Admin</span>
+          <span>Role</span>
+          <span>Status</span>
+          <span>Registered</span>
+          <span>Last Login</span>
+          <span>Actions</span>
+        </div>
+        <div *ngFor="let admin of adminUsers" class="admin-table-row">
+          <div class="admin-user-cell">
+            <div class="admin-user-avatar" [class]="admin.role">
+              {{ getInitials(admin.fullName) }}
+            </div>
+            <div>
+              <div class="admin-user-name">{{ admin.fullName }}</div>
+              <div class="admin-user-email">{{ admin.email }}</div>
+            </div>
+          </div>
+          <div>
+            <span class="admin-role-badge" [class]="admin.role">
+              <span class="material-symbols-outlined">admin_panel_settings</span>
+              {{ getAdminRoleLabel(admin.role) }}
+            </span>
+          </div>
+          <div>
+            <span class="admin-status-badge" [class]="admin.status.toLowerCase()">{{ admin.status }}</span>
+          </div>
+          <div class="admin-date-cell">{{ admin.registeredAt }}</div>
+          <div class="admin-date-cell">{{ admin.lastLogin }}</div>
+          <div class="admin-actions-cell">
+            <button class="admin-action-btn" title="Edit" (click)="openAdminModal(admin)">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button class="admin-action-btn danger" title="Delete" *ngIf="admin.role !== 'super_admin'" (click)="confirmDeleteAdmin(admin)">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin Create/Edit Modal -->
+    <div class="admin-modal-overlay" *ngIf="isAdminModalOpen" (click)="closeAdminModal()">
+      <div class="admin-modal" (click)="$event.stopPropagation()">
+        <div class="admin-modal-header">
+          <span class="material-symbols-outlined">admin_panel_settings</span>
+          <h3>{{ editingAdmin ? 'Edit' : 'Create' }} Admin Account</h3>
+          <button class="admin-modal-close" (click)="closeAdminModal()">&times;</button>
+        </div>
+        <div class="admin-modal-body">
+          <div class="admin-form-group">
+            <label>Full Name</label>
+            <input type="text" [(ngModel)]="adminForm.fullName" placeholder="e.g. John Doe" />
+          </div>
+          <div class="admin-form-group">
+            <label>Email Address</label>
+            <input type="email" [(ngModel)]="adminForm.email" placeholder="e.g. john@ntic.org.gh" />
+          </div>
+          <div class="admin-form-group">
+            <label>Phone Number</label>
+            <input type="text" [(ngModel)]="adminForm.phone" placeholder="+233 24 000 0000" />
+          </div>
+          <div class="admin-form-group">
+            <label>Organization</label>
+            <input type="text" [(ngModel)]="adminForm.organization" placeholder="NTIC" />
+          </div>
+          <div class="admin-form-group" *ngIf="!editingAdmin">
+            <label>Admin Role</label>
+            <select [(ngModel)]="adminForm.role">
+              <option value="content_manager">Content Manager</option>
+              <option value="reviewer">Reviewer</option>
+              <option value="competition_manager">Competition Manager</option>
+            </select>
+          </div>
+          <p class="admin-error" *ngIf="adminError">{{ adminError }}</p>
+          <p class="admin-success" *ngIf="adminSuccess">{{ adminSuccess }}</p>
+        </div>
+        <div class="admin-modal-footer">
+          <button class="btn admin-cancel-btn" (click)="closeAdminModal()">Cancel</button>
+          <button class="btn btn-primary" (click)="saveAdminUser()">
+            <span class="material-symbols-outlined">save</span>
+            {{ editingAdmin ? 'Update' : 'Create' }} Admin
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin Delete Confirmation -->
+    <div class="admin-modal-overlay" *ngIf="deleteConfirmAdmin" (click)="cancelDeleteAdmin()">
+      <div class="admin-modal admin-modal-sm" (click)="$event.stopPropagation()">
+        <div class="admin-modal-header">
+          <span class="material-symbols-outlined" style="color:var(--danger)">warning</span>
+          <h3>Delete Admin?</h3>
+          <button class="admin-modal-close" (click)="cancelDeleteAdmin()">&times;</button>
+        </div>
+        <div class="admin-modal-body">
+          <p>Are you sure you want to permanently remove <strong>{{ deleteConfirmAdmin?.fullName }}</strong> ({{ getAdminRoleLabel(deleteConfirmAdmin?.role) }})?</p>
+          <p style="font-size:0.85rem;color:var(--text-muted)">This action cannot be undone.</p>
+        </div>
+        <div class="admin-modal-footer">
+          <button class="btn admin-cancel-btn" (click)="cancelDeleteAdmin()">Cancel</button>
+          <button class="btn btn-danger" (click)="deleteAdminUser()">
+            <span class="material-symbols-outlined">delete_forever</span>Delete
+          </button>
         </div>
       </div>
     </div>

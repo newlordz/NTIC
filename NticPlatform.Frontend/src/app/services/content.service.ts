@@ -108,7 +108,7 @@ export interface NewsFeedItem {
 
 export interface User {
   id: string;
-  role: 'judge' | 'sponsor' | 'school_admin' | 'student' | 'instructor' | 'super_admin';
+  role: 'judge' | 'sponsor' | 'school_admin' | 'student' | 'instructor' | 'super_admin' | 'content_manager' | 'reviewer' | 'competition_manager';
   fullName: string;
   email: string;
   phone: string;

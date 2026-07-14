@@ -885,6 +885,21 @@
     border-color: rgba(220, 38, 38, 0.2);
     color: #dc2626;
   }
+  &.content_manager {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(59, 130, 246, 0.2));
+    border-color: rgba(37, 99, 235, 0.2);
+    color: #2563eb;
+  }
+  &.reviewer {
+    background: linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(139, 92, 246, 0.2));
+    border-color: rgba(124, 58, 237, 0.2);
+    color: #7c3aed;
+  }
+  &.competition_manager {
+    background: linear-gradient(135deg, rgba(234, 88, 12, 0.12), rgba(249, 115, 22, 0.2));
+    border-color: rgba(234, 88, 12, 0.2);
+    color: #c2410c;
+  }
 }
 
 .admin-user-name  { font-size: 13px; font-weight: 700; color: var(--on-surface); }
@@ -929,6 +944,21 @@
     background: rgba(220, 38, 38, 0.08);
     color: #dc2626;
     border-color: rgba(220, 38, 38, 0.2);
+  }
+  &.content_manager {
+    background: rgba(37, 99, 235, 0.08);
+    color: #2563eb;
+    border-color: rgba(37, 99, 235, 0.2);
+  }
+  &.reviewer {
+    background: rgba(124, 58, 237, 0.08);
+    color: #7c3aed;
+    border-color: rgba(124, 58, 237, 0.2);
+  }
+  &.competition_manager {
+    background: rgba(234, 88, 12, 0.08);
+    color: #c2410c;
+    border-color: rgba(234, 88, 12, 0.2);
   }
 }
 
@@ -996,7 +1026,116 @@
   transition: border-color 0.2s ease, background 0.2s ease;
   .material-symbols-outlined { font-size: 15px; color: var(--on-surface-variant); }
   &:hover { border-color: var(--primary); background: rgba(0, 63, 135, 0.06); }
+  &.danger:hover { border-color: var(--danger); background: rgba(220, 38, 38, 0.06); .material-symbols-outlined { color: var(--danger); } }
 }
+
+.admin-header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.admin-error {
+  color: var(--danger, #dc2626);
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
+.admin-success {
+  color: var(--success, #16a34a);
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
+/* ── Admin Modal ── */
+.admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+.admin-modal {
+  background: var(--surface-container-lowest, #fff);
+  border-radius: 18px;
+  width: 480px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+  animation: modalSlideUp 0.3s ease;
+
+  &.admin-modal-sm { width: 380px; }
+}
+
+.admin-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 24px 0;
+  .material-symbols-outlined { font-size: 22px; color: var(--primary); }
+  h3 { flex: 1; font-size: 16px; font-weight: 700; margin: 0; }
+}
+
+.admin-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--on-surface-variant);
+  line-height: 1;
+  padding: 0;
+  &:hover { color: var(--on-surface); }
+}
+
+.admin-modal-body {
+  padding: 16px 24px;
+}
+
+.admin-form-group {
+  margin-bottom: 14px;
+  label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--on-surface-variant); margin-bottom: 4px; }
+  input, select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--outline-variant);
+    border-radius: 8px;
+    font-size: 13px;
+    background: var(--surface-container-lowest);
+    color: var(--on-surface);
+    &:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,63,135,0.12); }
+  }
+}
+
+.admin-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 24px 20px;
+}
+
+.admin-cancel-btn {
+  background: transparent;
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface-variant);
+  &:hover { border-color: var(--on-surface-variant); }
+}
+
+.admin-date-cell { font-size: 11px; color: var(--on-surface-variant); }
+
+/* ── Narrow table (no ticket column) ── */
+.admin-table-sm {
+  .admin-table-head { grid-template-columns: 2.5fr 1fr 0.8fr 1.2fr 1.2fr 0.8fr; }
+  .admin-table-row { grid-template-columns: 2.5fr 1fr 0.8fr 1.2fr 1.2fr 0.8fr; }
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
 .admin-table-empty {
   display: flex;
@@ -3458,3 +3597,121 @@
 }
 
 
+/* ══════════════════════════════════════════════════════
+   DASHBOARD — MOBILE RESPONSIVE OVERRIDES
+══════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+
+  /* ── Admin header: stack left/right sections ── */
+  .admin-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 18px 16px;
+    border-radius: 12px;
+
+    .admin-header-left { gap: 12px; }
+
+    .admin-header-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+    }
+
+    .admin-title { font-size: 18px; }
+    .admin-subtitle { font-size: 12px; }
+  }
+
+  .admin-header-right {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* ── Stat grid: 4-col → 2-col ── */
+  .admin-stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .admin-stat-value { font-size: 24px; }
+
+  /* ── Two-column layout: stack ── */
+  .admin-two-col {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  /* ── Infrastructure node grid: 2-col → 1-col ── */
+  .admin-node-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* ── Role grid: 3-col → 2-col ── */
+  .admin-role-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  /* ── Role picker buttons: allow wrap ── */
+  .admin-role-picker {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .admin-role-btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  /* ── Register form: 2-col → 1-col ── */
+  .admin-form-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .admin-register-form-card { padding: 20px 16px; }
+
+  /* ── Tab bar badge: smaller ── */
+  .admin-tab-badge {
+    font-size: 9px;
+    min-width: 16px;
+    height: 16px;
+  }
+
+  /* ── Tickets header ── */
+  .admin-tickets-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .admin-tickets-filters { flex-wrap: wrap; gap: 6px; }
+}
+
+@media (max-width: 480px) {
+  /* ── Stat grid: 2-col → 1-col ── */
+  .admin-stat-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  /* ── Role grid: 2-col → 1-col ── */
+  .admin-role-grid { grid-template-columns: 1fr; }
+
+  /* ── Admin header: tighten ── */
+  .admin-header { padding: 14px 12px; }
+  .admin-title { font-size: 16px; }
+
+  /* ── Stat value ── */
+  .admin-stat-value { font-size: 22px; }
+
+  /* ── Role picker: full width buttons ── */
+  .admin-role-btn { flex: 1 0 100%; justify-content: center; }
+}

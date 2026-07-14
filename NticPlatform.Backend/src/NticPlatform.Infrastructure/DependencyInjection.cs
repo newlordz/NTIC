@@ -17,6 +17,9 @@ namespace NticPlatform.Infrastructure
 
             services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
 
+            services.AddScoped<NticPlatform.Application.LMSContext.Commands.ITenantProvider, NticPlatform.Infrastructure.Services.CurrentTenantProvider>();
+            services.AddScoped<NticPlatform.Infrastructure.Persistence.Configurations.ITenantProvider, NticPlatform.Infrastructure.Services.CurrentTenantProvider>();
+
             return services;
         }
     }

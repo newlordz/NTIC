@@ -1,13 +1,108 @@
 <div class="page-canvas fade-in">
   <div class="page-header with-action">
-    <div><h1 class="page-title-main">Global Leaderboard</h1><p class="page-subtitle">Live rankings — National Advanced NTIC Challenge 2026</p></div>
+    <div>
+      <h1 class="page-title-main">{{ activeTab === 'courses' ? 'Course & Cycle Leaderboards' : 'Global School Leaderboard' }}</h1>
+      <p class="page-subtitle">{{ activeTab === 'courses' ? 'Algorithmic student rankings based on course progress, assignment accuracy, and streak' : 'Live rankings — National Advanced NTIC Challenge 2026' }}</p>
+    </div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-subtle btn-sm"><span class="material-symbols-outlined">filter_list</span>Filter</button>
       <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">download</span>Export CSV</button>
     </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;">
+  <!-- Mode Switcher -->
+  <div style="display:flex;gap:12px;margin-bottom:20px;">
+    <button class="btn" [class.btn-primary]="activeTab === 'courses'" [class.btn-subtle]="activeTab !== 'courses'" (click)="activeTab = 'courses'">
+      <span class="material-symbols-outlined">school</span>
+      Course & Cycle Standings
+    </button>
+    <button class="btn" [class.btn-primary]="activeTab === 'schools'" [class.btn-subtle]="activeTab !== 'schools'" (click)="activeTab = 'schools'">
+      <span class="material-symbols-outlined">emoji_events</span>
+      National School Championship
+    </button>
+  </div>
+
+  <!-- COURSE & CYCLE STANDINGS VIEW -->
+  <div *ngIf="activeTab === 'courses'" style="display:flex;flex-direction:column;gap:20px;">
+    <!-- Course Chips -->
+    <div class="card" style="padding:14px 18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button *ngFor="let track of courseTracks"
+                  class="btn btn-sm"
+                  [class.btn-primary]="selectedCourseTrack === track.id"
+                  [class.btn-subtle]="selectedCourseTrack !== track.id"
+                  (click)="selectedCourseTrack = track.id">
+            <span class="material-symbols-outlined" style="font-size:16px;">{{ track.icon }}</span>
+            {{ track.label }}
+          </button>
+        </div>
+        <span class="badge primary" style="font-size:11px;">
+          Formula: (45% Progress) + (35% Accuracy) + (20% Streak Bonus)
+        </span>
+      </div>
+    </div>
+
+    <!-- Standings Table -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Top Performers — {{ selectedCourseTrack }}</h3>
+        <span class="badge secondary">Cycle Active</span>
+      </div>
+      <div class="card-body" style="padding:0;overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--outline-variant);background:var(--surface-container-low);text-align:left;color:var(--on-surface-variant);font-size:12px;text-transform:uppercase;">
+              <th style="padding:14px 18px;">Rank</th>
+              <th style="padding:14px 18px;">Student</th>
+              <th style="padding:14px 18px;">School</th>
+              <th style="padding:14px 18px;text-align:center;">Course Progress</th>
+              <th style="padding:14px 18px;text-align:center;">Lab Accuracy</th>
+              <th style="padding:14px 18px;text-align:center;">Streak</th>
+              <th style="padding:14px 18px;text-align:right;">Cycle Algorithmic Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let entry of filteredCourseStandings"
+                [style.background]="entry.isCurrentUser ? 'var(--primary-container, rgba(0, 63, 135, 0.12))' : 'transparent'"
+                [style.font-weight]="entry.isCurrentUser ? '600' : 'normal'"
+                style="border-bottom:1px solid var(--outline-variant);">
+              <td style="padding:14px 18px;">
+                <span [style.background]="entry.rank === 1 ? '#f59e0b' : entry.rank === 2 ? '#94a3b8' : entry.rank === 3 ? '#b45309' : 'var(--surface-container-high)'"
+                      [style.color]="entry.rank <= 3 ? '#fff' : 'var(--on-surface)'"
+                      style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font-weight:700;font-size:13px;">
+                  {{ entry.rank }}
+                </span>
+              </td>
+              <td style="padding:14px 18px;font-size:14px;">
+                {{ entry.name }}
+              </td>
+              <td style="padding:14px 18px;color:var(--on-surface-variant);">
+                {{ entry.school }}
+              </td>
+              <td style="padding:14px 18px;text-align:center;">
+                <span class="badge primary">{{ entry.progressPct }}%</span>
+              </td>
+              <td style="padding:14px 18px;text-align:center;">
+                {{ entry.accuracyPct }}%
+              </td>
+              <td style="padding:14px 18px;text-align:center;">
+                <span style="display:inline-flex;align-items:center;gap:3px;color:#f59e0b;font-weight:600;">
+                  <span class="material-symbols-outlined" style="font-size:16px;">local_fire_department</span>
+                  {{ entry.streakDays }} days
+                </span>
+              </td>
+              <td style="padding:14px 18px;text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;color:var(--primary);">
+                {{ entry.algoScore | number:'1.1-1' }} pts
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="activeTab === 'schools'" style="display:grid;grid-template-columns:1fr 320px;gap:20px;">
     <div style="display:flex;flex-direction:column;gap:20px;">
       <!-- Podium -->
       <div class="card">

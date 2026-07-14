@@ -22,3 +22,8 @@ Thumbs.db
 
 # OpenH264 DLL
 openh264-*.dll
+
+# Environment variables
+.env
+*.env
+

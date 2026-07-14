@@ -41,6 +41,34 @@ export class CompetitionsComponent implements OnInit {
   tracks = ['all', 'coding', 'robotics', 'ai', 'cyber', 'innovation'];
   statuses: Competition['status'][] = ['draft', 'registration', 'active', 'completed', 'archived'];
   phaseTypes: CompetitionPhase['type'][] = ['registration', 'submission', 'judging', 'results', 'break'];
+  studentRegisteredMap: Record<string, boolean> = {};
+
+  get activeRoleId(): string {
+    return (typeof localStorage !== 'undefined' && localStorage.getItem('activeRoleId')) || 'student';
+  }
+
+  get isStudent(): boolean {
+    return this.activeRoleId === 'student';
+  }
+
+  get canManageCompetitions(): boolean {
+    return ['super_admin', 'school_admin', 'instructor', 'competition_manager'].includes(this.activeRoleId);
+  }
+
+  get totalCycles(): number { return this.competitions.length; }
+  get liveCycles(): number { return this.competitions.filter(c => c.status === 'active').length; }
+  get openRegistrationCycles(): number { return this.competitions.filter(c => c.status === 'registration').length; }
+
+  get displayTabs() {
+    if (this.isStudent) {
+      return this.tabs.filter(t => t.id !== 'draft');
+    }
+    return this.tabs;
+  }
+
+  registerStudentForCycle(comp: Competition): void {
+    this.studentRegisteredMap[comp.id] = true;
+  }
 
   constructor(public contentService: ContentService, public themeService: ThemeService) {}
 
@@ -59,6 +87,10 @@ export class CompetitionsComponent implements OnInit {
 
   applyFilters(): void {
     let filtered = [...this.competitions];
+
+    if (this.isStudent) {
+      filtered = filtered.filter(c => c.status !== 'draft');
+    }
 
     if (this.activeTab !== 'all') {
       filtered = filtered.filter(c => c.status === this.activeTab);
@@ -321,5 +353,62 @@ export class CompetitionsComponent implements OnInit {
       'final': 'workspace_premium',
       'championship': 'military_tech'
     };
+  }
+
+  get phaseIcons(): { [key: string]: string } {
+    return {
+      registration: 'how_to_reg',
+      submission: 'upload_file',
+      judging: 'rate_review',
+      results: 'leaderboard',
+      break: 'coffee'
+    };
+  }
+
+  get trackGradients(): { [key: string]: string } {
+    return {
+      coding: 'linear-gradient(135deg, #003f87, #0056b3)',
+      robotics: 'linear-gradient(135deg, #f59e0b, #ef4444)',
+      ai: 'linear-gradient(135deg, #006a60, #007166)',
+      cyber: 'linear-gradient(135deg, #10b981, #059669)',
+      innovation: 'linear-gradient(135deg, #ec4899, #f97316)',
+      all: 'linear-gradient(135deg, #003f87, #006a60)'
+    };
+  }
+
+  get typeGradients(): { [key: string]: string } {
+    return {
+      qualifier: 'linear-gradient(135deg, #003f87, #0056b3)',
+      'quarter-final': 'linear-gradient(135deg, #006a60, #007166)',
+      'semi-final': 'linear-gradient(135deg, #f59e0b, #f97316)',
+      final: 'linear-gradient(135deg, #ef4444, #ec4899)',
+      championship: 'linear-gradient(135deg, #f59e0b, #ef4444)'
+    };
+  }
+
+  get statusColors(): { [key: string]: string } {
+    return {
+      draft: '#94a3b8',
+      registration: '#f59e0b',
+      active: '#003f87',
+      completed: '#10b981',
+      archived: '#ef4444'
+    };
+  }
+
+  get phaseColors(): { [key: string]: string } {
+    return {
+      registration: '#003f87',
+      submission: '#f59e0b',
+      judging: '#8b5cf6',
+      results: '#10b981',
+      break: '#94a3b8'
+    };
+  }
+
+  progressColor(pct: number): string {
+    if (pct >= 75) return '#10b981';
+    if (pct >= 40) return '#f59e0b';
+    return '#003f87';
   }
 }

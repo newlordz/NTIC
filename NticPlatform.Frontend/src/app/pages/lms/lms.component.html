@@ -174,7 +174,7 @@
                   <span class="material-symbols-outlined" style="font-size:24px; color:var(--primary)">{{ course.icon }}</span>
                 </div>
                 <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
-                  <span class="badge success">Active</span>
+                  <span class="badge" [class]="course.progress === 0 ? 'neutral' : 'success'">{{ course.badgeText }}</span>
                   <span class="badge neutral" style="font-size: 10px;">Intermediate</span>
                 </div>
               </div>
@@ -192,8 +192,8 @@
               </div>
               
               <div style="display:flex; gap:6px; margin-top:16px; padding-top:12px; border-top:1px solid var(--outline-variant); align-items:center;">
-                <span class="track-chip coding">Coding</span>
-                <button class="btn btn-primary btn-sm" style="margin-left:auto; padding:4px 12px; font-size:12px;" onclick="alert('Resuming course syllabus module...')">Resume Course</button>
+                <span class="track-chip" [class]="course.track">{{ course.track | titlecase }}</span>
+                <button class="btn btn-primary btn-sm" style="margin-left:auto; padding:6px 14px; font-size:12px; font-weight:650;" (click)="startCourseLesson(course)">{{ course.buttonText }}</button>
               </div>
             </div>
           </div>
@@ -202,18 +202,12 @@
         <!-- Course Syllabus / Outline details -->
         <div class="card" style="margin-top:16px;">
           <div class="card-header">
-            <h3>Syllabus Overview — Python Data Structures</h3>
+            <h3>Syllabus Overview — {{ primaryCourseTitle }}</h3>
           </div>
           <div class="card-body">
             <p style="font-size:13px; color:var(--on-surface-variant); margin-bottom:16px;">Complete these modules to qualify for the national timed code sprint qualifiers.</p>
             <div style="display:flex; flex-direction:column; gap:12px;">
-              <div *ngFor="let mod of [
-                { id: '1', title: 'Module 1: Big O & Complexity Sprints', status: 'completed', desc: 'Analyzing execution steps, auxiliary memory, and run-time optimization.' },
-                { id: '2', title: 'Module 2: Custom List & Stack Engines', status: 'completed', desc: 'Designing linear nodes, stacks, and double-ended queues from scratch.' },
-                { id: '3', title: 'Module 3: Binary Tree Rotations & AVL', status: 'completed', desc: 'Implementing height balance, search traversals, and dynamic index trees.' },
-                { id: '4', title: 'Module 4: Dijkstra & Graph Pathfinders', status: 'active', desc: 'Coding shortest paths, adjacency weights, and priority heap routers.' },
-                { id: '5', title: 'Module 5: Dynamic Programming Sprints', status: 'pending', desc: 'Memoization, tabulation, knapsack solver, and substring scoring.' }
-              ]" style="display:flex; gap:12px; align-items:flex-start; background:var(--surface-container-low); padding:12px; border-radius:10px;">
+              <div *ngFor="let mod of getCourseModules(primaryCourseTitle)" style="display:flex; gap:12px; align-items:flex-start; background:var(--surface-container-low); padding:12px; border-radius:10px;">
                 <span class="material-symbols-outlined" style="font-size:20px;" [style.color]="mod.status === 'completed' ? '#10b981' : mod.status === 'active' ? 'var(--primary)' : 'var(--outline)'">
                   {{ mod.status === 'completed' ? 'check_circle' : mod.status === 'active' ? 'play_circle' : 'lock' }}
                 </span>
@@ -248,13 +242,16 @@
               <span>Assignment submitted successfully! Awaiting mentor review.</span>
             </div>
 
+            <div class="error-banner" *ngIf="submissionError" style="background:rgba(239, 68, 68, 0.1); border:1px solid #ef4444; color:#ef4444; padding:12px; border-radius:8px; display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+              <span class="material-symbols-outlined">error</span>
+              <span>{{ submissionError }}</span>
+            </div>
+
             <div class="grid-2" style="margin-bottom:16px;">
               <div class="form-group">
                 <label class="form-label">Select Course Track</label>
                 <select class="form-control form-select" [(ngModel)]="newSubmission.courseTitle">
-                  <option value="Python Data Structures">Python Data Structures</option>
-                  <option value="Web Dev Bootcamp">Web Dev Bootcamp</option>
-                  <option value="Intro to Neural Networks">Intro to Neural Networks</option>
+                  <option *ngFor="let c of studentCourses" [value]="c.title">{{ c.title }}</option>
                 </select>
               </div>
               <div class="form-group">
@@ -344,18 +341,18 @@
                 <span class="material-symbols-outlined" style="color:#10b981;">verified_user</span> MoE Accreditation Data
               </h4>
               <ul style="font-size:12px; color:var(--on-surface-variant); padding-left:20px; display:flex; flex-direction:column; gap:8px; margin:0;">
-                <li><strong>Verification Registry:</strong> MoE-GH-NTIC-2026-STU-0012</li>
+                <li><strong>Verification Registry:</strong> MoE-GH-NTIC-2026-{{ studentProfile.id }}</li>
                 <li><strong>Status:</strong> Verified & Active (Active Competitor)</li>
-                <li><strong>Acquisition Channel:</strong> Registered via Achimota School Administration Portal</li>
+                <li><strong>Acquisition Channel:</strong> Registered via {{ studentProfile.school }} Portal</li>
                 <li><strong>Privacy Shield:</strong> Compliant with Ghana Data Protection Act 2012 (Act 843).</li>
               </ul>
             </div>
 
             <div style="display:flex; gap:12px;">
-              <button class="btn btn-primary" onclick="alert('Downloading badge PDF...')">
+              <button class="btn btn-primary">
                 <span class="material-symbols-outlined">download</span> Download PDF Badge
               </button>
-              <button class="btn btn-subtle" onclick="alert('Regenerating digital credentials security keys...')">
+              <button class="btn btn-subtle">
                 <span class="material-symbols-outlined">key</span> Regenerate Token Keys
               </button>
             </div>
@@ -431,7 +428,7 @@
               <span class="line w2"></span><span class="line w1"></span><span class="line w3"></span>
             </div>
             <div class="ticket-code-display" style="font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:700; color:#1e293b; margin-top:2px;">
-              REG-ID-STU-0012-NTIC
+              REG-ID-{{ studentProfile.id }}-NTIC
             </div>
             <span class="compliance-pill">GDPA COMPLIANT · ACT 843</span>
           </div>
@@ -442,7 +439,7 @@
       <div class="sidebar-panel-card">
         <h3><span class="material-symbols-outlined">co_present</span> Assigned Mentor</h3>
         <div class="mentor-info-row">
-          <div class="mentor-avatar">EM</div>
+          <div class="mentor-avatar">{{ studentProfile.mentorAvatar }}</div>
           <div class="mentor-meta">
             <strong>{{ studentProfile.mentor }}</strong>
             <span>School Coach & Mentor</span>
@@ -475,8 +472,63 @@
           </div>
           <div class="heat-status">CONFIRMED APPLICANT</div>
         </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- =========================================================
+     INTERACTIVE COURSE LESSON MODAL
+     ========================================================= -->
+<div class="modal-backdrop fade-in" *ngIf="activeLessonCourse" style="position:fixed; inset:0; background:rgba(2,6,23,0.85); backdrop-filter:blur(10px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:20px;">
+  <div class="modal-card" style="background:var(--surface); border:1px solid var(--outline-variant); border-radius:18px; max-width:680px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5); overflow:hidden;">
+    
+    <div style="padding:22px 26px; border-bottom:1px solid var(--outline-variant); display:flex; justify-content:space-between; align-items:center; background:var(--surface-container-low);">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:40px; height:40px; border-radius:10px; background:rgba(0,102,204,0.1); display:flex; align-items:center; justify-content:center; color:var(--primary);">
+          <span class="material-symbols-outlined">{{ activeLessonCourse.icon || 'play_lesson' }}</span>
+        </div>
+        <div>
+          <h3 style="font-size:16px; font-weight:750; color:var(--on-surface); margin:0;">{{ activeLessonCourse.title }}</h3>
+          <span style="font-size:11.5px; color:var(--on-surface-variant);">National Competitor Training Engine</span>
+        </div>
+      </div>
+      <button class="btn btn-ghost" (click)="closeLessonModal()" style="border:none; background:transparent; cursor:pointer;">
+        <span class="material-symbols-outlined" style="font-size:22px; color:var(--on-surface-variant);">close</span>
+      </button>
+    </div>
+
+    <div style="padding:26px;">
+      <div *ngIf="lessonSuccessMessage" style="background:rgba(16, 185, 129, 0.12); border:1px solid #10b981; color:#10b981; padding:14px 18px; border-radius:12px; margin-bottom:20px; font-weight:600; display:flex; align-items:center; gap:10px;">
+        <span class="material-symbols-outlined">check_circle</span>
+        <span>{{ lessonSuccessMessage }}</span>
       </div>
 
+      <div style="background:var(--surface-container-low); border-radius:14px; padding:18px; margin-bottom:20px;">
+        <span class="badge primary" style="margin-bottom:10px; display:inline-block;">ACTIVE SPRINT LESSON</span>
+        <h4 style="font-size:15px; font-weight:700; color:var(--on-surface); margin:0 0 8px;">{{ activeLessonCourse.module }}</h4>
+        <p style="font-size:13px; color:var(--on-surface-variant); line-height:1.6; margin:0;">
+          In this interactive lesson sprint, you will study core algorithmic principles, hardware interface timing, and real-world system debugging required for the upcoming national qualifiers.
+        </p>
+      </div>
+
+      <div style="background:var(--surface-container-lowest); border:1px solid var(--outline-variant); border-radius:12px; padding:16px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--on-surface-variant); margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:var(--primary); font-weight:700;">
+          <span>// LESSON CHECKPOINT OBJECTIVES</span>
+          <span>TIME EST: 25 MIN</span>
+        </div>
+        <div>1. Analyze pin configurations and input sensor telemetry.</div>
+        <div>2. Validate edge-case inputs against competition runtime limits.</div>
+        <div>3. Submit functional verification code via the Assignments panel.</div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:12px;">
+        <button class="btn btn-subtle" (click)="closeLessonModal()">Close Preview</button>
+        <button class="btn btn-primary" (click)="completeActiveLesson()">
+          <span class="material-symbols-outlined">task_alt</span>
+          Complete Module & Continue →
+        </button>
+      </div>
     </div>
 
   </div>

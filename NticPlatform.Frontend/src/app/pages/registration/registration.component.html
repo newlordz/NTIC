@@ -254,11 +254,6 @@
           <input type="text" maxlength="6" [(ngModel)]="otpCode" class="otp-hidden-input" autofocus (input)="otpError = ''" (keyup.enter)="verifyOTP()">
         </div>
 
-        <div class="test-tip" *ngIf="showTestCodeTip">
-          <span class="material-symbols-outlined">lightbulb</span>
-          <span>Testing Code: Enter <strong>123456</strong> to verify.</span>
-        </div>
-
         <div class="error-banner" *ngIf="otpError">
           <span class="material-symbols-outlined">warning</span>
           <span>{{ otpError }}</span>
@@ -305,7 +300,7 @@
         <h1 class="page-title-main" style="display:flex; align-items:center; gap:8px;">
           <button class="btn btn-ghost btn-sm" (click)="goBackToGateway()" style="padding: 4px; border-radius: 50%; color:var(--on-surface-variant); display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;"><span class="material-symbols-outlined" style="margin:0;">arrow_back</span></button>
           {{ activeTab === 'school' ? 'Institution' : activeTab === 'instructor' ? 'Instructor' : activeTab === 'judge' ? 'Judge' : activeTab === 'student' ? 'Group/Individual' : 'Sponsor' }} Registration
-          <span *ngIf="schoolForm.name.includes('Draft')" class="badge warning" style="vertical-align: middle; margin-left: 8px;">Draft Resumed</span>
+          <span *ngIf="isDraftResumed" class="badge warning" style="vertical-align: middle; margin-left: 8px;">Draft Resumed</span>
         </h1>
         <p class="page-subtitle">{{ activeTab === 'student' ? 'Register onto the national championship platform as an independent competitor or competition squad' : 'Register onto the national championship platform as a chosen ' + (activeTab === 'school' ? 'institution representative' : activeTab) }}</p>
       </div>
@@ -427,8 +422,8 @@
                 <p style="font-size:12px; color:var(--on-surface-variant); margin-top:2px;">Add student competitors or groups competing under {{ schoolForm.name || 'your institution' }}</p>
               </div>
               <div style="display: flex; gap: 4px; background: var(--surface-container); padding: 4px; border-radius: 8px;">
-                <button type="button" class="btn btn-sm" [class.btn-primary]="studentRegMode==='single'" [class.btn-subtle]="studentRegMode!=='single'" (click)="studentRegMode='single'" style="padding: 4px 12px; font-size:12px;">Single Student</button>
                 <button type="button" class="btn btn-sm" [class.btn-primary]="studentRegMode==='group'" [class.btn-subtle]="studentRegMode!=='group'" (click)="studentRegMode='group'" style="padding: 4px 12px; font-size:12px;">Group / Team</button>
+                <button type="button" class="btn btn-sm" [class.btn-primary]="studentRegMode==='single'" [class.btn-subtle]="studentRegMode!=='single'" (click)="studentRegMode='single'" style="padding: 4px 12px; font-size:12px;">Single Student</button>
               </div>
             </div>
 
@@ -556,35 +551,35 @@
                 <label class="form-label">Team Lead *</label>
                 <div class="grid-2">
                   <input class="form-control" type="text" placeholder="Full Name (Lead)" [(ngModel)]="teamForm.leadName" name="teamLeadName">
-                  <input class="form-control" type="email" placeholder="Email (Lead)" [(ngModel)]="teamForm.leadEmail" name="teamLeadEmail">
+                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.leadEmail" name="teamLeadEmail">
                 </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Team Member 2 *</label>
                 <div class="grid-2">
                   <input class="form-control" type="text" placeholder="Full Name" [(ngModel)]="teamForm.member2Name" name="teamMember2Name">
-                  <input class="form-control" type="email" placeholder="Email" [(ngModel)]="teamForm.member2Email" name="teamMember2Email">
+                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.member2Email" name="teamMember2Email">
                 </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Team Member 3 *</label>
                 <div class="grid-2">
                   <input class="form-control" type="text" placeholder="Full Name" [(ngModel)]="teamForm.member3Name" name="teamMember3Name">
-                  <input class="form-control" type="email" placeholder="Email" [(ngModel)]="teamForm.member3Email" name="teamMember3Email">
+                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.member3Email" name="teamMember3Email">
                 </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Team Member 4 (Optional)</label>
                 <div class="grid-2">
                   <input class="form-control" type="text" placeholder="Full Name" [(ngModel)]="teamForm.member4Name" name="teamMember4Name">
-                  <input class="form-control" type="email" placeholder="Email" [(ngModel)]="teamForm.member4Email" name="teamMember4Email">
+                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.member4Email" name="teamMember4Email">
                 </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Team Member 5 (Optional)</label>
                 <div class="grid-2">
                   <input class="form-control" type="text" placeholder="Full Name" [(ngModel)]="teamForm.member5Name" name="teamMember5Name">
-                  <input class="form-control" type="email" placeholder="Email" [(ngModel)]="teamForm.member5Email" name="teamMember5Email">
+                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.member5Email" name="teamMember5Email">
                 </div>
               </div>
 
@@ -727,134 +722,203 @@
           <!-- View 1: Live Preview -->
           <div *ngIf="!isAuthorizedUser || rightPanelMode === 'preview'" class="preview-panel-content fade-in">
             <!-- School Preview Card -->
-            <div class="school-preview-card">
-              <div class="card-glow-effect"></div>
-              
+            <div class="school-preview-card" [class.has-data]="!!schoolForm.name">
+              <!-- Ambient glow -->
+              <div class="card-ambient-glow"></div>
+              <div class="card-orb-1"></div>
+              <div class="card-orb-2"></div>
+
               <!-- Placeholder State -->
               <div class="card-placeholder-state" *ngIf="!schoolForm.name">
-                <span class="material-symbols-outlined placeholder-icon animate-pulse">account_balance</span>
+                <div class="placeholder-ring">
+                  <span class="material-symbols-outlined placeholder-icon">account_balance</span>
+                </div>
                 <p class="placeholder-text">Enter school name to generate institutional preview</p>
+                <div class="placeholder-dots">
+                  <span></span><span></span><span></span>
+                </div>
               </div>
 
               <!-- Active State -->
               <ng-container *ngIf="schoolForm.name">
-                <div class="school-card-crest-wrap">
-                  <div class="school-card-crest">
-                    <span>{{ getInitials(schoolForm.name, 'SCH') }}</span>
+                <!-- Progress ribbon -->
+                <div class="card-progress-ribbon">
+                  <div class="ribbon-track">
+                    <div class="ribbon-fill" [style.width.%]="schoolForm.name && schoolForm.tel && schoolForm.email ? 100 : schoolForm.name ? 40 : 10"></div>
                   </div>
-                  <div class="school-card-badge-status" [class.ready]="schoolForm.name && schoolForm.tel && schoolForm.email">
-                    {{ (schoolForm.name && schoolForm.tel && schoolForm.email) ? 'READY' : 'DRAFT' }}
+                  <span class="ribbon-pct">{{ schoolForm.name && schoolForm.tel && schoolForm.email ? 'Complete' : 'In Progress' }}</span>
+                </div>
+
+                <!-- Crest section -->
+                <div class="card-crest-section">
+                  <div class="crest-outer-ring">
+                    <div class="crest-ring-segment" *ngFor="let s of [1,2,3,4,5,6]" [style.--rot]="s * 60"></div>
+                  </div>
+                  <div class="crest-inner" [class.has-logo]="!!schoolLogoUrl">
+                    <img *ngIf="schoolLogoUrl" [src]="schoolLogoUrl" alt="School Logo" class="crest-logo-img">
+                    <span *ngIf="!schoolLogoUrl">{{ getInitials(schoolForm.name, 'SCH') }}</span>
+                  </div>
+                  <div class="crest-status" [class.ready]="schoolForm.name && schoolForm.tel && schoolForm.email">
+                    <span class="status-dot"></span>
+                    {{ (schoolForm.name && schoolForm.tel && schoolForm.email) ? 'Registered' : 'Draft' }}
                   </div>
                 </div>
-                <h2 class="school-card-name">{{ schoolForm.name }}</h2>
-                <div class="school-card-meta">
-                  <span class="school-card-pill category">{{ schoolForm.category }}</span>
-                  <span class="school-card-pill region">{{ schoolForm.region }}</span>
+
+                <!-- School name -->
+                <h2 class="card-school-name">{{ schoolForm.name }}</h2>
+                <div class="card-meta-pills">
+                  <span class="pill pill-category">{{ schoolForm.category || 'General' }}</span>
+                  <span class="pill pill-region">{{ schoolForm.region || 'Ghana' }}</span>
                 </div>
-                <hr class="card-divider">
-                
-                <!-- Sub Tab switcher within the preview card -->
+
+                <!-- Divider with shine -->
+                <div class="card-shine-divider">
+                  <div class="shine-bar"></div>
+                  <span class="material-symbols-outlined">diamond</span>
+                  <div class="shine-bar"></div>
+                </div>
+
+                <!-- Sub Tab switcher -->
                 <div class="card-sub-tabs">
                   <button type="button" class="sub-tab-btn" [class.active]="cardSubTab === 'profile'" (click)="cardSubTab = 'profile'">
-                    <span class="material-symbols-outlined">info</span> Profile
+                    <span class="material-symbols-outlined">badge</span> Profile
                   </button>
                   <button type="button" class="sub-tab-btn" [class.active]="cardSubTab === 'roster'" (click)="cardSubTab = 'roster'">
-                    <span class="material-symbols-outlined">groups</span> Roster ({{ schoolForm.students.length + schoolForm.teams.length }})
+                    <span class="material-symbols-outlined">diversity_3</span> Roster
+                    <span class="tab-badge" *ngIf="schoolForm.students.length + schoolForm.teams.length">{{ schoolForm.students.length + schoolForm.teams.length }}</span>
                   </button>
                   <button type="button" class="sub-tab-btn" [class.active]="cardSubTab === 'docs'" (click)="cardSubTab = 'docs'" *ngIf="maxSchoolStepReached >= 4 || schoolForm.gps">
                     <span class="material-symbols-outlined">verified</span> Docs
                   </button>
                 </div>
 
-                <!-- Pane 1: Profile Details -->
-                <div class="school-card-info-grid fade-in" *ngIf="cardSubTab === 'profile'">
-                  <div class="info-item" *ngIf="schoolForm.district">
-                    <span class="material-symbols-outlined">location_city</span>
-                    <div class="info-text">
-                      <span class="info-label">District</span>
-                      <span class="info-val">{{ schoolForm.district }}</span>
+                <!-- Pane 1: Profile -->
+                <div class="card-pane fade-in" *ngIf="cardSubTab === 'profile'">
+                  <div class="profile-grid">
+                    <div class="profile-item" *ngIf="schoolForm.district">
+                      <div class="profile-item-icon" style="background:rgba(0,63,135,0.08);color:var(--primary)">
+                        <span class="material-symbols-outlined">location_city</span>
+                      </div>
+                      <div class="profile-item-text">
+                        <span class="profile-label">District</span>
+                        <span class="profile-value">{{ schoolForm.district }}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div class="info-item" *ngIf="schoolForm.tel">
-                    <span class="material-symbols-outlined">call</span>
-                    <div class="info-text">
-                      <span class="info-label">Phone</span>
-                      <span class="info-val">{{ schoolForm.tel }}</span>
+                    <div class="profile-item" *ngIf="schoolForm.tel">
+                      <div class="profile-item-icon" style="background:rgba(16,185,129,0.08);color:#10b981">
+                        <span class="material-symbols-outlined">call</span>
+                      </div>
+                      <div class="profile-item-text">
+                        <span class="profile-label">Phone</span>
+                        <span class="profile-value">{{ schoolForm.tel }}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div class="info-item" *ngIf="schoolForm.email">
-                    <span class="material-symbols-outlined">mail</span>
-                    <div class="info-text">
-                      <span class="info-label">Email</span>
-                      <span class="info-val">{{ schoolForm.email }}</span>
+                    <div class="profile-item" *ngIf="schoolForm.email">
+                      <div class="profile-item-icon" style="background:rgba(99,102,241,0.08);color:#6366f1">
+                        <span class="material-symbols-outlined">mail</span>
+                      </div>
+                      <div class="profile-item-text">
+                        <span class="profile-label">Email</span>
+                        <span class="profile-value">{{ schoolForm.email }}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div class="info-item" *ngIf="schoolForm.gps">
-                    <span class="material-symbols-outlined">my_location</span>
-                    <div class="info-text">
-                      <span class="info-label">GPS Address</span>
-                      <span class="info-val active-gps">{{ schoolForm.gps }}</span>
+                    <div class="profile-item" *ngIf="schoolForm.gps">
+                      <div class="profile-item-icon" style="background:rgba(245,158,11,0.08);color:#f59e0b">
+                        <span class="material-symbols-outlined">my_location</span>
+                      </div>
+                      <div class="profile-item-text">
+                        <span class="profile-label">GPS Address</span>
+                        <span class="profile-value gps-active">{{ schoolForm.gps }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- Pane 2: Roster List -->
-                <div class="school-card-roster-pane fade-in" *ngIf="cardSubTab === 'roster'">
-                  <div class="roster-empty-state" *ngIf="schoolForm.students.length === 0 && schoolForm.teams.length === 0">
-                    <span class="material-symbols-outlined empty-icon animate-pulse">group_add</span>
-                    <p>No competitors registered yet</p>
-                    <span style="font-size:10px; color:#cbd5e1;">Use Step 3 to add members</span>
-                  </div>
-                  <div class="roster-item animate-pop" *ngFor="let s of schoolForm.students">
-                    <div class="item-name-wrap">
-                      <span class="material-symbols-outlined item-icon">school</span>
-                      <span class="item-name">{{ s.name }}</span>
+                <!-- Pane 2: Roster -->
+                <div class="card-pane fade-in" *ngIf="cardSubTab === 'roster'">
+                  <div class="roster-list" *ngIf="schoolForm.students.length > 0 || schoolForm.teams.length > 0; else rosterEmpty">
+                    <div class="roster-entry" *ngFor="let s of schoolForm.students">
+                      <div class="roster-avatar" [style.background]="'var(--primary)'">
+                        <span>{{ getInitials(s.name, 'ST') }}</span>
+                      </div>
+                      <div class="roster-info">
+                        <span class="roster-name">{{ s.name }}</span>
+                        <span class="roster-email" *ngIf="s.email">{{ s.email }}</span>
+                      </div>
+                      <span class="roster-track" [class]="s.track?.toLowerCase()">{{ s.track }}</span>
                     </div>
-                    <span class="item-track-badge" [class]="s.track">{{ s.track }}</span>
-                  </div>
-                  <div class="roster-item animate-pop" *ngFor="let t of schoolForm.teams">
-                    <div class="item-name-wrap">
-                      <span class="material-symbols-outlined item-icon">groups</span>
-                      <span class="item-name">{{ t.name }}</span>
+                    <div class="roster-entry" *ngFor="let t of schoolForm.teams">
+                      <div class="roster-avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">
+                        <span class="material-symbols-outlined" style="font-size:14px;color:#fff">groups</span>
+                      </div>
+                      <div class="roster-info">
+                        <span class="roster-name">{{ t.name }}</span>
+                        <span class="roster-email">{{ t.members || t.leadName || 'Team' }}</span>
+                      </div>
+                      <span class="roster-track" [class]="t.track?.toLowerCase()">{{ t.track }}</span>
                     </div>
-                    <span class="item-track-badge" [class]="t.track.toLowerCase()">{{ t.track }}</span>
+                  </div>
+                  <ng-template #rosterEmpty>
+                    <div class="roster-empty">
+                      <div class="roster-empty-ring">
+                        <span class="material-symbols-outlined">group_add</span>
+                      </div>
+                      <p>No competitors added yet</p>
+                      <span class="roster-empty-hint">Use Step 3 to register students or teams</span>
+                    </div>
+                  </ng-template>
+                </div>
+
+                <!-- Pane 3: Docs -->
+                <div class="card-pane fade-in" *ngIf="cardSubTab === 'docs'">
+                  <div class="docs-grid">
+                    <div class="doc-item">
+                      <div class="doc-item-icon">
+                        <span class="material-symbols-outlined">image</span>
+                      </div>
+                      <div class="doc-item-info">
+                        <span class="doc-label">School Logo</span>
+                        <span class="doc-status" [class.success]="false" [class.pending]="!!(selectedFileIds['schoolLogo'] || []).length">
+                          {{ (selectedFileIds['schoolLogo'] || []).length ? 'Pending Review' : 'Not Uploaded' }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="doc-item">
+                      <div class="doc-item-icon">
+                        <span class="material-symbols-outlined">description</span>
+                      </div>
+                      <div class="doc-item-info">
+                        <span class="doc-label">Supporting Docs</span>
+                        <span class="doc-status" [class.success]="false" [class.pending]="!!(selectedFileIds['accredDocs'] || []).length">
+                          {{ (selectedFileIds['accredDocs'] || []).length ? 'Pending Review' : 'Not Uploaded' }}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <!-- Pane 3: Docs / Verification -->
-                <div style="width:100%;" class="fade-in" *ngIf="cardSubTab === 'docs'">
-                  <div class="school-card-docs" *ngIf="schoolStep === 4" style="margin-bottom:0;">
-                    <div class="doc-badge">
-                      <span class="material-symbols-outlined">check_circle</span> Logo Zone Ready
-                    </div>
-                    <div class="doc-badge">
-                      <span class="material-symbols-outlined">check_circle</span> Documents Zone Ready
-                    </div>
-                  </div>
-                  <div class="roster-empty-state" *ngIf="schoolStep !== 4" style="padding: 20px 0; color: #94a3b8;">
-                    <span class="material-symbols-outlined empty-icon">upload_file</span>
-                    <p>Awaiting Step 4 (Uploads)</p>
-                  </div>
-                </div>
-
-                <div class="school-card-footer" style="margin-top:16px;">
+                <!-- Footer seal -->
+                <div class="card-seal">
                   <span class="material-symbols-outlined">verified_user</span>
-                  <span>NTIC GHANA CHAMPIONSHIP ENTRY</span>
-                </div>
-
-                <div class="preview-submit-actions" *ngIf="schoolForm.name">
-                  <label class="terms-checkbox-wrapper" style="display:flex; align-items:flex-start; gap:8px; margin-bottom:12px; font-size:13px; color:var(--on-surface-variant); cursor:pointer;">
-                    <input type="checkbox" [(ngModel)]="schoolForm.acceptedTerms" name="schoolTerms" style="margin-top:2px; accent-color:var(--primary);">
-                    <span>I agree to the <a (click)="openTermsModal('school')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
-                  </label>
-                  <button class="btn btn-primary btn-full submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting || !schoolForm.acceptedTerms">
-                    <span *ngIf="!isSubmitting" style="display:flex; align-items:center; gap:8px;">
-                      Submit Registry <span class="material-symbols-outlined">check_circle</span>
-                    </span>
-                    <span *ngIf="isSubmitting" class="spinner-inline"></span>
-                  </button>
+                  <span>NTIC Ghana — Championship Registry</span>
                 </div>
               </ng-container>
+            </div>
+
+            <div class="preview-submit-actions" *ngIf="schoolForm.name">
+              <label class="terms-checkbox-wrapper">
+                <div class="terms-checkbox">
+                  <input type="checkbox" [(ngModel)]="schoolForm.acceptedTerms" name="schoolTerms">
+                  <span class="checkbox-glow"></span>
+                </div>
+                <span>I agree to the <a (click)="openTermsModal('school')" class="terms-link">Terms & Conditions</a> and <a (click)="openPrivacyModal()" class="terms-link">Privacy Policy</a></span>
+              </label>
+              <button class="btn btn-primary btn-full submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting || !schoolForm.acceptedTerms">
+                <span *ngIf="!isSubmitting" style="display:flex; align-items:center; gap:8px;">
+                  Submit Registry <span class="material-symbols-outlined">check_circle</span>
+                </span>
+                <span *ngIf="isSubmitting" class="spinner-inline"></span>
+              </button>
             </div>
           </div>
           <!-- View 2: Registered List -->
@@ -1756,14 +1820,16 @@
           <div class="modal-info-grid">
             <div class="modal-info-item">
               <span class="item-lbl">School Logo Status</span>
-              <span class="item-val" style="color: #10b981; display:flex; align-items:center; gap:4px;">
-                <span class="material-symbols-outlined" style="font-size:16px;">check_circle</span> Ready
+              <span class="item-val" [style.color]="(selectedFileIds['schoolLogo'] || []).length ? '#f59e0b' : '#94a3b8'" style="display:flex; align-items:center; gap:4px;">
+                <span class="material-symbols-outlined" style="font-size:16px;">{{ (selectedFileIds['schoolLogo'] || []).length ? 'hourglass_empty' : 'block' }}</span>
+                {{ (selectedFileIds['schoolLogo'] || []).length ? 'Pending Review' : 'Not Uploaded' }}
               </span>
             </div>
             <div class="modal-info-item">
               <span class="item-lbl">Registration Documents</span>
-              <span class="item-val" style="color: #10b981; display:flex; align-items:center; gap:4px;">
-                <span class="material-symbols-outlined" style="font-size:16px;">check_circle</span> Verified
+              <span class="item-val" [style.color]="(selectedFileIds['accredDocs'] || []).length ? '#f59e0b' : '#94a3b8'" style="display:flex; align-items:center; gap:4px;">
+                <span class="material-symbols-outlined" style="font-size:16px;">{{ (selectedFileIds['accredDocs'] || []).length ? 'hourglass_empty' : 'block' }}</span>
+                {{ (selectedFileIds['accredDocs'] || []).length ? 'Pending Review' : 'Not Uploaded' }}
               </span>
             </div>
           </div>
@@ -1895,6 +1961,99 @@
       <div class="terms-modal-footer">
         <button class="btn btn-primary" (click)="closePrivacyModal()">Understood</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     CUSTOM CREDENTIALS & LOGIN SUCCESS MODAL (WITH ONE-CLICK COPY)
+     ══════════════════════════════════════════════════════════════ -->
+<div class="custom-modal-backdrop" *ngIf="credentialsModal?.isOpen" (click)="proceedFromCredentialsModal()">
+  <div class="custom-credentials-modal" (click)="$event.stopPropagation()">
+    <!-- Top Glow Badge -->
+    <div class="cred-modal-header">
+      <div class="cred-badge-icon">
+        <span class="material-symbols-outlined">emoji_events</span>
+      </div>
+      <h3 class="cred-modal-title">{{ credentialsModal?.title }}</h3>
+      <p class="cred-modal-subtitle">{{ credentialsModal?.subtitle }}</p>
+    </div>
+
+    <!-- Credentials Cards Box -->
+    <div class="cred-cards-container">
+      <!-- Access Pass Box -->
+      <div class="cred-item-card">
+        <div class="cred-item-meta">
+          <span class="cred-label">YOUR ACCESS PASS</span>
+          <span class="cred-tag">OFFICIAL ID</span>
+        </div>
+        <div class="cred-value-row">
+          <code class="cred-code-text">{{ credentialsModal?.accessPass }}</code>
+          <button class="btn-cred-copy" [class.copied]="credentialsModal?.copiedPass" (click)="copyText('pass')">
+            <span class="material-symbols-outlined icon">{{ credentialsModal?.copiedPass ? 'check_circle' : 'content_copy' }}</span>
+            <span>{{ credentialsModal?.copiedPass ? 'Copied!' : 'Copy Pass' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- PIN Box -->
+      <div class="cred-item-card">
+        <div class="cred-item-meta">
+          <span class="cred-label">SECURITY PIN CODE</span>
+          <span class="cred-tag pin">6-DIGIT PIN</span>
+        </div>
+        <div class="cred-value-row">
+          <code class="cred-code-text pin-code">{{ credentialsModal?.pin }}</code>
+          <button class="btn-cred-copy" [class.copied]="credentialsModal?.copiedPin" (click)="copyText('pin')">
+            <span class="material-symbols-outlined icon">{{ credentialsModal?.copiedPin ? 'check_circle' : 'content_copy' }}</span>
+            <span>{{ credentialsModal?.copiedPin ? 'Copied!' : 'Copy PIN' }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Copy All Quick Button -->
+    <div class="cred-copy-all-wrapper">
+      <button class="btn-copy-all" [class.copied]="credentialsModal?.copiedAll" (click)="copyText('all')">
+        <span class="material-symbols-outlined">{{ credentialsModal?.copiedAll ? 'done_all' : 'inventory_2' }}</span>
+        <span>{{ credentialsModal?.copiedAll ? 'All Credentials Copied to Clipboard!' : 'Copy Both Credentials (Pass + PIN)' }}</span>
+      </button>
+    </div>
+
+    <!-- Notice Note -->
+    <div class="cred-info-banner" *ngIf="credentialsModal?.extraInfo">
+      <span class="material-symbols-outlined info-icon">info</span>
+      <span>{{ credentialsModal?.extraInfo }}</span>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="cred-modal-footer">
+      <button class="btn-cred-proceed" (click)="proceedFromCredentialsModal()">
+        <span>Continue to Platform</span>
+        <span class="material-symbols-outlined">arrow_forward</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     CUSTOM SLEEK ALERT NOTIFICATION MODAL (NO NATIVE PROMPTS)
+     ══════════════════════════════════════════════════════════════ -->
+<div class="custom-modal-backdrop" *ngIf="customAlertModal?.isOpen" (click)="closeCustomAlert()">
+  <div class="custom-alert-card" [ngClass]="customAlertModal?.type || 'info'" (click)="$event.stopPropagation()">
+    <div class="custom-alert-icon-wrap">
+      <span class="material-symbols-outlined">
+        {{ customAlertModal?.type === 'success' ? 'check_circle' :
+           customAlertModal?.type === 'warning' ? 'warning' :
+           customAlertModal?.type === 'error' ? 'error' : 'info' }}
+      </span>
+    </div>
+    <div class="custom-alert-content">
+      <h4 class="custom-alert-title">{{ customAlertModal?.title }}</h4>
+      <p class="custom-alert-message">{{ customAlertModal?.message }}</p>
+    </div>
+    <div class="custom-alert-actions">
+      <button class="btn-alert-dismiss" (click)="closeCustomAlert()">Got It</button>
     </div>
   </div>
 </div>

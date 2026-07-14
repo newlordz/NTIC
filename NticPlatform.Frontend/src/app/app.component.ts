@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, Renderer2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -17,15 +17,19 @@ export class AppComponent implements OnInit, OnDestroy {
   isLandingPage = true;
   currentUser: { name: string; avatar: string; roleName: string; roleId: string } | null = null;
   showScrollToTop = false;
+  isMobileSidebarOpen = false;
   private scrollListener = () => this.checkScroll();
 
   userProfiles: Record<string, { name: string; avatar: string; roleName: string }> = {
-    student:      { name: 'Kwame Asante',       avatar: 'KA', roleName: 'Student' },
-    instructor:   { name: 'Efua Mensah',         avatar: 'EM', roleName: 'Instructor' },
-    school_admin: { name: 'Dr. Emmanuel Osei',   avatar: 'EO', roleName: 'School Admin' },
-    judge:        { name: 'Prof. Yaw Osei',       avatar: 'YO', roleName: 'Competition Judge' },
-    sponsor:      { name: 'Sampson Cudjoe',       avatar: 'SC', roleName: 'Sponsor Partner' },
-    super_admin:  { name: 'Admin',                 avatar: 'AD', roleName: 'Super Admin' },
+    student:        { name: 'Kwame Asante',       avatar: 'KA', roleName: 'Student' },
+    instructor:     { name: 'Efua Mensah',         avatar: 'EM', roleName: 'Instructor' },
+    school_admin:   { name: 'Dr. Emmanuel Osei',   avatar: 'EO', roleName: 'School Admin' },
+    judge:          { name: 'Prof. Yaw Osei',       avatar: 'YO', roleName: 'Competition Judge' },
+    sponsor:        { name: 'Sampson Cudjoe',       avatar: 'SC', roleName: 'Sponsor Partner' },
+    super_admin:    { name: 'Admin',                 avatar: 'AD', roleName: 'Super Admin' },
+    content_manager:{ name: 'Content Manager',      avatar: 'CM', roleName: 'Content Manager' },
+    reviewer:       { name: 'Reviewer',             avatar: 'RV', roleName: 'Reviewer' },
+    competition_manager:{ name: 'Competition Manager', avatar: 'CP', roleName: 'Competition Manager' },
   };
 
   pageTitles: Record<string, string> = {
@@ -41,7 +45,7 @@ export class AppComponent implements OnInit, OnDestroy {
     'reporting':    'Reports & Analytics',
   };
 
-  constructor(private router: Router, public themeService: ThemeService, public contentService: ContentService) {
+  constructor(private router: Router, public themeService: ThemeService, public contentService: ContentService, private renderer: Renderer2) {
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
@@ -77,10 +81,32 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
+  toggleMobileSidebar(): void {
+    this.isMobileSidebarOpen = !this.isMobileSidebarOpen;
+    if (this.isMobileSidebarOpen) {
+      this.renderer.addClass(document.body, 'sidebar-drawer-open');
+    } else {
+      this.renderer.removeClass(document.body, 'sidebar-drawer-open');
+    }
+  }
+
+  closeMobileSidebar(): void {
+    this.isMobileSidebarOpen = false;
+    this.renderer.removeClass(document.body, 'sidebar-drawer-open');
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    if (typeof window !== 'undefined' && window.innerWidth > 768) {
+      this.closeMobileSidebar();
+    }
+  }
+
   ngOnDestroy(): void {
     if (typeof window !== 'undefined') {
       window.removeEventListener('scroll', this.scrollListener, true);
     }
+    this.closeMobileSidebar();
   }
 
   checkScroll(): void {
@@ -97,13 +123,18 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   scrollToTop(): void {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
-    document.body.scrollTo({ top: 0, behavior: 'smooth' });
-    const mainContent = document.querySelector('.main-content');
-    if (mainContent) {
-      mainContent.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    const el = document.scrollingElement || document.documentElement;
+    const start = el.scrollTop;
+    if (start === 0) return;
+    const duration = 350;
+    const startTime = performance.now();
+    const animate = (time: number) => {
+      const elapsed = time - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      el.scrollTop = start * (1 - t * (2 - t));
+      if (t < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
   }
 
   getInitials(name: string): string {
@@ -122,11 +153,16 @@ export class AppComponent implements OnInit, OnDestroy {
     );
 
     if (registeredUser) {
+      const roleLabels: Record<string, string> = {
+        judge: 'Competition Judge', sponsor: 'Sponsor Partner', instructor: 'Instructor',
+        content_manager: 'Content Manager', reviewer: 'Reviewer', competition_manager: 'Competition Manager',
+        school_admin: 'School Admin', student: 'Student', super_admin: 'Super Admin'
+      };
       this.currentUser = {
         roleId,
         name: registeredUser.fullName,
         avatar: this.getInitials(registeredUser.fullName),
-        roleName: registeredUser.role === 'judge' ? 'Competition Judge' : registeredUser.role === 'sponsor' ? 'Sponsor Partner' : registeredUser.role === 'instructor' ? 'Instructor' : 'User'
+        roleName: roleLabels[registeredUser.role] || 'User'
       };
     } else {
       const profile = this.userProfiles[roleId] || this.userProfiles['super_admin'];
@@ -137,6 +173,7 @@ export class AppComponent implements OnInit, OnDestroy {
   hasAccess(menuItem: string): boolean {
     if (!this.currentUser) return false;
     const role = this.currentUser.roleId;
+    const adminRoles = ['super_admin', 'content_manager', 'reviewer', 'competition_manager'];
 
     switch (menuItem) {
       case 'dashboard':    return true;
@@ -145,12 +182,12 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'lms':          return ['student'].includes(role);
       case 'instructor':   return ['instructor'].includes(role);
       case 'judge':        return ['judge'].includes(role);
-      case 'competitions': return ['student', 'instructor', 'school_admin', 'judge', 'super_admin'].includes(role);
-      case 'leaderboard':  return ['student', 'instructor', 'school_admin', 'judge', 'sponsor', 'super_admin'].includes(role);
+      case 'competitions': return ['student', 'instructor', 'school_admin', 'judge', 'super_admin', 'content_manager', 'competition_manager'].includes(role);
+      case 'leaderboard':  return ['student', 'instructor', 'school_admin', 'judge', 'sponsor', ...adminRoles].includes(role);
       case 'talent':       return ['instructor', 'sponsor'].includes(role);
       case 'sponsors':     return ['sponsor'].includes(role);
-      case 'reporting':    return ['instructor', 'school_admin', 'super_admin'].includes(role);
-      case 'records':      return ['instructor', 'school_admin', 'super_admin'].includes(role);
+      case 'reporting':    return ['instructor', 'school_admin', 'super_admin', 'reviewer'].includes(role);
+      case 'records':      return ['instructor', 'school_admin', 'super_admin', 'reviewer'].includes(role);
       default:             return false;
     }
   }

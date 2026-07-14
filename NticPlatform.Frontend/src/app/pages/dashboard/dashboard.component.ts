@@ -46,10 +46,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ];
 
   // ─── SUPER ADMIN STATE ─────────────────────────
-  adminTab: 'overview' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' = 'overview';
+  adminTab: 'overview' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' = 'overview';
   registerRole: 'judge' | 'sponsor' = 'judge';
   ticketFilter: 'all' | 'judge' | 'sponsor' = 'all';
   isRegModalOpen = false;
+  isAdminModalOpen = false;
+  editingAdmin: any = null;
+  adminForm: any = {};
+  adminError = '';
+  adminSuccess = '';
+  deleteConfirmAdmin: any = null;
   roleModalRole: string | null = null;
   roleModalUsers: any[] = [];
   hoverUsers: any[] = [];
@@ -161,6 +167,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.contentService.saveUsers(val);
   }
 
+  get adminUsers(): any[] {
+    return this.contentService.users.filter(u =>
+      ['super_admin', 'content_manager', 'reviewer', 'competition_manager'].includes(u.role)
+    );
+  }
+
   get pendingApprovals(): any[] {
     return this.contentService.pendingApprovals;
   }
@@ -177,12 +189,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   get roleDistribution(): { role: string; label: string; count: number; percent: number; icon: string }[] {
     const roleMeta: Record<string, { label: string; icon: string }> = {
-      super_admin:   { label: 'Super Admin',   icon: 'admin_panel_settings' },
-      school_admin:  { label: 'School Admin',  icon: 'domain' },
-      instructor:    { label: 'Instructor',    icon: 'patient_list' },
-      judge:         { label: 'Judge',         icon: 'gavel' },
-      sponsor:       { label: 'Sponsor',       icon: 'handshake' },
-      student:       { label: 'Student',       icon: 'school' },
+      super_admin:     { label: 'Super Admin',     icon: 'admin_panel_settings' },
+      content_manager: { label: 'Content Manager', icon: 'edit_note' },
+      reviewer:        { label: 'Reviewer',        icon: 'rate_review' },
+      competition_manager:{ label: 'Competition Manager', icon: 'emoji_events' },
+      school_admin:    { label: 'School Admin',    icon: 'domain' },
+      instructor:      { label: 'Instructor',      icon: 'patient_list' },
+      judge:           { label: 'Judge',           icon: 'gavel' },
+      sponsor:         { label: 'Sponsor',         icon: 'handshake' },
+      student:         { label: 'Student',         icon: 'school' },
     };
     const total = this.registeredUsers.length || 1;
     const counts: Record<string, number> = {};
@@ -329,6 +344,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { name: 'Python Data Structures', icon: 'data_object', progress: 68, lastActive: '2 days ago', module: 'Module 4 of 8', color: 'primary' },
     { name: 'Intro to Neural Networks', icon: 'model_training', progress: 15, lastActive: '1 week ago', module: 'Module 1 of 6', color: 'tertiary' }
   ];
+
+  selectedCourseLeaderboardTrack = 'Python Data Structures';
+
+  courseCycleLeaderboards: Record<string, Array<{
+    rank: number;
+    name: string;
+    school: string;
+    progressPct: number;
+    accuracyPct: number;
+    streakDays: number;
+    algoScore: number;
+    isCurrentUser: boolean;
+  }>> = {
+    'Python Data Structures': [
+      { rank: 1, name: 'Kwame Asante (You)', school: 'Achimota School', progressPct: 98, accuracyPct: 96, streakDays: 14, algoScore: 96.8, isCurrentUser: true },
+      { rank: 2, name: 'Amina Sulemana', school: 'Wesley Girls High', progressPct: 95, accuracyPct: 94, streakDays: 12, algoScore: 94.5, isCurrentUser: false },
+      { rank: 3, name: 'Kofi Annan', school: 'PRESEC Legon', progressPct: 92, accuracyPct: 91, streakDays: 9, algoScore: 91.2, isCurrentUser: false },
+      { rank: 4, name: 'Zainab Owusu', school: 'Mfantsipim School', progressPct: 88, accuracyPct: 89, streakDays: 7, algoScore: 88.4, isCurrentUser: false },
+      { rank: 5, name: 'Samuel Boateng', school: 'Opoku Ware School', progressPct: 85, accuracyPct: 87, streakDays: 5, algoScore: 86.0, isCurrentUser: false },
+    ],
+    'Intro to Neural Networks': [
+      { rank: 1, name: 'Drissa Traore', school: 'PRESEC Legon', progressPct: 100, accuracyPct: 97, streakDays: 18, algoScore: 98.2, isCurrentUser: false },
+      { rank: 2, name: 'Kwame Asante (You)', school: 'Achimota School', progressPct: 88, accuracyPct: 98, streakDays: 14, algoScore: 93.4, isCurrentUser: true },
+      { rank: 3, name: 'Fatima Al-Hassan', school: 'Wesley Girls High', progressPct: 86, accuracyPct: 93, streakDays: 10, algoScore: 89.7, isCurrentUser: false },
+      { rank: 4, name: 'Caleb Mensah', school: 'Pope John SHS', progressPct: 84, accuracyPct: 90, streakDays: 8, algoScore: 87.1, isCurrentUser: false },
+    ]
+  };
+
+  get activeCourseLeaderboardList() {
+    return this.courseCycleLeaderboards[this.selectedCourseLeaderboardTrack] || this.courseCycleLeaderboards['Python Data Structures'];
+  }
 
   activeTracks = [
     { name: 'Python Data Structures', icon: 'data_object', module: 'Module 4 of 8', enrolled: 320, completion: 68, color: 'primary', status: 'In Progress' },
@@ -876,6 +922,89 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   closeTicketModal(): void {
     this.viewTicketUser = null;
+  }
+
+  /* ── Admin Management ────────────────────────────────── */
+  openAdminModal(admin?: any): void {
+    this.editingAdmin = admin || null;
+    this.adminError = '';
+    this.adminSuccess = '';
+    this.adminForm = admin ? { ...admin } : {
+      fullName: '', email: '', phone: '', role: 'content_manager', organization: 'NTIC'
+    };
+    this.isAdminModalOpen = true;
+  }
+
+  closeAdminModal(): void {
+    this.isAdminModalOpen = false;
+    this.editingAdmin = null;
+    this.adminForm = {};
+  }
+
+  saveAdminUser(): void {
+    if (!this.adminForm.fullName || !this.adminForm.email) {
+      this.adminError = 'Name and email are required.';
+      return;
+    }
+
+    if (this.editingAdmin) {
+      const users = [...this.contentService.users];
+      const idx = users.findIndex(u => u.id === this.editingAdmin.id);
+      if (idx > -1) {
+        users[idx] = { ...users[idx], ...this.adminForm };
+        this.contentService.saveUsers(users);
+      }
+    } else {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const newUser = {
+        id: `USR-${String(this.contentService.users.length + 1).padStart(3, '0')}`,
+        role: this.adminForm.role,
+        fullName: this.adminForm.fullName,
+        email: this.adminForm.email,
+        phone: this.adminForm.phone || '+233 24 000 0000',
+        otp,
+        organization: this.adminForm.organization || 'NTIC',
+        ticket: `NTIC-ADM-${Math.floor(1000 + Math.random() * 9000)}`,
+        status: 'Active',
+        registeredAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        lastLogin: 'Never'
+      };
+      const currentUsers = [...this.contentService.users];
+      currentUsers.unshift(newUser);
+      this.contentService.saveUsers(currentUsers);
+
+      this.addAuditLog({ action: `Created ${this.adminForm.role} account: ${this.adminForm.fullName} (${this.adminForm.email})`, type: 'approval' });
+      this.closeAdminModal();
+      this.showTicketModal(newUser);
+      return;
+    }
+
+    this.adminSuccess = 'Admin saved successfully.';
+    setTimeout(() => { this.closeAdminModal(); }, 1200);
+  }
+
+  confirmDeleteAdmin(admin: any): void {
+    this.deleteConfirmAdmin = admin;
+  }
+
+  deleteAdminUser(): void {
+    if (!this.deleteConfirmAdmin) return;
+    const users = this.contentService.users.filter(u => u.id !== this.deleteConfirmAdmin.id);
+    this.contentService.saveUsers(users);
+    this.addAuditLog({ action: `Removed admin: ${this.deleteConfirmAdmin.fullName} (${this.deleteConfirmAdmin.role})`, type: 'revoked' });
+    this.deleteConfirmAdmin = null;
+  }
+
+  cancelDeleteAdmin(): void {
+    this.deleteConfirmAdmin = null;
+  }
+
+  getAdminRoleLabel(role: string): string {
+    const labels: Record<string, string> = {
+      super_admin: 'Super Admin', content_manager: 'Content Manager', reviewer: 'Reviewer',
+      competition_manager: 'Competition Manager'
+    };
+    return labels[role] || role;
   }
 
   getInitials(fullName: string): string {
@@ -1463,6 +1592,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (r === 'instructor' || r === 'mentor') return 'Instructor';
     if (r === 'student') return 'Student';
     if (r === 'super_admin' || r === 'admin') return 'Super Admin';
+    if (r === 'content_manager') return 'Content Manager';
+    if (r === 'reviewer') return 'Reviewer';
+    if (r === 'competition_manager') return 'Competition Manager';
     return role.charAt(0).toUpperCase() + role.slice(1);
   }
 
@@ -1475,6 +1607,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (r === 'instructor' || r === 'mentor') return 'assignment_ind';
     if (r === 'student') return 'person';
     if (r === 'super_admin' || r === 'admin') return 'admin_panel_settings';
+    if (r === 'competition_manager') return 'emoji_events';
     return 'badge';
   }
 }

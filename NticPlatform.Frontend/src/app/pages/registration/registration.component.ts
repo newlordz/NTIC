@@ -19,7 +19,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   isPathModalOpen = false;
   schoolStep = 1; // 1, 2, or 3
   maxSchoolStepReached = 1;
-  studentRegMode = 'single';
+  studentRegMode = 'group';
   selectedTrack = 'robotics';
   showAdminPaths = false;
 
@@ -29,31 +29,88 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   otpError = '';
   resendTimer = 0;
   resendInterval: any;
-  showTestCodeTip = false;
-
-  // Prefilled mock draft data to populate on successful resume
-  mockDraftData = {
-    schoolName: 'Prempeh College (Draft Resume)',
-    category: 'Public High School',
-    region: 'Ashanti',
-    district: 'Kumasi Metropolitan',
-    tel: '+233 24 412 3456',
-    email: 'prempeh.draft@edu.gh',
-    gps: '6.6666° N, 1.6163° W',
-    repName: 'Kwame Osei',
-    repEmail: 'k.osei@edu.gh',
-    repTel: '+233 50 123 4567',
-    students: [
-      { name: 'Kojo Antwi', dob: '2010-05-12', gender: 'Male', class: 'Form 2', guardian: 'Mr. Antwi +233...', track: 'coding', skills: { alg: 'advanced', hw: 'intermediate', ai: 'novice' } }
-    ],
-    teams: [
-      { name: 'Prempeh Robo Alpha', track: 'Robotics', leadName: 'Kwame Osei', leadEmail: 'k.osei@edu.gh', member2Name: 'Kofi Manu', member2Email: 'k.manu@edu.gh', member3Name: 'Yaw Boakye', member3Email: 'y.boakye@edu.gh' }
-    ]
-  };
+  isDraftResumed = false;
 
   rightPanelMode = 'preview'; // 'preview' | 'list'
 
-schoolForm = {
+  credentialsModal: {
+    isOpen: boolean;
+    title: string;
+    subtitle: string;
+    accessPass: string;
+    pin: string;
+    extraInfo?: string;
+    nextRoute?: string;
+    copiedPass: boolean;
+    copiedPin: boolean;
+    copiedAll: boolean;
+  } | null = null;
+
+  customAlertModal: {
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'warning' | 'info' | 'error';
+  } | null = null;
+
+  openCredentialsModal(title: string, subtitle: string, accessPass: string, pin: string, extraInfo?: string, nextRoute?: string) {
+    this.credentialsModal = {
+      isOpen: true,
+      title,
+      subtitle,
+      accessPass,
+      pin,
+      extraInfo,
+      nextRoute,
+      copiedPass: false,
+      copiedPin: false,
+      copiedAll: false
+    };
+  }
+
+  copyText(type: 'pass' | 'pin' | 'all') {
+    if (!this.credentialsModal) return;
+    let textToCopy = '';
+    if (type === 'pass') {
+      textToCopy = this.credentialsModal.accessPass;
+      this.credentialsModal.copiedPass = true;
+      setTimeout(() => { if (this.credentialsModal) this.credentialsModal.copiedPass = false; }, 2500);
+    } else if (type === 'pin') {
+      textToCopy = this.credentialsModal.pin;
+      this.credentialsModal.copiedPin = true;
+      setTimeout(() => { if (this.credentialsModal) this.credentialsModal.copiedPin = false; }, 2500);
+    } else if (type === 'all') {
+      textToCopy = `Access Pass: ${this.credentialsModal.accessPass}\nPIN: ${this.credentialsModal.pin}`;
+      this.credentialsModal.copiedAll = true;
+      setTimeout(() => { if (this.credentialsModal) this.credentialsModal.copiedAll = false; }, 2500);
+    }
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(textToCopy);
+    }
+  }
+
+  proceedFromCredentialsModal() {
+    const route = this.credentialsModal?.nextRoute;
+    this.credentialsModal = null;
+    if (route) {
+      this.router.navigate([route]);
+    }
+  }
+
+  showCustomAlert(message: string, title = 'Notice', type: 'success' | 'warning' | 'info' | 'error' = 'info') {
+    this.customAlertModal = {
+      isOpen: true,
+      title,
+      message,
+      type
+    };
+  }
+
+  closeCustomAlert() {
+    this.customAlertModal = null;
+  }
+
+  schoolForm = {
     name: '',
     category: 'Public High School',
     region: 'Greater Accra',
@@ -182,6 +239,7 @@ schoolForm = {
 
   selectedFileIds: { [key: string]: string[] } = {};
   selectedFileNames: { [key: string]: string[] } = {};
+  schoolLogoUrl: string | null = null;
 
   async onFileSelected(event: any, field: string): Promise<void> {
     const files: FileList = event.target.files;
@@ -196,6 +254,17 @@ schoolForm = {
       }
       this.selectedFileIds[field] = [...(this.selectedFileIds[field] || []), ...ids];
       this.selectedFileNames[field] = [...(this.selectedFileNames[field] || []), ...names];
+
+      if (field === 'schoolLogo') {
+        this.loadSchoolLogo();
+      }
+    }
+  }
+
+  private async loadSchoolLogo(): Promise<void> {
+    const id = this.selectedFileIds['schoolLogo']?.[0];
+    if (id) {
+      this.schoolLogoUrl = await this.fileStorage.getUrl(id);
     }
   }
 
@@ -204,6 +273,10 @@ schoolForm = {
     if (id) await this.fileStorage.remove(id);
     this.selectedFileIds[field]?.splice(index, 1);
     this.selectedFileNames[field]?.splice(index, 1);
+    if (field === 'schoolLogo') {
+      if (this.schoolLogoUrl) { this.fileStorage.revokeUrl(this.schoolLogoUrl); }
+      this.schoolLogoUrl = null;
+    }
   }
 
   // Terms & Conditions
@@ -295,31 +368,34 @@ schoolForm = {
 
   sendOTP(): void {
     if (!this.verificationInput) {
-      this.otpError = this.verificationMethod === 'email' 
-        ? 'Please enter your registered email address.' 
+      this.otpError = this.verificationMethod === 'email'
+        ? 'Please enter your registered email address.'
         : 'Please enter your registered mobile number.';
       return;
     }
-    
-    if (this.verificationMethod === 'email') {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(this.verificationInput)) {
-        this.otpError = 'Please enter a valid email address.';
-        return;
-      }
-    } else {
-      const phoneRegex = /^\+?[0-9]{8,15}$/;
-      if (!phoneRegex.test(this.verificationInput.replace(/\s+/g, ''))) {
-        this.otpError = 'Please enter a valid mobile number.';
-        return;
-      }
+
+    const inputKey = this.verificationInput.trim().toLowerCase();
+    const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
+
+    if (!drafts[inputKey]) {
+      this.otpError = 'No saved draft found for this ' + this.verificationMethod + '. Please check and try again, or start a new registration.';
+      return;
     }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpStore = {
+      code: otp,
+      contact: inputKey,
+      expiresAt: Date.now() + 5 * 60 * 1000
+    };
+    localStorage.setItem('ntic_otp', JSON.stringify(otpStore));
 
     this.otpError = '';
     this.otpCode = '';
     this.regState = 'otp_verification';
     this.startResendTimer();
-    this.showTestCodeTip = true;
+
+    this.showCustomAlert(`A 6-digit verification code has been sent to ${this.verificationInput}.\n\nFor demo purposes: Your code is ${otp}`, 'Verification Code Sent', 'info');
   }
 
   startResendTimer(): void {
@@ -335,6 +411,14 @@ schoolForm = {
   }
 
   resendOTPCode(): void {
+    const stored = JSON.parse(localStorage.getItem('ntic_otp') || 'null');
+    if (stored) {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      stored.code = otp;
+      stored.expiresAt = Date.now() + 5 * 60 * 1000;
+      localStorage.setItem('ntic_otp', JSON.stringify(stored));
+      this.showCustomAlert(`New verification code sent: ${otp}`, 'Code Resent', 'info');
+    }
     this.otpCode = '';
     this.otpError = '';
     this.startResendTimer();
@@ -346,19 +430,33 @@ schoolForm = {
       return;
     }
 
-    if (this.otpCode === '123456') {
-      this.otpError = '';
-      this.regState = 'resume_success';
-      this.clearTimer();
-      
-      // Auto-transition to form with prefilled draft data after 2 seconds
-      setTimeout(() => {
-        this.applyDraftPrefills();
-        this.regState = 'new';
-      }, 2200);
-    } else {
-      this.otpError = 'Invalid code. Use 123456 to test the flow successfully.';
+    const stored = JSON.parse(localStorage.getItem('ntic_otp') || 'null');
+
+    if (!stored) {
+      this.otpError = 'No verification code found. Please request a new one.';
+      return;
     }
+
+    if (Date.now() > stored.expiresAt) {
+      localStorage.removeItem('ntic_otp');
+      this.otpError = 'Verification code has expired. Please request a new one.';
+      return;
+    }
+
+    if (this.otpCode !== stored.code) {
+      this.otpError = 'Invalid verification code. Please try again.';
+      return;
+    }
+
+    localStorage.removeItem('ntic_otp');
+    this.otpError = '';
+    this.regState = 'resume_success';
+    this.clearTimer();
+
+    setTimeout(() => {
+      this.applyDraftPrefills(stored.contact);
+      this.regState = 'new';
+    }, 2200);
   }
 
   cardSubTab = 'profile'; // 'profile' | 'roster' | 'docs'
@@ -392,7 +490,7 @@ schoolForm = {
 
   addStudent(): void {
     if (!this.studentForm.name) {
-      alert('Please enter student name.');
+      this.showCustomAlert('Please enter student name.', 'Validation Error', 'warning');
       return;
     }
     this.schoolForm.students.push({
@@ -414,7 +512,7 @@ schoolForm = {
 
   addTeam(): void {
     if (!this.teamForm.name) {
-      alert('Please enter team name.');
+      this.showCustomAlert('Please enter team name.', 'Validation Error', 'warning');
       return;
     }
     this.schoolForm.teams.push({
@@ -453,7 +551,7 @@ schoolForm = {
   registerStudent(): void {
     if (this.competitorMode === 'group') {
       if (!this.teamForm.name || !this.teamForm.leadName) {
-        alert('Please enter your Group / Team Name and Team Lead full name.');
+        this.showCustomAlert('Please enter your Group / Team Name and Team Lead full name.', 'Missing Information', 'warning');
         return;
       }
       const ticket = `NTIC-GRP-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -462,7 +560,7 @@ schoolForm = {
         u.email?.trim().toLowerCase() === leadEmail.toLowerCase()
       );
       if (found && this.teamForm.leadEmail?.trim()) {
-        alert('An account with this Team Lead email already exists. Please log in instead.');
+        this.showCustomAlert('An account with this Team Lead email already exists. Please log in instead.', 'Account Exists', 'warning');
         return;
       }
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -506,14 +604,20 @@ schoolForm = {
 
       localStorage.setItem('activeRoleId', 'student');
       localStorage.setItem('activeUserEmail', leadEmail);
-      alert(`Group Registration Successful!\n\nTeam: ${this.teamForm.name}\nAccess Pass: ${ticket}\nPIN: ${otp}\n\nUse these credentials to log in to the Championship Arena.`);
-      this.router.navigate(['/competitions']);
+      this.openCredentialsModal(
+        'Group Registration Successful! 🎉',
+        `Your team "${this.teamForm.name}" has been registered. Copy and save your login credentials below:`,
+        ticket,
+        otp,
+        'Use these credentials to log in to the Championship Arena.',
+        '/competitions'
+      );
       return;
     }
 
     // Individual Competitor
     if (!this.studentForm.name) {
-      alert('Please enter your full name to register.');
+      this.showCustomAlert('Please enter your full name to register.', 'Validation Error', 'warning');
       return;
     }
     const ticket = `NTIC-STU-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -522,7 +626,7 @@ schoolForm = {
       u.email?.trim().toLowerCase() === studentEmail.toLowerCase()
     );
     if (found && this.studentForm.email?.trim()) {
-      alert('An account with this email already exists. Please log in instead.');
+      this.showCustomAlert('An account with this email already exists. Please log in instead.', 'Account Exists', 'warning');
       return;
     }
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -545,8 +649,14 @@ schoolForm = {
 
     localStorage.setItem('activeRoleId', 'student');
     localStorage.setItem('activeUserEmail', studentEmail);
-    alert(`Registration successful!\n\nYour Access Pass: ${ticket}\nYour PIN: ${otp}\n\nUse these credentials to log in from the homepage.`);
-    this.router.navigate(['/lms']);
+    this.openCredentialsModal(
+      'Registration Successful! 🎉',
+      'Your registration has been approved. Copy and save your secure login credentials below:',
+      ticket,
+      otp,
+      'Use your Access Pass and PIN to log in from the homepage.',
+      '/lms'
+    );
   }
 
   detectGps(): void {
@@ -574,15 +684,50 @@ schoolForm = {
   }
 
   saveDraft(): void {
+    let contact = '';
+    let formData: any = null;
+
+    switch (this.activeTab) {
+      case 'school':
+        contact = this.schoolForm.repEmail || this.schoolForm.email;
+        formData = { ...this.schoolForm };
+        break;
+      case 'instructor':
+        contact = this.instructorForm.email;
+        formData = { ...this.instructorForm };
+        break;
+      case 'student':
+        contact = this.studentForm.email;
+        formData = { ...this.studentForm, selectedTrack: this.selectedTrack };
+        break;
+      case 'judge':
+        contact = this.judgeForm.email;
+        formData = { ...this.judgeForm };
+        break;
+      case 'sponsor':
+        contact = this.sponsorForm.email;
+        formData = { ...this.sponsorForm };
+        break;
+      case 'team':
+        contact = this.teamForm.leadEmail;
+        formData = { ...this.teamForm };
+        break;
+    }
+
+    if (!contact) {
+      this.showCustomAlert('Please fill in your email address before saving a draft.', 'Email Required', 'warning');
+      return;
+    }
+
+    const contactKey = contact.trim().toLowerCase();
     const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
-    drafts[this.activeTab] = {
-      instructor: this.activeTab === 'instructor' ? { ...this.instructorForm } : undefined,
-      student: this.activeTab === 'student' ? { ...this.studentForm, selectedTrack: this.selectedTrack } : undefined,
-      school: this.activeTab === 'school' ? { ...this.schoolForm } : undefined,
+    drafts[contactKey] = {
+      tab: this.activeTab,
+      data: formData,
       savedAt: new Date().toISOString()
     };
     localStorage.setItem('ntic_drafts', JSON.stringify(drafts));
-    alert('Draft saved successfully!');
+    this.showCustomAlert(`Draft saved successfully! You can resume using ${contact}.`, 'Draft Saved', 'success');
   }
 
   generateJudgeTicket(): void {
@@ -622,6 +767,7 @@ schoolForm = {
       return;
     }
     this.activeTab = role;
+    this.isDraftResumed = false;
     if (role === 'school') {
       this.clearDraftPrefills();
     } else if (role === 'instructor') {
@@ -668,6 +814,7 @@ schoolForm = {
   }
 
   private clearDraftPrefills(): void {
+    this.isDraftResumed = false;
     this.schoolStep = 1;
     this.maxSchoolStepReached = 1;
     this.schoolForm = {
@@ -687,27 +834,43 @@ schoolForm = {
     };
   }
 
-  private applyDraftPrefills(): void {
-    this.schoolStep = 1;
-    this.maxSchoolStepReached = 4;
-    this.schoolForm.name = this.mockDraftData.schoolName;
-    this.schoolForm.category = this.mockDraftData.category;
-    this.schoolForm.region = this.mockDraftData.region;
-    this.schoolForm.district = this.mockDraftData.district;
-    this.schoolForm.tel = this.mockDraftData.tel;
-    this.schoolForm.email = this.mockDraftData.email;
-    this.schoolForm.gps = this.mockDraftData.gps;
-    this.schoolForm.repName = this.mockDraftData.repName;
-    this.schoolForm.repEmail = this.mockDraftData.repEmail;
-    this.schoolForm.repTel = this.mockDraftData.repTel;
-    this.schoolForm.students = [...this.mockDraftData.students];
-    this.schoolForm.teams = [...this.mockDraftData.teams];
-    this.activeTab = 'school';
+  private applyDraftPrefills(contact: string): void {
+    const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
+    const draft = drafts[contact];
+
+    if (!draft) return;
+
+    this.isDraftResumed = true;
+    this.activeTab = draft.tab;
+
+    switch (draft.tab) {
+      case 'school':
+        this.schoolStep = 1;
+        this.maxSchoolStepReached = 4;
+        this.schoolForm = { ...this.schoolForm, ...draft.data };
+        break;
+      case 'instructor':
+        this.instructorForm = { ...this.instructorForm, ...draft.data };
+        break;
+      case 'student':
+        this.studentForm = { ...this.studentForm, ...draft.data };
+        this.selectedTrack = draft.data.selectedTrack || 'coding';
+        break;
+      case 'judge':
+        this.judgeForm = { ...this.judgeForm, ...draft.data };
+        break;
+      case 'sponsor':
+        this.sponsorForm = { ...this.sponsorForm, ...draft.data };
+        break;
+      case 'team':
+        this.teamForm = { ...this.teamForm, ...draft.data };
+        break;
+    }
   }
 
   openPreviewModal(): void {
     if (!this.schoolForm.name) {
-      alert('Please fill out the form (at least the School Name) before previewing.');
+      this.showCustomAlert('Please fill out the form (at least the School Name) before previewing.', 'Form Incomplete', 'warning');
       return;
     }
     this.isPreviewModalOpen = true;
@@ -882,7 +1045,14 @@ schoolForm = {
         });
         this.contentService.saveAuditLogs(currentAudit);
         
-        alert(`Judge application submitted! Your access pass code is: ${ticket}. OTP: ${otp}. You can now log in using these credentials.`);
+        this.openCredentialsModal(
+          'Judge Application Submitted! 🎉',
+          'Your judge profile has been created. Copy and save your secure login credentials below:',
+          ticket,
+          otp,
+          'Use these credentials to access the Judge & Grading Portal.',
+          '/dashboard'
+        );
       } else if (this.activeTab === 'sponsor') {
         const ticket = 'NTIC-SPO-' + Math.random().toString(36).substring(2, 6).toUpperCase();
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -913,7 +1083,14 @@ schoolForm = {
         });
         this.contentService.saveAuditLogs(currentAudit);
         
-        alert(`Sponsor registration submitted! Your access pass code is: ${ticket}. OTP: ${otp}. You can now log in using these credentials.`);
+        this.openCredentialsModal(
+          'Sponsor Profile Registered! 🎉',
+          'Your sponsor account has been created. Copy and save your secure credentials below:',
+          ticket,
+          otp,
+          'Use these credentials to access the Sponsor Portal.',
+          '/dashboard'
+        );
       }
 
       if (approvalType) {
@@ -937,6 +1114,13 @@ schoolForm = {
           type: 'approval'
         });
         this.contentService.saveAuditLogs(currentAudit);
+      }
+
+      // Remove this draft from saved drafts
+      if (contact) {
+        const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
+        delete drafts[contact.trim().toLowerCase()];
+        localStorage.setItem('ntic_drafts', JSON.stringify(drafts));
       }
 
       this.isSuccessModalOpen = true;

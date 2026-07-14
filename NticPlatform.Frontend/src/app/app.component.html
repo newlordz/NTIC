@@ -1,17 +1,20 @@
 <div [class.app-shell]="!isLandingPage">
+  <!-- ══ MOBILE SIDEBAR OVERLAY ══ -->
+  <div class="sidebar-overlay" *ngIf="!isLandingPage && isMobileSidebarOpen" (click)="closeMobileSidebar()"></div>
+
   <!-- ══ SIDEBAR ══ -->
-  <aside class="sidebar" *ngIf="!isLandingPage">
+  <aside class="sidebar" *ngIf="!isLandingPage" [class.mobile-open]="isMobileSidebarOpen">
     <div class="sidebar-brand">
       <div class="brand-logo">
         <span class="material-symbols-outlined fill" style="font-size:22px;">rocket_launch</span>
       </div>
       <div class="brand-text">
         <div class="brand-name">NTIC Portal</div>
-        <div class="brand-sub">{{ currentUser?.roleId === 'student' ? 'Student Workspace' : currentUser?.roleId === 'instructor' ? 'Mentor Workspace' : currentUser?.roleId === 'super_admin' ? 'Admin' : 'Competition Manager' }}</div>
+        <div class="brand-sub">{{ currentUser?.roleId === 'student' ? 'Student Workspace' : currentUser?.roleId === 'instructor' ? 'Mentor Workspace' : currentUser?.roleId === 'super_admin' ? 'Admin' : currentUser?.roleId === 'content_manager' || currentUser?.roleId === 'reviewer' || currentUser?.roleId === 'competition_manager' ? 'Command Center' : 'Competition Manager' }}</div>
       </div>
     </div>
  
-    <a class="sidebar-new-btn" *ngIf="currentUser?.roleId !== 'student' && currentUser?.roleId !== 'sponsor' && currentUser?.roleId !== 'super_admin'"
+    <a class="sidebar-new-btn" *ngIf="currentUser?.roleId !== 'student' && currentUser?.roleId !== 'sponsor' && currentUser?.roleId !== 'super_admin' && currentUser?.roleId !== 'content_manager' && currentUser?.roleId !== 'reviewer' && currentUser?.roleId !== 'competition_manager'"
        [routerLink]="currentUser?.roleId === 'judge' ? '/judge' : currentUser?.roleId === 'instructor' ? '/instructor' : currentUser?.roleId === 'school_admin' ? '/dashboard' : '/competitions'"
        [queryParams]="currentUser?.roleId === 'school_admin' ? { action: 'add_team' } : null">
       <span class="material-symbols-outlined" style="font-size:18px;">{{ currentUser?.roleId === 'judge' ? 'gavel' : currentUser?.roleId === 'school_admin' ? 'group_add' : currentUser?.roleId === 'instructor' ? 'assignment_turned_in' : 'add' }}</span>
@@ -20,34 +23,34 @@
  
     <div class="sidebar-section">
       <div class="sidebar-section-label">Main</div>
-      <a class="nav-item" *ngIf="hasAccess('dashboard')" routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+      <a class="nav-item" *ngIf="hasAccess('dashboard')" routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">dashboard</span>
         Dashboard
       </a>
-      <a class="nav-item" *ngIf="hasAccess('roster')" routerLink="/dashboard" [queryParams]="{ action: 'add_team' }" [class.active]="false">
+      <a class="nav-item" *ngIf="hasAccess('roster')" routerLink="/dashboard" [queryParams]="{ action: 'add_team' }" [class.active]="false" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">groups</span>
         My Teams & Roster
       </a>
       <a class="nav-item" *ngIf="hasAccess('registration')" 
          [routerLink]="currentUser?.roleId === 'super_admin' ? '/dashboard' : '/registration'" 
          [queryParams]="currentUser?.roleId === 'super_admin' ? { openRegModal: 'true' } : { tab: 'school' }" 
-         routerLinkActive="active">
+         routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">how_to_reg</span>
         Registration
       </a>
-      <a class="nav-item" *ngIf="hasAccess('lms')" routerLink="/lms" routerLinkActive="active">
+      <a class="nav-item" *ngIf="hasAccess('lms')" routerLink="/lms" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">school</span>
         LMS
       </a>
-      <a class="nav-item" *ngIf="hasAccess('instructor')" routerLink="/instructor" routerLinkActive="active">
+      <a class="nav-item" *ngIf="hasAccess('instructor')" routerLink="/instructor" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">patient_list</span>
         Instructor Portal
       </a>
-      <a class="nav-item" *ngIf="hasAccess('judge')" routerLink="/judge" routerLinkActive="active">
+      <a class="nav-item" *ngIf="hasAccess('judge')" routerLink="/judge" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">gavel</span>
         Judging Arena
       </a>
-      <a class="nav-item" *ngIf="hasAccess('competitions')" routerLink="/competitions" routerLinkActive="active">
+      <a class="nav-item" *ngIf="hasAccess('competitions')" routerLink="/competitions" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">emoji_events</span>
         Competitions
       </a>
@@ -55,30 +58,30 @@
  
     <div class="sidebar-section" *ngIf="hasAccess('leaderboard') || hasAccess('talent') || hasAccess('sponsors') || hasAccess('reporting') || hasAccess('records')">
       <div class="sidebar-section-label">Analytics</div>
-      <a class="nav-item" *ngIf="hasAccess('leaderboard')" routerLink="/leaderboard" routerLinkActive="active">
+      <a class="nav-item" *ngIf="hasAccess('leaderboard')" routerLink="/leaderboard" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">leaderboard</span>
         Leaderboard
       </a>
-      <a class="nav-item" *ngIf="hasAccess('talent')" routerLink="/talent" routerLinkActive="active">
+      <a class="nav-item" *ngIf="hasAccess('talent')" routerLink="/talent" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">stars</span>
         Talent Discovery
       </a>
-      <a class="nav-item" *ngIf="hasAccess('sponsors')" routerLink="/sponsors" routerLinkActive="active">
+      <a class="nav-item" *ngIf="hasAccess('sponsors')" routerLink="/sponsors" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">handshake</span>
         Sponsors
       </a>
-      <a class="nav-item" *ngIf="hasAccess('reporting')" routerLink="/reporting" routerLinkActive="active">
+      <a class="nav-item" *ngIf="hasAccess('reporting')" routerLink="/reporting" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">assessment</span>
         {{ currentUser?.roleId === 'school_admin' ? 'School Reports' : 'Reports' }}
       </a>
-      <a class="nav-item" *ngIf="hasAccess('records')" routerLink="/records" routerLinkActive="active">
+      <a class="nav-item" *ngIf="hasAccess('records')" routerLink="/records" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">folder_open</span>
         Records
       </a>
     </div>
  
     <div class="sidebar-footer">
-      <a class="nav-item" routerLink="/">
+      <a class="nav-item" routerLink="/" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">logout</span>
         Landing Page
       </a>
@@ -99,6 +102,12 @@
     <!-- Top Bar -->
     <header class="topbar" *ngIf="!isLandingPage">
       <div class="topbar-left">
+        <!-- Hamburger: visible only on mobile -->
+        <button class="hamburger-btn" (click)="toggleMobileSidebar()" [class.active]="isMobileSidebarOpen" aria-label="Toggle navigation">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
         <span class="page-title">{{ currentTitle }}</span>
       </div>
 

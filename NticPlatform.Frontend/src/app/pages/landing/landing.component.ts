@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, ViewChild, Renderer2 } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -49,6 +49,7 @@ interface LeaderboardEntry {
 })
 export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('matrixCanvas') matrixCanvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('previewFrame') previewFrameRef!: ElementRef<HTMLIFrameElement>;
   private cardListeners: { card: HTMLElement; mouseMove: any; mouseLeave: any }[] = [];
   roles: UserRole[] = [
     {
@@ -98,6 +99,12 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   get isAdminEmail(): boolean {
     return this.email.trim().toLowerCase() === 'admin@ntic.org.gh';
+  }
+
+  getWindSpeed(): number {
+    const kw = parseFloat(this.arenaState.innovation?.windKw || '14.2');
+    const speed = 3.5 - (kw - 10) * 0.15;
+    return Math.max(0.4, Math.min(3.5, speed));
   }
 
   // Harvard-style interactive states
@@ -186,6 +193,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   private matrixAnimFrame: number | null = null;
   private matrixResizeListener: any;
   private matrixMouseListener: any;
+  private matrixClickListener: any;
   private stripeMouseX: number = 0;
   private stripeMouseY: number = 0;
   private stripeTargetMouseX: number = 0;
@@ -226,6 +234,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     innovation: 'IoT renewable power distribution and environmental impact dashboard'
   };
 
+  private autopilotTimers: any[] = [];
+
   arenaState: any = {
     robotics: {
       distance: 24,
@@ -235,6 +245,10 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       radarSweep: 0,
       posX: 50,
       posY: 50,
+      obstacleX: 25,
+      obstacleY: 35,
+      obstacleStatus: 'Target Stone',
+      missionSuccess: false,
       clawOpen: false,
       cargo: 'None',
       status: 'RADAR SCANNING • PATH CLEAR',
@@ -243,15 +257,31 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     },
     coding: {
       benchmarkMs: '0.38',
-      complexity: 'O(N log N)',
       memory: '14.2 MB',
       opsSec: '2.4M ops/s',
       bars: [35, 60, 25, 85, 45, 95, 50, 75, 30, 90, 65, 80],
-      sortAlgo: 'QuickSort O(N log N)',
-      isSorting: false,
-      status: 'BENCHMARK PASSED • ZERO MEMORY LEAKS',
-      statusColor: '#0088cc',
-      log: 'DP memoization table computed for 1,000 subproblems in 0.38ms.'
+      sortAlgo: 'QuickSort',
+      sorted: false,
+      status: '// Array is unsorted. Press Run to start QuickSort.',
+      statusColor: '#38bdf8',
+      log: '> Ready. Waiting to sort the array...',
+      code: `function quickSort(arr) {
+  if (arr.length <= 1) return arr;
+  const pivot = arr[arr.length - 1];
+  const left = [];
+  const right = [];
+  for (let i = 0; i < arr.length - 1; i++) {
+    arr[i] < pivot ? left.push(arr[i])
+                   : right.push(arr[i]);
+  }
+  return [...quickSort(left),
+          pivot,
+          ...quickSort(right)];
+}
+
+const data = [35, 60, 25, 85, 45, 95, 50, 75, 30, 90, 65, 80];
+const result = quickSort(data);
+console.log(result);`
     },
     ai: {
       confidence: 98.4,
@@ -296,31 +326,232 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   };
 
   // ── CODING CHALLENGE WIDGET ───────────────────────────────────
-  challenges = [
-    {
-      title: 'challenge_01.py', track: 'Coding', difficulty: 'Easy',
-      timeLimit: '15 min', solvedCount: 342, successRate: 78, points: 50,
-      problem: 'Write a function that returns the reverse of a string.\nExample: reverse("Ghana") → "anahG"',
-      hint: 'Use Python slicing: s[::-1] reverses any sequence.',
-      validator: (code: string) => /\[::-1\]|reversed|join/.test(code)
-    },
-    {
-      title: 'challenge_02.py', track: 'Coding', difficulty: 'Medium',
-      timeLimit: '20 min', solvedCount: 218, successRate: 62, points: 100,
-      problem: 'Find the largest sum of any contiguous subarray.\nExample: maxSubarray([-2,1,-3,4,-1,2,1,-5,4]) → 6',
-      hint: "Kadane's algorithm: track current_sum and max_sum as you iterate.",
-      validator: (code: string) => /max|current|kadane|subarray/i.test(code) && code.includes('for')
-    },
-    {
-      title: 'challenge_03.py', track: 'Coding', difficulty: 'Hard',
-      timeLimit: '30 min', solvedCount: 89, successRate: 41, points: 200,
-      problem: 'Given coin denominations, return the minimum coins to make a target.\nExample: coinChange([1,5,10,25], 36) → 3 (25+10+1)',
-      hint: 'Use dynamic programming (bottom-up). Build table dp[0..amount].',
-      validator: (code: string) => /dp|dynamic|memo|min/i.test(code) && code.includes('for')
-    }
-  ];
+  challengeLanguages = ['HTML/CSS', 'Python', 'JavaScript', 'C++'];
+  selectedChallengeLanguage = 'HTML/CSS';
+  showSolution = false;
+
+  challengesByLanguage: { [key: string]: any[] } = {
+    Python: [
+      {
+        title: 'hello.py', track: 'Coding', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 720, successRate: 98, points: 10,
+        problem: 'Print the words "Hello World" to the screen.',
+        hint: 'Use the print() function: print("Hello World")',
+        solution: 'print("Hello World")',
+        validator: (code: string) => /print/.test(code) && /hello|Hello/i.test(code)
+      },
+      {
+        title: 'name.py', track: 'Coding', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 680, successRate: 96, points: 10,
+        problem: 'Create a variable called name with your name, then print it.',
+        hint: 'Use name = "YourName" then print(name)',
+        solution: 'name = "Ghana"\nprint(name)',
+        validator: (code: string) => /name\s*=/.test(code) && /print/.test(code)
+      },
+      {
+        title: 'add.py', track: 'Coding', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 650, successRate: 95, points: 15,
+        problem: 'Add two numbers (5 and 3) together and print the result.',
+        hint: 'Use print(5 + 3) or make variables: a = 5, b = 3, print(a + b)',
+        solution: 'a = 5\nb = 3\nprint(a + b)',
+        validator: (code: string) => /\+\s*/.test(code) && /print/.test(code) && /[53]/.test(code)
+      },
+      {
+        title: 'color.py', track: 'Coding', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 610, successRate: 93, points: 15,
+        problem: 'Print "My favorite color is blue" using a variable called color.',
+        hint: 'Set color = "blue" then use print("My favorite color is", color)',
+        solution: 'color = "blue"\nprint("My favorite color is", color)',
+        validator: (code: string) => /color\s*=/.test(code) && /print/.test(code) && /blue/i.test(code)
+      },
+      {
+        title: 'loop.py', track: 'Coding', difficulty: 'Easy',
+        timeLimit: '8 min', solvedCount: 550, successRate: 88, points: 25,
+        problem: 'Use a for loop to print numbers 1 to 5, each on a new line.',
+        hint: 'Use: for i in range(1, 6): print(i)',
+        solution: 'for i in range(1, 6):\n    print(i)',
+        validator: (code: string) => /for/.test(code) && /range/.test(code) && /print/.test(code)
+      },
+      {
+        title: 'if.py', track: 'Coding', difficulty: 'Easy',
+        timeLimit: '8 min', solvedCount: 490, successRate: 84, points: 25,
+        problem: 'Set a variable age to 10. If age is greater than 5, print "Big kid!".',
+        hint: 'Use: age = 10\nif age > 5: print("Big kid!")',
+        solution: 'age = 10\nif age > 5:\n    print("Big kid!")',
+        validator: (code: string) => /if/.test(code) && /print/.test(code) && />/.test(code)
+      }
+    ],
+    JavaScript: [
+      {
+        title: 'hello.js', track: 'Coding', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 700, successRate: 97, points: 10,
+        problem: 'Print "Hello World" to the console.',
+        hint: 'Use console.log("Hello World")',
+        solution: 'console.log("Hello World");',
+        validator: (code: string) => /console\.log/.test(code) && /hello|Hello/i.test(code)
+      },
+      {
+        title: 'greet.js', track: 'Coding', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 650, successRate: 95, points: 10,
+        problem: 'Create a variable called name and print "Hello" + name.',
+        hint: 'Use let name = "Kofi"; then console.log("Hello " + name);',
+        solution: 'let name = "Kofi";\nconsole.log("Hello " + name);',
+        validator: (code: string) => /let\s+name|var\s+name|const\s+name/.test(code) && /console\.log/.test(code)
+      },
+      {
+        title: 'add.js', track: 'Coding', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 620, successRate: 94, points: 15,
+        problem: 'Add two numbers (5 and 3) and show the result with console.log.',
+        hint: 'Use console.log(5 + 3); or make variables first.',
+        solution: 'let x = 5;\nlet y = 3;\nconsole.log(x + y);',
+        validator: (code: string) => /console\.log/.test(code) && /\+\s*/.test(code)
+      },
+      {
+        title: 'alert.js', track: 'Coding', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 590, successRate: 92, points: 15,
+        problem: 'Show a popup alert that says "Welcome to Coding!".',
+        hint: 'Use alert("Welcome to Coding!");',
+        solution: 'alert("Welcome to Coding!");',
+        validator: (code: string) => /alert/.test(code) && /welcome|Welcome/i.test(code)
+      },
+      {
+        title: 'loop.js', track: 'Coding', difficulty: 'Easy',
+        timeLimit: '8 min', solvedCount: 510, successRate: 85, points: 25,
+        problem: 'Use a for loop to print numbers 1 to 5 in the console.',
+        hint: 'Use: for (let i = 1; i <= 5; i++) { console.log(i); }',
+        solution: 'for (let i = 1; i <= 5; i++) {\n  console.log(i);\n}',
+        validator: (code: string) => /for/.test(code) && /console\.log/.test(code) && /\+\+|i\+\+|i\s*=\s*i\s*\+\s*1|i\s*\+=/.test(code)
+      },
+      {
+        title: 'if.js', track: 'Coding', difficulty: 'Easy',
+        timeLimit: '8 min', solvedCount: 460, successRate: 80, points: 25,
+        problem: 'Set a variable age to 10. If age is greater than 5, show an alert.',
+        hint: 'Use: let age = 10;\nif (age > 5) { alert("Big kid!"); }',
+        solution: 'let age = 10;\nif (age > 5) {\n  alert("Big kid!");\n}',
+        validator: (code: string) => /if/.test(code) && /alert/.test(code) && />/.test(code)
+      }
+    ],
+    'C++': [
+      {
+        title: 'hello.cpp', track: 'Coding', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 600, successRate: 95, points: 10,
+        problem: 'Print "Hello World" using cout.',
+        hint: 'Use: cout << "Hello World"; (include iostream and use std::cout or using namespace std)',
+        solution: '#include <iostream>\nusing namespace std;\nint main() {\n  cout << "Hello World";\n  return 0;\n}',
+        validator: (code: string) => /cout/.test(code) && /hello|Hello/i.test(code) && /int\s+main/.test(code)
+      },
+      {
+        title: 'name.cpp', track: 'Coding', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 550, successRate: 93, points: 10,
+        problem: 'Make a variable called name and print it with cout.',
+        hint: 'Use: string name = "Akua"; cout << name;',
+        solution: '#include <iostream>\n#include <string>\nusing namespace std;\nint main() {\n  string name = "Akua";\n  cout << name;\n  return 0;\n}',
+        validator: (code: string) => /string\s+\w+\s*=/.test(code) && /cout/.test(code) && /int\s+main/.test(code)
+      },
+      {
+        title: 'add.cpp', track: 'Coding', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 520, successRate: 91, points: 15,
+        problem: 'Add 5 and 3 and print the result using cout.',
+        hint: 'Use: cout << 5 + 3; or make int variables and add them.',
+        solution: '#include <iostream>\nusing namespace std;\nint main() {\n  int x = 5, y = 3;\n  cout << x + y;\n  return 0;\n}',
+        validator: (code: string) => /cout/.test(code) && /int/.test(code) && /\+/.test(code) && /main/.test(code)
+      },
+      {
+        title: 'age.cpp', track: 'Coding', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 480, successRate: 89, points: 15,
+        problem: 'Create an int variable called age with value 10, then print "I am " and the age.',
+        hint: 'Use: int age = 10; cout << "I am " << age;',
+        solution: '#include <iostream>\nusing namespace std;\nint main() {\n  int age = 10;\n  cout << "I am " << age;\n  return 0;\n}',
+        validator: (code: string) => /int\s+age\s*=\s*10/.test(code) && /cout/.test(code) && /main/.test(code)
+      },
+      {
+        title: 'loop.cpp', track: 'Coding', difficulty: 'Easy',
+        timeLimit: '8 min', solvedCount: 410, successRate: 82, points: 25,
+        problem: 'Use a for loop to print numbers 1 to 5, each on a new line (use endl).',
+        hint: 'Use: for (int i = 1; i <= 5; i++) { cout << i << endl; }',
+        solution: '#include <iostream>\nusing namespace std;\nint main() {\n  for (int i = 1; i <= 5; i++) {\n    cout << i << endl;\n  }\n  return 0;\n}',
+        validator: (code: string) => /for/.test(code) && /cout/.test(code) && /endl/.test(code) && /main/.test(code)
+      },
+      {
+        title: 'if.cpp', track: 'Coding', difficulty: 'Easy',
+        timeLimit: '8 min', solvedCount: 370, successRate: 78, points: 25,
+        problem: 'Set int age = 10. If age is greater than 5, print "Big kid!" using cout.',
+        hint: 'Use: if (age > 5) { cout << "Big kid!"; }',
+        solution: '#include <iostream>\nusing namespace std;\nint main() {\n  int age = 10;\n  if (age > 5) {\n    cout << "Big kid!";\n  }\n  return 0;\n}',
+        validator: (code: string) => /if/.test(code) && /cout/.test(code) && />/.test(code) && /main/.test(code)
+      }
+    ],
+    'HTML/CSS': [
+      {
+        title: 'header.html', track: 'Frontend', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 640, successRate: 96, points: 10,
+        problem: 'Create a heading that says "Hello" and make the text color blue.',
+        hint: 'Use <h1>Hello</h1> and add style="color: blue;" to the heading tag.',
+        solution: '<!DOCTYPE html>\n<html>\n<body>\n  <h1 style="color: blue;">Hello</h1>\n</body>\n</html>',
+        validator: (code: string) => /h1/.test(code) && /color\s*:\s*blue|#0000ff|#00f/i.test(code) && /hello/i.test(code)
+      },
+      {
+        title: 'paragraph.html', track: 'Frontend', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 600, successRate: 94, points: 10,
+        problem: 'Create a paragraph with the text "I love coding" and make the text color red.',
+        hint: 'Use <p>I love coding</p> with style="color: red;" inside the tag.',
+        solution: '<!DOCTYPE html>\n<html>\n<body>\n  <p style="color: red;">I love coding</p>\n</body>\n</html>',
+        validator: (code: string) => /<p/.test(code) && /color\s*:\s*red|#ff0000|#f00/i.test(code) && /love/i.test(code)
+      },
+      {
+        title: 'background.html', track: 'Frontend', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 570, successRate: 92, points: 15,
+        problem: 'Change the background color of the page to yellow.\nUse the body tag with a style.',
+        hint: 'Add style="background: yellow;" to the <body> tag.',
+        solution: '<!DOCTYPE html>\n<html>\n<body style="background: yellow;">\n  <h1>Sunny Day!</h1>\n</body>\n</html>',
+        validator: (code: string) => /body/.test(code) && /background\s*:\s*yellow|#ffff00|#ff0/i.test(code)
+      },
+      {
+        title: 'bigtext.html', track: 'Frontend', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 540, successRate: 90, points: 15,
+        problem: 'Make some text very big! Set font-size to 50px on a paragraph.',
+        hint: 'Use <p style="font-size: 50px;">Big text</p>',
+        solution: '<!DOCTYPE html>\n<html>\n<body>\n  <p style="font-size: 50px;">This is big!</p>\n</body>\n</html>',
+        validator: (code: string) => /font-size\s*:\s*50/.test(code) && /<p/.test(code)
+      },
+      {
+        title: 'center.html', track: 'Frontend', difficulty: 'Very Easy',
+        timeLimit: '5 min', solvedCount: 510, successRate: 88, points: 20,
+        problem: 'Center a heading on the page using text-align.',
+        hint: 'Use <h1 style="text-align: center;">Centered</h1>',
+        solution: '<!DOCTYPE html>\n<html>\n<body>\n  <h1 style="text-align: center;">Centered Title</h1>\n</body>\n</html>',
+        validator: (code: string) => /text-align\s*:\s*center/.test(code) && /h1/.test(code)
+      },
+      {
+        title: 'border.html', track: 'Frontend', difficulty: 'Easy',
+        timeLimit: '8 min', solvedCount: 460, successRate: 83, points: 25,
+        problem: 'Make a box with a black border around it.\nCreate a div and give it a border.',
+        hint: 'Use <div style="border: 2px solid black; padding: 20px;">Hello</div>',
+        solution: '<!DOCTYPE html>\n<html>\n<body>\n  <div style="border: 2px solid black; padding: 20px;">Hello</div>\n</body>\n</html>',
+        validator: (code: string) => /border\s*:\s*.+solid/.test(code) && /div/.test(code)
+      }
+    ]
+  };
+
+  get filteredChallenges(): any[] {
+    return this.challengesByLanguage[this.selectedChallengeLanguage] || [];
+  }
+
   currentChallengeIndex = 0;
-  get currentChallenge() { return this.challenges[this.currentChallengeIndex]; }
+  get currentChallenge() {
+    const list = this.filteredChallenges;
+    return list[this.currentChallengeIndex % list.length] || list[0];
+  }
+  get currentSolution(): string {
+    return this.currentChallenge?.solution || '';
+  }
+
+  selectLanguage(lang: string): void {
+    this.selectedChallengeLanguage = lang;
+    this.currentChallengeIndex = 0;
+    this.showSolution = false;
+    this.typeProblem();
+  }
   typedProblem = '';
   userCode = '';
   codeLineNumbers = [1, 2, 3, 4, 5, 6];
@@ -328,6 +559,9 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   challengeResultMessage = '';
   isChallengeRunning = false;
   hintVisible = false;
+  sessionSolvedToday = 0;
+  sessionPoints = 0;
+  showPreviewModal = false;
   private problemTypeInterval: any;
 
   // ── GHANA REGION MAP ──────────────────────────────────────────
@@ -502,7 +736,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     private ngZone: NgZone,
     private elementRef: ElementRef,
     public themeService: ThemeService,
-    public contentService: ContentService
+    public contentService: ContentService,
+    private renderer: Renderer2
   ) {
     this.activeRoleId = '';
     // Populate videoEditImages with all 48 photos in a shuffled order for organic variation
@@ -575,6 +810,9 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (this.matrixMouseListener && typeof window !== 'undefined') {
       window.removeEventListener('mousemove', this.matrixMouseListener);
+    }
+    if (this.matrixClickListener && this.matrixCanvasRef?.nativeElement) {
+      this.matrixCanvasRef.nativeElement.removeEventListener('click', this.matrixClickListener);
     }
     if (this.codeTypeInterval) clearInterval(this.codeTypeInterval);
     if (this.arenaInterval) clearInterval(this.arenaInterval);
@@ -999,7 +1237,10 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         student: '/lms',
         school_admin: '/dashboard',
         sponsor: '/sponsors',
-        super_admin: '/dashboard'
+        super_admin: '/dashboard',
+        content_manager: '/dashboard',
+        reviewer: '/dashboard',
+        competition_manager: '/dashboard'
       };
       this.router.navigate([roleRoutes[finalRole] || '/dashboard']);
     }, 800);
@@ -1184,47 +1425,50 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   private setupCardParallax(): void {
     if (typeof window === 'undefined') return;
     this.ngZone.runOutsideAngular(() => {
-      const cards = this.elementRef.nativeElement.querySelectorAll('.gateway-card-inner, .academic-login-card, .why-exist-card, .support-card, .spotlight-card, .philosophy-card, .alumni-card, .hero-text-card, .scoreboard-table-card, .challenge-editor-card');
+      // Only apply parallax to the most prominent cards to reduce DOM work
+      const cards = this.elementRef.nativeElement.querySelectorAll(
+        '.why-exist-card, .gateway-card-inner, .academic-login-card, .hero-text-card, .scoreboard-table-card'
+      );
       cards.forEach((card: HTMLElement) => {
         const isLoginCard = card.classList.contains('academic-login-card') || card.classList.contains('gateway-card-inner');
         let rAFId: number | null = null;
-        
+        let lastX = 0, lastY = 0;
+
         const mouseMoveHandler = (event: MouseEvent) => {
-          if (rAFId) {
-            cancelAnimationFrame(rAFId);
-          }
-          
+          lastX = event.clientX;
+          lastY = event.clientY;
+          if (rAFId) return; // Already scheduled — skip
+
           rAFId = requestAnimationFrame(() => {
+            rAFId = null;
             const rect = card.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
+            const x = lastX - rect.left;
+            const y = lastY - rect.top;
             const cx = rect.width / 2;
             const cy = rect.height / 2;
-            const multiplier = isLoginCard ? -2.5 : -5;
+            const multiplier = isLoginCard ? -2 : -4;
             const rx = ((y - cy) / cy) * multiplier;
             const ry = ((x - cx) / cx) * Math.abs(multiplier);
-            
+
             card.style.setProperty('--mouse-x', `${x}px`);
             card.style.setProperty('--mouse-y', `${y}px`);
-            
+
             if (isLoginCard) {
               card.style.transform = `perspective(1200px) rotateX(${rx}deg) rotateY(${ry}deg) translate3d(0, -4px, 10px)`;
             } else {
-              card.style.transform = `perspective(1200px) rotateX(${rx}deg) rotateY(${ry}deg) translateY(-8px) scale(1.012)`;
+              card.style.transform = `perspective(1200px) rotateX(${rx}deg) rotateY(${ry}deg) translateY(-6px) scale(1.01)`;
             }
-            card.style.transition = 'transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.4s ease, border-color 0.4s ease';
+            card.style.transition = 'transform 0.1s linear';
           });
         };
 
         const mouseLeaveHandler = () => {
-          if (rAFId) {
-            cancelAnimationFrame(rAFId);
-          }
-          card.style.transition = 'transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.5s ease, border-color 0.5s ease';
+          if (rAFId) { cancelAnimationFrame(rAFId); rAFId = null; }
+          card.style.transition = 'transform 0.6s cubic-bezier(0.34, 1.4, 0.64, 1)';
           card.style.transform = '';
         };
 
-        card.addEventListener('mousemove', mouseMoveHandler);
+        card.addEventListener('mousemove', mouseMoveHandler, { passive: true });
         card.addEventListener('mouseleave', mouseLeaveHandler);
 
         this.cardListeners.push({
@@ -1272,12 +1516,19 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.ngZone.runOutsideAngular(() => {
       const getDimensions = () => {
-        const w = canvas.offsetWidth || canvas.parentElement?.clientWidth || window.innerWidth || 1240;
-        const h = canvas.offsetHeight || canvas.parentElement?.clientHeight || 520;
+        const w = canvas.parentElement?.clientWidth || window.innerWidth || canvas.offsetWidth || 1240;
+        const h = canvas.parentElement?.clientHeight || 440;
         return { w, h };
       };
       let { w: width, h: height } = getDimensions();
       canvas.width = width; canvas.height = height;
+
+      this.matrixResizeListener = () => {
+        const dims = getDimensions();
+        width = dims.w; height = dims.h;
+        canvas.width = width; canvas.height = height;
+      };
+      window.addEventListener('resize', this.matrixResizeListener);
 
       this.matrixMouseListener = (e: MouseEvent) => {
         const rect = canvas.getBoundingClientRect();
@@ -1300,11 +1551,11 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       const stalks: Stalk[] = [];
       const initStalks = () => {
         stalks.length = 0;
-        for (let i = 0; i < 80; i++) {
-          const t = i / 79;
+        for (let i = 0; i < 65; i++) {
+          const t = i / 64;
           const bx = -20 + t * (width + 40) + (Math.random() - 0.5) * 30;
           const ba = -Math.PI / 2 + (t - 0.5) * 0.55 + (Math.random() - 0.5) * 0.15;
-          const ml = height * (0.35 + Math.random() * 0.55);
+          const ml = Math.min(height - 90, height * (0.25 + Math.random() * 0.4));
           stalks.push({ bx, by: height + 10, ba, ca: ba, len: Math.random() * ml, ml,
             spd: 0.4 + Math.random() * 0.6, lw: 0.5 + Math.random() * 0.9,
             dr: 1.5 + Math.random() * 3, a: 0.3 + Math.random() * 0.6,
@@ -1315,91 +1566,539 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       };
       initStalks();
 
-      // ── FISHES (8) ─────────────────────────────────────────
-      interface Fish { x: number; y: number; vx: number; vy: number; s: number; c: string; g: string; tp: number; sp: number; }
+      // ── REALISTIC COMPACT SEAWEEDS ALONG SEAFLOOR ────────────────
+      interface Seaweed {
+        x: number; h: number; p: number; blades: number; color: string; color2: string;
+      }
+      const seaweeds: Seaweed[] = [];
+      const seaweedColors = [
+        { c1: '#0d9488', c2: 'rgba(94, 234, 212, 0.65)' }, // Rich marine teal
+        { c1: '#059669', c2: 'rgba(110, 231, 183, 0.65)' }, // Natural ocean emerald
+        { c1: '#15803d', c2: 'rgba(134, 239, 172, 0.65)' }, // Deep kelp green
+        { c1: '#0f766e', c2: 'rgba(45, 212, 191, 0.65)' }  // Aquatic sea fern
+      ];
+      const initSeaweeds = () => {
+        seaweeds.length = 0;
+        for (let i = 0; i < 24; i++) {
+          const pal = seaweedColors[i % seaweedColors.length];
+          seaweeds.push({
+            x: -10 + (i / 23) * (width + 20) + (Math.random() - 0.5) * 18,
+            h: 22 + Math.random() * 26,
+            p: Math.random() * Math.PI * 2,
+            blades: 3 + Math.floor(Math.random() * 3),
+            color: pal.c1,
+            color2: pal.c2
+          });
+        }
+      };
+      initSeaweeds();
+
+      // ── GAME STATE & FLOATING BASKET (SEA CATCH CHALLENGE - 20 FISHES) ──
+      let gameScore = 0;
+      let isCelebrating = false;
+      let celebrationTimer = 0;
+
+      interface FloatingText {
+        x: number; y: number; text: string; color: string; alpha: number; vy: number;
+      }
+      const floatingTexts: FloatingText[] = [];
+
+      interface Confetti {
+        x: number; y: number; vx: number; vy: number; color: string; size: number; alpha: number;
+      }
+      const confettis: Confetti[] = [];
+
+      const basket = {
+        x: width * 0.65,
+        y: height * 0.42,
+        vx: -0.6,
+        vy: 0.45,
+        radius: 28,
+        pulse: 0
+      };
+
+      // ── FISHES (20 with Species & Basket Deposit / Celebration) ────────────────
+      interface Fish {
+        id: number; name: string; x: number; y: number; vx: number; vy: number;
+        s: number; c: string; g: string; tp: number; sp: number; caught: boolean;
+        inBasket: boolean;
+        burstTimer?: number; burstMult?: number;
+      }
+      const speciesList = [
+        'Cyber Koi', 'Neon Tetra', 'Volt Guppy', 'Plasma Betta',
+        'Quantum Danio', 'Gold Arowana', 'Luminous Angelfish', 'Photon Cichlid',
+        'Crimson Tilapia', 'Starlight Barb', 'Emerald Snapper', 'Spectrum Perch'
+      ];
       const fishes: Fish[] = [];
       const fp = [
-        { b: '#00f2fe', g: 'rgba(0,242,254,0.5)' }, { b: '#ff007f', g: 'rgba(255,0,127,0.5)' },
-        { b: '#ffd700', g: 'rgba(255,215,0,0.4)' }, { b: '#c084fc', g: 'rgba(192,132,252,0.4)' },
-        { b: '#34d399', g: 'rgba(52,211,153,0.4)' },
+        { b: '#00f2fe', g: 'rgba(0,242,254,0.6)' }, { b: '#ff007f', g: 'rgba(255,0,127,0.6)' },
+        { b: '#ffd700', g: 'rgba(255,215,0,0.5)' }, { b: '#c084fc', g: 'rgba(192,132,252,0.5)' },
+        { b: '#34d399', g: 'rgba(52,211,153,0.5)' }, { b: '#ff7b00', g: 'rgba(255,123,0,0.5)' }
       ];
       const initFishes = () => {
         fishes.length = 0;
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 20; i++) {
           const a = Math.random() * Math.PI * 2;
-          const sp = 0.5 + Math.random() * 0.8;
+          const sp = 1.1 + Math.random() * 1.1;
           const p = fp[i % fp.length];
-          fishes.push({ x: Math.random() * width, y: height * 0.15 + Math.random() * height * 0.6,
-            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.3,
-            s: 3 + Math.random() * 3.5, c: p.b, g: p.g, tp: Math.random() * Math.PI * 2, sp });
+          fishes.push({
+            id: i + 1,
+            name: speciesList[i % speciesList.length],
+            x: Math.random() * width,
+            y: height * 0.15 + Math.random() * height * 0.65,
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.35,
+            s: 4.5 + Math.random() * 3.5, c: p.b, g: p.g,
+            tp: Math.random() * Math.PI * 2, sp, caught: false,
+            inBasket: false,
+            burstTimer: 60 + Math.random() * 180, burstMult: 1
+          });
         }
       };
       initFishes();
 
-      // ── BUBBLES (15) ───────────────────────────────────────
+      // ── BUBBLES (Reduced & softer per request) ───────────────
       interface Bub { x: number; y: number; r: number; vy: number; a: number; p: number; }
       const bubs: Bub[] = [];
       const initBubs = () => {
         bubs.length = 0;
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 5; i++) {
           bubs.push({ x: Math.random() * width, y: Math.random() * height,
-            r: 1 + Math.random() * 2.5, vy: -(0.15 + Math.random() * 0.35),
-            a: 0.15 + Math.random() * 0.4, p: Math.random() * Math.PI * 2 });
+            r: 0.7 + Math.random() * 1.1, vy: -(0.12 + Math.random() * 0.2),
+            a: 0.06 + Math.random() * 0.1, p: Math.random() * Math.PI * 2 });
         }
       };
       initBubs();
 
+      // ── GRACEFUL PASSING JELLYFISHES ─────────────────────────
+      interface Jellyfish {
+        x: number; y: number; vx: number; vy: number;
+        size: number; color: string; p: number;
+      }
+      const jellies: Jellyfish[] = [];
+      const jellyColors = [
+        'rgba(192, 132, 252, 0.75)',
+        'rgba(0, 242, 254, 0.75)',
+        'rgba(255, 0, 127, 0.75)'
+      ];
+      const initJellies = () => {
+        jellies.length = 0;
+        for (let i = 0; i < 3; i++) {
+          jellies.push({
+            x: (i * (width / 3)) + 80,
+            y: height * (0.4 + i * 0.2),
+            vx: 0.35 + i * 0.1,
+            vy: -0.25 - i * 0.08,
+            size: 14 + Math.random() * 6,
+            color: jellyColors[i % jellyColors.length],
+            p: Math.random() * Math.PI * 2
+          });
+        }
+      };
+      initJellies();
+
+      interface Ripple { x: number; y: number; r: number; alpha: number; }
+      const ripples: Ripple[] = [];
+
+      let caughtFish: Fish | null = null;
+
+      // Click listener for Catch & Release & Basket Deposit
+      if (this.matrixClickListener) canvas.removeEventListener('click', this.matrixClickListener);
+      this.matrixClickListener = (e: MouseEvent) => {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        // Spawn ripple on every click
+        ripples.push({ x: clickX, y: clickY, r: 4, alpha: 0.9 });
+
+        // If currently celebrating, click anywhere resets for a new game!
+        if (isCelebrating) {
+          isCelebrating = false;
+          gameScore = 0;
+          fishes.forEach(f => {
+            f.inBasket = false;
+            f.caught = false;
+            f.x = Math.random() * width;
+            f.y = height * 0.15 + Math.random() * height * 0.65;
+            f.vx = (Math.random() - 0.5) * 3;
+            f.vy = (Math.random() - 0.5) * 2;
+          });
+          floatingTexts.push({ x: width / 2, y: height / 2, text: '🌊 NEW ROUND STARTED! CATCH ALL 20 FISHES!', color: '#00f2fe', alpha: 1, vy: -1.2 });
+          return;
+        }
+
+        if (caughtFish) {
+          const distToBasket = Math.hypot(clickX - basket.x, clickY - basket.y);
+          if (distToBasket < basket.radius + 50) {
+            // SUCCESS DEPOSIT INTO BASKET!
+            caughtFish.caught = false;
+            caughtFish.inBasket = true;
+            basket.pulse = 1;
+            gameScore += 100;
+
+            const basketCount = fishes.filter(f => f.inBasket).length;
+            floatingTexts.push({
+              x: basket.x,
+              y: basket.y - 65,
+              text: `+100 PTS! (${basketCount}/20 FISH)`,
+              color: '#00f2fe',
+              alpha: 1,
+              vy: -1.5
+            });
+
+            // Celebratory bubbles around basket
+            for (let b = 0; b < 12; b++) {
+              bubs.push({
+                x: basket.x + (Math.random() - 0.5) * 40,
+                y: basket.y + (Math.random() - 0.5) * 40,
+                r: 1.5 + Math.random() * 3, vy: -(0.6 + Math.random() * 1.3),
+                a: 0.85, p: Math.random() * Math.PI * 2
+              });
+            }
+
+            // CHECK IF ALL 20 FISH CAUGHT
+            if (basketCount >= 20) {
+              isCelebrating = true;
+              celebrationTimer = 480;
+              gameScore += 2000; // Bonus for catching all 20
+
+              floatingTexts.push({
+                x: basket.x,
+                y: basket.y - 110,
+                text: '🎉 EXPLOSION! ALL 20 FISHES ESCAPING!',
+                color: '#ffd700',
+                alpha: 1,
+                vy: -2.0
+              });
+
+              // Fireworks confetti burst
+              const confettiColors = ['#ffd700', '#00f2fe', '#ff007f', '#34d399', '#c084fc', '#ff7b00'];
+              for (let c = 0; c < 120; c++) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = 2 + Math.random() * 9;
+                confettis.push({
+                  x: basket.x,
+                  y: basket.y,
+                  vx: Math.cos(ang) * spd,
+                  vy: Math.sin(ang) * spd - 2.5,
+                  color: confettiColors[c % confettiColors.length],
+                  size: 4 + Math.random() * 5,
+                  alpha: 1
+                });
+              }
+
+              // All 20 fishes escape out of the basket in an explosive outward burst!
+              fishes.forEach((f, idx) => {
+                f.inBasket = false;
+                f.caught = false;
+                f.x = basket.x;
+                f.y = basket.y;
+                const escapeAng = (idx / 20) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+                f.vx = Math.cos(escapeAng) * (6 + Math.random() * 5);
+                f.vy = Math.sin(escapeAng) * (4 + Math.random() * 4);
+              });
+            }
+          } else {
+            // RELEASED OUTSIDE BASKET - MISS SCORE
+            caughtFish.caught = false;
+            gameScore = Math.max(0, gameScore - 20);
+            floatingTexts.push({
+              x: clickX,
+              y: clickY - 30,
+              text: '-20 PTS (Released outside basket)',
+              color: '#ff4b4b',
+              alpha: 1,
+              vy: -1.2
+            });
+
+            // Give fish playful escape burst
+            const escapeAngle = Math.random() * Math.PI * 2;
+            caughtFish.vx = Math.cos(escapeAngle) * (3.5 + Math.random() * 2);
+            caughtFish.vy = Math.sin(escapeAngle) * (2.5 + Math.random() * 1.5);
+          }
+          caughtFish = null;
+        } else {
+          // Try to catch closest free fish within 48px
+          let closest: Fish | null = null;
+          let minDist = 48;
+          for (const f of fishes) {
+            if (f.inBasket) continue;
+            const dist = Math.hypot(f.x - clickX, f.y - clickY);
+            if (dist < minDist) {
+              minDist = dist;
+              closest = f;
+            }
+          }
+          if (closest) {
+            closest.caught = true;
+            caughtFish = closest;
+            // Spawn splash bubbles
+            for (let b = 0; b < 8; b++) {
+              bubs.push({
+                x: clickX + (Math.random() - 0.5) * 20,
+                y: clickY + (Math.random() - 0.5) * 20,
+                r: 1.5 + Math.random() * 2.5, vy: -(0.4 + Math.random() * 0.8),
+                a: 0.75, p: Math.random() * Math.PI * 2
+              });
+            }
+          } else {
+            // MISSED CATCH (clicked empty sea)
+            gameScore = Math.max(0, gameScore - 10);
+            floatingTexts.push({
+              x: clickX,
+              y: clickY - 20,
+              text: '-10 PTS (Miss)',
+              color: '#ffb703',
+              alpha: 1,
+              vy: -1.0
+            });
+          }
+        }
+      };
+      canvas.addEventListener('click', this.matrixClickListener);
+
       this.matrixResizeListener = () => {
         const { w, h } = getDimensions();
         width = canvas.width = w; height = canvas.height = h;
-        initStalks(); initFishes(); initBubs();
+        initStalks(); initSeaweeds(); initFishes(); initBubs(); initJellies();
       };
       window.addEventListener('resize', this.matrixResizeListener);
 
       let frame = 0;
-      const nc = ['255, 0, 127', '0, 242, 254', '255, 123, 0', '52, 211, 153', '192, 132, 252'];
+      const nc = ['255, 0, 150', '0, 242, 254', '255, 123, 0', '52, 211, 153', '192, 132, 252'];
 
-      const draw = () => {
-        if (canvas.width !== width || canvas.height !== height) {
-          const { w, h } = getDimensions();
-          width = canvas.width = w; height = canvas.height = h;
-          initStalks(); initFishes(); initBubs();
+      let lastFrameTime = 0;
+
+      const draw = (timestamp: number) => {
+        // dt: time-scale normalised to 60fps so physics run at identical speed at any FPS.
+        const rawDelta = lastFrameTime === 0 ? 16.667 : timestamp - lastFrameTime;
+        lastFrameTime = timestamp;
+        const dt = Math.min(Math.max(rawDelta, 4) / 16.667, 3);
+        frame += dt;
+
+        const currW = Math.max(canvas.parentElement?.clientWidth || 0, window.innerWidth || 0, document.documentElement.clientWidth || 0, 1240);
+        const currH = canvas.parentElement?.clientHeight || 440;
+        if (canvas.width !== currW || canvas.height !== currH) {
+          width = canvas.width = currW;
+          height = canvas.height = currH;
         }
         if (!width || !height) { this.matrixAnimFrame = requestAnimationFrame(draw); return; }
-        frame++;
 
+        // Fast & fluid mouse lerp (0.38 instead of 0.1 for instant responsiveness)
         if (this.stripeTargetMouseX !== -9999) {
-          if (this.stripeMouseX === -9999) { this.stripeMouseX = this.stripeTargetMouseX; this.stripeMouseY = this.stripeTargetMouseY; }
-          else { this.stripeMouseX += (this.stripeTargetMouseX - this.stripeMouseX) * 0.1; this.stripeMouseY += (this.stripeTargetMouseY - this.stripeMouseY) * 0.1; }
-        } else { this.stripeMouseX = -9999; this.stripeMouseY = -9999; }
+          if (this.stripeMouseX === -9999) {
+            this.stripeMouseX = this.stripeTargetMouseX;
+            this.stripeMouseY = this.stripeTargetMouseY;
+          } else {
+            this.stripeMouseX += (this.stripeTargetMouseX - this.stripeMouseX) * 0.38;
+            this.stripeMouseY += (this.stripeTargetMouseY - this.stripeMouseY) * 0.38;
+          }
+        } else {
+          this.stripeMouseX = -9999;
+          this.stripeMouseY = -9999;
+        }
 
         ctx.clearRect(0, 0, width, height);
 
-        // Bottom glow
-        const bg = ctx.createRadialGradient(width / 2, height, 0, width / 2, height, width * 0.55);
-        bg.addColorStop(0, 'rgba(120, 80, 255, 0.16)'); bg.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = bg; ctx.fillRect(0, 0, width, height);
+        // Check if cursor hovering near any fish to change cursor
+        let hoveredFish: Fish | null = null;
+        if (this.stripeTargetMouseX !== -9999 && !caughtFish) {
+          for (const f of fishes) {
+            if (Math.hypot(f.x - this.stripeTargetMouseX, f.y - this.stripeTargetMouseY) < 45) {
+              hoveredFish = f;
+              break;
+            }
+          }
+        }
+        canvas.style.cursor = (hoveredFish || caughtFish) ? 'pointer' : 'default';
+
+        // ── SUNRISE OVER REALISTIC DEEP OCEAN ───────────────────
+        ctx.save();
+        const horizonY = 80;
+
+        // 1. WARM SUNRISE SKY (ABOVE THE WAVES: 0 to horizonY) — White fading into sunlight!
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+        skyGrad.addColorStop(0, '#ffffff');    // Seamless fade from white background above
+        skyGrad.addColorStop(0.22, '#fff4e6'); // Soft morning cream light
+        skyGrad.addColorStop(0.5, '#ffd29d');  // Warm sunlight glow
+        skyGrad.addColorStop(0.8, '#ff9e5e');  // Vibrant morning apricot
+        skyGrad.addColorStop(1, '#ff8040');    // Rich sunrise horizon glow
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(-20, 0, width + 100, horizonY + 10);
+
+        // Rising Morning Sun orb positioned higher up in the morning sky
+        const sunX = width * 0.28;
+        const sunY = horizonY - 36;
+        const sunGlow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 130);
+        sunGlow.addColorStop(0, 'rgba(255, 255, 230, 0.98)');
+        sunGlow.addColorStop(0.28, 'rgba(255, 230, 130, 0.82)');
+        sunGlow.addColorStop(0.65, 'rgba(255, 150, 75, 0.3)');
+        sunGlow.addColorStop(1, 'rgba(255, 150, 75, 0)');
+        ctx.fillStyle = sunGlow;
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 130, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Solid Sun Disc
+        ctx.fillStyle = '#fffef4';
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 24, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 2. OCEAN WATER COLUMN (BELOW THE WAVES: horizonY to height)
+        // Clip or fill ocean region precisely from the wavy surface down across entire screen
+        ctx.beginPath();
+        ctx.moveTo(-20, height + 10);
+        ctx.lineTo(-20, horizonY);
+        for (let x = -20; x <= width + 80; x += 15) {
+          const wY = horizonY + Math.sin(x * 0.025 + frame * 0.05) * 5 + Math.cos(x * 0.06 - frame * 0.03) * 2;
+          ctx.lineTo(x, wY);
+        }
+        ctx.lineTo(width + 80, height + 10);
+        ctx.closePath();
+
+        const oceanGrad = ctx.createLinearGradient(0, horizonY, 0, height);
+        oceanGrad.addColorStop(0, '#005480');    // Sunlit morning ocean surface
+        oceanGrad.addColorStop(0.25, '#013259'); // Tropical ocean blue
+        oceanGrad.addColorStop(0.7, '#011933');  // Deep water column
+        oceanGrad.addColorStop(1, '#010c1c');    // Seafloor abyss
+        ctx.fillStyle = oceanGrad;
+        ctx.fill();
+
+        // 3. DYNAMIC SUNRISE GOD RAYS ENTERING THE OCEAN FROM THE SUN
+        ctx.save();
+        // Clip god rays so they only appear inside the ocean water below horizon
+        ctx.beginPath();
+        ctx.moveTo(0, height);
+        ctx.lineTo(0, horizonY);
+        for (let x = 0; x <= width; x += 20) {
+          const wY = horizonY + Math.sin(x * 0.025 + frame * 0.05) * 5 + Math.cos(x * 0.06 - frame * 0.03) * 2;
+          ctx.lineTo(x, wY);
+        }
+        ctx.lineTo(width, height);
+        ctx.closePath();
+        ctx.clip();
+
+        const angles = [-0.45, -0.25, -0.05, 0.15, 0.35, 0.55];
+        for (let r = 0; r < angles.length; r++) {
+          const ang = angles[r] + Math.sin(frame * 0.012 + r) * 0.04;
+          const spread = 0.1 + Math.sin(frame * 0.02 + r * 1.5) * 0.03;
+          const rayLen = height * 1.25;
+          const rayAlpha = 0.08 + 0.05 * Math.sin(frame * 0.03 + r);
+
+          ctx.beginPath();
+          ctx.moveTo(sunX, sunY);
+          ctx.lineTo(sunX + Math.cos(ang - spread) * rayLen, sunY + Math.sin(ang - spread) * rayLen);
+          ctx.lineTo(sunX + Math.cos(ang + spread) * rayLen, sunY + Math.sin(ang + spread) * rayLen);
+          ctx.closePath();
+
+          const rayGrad = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, rayLen * 0.85);
+          rayGrad.addColorStop(0, `rgba(255, 235, 160, ${rayAlpha * 2.2})`);
+          rayGrad.addColorStop(0.35, `rgba(120, 235, 255, ${rayAlpha * 1.3})`);
+          rayGrad.addColorStop(1, 'rgba(0, 242, 254, 0)');
+          ctx.fillStyle = rayGrad;
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // Crisp White/Gold Wave Crest Shimmer Line separating sky and ocean
+        ctx.strokeStyle = 'rgba(255, 240, 190, 0.75)';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        for (let x = -20; x <= width + 80; x += 15) {
+          const wY = horizonY + Math.sin(x * 0.025 + frame * 0.05) * 5 + Math.cos(x * 0.06 - frame * 0.03) * 2;
+          if (x === -20) ctx.moveTo(x, wY); else ctx.lineTo(x, wY);
+        }
+        ctx.stroke();
+
+        // 4. Rolling Sandy Coral Seafloor along Bottom
+        ctx.beginPath();
+        ctx.moveTo(-20, height + 10);
+        for (let x = -20; x <= width + 80; x += 20) {
+          const floorY = height - 22 - Math.sin(x * 0.008) * 14 - Math.cos(x * 0.02 + 1) * 8;
+          ctx.lineTo(x, floorY);
+        }
+        ctx.lineTo(width + 80, height + 10);
+        ctx.closePath();
+        const floorGrad = ctx.createLinearGradient(0, height - 45, 0, height);
+        floorGrad.addColorStop(0, '#0a2342');
+        floorGrad.addColorStop(1, '#051124');
+        ctx.fillStyle = floorGrad;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 242, 254, 0.22)';
+        ctx.lineWidth = 1.5;
+        ctx.restore();
+
+        // 4b. Realistic Compact Marine Seaweeds Along Seafloor
+        seaweeds.forEach(sw => {
+          const baseFloorY = height - 10;
+          for (let b = 0; b < sw.blades; b++) {
+            const bx = sw.x + (b - (sw.blades - 1) / 2) * 5;
+            const bh = sw.h * (0.75 + (b % 2) * 0.25);
+            const sway1 = Math.sin(frame * 0.035 + sw.p + b * 0.7) * 6;
+            const sway2 = Math.cos(frame * 0.04 + sw.p - b * 0.5) * 10;
+            const tipX = bx + sway2;
+            const tipY = baseFloorY - bh;
+            const midX = bx + sway1;
+            const midY = baseFloorY - bh * 0.52;
+
+            // Realistic tapering marine kelp blade
+            ctx.beginPath();
+            ctx.moveTo(bx - 2.4, baseFloorY);
+            ctx.quadraticCurveTo(midX - 1.2, midY, tipX, tipY);
+            ctx.quadraticCurveTo(midX + 1.2, midY, bx + 2.4, baseFloorY);
+            ctx.closePath();
+            ctx.fillStyle = sw.color;
+            ctx.fill();
+
+            // Central sunlit vein
+            ctx.beginPath();
+            ctx.moveTo(bx, baseFloorY);
+            ctx.quadraticCurveTo(midX, midY, tipX, tipY);
+            ctx.strokeStyle = sw.color2;
+            ctx.lineWidth = 0.9;
+            ctx.stroke();
+          }
+        });
 
         // Mouse aurora
         if (this.stripeMouseX !== -9999) {
           const mg = ctx.createRadialGradient(this.stripeMouseX, this.stripeMouseY, 0, this.stripeMouseX, this.stripeMouseY, 220);
-          mg.addColorStop(0, 'rgba(0,242,254,0.2)'); mg.addColorStop(0.4, 'rgba(192,132,252,0.1)');
+          mg.addColorStop(0, 'rgba(0,242,254,0.22)'); mg.addColorStop(0.4, 'rgba(192,132,252,0.12)');
           mg.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.fillStyle = mg; ctx.beginPath();
           ctx.arc(this.stripeMouseX, this.stripeMouseY, 220, 0, Math.PI * 2); ctx.fill();
         }
 
-        // Bubbles (no shadow — lightweight)
-        bubs.forEach(b => {
-          b.y += b.vy; b.x += Math.sin(frame * 0.025 + b.p) * 0.3;
-          if (b.y < -10) { b.y = height + 10; b.x = Math.random() * width; }
+        // Ripples
+        for (let r = ripples.length - 1; r >= 0; r--) {
+          const rp = ripples[r];
+          rp.r += 2.2;
+          rp.alpha -= 0.025;
+          if (rp.alpha <= 0) {
+            ripples.splice(r, 1);
+            continue;
+          }
+          ctx.strokeStyle = `rgba(0, 242, 254, ${rp.alpha})`;
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Bubbles / Jellyfishes bounce at sea level and continue
+        for (let i = bubs.length - 1; i >= 0; i--) {
+          const b = bubs[i];
+          b.y += b.vy * dt; b.x += Math.sin(frame * 0.025 + b.p) * 0.3 * dt;
+          if (b.y < 88) { b.y = 88; b.vy = Math.abs(b.vy); }
+          else if (b.y > height - 15) { b.y = height - 15; b.vy = -Math.abs(b.vy); }
           ctx.fillStyle = `rgba(180,200,255,${b.a * (0.6 + 0.4 * Math.sin(frame * 0.04 + b.p))})`;
           ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
-        });
+        }
 
-        // Stalks (bezier, no shadow per stalk — use gradient only)
+        // Stalks
         stalks.forEach(st => {
-          st.len += st.spd;
+          st.len += st.spd * dt;
           if (st.len > st.ml) st.len = 0;
           const sway = Math.sin(frame * st.ss + st.sp) * st.sa;
           let ms = 0, mp = 0;
@@ -1410,7 +2109,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
             const d = Math.hypot(dx, dy);
             if (d < 280) { mp = 1 - d / 280; ms = (dx >= 0 ? 1 : -1) * mp * mp * 0.5; }
           }
-          st.ca += (st.ba + sway + ms - st.ca) * 0.08;
+          st.ca += (st.ba + sway + ms - st.ca) * 0.08 * dt;
           const tipX = st.bx + Math.cos(st.ca) * st.len;
           const tipY = st.by + Math.sin(st.ca) * st.len;
           const midX = (st.bx + tipX) / 2 + st.cv * Math.sin(frame * st.ss * 0.5 + st.sp);
@@ -1420,32 +2119,118 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
           if (al <= 0.01) return;
           const near = mp > 0.05;
           const col = near ? nc[st.ci] : '200,200,255';
-          const lg = ctx.createLinearGradient(st.bx, st.by, tipX, tipY);
-          lg.addColorStop(0, 'rgba(80,60,180,0)');
-          lg.addColorStop(0.3, `rgba(140,120,220,${al * 0.3})`);
-          lg.addColorStop(1, `rgba(${col},${al * (near ? 1 : 0.85)})`);
           ctx.beginPath(); ctx.moveTo(st.bx, st.by);
           ctx.quadraticCurveTo(midX, midY, tipX, tipY);
-          ctx.strokeStyle = lg; ctx.lineWidth = st.lw * (near ? 1.4 : 1); ctx.stroke();
-          // Tip dot (no shadow)
+          if (near) {
+            const lg = ctx.createLinearGradient(st.bx, st.by, tipX, tipY);
+            lg.addColorStop(0, 'rgba(80,60,180,0)');
+            lg.addColorStop(0.3, `rgba(140,120,220,${al * 0.3})`);
+            lg.addColorStop(1, `rgba(${col},${al})`);
+            ctx.strokeStyle = lg;
+          } else {
+            ctx.strokeStyle = `rgba(160,155,230,${al * 0.7})`;
+          }
+          ctx.lineWidth = st.lw * (near ? 1.4 : 1); ctx.stroke();
           ctx.fillStyle = `rgba(${col},${al})`;
           ctx.beginPath(); ctx.arc(tipX, tipY, st.dr * (near ? 1.3 : 1), 0, Math.PI * 2); ctx.fill();
         });
 
-        // Fishes (simplified — no shadowBlur per frame)
+        // Fishes
         fishes.forEach(f => {
-          f.x += f.vx; f.y += f.vy + Math.sin(frame * 0.05 + f.tp) * 0.2;
-          if (f.x < -35) f.x = width + 35; if (f.x > width + 35) f.x = -35;
-          if (f.y < 25) f.vy = Math.abs(f.vy); if (f.y > height - 45) f.vy = -Math.abs(f.vy);
-          if (this.stripeMouseX !== -9999) {
-            const dx = f.x - this.stripeMouseX, dy = f.y - this.stripeMouseY;
-            const d = Math.hypot(dx, dy);
-            if (d < 140 && d > 10) { f.vx += (dx / d) * 0.1; f.vy += (dy / d) * 0.06; }
+          if (f.inBasket) {
+            // School gracefully inside the woven net bag pocket below open rim
+            const orbitAng = frame * 0.035 + f.tp;
+            const orbitR = (f.id % 4) * (basket.radius * 0.38);
+            const targetX = basket.x + Math.cos(orbitAng) * orbitR;
+            const targetY = basket.y + 28 + Math.sin(orbitAng * 0.8) * (basket.radius * 0.38);
+            f.x += (targetX - f.x) * 0.15 * dt;
+            f.y += (targetY - f.y) * 0.15 * dt;
+            f.vx = Math.sin(frame * 0.08 + f.tp) * 0.4;
+            f.vy = Math.cos(frame * 0.08 + f.tp) * 0.25;
+          } else if (f.caught && this.stripeMouseX !== -9999) {
+            // Smoothly hold caught fish inside protective bubble at cursor
+            f.x += (this.stripeMouseX - f.x) * 0.35 * dt;
+            f.y += (this.stripeMouseY - f.y) * 0.35 * dt;
+            f.vx = Math.sin(frame * 0.08) * 0.5;
+            f.vy = Math.cos(frame * 0.08) * 0.3;
+          } else {
+            f.burstTimer = (f.burstTimer || 100) - dt;
+            if (f.burstTimer <= 0) {
+              // Trigger a swift darting speed burst
+              f.burstMult = 2.4 + Math.random() * 1.4;
+              f.burstTimer = 80 + Math.random() * 180;
+              const angle = Math.atan2(f.vy, f.vx) + (Math.random() - 0.5) * 0.5;
+              f.vx = Math.cos(angle) * f.sp * f.burstMult;
+              f.vy = Math.sin(angle) * f.sp * f.burstMult * 0.55;
+            } else {
+              f.burstMult = (f.burstMult || 1) + (1 - (f.burstMult || 1)) * 0.025 * dt;
+            }
+
+            f.x += f.vx * dt;
+            f.y += (f.vy + Math.sin(frame * 0.05 + f.tp) * 0.25) * dt;
+            if (f.x < -45) f.x = width + 45; if (f.x > width + 45) f.x = -45;
+            if (f.y < 95) f.vy = Math.abs(f.vy); if (f.y > height - 55) f.vy = -Math.abs(f.vy);
+            if (this.stripeMouseX !== -9999) {
+              const dx = f.x - this.stripeMouseX, dy = f.y - this.stripeMouseY;
+              const d = Math.hypot(dx, dy);
+              if (d < 160 && d > 20) { f.vx += (dx / d) * 0.12 * dt; f.vy += (dy / d) * 0.08 * dt; }
+            }
+            const maxSpd = f.sp * (f.burstMult || 1) * 1.8;
+            const spd = Math.hypot(f.vx, f.vy);
+            if (spd > maxSpd) { f.vx = (f.vx / spd) * maxSpd; f.vy = (f.vy / spd) * maxSpd; }
+            f.vx *= Math.pow(0.998, dt); f.vy *= Math.pow(0.998, dt);
           }
-          const spd = Math.hypot(f.vx, f.vy);
-          if (spd > f.sp * 2) { f.vx = f.vx / spd * f.sp * 2; f.vy = f.vy / spd * f.sp * 2; }
-          f.vx *= 0.999; f.vy *= 0.999;
+
           const s = f.s;
+
+          // Target crosshair if hovered
+          if (hoveredFish === f && !f.caught) {
+            ctx.strokeStyle = 'rgba(0, 242, 254, 0.75)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(f.x, f.y, s * 3 + Math.sin(frame * 0.15) * 3, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          // Protective water bubble + species banner if caught
+          if (f.caught) {
+            const bubbleR = s * 3.2 + 10;
+            const bgra = ctx.createRadialGradient(f.x - 4, f.y - 4, 2, f.x, f.y, bubbleR);
+            bgra.addColorStop(0, 'rgba(0, 242, 254, 0.35)');
+            bgra.addColorStop(0.7, 'rgba(0, 242, 254, 0.12)');
+            bgra.addColorStop(1, 'rgba(0, 242, 254, 0.55)');
+            ctx.fillStyle = bgra;
+            ctx.beginPath();
+            ctx.arc(f.x, f.y, bubbleR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#00f2fe';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // HUD species label pill above bubble
+            const label = `🎣 Caught: ${f.name} — Click to release`;
+            ctx.font = 'bold 12px Inter, sans-serif';
+            const tm = ctx.measureText(label);
+            const pillW = tm.width + 24;
+            const pillH = 26;
+            const pillX = f.x - pillW / 2;
+            const pillY = f.y - bubbleR - 36;
+
+            ctx.fillStyle = 'rgba(10, 15, 35, 0.9)';
+            ctx.beginPath();
+            ctx.roundRect(pillX, pillY, pillW, pillH, 13);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0, 242, 254, 0.6)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.fillStyle = '#00f2fe';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, f.x, pillY + pillH / 2);
+          }
+
+          // Draw fish body
           ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(Math.atan2(f.vy, f.vx));
           ctx.fillStyle = f.c;
           ctx.beginPath(); ctx.ellipse(0, 0, s * 1.8, s * 0.8, 0, 0, Math.PI * 2); ctx.fill();
@@ -1459,9 +2244,282 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
           ctx.restore();
         });
 
+        // Graceful Passing Jellyfishes — bounce off sea level & stay strictly underwater
+        jellies.forEach(j => {
+          const pulse = Math.sin(frame * 0.045 + j.p);
+          j.x += (j.vx + Math.cos(frame * 0.02 + j.p) * 0.15) * dt;
+          j.y += (j.vy + pulse * 0.2) * dt;
+
+          // Bounce vertically off sea level and ocean floor
+          if (j.y < 105) {
+            j.y = 105;
+            j.vy = Math.abs(j.vy);
+          } else if (j.y > height - 35) {
+            j.y = height - 35;
+            j.vy = -Math.abs(j.vy);
+          }
+
+          if (j.x > width + 60) {
+            j.x = -60;
+          } else if (j.x < -60) {
+            j.x = width + 60;
+          }
+
+          ctx.save();
+          ctx.translate(j.x, j.y);
+          ctx.rotate(0.12 * Math.sin(frame * 0.03 + j.p));
+
+          const r = j.size * (1 + pulse * 0.08);
+
+          // Flowing tentacles
+          ctx.strokeStyle = j.color;
+          ctx.lineWidth = 1.3;
+          for (let t = -2; t <= 2; t++) {
+            ctx.beginPath();
+            const tx = t * (r * 0.32);
+            ctx.moveTo(tx, 0);
+            const wave1 = Math.sin(frame * 0.06 + j.p + t) * 6;
+            const wave2 = Math.cos(frame * 0.05 + j.p - t) * 8;
+            ctx.quadraticCurveTo(tx + wave1, r * 1.2, tx + wave2, r * 2.3);
+            ctx.stroke();
+          }
+
+          // Glowing dome / bell
+          const domeGrad = ctx.createRadialGradient(0, -r * 0.4, 2, 0, 0, r);
+          domeGrad.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+          domeGrad.addColorStop(0.3, j.color);
+          domeGrad.addColorStop(1, 'rgba(10, 15, 35, 0.2)');
+
+          ctx.fillStyle = domeGrad;
+          ctx.beginPath();
+          ctx.arc(0, 0, r, Math.PI, 0);
+          ctx.closePath();
+          ctx.fill();
+
+          // Delicate dome rim
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          ctx.restore();
+        });
+
+        // ── 1. FLOATING COLLECTION BASKET ──────────────────────
+        basket.x += basket.vx * dt;
+        basket.y += basket.vy * dt;
+        if (basket.x < 110) { basket.x = 110; basket.vx = Math.abs(basket.vx); }
+        if (basket.x > width - 110) { basket.x = width - 110; basket.vx = -Math.abs(basket.vx); }
+        if (basket.y < 115) { basket.y = 115; basket.vy = Math.abs(basket.vy); }
+        if (basket.y > height - 95) { basket.y = height - 95; basket.vy = -Math.abs(basket.vy); }
+        if (basket.pulse > 0) basket.pulse = Math.max(0, basket.pulse - 0.04 * dt);
+
+        const fishesInBasket = fishes.filter(f => f.inBasket).length;
+        const pulseExtra = basket.pulse * 18;
+        const basketR = basket.radius + pulseExtra;
+
+        ctx.save();
+        // ── OPEN-MOUTH FISHING NET WITH DRAPING WOVEN POCKET ──
+        const netTopY = basket.y - 12;
+        const rx = basketR * 1.35; // Horizontal width of open mouth
+        const ry = basketR * 0.52; // Vertical height of open mouth
+        const bagBottomY = basket.y + basketR * 1.5;
+        const bagSway = Math.sin(frame * 0.04) * 8;
+
+        // 1. Net Bag Pocket Background Fill
+        ctx.beginPath();
+        ctx.moveTo(basket.x - rx, netTopY);
+        ctx.bezierCurveTo(
+          basket.x - rx * 0.82 + bagSway * 0.3, netTopY + basketR * 0.8,
+          basket.x - rx * 0.48 + bagSway, bagBottomY,
+          basket.x + bagSway, bagBottomY
+        );
+        ctx.bezierCurveTo(
+          basket.x + rx * 0.48 + bagSway, bagBottomY,
+          basket.x + rx * 0.82 + bagSway * 0.3, netTopY + basketR * 0.8,
+          basket.x + rx, netTopY
+        );
+        ctx.closePath();
+        const bagGrad = ctx.createLinearGradient(basket.x, netTopY, basket.x, bagBottomY);
+        bagGrad.addColorStop(0, 'rgba(0, 242, 254, 0.16)');
+        bagGrad.addColorStop(1, 'rgba(10, 28, 68, 0.55)');
+        ctx.fillStyle = bagGrad;
+        ctx.fill();
+
+        // 2. Woven Net Mesh Threads Inside Pocket
+        ctx.strokeStyle = 'rgba(0, 242, 254, 0.38)';
+        ctx.lineWidth = 1;
+        // Horizontal net mesh loops
+        for (let h = 1; h <= 5; h++) {
+          const ratio = h / 6;
+          const hy = netTopY + (bagBottomY - netTopY) * ratio;
+          const hrx = rx * (1 - ratio * 0.58);
+          const hSway = bagSway * ratio;
+          ctx.beginPath();
+          ctx.ellipse(basket.x + hSway, hy, Math.max(2, hrx), ry * (1 - ratio * 0.35), 0, 0, Math.PI);
+          ctx.stroke();
+        }
+        // Vertical net mesh cords
+        for (let v = -3; v <= 3; v++) {
+          const vxTop = basket.x + v * (rx * 0.28);
+          const vxBot = basket.x + bagSway + v * (rx * 0.12);
+          ctx.beginPath();
+          ctx.moveTo(vxTop, netTopY);
+          ctx.quadraticCurveTo((vxTop + vxBot) / 2 + bagSway * 0.5, (netTopY + bagBottomY) / 2, vxBot, bagBottomY);
+          ctx.stroke();
+        }
+
+        // 3. Wide-Open Mouth Rim Ring (Top Landing Entrance)
+        const mouthGrad = ctx.createRadialGradient(basket.x, netTopY, rx * 0.15, basket.x, netTopY, rx);
+        mouthGrad.addColorStop(0, 'rgba(0, 242, 254, 0.38)');
+        mouthGrad.addColorStop(0.7, 'rgba(0, 242, 254, 0.14)');
+        mouthGrad.addColorStop(1, 'rgba(0, 242, 254, 0)');
+        ctx.fillStyle = mouthGrad;
+        ctx.beginPath();
+        ctx.ellipse(basket.x, netTopY, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Metallic / Glowing Rim Ring
+        ctx.strokeStyle = basket.pulse > 0 ? '#ffd700' : '#00f2fe';
+        ctx.lineWidth = 3.5;
+        ctx.shadowColor = basket.pulse > 0 ? '#ffd700' : '#00f2fe';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.ellipse(basket.x, netTopY, rx, ry, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.lineWidth = 1.2;
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.ellipse(basket.x, netTopY, rx * 0.93, ry * 0.88, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 4. Net HUD Pill below pocket
+        const basketLabel = `🧺 FISHING NET: ${fishesInBasket} / 20 FISH`;
+        ctx.font = 'bold 12px Inter, sans-serif';
+        const btm = ctx.measureText(basketLabel);
+        const bW = btm.width + 24;
+        const bH = 26;
+        const bX = basket.x - bW / 2;
+        const bY = bagBottomY + 12;
+
+        ctx.fillStyle = 'rgba(10, 18, 42, 0.88)';
+        ctx.beginPath();
+        ctx.roundRect(bX, bY, bW, bH, 13);
+        ctx.fill();
+        ctx.strokeStyle = fishesInBasket >= 20 ? '#ffd700' : 'rgba(0, 242, 254, 0.6)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        ctx.fillStyle = fishesInBasket >= 20 ? '#ffd700' : '#00f2fe';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(basketLabel, basket.x, bY + bH / 2);
+        ctx.restore();
+
+        // ── 2. FLOATING TEXTS & SCORE POPUPS ────────────────────
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+          const ft = floatingTexts[i];
+          ft.y += ft.vy * dt;
+          ft.alpha -= 0.012 * dt;
+          if (ft.alpha <= 0) {
+            floatingTexts.splice(i, 1);
+            continue;
+          }
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, ft.alpha);
+          ctx.font = 'bold 14px Inter, sans-serif';
+          ctx.fillStyle = ft.color;
+          ctx.textAlign = 'center';
+          ctx.shadowColor = 'rgba(0,0,0,0.8)';
+          ctx.shadowBlur = 4;
+          ctx.fillText(ft.text, ft.x, ft.y);
+          ctx.restore();
+        }
+
+        // ── 3. CELEBRATION CONFETTI FIREWORKS ───────────────────
+        for (let i = confettis.length - 1; i >= 0; i--) {
+          const cf = confettis[i];
+          cf.x += cf.vx * dt;
+          cf.y += cf.vy * dt;
+          cf.vy += 0.08 * dt; // gravity
+          cf.alpha -= 0.006 * dt;
+          if (cf.alpha <= 0 || cf.y > height + 50) {
+            confettis.splice(i, 1);
+            continue;
+          }
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, cf.alpha);
+          ctx.fillStyle = cf.color;
+          ctx.translate(cf.x, cf.y);
+          ctx.rotate((cf.x + cf.y) * 0.05);
+          ctx.fillRect(-cf.size / 2, -cf.size / 2, cf.size, cf.size * 1.5);
+          ctx.restore();
+        }
+
+        // ── 4. SEA CATCH GAME HUD OVERLAY ───────────────────────
+        ctx.save();
+        // Top-right scoreboard HUD
+        const hudW = 320;
+        const hudH = 46;
+        const hudX = width - hudW - 24;
+        const hudY = 20;
+
+        ctx.fillStyle = 'rgba(10, 15, 35, 0.82)';
+        ctx.beginPath();
+        ctx.roundRect(hudX, hudY, hudW, hudH, 23);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 242, 254, 0.45)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        ctx.font = 'bold 13px Inter, sans-serif';
+        ctx.fillStyle = '#00f2fe';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`🎮 CATCH: ${fishesInBasket}/20`, hudX + 18, hudY + hudH / 2);
+
+        ctx.fillStyle = '#ffd700';
+        ctx.textAlign = 'right';
+        ctx.fillText(`🏆 SCORE: ${gameScore} PTS`, hudX + hudW - 18, hudY + hudH / 2);
+        ctx.restore();
+
+        // ── 5. VICTORY EXPLOSION CELEBRATION BANNER ─────────────
+        if (isCelebrating) {
+          celebrationTimer -= dt;
+          if (celebrationTimer <= 0) {
+            isCelebrating = false;
+          } else {
+            ctx.save();
+            const cardW = Math.min(width - 40, 520);
+            const cardH = 130;
+            const cardX = (width - cardW) / 2;
+            const cardY = (height - cardH) / 2 - 30;
+
+            ctx.fillStyle = 'rgba(8, 14, 34, 0.94)';
+            ctx.beginPath();
+            ctx.roundRect(cardX, cardY, cardW, cardH, 20);
+            ctx.fill();
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 22px Inter, sans-serif';
+            ctx.fillText('🎉 NATIONAL SEA CHALLENGE MASTER! 🎉', width / 2, cardY + 42);
+
+            ctx.fillStyle = '#00f2fe';
+            ctx.font = '14px Inter, sans-serif';
+            ctx.fillText(`Final Challenge Score: ${gameScore} PTS — Click anywhere to play again!`, width / 2, cardY + 88);
+            ctx.restore();
+          }
+        }
+
         this.matrixAnimFrame = requestAnimationFrame(draw);
       };
-      draw();
+      requestAnimationFrame(draw);
     });
   }
 
@@ -1473,8 +2531,18 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   // ── FLOATING FAB ────────────────────────────────────────────
   setupFabScroll(): void {
     if (typeof window === 'undefined') return;
+    // Use RAF throttling to avoid triggering Angular CD on every scroll pixel
+    let rafPending = false;
     this.fabScrollListener = () => {
-      this.ngZone.run(() => { this.fabVisible = window.scrollY > 400; });
+      if (rafPending) return;
+      rafPending = true;
+      requestAnimationFrame(() => {
+        rafPending = false;
+        const visible = window.scrollY > 400;
+        if (visible !== this.fabVisible) {
+          this.ngZone.run(() => { this.fabVisible = visible; });
+        }
+      });
     };
     window.addEventListener('scroll', this.fabScrollListener, { passive: true });
   }
@@ -1548,103 +2616,308 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-    triggerArenaAction(track: string, actionType: string): void {
+  cargoBarWidth(): number {
+    const cargo = this.arenaState?.robotics?.cargo;
+    if (!cargo || cargo === 'None') return 0;
+    return 80;
+  }
+
+  getRoverLeft(): number {
+    return (this.arenaState.robotics && this.arenaState.robotics.posX !== undefined)
+      ? this.arenaState.robotics.posX
+      : 50;
+  }
+
+  getRoverTop(): number {
+    return (this.arenaState.robotics && this.arenaState.robotics.posY !== undefined)
+      ? this.arenaState.robotics.posY
+      : 50;
+  }
+
+  getRoverTransform(): string {
+    const angle = (this.arenaState.robotics && this.arenaState.robotics.angle !== undefined)
+      ? this.arenaState.robotics.angle
+      : 90;
+    return `translate(-50%, -50%) rotate(${angle - 90}deg)`;
+  }
+
+  triggerArenaAction(track: string, actionType: string): void {
     const state = this.arenaState[track];
     if (!state) return;
 
     if (track === 'robotics') {
-      if (actionType === 'forward') {
-        state.posY = Math.max(15, (state.posY || 50) - 12);
+      const currentAngle = state.angle !== undefined ? state.angle : 90;
+
+      if (actionType === 'left' || actionType === 'turn_left') {
+        state.angle = (currentAngle - 45 + 360) % 360;
+        state.statusColor = '#0088cc';
+        state.log = `Turned left 45° — heading ${state.angle}°`;
+      } else if (actionType === 'right' || actionType === 'turn_right') {
+        state.angle = (currentAngle + 45) % 360;
+        state.statusColor = '#0088cc';
+        state.log = `Turned right 45° — heading ${state.angle}°`;
+      } else if (actionType === 'forward') {
+        const rad = (currentAngle - 90) * (Math.PI / 180);
+        const step = 8;
+        const dx = Math.round(Math.sin(rad) * step);
+        const dy = Math.round(-Math.cos(rad) * step);
+        state.posX = Math.max(8, Math.min(92, (state.posX || 50) + dx));
+        state.posY = Math.max(12, Math.min(88, (state.posY || 50) + dy));
         state.motorSpeed = 95;
-        state.angle = 90;
-        state.distance = Math.floor(Math.random() * 25) + 35;
-        state.status = '🟢 ROVER DRIVING FORWARD • 1.4 M/S';
         state.statusColor = '#00e676';
-        state.log = `Drive motors engaged at 95% RPM. Rover advanced to grid coordinates (${state.posX}%, ${state.posY}%).`;
+        state.log = `Driving forward (heading ${currentAngle}°) — position (${state.posX}%, ${state.posY}%)`;
       } else if (actionType === 'reverse') {
-        state.posY = Math.min(80, (state.posY || 50) + 12);
-        state.motorSpeed = 60;
-        state.angle = 90;
-        state.distance = Math.floor(Math.random() * 20) + 40;
-        state.status = '🔵 REVERSING ROVER • BACKUP RADAR ON';
+        const rad = (currentAngle - 90) * (Math.PI / 180);
+        const step = 8;
+        const dx = Math.round(Math.sin(rad) * step);
+        const dy = Math.round(-Math.cos(rad) * step);
+        state.posX = Math.max(8, Math.min(92, (state.posX || 50) - dx));
+        state.posY = Math.max(12, Math.min(88, (state.posY || 50) - dy));
+        state.motorSpeed = 70;
         state.statusColor = '#38bdf8';
-        state.log = `Reverse gear engaged. Backing up to coordinates (${state.posX}%, ${state.posY}%). Rear sonar clear.`;
-      } else if (actionType === 'left') {
-        state.posX = Math.max(15, (state.posX || 50) - 12);
-        state.angle = 45;
-        state.motorSpeed = 75;
-        state.status = '↩️ STEERING LEFT 45° • DIFFERENTIAL DRIVE';
-        state.statusColor = '#0088cc';
-        state.log = `Differential steering turned left 45°. Rover shifted left to (${state.posX}%, ${state.posY}%).`;
-      } else if (actionType === 'right') {
-        state.posX = Math.min(85, (state.posX || 50) + 12);
-        state.angle = 135;
-        state.motorSpeed = 75;
-        state.status = '↪️ STEERING RIGHT 135° • DIFFERENTIAL DRIVE';
-        state.statusColor = '#0088cc';
-        state.log = `Differential steering turned right 135°. Rover shifted right to (${state.posX}%, ${state.posY}%).`;
+        state.log = `Reversing (heading ${currentAngle}°) — position (${state.posX}%, ${state.posY}%)`;
       } else if (actionType === 'stop') {
         state.motorSpeed = 0;
-        state.status = '🛑 ROVER HALTED • STANDBY & MONITORING';
         state.statusColor = '#ffea00';
-        state.log = 'Emergency brakes applied. Rover stationary at current coordinates. Ultrasonic radar monitoring perimeter.';
+        state.log = 'Halted — radar monitoring perimeter';
       } else if (actionType === 'claw') {
         state.clawOpen = !state.clawOpen;
+        state.armAnimating = true;
+        setTimeout(() => { state.armAnimating = false; }, 800);
+
         if (state.clawOpen) {
-          state.cargo = 'Titanium Ore Sample';
-          state.status = '🦾 ROBOTIC CLAW DEPLOYED • SAMPLE SECURED';
+          state.cargo = 'Stone';
+          state.obstacleStatus = 'Loaded on Rover';
           state.statusColor = '#00e676';
-          state.log = 'Robotic manipulator arm extended 35cm. Sample grabbed and stored in cargo bay.';
+          state.log = 'Robotic arm extended — stone grabbed and loaded onto rover cargo bay';
         } else {
+          state.obstacleX = state.posX || 50;
+          state.obstacleY = state.posY || 50;
           state.cargo = 'None';
-          state.status = '🦾 CLAW RETRACTED • CARGO DEPOSITED';
+          if ((state.posX || 0) > 68) {
+            state.obstacleStatus = 'Delivered to Flag 🏁';
+            state.missionSuccess = true;
+            setTimeout(() => { state.missionSuccess = false; }, 6000);
+          } else {
+            state.obstacleStatus = `Placed at (${state.obstacleX}%, ${state.obstacleY}%)`;
+          }
           state.statusColor = '#38bdf8';
-          state.log = 'Robotic arm retracted. Mineral sample deposited into on-board spectroscopy analysis chamber.';
+          state.log = `Robotic arm released stone onto arena floor at (${state.obstacleX}%, ${state.obstacleY}%)`;
         }
       } else if (actionType === 'obstacle') {
-        state.distance = Math.floor(Math.random() * 8) + 8; // 8-15cm
+        state.distance = Math.floor(Math.random() * 8) + 8;
         state.angle = 135;
-        state.motorSpeed = 40;
-        state.status = '⚠️ OBSTACLE DETECTED • EVASIVE MANEUVER';
+        state.motorSpeed = 45;
+        state.obstacleX = 30;
+        state.obstacleY = 45;
+        state.obstacleStatus = 'Target Stone';
         state.statusColor = '#ff1744';
-        state.log = `Obstacle rock detected at ${state.distance}cm! Spinning servo right 135° to evade.`;
-      } else if (actionType === 'calibrate') {
-        state.distance = 50;
+        state.log = `Stone detected at ${state.distance}cm — ready to grab`;
+      } else if (actionType === 'autopilot') {
+        // Clear any previous running autopilot timers
+        while (this.autopilotTimers.length > 0) {
+          clearTimeout(this.autopilotTimers.pop());
+        }
+
+        // Step 0: Initialize starting position smoothly
+        state.missionSuccess = false;
+        state.posX = 16;
+        state.posY = 68;
         state.angle = 90;
-        state.motorSpeed = 90;
-        state.status = '⚡ SENSORS CALIBRATED • PATH CLEAR';
-        state.statusColor = '#00e676';
-        state.log = '360° LIDAR & Ultrasonic sensors calibrated. Zero bias error. Proceeding at full speed.';
+        state.obstacleX = 35;
+        state.obstacleY = 35;
+        state.obstacleStatus = 'LiDAR Target Locked';
+        state.clawOpen = false;
+        state.cargo = 'None';
+        state.motorSpeed = 70;
+        state.statusColor = '#38bdf8';
+        state.log = 'Autopilot Engaged — LiDAR target locked at (35%, 35%)';
+
+        // Step 1: Pivot towards the stone
+        this.autopilotTimers.push(setTimeout(() => {
+          state.angle = 45;
+          state.log = 'Autopilot turning 45° North-East to face target stone...';
+        }, 800));
+
+        // Step 2: Drive smoothly halfway towards target stone
+        this.autopilotTimers.push(setTimeout(() => {
+          state.posX = 26;
+          state.posY = 50;
+          state.distance = 18;
+          state.log = 'Approaching target stone slowly — distance 18cm...';
+        }, 1700));
+
+        // Step 3: Arrive at target stone position
+        this.autopilotTimers.push(setTimeout(() => {
+          state.posX = 35;
+          state.posY = 35;
+          state.distance = 5;
+          state.motorSpeed = 20;
+          state.log = 'Arrived at target stone — stabilizing for pickup...';
+        }, 2700));
+
+        // Step 4: Animate robotic arm to grab the stone
+        this.autopilotTimers.push(setTimeout(() => {
+          state.motorSpeed = 0;
+          state.clawOpen = true;
+          state.armAnimating = true;
+          state.log = 'Articulated robotic arm extending to grip stone...';
+        }, 3600));
+
+        // Step 5: Secure stone onto rover
+        this.autopilotTimers.push(setTimeout(() => {
+          state.armAnimating = false;
+          state.cargo = 'Stone';
+          state.obstacleStatus = 'Loaded on Rover';
+          state.statusColor = '#00e676';
+          state.log = 'Stone secured onto rover cargo hold — planning route to Flag 🏁';
+        }, 4400));
+
+        // Step 6: Pivot towards destination flag (East 180°)
+        this.autopilotTimers.push(setTimeout(() => {
+          state.angle = 180;
+          state.motorSpeed = 80;
+          state.log = 'Autopilot turning East (180°) towards destination flag...';
+        }, 5300));
+
+        // Step 7: Drive smoothly waypoint 1 across arena
+        this.autopilotTimers.push(setTimeout(() => {
+          state.posX = 50;
+          state.posY = 37;
+          state.log = 'Transporting stone East — crossing arena midpoint (50%, 37%)...';
+        }, 6300));
+
+        // Step 8: Drive smoothly waypoint 2 across arena
+        this.autopilotTimers.push(setTimeout(() => {
+          state.posX = 66;
+          state.posY = 39;
+          state.log = 'Approaching delivery flag smoothly (66%, 39%)...';
+        }, 7300));
+
+        // Step 9: Arrive at destination flag
+        this.autopilotTimers.push(setTimeout(() => {
+          state.posX = 78;
+          state.posY = 40;
+          state.motorSpeed = 20;
+          state.log = 'Arrived at destination flag — positioning for release...';
+        }, 8300));
+
+        // Step 10: Animate robotic arm to release stone onto flag
+        this.autopilotTimers.push(setTimeout(() => {
+          state.motorSpeed = 0;
+          state.armAnimating = true;
+          state.log = 'Robotic arm extending to unload stone at destination flag...';
+        }, 9200));
+
+        // Step 11: Complete mission & celebrate
+        this.autopilotTimers.push(setTimeout(() => {
+          state.armAnimating = false;
+          state.clawOpen = false;
+          state.cargo = 'None';
+          state.obstacleX = 78;
+          state.obstacleY = 40;
+          state.obstacleStatus = 'Delivered to Flag 🏁';
+          state.missionSuccess = true;
+          state.status = '🎉 CONGRATULATIONS! AUTOPILOT MISSION SUCCESSFUL!';
+          state.statusColor = '#10b981';
+          state.log = 'Autopilot rover successfully spotted, grabbed, and delivered target stone obstacle to destination point with 100% precision!';
+        }, 10000));
+
+        this.autopilotTimers.push(setTimeout(() => {
+          state.missionSuccess = false;
+        }, 17000));
       }
+
+      // Automatically recalculate obstacle proximity distance
+      const dx = (state.posX || 50) - (state.obstacleX || 25);
+      const dy = (state.posY || 50) - (state.obstacleY || 35);
+      state.distance = Math.max(5, Math.round(Math.sqrt(dx * dx + dy * dy) * 0.85));
     } else if (track === 'coding') {
-      if (actionType === 'bubble') {
-        state.bars = [20, 30, 40, 50, 60, 70, 80, 90, 95, 100, 100, 100];
+      if (actionType === 'sort') {
+        state.bars = [15, 25, 30, 45, 50, 60, 65, 75, 80, 85, 90, 95];
         state.benchmarkMs = '0.12';
         state.opsSec = '3.8M ops/s';
-        state.status = '⚡ QUICKSORT CONVERGED IN 0.12ms';
+        state.sorted = true;
+        state.status = '// QuickSort completed in 0.12ms — array is now sorted.';
         state.statusColor = '#00e676';
-        state.log = 'QuickSort partitioned array in-place. O(N log N) optimal time complexity achieved.';
-      } else if (actionType === 'reverse') {
-        state.bars = (state.bars || [35, 60, 25, 85, 45, 95, 50, 75, 30, 90, 65, 80]).slice().reverse();
-        state.status = '💥 DATA STREAM INVERTED';
-        state.statusColor = '#ffea00';
-        state.log = 'Inverted memory buffer order. Data stream reversed across 12 registers.';
+        state.log = '> Output: [15, 25, 30, 45, 50, 60, 65, 75, 80, 85, 90, 95]';
+        state.sortAlgo = 'QuickSort';
+        state.code = `function quickSort(arr) {
+  if (arr.length <= 1) return arr;
+  const pivot = arr[arr.length - 1];
+  const left = [];
+  const right = [];
+  for (let i = 0; i < arr.length - 1; i++) {
+    arr[i] < pivot ? left.push(arr[i])
+                   : right.push(arr[i]);
+  }
+  return [...quickSort(left),
+          pivot,
+          ...quickSort(right)];
+}
+
+const data = [15, 25, 30, 45, 50, 60, 65, 75, 80, 85, 90, 95];
+const result = quickSort(data);
+console.log(result); // ✅ Sorted!`;
       } else if (actionType === 'randomize') {
         state.bars = Array.from({ length: 12 }, () => Math.floor(Math.random() * 75) + 25);
-        state.status = '🎲 ARRAY SHUFFLED • READY TO SORT';
-        state.statusColor = '#0088cc';
-        state.log = 'Shuffled 12 array bars with random heights. Awaiting sorting algorithm execution.';
-      } else if (actionType === 'stress') {
+        state.sorted = false;
+        state.status = '// Array shuffled. Ready for sorting.';
+        state.statusColor = '#38bdf8';
+        state.log = '> Array randomized. Press Run to sort again.';
+        state.sortAlgo = 'QuickSort';
+        const barsStr = state.bars.join(', ');
+        state.code = `function quickSort(arr) {
+  if (arr.length <= 1) return arr;
+  const pivot = arr[arr.length - 1];
+  const left = [];
+  const right = [];
+  for (let i = 0; i < arr.length - 1; i++) {
+    arr[i] < pivot ? left.push(arr[i])
+                   : right.push(arr[i]);
+  }
+  return [...quickSort(left),
+          pivot,
+          ...quickSort(right)];
+}
+
+const data = [${barsStr}];
+const result = quickSort(data);
+console.log(result);`;
+      } else if (actionType === 'speed') {
         state.benchmarkMs = (Math.random() * 0.15 + 0.25).toFixed(2);
         state.opsSec = (Math.random() * 0.8 + 3.2).toFixed(1) + 'M ops/s';
-        state.status = '🔥 10,000 ITERATION STRESS TEST PASSED';
-        state.statusColor = '#00e676';
-        state.log = `Executed 10,000 recursive DP cases in ${state.benchmarkMs}ms with zero memory leaks.`;
-      } else if (actionType === 'optimize') {
-        state.memory = (Math.random() * 1.5 + 9.5).toFixed(1) + ' MB';
-        state.status = '✨ GARBAGE COLLECTION & CACHE OPTIMIZED';
-        state.statusColor = '#0088cc';
-        state.log = `Reduced heap footprint to ${state.memory}. L1 cache hit rate reached 99.7%.`;
+        state.memory = (Math.random() * 2 + 10).toFixed(1) + ' MB';
+        state.status = '// Stress test completed — 10,000 arrays sorted. Zero errors.';
+        state.statusColor = '#a855f7';
+        state.bars = [10, 20, 30, 42, 52, 60, 68, 75, 82, 88, 94, 98];
+        state.sorted = true;
+        state.sortAlgo = 'MergeSort';
+        state.log = `> Stress test: sorted 10,000 arrays in ${state.benchmarkMs}ms.`;
+        state.code = `function mergeSort(arr) {
+  if (arr.length <= 1) return arr;
+  const mid = Math.floor(arr.length / 2);
+  const left = mergeSort(arr.slice(0, mid));
+  const right = mergeSort(arr.slice(mid));
+  return merge(left, right);
+}
+
+function merge(left, right) {
+  const result = [];
+  while (left.length && right.length) {
+    result.push(left[0] < right[0]
+      ? left.shift() : right.shift());
+  }
+  return [...result, ...left, ...right];
+}
+
+// Stress: 10,000 arrays sorted
+for (let i = 0; i < 10000; i++) {
+  const test = Array.from({length: 12},
+    () => Math.floor(Math.random() * 100));
+  mergeSort(test);
+}
+console.log("✅ 10,000 tests passed");`;
       }
     } else if (track === 'ai') {
       if (actionType.startsWith('sample_')) {
@@ -1659,9 +2932,20 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         state.log = `Loaded ${state.sampleName} into visual scanner. ResNet-50 inferred classification with ${state.confidence}% confidence.`;
       } else if (actionType === 'scan') {
-        const samples = ['sample_cocoa', 'sample_maize', 'sample_potato', 'sample_tomato'];
-        const randomSample = samples[Math.floor(Math.random() * samples.length)];
-        this.triggerArenaAction('ai', randomSample);
+        // Re-scan the currently selected sample (not random)
+        const currentIcon = state.sampleIcon;
+        const sampleMap: Record<string, string> = {
+          '🌿': 'sample_cocoa',
+          '🌽': 'sample_maize',
+          '🥔': 'sample_potato',
+          '🍅': 'sample_tomato'
+        };
+        const currentSample = sampleMap[currentIcon] || 'sample_cocoa';
+        state.status = '🔍 Scanning crop sample...';
+        state.statusColor = '#ab47bc';
+        state.log = 'Running AI inference on leaf image. Analyzing texture, color, and pattern...';
+        if (this.scanTimeout) clearTimeout(this.scanTimeout);
+        this.scanTimeout = setTimeout(() => this.triggerArenaAction('ai', currentSample), 900);
       } else if (actionType === 'epoch') {
         state.epoch = Math.min(50, state.epoch + 1);
         state.loss = (parseFloat(state.loss || '0.0123') * 0.92).toFixed(4);
@@ -1695,24 +2979,40 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       }
     } else if (track === 'innovation') {
       if (actionType === 'solar') {
-        state.solarKw = (Math.random() * 8 + 52.0).toFixed(1);
+        const currentSolar = parseFloat(state.solarKw || '46.8');
+        state.solarKw = (currentSolar + Math.random() * 6 + 2).toFixed(1);
         state.battery = Math.min(100, state.battery + 4);
         state.status = '☀️ SOLAR TRACKING TILTED +15° • PEAK GENERATION';
         state.statusColor = '#00e676';
         state.log = `Solar panels tilted +15° toward sun. Array output surged to ${state.solarKw} kW. Battery storage at ${state.battery}%.`;
       } else if (actionType === 'wind') {
-        state.windKw = (Math.random() * 5 + 18.5).toFixed(1);
+        const currentWind = parseFloat(state.windKw || '14.2');
+        state.windKw = (currentWind + Math.random() * 4 + 1).toFixed(1);
         state.status = '💨 TURBINE PITCH ANGLE BOOSTED';
         state.statusColor = '#38bdf8';
-        state.log = `Wind turbine blade pitch angle optimized for 14m/s wind speed. Generating ${state.windKw} kW clean power.`;
+        state.log = `Wind turbine blade pitch angle optimized. Wind output increased to ${state.windKw} kW.`;
       } else if (actionType === 'hospital') {
-        state.hospitalPower = 'Emergency Ward Boosted (120%)';
-        state.status = '🏥 PRIORITY CLEAN POWER DIRECTED TO HOSPITAL';
-        state.statusColor = '#00e676';
-        state.log = 'Municipal smart grid redirected 25 kW backup solar battery storage to ICU and Emergency ward life-support systems.';
+        if (state.hospitalPower === 'Emergency Ward Boosted (120%)') {
+          state.hospitalPower = 'Normal (100%)';
+          state.status = '🏥 Hospital returned to normal grid power';
+          state.statusColor = '#ffea00';
+          state.log = `Hospital reverted to normal. Battery preserved at ${state.battery}%.`;
+        } else if ((state.battery || 0) < 15) {
+          state.status = '⚠️ NOT ENOUGH BATTERY — Generate more power first';
+          state.statusColor = '#ff1744';
+          state.log = `Cannot boost hospital — battery is at ${state.battery}%. Use Solar or Wind to charge.`;
+        } else {
+          state.hospitalPower = 'Emergency Ward Boosted (120%)';
+          state.battery = Math.max(0, state.battery - 15);
+          state.co2Saved += Math.floor(Math.random() * 20) + 10;
+          state.status = '🏥 EMERGENCY WARD BOOSTED — 25 kW CLEAN POWER DIRECTED';
+          state.statusColor = '#00e676';
+          state.log = `Redirected 25 kW from battery to ICU. Battery dropped to ${state.battery}%. CO₂ savings increased.`;
+        }
       } else if (actionType === 'sync') {
+        const currentEfficiency = parseFloat(state.efficiency || '98.5');
+        state.efficiency = Math.min(99.9, currentEfficiency + Math.random() * 0.3 + 0.1).toFixed(1) + '%';
         state.co2Saved += Math.floor(Math.random() * 60) + 30;
-        state.efficiency = '99.4%';
         state.status = '🌍 IOT SMART GRID FULLY SYNCHRONIZED';
         state.statusColor = '#00a86b';
         state.log = `Total carbon emission reduction offset reached ${state.co2Saved} kg across 16 synchronized municipal IoT nodes.`;
@@ -1737,6 +3037,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.typedProblem = '';
     this.challengeResult = null;
     this.hintVisible = false;
+    this.showSolution = false;
     this.userCode = '';
     const full = this.currentChallenge.problem;
     let i = 0;
@@ -1754,7 +3055,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   nextChallenge(): void {
-    this.currentChallengeIndex = (this.currentChallengeIndex + 1) % this.challenges.length;
+    this.currentChallengeIndex = (this.currentChallengeIndex + 1) % this.filteredChallenges.length;
+    this.showSolution = false;
     this.typeProblem();
   }
 
@@ -1776,7 +3078,10 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       const passed = this.currentChallenge.validator(this.userCode);
       this.isChallengeRunning = false;
       this.challengeResult = passed;
-      if (!passed) {
+      if (passed) {
+        this.sessionSolvedToday++;
+        this.sessionPoints += this.currentChallenge.points;
+      } else {
         this.challengeResultMessage = 'Not quite right. Check your logic or use the hint!';
       }
     }, 900);
@@ -1784,6 +3089,25 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   showHint(): void {
     this.hintVisible = !this.hintVisible;
+  }
+
+  toggleSolution(): void {
+    this.showSolution = !this.showSolution;
+  }
+
+  openPreview(): void {
+    const html = this.userCode.trim();
+    if (!html) return;
+    this.showPreviewModal = true;
+    setTimeout(() => {
+      if (this.previewFrameRef?.nativeElement) {
+        this.renderer.setProperty(this.previewFrameRef.nativeElement, 'srcdoc', html);
+      }
+    });
+  }
+
+  closePreview(): void {
+    this.showPreviewModal = false;
   }
 
   // ── GHANA REGION MAP ─────────────────────────────────────────
