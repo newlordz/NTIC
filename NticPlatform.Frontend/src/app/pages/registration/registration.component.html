@@ -933,13 +933,13 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td><strong class="confidential-text">A<span>chimota SHS</span></strong></td><td>Greater Accra</td><td>42</td><td><span class="badge success">Active</span></td></tr>
-                <tr><td><strong class="confidential-text">W<span>esley Girls' SHS</span></strong></td><td>Central</td><td>38</td><td><span class="badge success">Active</span></td></tr>
-                <tr><td><strong class="confidential-text">P<span>RESEC Legon</span></strong></td><td>Greater Accra</td><td>56</td><td><span class="badge success">Active</span></td></tr>
-                <tr><td><strong class="confidential-text">P<span>rempeh College</span></strong></td><td>Ashanti</td><td>49</td><td><span class="badge success">Active</span></td></tr>
-                <tr><td><strong class="confidential-text">M<span>fantsipim School</span></strong></td><td>Central</td><td>35</td><td><span class="badge warning">Pending</span></td></tr>
-                <tr><td><strong class="confidential-text">H<span>oly Child SHS</span></strong></td><td>Central</td><td>31</td><td><span class="badge success">Active</span></td></tr>
-                <tr><td><strong class="confidential-text">A<span>buri Girls SHS</span></strong></td><td>Eastern</td><td>27</td><td><span class="badge warning">Pending</span></td></tr>
+                <tr *ngIf="contentService.pendingApprovals.length === 0"><td colspan="4" style="text-align:center;padding:30px;color:var(--on-surface-variant);">No registered institutions yet. Schools will appear here once approved.</td></tr>
+                <tr *ngFor="let req of contentService.pendingApprovals">
+                  <td><strong class="confidential-text">{{req.entity.substring(0, 1)}}<span>{{req.entity.substring(1)}}</span></strong></td>
+                  <td>{{ req.details ? req.details.region : '—' }}</td>
+                  <td>{{ req.details ? req.details.code : '—' }}</td>
+                  <td><span class="badge warning">Pending</span></td>
+                </tr>
               </tbody>
             </table>
           </div>

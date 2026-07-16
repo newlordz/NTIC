@@ -18,7 +18,15 @@ export class AppComponent implements OnInit, OnDestroy {
   currentUser: { name: string; avatar: string; roleName: string; roleId: string } | null = null;
   showScrollToTop = false;
   isMobileSidebarOpen = false;
-  private scrollListener = () => this.checkScroll();
+  private scrollRafPending = false;
+  private scrollListener = () => {
+    if (this.scrollRafPending) return;
+    this.scrollRafPending = true;
+    requestAnimationFrame(() => {
+      this.scrollRafPending = false;
+      this.checkScroll();
+    });
+  };
 
   userProfiles: Record<string, { name: string; avatar: string; roleName: string }> = {
     student:        { name: 'Kwame Asante',       avatar: 'KA', roleName: 'Student' },
@@ -124,18 +132,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   scrollToTop(): void {
-    const el = document.scrollingElement || document.documentElement;
-    const start = el.scrollTop;
-    if (start === 0) return;
-    const duration = 350;
-    const startTime = performance.now();
-    const animate = (time: number) => {
-      const elapsed = time - startTime;
-      const t = Math.min(elapsed / duration, 1);
-      el.scrollTop = start * (1 - t * (2 - t));
-      if (t < 1) requestAnimationFrame(animate);
-    };
-    requestAnimationFrame(animate);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   getInitials(name: string): string {

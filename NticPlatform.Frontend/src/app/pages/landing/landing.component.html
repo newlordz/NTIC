@@ -1,68 +1,6 @@
 <div class="landing-page" (click)="closeMegaMenu()">
 
   <!-- ══════════════════════════════════════════
-       SEARCH OVERLAY (Harvard Style)
-  ══════════════════════════════════════════ -->
-  <div class="search-overlay" [class.open]="isSearchOpen">
-    <button class="close-search" (click)="toggleSearch(false)">
-      <span class="material-symbols-outlined">close</span>
-    </button>
-    <div class="search-content">
-      <div class="search-field-wrap">
-        <span class="material-symbols-outlined search-icon-main">search</span>
-        <input 
-          type="text" 
-          placeholder="Search the NTI Championship portal..." 
-          [(ngModel)]="searchQuery"
-          (input)="onSearchInput()"
-          #searchInput
-          class="search-input-field"
-        >
-      </div>
-
-      <div class="search-suggestions" *ngIf="!searchQuery">
-        <h4>Trending Searches</h4>
-        <div class="trend-tags">
-          <button *ngFor="let term of trendingSearches" (click)="selectTrending(term)">
-            {{ term }}
-          </button>
-        </div>
-      </div>
-
-      <div class="search-results" *ngIf="searchQuery">
-        <h4 *ngIf="filteredSearchResults.length > 0">Suggested Matches</h4>
-        <h4 *ngIf="filteredSearchResults.length === 0">No direct matches found. Try searching:</h4>
-        
-        <ul class="results-list" *ngIf="filteredSearchResults.length > 0">
-          <li *ngFor="let result of filteredSearchResults">
-            <a 
-              [routerLink]="result === 'Registration Form' ? '/registration' : null" 
-              [href]="result !== 'Registration Form' ? 'javascript:void(0)' : null"
-              (click)="toggleSearch(false); result !== 'Registration Form' ? openLoginModal($event) : null"
-            >
-              <span class="material-symbols-outlined">arrow_right_alt</span>
-              <span>Go to {{ result }}</span>
-            </a>
-          </li>
-        </ul>
-
-        <ul class="results-list" *ngIf="filteredSearchResults.length === 0">
-          <li *ngFor="let term of trendingSearches">
-            <a 
-              [routerLink]="term === 'Registration Form' ? '/registration' : null" 
-              [href]="term !== 'Registration Form' ? 'javascript:void(0)' : null"
-              (click)="toggleSearch(false); term !== 'Registration Form' ? openLoginModal($event) : null"
-            >
-              <span class="material-symbols-outlined">search</span>
-              <span>Search for "{{ term }}"</span>
-            </a>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════
        STICKY HEADER & MEGA MENU
   ══════════════════════════════════════════ -->
   <header class="landing-header">
@@ -70,19 +8,18 @@
     <div class="utility-bar">
       <div class="utility-container">
         <div class="utility-right">
-          <button class="theme-toggle-btn ut-link" (click)="themeService.toggleTheme()" style="background:none; border:none; color:inherit; font:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:4px; padding:0; outline:none;">
-            <span class="material-symbols-outlined" style="font-size:14px;">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
+          <button class="theme-toggle-btn ut-link" (click)="themeService.toggleTheme()">
+            <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
             <span>{{ themeService.isDarkMode ? 'Light' : 'Dark' }}</span>
           </button>
-          <span class="ut-sep">|</span>
-          <a href="#about" class="ut-link">News & Events</a>
-          <span class="ut-sep">|</span>
-          <a href="#stats" class="ut-link">Impact Metrics</a>
-          <span class="ut-sep">|</span>
-          <button class="search-trigger" (click)="toggleSearch(true); $event.stopPropagation()">
-            <span class="material-symbols-outlined">search</span>
-            <span>Search</span>
-          </button>
+          <a (click)="scrollToSection('about')" class="ut-link">
+            <span class="material-symbols-outlined">campaign</span>
+            <span>News & Events</span>
+          </a>
+          <a (click)="scrollToSection('stats')" class="ut-link">
+            <span class="material-symbols-outlined">analytics</span>
+            <span>Impact Metrics</span>
+          </a>
         </div>
       </div>
     </div>
@@ -114,27 +51,27 @@
               <div class="mega-col intro-col">
                 <h3>The 5 Core Arenas</h3>
                 <p>High school squads specialize in a track, preparing projects and competing under strict national rules.</p>
-                <a href="#tracks" class="mega-cta-link" (click)="closeMegaMenu()">
+                <a class="mega-cta-link" (click)="closeMegaMenu(); scrollToSection('tracks')">
                   <span>All Tracks Guide</span>
                   <span class="material-symbols-outlined">arrow_right_alt</span>
                 </a>
               </div>
               <div class="mega-col links-col">
-                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                <a class="mega-link-item" (click)="closeMegaMenu(); scrollToSection('tracks')">
                   <span class="material-symbols-outlined mc-icon coding">data_object</span>
                   <div>
                     <strong>Coding & Algorithms</strong>
                     <span>Timed code sprints & optimizations.</span>
                   </div>
                 </a>
-                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                <a class="mega-link-item" (click)="closeMegaMenu(); scrollToSection('tracks')">
                   <span class="material-symbols-outlined mc-icon robotics">memory</span>
                   <div>
                     <strong>Robotics & IoT</strong>
                     <span>Autonomous bot navigational engineering.</span>
                   </div>
                 </a>
-                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                <a class="mega-link-item" (click)="closeMegaMenu(); scrollToSection('tracks')">
                   <span class="material-symbols-outlined mc-icon ai">model_training</span>
                   <div>
                     <strong>Artificial Intelligence</strong>
@@ -143,14 +80,14 @@
                 </a>
               </div>
               <div class="mega-col links-col">
-                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                <a class="mega-link-item" (click)="closeMegaMenu(); scrollToSection('tracks')">
                   <span class="material-symbols-outlined mc-icon cyber">security</span>
                   <div>
                     <strong>Cybersecurity CTF</strong>
                     <span>Defensive systems and cipher challenges.</span>
                   </div>
                 </a>
-                <a href="#tracks" class="mega-link-item" (click)="closeMegaMenu()">
+                <a class="mega-link-item" (click)="closeMegaMenu(); scrollToSection('tracks')">
                   <span class="material-symbols-outlined mc-icon innovation">tips_and_updates</span>
                   <div>
                     <strong>Open Innovation</strong>
@@ -162,16 +99,83 @@
           </div>
         </div>
 
-        <a href="#about" class="nav-link">Concept</a>
-        <a href="#tracks" class="nav-link">Competition Track Arenas</a>
+        <a class="nav-link" (click)="scrollToSection('about')">Concept</a>
+        <a class="nav-link" (click)="scrollToSection('tracks')">Competition Track Arenas</a>
         <button type="button" (click)="openLoginModal($event)" class="nav-link portal-highlight">Login</button>
       </nav>
 
       <div class="header-cta">
         <a routerLink="/registration" class="btn btn-crimson btn-sm">Apply now</a>
       </div>
+
+      <button class="mobile-hamburger" (click)="toggleMobileMenu()" [class.active]="isMobileMenuOpen" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </header>
+
+  <!-- Mobile Navigation Drawer -->
+  <div class="mobile-nav-backdrop" *ngIf="isMobileMenuOpen" (click)="closeMobileMenu()"></div>
+  <div class="mobile-nav-drawer" [class.open]="isMobileMenuOpen">
+    <div class="mobile-nav-header">
+      <span class="mobile-nav-title">Menu</span>
+      <button class="mobile-nav-close" (click)="closeMobileMenu()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="mobile-nav-body">
+      <!-- Competition Dropdown -->
+      <div class="mobile-nav-section">
+        <button class="mobile-nav-link dropdown-toggle" (click)="toggleMegaMenu('tracks')">
+          <span>Competition</span>
+          <span class="material-symbols-outlined arrow-icon" [class.rotated]="activeMegaMenu === 'tracks'">keyboard_arrow_down</span>
+        </button>
+        <div class="mobile-sub-nav" [class.open]="activeMegaMenu === 'tracks'">
+          <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
+            <span class="material-symbols-outlined" style="color:#38bdf8">data_object</span>
+            Coding & Algorithms
+          </a>
+          <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
+            <span class="material-symbols-outlined" style="color:#00e676">memory</span>
+            Robotics & IoT
+          </a>
+          <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
+            <span class="material-symbols-outlined" style="color:#ab47bc">model_training</span>
+            Artificial Intelligence
+          </a>
+          <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
+            <span class="material-symbols-outlined" style="color:#ff1744">security</span>
+            Cybersecurity CTF
+          </a>
+          <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
+            <span class="material-symbols-outlined" style="color:#ffab00">tips_and_updates</span>
+            Open Innovation
+          </a>
+        </div>
+      </div>
+
+      <a class="mobile-nav-link" (click)="closeMobileMenu(); scrollToSection('about')">Concept</a>
+      <a class="mobile-nav-link" (click)="closeMobileMenu(); scrollToSection('tracks')">Competition Track Arenas</a>
+      <button type="button" class="mobile-nav-link portal-highlight" (click)="openLoginModal($event); closeMobileMenu()">Login</button>
+
+      <div class="mobile-nav-divider"></div>
+
+      <div class="mobile-nav-utilities">
+        <button class="mobile-ut-link" (click)="themeService.toggleTheme(); closeMobileMenu()">
+          <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
+          <span>{{ themeService.isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
+        </button>
+        <a (click)="scrollToSection('about'); closeMobileMenu()" class="mobile-ut-link">
+          <span class="material-symbols-outlined">campaign</span>
+          <span>News & Events</span>
+        </a>
+        <a (click)="scrollToSection('stats'); closeMobileMenu()" class="mobile-ut-link">
+          <span class="material-symbols-outlined">analytics</span>
+          <span>Impact Metrics</span>
+        </a>
+      </div>
+    </div>
+  </div>
 
 
   <!-- ══════════════════════════════════════════
@@ -645,68 +649,10 @@
                   </div>
 
                   <!-- 1. Robotics Rover Arena -->
-                  <div *ngIf="activeTrackPreview === 'robotics'" class="track-sim-content robotics-sim split-cockpit">
-                    <!-- Left: Controls & Telemetry -->
-                    <div class="cockpit-left">
-                      <!-- Game-Style Controls -->
-                      <div class="game-controls-panel">
-
-                        <!-- D-Pad (Hexagonal Cross) -->
-                        <div class="game-section">
-                          <div class="game-section-label">Movement</div>
-                          <div class="game-dpad">
-                            <div class="dpad-pivot-row">
-                              <button class="dpad-btn dpad-pivot" (click)="triggerArenaAction('robotics', 'turn_left')" title="Pivot Left">
-                                <span class="dpad-pivot">↩</span>
-                              </button>
-                              <button class="dpad-btn dpad-pivot" (click)="triggerArenaAction('robotics', 'turn_right')" title="Pivot Right">
-                                <span class="dpad-pivot">↪</span>
-                              </button>
-                            </div>
-                            <div class="dpad-cross">
-                              <button class="dpad-btn dpad-up" (click)="triggerArenaAction('robotics', 'forward')" title="Drive Forward along Heading">
-                                <span class="dpad-arrow">▲</span>
-                              </button>
-                              <button class="dpad-btn dpad-left" (click)="triggerArenaAction('robotics', 'left')" title="Turn Left 45°">
-                                <span class="dpad-arrow">◀</span>
-                              </button>
-                              <button class="dpad-btn dpad-center" (click)="triggerArenaAction('robotics', 'stop')" title="Stop">
-                                <span class="dpad-circle">●</span>
-                              </button>
-                              <button class="dpad-btn dpad-right" (click)="triggerArenaAction('robotics', 'right')" title="Turn Right 45°">
-                                <span class="dpad-arrow">▶</span>
-                              </button>
-                              <button class="dpad-btn dpad-down" (click)="triggerArenaAction('robotics', 'reverse')" title="Reverse along Heading">
-                                <span class="dpad-arrow">▼</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Action Buttons (Game-Controller Style) -->
-                        <div class="game-section">
-                          <div class="game-section-label">Commands</div>
-                          <div class="game-action-group">
-                            <button class="game-action-btn action-grab" (click)="triggerArenaAction('robotics', 'claw')">
-                              <span class="action-icon material-symbols-outlined">precision_manufacturing</span>
-                              <span class="action-label">{{ arenaState.robotics?.clawOpen ? 'Release' : 'Grab' }}</span>
-                            </button>
-                            <button class="game-action-btn action-spawn" (click)="triggerArenaAction('robotics', 'obstacle')">
-                              <span class="action-icon material-symbols-outlined">warning</span>
-                              <span class="action-label">Spawn</span>
-                            </button>
-                            <button class="game-action-btn action-auto" (click)="triggerArenaAction('robotics', 'autopilot')">
-                              <span class="action-icon material-symbols-outlined">smart_toy</span>
-                              <span class="action-label">Auto</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Right: Rover Visual Stage -->
-                    <div class="cockpit-right">
-                      <div class="visual-stage rover-stage">
+                    <div *ngIf="activeTrackPreview === 'robotics'" class="track-sim-content robotics-sim split-cockpit">
+                      <!-- Left: Rover Visual Stage -->
+                      <div class="cockpit-left">
+                        <div class="visual-stage rover-stage">
                         <div class="stage-grid-bg"></div>
 
                         <!-- Obstacle on Arena Floor -->
@@ -763,32 +709,109 @@
                         <span class="log-text">{{ arenaState.robotics?.log }}</span>
                       </div>
                     </div>
+
+                    <!-- Right: Controls & Telemetry -->
+                    <div class="cockpit-right">
+                      <div class="game-controls-panel">
+
+                        <!-- D-Pad (Hexagonal Cross) -->
+                        <div class="game-section">
+                          <div class="game-section-label">Movement</div>
+                          <div class="game-dpad">
+                            <div class="dpad-pivot-row">
+                              <button class="dpad-btn dpad-pivot" (click)="triggerArenaAction('robotics', 'turn_left')" title="Pivot Left">
+                                <span class="dpad-pivot">↩</span>
+                              </button>
+                              <button class="dpad-btn dpad-pivot" (click)="triggerArenaAction('robotics', 'turn_right')" title="Pivot Right">
+                                <span class="dpad-pivot">↪</span>
+                              </button>
+                            </div>
+                            <div class="dpad-cross">
+                              <button class="dpad-btn dpad-up" (click)="triggerArenaAction('robotics', 'forward')" title="Drive Forward along Heading">
+                                <span class="dpad-arrow">▲</span>
+                              </button>
+                              <button class="dpad-btn dpad-left" (click)="triggerArenaAction('robotics', 'left')" title="Turn Left 45°">
+                                <span class="dpad-arrow">◀</span>
+                              </button>
+                              <button class="dpad-btn dpad-center" (click)="triggerArenaAction('robotics', 'stop')" title="Stop">
+                                <span class="dpad-circle">●</span>
+                              </button>
+                              <button class="dpad-btn dpad-right" (click)="triggerArenaAction('robotics', 'right')" title="Turn Right 45°">
+                                <span class="dpad-arrow">▶</span>
+                              </button>
+                              <button class="dpad-btn dpad-down" (click)="triggerArenaAction('robotics', 'reverse')" title="Reverse along Heading">
+                                <span class="dpad-arrow">▼</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Action Buttons (Game-Controller Style) -->
+                        <div class="game-section">
+                          <div class="game-section-label">Commands</div>
+                          <div class="game-action-group">
+                            <button class="game-action-btn action-grab" (click)="triggerArenaAction('robotics', 'claw')">
+                              <span class="action-icon material-symbols-outlined">precision_manufacturing</span>
+                              <span class="action-label">{{ arenaState.robotics?.clawOpen ? 'Release' : 'Grab' }}</span>
+                            </button>
+                            <button class="game-action-btn action-spawn" (click)="triggerArenaAction('robotics', 'obstacle')">
+                              <span class="action-icon material-symbols-outlined">warning</span>
+                              <span class="action-label">Spawn</span>
+                            </button>
+                            <button class="game-action-btn action-auto" (click)="triggerArenaAction('robotics', 'autopilot')">
+                              <span class="action-icon material-symbols-outlined">smart_toy</span>
+                              <span class="action-label">Auto</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <!-- 2. Coding & Algorithms — Speed Sprints Arena -->
                   <div *ngIf="activeTrackPreview === 'coding'" class="track-sim-content coding-sim split-cockpit">
-                    <!-- Left: Code + Visualization -->
+                    <!-- Left: People Visualization + Code -->
                     <div class="cockpit-left">
-                      <!-- Sorting Visualization -->
-                      <div class="algo-visual">
-                        <div class="algo-visual-header">
-                          <span class="algo-visual-name">{{ arenaState.coding?.sortAlgo }}</span>
-                          <span class="algo-visual-badge" [style.background]="arenaState.coding?.sorted ? '#00e676' : '#38bdf8'">
-                            {{ arenaState.coding?.sorted ? 'SORTED' : 'UNSORTED' }}
+                      <!-- Human Sorting Grid -->
+                      <div class="people-visual">
+                        <div class="people-visual-header">
+                          <span class="people-visual-title">
+                            <span class="material-symbols-outlined">groups</span>
+                            Contestants ({{ arenaState.coding?.people?.length || 0 }})
+                          </span>
+                          <span class="people-visual-badge"
+                                [style.background]="arenaState.coding?.sortField !== 'none' ? '#00e676' : '#38bdf8'">
+                            {{ arenaState.coding?.sortField !== 'none' ? 'SORTED BY: ' + (arenaState.coding?.sortField | uppercase) : 'UNSORTED' }}
                           </span>
                         </div>
-                        <div class="algo-bars-container">
-                          <div class="bar-item" *ngFor="let h of arenaState.coding?.bars; let i = index"
-                               [style.height.%]="h"
-                               [style.background]="arenaState.coding?.sorted
-                                 ? '#00e676'
-                                 : '#f59e0b'"
-                               [style.opacity]="arenaState.coding?.sorted ? (0.5 + (i / 12) * 0.5) : 0.85">
-                            <span class="bar-value">{{ h }}</span>
+                        <div class="people-grid">
+                          <div class="person-card" *ngFor="let p of arenaState.coding?.people; let i = index"
+                               [style.animation-delay]="i * 40 + 'ms'"
+                               [style.--float-delay]="(i * 0.37) + 's'">
+                            <div class="human-figure" [class.male]="p.gender === 'male'" [class.female]="p.gender === 'female'">
+                              <div class="human-head">
+                                <div class="hair-acc"></div>
+                              </div>
+                              <div class="human-torso">
+                                <div class="arm arm-l"></div>
+                                <div class="arm arm-r"></div>
+                              </div>
+                              <div class="human-legs">
+                                <div class="leg leg-l"></div>
+                                <div class="leg leg-r"></div>
+                              </div>
+                            </div>
+                            <div class="person-info">
+                              <span class="person-name">{{ p.name }}</span>
+                              <span class="person-meta">
+                                <span class="person-age">{{ p.age }} yrs</span>
+                                <span class="person-gender" [class.male]="p.gender === 'male'" [class.female]="p.gender === 'female'">{{ p.gender === 'male' ? '♂' : '♀' }}</span>
+                              </span>
+                            </div>
                           </div>
                         </div>
-                        <div class="algo-visual-footer">
-                          <span>{{ arenaState.coding?.sorted ? '✅ Sorted from smallest to tallest' : '🔀 Click Run to sort this array' }}</span>
+                        <div class="people-visual-footer">
+                          <span>{{ arenaState.coding?.sortField !== 'none' ? '✅ Sorted successfully' : '🔀 Click a sort button below' }}</span>
                         </div>
                       </div>
 
@@ -802,22 +825,26 @@
                       </div>
                     </div>
 
-                    <!-- Right: Controls -->
+                    <!-- Right: Sort Controls -->
                     <div class="cockpit-right">
                       <div class="controls-card">
-                        <div class="controls-card-title">▶ Run</div>
-                        <div class="controls-btn-group">
-                          <button class="ctrl-btn ctrl-sort" (click)="triggerArenaAction('coding', 'sort')">
-                            <span class="material-symbols-outlined">play_arrow</span>
-                            <span>Sort Array</span>
+                        <div class="controls-card-title">🧑‍🤝‍🧑 Sort People</div>
+                        <div class="controls-btn-group sort-buttons">
+                          <button class="ctrl-btn ctrl-age-asc" (click)="triggerArenaAction('coding', 'sort-age-asc')">
+                            <span class="material-symbols-outlined">arrow_upward</span>
+                            <span>Age ↑</span>
                           </button>
-                          <button class="ctrl-btn ctrl-shuffle" (click)="triggerArenaAction('coding', 'randomize')">
+                          <button class="ctrl-btn ctrl-age-desc" (click)="triggerArenaAction('coding', 'sort-age-desc')">
+                            <span class="material-symbols-outlined">arrow_downward</span>
+                            <span>Age ↓</span>
+                          </button>
+                          <button class="ctrl-btn ctrl-gender" (click)="triggerArenaAction('coding', 'sort-gender')">
+                            <span class="material-symbols-outlined">group_work</span>
+                            <span>Gender</span>
+                          </button>
+                          <button class="ctrl-btn ctrl-shuffle" (click)="triggerArenaAction('coding', 'shuffle')">
                             <span class="material-symbols-outlined">shuffle</span>
-                            <span>New Data</span>
-                          </button>
-                          <button class="ctrl-btn ctrl-speed" (click)="triggerArenaAction('coding', 'speed')">
-                            <span class="material-symbols-outlined">speed</span>
-                            <span>Benchmark</span>
+                            <span>Shuffle</span>
                           </button>
                         </div>
                       </div>
@@ -831,20 +858,20 @@
                         <div class="controls-card-title">📊 Results</div>
                         <div class="perf-grid">
                           <div class="perf-item">
-                            <div class="perf-label">Time</div>
-                            <div class="perf-value">{{ arenaState.coding?.benchmarkMs }}<small>ms</small></div>
+                            <div class="perf-label">Total</div>
+                            <div class="perf-value">{{ arenaState.coding?.people?.length }}<small>ppl</small></div>
                           </div>
                           <div class="perf-item">
-                            <div class="perf-label">Memory</div>
-                            <div class="perf-value">{{ arenaState.coding?.memory }}</div>
+                            <div class="perf-label">Males</div>
+                            <div class="perf-value">{{ countMales(arenaState.coding?.people) }}</div>
                           </div>
                           <div class="perf-item">
-                            <div class="perf-label">Speed</div>
-                            <div class="perf-value">{{ arenaState.coding?.opsSec }}</div>
+                            <div class="perf-label">Females</div>
+                            <div class="perf-value">{{ countFemales(arenaState.coding?.people) }}</div>
                           </div>
                           <div class="perf-item">
-                            <div class="perf-label">Method</div>
-                            <div class="perf-value">{{ arenaState.coding?.sortAlgo }}</div>
+                            <div class="perf-label">Age Range</div>
+                            <div class="perf-value">{{ getAgeRange(arenaState.coding?.people) }}</div>
                           </div>
                         </div>
                       </div>
@@ -893,6 +920,30 @@
                         <span class="material-symbols-outlined">terminal</span>
                         <span class="log-text">{{ arenaState.ai?.log }}</span>
                       </div>
+
+                      <!-- Training Dashboard -->
+                      <div class="training-dashboard" *ngIf="arenaState.ai?.epoch > 0">
+                        <div class="td-header">
+                          <span class="material-symbols-outlined">grid_view</span>
+                          <span>Confusion Matrix</span>
+                          <span class="td-acc-badge" [style.background]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'">
+                            {{ arenaState.ai?.accuracy }}%
+                          </span>
+                        </div>
+                        <div class="cm-grid">
+                          <div class="cm-corner"></div>
+                          <div class="cm-label top" *ngFor="let label of arenaState.ai?.classLabels">{{ label }}</div>
+                          <ng-container *ngFor="let row of arenaState.ai?.confusionMatrix; let ri = index">
+                            <div class="cm-label side">{{ arenaState.ai?.classLabels[ri] }}</div>
+                            <div class="cm-cell" *ngFor="let val of row; let ci = index"
+                                 [class.cm-diag]="ri === ci"
+                                 [style.--cm-pct]="val / 100"
+                                 [style.background]="ri === ci ? 'rgba(0, 230, 118, ' + (0.1 + val / 100 * 0.7) + ')' : 'rgba(255, 23, 68, ' + (0.05 + (100 - val) / 100 * 0.4) + ')'">
+                              <span class="cm-val">{{ val }}%</span>
+                            </div>
+                          </ng-container>
+                        </div>
+                      </div>
                     </div>
 
                     <!-- Right: Controls -->
@@ -938,23 +989,58 @@
                       </div>
 
                       <div class="controls-card">
-                        <div class="controls-card-title">📊 Results</div>
-                        <div class="perf-grid">
-                          <div class="perf-item">
-                            <div class="perf-label">Confidence</div>
-                            <div class="perf-value">{{ arenaState.ai?.confidence }}<small>%</small></div>
+                        <div class="controls-card-title">📈 Training Metrics</div>
+                        <div class="train-metrics">
+                          <div class="train-metric-row">
+                            <span class="train-metric-label">Accuracy</span>
+                            <div class="train-metric-bar-bg">
+                              <div class="train-metric-bar-fill" [style.width.%]="arenaState.ai?.accuracy || 0"
+                                   [style.background]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'"></div>
+                            </div>
+                            <span class="train-metric-value" [style.color]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'">{{ arenaState.ai?.accuracy }}%</span>
                           </div>
-                          <div class="perf-item">
-                            <div class="perf-label">Training</div>
-                            <div class="perf-value">{{ arenaState.ai?.epoch }}<small>/50</small></div>
+                          <div class="train-metric-row">
+                            <span class="train-metric-label">Loss</span>
+                            <div class="train-metric-bar-bg">
+                              <div class="train-metric-bar-fill loss" [style.width.%]="getLossBarWidth(arenaState.ai?.loss)"
+                                   style="background: #f43f5e;"></div>
+                            </div>
+                            <span class="train-metric-value" style="color:#f43f5e">{{ arenaState.ai?.loss }}</span>
                           </div>
-                          <div class="perf-item">
-                            <div class="perf-label">Error Rate</div>
-                            <div class="perf-value">{{ arenaState.ai?.loss }}</div>
+                          <div class="train-metric-row">
+                            <span class="train-metric-label">Epoch</span>
+                            <div class="train-metric-bar-bg">
+                              <div class="train-metric-bar-fill" [style.width.%]="(arenaState.ai?.epoch || 0) / 50 * 100"
+                                   style="background: linear-gradient(90deg, #ab47bc, #7c3aed);"></div>
+                            </div>
+                            <span class="train-metric-value" style="color:#ab47bc">{{ arenaState.ai?.epoch }}<small>/50</small></span>
                           </div>
-                          <div class="perf-item">
-                            <div class="perf-label">Model</div>
-                            <div class="perf-value">ResNet-50</div>
+                        </div>
+                      </div>
+
+                      <div class="controls-card" *ngIf="arenaState.ai?.epoch > 0">
+                        <div class="controls-card-title">📊 Per-Class Metrics</div>
+                        <div class="class-metrics-table">
+                          <div class="cm-table-header">
+                            <span class="cm-th class-col">Class</span>
+                            <span class="cm-th">Precision</span>
+                            <span class="cm-th">Recall</span>
+                            <span class="cm-th">F1</span>
+                          </div>
+                          <div class="cm-table-row" *ngFor="let label of arenaState.ai?.classLabels; let i = index">
+                            <span class="cm-td class-col">{{ label }}</span>
+                            <span class="cm-td">
+                              <span class="cm-td-dot" [style.background]="parseNum(arenaState.ai?.classPrecision[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classPrecision[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classPrecision[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
+                              {{ arenaState.ai?.classPrecision[i] }}
+                            </span>
+                            <span class="cm-td">
+                              <span class="cm-td-dot" [style.background]="parseNum(arenaState.ai?.classRecall[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classRecall[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classRecall[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
+                              {{ arenaState.ai?.classRecall[i] }}
+                            </span>
+                            <span class="cm-td">
+                              <span class="cm-td-dot" [style.background]="parseNum(arenaState.ai?.classF1[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classF1[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classF1[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
+                              {{ arenaState.ai?.classF1[i] }}
+                            </span>
                           </div>
                         </div>
                       </div>

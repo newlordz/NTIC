@@ -356,24 +356,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     streakDays: number;
     algoScore: number;
     isCurrentUser: boolean;
-  }>> = {
-    'Python Data Structures': [
-      { rank: 1, name: 'Kwame Asante (You)', school: 'Achimota School', progressPct: 98, accuracyPct: 96, streakDays: 14, algoScore: 96.8, isCurrentUser: true },
-      { rank: 2, name: 'Amina Sulemana', school: 'Wesley Girls High', progressPct: 95, accuracyPct: 94, streakDays: 12, algoScore: 94.5, isCurrentUser: false },
-      { rank: 3, name: 'Kofi Annan', school: 'PRESEC Legon', progressPct: 92, accuracyPct: 91, streakDays: 9, algoScore: 91.2, isCurrentUser: false },
-      { rank: 4, name: 'Zainab Owusu', school: 'Mfantsipim School', progressPct: 88, accuracyPct: 89, streakDays: 7, algoScore: 88.4, isCurrentUser: false },
-      { rank: 5, name: 'Samuel Boateng', school: 'Opoku Ware School', progressPct: 85, accuracyPct: 87, streakDays: 5, algoScore: 86.0, isCurrentUser: false },
-    ],
-    'Intro to Neural Networks': [
-      { rank: 1, name: 'Drissa Traore', school: 'PRESEC Legon', progressPct: 100, accuracyPct: 97, streakDays: 18, algoScore: 98.2, isCurrentUser: false },
-      { rank: 2, name: 'Kwame Asante (You)', school: 'Achimota School', progressPct: 88, accuracyPct: 98, streakDays: 14, algoScore: 93.4, isCurrentUser: true },
-      { rank: 3, name: 'Fatima Al-Hassan', school: 'Wesley Girls High', progressPct: 86, accuracyPct: 93, streakDays: 10, algoScore: 89.7, isCurrentUser: false },
-      { rank: 4, name: 'Caleb Mensah', school: 'Pope John SHS', progressPct: 84, accuracyPct: 90, streakDays: 8, algoScore: 87.1, isCurrentUser: false },
-    ]
-  };
+  }>> = {};
 
   get activeCourseLeaderboardList() {
-    return this.courseCycleLeaderboards[this.selectedCourseLeaderboardTrack] || this.courseCycleLeaderboards['Python Data Structures'];
+    return this.courseCycleLeaderboards[this.selectedCourseLeaderboardTrack] || [];
   }
 
   activeTracks = [

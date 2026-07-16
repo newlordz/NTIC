@@ -31,35 +31,10 @@ export class LeaderboardComponent implements OnInit {
     streakDays: number;
     algoScore: number;
     isCurrentUser: boolean;
-  }>> = {
-    'Python Data Structures': [
-      { rank: 1, name: 'Kwame Asante (You)', school: 'Achimota School', progressPct: 98, accuracyPct: 96, streakDays: 14, algoScore: 96.8, isCurrentUser: true },
-      { rank: 2, name: 'Amina Sulemana', school: 'Wesley Girls High', progressPct: 95, accuracyPct: 94, streakDays: 12, algoScore: 94.5, isCurrentUser: false },
-      { rank: 3, name: 'Kofi Annan', school: 'PRESEC Legon', progressPct: 92, accuracyPct: 91, streakDays: 9, algoScore: 91.2, isCurrentUser: false },
-      { rank: 4, name: 'Zainab Owusu', school: 'Mfantsipim School', progressPct: 88, accuracyPct: 89, streakDays: 7, algoScore: 88.4, isCurrentUser: false },
-      { rank: 5, name: 'Samuel Boateng', school: 'Opoku Ware School', progressPct: 85, accuracyPct: 87, streakDays: 5, algoScore: 86.0, isCurrentUser: false },
-      { rank: 6, name: 'Ebenezer Kwofie', school: 'Ghana National College', progressPct: 82, accuracyPct: 85, streakDays: 4, algoScore: 83.6, isCurrentUser: false },
-      { rank: 7, name: 'Grace Adjei', school: 'St. Louis SHS', progressPct: 80, accuracyPct: 83, streakDays: 3, algoScore: 81.3, isCurrentUser: false },
-    ],
-    'Intro to Neural Networks': [
-      { rank: 1, name: 'Drissa Traore', school: 'PRESEC Legon', progressPct: 100, accuracyPct: 97, streakDays: 18, algoScore: 98.2, isCurrentUser: false },
-      { rank: 2, name: 'Kwame Asante (You)', school: 'Achimota School', progressPct: 88, accuracyPct: 98, streakDays: 14, algoScore: 93.4, isCurrentUser: true },
-      { rank: 3, name: 'Fatima Al-Hassan', school: 'Wesley Girls High', progressPct: 86, accuracyPct: 93, streakDays: 10, algoScore: 89.7, isCurrentUser: false },
-      { rank: 4, name: 'Caleb Mensah', school: 'Pope John SHS', progressPct: 84, accuracyPct: 90, streakDays: 8, algoScore: 87.1, isCurrentUser: false },
-    ],
-    'Arduino Robotics Base': [
-      { rank: 1, name: 'Grace Adjei', school: 'St. Louis SHS', progressPct: 96, accuracyPct: 95, streakDays: 15, algoScore: 95.8, isCurrentUser: false },
-      { rank: 2, name: 'Emmanuel Tetteh', school: 'Accra Academy', progressPct: 92, accuracyPct: 93, streakDays: 11, algoScore: 92.5, isCurrentUser: false },
-      { rank: 3, name: 'Kwame Asante (You)', school: 'Achimota School', progressPct: 90, accuracyPct: 91, streakDays: 14, algoScore: 91.8, isCurrentUser: true },
-    ],
-    'Ethical Hacking 101': [
-      { rank: 1, name: 'Kelvin Ofori', school: 'Prempeh College', progressPct: 94, accuracyPct: 96, streakDays: 16, algoScore: 95.2, isCurrentUser: false },
-      { rank: 2, name: 'Yussif Ibrahim', school: 'Tamale SHS', progressPct: 89, accuracyPct: 92, streakDays: 10, algoScore: 90.4, isCurrentUser: false },
-    ]
-  };
+  }>> = {};
 
   get filteredCourseStandings() {
-    return this.courseStudentRankings[this.selectedCourseTrack] || this.courseStudentRankings['Python Data Structures'];
+    return this.courseStudentRankings[this.selectedCourseTrack] || [];
   }
 
   get isStudentUser(): boolean {

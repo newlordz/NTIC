@@ -107,9 +107,31 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     return Math.max(0.4, Math.min(3.5, speed));
   }
 
+  getAgeRange(people: any[]): string {
+    if (!people || people.length === 0) return '—';
+    const ages = people.map((p: any) => p.age);
+    return Math.min(...ages) + ' – ' + Math.max(...ages) + ' yrs';
+  }
+
+  countMales(people: any[]): number {
+    return people ? people.filter((p: any) => p.gender === 'male').length : 0;
+  }
+
+  countFemales(people: any[]): number {
+    return people ? people.filter((p: any) => p.gender === 'female').length : 0;
+  }
+
+  getLossBarWidth(loss: string): number {
+    const val = parseFloat(loss || '2.3026');
+    return Math.min(100, Math.max(0, (2.3026 - val) / 2.3026 * 100));
+  }
+
+  parseNum(val: string): number {
+    return parseInt(val) || 0;
+  }
+
   // Harvard-style interactive states
-  isSearchOpen = false;
-  searchQuery = '';
+  isMobileMenuOpen = false;
   activeMegaMenu: string | null = null;
   activeSlideIndex = 0;
   slideInterval: any;
@@ -261,41 +283,59 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       benchmarkMs: '0.38',
       memory: '14.2 MB',
       opsSec: '2.4M ops/s',
-      bars: [35, 60, 25, 85, 45, 95, 50, 75, 30, 90, 65, 80],
-      sortAlgo: 'QuickSort',
-      sorted: false,
-      status: '// Array is unsorted. Press Run to start QuickSort.',
+      people: [
+        { id: 1, name: 'Kojo Mensah', age: 17, gender: 'male', initials: 'KM' },
+        { id: 2, name: 'Ama Serwaa', age: 15, gender: 'female', initials: 'AS' },
+        { id: 3, name: 'Yaw Boateng', age: 19, gender: 'male', initials: 'YB' },
+        { id: 4, name: 'Efua Donkor', age: 14, gender: 'female', initials: 'ED' },
+        { id: 5, name: 'Kwame Asante', age: 16, gender: 'male', initials: 'KW' },
+        { id: 6, name: 'Adwoa Gyasi', age: 18, gender: 'female', initials: 'AG' },
+        { id: 7, name: 'Kofi Nyarko', age: 20, gender: 'male', initials: 'KN' },
+        { id: 8, name: 'Yaa Akoto', age: 13, gender: 'female', initials: 'YA' },
+        { id: 9, name: 'Kwesi Arthur', age: 12, gender: 'male', initials: 'AR' },
+        { id: 10, name: 'Abena Osei', age: 16, gender: 'female', initials: 'AO' },
+      ].sort(() => Math.random() - 0.5),
+      sortField: 'none',
+      status: '// People grid loaded. Choose a sort method below.',
       statusColor: '#38bdf8',
-      log: '> Ready. Waiting to sort the array...',
-      code: `function quickSort(arr) {
-  if (arr.length <= 1) return arr;
-  const pivot = arr[arr.length - 1];
-  const left = [];
-  const right = [];
-  for (let i = 0; i < arr.length - 1; i++) {
-    arr[i] < pivot ? left.push(arr[i])
-                   : right.push(arr[i]);
-  }
-  return [...quickSort(left),
-          pivot,
-          ...quickSort(right)];
-}
+      log: '> 10 contestants registered. Ready to sort.',
+      code: `const people = [
+  { name: 'Kojo', age: 17, gender: 'M' },
+  { name: 'Ama',  age: 15, gender: 'F' },
+  { name: 'Yaw',  age: 19, gender: 'M' },
+  { name: 'Efua', age: 14, gender: 'F' },
+  { name: 'Kwame',age: 16, gender: 'M' },
+  { name: 'Adwoa',age: 18, gender: 'F' },
+  { name: 'Kofi', age: 20, gender: 'M' },
+  { name: 'Yaa',  age: 13, gender: 'F' },
+  { name: 'Kwesi',age: 12, gender: 'M' },
+  { name: 'Abena',age: 16, gender: 'F' },
+];
 
-const data = [35, 60, 25, 85, 45, 95, 50, 75, 30, 90, 65, 80];
-const result = quickSort(data);
-console.log(result);`
+// Pick a sorting strategy below:`
     },
     ai: {
       confidence: 98.4,
-      epoch: 45,
-      loss: '0.0123',
+      epoch: 0,
+      loss: '2.3026',
+      accuracy: 0,
       label: 'Cocoa Pod • Healthy (Class 0)',
       sampleIcon: '🌿',
       sampleName: 'Cocoa Pod',
       gpuLoad: '74%',
-      status: 'INFERENCE CONVERGED • 98.4% ACCURACY',
+      status: '⚡ MODEL INITIALIZED — Ready for training',
       statusColor: '#ab47bc',
-      log: 'ResNet-18 vision pipeline classified crop leaf sample in 14ms.'
+      log: 'ResNet-50 loaded with random weights. Select a crop or start training.',
+      confusionMatrix: [
+        [25, 25, 25, 25],
+        [25, 25, 25, 25],
+        [25, 25, 25, 25],
+        [25, 25, 25, 25]
+      ],
+      classLabels: ['Cocoa', 'Maize', 'Potato', 'Tomato'],
+      classPrecision: ['—', '—', '—', '—'],
+      classRecall: ['—', '—', '—', '—'],
+      classF1: ['—', '—', '—', '—']
     },
     cyber: {
       packetsSec: 4250,
@@ -688,17 +728,6 @@ console.log(result);`
     }
   ];
 
-  trendingSearches = [
-    'PRESEC Legon',
-    'Robotics Rules 2026',
-    'LMS Assignments',
-    'Registration Form',
-    'Sponsor List',
-    'CTF Challenge'
-  ];
-
-  filteredSearchResults: string[] = [];
-
   // Live Scoreboard Interactive stand state
   activeLeaderboardFilter = 'all';
   isLeaderboardTransitioning = false;
@@ -1024,6 +1053,16 @@ console.log(result);`
     this.startSlideShow();
   }
 
+  toggleMobileMenu(): void {
+    this.isMobileMenuOpen = !this.isMobileMenuOpen;
+    document.body.style.overflow = this.isMobileMenuOpen ? 'hidden' : '';
+  }
+
+  closeMobileMenu(): void {
+    this.isMobileMenuOpen = false;
+    document.body.style.overflow = '';
+  }
+
   toggleMegaMenu(menu: string): void {
     if (this.activeMegaMenu === menu) {
       this.activeMegaMenu = null;
@@ -1036,36 +1075,16 @@ console.log(result);`
     this.activeMegaMenu = null;
   }
 
-  toggleSearch(open: boolean): void {
-    this.isSearchOpen = open;
-    if (open) {
-      this.searchQuery = '';
-      this.filteredSearchResults = [];
-      document.body.style.overflow = 'hidden'; // Lock background scroll
-    } else {
-      document.body.style.overflow = ''; // Restore scroll
-    }
-  }
-
-  onSearchInput(): void {
-    if (!this.searchQuery.trim()) {
-      this.filteredSearchResults = [];
-      return;
-    }
-    const q = this.searchQuery.toLowerCase();
-    this.filteredSearchResults = this.trendingSearches.filter(s => 
-      s.toLowerCase().includes(q)
-    );
-  }
-
-  selectTrending(term: string): void {
-    this.searchQuery = term;
-    this.onSearchInput();
-  }
-
   detectRoleFromInput(credential: string): void {
     if (!credential.trim()) {
-      this.detectedRoleName = '';
+      if (this.detectedRoleName) {
+        this.detectedRoleName = '';
+        this.telemetryLogs = [
+          `SECURE ACCESS PORTAL READY`,
+          `SYSTEM INTEGRITY: ACCREDITED`,
+          `AWAITING OPERATOR INPUT...`
+        ];
+      }
       return;
     }
     const lookup = credential.trim().toLowerCase();
@@ -1082,11 +1101,21 @@ console.log(result);`
         sponsor: 'Sponsor',
         super_admin: 'Administrator'
       };
-      this.detectedRoleName = labels[user.role] || 'User';
+      const role = labels[user.role] || 'User';
+      this.detectedRoleName = role;
+      this.updateTelemetry(role);
     } else if (lookup === 'admin@ntic.org.gh') {
       this.detectedRoleName = 'Administrator';
+      this.updateTelemetry('Administrator');
     } else {
-      this.detectedRoleName = '';
+      if (this.detectedRoleName) {
+        this.detectedRoleName = '';
+        this.telemetryLogs = [
+          `SECURE ACCESS PORTAL READY`,
+          `SYSTEM INTEGRITY: ACCREDITED`,
+          `AWAITING OPERATOR INPUT...`
+        ];
+      }
     }
   }
 
@@ -2533,6 +2562,15 @@ console.log(result);`
     this.startMatrixRain();
   }
 
+  scrollToSection(sectionId: string): void {
+    if (typeof document !== 'undefined') {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }
+
   // ── FLOATING FAB ────────────────────────────────────────────
   setupFabScroll(): void {
     if (typeof window === 'undefined') return;
@@ -2710,127 +2748,131 @@ console.log(result);`
           state.log = `Robotic arm released stone onto arena floor at (${state.obstacleX}%, ${state.obstacleY}%)`;
         }
       } else if (actionType === 'obstacle') {
+        const randX = Math.floor(Math.random() * 35) + 22;
+        const randY = Math.floor(Math.random() * 30) + 22;
         state.distance = Math.floor(Math.random() * 8) + 8;
         state.angle = 135;
         state.motorSpeed = 45;
-        state.obstacleX = 30;
-        state.obstacleY = 45;
+        state.obstacleX = randX;
+        state.obstacleY = randY;
         state.obstacleStatus = 'Target Stone';
-        state.statusColor = '#ff1744';
-        state.log = `Stone detected at ${state.distance}cm — ready to grab`;
+        state.statusColor = '#ffab00';
+        state.log = `🪨 Stone spawned at (${randX}%, ${randY}%) — ready to grab`;
       } else if (actionType === 'autopilot') {
-        // Clear any previous running autopilot timers
         while (this.autopilotTimers.length > 0) {
           clearTimeout(this.autopilotTimers.pop());
         }
 
-        // Step 0: Initialize starting position smoothly
+        const sX = state.obstacleX || 35;
+        const sY = state.obstacleY || 35;
+        const fX = 78, fY = 40, stX = 12, stY = 75;
+
         state.missionSuccess = false;
-        state.posX = 16;
-        state.posY = 68;
-        state.angle = 90;
-        state.obstacleX = 35;
-        state.obstacleY = 35;
+        state.posX = stX;
+        state.posY = stY;
+        state.angle = 270;
         state.obstacleStatus = 'LiDAR Target Locked';
         state.clawOpen = false;
         state.cargo = 'None';
         state.motorSpeed = 70;
         state.statusColor = '#38bdf8';
-        state.log = 'Autopilot Engaged — LiDAR target locked at (35%, 35%)';
+        state.log = `Autopilot Engaged — navigating to stone at (${sX}%, ${sY}%)`;
 
-        // Step 1: Pivot towards the stone
-        this.autopilotTimers.push(setTimeout(() => {
-          state.angle = 45;
-          state.log = 'Autopilot turning 45° North-East to face target stone...';
-        }, 800));
+        const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t);
+        const stepMs = 550;
+        let ms = 0;
+        let idx = 0;
 
-        // Step 2: Drive smoothly halfway towards target stone
-        this.autopilotTimers.push(setTimeout(() => {
-          state.posX = 26;
-          state.posY = 50;
-          state.distance = 18;
-          state.log = 'Approaching target stone slowly — distance 18cm...';
-        }, 1700));
+        const addStep = (delay: number, fn: () => void) => {
+          this.autopilotTimers.push(setTimeout(fn, delay));
+        };
 
-        // Step 3: Arrive at target stone position
-        this.autopilotTimers.push(setTimeout(() => {
-          state.posX = 35;
-          state.posY = 35;
-          state.distance = 5;
-          state.motorSpeed = 20;
-          state.log = 'Arrived at target stone — stabilizing for pickup...';
-        }, 2700));
+        // ── APPROACH: start → stone ──
+        const approachLogs = [
+          '⬆️ Moving up — approaching stone...',
+          '⬆️ Gaining elevation — stone on sensors...',
+          '⬆️ Closing vertical distance...',
+          '↗️ Angling toward stone position...',
+          '↗️ Adjusting trajectory...',
+          '➡️ Lining up with target...',
+          '➡️ Slow approach — proximity alert...',
+          '📍 Stone dead ahead — final approach...',
+        ];
+        for (let i = 0; i < 8; i++) {
+          const t = (i + 1) / 9;
+          addStep(ms += stepMs, () => {
+            state.posX = lerp(stX, sX, t);
+            state.posY = lerp(stY, sY + 3, t);
+            state.motorSpeed = Math.max(5, 70 - i * 8);
+            if (i < 3) state.angle = 270;
+            else if (i < 5) state.angle = 315;
+            else state.angle = 0;
+            state.log = approachLogs[i] || '➡️ Approaching...';
+          });
+        }
 
-        // Step 4: Animate robotic arm to grab the stone
-        this.autopilotTimers.push(setTimeout(() => {
-          state.motorSpeed = 0;
-          state.clawOpen = true;
+        // ── GRAB ──
+        addStep(ms += 700, () => {
+          state.motorSpeed = 0; state.clawOpen = true;
           state.armAnimating = true;
-          state.log = 'Articulated robotic arm extending to grip stone...';
-        }, 3600));
-
-        // Step 5: Secure stone onto rover
-        this.autopilotTimers.push(setTimeout(() => {
-          state.armAnimating = false;
-          state.cargo = 'Stone';
+          state.log = '🔧 Extending arm — gripping stone...';
+        });
+        addStep(ms += 800, () => {
+          state.armAnimating = false; state.cargo = 'Stone';
           state.obstacleStatus = 'Loaded on Rover';
           state.statusColor = '#00e676';
-          state.log = 'Stone secured onto rover cargo hold — planning route to Flag 🏁';
-        }, 4400));
+          state.log = '✅ Stone secured — routing to flag...';
+        });
 
-        // Step 6: Pivot towards destination flag (East 180°)
-        this.autopilotTimers.push(setTimeout(() => {
-          state.angle = 180;
-          state.motorSpeed = 80;
-          state.log = 'Autopilot turning East (180°) towards destination flag...';
-        }, 5300));
+        // ── DEPARTURE ──
+        addStep(ms += 800, () => {
+          state.angle = 90; state.motorSpeed = 50;
+          state.log = '🔃 Reversing — backing away from stone...';
+        });
+        addStep(ms += 600, () => {
+          state.posX = lerp(sX, stX, 0.5); state.posY = sY;
+          state.log = '↩️ Cleared stone position — plotting course to flag...';
+        });
 
-        // Step 7: Drive smoothly waypoint 1 across arena
-        this.autopilotTimers.push(setTimeout(() => {
-          state.posX = 50;
-          state.posY = 37;
-          state.log = 'Transporting stone East — crossing arena midpoint (50%, 37%)...';
-        }, 6300));
+        // ── TRANSIT: stone → flag ──
+        const transitLogs = [
+          '➡️ Heading East toward flag...',
+          '➡️ Crossing arena midpoint...',
+          '➡️ Flag beacon signal detected...',
+          '➡️ Closing distance to flag...',
+          '📍 Final approach approach...',
+          '📍 Lining up with flag position...',
+          '🏁 At destination flag!',
+        ];
+        for (let i = 0; i < 7; i++) {
+          const t = (i + 1) / 8;
+          addStep(ms += stepMs, () => {
+            state.posX = lerp(sX, fX, t);
+            state.posY = lerp(sY + 2, fY, t);
+            state.motorSpeed = Math.max(5, 55 - i * 7);
+            state.angle = 180;
+            state.log = transitLogs[i];
+          });
+        }
 
-        // Step 8: Drive smoothly waypoint 2 across arena
-        this.autopilotTimers.push(setTimeout(() => {
-          state.posX = 66;
-          state.posY = 39;
-          state.log = 'Approaching delivery flag smoothly (66%, 39%)...';
-        }, 7300));
-
-        // Step 9: Arrive at destination flag
-        this.autopilotTimers.push(setTimeout(() => {
-          state.posX = 78;
-          state.posY = 40;
-          state.motorSpeed = 20;
-          state.log = 'Arrived at destination flag — positioning for release...';
-        }, 8300));
-
-        // Step 10: Animate robotic arm to release stone onto flag
-        this.autopilotTimers.push(setTimeout(() => {
-          state.motorSpeed = 0;
-          state.armAnimating = true;
-          state.log = 'Robotic arm extending to unload stone at destination flag...';
-        }, 9200));
-
-        // Step 11: Complete mission & celebrate
-        this.autopilotTimers.push(setTimeout(() => {
-          state.armAnimating = false;
-          state.clawOpen = false;
-          state.cargo = 'None';
-          state.obstacleX = 78;
-          state.obstacleY = 40;
-          state.obstacleStatus = 'Delivered to Flag 🏁';
+        // ── DROP ──
+        addStep(ms += 700, () => {
+          state.motorSpeed = 0; state.armAnimating = true;
+          state.log = '🔧 Extending arm to unload stone at flag...';
+        });
+        addStep(ms += 800, () => {
+          state.armAnimating = false; state.clawOpen = false;
+          state.cargo = 'None'; state.obstacleX = fX;
+          state.obstacleY = fY; state.obstacleStatus = 'Delivered to Flag 🏁';
           state.missionSuccess = true;
-          state.status = '🎉 CONGRATULATIONS! AUTOPILOT MISSION SUCCESSFUL!';
+          state.status = '🎉 MISSION COMPLETE! Stone delivered to flag!';
           state.statusColor = '#10b981';
-          state.log = 'Autopilot rover successfully spotted, grabbed, and delivered target stone obstacle to destination point with 100% precision!';
-        }, 10000));
+          state.log = '✅ Stone delivered. Autopilot mission executed with 100% precision!';
+        });
 
         this.autopilotTimers.push(setTimeout(() => {
           state.missionSuccess = false;
-        }, 17000));
+        }, ms + 7000));
       }
 
       // Automatically recalculate obstacle proximity distance
@@ -2838,91 +2880,59 @@ console.log(result);`
       const dy = (state.posY || 50) - (state.obstacleY || 35);
       state.distance = Math.max(5, Math.round(Math.sqrt(dx * dx + dy * dy) * 0.85));
     } else if (track === 'coding') {
-      if (actionType === 'sort') {
-        state.bars = [15, 25, 30, 45, 50, 60, 65, 75, 80, 85, 90, 95];
-        state.benchmarkMs = '0.12';
-        state.opsSec = '3.8M ops/s';
-        state.sorted = true;
-        state.status = '// QuickSort completed in 0.12ms — array is now sorted.';
+      if (actionType === 'sort-age-asc') {
+        state.people = [...state.people].sort((a: any, b: any) => a.age - b.age);
+        state.sortField = 'age-asc';
+        state.status = `// Sorted by age (ascending) — youngest to oldest.`;
         state.statusColor = '#00e676';
-        state.log = '> Output: [15, 25, 30, 45, 50, 60, 65, 75, 80, 85, 90, 95]';
-        state.sortAlgo = 'QuickSort';
-        state.code = `function quickSort(arr) {
-  if (arr.length <= 1) return arr;
-  const pivot = arr[arr.length - 1];
-  const left = [];
-  const right = [];
-  for (let i = 0; i < arr.length - 1; i++) {
-    arr[i] < pivot ? left.push(arr[i])
-                   : right.push(arr[i]);
-  }
-  return [...quickSort(left),
-          pivot,
-          ...quickSort(right)];
-}
-
-const data = [15, 25, 30, 45, 50, 60, 65, 75, 80, 85, 90, 95];
-const result = quickSort(data);
-console.log(result); // ✅ Sorted!`;
-      } else if (actionType === 'randomize') {
-        state.bars = Array.from({ length: 12 }, () => Math.floor(Math.random() * 75) + 25);
-        state.sorted = false;
-        state.status = '// Array shuffled. Ready for sorting.';
-        state.statusColor = '#38bdf8';
-        state.log = '> Array randomized. Press Run to sort again.';
-        state.sortAlgo = 'QuickSort';
-        const barsStr = state.bars.join(', ');
-        state.code = `function quickSort(arr) {
-  if (arr.length <= 1) return arr;
-  const pivot = arr[arr.length - 1];
-  const left = [];
-  const right = [];
-  for (let i = 0; i < arr.length - 1; i++) {
-    arr[i] < pivot ? left.push(arr[i])
-                   : right.push(arr[i]);
-  }
-  return [...quickSort(left),
-          pivot,
-          ...quickSort(right)];
-}
-
-const data = [${barsStr}];
-const result = quickSort(data);
-console.log(result);`;
-      } else if (actionType === 'speed') {
-        state.benchmarkMs = (Math.random() * 0.15 + 0.25).toFixed(2);
-        state.opsSec = (Math.random() * 0.8 + 3.2).toFixed(1) + 'M ops/s';
-        state.memory = (Math.random() * 2 + 10).toFixed(1) + ' MB';
-        state.status = '// Stress test completed — 10,000 arrays sorted. Zero errors.';
+        state.log = `> ${state.people[0].name} (${state.people[0].age}) → ${state.people[state.people.length - 1].name} (${state.people[state.people.length - 1].age})`;
+        state.code = `people.sort((a, b) => a.age - b.age);
+console.table(people);
+// Youngest: ${state.people[0].name} (${state.people[0].age})
+// Oldest: ${state.people[state.people.length - 1].name} (${state.people[state.people.length - 1].age})`;
+      } else if (actionType === 'sort-age-desc') {
+        state.people = [...state.people].sort((a: any, b: any) => b.age - a.age);
+        state.sortField = 'age-desc';
+        state.status = `// Sorted by age (descending) — oldest to youngest.`;
         state.statusColor = '#a855f7';
-        state.bars = [10, 20, 30, 42, 52, 60, 68, 75, 82, 88, 94, 98];
-        state.sorted = true;
-        state.sortAlgo = 'MergeSort';
-        state.log = `> Stress test: sorted 10,000 arrays in ${state.benchmarkMs}ms.`;
-        state.code = `function mergeSort(arr) {
-  if (arr.length <= 1) return arr;
-  const mid = Math.floor(arr.length / 2);
-  const left = mergeSort(arr.slice(0, mid));
-  const right = mergeSort(arr.slice(mid));
-  return merge(left, right);
+        state.log = `> ${state.people[0].name} (${state.people[0].age}) → ${state.people[state.people.length - 1].name} (${state.people[state.people.length - 1].age})`;
+        state.code = `people.sort((a, b) => b.age - a.age);
+console.table(people);
+// Oldest: ${state.people[0].name} (${state.people[0].age})
+// Youngest: ${state.people[state.people.length - 1].name} (${state.people[state.people.length - 1].age})`;
+      } else if (actionType === 'sort-gender') {
+        state.people = [...state.people].sort((a: any, b: any) => {
+          if (a.gender === b.gender) return a.age - b.age;
+          return a.gender === 'male' ? -1 : 1;
+        });
+        state.sortField = 'gender';
+        state.status = `// Sorted by gender — males first, then females.`;
+        state.statusColor = '#38bdf8';
+        const maleCount = state.people.filter((p: any) => p.gender === 'male').length;
+        const femaleCount = state.people.filter((p: any) => p.gender === 'female').length;
+        state.log = `> ${maleCount} males · ${femaleCount} females — grouped by gender`;
+        state.code = `people.sort((a, b) => {
+  if (a.gender === b.gender) return a.age - b.age;
+  return a.gender === 'male' ? -1 : 1;
+});
+// ${maleCount} males · ${femaleCount} females`;
+      } else if (actionType === 'shuffle') {
+        const arr = [...state.people];
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        state.people = arr;
+        state.sortField = 'none';
+        state.status = '// Grid shuffled randomly. Try a sort method!';
+        state.statusColor = '#f59e0b';
+        state.log = '> People positions randomized — choose a sort below.';
+        state.code = `// Fisher-Yates shuffle
+for (let i = people.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [people[i], people[j]] = [people[j], people[i]];
 }
-
-function merge(left, right) {
-  const result = [];
-  while (left.length && right.length) {
-    result.push(left[0] < right[0]
-      ? left.shift() : right.shift());
-  }
-  return [...result, ...left, ...right];
-}
-
-// Stress: 10,000 arrays sorted
-for (let i = 0; i < 10000; i++) {
-  const test = Array.from({length: 12},
-    () => Math.floor(Math.random() * 100));
-  mergeSort(test);
-}
-console.log("✅ 10,000 tests passed");`;
+// Positions randomized!`;
       }
     } else if (track === 'ai') {
       if (actionType.startsWith('sample_')) {
@@ -2953,10 +2963,56 @@ console.log("✅ 10,000 tests passed");`;
         this.scanTimeout = setTimeout(() => this.triggerArenaAction('ai', currentSample), 900);
       } else if (actionType === 'epoch') {
         state.epoch = Math.min(50, state.epoch + 1);
-        state.loss = (parseFloat(state.loss || '0.0123') * 0.92).toFixed(4);
-        state.status = `🚀 TRAINING EPOCH ${state.epoch}/50 COMPLETED`;
-        state.statusColor = '#ab47bc';
-        state.log = `Backpropagation step finished. Validation loss dropped to ${state.loss}. Synapse weights updated.`;
+        const e = state.epoch;
+
+        // Accuracy: 25% base, climbs ~ logistically to 99%
+        const acc = Math.round((25 + 74 * (1 - Math.exp(-e / 14))) * 10) / 10;
+        state.accuracy = acc;
+
+        // Loss: starts at 2.3026, decays exponentially
+        const lossVal = 2.3026 * Math.exp(-e / 10) + 0.008;
+        state.loss = lossVal.toFixed(4);
+
+        // Build confusion matrix from current accuracy
+        const diag = Math.round(acc);
+        const offA = Math.max(0, Math.round((100 - diag) * 0.5));
+        const offB = Math.max(0, Math.round((100 - diag - offA) * 0.6));
+        const vary = (i: number) => Math.round((i - 1.5) * 1.8);
+        state.confusionMatrix = ([0, 1, 2, 3] as number[]).map((r: number) => {
+          const d = Math.min(99, Math.max(10, diag + vary(r)));
+          const a = Math.max(0, offA - vary(r) * 0.3);
+          const b = Math.max(0, offB + vary(r) * 0.2);
+          const c = Math.max(0, 100 - d - a - b);
+          const row: number[] = [0, 0, 0, 0];
+          row[r] = d;
+          const offIdx: number[] = [0, 1, 2, 3].filter((i: number) => i !== r);
+          row[offIdx[0]] = Math.round(a);
+          row[offIdx[1]] = Math.round(b);
+          row[offIdx[2]] = Math.round(c);
+          return row;
+        });
+
+        // Per-class metrics from confusion matrix
+        state.classPrecision = state.confusionMatrix.map((row: number[], ci: number) => {
+          const colSum = state.confusionMatrix.reduce((s: number, r: number[]) => s + r[ci], 0);
+          return colSum > 0 ? Math.round((row[ci] / colSum) * 100) + '%' : '0%';
+        });
+        state.classRecall = state.confusionMatrix.map((row: number[], ri: number) => {
+          const rowSum = row.reduce((s: number, v: number) => s + v, 0);
+          return rowSum > 0 ? Math.round((row[ri] / rowSum) * 100) + '%' : '0%';
+        });
+        state.classF1 = state.classPrecision.map((p: string, i: number) => {
+          const pNum = parseInt(p);
+          const rNum = parseInt(state.classRecall[i]);
+          return (pNum + rNum) > 0 ? Math.round(2 * pNum * rNum / (pNum + rNum)) + '%' : '0%';
+        });
+
+        // Status & log
+        const good = acc >= 90 ? '🔥' : acc >= 70 ? '📈' : acc >= 50 ? '⚡' : '🔄';
+        state.status = `${good} EPOCH ${e}/50 • ACC ${acc}% • LOSS ${state.loss}`;
+        state.statusColor = acc >= 90 ? '#00e676' : acc >= 70 ? '#38bdf8' : acc >= 50 ? '#ff9100' : '#ab47bc';
+        const direction = lossVal < 0.05 ? 'converged' : lossVal < 0.3 ? 'improving' : 'descending';
+        state.log = `Backprop complete. Training loss ${direction} to ${state.loss}. Accuracy climbing (${acc}%).`;
       }
     } else if (track === 'cyber') {
       if (actionType === 'defend') {
