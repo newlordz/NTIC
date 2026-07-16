@@ -217,6 +217,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   private matrixAnimFrame: number | null = null;
   private matrixResizeListener: any;
   private matrixMouseListener: any;
+  private matrixTouchListener: any;
   private matrixClickListener: any;
   private stripeMouseX: number = 0;
   private stripeMouseY: number = 0;
@@ -844,6 +845,9 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (this.matrixMouseListener && typeof window !== 'undefined') {
       window.removeEventListener('mousemove', this.matrixMouseListener);
+    }
+    if (this.matrixTouchListener && typeof window !== 'undefined') {
+      window.removeEventListener('touchmove', this.matrixTouchListener);
     }
     if (this.matrixClickListener && this.matrixCanvasRef?.nativeElement) {
       this.matrixCanvasRef.nativeElement.removeEventListener('click', this.matrixClickListener);
@@ -1547,6 +1551,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.matrixAnimFrame) { cancelAnimationFrame(this.matrixAnimFrame); this.matrixAnimFrame = null; }
     if (this.matrixResizeListener) window.removeEventListener('resize', this.matrixResizeListener);
     if (this.matrixMouseListener) window.removeEventListener('mousemove', this.matrixMouseListener);
+    if (this.matrixTouchListener) window.removeEventListener('touchmove', this.matrixTouchListener);
 
     this.ngZone.runOutsideAngular(() => {
       const getDimensions = () => {
@@ -1573,6 +1578,17 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         } else { this.stripeTargetMouseX = -9999; this.stripeTargetMouseY = -9999; }
       };
       window.addEventListener('mousemove', this.matrixMouseListener);
+      this.matrixTouchListener = (e: TouchEvent) => {
+        const rect = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        if (!touch) return;
+        const tx = touch.clientX - rect.left;
+        const ty = touch.clientY - rect.top;
+        if (tx >= -80 && tx <= rect.width + 80 && ty >= -80 && ty <= rect.height + 80) {
+          this.stripeTargetMouseX = tx; this.stripeTargetMouseY = ty;
+        } else { this.stripeTargetMouseX = -9999; this.stripeTargetMouseY = -9999; }
+      };
+      window.addEventListener('touchmove', this.matrixTouchListener, { passive: true });
       this.stripeTargetMouseX = -9999; this.stripeTargetMouseY = -9999;
       this.stripeMouseX = -9999; this.stripeMouseY = -9999;
 

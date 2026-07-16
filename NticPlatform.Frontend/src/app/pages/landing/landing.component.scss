@@ -4217,6 +4217,8 @@
 }
 @media (max-width: 768px) {
   .countdown-clock { gap: 0.5rem; }
+  .starburst-section { height: 420px; }
+  .starburst-canvas { touch-action: none; }
 }
 .flip-card {
   perspective: 1200px;
