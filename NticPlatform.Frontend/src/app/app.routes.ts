@@ -11,6 +11,7 @@ import { TalentComponent } from './pages/talent/talent.component';
 import { SponsorsComponent } from './pages/sponsors/sponsors.component';
 import { ReportingComponent } from './pages/reporting/reporting.component';
 import { RecordsComponent } from './pages/records/records.component';
+import { UserManagementComponent } from './pages/user-management/user-management.component';
 import { NewsComponent } from './pages/news/news.component';
 
 export const routes: Routes = [
@@ -27,5 +28,6 @@ export const routes: Routes = [
   { path: 'sponsors',     component: SponsorsComponent },
   { path: 'reporting',    component: ReportingComponent },
   { path: 'records',      component: RecordsComponent },
+  { path: 'user-management', component: UserManagementComponent },
   { path: '**',           redirectTo: '' }
 ];

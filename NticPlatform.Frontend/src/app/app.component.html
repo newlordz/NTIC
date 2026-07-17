@@ -78,6 +78,10 @@
         <span class="material-symbols-outlined">folder_open</span>
         Records
       </a>
+      <a class="nav-item" *ngIf="hasAccess('records')" routerLink="/user-management" routerLinkActive="active" (click)="closeMobileSidebar()">
+        <span class="material-symbols-outlined">manage_accounts</span>
+        Users
+      </a>
     </div>
  
     <div class="sidebar-footer">
