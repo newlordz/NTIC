@@ -138,7 +138,7 @@
                         (click)="toggleStatus(user)">
                   <span class="material-symbols-outlined" style="font-size:16px;">{{ user.status === 'Active' ? 'block' : 'check_circle' }}</span>
                 </button>
-                <button *ngIf="canManageUsers && user.role !== 'super_admin'" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;color:var(--error,#dc2626);" title="Delete" (click)="deleteUser(user)">
+                <button *ngIf="user.role !== 'super_admin'" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;color:var(--error,#dc2626);" title="Delete" (click)="deleteUser(user)">
                   <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
                 </button>
               </div>
