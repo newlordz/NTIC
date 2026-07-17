@@ -976,6 +976,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     
     // Simulate API call with modern loader
     setTimeout(() => {
+    try {
       this.isSubmitting = false;
       this.isPreviewModalOpen = false;
 
@@ -1240,6 +1241,12 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
       this.isSuccessModalOpen = true;
       this.clearDraftPrefills();
+    } catch (err) {
+      console.error('[Registration] Submission error:', err);
+      this.isSubmitting = false;
+      this.isPreviewModalOpen = false;
+      alert('Submission failed. Please try again. Error: ' + (err as any)?.message);
+    }
     }, 1500);
   }
 
