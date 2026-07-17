@@ -759,7 +759,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
 
       alert(`School Registration Approved!\nSchool Admin account created for: ${req.entity}.\nAccess Pass: ${ticket}\nOTP: ${otp}`);
-      this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp);
+      this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp, req.details?.phone || req.details?.repTel);
     } else if (req.type === 'Team Addition') {
       const newTeam = {
         name: req.entity,
@@ -778,7 +778,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.contentService.updatePlatformStats(stats);
 
       alert(`Team Addition Approved!\nTeam "${req.entity}" has been successfully added to competition tracks.`);
-      this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A — Team Added', 'N/A');
+      this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A — Team Added', 'N/A', req.details?.phone);
     } else if (req.type === 'Instructor Access') {
       const ticket = 'NTIC-INS-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -806,7 +806,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.contentService.updatePlatformStats(stats);
 
       alert(`Instructor Access Approved!\nInstructor account created for: ${req.entity}.\nAccess Pass: ${ticket}\nOTP: ${otp}`);
-      this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
+      this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp, req.details?.phone);
     }
 
     const currentAudit = [...this.contentService.auditLogs];
@@ -900,7 +900,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.activeReviewRequest.entity,
       this.activeReviewRequest.type,
       reasons || 'No specific reason provided',
-      this.rejectionNotes || ''
+      this.rejectionNotes || '',
+      this.activeReviewRequest.details?.phone || this.activeReviewRequest.details?.repTel
     );
     
     const currentAudit = [...this.contentService.auditLogs];

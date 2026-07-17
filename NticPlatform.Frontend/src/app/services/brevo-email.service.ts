@@ -11,7 +11,9 @@ interface BrevoEmail {
 
 @Injectable({ providedIn: 'root' })
 export class BrevoEmailService {
-  private readonly apiUrl = 'https://api.brevo.com/v3/smtp/email';
+  private readonly emailApiUrl = 'https://api.brevo.com/v3/smtp/email';
+  private readonly smsApiUrl = 'https://api.brevo.com/v3/sms/send';
+  private readonly smsSender = 'NTIC';
 
   constructor(private http: HttpClient) {}
 
@@ -27,15 +29,29 @@ export class BrevoEmailService {
     return { email: environment.brevo.senderEmail, name: environment.brevo.senderName };
   }
 
-  private send(email: BrevoEmail): void {
-    this.http.post(this.apiUrl, email, { headers: this.headers }).subscribe({
+  private sendEmail(email: BrevoEmail): void {
+    this.http.post(this.emailApiUrl, email, { headers: this.headers }).subscribe({
       next: () => console.log('[Brevo] Email sent to', email.to.map(t => t.email).join(', ')),
       error: (err) => console.warn('[Brevo] Email failed (will retry via backend later):', err?.error?.message || err.message)
     });
   }
 
-  sendPendingConfirmation(toEmail: string, toName: string, entityName: string, applicationType: string): void {
-    this.send({
+  private sendSms(phoneNumber: string, message: string): void {
+    if (!phoneNumber) return;
+    const cleaned = phoneNumber.replace(/\s+/g, '');
+    const body = {
+      sender: this.smsSender,
+      recipient: cleaned,
+      content: message
+    };
+    this.http.post(this.smsApiUrl, body, { headers: this.headers }).subscribe({
+      next: () => console.log('[Brevo] SMS sent to', cleaned),
+      error: (err) => console.warn('[Brevo] SMS failed (will retry via backend later):', err?.error?.message || err.message)
+    });
+  }
+
+  sendPendingConfirmation(toEmail: string, toName: string, entityName: string, applicationType: string, phone?: string): void {
+    this.sendEmail({
       sender: this.sender,
       to: [{ email: toEmail, name: toName }],
       subject: `${applicationType} Received — NTIC Ghana Championship`,
@@ -66,10 +82,11 @@ export class BrevoEmailService {
         </div>
       `
     });
+    this.sendSms(phone || '', `NTIC: Your ${applicationType} for ${entityName} has been received and is under review. Track status at ntic.edu.gh`);
   }
 
-  sendApprovalEmail(toEmail: string, toName: string, entityName: string, applicationType: string, ticket: string, otp: string): void {
-    this.send({
+  sendApprovalEmail(toEmail: string, toName: string, entityName: string, applicationType: string, ticket: string, otp: string, phone?: string): void {
+    this.sendEmail({
       sender: this.sender,
       to: [{ email: toEmail, name: toName }],
       subject: `Application Approved — ${entityName} | NTIC Ghana`,
@@ -101,11 +118,12 @@ export class BrevoEmailService {
         </div>
       `
     });
+    this.sendSms(phone || '', `NTIC: Approved! ${entityName} — Pass: ${ticket} OTP: ${otp}. Login at ntic.edu.gh`);
   }
 
-  sendRejectionEmail(toEmail: string, toName: string, entityName: string, applicationType: string, reasons: string, notes: string): void {
+  sendRejectionEmail(toEmail: string, toName: string, entityName: string, applicationType: string, reasons: string, notes: string, phone?: string): void {
     const reasonList = reasons.split(',').map(r => `<li style="margin-bottom: 4px;">${r.trim()}</li>`).join('');
-    this.send({
+    this.sendEmail({
       sender: this.sender,
       to: [{ email: toEmail, name: toName }],
       subject: `Application Update — ${entityName} | NTIC Ghana`,
@@ -140,5 +158,7 @@ export class BrevoEmailService {
         </div>
       `
     });
+    const shortReasons = reasons.length > 80 ? reasons.substring(0, 80) + '...' : reasons;
+    this.sendSms(phone || '', `NTIC: Your ${entityName} application needs attention. Reason: ${shortReasons}. Reapply at ntic.edu.gh`);
   }
 }

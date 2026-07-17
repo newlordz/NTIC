@@ -1208,8 +1208,12 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
         const emailTo = contact || '';
         const emailName = entity || '';
+        let phone = '';
+        if (this.activeTab === 'school') phone = this.schoolForm.repTel || this.schoolForm.tel || '';
+        else if (this.activeTab === 'team') phone = '';
+        else if (this.activeTab === 'instructor') phone = this.instructorForm.tel || '';
         if (emailTo) {
-          this.emailService.sendPendingConfirmation(emailTo, emailName, emailName, approvalType);
+          this.emailService.sendPendingConfirmation(emailTo, emailName, emailName, approvalType, phone);
         }
 
         const currentAudit = [...this.contentService.auditLogs];
