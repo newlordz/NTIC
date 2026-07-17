@@ -3541,14 +3541,13 @@
       }
 
       .people-visual { padding: 10px 12px; }
-      .people-grid {
-        grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
-        gap: 6px;
+      .people-bars {
+        gap: 5px;
+        min-height: 160px;
 
-        .person-card { padding: 8px 4px; }
-        .human-figure { transform: scale(0.8); }
-        .person-info .person-name { font-size: 0.6rem; }
-        .person-info .person-age { font-size: 0.55rem; }
+        .person-bar { max-width: 60px; }
+        .human-figure { transform: scale(0.75); }
+        .bar-label .bar-name { font-size: 0.5rem; max-width: 55px; }
       }
 
       .sort-buttons {
@@ -3681,12 +3680,14 @@
         }
       }
 
-      .people-grid {
-        grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
-        gap: 4px;
+      .people-bars {
+        gap: 3px;
+        min-height: 130px;
 
-        .person-card { padding: 4px 2px; }
-        .human-figure { transform: scale(0.65); }
+        .person-bar { max-width: 44px; }
+        .human-figure { transform: scale(0.6); }
+        .bar-label .bar-age { font-size: 0.55rem; }
+        .bar-label .bar-name { display: none; }
       }
 
       .algo-code-preview .algo-code-body {
@@ -4216,9 +4217,30 @@
   gap: 1.5rem;
 }
 @media (max-width: 768px) {
-  .countdown-clock { gap: 0.5rem; }
+  .countdown-clock { gap: 0.5rem; flex-wrap: wrap; }
+  .flip-unit { width: 5rem; height: 6rem; }
+  .flip-top { font-size: 2.5rem; }
+  .flip-label { font-size: 0.7rem; }
+  .flip-sep { font-size: 2.5rem; }
   .starburst-section { height: 420px; }
   .starburst-canvas { touch-action: none; }
+
+  .section-header-academic h2 { font-size: 28px !important; }
+  .scoreboard-info h2 { font-size: 28px !important; }
+  .challenge-info h2 { font-size: 2rem !important; }
+  .story-header h2 { font-size: 2rem !important; }
+  .unified-gateway-section h2 { font-size: 28px !important; }
+
+  .challenge-stats-row { gap: 1.5rem; flex-wrap: wrap; }
+  .ch-stat-num { font-size: 2rem; }
+
+  .spotlight-section { padding: 60px 0; }
+  .concept-section { padding: 60px 0; }
+  .support-section { padding: 60px 0; }
+  .live-scoreboard-section { padding: 60px 0; }
+  .unified-gateway-section { padding: 60px 0; }
+  .challenge-section { padding: 4rem 0; }
+  .story-section { padding: 60px 0; }
 }
 .flip-card {
   perspective: 1200px;
@@ -6164,25 +6186,68 @@
             }
           }
 
-          .people-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 10px;
+          .people-bars {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 8px;
+            min-height: 200px;
             padding: 6px 0;
-            min-height: 140px;
 
-            .person-card {
+            .person-bar {
               display: flex;
               flex-direction: column;
               align-items: center;
-              gap: 8px;
-              padding: 12px 8px;
-              background: rgba(255, 255, 255, 0.04);
-              border: 1px solid rgba(255, 255, 255, 0.06);
-              border-radius: 12px;
-              cursor: default;
-              transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+              flex: 1;
+              max-width: 80px;
               animation: personEnter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+
+              .bar-top {
+                display: flex;
+                justify-content: center;
+                margin-bottom: 4px;
+              }
+
+              .bar-fill {
+                width: 100%;
+                height: var(--bar-h, 50%);
+                border-radius: 4px 4px 0 0;
+                transition: height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+                min-height: 8px;
+
+                &.male {
+                  background: linear-gradient(180deg, #1565c0, #0d47a1);
+                  box-shadow: 0 -2px 12px rgba(21, 101, 192, 0.3);
+                }
+                &.female {
+                  background: linear-gradient(180deg, #e91e63, #880e4f);
+                  box-shadow: 0 -2px 12px rgba(233, 30, 99, 0.3);
+                }
+              }
+
+              .bar-label {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 1px;
+                margin-top: 4px;
+
+                .bar-age {
+                  font-size: 0.65rem;
+                  font-weight: 700;
+                  color: #fff;
+                }
+                .bar-name {
+                  font-size: 0.55rem;
+                  color: rgba(255, 255, 255, 0.5);
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  max-width: 70px;
+                }
+              }
+            }
+          }
 
               .human-figure {
                 position: relative;
@@ -6298,62 +6363,6 @@
                   background: #4a0f25;
                 }
               }
-
-              .person-info {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 2px;
-
-                .person-name {
-                  font-size: 0.7rem;
-                  font-weight: 700;
-                  color: #fff;
-                  text-align: center;
-                  line-height: 1.2;
-                }
-
-                .person-meta {
-                  display: flex;
-                  align-items: center;
-                  gap: 6px;
-
-                  .person-age {
-                    font-size: 0.65rem;
-                    color: rgba(255, 255, 255, 0.5);
-                    font-weight: 600;
-                  }
-
-                  .person-gender {
-                    font-size: 0.7rem;
-                    font-weight: 700;
-
-                    &.male { color: #42a5f5; }
-                    &.female { color: #ec407a; }
-                  }
-                }
-              }
-
-              &:hover {
-                transform: translateY(-6px) scale(1.06);
-                border-color: rgba(255, 255, 255, 0.18);
-                background: rgba(255, 255, 255, 0.09);
-
-                .human-figure {
-                  animation: none;
-                  transform: translateY(-4px) scale(1.08);
-
-                  .arm-r {
-                    transform: rotate(-25deg);
-                  }
-
-                  .arm-l {
-                    transform: rotate(15deg);
-                  }
-                }
-              }
-            }
-          }
 
           .people-visual-footer {
             margin-top: 16px;

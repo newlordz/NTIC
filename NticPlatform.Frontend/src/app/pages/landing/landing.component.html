@@ -784,34 +784,30 @@
                             {{ arenaState.coding?.sortField !== 'none' ? 'SORTED BY: ' + (arenaState.coding?.sortField | uppercase) : 'UNSORTED' }}
                           </span>
                         </div>
-                        <div class="people-grid">
-                          <div class="person-card" *ngFor="let p of arenaState.coding?.people; let i = index"
-                               [style.animation-delay]="i * 40 + 'ms'"
-                               [style.--float-delay]="(i * 0.37) + 's'">
-                            <div class="human-figure" [class.male]="p.gender === 'male'" [class.female]="p.gender === 'female'">
-                              <div class="human-head">
-                                <div class="hair-acc"></div>
-                              </div>
-                              <div class="human-torso">
-                                <div class="arm arm-l"></div>
-                                <div class="arm arm-r"></div>
-                              </div>
-                              <div class="human-legs">
-                                <div class="leg leg-l"></div>
-                                <div class="leg leg-r"></div>
+                        <div class="people-bars">
+                          <div class="person-bar" *ngFor="let p of arenaState.coding?.people; let i = index"
+                               [style.animation-delay]="i * 60 + 'ms'"
+                               [style.--bar-h]="((p.age - 10) / 12) * 100 + '%'">
+                            <div class="bar-top">
+                              <div class="human-figure" [class.male]="p.gender === 'male'" [class.female]="p.gender === 'female'">
+                                <div class="human-head">
+                                  <div class="hair-acc"></div>
+                                </div>
+                                <div class="human-torso">
+                                  <div class="arm arm-l"></div>
+                                  <div class="arm arm-r"></div>
+                                </div>
+                                <div class="human-legs">
+                                  <div class="leg leg-l"></div>
+                                  <div class="leg leg-r"></div>
+                                </div>
                               </div>
                             </div>
-                            <div class="person-info">
-                              <span class="person-name">{{ p.name }}</span>
-                              <span class="person-meta">
-                                <span class="person-age">{{ p.age }} yrs</span>
-                                <span class="person-gender" [class.male]="p.gender === 'male'" [class.female]="p.gender === 'female'">{{ p.gender === 'male' ? '♂' : '♀' }}</span>
-                              </span>
+                            <div class="bar-fill" [class.male]="p.gender === 'male'" [class.female]="p.gender === 'female'"></div>
+                            <div class="bar-label">
+                              <span class="bar-age">{{ p.age }}</span>
                             </div>
                           </div>
-                        </div>
-                        <div class="people-visual-footer">
-                          <span>{{ arenaState.coding?.sortField !== 'none' ? '✅ Sorted successfully' : '🔀 Click a sort button below' }}</span>
                         </div>
                       </div>
 
