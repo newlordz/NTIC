@@ -12,7 +12,7 @@
             <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
             <span>{{ themeService.isDarkMode ? 'Light' : 'Dark' }}</span>
           </button>
-          <a (click)="scrollToSection('about')" class="ut-link">
+          <a routerLink="/news" class="ut-link">
             <span class="material-symbols-outlined">campaign</span>
             <span>News & Events</span>
           </a>
@@ -165,7 +165,7 @@
           <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
           <span>{{ themeService.isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
         </button>
-        <a (click)="scrollToSection('about'); closeMobileMenu()" class="mobile-ut-link">
+        <a routerLink="/news" class="mobile-ut-link" (click)="closeMobileMenu()">
           <span class="material-symbols-outlined">campaign</span>
           <span>News & Events</span>
         </a>
