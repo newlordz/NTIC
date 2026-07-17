@@ -22,6 +22,8 @@ export class UserManagementComponent implements OnInit {
   editForm: any = {};
   deleteUserConfirm: User | null = null;
   successMessage = '';
+  toastTitle = '';
+  toastDetail = '';
 
   roleTabs = [
     { id: 'all', label: 'All Users', icon: 'group' },
@@ -37,6 +39,11 @@ export class UserManagementComponent implements OnInit {
   ];
 
   constructor(public contentService: ContentService) {}
+
+  get canManageUsers(): boolean {
+    const role = localStorage.getItem('ntic_active_role_id') || '';
+    return role === 'super_admin';
+  }
 
   ngOnInit(): void {
     this.loadUsers();
@@ -106,6 +113,13 @@ export class UserManagementComponent implements OnInit {
     this.editForm = {};
   }
 
+  showToast(title: string, detail: string = '', duration: number = 3000): void {
+    this.toastTitle = title;
+    this.toastDetail = detail;
+    this.successMessage = title;
+    setTimeout(() => { this.successMessage = ''; this.toastTitle = ''; this.toastDetail = ''; }, duration);
+  }
+
   saveEdit(): void {
     const users = [...this.contentService.users];
     const idx = users.findIndex(u => u.id === this.editForm.id);
@@ -113,8 +127,7 @@ export class UserManagementComponent implements OnInit {
       users[idx] = { ...users[idx], ...this.editForm };
       this.contentService.saveUsers(users);
       this.loadUsers();
-      this.successMessage = `Updated ${this.editForm.fullName} successfully.`;
-      setTimeout(() => this.successMessage = '', 3000);
+      this.showToast('User Updated', `${this.editForm.fullName} has been updated.`);
     }
     this.closeEdit();
   }
@@ -126,8 +139,7 @@ export class UserManagementComponent implements OnInit {
       users[idx].status = users[idx].status === 'Active' ? 'Suspended' : 'Active';
       this.contentService.saveUsers(users);
       this.loadUsers();
-      this.successMessage = `${user.fullName} is now ${users[idx].status}.`;
-      setTimeout(() => this.successMessage = '', 3000);
+      this.showToast('Status Changed', `${user.fullName} is now ${users[idx].status}.`);
     }
   }
 
@@ -139,10 +151,9 @@ export class UserManagementComponent implements OnInit {
     if (!this.deleteUserConfirm) return;
     const users = this.contentService.users.filter(u => u.id !== this.deleteUserConfirm!.id);
     this.contentService.saveUsers(users);
-    this.successMessage = `${this.deleteUserConfirm.fullName} deleted.`;
+    this.showToast('User Deleted', `${this.deleteUserConfirm.fullName} has been removed.`);
     this.deleteUserConfirm = null;
     this.loadUsers();
-    setTimeout(() => this.successMessage = '', 3000);
   }
 
   cancelDelete(): void {
@@ -158,8 +169,7 @@ export class UserManagementComponent implements OnInit {
       users[idx].password = newOTP;
       this.contentService.saveUsers(users);
       this.loadUsers();
-      this.successMessage = `OTP regenerated for ${user.fullName}. New OTP: ${newOTP}`;
-      setTimeout(() => this.successMessage = '', 5000);
+      this.showToast('OTP Regenerated', `New code for ${user.fullName}: ${newOTP}`, 6000);
     }
   }
 

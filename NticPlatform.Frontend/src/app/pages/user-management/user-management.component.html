@@ -18,7 +18,10 @@
   <!-- Success toast -->
   <div class="um-toast" *ngIf="successMessage">
     <span class="material-symbols-outlined">check_circle</span>
-    {{ successMessage }}
+    <div>
+      <div>{{ toastTitle }}</div>
+      <div class="um-toast-detail" *ngIf="toastDetail">{{ toastDetail }}</div>
+    </div>
   </div>
 
   <!-- Stats row -->
@@ -118,23 +121,24 @@
             <td style="padding:12px 18px;font-size:13px;color:var(--on-surface-variant);">{{ user.registeredAt }}</td>
             <td style="padding:12px 18px;font-size:13px;color:var(--on-surface-variant);">{{ user.lastLogin }}</td>
             <td style="padding:12px 18px;text-align:right;">
-              <div style="display:flex;gap:4px;justify-content:flex-end;">
+              <div style="display:flex;gap:4px;justify-content:flex-end;align-items:center;">
+                <span *ngIf="!canManageUsers" style="font-size:11px;color:var(--on-surface-variant);background:var(--surface-container);padding:3px 8px;border-radius:6px;margin-right:4px;">View Only</span>
                 <button class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;" title="View" (click)="viewUser(user)">
                   <span class="material-symbols-outlined" style="font-size:16px;">visibility</span>
                 </button>
-                <button class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;" title="Edit" (click)="editUser(user)">
+                <button *ngIf="canManageUsers" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;" title="Edit" (click)="editUser(user)">
                   <span class="material-symbols-outlined" style="font-size:16px;">edit</span>
                 </button>
-                <button class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;" title="Regenerate OTP" (click)="regenerateOTP(user)">
+                <button *ngIf="canManageUsers" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;" title="Regenerate OTP" (click)="regenerateOTP(user)">
                   <span class="material-symbols-outlined" style="font-size:16px;">key</span>
                 </button>
-                <button class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;"
+                <button *ngIf="canManageUsers" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;"
                         [style.color]="user.status === 'Active' ? '#d97706' : '#059669'"
                         [title]="user.status === 'Active' ? 'Suspend' : 'Activate'"
                         (click)="toggleStatus(user)">
                   <span class="material-symbols-outlined" style="font-size:16px;">{{ user.status === 'Active' ? 'block' : 'check_circle' }}</span>
                 </button>
-                <button *ngIf="user.role !== 'super_admin'" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;color:var(--error,#dc2626);" title="Delete" (click)="deleteUser(user)">
+                <button *ngIf="canManageUsers && user.role !== 'super_admin'" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;color:var(--error,#dc2626);" title="Delete" (click)="deleteUser(user)">
                   <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
                 </button>
               </div>
