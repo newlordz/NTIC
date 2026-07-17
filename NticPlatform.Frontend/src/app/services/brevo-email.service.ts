@@ -12,7 +12,7 @@ interface BrevoEmail {
 @Injectable({ providedIn: 'root' })
 export class BrevoEmailService {
   private readonly emailApiUrl = 'https://api.brevo.com/v3/smtp/email';
-  private readonly smsApiUrl = 'https://api.brevo.com/v3/sms/send';
+  private readonly smsApiUrl = 'https://rest.smsmode.com/sms/v1/messages';
   private readonly smsSender = 'NTIC';
 
   constructor(private http: HttpClient) {}
@@ -20,6 +20,14 @@ export class BrevoEmailService {
   private get headers(): HttpHeaders {
     return new HttpHeaders({
       'api-key': environment.brevo.apiKey,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    });
+  }
+
+  private get smsHeaders(): HttpHeaders {
+    return new HttpHeaders({
+      'X-Api-Key': environment.smsmode.apiKey,
       'Content-Type': 'application/json',
       'Accept': 'application/json'
     });
@@ -38,15 +46,14 @@ export class BrevoEmailService {
 
   private sendSms(phoneNumber: string, message: string): void {
     if (!phoneNumber) return;
-    const cleaned = phoneNumber.replace(/\s+/g, '');
+    const cleaned = phoneNumber.replace(/[\s\-\(\)+]/g, '');
     const body = {
-      sender: this.smsSender,
-      recipient: cleaned,
-      content: message
+      recipient: { to: cleaned },
+      body: { text: message }
     };
-    this.http.post(this.smsApiUrl, body, { headers: this.headers }).subscribe({
-      next: () => console.log('[Brevo] SMS sent to', cleaned),
-      error: (err) => console.warn('[Brevo] SMS failed (will retry via backend later):', err?.error?.message || err.message)
+    this.http.post(this.smsApiUrl, body, { headers: this.smsHeaders }).subscribe({
+      next: () => console.log('[SMSMode] SMS sent to', cleaned),
+      error: (err) => console.warn('[SMSMode] SMS failed (will retry via backend later):', err?.error?.message || err.message)
     });
   }
 
