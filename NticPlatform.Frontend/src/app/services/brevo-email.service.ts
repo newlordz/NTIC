@@ -12,13 +12,21 @@ interface BrevoEmail {
 @Injectable({ providedIn: 'root' })
 export class BrevoEmailService {
   private readonly emailApiUrl = 'https://api.brevo.com/v3/smtp/email';
-  private readonly smsApiUrl = 'https://app.sms8.io/services/send.php';
+  private readonly smsApiUrl = 'https://rest.smsmode.com/sms/v1/messages';
 
   constructor(private http: HttpClient) {}
 
   private get headers(): HttpHeaders {
     return new HttpHeaders({
       'api-key': environment.brevo.apiKey,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    });
+  }
+
+  private get smsHeaders(): HttpHeaders {
+    return new HttpHeaders({
+      'X-Api-Key': environment.smsmode.apiKey,
       'Content-Type': 'application/json',
       'Accept': 'application/json'
     });
@@ -37,26 +45,14 @@ export class BrevoEmailService {
 
   private sendSms(phoneNumber: string, message: string): void {
     if (!phoneNumber) return;
-    let cleaned = phoneNumber.replace(/[\s\-\(\)+]/g, '');
-    if (cleaned.startsWith('233') && cleaned.length >= 12) {
-      cleaned = '0' + cleaned.substring(3);
-    }
-    const body = new URLSearchParams({
-      key: environment.sms8.apiKey,
-      number: cleaned,
-      message: message
-    });
-    this.http.post(this.smsApiUrl, body.toString(), {
-      headers: new HttpHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' })
-    }).subscribe({
-      next: (res: any) => {
-        if (res?.success) {
-          console.log('[SMS8] SMS sent to', cleaned);
-        } else {
-          console.warn('[SMS8] SMS failed:', res?.error?.message || 'Unknown error');
-        }
-      },
-      error: (err) => console.warn('[SMS8] SMS failed (will retry via backend later):', err?.error?.message || err.message)
+    const cleaned = phoneNumber.replace(/[\s\-\(\)+]/g, '');
+    const body = {
+      recipient: { to: cleaned },
+      body: { text: message }
+    };
+    this.http.post(this.smsApiUrl, body, { headers: this.smsHeaders }).subscribe({
+      next: (res: any) => console.log('[SMSMode] SMS sent to', cleaned, '- status:', res?.status?.value),
+      error: (err) => console.warn('[SMSMode] SMS failed (will retry via backend later):', err?.error?.message || err.message)
     });
   }
 

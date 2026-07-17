@@ -5,7 +5,7 @@
     "ng": "ng",
     "start": "node server.js",
     "dev": "ng serve",
-    "build": "ng build",
+    "build": "node -e \"const fs=require('fs');['src/environments/environment.ts','src/environments/environment.prod.ts'].forEach(f=>{let c=fs.readFileSync(f,'utf8');c=c.replace('REPLACE_BREVO_API_KEY',process.env.BREVO_API_KEY||'');c=c.replace('REPLACE_SMSMODE_API_KEY',process.env.SMSMODE_API_KEY||'');fs.writeFileSync(f,c)});\" && ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
