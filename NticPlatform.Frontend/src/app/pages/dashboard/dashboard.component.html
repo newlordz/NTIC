@@ -453,27 +453,122 @@
 
     <!-- ── TAB: USERS BY ROLE ── -->
     <div *ngIf="adminTab === 'users'" class="admin-tab-body">
-      <div class="admin-role-section">
-        <div class="section-title">
-          Users by Role
-          <span class="total-users-badge">{{ registeredUsers.length }} total</span>
-        </div>
-        <div class="admin-role-grid">
-          <div *ngFor="let r of roleDistribution" class="admin-role-card" [class]="'role-' + r.role" 
-               (click)="openRoleModal(r.role)"
-               title="Click to view all {{ r.label }} users">
-            <div class="admin-role-icon"><span class="material-symbols-outlined">{{ r.icon }}</span></div>
-            <div class="admin-role-info">
-              <div class="admin-role-name">{{ r.label }}</div>
-              <div class="admin-role-bar-wrap">
-                <div class="admin-role-bar" [style.width.%]="r.percent"></div>
-              </div>
-              <div class="admin-role-meta">
-                <span class="admin-role-count">{{ r.count }}</span>
-                <span class="admin-role-pct">{{ r.percent }}%</span>
-              </div>
+      <div class="admin-header-actions">
+        <div class="section-title">Manage Users <span class="total-users-badge">{{ registeredUsers.length }} total</span></div>
+        <button class="btn btn-primary btn-sm" (click)="openRegisterModal()">
+          <span class="material-symbols-outlined">person_add</span>New User
+        </button>
+      </div>
+
+      <!-- Role distribution cards -->
+      <div class="admin-role-grid" style="margin-bottom:20px;">
+        <div *ngFor="let r of roleDistribution" class="admin-role-card" [class]="'role-' + r.role"
+             (click)="userRoleFilter = r.role" title="Filter by {{ r.label }}">
+          <div class="admin-role-icon"><span class="material-symbols-outlined">{{ r.icon }}</span></div>
+          <div class="admin-role-info">
+            <div class="admin-role-name">{{ r.label }}</div>
+            <div class="admin-role-meta">
+              <span class="admin-role-count">{{ r.count }}</span>
+              <span class="admin-role-pct">{{ r.percent }}%</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="admin-filters-row">
+        <div class="admin-search-wrap">
+          <span class="material-symbols-outlined">search</span>
+          <input type="text" placeholder="Search name, email, org, ticket..." [(ngModel)]="userSearch" class="admin-search-input" />
+        </div>
+        <select [(ngModel)]="userRoleFilter" class="admin-filter-select">
+          <option value="all">All Roles</option>
+          <option value="school_admin">School Admin</option>
+          <option value="student">Student</option>
+          <option value="instructor">Instructor</option>
+          <option value="judge">Judge</option>
+          <option value="sponsor">Sponsor</option>
+          <option value="content_manager">Content Manager</option>
+          <option value="reviewer">Reviewer</option>
+          <option value="competition_manager">Competition Manager</option>
+          <option value="super_admin">Super Admin</option>
+        </select>
+        <select [(ngModel)]="userStatusFilter" class="admin-filter-select">
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="suspended">Suspended</option>
+        </select>
+      </div>
+
+      <!-- User table -->
+      <div class="admin-tickets-table admin-table-sm" *ngIf="managedUsers.length > 0">
+        <div class="admin-table-head">
+          <span>User</span>
+          <span>Role</span>
+          <span>Organization</span>
+          <span>Status</span>
+          <span>Ticket</span>
+          <span>Registered</span>
+          <span>Actions</span>
+        </div>
+        <div *ngFor="let user of managedUsers" class="admin-table-row">
+          <div class="admin-user-cell">
+            <div class="admin-user-avatar" [class]="user.role">{{ getInitials(user.fullName) }}</div>
+            <div>
+              <div class="admin-user-name">{{ user.fullName }}</div>
+              <div class="admin-user-email">{{ user.email }}</div>
+            </div>
+          </div>
+          <div>
+            <span class="admin-role-badge" [class]="user.role">
+              <span class="material-symbols-outlined">{{ getRoleIcon(user.role) }}</span>
+              {{ getRoleLabel(user.role) }}
+            </span>
+          </div>
+          <div class="admin-date-cell">{{ user.organization || '—' }}</div>
+          <div>
+            <span class="admin-status-badge" [class]="user.status.toLowerCase()">{{ user.status }}</span>
+          </div>
+          <div><code style="font-size:11px;background:var(--surface-container);padding:2px 6px;border-radius:4px;">{{ user.ticket }}</code></div>
+          <div class="admin-date-cell">{{ user.registeredAt }}</div>
+          <div class="admin-actions-cell">
+            <button class="admin-action-btn" title="Toggle Status" (click)="toggleUserStatus(user)">
+              <span class="material-symbols-outlined">{{ user.status === 'Active' ? 'block' : 'check_circle' }}</span>
+            </button>
+            <button class="admin-action-btn" title="Edit" (click)="openAdminModal(user)">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button class="admin-action-btn danger" title="Delete" *ngIf="user.role !== 'super_admin'" (click)="deleteUserFromTable(user)">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="managedUsers.length === 0" class="admin-empty-state">
+        <span class="material-symbols-outlined">person_off</span>
+        <h3>No Users Found</h3>
+        <p>Try adjusting your search or filters.</p>
+      </div>
+    </div>
+
+    <!-- Delete User Confirmation Modal -->
+    <div class="admin-modal-overlay" *ngIf="deleteUserConfirm" (click)="cancelDeleteUser()">
+      <div class="admin-modal" (click)="$event.stopPropagation()" style="max-width:420px;">
+        <div class="admin-modal-header" style="background:var(--error-container,#fef2f2);color:var(--error,#dc2626);">
+          <span class="material-symbols-outlined">delete_forever</span>
+          <h3>Delete User</h3>
+          <button class="admin-modal-close" (click)="cancelDeleteUser()">&times;</button>
+        </div>
+        <div class="admin-modal-body">
+          <p>Are you sure you want to delete <strong>{{ deleteUserConfirm?.fullName }}</strong>?</p>
+          <p style="color:var(--on-surface-variant);font-size:13px;margin-top:8px;">This action cannot be undone. The user will lose access to all NTIC services.</p>
+        </div>
+        <div class="admin-modal-footer">
+          <button class="btn admin-cancel-btn" (click)="cancelDeleteUser()">Cancel</button>
+          <button class="btn" style="background:var(--error,#dc2626);color:#fff;" (click)="confirmDeleteUser()">
+            <span class="material-symbols-outlined">delete</span>Delete User
+          </button>
         </div>
       </div>
     </div>

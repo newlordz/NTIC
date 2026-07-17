@@ -3732,3 +3732,51 @@
   /* ── Role picker: full width buttons ── */
   .admin-role-btn { flex: 1 0 100%; justify-content: center; }
 }
+
+/* ── User Management Filters ── */
+.admin-filters-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.admin-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  padding: 0 12px;
+  flex: 1;
+  min-width: 200px;
+
+  .material-symbols-outlined { color: var(--on-surface-variant); font-size: 18px; }
+}
+
+.admin-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 10px 0;
+  font-size: 13px;
+  color: var(--on-surface);
+  outline: none;
+
+  &::placeholder { color: var(--on-surface-variant); opacity: 0.6; }
+}
+
+.admin-filter-select {
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--on-surface);
+  cursor: pointer;
+  outline: none;
+  min-width: 140px;
+
+  &:focus { border-color: var(--primary); }
+}

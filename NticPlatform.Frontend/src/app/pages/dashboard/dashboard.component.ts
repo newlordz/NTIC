@@ -62,6 +62,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   hoverUsers: any[] = [];
   hoverPos = { x: 0, y: 0 };
 
+  // ─── USER MANAGEMENT ──────────────────────
+  userSearch = '';
+  userRoleFilter = 'all';
+  userStatusFilter = 'all';
+  editingUserId: string | null = null;
+  deleteUserConfirm: any = null;
+
   // ─── CONTENT MANAGER STATE ──────────────────────
   contentTab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' = 'stories';
 
@@ -410,7 +417,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     // Read query params to set active tab & modal state reactively
     this.route.queryParams.subscribe(params => {
-      if (params['tab'] && ['overview', 'register', 'tickets', 'approvals', 'content'].includes(params['tab'])) {
+      if (params['tab'] && ['overview', 'register', 'tickets', 'approvals', 'content', 'users', 'admins'].includes(params['tab'])) {
         this.adminTab = params['tab'] as any;
       }
       this.isRegModalOpen = params['openRegModal'] === 'true';
@@ -535,6 +542,50 @@ export class DashboardComponent implements OnInit, OnDestroy {
   get filteredRegisteredUsers(): any[] {
     if (this.ticketFilter === 'all') return this.registeredUsers;
     return this.registeredUsers.filter(u => u.role === this.ticketFilter);
+  }
+
+  get managedUsers(): any[] {
+    let list = [...this.registeredUsers];
+    if (this.userRoleFilter !== 'all') {
+      list = list.filter(u => u.role === this.userRoleFilter);
+    }
+    if (this.userStatusFilter !== 'all') {
+      list = list.filter(u => u.status.toLowerCase() === this.userStatusFilter);
+    }
+    if (this.userSearch.trim()) {
+      const q = this.userSearch.toLowerCase();
+      list = list.filter(u =>
+        u.fullName?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q) ||
+        u.organization?.toLowerCase().includes(q) ||
+        u.ticket?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }
+
+  toggleUserStatus(user: any): void {
+    const users = [...this.contentService.users];
+    const idx = users.findIndex(u => u.id === user.id);
+    if (idx > -1) {
+      users[idx].status = users[idx].status === 'Active' ? 'Suspended' : 'Active';
+      this.contentService.saveUsers(users);
+    }
+  }
+
+  deleteUserFromTable(user: any): void {
+    this.deleteUserConfirm = user;
+  }
+
+  confirmDeleteUser(): void {
+    if (!this.deleteUserConfirm) return;
+    const users = this.contentService.users.filter(u => u.id !== this.deleteUserConfirm.id);
+    this.contentService.saveUsers(users);
+    this.deleteUserConfirm = null;
+  }
+
+  cancelDeleteUser(): void {
+    this.deleteUserConfirm = null;
   }
 
   generateTicket(role: 'judge' | 'sponsor'): string {
