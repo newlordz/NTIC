@@ -940,10 +940,20 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         contact = this.schoolForm.repEmail || this.schoolForm.email;
         details = {
           region: this.schoolForm.region,
+          district: this.schoolForm.district,
+          category: this.schoolForm.category,
           phone: this.schoolForm.repTel || this.schoolForm.tel,
+          email: this.schoolForm.email,
+          gps: this.schoolForm.gps,
+          gpsAddress: this.gpsAddress,
+          repName: this.schoolForm.repName,
+          repEmail: this.schoolForm.repEmail,
+          repTel: this.schoolForm.repTel,
           code: this.schoolForm.name.slice(0, 3).toUpperCase() + '-REG-2026',
           tracks: this.schoolForm.teams.map((t: any) => t.track).filter((value: any, index: number, self: any[]) => self.indexOf(value) === index).join(', ') || 'Coding, Robotics',
           teamsList: this.schoolForm.teams,
+          studentCount: this.schoolForm.students.length,
+          students: this.schoolForm.students.map((s: any) => ({ name: s.name, track: s.track, class: s.class })),
           docs: this.selectedFileIds['schoolDocs']?.length
             ? this.selectedFileIds['schoolDocs'].map((id, i) => `${id}::${this.selectedFileNames['schoolDocs']?.[i] || 'document.pdf'}`)
             : ['Accreditation_' + this.schoolForm.name.replace(/ /g, '_') + '.pdf'],
@@ -1048,6 +1058,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           institution: this.instructorForm.institution || 'Independent Mentor',
           credentials: this.instructorForm.qualification || 'MSc Computer Science',
           specialization: selectedExpertise || 'Coding, AI',
+          phone: this.instructorForm.tel || '',
           experience: 'Mentor with registered history',
           courses: ['LMS Course 101: Python Intro', 'LMS Course 202: Robotics Base'],
           docs: this.selectedFileIds['instructorDocs']?.length
