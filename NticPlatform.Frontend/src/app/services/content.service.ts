@@ -223,9 +223,83 @@ export class ContentService {
 
   // ── Initial Mock Data backups for restoration ──────────────────
   private readonly defaultCompetitions: Competition[] = [];
-  private readonly defaultStories: ChampionshipStory[] = [];
+  private readonly defaultStories: ChampionshipStory[] = [
+    {
+      id: 'story-1', tag: 'Robotics', tagColor: 'robotics',
+      image: 'assets/ntic_image_1.jpeg', date: 'June 28, 2026', readTime: '5 min',
+      title: 'Achimota School Builds Autonomous Rover for Desert Navigation',
+      body: 'Team Volta from Achimota School developed an autonomous rover capable of navigating uneven terrain using computer vision and LIDAR sensors, winning the Regional Robotics Qualifier in Greater Accra.'
+    },
+    {
+      id: 'story-2', tag: 'Coding', tagColor: 'coding',
+      image: 'assets/ntic_image_2.jpeg', date: 'June 22, 2026', readTime: '4 min',
+      title: "Wesley Girls' Coding Team Ships a Full-Stack Health App in 48 Hours",
+      body: "During the national hackathon sprint, a 4-student team from Wesley Girls' built and deployed a telemedicine platform connecting rural clinics with urban doctors — all within a 48-hour deadline."
+    },
+    {
+      id: 'story-3', tag: 'Cybersecurity', tagColor: 'cyber',
+      image: 'assets/ntic_image_3.jpeg', date: 'June 15, 2026', readTime: '6 min',
+      title: 'PRESEC Legon Students Simulate a Nation-State Cyber Attack in Finals',
+      body: 'The cybersecurity track finale saw PRESEC Legon team execute a realistic nation-state attack simulation, demonstrating advanced penetration testing skills and incident response protocols.'
+    },
+    {
+      id: 'story-4', tag: 'AI', tagColor: 'ai',
+      image: 'assets/ntic_image_4.jpeg', date: 'June 10, 2026', readTime: '5 min',
+      title: 'Opoku War School AI Team Trains a Local Language Speech Recognition Model',
+      body: 'Using transfer learning on a small dataset, students from Opoku War School built a Twi speech recognition model achieving 87% accuracy — a breakthrough for local language AI in Ghana.'
+    },
+    {
+      id: 'story-5', tag: 'Innovation', tagColor: 'innovation',
+      image: 'assets/ntic_image_5.jpeg', date: 'June 5, 2026', readTime: '4 min',
+      title: "St. Augustine's Invents a Solar-Powered Water Purification System",
+      body: "Team Innovation from St. Augustine's College designed a low-cost solar-powered water purification unit capable of serving 200 households, addressing clean water access in rural communities."
+    },
+    {
+      id: 'story-6', tag: 'Robotics', tagColor: 'robotics',
+      image: 'assets/ntic_image_1.jpeg', date: 'May 30, 2026', readTime: '3 min',
+      title: "Adisadel College Robotics Team Wins People's Choice Award",
+      body: "Their humanoid robot performing traditional Ghanaian dance moves captured hearts at the national exhibition, earning the People's Choice Award alongside a top-3 finish in the main robotics competition."
+    }
+  ];
 
-  private readonly defaultHof: HallOfFameEntry[] = [];
+  private readonly defaultHof: HallOfFameEntry[] = [
+    {
+      id: 'hof-1',
+      initials: 'EA',
+      name: 'Ekow Asante',
+      school: 'Mfantsipim School',
+      year: '2025',
+      badge: 'Coding Champion',
+      trackClass: 'coding-track'
+    },
+    {
+      id: 'hof-2',
+      initials: 'AS',
+      name: 'Abigail Serwaa',
+      school: 'Wesley Girls High School',
+      year: '2025',
+      badge: 'Robotics Champion',
+      trackClass: 'robotics-track'
+    },
+    {
+      id: 'hof-3',
+      initials: 'KN',
+      name: 'Kofi Nyarko',
+      school: 'Prempeh College',
+      year: '2024',
+      badge: 'AI Champion',
+      trackClass: 'ai-track'
+    },
+    {
+      id: 'hof-4',
+      initials: 'ED',
+      name: 'Efua Donkor',
+      school: 'Achimota School',
+      year: '2024',
+      badge: 'Innovation Champion',
+      trackClass: 'innovation-track'
+    }
+  ];
 
   private readonly defaultLeaderboard: LeaderboardEntry[] = [];
 

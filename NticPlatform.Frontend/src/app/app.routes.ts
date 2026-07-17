@@ -11,9 +11,11 @@ import { TalentComponent } from './pages/talent/talent.component';
 import { SponsorsComponent } from './pages/sponsors/sponsors.component';
 import { ReportingComponent } from './pages/reporting/reporting.component';
 import { RecordsComponent } from './pages/records/records.component';
+import { NewsComponent } from './pages/news/news.component';
 
 export const routes: Routes = [
   { path: '',             component: LandingComponent, pathMatch: 'full' },
+  { path: 'news',         component: NewsComponent },
   { path: 'dashboard',    component: DashboardComponent },
   { path: 'registration', component: RegistrationComponent },
   { path: 'lms',          component: LmsComponent },

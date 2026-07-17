@@ -128,6 +128,29 @@
     z-index: 1;
   }
 
+  .view-all-stories-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+    padding: 10px 24px;
+    border-radius: 10px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s, transform 0.2s;
+
+    .material-symbols-outlined { font-size: 18px; transition: transform 0.2s; }
+
+    &:hover {
+      background: var(--crimson-dark);
+      transform: translateY(-1px);
+      .material-symbols-outlined { transform: translateX(3px); }
+    }
+  }
+
   /* ── Grid ───────────────────────────────────────────────── */
   .spotlight-grid {
     display: grid;
@@ -5390,6 +5413,14 @@
   animation: floatIcon 4s ease-in-out infinite;
   filter: drop-shadow(0 10px 15px rgba(212, 160, 23, 0.3));
 }
+.alumni-medal-img {
+  height: 120px;
+  width: auto;
+  object-fit: contain;
+  margin-bottom: 1.5rem;
+  animation: floatIcon 4s ease-in-out infinite;
+  filter: drop-shadow(0 10px 20px rgba(0, 63, 135, 0.25)) drop-shadow(0 4px 8px rgba(212, 160, 23, 0.3));
+}
 @keyframes floatIcon {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-15px); }
@@ -5520,6 +5551,28 @@
 .alumni-badge.cyber { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
 .alumni-badge.ai { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
 .alumni-badge.innovation { background: #fdf2f8; color: #be185d; border: 1px solid #fbcfe8; }
+
+.alumni-medal-badge {
+  margin-left: auto;
+  height: 4.5rem;
+  width: 2.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  img {
+    height: 100%;
+    width: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
+  }
+}
+.alumni-card:hover .alumni-medal-badge {
+  transform: scale(1.1) translateY(-2px);
+  filter: drop-shadow(0 8px 16px rgba(212, 160, 23, 0.45));
+}
 
 /* ------------------------------------------------------------------
    TRACKS PREVIEW MODAL STYLES

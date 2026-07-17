@@ -368,6 +368,10 @@
         </div>
         <p class="academic-desc-lead">Explore how Ghana's next generation of scientists, developers, and engineers are scaling technical hurdles, building local industries, and defining the future.</p>
       </div>
+      <a routerLink="/news" class="view-all-stories-btn">
+        <span>View All News &amp; Events</span>
+        <span class="material-symbols-outlined">arrow_forward</span>
+      </a>
     </div>
     <!-- Full-width sliding marquee -->
     <div class="stories-marquee-wrap" [class.static-wrap]="contentService.championshipStories.length < 4">
@@ -476,7 +480,7 @@
   <section class="alumni-section scroll-animate fade-up">
     <div class="container">
       <div class="alumni-header">
-        <span class="material-symbols-outlined alumni-crown">workspace_premium</span>
+        <img src="assets/hall_of_fame_medal.png" class="alumni-medal-img" alt="NTIC Hall of Fame Medal">
         <span class="academic-sub">Hall of Fame</span>
         <h2>National Technology and Innovation Champions</h2>
       </div>
@@ -491,6 +495,9 @@
             <span>{{ entry.school }} · {{ entry.year }}</span>
             <span class="alumni-badge" [class]="entry.trackClass.replace('-track','') ">{{ entry.badge }}</span>
           </div>
+          <div class="alumni-medal-badge">
+            <img src="assets/hall_of_fame_medal.png" alt="NTIC Medal">
+          </div>
         </div>
         <!-- Set B (duplicate for seamless loop, only needed when >= 4 items) -->
         <ng-container *ngIf="contentService.activeHallOfFameEntries.length >= 4">
@@ -500,6 +507,9 @@
               <strong>{{ entry.name }}</strong>
               <span>{{ entry.school }} · {{ entry.year }}</span>
               <span class="alumni-badge" [class]="entry.trackClass.replace('-track','') ">{{ entry.badge }}</span>
+            </div>
+            <div class="alumni-medal-badge">
+              <img src="assets/hall_of_fame_medal.png" alt="NTIC Medal">
             </div>
           </div>
         </ng-container>

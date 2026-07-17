@@ -1,0 +1,140 @@
+<div class="page-canvas fade-in">
+  <!-- Hero Banner -->
+  <div class="news-hero">
+    <div class="news-hero-content">
+      <span class="news-eyebrow">
+        <span class="material-symbols-outlined">newspaper</span>
+        News &amp; Events
+      </span>
+      <h1>Championship <span class="highlight">Stories</span> &amp; Updates</h1>
+      <p>Explore how Ghana's next generation of scientists, developers, and engineers are scaling technical hurdles, building local industries, and defining the future.</p>
+    </div>
+  </div>
+
+  <!-- Tag Filter Bar -->
+  <div class="tag-filter-bar">
+    <button *ngFor="let tag of tags"
+            class="tag-chip"
+            [class.active]="activeTag === tag"
+            (click)="filterByTag(tag)">
+      <span class="material-symbols-outlined">{{ getTagIcon(tag) }}</span>
+      {{ getTagLabel(tag) }}
+    </button>
+  </div>
+
+  <!-- Stories Grid -->
+  <div class="stories-section" *ngIf="filteredStories.length > 0; else emptyStories">
+    <div class="stories-grid">
+      <div *ngFor="let story of filteredStories; let i = index"
+           class="story-card"
+           [class.featured]="i === 0">
+        <div class="story-img-wrap">
+          <img [src]="story.image" [alt]="story.title"
+               onerror="this.src='assets/ntic_image_1.jpeg'">
+          <span class="story-tag-badge" [class]="'tag-' + story.tagColor">{{ story.tag }}</span>
+        </div>
+        <div class="story-body">
+          <div class="story-meta">
+            <span class="meta-item">
+              <span class="material-symbols-outlined">calendar_today</span>
+              {{ story.date }}
+            </span>
+            <span class="meta-item">
+              <span class="material-symbols-outlined">schedule</span>
+              {{ story.readTime }}
+            </span>
+          </div>
+          <h3 class="story-title">{{ story.title }}</h3>
+          <p class="story-excerpt">{{ story.body }}</p>
+          <button class="read-more-btn">
+            <span>Read Full Story</span>
+            <span class="material-symbols-outlined">arrow_right_alt</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #emptyStories>
+    <div class="empty-state">
+      <span class="material-symbols-outlined empty-icon">article</span>
+      <h3>No Stories Yet</h3>
+      <p>Championship stories and news articles will appear here once published by content managers.</p>
+    </div>
+  </ng-template>
+
+  <!-- News Feed Items -->
+  <div class="newsfeed-section" *ngIf="latestNews.length > 0">
+    <div class="section-divider">
+      <span class="material-symbols-outlined">bolt</span>
+      <h2>Latest Updates</h2>
+    </div>
+    <div class="newsfeed-list">
+      <div *ngFor="let item of latestNews" class="newsfeed-item">
+        <span class="newsfeed-tag-badge">{{ item.tag }}</span>
+        <div class="newsfeed-content">
+          <h4>{{ item.headline }}</h4>
+          <span class="newsfeed-date">
+            <span class="material-symbols-outlined">schedule</span>
+            {{ item.date }}
+          </span>
+        </div>
+        <a [href]="item.link" class="newsfeed-link" *ngIf="item.link">
+          <span class="material-symbols-outlined">open_in_new</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upcoming Events -->
+  <div class="events-section">
+    <div class="section-divider">
+      <span class="material-symbols-outlined">event</span>
+      <h2>Upcoming Events</h2>
+    </div>
+    <div class="events-grid">
+      <div class="event-card">
+        <div class="event-date-block">
+          <span class="event-month">AUG</span>
+          <span class="event-day">15</span>
+        </div>
+        <div class="event-info">
+          <h4>Regional Qualifier — Greater Accra</h4>
+          <p>STEM teams compete for national qualification spots across all 5 tracks.</p>
+          <span class="event-location">
+            <span class="material-symbols-outlined">location_on</span>
+            Accra International Conference Centre
+          </span>
+        </div>
+      </div>
+      <div class="event-card">
+        <div class="event-date-block">
+          <span class="event-month">SEP</span>
+          <span class="event-day">22</span>
+        </div>
+        <div class="event-info">
+          <h4>Regional Qualifier — Ashanti</h4>
+          <p>Kumasi hosts the Ashanti regional championships with 40+ competing teams.</p>
+          <span class="event-location">
+            <span class="material-symbols-outlined">location_on</span>
+            Kumasi Cultural Centre
+          </span>
+        </div>
+      </div>
+      <div class="event-card">
+        <div class="event-date-block">
+          <span class="event-month">DEC</span>
+          <span class="event-day">07</span>
+        </div>
+        <div class="event-info">
+          <h4>National Grand Final</h4>
+          <p>The ultimate showdown — top teams from all regions battle for the NTIC Championship crown.</p>
+          <span class="event-location">
+            <span class="material-symbols-outlined">location_on</span>
+            National Theatre of Ghana, Accra
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

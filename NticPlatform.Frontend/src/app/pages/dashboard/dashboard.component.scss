@@ -2348,7 +2348,7 @@
   border: 1px solid var(--outline-variant);
   border-radius: 12px;
   padding: 12px 14px;
-  padding-right: 70px;
+  padding-right: 110px;
   position: relative;
   transition: border-color 0.2s;
   &:hover { border-color: var(--primary); }
@@ -2392,6 +2392,23 @@
   border-radius: 20px;
   font-size: 11px;
   color: var(--on-surface);
+}
+
+.cms-hof-medal {
+  position: absolute;
+  top: 12px;
+  right: 74px;
+  width: 24px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  }
 }
 
 // ── Leaderboard Table ─────────────────────────────────────
