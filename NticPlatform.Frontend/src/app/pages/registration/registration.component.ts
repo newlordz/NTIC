@@ -127,6 +127,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   };
 
   gpsLoading = false;
+  gpsAddress = '';
 
   studentForm = {
     name: '',
@@ -664,22 +665,40 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   detectGps(): void {
     if (!navigator.geolocation) {
       this.schoolForm.gps = '5.6037, -0.1870';
+      this.gpsAddress = 'Accra, Greater Accra, Ghana (fallback)';
       return;
     }
     this.gpsLoading = true;
+    this.gpsAddress = '';
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const lat = pos.coords.latitude.toFixed(4);
-        const lng = pos.coords.longitude.toFixed(4);
-        this.schoolForm.gps = `${lat}, ${lng}`;
-        this.gpsLoading = false;
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        this.schoolForm.gps = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        this.reverseGeocode(lat, lng);
       },
       () => {
         this.schoolForm.gps = '5.6037, -0.1870';
+        this.gpsAddress = 'Accra, Greater Accra, Ghana (fallback)';
         this.gpsLoading = false;
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
     );
+  }
+
+  private reverseGeocode(lat: number, lng: number): void {
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
+      .then(res => res.json())
+      .then((data: any) => {
+        const a = data.address || {};
+        const parts = [a.road, a.suburb || a.neighbourhood, a.city || a.town || a.village, a.state || a.region, a.country].filter(Boolean);
+        this.gpsAddress = parts.join(', ') || data.display_name || '';
+        this.gpsLoading = false;
+      })
+      .catch(() => {
+        this.gpsAddress = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        this.gpsLoading = false;
+      });
   }
 
   getInitials(name: string, fallback: string = 'N/A'): string {
@@ -836,6 +855,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.isDraftResumed = false;
     this.schoolStep = 1;
     this.maxSchoolStepReached = 1;
+    this.gpsAddress = '';
     this.schoolForm = {
       name: '',
       category: 'Public High School',

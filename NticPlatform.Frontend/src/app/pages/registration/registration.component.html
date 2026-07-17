@@ -389,6 +389,10 @@
                 </button>
                 <input class="form-control" type="text" placeholder="LAT, LONG" readonly style="flex:1;" [(ngModel)]="schoolForm.gps" name="schoolGps">
               </div>
+              <small *ngIf="gpsAddress" style="display:block; margin-top:6px; color:var(--on-surface-variant); font-size:12px;">
+                <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">pin_drop</span>
+                {{ gpsAddress }}
+              </small>
             </div>
 
             <hr style="border: 0; border-top: 1px solid var(--border-input); margin: 24px 0;">
@@ -832,6 +836,7 @@
                       <div class="profile-item-text">
                         <span class="profile-label">GPS Address</span>
                         <span class="profile-value gps-active">{{ schoolForm.gps }}</span>
+                        <span *ngIf="gpsAddress" class="profile-value" style="font-size:11px; color:var(--on-surface-variant); margin-top:2px;">{{ gpsAddress }}</span>
                       </div>
                     </div>
                   </div>
