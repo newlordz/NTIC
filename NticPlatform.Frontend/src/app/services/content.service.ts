@@ -108,16 +108,17 @@ export interface NewsFeedItem {
 
 export interface User {
   id: string;
-  role: 'judge' | 'sponsor' | 'school_admin' | 'student' | 'instructor' | 'super_admin' | 'content_manager' | 'reviewer' | 'competition_manager';
+  role: 'super_admin' | 'admin' | 'content_manager' | 'reviewer' | 'competition_manager' | 'school_admin' | 'instructor' | 'student' | 'judge' | 'sponsor';
   fullName: string;
   email: string;
   phone: string;
+  password?: string;
   otp: string;
   organization: string;
-  track?: string;     // for judges
-  tier?: string;      // for sponsors
-  ticket: string;     // E.g. NTIC-JDG-XXXX
-  status: string;     // E.g. Active, Pending
+  track?: string;
+  tier?: string;
+  ticket: string;
+  status: string;
   registeredAt: string;
   lastLogin: string;
 }

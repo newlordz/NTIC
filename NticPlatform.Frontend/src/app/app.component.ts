@@ -136,6 +136,14 @@ export class AppComponent implements OnInit, OnDestroy {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  logout(): void {
+    localStorage.removeItem('activeRoleId');
+    localStorage.removeItem('activeUserEmail');
+    this.currentUser = null;
+    this.closeMobileSidebar();
+    this.router.navigate(['/']);
+  }
+
   getInitials(name: string): string {
     if (!name) return '??';
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();

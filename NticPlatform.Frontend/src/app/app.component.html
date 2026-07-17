@@ -81,7 +81,7 @@
     </div>
  
     <div class="sidebar-footer">
-      <a class="nav-item" routerLink="/" (click)="closeMobileSidebar()">
+      <a class="nav-item" (click)="logout()">
         <span class="material-symbols-outlined">logout</span>
         Landing Page
       </a>
@@ -210,7 +210,7 @@
               <span class="material-symbols-outlined">admin_panel_settings</span>
               <span>Command Center</span>
             </a>
-            <a routerLink="/" class="profile-action-row logout" (click)="showProfileDropdown = false">
+            <a (click)="showProfileDropdown = false; logout()" class="profile-action-row logout">
               <span class="material-symbols-outlined">logout</span>
               <span>Sign Out to Landing</span>
             </a>

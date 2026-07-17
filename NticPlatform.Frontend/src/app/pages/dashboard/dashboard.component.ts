@@ -604,6 +604,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         email: this.regForm.email,
         phone: this.regForm.phone || '+233 24 555 0192',
         otp,
+        password: otp,
         organization: this.regForm.organization,
         track: this.registerRole === 'judge' ? (this.regForm.tracks && this.regForm.tracks.join(', ')) : undefined,
         tier: this.registerRole === 'sponsor' ? this.regForm.tier : undefined,
@@ -724,6 +725,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         email: req.contact,
         phone: req.details?.phone || '+233 24 555 1234',
         otp,
+        password: otp,
         organization: req.entity,
         ticket,
         status: 'Active',
@@ -789,6 +791,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         email: req.contact,
         phone: req.details?.phone || '+233 24 555 5678',
         otp,
+        password: otp,
         organization: req.details?.institution || 'NTIC partner',
         track: req.details?.specialization || 'Coding & AI',
         ticket,
@@ -855,18 +858,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   openPreview(req: any): void {
-    console.log('openPreview clicked for:', req);
     this.activePreviewRequest = req;
-    console.log('activePreviewRequest set to:', this.activePreviewRequest);
   }
 
   openReview(req: any): void {
-    console.log('openReview clicked for:', req);
     this.activeReviewRequest = req;
     this.reviewReasons = this.getReviewReasons(req.type);
     this.selectedReasons = {};
     this.rejectionNotes = '';
-    console.log('activeReviewRequest set to:', this.activeReviewRequest);
   }
 
   submitRejection(): void {
@@ -984,6 +983,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         email: this.adminForm.email,
         phone: this.adminForm.phone || '+233 24 000 0000',
         otp,
+        password: otp,
         organization: this.adminForm.organization || 'NTIC',
         ticket: `NTIC-ADM-${Math.floor(1000 + Math.random() * 9000)}`,
         status: 'Active',

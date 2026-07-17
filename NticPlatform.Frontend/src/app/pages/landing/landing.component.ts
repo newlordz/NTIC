@@ -1181,7 +1181,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
           this.decryptInterval = null;
           this.ngZone.run(() => {
             this.email = targetEmail;
-            this.password = 'password123';
+            this.password = '';
           });
         }
       }, 20);
@@ -1250,9 +1250,9 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
-      // Verify password/OTP
-      const expectedPass = registeredUser.otp || 'password123';
-      if (pass !== expectedPass) {
+      // Verify password (check password field first, then OTP as fallback)
+      const expectedPass = registeredUser.password || registeredUser.otp || '';
+      if (!expectedPass || pass !== expectedPass) {
         this.loginError = 'Incorrect password or verification code. Please try again.';
         return;
       }
