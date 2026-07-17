@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ThemeService } from '../../services/theme.service';
 import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
+import { BrevoEmailService } from '../../services/brevo-email.service';
 
 @Component({
   selector: 'app-registration',
@@ -325,7 +326,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.showPrivacyModal = false;
   }
 
-  constructor(private route: ActivatedRoute, private router: Router, public themeService: ThemeService, public contentService: ContentService, public fileStorage: FileStorageService) {}
+  constructor(private route: ActivatedRoute, private router: Router, public themeService: ThemeService, public contentService: ContentService, public fileStorage: FileStorageService, private emailService: BrevoEmailService) {}
 
   ngOnInit(): void {
     const activeRoleId = localStorage.getItem('activeRoleId');
@@ -1204,6 +1205,12 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         const currentApprovals = [...this.contentService.pendingApprovals];
         currentApprovals.unshift(newApproval);
         this.contentService.saveApprovals(currentApprovals);
+
+        const emailTo = contact || '';
+        const emailName = entity || '';
+        if (emailTo) {
+          this.emailService.sendPendingConfirmation(emailTo, emailName, emailName, approvalType);
+        }
 
         const currentAudit = [...this.contentService.auditLogs];
         currentAudit.unshift({

@@ -10,6 +10,7 @@ import {
   NewsFeedItem,
   TalentDiscovery
 } from '../../services/content.service';
+import { BrevoEmailService } from '../../services/brevo-email.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -375,7 +376,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { text: 'Mentor feedback published for AI Division', time: '5h ago' }
   ];
 
-  constructor(public contentService: ContentService, private route: ActivatedRoute, private router: Router) {}
+  constructor(public contentService: ContentService, private route: ActivatedRoute, private router: Router, private emailService: BrevoEmailService) {}
 
   addAuditLog(log: any): void {
     const currentAudit = [...this.contentService.auditLogs];
@@ -758,6 +759,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
 
       alert(`School Registration Approved!\nSchool Admin account created for: ${req.entity}.\nAccess Pass: ${ticket}\nOTP: ${otp}`);
+      this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp);
     } else if (req.type === 'Team Addition') {
       const newTeam = {
         name: req.entity,
@@ -776,6 +778,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.contentService.updatePlatformStats(stats);
 
       alert(`Team Addition Approved!\nTeam "${req.entity}" has been successfully added to competition tracks.`);
+      this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A — Team Added', 'N/A');
     } else if (req.type === 'Instructor Access') {
       const ticket = 'NTIC-INS-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -803,6 +806,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.contentService.updatePlatformStats(stats);
 
       alert(`Instructor Access Approved!\nInstructor account created for: ${req.entity}.\nAccess Pass: ${ticket}\nOTP: ${otp}`);
+      this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
     }
 
     const currentAudit = [...this.contentService.auditLogs];
@@ -889,6 +893,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.contentService.saveRejectedApprovals(currentRejected);
 
     this.pendingApprovals = this.pendingApprovals.filter(r => r.id !== this.activeReviewRequest.id);
+
+    this.emailService.sendRejectionEmail(
+      this.activeReviewRequest.contact,
+      this.activeReviewRequest.entity,
+      this.activeReviewRequest.entity,
+      this.activeReviewRequest.type,
+      reasons || 'No specific reason provided',
+      this.rejectionNotes || ''
+    );
     
     const currentAudit = [...this.contentService.auditLogs];
     currentAudit.unshift({
