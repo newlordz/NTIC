@@ -1,5 +1,22 @@
 :host { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
+/* ── Back Home Button ── */
+.back-home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  color: var(--on-surface-variant);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  margin-bottom: 16px;
+  transition: color 0.15s;
+
+  .material-symbols-outlined { font-size: 18px; }
+  &:hover { color: var(--primary); }
+}
+
 /* ── Hero Banner ── */
 .news-hero {
   background: linear-gradient(135deg, var(--primary) 0%, var(--crimson-dark) 100%);
