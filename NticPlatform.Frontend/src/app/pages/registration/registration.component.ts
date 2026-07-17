@@ -919,9 +919,27 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.isPreviewModalOpen = false;
   }
 
-  submitRegistration(): void {
+  async submitRegistration(): Promise<void> {
     if (this.isSubmitting) return;
     this.isSubmitting = true;
+
+    // Capture school logo as data URL before setTimeout (needs await)
+    let capturedLogo: string | null = null;
+    if (this.activeTab === 'school' && this.schoolLogoUrl) {
+      try {
+        const logoId = this.selectedFileIds['schoolLogo']?.[0];
+        if (logoId) {
+          const fileData = await this.fileStorage.get(logoId);
+          if (fileData) {
+            capturedLogo = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(fileData.blob);
+            });
+          }
+        }
+      } catch (e) { /* logo not critical */ }
+    }
     
     // Simulate API call with modern loader
     setTimeout(() => {
@@ -959,6 +977,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
             : ['Accreditation_' + this.schoolForm.name.replace(/ /g, '_') + '.pdf'],
           infra: 'IT Lab facility registered, ' + this.schoolForm.students.length + ' students enrolled'
         };
+        if (capturedLogo) details.logo = capturedLogo;
 
         // Save teams created during school registration into ContentService
         if (this.schoolForm.teams && this.schoolForm.teams.length > 0) {

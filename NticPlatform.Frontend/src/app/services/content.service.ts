@@ -130,11 +130,22 @@ export interface ApprovalRequest {
   submitted: string;
   details: {
     region?: string;
+    district?: string;
+    category?: string;
     phone?: string;
+    email?: string;
+    gps?: string;
+    gpsAddress?: string;
+    repName?: string;
+    repEmail?: string;
+    repTel?: string;
     code?: string;
     tracks?: string;
     docs?: string[];
     infra?: string;
+    logo?: string;
+    studentCount?: number;
+    students?: { name: string; track: string; class: string }[];
     school?: string;
     track?: string;
     project?: string;
