@@ -701,6 +701,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   approveRequest(req: any): void {
+    const approved = {
+      ...req,
+      reviewedAt: new Date().toLocaleString('en-GB'),
+      reviewer: 'admin@ntic.org.gh'
+    };
+    const currentApproved = [...this.contentService.approvedApprovals];
+    currentApproved.unshift(approved);
+    this.contentService.saveApprovedApprovals(currentApproved);
+
     this.pendingApprovals = this.pendingApprovals.filter(r => r.id !== req.id);
 
     // Apply side-effects depending on the type of approval request
@@ -866,6 +875,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const logDetails = reasons 
       ? `Reasons: ${reasons}.${this.rejectionNotes ? ' Note: ' + this.rejectionNotes : ''}`
       : (this.rejectionNotes || 'No specific reason provided');
+
+    const rejected = {
+      ...this.activeReviewRequest,
+      reviewedAt: new Date().toLocaleString('en-GB'),
+      reviewer: 'admin@ntic.org.gh',
+      rejectionReasons: reasons || 'No specific reason provided',
+      rejectionNotes: this.rejectionNotes || ''
+    };
+
+    const currentRejected = [...this.contentService.rejectedApprovals];
+    currentRejected.unshift(rejected);
+    this.contentService.saveRejectedApprovals(currentRejected);
 
     this.pendingApprovals = this.pendingApprovals.filter(r => r.id !== this.activeReviewRequest.id);
     

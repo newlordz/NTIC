@@ -94,6 +94,169 @@
           <button class="btn btn-secondary btn-full">Resume Application</button>
         </div>
       </div>
+
+      <!-- Card 3: Track Application Status -->
+      <div class="gateway-card track-reg" (click)="openTracker()">
+        <div class="gateway-card-crest" style="background: linear-gradient(135deg, #065f46, #10b981);">
+          <span class="material-symbols-outlined">search_track</span>
+        </div>
+        <div class="gateway-card-body">
+          <h3>Track Application</h3>
+          <p>Check the status of your registration. See if your application is pending, approved, or requires action.</p>
+          <ul class="gateway-features">
+            <li>
+              <span class="material-symbols-outlined feat-icon">check_circle</span> 
+              <span>Real-time application status</span>
+            </li>
+            <li>
+              <span class="material-symbols-outlined feat-icon">check_circle</span> 
+              <span>View rejection reasons if declined</span>
+            </li>
+            <li>
+              <span class="material-symbols-outlined feat-icon">check_circle</span> 
+              <span>Access credentials after approval</span>
+            </li>
+          </ul>
+        </div>
+        <div class="gateway-card-footer">
+          <button class="btn btn-secondary btn-full" style="background: linear-gradient(135deg, #065f46, #10b981); border: none;">Track Status</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       APPLICATION TRACKER VIEW
+       ========================================================= -->
+  <div *ngIf="regState === 'tracker'" class="gateway-screen" style="min-height: 100vh;">
+    <button class="back-link-btn" (click)="goBackToGatewayFromTracker()">
+      <span class="material-symbols-outlined">arrow_back</span> Back to Registration
+    </button>
+
+    <div class="gateway-header">
+      <div class="landing-brand-logo-wrap">
+        <div class="brand-crest">
+          <div class="crest-shield" style="background: linear-gradient(135deg, #065f46, #10b981);">
+            <span class="material-symbols-outlined shield-icon">search_track</span>
+          </div>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">NTIC</span>
+          <span class="brand-sub">APPLICATION TRACKER</span>
+        </div>
+      </div>
+      <h2 style="margin-top: 16px;">Track Your Application</h2>
+      <p class="gateway-lead">Enter your email address, school name, or application code to check your registration status.</p>
+    </div>
+
+    <div style="max-width: 560px; margin: 0 auto; width: 100%; padding: 0 20px;">
+      <div style="display: flex; gap: 8px; margin-bottom: 32px;">
+        <input
+          class="form-control"
+          type="text"
+          placeholder="Enter email, school name, or code..."
+          [(ngModel)]="trackerQuery"
+          (keyup.enter)="searchApplication()"
+          style="flex: 1; font-size: 15px; padding: 14px 16px;"
+        >
+        <button class="btn btn-primary" (click)="searchApplication()" style="padding: 14px 24px;">
+          <span class="material-symbols-outlined" style="font-size: 20px; vertical-align: middle;">search</span>
+          Search
+        </button>
+      </div>
+
+      <!-- No result yet -->
+      <div *ngIf="!trackerSearched" style="text-align: center; padding: 60px 20px; color: var(--on-surface-variant);">
+        <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.3; display: block; margin-bottom: 12px;">manage_search</span>
+        <p style="font-size: 15px;">Enter your details above to check your application status.</p>
+      </div>
+
+      <!-- Not Found -->
+      <div *ngIf="trackerSearched && trackerStatus === 'not_found'" style="text-align: center; padding: 48px 20px;">
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--error-container, #fef2f2); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+          <span class="material-symbols-outlined" style="font-size: 32px; color: var(--error, #ef4444);">help</span>
+        </div>
+        <h3 style="margin: 0 0 8px; font-size: 18px;">No Application Found</h3>
+        <p style="color: var(--on-surface-variant); font-size: 14px; margin: 0;">No registration was found matching your search. Please check your email, school name, or application code and try again.</p>
+      </div>
+
+      <!-- Pending Status -->
+      <div *ngIf="trackerSearched && trackerStatus === 'pending'" style="padding: 0;">
+        <div style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1px solid #fbbf24; border-radius: 14px; padding: 28px; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: #f59e0b; display: flex; align-items: center; justify-content: center;">
+              <span class="material-symbols-outlined" style="color: #fff; font-size: 28px;">pending</span>
+            </div>
+            <div>
+              <h3 style="margin: 0; font-size: 18px; color: #92400e;">Application Under Review</h3>
+              <p style="margin: 2px 0 0; font-size: 13px; color: #a16207;">Submitted {{ trackerResult?.application?.submitted }}</p>
+            </div>
+          </div>
+          <p style="margin: 0 0 4px; font-size: 14px; color: #78350f;">Your <strong>{{ trackerResult?.application?.type }}</strong> for <strong>{{ trackerResult?.application?.entity }}</strong> is currently being reviewed by our team. You will be notified once a decision is made.</p>
+        </div>
+        <div style="background: var(--surface-container, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px; padding: 16px 20px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+            <div><span style="color: var(--on-surface-variant);">Type:</span> <strong>{{ trackerResult?.application?.type }}</strong></div>
+            <div><span style="color: var(--on-surface-variant);">Entity:</span> <strong>{{ trackerResult?.application?.entity }}</strong></div>
+            <div><span style="color: var(--on-surface-variant);">Contact:</span> <strong>{{ trackerResult?.application?.contact }}</strong></div>
+            <div><span style="color: var(--on-surface-variant);">Region:</span> <strong>{{ trackerResult?.application?.details?.region || '—' }}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Approved Status -->
+      <div *ngIf="trackerSearched && trackerStatus === 'approved'" style="padding: 0;">
+        <div style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1px solid #34d399; border-radius: 14px; padding: 28px; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: #10b981; display: flex; align-items: center; justify-content: center;">
+              <span class="material-symbols-outlined" style="color: #fff; font-size: 28px;">check_circle</span>
+            </div>
+            <div>
+              <h3 style="margin: 0; font-size: 18px; color: #065f46;">Application Approved!</h3>
+              <p style="margin: 2px 0 0; font-size: 13px; color: #047857;">Reviewed {{ trackerResult?.application?.reviewedAt }}</p>
+            </div>
+          </div>
+          <p style="margin: 0; font-size: 14px; color: #064e3b;">Your <strong>{{ trackerResult?.application?.type }}</strong> for <strong>{{ trackerResult?.application?.entity }}</strong> has been approved. Your access credentials have been generated. Please contact the NTIC admin team to receive your login details.</p>
+        </div>
+        <div style="background: var(--surface-container, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px; padding: 16px 20px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+            <div><span style="color: var(--on-surface-variant);">Type:</span> <strong>{{ trackerResult?.application?.type }}</strong></div>
+            <div><span style="color: var(--on-surface-variant);">Entity:</span> <strong>{{ trackerResult?.application?.entity }}</strong></div>
+            <div><span style="color: var(--on-surface-variant);">Contact:</span> <strong>{{ trackerResult?.application?.contact }}</strong></div>
+            <div><span style="color: var(--on-surface-variant);">Region:</span> <strong>{{ trackerResult?.application?.details?.region || '—' }}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rejected Status -->
+      <div *ngIf="trackerSearched && trackerStatus === 'rejected'" style="padding: 0;">
+        <div style="background: linear-gradient(135deg, #fef2f2, #fee2e2); border: 1px solid #f87171; border-radius: 14px; padding: 28px; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
+            <div style="width: 48px; height: 48px; border-radius: 50%; background: #ef4444; display: flex; align-items: center; justify-content: center;">
+              <span class="material-symbols-outlined" style="color: #fff; font-size: 28px;">cancel</span>
+            </div>
+            <div>
+              <h3 style="margin: 0; font-size: 18px; color: #991b1b;">Application Rejected</h3>
+              <p style="margin: 2px 0 0; font-size: 13px; color: #b91c1c;">Reviewed {{ trackerResult?.rejectedDetails?.reviewedAt }}</p>
+            </div>
+          </div>
+          <p style="margin: 0 0 12px; font-size: 14px; color: #7f1d1d;">Your <strong>{{ trackerResult?.application?.type }}</strong> for <strong>{{ trackerResult?.application?.entity }}</strong> was not approved.</p>
+          <div style="background: rgba(255,255,255,0.6); border-radius: 8px; padding: 14px 16px; margin-bottom: 8px;">
+            <div style="font-size: 12px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Reasons</div>
+            <p style="margin: 0; font-size: 14px; color: #7f1d1d; line-height: 1.5;">{{ trackerResult?.rejectedDetails?.reasons }}</p>
+          </div>
+          <div *ngIf="trackerResult?.rejectedDetails?.notes" style="background: rgba(255,255,255,0.6); border-radius: 8px; padding: 14px 16px;">
+            <div style="font-size: 12px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Additional Notes</div>
+            <p style="margin: 0; font-size: 14px; color: #7f1d1d; line-height: 1.5;">{{ trackerResult?.rejectedDetails?.notes }}</p>
+          </div>
+        </div>
+        <div style="text-align: center; padding: 16px 0;">
+          <button class="btn btn-primary" (click)="goBackToGatewayFromTracker(); selectNewRegistration();">
+            <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">replay</span>
+            Reapply
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 

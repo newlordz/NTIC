@@ -33,6 +33,12 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   rightPanelMode = 'preview'; // 'preview' | 'list'
 
+  // Application Tracker
+  trackerQuery = '';
+  trackerResult: any = null;
+  trackerStatus: 'idle' | 'pending' | 'approved' | 'rejected' | 'not_found' = 'idle';
+  trackerSearched = false;
+
   credentialsModal: {
     isOpen: boolean;
     title: string;
@@ -355,6 +361,30 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.verificationInput = '';
     this.otpCode = '';
     this.otpError = '';
+  }
+
+  openTracker(): void {
+    this.regState = 'tracker';
+    this.trackerQuery = '';
+    this.trackerResult = null;
+    this.trackerStatus = 'idle';
+    this.trackerSearched = false;
+  }
+
+  searchApplication(): void {
+    if (!this.trackerQuery.trim()) return;
+    const result = this.contentService.lookupApplication(this.trackerQuery);
+    this.trackerResult = result;
+    this.trackerStatus = result.status;
+    this.trackerSearched = true;
+  }
+
+  goBackToGatewayFromTracker(): void {
+    this.regState = 'gateway';
+    this.trackerQuery = '';
+    this.trackerResult = null;
+    this.trackerStatus = 'idle';
+    this.trackerSearched = false;
   }
 
   goBackToGateway(): void {

@@ -158,6 +158,18 @@ export interface ApprovalRequest {
     courses?: string[];
     teamsList?: any[];
   };
+  reviewedAt?: string;
+  reviewer?: string;
+  rejectionReasons?: string;
+  rejectionNotes?: string;
+}
+
+export type ApplicationStatus = 'pending' | 'approved' | 'rejected' | 'not_found';
+
+export interface ApplicationStatusResult {
+  status: ApplicationStatus;
+  application?: ApprovalRequest;
+  rejectedDetails?: { reasons: string; notes: string; reviewedAt: string } | null;
 }
 
 export interface Team {
@@ -226,6 +238,8 @@ export class ContentService {
   // ── Shared Persistent Collections ────────────────────────────
   users: User[] = [];
   pendingApprovals: ApprovalRequest[] = [];
+  rejectedApprovals: ApprovalRequest[] = [];
+  approvedApprovals: ApprovalRequest[] = [];
   teams: Team[] = [];
   submissions: Submission[] = [];
   auditLogs: any[] = [];
@@ -339,6 +353,8 @@ export class ContentService {
   ];
 
   private readonly defaultPendingApprovals: ApprovalRequest[] = [];
+  private readonly defaultRejectedApprovals: ApprovalRequest[] = [];
+  private readonly defaultApprovedApprovals: ApprovalRequest[] = [];
 
   private readonly defaultTeams: Team[] = [];
 
@@ -377,6 +393,8 @@ export class ContentService {
       // Shared dynamic datasets
       this.users = this.loadKey('users', this.defaultUsers);
       this.pendingApprovals = this.loadKey('pendingApprovals', this.defaultPendingApprovals);
+      this.rejectedApprovals = this.loadKey('rejectedApprovals', this.defaultRejectedApprovals);
+      this.approvedApprovals = this.loadKey('approvedApprovals', this.defaultApprovedApprovals);
       this.teams = this.loadKey('teams', this.defaultTeams);
       this.submissions = this.loadKey('submissions', this.defaultSubmissions);
       this.auditLogs = this.loadKey('auditLogs', this.defaultAuditLogs);
@@ -441,13 +459,15 @@ export class ContentService {
     this.countdownDate = '';
     this.users = [];
     this.pendingApprovals = [];
+    this.rejectedApprovals = [];
+    this.approvedApprovals = [];
     this.teams = [];
     this.submissions = [];
     this.auditLogs = [];
     this.csrUpdates = [];
 
     // Clear all storage keys
-    const keys = ['championshipStories', 'hallOfFameEntries', 'leaderboardData', 'talentDiscovery', 'platformStats', 'heroSlides', 'newsFeedItems', 'countdownDate', 'users', 'pendingApprovals', 'teams', 'submissions', 'auditLogs', 'csrUpdates'];
+    const keys = ['championshipStories', 'hallOfFameEntries', 'leaderboardData', 'talentDiscovery', 'platformStats', 'heroSlides', 'newsFeedItems', 'countdownDate', 'users', 'pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs', 'csrUpdates'];
     keys.forEach(k => {
       if (typeof window !== 'undefined' && window.localStorage) {
         localStorage.setItem(k, JSON.stringify(this[k as keyof ContentService]));
@@ -589,6 +609,47 @@ export class ContentService {
   saveApprovals(approvalsList: ApprovalRequest[]): void {
     this.pendingApprovals = approvalsList;
     this.saveState('pendingApprovals', this.pendingApprovals);
+  }
+
+  saveRejectedApprovals(list: ApprovalRequest[]): void {
+    this.rejectedApprovals = list;
+    this.saveState('rejectedApprovals', this.rejectedApprovals);
+  }
+
+  saveApprovedApprovals(list: ApprovalRequest[]): void {
+    this.approvedApprovals = list;
+    this.saveState('approvedApprovals', this.approvedApprovals);
+  }
+
+  lookupApplication(query: string): ApplicationStatusResult {
+    const q = query.trim().toLowerCase();
+    if (!q) return { status: 'not_found' };
+
+    const match = (r: ApprovalRequest) =>
+      r.entity?.toLowerCase().includes(q) ||
+      r.contact?.toLowerCase().includes(q) ||
+      r.details?.email?.toLowerCase().includes(q) ||
+      r.details?.repEmail?.toLowerCase().includes(q) ||
+      r.details?.code?.toLowerCase().includes(q);
+
+    const pending = this.pendingApprovals.find(match);
+    if (pending) return { status: 'pending', application: pending };
+
+    const approved = this.approvedApprovals.find(match);
+    if (approved) return { status: 'approved', application: approved };
+
+    const rejected = this.rejectedApprovals.find(match);
+    if (rejected) return {
+      status: 'rejected',
+      application: rejected,
+      rejectedDetails: {
+        reasons: rejected.rejectionReasons || '',
+        notes: rejected.rejectionNotes || '',
+        reviewedAt: rejected.reviewedAt || ''
+      }
+    };
+
+    return { status: 'not_found' };
   }
 
   // ── Team Management Helpers ──────────────────────────────────────
