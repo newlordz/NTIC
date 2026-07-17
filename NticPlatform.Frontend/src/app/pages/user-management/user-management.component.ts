@@ -41,7 +41,7 @@ export class UserManagementComponent implements OnInit {
   constructor(public contentService: ContentService) {}
 
   get canManageUsers(): boolean {
-    const role = localStorage.getItem('ntic_active_role_id') || '';
+    const role = localStorage.getItem('activeRoleId') || '';
     return role === 'super_admin';
   }
 

@@ -192,7 +192,7 @@
       </div>
       <div class="um-modal-footer">
         <button class="btn btn-subtle" (click)="closeDetail()">Close</button>
-        <button class="btn btn-primary" (click)="closeDetail(); editUser(selectedUser!)">
+        <button *ngIf="canManageUsers" class="btn btn-primary" (click)="closeDetail(); editUser(selectedUser!)">
           <span class="material-symbols-outlined">edit</span>Edit User
         </button>
       </div>
