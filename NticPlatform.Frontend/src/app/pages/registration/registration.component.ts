@@ -126,6 +126,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     acceptedTerms: false
   };
 
+  gpsLoading = false;
+
   studentForm = {
     name: '',
     id: '',
@@ -660,7 +662,24 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   }
 
   detectGps(): void {
-    this.schoolForm.gps = '5.6037° N, 0.1870° W';
+    if (!navigator.geolocation) {
+      this.schoolForm.gps = '5.6037, -0.1870';
+      return;
+    }
+    this.gpsLoading = true;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude.toFixed(4);
+        const lng = pos.coords.longitude.toFixed(4);
+        this.schoolForm.gps = `${lat}, ${lng}`;
+        this.gpsLoading = false;
+      },
+      () => {
+        this.schoolForm.gps = '5.6037, -0.1870';
+        this.gpsLoading = false;
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+    );
   }
 
   getInitials(name: string, fallback: string = 'N/A'): string {

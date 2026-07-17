@@ -383,7 +383,10 @@
             <div class="form-group">
               <label class="form-label">GPS Address</label>
               <div style="display:flex; gap:8px;">
-                <button class="btn btn-subtle btn-sm" (click)="detectGps()"><span class="material-symbols-outlined">my_location</span>Detect GPS</button>
+                <button class="btn btn-subtle btn-sm" (click)="detectGps()" [disabled]="gpsLoading">
+                  <span class="material-symbols-outlined" [class.spin]="gpsLoading">{{ gpsLoading ? 'progress_activity' : 'my_location' }}</span>
+                  {{ gpsLoading ? 'Detecting...' : 'Detect GPS' }}
+                </button>
                 <input class="form-control" type="text" placeholder="LAT, LONG" readonly style="flex:1;" [(ngModel)]="schoolForm.gps" name="schoolGps">
               </div>
             </div>
