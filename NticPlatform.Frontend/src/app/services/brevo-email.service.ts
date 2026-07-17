@@ -37,7 +37,10 @@ export class BrevoEmailService {
 
   private sendSms(phoneNumber: string, message: string): void {
     if (!phoneNumber) return;
-    const cleaned = phoneNumber.replace(/[\s\-\(\)+]/g, '');
+    let cleaned = phoneNumber.replace(/[\s\-\(\)+]/g, '');
+    if (cleaned.startsWith('233') && cleaned.length >= 12) {
+      cleaned = '0' + cleaned.substring(3);
+    }
     const body = new URLSearchParams({
       key: environment.sms8.apiKey,
       number: cleaned,
