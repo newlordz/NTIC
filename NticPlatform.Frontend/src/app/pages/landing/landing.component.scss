@@ -4103,6 +4103,13 @@
   max-width: 720px;
 }
 
+@media (max-width: 768px) {
+  .starburst-overlay-text {
+    padding: 0 16px;
+    max-width: 100%;
+  }
+}
+
 .starburst-eyebrow {
   display: inline-block;
   font-size: 0.8rem;

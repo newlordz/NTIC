@@ -1561,11 +1561,14 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       };
       let { w: width, h: height } = getDimensions();
       canvas.width = width; canvas.height = height;
+      const getScale = () => Math.min(width / 1240, height / 680, 1);
+      let sc = getScale();
 
       this.matrixResizeListener = () => {
         const dims = getDimensions();
         width = dims.w; height = dims.h;
         canvas.width = width; canvas.height = height;
+        sc = getScale();
       };
       window.addEventListener('resize', this.matrixResizeListener);
 
@@ -1601,7 +1604,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       const stalks: Stalk[] = [];
       const initStalks = () => {
         stalks.length = 0;
-        for (let i = 0; i < 65; i++) {
+        const stalkCount = Math.round(65 * Math.max(sc, 0.4));
+        for (let i = 0; i < stalkCount; i++) {
           const t = i / 64;
           const bx = -20 + t * (width + 40) + (Math.random() - 0.5) * 30;
           const ba = -Math.PI / 2 + (t - 0.5) * 0.55 + (Math.random() - 0.5) * 0.15;
@@ -1629,7 +1633,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       ];
       const initSeaweeds = () => {
         seaweeds.length = 0;
-        for (let i = 0; i < 24; i++) {
+        const seaweedCount = Math.round(24 * Math.max(sc, 0.5));
+        for (let i = 0; i < seaweedCount; i++) {
           const pal = seaweedColors[i % seaweedColors.length];
           seaweeds.push({
             x: -10 + (i / 23) * (width + 20) + (Math.random() - 0.5) * 18,
@@ -1663,7 +1668,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         y: height * 0.42,
         vx: -0.6,
         vy: 0.45,
-        radius: 28,
+        radius: Math.max(14, 28 * sc),
         pulse: 0
       };
 
@@ -1689,7 +1694,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         fishes.length = 0;
         for (let i = 0; i < 20; i++) {
           const a = Math.random() * Math.PI * 2;
-          const sp = 1.1 + Math.random() * 1.1;
+          const sp = Math.max(0.6, (1.1 + Math.random() * 1.1) * Math.max(sc, 0.5));
           const p = fp[i % fp.length];
           fishes.push({
             id: i + 1,
@@ -1697,7 +1702,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
             x: Math.random() * width,
             y: height * 0.15 + Math.random() * height * 0.65,
             vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.35,
-            s: 4.5 + Math.random() * 3.5, c: p.b, g: p.g,
+            s: Math.max(2.5, (4.5 + Math.random() * 3.5) * sc), c: p.b, g: p.g,
             tp: Math.random() * Math.PI * 2, sp, caught: false,
             inBasket: false,
             burstTimer: 60 + Math.random() * 180, burstMult: 1
@@ -1779,7 +1784,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
         if (caughtFish) {
           const distToBasket = Math.hypot(clickX - basket.x, clickY - basket.y);
-          if (distToBasket < basket.radius + 50) {
+          if (distToBasket < basket.radius + 50 * sc) {
             // SUCCESS DEPOSIT INTO BASKET!
             caughtFish.caught = false;
             caughtFish.inBasket = true;
@@ -1870,7 +1875,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         } else {
           // Try to catch closest free fish within 48px
           let closest: Fish | null = null;
-          let minDist = 48;
+          let minDist = Math.max(28, 48 * sc);
           for (const f of fishes) {
             if (f.inBasket) continue;
             const dist = Math.hypot(f.x - clickX, f.y - clickY);
@@ -1910,6 +1915,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       this.matrixResizeListener = () => {
         const { w, h } = getDimensions();
         width = canvas.width = w; height = canvas.height = h;
+        sc = getScale();
         initStalks(); initSeaweeds(); initFishes(); initBubs(); initJellies();
       };
       window.addEventListener('resize', this.matrixResizeListener);
@@ -1931,6 +1937,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         if (canvas.width !== currW || canvas.height !== currH) {
           width = canvas.width = currW;
           height = canvas.height = currH;
+          sc = getScale();
         }
         if (!width || !height) { this.matrixAnimFrame = requestAnimationFrame(draw); return; }
 
@@ -2259,12 +2266,12 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
             // HUD species label pill above bubble
             const label = `🎣 Caught: ${f.name} — Click to release`;
-            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.font = `bold ${Math.round(12 * Math.max(sc, 0.7))}px Inter, sans-serif`;
             const tm = ctx.measureText(label);
-            const pillW = tm.width + 24;
-            const pillH = 26;
+            const pillW = tm.width + Math.round(24 * sc);
+            const pillH = Math.round(26 * Math.max(sc, 0.7));
             const pillX = f.x - pillW / 2;
-            const pillY = f.y - bubbleR - 36;
+            const pillY = f.y - bubbleR - Math.round(36 * sc);
 
             ctx.fillStyle = 'rgba(10, 15, 35, 0.9)';
             ctx.beginPath();
@@ -2300,9 +2307,10 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
           j.x += (j.vx + Math.cos(frame * 0.02 + j.p) * 0.15) * dt;
           j.y += (j.vy + pulse * 0.2) * dt;
 
+          const jBnd = Math.max(40, 105 * sc);
           // Bounce vertically off sea level and ocean floor
-          if (j.y < 105) {
-            j.y = 105;
+          if (j.y < jBnd) {
+            j.y = jBnd;
             j.vy = Math.abs(j.vy);
           } else if (j.y > height - 35) {
             j.y = height - 35;
@@ -2357,10 +2365,11 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         // ── 1. FLOATING COLLECTION BASKET ──────────────────────
         basket.x += basket.vx * dt;
         basket.y += basket.vy * dt;
-        if (basket.x < 110) { basket.x = 110; basket.vx = Math.abs(basket.vx); }
-        if (basket.x > width - 110) { basket.x = width - 110; basket.vx = -Math.abs(basket.vx); }
-        if (basket.y < 115) { basket.y = 115; basket.vy = Math.abs(basket.vy); }
-        if (basket.y > height - 95) { basket.y = height - 95; basket.vy = -Math.abs(basket.vy); }
+        const bnd = Math.max(50, 110 * sc);
+        if (basket.x < bnd) { basket.x = bnd; basket.vx = Math.abs(basket.vx); }
+        if (basket.x > width - bnd) { basket.x = width - bnd; basket.vx = -Math.abs(basket.vx); }
+        if (basket.y < bnd) { basket.y = bnd; basket.vy = Math.abs(basket.vy); }
+        if (basket.y > height - bnd + 15) { basket.y = height - bnd + 15; basket.vy = -Math.abs(basket.vy); }
         if (basket.pulse > 0) basket.pulse = Math.max(0, basket.pulse - 0.04 * dt);
 
         const fishesInBasket = fishes.filter(f => f.inBasket).length;
@@ -2446,12 +2455,12 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
         // 4. Net HUD Pill below pocket
         const basketLabel = `🧺 FISHING NET: ${fishesInBasket} / 20 FISH`;
-        ctx.font = 'bold 12px Inter, sans-serif';
+        ctx.font = `bold ${Math.round(12 * Math.max(sc, 0.7))}px Inter, sans-serif`;
         const btm = ctx.measureText(basketLabel);
-        const bW = btm.width + 24;
-        const bH = 26;
+        const bW = btm.width + Math.round(24 * sc);
+        const bH = Math.round(26 * Math.max(sc, 0.7));
         const bX = basket.x - bW / 2;
-        const bY = bagBottomY + 12;
+        const bY = bagBottomY + Math.round(12 * sc);
 
         ctx.fillStyle = 'rgba(10, 18, 42, 0.88)';
         ctx.beginPath();
@@ -2478,7 +2487,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
           }
           ctx.save();
           ctx.globalAlpha = Math.max(0, ft.alpha);
-          ctx.font = 'bold 14px Inter, sans-serif';
+          ctx.font = `bold ${Math.round(14 * Math.max(sc, 0.7))}px Inter, sans-serif`;
           ctx.fillStyle = ft.color;
           ctx.textAlign = 'center';
           ctx.shadowColor = 'rgba(0,0,0,0.8)';
@@ -2510,28 +2519,28 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         // ── 4. SEA CATCH GAME HUD OVERLAY ───────────────────────
         ctx.save();
         // Top-right scoreboard HUD
-        const hudW = 320;
-        const hudH = 46;
-        const hudX = width - hudW - 24;
-        const hudY = 20;
+        const hudW = Math.min(320 * sc, width - 32);
+        const hudH = Math.round(46 * Math.max(sc, 0.7));
+        const hudX = width - hudW - Math.round(16 * sc);
+        const hudY = Math.round(12 * sc);
 
         ctx.fillStyle = 'rgba(10, 15, 35, 0.82)';
         ctx.beginPath();
-        ctx.roundRect(hudX, hudY, hudW, hudH, 23);
+        ctx.roundRect(hudX, hudY, hudW, hudH, Math.round(23 * sc));
         ctx.fill();
         ctx.strokeStyle = 'rgba(0, 242, 254, 0.45)';
         ctx.lineWidth = 1.2;
         ctx.stroke();
 
-        ctx.font = 'bold 13px Inter, sans-serif';
+        ctx.font = `bold ${Math.round(13 * Math.max(sc, 0.7))}px Inter, sans-serif`;
         ctx.fillStyle = '#00f2fe';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(`🎮 CATCH: ${fishesInBasket}/20`, hudX + 18, hudY + hudH / 2);
+        ctx.fillText(`🎮 CATCH: ${fishesInBasket}/20`, hudX + Math.round(14 * sc), hudY + hudH / 2);
 
         ctx.fillStyle = '#ffd700';
         ctx.textAlign = 'right';
-        ctx.fillText(`🏆 SCORE: ${gameScore} PTS`, hudX + hudW - 18, hudY + hudH / 2);
+        ctx.fillText(`🏆 SCORE: ${gameScore} PTS`, hudX + hudW - Math.round(14 * sc), hudY + hudH / 2);
         ctx.restore();
 
         // ── 5. VICTORY EXPLOSION CELEBRATION BANNER ─────────────
@@ -2542,13 +2551,13 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
           } else {
             ctx.save();
             const cardW = Math.min(width - 40, 520);
-            const cardH = 130;
+            const cardH = Math.round(130 * Math.max(sc, 0.7));
             const cardX = (width - cardW) / 2;
-            const cardY = (height - cardH) / 2 - 30;
+            const cardY = (height - cardH) / 2 - Math.round(30 * sc);
 
             ctx.fillStyle = 'rgba(8, 14, 34, 0.94)';
             ctx.beginPath();
-            ctx.roundRect(cardX, cardY, cardW, cardH, 20);
+            ctx.roundRect(cardX, cardY, cardW, cardH, Math.round(20 * sc));
             ctx.fill();
             ctx.strokeStyle = '#ffd700';
             ctx.lineWidth = 2.5;
@@ -2557,12 +2566,12 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#ffd700';
-            ctx.font = 'bold 22px Inter, sans-serif';
-            ctx.fillText('🎉 NATIONAL SEA CHALLENGE MASTER! 🎉', width / 2, cardY + 42);
+            ctx.font = `bold ${Math.round(22 * Math.max(sc, 0.7))}px Inter, sans-serif`;
+            ctx.fillText('🎉 NATIONAL SEA CHALLENGE MASTER! 🎉', width / 2, cardY + Math.round(42 * sc));
 
             ctx.fillStyle = '#00f2fe';
-            ctx.font = '14px Inter, sans-serif';
-            ctx.fillText(`Final Challenge Score: ${gameScore} PTS — Click anywhere to play again!`, width / 2, cardY + 88);
+            ctx.font = `${Math.round(14 * Math.max(sc, 0.7))}px Inter, sans-serif`;
+            ctx.fillText(`Final Challenge Score: ${gameScore} PTS — Click anywhere to play again!`, width / 2, cardY + Math.round(88 * sc));
             ctx.restore();
           }
         }
