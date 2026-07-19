@@ -1648,40 +1648,45 @@
       </div>
 
       <!-- Edit Form -->
-      <div *ngIf="philCardFormOpen" class="cms-slide-form" style="padding:16px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-          <h4 style="margin:0;">{{ editingPhilCard?.id ? 'Edit' : 'New' }} Philosophy Card</h4>
-          <button class="btn btn-subtle btn-sm" (click)="philCardFormOpen = false">
-            <span class="material-symbols-outlined">close</span> Cancel
-          </button>
+      <div *ngIf="philCardFormOpen" class="cms-form-card">
+        <div class="cms-form-card-header">
+          <h4>
+            <span class="material-symbols-outlined">edit_note</span>
+            {{ editingPhilCard?.id && editingPhilCard.id.startsWith('phil-') && editingPhilCard.id.length > 10 ? 'New' : 'Edit' }} Philosophy Card
+          </h4>
+          <button class="cms-form-close" (click)="philCardFormOpen = false"><span class="material-symbols-outlined">close</span></button>
         </div>
-
-        <div class="form-group-cms" style="margin-bottom:12px;">
-          <label>Title</label>
-          <input type="text" [(ngModel)]="editingPhilCard.title" placeholder="Learn" class="cms-input">
-        </div>
-
-        <div class="form-group-cms" style="margin-bottom:12px;">
-          <label>Description</label>
-          <textarea [(ngModel)]="editingPhilCard.description" rows="2" class="cms-textarea" placeholder="Pushing the boundaries of what is known..."></textarea>
-        </div>
-
-        <div class="form-group-cms" style="margin-bottom:12px;">
-          <label>Image URL</label>
-          <input type="text" [(ngModel)]="editingPhilCard.image" placeholder="assets/ntic_image_14.jpeg" class="cms-input">
-        </div>
-
-        <div class="form-group-cms" style="margin-bottom:16px;">
-          <label>Or upload image</label>
-          <input type="file" accept="image/*" (change)="onPhilCardImageUpload($event)">
-          <div *ngIf="editingPhilCard.image" style="margin-top:8px;">
-            <img [src]="editingPhilCard.image" style="max-width:200px;max-height:120px;border-radius:8px;object-fit:cover;">
+        <div class="cms-form-grid">
+          <div class="cms-field cms-field-full">
+            <label>Title</label>
+            <input type="text" [(ngModel)]="editingPhilCard.title" placeholder="Learn">
+          </div>
+          <div class="cms-field cms-field-full">
+            <label>Description</label>
+            <textarea rows="2" [(ngModel)]="editingPhilCard.description" placeholder="Pushing the boundaries of what is known..."></textarea>
+          </div>
+          <div class="cms-field cms-field-full">
+            <label>Background Image</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <input type="text" [(ngModel)]="editingPhilCard.image" placeholder="assets/ntic_image_14.jpeg" style="flex:1;">
+              <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant);">OR</span>
+              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;">
+                <span class="material-symbols-outlined" style="font-size:16px;">upload</span>Import
+                <input type="file" accept="image/*" (change)="onPhilCardImageUpload($event)" style="display:none;">
+              </label>
+            </div>
+            <div *ngIf="editingPhilCard.image" style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+              <img [src]="editingPhilCard.image" style="width:80px; height:56px; object-fit:cover; border-radius:6px; border:1px solid var(--outline-variant);" onerror="this.style.display='none'">
+              <span style="font-size:11px; color:var(--on-surface-variant); word-break:break-all; max-width:400px; max-height:35px; overflow:hidden;">{{ editingPhilCard.image.startsWith('data:') ? '[Imported Image]' : editingPhilCard.image }}</span>
+            </div>
           </div>
         </div>
-
-        <button class="btn btn-primary" (click)="savePhilCard()">
-          <span class="material-symbols-outlined">save</span> Save Card
-        </button>
+        <div style="padding:16px 20px; display:flex; gap:8px;">
+          <button class="btn btn-primary" (click)="savePhilCard()">
+            <span class="material-symbols-outlined">save</span> Save Card
+          </button>
+          <button class="btn btn-subtle" (click)="philCardFormOpen = false">Cancel</button>
+        </div>
       </div>
 
       <!-- Card List -->
