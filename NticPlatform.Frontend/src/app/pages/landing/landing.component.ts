@@ -763,7 +763,19 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     private fileStorage: FileStorageService
   ) {
     this.activeRoleId = '';
-    this.slides = this.contentService.heroSlides.map(hs => ({
+    const heroSlides = this.contentService.heroSlides.length > 0
+      ? this.contentService.heroSlides
+      : [{
+          id: 'slide-1',
+          tag: 'National Championship',
+          title: 'Where Ghana\'s Brightest Minds Compete & Innovate',
+          description: 'Bringing together high school teams from all 16 regions to solve real-world problems through Coding, Robotics, AI, Cybersecurity, and Open Innovation.',
+          image: 'assets/ntic_image_8.jpeg',
+          videoUrl: 'assets/ntic_slideshow.mp4',
+          ctaText: 'Enter Portal',
+          ctaLink: '#portal'
+        }];
+    this.slides = heroSlides.map(hs => ({
       tag: hs.tag,
       title: hs.title,
       description: hs.description,
