@@ -3414,36 +3414,147 @@ select.form-control {
     color: var(--on-surface) !important;
     box-shadow: var(--shadow-card) !important;
     
+    .card-school-name,
     .school-card-name,
     .student-card-name,
     .team-card-name,
-    .instructor-card-name {
+    .instructor-card-name,
+    .sponsor-card-name {
+      background: none !important;
+      -webkit-text-fill-color: initial !important;
+      background-clip: initial !important;
       color: #ffffff !important;
     }
 
-    .school-card-crest-wrap .school-card-crest,
-    .student-card-avatar-row .student-card-avatar {
-      background: var(--surface-container-high) !important;
-      color: #ffffff !important;
-      border-color: var(--outline-variant) !important;
+    .card-meta-pills .pill {
+      background: rgba(255,255,255,0.08) !important;
+      border-color: rgba(255,255,255,0.12) !important;
+    }
+    .card-meta-pills .pill-region {
+      background: rgba(245,158,11,0.15) !important;
+      color: #fbbf24 !important;
     }
 
-    .info-val, .detail-item, .school-name, .member-preview-info .name {
-      color: var(--on-surface) !important;
+    .card-shine-divider .shine-bar {
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent) !important;
     }
 
-    .info-label, .student-card-id, .member-preview-info .email {
+    .card-sub-tabs {
+      background: rgba(255,255,255,0.04) !important;
+      border-color: rgba(255,255,255,0.06) !important;
+
+      .sub-tab-btn {
+        color: rgba(255,255,255,0.5) !important;
+        &:hover { background: rgba(255,255,255,0.04) !important; color: rgba(255,255,255,0.8) !important; }
+        &.active {
+          background: var(--surface-container-low) !important;
+          color: var(--primary) !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+        }
+      }
+    }
+
+    .profile-item {
+      background: rgba(255,255,255,0.03) !important;
+      border-color: rgba(255,255,255,0.05) !important;
+      &:hover { background: rgba(255,255,255,0.06) !important; }
+    }
+
+    .profile-label {
       color: var(--on-surface-variant) !important;
     }
+
+    .profile-value {
+      color: var(--on-surface) !important;
+      &.gps-active { color: #34d399 !important; }
+    }
+
+    .roster-entry {
+      background: rgba(255,255,255,0.02) !important;
+      border-color: rgba(255,255,255,0.05) !important;
+      &:hover { background: rgba(255,255,255,0.04) !important; }
+    }
+
+    .roster-name { color: var(--on-surface) !important; }
+    .roster-email { color: var(--on-surface-variant) !important; }
+    .roster-track {
+      &.coding { background: rgba(172,199,255,0.15) !important; }
+      &.robotics { background: rgba(245,158,11,0.15) !important; }
+      &.ai { background: rgba(139,92,246,0.15) !important; }
+      &.cyber { background: rgba(16,185,129,0.15) !important; }
+      &.innovation { background: rgba(236,72,153,0.15) !important; }
+    }
+
+    .doc-item {
+      background: rgba(245,158,11,0.06) !important;
+      border-color: rgba(245,158,11,0.15) !important;
+    }
+    .doc-label { color: var(--on-surface) !important; }
+
+    .card-seal {
+      border-top-color: rgba(255,255,255,0.08) !important;
+      color: var(--on-surface-variant) !important;
+    }
+
+    .card-placeholder-state {
+      .placeholder-ring { border-color: rgba(255,255,255,0.12) !important; }
+      .placeholder-icon { color: rgba(255,255,255,0.15) !important; }
+    }
+
+    .crest-status {
+      border-color: var(--surface-container-lowest) !important;
+    }
+
+    .detail-item {
+      color: var(--on-surface) !important;
+      .material-symbols-outlined { color: var(--on-surface-variant) !important; }
+    }
+    .instructor-card-expertise .title { color: var(--on-surface-variant) !important; }
+    .exp-chip {
+      background: rgba(172,199,255,0.12) !important;
+      border-color: rgba(172,199,255,0.18) !important;
+      &.empty { border-color: var(--outline-variant) !important; color: var(--on-surface-variant) !important; }
+    }
+    .instructor-card-badge { color: var(--on-surface-variant) !important; }
+
+    .team-card-crest {
+      background: var(--surface-container-high) !important;
+      color: var(--on-surface) !important;
+    }
+    .team-card-school { color: var(--on-surface-variant) !important; }
+    .team-member-preview-row {
+      background: var(--surface-container-low) !important;
+      border-color: var(--outline-variant) !important;
+      &.active { background: rgba(172,199,255,0.08) !important; }
+    }
+    .member-preview-info .name { color: var(--on-surface) !important; }
+    .member-preview-info .email { color: var(--on-surface-variant) !important; }
+    .role-icon { color: var(--on-surface-variant) !important; &.lead { color: #fbbf24 !important; } }
+
+    .student-card-avatar-row .student-card-avatar {
+      background: var(--surface-container-high) !important;
+      color: var(--on-surface) !important;
+      border-color: var(--outline-variant) !important;
+    }
+    .student-card-id {
+      color: var(--on-surface-variant) !important;
+      background: var(--surface-container-low) !important;
+    }
+    .student-card-school-row .school-name { color: var(--on-surface) !important; }
+    .student-card-school-row .school-icon .material-symbols-outlined { color: var(--on-surface-variant) !important; }
+    .skill-label { color: var(--on-surface-variant) !important; }
+    .skill-bar-wrap { background: var(--surface-container-high) !important; }
+    .skill-val { color: var(--on-surface) !important; }
+    .brand-crest-mini { color: var(--on-surface) !important; }
+    .badge-title { color: var(--on-surface-variant) !important; }
+    .avatar-initials { color: var(--on-surface) !important; }
   }
   
   .sponsor-preview-card {
-    border-color: rgba(255, 255, 255, 0.1) !important;
+    background: var(--surface-container-lowest) !important;
+    border-color: rgba(255,255,255,0.1) !important;
     
-    .sponsor-card-name {
-      color: #ffffff !important;
-    }
-    
+    .sponsor-card-name,
     .amount-val {
       color: #ffffff !important;
     }
@@ -3618,6 +3729,14 @@ select.form-control {
   .right-panel-header {
     background: var(--surface-container-low) !important;
     border-bottom-color: var(--outline-variant) !important;
+  }
+
+  .right-panel-card {
+    background: transparent !important;
+  }
+
+  .card-body-wrapper {
+    background: transparent !important;
   }
 
   .segmented-control {
