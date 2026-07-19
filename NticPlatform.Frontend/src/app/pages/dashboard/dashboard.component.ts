@@ -1189,7 +1189,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   addSlide(): void {
     this.editingSlideId = null;
-    this.slideForm = { title: '', image: '', videoFileId: '', videoUrl: '' };
+    this.slideForm = {
+      title: '', image: '', videoFileId: '', videoUrl: '',
+      tag: 'National Championship',
+      description: 'Bringing together high school teams from all 16 regions to solve real-world problems through Coding, Robotics, AI, Cybersecurity, and Open Innovation.',
+      ctaText: 'Enter Portal',
+      ctaLink: '#portal'
+    };
     this.slideFormOpen = true;
   }
 
