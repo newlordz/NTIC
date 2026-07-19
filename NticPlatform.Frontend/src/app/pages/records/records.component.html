@@ -16,11 +16,35 @@
     </div>
   </header>
 
+  <!-- Stats Bar -->
+  <div class="records-stats-bar">
+    <div class="stat-pill">
+      <span class="material-symbols-outlined">folder</span>
+      <span class="stat-pill-label">Total</span>
+      <span class="stat-pill-value">{{ records.length }}</span>
+    </div>
+    <div class="stat-pill approved">
+      <span class="material-symbols-outlined">check_circle</span>
+      <span class="stat-pill-label">Approved</span>
+      <span class="stat-pill-value">{{ records.length }}</span>
+    </div>
+    <div class="stat-pill pending">
+      <span class="material-symbols-outlined">schedule</span>
+      <span class="stat-pill-label">Pending</span>
+      <span class="stat-pill-value">{{ pendingCount }}</span>
+    </div>
+    <div class="stat-pill rejected">
+      <span class="material-symbols-outlined">cancel</span>
+      <span class="stat-pill-label">Rejected</span>
+      <span class="stat-pill-value">{{ rejectedCount }}</span>
+    </div>
+  </div>
+
   <!-- Toolbar -->
   <div class="records-toolbar" *ngIf="activeTab !== 'trash'">
     <div class="search-box">
       <span class="material-symbols-outlined search-icon">search</span>
-      <input type="text" class="search-input" placeholder="Search records by name, ID, email, region..." [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()">
+      <input type="text" class="search-input" placeholder="Search by name, ID, email, region..." [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()">
     </div>
     <div class="toolbar-right">
       <select class="sort-select" [(ngModel)]="sortBy" (ngModelChange)="setSort($event)">
@@ -50,53 +74,62 @@
     </button>
   </nav>
 
-  <!-- Records Grid (non-trash tabs) -->
+  <!-- Records Table (non-trash tabs) -->
   <ng-container *ngIf="activeTab !== 'trash'">
-    <div class="records-grid" *ngIf="filteredRecords.length > 0; else emptyState">
-      <div class="record-card" *ngFor="let record of filteredRecords" [class.deleting]="deletingIds.has(record.id)">
-        <div class="card-click-area" (click)="openRecord(record)">
-          <div class="card-header">
-            <div class="record-type-badge">
-              <span class="material-symbols-outlined">{{ getTypeIcon(record.type) }}</span>
-            </div>
-            <div class="record-status" [class]="getStatusClass(record.status)">
-              <span class="material-symbols-outlined">{{ getStatusIcon(record.status) }}</span>
-              {{ record.status | titlecase }}
-            </div>
-          </div>
-          <div class="card-body">
-            <h3 class="record-title">{{ record.title }}</h3>
-            <p class="record-entity">{{ record.entityName }} <span class="entity-type">({{ record.entityType }})</span></p>
-            <div class="record-meta">
-              <span class="meta-item" *ngIf="record.region">
-                <span class="material-symbols-outlined">location_on</span>
-                {{ record.region }}{{ record.district ? ', ' + record.district : '' }}
+    <div class="records-table-wrap" *ngIf="filteredRecords.length > 0; else emptyState">
+      <table class="records-table">
+        <thead>
+          <tr>
+            <th class="th-icon"></th>
+            <th class="th-name">Record</th>
+            <th class="th-entity">Entity</th>
+            <th class="th-region">Region</th>
+            <th class="th-status">Status</th>
+            <th class="th-files">Files</th>
+            <th class="th-date">Submitted</th>
+            <th class="th-actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let record of filteredRecords" class="record-row" [class.deleting]="deletingIds.has(record.id)" (click)="openRecord(record)">
+            <td class="td-icon">
+              <div class="record-type-icon">
+                <span class="material-symbols-outlined">{{ getTypeIcon(record.type) }}</span>
+              </div>
+            </td>
+            <td class="td-name">
+              <div class="record-name-text">{{ record.entityName }}</div>
+              <div class="record-id-text">{{ record.id }}</div>
+            </td>
+            <td class="td-entity">
+              <span class="entity-type-label">{{ record.entityType }}</span>
+            </td>
+            <td class="td-region">
+              <span *ngIf="record.region">{{ record.region }}<span *ngIf="record.district">, {{ record.district }}</span></span>
+              <span *ngIf="!record.region" class="text-muted">—</span>
+            </td>
+            <td class="td-status">
+              <span class="record-status-chip" [class]="'status-' + record.status">
+                <span class="material-symbols-outlined">{{ getStatusIcon(record.status) }}</span>
+                {{ record.status | titlecase }}
               </span>
-              <span class="meta-item" *ngIf="record.contactEmail">
-                <span class="material-symbols-outlined">mail</span>
-                {{ record.contactEmail }}
+            </td>
+            <td class="td-files">
+              <span *ngIf="record.files.length > 0" class="file-count-chip">
+                <span class="material-symbols-outlined">attach_file</span>
+                {{ record.files.length }}
               </span>
-              <span class="meta-item">
-                <span class="material-symbols-outlined">badge</span>
-                {{ record.id }}
-              </span>
-            </div>
-          </div>
-          <div class="card-footer">
-            <span class="file-count">
-              <span class="material-symbols-outlined">attach_file</span>
-              {{ record.files.length }} file{{ record.files.length !== 1 ? 's' : '' }}
-            </span>
-            <span class="submitted-date">
-              <span class="material-symbols-outlined">schedule</span>
-              {{ formatDate(record.submittedAt) }}
-            </span>
-          </div>
-        </div>
-        <button class="card-delete-btn" (click)="deleteRecord(record); $event.stopPropagation()" title="Move to Recycle Bin">
-          <span class="material-symbols-outlined">delete_outline</span>
-        </button>
-      </div>
+              <span *ngIf="record.files.length === 0" class="text-muted">—</span>
+            </td>
+            <td class="td-date">{{ formatDate(record.submittedAt) }}</td>
+            <td class="td-actions">
+              <button class="row-action-btn" (click)="deleteRecord(record); $event.stopPropagation()" title="Move to Recycle Bin">
+                <span class="material-symbols-outlined">delete_outline</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <ng-template #emptyState>
@@ -125,44 +158,50 @@
       </button>
     </div>
 
-    <div class="records-grid" *ngIf="trashedRecords.length > 0; else trashEmpty">
-      <div class="record-card trash-card" *ngFor="let record of trashedRecords">
-        <div class="card-click-area" (click)="openRecord(record)">
-          <div class="card-header">
-            <div class="record-type-badge">
-              <span class="material-symbols-outlined">{{ getTypeIcon(record.type) }}</span>
-            </div>
-            <div class="record-status status-deleted">
-              <span class="material-symbols-outlined">delete</span>
-              Deleted
-            </div>
-          </div>
-          <div class="card-body">
-            <h3 class="record-title">{{ record.title }}</h3>
-            <p class="record-entity">{{ record.entityName }} <span class="entity-type">({{ record.entityType }})</span></p>
-            <div class="record-meta">
-              <span class="meta-item">
-                <span class="material-symbols-outlined">badge</span>
-                {{ record.id }}
+    <div class="records-table-wrap" *ngIf="trashedRecords.length > 0; else trashEmpty">
+      <table class="records-table">
+        <thead>
+          <tr>
+            <th class="th-icon"></th>
+            <th class="th-name">Record</th>
+            <th class="th-entity">Entity</th>
+            <th class="th-status">Status</th>
+            <th class="th-files">Files</th>
+            <th class="th-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let record of trashedRecords" class="record-row trash-row" (click)="openRecord(record)">
+            <td class="td-icon">
+              <div class="record-type-icon">
+                <span class="material-symbols-outlined">{{ getTypeIcon(record.type) }}</span>
+              </div>
+            </td>
+            <td class="td-name">
+              <div class="record-name-text">{{ record.entityName }}</div>
+              <div class="record-id-text">{{ record.id }}</div>
+            </td>
+            <td class="td-entity">
+              <span class="entity-type-label">{{ record.entityType }}</span>
+            </td>
+            <td class="td-status">
+              <span class="record-status-chip status-deleted">
+                <span class="material-symbols-outlined">delete</span>
+                Deleted
               </span>
-            </div>
-          </div>
-          <div class="card-footer">
-            <span class="file-count">
-              <span class="material-symbols-outlined">attach_file</span>
-              {{ record.files.length }} file{{ record.files.length !== 1 ? 's' : '' }}
-            </span>
-          </div>
-        </div>
-        <div class="trash-actions">
-          <button class="btn btn-ghost btn-sm" (click)="restoreRecord(record); $event.stopPropagation()" title="Restore">
-            <span class="material-symbols-outlined">restore_from_trash</span>
-          </button>
-          <button class="btn btn-danger-ghost btn-sm" (click)="permanentlyDeleteRecord(record); $event.stopPropagation()" title="Delete permanently">
-            <span class="material-symbols-outlined">delete_forever</span>
-          </button>
-        </div>
-      </div>
+            </td>
+            <td class="td-files">{{ record.files.length }}</td>
+            <td class="td-actions" (click)="$event.stopPropagation()">
+              <button class="row-action-btn" (click)="restoreRecord(record)" title="Restore">
+                <span class="material-symbols-outlined">restore_from_trash</span>
+              </button>
+              <button class="row-action-btn danger" (click)="permanentlyDeleteRecord(record)" title="Delete permanently">
+                <span class="material-symbols-outlined">delete_forever</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <ng-template #trashEmpty>
@@ -184,7 +223,7 @@
         </div>
         <div>
           <h2>{{ selectedRecord.title }}</h2>
-          <p class="modal-id">{{ selectedRecord.id }} • {{ selectedRecord.entityType }}</p>
+          <p class="modal-id">{{ selectedRecord.id }} &bull; {{ selectedRecord.entityType }}</p>
         </div>
       </div>
       <button class="modal-close" (click)="closeModal()" aria-label="Close">
@@ -234,7 +273,7 @@
         </div>
       </div>
 
-      <div class="modal-section">
+      <div class="modal-section" *ngIf="selectedRecord.files.length > 0">
         <div class="section-header">
           <h3>Documents ({{ selectedRecord.files.length }})</h3>
           <button class="btn btn-primary btn-sm" (click)="downloadAllFiles(selectedRecord)">
@@ -250,7 +289,7 @@
               </span>
               <div class="file-details">
                 <span class="file-name">{{ file.name }}</span>
-                <span class="file-meta">{{ file.category }} • {{ formatFileSize(file.size) }} • {{ formatDate(file.uploadedAt) }}</span>
+                <span class="file-meta">{{ file.category }} &bull; {{ formatFileSize(file.size) }} &bull; {{ formatDate(file.uploadedAt) }}</span>
               </div>
             </div>
             <div class="file-actions">

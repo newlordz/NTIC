@@ -39,6 +39,7 @@ interface Record {
 })
 export class RecordsComponent implements OnInit {
   records: Record[] = [];
+  allRecords: Record[] = [];
   filteredRecords: Record[] = [];
   trashedRecords: Record[] = [];
   deletingIds: Set<string> = new Set();
@@ -50,6 +51,14 @@ export class RecordsComponent implements OnInit {
   confirmAction: { action: string; record: Record } | null = null;
   sortBy = 'submittedAt';
   sortDir = 'desc';
+
+  get pendingCount(): number {
+    return this.allRecords.filter(r => r.status === 'pending').length;
+  }
+
+  get rejectedCount(): number {
+    return this.allRecords.filter(r => r.status === 'rejected').length;
+  }
 
   tabs = [
     { id: 'all', label: 'All Records', icon: 'folder' },
@@ -185,7 +194,8 @@ export class RecordsComponent implements OnInit {
       }
     }
 
-    this.records = dedupedRecords.filter(r => !this.isTrashed(r));
+    this.allRecords = dedupedRecords.filter(r => !this.isTrashed(r));
+    this.records = this.allRecords.filter(r => r.status === 'approved');
     this.applyFilters();
   }
 
