@@ -1011,9 +1011,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   viewDocument(docName: string, schoolName: string): void {
-    this.activeDocumentName = docName;
+    const displayName = docName.includes('::') ? docName.split('::')[1] : docName;
+    this.activeDocumentName = displayName;
     this.activeDocumentSchool = schoolName;
-    this.activeDocumentType = docName.endsWith('.pdf') ? 'pdf' : 'spreadsheet';
+    this.activeDocumentType = displayName.endsWith('.pdf') ? 'pdf' : 'spreadsheet';
   }
 
   closeDocument(): void {
