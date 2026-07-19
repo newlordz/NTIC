@@ -1445,6 +1445,22 @@
             <input type="text" [(ngModel)]="slideForm.title" placeholder="Main headline on the slide">
           </div>
           <div class="cms-field cms-field-full">
+            <label>Description</label>
+            <textarea rows="2" [(ngModel)]="slideForm.description" placeholder="Subtitle text below the headline"></textarea>
+          </div>
+          <div class="cms-field">
+            <label>Tag</label>
+            <input type="text" [(ngModel)]="slideForm.tag" placeholder="e.g. National Championship">
+          </div>
+          <div class="cms-field">
+            <label>CTA Button Text</label>
+            <input type="text" [(ngModel)]="slideForm.ctaText" placeholder="Enter Portal">
+          </div>
+          <div class="cms-field">
+            <label>CTA Button Link</label>
+            <input type="text" [(ngModel)]="slideForm.ctaLink" placeholder="#portal or /registration">
+          </div>
+          <div class="cms-field cms-field-full">
             <label>Background Image</label>
             <div style="display:flex; gap:10px; align-items:center;">
               <input type="text" [(ngModel)]="slideForm.image" placeholder="assets/ntic_image_1.jpeg" style="flex:1;">
