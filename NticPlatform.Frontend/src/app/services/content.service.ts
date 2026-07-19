@@ -95,6 +95,9 @@ export interface HeroSlide {
   title: string;
   description: string;
   image: string;
+  imageFileId?: string;
+  videoFileId?: string;
+  videoUrl?: string;
   ctaText: string;
   ctaLink: string;
 }
@@ -335,7 +338,18 @@ export class ContentService {
 
   private readonly defaultStats: PlatformStats = { regions: 0, mentors: 0, schools: 0, students: 0, projects: 0, grants: 0 };
 
-  private readonly defaultHero: HeroSlide[] = [];
+  private readonly defaultHero: HeroSlide[] = [
+    {
+      id: 'slide-1',
+      tag: 'National Championship',
+      title: 'Where Ghana\'s Brightest Minds Compete & Innovate',
+      description: 'Bringing together high school teams from all 16 regions to solve real-world problems through Coding, Robotics, AI, Cybersecurity, and Open Innovation.',
+      image: 'assets/ntic_image_8.jpeg',
+      videoUrl: 'assets/ntic_slideshow.mp4',
+      ctaText: 'Enter Portal',
+      ctaLink: '#portal'
+    }
+  ];
 
   private readonly defaultNews: NewsFeedItem[] = [];
 
@@ -667,6 +681,11 @@ export class ContentService {
   saveApprovedApprovals(list: ApprovalRequest[]): void {
     this.approvedApprovals = list;
     this.saveState('approvedApprovals', this.approvedApprovals);
+  }
+
+  saveHeroSlides(slidesList: HeroSlide[]): void {
+    this.heroSlides = slidesList;
+    this.saveState('heroSlides', this.heroSlides);
   }
 
   lookupApplication(query: string): ApplicationStatusResult {

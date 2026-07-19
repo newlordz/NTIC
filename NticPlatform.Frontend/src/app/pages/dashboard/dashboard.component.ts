@@ -71,7 +71,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   deleteUserConfirm: any = null;
 
   // ─── CONTENT MANAGER STATE ──────────────────────
-  contentTab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' = 'stories';
+  contentTab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' = 'stories';
 
   // Story form
   storyForm: Omit<ChampionshipStory, 'id'> = {
@@ -1180,6 +1180,70 @@ export class DashboardComponent implements OnInit, OnDestroy {
   removeStory(id: string): void {
     this.contentService.removeStory(id);
     this.addAuditLog({ action: `Championship Story removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+  }
+
+  // ── Slideshow Management ──────────────────────────────
+  slideFormOpen = false;
+  editingSlideId: string | null = null;
+  slideForm: any = { tag: '', title: '', description: '', image: '', videoFileId: '', ctaText: '', ctaLink: '#portal' };
+
+  addSlide(): void {
+    this.editingSlideId = null;
+    this.slideForm = { tag: '', title: '', description: '', image: 'assets/ntic_image_1.jpeg', videoFileId: '', ctaText: 'Enter Portal', ctaLink: '#portal' };
+    this.slideFormOpen = true;
+  }
+
+  editSlide(slide: any): void {
+    this.editingSlideId = slide.id;
+    this.slideForm = { ...slide };
+    this.slideFormOpen = true;
+  }
+
+  closeSlideForm(): void { this.slideFormOpen = false; }
+
+  async onSlideVideoSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      const id = `slide-video-${Date.now()}`;
+      await this.fileStorage.store(id, file);
+      this.slideForm.videoFileId = id;
+    }
+  }
+
+  saveSlide(): void {
+    if (!this.slideForm.title || !this.slideForm.tag) return;
+    const slides = [...this.contentService.heroSlides];
+    if (this.editingSlideId) {
+      const idx = slides.findIndex(s => s.id === this.editingSlideId);
+      if (idx > -1) slides[idx] = { ...slides[idx], ...this.slideForm };
+      this.addAuditLog({ action: `Slide updated: "${this.slideForm.title.slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+    } else {
+      slides.push({ id: `slide-${Date.now()}`, ...this.slideForm });
+      this.addAuditLog({ action: `Slide added: "${this.slideForm.title.slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+    }
+    this.contentService.saveHeroSlides(slides);
+    this.slideFormOpen = false;
+  }
+
+  deleteSlide(slide: any): void {
+    const slides = this.contentService.heroSlides.filter(s => s.id !== slide.id);
+    this.contentService.saveHeroSlides(slides);
+    this.addAuditLog({ action: `Slide deleted: "${slide.title}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+  }
+
+  moveSlideUp(index: number): void {
+    if (index <= 0) return;
+    const slides = [...this.contentService.heroSlides];
+    [slides[index - 1], slides[index]] = [slides[index], slides[index - 1]];
+    this.contentService.saveHeroSlides(slides);
+  }
+
+  moveSlideDown(index: number): void {
+    const slides = [...this.contentService.heroSlides];
+    if (index >= slides.length - 1) return;
+    [slides[index], slides[index + 1]] = [slides[index + 1], slides[index]];
+    this.contentService.saveHeroSlides(slides);
   }
 
   // Hall of Fame

@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../services/theme.service';
 import { ContentService } from '../../services/content.service';
+import { FileStorageService } from '../../services/file-storage.service';
 
 interface UserRole {
   id: string;
@@ -23,6 +24,7 @@ interface Slide {
   videoEditImages?: string[];
   ctaText: string;
   ctaLink: string;
+  _heroSlide?: any;
 }
 
 interface LeaderboardEntry {
@@ -715,19 +717,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   };
   supportSubmitted = false;
 
-  slides: Slide[] = [
-    {
-      tag: 'National Championship',
-      title: 'Where Ghana\'s Brightest Minds Compete & Innovate',
-      description: 'Bringing together high school teams from all 16 regions to solve real-world problems through Coding, Robotics, AI, Cybersecurity, and Open Innovation.',
-      image: 'assets/ntic_image_8.jpeg',
-      video: 'assets/ntic_slideshow.mp4',
-      isVideoEdit: false,
-      videoEditImages: [],
-      ctaText: 'Enter Portal',
-      ctaLink: '#portal'
-    }
-  ];
+  slides: Slide[] = [];
 
   // Live Scoreboard Interactive stand state
   activeLeaderboardFilter = 'all';
@@ -769,9 +759,23 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     private elementRef: ElementRef,
     public themeService: ThemeService,
     public contentService: ContentService,
-    private renderer: Renderer2
+    private renderer: Renderer2,
+    private fileStorage: FileStorageService
   ) {
     this.activeRoleId = '';
+    this.slides = this.contentService.heroSlides.map(hs => ({
+      tag: hs.tag,
+      title: hs.title,
+      description: hs.description,
+      image: hs.image,
+      video: null,
+      isVideoEdit: false,
+      videoEditImages: [],
+      ctaText: hs.ctaText,
+      ctaLink: hs.ctaLink,
+      _heroSlide: hs
+    }));
+    this.loadSlideMedia();
     // Populate videoEditImages with all 48 photos in a shuffled order for organic variation
     const firstSlide = this.slides[0];
     if (firstSlide && firstSlide.isVideoEdit) {
@@ -1045,6 +1049,22 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   setSlide(index: number): void {
     this.activeSlideIndex = index;
     this.startSlideShow();
+  }
+
+  async loadSlideMedia(): Promise<void> {
+    for (let i = 0; i < this.slides.length; i++) {
+      const hs = this.slides[i]._heroSlide;
+      if (hs?.videoFileId) {
+        const url = await this.fileStorage.getUrl(hs.videoFileId);
+        if (url) { this.slides[i].video = url; }
+      } else if (hs?.videoUrl) {
+        this.slides[i].video = hs.videoUrl;
+      }
+      if (hs?.imageFileId) {
+        const url = await this.fileStorage.getUrl(hs.imageFileId);
+        if (url) { this.slides[i].image = url; }
+      }
+    }
   }
 
   nextSlide(): void {
