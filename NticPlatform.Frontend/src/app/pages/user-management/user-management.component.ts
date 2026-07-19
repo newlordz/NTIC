@@ -45,6 +45,11 @@ export class UserManagementComponent implements OnInit {
     return role === 'super_admin';
   }
 
+  isCurrentUser(user: User): boolean {
+    const email = localStorage.getItem('activeUserEmail') || '';
+    return user.email === email;
+  }
+
   ngOnInit(): void {
     this.loadUsers();
   }
@@ -121,6 +126,7 @@ export class UserManagementComponent implements OnInit {
   }
 
   saveEdit(): void {
+    if (!this.isCurrentUser(this.editForm)) return;
     const users = [...this.contentService.users];
     const idx = users.findIndex(u => u.id === this.editForm.id);
     if (idx > -1) {
@@ -133,6 +139,7 @@ export class UserManagementComponent implements OnInit {
   }
 
   toggleStatus(user: User): void {
+    if (this.isCurrentUser(user)) return;
     const users = [...this.contentService.users];
     const idx = users.findIndex(u => u.id === user.id);
     if (idx > -1) {
@@ -144,6 +151,7 @@ export class UserManagementComponent implements OnInit {
   }
 
   deleteUser(user: User): void {
+    if (this.isCurrentUser(user)) return;
     this.deleteUserConfirm = user;
   }
 

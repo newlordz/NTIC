@@ -126,21 +126,22 @@
                 <button class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;" title="View" (click)="viewUser(user)">
                   <span class="material-symbols-outlined" style="font-size:16px;">visibility</span>
                 </button>
-                <button *ngIf="canManageUsers" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;" title="Edit" (click)="editUser(user)">
+                <button *ngIf="canManageUsers && isCurrentUser(user)" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;" title="Edit My Profile" (click)="editUser(user)">
                   <span class="material-symbols-outlined" style="font-size:16px;">edit</span>
                 </button>
-                <button *ngIf="canManageUsers" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;" title="Regenerate OTP" (click)="regenerateOTP(user)">
+                <button *ngIf="canManageUsers && !isCurrentUser(user)" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;" title="Regenerate OTP" (click)="regenerateOTP(user)">
                   <span class="material-symbols-outlined" style="font-size:16px;">key</span>
                 </button>
-                <button *ngIf="canManageUsers" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;"
+                <button *ngIf="canManageUsers && !isCurrentUser(user)" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;"
                         [style.color]="user.status === 'Active' ? '#d97706' : '#059669'"
                         [title]="user.status === 'Active' ? 'Suspend' : 'Activate'"
                         (click)="toggleStatus(user)">
                   <span class="material-symbols-outlined" style="font-size:16px;">{{ user.status === 'Active' ? 'block' : 'check_circle' }}</span>
                 </button>
-                <button *ngIf="user.role !== 'super_admin'" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;color:var(--error,#dc2626);" title="Delete" (click)="deleteUser(user)">
+                <button *ngIf="user.role !== 'super_admin' && !isCurrentUser(user)" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;color:var(--error,#dc2626);" title="Delete" (click)="deleteUser(user)">
                   <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
                 </button>
+                <span *ngIf="isCurrentUser(user)" style="font-size:11px;color:#6366f1;background:#eef2ff;padding:3px 8px;border-radius:6px;margin-left:4px;font-weight:600;">You</span>
               </div>
             </td>
           </tr>
@@ -192,8 +193,11 @@
       </div>
       <div class="um-modal-footer">
         <button class="btn btn-subtle" (click)="closeDetail()">Close</button>
-        <button *ngIf="canManageUsers" class="btn btn-primary" (click)="closeDetail(); editUser(selectedUser!)">
-          <span class="material-symbols-outlined">edit</span>Edit User
+        <button *ngIf="canManageUsers && selectedUser && isCurrentUser(selectedUser)" class="btn btn-primary" (click)="closeDetail(); editUser(selectedUser!)">
+          <span class="material-symbols-outlined">edit</span>Edit My Profile
+        </button>
+        <button *ngIf="canManageUsers && selectedUser && !isCurrentUser(selectedUser) && selectedUser.role !== 'super_admin'" class="btn" style="background:var(--error,#dc2626);color:#fff;" (click)="closeDetail(); deleteUser(selectedUser!)">
+          <span class="material-symbols-outlined">delete</span>Delete User
         </button>
       </div>
     </div>
@@ -258,7 +262,7 @@
         <button class="um-modal-close" (click)="cancelDelete()">&times;</button>
       </div>
       <div class="um-modal-body">
-        <p>Are you sure you want to delete <strong>{{ deleteUserConfirm?.fullName }}</strong>?</p>
+        <p>Are you sure you want to delete <strong>{{ deleteUserConfirm.fullName }}</strong>?</p>
         <p style="color:var(--on-surface-variant);font-size:13px;margin-top:8px;">This action cannot be undone.</p>
       </div>
       <div class="um-modal-footer">
