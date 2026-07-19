@@ -1714,6 +1714,9 @@
         </div>
       </div>
     </div>
+
+  </div>
+  <div class="ticket-modal-backdrop" *ngIf="activePreviewRequest" (click)="closePreview()">
     <div class="ticket-modal preview-application-modal" (click)="$event.stopPropagation()">
 
       <!-- Banner Header -->
