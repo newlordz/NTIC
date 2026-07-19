@@ -154,11 +154,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
   loadUserProfile(): void {
     const roleId = localStorage.getItem('activeRoleId');
-    if (!roleId) {
-      this.router.navigate(['/']);
+    const activeEmail = localStorage.getItem('activeUserEmail') || '';
+    
+    if (!roleId || !activeEmail) {
+      this.currentUser = null;
       return;
     }
-    const activeEmail = localStorage.getItem('activeUserEmail') || '';
     
     // Look up real registered user in ContentService
     const registeredUser = this.contentService.users.find(u => 
