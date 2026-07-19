@@ -2224,11 +2224,8 @@
             <div class="academic-input-wrap">
               <span class="material-symbols-outlined input-icon-ac">school</span>
               <select id="sup-school" name="sup-school" [(ngModel)]="supportForm.schoolName" class="ac-input select-ac">
-                <option value="Presbyterian Boys' Sec. School (PRESEC)">Presbyterian Boys' Sec. School (PRESEC) - Legon</option>
-                <option value="Achimota School">Achimota School - Greater Accra</option>
-                <option value="Prempeh College">Prempeh College - Kumasi</option>
-                <option value="Wesley Girls' High School">Wesley Girls' High School - Cape Coast</option>
-                <option value="Tamale SHS">Tamale SHS - Northern Region</option>
+                <option *ngIf="sponsorTeamSchools.length === 0" value="">No registered schools yet</option>
+                <option *ngFor="let school of sponsorTeamSchools" [value]="school.name">{{ school.name }}<span *ngIf="school.region"> - {{ school.region }}</span></option>
                 <option value="Other">Other / General Team Allocation Fund</option>
               </select>
             </div>

@@ -719,6 +719,17 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   };
   supportSubmitted = false;
 
+  get sponsorTeamSchools(): { name: string; region: string }[] {
+    const schools = this.contentService.users
+      .filter(u => u.role === 'school_admin' && u.organization)
+      .map(u => ({ name: u.organization!, region: (u as any).region || '' }));
+    const unique = new Map<string, { name: string; region: string }>();
+    for (const s of schools) {
+      if (!unique.has(s.name)) unique.set(s.name, s);
+    }
+    return Array.from(unique.values());
+  }
+
   slides: Slide[] = [];
 
   // Live Scoreboard Interactive stand state
@@ -1421,7 +1432,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       subject: '',
       message: '',
       amount: 100,
-      schoolName: 'Presbyterian Boys\' Sec. School (PRESEC)',
+    schoolName: '',
       competitionTier: 'regional'
     };
     if (typeof document !== 'undefined') {
