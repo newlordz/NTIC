@@ -2237,9 +2237,8 @@
             <div class="academic-input-wrap">
               <span class="material-symbols-outlined input-icon-ac">payments</span>
               <select id="sup-tier" name="sup-tier" [(ngModel)]="supportForm.competitionTier" class="ac-input select-ac">
-                <option value="regional">Regional Qualification Arena (₵25,000+)</option>
-                <option value="national">National Final Seminars & Heats (₵50,000+)</option>
-                <option value="grand_finale">Grand Finale Trophy & Innovation Cash Prizes (₵100,000+)</option>
+                <option *ngIf="sponsorCompetitions.length === 0" value="">No active competitions yet</option>
+                <option *ngFor="let comp of sponsorCompetitions" [value]="comp.id">{{ comp.title }} ({{ comp.track }})</option>
                 <option value="general">General Logistics & Lab Equipment Grant (Any amount)</option>
               </select>
             </div>

@@ -730,6 +730,10 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     return Array.from(unique.values());
   }
 
+  get sponsorCompetitions(): { id: string; title: string; track: string; status: string }[] {
+    return this.contentService.competitions.filter(c => c.status === 'active' || c.status === 'registration');
+  }
+
   slides: Slide[] = [];
 
   // Live Scoreboard Interactive stand state
