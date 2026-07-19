@@ -655,6 +655,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         id: r.id,
         name: r.name,
         schools: 0,
+        target: r.defaultCount,
         topSchool: 'None',
         specialty: 'Not assigned'
       }));
@@ -670,6 +671,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
           id: r.id,
           name: r.name,
           schools: realSchools,
+          target: r.defaultCount,
           topSchool: realSchools > 0 ? r.topSchool : 'None',
           specialty: r.specialty
         };
@@ -3363,7 +3365,8 @@ for (let i = people.length - 1; i > 0; i--) {
 
   getQualificationHeat(rd: any): number {
     if (!rd) return 0;
-    return Math.min(98, Math.max(75, 70 + Math.round((rd.schools / 42) * 28)));
+    const target = rd.target || 1;
+    return Math.min(100, Math.round((rd.schools / target) * 100));
   }
 
   triggerRegionAction(rd: any): void {

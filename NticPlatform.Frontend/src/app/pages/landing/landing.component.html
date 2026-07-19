@@ -1859,7 +1859,7 @@
             <div class="spotlight-meter-wrap">
               <div class="sm-header">
                 <span>National Qualification Heat</span>
-                <strong>{{ getQualificationHeat(activeRd) }}% Qualified</strong>
+                <strong>{{ getQualificationHeat(activeRd) }}% Qualified <span style="font-weight:400; opacity:0.7;">({{ activeRd.schools }}/{{ activeRd.target }} schools)</span></strong>
               </div>
               <div class="sm-track">
                 <div class="sm-bar" [style.width.%]="getQualificationHeat(activeRd)"></div>
