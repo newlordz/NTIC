@@ -2007,38 +2007,85 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         }
         canvas.style.cursor = (hoveredFish || caughtFish) ? 'pointer' : 'default';
 
-        // ── SUNRISE OVER REALISTIC DEEP OCEAN ───────────────────
+        // ── SKY OVER REALISTIC DEEP OCEAN ───────────────────
         ctx.save();
         const horizonY = 80;
+        const isDark = this.themeService.isDarkMode;
 
-        // 1. WARM SUNRISE SKY (ABOVE THE WAVES: 0 to horizonY) — White fading into sunlight!
+        // 1. SKY (ABOVE THE WAVES: 0 to horizonY)
         const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
-        skyGrad.addColorStop(0, '#ffffff');    // Seamless fade from white background above
-        skyGrad.addColorStop(0.22, '#fff4e6'); // Soft morning cream light
-        skyGrad.addColorStop(0.5, '#ffd29d');  // Warm sunlight glow
-        skyGrad.addColorStop(0.8, '#ff9e5e');  // Vibrant morning apricot
-        skyGrad.addColorStop(1, '#ff8040');    // Rich sunrise horizon glow
+        if (isDark) {
+          skyGrad.addColorStop(0, '#0a0e1a');
+          skyGrad.addColorStop(0.22, '#0d1326');
+          skyGrad.addColorStop(0.5, '#111b36');
+          skyGrad.addColorStop(0.8, '#15203f');
+          skyGrad.addColorStop(1, '#1a2748');
+        } else {
+          skyGrad.addColorStop(0, '#ffffff');
+          skyGrad.addColorStop(0.22, '#fff4e6');
+          skyGrad.addColorStop(0.5, '#ffd29d');
+          skyGrad.addColorStop(0.8, '#ff9e5e');
+          skyGrad.addColorStop(1, '#ff8040');
+        }
         ctx.fillStyle = skyGrad;
         ctx.fillRect(-20, 0, width + 100, horizonY + 10);
 
-        // Rising Morning Sun orb positioned higher up in the morning sky
         const sunX = width * 0.28;
         const sunY = horizonY - 36;
-        const sunGlow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 130);
-        sunGlow.addColorStop(0, 'rgba(255, 255, 230, 0.98)');
-        sunGlow.addColorStop(0.28, 'rgba(255, 230, 130, 0.82)');
-        sunGlow.addColorStop(0.65, 'rgba(255, 150, 75, 0.3)');
-        sunGlow.addColorStop(1, 'rgba(255, 150, 75, 0)');
-        ctx.fillStyle = sunGlow;
-        ctx.beginPath();
-        ctx.arc(sunX, sunY, 130, 0, Math.PI * 2);
-        ctx.fill();
 
-        // Solid Sun Disc
-        ctx.fillStyle = '#fffef4';
-        ctx.beginPath();
-        ctx.arc(sunX, sunY, 24, 0, Math.PI * 2);
-        ctx.fill();
+        if (isDark) {
+          // Night sky: stars
+          const starSeed = 42;
+          for (let i = 0; i < 30; i++) {
+            const sx = ((starSeed * (i + 1) * 17) % (width | 0));
+            const sy = ((starSeed * (i + 1) * 13) % (horizonY - 10));
+            const sr = 0.5 + (i % 3) * 0.4;
+            const twinkle = 0.4 + 0.6 * Math.sin(frame * 0.04 + i * 2.1);
+            ctx.fillStyle = `rgba(255,255,255,${twinkle})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Moon glow
+          const moonGlow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 120);
+          moonGlow.addColorStop(0, 'rgba(200, 220, 255, 0.35)');
+          moonGlow.addColorStop(0.4, 'rgba(150, 180, 220, 0.12)');
+          moonGlow.addColorStop(1, 'rgba(100, 140, 200, 0)');
+          ctx.fillStyle = moonGlow;
+          ctx.beginPath();
+          ctx.arc(sunX, sunY, 120, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Moon disc
+          ctx.fillStyle = '#e8edf5';
+          ctx.beginPath();
+          ctx.arc(sunX, sunY, 22, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Moon crescent shadow
+          ctx.fillStyle = '#0f1628';
+          ctx.beginPath();
+          ctx.arc(sunX + 8, sunY - 4, 18, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          // Sunrise glow
+          const sunGlow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 130);
+          sunGlow.addColorStop(0, 'rgba(255, 255, 230, 0.98)');
+          sunGlow.addColorStop(0.28, 'rgba(255, 230, 130, 0.82)');
+          sunGlow.addColorStop(0.65, 'rgba(255, 150, 75, 0.3)');
+          sunGlow.addColorStop(1, 'rgba(255, 150, 75, 0)');
+          ctx.fillStyle = sunGlow;
+          ctx.beginPath();
+          ctx.arc(sunX, sunY, 130, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Solid Sun Disc
+          ctx.fillStyle = '#fffef4';
+          ctx.beginPath();
+          ctx.arc(sunX, sunY, 24, 0, Math.PI * 2);
+          ctx.fill();
+        }
 
         // 2. OCEAN WATER COLUMN (BELOW THE WAVES: horizonY to height)
         // Clip or fill ocean region precisely from the wavy surface down across entire screen
@@ -2053,16 +2100,22 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         ctx.closePath();
 
         const oceanGrad = ctx.createLinearGradient(0, horizonY, 0, height);
-        oceanGrad.addColorStop(0, '#005480');    // Sunlit morning ocean surface
-        oceanGrad.addColorStop(0.25, '#013259'); // Tropical ocean blue
-        oceanGrad.addColorStop(0.7, '#011933');  // Deep water column
-        oceanGrad.addColorStop(1, '#010c1c');    // Seafloor abyss
+        if (isDark) {
+          oceanGrad.addColorStop(0, '#041525');
+          oceanGrad.addColorStop(0.25, '#030f1e');
+          oceanGrad.addColorStop(0.7, '#020a16');
+          oceanGrad.addColorStop(1, '#010510');
+        } else {
+          oceanGrad.addColorStop(0, '#005480');
+          oceanGrad.addColorStop(0.25, '#013259');
+          oceanGrad.addColorStop(0.7, '#011933');
+          oceanGrad.addColorStop(1, '#010c1c');
+        }
         ctx.fillStyle = oceanGrad;
         ctx.fill();
 
-        // 3. DYNAMIC SUNRISE GOD RAYS ENTERING THE OCEAN FROM THE SUN
+        // 3. DYNAMIC GOD RAYS / MOONLIGHT CAUSTICS ENTERING THE OCEAN
         ctx.save();
-        // Clip god rays so they only appear inside the ocean water below horizon
         ctx.beginPath();
         ctx.moveTo(0, height);
         ctx.lineTo(0, horizonY);
@@ -2079,7 +2132,9 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
           const ang = angles[r] + Math.sin(frame * 0.012 + r) * 0.04;
           const spread = 0.1 + Math.sin(frame * 0.02 + r * 1.5) * 0.03;
           const rayLen = height * 1.25;
-          const rayAlpha = 0.08 + 0.05 * Math.sin(frame * 0.03 + r);
+          const rayAlpha = isDark
+            ? 0.03 + 0.02 * Math.sin(frame * 0.03 + r)
+            : 0.08 + 0.05 * Math.sin(frame * 0.03 + r);
 
           ctx.beginPath();
           ctx.moveTo(sunX, sunY);
@@ -2088,16 +2143,22 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
           ctx.closePath();
 
           const rayGrad = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, rayLen * 0.85);
-          rayGrad.addColorStop(0, `rgba(255, 235, 160, ${rayAlpha * 2.2})`);
-          rayGrad.addColorStop(0.35, `rgba(120, 235, 255, ${rayAlpha * 1.3})`);
-          rayGrad.addColorStop(1, 'rgba(0, 242, 254, 0)');
+          if (isDark) {
+            rayGrad.addColorStop(0, `rgba(120, 160, 220, ${rayAlpha * 2.2})`);
+            rayGrad.addColorStop(0.35, `rgba(60, 120, 180, ${rayAlpha * 1.3})`);
+            rayGrad.addColorStop(1, 'rgba(20, 60, 120, 0)');
+          } else {
+            rayGrad.addColorStop(0, `rgba(255, 235, 160, ${rayAlpha * 2.2})`);
+            rayGrad.addColorStop(0.35, `rgba(120, 235, 255, ${rayAlpha * 1.3})`);
+            rayGrad.addColorStop(1, 'rgba(0, 242, 254, 0)');
+          }
           ctx.fillStyle = rayGrad;
           ctx.fill();
         }
         ctx.restore();
 
-        // Crisp White/Gold Wave Crest Shimmer Line separating sky and ocean
-        ctx.strokeStyle = 'rgba(255, 240, 190, 0.75)';
+        // Wave Crest Shimmer Line separating sky and ocean
+        ctx.strokeStyle = isDark ? 'rgba(140, 170, 220, 0.4)' : 'rgba(255, 240, 190, 0.75)';
         ctx.lineWidth = 2.2;
         ctx.beginPath();
         for (let x = -20; x <= width + 80; x += 15) {
