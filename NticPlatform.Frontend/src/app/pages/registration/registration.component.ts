@@ -761,6 +761,10 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         const a = data.address || {};
         const parts = [a.road, a.suburb || a.neighbourhood, a.city || a.town || a.village, a.state || a.region, a.country].filter(Boolean);
         this.gpsAddress = parts.join(', ') || data.display_name || '';
+        const detectedDistrict = a.county || a.state_district || a.district || '';
+        if (detectedDistrict && !this.schoolForm.district) {
+          this.schoolForm.district = detectedDistrict;
+        }
         this.gpsLoading = false;
       })
       .catch(() => {
