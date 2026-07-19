@@ -1010,11 +1010,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.activeReviewRequest = null;
   }
 
-  viewDocument(docName: string, schoolName: string): void {
-    const displayName = docName.includes('::') ? docName.split('::')[1] : docName;
-    this.activeDocumentName = displayName;
-    this.activeDocumentSchool = schoolName;
-    this.activeDocumentType = displayName.endsWith('.pdf') ? 'pdf' : 'spreadsheet';
+  async viewDocument(docName: string, schoolName: string): Promise<void> {
+    const fileId = docName.includes('::') ? docName.split('::')[0] : null;
+    if (fileId) {
+      const url = await this.fileStorage.getUrl(fileId);
+      if (url) window.open(url, '_blank');
+    }
   }
 
   closeDocument(): void {
