@@ -1423,7 +1423,7 @@
       <div class="cms-panel-header">
         <div>
           <h3 class="cms-panel-title"><span class="material-symbols-outlined">slideshow</span>Landing Page Slideshow</h3>
-          <p class="cms-panel-desc">Manage the hero video slideshow on the landing page. Upload videos and images for each slide.</p>
+          <p class="cms-panel-desc">Manage the hero video/image slideshow on the landing page. Reorder slides with the arrows.</p>
         </div>
         <button class="btn btn-primary btn-sm" (click)="addSlide()">
           <span class="material-symbols-outlined">add</span>Add Slide
@@ -1440,77 +1440,103 @@
           <button class="cms-form-close" (click)="closeSlideForm()"><span class="material-symbols-outlined">close</span></button>
         </div>
         <div class="cms-form-grid">
-          <div class="cms-form-group">
-            <label>Tag</label>
-            <input type="text" [(ngModel)]="slideForm.tag" placeholder="e.g. National Championship" />
+          <div class="cms-field">
+            <label>Tag <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="slideForm.tag" placeholder="e.g. National Championship">
           </div>
-          <div class="cms-form-group">
-            <label>Title</label>
-            <input type="text" [(ngModel)]="slideForm.title" placeholder="Slide headline" />
+          <div class="cms-field">
+            <label>Title <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="slideForm.title" placeholder="Slide headline">
           </div>
-          <div class="cms-form-group" style="grid-column:1/-1;">
+          <div class="cms-field cms-field-full">
             <label>Description</label>
-            <textarea [(ngModel)]="slideForm.description" rows="2" placeholder="Short description for the slide"></textarea>
+            <textarea rows="2" [(ngModel)]="slideForm.description" placeholder="Short description for the slide overlay"></textarea>
           </div>
-          <div class="cms-form-group">
-            <label>Background Image URL</label>
-            <input type="text" [(ngModel)]="slideForm.image" placeholder="assets/ntic_image_1.jpeg" />
+          <div class="cms-field cms-field-full">
+            <label>Background Image</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <input type="text" [(ngModel)]="slideForm.image" placeholder="assets/ntic_image_1.jpeg" style="flex:1;">
+              <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant);">OR</span>
+              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;">
+                <span class="material-symbols-outlined" style="font-size:16px;">upload</span>Import
+                <input type="file" accept="image/*" (change)="onSlideImageSelected($event)" style="display:none;">
+              </label>
+            </div>
+            <div *ngIf="slideForm.image" style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+              <img [src]="slideForm.image" style="width:80px; height:45px; object-fit:cover; border-radius:6px; border:1px solid var(--outline-variant);" onerror="this.style.display='none'">
+              <span style="font-size:11px; color:var(--on-surface-variant); word-break:break-all; max-width:400px; max-height:35px; overflow:hidden;">{{ slideForm.image.startsWith('data:') ? '[Imported Image]' : slideForm.image }}</span>
+            </div>
           </div>
-          <div class="cms-form-group">
-            <label>Video File (upload)</label>
-            <input type="file" accept="video/*" (change)="onSlideVideoSelected($event)" />
-            <div *ngIf="slideForm.videoFileId" style="font-size:12px;color:var(--primary);margin-top:4px;">Video uploaded</div>
+          <div class="cms-field cms-field-full">
+            <label>Video</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;">
+                <span class="material-symbols-outlined" style="font-size:16px;">videocam</span>{{ slideForm.videoFileId ? 'Replace Video' : 'Upload Video' }}
+                <input type="file" accept="video/*" (change)="onSlideVideoSelected($event)" style="display:none;">
+              </label>
+              <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant);">OR</span>
+              <input type="text" [(ngModel)]="slideForm.videoUrl" placeholder="assets/ntic_slideshow.mp4" style="flex:1;">
+            </div>
+            <div *ngIf="slideForm.videoFileId" style="margin-top:8px; display:flex; align-items:center; gap:6px;">
+              <span class="material-symbols-outlined" style="font-size:16px; color:var(--primary);">check_circle</span>
+              <span style="font-size:12px; color:var(--primary); font-weight:600;">Video uploaded to IndexedDB</span>
+            </div>
           </div>
-          <div class="cms-form-group">
-            <label>Or Video URL (paste)</label>
-            <input type="text" [(ngModel)]="slideForm.videoUrl" placeholder="assets/ntic_slideshow.mp4" />
-          </div>
-          <div class="cms-form-group">
+          <div class="cms-field">
             <label>CTA Button Text</label>
-            <input type="text" [(ngModel)]="slideForm.ctaText" placeholder="Enter Portal" />
+            <input type="text" [(ngModel)]="slideForm.ctaText" placeholder="Enter Portal">
           </div>
-          <div class="cms-form-group">
+          <div class="cms-field">
             <label>CTA Link</label>
-            <input type="text" [(ngModel)]="slideForm.ctaLink" placeholder="#portal or /registration" />
+            <input type="text" [(ngModel)]="slideForm.ctaLink" placeholder="#portal or /registration">
           </div>
         </div>
-        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+        <div class="cms-form-actions">
           <button class="btn btn-subtle btn-sm" (click)="closeSlideForm()">Cancel</button>
           <button class="btn btn-primary btn-sm" (click)="saveSlide()">
-            <span class="material-symbols-outlined">save</span>Save Slide
+            <span class="material-symbols-outlined">{{ editingSlideId ? 'save' : 'add' }}</span>
+            {{ editingSlideId ? 'Save Changes' : 'Add Slide' }}
           </button>
         </div>
       </div>
 
-      <!-- Slides List -->
+      <!-- Empty State -->
       <div *ngIf="!slideFormOpen && contentService.heroSlides.length === 0" style="text-align:center;padding:48px;color:var(--on-surface-variant);">
         <span class="material-symbols-outlined" style="font-size:48px;opacity:0.3;">slideshow</span>
         <p>No slides yet. Click "Add Slide" to create the first one.</p>
       </div>
-      <div *ngIf="!slideFormOpen" class="cms-card-list">
-        <div *ngFor="let slide of contentService.heroSlides; let i = index" class="cms-card-row" style="display:flex;align-items:center;gap:16px;padding:16px;border-bottom:1px solid var(--outline-variant);">
-          <div style="width:120px;height:68px;border-radius:8px;overflow:hidden;background:var(--surface-container);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
-            <img *ngIf="slide.image && !slide.videoFileId" [src]="slide.image" style="width:100%;height:100%;object-fit:cover;" />
-            <span *ngIf="!slide.image && !slide.videoFileId" class="material-symbols-outlined" style="font-size:24px;opacity:0.4;">image</span>
-            <span *ngIf="slide.videoFileId" class="material-symbols-outlined" style="font-size:28px;color:var(--primary);">play_circle</span>
+
+      <!-- Slides List -->
+      <div *ngIf="!slideFormOpen" class="cms-item-list">
+        <div *ngFor="let slide of contentService.heroSlides; let i = index; let last = last" class="cms-story-item">
+          <div class="cms-story-thumb">
+            <img *ngIf="slide.image && !slide.videoFileId" [src]="slide.image" [alt]="slide.title" onerror="this.src='assets/ntic_image_1.jpeg'">
+            <div *ngIf="slide.videoFileId" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--surface-container);">
+              <span class="material-symbols-outlined" style="font-size:28px;color:var(--primary);">play_circle</span>
+            </div>
+            <div *ngIf="!slide.image && !slide.videoFileId" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--surface-container);">
+              <span class="material-symbols-outlined" style="font-size:24px;opacity:0.4;">image</span>
+            </div>
+            <span class="story-tag-mini" style="font-size:9px;">{{ i + 1 }}</span>
           </div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:600;font-size:14px;color:var(--on-surface);">{{ slide.title }}</div>
-            <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">{{ slide.tag }} &middot; {{ slide.description | slice:0:60 }}{{ slide.description.length > 60 ? '...' : '' }}</div>
-            <div style="font-size:11px;color:var(--on-surface-variant);margin-top:2px;">CTA: {{ slide.ctaText }} &rarr; {{ slide.ctaLink }}</div>
+          <div class="cms-story-info">
+            <div class="cms-story-meta">{{ slide.tag }} &middot; CTA: {{ slide.ctaText }} &rarr; {{ slide.ctaLink }}</div>
+            <div class="cms-story-title">{{ slide.title }}</div>
+            <div class="cms-story-body">{{ slide.description }}</div>
           </div>
-          <div style="display:flex;gap:4px;flex-shrink:0;">
-            <button *ngIf="i > 0" class="btn btn-subtle btn-sm" style="min-width:32px;padding:4px;" title="Move Up" (click)="moveSlideUp(i)">
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
+            <button *ngIf="i > 0" class="cms-edit-btn" style="padding:4px;" title="Move Up" (click)="moveSlideUp(i)">
               <span class="material-symbols-outlined" style="font-size:16px;">arrow_upward</span>
             </button>
-            <button *ngIf="i < contentService.heroSlides.length - 1" class="btn btn-subtle btn-sm" style="min-width:32px;padding:4px;" title="Move Down" (click)="moveSlideDown(i)">
+            <button *ngIf="!last" class="cms-edit-btn" style="padding:4px;" title="Move Down" (click)="moveSlideDown(i)">
               <span class="material-symbols-outlined" style="font-size:16px;">arrow_downward</span>
             </button>
-            <button class="btn btn-subtle btn-sm" style="min-width:32px;padding:4px;" title="Edit" (click)="editSlide(slide)">
-              <span class="material-symbols-outlined" style="font-size:16px;">edit</span>
+            <div style="height:4px;"></div>
+            <button class="cms-edit-btn" title="Edit" (click)="editSlide(slide)">
+              <span class="material-symbols-outlined">edit</span>
             </button>
-            <button class="btn btn-subtle btn-sm" style="min-width:32px;padding:4px;color:var(--error,#dc2626);" title="Delete" (click)="deleteSlide(slide)">
-              <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
+            <button class="cms-delete-btn" title="Delete" (click)="deleteSlide(slide)">
+              <span class="material-symbols-outlined">delete</span>
             </button>
           </div>
         </div>

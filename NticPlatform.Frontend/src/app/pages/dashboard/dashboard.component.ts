@@ -1211,6 +1211,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  onSlideImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.slideForm.image = e.target.result;
+      };
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+
   saveSlide(): void {
     if (!this.slideForm.title || !this.slideForm.tag) return;
     const slides = [...this.contentService.heroSlides];
