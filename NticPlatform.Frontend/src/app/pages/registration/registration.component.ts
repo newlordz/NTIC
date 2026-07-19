@@ -135,6 +135,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   gpsLoading = false;
   gpsAddress = '';
+  gpsAccuracyWarning = '';
 
   studentForm = {
     name: '',
@@ -713,24 +714,44 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     if (!navigator.geolocation) {
       this.schoolForm.gps = '5.6037, -0.1870';
       this.gpsAddress = 'Accra, Greater Accra, Ghana (fallback)';
+      this.gpsAccuracyWarning = 'Geolocation not available — location set to Accra. You can edit the coordinates manually.';
       return;
     }
     this.gpsLoading = true;
     this.gpsAddress = '';
+    this.gpsAccuracyWarning = '';
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         this.schoolForm.gps = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        if (pos.coords.accuracy > 1000) {
+          this.gpsAccuracyWarning = `Low accuracy (~${Math.round(pos.coords.accuracy)}m). This may be based on WiFi/IP, not GPS. Edit the coordinates if incorrect.`;
+        } else {
+          this.gpsAccuracyWarning = '';
+        }
         this.reverseGeocode(lat, lng);
       },
       () => {
         this.schoolForm.gps = '5.6037, -0.1870';
         this.gpsAddress = 'Accra, Greater Accra, Ghana (fallback)';
+        this.gpsAccuracyWarning = 'Location detection failed — set to Accra. You can edit the coordinates manually.';
         this.gpsLoading = false;
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
     );
+  }
+
+  onGpsManualEdit(): void {
+    this.gpsAccuracyWarning = '';
+    const match = this.schoolForm.gps.match(/([-\d.]+)\s*,\s*([-\d.]+)/);
+    if (match) {
+      const lat = parseFloat(match[1]);
+      const lng = parseFloat(match[2]);
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        this.reverseGeocode(lat, lng);
+      }
+    }
   }
 
   private reverseGeocode(lat: number, lng: number): void {
