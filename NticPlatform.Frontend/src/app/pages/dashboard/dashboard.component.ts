@@ -1186,6 +1186,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   slideFormOpen = false;
   editingSlideId: string | null = null;
   slideForm: any = { title: '', image: '', videoFileId: '', videoUrl: '' };
+  slideSavedFields: Record<string, boolean> = {};
 
   addSlide(): void {
     this.editingSlideId = null;
@@ -1248,6 +1249,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     this.contentService.saveHeroSlides(slides);
     this.slideFormOpen = false;
+  }
+
+  saveSlideField(field: string): void {
+    if (!this.editingSlideId) return;
+    const slides = [...this.contentService.heroSlides];
+    const idx = slides.findIndex(s => s.id === this.editingSlideId);
+    if (idx === -1) return;
+    slides[idx] = { ...slides[idx], [field]: this.slideForm[field] };
+    this.contentService.saveHeroSlides(slides);
+    const fieldNames: Record<string, string> = { title: 'Title', description: 'Description', tag: 'Tag', ctaText: 'CTA Text', ctaLink: 'CTA Link' };
+    this.slideSavedFields[field] = true;
+    setTimeout(() => { this.slideSavedFields[field] = false; }, 1500);
+    this.addAuditLog({ action: `Slide field saved: ${fieldNames[field] || field}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
   }
 
   deleteSlide(slide: any): void {

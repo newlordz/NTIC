@@ -1442,23 +1442,48 @@
         <div class="cms-form-grid">
           <div class="cms-field cms-field-full">
             <label>Title</label>
-            <input type="text" [(ngModel)]="slideForm.title" placeholder="Main headline on the slide">
+            <div style="display:flex;gap:8px;align-items:flex-start;">
+              <input type="text" [(ngModel)]="slideForm.title" placeholder="Main headline on the slide" style="flex:1;">
+              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['title'] ? '#16a34a' : ''" [style.border-color]="slideSavedFields['title'] ? '#16a34a' : ''" title="Save title" (click)="saveSlideField('title')">
+                <span class="material-symbols-outlined" style="font-size:16px;">{{ slideSavedFields['title'] ? 'check' : 'save' }}</span>
+              </button>
+            </div>
           </div>
           <div class="cms-field cms-field-full">
             <label>Description</label>
-            <textarea rows="2" [(ngModel)]="slideForm.description" placeholder="Subtitle text below the headline"></textarea>
+            <div style="display:flex;gap:8px;align-items:flex-start;">
+              <textarea rows="2" [(ngModel)]="slideForm.description" placeholder="Subtitle text below the headline" style="flex:1;"></textarea>
+              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['description'] ? '#16a34a' : ''" [style.border-color]="slideSavedFields['description'] ? '#16a34a' : ''" title="Save description" (click)="saveSlideField('description')">
+                <span class="material-symbols-outlined" style="font-size:16px;">{{ slideSavedFields['description'] ? 'check' : 'save' }}</span>
+              </button>
+            </div>
           </div>
           <div class="cms-field">
             <label>Tag</label>
-            <input type="text" [(ngModel)]="slideForm.tag" placeholder="e.g. National Championship">
+            <div style="display:flex;gap:8px;align-items:flex-start;">
+              <input type="text" [(ngModel)]="slideForm.tag" placeholder="e.g. National Championship" style="flex:1;">
+              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['tag'] ? '#16a34a' : ''" [style.border-color]="slideSavedFields['tag'] ? '#16a34a' : ''" title="Save tag" (click)="saveSlideField('tag')">
+                <span class="material-symbols-outlined" style="font-size:16px;">{{ slideSavedFields['tag'] ? 'check' : 'save' }}</span>
+              </button>
+            </div>
           </div>
           <div class="cms-field">
             <label>CTA Button Text</label>
-            <input type="text" [(ngModel)]="slideForm.ctaText" placeholder="Enter Portal">
+            <div style="display:flex;gap:8px;align-items:flex-start;">
+              <input type="text" [(ngModel)]="slideForm.ctaText" placeholder="Enter Portal" style="flex:1;">
+              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['ctaText'] ? '#16a34a' : ''" [style.border-color]="slideSavedFields['ctaText'] ? '#16a34a' : ''" title="Save CTA text" (click)="saveSlideField('ctaText')">
+                <span class="material-symbols-outlined" style="font-size:16px;">{{ slideSavedFields['ctaText'] ? 'check' : 'save' }}</span>
+              </button>
+            </div>
           </div>
           <div class="cms-field">
             <label>CTA Button Link</label>
-            <input type="text" [(ngModel)]="slideForm.ctaLink" placeholder="#portal or /registration">
+            <div style="display:flex;gap:8px;align-items:flex-start;">
+              <input type="text" [(ngModel)]="slideForm.ctaLink" placeholder="#portal or /registration" style="flex:1;">
+              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['ctaLink'] ? '#16a34a' : ''" [style.border-color]="slideSavedFields['ctaLink'] ? '#16a34a' : ''" title="Save CTA link" (click)="saveSlideField('ctaLink')">
+                <span class="material-symbols-outlined" style="font-size:16px;">{{ slideSavedFields['ctaLink'] ? 'check' : 'save' }}</span>
+              </button>
+            </div>
           </div>
           <div class="cms-field cms-field-full">
             <label>Background Image</label>
