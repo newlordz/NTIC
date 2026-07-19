@@ -1033,9 +1033,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           teamsList: this.schoolForm.teams,
           studentCount: this.schoolForm.students.length,
           students: this.schoolForm.students.map((s: any) => ({ name: s.name, track: s.track, class: s.class })),
-          docs: this.selectedFileIds['schoolDocs']?.length
-            ? this.selectedFileIds['schoolDocs'].map((id, i) => `${id}::${this.selectedFileNames['schoolDocs']?.[i] || 'document.pdf'}`)
-            : ['Accreditation_' + this.schoolForm.name.replace(/ /g, '_') + '.pdf']
+          docs: this.selectedFileIds['accredDocs']?.length
+            ? this.selectedFileIds['accredDocs'].map((id, i) => `${id}::${this.selectedFileNames['accredDocs']?.[i] || 'document.pdf'}`)
+            : []
         };
         if (logoFileId) details.logoFileId = logoFileId;
 
@@ -1187,6 +1187,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       } else if (this.activeTab === 'sponsor') {
         const ticket = 'NTIC-SPO-' + Math.random().toString(36).substring(2, 6).toUpperCase();
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const logoFileId = this.selectedFileIds['sponsorLogo']?.[0] || null;
         const newSponsor = {
           id: 'USR-' + Date.now(),
           role: 'sponsor' as const,
@@ -1202,6 +1203,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           registeredAt: new Date().toLocaleDateString('en-GB'),
           lastLogin: 'Never'
         };
+        if (logoFileId) (newSponsor as any).logoFileId = logoFileId;
         const currentUsers = [...this.contentService.users];
         currentUsers.unshift(newSponsor);
         this.contentService.saveUsers(currentUsers);

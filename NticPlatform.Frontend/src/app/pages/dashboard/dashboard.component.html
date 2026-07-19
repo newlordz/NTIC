@@ -1704,7 +1704,7 @@
               </div>
             </div>
           </div>
-          <div class="preview-section">
+          <div class="preview-section" *ngIf="activePreviewRequest.details.docs?.length">
             <div class="preview-section-header">
               <span class="material-symbols-outlined preview-section-icon">description</span>
               <span class="preview-section-title">Submitted Documents</span>
@@ -1853,6 +1853,24 @@
                   <span class="material-symbols-outlined">book</span>
                 </div>
                 <span class="member-name">{{ c }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="preview-section" *ngIf="activePreviewRequest.details.docs?.length">
+            <div class="preview-section-header">
+              <span class="material-symbols-outlined preview-section-icon">description</span>
+              <span class="preview-section-title">Uploaded Documents</span>
+            </div>
+            <div class="preview-docs-grid">
+              <div class="preview-doc-card" *ngFor="let doc of activePreviewRequest.details.docs" (click)="viewDocument(doc, activePreviewRequest.entity)" [title]="'Click to View ' + (doc.includes('::') ? doc.split('::')[1] : doc)">
+                <div class="doc-thumb">
+                  <span class="material-symbols-outlined">picture_as_pdf</span>
+                </div>
+                <div class="doc-info">
+                  <span class="doc-name">{{ doc.includes('::') ? doc.split('::')[1] : doc }}</span>
+                  <span class="doc-hint">Click to preview</span>
+                </div>
+                <span class="material-symbols-outlined doc-arrow">open_in_new</span>
               </div>
             </div>
           </div>
