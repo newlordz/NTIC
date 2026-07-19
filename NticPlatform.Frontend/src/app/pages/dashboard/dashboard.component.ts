@@ -1225,13 +1225,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
   saveSlide(): void {
     if (!this.slideForm.title && !this.slideForm.image && !this.slideForm.videoFileId && !this.slideForm.videoUrl) return;
     const slides = [...this.contentService.heroSlides];
+    const saved = {
+      ...this.slideForm,
+      tag: this.slideForm.tag || 'National Championship',
+      description: this.slideForm.description || 'Bringing together high school teams from all 16 regions to solve real-world problems through Coding, Robotics, AI, Cybersecurity, and Open Innovation.',
+      ctaText: this.slideForm.ctaText || 'Enter Portal',
+      ctaLink: this.slideForm.ctaLink || '#portal'
+    };
     if (this.editingSlideId) {
       const idx = slides.findIndex(s => s.id === this.editingSlideId);
-      if (idx > -1) slides[idx] = { ...slides[idx], ...this.slideForm };
-      this.addAuditLog({ action: `Slide updated: "${this.slideForm.title.slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+      if (idx > -1) slides[idx] = { ...slides[idx], ...saved };
+      this.addAuditLog({ action: `Slide updated: "${(this.slideForm.title || 'Untitled').slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
     } else {
-      slides.push({ id: `slide-${Date.now()}`, ...this.slideForm });
-      this.addAuditLog({ action: `Slide added: "${this.slideForm.title.slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+      slides.push({ id: `slide-${Date.now()}`, ...saved });
+      this.addAuditLog({ action: `Slide added: "${(this.slideForm.title || 'Untitled').slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
     }
     this.contentService.saveHeroSlides(slides);
     this.slideFormOpen = false;

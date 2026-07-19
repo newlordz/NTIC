@@ -776,15 +776,15 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
           ctaLink: '#portal'
         }];
     this.slides = heroSlides.map(hs => ({
-      tag: hs.tag,
-      title: hs.title,
-      description: hs.description,
+      tag: hs.tag || 'National Championship',
+      title: hs.title || 'NTIC Ghana Competition',
+      description: hs.description || 'Bringing together high school teams from all 16 regions.',
       image: hs.image,
       video: null,
       isVideoEdit: false,
       videoEditImages: [],
-      ctaText: hs.ctaText,
-      ctaLink: hs.ctaLink,
+      ctaText: hs.ctaText || 'Enter Portal',
+      ctaLink: hs.ctaLink || '#portal',
       _heroSlide: hs
     }));
     this.loadSlideMedia();
