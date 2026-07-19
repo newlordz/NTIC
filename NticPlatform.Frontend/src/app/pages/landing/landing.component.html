@@ -9,8 +9,8 @@
       <div class="utility-container">
         <div class="utility-right">
           <button class="theme-toggle-btn ut-link" (click)="themeService.toggleTheme()">
-            <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
-            <span>{{ themeService.isDarkMode ? 'Light' : 'Dark' }}</span>
+            <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'dark_mode' : 'light_mode' }}</span>
+            <span>{{ themeService.isDarkMode ? 'Dark' : 'Light' }}</span>
           </button>
           <a routerLink="/news" class="ut-link">
             <span class="material-symbols-outlined">campaign</span>
@@ -162,8 +162,8 @@
 
       <div class="mobile-nav-utilities">
         <button class="mobile-ut-link" (click)="themeService.toggleTheme(); closeMobileMenu()">
-          <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
-          <span>{{ themeService.isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
+          <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'dark_mode' : 'light_mode' }}</span>
+          <span>{{ themeService.isDarkMode ? 'Dark Mode' : 'Light Mode' }}</span>
         </button>
         <a routerLink="/news" class="mobile-ut-link" (click)="closeMobileMenu()">
           <span class="material-symbols-outlined">campaign</span>

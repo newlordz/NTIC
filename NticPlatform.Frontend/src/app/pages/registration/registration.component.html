@@ -16,7 +16,7 @@
       <span class="material-symbols-outlined">arrow_back</span> Return to Homepage
     </button>
     <button class="btn btn-subtle" (click)="themeService.toggleTheme()" [title]="themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'" style="position: absolute; top: 20px; right: 28px; z-index: 10; padding: 8px;">
-      <span class="material-symbols-outlined" style="margin: 0;">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
+      <span class="material-symbols-outlined" style="margin: 0;">{{ themeService.isDarkMode ? 'dark_mode' : 'light_mode' }}</span>
     </button>
 
     <div class="gateway-header">
@@ -443,7 +443,7 @@
           Gateway
         </button>
         <button class="btn btn-subtle" (click)="themeService.toggleTheme()" [title]="themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'" style="padding: 8px;">
-          <span class="material-symbols-outlined" style="margin: 0;">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
+          <span class="material-symbols-outlined" style="margin: 0;">{{ themeService.isDarkMode ? 'dark_mode' : 'light_mode' }}</span>
         </button>
       </div>
     </div>
