@@ -1215,7 +1215,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const id = `slide-video-${Date.now()}`;
       await this.fileStorage.store(id, file);
       this.slideForm.videoFileId = id;
+      this.slideForm.videoThumbnail = await this.captureVideoThumbnail(file);
     }
+  }
+
+  private captureVideoThumbnail(file: File): Promise<string> {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.muted = true;
+      const url = URL.createObjectURL(file);
+      video.src = url;
+      video.onloadeddata = () => {
+        video.currentTime = Math.min(1, video.duration / 3);
+      };
+      video.onseeked = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 320;
+        canvas.height = 180;
+        canvas.getContext('2d')!.drawImage(video, 0, 0, 320, 180);
+        const thumb = canvas.toDataURL('image/jpeg', 0.7);
+        URL.revokeObjectURL(url);
+        resolve(thumb);
+      };
+      video.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve('');
+      };
+    });
   }
 
   onSlideImageSelected(event: Event): void {

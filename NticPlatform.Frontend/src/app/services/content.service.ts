@@ -98,6 +98,7 @@ export interface HeroSlide {
   imageFileId?: string;
   videoFileId?: string;
   videoUrl?: string;
+  videoThumbnail?: string;
   ctaText: string;
   ctaLink: string;
 }
