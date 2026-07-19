@@ -445,33 +445,12 @@
         <p class="scroll-animate fade-up" style="transition-delay: 0.3s">A glimpse into the real faces and moments that define our pursuit of excellence.</p>
       </div>
       <div class="philosophy-grid">
-        <!-- Card 1: Learn -->
-        <div class="philosophy-card">
-          <div class="card-image" style="background-image: url('assets/ntic_image_14.jpeg')"></div>
+        <div *ngFor="let card of contentService.philosophyCards" class="philosophy-card">
+          <div class="card-image" [style.background-image]="card.image ? 'url(' + card.image + ')' : ''"></div>
           <div class="card-overlay">
-            <h3>Learn</h3>
+            <h3>{{ card.title }}</h3>
             <div class="card-line"></div>
-            <p>Pushing the boundaries of what is known to uncover new possibilities.</p>
-          </div>
-        </div>
-        
-        <!-- Card 2: Innovate -->
-        <div class="philosophy-card">
-          <div class="card-image" style="background-image: url('assets/ntic_image_25.jpeg')"></div>
-          <div class="card-overlay">
-            <h3>Innovate</h3>
-            <div class="card-line"></div>
-            <p>Designing intelligent, creative solutions for tomorrow's challenges.</p>
-          </div>
-        </div>
-
-        <!-- Card 3: Build -->
-        <div class="philosophy-card">
-          <div class="card-image" style="background-image: url('assets/ntic_image_33.jpeg')"></div>
-          <div class="card-overlay">
-            <h3>Build</h3>
-            <div class="card-line"></div>
-            <p>Turning abstract ideas into concrete reality through engineering.</p>
+            <p>{{ card.description }}</p>
           </div>
         </div>
       </div>

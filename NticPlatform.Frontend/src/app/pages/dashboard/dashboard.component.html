@@ -844,6 +844,10 @@
         <span class="material-symbols-outlined">slideshow</span>Slideshow
         <span class="cms-count-badge">{{ contentService.heroSlides.length }}</span>
       </button>
+      <button class="cms-sub-tab" [class.active]="contentTab === 'philosophy'" (click)="contentTab = 'philosophy'">
+        <span class="material-symbols-outlined">lightbulb</span>Philosophy Cards
+        <span class="cms-count-badge">{{ contentService.philosophyCards.length }}</span>
+      </button>
     </div>
 
     <!-- ── STORIES PANEL ── -->
@@ -1623,8 +1627,93 @@
       </div>
     </div>
 
-  </div>
-  <div class="ticket-modal-backdrop" *ngIf="activePreviewRequest" (click)="closePreview()">
+    <!-- ── PHILOSOPHY CARDS PANEL ── -->
+    <div *ngIf="contentTab === 'philosophy'" class="cms-panel">
+      <div class="cms-panel-header">
+        <div>
+          <h3 class="cms-panel-title"><span class="material-symbols-outlined">lightbulb</span>Philosophy Cards (Learn. Innovate. Build.)</h3>
+          <p class="cms-panel-desc">Manage the three philosophy cards on the landing page. Upload a new image or edit the title/description.</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('philosophy')">
+            <span class="material-symbols-outlined">open_in_full</span>
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="!philCardFormOpen" style="padding:16px;">
+        <button class="btn btn-primary" (click)="openPhilCardForm(null)">
+          <span class="material-symbols-outlined">add</span> Add Philosophy Card
+        </button>
+      </div>
+
+      <!-- Edit Form -->
+      <div *ngIf="philCardFormOpen" class="cms-slide-form" style="padding:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h4 style="margin:0;">{{ editingPhilCard?.id ? 'Edit' : 'New' }} Philosophy Card</h4>
+          <button class="btn btn-subtle btn-sm" (click)="philCardFormOpen = false">
+            <span class="material-symbols-outlined">close</span> Cancel
+          </button>
+        </div>
+
+        <div class="form-group-cms" style="margin-bottom:12px;">
+          <label>Title</label>
+          <input type="text" [(ngModel)]="editingPhilCard.title" placeholder="Learn" class="cms-input">
+        </div>
+
+        <div class="form-group-cms" style="margin-bottom:12px;">
+          <label>Description</label>
+          <textarea [(ngModel)]="editingPhilCard.description" rows="2" class="cms-textarea" placeholder="Pushing the boundaries of what is known..."></textarea>
+        </div>
+
+        <div class="form-group-cms" style="margin-bottom:12px;">
+          <label>Image URL</label>
+          <input type="text" [(ngModel)]="editingPhilCard.image" placeholder="assets/ntic_image_14.jpeg" class="cms-input">
+        </div>
+
+        <div class="form-group-cms" style="margin-bottom:16px;">
+          <label>Or upload image</label>
+          <input type="file" accept="image/*" (change)="onPhilCardImageUpload($event)">
+          <div *ngIf="editingPhilCard.image" style="margin-top:8px;">
+            <img [src]="editingPhilCard.image" style="max-width:200px;max-height:120px;border-radius:8px;object-fit:cover;">
+          </div>
+        </div>
+
+        <button class="btn btn-primary" (click)="savePhilCard()">
+          <span class="material-symbols-outlined">save</span> Save Card
+        </button>
+      </div>
+
+      <!-- Card List -->
+      <div *ngIf="!philCardFormOpen" style="padding:0 16px 16px;">
+        <div *ngIf="contentService.philosophyCards.length === 0" style="text-align:center;padding:48px;color:var(--on-surface-variant);">
+          <span class="material-symbols-outlined" style="font-size:48px;opacity:0.3;">lightbulb</span>
+          <p>No philosophy cards yet. Add the first one above.</p>
+        </div>
+
+        <div *ngFor="let card of contentService.philosophyCards; let i = index" class="cms-story-item" style="display:flex;align-items:center;gap:16px;padding:14px 16px;margin-bottom:8px;border-radius:12px;background:var(--surface-container-low,#f8fafc);border:1px solid var(--outline-variant,#e2e8f0);">
+          <img *ngIf="card.image" [src]="card.image" style="width:80px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:800;font-size:14px;color:var(--on-surface,#0f172a);">{{ card.title }}</div>
+            <div style="font-size:12px;color:var(--on-surface-variant,#64748b);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ card.description }}</div>
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0;">
+            <button *ngIf="i > 0" class="cms-move-btn" title="Move Up" (click)="movePhilCard(i, -1)">
+              <span class="material-symbols-outlined">arrow_upward</span>
+            </button>
+            <button *ngIf="i < contentService.philosophyCards.length - 1" class="cms-move-btn" title="Move Down" (click)="movePhilCard(i, 1)">
+              <span class="material-symbols-outlined">arrow_downward</span>
+            </button>
+            <button class="cms-edit-btn" title="Edit" (click)="openPhilCardForm(card)">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button class="cms-delete-btn" title="Delete" (click)="deletePhilCard(card)">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="ticket-modal preview-application-modal" (click)="$event.stopPropagation()">
 
       <!-- Banner Header -->

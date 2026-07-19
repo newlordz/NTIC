@@ -71,7 +71,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   deleteUserConfirm: any = null;
 
   // ─── CONTENT MANAGER STATE ──────────────────────
-  contentTab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' = 'stories';
+  contentTab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' | 'philosophy' = 'stories';
   maximizedContentTab: string | null = null;
 
   // Story form
@@ -1328,6 +1328,50 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (index >= slides.length - 1) return;
     [slides[index], slides[index + 1]] = [slides[index + 1], slides[index]];
     this.contentService.saveHeroSlides(slides);
+  }
+
+  // ── Philosophy Cards (Learn. Innovate. Build.) ──────
+  philCardFormOpen = false;
+  editingPhilCard: any = {};
+
+  openPhilCardForm(card: any): void {
+    if (card) {
+      this.editingPhilCard = { ...card };
+    } else {
+      this.editingPhilCard = { id: 'phil-' + Date.now(), title: '', description: '', image: '' };
+    }
+    this.philCardFormOpen = true;
+  }
+
+  savePhilCard(): void {
+    this.contentService.savePhilosophyCard(this.editingPhilCard);
+    this.philCardFormOpen = false;
+    this.addAuditLog({ action: `Philosophy card saved: "${this.editingPhilCard.title}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+  }
+
+  deletePhilCard(card: any): void {
+    const list = this.contentService.philosophyCards.filter(c => c.id !== card.id);
+    this.contentService.savePhilosophyCards(list);
+    this.addAuditLog({ action: `Philosophy card deleted: "${card.title}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+  }
+
+  movePhilCard(index: number, direction: -1 | 1): void {
+    const list = [...this.contentService.philosophyCards];
+    const target = index + direction;
+    if (target < 0 || target >= list.length) return;
+    [list[index], list[target]] = [list[target], list[index]];
+    this.contentService.savePhilosophyCards(list);
+  }
+
+  onPhilCardImageUpload(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.editingPhilCard.image = reader.result as string;
+    };
+    reader.readAsDataURL(file);
   }
 
   // Hall of Fame

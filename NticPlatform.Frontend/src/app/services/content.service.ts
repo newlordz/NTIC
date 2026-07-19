@@ -80,6 +80,14 @@ export interface Competition {
   createdAt?: string;
 }
 
+export interface PhilosophyCard {
+  id: string;
+  title: string;
+  description: string;
+  image: string;
+  imageFileId?: string;
+}
+
 export interface PlatformStats {
   regions: number;
   mentors: number;
@@ -253,8 +261,16 @@ export class ContentService {
   csrUpdates: any[] = [];
   competitions: Competition[] = [];
 
+  // ── Philosophy Cards (Learn. Innovate. Build.) ─────────────
+  philosophyCards: PhilosophyCard[] = [];
+
   // ── Initial Mock Data backups for restoration ──────────────────
   private readonly defaultCompetitions: Competition[] = [];
+  private readonly defaultPhilosophyCards: PhilosophyCard[] = [
+    { id: 'phil-1', title: 'Learn', description: 'Pushing the boundaries of what is known to uncover new possibilities.', image: 'assets/ntic_image_14.jpeg' },
+    { id: 'phil-2', title: 'Innovate', description: 'Designing intelligent, creative solutions for tomorrow\'s challenges.', image: 'assets/ntic_image_25.jpeg' },
+    { id: 'phil-3', title: 'Build', description: 'Turning abstract ideas into concrete reality through engineering.', image: 'assets/ntic_image_33.jpeg' },
+  ];
   private readonly defaultStories: ChampionshipStory[] = [
     {
       id: 'story-1', tag: 'Robotics', tagColor: 'robotics',
@@ -421,6 +437,7 @@ export class ContentService {
       this.auditLogs = this.loadKeySync('auditLogs', this.defaultAuditLogs);
       this.csrUpdates = this.loadKeySync('csrUpdates', this.defaultCsrUpdates);
       this.competitions = this.loadKeySync('competitions', this.defaultCompetitions);
+      this.philosophyCards = this.loadKeySync('philosophyCards', this.defaultPhilosophyCards);
     } else {
       this.championshipStories = [...this.defaultStories];
       this.hallOfFameEntries = [...this.defaultHof];
@@ -438,6 +455,7 @@ export class ContentService {
       this.auditLogs = [...this.defaultAuditLogs];
       this.csrUpdates = [...this.defaultCsrUpdates];
       this.competitions = [...this.defaultCompetitions];
+      this.philosophyCards = [...this.defaultPhilosophyCards];
     }
   }
 
@@ -530,9 +548,10 @@ export class ContentService {
     this.auditLogs = [];
     this.csrUpdates = [];
     this.competitions = [];
+    this.philosophyCards = [];
 
     // Clear all storage keys
-    const keys = ['championshipStories', 'hallOfFameEntries', 'leaderboardData', 'talentDiscovery', 'platformStats', 'heroSlides', 'newsFeedItems', 'countdownDate', 'users', 'pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs', 'csrUpdates', 'competitions'];
+    const keys = ['championshipStories', 'hallOfFameEntries', 'leaderboardData', 'talentDiscovery', 'platformStats', 'heroSlides', 'newsFeedItems', 'countdownDate', 'users', 'pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs', 'csrUpdates', 'competitions', 'philosophyCards'];
     keys.forEach(k => {
       if (typeof window !== 'undefined' && window.localStorage) {
         try { localStorage.removeItem(k); } catch { /* ignore */ }
@@ -844,5 +863,20 @@ export class ContentService {
       ];
       this.saveAuditLogs(auditLogsList);
     }
+  }
+
+  savePhilosophyCards(list: PhilosophyCard[]): void {
+    this.philosophyCards = [...list];
+    this.saveState('philosophyCards', this.philosophyCards);
+  }
+
+  savePhilosophyCard(card: PhilosophyCard): void {
+    const idx = this.philosophyCards.findIndex(c => c.id === card.id);
+    if (idx >= 0) {
+      this.philosophyCards[idx] = { ...card };
+    } else {
+      this.philosophyCards.push({ ...card });
+    }
+    this.saveState('philosophyCards', this.philosophyCards);
   }
 }
