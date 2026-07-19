@@ -2276,6 +2276,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
       object-fit: cover;
       z-index: 1;
       opacity: 1;
+      pointer-events: none;
     }
 
     .video-edit-container {

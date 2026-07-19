@@ -198,7 +198,9 @@
           loop 
           playsinline
           preload="auto"
-          disableremoteplayback
+          controlsList="nodownload noplaybackrate"
+          disablePictureInPicture
+          oncontextmenu="return false"
         >
           <source [src]="slide.video" type="video/mp4" />
         </video>
