@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -11,6 +11,7 @@ import {
   TalentDiscovery
 } from '../../services/content.service';
 import { BrevoEmailService } from '../../services/brevo-email.service';
+import { FileStorageService } from '../../services/file-storage.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -383,7 +384,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { text: 'Mentor feedback published for AI Division', time: '5h ago' }
   ];
 
-  constructor(public contentService: ContentService, private route: ActivatedRoute, private router: Router, private emailService: BrevoEmailService) {}
+  constructor(public contentService: ContentService, private route: ActivatedRoute, private router: Router, private emailService: BrevoEmailService, private fileStorage: FileStorageService, private cdr: ChangeDetectorRef) {}
+
+  logoUrls: Record<string, string> = {};
+
+  async loadLogo(fileId: string): Promise<string> {
+    if (this.logoUrls[fileId]) return this.logoUrls[fileId];
+    const url = await this.fileStorage.getUrl(fileId);
+    if (url) { this.logoUrls[fileId] = url; this.cdr.detectChanges(); return url; }
+    return '';
+  }
+
+  preloadLogos(): void {
+    const allApprovals = [
+      ...this.contentService.pendingApprovals,
+      ...this.contentService.approvedApprovals,
+      ...this.contentService.rejectedApprovals
+    ];
+    for (const req of allApprovals) {
+      if (req.details?.logoFileId) {
+        this.loadLogo(req.details.logoFileId);
+      }
+    }
+  }
+
+  getLogoUrl(details: any): string {
+    if (details?.logoFileId && this.logoUrls[details.logoFileId]) return this.logoUrls[details.logoFileId];
+    return '';
+  }
 
   addAuditLog(log: any): void {
     const currentAudit = [...this.contentService.auditLogs];
@@ -414,6 +442,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     this.activeRoleId = localStorage.getItem('activeRoleId') || 'student';
     this.loadDashboardData();
+    this.preloadLogos();
 
     // Read query params to set active tab & modal state reactively
     this.route.queryParams.subscribe(params => {

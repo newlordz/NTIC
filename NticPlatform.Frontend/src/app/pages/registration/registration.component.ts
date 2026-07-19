@@ -328,6 +328,20 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   constructor(private route: ActivatedRoute, private router: Router, public themeService: ThemeService, public contentService: ContentService, public fileStorage: FileStorageService, private emailService: BrevoEmailService) {}
 
+  logoUrls: Record<string, string> = {};
+
+  async loadLogo(fileId: string): Promise<string> {
+    if (this.logoUrls[fileId]) return this.logoUrls[fileId];
+    const url = await this.fileStorage.getUrl(fileId);
+    if (url) { this.logoUrls[fileId] = url; return url; }
+    return '';
+  }
+
+  getLogoUrl(details: any): string {
+    if (details?.logoFileId && this.logoUrls[details.logoFileId]) return this.logoUrls[details.logoFileId];
+    return '';
+  }
+
   ngOnInit(): void {
     const activeRoleId = localStorage.getItem('activeRoleId');
     this.isAuthorizedUser = !!(activeRoleId && ['super_admin', 'school_admin', 'instructor'].includes(activeRoleId));
@@ -956,22 +970,10 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     if (this.isSubmitting) return;
     this.isSubmitting = true;
 
-    // Capture school logo as data URL before setTimeout (needs await)
-    let capturedLogo: string | null = null;
+    // Capture school logo file ID (not base64 — too large for storage)
+    let logoFileId: string | null = null;
     if (this.activeTab === 'school' && this.schoolLogoUrl) {
-      try {
-        const logoId = this.selectedFileIds['schoolLogo']?.[0];
-        if (logoId) {
-          const fileData = await this.fileStorage.get(logoId);
-          if (fileData) {
-            capturedLogo = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.readAsDataURL(fileData.blob);
-            });
-          }
-        }
-      } catch (e) { /* logo not critical */ }
+      logoFileId = this.selectedFileIds['schoolLogo']?.[0] || null;
     }
     
     // Simulate API call with modern loader
@@ -1011,7 +1013,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
             : ['Accreditation_' + this.schoolForm.name.replace(/ /g, '_') + '.pdf'],
           infra: 'IT Lab facility registered, ' + this.schoolForm.students.length + ' students enrolled'
         };
-        if (capturedLogo) details.logo = capturedLogo;
+        if (logoFileId) details.logoFileId = logoFileId;
 
         // Save teams created during school registration into ContentService
         if (this.schoolForm.teams && this.schoolForm.teams.length > 0) {

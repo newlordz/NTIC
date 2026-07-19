@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { DataStorageService } from './data-storage.service';
 
 export interface ChampionshipStory {
   id: string;
@@ -145,6 +146,7 @@ export interface ApprovalRequest {
     docs?: string[];
     infra?: string;
     logo?: string;
+    logoFileId?: string;
     studentCount?: number;
     students?: { name: string; track: string; class: string }[];
     school?: string;
@@ -365,20 +367,23 @@ export class ContentService {
 
   private readonly defaultCsrUpdates = [];
 
-  constructor() {
+  private storageReady = false;
+
+  constructor(private dataStorage: DataStorageService) {
     this.loadStateAndFallback();
+    this.migrateToIndexedDB();
   }
 
   private loadStateAndFallback(): void {
     if (typeof window !== 'undefined' && window.localStorage) {
-      // Basic ContentService data
-      this.championshipStories = this.loadKey('championshipStories', this.defaultStories);
-      this.hallOfFameEntries = this.loadKey('hallOfFameEntries', this.defaultHof);
-      this.leaderboardData = this.loadKey('leaderboardData', this.defaultLeaderboard);
-      this.talentDiscovery = this.loadKey('talentDiscovery', this.defaultTalentDiscovery);
-      this.platformStats = this.loadKey('platformStats', this.defaultStats);
-      this.heroSlides = this.loadKey('heroSlides', this.defaultHero);
-      this.newsFeedItems = this.loadKey('newsFeedItems', this.defaultNews);
+      // Basic ContentService data — small, sync is fine
+      this.championshipStories = this.loadKeySync('championshipStories', this.defaultStories);
+      this.hallOfFameEntries = this.loadKeySync('hallOfFameEntries', this.defaultHof);
+      this.leaderboardData = this.loadKeySync('leaderboardData', this.defaultLeaderboard);
+      this.talentDiscovery = this.loadKeySync('talentDiscovery', this.defaultTalentDiscovery);
+      this.platformStats = this.loadKeySync('platformStats', this.defaultStats);
+      this.heroSlides = this.loadKeySync('heroSlides', this.defaultHero);
+      this.newsFeedItems = this.loadKeySync('newsFeedItems', this.defaultNews);
       
       const savedCountdown = localStorage.getItem('countdownDate');
       if (savedCountdown) {
@@ -391,18 +396,17 @@ export class ContentService {
         this.countdownDate = '2026-08-15T09:00:00';
       }
 
-      // Shared dynamic datasets
-      this.users = this.loadKey('users', this.defaultUsers);
-      this.pendingApprovals = this.loadKey('pendingApprovals', this.defaultPendingApprovals);
-      this.rejectedApprovals = this.loadKey('rejectedApprovals', this.defaultRejectedApprovals);
-      this.approvedApprovals = this.loadKey('approvedApprovals', this.defaultApprovedApprovals);
-      this.teams = this.loadKey('teams', this.defaultTeams);
-      this.submissions = this.loadKey('submissions', this.defaultSubmissions);
-      this.auditLogs = this.loadKey('auditLogs', this.defaultAuditLogs);
-      this.csrUpdates = this.loadKey('csrUpdates', this.defaultCsrUpdates);
-      this.competitions = this.loadKey('competitions', this.defaultCompetitions);
+      // Large datasets — load from localStorage first (sync), then async upgrade to IndexedDB
+      this.users = this.loadKeySync('users', this.defaultUsers);
+      this.pendingApprovals = this.loadKeySync('pendingApprovals', this.defaultPendingApprovals);
+      this.rejectedApprovals = this.loadKeySync('rejectedApprovals', this.defaultRejectedApprovals);
+      this.approvedApprovals = this.loadKeySync('approvedApprovals', this.defaultApprovedApprovals);
+      this.teams = this.loadKeySync('teams', this.defaultTeams);
+      this.submissions = this.loadKeySync('submissions', this.defaultSubmissions);
+      this.auditLogs = this.loadKeySync('auditLogs', this.defaultAuditLogs);
+      this.csrUpdates = this.loadKeySync('csrUpdates', this.defaultCsrUpdates);
+      this.competitions = this.loadKeySync('competitions', this.defaultCompetitions);
     } else {
-      // Fallback in case of SSR
       this.championshipStories = [...this.defaultStories];
       this.hallOfFameEntries = [...this.defaultHof];
       this.leaderboardData = [...this.defaultLeaderboard];
@@ -420,7 +424,8 @@ export class ContentService {
     }
   }
 
-  private loadKey<T>(key: string, defaultValue: T): T {
+  private loadKeySync<T>(key: string, defaultValue: T): T {
+    // First try localStorage (fast, synchronous)
     const item = localStorage.getItem(key);
     if (item) {
       try {
@@ -429,14 +434,55 @@ export class ContentService {
         console.error('Failed to parse key: ' + key, e);
       }
     }
-    // Save the default value back to storage for future sync
-    this.saveState(key, defaultValue);
     return JSON.parse(JSON.stringify(defaultValue));
   }
 
+  private async loadKeyAsync<T>(key: string, defaultValue: T): Promise<void> {
+    try {
+      const idbData = await this.dataStorage.get<T>(key);
+      if (idbData !== null) {
+        (this as any)[key] = idbData;
+        return;
+      }
+    } catch { /* IndexedDB not available */ }
+
+    // Fall back to localStorage and migrate
+    const lsRaw = localStorage.getItem(key);
+    if (lsRaw) {
+      try {
+        const parsed = JSON.parse(lsRaw) as T;
+        (this as any)[key] = parsed;
+        await this.dataStorage.set(key, parsed).catch(() => {});
+        return;
+      } catch { /* corrupt */ }
+    }
+
+    (this as any)[key] = JSON.parse(JSON.stringify(defaultValue));
+    await this.dataStorage.set(key, defaultValue).catch(() => {});
+  }
+
+  private async migrateToIndexedDB(): Promise<void> {
+    const largeKeys = ['users', 'pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs'];
+    for (const key of largeKeys) {
+      await this.loadKeyAsync(key, (this as any)[key]);
+    }
+    this.storageReady = true;
+  }
+
   private saveState(key: string, data: any): void {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.setItem(key, JSON.stringify(data));
+    const json = JSON.stringify(data);
+    const isLargeCollection = ['users', 'pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs'].includes(key);
+
+    if (isLargeCollection) {
+      // Use IndexedDB for large collections — no size limit
+      this.dataStorage.set(key, data).catch(() => {});
+      // Also write to localStorage as fallback (may fail silently for large data)
+      try { localStorage.setItem(key, json); } catch { /* quota exceeded, IndexedDB has it */ }
+    } else {
+      // Small data — localStorage is fine
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try { localStorage.setItem(key, json); } catch { /* ignore */ }
+      }
     }
   }
 
@@ -471,8 +517,9 @@ export class ContentService {
     const keys = ['championshipStories', 'hallOfFameEntries', 'leaderboardData', 'talentDiscovery', 'platformStats', 'heroSlides', 'newsFeedItems', 'countdownDate', 'users', 'pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs', 'csrUpdates'];
     keys.forEach(k => {
       if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem(k, JSON.stringify(this[k as keyof ContentService]));
+        try { localStorage.removeItem(k); } catch { /* ignore */ }
       }
+      this.dataStorage.remove(k).catch(() => {});
     });
   }
 
