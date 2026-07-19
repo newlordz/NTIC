@@ -2174,6 +2174,65 @@
     </div>
   </footer>
   <!-- ══════════════════════════════════════════
+       REGION DETAIL MODAL
+  ══════════════════════════════════════════ -->
+  <div class="support-modal-backdrop" [class.open]="regionDetailModal.open" (click)="closeRegionModal()">
+    <div class="support-modal-card" style="max-width: 480px;" (click)="$event.stopPropagation()">
+      <button class="close-modal-btn" (click)="closeRegionModal()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+
+      <div class="modal-header-ac" style="text-align:center; padding-bottom:0;">
+        <span class="crest-icon material-symbols-outlined" style="font-size:40px; color:var(--primary);">apartment</span>
+        <h3 style="margin:8px 0 0;">{{ regionDetailModal.rd?.name }} Region</h3>
+      </div>
+
+      <div style="padding:24px 28px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
+          <div style="background:var(--surface-container-low,#f1f5f9); border-radius:14px; padding:16px; text-align:center;">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--on-surface-variant,#64748b); letter-spacing:0.06em; margin-bottom:6px;">Schools</div>
+            <div style="font-size:28px; font-weight:800; color:var(--on-surface,#0f172a);">{{ regionDetailModal.rd?.schools }}</div>
+          </div>
+          <div style="background:var(--surface-container-low,#f1f5f9); border-radius:14px; padding:16px; text-align:center;">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--on-surface-variant,#64748b); letter-spacing:0.06em; margin-bottom:6px;">Squads</div>
+            <div style="font-size:28px; font-weight:800; color:var(--on-surface,#0f172a);">{{ getRegionTeams(regionDetailModal.rd) }}</div>
+          </div>
+        </div>
+
+        <div style="background:var(--surface-container-low,#f1f5f9); border-radius:14px; padding:16px; margin-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+            <span class="material-symbols-outlined" style="font-size:18px; color:var(--primary);">emoji_events</span>
+            <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant,#64748b); text-transform:uppercase; letter-spacing:0.04em;">Regional Champion</span>
+          </div>
+          <div style="font-size:16px; font-weight:800; color:var(--on-surface,#0f172a);">{{ regionDetailModal.rd?.topSchool }}</div>
+          <div style="font-size:12px; color:var(--on-surface-variant,#94a3b8); margin-top:2px;">Specialization: {{ regionDetailModal.rd?.specialty }}</div>
+        </div>
+
+        <div style="margin-bottom:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant,#64748b);">Qualification Progress</span>
+            <strong style="font-size:12px; color:var(--primary);">{{ getRegionQualifiedPct(regionDetailModal.rd) }}%</strong>
+          </div>
+          <div style="width:100%; height:6px; background:var(--surface-container-high,#e2e8f0); border-radius:3px; overflow:hidden;">
+            <div [style.width.%]="getRegionQualifiedPct(regionDetailModal.rd)" style="height:100%; background:linear-gradient(90deg, var(--primary), #0056b3); border-radius:3px; transition:width 0.6s ease;"></div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-crimson" style="flex:1;" (click)="closeRegionModal(); openSupportModal('team');">
+            <span class="material-symbols-outlined">volunteer_activism</span>
+            <span>Sponsor This Region</span>
+          </button>
+          <button class="btn btn-subtle" style="flex:1;" (click)="closeRegionModal(); openSupportModal('suggestion');">
+            <span class="material-symbols-outlined">chat</span>
+            <span>Contact Committee</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
        SUPPORT A CHAMPION MODAL
   ══════════════════════════════════════════ -->
   <div class="support-modal-backdrop" [class.open]="isSupportModalOpen" (click)="closeSupportModal()">

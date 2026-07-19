@@ -719,6 +719,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   };
   supportSubmitted = false;
 
+  regionDetailModal: { open: boolean; rd: any } = { open: false, rd: null };
+
   get sponsorTeamSchools(): { name: string; region: string }[] {
     const schools = this.contentService.users
       .filter(u => u.role === 'school_admin' && u.organization)
@@ -3385,7 +3387,21 @@ for (let i = people.length - 1; i > 0; i--) {
   }
 
   triggerRegionAction(rd: any): void {
-    alert(`🎉 Launching Regional Heats & Squad Directory for ${rd.name}!\nTop School: ${rd.topSchool}\nActive Squads: ${rd.schools * 4} teams competing!`);
+    this.regionDetailModal = { open: true, rd };
+    if (typeof document !== 'undefined') document.body.style.overflow = 'hidden';
+  }
+
+  closeRegionModal(): void {
+    this.regionDetailModal = { open: false, rd: null };
+    if (typeof document !== 'undefined') document.body.style.overflow = '';
+  }
+
+  getRegionTeams(rd: any): number {
+    return rd ? rd.schools * 4 : 0;
+  }
+
+  getRegionQualifiedPct(rd: any): number {
+    return rd ? this.getQualificationHeat(rd) : 0;
   }
 
   getRegionColor(schools: number): string {
