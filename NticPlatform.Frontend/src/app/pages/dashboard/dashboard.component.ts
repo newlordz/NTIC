@@ -72,6 +72,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ─── CONTENT MANAGER STATE ──────────────────────
   contentTab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' = 'stories';
+  maximizedContentTab: string | null = null;
 
   // Story form
   storyForm: Omit<ChampionshipStory, 'id'> = {
@@ -1207,6 +1208,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   closeSlideForm(): void { this.slideFormOpen = false; }
+
+  maximizeContent(tab: string): void {
+    this.contentTab = tab as any;
+    this.maximizedContentTab = tab;
+  }
+
+  exitMaximize(): void {
+    this.maximizedContentTab = null;
+  }
 
   async onSlideVideoSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;

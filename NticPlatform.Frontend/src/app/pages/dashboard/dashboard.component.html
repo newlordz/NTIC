@@ -295,8 +295,19 @@
   ══════════════════════════════════════════════════════ -->
   <ng-container *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager' || activeRoleId === 'reviewer' || activeRoleId === 'competition_manager'">
 
-    <!-- Admin Header -->
-    <div class="admin-header">
+    <!-- Maximized Content Mode Header -->
+    <div *ngIf="maximizedContentTab" style="display:flex;align-items:center;gap:12px;padding:16px 24px;background:var(--surface);border-bottom:1px solid var(--outline-variant);border-radius:12px;margin-bottom:16px;">
+      <button class="btn btn-subtle btn-sm" (click)="exitMaximize()">
+        <span class="material-symbols-outlined">arrow_back</span>Back to Dashboard
+      </button>
+      <div style="flex:1;"></div>
+      <span style="font-size:14px;font-weight:600;color:var(--on-surface);text-transform:capitalize;">{{ maximizedContentTab }} Editor</span>
+      <div style="flex:1;"></div>
+      <span style="font-size:12px;color:var(--on-surface-variant);">Full-page editing mode</span>
+    </div>
+
+    <!-- Admin Header (hidden when maximized) -->
+    <div class="admin-header" *ngIf="!maximizedContentTab">
       <div class="admin-header-left">
         <div class="admin-header-icon">
           <span class="material-symbols-outlined">shield_person</span>
@@ -317,8 +328,8 @@
       </div>
     </div>
 
-    <!-- Stat Cards (Clickable Interactive Buttons) -->
-    <div class="admin-stat-grid">
+    <!-- Stat Cards (hidden when maximized) -->
+    <div class="admin-stat-grid" *ngIf="!maximizedContentTab">
       <div *ngFor="let stat of stats; let i = index" 
            class="admin-stat-card interactive-stat-btn" 
            [attr.data-index]="i"
@@ -339,8 +350,8 @@
       </div>
     </div>
 
-    <!-- Tab Navigation -->
-    <div class="admin-tabs">
+    <!-- Tab Navigation (hidden when maximized) -->
+    <div class="admin-tabs" *ngIf="!maximizedContentTab">
       <button class="admin-tab" [class.active]="adminTab === 'overview'" (click)="adminTab = 'overview'">
         <span class="material-symbols-outlined">dashboard</span>Overview
       </button>
@@ -799,10 +810,10 @@
     </div>
 
   <!-- ── TAB: CONTENT MANAGER ── -->
-  <div *ngIf="adminTab === 'content'" class="admin-tab-body">
+  <div *ngIf="adminTab === 'content' || maximizedContentTab" class="admin-tab-body" [style.padding]="maximizedContentTab ? '0' : ''">
 
     <!-- Sub-Tab Nav -->
-    <div class="cms-sub-tabs">
+    <div class="cms-sub-tabs" [style.border-bottom]="maximizedContentTab ? '2px solid var(--outline-variant)' : ''" [style.margin-bottom]="maximizedContentTab ? '24px' : ''" [style.padding-bottom]="maximizedContentTab ? '0' : ''">
       <button class="cms-sub-tab" [class.active]="contentTab === 'stories'" (click)="contentTab = 'stories'">
         <span class="material-symbols-outlined">newspaper</span>Championship Stories
         <span class="cms-count-badge">{{ contentService.championshipStories.length }}</span>
@@ -842,9 +853,14 @@
           <h3 class="cms-panel-title"><span class="material-symbols-outlined">newspaper</span>Championship Stories</h3>
           <p class="cms-panel-desc">Stories appear as an auto-sliding carousel on the landing page.</p>
         </div>
-        <button class="btn btn-primary btn-sm" (click)="openStoryForm()">
-          <span class="material-symbols-outlined">add</span>Add Story
-        </button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('stories')">
+            <span class="material-symbols-outlined">open_in_full</span>
+          </button>
+          <button class="btn btn-primary btn-sm" (click)="openStoryForm()">
+            <span class="material-symbols-outlined">add</span>Add Story
+          </button>
+        </div>
       </div>
 
       <!-- Add Story Form -->
@@ -948,9 +964,14 @@
           <h3 class="cms-panel-title"><span class="material-symbols-outlined">workspace_premium</span>Hall of Fame</h3>
           <p class="cms-panel-desc">Champions scroll as an infinite marquee on the landing page.</p>
         </div>
-        <button class="btn btn-primary btn-sm" (click)="openHofForm()">
-          <span class="material-symbols-outlined">add</span>Add Champion
-        </button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('hof')">
+            <span class="material-symbols-outlined">open_in_full</span>
+          </button>
+          <button class="btn btn-primary btn-sm" (click)="openHofForm()">
+            <span class="material-symbols-outlined">add</span>Add Champion
+          </button>
+        </div>
       </div>
 
       <!-- Add HoF Form -->
@@ -1051,9 +1072,14 @@
           <h3 class="cms-panel-title"><span class="material-symbols-outlined">leaderboard</span>Leaderboard</h3>
           <p class="cms-panel-desc">Rankings are auto-sorted by total points and reflected on the landing page.</p>
         </div>
-        <button class="btn btn-primary btn-sm" (click)="openLbForm()">
-          <span class="material-symbols-outlined">add</span>Add School
-        </button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('leaderboard')">
+            <span class="material-symbols-outlined">open_in_full</span>
+          </button>
+          <button class="btn btn-primary btn-sm" (click)="openLbForm()">
+            <span class="material-symbols-outlined">add</span>Add School
+          </button>
+        </div>
       </div>
 
       <!-- Add / Edit Leaderboard Form -->
@@ -1149,9 +1175,14 @@
           <h3 class="cms-panel-title"><span class="material-symbols-outlined">stars</span>Talent Discovery Highlights</h3>
           <p class="cms-panel-desc">Manage the individual high-talent cards that appear on the Leaderboard sidebar.</p>
         </div>
-        <button class="btn btn-primary btn-sm" (click)="openTdForm()">
-          <span class="material-symbols-outlined">add</span>Add Talent Highlight
-        </button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('talent')">
+            <span class="material-symbols-outlined">open_in_full</span>
+          </button>
+          <button class="btn btn-primary btn-sm" (click)="openTdForm()">
+            <span class="material-symbols-outlined">add</span>Add Talent Highlight
+          </button>
+        </div>
       </div>
 
       <!-- Add / Edit Talent Discovery Form -->
@@ -1231,9 +1262,14 @@
           <h3 class="cms-panel-title"><span class="material-symbols-outlined">campaign</span>News Feed</h3>
           <p class="cms-panel-desc">Platform-wide announcements shown in the landing page news ticker.</p>
         </div>
-        <button class="btn btn-primary btn-sm" (click)="openNewsForm()">
-          <span class="material-symbols-outlined">add</span>Add News Item
-        </button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('news')">
+            <span class="material-symbols-outlined">open_in_full</span>
+          </button>
+          <button class="btn btn-primary btn-sm" (click)="openNewsForm()">
+            <span class="material-symbols-outlined">add</span>Add News Item
+          </button>
+        </div>
       </div>
 
       <!-- Add News Form -->
@@ -1307,12 +1343,17 @@
           <h3 class="cms-panel-title"><span class="material-symbols-outlined">analytics</span>Platform Impact Stats</h3>
           <p class="cms-panel-desc">These numbers animate on the landing page stats tree section.</p>
         </div>
-        <button class="btn btn-primary btn-sm" *ngIf="!statsEditMode" (click)="openStatsEdit()">
-          <span class="material-symbols-outlined">edit</span>Edit Stats
-        </button>
-        <button class="btn btn-primary btn-sm" *ngIf="statsEditMode" (click)="saveStats()">
-          <span class="material-symbols-outlined">save</span>Save Changes
-        </button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('stats')">
+            <span class="material-symbols-outlined">open_in_full</span>
+          </button>
+          <button class="btn btn-primary btn-sm" *ngIf="!statsEditMode" (click)="openStatsEdit()">
+            <span class="material-symbols-outlined">edit</span>Edit Stats
+          </button>
+          <button class="btn btn-primary btn-sm" *ngIf="statsEditMode" (click)="saveStats()">
+            <span class="material-symbols-outlined">save</span>Save Changes
+          </button>
+        </div>
       </div>
 
       <!-- Stats Grid Display / Edit -->
@@ -1362,6 +1403,11 @@
         <div>
           <h3 class="cms-panel-title"><span class="material-symbols-outlined">alarm</span>Countdown Timer</h3>
           <p class="cms-panel-desc">Configure the date and time when the next national heat begins. Updates reflect on the landing page in real-time.</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('countdown')">
+            <span class="material-symbols-outlined">open_in_full</span>
+          </button>
         </div>
       </div>
 
@@ -1425,9 +1471,14 @@
           <h3 class="cms-panel-title"><span class="material-symbols-outlined">slideshow</span>Landing Page Slideshow</h3>
           <p class="cms-panel-desc">Manage the hero video/image slideshow on the landing page. Reorder slides with the arrows.</p>
         </div>
-        <button class="btn btn-primary btn-sm" (click)="addSlide()">
-          <span class="material-symbols-outlined">add</span>Add Slide
-        </button>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('slideshow')">
+            <span class="material-symbols-outlined">open_in_full</span>
+          </button>
+          <button class="btn btn-primary btn-sm" (click)="addSlide()">
+            <span class="material-symbols-outlined">add</span>Add Slide
+          </button>
+        </div>
       </div>
 
       <!-- Slide Form -->
