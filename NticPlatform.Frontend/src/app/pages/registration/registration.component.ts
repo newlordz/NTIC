@@ -1035,8 +1035,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           students: this.schoolForm.students.map((s: any) => ({ name: s.name, track: s.track, class: s.class })),
           docs: this.selectedFileIds['schoolDocs']?.length
             ? this.selectedFileIds['schoolDocs'].map((id, i) => `${id}::${this.selectedFileNames['schoolDocs']?.[i] || 'document.pdf'}`)
-            : ['Accreditation_' + this.schoolForm.name.replace(/ /g, '_') + '.pdf'],
-          infra: 'IT Lab facility registered, ' + this.schoolForm.students.length + ' students enrolled'
+            : ['Accreditation_' + this.schoolForm.name.replace(/ /g, '_') + '.pdf']
         };
         if (logoFileId) details.logoFileId = logoFileId;
 
