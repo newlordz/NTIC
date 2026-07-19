@@ -88,6 +88,9 @@ export class AppComponent implements OnInit, OnDestroy {
     this.loadUserProfile();
     if (typeof window !== 'undefined') {
       window.addEventListener('scroll', this.scrollListener, true);
+      window.addEventListener('beforeinstallprompt', (e: Event) => {
+        e.preventDefault();
+      });
     }
   }
 
