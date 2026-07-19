@@ -193,7 +193,6 @@
         <video 
           *ngIf="slide.video" 
           class="slide-video-bg" 
-          [src]="slide.video"
           autoplay 
           muted 
           loop 
@@ -201,6 +200,7 @@
           preload="auto"
           disableremoteplayback
         >
+          <source [src]="slide.video" type="video/mp4" />
         </video>
 
         <!-- Browser-Native Video Edit Montage if present -->
