@@ -315,6 +315,12 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   acceptTerms(): void {
     if (this.pendingTermsAction) {
       this.acceptedTerms[this.pendingTermsAction] = true;
+      switch (this.pendingTermsAction) {
+        case 'school': this.schoolForm.acceptedTerms = true; break;
+        case 'instructor': this.instructorForm.acceptedTerms = true; break;
+        case 'judge': this.judgeForm.acceptedTerms = true; break;
+        case 'sponsor': this.sponsorForm.acceptedTerms = true; break;
+      }
     }
     this.closeTermsModal();
   }
@@ -543,6 +549,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       return;
     }
     this.schoolForm.students.push({
+      id: this.studentForm.id,
       name: this.studentForm.name,
       dob: this.studentForm.dob,
       gender: this.studentForm.gender,
@@ -551,6 +558,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       track: this.selectedTrack,
       skills: { ...this.studentForm.skills }
     });
+    this.studentForm.id = '';
     this.studentForm.name = '';
     this.studentForm.guardian = '';
   }
@@ -579,6 +587,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       member5Email: this.teamForm.member5Email
     });
     this.teamForm.name = '';
+    this.teamForm.school = '';
     this.teamForm.leadName = '';
     this.teamForm.leadEmail = '';
     this.teamForm.member2Name = '';
@@ -807,8 +816,13 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         formData = { ...this.instructorForm };
         break;
       case 'student':
-        contact = this.studentForm.email;
-        formData = { ...this.studentForm, selectedTrack: this.selectedTrack };
+        if (this.competitorMode === 'group') {
+          contact = this.teamForm.leadEmail || '';
+          formData = { ...this.teamForm, competitorMode: 'group' };
+        } else {
+          contact = this.studentForm.email;
+          formData = { ...this.studentForm, selectedTrack: this.selectedTrack };
+        }
         break;
       case 'judge':
         contact = this.judgeForm.email;
@@ -851,8 +865,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   selectRolePath(role: string): void {
     this.isPathModalOpen = false;
     if (role === 'sponsor') {
-      localStorage.setItem('activeRoleId', 'sponsor');
-      this.router.navigate(['/sponsors']);
+      this.activeTab = 'sponsor';
+      this.isDraftResumed = false;
+      this.regState = 'new';
       return;
     }
     if (role === 'student') {
@@ -1032,7 +1047,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           tracks: this.schoolForm.teams.map((t: any) => t.track).filter((value: any, index: number, self: any[]) => self.indexOf(value) === index).join(', ') || 'Coding, Robotics',
           teamsList: this.schoolForm.teams,
           studentCount: this.schoolForm.students.length,
-          students: this.schoolForm.students.map((s: any) => ({ name: s.name, track: s.track, class: s.class })),
+          students: this.schoolForm.students.map((s: any) => ({ id: s.id, name: s.name, track: s.track, class: s.class, dob: s.dob, gender: s.gender, guardian: s.guardian, skills: s.skills })),
           docs: this.selectedFileIds['accredDocs']?.length
             ? this.selectedFileIds['accredDocs'].map((id, i) => `${id}::${this.selectedFileNames['accredDocs']?.[i] || 'document.pdf'}`)
             : []
@@ -1135,7 +1150,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           .filter(k => this.instructorForm.expertise[k])
           .join(', ');
         details = {
-          institution: this.instructorForm.institution || 'Independent Mentor',
+          address: this.instructorForm.address || '',
+          institution: this.instructorForm.isIndependent ? 'Independent Mentor' : (this.instructorForm.institution || 'Independent Mentor'),
+          isIndependent: this.instructorForm.isIndependent || false,
           credentials: this.instructorForm.qualification || 'MSc Computer Science',
           specialization: selectedExpertise || 'Coding, AI',
           phone: this.instructorForm.tel || '',
@@ -1158,6 +1175,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           password: otp,
           organization: this.judgeForm.organization,
           track: this.judgeForm.expertise || 'Coding & Algorithms',
+          experience: this.judgeForm.experience || '',
+          bio: this.judgeForm.bio || '',
           ticket,
           status: 'Active',
           registeredAt: new Date().toLocaleDateString('en-GB'),
@@ -1198,6 +1217,10 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           password: otp,
           organization: this.sponsorForm.name,
           tier: this.sponsorForm.tier.split(' ')[0],
+          sector: this.sponsorForm.sector || '',
+          repName: this.sponsorForm.repName || '',
+          amount: this.sponsorForm.amount || '',
+          arenas: Object.keys(this.sponsorForm.arenas || {}).filter(k => (this.sponsorForm.arenas as any)[k]),
           ticket,
           status: 'Active',
           registeredAt: new Date().toLocaleDateString('en-GB'),
@@ -1293,5 +1316,6 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       otp: '',
       acceptedTerms: false
     };
+    this.clearDraftPrefills();
   }
 }

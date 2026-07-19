@@ -528,7 +528,7 @@
                 <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">pin_drop</span>
                 {{ gpsAddress }}
               </small>
-              <small *ngIf="gpsAccuracyWarning" style="display:block; margin-top:4px; color:#f59e0b; font-size:11px; display:flex; align-items:center; gap:4px;">
+              <small *ngIf="gpsAccuracyWarning" style="display:flex; align-items:center; gap:4px; margin-top:4px; color:#f59e0b; font-size:11px;">
                 <span class="material-symbols-outlined" style="font-size:14px;">warning</span>
                 {{ gpsAccuracyWarning }}
               </small>
@@ -769,7 +769,7 @@
                       <td><span class="badge primary" style="font-size:10px;">Group</span></td>
                       <td><strong>{{t.name}}</strong></td>
                       <td><span class="track-chip" [class]="t.track.toLowerCase()">{{t.track}}</span></td>
-                      <td>Lead: {{t.leadName}} + {{ (t.member4Name ? 4 : (t.member3Name ? 2 : 1)) }} members</td>
+                      <td>Lead: {{t.leadName}} + {{ (t.member5Name ? 4 : t.member4Name ? 3 : t.member3Name ? 2 : t.member2Name ? 1 : 0) }} members</td>
                       <td style="text-align:center;">
                         <button type="button" class="btn btn-subtle btn-sm" style="padding:4px; color:var(--error);" (click)="removeTeam(i)">
                           <span class="material-symbols-outlined" style="margin:0;">delete</span>
@@ -1190,9 +1190,12 @@
               <input type="checkbox" [(ngModel)]="instructorForm.acceptedTerms" name="instructorTerms" style="accent-color:var(--primary);">
               <span>I agree to the <a (click)="openTermsModal('instructor')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
             </label>
-            <button class="btn btn-primary" (click)="submitRegistration()" [disabled]="!instructorForm.acceptedTerms">
-              <span class="material-symbols-outlined">badge</span>
-              Register Instructor
+            <button class="btn btn-primary" (click)="submitRegistration()" [disabled]="isSubmitting || !instructorForm.acceptedTerms">
+              <span *ngIf="!isSubmitting" style="display:flex; align-items:center; gap:8px;">
+                <span class="material-symbols-outlined">badge</span>
+                Register Instructor
+              </span>
+              <span *ngIf="isSubmitting" class="spinner-inline"></span>
             </button>
           </div>
         </div>

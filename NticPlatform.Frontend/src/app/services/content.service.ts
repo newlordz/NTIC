@@ -431,6 +431,8 @@ export class ContentService {
       this.newsFeedItems = [...this.defaultNews];
       this.users = [...this.defaultUsers];
       this.pendingApprovals = [...this.defaultPendingApprovals];
+      this.rejectedApprovals = [...this.defaultRejectedApprovals];
+      this.approvedApprovals = [...this.defaultApprovedApprovals];
       this.teams = [...this.defaultTeams];
       this.submissions = [...this.defaultSubmissions];
       this.auditLogs = [...this.defaultAuditLogs];
@@ -527,9 +529,10 @@ export class ContentService {
     this.submissions = [];
     this.auditLogs = [];
     this.csrUpdates = [];
+    this.competitions = [];
 
     // Clear all storage keys
-    const keys = ['championshipStories', 'hallOfFameEntries', 'leaderboardData', 'talentDiscovery', 'platformStats', 'heroSlides', 'newsFeedItems', 'countdownDate', 'users', 'pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs', 'csrUpdates'];
+    const keys = ['championshipStories', 'hallOfFameEntries', 'leaderboardData', 'talentDiscovery', 'platformStats', 'heroSlides', 'newsFeedItems', 'countdownDate', 'users', 'pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs', 'csrUpdates', 'competitions'];
     keys.forEach(k => {
       if (typeof window !== 'undefined' && window.localStorage) {
         try { localStorage.removeItem(k); } catch { /* ignore */ }

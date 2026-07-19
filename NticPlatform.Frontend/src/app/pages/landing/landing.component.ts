@@ -937,6 +937,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.stopSlideShow();
     
     const currentSlide = this.slides[this.activeSlideIndex];
+    if (!currentSlide) return;
     
     if (currentSlide.isVideoEdit) {
       this.startVideoEditLoop();
@@ -1003,6 +1004,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.stopVideoEditLoop();
     this.activeVideoEditImageIndex = 0;
     const currentSlide = this.slides[this.activeSlideIndex];
+    if (!currentSlide) return;
 
     if (currentSlide && currentSlide.videoEditImages && currentSlide.videoEditImages.length > 0) {
       this.image1Url = currentSlide.videoEditImages[0];
@@ -1091,12 +1093,16 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   toggleMobileMenu(): void {
     this.isMobileMenuOpen = !this.isMobileMenuOpen;
-    document.body.style.overflow = this.isMobileMenuOpen ? 'hidden' : '';
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = this.isMobileMenuOpen ? 'hidden' : '';
+    }
   }
 
   closeMobileMenu(): void {
     this.isMobileMenuOpen = false;
-    document.body.style.overflow = '';
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+    }
   }
 
   toggleMegaMenu(menu: string): void {

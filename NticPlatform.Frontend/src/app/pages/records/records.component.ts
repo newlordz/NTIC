@@ -57,6 +57,10 @@ export class RecordsComponent implements OnInit {
     return this.allRecords.filter(r => r.status === 'pending').length;
   }
 
+  get approvedCount(): number {
+    return this.allRecords.filter(r => r.status === 'approved').length;
+  }
+
   get rejectedCount(): number {
     return this.allRecords.filter(r => r.status === 'rejected').length;
   }
@@ -113,6 +117,51 @@ export class RecordsComponent implements OnInit {
             category: i === 0 ? 'Primary Document' : 'Supporting Document'
           };
         })
+      });
+    });
+
+    // Pull from approved approvals
+    this.contentService.approvedApprovals.forEach((a: any) => {
+      const type = a.type === 'School Registration' ? 'school' : a.type === 'Instructor Access' ? 'instructor' : a.type === 'Team Addition' ? 'team' : 'school';
+      const detailsAny: any = a.details || {};
+      liveRecords.push({
+        id: a.id,
+        type: type as Record['type'],
+        title: a.entity ? `${a.entity} — ${a.type}` : a.type,
+        entityName: a.entity || 'Unknown',
+        entityType: detailsAny.institution || detailsAny.school || (type === 'school' ? 'School' : type === 'instructor' ? 'Instructor' : 'Team'),
+        region: detailsAny.region || '',
+        district: detailsAny.district || '',
+        contactEmail: a.contact || detailsAny.contactEmail || '',
+        contactPhone: detailsAny.phone || '',
+        submittedAt: a.submitted === 'Just now' ? new Date().toISOString() : a.submitted || new Date().toISOString(),
+        status: 'approved',
+        files: (detailsAny.docs || []).map((doc: string, i: number) => {
+          const sepIdx = doc.indexOf('::');
+          const fileId = sepIdx > -1 ? doc.slice(0, sepIdx) : '';
+          const fileName = sepIdx > -1 ? doc.slice(sepIdx + 2) : doc;
+          return { name: fileName, type: 'application/octet-stream', size: 0, url: '#', fileId, uploadedAt: new Date().toISOString(), category: i === 0 ? 'Primary Document' : 'Supporting Document' };
+        })
+      });
+    });
+
+    // Pull from rejected approvals
+    this.contentService.rejectedApprovals.forEach((a: any) => {
+      const type = a.type === 'School Registration' ? 'school' : a.type === 'Instructor Access' ? 'instructor' : a.type === 'Team Addition' ? 'team' : 'school';
+      const detailsAny: any = a.details || {};
+      liveRecords.push({
+        id: a.id,
+        type: type as Record['type'],
+        title: a.entity ? `${a.entity} — ${a.type}` : a.type,
+        entityName: a.entity || 'Unknown',
+        entityType: detailsAny.institution || detailsAny.school || (type === 'school' ? 'School' : type === 'instructor' ? 'Instructor' : 'Team'),
+        region: detailsAny.region || '',
+        district: detailsAny.district || '',
+        contactEmail: a.contact || detailsAny.contactEmail || '',
+        contactPhone: detailsAny.phone || '',
+        submittedAt: a.submitted === 'Just now' ? new Date().toISOString() : a.submitted || new Date().toISOString(),
+        status: 'rejected',
+        files: []
       });
     });
 
@@ -196,7 +245,7 @@ export class RecordsComponent implements OnInit {
     }
 
     this.allRecords = dedupedRecords.filter(r => !this.isTrashed(r) && !this.permanentlyDeletedIds.has(r.id));
-    this.records = this.allRecords.filter(r => r.status === 'approved');
+    this.records = [...this.allRecords];
     this.applyFilters();
   }
 

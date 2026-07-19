@@ -783,7 +783,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.showTicketModal(user);
   }
 
+  private approvingIds = new Set<string>();
+
   approveRequest(req: any): void {
+    if (this.approvingIds.has(req.id)) return;
+    this.approvingIds.add(req.id);
+
     const approved = {
       ...req,
       reviewedAt: new Date().toLocaleString('en-GB'),
@@ -800,7 +805,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const ticket = 'NTIC-SCH-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const newSchoolAdmin = {
-        id: 'USR-' + Date.now(),
+        id: 'USR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
         role: 'school_admin' as const,
         fullName: req.entity + ' Admin',
         email: req.contact,
@@ -841,8 +846,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.contentService.saveTeams(currentTeams);
       }
 
-      alert(`School Registration Approved!\nSchool Admin account created for: ${req.entity}.\nAccess Pass: ${ticket}\nOTP: ${otp}`);
       this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp, req.details?.phone || req.details?.repTel);
+      alert(`School Registration Approved!\nSchool Admin account created for: ${req.entity}.\nAccess Pass: ${ticket}\nOTP: ${otp}`);
     } else if (req.type === 'Team Addition') {
       const newTeam = {
         name: req.entity,
@@ -860,13 +865,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
       stats.projects += 0.1;
       this.contentService.updatePlatformStats(stats);
 
-      alert(`Team Addition Approved!\nTeam "${req.entity}" has been successfully added to competition tracks.`);
       this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A — Team Added', 'N/A', req.details?.phone);
+      alert(`Team Addition Approved!\nTeam "${req.entity}" has been successfully added to competition tracks.`);
     } else if (req.type === 'Instructor Access') {
       const ticket = 'NTIC-INS-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const newInstructor = {
-        id: 'USR-' + Date.now(),
+        id: 'USR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
         role: 'instructor' as const,
         fullName: req.entity,
         email: req.contact,
@@ -889,8 +894,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       stats.mentors += 1;
       this.contentService.updatePlatformStats(stats);
 
-      alert(`Instructor Access Approved!\nInstructor account created for: ${req.entity}.\nAccess Pass: ${ticket}\nOTP: ${otp}`);
       this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp, req.details?.phone);
+      alert(`Instructor Access Approved!\nInstructor account created for: ${req.entity}.\nAccess Pass: ${ticket}\nOTP: ${otp}`);
     }
 
     const currentAudit = [...this.contentService.auditLogs];
@@ -907,6 +912,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
         ? { ...s, value: String(this.pendingApprovals.length), meta: this.pendingApprovals.length > 0 ? 'Action required' : 'All clear' }
         : s
     );
+
+    this.approvingIds.delete(req.id);
   }
 
   rejectRequest(req: any): void {
