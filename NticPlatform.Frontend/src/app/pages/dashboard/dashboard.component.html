@@ -1625,87 +1625,252 @@
 
   </div>
   <div class="ticket-modal-backdrop" *ngIf="activePreviewRequest" (click)="closePreview()">
-    <div class="ticket-modal" (click)="$event.stopPropagation()">
-      <div class="ticket-modal-header">
-        <h3>Preview Application</h3>
-        <button class="ticket-modal-close" (click)="closePreview()">
-          <span class="material-symbols-outlined">close</span>
-        </button>
+    <div class="ticket-modal preview-application-modal" (click)="$event.stopPropagation()">
+
+      <!-- Banner Header -->
+      <div class="preview-banner" [class]="'type-' + (activePreviewRequest.type === 'School Registration' ? 'school' : activePreviewRequest.type === 'Team Addition' ? 'team' : 'instructor')">
+        <div class="preview-banner-row">
+          <div class="preview-banner-icon">
+            <img *ngIf="activePreviewRequest.type === 'School Registration' && getLogoUrl(activePreviewRequest.details)"
+                 [src]="getLogoUrl(activePreviewRequest.details)" alt="Logo" class="preview-banner-logo">
+            <span *ngIf="!getLogoUrl(activePreviewRequest.details)" class="material-symbols-outlined">
+              {{ activePreviewRequest.type === 'School Registration' ? 'account_balance' : activePreviewRequest.type === 'Team Addition' ? 'groups' : 'school' }}
+            </span>
+          </div>
+          <div class="preview-banner-info">
+            <div class="preview-banner-entity">{{ activePreviewRequest.entity }}</div>
+            <div class="preview-banner-meta">
+              <span class="preview-type-chip">{{ activePreviewRequest.type }}</span>
+              <span class="preview-banner-contact">
+                <span class="material-symbols-outlined">person</span>
+                {{ activePreviewRequest.contact }}
+              </span>
+              <span class="preview-banner-date">
+                <span class="material-symbols-outlined">schedule</span>
+                {{ activePreviewRequest.submitted }}
+              </span>
+            </div>
+          </div>
+          <button class="preview-banner-close" (click)="closePreview()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
       </div>
+
       <div class="preview-modal-body">
-        <!-- School Registration Details -->
+
+        <!-- ═══ School Registration ═══ -->
         <ng-container *ngIf="activePreviewRequest.type === 'School Registration'">
-          <div *ngIf="getLogoUrl(activePreviewRequest.details)" style="margin-bottom:16px;">
-            <img [src]="getLogoUrl(activePreviewRequest.details)" alt="School Logo" style="width:64px;height:64px;border-radius:12px;object-fit:cover;border:2px solid var(--border-color,#ddd);">
+          <div class="preview-section">
+            <div class="preview-section-header">
+              <span class="material-symbols-outlined preview-section-icon">info</span>
+              <span class="preview-section-title">School Profile</span>
+            </div>
+            <div class="preview-details-grid">
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">badge</span>
+                <div class="detail-content">
+                  <span class="detail-label">School Name</span>
+                  <span class="detail-value">{{ activePreviewRequest.entity }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">pin_drop</span>
+                <div class="detail-content">
+                  <span class="detail-label">Region</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.region }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">qr_code</span>
+                <div class="detail-content">
+                  <span class="detail-label">Registry Code</span>
+                  <span class="detail-value detail-code">{{ activePreviewRequest.details.code }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">phone</span>
+                <div class="detail-content">
+                  <span class="detail-label">Phone Number</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.phone }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">category</span>
+                <div class="detail-content">
+                  <span class="detail-label">Subscribed Tracks</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.tracks }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">dns</span>
+                <div class="detail-content">
+                  <span class="detail-label">IT Infrastructure</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.infra }}</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="preview-section-title">School Registry Profile</div>
-          <div class="preview-grid">
-            <div class="preview-field-item"><label>School Name</label><span>{{ activePreviewRequest.entity }}</span></div>
-            <div class="preview-field-item"><label>Region</label><span>{{ activePreviewRequest.details.region }}</span></div>
-            <div class="preview-field-item"><label>School Registry Code</label><code style="font-size:12px; font-weight:700; color:var(--primary);">{{ activePreviewRequest.details.code }}</code></div>
-            <div class="preview-field-item"><label>Contact Headmaster</label><span>{{ activePreviewRequest.contact }}</span></div>
-            <div class="preview-field-item"><label>Phone Number</label><span>{{ activePreviewRequest.details.phone }}</span></div>
-            <div class="preview-field-item"><label>Subscribed Tracks</label><span>{{ activePreviewRequest.details.tracks }}</span></div>
-            <div class="preview-field-item"><label>School IT Infrastructure</label><span>{{ activePreviewRequest.details.infra }}</span></div>
-          </div>
-          <div class="preview-section-title">Submitted Documents (Click to View)</div>
-          <div class="preview-docs-list">
-            <div class="preview-doc-card" *ngFor="let doc of activePreviewRequest.details.docs" (click)="viewDocument(doc, activePreviewRequest.entity)" [title]="'Click to View ' + doc">
-              <span class="material-symbols-outlined doc-icon">picture_as_pdf</span>
-              <span style="flex:1;">{{ doc }}</span>
-              <span class="material-symbols-outlined" style="font-size:16px; color:var(--primary);">open_in_new</span>
+          <div class="preview-section">
+            <div class="preview-section-header">
+              <span class="material-symbols-outlined preview-section-icon">description</span>
+              <span class="preview-section-title">Submitted Documents</span>
+            </div>
+            <div class="preview-docs-grid">
+              <div class="preview-doc-card" *ngFor="let doc of activePreviewRequest.details.docs" (click)="viewDocument(doc, activePreviewRequest.entity)" [title]="'Click to View ' + doc">
+                <div class="doc-thumb">
+                  <span class="material-symbols-outlined">picture_as_pdf</span>
+                </div>
+                <div class="doc-info">
+                  <span class="doc-name">{{ doc }}</span>
+                  <span class="doc-hint">Click to preview</span>
+                </div>
+                <span class="material-symbols-outlined doc-arrow">open_in_new</span>
+              </div>
             </div>
           </div>
         </ng-container>
 
-        <!-- Team Addition Details -->
+        <!-- ═══ Team Addition ═══ -->
         <ng-container *ngIf="activePreviewRequest.type === 'Team Addition'">
-          <div class="preview-section-title">Team Composition</div>
-          <div class="preview-grid">
-            <div class="preview-field-item"><label>Team Name</label><span>{{ activePreviewRequest.entity }}</span></div>
-            <div class="preview-field-item"><label>School / Affiliation</label><span>{{ activePreviewRequest.details.school }}</span></div>
-            <div class="preview-field-item"><label>Region</label><span>{{ activePreviewRequest.details.region }}</span></div>
-            <div class="preview-field-item"><label>Competition Track</label><span>{{ activePreviewRequest.details.track }}</span></div>
-            <div class="preview-field-item"><label>Project Title / Proposal</label><span>{{ activePreviewRequest.details.project }}</span></div>
-            <div class="preview-field-item"><label>Assigned Coach / Mentor</label><span>{{ activePreviewRequest.details.coach }}</span></div>
-            <div class="preview-field-item">
-              <label>Team Members (Squad)</label>
-              <div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
-                <div *ngFor="let m of activePreviewRequest.details.members" style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px;">
-                  <span class="material-symbols-outlined" style="font-size:16px; color:var(--primary);">person</span>
-                  {{ m }}
+          <div class="preview-section">
+            <div class="preview-section-header">
+              <span class="material-symbols-outlined preview-section-icon">info</span>
+              <span class="preview-section-title">Team Details</span>
+            </div>
+            <div class="preview-details-grid">
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">group</span>
+                <div class="detail-content">
+                  <span class="detail-label">Team Name</span>
+                  <span class="detail-value">{{ activePreviewRequest.entity }}</span>
                 </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">account_balance</span>
+                <div class="detail-content">
+                  <span class="detail-label">School / Affiliation</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.school }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">pin_drop</span>
+                <div class="detail-content">
+                  <span class="detail-label">Region</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.region }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">category</span>
+                <div class="detail-content">
+                  <span class="detail-label">Competition Track</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.track }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card full-width">
+                <span class="material-symbols-outlined detail-icon">lightbulb</span>
+                <div class="detail-content">
+                  <span class="detail-label">Project Title / Proposal</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.project }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">co_present</span>
+                <div class="detail-content">
+                  <span class="detail-label">Assigned Coach / Mentor</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.coach }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="preview-section">
+            <div class="preview-section-header">
+              <span class="material-symbols-outlined preview-section-icon">group</span>
+              <span class="preview-section-title">Team Members</span>
+            </div>
+            <div class="preview-members-list">
+              <div class="preview-member-chip" *ngFor="let m of activePreviewRequest.details.members; let i = index">
+                <div class="member-avatar">{{ i + 1 }}</div>
+                <span class="member-name">{{ m }}</span>
               </div>
             </div>
           </div>
         </ng-container>
 
-        <!-- Instructor Access Details -->
+        <!-- ═══ Instructor Access ═══ -->
         <ng-container *ngIf="activePreviewRequest.type === 'Instructor Access'">
-          <div class="preview-section-title">Instructor Credentials</div>
-          <div class="preview-grid">
-            <div class="preview-field-item"><label>Full Name / Title</label><span>{{ activePreviewRequest.entity }}</span></div>
-            <div class="preview-field-item"><label>Institutional Affiliation</label><span>{{ activePreviewRequest.details.institution }}</span></div>
-            <div class="preview-field-item"><label>Contact Email</label><span>{{ activePreviewRequest.contact }}</span></div>
-            <div class="preview-field-item"><label>Certified Credentials</label><span>{{ activePreviewRequest.details.credentials }}</span></div>
-            <div class="preview-field-item"><label>Track Specialization</label><span>{{ activePreviewRequest.details.specialization }}</span></div>
-            <div class="preview-field-item"><label>Mentorship Experience</label><span>{{ activePreviewRequest.details.experience }}</span></div>
-            <div class="preview-field-item">
-              <label>Assigned Curriculums</label>
-              <div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
-                <div *ngFor="let c of activePreviewRequest.details.courses" style="font-size:12.5px; font-weight:600; display:flex; align-items:center; gap:6px;">
-                  <span class="material-symbols-outlined" style="font-size:16px; color:var(--tertiary);">menu_book</span>
-                  {{ c }}
+          <div class="preview-section">
+            <div class="preview-section-header">
+              <span class="material-symbols-outlined preview-section-icon">info</span>
+              <span class="preview-section-title">Instructor Profile</span>
+            </div>
+            <div class="preview-details-grid">
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">badge</span>
+                <div class="detail-content">
+                  <span class="detail-label">Full Name / Title</span>
+                  <span class="detail-value">{{ activePreviewRequest.entity }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">domain</span>
+                <div class="detail-content">
+                  <span class="detail-label">Institutional Affiliation</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.institution }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">mail</span>
+                <div class="detail-content">
+                  <span class="detail-label">Contact Email</span>
+                  <span class="detail-value">{{ activePreviewRequest.contact }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">verified</span>
+                <div class="detail-content">
+                  <span class="detail-label">Certified Credentials</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.credentials }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">tune</span>
+                <div class="detail-content">
+                  <span class="detail-label">Track Specialization</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.specialization }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">history_edu</span>
+                <div class="detail-content">
+                  <span class="detail-label">Mentorship Experience</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.experience }}</span>
                 </div>
               </div>
             </div>
           </div>
+          <div class="preview-section">
+            <div class="preview-section-header">
+              <span class="material-symbols-outlined preview-section-icon">menu_book</span>
+              <span class="preview-section-title">Assigned Curriculums</span>
+            </div>
+            <div class="preview-members-list">
+              <div class="preview-member-chip" *ngFor="let c of activePreviewRequest.details.courses">
+                <div class="member-avatar curriculum">
+                  <span class="material-symbols-outlined">book</span>
+                </div>
+                <span class="member-name">{{ c }}</span>
+              </div>
+            </div>
+          </div>
         </ng-container>
+
       </div>
-      <div class="ticket-modal-actions">
+
+      <div class="preview-modal-footer">
         <button class="btn btn-subtle" (click)="closePreview()">Close</button>
-        <button class="btn btn-primary" (click)="approveRequest(activePreviewRequest); closePreview()">
-          <span class="material-symbols-outlined">check</span>Approve Request
+        <button class="btn btn-primary btn-approve" (click)="approveRequest(activePreviewRequest); closePreview()">
+          <span class="material-symbols-outlined">check_circle</span>Approve Application
         </button>
       </div>
     </div>
