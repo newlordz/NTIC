@@ -363,8 +363,21 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         this.activeTab = params['tab'] === 'student' ? 'school' : params['tab'];
         this.regState = 'new';
       } else {
-        // Clicks on "Apply now" (no query parameters) always show the gateway screen first
-        this.regState = 'gateway';
+        // Restore persisted UI state so refresh keeps the user where they were
+        const saved = localStorage.getItem('ntic_reg_ui');
+        if (saved) {
+          try {
+            const s = JSON.parse(saved);
+            this.regState = s.regState || 'gateway';
+            this.activeTab = s.activeTab || 'school';
+            this.schoolStep = s.schoolStep || 1;
+            this.maxSchoolStepReached = s.maxSchoolStepReached || 1;
+          } catch {
+            this.regState = 'gateway';
+          }
+        } else {
+          this.regState = 'gateway';
+        }
       }
     });
   }
@@ -376,10 +389,12 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   selectNewRegistration(): void {
     this.isPathModalOpen = true;
     this.clearDraftPrefills();
+    this.clearRegState();
   }
 
   selectContinueRegistration(): void {
     this.regState = 'continue_select';
+    this.clearRegState();
     this.verificationInput = '';
     this.otpCode = '';
     this.otpError = '';
@@ -387,6 +402,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   openTracker(): void {
     this.regState = 'tracker';
+    this.clearRegState();
     this.trackerQuery = '';
     this.trackerResult = null;
     this.trackerStatus = 'idle';
@@ -403,6 +419,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   goBackToGatewayFromTracker(): void {
     this.regState = 'gateway';
+    this.clearRegState();
     this.trackerQuery = '';
     this.trackerResult = null;
     this.trackerStatus = 'idle';
@@ -412,6 +429,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   goBackToGateway(): void {
     this.isPathModalOpen = false;
     this.regState = 'gateway';
+    this.clearRegState();
     this.clearTimer();
   }
 
@@ -511,6 +529,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     setTimeout(() => {
       this.applyDraftPrefills(stored.contact);
       this.regState = 'new';
+      this.saveRegState();
     }, 2200);
   }
 
@@ -520,6 +539,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     if (step <= this.maxSchoolStepReached) {
       this.schoolStep = step;
       this.syncCardSubTab(step);
+      this.saveRegState();
     }
   }
 
@@ -530,6 +550,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         this.maxSchoolStepReached = step;
       }
       this.syncCardSubTab(step);
+      this.saveRegState();
     }
   }
 
@@ -868,6 +889,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       this.activeTab = 'sponsor';
       this.isDraftResumed = false;
       this.regState = 'new';
+      this.saveRegState();
       return;
     }
     if (role === 'student') {
@@ -889,6 +911,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         }
       };
       this.regState = 'new';
+      this.saveRegState();
       return;
     }
     this.activeTab = role;
@@ -930,12 +953,28 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       };
     }
     this.regState = 'new';
+    this.saveRegState();
   }
 
   private clearTimer(): void {
     if (this.resendInterval) {
       clearInterval(this.resendInterval);
     }
+  }
+
+  private saveRegState(): void {
+    try {
+      localStorage.setItem('ntic_reg_ui', JSON.stringify({
+        regState: this.regState,
+        activeTab: this.activeTab,
+        schoolStep: this.schoolStep,
+        maxSchoolStepReached: this.maxSchoolStepReached,
+      }));
+    } catch {}
+  }
+
+  private clearRegState(): void {
+    localStorage.removeItem('ntic_reg_ui');
   }
 
   private clearDraftPrefills(): void {
@@ -1304,6 +1343,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   closeSuccessModal(): void {
     this.isSuccessModalOpen = false;
     this.regState = 'gateway';
+    this.clearRegState();
     this.judgeForm = {
       name: '',
       tel: '',
