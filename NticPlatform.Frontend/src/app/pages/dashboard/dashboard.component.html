@@ -1440,17 +1440,9 @@
           <button class="cms-form-close" (click)="closeSlideForm()"><span class="material-symbols-outlined">close</span></button>
         </div>
         <div class="cms-form-grid">
-          <div class="cms-field">
-            <label>Tag <span class="req">*</span></label>
-            <input type="text" [(ngModel)]="slideForm.tag" placeholder="e.g. National Championship">
-          </div>
-          <div class="cms-field">
-            <label>Title <span class="req">*</span></label>
-            <input type="text" [(ngModel)]="slideForm.title" placeholder="Slide headline">
-          </div>
           <div class="cms-field cms-field-full">
-            <label>Description</label>
-            <textarea rows="2" [(ngModel)]="slideForm.description" placeholder="Short description for the slide overlay"></textarea>
+            <label>Title</label>
+            <input type="text" [(ngModel)]="slideForm.title" placeholder="Main headline on the slide">
           </div>
           <div class="cms-field cms-field-full">
             <label>Background Image</label>
@@ -1479,16 +1471,8 @@
             </div>
             <div *ngIf="slideForm.videoFileId" style="margin-top:8px; display:flex; align-items:center; gap:6px;">
               <span class="material-symbols-outlined" style="font-size:16px; color:var(--primary);">check_circle</span>
-              <span style="font-size:12px; color:var(--primary); font-weight:600;">Video uploaded to IndexedDB</span>
+              <span style="font-size:12px; color:var(--primary); font-weight:600;">Video uploaded</span>
             </div>
-          </div>
-          <div class="cms-field">
-            <label>CTA Button Text</label>
-            <input type="text" [(ngModel)]="slideForm.ctaText" placeholder="Enter Portal">
-          </div>
-          <div class="cms-field">
-            <label>CTA Link</label>
-            <input type="text" [(ngModel)]="slideForm.ctaLink" placeholder="#portal or /registration">
           </div>
         </div>
         <div class="cms-form-actions">
@@ -1520,9 +1504,11 @@
             <span class="story-tag-mini" style="font-size:9px;">{{ i + 1 }}</span>
           </div>
           <div class="cms-story-info">
-            <div class="cms-story-meta">{{ slide.tag }} &middot; CTA: {{ slide.ctaText }} &rarr; {{ slide.ctaLink }}</div>
+            <div class="cms-story-meta">
+              <span *ngIf="slide.videoFileId || slide.videoUrl" style="display:inline-flex;align-items:center;gap:4px;"><span class="material-symbols-outlined" style="font-size:14px;">videocam</span>Video</span>
+              <span *ngIf="!slide.videoFileId && !slide.videoUrl && slide.image" style="display:inline-flex;align-items:center;gap:4px;"><span class="material-symbols-outlined" style="font-size:14px;">image</span>Image</span>
+            </div>
             <div class="cms-story-title">{{ slide.title }}</div>
-            <div class="cms-story-body">{{ slide.description }}</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
             <button *ngIf="i > 0" class="cms-edit-btn" style="padding:4px;" title="Move Up" (click)="moveSlideUp(i)">

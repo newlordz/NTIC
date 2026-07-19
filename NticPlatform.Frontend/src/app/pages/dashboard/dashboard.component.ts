@@ -1185,11 +1185,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // ── Slideshow Management ──────────────────────────────
   slideFormOpen = false;
   editingSlideId: string | null = null;
-  slideForm: any = { tag: '', title: '', description: '', image: '', videoFileId: '', ctaText: '', ctaLink: '#portal' };
+  slideForm: any = { title: '', image: '', videoFileId: '', videoUrl: '' };
 
   addSlide(): void {
     this.editingSlideId = null;
-    this.slideForm = { tag: '', title: '', description: '', image: 'assets/ntic_image_1.jpeg', videoFileId: '', ctaText: 'Enter Portal', ctaLink: '#portal' };
+    this.slideForm = { title: '', image: '', videoFileId: '', videoUrl: '' };
     this.slideFormOpen = true;
   }
 
@@ -1223,7 +1223,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   saveSlide(): void {
-    if (!this.slideForm.title || !this.slideForm.tag) return;
+    if (!this.slideForm.title) return;
     const slides = [...this.contentService.heroSlides];
     if (this.editingSlideId) {
       const idx = slides.findIndex(s => s.id === this.editingSlideId);
