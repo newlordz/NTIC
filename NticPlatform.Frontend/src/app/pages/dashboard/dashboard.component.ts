@@ -1223,7 +1223,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   saveSlide(): void {
-    if (!this.slideForm.title) return;
+    if (!this.slideForm.title && !this.slideForm.image && !this.slideForm.videoFileId && !this.slideForm.videoUrl) return;
     const slides = [...this.contentService.heroSlides];
     if (this.editingSlideId) {
       const idx = slides.findIndex(s => s.id === this.editingSlideId);
