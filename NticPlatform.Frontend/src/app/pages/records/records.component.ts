@@ -42,6 +42,7 @@ export class RecordsComponent implements OnInit {
   allRecords: Record[] = [];
   filteredRecords: Record[] = [];
   trashedRecords: Record[] = [];
+  permanentlyDeletedIds: Set<string> = new Set();
   deletingIds: Set<string> = new Set();
   activeTab = 'all';
   searchQuery = '';
@@ -194,7 +195,7 @@ export class RecordsComponent implements OnInit {
       }
     }
 
-    this.allRecords = dedupedRecords.filter(r => !this.isTrashed(r));
+    this.allRecords = dedupedRecords.filter(r => !this.isTrashed(r) && !this.permanentlyDeletedIds.has(r.id));
     this.records = this.allRecords.filter(r => r.status === 'approved');
     this.applyFilters();
   }
@@ -381,8 +382,10 @@ export class RecordsComponent implements OnInit {
 
   confirmPermanentDelete(): void {
     if (this.confirmAction?.record) {
+      this.permanentlyDeletedIds.add(this.confirmAction.record.id);
       this.trashedRecords = this.trashedRecords.filter(r => r.id !== this.confirmAction!.record.id);
       this.saveTrashState();
+      this.savePermanentlyDeleted();
       this.loadRecords();
     }
     this.isConfirmOpen = false;
@@ -395,8 +398,10 @@ export class RecordsComponent implements OnInit {
   }
 
   confirmEmptyTrash(): void {
+    this.trashedRecords.forEach(r => this.permanentlyDeletedIds.add(r.id));
     this.trashedRecords = [];
     this.saveTrashState();
+    this.savePermanentlyDeleted();
     this.loadRecords();
     this.isConfirmOpen = false;
     this.confirmAction = null;
@@ -421,6 +426,18 @@ export class RecordsComponent implements OnInit {
           this.trashedRecords = JSON.parse(saved);
         } catch {}
       }
+      const deleted = localStorage.getItem('permanentlyDeletedIds');
+      if (deleted) {
+        try {
+          this.permanentlyDeletedIds = new Set(JSON.parse(deleted));
+        } catch {}
+      }
+    }
+  }
+
+  private savePermanentlyDeleted(): void {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('permanentlyDeletedIds', JSON.stringify([...this.permanentlyDeletedIds]));
     }
   }
 
