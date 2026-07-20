@@ -128,6 +128,7 @@ export interface User {
   password?: string;
   otp: string;
   organization: string;
+  region?: string;
   track?: string;
   tier?: string;
   ticket: string;

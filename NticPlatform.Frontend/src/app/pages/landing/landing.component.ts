@@ -759,7 +759,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         const realSchools = this.contentService.users.filter(u => 
           u.role === 'school_admin' && 
           u.organization && 
-          this.getRegionForSchool(u.organization) === r.id
+          (u.region ? u.region.toLowerCase().replace(/\s+/g, '-') === r.id : this.getRegionForSchool(u.organization) === r.id)
         ).length;
 
         return {

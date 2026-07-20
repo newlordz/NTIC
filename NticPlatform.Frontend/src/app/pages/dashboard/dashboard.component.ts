@@ -813,6 +813,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         otp,
         password: otp,
         organization: req.entity,
+        region: req.details?.region || '',
         ticket,
         status: 'Active',
         registeredAt: new Date().toLocaleDateString('en-GB'),
