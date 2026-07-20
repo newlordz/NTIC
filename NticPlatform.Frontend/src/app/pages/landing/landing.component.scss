@@ -4423,24 +4423,6 @@
   .material-symbols-outlined { font-size: 24px; }
 }
 
-/* ── Featured Progress Bar ──────────────────────────────────── */
-.featured-progress-wrap {
-  max-width: 500px; width: 100%; text-align: left;
-}
-.featured-progress-bar {
-  height: 6px; border-radius: 3px;
-  background: rgba(255,255,255,0.1); overflow: hidden;
-}
-.featured-progress-fill {
-  height: 100%; border-radius: 3px;
-  background: linear-gradient(90deg, var(--gold), #ffdf70);
-  transition: width 1s ease;
-}
-.featured-progress-text {
-  font-size: 0.75rem; color: rgba(255,255,255,0.4);
-  margin-top: 6px; display: block;
-}
-
 /* ── Competition Grid ───────────────────────────────────────── */
 .comp-grid-wrap {
   width: 100%; max-width: 1100px; margin-top: 2rem;

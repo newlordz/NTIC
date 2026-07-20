@@ -341,14 +341,6 @@
       <!-- Time label -->
       <div class="countdown-time-label">{{ featuredTimeLabel }}</div>
 
-      <!-- Progress bar -->
-      <div class="featured-progress-wrap" *ngIf="featuredCompetition.maxTeams">
-        <div class="featured-progress-bar">
-          <div class="featured-progress-fill" [style.width.%]="(featuredCompetition.teams / featuredCompetition.maxTeams) * 100"></div>
-        </div>
-        <span class="featured-progress-text">{{ ((featuredCompetition.teams / featuredCompetition.maxTeams) * 100) | number:'1.0-0' }}% capacity filled</span>
-      </div>
-
       <a routerLink="/registration" [queryParams]="{ track: featuredCompetition.track }" class="countdown-cta stagger-8">
         <span class="material-symbols-outlined">{{ featuredCompetition.status === 'registration' ? 'app_registration' : 'emoji_events' }}</span>
         <span>{{ featuredCompetition.status === 'registration' ? 'Register Now' : featuredCompetition.status === 'completed' ? 'View Results' : 'Join Competition' }}</span>
