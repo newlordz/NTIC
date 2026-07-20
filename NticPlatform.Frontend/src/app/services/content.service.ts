@@ -562,7 +562,14 @@ export class ContentService {
 
   loadSampleData(): void {
     if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.clear(); // Wipes previous edits
+      const contentKeys = [
+        'championshipStories','hallOfFameEntries','leaderboardData','talentDiscovery',
+        'platformStats','heroSlides','newsFeedItems','countdownDate',
+        'users','pendingApprovals','rejectedApprovals','approvedApprovals',
+        'teams','submissions','auditLogs','csrUpdates','competitions',
+        'philosophyCards'
+      ];
+      contentKeys.forEach(k => localStorage.removeItem(k));
     }
     this.loadStateAndFallback();
   }
