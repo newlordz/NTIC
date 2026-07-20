@@ -507,18 +507,38 @@
           <div *ngIf="schoolStep === 2" class="step-content-pane fade-in">
             <div class="form-group">
               <label class="form-label">School Telephone *</label>
-              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="schoolForm.tel" name="schoolTel" (ngModelChange)="validatePhoneLive('schoolTel', $event)">
-              <div class="field-validation-msg" *ngIf="fieldValidation['schoolTel'] && fieldValidation['schoolTel'].status !== 'idle'" [ngClass]="fieldValidation['schoolTel'].status">
-                <span class="material-symbols-outlined">{{ fieldValidation['schoolTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolTel'].status === 'valid' ? 'check_circle' : fieldValidation['schoolTel'].status === 'taken' ? 'error' : 'warning' }}</span>
-                {{ fieldValidation['schoolTel'].message }}
+              <div style="display:flex;gap:8px;align-items:flex-start;">
+                <div style="flex:1;">
+                  <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="schoolForm.tel" name="schoolTel" (ngModelChange)="validatePhoneLive('schoolTel', $event)">
+                  <div class="field-validation-msg" *ngIf="fieldValidation['schoolTel'] && fieldValidation['schoolTel'].status !== 'idle'" [ngClass]="fieldValidation['schoolTel'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['schoolTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolTel'].status === 'valid' ? 'check_circle' : fieldValidation['schoolTel'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    {{ fieldValidation['schoolTel'].message }}
+                  </div>
+                </div>
+                <button *ngIf="canVerifyField('schoolTel')" class="verify-field-btn" (click)="sendVerifyOtp('schoolTel', 'phone', schoolForm.tel)">
+                  <span class="material-symbols-outlined">verified</span> Verify
+                </button>
+                <span *ngIf="fieldVerified['schoolTel']" class="verified-field-badge">
+                  <span class="material-symbols-outlined">check_circle</span> Verified
+                </span>
               </div>
             </div>
             <div class="form-group">
               <label class="form-label">School Email *</label>
-              <input class="form-control" type="email" placeholder="school@edu.gh" [(ngModel)]="schoolForm.email" name="schoolEmail" (ngModelChange)="validateEmailLive('schoolEmail', $event)">
-              <div class="field-validation-msg" *ngIf="fieldValidation['schoolEmail'] && fieldValidation['schoolEmail'].status !== 'idle'" [ngClass]="fieldValidation['schoolEmail'].status">
-                <span class="material-symbols-outlined">{{ fieldValidation['schoolEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolEmail'].status === 'valid' ? 'check_circle' : fieldValidation['schoolEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
-                {{ fieldValidation['schoolEmail'].message }}
+              <div style="display:flex;gap:8px;align-items:flex-start;">
+                <div style="flex:1;">
+                  <input class="form-control" type="email" placeholder="school@edu.gh" [(ngModel)]="schoolForm.email" name="schoolEmail" (ngModelChange)="validateEmailLive('schoolEmail', $event)">
+                  <div class="field-validation-msg" *ngIf="fieldValidation['schoolEmail'] && fieldValidation['schoolEmail'].status !== 'idle'" [ngClass]="fieldValidation['schoolEmail'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['schoolEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolEmail'].status === 'valid' ? 'check_circle' : fieldValidation['schoolEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    {{ fieldValidation['schoolEmail'].message }}
+                  </div>
+                </div>
+                <button *ngIf="canVerifyField('schoolEmail')" class="verify-field-btn" (click)="sendVerifyOtp('schoolEmail', 'email', schoolForm.email)">
+                  <span class="material-symbols-outlined">verified</span> Verify
+                </button>
+                <span *ngIf="fieldVerified['schoolEmail']" class="verified-field-badge">
+                  <span class="material-symbols-outlined">check_circle</span> Verified
+                </span>
               </div>
             </div>
             <div class="form-group">
@@ -548,18 +568,38 @@
             </div>
             <div class="form-group">
               <label class="form-label">Representative Email *</label>
-              <input class="form-control" type="email" placeholder="rep@edu.gh" [(ngModel)]="schoolForm.repEmail" name="schoolRepEmail" (ngModelChange)="validateEmailLive('schoolRepEmail', $event)">
-              <div class="field-validation-msg" *ngIf="fieldValidation['schoolRepEmail'] && fieldValidation['schoolRepEmail'].status !== 'idle'" [ngClass]="fieldValidation['schoolRepEmail'].status">
-                <span class="material-symbols-outlined">{{ fieldValidation['schoolRepEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolRepEmail'].status === 'valid' ? 'check_circle' : fieldValidation['schoolRepEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
-                {{ fieldValidation['schoolRepEmail'].message }}
+              <div style="display:flex;gap:8px;align-items:flex-start;">
+                <div style="flex:1;">
+                  <input class="form-control" type="email" placeholder="rep@edu.gh" [(ngModel)]="schoolForm.repEmail" name="schoolRepEmail" (ngModelChange)="validateEmailLive('schoolRepEmail', $event)">
+                  <div class="field-validation-msg" *ngIf="fieldValidation['schoolRepEmail'] && fieldValidation['schoolRepEmail'].status !== 'idle'" [ngClass]="fieldValidation['schoolRepEmail'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['schoolRepEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolRepEmail'].status === 'valid' ? 'check_circle' : fieldValidation['schoolRepEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    {{ fieldValidation['schoolRepEmail'].message }}
+                  </div>
+                </div>
+                <button *ngIf="canVerifyField('schoolRepEmail')" class="verify-field-btn" (click)="sendVerifyOtp('schoolRepEmail', 'email', schoolForm.repEmail)">
+                  <span class="material-symbols-outlined">verified</span> Verify
+                </button>
+                <span *ngIf="fieldVerified['schoolRepEmail']" class="verified-field-badge">
+                  <span class="material-symbols-outlined">check_circle</span> Verified
+                </span>
               </div>
             </div>
             <div class="form-group">
               <label class="form-label">Representative Telephone *</label>
-              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="schoolForm.repTel" name="schoolRepTel" (ngModelChange)="validatePhoneLive('schoolRepTel', $event)">
-              <div class="field-validation-msg" *ngIf="fieldValidation['schoolRepTel'] && fieldValidation['schoolRepTel'].status !== 'idle'" [ngClass]="fieldValidation['schoolRepTel'].status">
-                <span class="material-symbols-outlined">{{ fieldValidation['schoolRepTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolRepTel'].status === 'valid' ? 'check_circle' : fieldValidation['schoolRepTel'].status === 'taken' ? 'error' : 'warning' }}</span>
-                {{ fieldValidation['schoolRepTel'].message }}
+              <div style="display:flex;gap:8px;align-items:flex-start;">
+                <div style="flex:1;">
+                  <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="schoolForm.repTel" name="schoolRepTel" (ngModelChange)="validatePhoneLive('schoolRepTel', $event)">
+                  <div class="field-validation-msg" *ngIf="fieldValidation['schoolRepTel'] && fieldValidation['schoolRepTel'].status !== 'idle'" [ngClass]="fieldValidation['schoolRepTel'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['schoolRepTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolRepTel'].status === 'valid' ? 'check_circle' : fieldValidation['schoolRepTel'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    {{ fieldValidation['schoolRepTel'].message }}
+                  </div>
+                </div>
+                <button *ngIf="canVerifyField('schoolRepTel')" class="verify-field-btn" (click)="sendVerifyOtp('schoolRepTel', 'phone', schoolForm.repTel)">
+                  <span class="material-symbols-outlined">verified</span> Verify
+                </button>
+                <span *ngIf="fieldVerified['schoolRepTel']" class="verified-field-badge">
+                  <span class="material-symbols-outlined">check_circle</span> Verified
+                </span>
               </div>
             </div>
             <div class="form-actions">
@@ -1155,10 +1195,20 @@
             </div>
             <div>
               <label class="form-label">Contact *</label>
-              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="instructorForm.tel" name="instTel" (ngModelChange)="validatePhoneLive('instTel', $event)">
-              <div class="field-validation-msg" *ngIf="fieldValidation['instTel'] && fieldValidation['instTel'].status !== 'idle'" [ngClass]="fieldValidation['instTel'].status">
-                <span class="material-symbols-outlined">{{ fieldValidation['instTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['instTel'].status === 'valid' ? 'check_circle' : fieldValidation['instTel'].status === 'taken' ? 'error' : 'warning' }}</span>
-                {{ fieldValidation['instTel'].message }}
+              <div style="display:flex;gap:8px;align-items:flex-start;">
+                <div style="flex:1;">
+                  <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="instructorForm.tel" name="instTel" (ngModelChange)="validatePhoneLive('instTel', $event)">
+                  <div class="field-validation-msg" *ngIf="fieldValidation['instTel'] && fieldValidation['instTel'].status !== 'idle'" [ngClass]="fieldValidation['instTel'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['instTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['instTel'].status === 'valid' ? 'check_circle' : fieldValidation['instTel'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    {{ fieldValidation['instTel'].message }}
+                  </div>
+                </div>
+                <button *ngIf="canVerifyField('instTel')" class="verify-field-btn" (click)="sendVerifyOtp('instTel', 'phone', instructorForm.tel)">
+                  <span class="material-symbols-outlined">verified</span> Verify
+                </button>
+                <span *ngIf="fieldVerified['instTel']" class="verified-field-badge">
+                  <span class="material-symbols-outlined">check_circle</span> Verified
+                </span>
               </div>
             </div>
           </div>
@@ -1166,10 +1216,20 @@
           <div class="grid-2" style="margin-bottom: 20px;">
             <div>
               <label class="form-label">Email *</label>
-              <input class="form-control" type="email" placeholder="instructor@email.com" [(ngModel)]="instructorForm.email" name="instEmail" (ngModelChange)="validateEmailLive('instEmail', $event)">
-              <div class="field-validation-msg" *ngIf="fieldValidation['instEmail'] && fieldValidation['instEmail'].status !== 'idle'" [ngClass]="fieldValidation['instEmail'].status">
-                <span class="material-symbols-outlined">{{ fieldValidation['instEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['instEmail'].status === 'valid' ? 'check_circle' : fieldValidation['instEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
-                {{ fieldValidation['instEmail'].message }}
+              <div style="display:flex;gap:8px;align-items:flex-start;">
+                <div style="flex:1;">
+                  <input class="form-control" type="email" placeholder="instructor@email.com" [(ngModel)]="instructorForm.email" name="instEmail" (ngModelChange)="validateEmailLive('instEmail', $event)">
+                  <div class="field-validation-msg" *ngIf="fieldValidation['instEmail'] && fieldValidation['instEmail'].status !== 'idle'" [ngClass]="fieldValidation['instEmail'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['instEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['instEmail'].status === 'valid' ? 'check_circle' : fieldValidation['instEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    {{ fieldValidation['instEmail'].message }}
+                  </div>
+                </div>
+                <button *ngIf="canVerifyField('instEmail')" class="verify-field-btn" (click)="sendVerifyOtp('instEmail', 'email', instructorForm.email)">
+                  <span class="material-symbols-outlined">verified</span> Verify
+                </button>
+                <span *ngIf="fieldVerified['instEmail']" class="verified-field-badge">
+                  <span class="material-symbols-outlined">check_circle</span> Verified
+                </span>
               </div>
             </div>
             <div>
@@ -1648,19 +1708,39 @@
             </div>
             <div class="form-group">
               <label class="form-label">Contact Number *</label>
-              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="sponsorForm.repContact" name="sponsRepContact" (ngModelChange)="validatePhoneLive('sponsContact', $event)">
-              <div class="field-validation-msg" *ngIf="fieldValidation['sponsContact'] && fieldValidation['sponsContact'].status !== 'idle'" [ngClass]="fieldValidation['sponsContact'].status">
-                <span class="material-symbols-outlined">{{ fieldValidation['sponsContact'].status === 'checking' ? 'hourglass_top' : fieldValidation['sponsContact'].status === 'valid' ? 'check_circle' : fieldValidation['sponsContact'].status === 'taken' ? 'error' : 'warning' }}</span>
-                {{ fieldValidation['sponsContact'].message }}
+              <div style="display:flex;gap:8px;align-items:flex-start;">
+                <div style="flex:1;">
+                  <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="sponsorForm.repContact" name="sponsRepContact" (ngModelChange)="validatePhoneLive('sponsContact', $event)">
+                  <div class="field-validation-msg" *ngIf="fieldValidation['sponsContact'] && fieldValidation['sponsContact'].status !== 'idle'" [ngClass]="fieldValidation['sponsContact'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['sponsContact'].status === 'checking' ? 'hourglass_top' : fieldValidation['sponsContact'].status === 'valid' ? 'check_circle' : fieldValidation['sponsContact'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    {{ fieldValidation['sponsContact'].message }}
+                  </div>
+                </div>
+                <button *ngIf="canVerifyField('sponsContact')" class="verify-field-btn" (click)="sendVerifyOtp('sponsContact', 'phone', sponsorForm.repContact)">
+                  <span class="material-symbols-outlined">verified</span> Verify
+                </button>
+                <span *ngIf="fieldVerified['sponsContact']" class="verified-field-badge">
+                  <span class="material-symbols-outlined">check_circle</span> Verified
+                </span>
               </div>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">Corporate Email Address *</label>
-            <input class="form-control" type="email" placeholder="csr@company.com" [(ngModel)]="sponsorForm.email" name="sponsEmail" (ngModelChange)="validateEmailLive('sponsEmail', $event)">
-            <div class="field-validation-msg" *ngIf="fieldValidation['sponsEmail'] && fieldValidation['sponsEmail'].status !== 'idle'" [ngClass]="fieldValidation['sponsEmail'].status">
-              <span class="material-symbols-outlined">{{ fieldValidation['sponsEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['sponsEmail'].status === 'valid' ? 'check_circle' : fieldValidation['sponsEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
-              {{ fieldValidation['sponsEmail'].message }}
+            <div style="display:flex;gap:8px;align-items:flex-start;">
+              <div style="flex:1;">
+                <input class="form-control" type="email" placeholder="csr@company.com" [(ngModel)]="sponsorForm.email" name="sponsEmail" (ngModelChange)="validateEmailLive('sponsEmail', $event)">
+                <div class="field-validation-msg" *ngIf="fieldValidation['sponsEmail'] && fieldValidation['sponsEmail'].status !== 'idle'" [ngClass]="fieldValidation['sponsEmail'].status">
+                  <span class="material-symbols-outlined">{{ fieldValidation['sponsEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['sponsEmail'].status === 'valid' ? 'check_circle' : fieldValidation['sponsEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                  {{ fieldValidation['sponsEmail'].message }}
+                </div>
+              </div>
+              <button *ngIf="canVerifyField('sponsEmail')" class="verify-field-btn" (click)="sendVerifyOtp('sponsEmail', 'email', sponsorForm.email)">
+                <span class="material-symbols-outlined">verified</span> Verify
+              </button>
+              <span *ngIf="fieldVerified['sponsEmail']" class="verified-field-badge">
+                <span class="material-symbols-outlined">check_circle</span> Verified
+              </span>
             </div>
           </div>
           <div class="grid-2">
@@ -1705,7 +1785,7 @@
             <span>I agree to the <a (click)="openTermsModal('sponsor')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
           </label>
           <div class="form-actions">
-            <button class="btn btn-subtle">Save Draft</button>
+            <button class="btn btn-subtle" (click)="saveDraft()">Save Draft</button>
             <button class="btn btn-primary" (click)="submitRegistration()" [disabled]="!sponsorForm.acceptedTerms">
               Register Corporate Sponsor
             </button>
@@ -1827,20 +1907,40 @@
             </div>
             <div class="form-group">
               <label class="form-label">Contact *</label>
-              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="judgeForm.tel" name="jdTel" (ngModelChange)="validatePhoneLive('jdTel', $event)">
-              <div class="field-validation-msg" *ngIf="fieldValidation['jdTel'] && fieldValidation['jdTel'].status !== 'idle'" [ngClass]="fieldValidation['jdTel'].status">
-                <span class="material-symbols-outlined">{{ fieldValidation['jdTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['jdTel'].status === 'valid' ? 'check_circle' : fieldValidation['jdTel'].status === 'taken' ? 'error' : 'warning' }}</span>
-                {{ fieldValidation['jdTel'].message }}
+              <div style="display:flex;gap:8px;align-items:flex-start;">
+                <div style="flex:1;">
+                  <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="judgeForm.tel" name="jdTel" (ngModelChange)="validatePhoneLive('jdTel', $event)">
+                  <div class="field-validation-msg" *ngIf="fieldValidation['jdTel'] && fieldValidation['jdTel'].status !== 'idle'" [ngClass]="fieldValidation['jdTel'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['jdTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['jdTel'].status === 'valid' ? 'check_circle' : fieldValidation['jdTel'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    {{ fieldValidation['jdTel'].message }}
+                  </div>
+                </div>
+                <button *ngIf="canVerifyField('jdTel')" class="verify-field-btn" (click)="sendVerifyOtp('jdTel', 'phone', judgeForm.tel)">
+                  <span class="material-symbols-outlined">verified</span> Verify
+                </button>
+                <span *ngIf="fieldVerified['jdTel']" class="verified-field-badge">
+                  <span class="material-symbols-outlined">check_circle</span> Verified
+                </span>
               </div>
             </div>
           </div>
           <div class="grid-2">
             <div class="form-group">
               <label class="form-label">Email *</label>
-              <input class="form-control" type="email" placeholder="judge@email.com" [(ngModel)]="judgeForm.email" name="jdEmail" (ngModelChange)="validateEmailLive('jdEmail', $event)">
-              <div class="field-validation-msg" *ngIf="fieldValidation['jdEmail'] && fieldValidation['jdEmail'].status !== 'idle'" [ngClass]="fieldValidation['jdEmail'].status">
-                <span class="material-symbols-outlined">{{ fieldValidation['jdEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['jdEmail'].status === 'valid' ? 'check_circle' : fieldValidation['jdEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
-                {{ fieldValidation['jdEmail'].message }}
+              <div style="display:flex;gap:8px;align-items:flex-start;">
+                <div style="flex:1;">
+                  <input class="form-control" type="email" placeholder="judge@email.com" [(ngModel)]="judgeForm.email" name="jdEmail" (ngModelChange)="validateEmailLive('jdEmail', $event)">
+                  <div class="field-validation-msg" *ngIf="fieldValidation['jdEmail'] && fieldValidation['jdEmail'].status !== 'idle'" [ngClass]="fieldValidation['jdEmail'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['jdEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['jdEmail'].status === 'valid' ? 'check_circle' : fieldValidation['jdEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    {{ fieldValidation['jdEmail'].message }}
+                  </div>
+                </div>
+                <button *ngIf="canVerifyField('jdEmail')" class="verify-field-btn" (click)="sendVerifyOtp('jdEmail', 'email', judgeForm.email)">
+                  <span class="material-symbols-outlined">verified</span> Verify
+                </button>
+                <span *ngIf="fieldVerified['jdEmail']" class="verified-field-badge">
+                  <span class="material-symbols-outlined">check_circle</span> Verified
+                </span>
               </div>
             </div>
             <div class="form-group">
@@ -1881,7 +1981,7 @@
             <span>I agree to the <a (click)="openTermsModal('judge')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
           </label>
           <div class="form-actions" style="margin-top: 24px;">
-            <button class="btn btn-subtle">Save Draft</button>
+            <button class="btn btn-subtle" (click)="saveDraft()">Save Draft</button>
             <button class="btn btn-primary" (click)="submitRegistration()" [disabled]="!judgeForm.acceptedTerms">
               <span class="material-symbols-outlined">gavel</span>
               Submit Judge Application
@@ -2294,6 +2394,31 @@
     </div>
     <div class="custom-alert-actions">
       <button class="btn-alert-dismiss" (click)="closeCustomAlert()">Got It</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ FIELD VERIFICATION OTP MODAL ═══ -->
+<div class="custom-modal-backdrop" *ngIf="verifyOtpModalOpen" (click)="closeVerifyModal()">
+  <div class="custom-alert-card info" style="max-width:400px;" (click)="$event.stopPropagation()">
+    <div class="custom-alert-icon-wrap">
+      <span class="material-symbols-outlined">shield</span>
+    </div>
+    <div class="custom-alert-content">
+      <h4 class="custom-alert-title">Verify {{ verifyTargetType === 'email' ? 'Email' : 'Phone Number' }}</h4>
+      <p class="custom-alert-message" style="font-size:13px;">
+        Enter the 6-digit code sent to<br><strong>{{ verifyTargetValue }}</strong>
+      </p>
+      <div style="margin-top:12px;">
+        <input class="form-control" type="text" maxlength="6" placeholder="000000"
+          [(ngModel)]="verifyOtpInput" style="text-align:center;font-size:1.4rem;letter-spacing:8px;font-weight:700;max-width:180px;margin:0 auto;display:block;"
+          (keyup.enter)="confirmVerifyOtp()">
+        <p *ngIf="verifyOtpError" style="color:#ef4444;font-size:12px;margin-top:6px;text-align:center;">{{ verifyOtpError }}</p>
+      </div>
+    </div>
+    <div class="custom-alert-actions" style="gap:8px;">
+      <button class="btn-alert-dismiss" style="background:var(--outline-variant);color:var(--on-surface);" (click)="closeVerifyModal()">Cancel</button>
+      <button class="btn-alert-dismiss" (click)="confirmVerifyOtp()">Verify</button>
     </div>
   </div>
 </div>

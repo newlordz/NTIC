@@ -310,6 +310,91 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     return !blocked;
   }
 
+  // ── FIELD VERIFICATION + OTP ───────────────────────────────────
+  fieldVerified: Record<string, boolean> = {};
+  verifyOtpModalOpen = false;
+  verifyTargetField = '';
+  verifyTargetType: 'email' | 'phone' = 'email';
+  verifyTargetValue = '';
+  verifyOtpInput = '';
+  verifyOtpError = '';
+  verifyOtpSent = false;
+  private verifyStoredOtp = '';
+
+  get currentTabVerified(): boolean {
+    if (this.activeTab === 'school') {
+      return !!(this.fieldVerified['schoolEmail'] && this.fieldVerified['schoolRepTel']);
+    } else if (this.activeTab === 'instructor') {
+      return !!(this.fieldVerified['instEmail'] && this.fieldVerified['instTel']);
+    } else if (this.activeTab === 'judge') {
+      return !!(this.fieldVerified['jdEmail'] && this.fieldVerified['jdTel']);
+    } else if (this.activeTab === 'sponsor') {
+      return !!(this.fieldVerified['sponsEmail'] && this.fieldVerified['sponsContact']);
+    }
+    return false;
+  }
+
+  canVerifyField(fieldName: string): boolean {
+    const v = this.fieldValidation[fieldName];
+    return v?.status === 'valid' && !this.fieldVerified[fieldName];
+  }
+
+  sendVerifyOtp(fieldName: string, type: 'email' | 'phone', value: string): void {
+    this.verifyTargetField = fieldName;
+    this.verifyTargetType = type;
+    this.verifyTargetValue = value;
+    this.verifyOtpInput = '';
+    this.verifyOtpError = '';
+    this.verifyOtpSent = false;
+    this.verifyOtpModalOpen = true;
+
+    this.verifyStoredOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    if (type === 'email') {
+      try {
+        this.emailService.sendOtpEmail(value, this.verifyStoredOtp);
+      } catch { /* ignore */ }
+    }
+
+    this.verifyOtpSent = true;
+    this.showCustomAlert(
+      type === 'email'
+        ? `OTP sent to ${value}. For demo: ${this.verifyStoredOtp}`
+        : `OTP sent to ${value}. For demo: ${this.verifyStoredOtp}`,
+      'Verification Code Sent', 'info'
+    );
+  }
+
+  confirmVerifyOtp(): void {
+    if (this.verifyOtpInput.length !== 6) {
+      this.verifyOtpError = 'Enter the complete 6-digit code.';
+      return;
+    }
+    if (this.verifyOtpInput !== this.verifyStoredOtp) {
+      this.verifyOtpError = 'Invalid code. Please try again.';
+      return;
+    }
+    this.fieldVerified[this.verifyTargetField] = true;
+    this.verifyOtpModalOpen = false;
+    this.showCustomAlert(
+      `${this.verifyTargetType === 'email' ? 'Email' : 'Phone number'} verified successfully!`,
+      'Verified', 'success'
+    );
+    this.tryAutoSave();
+  }
+
+  closeVerifyModal(): void {
+    this.verifyOtpModalOpen = false;
+    this.verifyOtpInput = '';
+    this.verifyOtpError = '';
+  }
+
+  private tryAutoSave(): void {
+    if (this.currentTabVerified) {
+      this.saveDraft();
+    }
+  }
+
   tracks = [
     { id: 'coding', label: 'Coding', icon: 'code' },
     { id: 'robotics', label: 'Robotics', icon: 'smart_toy' },

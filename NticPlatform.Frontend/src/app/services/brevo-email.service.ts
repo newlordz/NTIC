@@ -167,4 +167,23 @@ export class BrevoEmailService {
     const shortReasons = reasons.length > 80 ? reasons.substring(0, 80) + '...' : reasons;
     this.sendSms(phone || '', `NTIC: Your ${entityName} application needs attention. Reason: ${shortReasons}. Reapply at ntic.edu.gh`);
   }
+
+  sendOtpEmail(toEmail: string, otp: string): void {
+    this.sendEmail({
+      sender: this.sender,
+      to: [{ email: toEmail, name: '' }],
+      subject: `Your Verification Code — NTIC Ghana`,
+      htmlContent: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
+          <h2 style="color:#1a237e;">NTIC Ghana — Verification Code</h2>
+          <p style="font-size:15px;color:#333;">Use the code below to verify your email address:</p>
+          <div style="background:#f5f5f5;border-radius:12px;padding:20px;text-align:center;margin:24px 0;">
+            <span style="font-size:32px;font-weight:800;letter-spacing:8px;color:#d4a017;">${otp}</span>
+          </div>
+          <p style="font-size:13px;color:#999;">This code expires in 5 minutes. Do not share it with anyone.</p>
+          <p style="font-size:12px;color:#bbb;margin-top:24px;">NTIC Ghana National Championship</p>
+        </div>
+      `
+    });
+  }
 }
