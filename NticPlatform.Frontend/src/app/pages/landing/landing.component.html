@@ -252,15 +252,57 @@
   </section>
 
   <!-- ══════════════════════════════════════════
-       COMPETITION COUNTDOWN CLOCK
+       COMPETITIONS — HERO COUNTDOWN + GRID
   ══════════════════════════════════════════ -->
   <section class="countdown-section scroll-animate fade-up">
-    <div class="countdown-inner">
+
+    <!-- ── EMPTY STATE ─────────────────────────────────── -->
+    <div class="countdown-inner" *ngIf="!hasCompetitions">
+      <div class="countdown-label">
+        <span class="material-symbols-outlined" style="font-size:2rem;">emoji_events</span>
+        <span>Competitions Coming Soon</span>
+      </div>
+      <p style="color:rgba(255,255,255,0.5);font-size:1.1rem;max-width:500px;margin:0 auto;">
+        We're preparing something extraordinary. Stay tuned for competition announcements.
+      </p>
+    </div>
+
+    <!-- ── FEATURED COMPETITION (HERO) ────────────────── -->
+    <div class="countdown-inner" *ngIf="hasCompetitions && featuredCompetition">
       <div class="countdown-label">
         <span class="live-dot pulse"></span>
-        <span>Next National Heat Begins In</span>
+        <span>{{ featuredStatusLabel }}</span>
       </div>
-      <div class="countdown-clock">
+
+      <!-- Featured card header -->
+      <div class="featured-comp-header">
+        <div class="featured-comp-icon">
+          <span class="material-symbols-outlined">{{ trackIcon(featuredCompetition.track) }}</span>
+        </div>
+        <div class="featured-comp-meta">
+          <h2 class="featured-comp-title">{{ featuredCompetition.title }}</h2>
+          <div class="featured-comp-tags">
+            <span class="comp-tag comp-tag-track">
+              <span class="material-symbols-outlined" style="font-size:14px;">{{ trackIcon(featuredCompetition.track) }}</span>
+              {{ featuredCompetition.track | titlecase }}
+            </span>
+            <span class="comp-tag" *ngIf="featuredCompetition.type">
+              {{ featuredCompetition.type | titlecase }}
+            </span>
+            <span class="comp-tag comp-tag-prize" *ngIf="featuredCompetition.prize">
+              <span class="material-symbols-outlined" style="font-size:14px;">workspace_premium</span>
+              {{ featuredCompetition.prize }}
+            </span>
+          </div>
+        </div>
+        <div class="featured-comp-teams-pill">
+          <span class="material-symbols-outlined" style="font-size:18px;">groups</span>
+          {{ featuredCompetition.teams }}{{ featuredCompetition.maxTeams ? '/' + featuredCompetition.maxTeams : '' }}
+        </div>
+      </div>
+
+      <!-- Flip countdown clock -->
+      <div class="countdown-clock" *ngIf="featuredCompetition.status !== 'completed'">
         <div class="flip-unit stagger-1" id="cd-days">
           <div class="flip-card">
             <span class="flip-top">{{ countdownDays | number:'2.0-0' }}</span>
@@ -289,11 +331,62 @@
           <span class="flip-label">Secs</span>
         </div>
       </div>
-      <a routerLink="/registration" class="countdown-cta stagger-8">
-        <span class="material-symbols-outlined">emoji_events</span>
-        <span>Register Before Deadline</span>
+
+      <!-- Completed badge instead of countdown -->
+      <div class="completed-badge" *ngIf="featuredCompetition.status === 'completed'">
+        <span class="material-symbols-outlined">check_circle</span>
+        <span>Competition Ended</span>
+      </div>
+
+      <!-- Time label -->
+      <div class="countdown-time-label">{{ featuredTimeLabel }}</div>
+
+      <!-- Progress bar -->
+      <div class="featured-progress-wrap" *ngIf="featuredCompetition.maxTeams">
+        <div class="featured-progress-bar">
+          <div class="featured-progress-fill" [style.width.%]="(featuredCompetition.teams / featuredCompetition.maxTeams) * 100"></div>
+        </div>
+        <span class="featured-progress-text">{{ ((featuredCompetition.teams / featuredCompetition.maxTeams) * 100) | number:'1.0-0' }}% capacity filled</span>
+      </div>
+
+      <a routerLink="/registration" [queryParams]="{ track: featuredCompetition.track }" class="countdown-cta stagger-8">
+        <span class="material-symbols-outlined">{{ featuredCompetition.status === 'registration' ? 'app_registration' : 'emoji_events' }}</span>
+        <span>{{ featuredCompetition.status === 'registration' ? 'Register Now' : featuredCompetition.status === 'completed' ? 'View Results' : 'Join Competition' }}</span>
         <span class="material-symbols-outlined">arrow_right_alt</span>
       </a>
+    </div>
+
+    <!-- ── COMPETITION GRID ────────────────────────────── -->
+    <div class="comp-grid-wrap" *ngIf="gridCompetitions.length > 0">
+      <div class="comp-grid-scroll">
+        <div class="comp-card" *ngFor="let comp of gridCompetitions">
+          <div class="comp-card-top">
+            <div class="comp-card-icon">
+              <span class="material-symbols-outlined">{{ trackIcon(comp.track) }}</span>
+            </div>
+            <span class="comp-card-status" [ngClass]="statusClass(comp.status)">{{ statusLabel(comp.status) }}</span>
+          </div>
+          <h3 class="comp-card-title">{{ comp.title }}</h3>
+          <p class="comp-card-track">{{ comp.track | titlecase }}<span *ngIf="comp.type"> · {{ comp.type | titlecase }}</span></p>
+          <div class="comp-card-info">
+            <div class="comp-card-info-item" *ngIf="comp.status !== 'completed'">
+              <span class="material-symbols-outlined" style="font-size:14px;">schedule</span>
+              <span *ngIf="compMiniCountdown(comp) as mc">{{ mc.days }}d {{ mc.hours }}h {{ mc.mins }}m</span>
+            </div>
+            <div class="comp-card-info-item" *ngIf="comp.status === 'completed'">
+              <span class="material-symbols-outlined" style="font-size:14px;">event_available</span>
+              <span>Ended {{ compDeadlineLabel(comp) }}</span>
+            </div>
+            <div class="comp-card-info-item">
+              <span class="material-symbols-outlined" style="font-size:14px;">groups</span>
+              <span>{{ compTeamsLabel(comp) }}</span>
+            </div>
+          </div>
+          <div class="comp-card-progress" *ngIf="comp.maxTeams">
+            <div class="comp-card-progress-fill" [style.width.%]="(comp.teams / comp.maxTeams) * 100"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 

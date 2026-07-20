@@ -170,8 +170,103 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   countdownSecs = 0;
   countdownTick = false;
   private countdownInterval: any;
+
+  // ── COMPETITIONS HERO + GRID ─────────────────────────────────
+  get featuredCompetition(): any | null {
+    const live = this.contentService.competitions.filter(c => c.status === 'registration' || c.status === 'active');
+    if (live.length) return live.sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime())[0];
+    const completed = this.contentService.competitions.filter(c => c.status === 'completed');
+    if (completed.length) return completed.sort((a, b) => new Date(b.deadline).getTime() - new Date(a.deadline).getTime())[0];
+    return null;
+  }
+
+  get gridCompetitions(): any[] {
+    const featured = this.featuredCompetition;
+    return this.contentService.competitions
+      .filter(c => c.status !== 'draft' && c.status !== 'archived' && c.id !== featured?.id)
+      .sort((a, b) => {
+        const order: Record<string, number> = { registration: 0, active: 1, completed: 2 };
+        return (order[a.status] ?? 3) - (order[b.status] ?? 3);
+      });
+  }
+
+  get hasCompetitions(): boolean {
+    return this.contentService.competitions.some(c => c.status !== 'draft' && c.status !== 'archived');
+  }
+
   get competitionDate(): Date {
+    const feat = this.featuredCompetition;
+    if (feat) return new Date(feat.deadline);
     return new Date(this.contentService.countdownDate || '2026-08-15T09:00:00');
+  }
+
+  get featuredStatusClass(): string {
+    const s = this.featuredCompetition?.status;
+    if (s === 'registration') return 'status-registration';
+    if (s === 'active') return 'status-active';
+    if (s === 'completed') return 'status-completed';
+    return 'status-active';
+  }
+
+  get featuredStatusLabel(): string {
+    const s = this.featuredCompetition?.status;
+    if (s === 'registration') return 'Registration Open';
+    if (s === 'active') return 'In Progress';
+    if (s === 'completed') return 'Results In';
+    return 'Upcoming';
+  }
+
+  get featuredTimeLabel(): string {
+    const feat = this.featuredCompetition;
+    if (!feat) return 'Deadline';
+    if (feat.status === 'completed') return 'Ended';
+    if (feat.status === 'registration') return 'Registration Closes In';
+    return 'Competition Ends In';
+  }
+
+  trackIcon(track: string): string {
+    const icons: Record<string, string> = {
+      coding: 'code', robotics: 'precision_manufacturing', ai: 'psychology',
+      cyber: 'shield', stem: 'science', 'web-dev': 'language',
+      'app-dev': 'phone_iphone', 'ai-ml': 'smart_toy'
+    };
+    return icons[track?.toLowerCase()] || 'emoji_events';
+  }
+
+  statusClass(status: string): string {
+    if (status === 'registration') return 'status-registration';
+    if (status === 'active') return 'status-active';
+    if (status === 'completed') return 'status-completed';
+    return 'status-pending';
+  }
+
+  statusLabel(status: string): string {
+    if (status === 'registration') return 'Registration';
+    if (status === 'active') return 'Live';
+    if (status === 'completed') return 'Completed';
+    return 'Upcoming';
+  }
+
+  compDeadlineLabel(comp: any): string {
+    if (comp.status === 'completed') return 'Ended';
+    const d = new Date(comp.deadline);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  compTeamsLabel(comp: any): string {
+    if (comp.maxTeams) return `${comp.teams}/${comp.maxTeams} teams`;
+    return `${comp.teams} teams`;
+  }
+
+  compMiniCountdown(comp: any): { days: number; hours: number; mins: number } | null {
+    if (comp.status === 'completed') return null;
+    const dist = new Date(comp.deadline).getTime() - Date.now();
+    if (dist <= 0) return { days: 0, hours: 0, mins: 0 };
+    return {
+      days: Math.floor(dist / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+      mins: Math.floor((dist % (1000 * 60)) / (1000 * 60))
+    };
   }
 
 
