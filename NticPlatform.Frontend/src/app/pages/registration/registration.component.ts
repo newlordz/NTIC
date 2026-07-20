@@ -221,6 +221,95 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     } as { [key: string]: boolean }
   };
 
+  // ── LIVE VALIDATION STATE ────────────────────────────────────────
+  fieldValidation: Record<string, { status: 'idle' | 'checking' | 'valid' | 'taken' | 'invalid'; message: string }> = {};
+  private validationTimers: Record<string, any> = {};
+
+  validateEmailLive(fieldName: string, value: string): void {
+    if (this.validationTimers[fieldName]) clearTimeout(this.validationTimers[fieldName]);
+    if (!value || !value.trim()) {
+      this.fieldValidation[fieldName] = { status: 'idle', message: '' };
+      return;
+    }
+    this.fieldValidation[fieldName] = { status: 'checking', message: 'Checking...' };
+    this.validationTimers[fieldName] = setTimeout(() => {
+      if (!this.contentService.isValidEmail(value)) {
+        this.fieldValidation[fieldName] = { status: 'invalid', message: 'Invalid email format' };
+      } else if (this.contentService.isEmailTaken(value)) {
+        this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered' };
+      } else {
+        this.fieldValidation[fieldName] = { status: 'valid', message: 'Email available' };
+      }
+    }, 400);
+  }
+
+  validatePhoneLive(fieldName: string, value: string): void {
+    if (this.validationTimers[fieldName]) clearTimeout(this.validationTimers[fieldName]);
+    if (!value || !value.trim()) {
+      this.fieldValidation[fieldName] = { status: 'idle', message: '' };
+      return;
+    }
+    this.fieldValidation[fieldName] = { status: 'checking', message: 'Checking...' };
+    this.validationTimers[fieldName] = setTimeout(() => {
+      if (!this.contentService.isValidGhanaPhone(value)) {
+        this.fieldValidation[fieldName] = { status: 'invalid', message: 'Enter a valid Ghana number (0XX XXX XXXX or +233...)' };
+      } else if (this.contentService.isPhoneTaken(value)) {
+        this.fieldValidation[fieldName] = { status: 'taken', message: 'This number is already registered' };
+      } else {
+        this.fieldValidation[fieldName] = { status: 'valid', message: 'Number available' };
+      }
+    }, 400);
+  }
+
+  hasValidationErrors(): boolean {
+    return Object.values(this.fieldValidation).some(v => v.status === 'taken' || v.status === 'invalid');
+  }
+
+  private validateCurrentTab(): boolean {
+    const fields: Record<string, { value: string; type: 'email' | 'phone' }> = {};
+    if (this.activeTab === 'school') {
+      fields['schoolEmail'] = { value: this.schoolForm.email, type: 'email' };
+      fields['schoolRepEmail'] = { value: this.schoolForm.repEmail, type: 'email' };
+      fields['schoolTel'] = { value: this.schoolForm.tel, type: 'phone' };
+      fields['schoolRepTel'] = { value: this.schoolForm.repTel, type: 'phone' };
+    } else if (this.activeTab === 'instructor') {
+      fields['instEmail'] = { value: this.instructorForm.email, type: 'email' };
+      fields['instTel'] = { value: this.instructorForm.tel, type: 'phone' };
+    } else if (this.activeTab === 'judge') {
+      fields['jdEmail'] = { value: this.judgeForm.email, type: 'email' };
+      fields['jdTel'] = { value: this.judgeForm.tel, type: 'phone' };
+    } else if (this.activeTab === 'sponsor') {
+      fields['sponsEmail'] = { value: this.sponsorForm.email, type: 'email' };
+      fields['sponsContact'] = { value: this.sponsorForm.repContact, type: 'phone' };
+    }
+
+    let blocked = false;
+    for (const [key, { value, type }] of Object.entries(fields)) {
+      if (!value?.trim()) continue;
+      if (type === 'email') {
+        if (!this.contentService.isValidEmail(value)) {
+          this.fieldValidation[key] = { status: 'invalid', message: 'Invalid email format' };
+          blocked = true;
+        } else if (this.contentService.isEmailTaken(value)) {
+          this.fieldValidation[key] = { status: 'taken', message: 'This email is already registered' };
+          blocked = true;
+        }
+      } else {
+        if (!this.contentService.isValidGhanaPhone(value)) {
+          this.fieldValidation[key] = { status: 'invalid', message: 'Enter a valid Ghana number' };
+          blocked = true;
+        } else if (this.contentService.isPhoneTaken(value)) {
+          this.fieldValidation[key] = { status: 'taken', message: 'This number is already registered' };
+          blocked = true;
+        }
+      }
+    }
+    if (blocked) {
+      this.showCustomAlert('Please fix the highlighted email/phone errors before submitting.', 'Validation Error', 'warning');
+    }
+    return !blocked;
+  }
+
   tracks = [
     { id: 'coding', label: 'Coding', icon: 'code' },
     { id: 'robotics', label: 'Robotics', icon: 'smart_toy' },
@@ -632,6 +721,18 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       if (!this.teamForm.name || !this.teamForm.leadName) {
         this.showCustomAlert('Please enter your Group / Team Name and Team Lead full name.', 'Missing Information', 'warning');
         return;
+      }
+      // Validate all provided emails
+      const teamEmails = [this.teamForm.leadEmail, this.teamForm.member2Email, this.teamForm.member3Email, this.teamForm.member4Email, this.teamForm.member5Email].filter(e => e?.trim());
+      for (const email of teamEmails) {
+        if (!this.contentService.isValidEmail(email!)) {
+          this.showCustomAlert('One or more team emails have invalid format. Please check.', 'Invalid Email', 'warning');
+          return;
+        }
+        if (this.contentService.isEmailTaken(email!)) {
+          this.showCustomAlert(`The email "${email}" is already registered. Please use a different email.`, 'Email Taken', 'warning');
+          return;
+        }
       }
       const ticket = `NTIC-GRP-${Math.floor(1000 + Math.random() * 9000)}`;
       const leadEmail = this.teamForm.leadEmail?.trim() || `${ticket.toLowerCase()}@squad.ntic.gh`;
@@ -1047,6 +1148,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   async submitRegistration(): Promise<void> {
     if (this.isSubmitting) return;
+    if (!this.validateCurrentTab()) return;
     this.isSubmitting = true;
 
     // Capture school logo file ID (not base64 — too large for storage)

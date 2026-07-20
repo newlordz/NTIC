@@ -697,6 +697,45 @@ export class ContentService {
     this.saveState('users', this.users);
   }
 
+  // ── Validation Helpers ───────────────────────────────────────────
+
+  isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  isEmailTaken(email: string, excludeId?: string): boolean {
+    const e = email.trim().toLowerCase();
+    if (!e) return false;
+    if (this.users.some(u => u.id !== excludeId && u.email?.trim().toLowerCase() === e)) return true;
+    if (this.pendingApprovals.some(a => a.id !== excludeId && (a.contact?.trim().toLowerCase() === e || a.details?.email?.trim().toLowerCase() === e || a.details?.repEmail?.trim().toLowerCase() === e))) return true;
+    if (this.approvedApprovals.some(a => a.id !== excludeId && (a.contact?.trim().toLowerCase() === e || a.details?.email?.trim().toLowerCase() === e || a.details?.repEmail?.trim().toLowerCase() === e))) return true;
+    if (this.rejectedApprovals.some(a => a.id !== excludeId && (a.contact?.trim().toLowerCase() === e || a.details?.email?.trim().toLowerCase() === e || a.details?.repEmail?.trim().toLowerCase() === e))) return true;
+    return false;
+  }
+
+  isValidGhanaPhone(phone: string): boolean {
+    const cleaned = phone.replace(/[\s\-().]/g, '');
+    if (/^\+233[0-9]{9}$/.test(cleaned)) return true;
+    if (/^233[0-9]{9}$/.test(cleaned)) return true;
+    if (/^0[0-9]{9}$/.test(cleaned)) return true;
+    return false;
+  }
+
+  isPhoneTaken(phone: string, excludeId?: string): boolean {
+    const p = phone.replace(/[\s\-().]/g, '');
+    if (!p) return false;
+    const matches = (val: string | undefined) => {
+      if (!val) return false;
+      const v = val.replace(/[\s\-().]/g, '');
+      return v === p || v.endsWith(p) || p.endsWith(v);
+    };
+    if (this.users.some(u => u.id !== excludeId && matches(u.phone))) return true;
+    if (this.pendingApprovals.some(a => a.id !== excludeId && (matches(a.contact) || matches(a.details?.phone) || matches(a.details?.repTel)))) return true;
+    if (this.approvedApprovals.some(a => a.id !== excludeId && (matches(a.contact) || matches(a.details?.phone) || matches(a.details?.repTel)))) return true;
+    if (this.rejectedApprovals.some(a => a.id !== excludeId && (matches(a.contact) || matches(a.details?.phone) || matches(a.details?.repTel)))) return true;
+    return false;
+  }
+
   // ── Approval Management Helpers ──────────────────────────────────
   
   saveApprovals(approvalsList: ApprovalRequest[]): void {

@@ -5073,3 +5073,19 @@ select.form-control {
     }
   }
 }
+
+/* ── Live Field Validation Indicators ──────────────────────────── */
+.field-validation-msg {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  margin-top: 4px;
+  padding: 4px 0;
+  .material-symbols-outlined { font-size: 15px; }
+  &.checking { color: #f59e0b; }
+  &.valid    { color: #22c55e; }
+  &.taken    { color: #ef4444; }
+  &.invalid  { color: #ef4444; }
+}

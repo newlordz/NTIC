@@ -507,11 +507,19 @@
           <div *ngIf="schoolStep === 2" class="step-content-pane fade-in">
             <div class="form-group">
               <label class="form-label">School Telephone *</label>
-              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="schoolForm.tel" name="schoolTel">
+              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="schoolForm.tel" name="schoolTel" (ngModelChange)="validatePhoneLive('schoolTel', $event)">
+              <div class="field-validation-msg" *ngIf="fieldValidation['schoolTel'] && fieldValidation['schoolTel'].status !== 'idle'" [ngClass]="fieldValidation['schoolTel'].status">
+                <span class="material-symbols-outlined">{{ fieldValidation['schoolTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolTel'].status === 'valid' ? 'check_circle' : fieldValidation['schoolTel'].status === 'taken' ? 'error' : 'warning' }}</span>
+                {{ fieldValidation['schoolTel'].message }}
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">School Email *</label>
-              <input class="form-control" type="email" placeholder="school@edu.gh" [(ngModel)]="schoolForm.email" name="schoolEmail">
+              <input class="form-control" type="email" placeholder="school@edu.gh" [(ngModel)]="schoolForm.email" name="schoolEmail" (ngModelChange)="validateEmailLive('schoolEmail', $event)">
+              <div class="field-validation-msg" *ngIf="fieldValidation['schoolEmail'] && fieldValidation['schoolEmail'].status !== 'idle'" [ngClass]="fieldValidation['schoolEmail'].status">
+                <span class="material-symbols-outlined">{{ fieldValidation['schoolEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolEmail'].status === 'valid' ? 'check_circle' : fieldValidation['schoolEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                {{ fieldValidation['schoolEmail'].message }}
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">GPS Address</label>
@@ -540,11 +548,19 @@
             </div>
             <div class="form-group">
               <label class="form-label">Representative Email *</label>
-              <input class="form-control" type="email" placeholder="rep@edu.gh" [(ngModel)]="schoolForm.repEmail" name="schoolRepEmail">
+              <input class="form-control" type="email" placeholder="rep@edu.gh" [(ngModel)]="schoolForm.repEmail" name="schoolRepEmail" (ngModelChange)="validateEmailLive('schoolRepEmail', $event)">
+              <div class="field-validation-msg" *ngIf="fieldValidation['schoolRepEmail'] && fieldValidation['schoolRepEmail'].status !== 'idle'" [ngClass]="fieldValidation['schoolRepEmail'].status">
+                <span class="material-symbols-outlined">{{ fieldValidation['schoolRepEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolRepEmail'].status === 'valid' ? 'check_circle' : fieldValidation['schoolRepEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                {{ fieldValidation['schoolRepEmail'].message }}
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">Representative Telephone *</label>
-              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="schoolForm.repTel" name="schoolRepTel">
+              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="schoolForm.repTel" name="schoolRepTel" (ngModelChange)="validatePhoneLive('schoolRepTel', $event)">
+              <div class="field-validation-msg" *ngIf="fieldValidation['schoolRepTel'] && fieldValidation['schoolRepTel'].status !== 'idle'" [ngClass]="fieldValidation['schoolRepTel'].status">
+                <span class="material-symbols-outlined">{{ fieldValidation['schoolRepTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolRepTel'].status === 'valid' ? 'check_circle' : fieldValidation['schoolRepTel'].status === 'taken' ? 'error' : 'warning' }}</span>
+                {{ fieldValidation['schoolRepTel'].message }}
+              </div>
             </div>
             <div class="form-actions">
               <button class="btn btn-subtle" (click)="goToStep(1)">
@@ -695,35 +711,55 @@
                 <label class="form-label">Team Lead *</label>
                 <div class="grid-2">
                   <input class="form-control" type="text" placeholder="Full Name (Lead)" [(ngModel)]="teamForm.leadName" name="teamLeadName">
-                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.leadEmail" name="teamLeadEmail">
+                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.leadEmail" name="teamLeadEmail" (ngModelChange)="validateEmailLive('squadLeadEmail', $event)">
+                </div>
+                <div class="field-validation-msg" *ngIf="fieldValidation['squadLeadEmail'] && fieldValidation['squadLeadEmail'].status !== 'idle'" [ngClass]="fieldValidation['squadLeadEmail'].status">
+                  <span class="material-symbols-outlined">{{ fieldValidation['squadLeadEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadLeadEmail'].status === 'valid' ? 'check_circle' : fieldValidation['squadLeadEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                  {{ fieldValidation['squadLeadEmail'].message }}
                 </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Team Member 2 *</label>
                 <div class="grid-2">
                   <input class="form-control" type="text" placeholder="Full Name" [(ngModel)]="teamForm.member2Name" name="teamMember2Name">
-                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.member2Email" name="teamMember2Email">
+                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.member2Email" name="teamMember2Email" (ngModelChange)="validateEmailLive('squadM2Email', $event)">
+                </div>
+                <div class="field-validation-msg" *ngIf="fieldValidation['squadM2Email'] && fieldValidation['squadM2Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM2Email'].status">
+                  <span class="material-symbols-outlined">{{ fieldValidation['squadM2Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM2Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM2Email'].status === 'taken' ? 'error' : 'warning' }}</span>
+                  {{ fieldValidation['squadM2Email'].message }}
                 </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Team Member 3 *</label>
                 <div class="grid-2">
                   <input class="form-control" type="text" placeholder="Full Name" [(ngModel)]="teamForm.member3Name" name="teamMember3Name">
-                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.member3Email" name="teamMember3Email">
+                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.member3Email" name="teamMember3Email" (ngModelChange)="validateEmailLive('squadM3Email', $event)">
+                </div>
+                <div class="field-validation-msg" *ngIf="fieldValidation['squadM3Email'] && fieldValidation['squadM3Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM3Email'].status">
+                  <span class="material-symbols-outlined">{{ fieldValidation['squadM3Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM3Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM3Email'].status === 'taken' ? 'error' : 'warning' }}</span>
+                  {{ fieldValidation['squadM3Email'].message }}
                 </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Team Member 4 (Optional)</label>
                 <div class="grid-2">
                   <input class="form-control" type="text" placeholder="Full Name" [(ngModel)]="teamForm.member4Name" name="teamMember4Name">
-                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.member4Email" name="teamMember4Email">
+                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.member4Email" name="teamMember4Email" (ngModelChange)="validateEmailLive('squadM4Email', $event)">
+                </div>
+                <div class="field-validation-msg" *ngIf="fieldValidation['squadM4Email'] && fieldValidation['squadM4Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM4Email'].status">
+                  <span class="material-symbols-outlined">{{ fieldValidation['squadM4Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM4Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM4Email'].status === 'taken' ? 'error' : 'warning' }}</span>
+                  {{ fieldValidation['squadM4Email'].message }}
                 </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Team Member 5 (Optional)</label>
                 <div class="grid-2">
                   <input class="form-control" type="text" placeholder="Full Name" [(ngModel)]="teamForm.member5Name" name="teamMember5Name">
-                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.member5Email" name="teamMember5Email">
+                  <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.member5Email" name="teamMember5Email" (ngModelChange)="validateEmailLive('squadM5Email', $event)">
+                </div>
+                <div class="field-validation-msg" *ngIf="fieldValidation['squadM5Email'] && fieldValidation['squadM5Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM5Email'].status">
+                  <span class="material-symbols-outlined">{{ fieldValidation['squadM5Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM5Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM5Email'].status === 'taken' ? 'error' : 'warning' }}</span>
+                  {{ fieldValidation['squadM5Email'].message }}
                 </div>
               </div>
 
@@ -1119,14 +1155,22 @@
             </div>
             <div>
               <label class="form-label">Contact *</label>
-              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="instructorForm.tel" name="instTel">
+              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="instructorForm.tel" name="instTel" (ngModelChange)="validatePhoneLive('instTel', $event)">
+              <div class="field-validation-msg" *ngIf="fieldValidation['instTel'] && fieldValidation['instTel'].status !== 'idle'" [ngClass]="fieldValidation['instTel'].status">
+                <span class="material-symbols-outlined">{{ fieldValidation['instTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['instTel'].status === 'valid' ? 'check_circle' : fieldValidation['instTel'].status === 'taken' ? 'error' : 'warning' }}</span>
+                {{ fieldValidation['instTel'].message }}
+              </div>
             </div>
           </div>
 
           <div class="grid-2" style="margin-bottom: 20px;">
             <div>
               <label class="form-label">Email *</label>
-              <input class="form-control" type="email" placeholder="instructor@email.com" [(ngModel)]="instructorForm.email" name="instEmail">
+              <input class="form-control" type="email" placeholder="instructor@email.com" [(ngModel)]="instructorForm.email" name="instEmail" (ngModelChange)="validateEmailLive('instEmail', $event)">
+              <div class="field-validation-msg" *ngIf="fieldValidation['instEmail'] && fieldValidation['instEmail'].status !== 'idle'" [ngClass]="fieldValidation['instEmail'].status">
+                <span class="material-symbols-outlined">{{ fieldValidation['instEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['instEmail'].status === 'valid' ? 'check_circle' : fieldValidation['instEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                {{ fieldValidation['instEmail'].message }}
+              </div>
             </div>
             <div>
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
@@ -1305,7 +1349,11 @@
               </div>
               <div>
                 <label class="form-label">Email *</label>
-                <input class="form-control" type="email" placeholder="you@email.com" [(ngModel)]="studentForm.email" name="stuEmail">
+                <input class="form-control" type="email" placeholder="you@email.com" [(ngModel)]="studentForm.email" name="stuEmail" (ngModelChange)="validateEmailLive('stuEmail', $event)">
+                <div class="field-validation-msg" *ngIf="fieldValidation['stuEmail'] && fieldValidation['stuEmail'].status !== 'idle'" [ngClass]="fieldValidation['stuEmail'].status">
+                  <span class="material-symbols-outlined">{{ fieldValidation['stuEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['stuEmail'].status === 'valid' ? 'check_circle' : fieldValidation['stuEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                  {{ fieldValidation['stuEmail'].message }}
+                </div>
               </div>
             </div>
 
@@ -1404,7 +1452,11 @@
               <label class="form-label">Team Lead (Member 1) *</label>
               <div class="grid-2">
                 <input class="form-control" type="text" placeholder="Team Lead Full Name" [(ngModel)]="teamForm.leadName" name="squadLeadName">
-                <input class="form-control" type="email" placeholder="Team Lead Email (Optional)" [(ngModel)]="teamForm.leadEmail" name="squadLeadEmail">
+                <input class="form-control" type="email" placeholder="Team Lead Email (Optional)" [(ngModel)]="teamForm.leadEmail" name="squadLeadEmail" (ngModelChange)="validateEmailLive('squadLeadEmail', $event)">
+              </div>
+              <div class="field-validation-msg" *ngIf="fieldValidation['squadLeadEmail'] && fieldValidation['squadLeadEmail'].status !== 'idle'" [ngClass]="fieldValidation['squadLeadEmail'].status">
+                <span class="material-symbols-outlined">{{ fieldValidation['squadLeadEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadLeadEmail'].status === 'valid' ? 'check_circle' : fieldValidation['squadLeadEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                {{ fieldValidation['squadLeadEmail'].message }}
               </div>
             </div>
 
@@ -1412,7 +1464,11 @@
               <label class="form-label">Competitor 2 *</label>
               <div class="grid-2">
                 <input class="form-control" type="text" placeholder="Competitor 2 Full Name" [(ngModel)]="teamForm.member2Name" name="squadM2Name">
-                <input class="form-control" type="email" placeholder="Competitor 2 Email (Optional)" [(ngModel)]="teamForm.member2Email" name="squadM2Email">
+                <input class="form-control" type="email" placeholder="Competitor 2 Email (Optional)" [(ngModel)]="teamForm.member2Email" name="squadM2Email" (ngModelChange)="validateEmailLive('squadM2Email', $event)">
+              </div>
+              <div class="field-validation-msg" *ngIf="fieldValidation['squadM2Email'] && fieldValidation['squadM2Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM2Email'].status">
+                <span class="material-symbols-outlined">{{ fieldValidation['squadM2Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM2Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM2Email'].status === 'taken' ? 'error' : 'warning' }}</span>
+                {{ fieldValidation['squadM2Email'].message }}
               </div>
             </div>
 
@@ -1420,7 +1476,11 @@
               <label class="form-label">Competitor 3 *</label>
               <div class="grid-2">
                 <input class="form-control" type="text" placeholder="Competitor 3 Full Name" [(ngModel)]="teamForm.member3Name" name="squadM3Name">
-                <input class="form-control" type="email" placeholder="Competitor 3 Email (Optional)" [(ngModel)]="teamForm.member3Email" name="squadM3Email">
+                <input class="form-control" type="email" placeholder="Competitor 3 Email (Optional)" [(ngModel)]="teamForm.member3Email" name="squadM3Email" (ngModelChange)="validateEmailLive('squadM3Email', $event)">
+              </div>
+              <div class="field-validation-msg" *ngIf="fieldValidation['squadM3Email'] && fieldValidation['squadM3Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM3Email'].status">
+                <span class="material-symbols-outlined">{{ fieldValidation['squadM3Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM3Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM3Email'].status === 'taken' ? 'error' : 'warning' }}</span>
+                {{ fieldValidation['squadM3Email'].message }}
               </div>
             </div>
 
@@ -1428,7 +1488,11 @@
               <label class="form-label">Competitor 4 (Optional)</label>
               <div class="grid-2">
                 <input class="form-control" type="text" placeholder="Competitor 4 Full Name" [(ngModel)]="teamForm.member4Name" name="squadM4Name">
-                <input class="form-control" type="email" placeholder="Competitor 4 Email (Optional)" [(ngModel)]="teamForm.member4Email" name="squadM4Email">
+                <input class="form-control" type="email" placeholder="Competitor 4 Email (Optional)" [(ngModel)]="teamForm.member4Email" name="squadM4Email" (ngModelChange)="validateEmailLive('squadM4Email', $event)">
+              </div>
+              <div class="field-validation-msg" *ngIf="fieldValidation['squadM4Email'] && fieldValidation['squadM4Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM4Email'].status">
+                <span class="material-symbols-outlined">{{ fieldValidation['squadM4Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM4Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM4Email'].status === 'taken' ? 'error' : 'warning' }}</span>
+                {{ fieldValidation['squadM4Email'].message }}
               </div>
             </div>
 
@@ -1436,7 +1500,11 @@
               <label class="form-label">Competitor 5 (Optional)</label>
               <div class="grid-2">
                 <input class="form-control" type="text" placeholder="Competitor 5 Full Name" [(ngModel)]="teamForm.member5Name" name="squadM5Name">
-                <input class="form-control" type="email" placeholder="Competitor 5 Email (Optional)" [(ngModel)]="teamForm.member5Email" name="squadM5Email">
+                <input class="form-control" type="email" placeholder="Competitor 5 Email (Optional)" [(ngModel)]="teamForm.member5Email" name="squadM5Email" (ngModelChange)="validateEmailLive('squadM5Email', $event)">
+              </div>
+              <div class="field-validation-msg" *ngIf="fieldValidation['squadM5Email'] && fieldValidation['squadM5Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM5Email'].status">
+                <span class="material-symbols-outlined">{{ fieldValidation['squadM5Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM5Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM5Email'].status === 'taken' ? 'error' : 'warning' }}</span>
+                {{ fieldValidation['squadM5Email'].message }}
               </div>
             </div>
 
@@ -1580,12 +1648,20 @@
             </div>
             <div class="form-group">
               <label class="form-label">Contact Number *</label>
-              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="sponsorForm.repContact" name="sponsRepContact">
+              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="sponsorForm.repContact" name="sponsRepContact" (ngModelChange)="validatePhoneLive('sponsContact', $event)">
+              <div class="field-validation-msg" *ngIf="fieldValidation['sponsContact'] && fieldValidation['sponsContact'].status !== 'idle'" [ngClass]="fieldValidation['sponsContact'].status">
+                <span class="material-symbols-outlined">{{ fieldValidation['sponsContact'].status === 'checking' ? 'hourglass_top' : fieldValidation['sponsContact'].status === 'valid' ? 'check_circle' : fieldValidation['sponsContact'].status === 'taken' ? 'error' : 'warning' }}</span>
+                {{ fieldValidation['sponsContact'].message }}
+              </div>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">Corporate Email Address *</label>
-            <input class="form-control" type="email" placeholder="csr@company.com" [(ngModel)]="sponsorForm.email" name="sponsEmail">
+            <input class="form-control" type="email" placeholder="csr@company.com" [(ngModel)]="sponsorForm.email" name="sponsEmail" (ngModelChange)="validateEmailLive('sponsEmail', $event)">
+            <div class="field-validation-msg" *ngIf="fieldValidation['sponsEmail'] && fieldValidation['sponsEmail'].status !== 'idle'" [ngClass]="fieldValidation['sponsEmail'].status">
+              <span class="material-symbols-outlined">{{ fieldValidation['sponsEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['sponsEmail'].status === 'valid' ? 'check_circle' : fieldValidation['sponsEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+              {{ fieldValidation['sponsEmail'].message }}
+            </div>
           </div>
           <div class="grid-2">
             <div class="form-group">
@@ -1751,13 +1827,21 @@
             </div>
             <div class="form-group">
               <label class="form-label">Contact *</label>
-              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="judgeForm.tel" name="jdTel">
+              <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="judgeForm.tel" name="jdTel" (ngModelChange)="validatePhoneLive('jdTel', $event)">
+              <div class="field-validation-msg" *ngIf="fieldValidation['jdTel'] && fieldValidation['jdTel'].status !== 'idle'" [ngClass]="fieldValidation['jdTel'].status">
+                <span class="material-symbols-outlined">{{ fieldValidation['jdTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['jdTel'].status === 'valid' ? 'check_circle' : fieldValidation['jdTel'].status === 'taken' ? 'error' : 'warning' }}</span>
+                {{ fieldValidation['jdTel'].message }}
+              </div>
             </div>
           </div>
           <div class="grid-2">
             <div class="form-group">
               <label class="form-label">Email *</label>
-              <input class="form-control" type="email" placeholder="judge@email.com" [(ngModel)]="judgeForm.email" name="jdEmail">
+              <input class="form-control" type="email" placeholder="judge@email.com" [(ngModel)]="judgeForm.email" name="jdEmail" (ngModelChange)="validateEmailLive('jdEmail', $event)">
+              <div class="field-validation-msg" *ngIf="fieldValidation['jdEmail'] && fieldValidation['jdEmail'].status !== 'idle'" [ngClass]="fieldValidation['jdEmail'].status">
+                <span class="material-symbols-outlined">{{ fieldValidation['jdEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['jdEmail'].status === 'valid' ? 'check_circle' : fieldValidation['jdEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                {{ fieldValidation['jdEmail'].message }}
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">Organization / Institution</label>
