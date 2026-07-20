@@ -155,7 +155,7 @@ export class BrevoEmailService {
               You may address the issues above and <strong>reapply</strong> through the NTIC Registration Portal.
             </p>
             <div style="text-align: center; margin: 20px 0;">
-              <a href="${window?.location?.origin || 'https://ntic.edu.gh'}#/register" style="display: inline-block; background: #4f46e5; color: #fff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">Reapply Now</a>
+              <a href="${window?.location?.origin || 'https://ntic.edu.gh'}#/registration" style="display: inline-block; background: #4f46e5; color: #fff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">Reapply Now</a>
             </div>
             <p style="color: #64748b; font-size: 13px; margin: 0;">
               Questions? Contact <a href="mailto:support@ntic.edu.gh" style="color: #4f46e5;">support@ntic.edu.gh</a>

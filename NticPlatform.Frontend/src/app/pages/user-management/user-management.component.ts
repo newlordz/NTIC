@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { ContentService, User } from '../../services/content.service';
 
 @Component({
@@ -38,7 +39,7 @@ export class UserManagementComponent implements OnInit {
     { id: 'super_admin', label: 'Admins', icon: 'admin_panel_settings' },
   ];
 
-  constructor(public contentService: ContentService) {}
+  constructor(public contentService: ContentService, private router: Router) {}
 
   get canManageUsers(): boolean {
     const role = localStorage.getItem('activeRoleId') || '';
@@ -51,6 +52,10 @@ export class UserManagementComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (!this.canManageUsers) {
+      this.router.navigate(['/dashboard']);
+      return;
+    }
     this.loadUsers();
   }
 
@@ -126,7 +131,7 @@ export class UserManagementComponent implements OnInit {
   }
 
   saveEdit(): void {
-    if (!this.isCurrentUser(this.editForm)) return;
+    if (!this.canManageUsers && !this.isCurrentUser(this.editForm)) return;
     const users = [...this.contentService.users];
     const idx = users.findIndex(u => u.id === this.editForm.id);
     if (idx > -1) {

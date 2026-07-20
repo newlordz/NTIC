@@ -203,6 +203,7 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'sponsors':     return ['sponsor'].includes(role);
       case 'reporting':    return ['instructor', 'school_admin', 'super_admin', 'reviewer'].includes(role);
       case 'records':      return ['instructor', 'school_admin', 'super_admin', 'reviewer'].includes(role);
+      case 'users':        return ['super_admin'].includes(role);
       default:             return false;
     }
   }
