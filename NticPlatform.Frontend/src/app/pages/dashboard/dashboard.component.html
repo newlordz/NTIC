@@ -25,7 +25,7 @@
         <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">grade</span>Score Guidelines</button>
       </div>
       <div style="display:flex;gap:10px;" *ngIf="activeRoleId === 'sponsor'">
-        <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">handshake</span>New CSR Grant</button>
+        <button class="btn btn-primary btn-sm" (click)="openPaymentCenter()"><span class="material-symbols-outlined">handshake</span>Sponsorship Payment Center</button>
       </div>
     </div>
 
@@ -288,6 +288,7 @@
         </div>
       </div>
     </div>
+
   </ng-container>
 
   <!-- ══════════════════════════════════════════════════════
@@ -453,7 +454,7 @@
               </div>
               <div class="admin-audit-body">
                 <div class="admin-audit-action">{{ log.action }}</div>
-                <div class="admin-audit-meta">{{ log.user }} &middot; {{ log.time }}</div>
+                <div class="admin-audit-meta">{{ log.user }} &middot; {{ log.time | timeAgo }}</div>
               </div>
             </div>
           </div>
@@ -706,6 +707,11 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- ── TAB: LMS MANAGER ── -->
+    <div *ngIf="adminTab === 'lms'" class="admin-tab-body" style="padding:0;">
+      <app-lms-manager></app-lms-manager>
     </div>
 
     <!-- ── TAB: TICKETS ── -->
@@ -1476,6 +1482,10 @@
           <p class="cms-panel-desc">Manage the hero video/image slideshow on the landing page. Reorder slides with the arrows.</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-subtle btn-sm" [title]="isVideoMuted ? 'Unmute hero video' : 'Mute hero video'" (click)="toggleVideoMute()" style="display:inline-flex;align-items:center;gap:4px;">
+            <span class="material-symbols-outlined">{{ isVideoMuted ? 'volume_off' : 'volume_up' }}</span>
+            <span style="font-size:12px;">{{ isVideoMuted ? 'Muted' : 'Mute' }}</span>
+          </button>
           <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('slideshow')">
             <span class="material-symbols-outlined">open_in_full</span>
           </button>
@@ -1804,6 +1814,92 @@
                   <span class="detail-value">{{ activePreviewRequest.details.tracks }}</span>
                 </div>
               </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">group</span>
+                <div class="detail-content">
+                  <span class="detail-label">Number of Teams</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.teamsList?.length || 0 }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">school</span>
+                <div class="detail-content">
+                  <span class="detail-label">Students Registered</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.studentCount || 0 }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">location_on</span>
+                <div class="detail-content">
+                  <span class="detail-label">District</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.district || '—' }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">gps_fixed</span>
+                <div class="detail-content">
+                  <span class="detail-label">GPS Address</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.gps || '—' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Representative Info -->
+          <div class="preview-section">
+            <div class="preview-section-header">
+              <span class="material-symbols-outlined preview-section-icon">contact_phone</span>
+              <span class="preview-section-title">School Representative</span>
+            </div>
+            <div class="preview-details-grid">
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">person</span>
+                <div class="detail-content">
+                  <span class="detail-label">Representative Name</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.repName || '—' }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">mail</span>
+                <div class="detail-content">
+                  <span class="detail-label">Representative Email</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.repEmail || '—' }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">phone</span>
+                <div class="detail-content">
+                  <span class="detail-label">Representative Phone</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.repTel || '—' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Teams List -->
+          <div class="preview-section" *ngIf="activePreviewRequest.details.teamsList?.length">
+            <div class="preview-section-header">
+              <span class="material-symbols-outlined preview-section-icon">groups</span>
+              <span class="preview-section-title">Registered Teams</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div *ngFor="let team of activePreviewRequest.details.teamsList; let ti = index"
+                   style="padding:12px 16px; background:var(--surface-container-lowest); border:1px solid var(--outline-variant); border-radius:10px; display:flex; align-items:center; gap:14px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:var(--primary-container);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <span style="font-size:13px;font-weight:700;color:var(--on-primary-container);">T{{ ti + 1 }}</span>
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-weight:600;font-size:14px;color:var(--on-surface);">{{ team.name }}</div>
+                  <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">
+                    Track: <strong>{{ team.track || 'Coding' }}</strong>
+                    <span *ngIf="team.leadName"> · Lead: <strong>{{ team.leadName }}</strong></span>
+                  </div>
+                  <div *ngIf="team.rosterList?.length > 1" style="font-size:11px;color:var(--on-surface-variant);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    Members: {{ team.rosterList.join(', ') }}
+                  </div>
+                </div>
+                <span class="badge secondary" style="flex-shrink:0;white-space:nowrap;">{{ team.track || 'Coding' }}</span>
+              </div>
             </div>
           </div>
           <div class="preview-section" *ngIf="activePreviewRequest.details.docs?.length">
@@ -1982,6 +2078,9 @@
 
       <div class="preview-modal-footer">
         <button class="btn btn-subtle" (click)="closePreview()">Close</button>
+        <button class="btn btn-primary btn-reject" style="background:var(--error);border-color:var(--error);" (click)="quickRejectFromPreview()">
+          <span class="material-symbols-outlined">cancel</span>Reject
+        </button>
         <button class="btn btn-primary btn-approve" (click)="approveRequest(activePreviewRequest); closePreview()">
           <span class="material-symbols-outlined">check_circle</span>Approve Application
         </button>
@@ -2110,23 +2209,46 @@
                     </label>
                   </div>
                 </div>
-                <div class="admin-form-field" *ngIf="registerRole === 'sponsor'">
-                  <label>Sponsorship Tier</label>
-                  <select [(ngModel)]="regForm.tier" name="tier">
-                    <option value="">— Select Tier —</option>
-                    <option>Platinum</option>
-                    <option>Gold</option>
-                    <option>Silver</option>
-                    <option>Bronze</option>
-                  </select>
+                <div class="admin-form-field admin-form-full" *ngIf="registerRole === 'sponsor'">
+                  <label>Sponsorship Packages</label>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <div *ngFor="let item of adminSponsorItems"
+                         style="padding:10px 12px;border:1.5px solid var(--outline-variant);border-radius:8px;cursor:pointer;transition:all 0.2s;"
+                         [style.border-color]="isAdminPackageSelected(item.label) ? 'var(--primary)' : 'var(--outline-variant)'"
+                         [style.background]="isAdminPackageSelected(item.label) ? 'var(--primary-container)' : 'var(--surface-container-lowest)'"
+                         (click)="toggleAdminPackage(item.label)">
+                      <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="material-symbols-outlined" style="font-size:18px;" [style.color]="isAdminPackageSelected(item.label) ? 'var(--primary)' : 'var(--on-surface-variant)'">{{ item.icon }}</span>
+                        <span style="font-size:12px;font-weight:600;color:var(--on-surface);flex:1;">{{ item.label }}</span>
+                        <span *ngIf="!isAdminPackageSelected(item.label)" class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">add_circle</span>
+                        <span *ngIf="isAdminPackageSelected(item.label)" class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">check_circle</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div class="admin-form-field admin-form-full">
                   <label>Notes (optional)</label>
                   <textarea [(ngModel)]="regForm.notes" name="notes" rows="3" placeholder="Additional context or notes..."></textarea>
                 </div>
+                <div class="admin-form-field admin-form-full">
+                  <label>{{ registerRole === 'judge' ? 'Judge' : 'Sponsor' }} Logo</label>
+                  <div class="admin-reg-logo-upload" style="display:flex;align-items:center;gap:12px; padding:12px; border:1px dashed var(--outline-variant); border-radius:8px; cursor:pointer;" (click)="adminRegLogoInput.click()">
+                    <span class="material-symbols-outlined" style="color:var(--primary);font-size:28px;">cloud_upload</span>
+                    <div *ngIf="!adminRegLogoUrl" style="flex:1;">
+                      <p style="margin:0;font-size:13px;font-weight:500;">Upload logo for profile display</p>
+                      <p style="margin:2px 0 0;font-size:11px;color:var(--on-surface-variant);">PNG, SVG (Max 3MB)</p>
+                    </div>
+                    <div *ngIf="adminRegLogoUrl" style="flex:1;display:flex;align-items:center;gap:10px;">
+                      <img [src]="adminRegLogoUrl" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:2px solid var(--primary);">
+                      <span style="font-size:13px;font-weight:600;color:var(--primary);flex:1;">Logo uploaded</span>
+                      <span class="material-symbols-outlined" (click)="removeAdminRegLogo(); $event.stopPropagation()" style="cursor:pointer;font-size:18px;color:var(--error);">close</span>
+                    </div>
+                  </div>
+                  <input #adminRegLogoInput type="file" (change)="onAdminRegLogoSelected($event)" accept=".png,.svg" style="display:none">
+                </div>
               </div>
               <div class="admin-form-actions">
-                <button type="button" class="btn btn-subtle" (click)="regForm = {fullName:'',email:'',organization:'',phone:'',track:'',tracks:[],tier:'',notes:''}">Clear</button>
+                <button type="button" class="btn btn-subtle" (click)="regForm = {fullName:'',email:'',organization:'',phone:'',track:'',tracks:[],tier:'',notes:''}; selectedAdminPackages = []; removeAdminRegLogo()">Clear</button>
                 <button type="submit" class="btn btn-primary admin-submit-btn" [disabled]="regSubmitting">
                   <span class="material-symbols-outlined" *ngIf="!regSubmitting">token</span>
                   <span class="btn-spinner" *ngIf="regSubmitting"></span>
@@ -2165,8 +2287,9 @@
             <div class="preview-ticket-body">
               <div class="preview-user-row">
                 <div class="preview-avatar" [class]="registerRole">
-                  <span *ngIf="regForm.fullName">{{ getInitials(regForm.fullName) }}</span>
-                  <span class="material-symbols-outlined" *ngIf="!regForm.fullName" style="font-size:22px;opacity:0.35">person</span>
+                  <img *ngIf="adminRegLogoUrl" [src]="adminRegLogoUrl" style="width:100%;height:100%;border-radius:inherit;object-fit:cover;">
+                  <span *ngIf="!adminRegLogoUrl && regForm.fullName">{{ getInitials(regForm.fullName) }}</span>
+                  <span class="material-symbols-outlined" *ngIf="!adminRegLogoUrl && !regForm.fullName" style="font-size:22px;opacity:0.35">person</span>
                 </div>
                 <div>
                   <div class="preview-name" [class.preview-placeholder]="!regForm.fullName">
@@ -2184,10 +2307,10 @@
                 </div>
                 <div class="preview-field" *ngIf="registerRole === 'judge'">
                   <span class="preview-field-label">Track</span>
-                  <span class="preview-field-value" [class.preview-placeholder]="!regForm.track">{{ regForm.track || '—' }}</span>
+                  <span class="preview-field-value" [class.preview-placeholder]="!regForm.track && (!regForm.tracks || regForm.tracks.length === 0)">{{ regForm.track || (regForm.tracks && regForm.tracks.join(', ')) || '—' }}</span>
                 </div>
                 <div class="preview-field" *ngIf="registerRole === 'sponsor'">
-                  <span class="preview-field-label">Tier</span>
+                  <span class="preview-field-label">Package</span>
                   <span class="preview-field-value" [class.preview-placeholder]="!regForm.tier">{{ regForm.tier || '—' }}</span>
                 </div>
                 <div class="preview-field">
@@ -2226,11 +2349,178 @@
               <span class="material-symbols-outlined">{{ regForm.organization ? 'check_circle' : 'radio_button_unchecked' }}</span>
               Organization
             </div>
-            <div class="preview-check" [class.done]="registerRole === 'judge' ? !!regForm.track : !!regForm.tier">
-              <span class="material-symbols-outlined">{{ (registerRole === 'judge' ? !!regForm.track : !!regForm.tier) ? 'check_circle' : 'radio_button_unchecked' }}</span>
-              {{ registerRole === 'judge' ? 'Track Assignment' : 'Sponsorship Tier' }}
+            <div class="preview-check" [class.done]="registerRole === 'judge' ? (!!regForm.track || (regForm.tracks && regForm.tracks.length > 0)) : !!regForm.tier">
+              <span class="material-symbols-outlined">{{ (registerRole === 'judge' ? (!!regForm.track || (regForm.tracks && regForm.tracks.length > 0)) : !!regForm.tier) ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              {{ registerRole === 'judge' ? 'Track Assignment' : 'Sponsorship Package' }}
             </div>
           </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SPONSORSHIP PAYMENT CENTER ── -->
+<div class="ticket-modal-backdrop" *ngIf="settleModalOpen" (click)="closeSettleModal()">
+  <div class="ticket-modal reg-popup-modal" (click)="$event.stopPropagation()" style="max-width:580px;">
+    <div class="ticket-modal-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:var(--primary-container);display:flex;align-items:center;justify-content:center;">
+          <span class="material-symbols-outlined" style="font-size:22px;color:var(--primary);">handshake</span>
+        </div>
+        <div>
+          <h3 style="margin:0;font-size:16px;">Sponsorship Payment Center</h3>
+          <p style="margin:2px 0 0;font-size:12px;color:var(--on-surface-variant);">Manage your CSR commitment & settlement</p>
+        </div>
+      </div>
+      <button class="ticket-modal-close" (click)="closeSettleModal()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div style="padding:24px;display:flex;flex-direction:column;gap:18px;">
+      <div style="background:var(--surface-container-low);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="flex:1;">
+            <div style="font-size:16px;font-weight:700;color:var(--on-surface);">{{ currentUser?.organization || 'Sponsor' }}</div>
+            <div style="font-size:13px;color:var(--on-surface-variant);">{{ currentUser?.package || 'No package selected' }}</div>
+          </div>
+          <span class="badge" [class]="currentUser?.status === 'Active' ? 'secondary' : 'primary'">{{ currentUser?.status || 'Active' }}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;border-top:1px solid var(--outline-variant);padding-top:12px;">
+          <div><span style="color:var(--on-surface-variant);">Token</span><br><span style="font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--primary);">{{ currentUser?.ticket || '—' }}</span></div>
+          <div><span style="color:var(--on-surface-variant);">Contact</span><br><span style="font-weight:600;">{{ currentUser?.phone || '—' }}</span></div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:24px;">
+
+        <div style="display:flex;align-items:center;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--outline-variant);">
+          <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">payments</span>
+          <span style="font-size:15px;font-weight:800;color:var(--on-surface);letter-spacing:-0.01em;">Payment Mode &amp; Billing Preferences</span>
+        </div>
+
+        <!-- Amount -->
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+            <label style="font-size:13px;font-weight:700;color:var(--on-surface);">Commitment Amount</label>
+            <span style="font-size:11px;color:var(--on-surface-variant);">GHS</span>
+          </div>
+          <div style="position:relative;">
+            <span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:700;color:var(--on-surface-variant);">GH₵</span>
+            <input type="number" [(ngModel)]="settleAmount" placeholder="0.00" min="1"
+                   style="width:100%;padding:18px 18px 18px 72px;font-size:28px;font-weight:800;text-align:left;border:2px solid var(--outline-variant);border-radius:14px;background:var(--surface-container-lowest);color:var(--on-surface);outline:none;transition:border-color 0.2s;box-sizing:border-box;"
+                   (focus)="$any($event.target).style.borderColor='var(--primary)'"
+                   (blur)="$any($event.target).style.borderColor='var(--outline-variant)'">
+          </div>
+        </div>
+
+        <!-- Preferred Payment Channel -->
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--on-surface);margin-bottom:10px;">Preferred Payment Channel</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <label style="display:flex;align-items:center;gap:14px;padding:16px 18px;border:2px solid var(--outline-variant);border-radius:14px;cursor:pointer;transition:all 0.2s;background:var(--surface-container-lowest);"
+                   [style.border-color]="settlePaymentMode === 'mobile_money' ? 'var(--primary)' : 'var(--outline-variant)'"
+                   [style.background]="settlePaymentMode === 'mobile_money' ? 'var(--primary-container)' : 'var(--surface-container-lowest)'">
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;">
+                <span class="material-symbols-outlined" style="font-size:22px;color:var(--primary);">smartphone</span>
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:14px;font-weight:700;color:var(--on-surface);">Mobile Money</div>
+                <div style="font-size:12px;color:var(--on-surface-variant);margin-top:1px;">MTN MoMo &middot; Telecel Cash &middot; AirtelTigo Money</div>
+              </div>
+              <input type="radio" value="mobile_money" [(ngModel)]="settlePaymentMode" name="settlePayMode" style="display:none;">
+              <span class="material-symbols-outlined" style="font-size:22px;color:var(--primary);" *ngIf="settlePaymentMode === 'mobile_money'">radio_button_checked</span>
+              <span class="material-symbols-outlined" style="font-size:22px;color:var(--outline-variant);" *ngIf="settlePaymentMode !== 'mobile_money'">radio_button_unchecked</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:14px;padding:16px 18px;border:2px solid var(--outline-variant);border-radius:14px;cursor:pointer;transition:all 0.2s;background:var(--surface-container-lowest);"
+                   [style.border-color]="settlePaymentMode === 'bank_transfer' ? 'var(--primary)' : 'var(--outline-variant)'"
+                   [style.background]="settlePaymentMode === 'bank_transfer' ? 'var(--primary-container)' : 'var(--surface-container-lowest)'">
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;">
+                <span class="material-symbols-outlined" style="font-size:22px;color:var(--primary);">account_balance</span>
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:14px;font-weight:700;color:var(--on-surface);">Bank Transfer</div>
+                <div style="font-size:12px;color:var(--on-surface-variant);margin-top:1px;">GCB &middot; Stanbic &middot; Access &middot; Zenith &middot; Ecobank</div>
+              </div>
+              <input type="radio" value="bank_transfer" [(ngModel)]="settlePaymentMode" name="settlePayMode" style="display:none;">
+              <span class="material-symbols-outlined" style="font-size:22px;color:var(--primary);" *ngIf="settlePaymentMode === 'bank_transfer'">radio_button_checked</span>
+              <span class="material-symbols-outlined" style="font-size:22px;color:var(--outline-variant);" *ngIf="settlePaymentMode !== 'bank_transfer'">radio_button_unchecked</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:14px;padding:16px 18px;border:2px solid var(--outline-variant);border-radius:14px;cursor:pointer;transition:all 0.2s;background:var(--surface-container-lowest);"
+                   [style.border-color]="settlePaymentMode === 'card' ? 'var(--primary)' : 'var(--outline-variant)'"
+                   [style.background]="settlePaymentMode === 'card' ? 'var(--primary-container)' : 'var(--surface-container-lowest)'">
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;">
+                <span class="material-symbols-outlined" style="font-size:22px;color:var(--primary);">credit_card</span>
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:14px;font-weight:700;color:var(--on-surface);">Debit / Credit Card</div>
+                <div style="font-size:12px;color:var(--on-surface-variant);margin-top:1px;">Visa &middot; Mastercard &middot; Verve</div>
+              </div>
+              <input type="radio" value="card" [(ngModel)]="settlePaymentMode" name="settlePayMode" style="display:none;">
+              <span class="material-symbols-outlined" style="font-size:22px;color:var(--primary);" *ngIf="settlePaymentMode === 'card'">radio_button_checked</span>
+              <span class="material-symbols-outlined" style="font-size:22px;color:var(--outline-variant);" *ngIf="settlePaymentMode !== 'card'">radio_button_unchecked</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Reference Input -->
+        <div *ngIf="settlePaymentMode">
+          <label style="display:block;font-size:13px;font-weight:700;color:var(--on-surface);margin-bottom:6px;">
+            Sponsor Billing / {{ settlePaymentMode === 'mobile_money' ? 'MoMo' : settlePaymentMode === 'bank_transfer' ? 'Account' : 'Card' }} Ref
+          </label>
+          <div style="position:relative;">
+            <span style="position:absolute;left:16px;top:50%;transform:translateY(-50%);">
+              <span class="material-symbols-outlined" style="font-size:18px;color:var(--on-surface-variant);">pin</span>
+            </span>
+            <input type="text" [(ngModel)]="settlePaymentReference"
+                   [placeholder]="settlePaymentMode === 'mobile_money' ? '+233 24 000 0000' : settlePaymentMode === 'bank_transfer' ? 'Enter account or transaction reference' : 'Last 4 digits of card'"
+                   [maxlength]="settlePaymentMode === 'card' ? '4' : '30'"
+                   style="width:100%;padding:14px 14px 14px 48px;border:2px solid var(--outline-variant);border-radius:12px;background:var(--surface-container-lowest);color:var(--on-surface);font-size:15px;outline:none;transition:border-color 0.2s;box-sizing:border-box;"
+                   (focus)="$any($event.target).style.borderColor='var(--primary)'"
+                   (blur)="$any($event.target).style.borderColor='var(--outline-variant)'">
+          </div>
+        </div>
+
+        <!-- Billing Schedule -->
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--on-surface);margin-bottom:10px;">Billing Schedule</div>
+          <div style="display:flex;gap:10px;">
+            <label style="flex:1;padding:14px 12px;border:2px solid var(--outline-variant);border-radius:12px;cursor:pointer;text-align:center;transition:all 0.2s;background:var(--surface-container-lowest);"
+                   [style.border-color]="settleBillingSchedule === 'one_time' ? 'var(--primary)' : 'var(--outline-variant)'"
+                   [style.background]="settleBillingSchedule === 'one_time' ? 'var(--primary-container)' : 'var(--surface-container-lowest)'">
+              <input type="radio" value="one_time" [(ngModel)]="settleBillingSchedule" name="settleBilling" style="display:none;">
+              <div style="font-size:18px;font-weight:800;color:var(--primary);margin-bottom:2px;">1x</div>
+              <div style="font-size:11px;font-weight:600;color:var(--on-surface);">One-time</div>
+            </label>
+            <label style="flex:1;padding:14px 12px;border:2px solid var(--outline-variant);border-radius:12px;cursor:pointer;text-align:center;transition:all 0.2s;background:var(--surface-container-lowest);"
+                   [style.border-color]="settleBillingSchedule === 'monthly' ? 'var(--primary)' : 'var(--outline-variant)'"
+                   [style.background]="settleBillingSchedule === 'monthly' ? 'var(--primary-container)' : 'var(--surface-container-lowest)'">
+              <input type="radio" value="monthly" [(ngModel)]="settleBillingSchedule" name="settleBilling" style="display:none;">
+              <div style="font-size:18px;font-weight:800;color:var(--primary);margin-bottom:2px;">12×</div>
+              <div style="font-size:11px;font-weight:600;color:var(--on-surface);">Monthly</div>
+            </label>
+            <label style="flex:1;padding:14px 12px;border:2px solid var(--outline-variant);border-radius:12px;cursor:pointer;text-align:center;transition:all 0.2s;background:var(--surface-container-lowest);"
+                   [style.border-color]="settleBillingSchedule === 'quarterly' ? 'var(--primary)' : 'var(--outline-variant)'"
+                   [style.background]="settleBillingSchedule === 'quarterly' ? 'var(--primary-container)' : 'var(--surface-container-lowest)'">
+              <input type="radio" value="quarterly" [(ngModel)]="settleBillingSchedule" name="settleBilling" style="display:none;">
+              <div style="font-size:18px;font-weight:800;color:var(--primary);margin-bottom:2px;">4×</div>
+              <div style="font-size:11px;font-weight:600;color:var(--on-surface);">Quarterly</div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Note -->
+        <div>
+          <label style="display:block;font-size:13px;font-weight:700;color:var(--on-surface);margin-bottom:6px;">Note <span style="font-weight:400;color:var(--on-surface-variant);">(optional)</span></label>
+          <textarea [(ngModel)]="settleNote" rows="2" placeholder="Payment memo, invoice reference, or any additional notes..."
+                    style="width:100%;padding:14px;border:2px solid var(--outline-variant);border-radius:12px;background:var(--surface-container-lowest);color:var(--on-surface);font-size:14px;resize:none;outline:none;transition:border-color 0.2s;font-family:inherit;box-sizing:border-box;"
+                    (focus)="$any($event.target).style.borderColor='var(--primary)'"
+                    (blur)="$any($event.target).style.borderColor='var(--outline-variant)'"></textarea>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--outline-variant);padding-top:16px;">
+        <button class="btn btn-subtle" (click)="closeSettleModal()">Cancel</button>
+        <button class="btn btn-primary" style="padding:12px 28px;font-size:14px;" [disabled]="!settleAmount || settleAmount <= 0" (click)="submitSettlement()">
+          <span class="material-symbols-outlined">check_circle</span>Confirm Settlement
+        </button>
       </div>
     </div>
   </div>
@@ -2284,9 +2574,9 @@
               <span class="ticket-field-label">Track</span>
               <span class="ticket-field-value">{{ viewTicketUser?.track }}</span>
             </div>
-            <div class="ticket-field" *ngIf="viewTicketUser?.tier">
-              <span class="ticket-field-label">Tier</span>
-              <span class="ticket-field-value">{{ viewTicketUser?.tier }}</span>
+            <div class="ticket-field" *ngIf="viewTicketUser?.tier || viewTicketUser?.package">
+              <span class="ticket-field-label">Package</span>
+              <span class="ticket-field-value">{{ viewTicketUser?.package || viewTicketUser?.tier }}</span>
             </div>
           </div>
           <div class="ticket-code-wrap">

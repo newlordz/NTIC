@@ -1,30 +1,58 @@
 <div class="page-canvas fade-in">
-  <div class="page-header with-action">
+  <!-- Hero Header -->
+  <header class="page-header">
     <div>
-      <h1 class="page-title-main">{{ activeTab === 'courses' ? 'Course & Cycle Leaderboards' : 'Global School Leaderboard' }}</h1>
-      <p class="page-subtitle">{{ activeTab === 'courses' ? 'Algorithmic student rankings based on course progress, assignment accuracy, and streak' : 'Live rankings — National Advanced NTIC Challenge 2026' }}</p>
+      <h1 class="page-title-main">{{ activeTab === 'courses' ? 'Course & Track Leaderboard' : 'National STEM Championship Leaderboard' }}</h1>
+      <p class="page-subtitle">{{ activeTab === 'courses' ? 'Algorithmic student rankings based on course progress, assignment accuracy, and streak' : 'Live standings for the National Advanced NTIC STEM Challenge 2026' }}</p>
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="btn btn-subtle btn-sm"><span class="material-symbols-outlined">filter_list</span>Filter</button>
-      <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">download</span>Export CSV</button>
+      <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">download</span>Export CSV Standings</button>
     </div>
-  </div>
+  </header>
 
-  <!-- Mode Switcher -->
+  <!-- Mode Switcher Tabs -->
   <div style="display:flex;gap:12px;margin-bottom:20px;">
     <button class="btn" [class.btn-primary]="activeTab === 'courses'" [class.btn-subtle]="activeTab !== 'courses'" (click)="activeTab = 'courses'">
-      <span class="material-symbols-outlined">school</span>
-      Course & Cycle Standings
+      <span class="material-symbols-outlined">school</span> Course & Track Standings
     </button>
     <button class="btn" [class.btn-primary]="activeTab === 'schools'" [class.btn-subtle]="activeTab !== 'schools'" (click)="activeTab = 'schools'">
-      <span class="material-symbols-outlined">emoji_events</span>
-      National School Championship
+      <span class="material-symbols-outlined">emoji_events</span> National School Championship
     </button>
+  </div>
+
+  <!-- SCHOOL CHAMPIONSHIP PODIUM -->
+  <div *ngIf="activeTab === 'schools' && firstPlace" class="podium-grid">
+    <!-- 2ND PLACE -->
+    <div class="podium-card silver" *ngIf="secondPlace">
+      <div class="podium-medal">2</div>
+      <div class="podium-avatar">{{ getInitials(secondPlace.schoolName) }}</div>
+      <h4>{{ secondPlace.schoolName }}</h4>
+      <div class="text-subtle text-xs">{{ secondPlace.region }}</div>
+      <div class="podium-points">{{ secondPlace.points | number }} pts</div>
+    </div>
+
+    <!-- 1ST PLACE -->
+    <div class="podium-card gold" *ngIf="firstPlace">
+      <div class="podium-medal">1</div>
+      <div class="podium-avatar">{{ getInitials(firstPlace.schoolName) }}</div>
+      <h4>{{ firstPlace.schoolName }}</h4>
+      <div class="text-subtle text-xs">{{ firstPlace.region }}</div>
+      <div class="podium-points">{{ firstPlace.points | number }} pts</div>
+    </div>
+
+    <!-- 3RD PLACE -->
+    <div class="podium-card bronze" *ngIf="thirdPlace">
+      <div class="podium-medal">3</div>
+      <div class="podium-avatar">{{ getInitials(thirdPlace.schoolName) }}</div>
+      <h4>{{ thirdPlace.schoolName }}</h4>
+      <div class="text-subtle text-xs">{{ thirdPlace.region }}</div>
+      <div class="podium-points">{{ thirdPlace.points | number }} pts</div>
+    </div>
   </div>
 
   <!-- COURSE & CYCLE STANDINGS VIEW -->
   <div *ngIf="activeTab === 'courses'" style="display:flex;flex-direction:column;gap:20px;">
-    <!-- Course Chips -->
+    <!-- Course Tracks Toolbar -->
     <div class="card" style="padding:14px 18px;">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -43,56 +71,55 @@
       </div>
     </div>
 
-    <!-- Standings Table -->
+    <!-- Student Standings Table -->
     <div class="card">
       <div class="card-header">
         <h3>Top Performers — {{ selectedCourseTrack }}</h3>
         <span class="badge secondary">Cycle Active</span>
       </div>
-      <div class="card-body" style="padding:0;overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;">
+      <div style="overflow-x:auto;">
+        <table>
           <thead>
-            <tr style="border-bottom:1px solid var(--outline-variant);background:var(--surface-container-low);text-align:left;color:var(--on-surface-variant);font-size:12px;text-transform:uppercase;">
-              <th style="padding:14px 18px;">Rank</th>
-              <th style="padding:14px 18px;">Student</th>
-              <th style="padding:14px 18px;">School</th>
-              <th style="padding:14px 18px;text-align:center;">Course Progress</th>
-              <th style="padding:14px 18px;text-align:center;">Lab Accuracy</th>
-              <th style="padding:14px 18px;text-align:center;">Streak</th>
-              <th style="padding:14px 18px;text-align:right;">Cycle Algorithmic Score</th>
+            <tr>
+              <th>Rank</th>
+              <th>Student</th>
+              <th>School</th>
+              <th style="text-align:center;">Course Progress</th>
+              <th style="text-align:center;">Lab Accuracy</th>
+              <th style="text-align:center;">Streak</th>
+              <th style="text-align:right;">Cycle Score</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let entry of filteredCourseStandings"
-                [style.background]="entry.isCurrentUser ? 'var(--primary-container, rgba(0, 63, 135, 0.12))' : 'transparent'"
-                [style.font-weight]="entry.isCurrentUser ? '600' : 'normal'"
-                style="border-bottom:1px solid var(--outline-variant);">
-              <td style="padding:14px 18px;">
-                <span [style.background]="entry.rank === 1 ? '#f59e0b' : entry.rank === 2 ? '#94a3b8' : entry.rank === 3 ? '#b45309' : 'var(--surface-container-high)'"
-                      [style.color]="entry.rank <= 3 ? '#fff' : 'var(--on-surface)'"
+                [style.background]="entry.isCurrentUser ? 'rgba(0, 63, 135, 0.08)' : 'transparent'"
+                [style.font-weight]="entry.isCurrentUser ? '600' : 'normal'">
+              <td>
+                <span [style.background]="entry.rank === 1 ? '#f59e0b' : entry.rank === 2 ? '#94a3b8' : entry.rank === 3 ? '#b45309' : '#e2e8f0'"
+                      [style.color]="entry.rank <= 3 ? '#fff' : '#0f172a'"
                       style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font-weight:700;font-size:13px;">
                   {{ entry.rank }}
                 </span>
               </td>
-              <td style="padding:14px 18px;font-size:14px;">
+              <td style="font-size:14px;font-weight:600;">
                 {{ entry.name }}
               </td>
-              <td style="padding:14px 18px;color:var(--on-surface-variant);">
+              <td class="text-subtle">
                 {{ entry.school }}
               </td>
-              <td style="padding:14px 18px;text-align:center;">
+              <td style="text-align:center;">
                 <span class="badge primary">{{ entry.progressPct }}%</span>
               </td>
-              <td style="padding:14px 18px;text-align:center;">
+              <td style="text-align:center;font-weight:600;">
                 {{ entry.accuracyPct }}%
               </td>
-              <td style="padding:14px 18px;text-align:center;">
+              <td style="text-align:center;">
                 <span style="display:inline-flex;align-items:center;gap:3px;color:#f59e0b;font-weight:600;">
                   <span class="material-symbols-outlined" style="font-size:16px;">local_fire_department</span>
                   {{ entry.streakDays }} days
                 </span>
               </td>
-              <td style="padding:14px 18px;text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;color:var(--primary);">
+              <td style="text-align:right;" class="font-mono" style="font-weight:700;font-size:15px;color:#003f87;">
                 {{ entry.algoScore | number:'1.1-1' }} pts
               </td>
             </tr>
@@ -102,121 +129,39 @@
     </div>
   </div>
 
-  <div *ngIf="activeTab === 'schools'" style="display:grid;grid-template-columns:1fr 320px;gap:20px;">
-    <div style="display:flex;flex-direction:column;gap:20px;">
-      <!-- Podium -->
-      <div class="card">
-        <div class="card-header"><h3>Top 3 Schools — National Championship</h3><span class="badge primary" style="display:flex;align-items:center;gap:4px;"><span class="material-symbols-outlined" style="font-size:14px;">circle</span>LIVE</span></div>
-        <div class="card-body" style="overflow:hidden;position:relative;">
-          <!-- Radial glow background -->
-          <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 0%, rgba(0,63,135,0.06) 0%, transparent 70%);pointer-events:none;"></div>
-          <div class="podium-container" style="position:relative;" *ngIf="contentService.leaderboardData.length >= 3">
-            <!-- 2nd -->
-            <div class="podium-slot" *ngIf="secondPlace">
-              <div class="podium-avatar">{{ getInitials(secondPlace.schoolName) }}<div class="rank-badge">2</div></div>
-              <div class="podium-bar second">
-                <div class="school-name">{{ secondPlace.schoolName }}</div>
-                <div class="school-pts">{{ secondPlace.points | number }} pts</div>
-              </div>
-            </div>
-            <!-- 1st -->
-            <div class="podium-slot" *ngIf="firstPlace">
-              <span class="material-symbols-outlined fill" style="font-size:32px;color:var(--primary);margin-bottom:4px;">military_tech</span>
-              <div class="podium-avatar first">{{ getInitials(firstPlace.schoolName) }}<div class="rank-badge gold">1</div></div>
-              <div class="podium-bar first">
-                <div class="school-name" style="font-weight:700;">{{ firstPlace.schoolName }}</div>
-                <div class="school-pts" style="font-size:18px;">{{ firstPlace.points | number }} pts</div>
-              </div>
-            </div>
-            <!-- 3rd -->
-            <div class="podium-slot" *ngIf="thirdPlace">
-              <div class="podium-avatar">{{ getInitials(thirdPlace.schoolName) }}<div class="rank-badge">3</div></div>
-              <div class="podium-bar third">
-                <div class="school-name">{{ thirdPlace.schoolName }}</div>
-                <div class="school-pts">{{ thirdPlace.points | number }} pts</div>
-              </div>
-            </div>
-          </div>
-          <div *ngIf="contentService.leaderboardData.length < 3" style="text-align:center;padding:40px;color:var(--on-surface-variant);">
-            <span class="material-symbols-outlined" style="font-size:48px;opacity:0.5;margin-bottom:12px;">leaderboard</span>
-            <p>Waiting for championship scores to populate...</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Full Table -->
-      <div class="card">
-        <div class="card-header">
-          <h3>Full Standings (Rank 4–50)</h3>
-          <div style="display:flex;gap:4px;align-items:center;">
-            <button class="btn btn-subtle btn-sm"><span class="material-symbols-outlined">chevron_left</span></button>
-            <span style="font-size:12px;color:var(--on-surface-variant);padding:0 8px;">Page 1 of 5</span>
-            <button class="btn btn-subtle btn-sm"><span class="material-symbols-outlined">chevron_right</span></button>
-          </div>
-        </div>
-        <div style="overflow-x:auto;">
-          <table class="data-table">
-            <thead>
-              <tr><th style="text-align:center;width:60px;">Rank</th><th>School / Organization</th><th>Region</th><th style="text-align:center">Attendance</th><th style="text-align:center">Assign. Avg</th><th style="text-align:right;color:var(--primary)">Total Points</th></tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let row of standings">
-                <td style="text-align:center;font-family:'JetBrains Mono',monospace;color:var(--on-surface-variant);">0{{row.rank}}</td>
-                <td>
-                  <div style="display:flex;align-items:center;gap:10px;">
-                    <div style="width:32px;height:32px;border-radius:6px;background:var(--surface-container);border:1px solid var(--outline-variant);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--on-surface-variant);">{{row.school.slice(0,2).toUpperCase()}}</div>
-                    <span style="font-weight:600;">{{row.school}}</span>
-                  </div>
-                </td>
-                <td style="color:var(--on-surface-variant);font-size:13px;">{{row.region}}</td>
-                <td style="text-align:center;">
-                  <span style="background:var(--surface-container);padding:3px 10px;border-radius:20px;font-size:11px;font-family:'JetBrains Mono',monospace;display:inline-flex;align-items:center;gap:4px;">
-                    <span style="width:6px;height:6px;border-radius:50%;background:var(--secondary);display:inline-block;"></span>{{row.attendance}}
-                  </span>
-                </td>
-                <td style="text-align:center;">
-                  <div style="display:flex;align-items:center;justify-content:center;gap:6px;">
-                    <span style="font-family:'JetBrains Mono',monospace;font-size:13px;">{{row.avg}}</span>
-                    <div style="width:50px;height:4px;background:var(--surface-container);border-radius:2px;overflow:hidden;">
-                      <div style="height:100%;background:var(--primary);border-radius:2px;" [style.width.%]="row.avg"></div>
-                    </div>
-                  </div>
-                </td>
-                <td style="text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--primary);">{{row.pts | number}}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+  <!-- SCHOOL CHAMPIONSHIP VIEW TABLE -->
+  <div *ngIf="activeTab === 'schools'" class="card mt-6">
+    <div class="card-header">
+      <h3>National School Championship Standings</h3>
+      <span class="badge primary">NTIC Season 2026</span>
     </div>
-
-    <!-- Right: Talent Discovery Panel -->
-    <div class="card" style="align-self:start;position:sticky;top:20px;">
-      <div class="card-header">
-        <h3 style="display:flex;align-items:center;gap:6px;"><span class="material-symbols-outlined fill" style="color:var(--primary)">star</span>Talent Discovery</h3>
-        <span class="badge primary" style="display:flex;align-items:center;gap:4px;"><span class="material-symbols-outlined" style="font-size:12px;">circle</span>LIVE</span>
-      </div>
-      <div class="card-body">
-        <p style="font-size:13px;color:var(--on-surface-variant);margin-bottom:16px;">Highlighting outstanding individual performance across challenge categories.</p>
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          <div *ngFor="let item of contentService.talentDiscovery" style="background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:10px;padding:14px;transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='var(--shadow-elevated)'" onmouseout="this.style.boxShadow=''">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-              <span class="badge" [class]="item.badgeColor || 'primary'" style="font-size:10px;">{{item.category}}</span>
-              <span class="material-symbols-outlined fill" style="font-size:18px;color:var(--primary)">workspace_premium</span>
-            </div>
-            <div style="font-weight:700;font-size:14px;margin-bottom:2px;">{{item.studentName}}</div>
-            <div style="font-size:11px;color:var(--on-surface-variant);margin-bottom:8px;">{{item.schoolAndGrade}}</div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;padding-top:8px;border-top:1px solid var(--outline-variant);">
-              <span style="color:var(--on-surface-variant)">Score</span>
-              <span style="font-weight:700;color:var(--primary);">{{item.score}}</span>
-            </div>
-          </div>
-          <div *ngIf="contentService.talentDiscovery.length === 0" style="text-align:center;padding:24px;color:var(--on-surface-variant);font-size:13px;">
-            No highlighted talent entries yet.
-          </div>
-        </div>
-        <button class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:12px;">View All Categories</button>
-      </div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>School Name</th>
+            <th>Region</th>
+            <th style="text-align:center;">Attendance Rate</th>
+            <th style="text-align:center;">Avg Lab Score</th>
+            <th style="text-align:right;">Total Championship Points</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of standings">
+            <td>
+              <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:#f1f5f9;font-weight:700;font-size:12px;">
+                #{{ s.rank }}
+              </span>
+            </td>
+            <td style="font-weight:700;font-size:14px;">{{ s.school }}</td>
+            <td class="text-subtle">{{ s.region }}</td>
+            <td style="text-align:center;">{{ s.attendance }}</td>
+            <td style="text-align:center;font-weight:600;">{{ s.avg }}%</td>
+            <td style="text-align:right;font-weight:800;font-size:15px;color:#003f87;" class="font-mono">{{ s.pts | number }} pts</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>

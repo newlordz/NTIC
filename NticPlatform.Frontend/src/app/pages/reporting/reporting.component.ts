@@ -2,11 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService } from '../../services/content.service';
+import { TimeAgoPipe } from '../../services/time-ago.pipe';
 
 @Component({
   selector: 'app-reporting',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, FormsModule],
+  imports: [CommonModule, TitleCasePipe, FormsModule, TimeAgoPipe],
   templateUrl: './reporting.component.html',
   styleUrl: './reporting.component.scss'
 })
@@ -75,8 +76,8 @@ export class ReportingComponent implements OnInit {
       }
 
       this.auditLogs = [
-        { action: 'Admin Portal Login', user: this.userName, time: 'Just now', icon: 'login', color: 'primary' },
-        { action: 'Institutional Profile Verified', user: 'NTIC System', time: 'Today', icon: 'verified', color: 'success' }
+        { action: 'Admin Portal Login', user: this.userName, time: new Date().toISOString(), icon: 'login', color: 'primary' },
+        { action: 'Institutional Profile Verified', user: 'NTIC System', time: new Date().toISOString(), icon: 'verified', color: 'success' }
       ];
 
       if (teamsCount > 0) {
@@ -97,7 +98,7 @@ export class ReportingComponent implements OnInit {
         { title: 'Student Assignment Completion', type: 'Student', date: new Date().toISOString().split('T')[0], size: '2.1 MB', status: 'ready', icon: 'assignment' }
       ];
       this.auditLogs = [
-        { action: 'LMS Portal Access', user: this.userName, time: 'Just now', icon: 'login', color: 'primary' },
+        { action: 'LMS Portal Access', user: this.userName, time: new Date().toISOString(), icon: 'login', color: 'primary' },
         { action: 'Curriculum Module Reviewed', user: this.userName, time: '09:30', icon: 'menu_book', color: 'secondary' }
       ];
     } else {
@@ -213,7 +214,7 @@ export class ReportingComponent implements OnInit {
     this.auditLogs.unshift({
       action: `Generated: ${reportTitle}`,
       user: this.userName,
-      time: 'Just now',
+      time: new Date().toISOString(),
       icon: 'add_chart',
       color: 'primary'
     });
@@ -279,7 +280,7 @@ export class ReportingComponent implements OnInit {
     this.auditLogs.unshift({
       action: `Exported (${format}): ${report.title}`,
       user: this.userName,
-      time: 'Just now',
+      time: new Date().toISOString(),
       icon: 'download',
       color: 'secondary'
     });
@@ -300,7 +301,7 @@ export class ReportingComponent implements OnInit {
       this.auditLogs.unshift({
         action: `Deleted Report: ${this.reportToDelete.title}`,
         user: this.userName,
-        time: 'Just now',
+        time: new Date().toISOString(),
         icon: 'delete',
         color: 'error'
       });

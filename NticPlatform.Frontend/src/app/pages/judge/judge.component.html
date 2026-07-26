@@ -13,6 +13,15 @@
         <span class="gold-text">Scoring Chamber</span>
       </h1>
       <p class="arena-sub">Evaluate NTIC championship submissions with precision rubrics and publish official rankings.</p>
+
+      <!-- Active Judge Credentials Badge -->
+      <div style="margin-top: 14px; padding: 10px 18px; background: rgba(255,255,255,0.08); backdrop-filter: blur(8px); border-radius: 12px; border: 1px solid rgba(59,130,246,0.35); display: inline-flex; align-items: center; gap: 14px; text-align: left;">
+        <span class="material-symbols-outlined" style="color: #60a5fa; font-size: 26px;">gavel</span>
+        <div>
+          <div style="font-size: 13px; font-weight: 700; color: #fff;">{{ loggedInJudge.fullName }}</div>
+          <div style="font-size: 11px; color: rgba(255,255,255,0.85);">{{ loggedInJudge.organization }} • Track: <strong style="color: #93c5fd;">{{ loggedInJudge.track }}</strong></div>
+        </div>
+      </div>
     </div>
 
     <div class="arena-stats">
@@ -92,6 +101,20 @@
           </div>
           <div class="project-title">{{ team.projectTitle }}</div>
           <p class="project-desc">{{ team.description }}</p>
+
+          <!-- Quick Submission Links -->
+          <div style="display:flex;gap:6px;margin:8px 0;flex-wrap:wrap;">
+            <button class="btn btn-subtle btn-sm" style="font-size:11px;padding:4px 8px;" (click)="openMediaPreview(team, 'video'); $event.stopPropagation()">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#ef4444;">play_circle</span> Watch Video
+            </button>
+            <button class="btn btn-subtle btn-sm" style="font-size:11px;padding:4px 8px;" (click)="openMediaPreview(team, 'code'); $event.stopPropagation()">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#3b82f6;">code</span> Source Code
+            </button>
+            <button class="btn btn-subtle btn-sm" style="font-size:11px;padding:4px 8px;" (click)="openMediaPreview(team, 'pdf'); $event.stopPropagation()">
+              <span class="material-symbols-outlined" style="font-size:14px;color:#10b981;">picture_as_pdf</span> Project PDF
+            </button>
+          </div>
+
           <div class="team-card-footer">
             <span><span class="material-symbols-outlined">schedule</span> {{ team.submittedAt }}</span>
             <span><span class="material-symbols-outlined">group</span> {{ team.members }} members</span>
@@ -106,6 +129,12 @@
             Officially Scored
           </div>
         </article>
+      </div>
+
+      <div *ngIf="filteredTeams.length === 0" style="padding: 40px; text-align: center; color: var(--on-surface-variant); background: var(--surface-container-low); border-radius: 16px; border: 1px dashed var(--outline-variant); margin-top: 14px;">
+        <span class="material-symbols-outlined" style="font-size: 44px; opacity: 0.5; margin-bottom: 8px;">rate_review</span>
+        <h4 style="margin: 0 0 4px; font-size: 15px; font-weight: 700; color: var(--on-surface);">No Submissions Awaiting Evaluation</h4>
+        <p style="margin: 0; font-size: 13px;">There are currently no student project submissions registered under this track.</p>
       </div>
     </section>
 
@@ -134,6 +163,48 @@
         </div>
       </div>
     </aside>
+  </div>
+
+  <!-- Media Preview Modal -->
+  <div class="modal-overlay" *ngIf="showMediaModal" (click)="closeMediaModal()" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;">
+    <div class="modal-card" (click)="$event.stopPropagation()" style="background:var(--surface-container-lowest, #fff);border-radius:16px;max-width:650px;width:100%;padding:24px;border:1px solid var(--outline-variant);box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--on-surface);">{{ mediaModalTitle }}</h3>
+        <button class="btn btn-subtle btn-sm" (click)="closeMediaModal()"><span class="material-symbols-outlined">close</span></button>
+      </div>
+
+      <div style="padding:16px;background:var(--surface-container-low);border-radius:12px;border:1px solid var(--outline-variant);font-size:13px;line-height:1.6;">
+        <div *ngIf="mediaModalType === 'video'">
+          <div style="font-weight:700;color:var(--primary);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-outlined" style="color:#ef4444;">play_circle</span> Demonstration Video Link
+          </div>
+          <p style="margin:0 0 10px;">Submission includes live prototype demo recording.</p>
+          <a [href]="mediaModalUrl" target="_blank" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+            <span class="material-symbols-outlined">open_in_new</span> Open Video Player
+          </a>
+        </div>
+
+        <div *ngIf="mediaModalType === 'code'">
+          <div style="font-weight:700;color:var(--primary);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-outlined" style="color:#3b82f6;">code</span> Source Code Repository
+          </div>
+          <p style="margin:0 0 10px;">GitHub Repository: <code style="background:rgba(0,0,0,0.06);padding:2px 6px;border-radius:4px;">{{ mediaModalUrl }}</code></p>
+          <a [href]="mediaModalUrl" target="_blank" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:6px;">
+            <span class="material-symbols-outlined">open_in_new</span> Inspect Code Repository
+          </a>
+        </div>
+
+        <div *ngIf="mediaModalType === 'pdf'">
+          <div style="font-weight:700;color:var(--primary);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-outlined" style="color:#10b981;">picture_as_pdf</span> Technical Documentation PDF
+          </div>
+          <p style="margin:0 0 10px;">System architecture diagram & engineering design specification report.</p>
+          <button class="btn btn-primary btn-sm" (click)="closeMediaModal()" style="display:inline-flex;align-items:center;gap:6px;">
+            <span class="material-symbols-outlined">download</span> Download Spec PDF
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Scoring Modal Overlay -->
@@ -176,6 +247,15 @@
 
       <div class="panel-body" *ngIf="!showSuccessBurst">
         <p class="project-brief">{{ selectedTeam.description }}</p>
+
+        <!-- Rubric Presets -->
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;background:var(--surface-container-low);padding:10px 14px;border-radius:10px;border:1px solid var(--outline-variant);">
+          <span style="font-size:12px;font-weight:700;color:var(--on-surface-variant);">Quick Preset:</span>
+          <button type="button" class="btn btn-subtle btn-sm" style="font-size:11px;padding:4px 10px;" (click)="applyRubricPreset(100)">100% Flawless</button>
+          <button type="button" class="btn btn-subtle btn-sm" style="font-size:11px;padding:4px 10px;" (click)="applyRubricPreset(85)">85% Exceeds</button>
+          <button type="button" class="btn btn-subtle btn-sm" style="font-size:11px;padding:4px 10px;" (click)="applyRubricPreset(70)">70% Satisfactory</button>
+          <button type="button" class="btn btn-subtle btn-sm" style="font-size:11px;padding:4px 10px;" (click)="applyRubricPreset(50)">50% Pass</button>
+        </div>
 
         <div class="rubric-sliders">
           <div class="rubric-row" *ngFor="let cat of rubric">

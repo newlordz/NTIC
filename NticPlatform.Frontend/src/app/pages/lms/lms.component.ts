@@ -23,17 +23,20 @@ export class LmsComponent implements OnInit {
   // Student specific active tab
   studentActiveTab = 'courses'; // 'courses', 'assignments', 'badge'
 
-  courses = [
-    { title: 'Python Data Structures', track: 'coding', icon: 'data_object', level: 'Intermediate', enrolled: 320, completion: 68, modules: 8, status: 'active' },
-    { title: 'Arduino Robotics Base', track: 'robotics', icon: 'memory', level: 'Beginner', enrolled: 180, completion: 42, modules: 6, status: 'active' },
-    { title: 'Intro to Neural Networks', track: 'ai', icon: 'model_training', level: 'Advanced', enrolled: 85, completion: 0, modules: 7, status: 'planning' },
-    { title: 'Ethical Hacking 101', track: 'cyber', icon: 'security', level: 'Intermediate', enrolled: 140, completion: 22, modules: 5, status: 'active' },
-    { title: 'Design Thinking Sprint', track: 'innovation', icon: 'tips_and_updates', level: 'Beginner', enrolled: 210, completion: 55, modules: 4, status: 'active' },
-    { title: 'Web Dev Bootcamp', track: 'coding', icon: 'code', level: 'Beginner', enrolled: 290, completion: 61, modules: 10, status: 'active' },
-    { title: 'Computer Vision Basics', track: 'ai', icon: 'visibility', level: 'Advanced', enrolled: 60, completion: 33, modules: 6, status: 'active' },
-    { title: 'Sensor Integration Lab', track: 'robotics', icon: 'sensors', level: 'Intermediate', enrolled: 95, completion: 50, modules: 5, status: 'active' },
-    { title: 'Digital Safety & CTF', track: 'cyber', icon: 'security', level: 'Beginner', enrolled: 175, completion: 80, modules: 4, status: 'active' }
-  ];
+  get courses(): any[] {
+    return this.contentService.lmsCourses
+      .filter(c => (c.approvalStatus || 'approved') === 'approved' && c.status === 'active')
+      .map(c => ({
+        title: c.title,
+        track: c.track,
+        icon: c.icon,
+        level: c.level,
+        enrolled: c.enrolled,
+        completion: c.completion,
+        modules: c.modules,
+        status: c.status
+      }));
+  }
   
   get submissions(): any[] {
     return this.contentService.submissions.map(s => ({
@@ -324,7 +327,7 @@ export class LmsComponent implements OnInit {
       file: this.selectedUploadFileId ? `${this.selectedUploadFileId}::${this.selectedUploadFileName}` : this.newSubmission.fileName,
       score: null,
       status: 'pending' as const,
-      time: 'Just now',
+      time: new Date().toISOString(),
       feedback: 'Submitted successfully. Awaiting mentor evaluation.'
     };
     currentSubmissions.unshift(newSub);
@@ -334,7 +337,7 @@ export class LmsComponent implements OnInit {
     currentAudit.unshift({
       action: `New submission by ${this.studentProfile.name}: "${this.newSubmission.assignmentName}" — ${this.newSubmission.fileName}`,
       user: this.studentProfile.email || this.studentProfile.name,
-      time: 'Just now',
+      time: new Date().toISOString(),
       type: 'approval'
     });
     this.contentService.saveAuditLogs(currentAudit);

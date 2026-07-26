@@ -4,11 +4,12 @@ import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } fro
 import { filter } from 'rxjs/operators';
 import { ThemeService } from './services/theme.service';
 import { ContentService } from './services/content.service';
+import { TimeAgoPipe } from './services/time-ago.pipe';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, TimeAgoPipe],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
@@ -204,6 +205,7 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'reporting':    return ['instructor', 'school_admin', 'super_admin', 'reviewer'].includes(role);
       case 'records':      return ['instructor', 'school_admin', 'super_admin', 'reviewer'].includes(role);
       case 'users':        return ['super_admin'].includes(role);
+      case 'lms_admin':    return ['super_admin', 'content_manager'].includes(role);
       default:             return false;
     }
   }
@@ -219,10 +221,10 @@ export class AppComponent implements OnInit, OnDestroy {
   showProfileDropdown = false;
 
   notificationsList = [
-    { id: 1, title: 'New School Admin registered: Prempeh College', time: 'Just now', icon: 'school', unread: true, category: 'Registration' },
-    { id: 2, title: 'Analytics engine synced 1,248 student records', time: '5m ago', icon: 'sync', unread: true, category: 'System' },
-    { id: 3, title: 'Submission graded: Coding Challenge #4', time: '1h ago', icon: 'task_alt', unread: true, category: 'Judging' },
-    { id: 4, title: 'LMS backup snapshot created successfully', time: '2h ago', icon: 'cloud_done', unread: false, category: 'System' }
+    { id: 1, title: 'New School Admin registered: Prempeh College', time: new Date().toISOString(), icon: 'school', unread: true, category: 'Registration' },
+    { id: 2, title: 'Analytics engine synced 1,248 student records', time: new Date(Date.now() - 300000).toISOString(), icon: 'sync', unread: true, category: 'System' },
+    { id: 3, title: 'Submission graded: Coding Challenge #4', time: new Date(Date.now() - 3600000).toISOString(), icon: 'task_alt', unread: true, category: 'Judging' },
+    { id: 4, title: 'LMS backup snapshot created successfully', time: new Date(Date.now() - 7200000).toISOString(), icon: 'cloud_done', unread: false, category: 'System' }
   ];
 
   get liveNotifications(): any[] {

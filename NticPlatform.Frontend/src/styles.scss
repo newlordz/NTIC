@@ -2449,6 +2449,35 @@ textarea.form-control { resize: vertical; min-height: 100px; }
     }
   }
 
+  /* Mute/Unmute Button */
+  .slide-mute-btn {
+    position: absolute;
+    bottom: 40px;
+    left: 80px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+
+    &:hover {
+      background: #fff;
+      color: #1e1e1e;
+      border-color: #fff;
+    }
+
+    .material-symbols-outlined {
+      font-size: 20px;
+    }
+  }
+
   /* Pagination Bar Indicators */
   .slideshow-pagination {
     position: absolute;

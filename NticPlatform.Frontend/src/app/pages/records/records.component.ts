@@ -50,8 +50,20 @@ export class RecordsComponent implements OnInit {
   isModalOpen = false;
   isConfirmOpen = false;
   confirmAction: { action: string; record: Record } | null = null;
+  viewMode: 'table' | 'grid' = 'table';
+  selectedRegionFilter = 'all';
   sortBy = 'submittedAt';
   sortDir = 'desc';
+
+  get availableRegions(): string[] {
+    const regions = new Set<string>();
+    this.allRecords.forEach(r => {
+      if (r.region && r.region.trim()) {
+        regions.add(r.region.trim());
+      }
+    });
+    return Array.from(regions).sort();
+  }
 
   get pendingCount(): number {
     return this.allRecords.filter(r => r.status === 'pending').length;
@@ -259,6 +271,10 @@ export class RecordsComponent implements OnInit {
 
     if (this.activeTab !== 'all' && this.activeTab !== 'recent') {
       filtered = filtered.filter(r => r.type === this.activeTab);
+    }
+
+    if (this.selectedRegionFilter !== 'all') {
+      filtered = filtered.filter(r => r.region && r.region.trim() === this.selectedRegionFilter);
     }
 
     if (this.searchQuery.trim()) {

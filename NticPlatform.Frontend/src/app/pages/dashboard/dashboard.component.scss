@@ -534,6 +534,14 @@
   flex-direction: column;
   gap: 8px;
   margin-top: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 4px; }
+  &::-webkit-scrollbar-thumb:hover { background: var(--outline); }
 }
 
 .admin-audit-item {
@@ -609,14 +617,13 @@
   font-weight: 700;
   color: var(--on-surface-variant);
   cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.2s ease, color 0.2s ease;
+  transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 
   .material-symbols-outlined { font-size: 22px; }
 
   &:hover {
     border-color: var(--primary);
     color: var(--primary);
-    transform: translateY(-3px);
   }
 
   &.active {

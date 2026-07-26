@@ -15,9 +15,15 @@
     <button class="back-link-btn" routerLink="/">
       <span class="material-symbols-outlined">arrow_back</span> Return to Homepage
     </button>
-    <button class="btn btn-subtle" (click)="themeService.toggleTheme()" [title]="themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'" style="position: absolute; top: 20px; right: 28px; z-index: 10; padding: 8px;">
-      <span class="material-symbols-outlined" style="margin: 0;">{{ themeService.isDarkMode ? 'dark_mode' : 'light_mode' }}</span>
-    </button>
+    <div class="gateway-top-actions" style="position: absolute; top: 20px; right: 28px; z-index: 10; display: flex; align-items: center; gap: 10px;">
+      <button type="button" (click)="openLoginModal()" class="gateway-login-btn" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; border-radius: 8px; background: linear-gradient(135deg, var(--primary, #003f87) 0%, #1d4ed8 100%); color: #ffffff; box-shadow: 0 4px 14px rgba(0, 63, 135, 0.35); transition: all 0.2s ease;">
+        <span class="material-symbols-outlined" style="font-size: 18px;">login</span>
+        <span>Account Login</span>
+      </button>
+      <button class="btn btn-subtle" (click)="themeService.toggleTheme()" [title]="themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'" style="padding: 8px; display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 8px;">
+        <span class="material-symbols-outlined" style="margin: 0;">{{ themeService.isDarkMode ? 'dark_mode' : 'light_mode' }}</span>
+      </button>
+    </div>
 
     <div class="gateway-header">
       <div class="landing-brand-logo-wrap">
@@ -277,28 +283,6 @@
             <p>Register as a certified NTIC instructor to coach high school competitor squads.</p>
           </div>
         </div>
-
-        <!-- Option 4: Judge -->
-        <div *ngIf="showAdminPaths" class="role-option-card role-judge" (click)="selectRolePath('judge')">
-          <div class="role-icon-wrapper" style="color: #7c3aed;">
-            <span class="material-symbols-outlined">gavel</span>
-          </div>
-          <div class="role-details">
-            <h4>Championship Judge</h4>
-            <p>Apply as an evaluator to score project submissions and CTF heats.</p>
-          </div>
-        </div>
-
-        <!-- Option 5: Sponsor Direct Access -->
-        <div *ngIf="showAdminPaths" class="role-option-card role-sponsor" (click)="selectRolePath('sponsor')">
-          <div class="role-icon-wrapper" style="color: var(--error);">
-            <span class="material-symbols-outlined">handshake</span>
-          </div>
-          <div class="role-details">
-            <h4>Corporate Sponsor Portal</h4>
-            <p>Access the sponsor portal directly to monitor CSR metrics and support arenas.</p>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -437,12 +421,16 @@
         </h1>
         <p class="page-subtitle">{{ activeTab === 'student' ? 'Register onto the national championship platform as an independent competitor or competition squad' : 'Register onto the national championship platform as a chosen ' + (activeTab === 'school' ? 'institution representative' : activeTab) }}</p>
       </div>
-      <div style="display:flex; gap:12px;">
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button type="button" class="btn btn-subtle" (click)="openLoginModal()" style="display: flex; align-items: center; gap: 6px;">
+          <span class="material-symbols-outlined" style="font-size: 18px;">login</span>
+          <span>Login</span>
+        </button>
         <button class="btn btn-subtle" (click)="goBackToGateway()">
           <span class="material-symbols-outlined">logout</span>
           Gateway
         </button>
-        <button class="btn btn-subtle" (click)="themeService.toggleTheme()" [title]="themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'" style="padding: 8px;">
+        <button class="btn btn-subtle" (click)="themeService.toggleTheme()" [title]="themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'" style="padding: 8px; display: flex; align-items: center; justify-content: center; width: 38px; height: 38px;">
           <span class="material-symbols-outlined" style="margin: 0;">{{ themeService.isDarkMode ? 'dark_mode' : 'light_mode' }}</span>
         </button>
       </div>
@@ -495,6 +483,10 @@
               <input class="form-control" type="text" placeholder="District" [(ngModel)]="schoolForm.district" name="schoolDistrict">
             </div>
             <div class="form-actions">
+              <button class="btn btn-subtle" (click)="saveDraft()" title="Save as Draft">
+                <span class="material-symbols-outlined">save</span> Draft
+              </button>
+              <div style="flex:1;"></div>
               <button class="btn btn-subtle" (click)="goToStep(1)" disabled>Back</button>
               <button class="btn btn-primary" (click)="nextStep(2)">
                 Continue 
@@ -510,15 +502,18 @@
               <div style="display:flex;gap:8px;align-items:flex-start;">
                 <div style="flex:1;">
                   <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="schoolForm.tel" name="schoolTel" (ngModelChange)="validatePhoneLive('schoolTel', $event)">
-                  <div class="field-validation-msg" *ngIf="fieldValidation['schoolTel'] && fieldValidation['schoolTel'].status !== 'idle'" [ngClass]="fieldValidation['schoolTel'].status">
-                    <span class="material-symbols-outlined">{{ fieldValidation['schoolTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolTel'].status === 'valid' ? 'check_circle' : fieldValidation['schoolTel'].status === 'taken' ? 'error' : 'warning' }}</span>
-                    {{ fieldValidation['schoolTel'].message }}
+                  <div class="field-validation-msg" *ngIf="schoolForm.tel && fieldValidation['schoolTel'] && fieldValidation['schoolTel'].status !== 'idle'" [ngClass]="fieldValidation['schoolTel'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['schoolTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolTel'].status === 'valid' ? 'check_circle' : fieldValidation['schoolTel'].status === 'draft_found' ? 'history' : fieldValidation['schoolTel'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    <span>{{ fieldValidation['schoolTel'].message }}</span>
+                    <button *ngIf="fieldValidation['schoolTel'].status === 'draft_found'" type="button" class="btn btn-xs btn-primary ml-2" (click)="resumeDraftFromField(schoolForm.tel)" style="padding: 2px 8px; font-size: 11px;">
+                      Resume Saved Draft
+                    </button>
                   </div>
                 </div>
-                <button *ngIf="canVerifyField('schoolTel')" class="verify-field-btn" (click)="sendVerifyOtp('schoolTel', 'phone', schoolForm.tel)">
+                <button *ngIf="schoolForm.tel && canVerifyField('schoolTel', schoolForm.tel)" class="verify-field-btn" (click)="sendVerifyOtp('schoolTel', 'phone', schoolForm.tel)">
                   <span class="material-symbols-outlined">verified</span> Verify
                 </button>
-                <span *ngIf="fieldVerified['schoolTel']" class="verified-field-badge">
+                <span *ngIf="schoolForm.tel && fieldVerified['schoolTel']" class="verified-field-badge">
                   <span class="material-symbols-outlined">check_circle</span> Verified
                 </span>
               </div>
@@ -528,15 +523,18 @@
               <div style="display:flex;gap:8px;align-items:flex-start;">
                 <div style="flex:1;">
                   <input class="form-control" type="email" placeholder="school@edu.gh" [(ngModel)]="schoolForm.email" name="schoolEmail" (ngModelChange)="validateEmailLive('schoolEmail', $event)">
-                  <div class="field-validation-msg" *ngIf="fieldValidation['schoolEmail'] && fieldValidation['schoolEmail'].status !== 'idle'" [ngClass]="fieldValidation['schoolEmail'].status">
-                    <span class="material-symbols-outlined">{{ fieldValidation['schoolEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolEmail'].status === 'valid' ? 'check_circle' : fieldValidation['schoolEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
-                    {{ fieldValidation['schoolEmail'].message }}
+                  <div class="field-validation-msg" *ngIf="schoolForm.email && fieldValidation['schoolEmail'] && fieldValidation['schoolEmail'].status !== 'idle'" [ngClass]="fieldValidation['schoolEmail'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['schoolEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolEmail'].status === 'valid' ? 'check_circle' : fieldValidation['schoolEmail'].status === 'draft_found' ? 'history' : fieldValidation['schoolEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    <span>{{ fieldValidation['schoolEmail'].message }}</span>
+                    <button *ngIf="fieldValidation['schoolEmail'].status === 'draft_found'" type="button" class="btn btn-xs btn-primary ml-2" (click)="resumeDraftFromField(schoolForm.email)" style="padding: 2px 8px; font-size: 11px;">
+                      Resume Saved Draft
+                    </button>
                   </div>
                 </div>
-                <button *ngIf="canVerifyField('schoolEmail')" class="verify-field-btn" (click)="sendVerifyOtp('schoolEmail', 'email', schoolForm.email)">
+                <button *ngIf="schoolForm.email && canVerifyField('schoolEmail', schoolForm.email)" class="verify-field-btn" (click)="sendVerifyOtp('schoolEmail', 'email', schoolForm.email)">
                   <span class="material-symbols-outlined">verified</span> Verify
                 </button>
-                <span *ngIf="fieldVerified['schoolEmail']" class="verified-field-badge">
+                <span *ngIf="schoolForm.email && fieldVerified['schoolEmail']" class="verified-field-badge">
                   <span class="material-symbols-outlined">check_circle</span> Verified
                 </span>
               </div>
@@ -571,15 +569,18 @@
               <div style="display:flex;gap:8px;align-items:flex-start;">
                 <div style="flex:1;">
                   <input class="form-control" type="email" placeholder="rep@edu.gh" [(ngModel)]="schoolForm.repEmail" name="schoolRepEmail" (ngModelChange)="validateEmailLive('schoolRepEmail', $event)">
-                  <div class="field-validation-msg" *ngIf="fieldValidation['schoolRepEmail'] && fieldValidation['schoolRepEmail'].status !== 'idle'" [ngClass]="fieldValidation['schoolRepEmail'].status">
-                    <span class="material-symbols-outlined">{{ fieldValidation['schoolRepEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolRepEmail'].status === 'valid' ? 'check_circle' : fieldValidation['schoolRepEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
-                    {{ fieldValidation['schoolRepEmail'].message }}
+                  <div class="field-validation-msg" *ngIf="schoolForm.repEmail && fieldValidation['schoolRepEmail'] && fieldValidation['schoolRepEmail'].status !== 'idle'" [ngClass]="fieldValidation['schoolRepEmail'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['schoolRepEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolRepEmail'].status === 'valid' ? 'check_circle' : fieldValidation['schoolRepEmail'].status === 'draft_found' ? 'history' : fieldValidation['schoolRepEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    <span>{{ fieldValidation['schoolRepEmail'].message }}</span>
+                    <button *ngIf="fieldValidation['schoolRepEmail'].status === 'draft_found'" type="button" class="btn btn-xs btn-primary ml-2" (click)="resumeDraftFromField(schoolForm.repEmail)" style="padding: 2px 8px; font-size: 11px;">
+                      Resume Saved Draft
+                    </button>
                   </div>
                 </div>
-                <button *ngIf="canVerifyField('schoolRepEmail')" class="verify-field-btn" (click)="sendVerifyOtp('schoolRepEmail', 'email', schoolForm.repEmail)">
+                <button *ngIf="schoolForm.repEmail && canVerifyField('schoolRepEmail', schoolForm.repEmail)" class="verify-field-btn" (click)="sendVerifyOtp('schoolRepEmail', 'email', schoolForm.repEmail)">
                   <span class="material-symbols-outlined">verified</span> Verify
                 </button>
-                <span *ngIf="fieldVerified['schoolRepEmail']" class="verified-field-badge">
+                <span *ngIf="schoolForm.repEmail && fieldVerified['schoolRepEmail']" class="verified-field-badge">
                   <span class="material-symbols-outlined">check_circle</span> Verified
                 </span>
               </div>
@@ -589,20 +590,27 @@
               <div style="display:flex;gap:8px;align-items:flex-start;">
                 <div style="flex:1;">
                   <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="schoolForm.repTel" name="schoolRepTel" (ngModelChange)="validatePhoneLive('schoolRepTel', $event)">
-                  <div class="field-validation-msg" *ngIf="fieldValidation['schoolRepTel'] && fieldValidation['schoolRepTel'].status !== 'idle'" [ngClass]="fieldValidation['schoolRepTel'].status">
-                    <span class="material-symbols-outlined">{{ fieldValidation['schoolRepTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolRepTel'].status === 'valid' ? 'check_circle' : fieldValidation['schoolRepTel'].status === 'taken' ? 'error' : 'warning' }}</span>
-                    {{ fieldValidation['schoolRepTel'].message }}
+                  <div class="field-validation-msg" *ngIf="schoolForm.repTel && fieldValidation['schoolRepTel'] && fieldValidation['schoolRepTel'].status !== 'idle'" [ngClass]="fieldValidation['schoolRepTel'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['schoolRepTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['schoolRepTel'].status === 'valid' ? 'check_circle' : fieldValidation['schoolRepTel'].status === 'draft_found' ? 'history' : fieldValidation['schoolRepTel'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    <span>{{ fieldValidation['schoolRepTel'].message }}</span>
+                    <button *ngIf="fieldValidation['schoolRepTel'].status === 'draft_found'" type="button" class="btn btn-xs btn-primary ml-2" (click)="resumeDraftFromField(schoolForm.repTel)" style="padding: 2px 8px; font-size: 11px;">
+                      Resume Saved Draft
+                    </button>
                   </div>
                 </div>
-                <button *ngIf="canVerifyField('schoolRepTel')" class="verify-field-btn" (click)="sendVerifyOtp('schoolRepTel', 'phone', schoolForm.repTel)">
+                <button *ngIf="schoolForm.repTel && canVerifyField('schoolRepTel', schoolForm.repTel)" class="verify-field-btn" (click)="sendVerifyOtp('schoolRepTel', 'phone', schoolForm.repTel)">
                   <span class="material-symbols-outlined">verified</span> Verify
                 </button>
-                <span *ngIf="fieldVerified['schoolRepTel']" class="verified-field-badge">
+                <span *ngIf="schoolForm.repTel && fieldVerified['schoolRepTel']" class="verified-field-badge">
                   <span class="material-symbols-outlined">check_circle</span> Verified
                 </span>
               </div>
             </div>
             <div class="form-actions">
+              <button class="btn btn-subtle" (click)="saveDraft()" title="Save as Draft">
+                <span class="material-symbols-outlined">save</span> Draft
+              </button>
+              <div style="flex:1;"></div>
               <button class="btn btn-subtle" (click)="goToStep(1)">
                 <span class="material-symbols-outlined">arrow_back</span>
                 Back
@@ -864,6 +872,10 @@
             </div>
 
             <div class="form-actions" style="margin-top: 24px;">
+              <button class="btn btn-subtle" (click)="saveDraft()" title="Save as Draft">
+                <span class="material-symbols-outlined">save</span> Draft
+              </button>
+              <div style="flex:1;"></div>
               <button class="btn btn-subtle" (click)="goToStep(2)">
                 <span class="material-symbols-outlined">arrow_back</span>
                 Back
@@ -904,8 +916,13 @@
                 <span>PDF, DOCX (Max 10MB)</span>
               </div>
               <input #accredInput type="file" multiple (change)="onFileSelected($event, 'accredDocs')" accept=".pdf,.docx" style="display:none">
+              <p *ngIf="missingDocsError && activeTab === 'school'" style="color:var(--error);font-size:12px;margin:6px 0 0;">{{ missingDocsError }}</p>
             </div>
             <div class="form-actions">
+              <button class="btn btn-subtle" (click)="saveDraft()" title="Save as Draft">
+                <span class="material-symbols-outlined">save</span> Draft
+              </button>
+              <div style="flex:1;"></div>
               <button class="btn btn-subtle" (click)="goToStep(3)">
                 <span class="material-symbols-outlined">arrow_back</span>
                 Back
@@ -1109,9 +1126,9 @@
                         <span class="material-symbols-outlined">description</span>
                       </div>
                       <div class="doc-item-info">
-                        <span class="doc-label">Supporting Docs</span>
-                        <span class="doc-status" [class.success]="false" [class.pending]="!!(selectedFileIds['accredDocs'] || []).length">
-                          {{ (selectedFileIds['accredDocs'] || []).length ? 'Pending Review' : 'Not Uploaded' }}
+                        <span class="doc-label">Supporting Docs *</span>
+                        <span class="doc-status" [class.success]="false" [class.pending]="!!(selectedFileIds['accredDocs'] || []).length" [class.error]="!(selectedFileIds['accredDocs'] || []).length">
+                          {{ (selectedFileIds['accredDocs'] || []).length ? 'Pending Review' : 'Required' }}
                         </span>
                       </div>
                     </div>
@@ -1134,7 +1151,7 @@
                 </div>
                 <span>I agree to the <a (click)="openTermsModal('school')" class="terms-link">Terms & Conditions</a> and <a (click)="openPrivacyModal()" class="terms-link">Privacy Policy</a></span>
               </label>
-              <button class="btn btn-primary btn-full submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting || !schoolForm.acceptedTerms">
+              <button class="btn btn-primary btn-full submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting || !schoolForm.acceptedTerms || !hasRequiredDocs">
                 <span *ngIf="!isSubmitting" style="display:flex; align-items:center; gap:8px;">
                   Submit Registry <span class="material-symbols-outlined">check_circle</span>
                 </span>
@@ -1162,7 +1179,7 @@
                         <img [src]="getLogoUrl(req.details)" alt="Logo" style="width:100%;height:100%;object-fit:cover;">
                       </div>
                       <div *ngIf="!getLogoUrl(req.details)" style="width:36px;height:36px;border-radius:6px;flex-shrink:0;background:linear-gradient(135deg,var(--primary,#6366f1),var(--accent,#a855f7));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;">{{req.entity.charAt(0)}}</div>
-                      <strong class="confidential-text">{{req.entity}}</strong>
+                      <strong class="confidential-text"><span>{{req.entity}}</span></strong>
                     </div>
                   </td>
                   <td>{{ req.details ? req.details.region : '—' }}</td>
@@ -1198,15 +1215,15 @@
               <div style="display:flex;gap:8px;align-items:flex-start;">
                 <div style="flex:1;">
                   <input class="form-control" type="tel" placeholder="+233..." [(ngModel)]="instructorForm.tel" name="instTel" (ngModelChange)="validatePhoneLive('instTel', $event)">
-                  <div class="field-validation-msg" *ngIf="fieldValidation['instTel'] && fieldValidation['instTel'].status !== 'idle'" [ngClass]="fieldValidation['instTel'].status">
+                  <div class="field-validation-msg" *ngIf="instructorForm.tel && fieldValidation['instTel'] && fieldValidation['instTel'].status !== 'idle'" [ngClass]="fieldValidation['instTel'].status">
                     <span class="material-symbols-outlined">{{ fieldValidation['instTel'].status === 'checking' ? 'hourglass_top' : fieldValidation['instTel'].status === 'valid' ? 'check_circle' : fieldValidation['instTel'].status === 'taken' ? 'error' : 'warning' }}</span>
                     {{ fieldValidation['instTel'].message }}
                   </div>
                 </div>
-                <button *ngIf="canVerifyField('instTel')" class="verify-field-btn" (click)="sendVerifyOtp('instTel', 'phone', instructorForm.tel)">
+                <button *ngIf="instructorForm.tel && canVerifyField('instTel', instructorForm.tel)" class="verify-field-btn" (click)="sendVerifyOtp('instTel', 'phone', instructorForm.tel)">
                   <span class="material-symbols-outlined">verified</span> Verify
                 </button>
-                <span *ngIf="fieldVerified['instTel']" class="verified-field-badge">
+                <span *ngIf="instructorForm.tel && fieldVerified['instTel']" class="verified-field-badge">
                   <span class="material-symbols-outlined">check_circle</span> Verified
                 </span>
               </div>
@@ -1219,15 +1236,15 @@
               <div style="display:flex;gap:8px;align-items:flex-start;">
                 <div style="flex:1;">
                   <input class="form-control" type="email" placeholder="instructor@email.com" [(ngModel)]="instructorForm.email" name="instEmail" (ngModelChange)="validateEmailLive('instEmail', $event)">
-                  <div class="field-validation-msg" *ngIf="fieldValidation['instEmail'] && fieldValidation['instEmail'].status !== 'idle'" [ngClass]="fieldValidation['instEmail'].status">
+                  <div class="field-validation-msg" *ngIf="instructorForm.email && fieldValidation['instEmail'] && fieldValidation['instEmail'].status !== 'idle'" [ngClass]="fieldValidation['instEmail'].status">
                     <span class="material-symbols-outlined">{{ fieldValidation['instEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['instEmail'].status === 'valid' ? 'check_circle' : fieldValidation['instEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
                     {{ fieldValidation['instEmail'].message }}
                   </div>
                 </div>
-                <button *ngIf="canVerifyField('instEmail')" class="verify-field-btn" (click)="sendVerifyOtp('instEmail', 'email', instructorForm.email)">
+                <button *ngIf="instructorForm.email && canVerifyField('instEmail', instructorForm.email)" class="verify-field-btn" (click)="sendVerifyOtp('instEmail', 'email', instructorForm.email)">
                   <span class="material-symbols-outlined">verified</span> Verify
                 </button>
-                <span *ngIf="fieldVerified['instEmail']" class="verified-field-badge">
+                <span *ngIf="instructorForm.email && fieldVerified['instEmail']" class="verified-field-badge">
                   <span class="material-symbols-outlined">check_circle</span> Verified
                 </span>
               </div>
@@ -1261,6 +1278,12 @@
           </div>
 
           <div style="margin-bottom: 24px;">
+            <label class="form-label">Portfolio / Personal Website</label>
+            <input class="form-control" type="url" placeholder="https://yourportfolio.com" [(ngModel)]="instructorForm.portfolio" name="instPortfolio">
+            <p style="font-size:11px; color:var(--on-surface-variant); margin-top:4px;">Optional. Link to your GitHub, personal site, or online portfolio.</p>
+          </div>
+
+          <div style="margin-bottom: 24px;">
             <label class="form-label">Specialist Tracks / Expertise Areas</label>
             <div class="expertise-chip-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
               <label *ngFor="let exp of ['Python', 'JavaScript', 'C#', 'AI', 'Robotics', 'Cybersecurity', 'Data Science']" class="expertise-chip-label" style="display:flex; align-items:center; gap:6px; cursor:pointer; background:var(--surface-container-low); padding:6px 12px; border-radius:20px; font-size:12px; border:1px solid var(--outline-variant);">
@@ -1271,7 +1294,7 @@
           </div>
 
           <div style="margin-bottom: 20px;">
-            <label class="form-label">Documents (CV, Certificates, National ID)</label>
+            <label class="form-label">Documents (CV, Certificates, National ID) *</label>
             <div class="upload-zone" (click)="instructorDocsInput.click()">
               <span class="material-symbols-outlined upload-icon">upload_file</span>
               <p *ngIf="!selectedFileNames['instructorDocs']?.length">Drag &amp; drop or <strong>Browse</strong></p>
@@ -1284,6 +1307,7 @@
               <span>PDF (Max 10MB each)</span>
             </div>
             <input #instructorDocsInput type="file" multiple (change)="onFileSelected($event, 'instructorDocs')" accept=".pdf" style="display:none">
+            <p *ngIf="missingDocsError && activeTab === 'instructor'" style="color:var(--error);font-size:12px;margin:6px 0 0;">{{ missingDocsError }}</p>
           </div>
 
           <div style="display: flex; gap: 12px; margin-top: 8px;">
@@ -1292,7 +1316,7 @@
               <input type="checkbox" [(ngModel)]="instructorForm.acceptedTerms" name="instructorTerms" style="accent-color:var(--primary);">
               <span>I agree to the <a (click)="openTermsModal('instructor')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
             </label>
-            <button class="btn btn-primary" (click)="submitRegistration()" [disabled]="isSubmitting || !instructorForm.acceptedTerms">
+            <button class="btn btn-primary" (click)="submitRegistration()" [disabled]="isSubmitting || !instructorForm.acceptedTerms || !hasRequiredDocs">
               <span *ngIf="!isSubmitting" style="display:flex; align-items:center; gap:8px;">
                 <span class="material-symbols-outlined">badge</span>
                 Register Instructor
@@ -1351,6 +1375,10 @@
                   <div class="detail-item" *ngIf="instructorForm.address">
                     <span class="material-symbols-outlined">location_on</span>
                     <span>{{ instructorForm.address }}</span>
+                  </div>
+                  <div class="detail-item" *ngIf="instructorForm.portfolio">
+                    <span class="material-symbols-outlined">link</span>
+                    <span>{{ instructorForm.portfolio }}</span>
                   </div>
                 </div>
                 
@@ -1743,28 +1771,25 @@
               </span>
             </div>
           </div>
-          <div class="grid-2">
-            <div class="form-group">
-              <label class="form-label">Sponsorship Commitment (₵) *</label>
-              <input class="form-control" type="text" placeholder="e.g., 50,000" [(ngModel)]="sponsorForm.amount" name="sponsAmount">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Sponsorship Tier</label>
-              <select class="form-control form-select" [(ngModel)]="sponsorForm.tier" name="sponsTier">
-                <option value="Platinum Partner (₵ 100k+)">Platinum Partner (₵ 100k+)</option>
-                <option value="Gold Partner (₵ 50k - ₵ 100k)">Gold Partner (₵ 50k - ₵ 100k)</option>
-                <option value="Silver Partner (₵ 20k - ₵ 50k)">Silver Partner (₵ 20k - ₵ 50k)</option>
-                <option value="Bronze / General Sponsor (< ₵ 20k)">Bronze / General Sponsor (< ₵ 20k)</option>
-              </select>
-            </div>
-          </div>
           <div class="form-group">
-            <label class="form-label">Supported Competition Arenas</label>
-            <div class="expertise-chip-list">
-              <label *ngFor="let arena of ['Coding Track','Robotics Arena','AI & ML Challenge','Cyber Security CTF','Open Innovation']" class="expertise-chip-label">
-                <input type="checkbox" [(ngModel)]="sponsorForm.arenas[arena]" name="sponsArena_{{arena}}">
-                {{arena}}
-              </label>
+            <label class="form-label">Sponsorship Packages — Choose What to Support</label>
+            <p style="font-size:12px;color:var(--on-surface-variant);margin:0 0 12px;">Select items below to indicate what you'd like to support.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div *ngFor="let item of sponsorshipItems"
+                   style="padding:12px 14px; border:1.5px solid var(--outline-variant); border-radius:10px; cursor:pointer; transition:all 0.2s;"
+                   [style.border-color]="isPackageSelected(item.label) ? 'var(--primary)' : 'var(--outline-variant)'"
+                   [style.background]="isPackageSelected(item.label) ? 'var(--primary-container)' : 'var(--surface-container-lowest)'"
+                   (click)="togglePackage(item.label)">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span class="material-symbols-outlined" style="font-size:20px;" [style.color]="isPackageSelected(item.label) ? 'var(--primary)' : 'var(--on-surface-variant)'">{{ item.icon }}</span>
+                  <div style="flex:1;">
+                    <div style="font-size:13px;font-weight:600;color:var(--on-surface);">{{ item.label }}</div>
+                  </div>
+                  <span *ngIf="!isPackageSelected(item.label)" class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">add_circle</span>
+                  <span *ngIf="isPackageSelected(item.label)" class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">check_circle</span>
+                </div>
+                <div style="font-size:11px;color:var(--on-surface-variant);margin-top:4px;">{{ item.desc }}</div>
+              </div>
             </div>
           </div>
           <div class="form-group">
@@ -1813,7 +1838,7 @@
           <!-- View 1: Live Preview -->
           <div *ngIf="rightPanelMode === 'preview'" class="preview-panel-content fade-in">
             <!-- Sponsor Preview Card -->
-            <div class="sponsor-preview-card" [class]="sponsorForm.tier.split(' ')[0].toLowerCase()">
+            <div class="sponsor-preview-card" [class]="(selectedPackages.length > 0 ? selectedPackages[0] : 'bronze').split(' ')[0].toLowerCase()">
               <!-- Placeholder State -->
               <div class="card-placeholder-state sponsor" *ngIf="!sponsorForm.name">
                 <span class="material-symbols-outlined placeholder-icon animate-pulse">handshake</span>
@@ -1825,16 +1850,14 @@
                 <div class="sponsor-card-glass"></div>
                 <div class="sponsor-card-shine"></div>
                 <div class="sponsor-card-top">
+                  <div *ngIf="sponsorLogoUrl" style="text-align:center; margin-bottom:8px;">
+                    <img [src]="sponsorLogoUrl" alt="Sponsor Logo" style="max-width:72px; max-height:72px; border-radius:12px; object-fit:cover; border:3px solid rgba(255,255,255,0.3); box-shadow: 0 2px 12px rgba(0,0,0,0.15);">
+                  </div>
                   <span class="material-symbols-outlined award-star">handshake</span>
-                  <span class="sponsor-card-tier-label">{{ sponsorForm.tier.split(' ')[0] | uppercase }} PARTNER</span>
+                  <span class="sponsor-card-tier-label">{{ selectedPackages.length > 0 ? selectedPackages[0].toUpperCase() : 'SPONSOR' }}</span>
                 </div>
                 <h2 class="sponsor-card-name">{{ sponsorForm.name }}</h2>
                 <div class="sponsor-card-sector">{{ sponsorForm.sector }}</div>
-                
-                <div class="sponsor-card-commitment">
-                  <span class="curr-symbol">₵</span>
-                  <span class="amount-val">{{ sponsorForm.amount || '0.00' }}</span>
-                </div>
                 
                 <div class="sponsor-card-details">
                   <div class="detail-row" *ngIf="sponsorForm.repName">
@@ -1847,18 +1870,17 @@
                   </div>
                 </div>
                 
-                <div class="sponsor-card-arenas">
-                  <div class="title">Supported Arenas</div>
+                <div class="sponsor-card-arenas" *ngIf="selectedPackages.length > 0">
+                  <div class="title">Sponsorship Packages</div>
                   <div class="arenas-grid">
-                    <ng-container *ngFor="let arena of ['Coding Track','Robotics Arena','AI & ML Challenge','Cyber Security CTF','Open Innovation']">
-                      <span class="arena-tag animate-pop" *ngIf="sponsorForm.arenas[arena]">
-                        <span class="dot"></span> {{ arena }}
-                      </span>
-                    </ng-container>
-                    <span class="arena-tag empty" *ngIf="!(sponsorForm.arenas['Coding Track'] || sponsorForm.arenas['Robotics Arena'] || sponsorForm.arenas['AI & ML Challenge'] || sponsorForm.arenas['Cyber Security CTF'] || sponsorForm.arenas['Open Innovation'])">
-                      No arenas selected
+                    <span class="arena-tag animate-pop" *ngFor="let pkg of selectedPackages">
+                      <span class="dot"></span> {{ pkg }}
                     </span>
                   </div>
+                </div>
+                <div class="sponsor-card-arenas" *ngIf="selectedPackages.length === 0">
+                  <div class="title">Sponsorship Packages</div>
+                  <span class="arena-tag empty">No items selected</span>
                 </div>
               </ng-container>
             </div>
@@ -1869,18 +1891,18 @@
               <thead>
                 <tr>
                   <th>Sponsor</th>
-                  <th>Tier</th>
-                  <th>Supported Arenas</th>
-                  <th>Commitment</th>
+                  <th>Package</th>
+                  <th>Sponsorship Packages</th>
+                  <th>Total</th>
                   <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let sp of sponsors">
                   <td><strong class="confidential-text">{{sp.name.substring(0, 1)}}<span>{{sp.name.substring(1)}}</span></strong></td>
-                  <td><span class="badge secondary">{{ sp.tier }}</span></td>
-                  <td><span style="font-size:12px; color:var(--on-surface-variant);">{{ sp.support }}</span></td>
-                  <td><strong style="color:var(--primary);">{{ sp.amount }}</strong></td>
+                  <td><span class="badge secondary">{{ sp.items || sp.tier }}</span></td>
+                  <td><span style="font-size:12px; color:var(--on-surface-variant);">{{ sp.items || sp.support }}</span></td>
+                  <td><strong style="color:var(--primary);">{{ sp.total }}</strong></td>
                   <td><span class="badge success">{{ sp.status }}</span></td>
                 </tr>
               </tbody>
@@ -1976,6 +1998,19 @@
             <label class="form-label">Brief Bio / Qualifications</label>
             <textarea class="form-control" rows="3" placeholder="Describe your background and why you are applying as a judge..." style="resize: vertical; font-family: inherit;" [(ngModel)]="judgeForm.bio" name="jdBio"></textarea>
           </div>
+          <div class="form-group">
+            <label class="form-label">Judge / Personal Logo</label>
+            <div class="upload-zone" (click)="judgeLogoInput.click()">
+              <span class="material-symbols-outlined upload-icon">cloud_upload</span>
+              <p *ngIf="!selectedFileNames['judgeLogo']?.length">Upload a professional logo or headshot for your judge profile</p>
+              <div *ngIf="selectedFileNames['judgeLogo']?.length" style="display:flex;align-items:center;gap:8px;">
+                <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['judgeLogo'][0] }}</span>
+                <span class="material-symbols-outlined" (click)="removeFile('judgeLogo', 0); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);">close</span>
+              </div>
+              <span>PNG, SVG (Max 3MB)</span>
+            </div>
+            <input #judgeLogoInput type="file" (change)="onFileSelected($event, 'judgeLogo')" accept=".png,.svg" style="display:none">
+          </div>
           <label class="terms-checkbox-wrapper" style="display:flex; align-items:flex-start; gap:8px; margin:16px 0; font-size:13px; color:var(--on-surface-variant); cursor:pointer;">
             <input type="checkbox" [(ngModel)]="judgeForm.acceptedTerms" name="judgeTerms" style="margin-top:2px; accent-color:var(--primary);">
             <span>I agree to the <a (click)="openTermsModal('judge')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
@@ -2011,6 +2046,9 @@
             <!-- Active State -->
             <ng-container *ngIf="judgeForm.name">
               <div class="judge-ticket-card" style="margin: 0 auto;">
+                <div *ngIf="judgeLogoUrl" style="text-align:center; margin-bottom:12px;">
+                  <img [src]="judgeLogoUrl" alt="Judge Logo" style="max-width:80px; max-height:80px; border-radius:50%; object-fit:cover; border:3px solid var(--primary); box-shadow: 0 2px 12px rgba(0,0,0,0.15);">
+                </div>
                 <div class="ticket-stub-divider">
                   <div class="stub-notch top"></div>
                   <div class="stub-notch bottom"></div>
@@ -2167,9 +2205,9 @@
             </div>
             <div class="modal-info-item">
               <span class="item-lbl">Registration Documents</span>
-              <span class="item-val" [style.color]="(selectedFileIds['accredDocs'] || []).length ? '#f59e0b' : '#94a3b8'" style="display:flex; align-items:center; gap:4px;">
-                <span class="material-symbols-outlined" style="font-size:16px;">{{ (selectedFileIds['accredDocs'] || []).length ? 'hourglass_empty' : 'block' }}</span>
-                {{ (selectedFileIds['accredDocs'] || []).length ? 'Pending Review' : 'Not Uploaded' }}
+              <span class="item-val" [style.color]="(selectedFileIds['accredDocs'] || []).length ? '#f59e0b' : '#ef4444'" style="display:flex; align-items:center; gap:4px;">
+                <span class="material-symbols-outlined" style="font-size:16px;">{{ (selectedFileIds['accredDocs'] || []).length ? 'hourglass_empty' : 'warning' }}</span>
+                {{ (selectedFileIds['accredDocs'] || []).length ? 'Pending Review' : 'Required — Please upload' }}
               </span>
             </div>
           </div>
@@ -2182,7 +2220,7 @@
           <input type="checkbox" [(ngModel)]="schoolForm.acceptedTerms" name="schoolTermsPreview" style="accent-color:var(--primary);">
           <span>I agree to the <a (click)="openTermsModal('school')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
         </label>
-        <button class="btn btn-primary submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting || !schoolForm.acceptedTerms">
+        <button class="btn btn-primary submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting || !schoolForm.acceptedTerms || !hasRequiredDocs">
           <span *ngIf="!isSubmitting" style="display:flex; align-items:center; gap:8px;">
             Confirm & Submit <span class="material-symbols-outlined">check_circle</span>
           </span>
@@ -2420,5 +2458,81 @@
       <button class="btn-alert-dismiss" style="background:var(--outline-variant);color:var(--on-surface);" (click)="closeVerifyModal()">Cancel</button>
       <button class="btn-alert-dismiss" (click)="confirmVerifyOtp()">Verify</button>
     </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PHENOMENAL GATEWAY ACCOUNT LOGIN MODAL
+     ══════════════════════════════════════════════════════════════ -->
+<div class="login-modal-backdrop" [class.open]="isLoginModalOpen" (click)="closeLoginModal()">
+  <div class="login-modal-card" (click)="$event.stopPropagation()">
+    
+    <button type="button" class="close-modal-btn" (click)="closeLoginModal()" title="Close Login">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+
+    <div class="modal-body">
+      <div class="login-modal-header">
+        <div class="lm-crest">
+          <span class="material-symbols-outlined">menu_book</span>
+        </div>
+        <h3>NTI Championship Secure Sign In</h3>
+        <p>Authenticate to access your personalized workspace</p>
+      </div>
+
+      <form (ngSubmit)="performLogin()" class="lm-form">
+        
+        <div class="lm-group">
+          <label>Email or Access Pass *</label>
+          <div class="lm-input-wrap">
+            <span class="material-symbols-outlined lm-icon">mail</span>
+            <input 
+              type="text" 
+              name="loginEmail" 
+              [(ngModel)]="loginEmail" 
+              required 
+              placeholder="name@school.edu.gh or Ticket"
+              class="lm-input"
+              autocomplete="username"
+            >
+          </div>
+        </div>
+
+        <div class="lm-group">
+          <label>Password / OTP *</label>
+          <div class="lm-input-wrap">
+            <span class="material-symbols-outlined lm-icon">lock</span>
+            <input 
+              [type]="isPasswordVisible ? 'text' : 'password'"
+              name="loginPassword" 
+              [(ngModel)]="loginPassword" 
+              placeholder="Enter password or verification code"
+              class="lm-input"
+              autocomplete="current-password"
+            >
+            <button type="button" class="lm-pass-toggle" (click)="isPasswordVisible = !isPasswordVisible" tabindex="-1">
+              <span class="material-symbols-outlined">{{ isPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="lm-error" *ngIf="loginError">
+          <span class="material-symbols-outlined">error_outline</span>
+          <span>{{ loginError }}</span>
+        </div>
+
+        <button type="submit" class="lm-submit" [disabled]="isLoggingIn || !loginEmail.trim()">
+          <ng-container *ngIf="!isLoggingIn">
+            <span>Enter Authorized Workspace</span>
+            <span class="material-symbols-outlined">arrow_right_alt</span>
+          </ng-container>
+          <ng-container *ngIf="isLoggingIn">
+            <span class="lm-spinner"></span>
+            <span>Verifying Credentials...</span>
+          </ng-container>
+        </button>
+      </form>
+    </div>
+
   </div>
 </div>

@@ -1415,9 +1415,10 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       this.contentService.saveUsers([...this.contentService.users]);
 
       localStorage.setItem('activeRoleId', finalRole);
-      localStorage.setItem('activeUserEmail', credential);
+      localStorage.setItem('activeUserEmail', registeredUser.email || credential);
+      localStorage.setItem('activeUserTicket', registeredUser.ticket || credential);
       this.contentService.saveAuditLogs([
-        { action: `${finalRole} login: ${credential}`, user: credential, time: 'Just now', type: 'auth' },
+        { action: `${finalRole} login: ${credential}`, user: credential, time: new Date().toISOString(), type: 'auth' },
         ...this.contentService.auditLogs
       ]);
 
@@ -1432,7 +1433,12 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         reviewer: '/dashboard',
         competition_manager: '/dashboard'
       };
-      this.router.navigate([roleRoutes[finalRole] || '/dashboard']);
+
+      if ((finalRole === 'judge' || finalRole === 'sponsor') && registeredUser.organization === '_pending_profile') {
+        this.router.navigate(['/profile-completion']);
+      } else {
+        this.router.navigate([roleRoutes[finalRole] || '/dashboard']);
+      }
     }, 800);
   }
 

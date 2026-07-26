@@ -1,0 +1,847 @@
+<div class="lms-manager-container">
+  <!-- Page Header -->
+  <header class="lms-header">
+    <div class="header-content">
+      <div class="header-title">
+        <span class="material-symbols-outlined header-icon">verified_user</span>
+        <div>
+          <h1>LMS Management & Content Moderation Desk</h1>
+          <p>Review instructor-submitted courses, modules, assets, and assignments. Approve content before it becomes visible to students.</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-outline" (click)="openCourseModal()">
+          <span class="material-symbols-outlined">add</span> New Course
+        </button>
+        <button class="btn btn-primary" (click)="openAssignmentModal()">
+          <span class="material-symbols-outlined">assignment_add</span> Create Assignment
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Metric KPI Cards -->
+  <div class="stats-grid">
+    <div class="stat-card" [class.highlight-card]="pendingApprovalsCount > 0">
+      <div class="stat-icon approval-theme">
+        <span class="material-symbols-outlined">rule</span>
+      </div>
+      <div class="stat-details">
+        <span class="stat-value">{{ pendingApprovalsCount }}</span>
+        <span class="stat-label">Pending Instructor Approvals</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon courses-theme">
+        <span class="material-symbols-outlined">menu_book</span>
+      </div>
+      <div class="stat-details">
+        <span class="stat-value">{{ totalCourses }}</span>
+        <span class="stat-label">Total Courses ({{ activeCoursesCount }} Active)</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon modules-theme">
+        <span class="material-symbols-outlined">view_module</span>
+      </div>
+      <div class="stat-details">
+        <span class="stat-value">{{ totalModules }}</span>
+        <span class="stat-label">Curriculum Modules</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon materials-theme">
+        <span class="material-symbols-outlined">folder_open</span>
+      </div>
+      <div class="stat-details">
+        <span class="stat-value">{{ totalMaterials }}</span>
+        <span class="stat-label">Learning Assets & Files</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon grading-theme">
+        <span class="material-symbols-outlined">fact_check</span>
+      </div>
+      <div class="stat-details">
+        <span class="stat-value">{{ pendingGradingCount }}</span>
+        <span class="stat-label">Submissions Pending Review</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Workspace Tabs -->
+  <div class="workspace-tabs">
+    <button class="tab-btn" [class.active]="activeTab === 'approvals'" (click)="activeTab = 'approvals'">
+      <span class="material-symbols-outlined">verified</span> Content Approvals Queue
+      <span class="badge-count warn-badge" *ngIf="pendingApprovalsCount > 0">{{ pendingApprovalsCount }}</span>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'courses'" (click)="activeTab = 'courses'">
+      <span class="material-symbols-outlined">menu_book</span> Courses Hub
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'modules'" (click)="activeTab = 'modules'">
+      <span class="material-symbols-outlined">view_module</span> Curriculum Modules
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'materials'" (click)="activeTab = 'materials'">
+      <span class="material-symbols-outlined">folder_open</span> Learning Assets
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'assignments'" (click)="activeTab = 'assignments'">
+      <span class="material-symbols-outlined">assignment</span> Assignments & Reviews
+      <span class="badge-count" *ngIf="pendingGradingCount > 0">{{ pendingGradingCount }}</span>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'students'" (click)="activeTab = 'students'">
+      <span class="material-symbols-outlined">group</span> Student Roster & Progress
+    </button>
+  </div>
+
+  <!-- Filters & Search Toolbar -->
+  <div class="toolbar-card">
+    <div class="search-box">
+      <span class="material-symbols-outlined">search</span>
+      <input type="text" [(ngModel)]="searchQuery" placeholder="Search courses, modules, assets, or instructors..." />
+    </div>
+
+    <div class="filters-group">
+      <!-- Moderation Status Selector -->
+      <select [(ngModel)]="selectedApprovalFilter" *ngIf="activeTab !== 'approvals' && activeTab !== 'students'">
+        <option value="all">All Moderation States</option>
+        <option value="approved">Approved Live</option>
+        <option value="pending">Pending Approval</option>
+        <option value="rejected">Rejected</option>
+      </select>
+
+      <!-- Course Selector -->
+      <select [(ngModel)]="selectedCourseId" *ngIf="activeTab !== 'courses' && activeTab !== 'approvals'">
+        <option value="all">All Courses</option>
+        <option *ngFor="let course of contentService.lmsCourses" [value]="course.id">{{ course.title }}</option>
+      </select>
+
+      <!-- Track Selector -->
+      <select [(ngModel)]="selectedTrack" *ngIf="activeTab === 'courses' || activeTab === 'assignments'">
+        <option value="all">All Tracks</option>
+        <option value="coding">Coding</option>
+        <option value="robotics">Robotics</option>
+        <option value="ai">AI</option>
+        <option value="cyber">Cybersecurity</option>
+        <option value="innovation">Innovation</option>
+      </select>
+
+      <!-- Status Selector -->
+      <select [(ngModel)]="selectedStatus" *ngIf="activeTab === 'courses'">
+        <option value="all">All Statuses</option>
+        <option value="active">Active</option>
+        <option value="draft">Draft</option>
+        <option value="archived">Archived</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ── TAB 0: CONTENT APPROVALS QUEUE (MODERATION DESK) ── -->
+  <div *ngIf="activeTab === 'approvals'" class="tab-content-panel">
+    <div class="panel-header">
+      <div>
+        <h2>Instructor Submissions Awaiting Approval ({{ pendingLmsItems.length }})</h2>
+        <p class="text-subtle text-sm">Review instructor uploads. Approved items will immediately become visible to participating students.</p>
+      </div>
+    </div>
+
+    <div class="moderation-queue-grid" *ngIf="pendingLmsItems.length > 0">
+      <div *ngFor="let item of pendingLmsItems" class="moderation-card">
+        <div class="moderation-card-header">
+          <span class="type-pill" [class]="'pill-' + item.type">{{ item.typeLabel }}</span>
+          <span class="badge badge-warning">Awaiting Admin Review</span>
+        </div>
+
+        <div class="moderation-card-body">
+          <h3>{{ item.title }}</h3>
+          <p class="description-text">{{ item.description }}</p>
+
+          <div class="instructor-chip">
+            <span class="material-symbols-outlined">person</span>
+            <div>
+              <strong class="text-xs">Uploaded by:</strong>
+              <div class="text-xs font-semibold">{{ item.submittedBy }}</div>
+            </div>
+          </div>
+
+          <div class="meta-row text-xs text-subtle" *ngIf="item.courseTitle">
+            <span>Course Context: <strong>{{ item.courseTitle }}</strong></span>
+          </div>
+        </div>
+
+        <div class="moderation-card-footer">
+          <button class="btn btn-sm btn-outline danger" (click)="openRejectModal(item)">
+            <span class="material-symbols-outlined">close</span> Reject & Feedback
+          </button>
+          <button class="btn btn-sm btn-primary" (click)="approveModerationItem(item)">
+            <span class="material-symbols-outlined">check_circle</span> Approve & Publish
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-state" *ngIf="pendingLmsItems.length === 0">
+      <span class="material-symbols-outlined text-success">verified</span>
+      <h3>All Instructor Uploads Approved!</h3>
+      <p>There are no instructor submissions currently waiting in the moderation queue.</p>
+    </div>
+  </div>
+
+  <!-- ── TAB 1: COURSES HUB ── -->
+  <div *ngIf="activeTab === 'courses'" class="tab-content-panel">
+    <div class="panel-header">
+      <h2>Courses Roster ({{ filteredCourses.length }})</h2>
+      <button class="btn btn-sm btn-primary" (click)="openCourseModal()">
+        <span class="material-symbols-outlined">add</span> Create Course
+      </button>
+    </div>
+
+    <div class="courses-grid" *ngIf="filteredCourses.length > 0">
+      <div *ngFor="let course of filteredCourses" class="course-card">
+        <div class="course-card-top">
+          <div class="icon-avatar" [class]="'track-' + course.track">
+            <span class="material-symbols-outlined">{{ course.icon }}</span>
+          </div>
+          <div class="course-badges">
+            <span class="badge" [class]="'badge-' + course.track">{{ course.track | titlecase }}</span>
+            <span class="badge" [class]="course.approvalStatus === 'approved' ? 'badge-success' : course.approvalStatus === 'pending' ? 'badge-warning' : 'badge-danger'">
+              {{ course.approvalStatus === 'approved' ? 'Approved' : course.approvalStatus === 'pending' ? 'Pending Review' : 'Rejected' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="course-card-body">
+          <h3>{{ course.title }}</h3>
+          <p>{{ course.description }}</p>
+          <div class="text-xs text-subtle mt-2" *ngIf="course.submittedBy">
+            Instructor: <strong>{{ course.submittedBy }}</strong>
+          </div>
+        </div>
+
+        <div class="course-metrics">
+          <div class="metric-item">
+            <span class="metric-val">{{ course.modules }}</span>
+            <span class="metric-lbl">Modules</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-val">{{ course.enrolled }}</span>
+            <span class="metric-lbl">Students</span>
+          </div>
+          <div class="metric-item">
+            <span class="metric-val">{{ course.completion }}%</span>
+            <span class="metric-lbl">Avg Completion</span>
+          </div>
+        </div>
+
+        <div class="course-card-footer">
+          <button class="btn btn-xs btn-subtle" (click)="openCourseModal(course)">
+            <span class="material-symbols-outlined">edit</span> Edit
+          </button>
+          <button class="btn btn-xs btn-subtle" (click)="duplicateCourse(course)">
+            <span class="material-symbols-outlined">content_copy</span> Duplicate
+          </button>
+          <button class="btn btn-xs btn-danger" (click)="deleteCourse(course.id)">
+            <span class="material-symbols-outlined">delete</span> Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-state" *ngIf="filteredCourses.length === 0">
+      <span class="material-symbols-outlined">menu_book</span>
+      <h3>No Courses Found</h3>
+      <p>No courses match your filter criteria.</p>
+    </div>
+  </div>
+
+  <!-- ── TAB 2: CURRICULUM MODULES ── -->
+  <div *ngIf="activeTab === 'modules'" class="tab-content-panel">
+    <div class="panel-header">
+      <h2>Curriculum Modules ({{ filteredModules.length }})</h2>
+      <button class="btn btn-sm btn-primary" (click)="openModuleModal()">
+        <span class="material-symbols-outlined">add</span> Add Module
+      </button>
+    </div>
+
+    <div class="table-responsive" *ngIf="filteredModules.length > 0">
+      <table class="lms-table">
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Module Title</th>
+            <th>Course</th>
+            <th>Submitted By</th>
+            <th>Moderation Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let mod of filteredModules">
+            <td><span class="order-badge">#{{ mod.order }}</span></td>
+            <td>
+              <div class="flex-cell">
+                <span class="material-symbols-outlined cell-icon">{{ mod.icon }}</span>
+                <div>
+                  <strong>{{ mod.title }}</strong>
+                  <div class="text-xs text-subtle">{{ mod.description | slice:0:50 }}...</div>
+                </div>
+              </div>
+            </td>
+            <td>{{ getCourseTitle(mod.courseId) }}</td>
+            <td class="text-subtle text-xs">{{ mod.submittedBy || 'Admin' }}</td>
+            <td>
+              <span class="badge" [class]="(mod.approvalStatus || 'approved') === 'approved' ? 'badge-success' : (mod.approvalStatus === 'pending' ? 'badge-warning' : 'badge-danger')">
+                {{ (mod.approvalStatus || 'approved') | titlecase }}
+              </span>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <button class="icon-btn" (click)="openModuleModal(mod)" title="Edit"><span class="material-symbols-outlined">edit</span></button>
+                <button class="icon-btn danger" (click)="deleteModule(mod.id)" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="empty-state" *ngIf="filteredModules.length === 0">
+      <span class="material-symbols-outlined">view_module</span>
+      <h3>No Modules Found</h3>
+      <p>Organize course content by creating curriculum modules.</p>
+    </div>
+  </div>
+
+  <!-- ── TAB 3: LEARNING ASSETS ── -->
+  <div *ngIf="activeTab === 'materials'" class="tab-content-panel">
+    <div class="panel-header">
+      <h2>Learning Assets & Resources ({{ filteredMaterials.length }})</h2>
+      <button class="btn btn-sm btn-primary" (click)="openMaterialModal()">
+        <span class="material-symbols-outlined">upload_file</span> Add Learning Asset
+      </button>
+    </div>
+
+    <div class="table-responsive" *ngIf="filteredMaterials.length > 0">
+      <table class="lms-table">
+        <thead>
+          <tr>
+            <th>Asset Title</th>
+            <th>Type</th>
+            <th>Course</th>
+            <th>Submitted By</th>
+            <th>Approval</th>
+            <th>URL / Link</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let mat of filteredMaterials">
+            <td>
+              <div class="flex-cell">
+                <span class="material-symbols-outlined cell-icon" [class]="'asset-' + mat.type">
+                  {{ mat.type === 'document' ? 'description' : mat.type === 'video' ? 'play_circle' : mat.type === 'link' ? 'link' : 'attach_file' }}
+                </span>
+                <div>
+                  <strong>{{ mat.title }}</strong>
+                  <div class="text-xs text-subtle">{{ mat.description }}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="badge badge-neutral">{{ mat.type | titlecase }}</span></td>
+            <td>{{ getCourseTitle(mat.courseId) }}</td>
+            <td class="text-subtle text-xs">{{ mat.submittedBy || 'Admin' }}</td>
+            <td>
+              <span class="badge" [class]="(mat.approvalStatus || 'approved') === 'approved' ? 'badge-success' : (mat.approvalStatus === 'pending' ? 'badge-warning' : 'badge-danger')">
+                {{ (mat.approvalStatus || 'approved') | titlecase }}
+              </span>
+            </td>
+            <td>
+              <a *ngIf="mat.url" [href]="mat.url" target="_blank" class="link-btn">
+                <span class="material-symbols-outlined">open_in_new</span> View Resource
+              </a>
+              <span *ngIf="!mat.url" class="text-subtle">Internal File</span>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <button class="icon-btn" (click)="openMaterialModal(mat)" title="Edit"><span class="material-symbols-outlined">edit</span></button>
+                <button class="icon-btn danger" (click)="deleteMaterial(mat.id)" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="empty-state" *ngIf="filteredMaterials.length === 0">
+      <span class="material-symbols-outlined">folder_open</span>
+      <h3>No Materials Found</h3>
+      <p>Upload lecture notes, video tutorials, or reference links for students.</p>
+    </div>
+  </div>
+
+  <!-- ── TAB 4: ASSIGNMENTS & GRADING ── -->
+  <div *ngIf="activeTab === 'assignments'" class="tab-content-panel">
+    <div class="panel-header">
+      <h2>Assignments & Submissions Desk</h2>
+      <button class="btn btn-sm btn-primary" (click)="openAssignmentModal()">
+        <span class="material-symbols-outlined">add</span> New Assignment
+      </button>
+    </div>
+
+    <!-- Active Assignments Section -->
+    <div class="section-block">
+      <h3>Active Course Assignments ({{ filteredAssignments.length }})</h3>
+      <div class="table-responsive" *ngIf="filteredAssignments.length > 0">
+        <table class="lms-table">
+          <thead>
+            <tr>
+              <th>Assignment Title</th>
+              <th>Course</th>
+              <th>Track</th>
+              <th>Max Score</th>
+              <th>Submitted By</th>
+              <th>Approval</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let asgn of filteredAssignments">
+              <td>
+                <strong>{{ asgn.title }}</strong>
+                <div class="text-xs text-subtle">{{ asgn.description | slice:0:60 }}...</div>
+              </td>
+              <td>{{ getCourseTitle(asgn.courseId) }}</td>
+              <td><span class="badge" [class]="'badge-' + asgn.track">{{ asgn.track | titlecase }}</span></td>
+              <td><strong>{{ asgn.maxScore }} pts</strong></td>
+              <td class="text-subtle text-xs">{{ asgn.submittedBy || 'Admin' }}</td>
+              <td>
+                <span class="badge" [class]="(asgn.approvalStatus || 'approved') === 'approved' ? 'badge-success' : (asgn.approvalStatus === 'pending' ? 'badge-warning' : 'badge-danger')">
+                  {{ (asgn.approvalStatus || 'approved') | titlecase }}
+                </span>
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <button class="icon-btn" (click)="openAssignmentModal(asgn)" title="Edit"><span class="material-symbols-outlined">edit</span></button>
+                  <button class="icon-btn danger" (click)="deleteAssignment(asgn.id)" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Student Submissions Audit Table -->
+    <div class="section-block mt-6">
+      <div class="panel-sub-header">
+        <h3>Student Submissions & Admin Review Desk ({{ filteredSubmissions.length }})</h3>
+        <span class="text-subtle text-sm">Review student submissions. Reject for resubmission or request instructor revision if needed.</span>
+      </div>
+
+      <div class="table-responsive" *ngIf="filteredSubmissions.length > 0">
+        <table class="lms-table">
+          <thead>
+            <tr>
+              <th>Student Name</th>
+              <th>Assignment</th>
+              <th>Submitted At</th>
+              <th>Submission Code / Repo</th>
+              <th>Status</th>
+              <th>Admin Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let sub of filteredSubmissions">
+              <td>
+                <strong>{{ sub.studentName }}</strong>
+                <div class="text-xs text-subtle">{{ sub.studentEmail }}</div>
+              </td>
+              <td>{{ getAssignmentTitle(sub.assignmentId) }}</td>
+              <td class="text-subtle text-xs">{{ sub.submittedAt }}</td>
+              <td>
+                <a [href]="sub.url" target="_blank" class="link-btn" *ngIf="sub.url">
+                  <span class="material-symbols-outlined">terminal</span> Inspect Submission
+                </a>
+                <span *ngIf="!sub.url" class="text-subtle text-xs">Direct Code Entry</span>
+              </td>
+              <td>
+                <span *ngIf="sub.status === 'graded'" class="badge badge-success">Graded: {{ sub.score }} pts</span>
+                <span *ngIf="sub.status === 'regrade_requested'" class="badge badge-warning">Revision Requested</span>
+                <span *ngIf="sub.status === 'resubmitted'" class="badge badge-info">Resubmitted</span>
+                <span *ngIf="sub.status === 'submitted'" class="badge badge-neutral">Pending Review</span>
+                <span *ngIf="sub.status === 'rejected'" class="badge badge-danger">Rejected — Resubmit</span>
+              </td>
+              <td>
+                <button class="btn btn-xs btn-outline" (click)="openGradingModal(sub)">
+                  <span class="material-symbols-outlined">fact_check</span> Review
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB 5: STUDENT ROSTER & PROGRESS ── -->
+  <div *ngIf="activeTab === 'students'" class="tab-content-panel">
+    <div class="panel-header">
+      <h2>Enrolled Student Roster & Completion Metrics ({{ filteredEnrollments.length }})</h2>
+    </div>
+
+    <div class="table-responsive" *ngIf="filteredEnrollments.length > 0">
+      <table class="lms-table">
+        <thead>
+          <tr>
+            <th>Student Info</th>
+            <th>Enrolled Course</th>
+            <th>Progress Indicator</th>
+            <th>Enrolled Date</th>
+            <th>Last Active</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let student of filteredEnrollments">
+            <td>
+              <div class="flex-cell">
+                <div class="student-avatar">{{ student.studentName.charAt(0) }}</div>
+                <div>
+                  <strong>{{ student.studentName }}</strong>
+                  <div class="text-xs text-subtle">{{ student.studentEmail }}</div>
+                </div>
+              </div>
+            </td>
+            <td>{{ getCourseTitle(student.courseId) }}</td>
+            <td>
+              <div class="progress-container">
+                <div class="progress-bar">
+                  <div class="progress-fill" [style.width.%]="student.progressPct"></div>
+                </div>
+                <span class="progress-pct">{{ student.progressPct }}%</span>
+              </div>
+            </td>
+            <td class="text-subtle">{{ student.enrolledAt }}</td>
+            <td class="text-subtle">{{ student.lastActive }}</td>
+            <td>
+              <span class="badge" [class]="student.status === 'completed' ? 'badge-success' : 'badge-primary'">{{ student.status | titlecase }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── MODAL: REJECTION FEEDBACK ── -->
+  <div class="modal-backdrop" *ngIf="isRejectModalOpen" (click)="closeRejectModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Reject & Send Feedback to Instructor</h3>
+        <button class="close-btn" (click)="closeRejectModal()">&times;</button>
+      </div>
+      <div class="modal-body" *ngIf="activeRejectItem">
+        <div class="info-banner warning-banner">
+          <div><strong>Item:</strong> {{ activeRejectItem.title }} ({{ activeRejectItem.typeLabel }})</div>
+          <div><strong>Instructor:</strong> {{ activeRejectItem.submittedBy }}</div>
+        </div>
+
+        <div class="form-group mt-4">
+          <label>Reason for Rejection / Required Revisions *</label>
+          <textarea [(ngModel)]="rejectionReasonInput" rows="4" placeholder="Explain what changes the instructor needs to make before this content can be approved..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="closeRejectModal()">Cancel</button>
+        <button class="btn btn-danger" (click)="submitRejection()">Confirm Rejection</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: COURSE ── -->
+  <div class="modal-backdrop" *ngIf="isCourseModalOpen" (click)="closeCourseModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ formMode === 'edit' ? 'Edit' : 'Create New' }} Course</h3>
+        <button class="close-btn" (click)="closeCourseModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Course Title *</label>
+          <input type="text" [(ngModel)]="courseForm.title" placeholder="e.g. Advanced Python Algorithms" />
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="courseForm.description" rows="3" placeholder="Provide course objectives and summary..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Track</label>
+            <select [(ngModel)]="courseForm.track">
+              <option value="coding">Coding</option>
+              <option value="robotics">Robotics</option>
+              <option value="ai">AI</option>
+              <option value="cyber">Cybersecurity</option>
+              <option value="innovation">Innovation</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Difficulty Level</label>
+            <select [(ngModel)]="courseForm.level">
+              <option value="Beginner">Beginner</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="Advanced">Advanced</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Material Icon Symbol</label>
+            <input type="text" [(ngModel)]="courseForm.icon" placeholder="e.g. data_object, memory, psychology" />
+          </div>
+
+          <div class="form-group">
+            <label>Status</label>
+            <select [(ngModel)]="courseForm.status">
+              <option value="active">Active</option>
+              <option value="draft">Draft</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="closeCourseModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveCourse()">Save Course</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: MODULE ── -->
+  <div class="modal-backdrop" *ngIf="isModuleModalOpen" (click)="closeModuleModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ formMode === 'edit' ? 'Edit' : 'Add' }} Curriculum Module</h3>
+        <button class="close-btn" (click)="closeModuleModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Course *</label>
+          <select [(ngModel)]="moduleForm.courseId">
+            <option value="">Select course...</option>
+            <option *ngFor="let course of contentService.lmsCourses" [value]="course.id">{{ course.title }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Module Title *</label>
+          <input type="text" [(ngModel)]="moduleForm.title" placeholder="e.g. Dynamic Programming Basics" />
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="moduleForm.description" rows="2" placeholder="Brief outline of topics covered..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Order Index #</label>
+            <input type="number" [(ngModel)]="moduleForm.order" min="1" />
+          </div>
+
+          <div class="form-group">
+            <label>Icon Symbol</label>
+            <input type="text" [(ngModel)]="moduleForm.icon" placeholder="e.g. view_module" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="closeModuleModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveModule()">Save Module</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: MATERIAL ── -->
+  <div class="modal-backdrop" *ngIf="isMaterialModalOpen" (click)="closeMaterialModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ formMode === 'edit' ? 'Edit' : 'Add' }} Learning Asset</h3>
+        <button class="close-btn" (click)="closeMaterialModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Asset Title *</label>
+          <input type="text" [(ngModel)]="materialForm.title" placeholder="e.g. Arrays Reference Cheat Sheet" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Course *</label>
+            <select [(ngModel)]="materialForm.courseId" (change)="materialForm.moduleId = ''">
+              <option value="">Select course...</option>
+              <option *ngFor="let course of contentService.lmsCourses" [value]="course.id">{{ course.title }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Module</label>
+            <select [(ngModel)]="materialForm.moduleId">
+              <option value="">General (Course-level)</option>
+              <option *ngFor="let mod of getModulesForCourse(materialForm.courseId)" [value]="mod.id">{{ mod.title }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Asset Type</label>
+            <select [(ngModel)]="materialForm.type">
+              <option value="document">Document / PDF</option>
+              <option value="video">Video Embed / URL</option>
+              <option value="link">External Resource Link</option>
+              <option value="file">File Attachment</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Resource URL / Link</label>
+            <input type="text" [(ngModel)]="materialForm.url" placeholder="https://..." />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="materialForm.description" rows="2" placeholder="Instructions or overview of asset..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="closeMaterialModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveMaterial()">Save Asset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: ASSIGNMENT ── -->
+  <div class="modal-backdrop" *ngIf="isAssignmentModalOpen" (click)="closeAssignmentModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ formMode === 'edit' ? 'Edit' : 'Create' }} Assignment</h3>
+        <button class="close-btn" (click)="closeAssignmentModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Assignment Title *</label>
+          <input type="text" [(ngModel)]="assignmentForm.title" placeholder="e.g. Graph Traversal Challenge" />
+        </div>
+
+        <div class="form-group">
+          <label>Course *</label>
+          <select [(ngModel)]="assignmentForm.courseId">
+            <option value="">Select course...</option>
+            <option *ngFor="let course of contentService.lmsCourses" [value]="course.id">{{ course.title }}</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Track</label>
+            <select [(ngModel)]="assignmentForm.track">
+              <option value="coding">Coding</option>
+              <option value="robotics">Robotics</option>
+              <option value="ai">AI</option>
+              <option value="cyber">Cybersecurity</option>
+              <option value="innovation">Innovation</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Max Score (Points)</label>
+            <input type="number" [(ngModel)]="assignmentForm.maxScore" min="10" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Due Date</label>
+            <input type="date" [(ngModel)]="assignmentForm.dueDate" />
+          </div>
+
+          <div class="form-group">
+            <label>Status</label>
+            <select [(ngModel)]="assignmentForm.status">
+              <option value="active">Active</option>
+              <option value="draft">Draft</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Instructions & Description</label>
+          <textarea [(ngModel)]="assignmentForm.description" rows="3" placeholder="Detailed problem statement and submission requirements..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="closeAssignmentModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveAssignment()">Save Assignment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: ADMIN SUBMISSION REVIEW ── -->
+  <div class="modal-backdrop" *ngIf="isGradingModalOpen" (click)="closeGradingModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Review Submission: {{ activeSubmission?.studentName }}</h3>
+        <button class="close-btn" (click)="closeGradingModal()">&times;</button>
+      </div>
+      <div class="modal-body" *ngIf="activeSubmission">
+        <div class="info-banner">
+          <div><strong>Assignment:</strong> {{ getAssignmentTitle(activeSubmission.assignmentId) }}</div>
+          <div><strong>Student Email:</strong> {{ activeSubmission.studentEmail }}</div>
+          <div><strong>Submitted At:</strong> {{ activeSubmission.submittedAt }}</div>
+          <div><strong>Current Status:</strong> {{ activeSubmission.status | titlecase }}</div>
+          <div *ngIf="activeSubmission.score !== undefined"><strong>Instructor Score:</strong> {{ activeSubmission.score }} pts</div>
+          <div *ngIf="activeSubmission.feedback"><strong>Existing Feedback:</strong> {{ activeSubmission.feedback }}</div>
+        </div>
+
+        <div class="form-group mt-4" *ngIf="activeSubmission.content">
+          <label>Submitted Content</label>
+          <div class="code-preview-box">{{ activeSubmission.content }}</div>
+        </div>
+
+        <div class="form-group mt-4" *ngIf="activeSubmission.url">
+          <label>Repository / External Submission URL</label>
+          <div>
+            <a [href]="activeSubmission.url" target="_blank" class="link-btn">
+              <span class="material-symbols-outlined">open_in_new</span> Open External Link: {{ activeSubmission.url }}
+            </a>
+          </div>
+        </div>
+
+        <hr style="margin: 20px 0; border-color: var(--border-color);">
+
+        <div class="form-group">
+          <label>Admin Notes / Instructions *</label>
+          <textarea [(ngModel)]="adminRevisionNotes" rows="3" placeholder="Enter your instructions for the instructor or student..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="gap: 8px;">
+        <button class="btn btn-outline" (click)="closeGradingModal()">Close</button>
+        <button class="btn btn-danger" (click)="rejectSubmissionToStudent()" [disabled]="!adminRevisionNotes.trim()">
+          <span class="material-symbols-outlined">undo</span> Reject &mdash; Return to Student
+        </button>
+        <button class="btn btn-primary" (click)="submitInstructorRegradeRequest()" [disabled]="!adminRevisionNotes.trim()">
+          <span class="material-symbols-outlined">rate_review</span> Request Instructor Revision
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

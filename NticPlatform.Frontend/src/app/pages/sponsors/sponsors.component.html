@@ -1,97 +1,462 @@
 <div class="page-canvas fade-in">
-  <div class="page-header with-action">
-    <div><h1 class="page-title-main">Sponsor Management</h1><p class="page-subtitle">CSR impact monitoring, student tracking, and sponsorship analytics</p></div>
-    <button class="btn btn-primary"><span class="material-symbols-outlined">add</span>Add Sponsor</button>
-  </div>
 
-  <!-- Sponsor KPI Bar -->
-  <div class="stat-grid" style="grid-template-columns:repeat(5,1fr);">
-    <div class="stat-card primary"><div class="stat-bg-icon material-symbols-outlined">handshake</div><div class="stat-label"><span class="material-symbols-outlined">handshake</span>Active Sponsors</div><div class="stat-value">{{ activeSponsors.length }}</div></div>
-    <div class="stat-card secondary"><div class="stat-bg-icon material-symbols-outlined">monetization_on</div><div class="stat-label"><span class="material-symbols-outlined">monetization_on</span>Total Committed</div><div class="stat-value" style="font-size:24px;">{{ totalCommitted }}</div></div>
-    <div class="stat-card primary"><div class="stat-bg-icon material-symbols-outlined">group</div><div class="stat-label"><span class="material-symbols-outlined">group</span>Students Reached</div><div class="stat-value">1,248</div></div>
-    <div class="stat-card secondary"><div class="stat-bg-icon material-symbols-outlined">school</div><div class="stat-label"><span class="material-symbols-outlined">school</span>Schools Supported</div><div class="stat-value">47</div></div>
-    <div class="stat-card tertiary"><div class="stat-bg-icon material-symbols-outlined">female</div><div class="stat-label"><span class="material-symbols-outlined">female</span>Female Participants</div><div class="stat-value">52%</div></div>
-  </div>
+  <!-- ══════════════════════════════════════════ -->
+  <!-- SPONSOR LOGGED-IN: VIP EXECUTIVE PORTAL   -->
+  <!-- ══════════════════════════════════════════ -->
+  <ng-container *ngIf="isSponsorLoggedIn">
 
-  <div style="display:grid;grid-template-columns:1fr 380px;gap:20px;">
+    <!-- Identity Banner -->
+    <div class="sponsor-hero-banner">
+      <div class="sponsor-hero-left">
+        <div class="sponsor-avatar">{{ getSponsorName(loggedInSponsor).charAt(0).toUpperCase() }}</div>
+        <div>
+          <div class="sponsor-hero-badges">
+            <span class="badge primary">VIP EXECUTIVE PORTAL</span>
+            <span class="sponsor-token">TOKEN: {{ loggedInSponsor?.ticket }}</span>
+          </div>
+          <h1 class="sponsor-hero-title">{{ getSponsorName(loggedInSponsor) }}</h1>
+          <p class="sponsor-hero-sub">
+            {{ loggedInSponsor?.fullName }}
+            <span *ngIf="loggedInSponsor?.email"> · {{ loggedInSponsor?.email }}</span>
+            <span *ngIf="loggedInSponsor?.tier"> · <strong>{{ loggedInSponsor?.tier }}</strong></span>
+          </p>
+        </div>
+      </div>
+      <div class="sponsor-hero-actions">
+        <button class="btn btn-primary" (click)="openPaymentModal()">
+          <span class="material-symbols-outlined">payments</span> Settle Sponsorship
+        </button>
+        <button class="btn btn-subtle" (click)="downloadCertificate()">
+          <span class="material-symbols-outlined">workspace_premium</span> CSR Certificate
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI Strip -->
+    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:28px;">
+      <div class="stat-card primary">
+        <div class="stat-bg-icon material-symbols-outlined">monetization_on</div>
+        <div class="stat-label"><span class="material-symbols-outlined">monetization_on</span>Total Paid</div>
+        <div class="stat-value" style="font-size:22px;color:var(--primary);">{{ getSponsorTotal(loggedInSponsor) }}</div>
+        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">Recorded & Verified</div>
+      </div>
+      <div class="stat-card secondary">
+        <div class="stat-bg-icon material-symbols-outlined">handshake</div>
+        <div class="stat-label"><span class="material-symbols-outlined">handshake</span>Sponsorship Tier</div>
+        <div class="stat-value" style="font-size:20px;">{{ loggedInSponsor?.tier || 'Partner Tier' }}</div>
+        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">Active Package</div>
+      </div>
+      <div class="stat-card tertiary">
+        <div class="stat-bg-icon material-symbols-outlined">groups</div>
+        <div class="stat-label"><span class="material-symbols-outlined">groups</span>Track Supported</div>
+        <div class="stat-value" style="font-size:20px;">{{ loggedInSponsor?.track || 'All Tracks' }}</div>
+        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">NTIC Championship</div>
+      </div>
+      <div class="stat-card primary">
+        <div class="stat-bg-icon material-symbols-outlined">verified</div>
+        <div class="stat-label"><span class="material-symbols-outlined">verified</span>Account Status</div>
+        <div class="stat-value" style="font-size:20px;">{{ loggedInSponsor?.status || 'Active' }}</div>
+        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">Since {{ loggedInSponsor && loggedInSponsor.registeredAt ? loggedInSponsor.registeredAt.split('T')[0] : 'Registered' }}</div>
+      </div>
+    </div>
+
+    <!-- Details Grid -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+
+      <!-- Sponsorship Profile Card -->
+      <div class="card">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="material-symbols-outlined" style="color:var(--primary);">badge</span>
+            <h3>Sponsorship Profile</h3>
+          </div>
+          <button class="btn btn-subtle btn-sm" (click)="openEditProfileModal()">
+            <span class="material-symbols-outlined" style="font-size:16px;">edit</span> Edit Profile
+          </button>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
+          <div class="info-row">
+            <span class="info-label">Organization</span>
+            <span class="info-value">{{ loggedInSponsor?.organization && loggedInSponsor?.organization !== '_pending_profile' ? loggedInSponsor?.organization : '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Representative</span>
+            <span class="info-value">{{ loggedInSponsor?.fullName || '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Email</span>
+            <span class="info-value">{{ loggedInSponsor?.email || '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Phone</span>
+            <span class="info-value">{{ loggedInSponsor?.phone || '—' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Partnership Tier</span>
+            <span class="info-value"><strong style="color:var(--primary);">{{ loggedInSponsor?.tier || 'Not specified' }}</strong></span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Access Token</span>
+            <span class="info-value" style="font-family:monospace;font-size:13px;color:var(--primary);">{{ loggedInSponsor?.ticket }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment & Financial Records Card -->
+      <div class="card">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="material-symbols-outlined" style="color:var(--secondary);">receipt_long</span>
+            <h3>Payment Records & Transactions</h3>
+          </div>
+          <button class="btn btn-primary btn-sm" (click)="openPaymentModal()">
+            <span class="material-symbols-outlined" style="font-size:16px;">credit_card</span> Pay / Settle
+          </button>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
+
+          <!-- Empty payment history state -->
+          <div *ngIf="!loggedInSponsor?.payments?.length" style="padding:20px;background:var(--surface-container-low);border-radius:10px;border:1.5px dashed var(--outline-variant);text-align:center;">
+            <span class="material-symbols-outlined" style="font-size:32px;color:var(--outline);display:block;margin-bottom:8px;">payments</span>
+            <p style="margin:0 0 6px;font-weight:700;font-size:14px;color:var(--on-surface);">No payment recorded yet</p>
+            <p style="margin:0 0 14px;font-size:12px;color:var(--on-surface-variant);">You can log an online payment, bank transfer, or mobile money receipt directly below.</p>
+            <button class="btn btn-primary btn-sm" (click)="openPaymentModal()">
+              <span class="material-symbols-outlined">add_card</span> Settle Sponsorship Now
+            </button>
+          </div>
+
+          <!-- Real payment history records -->
+          <div *ngIf="loggedInSponsor?.payments?.length" style="display:flex;flex-direction:column;gap:10px;">
+            <div *ngFor="let pay of loggedInSponsor?.payments"
+                 style="padding:12px 14px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-weight:700;font-size:14px;color:var(--on-surface);">{{ pay.amount }}</span>
+                  <span class="badge primary" style="font-size:10px;">{{ pay.status }}</span>
+                </div>
+                <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">
+                  {{ pay.method }} • Ref: <strong style="font-family:monospace;">{{ pay.refNo }}</strong>
+                </div>
+                <div *ngIf="pay.notes" style="font-size:11px;color:var(--on-surface-variant);margin-top:2px;">
+                  {{ pay.notes }}
+                </div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:11px;color:var(--on-surface-variant);">{{ pay.date }}</div>
+                <span class="material-symbols-outlined" style="color:var(--primary);font-size:18px;margin-top:4px;">check_circle</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── PAYMENT SETTLEMENT MODAL ────────────────────────────────────── -->
+    <div *ngIf="isPaymentModalOpen" class="modal-overlay" (click)="closePaymentModal()">
+      <div class="modal-card" style="max-width:520px;width:100%;" (click)="$event.stopPropagation()">
+        <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="material-symbols-outlined" style="color:var(--primary);font-size:24px;">payments</span>
+            <h3 style="margin:0;font-size:18px;font-weight:800;">Sponsorship Payment Center</h3>
+          </div>
+          <button class="btn btn-ghost btn-sm" (click)="closePaymentModal()" style="min-width:auto;padding:4px;">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div *ngIf="paymentSuccessMessage" class="toast-notice success" style="margin-bottom:16px;">
+          <span class="material-symbols-outlined">check_circle</span> {{ paymentSuccessMessage }}
+        </div>
+
+        <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
+          <!-- Payment Method Selector Tabs -->
+          <div>
+            <label class="form-label" style="margin-bottom:6px;display:block;">Select Payment Method</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <button class="btn btn-sm"
+                      [class.btn-primary]="selectedPaymentMethod === 'Bank Transfer'"
+                      [class.btn-subtle]="selectedPaymentMethod !== 'Bank Transfer'"
+                      (click)="selectedPaymentMethod = 'Bank Transfer'">
+                <span class="material-symbols-outlined">account_balance</span> Bank Wire
+              </button>
+              <button class="btn btn-sm"
+                      [class.btn-primary]="selectedPaymentMethod === 'Mobile Money'"
+                      [class.btn-subtle]="selectedPaymentMethod !== 'Mobile Money'"
+                      (click)="selectedPaymentMethod = 'Mobile Money'">
+                <span class="material-symbols-outlined">smartphone</span> Mobile Money
+              </button>
+              <button class="btn btn-sm"
+                      [class.btn-primary]="selectedPaymentMethod === 'Corporate Cheque'"
+                      [class.btn-subtle]="selectedPaymentMethod !== 'Corporate Cheque'"
+                      (click)="selectedPaymentMethod = 'Corporate Cheque'">
+                <span class="material-symbols-outlined">description</span> Cheque / Invoice
+              </button>
+              <button class="btn btn-sm"
+                      [class.btn-primary]="selectedPaymentMethod === 'Card Online'"
+                      [class.btn-subtle]="selectedPaymentMethod !== 'Card Online'"
+                      (click)="selectedPaymentMethod = 'Card Online'">
+                <span class="material-symbols-outlined">credit_card</span> Pay Online (Card)
+              </button>
+            </div>
+          </div>
+
+          <!-- Method-Specific Interactive Inputs & Details -->
+          <div style="padding:16px;background:var(--surface-container-low);border-radius:12px;border:1px solid var(--outline-variant);display:flex;flex-direction:column;gap:12px;">
+            <!-- 1. BANK WIRE -->
+            <ng-container *ngIf="selectedPaymentMethod === 'Bank Transfer'">
+              <div style="font-weight:700;color:var(--primary);font-size:13px;display:flex;align-items:center;gap:6px;">
+                <span class="material-symbols-outlined" style="font-size:18px;">account_balance</span>
+                NTIC Bank Wire Receiving Account
+              </div>
+              <div style="font-size:12px;line-height:1.4;background:var(--surface-container-lowest);padding:10px;border-radius:8px;border:1px solid var(--outline-variant);">
+                <div>Bank Name: <strong>Ecobank Ghana PLC</strong></div>
+                <div>Account Name: <strong>NTIC STEM Championship Foundation</strong></div>
+                <div>Account Number: <strong style="font-family:monospace;color:var(--primary);">1441002938101</strong></div>
+                <div>Branch / SWIFT: <strong>Accra Main • ECOGHAC</strong></div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Select Your Bank</label>
+                <select class="form-control form-select" [(ngModel)]="paymentForm.bankName">
+                  <option value="Ecobank Ghana">Ecobank Ghana PLC</option>
+                  <option value="Stanbic Bank">Stanbic Bank Ghana</option>
+                  <option value="GCB Bank">GCB Bank PLC</option>
+                  <option value="Fidelity Bank">Fidelity Bank Ghana</option>
+                  <option value="Absa Bank">Absa Bank Ghana</option>
+                  <option value="Zenith Bank">Zenith Bank Ghana</option>
+                  <option value="CalBank">CalBank Ghana</option>
+                  <option value="Standard Chartered">Standard Chartered Ghana</option>
+                  <option value="Other Bank">Other Commercial Bank</option>
+                </select>
+              </div>
+            </ng-container>
+
+            <!-- 2. MOBILE MONEY -->
+            <ng-container *ngIf="selectedPaymentMethod === 'Mobile Money'">
+              <div style="font-weight:700;color:var(--primary);font-size:13px;display:flex;align-items:center;gap:6px;">
+                <span class="material-symbols-outlined" style="font-size:18px;">smartphone</span>
+                NTIC MoMo Merchant Pay Info
+              </div>
+              <div style="font-size:12px;line-height:1.4;background:var(--surface-container-lowest);padding:10px;border-radius:8px;border:1px solid var(--outline-variant);">
+                <div>Merchant Code: <strong style="font-family:monospace;color:var(--primary);">NTIC-STEM</strong></div>
+                <div>MoMo Official Line: <strong>055-123-4567</strong></div>
+                <div>Account Name: <strong>NTIC STEM Foundation</strong></div>
+              </div>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label">MoMo Network</label>
+                  <select class="form-control form-select" [(ngModel)]="paymentForm.momoNetwork">
+                    <option value="MTN Mobile Money">MTN MoMo</option>
+                    <option value="Telecel Cash">Telecel Cash</option>
+                    <option value="AT Money">AT Money</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Your MoMo Phone Line</label>
+                  <input class="form-control" type="tel" [(ngModel)]="paymentForm.momoNumber" placeholder="e.g. 055-123-4567">
+                </div>
+              </div>
+            </ng-container>
+
+            <!-- 3. CORPORATE CHEQUE -->
+            <ng-container *ngIf="selectedPaymentMethod === 'Corporate Cheque'">
+              <div style="font-weight:700;color:var(--primary);font-size:13px;display:flex;align-items:center;gap:6px;">
+                <span class="material-symbols-outlined" style="font-size:18px;">description</span>
+                Corporate Cheque & Tax Invoicing
+              </div>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label">Cheque Serial # / P.O. Number</label>
+                  <input class="form-control" type="text" [(ngModel)]="paymentForm.chequeNo" placeholder="e.g. CHQ-8920194">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Issuing Bank</label>
+                  <input class="form-control" type="text" [(ngModel)]="paymentForm.issuingBank" placeholder="e.g. Stanbic Bank Ghana">
+                </div>
+              </div>
+            </ng-container>
+
+            <!-- 4. CREDIT / DEBIT CARD ONLINE -->
+            <ng-container *ngIf="selectedPaymentMethod === 'Card Online'">
+              <div style="font-weight:700;color:var(--primary);font-size:13px;display:flex;align-items:center;justify-content:space-between;">
+                <span style="display:flex;align-items:center;gap:6px;">
+                  <span class="material-symbols-outlined" style="font-size:18px;">credit_card</span>
+                  Enter Card Details to Pay Online
+                </span>
+                <span style="font-size:10px;color:var(--on-surface-variant);font-weight:600;">Paystack Secured</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Cardholder Name</label>
+                <input class="form-control" type="text" [(ngModel)]="paymentForm.cardName" placeholder="Name on card">
+              </div>
+              <div class="form-group">
+                <label class="form-label">16-Digit Card Number</label>
+                <div style="position:relative;">
+                  <input class="form-control" type="text" [(ngModel)]="paymentForm.cardNumber" placeholder="4532 •••• •••• 8910" style="padding-right:75px;">
+                  <div style="position:absolute;right:8px;top:50%;transform:translateY(-50%);display:flex;gap:4px;">
+                    <span class="badge primary" style="font-size:8px;padding:2px 4px;">VISA</span>
+                    <span class="badge secondary" style="font-size:8px;padding:2px 4px;">MC</span>
+                  </div>
+                </div>
+              </div>
+              <div class="grid-2">
+                <div class="form-group">
+                  <label class="form-label">Expiry (MM/YY)</label>
+                  <input class="form-control" type="text" [(ngModel)]="paymentForm.cardExpiry" placeholder="MM/YY">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">CVV (3 digits)</label>
+                  <input class="form-control" type="password" maxlength="4" [(ngModel)]="paymentForm.cardCvv" placeholder="•••">
+                </div>
+              </div>
+            </ng-container>
+          </div>
+
+          <!-- Common Amount & Ref -->
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Amount (GH₵)</label>
+              <input class="form-control" type="text" [(ngModel)]="paymentForm.amount" placeholder="e.g., 50,000">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Transaction Reference # *</label>
+              <input class="form-control" type="text" [(ngModel)]="paymentForm.refNo" placeholder="e.g. TXN-892019">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Payment Notes (Optional)</label>
+            <input class="form-control" type="text" [(ngModel)]="paymentForm.notes" placeholder="e.g., Sponsorship installment for Gold Tier">
+          </div>
+        </div>
+
+        <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
+          <button class="btn btn-subtle" (click)="closePaymentModal()">Cancel</button>
+          <button class="btn btn-primary" (click)="submitPayment()" [disabled]="isSubmittingPayment">
+            <span *ngIf="!isSubmittingPayment">Confirm Payment</span>
+            <span *ngIf="isSubmittingPayment">Processing...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </ng-container>
+
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- ADMIN VIEW (not logged in as sponsor)     -->
+  <!-- ══════════════════════════════════════════ -->
+  <ng-container *ngIf="!isSponsorLoggedIn">
+    <div class="page-header with-action">
+      <div>
+        <h1 class="page-title-main">Sponsor Management</h1>
+        <p class="page-subtitle">CSR impact monitoring, student tracking, and sponsorship analytics</p>
+      </div>
+    </div>
+
+    <!-- KPI Bar -->
+    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
+      <div class="stat-card primary"><div class="stat-bg-icon material-symbols-outlined">handshake</div><div class="stat-label"><span class="material-symbols-outlined">handshake</span>Active Sponsors</div><div class="stat-value">{{ activeSponsors.length }}</div></div>
+      <div class="stat-card secondary"><div class="stat-bg-icon material-symbols-outlined">monetization_on</div><div class="stat-label"><span class="material-symbols-outlined">monetization_on</span>Total Committed</div><div class="stat-value" style="font-size:24px;">{{ totalCommitted }}</div></div>
+      <div class="stat-card primary"><div class="stat-bg-icon material-symbols-outlined">group</div><div class="stat-label"><span class="material-symbols-outlined">group</span>Students Reached</div><div class="stat-value">1,248</div></div>
+      <div class="stat-card tertiary"><div class="stat-bg-icon material-symbols-outlined">female</div><div class="stat-label"><span class="material-symbols-outlined">female</span>Female Participants</div><div class="stat-value">52%</div></div>
+    </div>
+
     <!-- Sponsor List -->
-    <div style="display:flex;flex-direction:column;gap:16px;">
-      <div *ngIf="activeSponsors.length === 0" style="text-align: center; padding: 40px; border-radius: 12px; background: var(--surface-container-low); border: 2px dashed var(--outline-variant); color: var(--on-surface-variant);">
-        <span class="material-symbols-outlined" style="font-size: 48px; color: var(--outline); margin-bottom: 8px;">handshake</span>
-        <p style="margin: 0; font-weight: 500;">No active sponsors registered yet.</p>
-        <p style="margin: 4px 0 0 0; font-size: 13px;">Add sponsors via the Super Admin Command Center or the Registration form to test.</p>
+    <div style="display:flex;flex-direction:column;gap:16px;margin-top:24px;">
+      <div *ngIf="activeSponsors.length === 0" style="text-align:center;padding:48px;border-radius:12px;background:var(--surface-container-low);border:2px dashed var(--outline-variant);color:var(--on-surface-variant);">
+        <span class="material-symbols-outlined" style="font-size:48px;color:var(--outline);display:block;margin-bottom:8px;">handshake</span>
+        <p style="margin:0;font-weight:600;">No active sponsors registered yet.</p>
+        <p style="margin:6px 0 0 0;font-size:13px;">Create sponsor accounts from the Admin Dashboard to get started.</p>
       </div>
 
       <div *ngFor="let s of activeSponsors" class="card">
         <div class="card-body" style="display:flex;align-items:center;gap:16px;">
-          <!-- Sponsor Logo -->
-          <div style="width:52px;height:52px;border-radius:12px;border:2px solid var(--outline-variant);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex-shrink:0;" [style.color]="s.color" [style.borderColor]="s.color+'33'">{{s.logo}}</div>
+          <div style="width:52px;height:52px;border-radius:12px;background:var(--primary-container);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex-shrink:0;color:var(--primary);">
+            {{ s.name.charAt(0).toUpperCase() }}
+          </div>
           <div style="flex:1;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-              <span style="font-weight:700;font-size:16px;">{{s.name}}</span>
-              <span class="badge" [class]="s.tier==='Platinum'?'primary':s.tier==='Gold'?'warning':s.tier==='Silver'?'neutral':'neutral'">{{s.tier}}</span>
+              <span style="font-weight:700;font-size:16px;">{{ s.name }}</span>
+              <span class="badge primary" style="font-size:11px;">{{ s.tier }}</span>
+              <span class="badge secondary" style="font-size:11px;">{{ s.status }}</span>
             </div>
-            <div style="display:flex;gap:20px;font-size:13px;color:var(--on-surface-variant);">
-              <span><strong style="color:var(--primary);">{{s.committed}}</strong> committed</span>
-              <span><strong style="color:var(--on-surface)">{{s.schools}}</strong> schools</span>
-              <span><strong style="color:var(--on-surface)">{{s.students}}</strong> students</span>
-              <span><strong style="color:var(--secondary)">{{s.hours}}h</strong> training</span>
+            <div style="font-size:13px;color:var(--on-surface-variant);">
+              {{ s.email }} <span *ngIf="s.phone"> · {{ s.phone }}</span>
             </div>
           </div>
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-subtle btn-sm">View Report</button>
-            <button class="btn btn-ghost btn-sm">Dashboard</button>
-          </div>
+          <div style="font-size:12px;font-family:monospace;color:var(--primary);background:var(--primary-container);padding:4px 10px;border-radius:6px;">{{ s.ticket }}</div>
         </div>
       </div>
     </div>
+  </ng-container>
 
-    <!-- Impact Summary Panel -->
-    <div style="display:flex;flex-direction:column;gap:16px;">
-      <div class="card">
-        <div class="card-header"><h3>Participation by Track</h3></div>
-        <div class="card-body">
-          <div *ngFor="let t of [
-            {track:'Coding', count:380, pct:30, color:'primary'},
-            {track:'Robotics', count:245, pct:20, color:'tertiary'},
-            {track:'AI', count:210, pct:17, color:'secondary'},
-            {track:'Cybersecurity', count:280, pct:22, color:'error'},
-            {track:'Innovation', count:133, pct:11, color:'primary'},
-          ]" style="margin-bottom:14px;">
-            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
-              <span><span class="track-chip" [class]="t.track.toLowerCase()">{{t.track}}</span></span>
-              <span style="font-weight:700;color:var(--on-surface-variant)">{{t.count}} students ({{t.pct}}%)</span>
-            </div>
-            <div class="progress-bar" [class]="t.color"><div class="progress-fill" [style.width.%]="t.pct"></div></div>
-          </div>
+  <!-- ── EDIT SPONSOR PROFILE MODAL ────────────────────────────────────── -->
+  <div *ngIf="isEditProfileModalOpen" class="modal-overlay" (click)="closeEditProfileModal()">
+    <div class="modal-card" style="max-width:500px;width:100%;" (click)="$event.stopPropagation()">
+      <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="material-symbols-outlined" style="color:var(--primary);font-size:24px;">edit_note</span>
+          <h3 style="margin:0;font-size:18px;font-weight:800;">Edit Sponsor Profile</h3>
+        </div>
+        <button class="btn btn-ghost btn-sm" (click)="closeEditProfileModal()" style="min-width:auto;padding:4px;">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div *ngIf="profileSuccessMessage" class="toast-notice success" style="margin-bottom:16px;">
+        <span class="material-symbols-outlined">check_circle</span> {{ profileSuccessMessage }}
+      </div>
+
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
+        <div class="form-group">
+          <label class="form-label">Company / Organization Name *</label>
+          <input class="form-control" type="text" [(ngModel)]="profileEditForm.organization" placeholder="e.g., MTN Ghana Foundation">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">CSR Representative Full Name *</label>
+          <input class="form-control" type="text" [(ngModel)]="profileEditForm.fullName" placeholder="e.g., Dr. Efua Mensah">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Contact Phone Number</label>
+          <input class="form-control" type="tel" [(ngModel)]="profileEditForm.phone" placeholder="e.g., 055-123-4567">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Partnership Tier</label>
+          <select class="form-control form-select" [(ngModel)]="profileEditForm.tier">
+            <option value="Platinum Partner (GH₵ 100k+)">Platinum Partner (GH₵ 100k+)</option>
+            <option value="Gold Partner (GH₵ 20k-100k)">Gold Partner (GH₵ 20k-100k)</option>
+            <option value="Silver Partner (GH₵ 5k-20k)">Silver Partner (GH₵ 5k-20k)</option>
+            <option value="Bronze Partner (GH₵ 1k-5k)">Bronze Partner (GH₵ 1k-5k)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Supported Competition Track</label>
+          <select class="form-control form-select" [(ngModel)]="profileEditForm.track">
+            <option value="All Competition Tracks">All Competition Tracks</option>
+            <option value="Coding & Software">Coding & Software</option>
+            <option value="Robotics & Hardware">Robotics & Hardware</option>
+            <option value="AI & Machine Learning">AI & Machine Learning</option>
+            <option value="Cybersecurity">Cybersecurity</option>
+            <option value="Innovation & Design">Innovation & Design</option>
+          </select>
         </div>
       </div>
-      <div class="card">
-        <div class="card-header"><h3>Gender Participation</h3></div>
-        <div class="card-body" style="text-align:center;">
-          <div style="display:flex;height:16px;border-radius:8px;overflow:hidden;margin-bottom:12px;">
-            <div style="width:52%;background:var(--primary);"></div>
-            <div style="width:48%;background:var(--secondary);"></div>
-          </div>
-          <div style="display:flex;justify-content:center;gap:24px;font-size:14px;">
-            <div><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--secondary);margin-right:4px;"></span>Female <strong style="color:var(--secondary)">52%</strong></div>
-            <div><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--primary);margin-right:4px;"></span>Male <strong style="color:var(--primary)">48%</strong></div>
-          </div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header"><h3>Success Stories</h3></div>
-        <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
-          <div *ngFor="let story of [
-            {name:'Abena M.', detail:'Secured internship at MTN Ghana after winning Top Female Coder award.'},
-            {name:'Kwame A.', detail:'Received full scholarship to KNUST for Software Engineering.'},
-            {name:'Team AlphaBot', detail:'Represented Ghana at Africa Robotics Championship 2025.'}
-          ]" style="background:var(--surface-container-low);border-radius:8px;padding:12px;">
-            <div style="font-weight:700;font-size:13px;margin-bottom:4px;color:var(--primary)">{{story.name}}</div>
-            <div style="font-size:12px;color:var(--on-surface-variant);line-height:1.5;">{{story.detail}}</div>
-          </div>
-        </div>
+
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
+        <button class="btn btn-subtle" (click)="closeEditProfileModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveProfile()" [disabled]="isSavingProfile">
+          <span *ngIf="!isSavingProfile">Save Profile Changes</span>
+          <span *ngIf="isSavingProfile">Saving...</span>
+        </button>
       </div>
     </div>
   </div>
+
 </div>

@@ -17,6 +17,8 @@ export class UserManagementComponent implements OnInit {
   searchQuery = '';
   roleFilter = 'all';
   statusFilter = 'all';
+  viewMode: 'table' | 'grid' = 'table';
+  isAddUserModalOpen = false;
   selectedUser: User | null = null;
   isDetailOpen = false;
   isEditOpen = false;
@@ -49,6 +51,16 @@ export class UserManagementComponent implements OnInit {
   isCurrentUser(user: User): boolean {
     const email = localStorage.getItem('activeUserEmail') || '';
     return user.email === email;
+  }
+
+  isMainAdmin(user: User | null): boolean {
+    if (!user) return false;
+    return user.role === 'super_admin' || 
+           user.role === 'admin' ||
+           user.email === 'admin@ntic.edu.gh' || 
+           user.email === 'admin@ntic.org.gh' || 
+           user.email.startsWith('admin@') || 
+           this.isCurrentUser(user);
   }
 
   ngOnInit(): void {
@@ -114,6 +126,10 @@ export class UserManagementComponent implements OnInit {
   }
 
   editUser(user: User): void {
+    if (this.isMainAdmin(user)) {
+      this.showToast('Protected Account', 'Main Super Admin accounts cannot be edited or modified.', 4000);
+      return;
+    }
     this.editForm = { ...user };
     this.isEditOpen = true;
   }
@@ -131,10 +147,20 @@ export class UserManagementComponent implements OnInit {
   }
 
   saveEdit(): void {
-    if (!this.canManageUsers && !this.isCurrentUser(this.editForm)) return;
+    if (!this.canManageUsers) return;
+    if (this.isMainAdmin(this.editForm)) {
+      this.showToast('Protected Account', 'Main Super Admin accounts cannot be edited or modified.', 4000);
+      this.closeEdit();
+      return;
+    }
     const users = [...this.contentService.users];
     const idx = users.findIndex(u => u.id === this.editForm.id);
     if (idx > -1) {
+      if (this.isMainAdmin(users[idx])) {
+        this.showToast('Protected Account', 'Main Super Admin accounts cannot be edited or modified.', 4000);
+        this.closeEdit();
+        return;
+      }
       users[idx] = { ...users[idx], ...this.editForm };
       this.contentService.saveUsers(users);
       this.loadUsers();
@@ -144,7 +170,7 @@ export class UserManagementComponent implements OnInit {
   }
 
   toggleStatus(user: User): void {
-    if (this.isCurrentUser(user)) return;
+    if (this.isMainAdmin(user)) return;
     const users = [...this.contentService.users];
     const idx = users.findIndex(u => u.id === user.id);
     if (idx > -1) {
@@ -156,7 +182,10 @@ export class UserManagementComponent implements OnInit {
   }
 
   deleteUser(user: User): void {
-    if (this.isCurrentUser(user)) return;
+    if (this.isMainAdmin(user)) {
+      this.showToast('Protected Account', 'Main Super Admin accounts cannot be deleted.', 4000);
+      return;
+    }
     this.deleteUserConfirm = user;
   }
 

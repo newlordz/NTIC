@@ -189,21 +189,7 @@
         [class.active]="i === activeSlideIndex"
         [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + slide.image + ')'"
       >
-        <!-- Background Video if present -->
-        <video 
-          *ngIf="slide.video" 
-          class="slide-video-bg" 
-          autoplay 
-          muted 
-          loop 
-          playsinline
-          preload="auto"
-          controlsList="nodownload noplaybackrate"
-          disablePictureInPicture
-          oncontextmenu="return false"
-        >
-          <source [src]="slide.video" type="video/mp4" />
-        </video>
+        <!-- Browser-Native Image & Animation Background -->
 
         <!-- Browser-Native Video Edit Montage if present -->
         <div *ngIf="slide.isVideoEdit" class="video-edit-container">

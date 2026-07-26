@@ -103,6 +103,13 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
   toastMessage = '';
   judgeNotes = '';
   trackFilter = 'all';
+  cycleFilter = 'all';
+
+  // Media preview modal state
+  showMediaModal = false;
+  mediaModalTitle = '';
+  mediaModalType: 'video' | 'pdf' | 'code' = 'video';
+  mediaModalUrl = '';
 
   animatedStats = { pending: 0, scored: 0, rounds: 0, teams: 0 };
   private statTargets = { pending: 17, scored: 84, rounds: 5, teams: 48 };
@@ -245,6 +252,48 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
     return this.teams.filter(t => t.status === 'pending').length;
   }
 
+  get loggedInJudge(): any {
+    const activeUserEmail = localStorage.getItem('activeUserEmail') || '';
+    const activeTicket = localStorage.getItem('activeUserTicket') || '';
+    const activeUser = this.contentService.users.find(u => 
+      (activeUserEmail && u.email?.toLowerCase() === activeUserEmail.toLowerCase()) ||
+      (activeTicket && u.ticket?.toLowerCase() === activeTicket.toLowerCase())
+    );
+    
+    if (activeUser) return activeUser;
+
+    return {
+      fullName: activeUserEmail ? activeUserEmail.split('@')[0] : 'Judge Account',
+      organization: 'STEM Evaluation Board',
+      track: 'General STEM'
+    };
+  }
+
+  applyRubricPreset(percent: number): void {
+    this.rubric.forEach(cat => {
+      cat.score = Math.round((cat.maxScore * percent) / 100);
+    });
+  }
+
+  openMediaPreview(team: JudgeTeam, type: 'video' | 'pdf' | 'code'): void {
+    const sub = this.contentService.submissions.find(s => s.id === team.id);
+    this.mediaModalTitle = `${team.name} — ${team.projectTitle}`;
+    this.mediaModalType = type;
+    
+    if (type === 'video') {
+      this.mediaModalUrl = sub?.videoUrl || 'https://www.youtube.com';
+    } else if (type === 'code') {
+      this.mediaModalUrl = sub?.file ? `https://github.com/ntic-stem/repository-${sub.id}` : 'https://github.com/ntic-stem';
+    } else {
+      this.mediaModalUrl = sub?.file || 'Official Submission PDF Document';
+    }
+    this.showMediaModal = true;
+  }
+
+  closeMediaModal(): void {
+    this.showMediaModal = false;
+  }
+
   selectRound(id: string): void {
     this.activeRoundId = id;
     this.closeScoring();
@@ -330,7 +379,7 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
     currentAudit.unshift({
       action: `Published score of ${this.totalScore} for team ${this.selectedTeam.name} (${schoolName})`,
       user: 'judge@ntic.gov.gh',
-      time: 'Just now',
+      time: new Date().toISOString(),
       type: 'system'
     });
     this.contentService.saveAuditLogs(currentAudit);

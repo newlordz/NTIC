@@ -1,68 +1,142 @@
 <div class="page-canvas fade-in">
   <div class="page-header with-action">
-    <div><h1 class="page-title-main">Talent Discovery</h1><p class="page-subtitle">Recognizing outstanding performers across all NTIC competition categories</p></div>
-    <button class="btn btn-primary"><span class="material-symbols-outlined">download</span>Export Talent Report</button>
-  </div>
-
-  <!-- Overall Stats -->
-  <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:28px;">
-    <div class="stat-card primary">
-      <div class="stat-bg-icon material-symbols-outlined">workspace_premium</div>
-      <div class="stat-label"><span class="material-symbols-outlined">workspace_premium</span>Certificates Issued</div>
-      <div class="stat-value">186</div>
-    </div>
-    <div class="stat-card secondary">
-      <div class="stat-bg-icon material-symbols-outlined">work</div>
-      <div class="stat-label"><span class="material-symbols-outlined">work</span>Internship Placements</div>
-      <div class="stat-value">42</div>
-    </div>
-    <div class="stat-card tertiary">
-      <div class="stat-bg-icon material-symbols-outlined">school</div>
-      <div class="stat-label"><span class="material-symbols-outlined">school</span>Scholarships Awarded</div>
-      <div class="stat-value">18</div>
-    </div>
-    <div class="stat-card primary">
-      <div class="stat-bg-icon material-symbols-outlined">monetization_on</div>
-      <div class="stat-label"><span class="material-symbols-outlined">monetization_on</span>Cash Prizes</div>
-      <div class="stat-value">₵ 48k</div>
+    <div>
+      <h1 class="page-title-main">Talent Discovery & Leadership</h1>
+      <p class="page-subtitle">Outstanding performers and top-ranked institutions across all NTIC competition categories</p>
     </div>
   </div>
 
-  <div class="grid-4" style="gap:16px;">
-    <div *ngFor="let t of categories; let i=index" class="card" [style.outline]="i===7 ? '2px solid var(--primary)' : ''" style="cursor:pointer;transition:box-shadow 0.2s;position:relative;overflow:hidden;" onmouseover="this.style.boxShadow='var(--shadow-elevated)'" onmouseout="this.style.boxShadow=''">
-      <div *ngIf="i===7" style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--primary),var(--secondary));"></div>
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- TALENT DISCOVERY SECTION                        -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div class="section-heading">
+    <span class="material-symbols-outlined" style="color:var(--primary);">workspace_premium</span>
+    <div>
+      <h2>Top Performers</h2>
+      <p>Highlighted by administrators from competition results</p>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="contentService.talentDiscovery.length === 0" class="empty-state">
+    <span class="material-symbols-outlined">workspace_premium</span>
+    <p class="empty-title">No talent highlights yet</p>
+    <p class="empty-sub">Administrators can add standout performers from the Dashboard → Content Manager → Talent Discovery tab.</p>
+  </div>
+
+  <!-- Talent cards grid -->
+  <div *ngIf="contentService.talentDiscovery.length > 0" class="grid-4" style="gap:16px;margin-bottom:40px;">
+    <div *ngFor="let t of contentService.talentDiscovery; let i=index"
+         class="card talent-card"
+         [class.overall]="t.category.toLowerCase().includes('overall')">
+      <div *ngIf="t.category.toLowerCase().includes('overall')" class="overall-bar"></div>
       <div class="card-body">
+        <!-- Category Badge -->
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
-          <span class="badge" [class]="t.track">{{t.title}}</span>
-          <span class="material-symbols-outlined fill" style="font-size:20px;" [style.color]="i===7 ? 'gold' : 'var(--primary)'">{{i===7 ? 'military_tech' : 'workspace_premium'}}</span>
+          <span class="badge" [class]="t.badgeColor || 'primary'">{{ t.category }}</span>
+          <span class="material-symbols-outlined fill"
+                style="font-size:20px;"
+                [style.color]="t.category.toLowerCase().includes('overall') ? 'gold' : 'var(--primary)'">
+            {{ t.category.toLowerCase().includes('overall') ? 'military_tech' : 'workspace_premium' }}
+          </span>
         </div>
 
-        <!-- Avatar -->
+        <!-- Avatar & Name -->
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
-          <div style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0;" [style.background]="'var(--primary)'">
-            {{t.name[0]}}{{t.name.split(' ').length > 1 ? t.name.split(' ')[1][0] : ''}}
+          <div class="talent-avatar" [class]="t.badgeColor || 'primary'">
+            {{ t.studentName ? t.studentName[0].toUpperCase() : '?' }}
           </div>
           <div>
-            <div style="font-weight:700;font-size:15px;">{{t.name}}</div>
-            <div style="font-size:12px;color:var(--on-surface-variant);">{{t.school}}</div>
-            <div style="font-size:11px;color:var(--on-surface-variant);">Grade {{t.grade}}</div>
+            <div style="font-weight:700;font-size:15px;color:var(--on-surface);">{{ t.studentName }}</div>
+            <div style="font-size:12px;color:var(--on-surface-variant);">{{ t.schoolAndGrade }}</div>
           </div>
         </div>
 
         <!-- Score -->
-        <div style="background:var(--surface-container-low);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
+        <div class="score-row">
           <span style="font-size:13px;color:var(--on-surface-variant);">Performance Score</span>
-          <span style="font-size:20px;font-weight:800;color:var(--primary);font-family:'JetBrains Mono',monospace;">{{t.score}}%</span>
+          <span class="score-value">{{ t.score }}</span>
         </div>
-
-        <!-- Perks -->
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-          <span *ngFor="let perk of t.perks" class="badge neutral" style="font-size:11px;">
-            <span class="material-symbols-outlined" style="font-size:12px;">check_circle</span>{{perk}}
-          </span>
-        </div>
-        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;margin-top:12px;">View Profile</button>
       </div>
     </div>
   </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- LEADERBOARD / HALL OF FAME SECTION              -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div class="section-heading" style="margin-top: 12px;">
+    <span class="material-symbols-outlined" style="color:var(--secondary);">emoji_events</span>
+    <div>
+      <h2>Hall of Fame</h2>
+      <p>School champions inducted by the NTIC judging panel</p>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="contentService.hallOfFameEntries.length === 0" class="empty-state">
+    <span class="material-symbols-outlined">emoji_events</span>
+    <p class="empty-title">Hall of Fame is empty</p>
+    <p class="empty-sub">Induct champion schools and students from the Dashboard → Content Manager → Hall of Fame tab.</p>
+  </div>
+
+  <!-- Hall of Fame cards -->
+  <div *ngIf="contentService.hallOfFameEntries.length > 0" class="grid-4" style="gap:16px;margin-bottom:40px;">
+    <div *ngFor="let h of contentService.hallOfFameEntries" class="card hof-card">
+      <div class="card-body" style="text-align:center;">
+        <div class="hof-initials {{ h.trackClass || '' }}">{{ h.initials || (h.name ? h.name[0].toUpperCase() : '?') }}</div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:2px;">{{ h.name }}</div>
+        <div style="font-size:12px;color:var(--on-surface-variant);margin-bottom:8px;">{{ h.school }}</div>
+        <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
+          <span class="badge neutral" style="font-size:11px;">{{ h.year }}</span>
+          <span class="badge primary" style="font-size:11px;">{{ h.badge }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ -->
+  <!-- SCHOOL LEADERBOARD SECTION                      -->
+  <!-- ═══════════════════════════════════════════════ -->
+  <div class="section-heading" style="margin-top: 12px;">
+    <span class="material-symbols-outlined" style="color:var(--tertiary);">leaderboard</span>
+    <div>
+      <h2>School Leaderboard</h2>
+      <p>Top-ranked institutions by combined competition points</p>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="contentService.leaderboardData.length === 0" class="empty-state">
+    <span class="material-symbols-outlined">leaderboard</span>
+    <p class="empty-title">Leaderboard is empty</p>
+    <p class="empty-sub">Leaderboard rankings appear here once the administrator publishes competition data from the Dashboard.</p>
+  </div>
+
+  <!-- Leaderboard table -->
+  <div *ngIf="contentService.leaderboardData.length > 0" class="card" style="margin-bottom:28px;">
+    <div class="card-body" style="padding:0;">
+      <div class="lb-table-header">
+        <div>Rank</div>
+        <div style="flex:1;">Institution</div>
+        <div>Region</div>
+        <div>Points</div>
+      </div>
+      <div *ngFor="let entry of contentService.leaderboardData; let i = index"
+           class="lb-row" [class.lb-top3]="i < 3">
+        <div class="lb-rank">
+          <span *ngIf="i === 0" class="material-symbols-outlined" style="color:gold;font-size:20px;">military_tech</span>
+          <span *ngIf="i === 1" class="material-symbols-outlined" style="color:silver;font-size:20px;">military_tech</span>
+          <span *ngIf="i === 2" class="material-symbols-outlined" style="color:#cd7f32;font-size:20px;">military_tech</span>
+          <strong *ngIf="i >= 3">{{ entry.rank || i + 1 }}</strong>
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight:600;font-size:14px;">{{ entry.schoolName }}</div>
+          <div style="font-size:12px;color:var(--on-surface-variant);">{{ entry.location }}</div>
+        </div>
+        <div style="font-size:13px;color:var(--on-surface-variant);">{{ entry.region }}</div>
+        <div style="font-size:18px;font-weight:800;color:var(--primary);font-family:monospace;">{{ entry.points }}</div>
+      </div>
+    </div>
+  </div>
+
 </div>

@@ -12,11 +12,13 @@ import {
 } from '../../services/content.service';
 import { BrevoEmailService } from '../../services/brevo-email.service';
 import { FileStorageService } from '../../services/file-storage.service';
+import { TimeAgoPipe } from '../../services/time-ago.pipe';
+import { LmsManagerComponent } from '../lms-manager/lms-manager.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, TimeAgoPipe, LmsManagerComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -24,6 +26,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   activeRoleId = 'super_admin';
   dashboardTitle = 'Dashboard';
   dashboardSubtitle = 'NTIC Platform Portal';
+  currentUser: any = null;
 
   stats: any[] = [];
 
@@ -48,7 +51,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ];
 
   // ─── SUPER ADMIN STATE ─────────────────────────
-  adminTab: 'overview' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' = 'overview';
+  adminTab: 'overview' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' = 'overview';
+  lmsSubTab: 'courses' | 'modules' | 'materials' | 'assignments' = 'courses';
+  lmsFormMode: 'add' | 'edit' = 'add';
+  editingLmsCourse: any = null;
+  editingLmsModule: any = null;
+  editingLmsMaterial: any = null;
+  editingLmsAssignment: any = null;
   registerRole: 'judge' | 'sponsor' = 'judge';
   ticketFilter: 'all' | 'judge' | 'sponsor' = 'all';
   isRegModalOpen = false;
@@ -127,6 +136,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   tdFormError = '';
   tdEditId: string | null = null;
 
+  // Sponsor settlement modal
+  settleModalOpen = false;
+  settleType: 'full' | 'partial' = 'full';
+  settleAmount = 0;
+  settleNote = '';
+  settlePaymentMode: 'mobile_money' | 'bank_transfer' | 'card' = 'mobile_money';
+  settleBillingSchedule: 'one_time' | 'monthly' | 'quarterly' = 'one_time';
+  settlePaymentReference = '';
+
   // News form
   newsForm: Omit<NewsFeedItem, 'id'> = {
     headline: '',
@@ -162,12 +180,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     phone: '',
     track: '',    // for judges
     tracks: [] as string[],
-    tier: '',     // for sponsors
+    tier: '',     // for sponsors (package)
     notes: ''
   };
   regSubmitting = false;
   regSuccess = false;
   regError = '';
+  adminRegLogoUrl: string | null = null;
+  adminRegLogoFileId: string | null = null;
 
   // Registered users with generated tickets
   get registeredUsers(): any[] {
@@ -335,6 +355,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     } else {
       this.regForm.tracks.push(track);
     }
+    this.regForm.track = this.regForm.tracks.join(', ');
   }
 
   // Modal states for approvals
@@ -385,7 +406,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { text: 'Mentor feedback published for AI Division', time: '5h ago' }
   ];
 
-  constructor(public contentService: ContentService, private route: ActivatedRoute, private router: Router, private emailService: BrevoEmailService, private fileStorage: FileStorageService, private cdr: ChangeDetectorRef) {}
+  constructor(public contentService: ContentService, private route: ActivatedRoute, private router: Router, private emailService: BrevoEmailService, private fileStorage: FileStorageService, private cdr: ChangeDetectorRef) {
+    this.route.queryParams.subscribe(params => {
+      if (params['tab']) {
+        this.adminTab = params['tab'];
+      }
+    });
+  }
 
   logoUrls: Record<string, string> = {};
 
@@ -417,7 +444,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   addAuditLog(log: any): void {
     const currentAudit = [...this.contentService.auditLogs];
     currentAudit.unshift({
-      time: 'Just now',
+      time: new Date().toISOString(),
       user: 'admin@ntic.org.gh',
       type: 'system',
       ...log
@@ -458,6 +485,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     if (this.activeRoleId === 'super_admin') {
       this.startLiveTelemetry();
+      this.liveIntervals.push(setInterval(() => this.cdr.detectChanges(), 30000));
       // Sync stats form from service
       this.statsForm = { ...this.contentService.platformStats };
       // Sync countdown input from service (format: YYYY-MM-DDTHH:mm)
@@ -478,6 +506,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       u.ticket?.trim().toUpperCase() === activeEmail.toUpperCase()
     );
     const userName = activeUser ? activeUser.fullName : (this.activeRoleId === 'super_admin' ? 'System Administrator' : 'Administrator');
+    this.currentUser = activeUser || null;
 
     if (activeUser && activeUser.role === 'school_admin') {
       this.schoolName = activeUser.organization || '';
@@ -517,22 +546,38 @@ export class DashboardComponent implements OnInit, OnDestroy {
       case 'judge':
         this.dashboardTitle = 'Judge Dashboard';
         this.dashboardSubtitle = `Welcome back, ${userName}. National Competition Scoring Panel.`;
+        const judgeSubmissions = this.assignedSubmissions;
+        const gradedCount = judgeSubmissions.filter(s => s.score !== null).length;
+        const pendingCount = judgeSubmissions.filter(s => s.score === null).length;
+        const totalSubmissions = judgeSubmissions.length;
+        const gradedScores = judgeSubmissions.filter(s => s.score !== null).map(s => s.score);
+        const avgScore = gradedScores.length > 0
+          ? (gradedScores.reduce((a, b) => a + b, 0) / gradedScores.length).toFixed(1)
+          : '0.0';
+        const judgeTrackName = activeUser?.track || 'All tracks';
+
         this.stats = [
-          { label: 'Assigned Submissions', value: '18', icon: 'gavel', meta: 'Coding & AI tracks', color: 'primary' },
-          { label: 'Graded Projects', value: '14', icon: 'done_all', meta: '78% complete', color: 'secondary' },
-          { label: 'Pending Evaluations', value: '4', icon: 'pending', meta: 'Due by Saturday', color: 'error' },
-          { label: 'Average Score Given', value: '78.2', icon: 'bar_chart', meta: 'Standard bell curve', color: 'tertiary' }
+          { label: 'Assigned Submissions', value: String(totalSubmissions), icon: 'gavel', meta: `${judgeTrackName}`, color: 'primary' },
+          { label: 'Graded Projects', value: String(gradedCount), icon: 'done_all', meta: totalSubmissions > 0 ? `${Math.round((gradedCount / totalSubmissions) * 100)}% complete` : '0% complete', color: 'secondary' },
+          { label: 'Pending Evaluations', value: String(pendingCount), icon: 'pending', meta: pendingCount > 0 ? 'Action required' : 'All scored', color: 'error' },
+          { label: 'Average Score Given', value: avgScore, icon: 'bar_chart', meta: 'Live score mean', color: 'tertiary' }
         ];
         break;
 
       case 'sponsor':
-        this.dashboardTitle = activeUser ? `${activeUser.organization} Sponsor Dashboard` : 'Sponsor Dashboard';
+        this.dashboardTitle = activeUser ? `${(activeUser.organization && activeUser.organization !== '_pending_profile') ? activeUser.organization : activeUser.fullName} Sponsor Dashboard` : 'Sponsor Dashboard';
         this.dashboardSubtitle = `Welcome back, ${userName}. Corporate Sponsorship & CSR Impact Panel.`;
+        const sponsorUser = activeUser;
+        const sponsorTotal = sponsorUser?.total || (sponsorUser?.payments && sponsorUser.payments.length > 0 ? `GH₵ ${sponsorUser.payments.reduce((a: number, p: any) => a + (parseInt(p.amount.replace(/[^0-9]/g, ''), 10) || 0), 0).toLocaleString()}` : 'GH₵ 0');
+        const paymentCount = sponsorUser?.payments?.length || 0;
+        const tierName = sponsorUser?.tier || sponsorUser?.package || 'Partner';
+        const trackScope = sponsorUser?.track || 'All Tracks';
+
         this.stats = [
-          { label: 'Total Funding Committed', value: '₵ 240,000', icon: 'payments', meta: 'Tullow Ghana CSR', color: 'primary' },
-          { label: 'Sponsored Schools', value: '12', icon: 'school', meta: 'Across 4 regions', color: 'secondary' },
-          { label: 'Supported Students', value: '250', icon: 'child_care', meta: 'Scholarship program', color: 'tertiary' },
-          { label: 'Flagged High-Talents', value: '15', icon: 'verified', meta: 'Ready for internship', color: 'error' }
+          { label: 'Total Contribution', value: String(sponsorTotal), icon: 'payments', meta: `${tierName}`, color: 'primary' },
+          { label: 'Payments Settled', value: String(paymentCount), icon: 'receipt_long', meta: paymentCount > 0 ? 'Verified transactions' : 'No payments yet', color: 'secondary' },
+          { label: 'Supported Track', value: String(trackScope), icon: 'category', meta: 'STEM Championship', color: 'tertiary' },
+          { label: 'Account Status', value: sponsorUser?.status || 'Active', icon: 'verified', meta: 'Verified Partner', color: 'error' }
         ];
         break;
 
@@ -547,6 +592,42 @@ export class DashboardComponent implements OnInit, OnDestroy {
         ];
         break;
     }
+  }
+
+  settleSponsorship(type: 'full' | 'partial'): void {
+    this.settleType = type;
+    this.settleAmount = 0;
+    this.settleNote = '';
+    this.settleModalOpen = true;
+  }
+
+  openPaymentCenter(): void {
+    this.settleType = 'full';
+    this.settleAmount = 0;
+    this.settleNote = '';
+    this.settlePaymentMode = 'mobile_money';
+    this.settleBillingSchedule = 'one_time';
+    this.settlePaymentReference = '';
+    this.settleModalOpen = true;
+  }
+
+  closeSettleModal(): void {
+    this.settleModalOpen = false;
+  }
+
+  submitSettlement(): void {
+    const name = this.currentUser?.organization || this.currentUser?.fullName || 'Sponsor';
+    const modeLabels: Record<string, string> = { mobile_money: 'Mobile Money', bank_transfer: 'Bank Transfer', card: 'Card' };
+    const scheduleLabels: Record<string, string> = { one_time: 'One-time', monthly: 'Monthly', quarterly: 'Quarterly' };
+    const audit = [...this.contentService.auditLogs];
+    audit.unshift({
+      action: `${this.settleType === 'full' ? 'Full' : 'Partial'} payment of GH₵${this.settleAmount.toLocaleString()} via ${modeLabels[this.settlePaymentMode]} (${scheduleLabels[this.settleBillingSchedule]}) by ${name}`,
+      user: localStorage.getItem('activeUserEmail') || 'Sponsor',
+      time: new Date().toISOString(),
+      type: 'payment'
+    });
+    this.contentService.saveAuditLogs(audit);
+    this.settleModalOpen = false;
   }
 
   onStatCardClick(stat: any): void {
@@ -618,6 +699,30 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.deleteUserConfirm = null;
   }
 
+  adminSponsorItems = [
+    { label: 'Team Sponsorship', icon: 'groups' },
+    { label: 'Student Sponsorship', icon: 'school' },
+    { label: 'Track Sponsorship', icon: 'category' },
+    { label: 'Mentorship Program', icon: 'psychology' },
+    { label: 'Equipment & Tools', icon: 'construction' },
+    { label: 'Prize & Awards', icon: 'emoji_events' }
+  ];
+
+  selectedAdminPackages: string[] = [];
+
+  toggleAdminPackage(label: string): void {
+    if (this.selectedAdminPackages.includes(label)) {
+      this.selectedAdminPackages = this.selectedAdminPackages.filter(l => l !== label);
+    } else {
+      this.selectedAdminPackages = [...this.selectedAdminPackages, label];
+    }
+    this.regForm.tier = this.selectedAdminPackages.join(', ');
+  }
+
+  isAdminPackageSelected(label: string): boolean {
+    return this.selectedAdminPackages.includes(label);
+  }
+
   generateTicket(role: 'judge' | 'sponsor'): string {
     const prefix = role === 'judge' ? 'JDG' : 'SPO';
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -652,6 +757,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.regError = '';
     this.regSuccess = false;
     this.regForm = { fullName: '', email: '', organization: '', phone: '', track: '', tracks: [], tier: '', notes: '' };
+    this.selectedAdminPackages = [];
   }
 
   closeRegisterModal(): void {
@@ -661,6 +767,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
       queryParams: { openRegModal: null },
       queryParamsHandling: 'merge'
     });
+  }
+
+  async onAdminRegLogoSelected(event: any): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      alert('Logo exceeds 3MB limit.');
+      return;
+    }
+    if (this.adminRegLogoFileId) {
+      await this.fileStorage.remove(this.adminRegLogoFileId);
+      if (this.adminRegLogoUrl) this.fileStorage.revokeUrl(this.adminRegLogoUrl);
+    }
+    const id = this.fileStorage.generateId();
+    await this.fileStorage.store(id, file);
+    this.adminRegLogoFileId = id;
+    this.adminRegLogoUrl = await this.fileStorage.getUrl(id);
+    event.target.value = '';
+  }
+
+  removeAdminRegLogo(): void {
+    if (this.adminRegLogoFileId) this.fileStorage.remove(this.adminRegLogoFileId);
+    if (this.adminRegLogoUrl) this.fileStorage.revokeUrl(this.adminRegLogoUrl);
+    this.adminRegLogoFileId = null;
+    this.adminRegLogoUrl = null;
   }
 
   submitRegistration(): void {
@@ -678,7 +809,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     setTimeout(() => {
       const ticket = this.generateTicket(this.registerRole);
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const newUser = {
+      const newUser: any = {
         id: `USR-${String(this.registeredUsers.length + 1).padStart(3, '0')}`,
         role: this.registerRole,
         fullName: this.regForm.fullName,
@@ -686,14 +817,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
         phone: this.regForm.phone || '+233 24 555 0192',
         otp,
         password: otp,
-        organization: this.regForm.organization,
-        track: this.registerRole === 'judge' ? (this.regForm.tracks && this.regForm.tracks.join(', ')) : undefined,
-        tier: this.registerRole === 'sponsor' ? this.regForm.tier : undefined,
+        organization: '_pending_profile',
+        track: this.registerRole === 'judge' ? (this.regForm.track || (this.regForm.tracks && this.regForm.tracks.join(', '))) : undefined,
+        package: this.registerRole === 'sponsor' ? this.regForm.tier : undefined,
         ticket,
         status: 'Active',
         registeredAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, ' '),
         lastLogin: 'Never'
       };
+      if (this.adminRegLogoFileId) newUser.logoFileId = this.adminRegLogoFileId;
       const currentUsers = [...this.contentService.users];
       currentUsers.unshift(newUser);
       this.contentService.saveUsers(currentUsers);
@@ -702,7 +834,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       currentAudit.unshift({
         action: `${this.registerRole === 'judge' ? 'Judge' : 'Sponsor'} token ${ticket} generated for ${this.regForm.fullName}`,
         user: 'admin@ntic.org.gh',
-        time: 'Just now',
+        time: new Date().toISOString(),
         type: 'ticket'
       });
       this.contentService.saveAuditLogs(currentAudit);
@@ -713,6 +845,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
           : s
       );
 
+      const roleLabel = this.registerRole === 'judge' ? 'Judge' : 'Sponsor';
+      this.emailService.sendApprovalEmail(
+        this.regForm.email,
+        this.regForm.fullName,
+        this.regForm.organization || 'NTIC Competition',
+        roleLabel + ' Access',
+        ticket,
+        otp,
+        this.regForm.phone
+      );
+
       this.regSubmitting = false;
       this.regSuccess = true;
       this.isRegModalOpen = false; // Close the registration popup modal
@@ -720,6 +863,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
       // Reset form
       this.regForm = { fullName: '', email: '', organization: '', phone: '', track: '', tracks: [], tier: '', notes: '' };
+    this.selectedAdminPackages = [];
+      this.removeAdminRegLogo();
 
       // Clear the query parameter so the modal doesn't reopen
       this.router.navigate([], {
@@ -903,7 +1048,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     currentAudit.unshift({
       action: `${req.type} approved: ${req.entity}`,
       user: 'admin@ntic.org.gh',
-      time: 'Just now',
+      time: new Date().toISOString(),
       type: 'approval'
     });
     this.contentService.saveAuditLogs(currentAudit);
@@ -996,7 +1141,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     currentAudit.unshift({
       action: `${this.activeReviewRequest.type} rejected: ${this.activeReviewRequest.entity} (${logDetails})`,
       user: 'admin@ntic.org.gh',
-      time: 'Just now',
+      time: new Date().toISOString(),
       type: 'system'
     });
     this.contentService.saveAuditLogs(currentAudit);
@@ -1012,6 +1157,59 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   closePreview(): void {
     this.activePreviewRequest = null;
+  }
+
+  quickRejectFromPreview(): void {
+    const req = this.activePreviewRequest;
+    if (!req) return;
+
+    const defaultReasons: Record<string, string> = {
+      'School Registration': 'Application did not meet accreditation requirements',
+      'Team Addition': 'Team registration did not meet competition criteria',
+      'Instructor Access': 'Instructor credentials could not be verified'
+    };
+    const reason = defaultReasons[req.type] || 'Application did not meet requirements';
+
+    const rejected = {
+      ...req,
+      reviewedAt: new Date().toLocaleString('en-GB'),
+      reviewer: 'admin@ntic.org.gh',
+      rejectionReasons: reason,
+      rejectionNotes: 'Rejected during preview review.'
+    };
+
+    const currentRejected = [...this.contentService.rejectedApprovals];
+    currentRejected.unshift(rejected);
+    this.contentService.saveRejectedApprovals(currentRejected);
+
+    this.pendingApprovals = this.pendingApprovals.filter(r => r.id !== req.id);
+
+    this.emailService.sendRejectionEmail(
+      req.contact,
+      req.entity,
+      req.entity,
+      req.type,
+      reason,
+      'Rejected during preview review.',
+      req.details?.phone || req.details?.repTel
+    );
+
+    const currentAudit = [...this.contentService.auditLogs];
+    currentAudit.unshift({
+      action: `${req.type} rejected (quick): ${req.entity} — ${reason}`,
+      user: 'admin@ntic.org.gh',
+      time: new Date().toISOString(),
+      type: 'system'
+    });
+    this.contentService.saveAuditLogs(currentAudit);
+
+    this.stats = this.stats.map(s =>
+      s.icon === 'verified_user'
+        ? { ...s, value: String(this.pendingApprovals.length), meta: this.pendingApprovals.length > 0 ? 'Action required' : 'All clear' }
+        : s
+    );
+
+    this.closePreview();
   }
 
   closeReview(): void {
@@ -1180,17 +1378,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     
     if (this.editingStoryId) {
       this.contentService.updateStory({ id: this.editingStoryId, ...this.storyForm });
-      this.addAuditLog({ action: `Championship Story updated: "${this.storyForm.title.slice(0, 40)}..."`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Championship Story updated: "${this.storyForm.title.slice(0, 40)}..."`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     } else {
       this.contentService.addStory({ ...this.storyForm });
-      this.addAuditLog({ action: `Championship Story added: "${this.storyForm.title.slice(0, 40)}..."`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Championship Story added: "${this.storyForm.title.slice(0, 40)}..."`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     }
     this.storyFormOpen = false;
   }
 
   removeStory(id: string): void {
     this.contentService.removeStory(id);
-    this.addAuditLog({ action: `Championship Story removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `Championship Story removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
   // ── Slideshow Management ──────────────────────────────
@@ -1198,6 +1396,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   editingSlideId: string | null = null;
   slideForm: any = { title: '', image: '', videoFileId: '', videoUrl: '' };
   slideSavedFields: Record<string, boolean> = {};
+  isVideoMuted = true;
+
+  toggleVideoMute(): void {
+    this.isVideoMuted = !this.isVideoMuted;
+  }
 
   addSlide(): void {
     this.editingSlideId = null;
@@ -1289,10 +1492,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.editingSlideId) {
       const idx = slides.findIndex(s => s.id === this.editingSlideId);
       if (idx > -1) slides[idx] = { ...slides[idx], ...saved };
-      this.addAuditLog({ action: `Slide updated: "${(this.slideForm.title || 'Untitled').slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Slide updated: "${(this.slideForm.title || 'Untitled').slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     } else {
       slides.push({ id: `slide-${Date.now()}`, ...saved });
-      this.addAuditLog({ action: `Slide added: "${(this.slideForm.title || 'Untitled').slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Slide added: "${(this.slideForm.title || 'Untitled').slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     }
     this.contentService.saveHeroSlides(slides);
     this.slideFormOpen = false;
@@ -1308,13 +1511,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const fieldNames: Record<string, string> = { title: 'Title', description: 'Description', tag: 'Tag', ctaText: 'CTA Text', ctaLink: 'CTA Link' };
     this.slideSavedFields[field] = true;
     setTimeout(() => { this.slideSavedFields[field] = false; }, 1500);
-    this.addAuditLog({ action: `Slide field saved: ${fieldNames[field] || field}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `Slide field saved: ${fieldNames[field] || field}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
   deleteSlide(slide: any): void {
     const slides = this.contentService.heroSlides.filter(s => s.id !== slide.id);
     this.contentService.saveHeroSlides(slides);
-    this.addAuditLog({ action: `Slide deleted: "${slide.title}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `Slide deleted: "${slide.title}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
   moveSlideUp(index: number): void {
@@ -1347,13 +1550,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   savePhilCard(): void {
     this.contentService.savePhilosophyCard(this.editingPhilCard);
     this.philCardFormOpen = false;
-    this.addAuditLog({ action: `Philosophy card saved: "${this.editingPhilCard.title}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `Philosophy card saved: "${this.editingPhilCard.title}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
   deletePhilCard(card: any): void {
     const list = this.contentService.philosophyCards.filter(c => c.id !== card.id);
     this.contentService.savePhilosophyCards(list);
-    this.addAuditLog({ action: `Philosophy card deleted: "${card.title}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `Philosophy card deleted: "${card.title}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
   movePhilCard(index: number, direction: -1 | 1): void {
@@ -1429,17 +1632,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     
     if (this.editingHofId) {
       this.contentService.updateHofEntry({ id: this.editingHofId, ...this.hofForm });
-      this.addAuditLog({ action: `Hall of Fame entry updated: ${this.hofForm.name}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Hall of Fame entry updated: ${this.hofForm.name}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     } else {
       this.contentService.addHofEntry({ ...this.hofForm });
-      this.addAuditLog({ action: `Hall of Fame entry added: ${this.hofForm.name}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Hall of Fame entry added: ${this.hofForm.name}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     }
     this.hofFormOpen = false;
   }
   
   removeHofEntry(id: string): void {
     this.contentService.removeHofEntry(id);
-    this.addAuditLog({ action: `Hall of Fame entry removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `Hall of Fame entry removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
   // Leaderboard
@@ -1475,17 +1678,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.onLbTrackChange(); // recalc total
     if (this.lbEditId) {
       this.contentService.updateLeaderboardEntry(this.lbEditId, { ...this.lbForm });
-      this.addAuditLog({ action: `Leaderboard updated: ${this.lbForm.schoolName}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Leaderboard updated: ${this.lbForm.schoolName}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     } else {
       this.contentService.addLeaderboardEntry({ ...this.lbForm });
-      this.addAuditLog({ action: `Leaderboard entry added: ${this.lbForm.schoolName}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Leaderboard entry added: ${this.lbForm.schoolName}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     }
     this.lbFormOpen = false;
     this.lbEditId = null;
   }
   removeLbEntry(id: string): void {
     this.contentService.removeLeaderboardEntry(id);
-    this.addAuditLog({ action: `Leaderboard entry removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `Leaderboard entry removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
   // Talent Discovery
@@ -1525,10 +1728,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     if (this.tdEditId) {
       this.contentService.updateTalentDiscovery(this.tdEditId, { ...this.tdForm });
-      this.addAuditLog({ action: `Talent Discovery entry updated for ${this.tdForm.studentName}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Talent Discovery entry updated for ${this.tdForm.studentName}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     } else {
       this.contentService.addTalentDiscovery({ ...this.tdForm });
-      this.addAuditLog({ action: `Talent Discovery entry added for ${this.tdForm.studentName}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `Talent Discovery entry added for ${this.tdForm.studentName}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     }
     this.tdFormOpen = false;
     this.tdEditId = null;
@@ -1536,7 +1739,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   removeTdEntry(id: string): void {
     this.contentService.removeTalentDiscovery(id);
-    this.addAuditLog({ action: `Talent Discovery entry removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `Talent Discovery entry removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
   // Platform Stats
@@ -1547,7 +1750,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   saveStats(): void {
     this.contentService.updatePlatformStats({ ...this.statsForm });
     this.statsEditMode = false;
-    this.addAuditLog({ action: 'Platform impact stats updated', user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: 'Platform impact stats updated', user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
   clearAllData(): void {
@@ -1574,7 +1777,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       dateStr += ':00';
     }
     this.contentService.updateCountdownDate(dateStr);
-    this.addAuditLog({ action: `Countdown target date updated to ${dateStr}`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `Countdown target date updated to ${dateStr}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
   updatePreviewCountdown(): void {
@@ -1625,17 +1828,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     
     if (this.editingNewsId) {
       this.contentService.updateNewsItem({ id: this.editingNewsId, ...this.newsForm });
-      this.addAuditLog({ action: `News item updated: "${this.newsForm.headline.slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `News item updated: "${this.newsForm.headline.slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     } else {
       this.contentService.addNewsItem({ ...this.newsForm });
-      this.addAuditLog({ action: `News item published: "${this.newsForm.headline.slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+      this.addAuditLog({ action: `News item published: "${this.newsForm.headline.slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     }
     this.newsFormOpen = false;
   }
 
   removeNewsItem(id: string): void {
     this.contentService.removeNewsItem(id);
-    this.addAuditLog({ action: `News item removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: 'Just now', type: 'system' });
+    this.addAuditLog({ action: `News item removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
   trackClass_options = [
@@ -1813,7 +2016,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.addAuditLog({
         action: `School Admin (${this.schoolName}) disbanded squad: ${team.name}`,
         user: localStorage.getItem('activeUserEmail') || 'School Admin',
-        time: 'Just now',
+        time: new Date().toISOString(),
         type: 'approval'
       });
     }
@@ -1869,7 +2072,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     currentAudit.unshift({
       action: `School Admin (${this.schoolName}) registered/updated Team: ${newTeam.name} under ${newTeam.track}`,
       user: localStorage.getItem('activeUserEmail') || 'School Admin',
-      time: 'Just now',
+      time: new Date().toISOString(),
       type: 'approval'
     });
     this.contentService.saveAuditLogs(currentAudit);
@@ -1903,5 +2106,129 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (r === 'super_admin' || r === 'admin') return 'admin_panel_settings';
     if (r === 'competition_manager') return 'emoji_events';
     return 'badge';
+  }
+
+  // ── LMS Management ────────────────────────────────────────
+  isLmsCourseModalOpen = false;
+  isLmsModuleModalOpen = false;
+  isLmsMaterialModalOpen = false;
+  isLmsAssignmentModalOpen = false;
+
+  lmsCourseForm: any = { title: '', description: '', track: 'coding', icon: 'menu_book', level: 'Beginner', status: 'active' };
+  lmsModuleForm: any = { title: '', description: '', courseId: '', order: 1, icon: 'view_list', status: 'published' };
+  lmsMaterialForm: any = { title: '', description: '', courseId: '', moduleId: '', type: 'document', url: '' };
+  lmsAssignmentForm: any = { title: '', description: '', courseId: '', track: 'coding', dueDate: '', maxScore: 100, status: 'active' };
+
+  getLmsCourseTitle(id: string): string {
+    return this.contentService.lmsCourses.find(c => c.id === id)?.title || 'Unknown';
+  }
+
+  getLmsModuleTitle(id: string): string {
+    return this.contentService.lmsModules.find(m => m.id === id)?.title || 'Unknown';
+  }
+
+  getModulesForCourse(courseId: string): any[] {
+    return this.contentService.lmsModules.filter(m => m.courseId === courseId).sort((a, b) => a.order - b.order);
+  }
+
+  openLmsCourseModal(course?: any): void {
+    this.lmsFormMode = course ? 'edit' : 'add';
+    this.lmsCourseForm = course ? { ...course } : { title: '', description: '', track: 'coding', icon: 'menu_book', level: 'Beginner', status: 'active' };
+    this.isLmsCourseModalOpen = true;
+  }
+
+  closeLmsCourseModal(): void { this.isLmsCourseModalOpen = false; }
+
+  saveLmsCourse(): void {
+    if (!this.lmsCourseForm.title?.trim()) { alert('Course title is required.'); return; }
+    const course = {
+      id: this.lmsFormMode === 'edit' ? this.lmsCourseForm.id : 'crs-' + Date.now(),
+      ...this.lmsCourseForm,
+      modules: this.lmsFormMode === 'edit' ? this.lmsCourseForm.modules : 0,
+      enrolled: this.lmsFormMode === 'edit' ? this.lmsCourseForm.enrolled : 0,
+      completion: this.lmsFormMode === 'edit' ? this.lmsCourseForm.completion : 0,
+      createdAt: this.lmsFormMode === 'edit' ? this.lmsCourseForm.createdAt : new Date().toISOString().split('T')[0]
+    };
+    this.contentService.saveLmsCourse(course);
+    this.closeLmsCourseModal();
+  }
+
+  removeLmsCourse(id: string): void {
+    if (!confirm('Delete this course and all its modules, materials, and assignments?')) return;
+    this.contentService.removeLmsCourse(id);
+  }
+
+  openLmsModuleModal(mod?: any): void {
+    this.lmsFormMode = mod ? 'edit' : 'add';
+    this.lmsModuleForm = mod ? { ...mod } : { title: '', description: '', courseId: '', order: 1, icon: 'view_list', status: 'published' };
+    this.isLmsModuleModalOpen = true;
+  }
+
+  closeLmsModuleModal(): void { this.isLmsModuleModalOpen = false; }
+
+  saveLmsModule(): void {
+    if (!this.lmsModuleForm.title?.trim()) { alert('Module title is required.'); return; }
+    if (!this.lmsModuleForm.courseId) { alert('Please select a course.'); return; }
+    const mod = {
+      id: this.lmsFormMode === 'edit' ? this.lmsModuleForm.id : 'mod-' + Date.now(),
+      ...this.lmsModuleForm
+    };
+    this.contentService.saveLmsModule(mod);
+    this.closeLmsModuleModal();
+  }
+
+  removeLmsModule(id: string): void {
+    if (!confirm('Delete this module and its materials?')) return;
+    this.contentService.removeLmsModule(id);
+  }
+
+  openLmsMaterialModal(mat?: any): void {
+    this.lmsFormMode = mat ? 'edit' : 'add';
+    this.lmsMaterialForm = mat ? { ...mat } : { title: '', description: '', courseId: '', moduleId: '', type: 'document', url: '' };
+    this.isLmsMaterialModalOpen = true;
+  }
+
+  closeLmsMaterialModal(): void { this.isLmsMaterialModalOpen = false; }
+
+  saveLmsMaterial(): void {
+    if (!this.lmsMaterialForm.title?.trim()) { alert('Material title is required.'); return; }
+    if (!this.lmsMaterialForm.courseId) { alert('Please select a course.'); return; }
+    const mat = {
+      id: this.lmsFormMode === 'edit' ? this.lmsMaterialForm.id : 'mat-' + Date.now(),
+      ...this.lmsMaterialForm,
+      createdAt: this.lmsFormMode === 'edit' ? this.lmsMaterialForm.createdAt : new Date().toISOString().split('T')[0]
+    };
+    this.contentService.saveLmsMaterial(mat);
+    this.closeLmsMaterialModal();
+  }
+
+  removeLmsMaterial(id: string): void {
+    if (!confirm('Delete this material?')) return;
+    this.contentService.removeLmsMaterial(id);
+  }
+
+  openLmsAssignmentModal(asgn?: any): void {
+    this.lmsFormMode = asgn ? 'edit' : 'add';
+    this.lmsAssignmentForm = asgn ? { ...asgn } : { title: '', description: '', courseId: '', track: 'coding', dueDate: '', maxScore: 100, status: 'active' };
+    this.isLmsAssignmentModalOpen = true;
+  }
+
+  closeLmsAssignmentModal(): void { this.isLmsAssignmentModalOpen = false; }
+
+  saveLmsAssignment(): void {
+    if (!this.lmsAssignmentForm.title?.trim()) { alert('Assignment title is required.'); return; }
+    if (!this.lmsAssignmentForm.courseId) { alert('Please select a course.'); return; }
+    const asgn = {
+      id: this.lmsFormMode === 'edit' ? this.lmsAssignmentForm.id : 'asgn-' + Date.now(),
+      ...this.lmsAssignmentForm,
+      createdAt: this.lmsFormMode === 'edit' ? this.lmsAssignmentForm.createdAt : new Date().toISOString().split('T')[0]
+    };
+    this.contentService.saveLmsAssignment(asgn);
+    this.closeLmsAssignmentModal();
+  }
+
+  removeLmsAssignment(id: string): void {
+    if (!confirm('Delete this assignment?')) return;
+    this.contentService.removeLmsAssignment(id);
   }
 }

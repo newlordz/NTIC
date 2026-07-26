@@ -56,7 +56,7 @@
       </a>
     </div>
  
-    <div class="sidebar-section" *ngIf="hasAccess('leaderboard') || hasAccess('talent') || hasAccess('sponsors') || hasAccess('reporting') || hasAccess('records')">
+    <div class="sidebar-section" *ngIf="hasAccess('leaderboard') || hasAccess('talent') || hasAccess('sponsors') || hasAccess('reporting') || hasAccess('records') || hasAccess('lms_admin')">
       <div class="sidebar-section-label">Analytics</div>
       <a class="nav-item" *ngIf="hasAccess('leaderboard')" routerLink="/leaderboard" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">leaderboard</span>
@@ -81,6 +81,10 @@
       <a class="nav-item" *ngIf="hasAccess('users')" routerLink="/user-management" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">manage_accounts</span>
         Users
+      </a>
+      <a class="nav-item" *ngIf="hasAccess('lms_admin')" routerLink="/lms-manager" routerLinkActive="active" (click)="closeMobileSidebar()">
+        <span class="material-symbols-outlined">school</span>
+        LMS Manager
       </a>
     </div>
  
@@ -142,7 +146,7 @@
                   <span class="material-symbols-outlined">{{ item.icon }}</span>
                 </div>
                 <div class="notif-body">
-                  <div class="notif-category">{{ item.category }} &middot; {{ item.time }}</div>
+                  <div class="notif-category">{{ item.category }} &middot; {{ item.time | timeAgo }}</div>
                   <div class="notif-title">{{ item.title }}</div>
                 </div>
                 <div class="notif-dot" *ngIf="item.unread"></div>
@@ -210,6 +214,10 @@
               </div>
             </div>
             <div class="dropdown-divider"></div>
+            <a routerLink="/profile-completion" class="profile-action-row" (click)="showProfileDropdown = false">
+              <span class="material-symbols-outlined">manage_accounts</span>
+              <span>Edit Profile & Settings</span>
+            </a>
             <a routerLink="/dashboard" class="profile-action-row" (click)="showProfileDropdown = false">
               <span class="material-symbols-outlined">admin_panel_settings</span>
               <span>Command Center</span>

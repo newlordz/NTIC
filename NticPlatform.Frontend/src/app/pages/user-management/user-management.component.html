@@ -1,275 +1,354 @@
-<div class="page-canvas fade-in">
-  <!-- Header -->
-  <div class="page-header with-action">
-    <div>
-      <h1 class="page-title-main">
-        <span class="material-symbols-outlined">manage_accounts</span>
-        User Management
-      </h1>
-      <p class="page-subtitle">Manage all registered users across the NTIC Ghana Championship platform</p>
+<div class="user-mgmt-container">
+  <!-- Hero Header -->
+  <header class="user-hero-header">
+    <div class="hero-content">
+      <div class="hero-title-group">
+        <div class="hero-avatar">
+          <span class="material-symbols-outlined">group</span>
+        </div>
+        <div>
+          <h1>User Identity & Access Management Desk</h1>
+          <p>Super Admin control panel for managing user accounts, role privileges, access credentials, and institutional assignments.</p>
+        </div>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-outline" (click)="exportCSV()">
+          <span class="material-symbols-outlined">download</span> Export CSV
+        </button>
+        <button class="btn btn-primary" (click)="loadUsers()">
+          <span class="material-symbols-outlined">refresh</span> Sync Accounts
+        </button>
+      </div>
     </div>
-    <div class="header-actions">
-      <button class="btn btn-subtle btn-sm" (click)="exportCSV()">
-        <span class="material-symbols-outlined">download</span>Export CSV
-      </button>
+  </header>
+
+  <!-- Executive KPI Summary Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card total-theme">
+      <div class="kpi-icon"><span class="material-symbols-outlined">group</span></div>
+      <div class="kpi-info">
+        <span class="kpi-val">{{ users.length }}</span>
+        <span class="kpi-lbl">Total Registered Accounts</span>
+      </div>
+    </div>
+
+    <div class="kpi-card active-theme">
+      <div class="kpi-icon"><span class="material-symbols-outlined">check_circle</span></div>
+      <div class="kpi-info">
+        <span class="kpi-val">{{ getActiveCount() }}</span>
+        <span class="kpi-lbl">Active Validated Accounts</span>
+      </div>
+    </div>
+
+    <div class="kpi-card school-theme">
+      <div class="kpi-icon"><span class="material-symbols-outlined">school</span></div>
+      <div class="kpi-info">
+        <span class="kpi-val">{{ getRoleCount('school_admin') }}</span>
+        <span class="kpi-lbl">School Administrators</span>
+      </div>
+    </div>
+
+    <div class="kpi-card student-theme">
+      <div class="kpi-icon"><span class="material-symbols-outlined">person</span></div>
+      <div class="kpi-info">
+        <span class="kpi-val">{{ getRoleCount('student') }}</span>
+        <span class="kpi-lbl">Competing STEM Students</span>
+      </div>
     </div>
   </div>
 
-  <!-- Success toast -->
-  <div class="um-toast" *ngIf="successMessage">
-    <span class="material-symbols-outlined">check_circle</span>
-    <div>
-      <div>{{ toastTitle }}</div>
-      <div class="um-toast-detail" *ngIf="toastDetail">{{ toastDetail }}</div>
-    </div>
-  </div>
-
-  <!-- Stats row -->
-  <div class="um-stats">
-    <div class="um-stat-card">
-      <div class="um-stat-value">{{ users.length }}</div>
-      <div class="um-stat-label">Total Users</div>
-    </div>
-    <div class="um-stat-card active">
-      <div class="um-stat-value">{{ getActiveCount() }}</div>
-      <div class="um-stat-label">Active</div>
-    </div>
-    <div class="um-stat-card suspended">
-      <div class="um-stat-value">{{ getSuspendedCount() }}</div>
-      <div class="um-stat-label">Suspended</div>
-    </div>
-    <div class="um-stat-card">
-      <div class="um-stat-value">{{ filteredUsers.length }}</div>
-      <div class="um-stat-label">Showing</div>
-    </div>
-  </div>
-
-  <!-- Role tabs -->
-  <div class="um-role-tabs">
-    <button *ngFor="let tab of roleTabs" class="um-role-tab" [class.active]="roleFilter === tab.id"
+  <!-- Role Navigation Tabs -->
+  <nav class="role-tabs">
+    <button *ngFor="let tab of roleTabs"
+            class="tab-btn"
+            [class.active]="roleFilter === tab.id"
             (click)="setRoleTab(tab.id)">
       <span class="material-symbols-outlined">{{ tab.icon }}</span>
-      <span class="um-role-tab-label">{{ tab.label }}</span>
-      <span class="um-role-tab-count">{{ getRoleCount(tab.id) }}</span>
+      <span>{{ tab.label }}</span>
+      <span class="tab-badge" *ngIf="getRoleCount(tab.id) > 0">{{ getRoleCount(tab.id) }}</span>
     </button>
-  </div>
+  </nav>
 
-  <!-- Toolbar -->
-  <div class="um-toolbar">
-    <div class="um-search">
+  <!-- Control Toolbar -->
+  <div class="toolbar-card">
+    <div class="search-box">
       <span class="material-symbols-outlined">search</span>
-      <input type="text" placeholder="Search by name, email, org, ticket, phone..." [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()" />
+      <input type="text" [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()" placeholder="Search by name, email, organization, ticket ID, phone..." />
     </div>
-    <select [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()" class="um-filter-select">
-      <option value="all">All Status</option>
-      <option value="active">Active</option>
-      <option value="suspended">Suspended</option>
-    </select>
+
+    <div class="toolbar-controls">
+      <select [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()" class="select-input">
+        <option value="all">All Statuses</option>
+        <option value="active">Active Only</option>
+        <option value="pending">Pending Only</option>
+        <option value="suspended">Suspended Only</option>
+      </select>
+
+      <div class="view-toggle-group">
+        <button class="toggle-btn" [class.active]="viewMode === 'table'" (click)="viewMode = 'table'" title="Table View">
+          <span class="material-symbols-outlined">table_rows</span>
+        </button>
+        <button class="toggle-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'" title="Card Gallery View">
+          <span class="material-symbols-outlined">grid_view</span>
+        </button>
+      </div>
+    </div>
   </div>
 
-  <!-- User table -->
-  <div class="card" *ngIf="filteredUsers.length > 0" style="padding:0;overflow:hidden;">
-    <div style="overflow-x:auto;">
-      <table style="width:100%;border-collapse:collapse;">
+  <!-- Toast Notification -->
+  <div class="toast-banner" *ngIf="successMessage">
+    <span class="material-symbols-outlined">check_circle</span>
+    <div>
+      <strong>{{ toastTitle }}</strong>
+      <div class="text-xs">{{ toastDetail }}</div>
+    </div>
+  </div>
+
+  <!-- Main Content Panel -->
+  <div class="users-panel">
+    <!-- VIEW 1: DATA TABLE -->
+    <div class="table-responsive" *ngIf="viewMode === 'table' && filteredUsers.length > 0">
+      <table class="users-table">
         <thead>
-          <tr style="border-bottom:2px solid var(--outline-variant);background:var(--surface-container-low);text-align:left;color:var(--on-surface-variant);font-size:12px;text-transform:uppercase;letter-spacing:0.05em;">
-            <th style="padding:14px 18px;">User</th>
-            <th style="padding:14px 18px;">Role</th>
-            <th style="padding:14px 18px;">Organization</th>
-            <th style="padding:14px 18px;">Ticket</th>
-            <th style="padding:14px 18px;">Status</th>
-            <th style="padding:14px 18px;">Registered</th>
-            <th style="padding:14px 18px;">Last Login</th>
-            <th style="padding:14px 18px;text-align:right;">Actions</th>
+          <tr>
+            <th style="width:48px;"></th>
+            <th>User Info</th>
+            <th>Role Privilege</th>
+            <th>Organization / School</th>
+            <th>Access Ticket ID</th>
+            <th>Status</th>
+            <th style="text-align:right;">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let user of filteredUsers"
-              style="border-bottom:1px solid var(--outline-variant);transition:background 0.15s;"
-              onmouseover="this.style.background='var(--surface-container-low)'" onmouseout="this.style.background=''">
-            <td style="padding:12px 18px;">
-              <div style="display:flex;align-items:center;gap:12px;">
-                <div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0;"
-                     [style.background]="user.role === 'super_admin' ? '#dc2626' : user.role === 'judge' ? '#7c3aed' : user.role === 'sponsor' ? '#059669' : user.role === 'student' ? '#2563eb' : user.role === 'school_admin' ? '#d97706' : '#6366f1'">
-                  {{ getInitials(user.fullName) }}
-                </div>
-                <div>
-                  <div style="font-weight:600;font-size:14px;">{{ user.fullName }}</div>
-                  <div style="font-size:12px;color:var(--on-surface-variant);">{{ user.email }}</div>
-                </div>
+          <tr *ngFor="let u of filteredUsers" class="user-row" (click)="viewUser(u)">
+            <td>
+              <div class="user-avatar-chip">
+                {{ getInitials(u.fullName || u.email) }}
               </div>
             </td>
-            <td style="padding:12px 18px;">
-              <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;background:var(--surface-container);color:var(--on-surface);">
-                <span class="material-symbols-outlined" style="font-size:14px;">{{ getRoleIcon(user.role) }}</span>
-                {{ getRoleLabel(user.role) }}
+            <td>
+              <div class="user-name-text">{{ u.fullName }} <span *ngIf="isCurrentUser(u)" class="badge-you">(You)</span></div>
+              <div class="user-email-subtle">{{ u.email }}</div>
+            </td>
+            <td>
+              <span class="role-pill" [class]="'role-' + u.role">{{ getRoleLabel(u.role) }}</span>
+            </td>
+            <td>
+              <span class="text-sm font-semibold">{{ u.organization || 'NTIC Platform' }}</span>
+            </td>
+            <td>
+              <span class="ticket-code">{{ u.ticket || 'N/A' }}</span>
+            </td>
+            <td>
+              <span class="status-chip" [class]="'status-' + (u.status || 'active').toLowerCase()">
+                <span class="material-symbols-outlined">fiber_manual_record</span>
+                {{ u.status || 'Active' }}
               </span>
             </td>
-            <td style="padding:12px 18px;font-size:13px;color:var(--on-surface-variant);">{{ user.organization || '—' }}</td>
-            <td style="padding:12px 18px;">
-              <code style="font-size:11px;padding:3px 8px;border-radius:4px;background:var(--surface-container);font-family:'JetBrains Mono',monospace;">{{ user.ticket }}</code>
-            </td>
-            <td style="padding:12px 18px;">
-              <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;"
-                    [style.background]="user.status === 'Active' ? '#ecfdf5' : '#fef2f2'"
-                    [style.color]="user.status === 'Active' ? '#065f46' : '#991b1b'">
-                <span style="width:6px;height:6px;border-radius:50%;display:inline-block;"
-                      [style.background]="user.status === 'Active' ? '#10b981' : '#ef4444'"></span>
-                {{ user.status }}
-              </span>
-            </td>
-            <td style="padding:12px 18px;font-size:13px;color:var(--on-surface-variant);">{{ user.registeredAt }}</td>
-            <td style="padding:12px 18px;font-size:13px;color:var(--on-surface-variant);">{{ user.lastLogin }}</td>
-            <td style="padding:12px 18px;text-align:right;">
-              <div style="display:flex;gap:4px;justify-content:flex-end;align-items:center;">
-                <span *ngIf="!canManageUsers" style="font-size:11px;color:var(--on-surface-variant);background:var(--surface-container);padding:3px 8px;border-radius:6px;margin-right:4px;">View Only</span>
-                <button class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;" title="View" (click)="viewUser(user)">
-                  <span class="material-symbols-outlined" style="font-size:16px;">visibility</span>
+            <td style="text-align:right;" (click)="$event.stopPropagation()">
+              <div class="action-btn-group" *ngIf="!isMainAdmin(u)">
+                <button class="icon-action-btn" (click)="editUser(u)" title="Edit User">
+                  <span class="material-symbols-outlined">edit</span>
                 </button>
-                <button *ngIf="canManageUsers && isCurrentUser(user)" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;" title="Edit My Profile" (click)="editUser(user)">
-                  <span class="material-symbols-outlined" style="font-size:16px;">edit</span>
+                <button class="icon-action-btn danger" (click)="deleteUser(u)" title="Delete User">
+                  <span class="material-symbols-outlined">delete</span>
                 </button>
-                <button *ngIf="canManageUsers && !isCurrentUser(user)" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;" title="Regenerate OTP" (click)="regenerateOTP(user)">
-                  <span class="material-symbols-outlined" style="font-size:16px;">key</span>
-                </button>
-                <button *ngIf="canManageUsers && !isCurrentUser(user)" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;"
-                        [style.color]="user.status === 'Active' ? '#d97706' : '#059669'"
-                        [title]="user.status === 'Active' ? 'Suspend' : 'Activate'"
-                        (click)="toggleStatus(user)">
-                  <span class="material-symbols-outlined" style="font-size:16px;">{{ user.status === 'Active' ? 'block' : 'check_circle' }}</span>
-                </button>
-                <button *ngIf="user.role !== 'super_admin' && !isCurrentUser(user)" class="btn btn-subtle btn-sm" style="min-width:36px;padding:6px;color:var(--error,#dc2626);" title="Delete" (click)="deleteUser(user)">
-                  <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
-                </button>
-                <span *ngIf="isCurrentUser(user)" style="font-size:11px;color:#6366f1;background:#eef2ff;padding:3px 8px;border-radius:6px;margin-left:4px;font-weight:600;">You</span>
               </div>
+              <span *ngIf="isMainAdmin(u)" class="protected-badge" title="Main Admin account is protected from modifications">
+                <span class="material-symbols-outlined">lock</span> Protected
+              </span>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-  </div>
 
-  <!-- Empty state -->
-  <div class="card" *ngIf="filteredUsers.length === 0" style="text-align:center;padding:60px 20px;">
-    <span class="material-symbols-outlined" style="font-size:48px;opacity:0.3;margin-bottom:12px;">person_off</span>
-    <h3 style="margin:0 0 8px;color:var(--on-surface);">No Users Found</h3>
-    <p style="margin:0;color:var(--on-surface-variant);">Try adjusting your search or filters.</p>
-  </div>
-
-  <!-- ═══ USER DETAIL MODAL ═══ -->
-  <div class="um-modal-overlay" *ngIf="isDetailOpen" (click)="closeDetail()">
-    <div class="um-modal" (click)="$event.stopPropagation()">
-      <div class="um-modal-header">
-        <h3>User Details</h3>
-        <button class="um-modal-close" (click)="closeDetail()">&times;</button>
-      </div>
-      <div class="um-modal-body" *ngIf="selectedUser">
-        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
-          <div style="width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;flex-shrink:0;"
-               [style.background]="selectedUser.role === 'super_admin' ? '#dc2626' : selectedUser.role === 'judge' ? '#7c3aed' : selectedUser.role === 'sponsor' ? '#059669' : '#6366f1'">
-            {{ getInitials(selectedUser.fullName) }}
+    <!-- VIEW 2: CARD GALLERY GRID -->
+    <div class="gallery-grid" *ngIf="viewMode === 'grid' && filteredUsers.length > 0">
+      <div *ngFor="let u of filteredUsers" class="user-card" (click)="viewUser(u)">
+        <div class="card-top">
+          <div class="user-avatar-chip large">
+            {{ getInitials(u.fullName || u.email) }}
           </div>
-          <div>
-            <div style="font-size:18px;font-weight:700;">{{ selectedUser.fullName }}</div>
-            <div style="color:var(--on-surface-variant);">{{ getRoleLabel(selectedUser.role) }}</div>
-          </div>
-          <span style="margin-left:auto;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;"
-                [style.background]="selectedUser.status === 'Active' ? '#ecfdf5' : '#fef2f2'"
-                [style.color]="selectedUser.status === 'Active' ? '#065f46' : '#991b1b'">
-            {{ selectedUser.status }}
+          <span class="status-chip" [class]="'status-' + (u.status || 'active').toLowerCase()">
+            {{ u.status || 'Active' }}
           </span>
         </div>
-        <div class="um-detail-grid">
-          <div class="um-detail-item"><label>Email</label><span>{{ selectedUser.email }}</span></div>
-          <div class="um-detail-item"><label>Phone</label><span>{{ selectedUser.phone || '—' }}</span></div>
-          <div class="um-detail-item"><label>Organization</label><span>{{ selectedUser.organization || '—' }}</span></div>
-          <div class="um-detail-item"><label>Ticket</label><code>{{ selectedUser.ticket }}</code></div>
-          <div class="um-detail-item"><label>OTP</label><code>{{ selectedUser.otp }}</code></div>
-          <div class="um-detail-item"><label>Track</label><span>{{ selectedUser.track || '—' }}</span></div>
-          <div class="um-detail-item"><label>Registered</label><span>{{ selectedUser.registeredAt }}</span></div>
-          <div class="um-detail-item"><label>Last Login</label><span>{{ selectedUser.lastLogin }}</span></div>
+
+        <div class="card-body">
+          <h3>{{ u.fullName }} <span *ngIf="isCurrentUser(u)" class="badge-you">(You)</span></h3>
+          <div class="text-xs text-subtle mb-2">{{ u.email }}</div>
+          <span class="role-pill" [class]="'role-' + u.role">{{ getRoleLabel(u.role) }}</span>
+
+          <div class="info-row mt-3">
+            <span class="material-symbols-outlined icon-sm">business</span>
+            <span class="truncate">{{ u.organization || 'NTIC Platform' }}</span>
+          </div>
+
+          <div class="info-row" *ngIf="u.ticket">
+            <span class="material-symbols-outlined icon-sm">confirmation_number</span>
+            <span class="font-mono text-xs">{{ u.ticket }}</span>
+          </div>
+        </div>
+
+        <div class="card-footer" (click)="$event.stopPropagation()">
+          <button class="btn btn-xs btn-outline" *ngIf="!isMainAdmin(u)" (click)="editUser(u)">
+            <span class="material-symbols-outlined">edit</span> Edit Account
+          </button>
+          <button class="btn btn-xs btn-danger ml-2" *ngIf="!isMainAdmin(u)" (click)="deleteUser(u)">
+            <span class="material-symbols-outlined">delete</span>
+          </button>
+          <span *ngIf="isMainAdmin(u)" class="protected-badge" title="Main Admin account is protected from modifications">
+            <span class="material-symbols-outlined">lock</span> Protected Admin
+          </span>
         </div>
       </div>
-      <div class="um-modal-footer">
-        <button class="btn btn-subtle" (click)="closeDetail()">Close</button>
-        <button *ngIf="canManageUsers && selectedUser && isCurrentUser(selectedUser)" class="btn btn-primary" (click)="closeDetail(); editUser(selectedUser!)">
-          <span class="material-symbols-outlined">edit</span>Edit My Profile
-        </button>
-        <button *ngIf="canManageUsers && selectedUser && !isCurrentUser(selectedUser) && selectedUser.role !== 'super_admin'" class="btn" style="background:var(--error,#dc2626);color:#fff;" (click)="closeDetail(); deleteUser(selectedUser!)">
-          <span class="material-symbols-outlined">delete</span>Delete User
-        </button>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div class="empty-state" *ngIf="filteredUsers.length === 0">
+      <span class="material-symbols-outlined empty-icon">group_off</span>
+      <h3>No Users Found</h3>
+      <p>No user accounts match your search or filter criteria.</p>
+      <button class="btn btn-sm btn-primary" (click)="searchQuery = ''; roleFilter = 'all'; statusFilter = 'all'; applyFilters()">
+        <span class="material-symbols-outlined">clear</span> Reset Filters
+      </button>
+    </div>
+  </div>
+
+  <!-- ── MODAL: USER DETAILS ── -->
+  <div class="modal-backdrop" *ngIf="isDetailOpen && selectedUser" (click)="closeDetail()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-row">
+          <div class="user-avatar-chip large">
+            {{ getInitials(selectedUser.fullName || selectedUser.email) }}
+          </div>
+          <div>
+            <h3>{{ selectedUser.fullName }}</h3>
+            <span class="role-pill" [class]="'role-' + selectedUser.role">{{ getRoleLabel(selectedUser.role) }}</span>
+          </div>
+        </div>
+        <button class="close-btn" (click)="closeDetail()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Email Address</span>
+            <span class="info-val">{{ selectedUser.email }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Account Status</span>
+            <span class="status-chip" [class]="'status-' + (selectedUser.status || 'active').toLowerCase()">
+              {{ selectedUser.status || 'Active' }}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Organization / School</span>
+            <span class="info-val">{{ selectedUser.organization || 'NTIC Platform' }}</span>
+          </div>
+          <div class="info-item" *ngIf="selectedUser.ticket">
+            <span class="info-label">Access Ticket</span>
+            <span class="info-val font-mono">{{ selectedUser.ticket }}</span>
+          </div>
+          <div class="info-item" *ngIf="selectedUser.phone">
+            <span class="info-label">Phone Number</span>
+            <span class="info-val">{{ selectedUser.phone }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="closeDetail()">Close</button>
+        <button class="btn btn-primary" *ngIf="!isMainAdmin(selectedUser)" (click)="closeDetail(); editUser(selectedUser)">Edit Account</button>
+        <span *ngIf="isMainAdmin(selectedUser)" class="protected-badge" style="padding:8px 14px;font-size:12px;">
+          <span class="material-symbols-outlined" style="font-size:14px;">lock</span> Protected Super Admin
+        </span>
       </div>
     </div>
   </div>
 
-  <!-- ═══ EDIT USER MODAL ═══ -->
-  <div class="um-modal-overlay" *ngIf="isEditOpen" (click)="closeEdit()">
-    <div class="um-modal" (click)="$event.stopPropagation()">
-      <div class="um-modal-header">
-        <h3>Edit User</h3>
-        <button class="um-modal-close" (click)="closeEdit()">&times;</button>
+  <!-- ── MODAL: EDIT USER ── -->
+  <div class="modal-backdrop" *ngIf="isEditOpen" (click)="closeEdit()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Edit User Account</h3>
+        <button class="close-btn" (click)="closeEdit()">&times;</button>
       </div>
-      <div class="um-modal-body">
-        <div class="um-form-row">
-          <div class="um-form-group">
-            <label>Full Name</label>
-            <input type="text" [(ngModel)]="editForm.fullName" />
-          </div>
-          <div class="um-form-group">
-            <label>Email</label>
-            <input type="email" [(ngModel)]="editForm.email" />
+      <div class="modal-body">
+        <div *ngIf="isMainAdmin(editForm)" class="toast-banner" style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);color:#d97706;margin-bottom:16px;">
+          <span class="material-symbols-outlined">lock</span>
+          <div>
+            <strong>Main Super Admin Account Protected</strong>
+            <div class="text-xs">All fields and credentials for this Super Admin account are locked from edits.</div>
           </div>
         </div>
-        <div class="um-form-row">
-          <div class="um-form-group">
-            <label>Phone</label>
-            <input type="text" [(ngModel)]="editForm.phone" />
-          </div>
-          <div class="um-form-group">
-            <label>Organization</label>
-            <input type="text" [(ngModel)]="editForm.organization" />
-          </div>
+
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" [(ngModel)]="editForm.fullName" [disabled]="isMainAdmin(editForm)" />
         </div>
-        <div class="um-form-row">
-          <div class="um-form-group">
-            <label>Track</label>
-            <input type="text" [(ngModel)]="editForm.track" />
+        <div class="form-group">
+          <label>Email Address *</label>
+          <input type="email" [(ngModel)]="editForm.email" [disabled]="isMainAdmin(editForm)" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Role Privilege</label>
+            <select [(ngModel)]="editForm.role" [disabled]="isMainAdmin(editForm)">
+              <option value="super_admin">Super Admin (Protected)</option>
+              <option value="school_admin">School Admin</option>
+              <option value="instructor">Instructor</option>
+              <option value="judge">Judge</option>
+              <option value="sponsor">Sponsor</option>
+              <option value="student">Student</option>
+              <option value="content_manager">Content Manager</option>
+              <option value="reviewer">Reviewer</option>
+              <option value="competition_manager">Competition Manager</option>
+            </select>
           </div>
-          <div class="um-form-group">
-            <label>Status</label>
-            <select [(ngModel)]="editForm.status">
+          <div class="form-group">
+            <label>Account Status</label>
+            <select [(ngModel)]="editForm.status" [disabled]="isMainAdmin(editForm)">
               <option value="Active">Active</option>
+              <option value="Pending">Pending</option>
               <option value="Suspended">Suspended</option>
             </select>
           </div>
         </div>
+        <div class="form-group">
+          <label>Organization / School</label>
+          <input type="text" [(ngModel)]="editForm.organization" [disabled]="isMainAdmin(editForm)" />
+        </div>
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input type="text" [(ngModel)]="editForm.phone" [disabled]="isMainAdmin(editForm)" />
+        </div>
       </div>
-      <div class="um-modal-footer">
-        <button class="btn btn-subtle" (click)="closeEdit()">Cancel</button>
-        <button class="btn btn-primary" (click)="saveEdit()">
-          <span class="material-symbols-outlined">save</span>Save Changes
-        </button>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="closeEdit()">Cancel</button>
+        <button class="btn btn-primary" *ngIf="!isMainAdmin(editForm)" (click)="saveEdit()">Save Changes</button>
+        <span *ngIf="isMainAdmin(editForm)" class="protected-badge" style="padding:8px 14px;font-size:12px;">
+          <span class="material-symbols-outlined" style="font-size:14px;">lock</span> Account Protected
+        </span>
       </div>
     </div>
   </div>
 
-  <!-- ═══ DELETE CONFIRM MODAL ═══ -->
-  <div class="um-modal-overlay" *ngIf="deleteUserConfirm" (click)="cancelDelete()">
-    <div class="um-modal" (click)="$event.stopPropagation()" style="max-width:420px;">
-      <div class="um-modal-header" style="background:var(--error-container,#fef2f2);color:var(--error,#dc2626);">
-        <h3>Delete User</h3>
-        <button class="um-modal-close" (click)="cancelDelete()">&times;</button>
+  <!-- ── MODAL: DELETE CONFIRMATION ── -->
+  <div class="modal-backdrop" *ngIf="deleteUserConfirm" (click)="cancelDelete()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Confirm User Deletion</h3>
+        <button class="close-btn" (click)="cancelDelete()">&times;</button>
       </div>
-      <div class="um-modal-body">
-        <p>Are you sure you want to delete <strong>{{ deleteUserConfirm.fullName }}</strong>?</p>
-        <p style="color:var(--on-surface-variant);font-size:13px;margin-top:8px;">This action cannot be undone.</p>
+      <div class="modal-body">
+        <p>Are you sure you want to permanently delete the account for <strong>{{ deleteUserConfirm.fullName }}</strong> ({{ deleteUserConfirm.email }})?</p>
+        <p class="text-xs text-subtle mt-2">This action cannot be undone.</p>
       </div>
-      <div class="um-modal-footer">
-        <button class="btn btn-subtle" (click)="cancelDelete()">Cancel</button>
-        <button class="btn" style="background:var(--error,#dc2626);color:#fff;" (click)="confirmDelete()">
-          <span class="material-symbols-outlined">delete</span>Delete
-        </button>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="cancelDelete()">Cancel</button>
+        <button class="btn btn-danger" (click)="confirmDelete()">Delete Permanently</button>
       </div>
     </div>
   </div>

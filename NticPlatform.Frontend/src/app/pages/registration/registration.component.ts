@@ -179,6 +179,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     institution: '',
     isIndependent: false,
     acceptedTerms: false,
+    portfolio: '',
     expertise: {
       Python: false,
       JavaScript: false,
@@ -209,8 +210,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     repName: '',
     repContact: '',
     email: '',
-    amount: '',
-    tier: 'Platinum Partner (₵ 100k+)',
+    package: '',
     acceptedTerms: false,
     arenas: {
       'Coding Track': true,
@@ -222,21 +222,104 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   };
 
   // ── LIVE VALIDATION STATE ────────────────────────────────────────
-  fieldValidation: Record<string, { status: 'idle' | 'checking' | 'valid' | 'taken' | 'invalid'; message: string }> = {};
+  fieldValidation: Record<string, { status: 'idle' | 'checking' | 'valid' | 'taken' | 'invalid' | 'draft_found'; message: string }> = {};
   private validationTimers: Record<string, any> = {};
+
+  clearValidationState(): void {
+    this.fieldValidation = {};
+    this.fieldVerified = {};
+    for (const key in this.validationTimers) {
+      if (this.validationTimers[key]) clearTimeout(this.validationTimers[key]);
+    }
+    this.validationTimers = {};
+  }
+
+  readonly DRAFT_TTL_DAYS = 7; // Drafts automatically expire after 7 days of inactivity
+
+  purgeExpiredDrafts(): void {
+    try {
+      const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
+      const now = Date.now();
+      let modified = false;
+
+      for (const key in drafts) {
+        const d = drafts[key];
+        const savedTime = d?.savedAt ? new Date(d.savedAt).getTime() : now;
+        const expiresAt = d?.expiresAt || (savedTime + this.DRAFT_TTL_DAYS * 24 * 60 * 60 * 1000);
+        if (now > expiresAt) {
+          delete drafts[key];
+          modified = true;
+        }
+      }
+
+      if (modified) {
+        localStorage.setItem('ntic_drafts', JSON.stringify(drafts));
+      }
+    } catch {}
+  }
+
+  getDraftTimeRemaining(contact: string): string {
+    try {
+      this.purgeExpiredDrafts();
+      const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
+      const key = contact?.trim().toLowerCase();
+      const draft = drafts[key] || drafts[contact];
+      if (!draft) return '';
+
+      const now = Date.now();
+      const savedTime = draft.savedAt ? new Date(draft.savedAt).getTime() : now;
+      const expiresAt = draft.expiresAt || (savedTime + this.DRAFT_TTL_DAYS * 24 * 60 * 60 * 1000);
+      const remainingMs = expiresAt - now;
+
+      if (remainingMs <= 0) return 'expired';
+
+      const remainingHours = Math.ceil(remainingMs / (1000 * 60 * 60));
+      if (remainingHours > 24) {
+        const days = Math.ceil(remainingHours / 24);
+        return `${days} ${days === 1 ? 'day' : 'days'} left`;
+      }
+      return `${remainingHours} ${remainingHours === 1 ? 'hour' : 'hours'} left`;
+    } catch {
+      return '';
+    }
+  }
+
+  hasSavedDraft(contact: string): boolean {
+    if (!contact || !contact.trim()) return false;
+    this.purgeExpiredDrafts();
+    const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
+    const key = contact.trim().toLowerCase();
+    return !!(drafts[key] || drafts[contact]);
+  }
+
+  resumeDraftFromField(contact: string): void {
+    if (!contact || !contact.trim()) return;
+    this.verificationInput = contact.trim();
+    this.sendOTP();
+  }
 
   validateEmailLive(fieldName: string, value: string): void {
     if (this.validationTimers[fieldName]) clearTimeout(this.validationTimers[fieldName]);
     if (!value || !value.trim()) {
       this.fieldValidation[fieldName] = { status: 'idle', message: '' };
+      delete this.fieldVerified[fieldName];
       return;
     }
     this.fieldValidation[fieldName] = { status: 'checking', message: 'Checking...' };
     this.validationTimers[fieldName] = setTimeout(() => {
+      if (!value || !value.trim()) {
+        this.fieldValidation[fieldName] = { status: 'idle', message: '' };
+        delete this.fieldVerified[fieldName];
+        return;
+      }
       if (!this.contentService.isValidEmail(value)) {
         this.fieldValidation[fieldName] = { status: 'invalid', message: 'Invalid email format' };
       } else if (this.contentService.isEmailTaken(value)) {
         this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered' };
+      } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
+        const timeRemaining = this.getDraftTimeRemaining(value);
+        const timeText = timeRemaining ? ` (${timeRemaining})` : '';
+        this.fieldValidation[fieldName] = { status: 'draft_found', message: `A saved draft exists for this email${timeText}.` };
       } else {
         this.fieldValidation[fieldName] = { status: 'valid', message: 'Email available' };
       }
@@ -247,14 +330,24 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     if (this.validationTimers[fieldName]) clearTimeout(this.validationTimers[fieldName]);
     if (!value || !value.trim()) {
       this.fieldValidation[fieldName] = { status: 'idle', message: '' };
+      delete this.fieldVerified[fieldName];
       return;
     }
     this.fieldValidation[fieldName] = { status: 'checking', message: 'Checking...' };
     this.validationTimers[fieldName] = setTimeout(() => {
+      if (!value || !value.trim()) {
+        this.fieldValidation[fieldName] = { status: 'idle', message: '' };
+        delete this.fieldVerified[fieldName];
+        return;
+      }
       if (!this.contentService.isValidGhanaPhone(value)) {
         this.fieldValidation[fieldName] = { status: 'invalid', message: 'Enter a valid Ghana number (0XX XXX XXXX or +233...)' };
       } else if (this.contentService.isPhoneTaken(value)) {
         this.fieldValidation[fieldName] = { status: 'taken', message: 'This number is already registered' };
+      } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
+        const timeRemaining = this.getDraftTimeRemaining(value);
+        const timeText = timeRemaining ? ` (${timeRemaining})` : '';
+        this.fieldValidation[fieldName] = { status: 'draft_found', message: `A saved draft exists for this phone number${timeText}.` };
       } else {
         this.fieldValidation[fieldName] = { status: 'valid', message: 'Number available' };
       }
@@ -267,6 +360,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   private validateCurrentTab(): boolean {
     const fields: Record<string, { value: string; type: 'email' | 'phone' }> = {};
+    this.missingDocsError = '';
     if (this.activeTab === 'school') {
       fields['schoolEmail'] = { value: this.schoolForm.email, type: 'email' };
       fields['schoolRepEmail'] = { value: this.schoolForm.repEmail, type: 'email' };
@@ -304,8 +398,18 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         }
       }
     }
+
+    if (this.activeTab === 'school' && !(this.selectedFileIds['accredDocs']?.length)) {
+      this.missingDocsError = 'Please upload your Accreditation Documents before submitting.';
+      blocked = true;
+    } else if (this.activeTab === 'instructor' && !(this.selectedFileIds['instructorDocs']?.length)) {
+      this.missingDocsError = 'Please upload your Documents (CV, Certificates, National ID) before submitting.';
+      blocked = true;
+    }
+
     if (blocked) {
-      this.showCustomAlert('Please fix the highlighted email/phone errors before submitting.', 'Validation Error', 'warning');
+      const msg = this.missingDocsError || 'Please fix the highlighted email/phone errors before submitting.';
+      this.showCustomAlert(msg, 'Validation Error', 'warning');
     }
     return !blocked;
   }
@@ -334,7 +438,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     return false;
   }
 
-  canVerifyField(fieldName: string): boolean {
+  canVerifyField(fieldName: string, value?: string): boolean {
+    if (value !== undefined && (!value || !value.trim())) return false;
     const v = this.fieldValidation[fieldName];
     return v?.status === 'valid' && !this.fieldVerified[fieldName];
   }
@@ -412,9 +517,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   ];
 
   sponsors = [
-    { name: 'Tullow Ghana', tier: 'Platinum', support: 'Coding & AI', amount: '₵ 120,000', status: 'Confirmed' },
-    { name: 'MTN Ghana Foundation', tier: 'Platinum', support: 'Robotics & Cyber', amount: '₵ 80,000', status: 'Confirmed' },
-    { name: 'GCB Bank PLC', tier: 'Gold', support: 'Innovation Arena', amount: '₵ 40,000', status: 'Confirmed' },
+    { name: 'Tullow Ghana', package: 'Full Championship', tier: 'Platinum', support: 'Coding & AI', items: 'Team ×3, Equipment ×5', amount: '₵ 120,000', total: '₵ 120,000', status: 'Confirmed' },
+    { name: 'MTN Ghana Foundation', package: 'Track Sponsorship', tier: 'Platinum', support: 'Robotics & Cyber', items: 'Track ×2, Prizes ×3', amount: '₵ 80,000', total: '₵ 80,000', status: 'Confirmed' },
+    { name: 'GCB Bank PLC', package: 'Student Sponsorship', tier: 'Gold', support: 'Innovation Arena', items: 'Student ×40', amount: '₵ 40,000', total: '₵ 40,000', status: 'Confirmed' },
   ];
 
   isAuthorizedUser = false;
@@ -425,31 +530,102 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   selectedFileIds: { [key: string]: string[] } = {};
   selectedFileNames: { [key: string]: string[] } = {};
   schoolLogoUrl: string | null = null;
+  judgeLogoUrl: string | null = null;
+  sponsorLogoUrl: string | null = null;
+  missingDocsError = '';
+
+  get hasRequiredDocs(): boolean {
+    if (this.activeTab === 'school') {
+      return !!(this.selectedFileIds['accredDocs']?.length);
+    }
+    if (this.activeTab === 'instructor') {
+      return !!(this.selectedFileIds['instructorDocs']?.length);
+    }
+    return true;
+  }
+
+  sponsorshipItems = [
+    { label: 'Team Sponsorship', icon: 'groups', desc: 'Sponsor a competition team' },
+    { label: 'Student Sponsorship', icon: 'school', desc: 'Sponsor an individual student' },
+    { label: 'Track Sponsorship', icon: 'category', desc: 'Sponsor an entire competition track' },
+    { label: 'Mentorship Program', icon: 'psychology', desc: 'Fund a mentor session' },
+    { label: 'Equipment & Tools', icon: 'construction', desc: 'Provide hardware / software' },
+    { label: 'Prize & Awards', icon: 'emoji_events', desc: 'Fund championship prizes' }
+  ];
+
+  selectedPackages: string[] = [];
+
+  togglePackage(label: string): void {
+    if (this.selectedPackages.includes(label)) {
+      this.selectedPackages = this.selectedPackages.filter(l => l !== label);
+    } else {
+      this.selectedPackages = [...this.selectedPackages, label];
+    }
+    this.sponsorForm.package = this.selectedPackages.join(', ');
+  }
+
+  isPackageSelected(label: string): boolean {
+    return this.selectedPackages.includes(label);
+  }
 
   async onFileSelected(event: any, field: string): Promise<void> {
     const files: FileList = event.target.files;
     if (files?.length) {
+      const sizeLimits: Record<string, number> = {
+        schoolLogo: 5 * 1024 * 1024,
+        accredDocs: 10 * 1024 * 1024,
+        instructorDocs: 10 * 1024 * 1024,
+        sponsorLogo: 3 * 1024 * 1024,
+        judgeLogo: 3 * 1024 * 1024
+      };
+      const maxSize = sizeLimits[field] || 10 * 1024 * 1024;
       const ids: string[] = [];
       const names: string[] = [];
       for (const file of Array.from(files)) {
+        if (file.size > maxSize) {
+          alert(`"${file.name}" exceeds the maximum size of ${Math.round(maxSize / (1024 * 1024))}MB.`);
+          continue;
+        }
         const id = this.fileStorage.generateId();
         await this.fileStorage.store(id, file);
         ids.push(id);
         names.push(file.name);
       }
-      this.selectedFileIds[field] = [...(this.selectedFileIds[field] || []), ...ids];
-      this.selectedFileNames[field] = [...(this.selectedFileNames[field] || []), ...names];
+      if (ids.length) {
+        this.selectedFileIds[field] = [...(this.selectedFileIds[field] || []), ...ids];
+        this.selectedFileNames[field] = [...(this.selectedFileNames[field] || []), ...names];
+      }
+      this.missingDocsError = '';
 
       if (field === 'schoolLogo') {
         this.loadSchoolLogo();
+      } else if (field === 'judgeLogo') {
+        this.loadJudgeLogo();
+      } else if (field === 'sponsorLogo') {
+        this.loadSponsorLogo();
       }
     }
+    event.target.value = '';
   }
 
   private async loadSchoolLogo(): Promise<void> {
     const id = this.selectedFileIds['schoolLogo']?.[0];
     if (id) {
       this.schoolLogoUrl = await this.fileStorage.getUrl(id);
+    }
+  }
+
+  private async loadJudgeLogo(): Promise<void> {
+    const id = this.selectedFileIds['judgeLogo']?.[0];
+    if (id) {
+      this.judgeLogoUrl = await this.fileStorage.getUrl(id);
+    }
+  }
+
+  private async loadSponsorLogo(): Promise<void> {
+    const id = this.selectedFileIds['sponsorLogo']?.[0];
+    if (id) {
+      this.sponsorLogoUrl = await this.fileStorage.getUrl(id);
     }
   }
 
@@ -461,6 +637,12 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     if (field === 'schoolLogo') {
       if (this.schoolLogoUrl) { this.fileStorage.revokeUrl(this.schoolLogoUrl); }
       this.schoolLogoUrl = null;
+    } else if (field === 'judgeLogo') {
+      if (this.judgeLogoUrl) { this.fileStorage.revokeUrl(this.judgeLogoUrl); }
+      this.judgeLogoUrl = null;
+    } else if (field === 'sponsorLogo') {
+      if (this.sponsorLogoUrl) { this.fileStorage.revokeUrl(this.sponsorLogoUrl); }
+      this.sponsorLogoUrl = null;
     }
   }
 
@@ -518,12 +700,109 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     return '';
   }
 
+  isLoginModalOpen = false;
+  loginEmail = '';
+  loginPassword = '';
+  isLoggingIn = false;
+  loginError = '';
+  isPasswordVisible = false;
+
+  openLoginModal(): void {
+    this.isLoginModalOpen = true;
+    this.loginEmail = '';
+    this.loginPassword = '';
+    this.loginError = '';
+  }
+
+  closeLoginModal(): void {
+    this.isLoginModalOpen = false;
+    this.loginEmail = '';
+    this.loginPassword = '';
+    this.loginError = '';
+  }
+
+  performLogin(): void {
+    if (!this.loginEmail.trim()) {
+      this.loginError = 'Please enter your email or access pass.';
+      return;
+    }
+    this.isLoggingIn = true;
+    this.loginError = '';
+
+    setTimeout(() => {
+      this.isLoggingIn = false;
+      const credential = this.loginEmail.trim().toLowerCase();
+      const pass = this.loginPassword.trim();
+
+      if (credential === 'admin@ntic.org.gh') {
+        localStorage.setItem('activeRoleId', 'super_admin');
+        localStorage.setItem('activeUserEmail', credential);
+        this.contentService.saveAuditLogs([
+          { action: 'Admin login: ' + credential, user: credential, time: new Date().toISOString(), type: 'auth' },
+          ...this.contentService.auditLogs
+        ]);
+        this.isLoginModalOpen = false;
+        this.router.navigate(['/dashboard']);
+        return;
+      }
+
+      const registeredUser = this.contentService.users.find(u =>
+        (u.email?.trim().toLowerCase() === credential) ||
+        (u.ticket?.trim().toLowerCase() === credential)
+      );
+
+      if (!registeredUser) {
+        this.loginError = 'Unrecognized credentials. Please check your email or access pass and try again.';
+        return;
+      }
+
+      const expectedPass = registeredUser.password || registeredUser.otp || '';
+      if (pass && expectedPass && pass !== expectedPass) {
+        this.loginError = 'Incorrect password or verification code. Please try again.';
+        return;
+      }
+
+      const finalRole = registeredUser.role;
+      registeredUser.status = 'Active';
+      registeredUser.lastLogin = 'Just now';
+      this.contentService.saveUsers([...this.contentService.users]);
+
+      localStorage.setItem('activeRoleId', finalRole);
+      localStorage.setItem('activeUserEmail', registeredUser.email || credential);
+      localStorage.setItem('activeUserTicket', registeredUser.ticket || credential);
+      this.contentService.saveAuditLogs([
+        { action: `${finalRole} login: ${credential}`, user: credential, time: new Date().toISOString(), type: 'auth' },
+        ...this.contentService.auditLogs
+      ]);
+
+      const roleRoutes: Record<string, string> = {
+        instructor: '/instructor',
+        judge: '/judge',
+        student: '/lms',
+        school_admin: '/dashboard',
+        sponsor: '/sponsors',
+        super_admin: '/dashboard',
+        content_manager: '/dashboard',
+        reviewer: '/dashboard',
+        competition_manager: '/dashboard'
+      };
+
+      this.isLoginModalOpen = false;
+      if ((finalRole === 'judge' || finalRole === 'sponsor') && registeredUser.organization === '_pending_profile') {
+        this.router.navigate(['/profile-completion']);
+      } else {
+        this.router.navigate([roleRoutes[finalRole] || '/dashboard']);
+      }
+    }, 600);
+  }
+
   getLogoUrl(details: any): string {
     if (details?.logoFileId && this.logoUrls[details.logoFileId]) return this.logoUrls[details.logoFileId];
     return '';
   }
 
   ngOnInit(): void {
+    this.purgeExpiredDrafts();
     const activeRoleId = localStorage.getItem('activeRoleId');
     this.isAuthorizedUser = !!(activeRoleId && ['super_admin', 'school_admin', 'instructor'].includes(activeRoleId));
 
@@ -1016,7 +1295,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     switch (this.activeTab) {
       case 'school':
         contact = this.schoolForm.repEmail || this.schoolForm.email;
-        formData = { ...this.schoolForm };
+        formData = { ...this.schoolForm, selectedFileIds: this.selectedFileIds, selectedFileNames: this.selectedFileNames };
         break;
       case 'instructor':
         contact = this.instructorForm.email;
@@ -1033,11 +1312,11 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         break;
       case 'judge':
         contact = this.judgeForm.email;
-        formData = { ...this.judgeForm };
+        formData = { ...this.judgeForm, selectedFileIds: this.selectedFileIds, selectedFileNames: this.selectedFileNames };
         break;
       case 'sponsor':
         contact = this.sponsorForm.email;
-        formData = { ...this.sponsorForm };
+        formData = { ...this.sponsorForm, selectedFileIds: this.selectedFileIds, selectedFileNames: this.selectedFileNames };
         break;
       case 'team':
         contact = this.teamForm.leadEmail;
@@ -1114,6 +1393,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         institution: '',
         isIndependent: false,
         acceptedTerms: false,
+        portfolio: '',
         expertise: {
           Python: false,
           JavaScript: false,
@@ -1168,6 +1448,19 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.schoolStep = 1;
     this.maxSchoolStepReached = 1;
     this.gpsAddress = '';
+
+    // Clear uploaded files & document state
+    this.selectedFileIds = {};
+    this.selectedFileNames = {};
+    this.schoolLogoUrl = null;
+    this.judgeLogoUrl = null;
+    this.sponsorLogoUrl = null;
+    this.missingDocsError = '';
+
+    // Clear validation states
+    this.clearValidationState();
+
+    // Clear form models back to clean initial state
     this.schoolForm = {
       name: '',
       category: 'Public High School',
@@ -1183,13 +1476,104 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       teams: [],
       acceptedTerms: false
     };
+
+    this.instructorForm = {
+      name: '',
+      tel: '',
+      email: '',
+      address: '',
+      qualification: 'BSc',
+      institution: '',
+      isIndependent: false,
+      acceptedTerms: false,
+      portfolio: '',
+      expertise: {
+        Python: false,
+        JavaScript: false,
+        'C#': false,
+        AI: false,
+        Robotics: false,
+        Cybersecurity: false,
+        'Data Science': false
+      } as { [key: string]: boolean }
+    };
+
+    this.studentForm = {
+      name: '',
+      id: '',
+      email: '',
+      dob: '',
+      gender: 'Male',
+      school: '',
+      class: 'Form 1',
+      guardian: '',
+      track: 'coding',
+      skills: {
+        alg: 'intermediate',
+        hw: 'novice',
+        ai: 'novice'
+      }
+    };
+
+    this.teamForm = {
+      name: '',
+      school: 'Achimota SHS',
+      track: 'Coding',
+      leadName: '',
+      leadEmail: '',
+      member2Name: '',
+      member2Email: '',
+      member3Name: '',
+      member3Email: '',
+      member4Name: '',
+      member4Email: '',
+      member5Name: '',
+      member5Email: ''
+    };
+
+    this.judgeForm = {
+      name: '',
+      tel: '',
+      email: '',
+      organization: '',
+      expertise: '',
+      experience: '',
+      bio: '',
+      ticketCode: '',
+      otp: '',
+      acceptedTerms: false
+    };
+
+    this.sponsorForm = {
+      name: '',
+      sector: 'Energy & Mining',
+      repName: '',
+      repContact: '',
+      email: '',
+      package: '',
+      acceptedTerms: false,
+      arenas: {
+        'Coding Track': true,
+        'Robotics Arena': true,
+        'AI & ML Challenge': true,
+        'Cyber Security CTF': true,
+        'Open Innovation': true
+      } as { [key: string]: boolean }
+    };
+    this.selectedPackages = [];
+
+    localStorage.removeItem('ntic_reg_ui');
   }
 
   private applyDraftPrefills(contact: string): void {
+    const key = contact?.trim().toLowerCase();
     const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
-    const draft = drafts[contact];
+    const draft = drafts[key] || drafts[contact];
 
     if (!draft) return;
+
+    // Reset current memory first
+    this.clearDraftPrefills();
 
     this.isDraftResumed = true;
     this.activeTab = draft.tab;
@@ -1199,19 +1583,29 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         this.schoolStep = 1;
         this.maxSchoolStepReached = 4;
         this.schoolForm = { ...this.schoolForm, ...draft.data };
+        if (draft.data?.selectedFileIds) this.selectedFileIds = { ...draft.data.selectedFileIds };
+        if (draft.data?.selectedFileNames) this.selectedFileNames = { ...draft.data.selectedFileNames };
         break;
       case 'instructor':
         this.instructorForm = { ...this.instructorForm, ...draft.data };
+        if (draft.data?.selectedFileIds) this.selectedFileIds = { ...draft.data.selectedFileIds };
+        if (draft.data?.selectedFileNames) this.selectedFileNames = { ...draft.data.selectedFileNames };
         break;
       case 'student':
         this.studentForm = { ...this.studentForm, ...draft.data };
-        this.selectedTrack = draft.data.selectedTrack || 'coding';
+        this.selectedTrack = draft.data?.selectedTrack || 'coding';
         break;
       case 'judge':
         this.judgeForm = { ...this.judgeForm, ...draft.data };
+        if (draft.data?.selectedFileIds) this.selectedFileIds = { ...draft.data.selectedFileIds };
+        if (draft.data?.selectedFileNames) this.selectedFileNames = { ...draft.data.selectedFileNames };
+        if (this.selectedFileIds['judgeLogo']?.length) this.loadJudgeLogo();
         break;
       case 'sponsor':
         this.sponsorForm = { ...this.sponsorForm, ...draft.data };
+        if (draft.data?.selectedFileIds) this.selectedFileIds = { ...draft.data.selectedFileIds };
+        if (draft.data?.selectedFileNames) this.selectedFileNames = { ...draft.data.selectedFileNames };
+        if (this.selectedFileIds['sponsorLogo']?.length) this.loadSponsorLogo();
         break;
       case 'team':
         this.teamForm = { ...this.teamForm, ...draft.data };
@@ -1339,7 +1733,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           currentAudit2.unshift({
             action: `${this.schoolForm.students.length} students registered under ${this.schoolForm.name}`,
             user: this.schoolForm.repEmail || this.schoolForm.email,
-            time: 'Just now',
+            time: new Date().toISOString(),
             type: 'auth'
           });
           this.contentService.saveAuditLogs(currentAudit2);
@@ -1382,6 +1776,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           credentials: this.instructorForm.qualification || 'MSc Computer Science',
           specialization: selectedExpertise || 'Coding, AI',
           phone: this.instructorForm.tel || '',
+          portfolio: this.instructorForm.portfolio || '',
           experience: 'Mentor with registered history',
           courses: ['LMS Course 101: Python Intro', 'LMS Course 202: Robotics Base'],
           docs: this.selectedFileIds['instructorDocs']?.length
@@ -1391,6 +1786,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       } else if (this.activeTab === 'judge') {
         const ticket = 'NTIC-JDG-' + Math.random().toString(36).substring(2, 6).toUpperCase();
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const judgeLogoId = this.selectedFileIds['judgeLogo']?.[0] || null;
         const newJudge = {
           id: 'USR-' + Date.now(),
           role: 'judge' as const,
@@ -1408,6 +1804,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           registeredAt: new Date().toLocaleDateString('en-GB'),
           lastLogin: 'Never'
         };
+        if (judgeLogoId) (newJudge as any).logoFileId = judgeLogoId;
         const currentUsers = [...this.contentService.users];
         currentUsers.unshift(newJudge);
         this.contentService.saveUsers(currentUsers);
@@ -1416,7 +1813,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         currentAudit.unshift({
           action: `Judge token ${ticket} generated for ${newJudge.fullName}`,
           user: 'self-register@ntic.gov.gh',
-          time: 'Just now',
+          time: new Date().toISOString(),
           type: 'ticket'
         });
         this.contentService.saveAuditLogs(currentAudit);
@@ -1442,11 +1839,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           otp,
           password: otp,
           organization: this.sponsorForm.name,
-          tier: this.sponsorForm.tier.split(' ')[0],
+          package: this.sponsorForm.package || '',
           sector: this.sponsorForm.sector || '',
           repName: this.sponsorForm.repName || '',
-          amount: this.sponsorForm.amount || '',
-          arenas: Object.keys(this.sponsorForm.arenas || {}).filter(k => (this.sponsorForm.arenas as any)[k]),
           ticket,
           status: 'Active',
           registeredAt: new Date().toLocaleDateString('en-GB'),
@@ -1461,7 +1856,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         currentAudit.unshift({
           action: `Sponsor token ${ticket} generated for ${newSponsor.fullName}`,
           user: 'self-register@ntic.gov.gh',
-          time: 'Just now',
+          time: new Date().toISOString(),
           type: 'ticket'
         });
         this.contentService.saveAuditLogs(currentAudit);
@@ -1503,7 +1898,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         currentAudit.unshift({
           action: `New ${approvalType} requested: ${entity}`,
           user: contact,
-          time: 'Just now',
+          time: new Date().toISOString(),
           type: 'approval'
         });
         this.contentService.saveAuditLogs(currentAudit);
