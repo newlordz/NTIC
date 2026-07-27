@@ -153,6 +153,10 @@ export class UserManagementComponent implements OnInit {
       this.closeEdit();
       return;
     }
+    if (this.editForm.email && this.contentService.isEmailTaken(this.editForm.email, this.editForm.id)) {
+      this.showToast('Email Taken', `The email ${this.editForm.email} is already registered to another user account.`, 4500);
+      return;
+    }
     const users = [...this.contentService.users];
     const idx = users.findIndex(u => u.id === this.editForm.id);
     if (idx > -1) {

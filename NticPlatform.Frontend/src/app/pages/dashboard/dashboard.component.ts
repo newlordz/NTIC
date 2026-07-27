@@ -72,6 +72,84 @@ export class DashboardComponent implements OnInit, OnDestroy {
   hoverUsers: any[] = [];
   hoverPos = { x: 0, y: 0 };
 
+  // ─── CUSTOM POPUP MODALS ──────────────────────
+  credentialsModal: {
+    isOpen: boolean;
+    title: string;
+    subtitle: string;
+    accessPass: string;
+    pin: string;
+    extraInfo?: string;
+    nextRoute?: string;
+    copiedPass: boolean;
+    copiedPin: boolean;
+    copiedAll: boolean;
+  } | null = null;
+
+  customAlertModal: {
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'warning' | 'info' | 'error';
+  } | null = null;
+
+  openCredentialsModal(title: string, subtitle: string, accessPass: string, pin: string, extraInfo?: string, nextRoute?: string) {
+    this.credentialsModal = {
+      isOpen: true,
+      title,
+      subtitle,
+      accessPass,
+      pin,
+      extraInfo,
+      nextRoute,
+      copiedPass: false,
+      copiedPin: false,
+      copiedAll: false
+    };
+  }
+
+  copyModalText(type: 'pass' | 'pin' | 'all') {
+    if (!this.credentialsModal) return;
+    let textToCopy = '';
+    if (type === 'pass') {
+      textToCopy = this.credentialsModal.accessPass;
+      this.credentialsModal.copiedPass = true;
+      setTimeout(() => { if (this.credentialsModal) this.credentialsModal.copiedPass = false; }, 2500);
+    } else if (type === 'pin') {
+      textToCopy = this.credentialsModal.pin;
+      this.credentialsModal.copiedPin = true;
+      setTimeout(() => { if (this.credentialsModal) this.credentialsModal.copiedPin = false; }, 2500);
+    } else if (type === 'all') {
+      textToCopy = `Access Pass: ${this.credentialsModal.accessPass}\nPIN / OTP: ${this.credentialsModal.pin}`;
+      this.credentialsModal.copiedAll = true;
+      setTimeout(() => { if (this.credentialsModal) this.credentialsModal.copiedAll = false; }, 2500);
+    }
+    if (typeof navigator !== 'undefined' && navigator?.clipboard) {
+      navigator.clipboard.writeText(textToCopy);
+    }
+  }
+
+  proceedFromCredentialsModal() {
+    const route = this.credentialsModal?.nextRoute;
+    this.credentialsModal = null;
+    if (route) {
+      this.router.navigate([route]);
+    }
+  }
+
+  showCustomAlert(message: string, title = 'Notice', type: 'success' | 'warning' | 'info' | 'error' = 'info') {
+    this.customAlertModal = {
+      isOpen: true,
+      title,
+      message,
+      type
+    };
+  }
+
+  closeCustomAlert() {
+    this.customAlertModal = null;
+  }
+
   // ─── USER MANAGEMENT ──────────────────────
   userSearch = '';
   userRoleFilter = 'all';
@@ -528,11 +606,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
       case 'instructor':
         this.dashboardTitle = 'Instructor Dashboard';
-        this.dashboardSubtitle = `Welcome back, ${userName}. Overview of the National NTIC Competition Platform.`;
+        this.dashboardSubtitle = `Welcome back, ${userName}. Manage your courses and review student submissions.`;
+        const instEmail = (localStorage.getItem('activeUserEmail') || '').trim().toLowerCase();
+        const myCourseIds = this.contentService.lmsCourses
+          .filter(c => c.submittedBy && c.submittedBy.toLowerCase().includes(instEmail))
+          .map(c => c.id);
+        const myAsgnIds = this.contentService.lmsAssignments
+          .filter(a => myCourseIds.includes(a.courseId))
+          .map(a => a.id);
+        const mySubs = this.contentService.lmsSubmissions.filter(s => myAsgnIds.includes(s.assignmentId));
+        const pendingSubs = mySubs.filter(s => s.status === 'submitted').length;
+        const totalStudents = this.contentService.lmsEnrollments.filter(e => myCourseIds.includes(e.courseId)).length;
         this.stats = [
-          { label: 'Total Students', value: '1,248', icon: 'group', meta: '+12% this week', color: 'primary' },
-          { label: 'Schools', value: '47', icon: 'account_balance', meta: '3 new this month', color: 'secondary' },
-          { label: 'Pending Reviews', value: '42', icon: 'pending_actions', meta: 'Requires attention', color: 'error' },
+          { label: 'My Courses', value: String(myCourseIds.length), icon: 'library_books', meta: 'Owned & managed', color: 'primary' },
+          { label: 'Total Students', value: String(totalStudents), icon: 'group', meta: 'Across your courses', color: 'secondary' },
+          { label: 'Pending Reviews', value: String(pendingSubs), icon: 'pending_actions', meta: pendingSubs > 0 ? 'Requires attention' : 'All clear', color: 'error' },
           { label: 'Active Competitions', value: String(this.contentService.competitions.length), icon: 'emoji_events', meta: 'Real-time sync', color: 'tertiary' }
         ];
         break;
@@ -993,7 +1081,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
 
       this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp, req.details?.phone || req.details?.repTel);
-      alert(`School Registration Approved!\nSchool Admin account created for: ${req.entity}.\nAccess Pass: ${ticket}\nOTP: ${otp}`);
+      this.openCredentialsModal('School Registration Approved!', `School Admin account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access credentials sent to ${req.contact}`);
     } else if (req.type === 'Team Addition') {
       const newTeam = {
         name: req.entity,
@@ -1012,7 +1100,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.contentService.updatePlatformStats(stats);
 
       this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A — Team Added', 'N/A', req.details?.phone);
-      alert(`Team Addition Approved!\nTeam "${req.entity}" has been successfully added to competition tracks.`);
+      this.showCustomAlert(`Team "${req.entity}" has been successfully approved and added to national competition tracks.`, 'Team Addition Approved', 'success');
     } else if (req.type === 'Instructor Access') {
       const ticket = 'NTIC-INS-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -1041,7 +1129,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.contentService.updatePlatformStats(stats);
 
       this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp, req.details?.phone);
-      alert(`Instructor Access Approved!\nInstructor account created for: ${req.entity}.\nAccess Pass: ${ticket}\nOTP: ${otp}`);
+      this.openCredentialsModal('Instructor Access Approved!', `Certified Instructor account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
     }
 
     const currentAudit = [...this.contentService.auditLogs];

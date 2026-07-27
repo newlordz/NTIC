@@ -58,11 +58,27 @@
   cursor: pointer;
   transition: box-shadow 0.2s, transform 0.15s;
   position: relative;
-  overflow: hidden;
+  border-radius: 14px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+  }
 
   &:hover {
     box-shadow: var(--shadow-elevated);
     transform: translateY(-2px);
+
+    &::before {
+      top: -8px;
+      bottom: -12px;
+      left: -8px;
+      right: -8px;
+      pointer-events: auto;
+    }
   }
 
   &.overall {
@@ -76,6 +92,8 @@
   left: 0;
   right: 0;
   height: 3px;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
   background: linear-gradient(90deg, var(--primary), var(--secondary));
 }
 

@@ -452,7 +452,8 @@
     <div class="stories-marquee-wrap" [class.static-wrap]="contentService.championshipStories.length < 4">
       <div class="stories-marquee" [class.static-marquee]="contentService.championshipStories.length < 4" [style.animation-duration]="(contentService.championshipStories.length * 8) + 's'">
         <!-- Set A -->
-        <div *ngFor="let story of contentService.championshipStories" class="spotlight-card">
+        <div *ngFor="let story of contentService.championshipStories; trackBy: trackByStory" class="spotlight-card">
+          <span class="top-accent-bar"></span>
           <div class="card-img-wrap">
             <img [src]="story.image" [alt]="story.title" onerror="this.src='assets/ntic_image_1.jpeg'">
             <span class="story-tag" [class]="story.tagColor">{{ story.tag }}</span>
@@ -467,6 +468,15 @@
             </span>
             <h3>{{ story.title }}</h3>
             <p>{{ story.body }}</p>
+            <div class="story-card-actions">
+              <button class="btn-story-act like-btn" [class.liked]="isLikedByUser(story)" (click)="likeStory(story.id, $event)">
+                <span class="material-symbols-outlined icon">{{ isLikedByUser(story) ? 'favorite' : 'favorite_border' }}</span>
+                <span class="count">{{ story.likes || 0 }}</span>
+              </button>
+              <button class="btn-story-act share-btn" [attr.data-share]="story.id" (click)="shareStory(story, $event)">
+                <span class="material-symbols-outlined icon">share</span>
+              </button>
+            </div>
             <a href="#tracks" class="read-more-link">
               <span>Read The Story</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
@@ -475,7 +485,8 @@
         </div>
         <!-- Set B (duplicate for seamless loop, only when >= 4 items) -->
         <ng-container *ngIf="contentService.championshipStories.length >= 4">
-          <div *ngFor="let story of contentService.championshipStories" class="spotlight-card">
+          <div *ngFor="let story of contentService.championshipStories; trackBy: trackByStory" class="spotlight-card">
+            <span class="top-accent-bar"></span>
             <div class="card-img-wrap">
               <img [src]="story.image" [alt]="story.title" onerror="this.src='assets/ntic_image_1.jpeg'">
               <span class="story-tag" [class]="story.tagColor">{{ story.tag }}</span>
@@ -490,6 +501,15 @@
               </span>
               <h3>{{ story.title }}</h3>
               <p>{{ story.body }}</p>
+              <div class="story-card-actions">
+                <button class="btn-story-act like-btn" [class.liked]="isLikedByUser(story)" (click)="likeStory(story.id, $event)">
+                  <span class="material-symbols-outlined icon">{{ isLikedByUser(story) ? 'favorite' : 'favorite_border' }}</span>
+                  <span class="count">{{ story.likes || 0 }}</span>
+                </button>
+                <button class="btn-story-act share-btn" [attr.data-share]="story.id" (click)="shareStory(story, $event)">
+                  <span class="material-symbols-outlined icon">share</span>
+                </button>
+              </div>
               <a href="#tracks" class="read-more-link">
                 <span>Read The Story</span>
                 <span class="material-symbols-outlined">arrow_right_alt</span>
@@ -2204,16 +2224,16 @@
         <div class="footer-nav-col">
           <h4>Legal &amp; Admin</h4>
           <ul>
-            <li><a href="#">Ministry of Education</a></li>
-            <li><a href="#">Ghana Education Service</a></li>
-            <li><a href="#">GDPA Data Shield Notice</a></li>
-            <li><a href="#">Terms &amp; Accessibility</a></li>
+            <li><a style="cursor:default;text-decoration:none;pointer-events:none;">&#64;Qliq_Integrations</a></li>
+            <li><a style="cursor:default;text-decoration:none;pointer-events:none;">Ghana Education Service</a></li>
+            <li><a style="cursor:default;text-decoration:none;pointer-events:none;">GDPA Data Shield Notice</a></li>
+            <li><a style="cursor:default;text-decoration:none;pointer-events:none;">Terms &amp; Accessibility</a></li>
           </ul>
         </div>
       </div>
 
       <div class="footer-bottom-bar" style="flex-direction: column; gap: 16px; align-items: center;">
-        <p>&copy; 2026 Ministry of Education, Republic of Ghana. All rights reserved. Coordinated by the Science &amp; Technology Division.</p>
+        <p>&copy; 2026 &#64;Qliq_Integrations. All rights reserved.</p>
         
         <div class="data-shield-badge">
           <span class="ds-icon">🛡️</span>

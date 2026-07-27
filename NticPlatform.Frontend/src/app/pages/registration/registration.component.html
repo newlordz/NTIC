@@ -655,6 +655,7 @@
                 <div class="form-group">
                   <label class="form-label">Gender</label>
                   <select class="form-control form-select" [(ngModel)]="studentForm.gender" name="stuGender">
+                    <option value="" disabled>Select gender</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
                     <option value="Prefer not to say">Prefer not to say</option>
@@ -665,6 +666,7 @@
                 <div class="form-group">
                   <label class="form-label">Class / Form</label>
                   <select class="form-control form-select" [(ngModel)]="studentForm.class" name="stuClass">
+                    <option value="" disabled>Select class</option>
                     <option value="Form 1">Form 1</option>
                     <option value="Form 2">Form 2</option>
                     <option value="Form 3">Form 3</option>
@@ -677,6 +679,7 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Competition Track *</label>
+                <div class="track-prompt" *ngIf="!selectedTrack">Select a track below</div>
                 <div class="track-selection-grid">
                   <label *ngFor="let track of tracks" style="cursor:pointer;">
                     <input type="radio" name="track" [value]="track.id" [(ngModel)]="selectedTrack" style="display:none;">
@@ -741,6 +744,7 @@
                 <div class="form-group">
                   <label class="form-label">Target Competition Track *</label>
                   <select class="form-control form-select" [(ngModel)]="teamForm.track" name="teamTrack">
+                    <option value="" disabled>Select track</option>
                     <option value="Coding">Coding</option>
                     <option value="Robotics">Robotics</option>
                     <option value="AI">AI</option>
@@ -1451,8 +1455,9 @@
                 <input class="form-control" type="date" [(ngModel)]="studentForm.dob" name="stuDob">
               </div>
               <div>
-                <label class="form-label">Gender</label>
+                  <label class="form-label">Gender</label>
                 <select class="form-control form-select" [(ngModel)]="studentForm.gender" name="stuGender">
+                  <option value="" disabled>Select gender</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                   <option value="Other">Other</option>
@@ -1466,8 +1471,9 @@
                 <input class="form-control" type="text" placeholder="Your current school (optional)" [(ngModel)]="studentForm.school" name="stuSchool">
               </div>
               <div>
-                <label class="form-label">Class / Form</label>
+                  <label class="form-label">Class / Form</label>
                 <select class="form-control form-select" [(ngModel)]="studentForm.class" name="stuClass">
+                  <option value="" disabled>Select class</option>
                   <option value="Form 1">Form 1</option>
                   <option value="Form 2">Form 2</option>
                   <option value="Form 3">Form 3</option>
@@ -1485,6 +1491,7 @@
 
             <div style="margin-bottom: 20px;">
               <label class="form-label">Competition Track *</label>
+              <div class="track-prompt" *ngIf="!selectedTrack">Select a track below</div>
               <div class="track-selection-grid">
                 <label *ngFor="let track of tracks" style="cursor:pointer;">
                   <input type="radio" name="stuTrack" [value]="track.id" [(ngModel)]="selectedTrack" style="display:none;">
@@ -1523,6 +1530,7 @@
             <div style="margin-bottom: 20px;">
               <label class="form-label">Competition Track *</label>
               <select class="form-control form-select" [(ngModel)]="teamForm.track" name="squadTrack">
+                <option value="" disabled selected>-- Select Competition Track --</option>
                 <option value="Coding">Coding</option>
                 <option value="Robotics">Robotics</option>
                 <option value="AI">AI</option>
@@ -1611,93 +1619,142 @@
       <div class="card right-panel-card">
         <div class="card-header right-panel-header">
           <h3 style="font-size: 14px; font-weight: 700; color: var(--on-surface); margin: 0; display: flex; align-items: center; gap: 8px;">
-            <span class="material-symbols-outlined" style="color: var(--primary);">visibility</span> Registration Preview
+            <span class="material-symbols-outlined" style="color: var(--primary);">visibility</span> Live Preview
           </h3>
           <span class="badge success live-pulse-badge">
             <span class="pulse-dot"></span> Live
           </span>
         </div>
         <div class="card-body-wrapper">
-          <div class="preview-panel-content fade-in" style="display:flex; justify-content:center; align-items:center; height:100%; min-height:360px;">
+          <div class="preview-panel-content fade-in" style="padding: 16px;">
             <!-- Placeholder State (Individual) -->
-            <div class="card-placeholder-state" *ngIf="competitorMode === 'individual' && !studentForm.name">
-              <span class="material-symbols-outlined placeholder-icon animate-pulse">school</span>
-              <p class="placeholder-text">Enter your name to generate individual registration preview</p>
+            <div class="school-preview-card" *ngIf="competitorMode === 'individual' && !studentForm.name">
+              <div class="card-placeholder-state">
+                <div class="placeholder-ring">
+                  <span class="material-symbols-outlined placeholder-icon">school</span>
+                </div>
+                <p class="placeholder-text">Fill in your details to generate your Official Competitor Pass preview</p>
+                <div class="placeholder-dots">
+                  <span></span><span></span><span></span>
+                </div>
+              </div>
             </div>
 
             <!-- Placeholder State (Group) -->
-            <div class="card-placeholder-state" *ngIf="competitorMode === 'group' && !teamForm.name">
-              <span class="material-symbols-outlined placeholder-icon animate-pulse">groups</span>
-              <p class="placeholder-text">Enter your squad name to generate group registration preview</p>
+            <div class="school-preview-card" *ngIf="competitorMode === 'group' && !teamForm.name">
+              <div class="card-placeholder-state">
+                <div class="placeholder-ring">
+                  <span class="material-symbols-outlined placeholder-icon">groups</span>
+                </div>
+                <p class="placeholder-text">Enter squad details to generate your Squad Registration Badge preview</p>
+                <div class="placeholder-dots">
+                  <span></span><span></span><span></span>
+                </div>
+              </div>
             </div>
 
-            <!-- Active State (Individual) -->
+            <!-- Active State (Individual Competitor Badge) -->
             <ng-container *ngIf="competitorMode === 'individual' && studentForm.name">
-              <div class="school-preview-card" style="max-width: 300px; margin: 0 auto; text-align: center;">
-                <div class="school-card-crest-wrap">
-                  <div class="school-card-crest">
-                    <span>{{ getInitials(studentForm.name, 'ST') }}</span>
-                  </div>
-                  <div class="school-card-badge-status ready">INDIVIDUAL</div>
+              <div class="student-preview-card" [class]="selectedTrack">
+                <div class="card-bg-glow"></div>
+                <div class="hologram-seal"></div>
+
+                <div class="student-card-header">
+                  <div class="brand-crest-mini">NTIC COMPETITOR PASS</div>
+                  <span class="badge-title">INDIVIDUAL BADGE</span>
                 </div>
-                <h2 class="school-card-name">{{ studentForm.name }}</h2>
-                <div class="school-card-meta">
-                  <span class="school-card-pill category">{{ selectedTrack | titlecase }}</span>
-                  <span class="school-card-pill region" *ngIf="studentForm.class">{{ studentForm.class }}</span>
-                </div>
-                <hr class="card-divider">
-                <div style="padding: 8px 0; text-align: left; font-size: 13px; color: var(--on-surface-variant);">
-                  <div *ngIf="studentForm.email" style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                    <span class="material-symbols-outlined" style="font-size:16px;">mail</span>
-                    <span>{{ studentForm.email }}</span>
+
+                <div class="student-card-avatar-row">
+                  <div class="student-card-avatar">
+                    <span class="avatar-initials">{{ getInitials(studentForm.name, 'ST') }}</span>
                   </div>
-                  <div *ngIf="studentForm.school" style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                    <span class="material-symbols-outlined" style="font-size:16px;">account_balance</span>
-                    <span>{{ studentForm.school }}</span>
+                  <div class="student-card-track-badge">
+                    <span class="material-symbols-outlined">
+                      {{ selectedTrack === 'coding' ? 'code' : selectedTrack === 'robotics' ? 'precision_manufacturing' : selectedTrack === 'ai' ? 'psychology' : selectedTrack === 'cyber' ? 'security' : 'lightbulb' }}
+                    </span>
                   </div>
                 </div>
-                <hr class="card-divider">
-                <p style="font-size: 11px; color: var(--on-surface-variant); padding: 4px 0;">
-                  <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">lock</span>
-                  Your credentials will be displayed after registration
-                </p>
+
+                <div class="student-card-name">{{ studentForm.name }}</div>
+                <div class="student-card-id">NTIC-STU-{{ getInitials(studentForm.name, 'ST') }}-2026</div>
+
+                <div class="student-card-school-row" *ngIf="studentForm.school">
+                  <span class="school-icon"><span class="material-symbols-outlined">account_balance</span></span>
+                  <span class="school-name">{{ studentForm.school }}</span>
+                </div>
+
+                <div class="student-card-track-title">{{ selectedTrack | uppercase }} COMPETITOR {{ studentForm.class ? '• ' + studentForm.class : '' }}</div>
+
+                <div class="student-card-skills">
+                  <div class="skill-row">
+                    <span class="skill-label">Algorithm</span>
+                    <div class="skill-bar-wrap">
+                      <div class="skill-bar-fill" [class]="studentForm.skills.alg || 'novice'"></div>
+                    </div>
+                    <span class="skill-val">{{ studentForm.skills.alg | titlecase }}</span>
+                  </div>
+                  <div class="skill-row">
+                    <span class="skill-label">Robotics</span>
+                    <div class="skill-bar-wrap">
+                      <div class="skill-bar-fill" [class]="studentForm.skills.hw || 'novice'"></div>
+                    </div>
+                    <span class="skill-val">{{ studentForm.skills.hw | titlecase }}</span>
+                  </div>
+                  <div class="skill-row">
+                    <span class="skill-label">AI / Data</span>
+                    <div class="skill-bar-wrap">
+                      <div class="skill-bar-fill" [class]="studentForm.skills.ai || 'novice'"></div>
+                    </div>
+                    <span class="skill-val">{{ studentForm.skills.ai | titlecase }}</span>
+                  </div>
+                </div>
+
+                <div class="student-card-barcode-wrap">
+                  <div class="barcode-laser-line"></div>
+                  <div class="barcode-lines">
+                    <span class="line w2"></span><span class="line w1"></span><span class="line w3"></span><span class="line w1"></span>
+                    <span class="line w4"></span><span class="line w2"></span><span class="line w1"></span><span class="line w3"></span>
+                    <span class="line w2"></span><span class="line w4"></span><span class="line w1"></span><span class="line w2"></span>
+                    <span class="line w3"></span><span class="line w1"></span><span class="line w2"></span><span class="line w4"></span>
+                  </div>
+                  <span class="barcode-subtext">VERIFIED COMPETITOR PASSPORT</span>
+                </div>
               </div>
             </ng-container>
 
-            <!-- Active State (Group Squad) -->
+            <!-- Active State (Group Squad Badge) -->
             <ng-container *ngIf="competitorMode === 'group' && teamForm.name">
-              <div class="school-preview-card" style="max-width: 300px; margin: 0 auto; text-align: center;">
-                <div class="school-card-crest-wrap">
-                  <div class="school-card-crest" style="background: linear-gradient(135deg, #065f46, #10b981);">
-                    <span>{{ getInitials(teamForm.name, 'SQ') }}</span>
-                  </div>
-                  <div class="school-card-badge-status ready">SQUAD REGISTRY</div>
+              <div class="team-preview-card" [class]="(teamForm.track || 'coding').toLowerCase()">
+                <div class="team-card-header-bar">
+                  <span class="team-track-pill">{{ teamForm.track || 'General' }} Squad</span>
+                  <span class="team-status-badge">SQUAD ARENA</span>
                 </div>
-                <h2 class="school-card-name">{{ teamForm.name }}</h2>
-                <div class="school-card-meta">
-                  <span class="school-card-pill category">{{ teamForm.track | titlecase }}</span>
-                  <span class="school-card-pill region" *ngIf="teamForm.school">{{ teamForm.school }}</span>
+
+                <div class="team-card-body">
+                  <h3 class="team-name">{{ teamForm.name }}</h3>
+                  <p class="team-school-sub" *ngIf="teamForm.school">{{ teamForm.school }}</p>
+
+                  <div class="team-lead-row" *ngIf="teamForm.leadName">
+                    <span class="material-symbols-outlined star-icon">star</span>
+                    <span>Captain: {{ teamForm.leadName }}</span>
+                  </div>
+
+                  <div class="team-roster-preview">
+                    <span class="roster-label">Squad Roster (3–5 Members)</span>
+                    <div class="roster-avatars">
+                      <span class="avatar-bubble">{{ getInitials(teamForm.leadName || 'Lead', 'L') }}</span>
+                      <span class="avatar-bubble" *ngIf="teamForm.member2Name">{{ getInitials(teamForm.member2Name, 'M2') }}</span>
+                      <span class="avatar-bubble" *ngIf="teamForm.member3Name">{{ getInitials(teamForm.member3Name, 'M3') }}</span>
+                      <span class="avatar-bubble" *ngIf="teamForm.member4Name">{{ getInitials(teamForm.member4Name, 'M4') }}</span>
+                      <span class="avatar-bubble" *ngIf="teamForm.member5Name">{{ getInitials(teamForm.member5Name, 'M5') }}</span>
+                    </div>
+                  </div>
                 </div>
-                <hr class="card-divider">
-                <div style="padding: 8px 0; text-align: left; font-size: 13px; color: var(--on-surface-variant);">
-                  <div *ngIf="teamForm.leadName" style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                    <span class="material-symbols-outlined" style="font-size:16px;">badge</span>
-                    <span>Lead: {{ teamForm.leadName }}</span>
-                  </div>
-                  <div *ngIf="teamForm.leadEmail" style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                    <span class="material-symbols-outlined" style="font-size:16px;">mail</span>
-                    <span>{{ teamForm.leadEmail }}</span>
-                  </div>
-                  <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-                    <span class="material-symbols-outlined" style="font-size:16px;">groups</span>
-                    <span>3–5 Competitors Roster</span>
-                  </div>
+
+                <div class="team-card-footer">
+                  <span class="material-symbols-outlined">verified</span>
+                  <span>Squad Pass generated upon submission</span>
                 </div>
-                <hr class="card-divider">
-                <p style="font-size: 11px; color: var(--on-surface-variant); padding: 4px 0;">
-                  <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">verified</span>
-                  Squad Access Pass generated upon submission
-                </p>
               </div>
             </ng-container>
           </div>
@@ -2464,7 +2521,7 @@
 <!-- ══════════════════════════════════════════════════════════════
      PHENOMENAL GATEWAY ACCOUNT LOGIN MODAL
      ══════════════════════════════════════════════════════════════ -->
-<div class="login-modal-backdrop" [class.open]="isLoginModalOpen" (click)="closeLoginModal()">
+<div class="login-modal-backdrop" *ngIf="isLoginModalOpen" [class.open]="isLoginModalOpen" (click)="closeLoginModal()">
   <div class="login-modal-card" (click)="$event.stopPropagation()">
     
     <button type="button" class="close-modal-btn" (click)="closeLoginModal()" title="Close Login">

@@ -1,45 +1,49 @@
 <div class="page-canvas fade-in" *ngIf="activeRoleId !== 'student'">
   <div class="page-header with-action">
-    <div><h1 class="page-title-main">Learning Management System</h1><p class="page-subtitle">Manage courses, track progress, and review weekly assignments</p></div>
-    <button class="btn btn-primary"><span class="material-symbols-outlined">add</span>New Course</button>
+    <div><h1 class="page-title-main">Learning Management System</h1><p class="page-subtitle">Manage courses, track progress, and review student submissions</p></div>
   </div>
 
   <div class="tab-bar">
     <div class="tab-item" [class.active]="activeTab==='courses'" (click)="activeTab='courses'">
-      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">library_books</span>Training Tracks
+      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">library_books</span>My Courses
     </div>
-    <div class="tab-item" [class.active]="activeTab==='assignments'" (click)="activeTab='assignments'">
-      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">assignment</span>Assignment Review
-      <span class="badge error" style="margin-left:8px;">42</span>
+    <div class="tab-item" [class.active]="activeTab==='submissions'" (click)="activeTab='submissions'">
+      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">assignment</span>Student Submissions
+      <span class="badge error" style="margin-left:8px;" *ngIf="pendingInstructorSubmissions.length > 0">{{ pendingInstructorSubmissions.length }}</span>
+    </div>
+    <div class="tab-item" [class.active]="activeTab==='content-submit'" (click)="activeTab='content-submit'">
+      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">publish</span>Content Submission
+      <span class="badge primary" style="margin-left:8px;background:var(--warning);color:#1a1a2e;" *ngIf="pendingContentCount > 0">{{ pendingContentCount }}</span>
     </div>
   </div>
 
-  <!-- ══ COURSES ══ -->
-  <div *ngIf="activeTab==='courses'">
-    <!-- Track Filter Pills -->
-    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-      <button class="btn btn-primary btn-sm">All Tracks</button>
-      <button class="btn btn-subtle btn-sm"><span class="track-chip coding" style="padding:0;">●</span> Coding</button>
-      <button class="btn btn-subtle btn-sm"><span class="track-chip robotics" style="padding:0;">●</span> Robotics</button>
-      <button class="btn btn-subtle btn-sm"><span class="track-chip ai" style="padding:0;">●</span> AI</button>
-      <button class="btn btn-subtle btn-sm"><span class="track-chip cyber" style="padding:0;">●</span> Cybersecurity</button>
-      <button class="btn btn-subtle btn-sm"><span class="track-chip innovation" style="padding:0;">●</span> Innovation</button>
+  <!-- ══ TAB 1: MY COURSES ══ -->
+  <div *ngIf="activeTab==='courses'" class="fade-in">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <p style="color:var(--on-surface-variant);font-size:13px;margin:0;">Courses you created &mdash; <strong>{{ myCourses.length }}</strong> total</p>
     </div>
 
-    <div class="grid-3">
-      <div *ngFor="let c of courses" class="card" style="cursor:pointer;transition:box-shadow 0.2s;" onmouseover="this.style.boxShadow='var(--shadow-elevated)'" onmouseout="this.style.boxShadow=''">
+    <div *ngIf="myCourses.length === 0" class="card" style="text-align:center;padding:48px 24px;">
+      <span class="material-symbols-outlined" style="font-size:48px;color:var(--outline);margin-bottom:12px;">school</span>
+      <h3 style="font-size:16px;margin:0 0 6px;">No Courses Yet</h3>
+      <p style="font-size:13px;color:var(--on-surface-variant);margin:0 0 16px;">Submit a course for admin moderation via the Content Submission tab.</p>
+      <button class="btn btn-primary" (click)="activeTab='content-submit'"><span class="material-symbols-outlined">add</span> Create New Course</button>
+    </div>
+
+    <div class="grid-3" *ngIf="myCourses.length > 0">
+      <div *ngFor="let c of myCourses" class="card">
         <div class="card-body">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
             <div style="width:48px;height:48px;border-radius:12px;background:var(--surface-container);display:flex;align-items:center;justify-content:center;">
               <span class="material-symbols-outlined" style="font-size:24px;color:var(--primary)">{{c.icon}}</span>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-              <span class="badge" [class]="c.status==='active' ? 'success' : 'primary'">{{c.status | titlecase}}</span>
+              <span class="badge" [class]="c.approvalStatus === 'approved' ? 'success' : c.approvalStatus === 'rejected' ? 'error' : 'warning'">{{ c.approvalStatus || 'pending' | titlecase }}</span>
               <span class="badge neutral">{{c.level}}</span>
             </div>
           </div>
           <h3 style="font-size:15px;font-weight:700;margin-bottom:4px;">{{c.title}}</h3>
-          <p style="font-size:12px;color:var(--on-surface-variant);margin-bottom:16px;">{{c.modules}} Modules &bull; {{c.enrolled}} enrolled</p>
+          <p style="font-size:12px;color:var(--on-surface-variant);margin-bottom:16px;">{{c.moduleCount}} Modules &bull; {{c.enrolledCount}} enrolled</p>
           <div *ngIf="c.completion > 0">
             <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
               <span style="color:var(--on-surface-variant)">Cohort Completion</span>
@@ -50,84 +54,232 @@
           <div *ngIf="c.completion === 0" style="font-size:12px;color:var(--on-surface-variant);padding:8px 0;">Enrollment Open</div>
           <div style="display:flex;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid var(--outline-variant);">
             <span class="track-chip" [class]="c.track">{{c.track}}</span>
-            <button class="btn btn-ghost btn-sm" style="margin-left:auto;">Manage</button>
+          </div>
+          <div *ngIf="c.rejectionReason" style="margin-top:8px;padding:8px;background:rgba(239,68,68,0.08);border-radius:6px;font-size:11px;color:#ef4444;">
+            <strong>Rejected:</strong> {{ c.rejectionReason }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;" *ngIf="allCourses.length > 0">
+      <div class="card-header"><h3>All Approved Courses</h3></div>
+      <div class="card-body">
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div *ngFor="let c of allCourses" style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--outline-variant);">
+            <span class="material-symbols-outlined" style="color:var(--primary);font-size:20px;">{{ c.icon }}</span>
+            <div style="flex:1;">
+              <strong style="font-size:13px;">{{ c.title }}</strong>
+              <span style="font-size:11px;color:var(--on-surface-variant);margin-left:8px;">{{ c.track }} &bull; {{ c.level }}</span>
+            </div>
+            <span class="badge neutral" style="font-size:10px;">{{ c.modules }} modules</span>
+            <span class="badge secondary" style="font-size:10px;">{{ c.enrolled }} enrolled</span>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ══ ASSIGNMENTS ══ -->
-  <div *ngIf="activeTab==='assignments'" style="display:grid;grid-template-columns:1fr 420px;gap:20px;">
-    <div class="card">
-      <div class="card-header"><h3>Pending Submissions</h3></div>
-      <div style="overflow-x:auto;">
+  <!-- ══ TAB 2: STUDENT SUBMISSIONS (real data, real grading) ══ -->
+  <div *ngIf="activeTab==='submissions'" class="fade-in">
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header">
+        <h3>Student Submissions ({{ instructorSubmissions.length }})</h3>
+        <span style="font-size:12px;color:var(--on-surface-variant);">Grade student work from your courses</span>
+      </div>
+      <div style="overflow-x:auto;" *ngIf="instructorSubmissions.length > 0">
         <table class="data-table">
-          <thead><tr><th>Student</th><th>Assignment</th><th>Track</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Student</th><th>Assignment</th><th>Course</th><th>Submitted</th><th>Status</th><th>Score</th><th>Action</th></tr></thead>
           <tbody>
-            <tr *ngFor="let s of submissions">
+            <tr *ngFor="let sub of instructorSubmissions">
               <td>
-                <div style="font-weight:600;">{{s.student}}</div>
-                <div style="font-size:12px;color:var(--on-surface-variant)">{{s.school}}</div>
+                <div style="font-weight:600;">{{ sub.studentName }}</div>
+                <div style="font-size:11px;color:var(--on-surface-variant);">{{ sub.studentEmail }}</div>
               </td>
+              <td style="font-size:13px;">{{ getAssignmentName(sub.assignmentId) }}</td>
+              <td><span style="font-size:12px;color:var(--on-surface-variant);">{{ getCourseNameForSubmission(sub) }}</span></td>
+              <td style="font-size:12px;color:var(--on-surface-variant);">{{ sub.submittedAt }}</td>
               <td>
-                <div style="font-weight:500;font-size:14px;">{{s.assignment}}</div>
-                <div style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--on-surface-variant);margin-top:2px;">{{s.file}}</div>
+                <span class="badge" [class]="sub.status === 'graded' ? 'success' : sub.status === 'rejected' ? 'error' : sub.status === 'regrade_requested' ? 'warning' : 'neutral'">{{ sub.status | titlecase }}</span>
               </td>
-              <td><span class="track-chip" [class]="s.track">{{s.track}}</span></td>
-              <td style="font-size:12px;color:var(--on-surface-variant)">{{s.time}}</td>
+              <td><strong *ngIf="sub.score !== null && sub.score !== undefined" style="color:var(--primary);">{{ sub.score }} pts</strong><span *ngIf="sub.score === null || sub.score === undefined" style="color:var(--on-surface-variant);font-size:12px;">&mdash;</span></td>
               <td>
-                <span class="badge" [class]="s.status==='pending'?'warning':s.status==='approved'?'success':'error'">{{s.status}}</span>
-              </td>
-              <td>
-                <div style="display:flex;gap:4px;">
-                  <button class="btn btn-secondary btn-sm">Approve</button>
-                  <button class="btn btn-subtle btn-sm">Review</button>
-                </div>
+                <button class="btn btn-secondary btn-sm" (click)="openInstructorGradingModal(sub)">
+                  <span class="material-symbols-outlined">fact_check</span> Review
+                </button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
+      <div *ngIf="instructorSubmissions.length === 0" style="text-align:center;padding:40px 16px;">
+        <span class="material-symbols-outlined" style="font-size:40px;color:var(--outline);margin-bottom:8px;">inbox</span>
+        <p style="color:var(--on-surface-variant);font-size:13px;margin:0;">No student submissions for your courses yet.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 3: CONTENT SUBMISSION ══ -->
+  <div *ngIf="activeTab==='content-submit'" class="fade-in">
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header">
+        <h3>Submit Content for Admin Review</h3>
+      </div>
+      <div class="card-body">
+        <p style="color:var(--on-surface-variant);font-size:13px;margin-bottom:20px;">
+          Submit a new course or module for administrative approval. Once approved, it will appear in the active LMS curriculum.
+        </p>
+
+        <div class="error-banner" *ngIf="showContentSubmitSuccess" style="background:rgba(16,185,129,0.1);border:1px solid #10b981;color:#10b981;padding:12px;border-radius:8px;display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+          <span class="material-symbols-outlined">check_circle</span>
+          <span>Content submitted successfully! It will be reviewed by an administrator.</span>
+        </div>
+
+        <div class="error-banner" *ngIf="contentSubmitError" style="background:rgba(239,68,68,0.1);border:1px solid #ef4444;color:#ef4444;padding:12px;border-radius:8px;display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+          <span class="material-symbols-outlined">error</span>
+          <span>{{ contentSubmitError }}</span>
+        </div>
+
+        <div class="form-group" style="margin-bottom:16px;">
+          <label class="form-label">Content Type</label>
+          <select class="form-control form-select" [(ngModel)]="contentSubmissionForm.type">
+            <option value="course">Course (Full Track)</option>
+            <option value="module">Module (Standalone Lesson)</option>
+          </select>
+        </div>
+
+        <ng-container *ngIf="contentSubmissionForm.type === 'course'">
+          <div class="form-group" style="margin-bottom:16px;">
+            <label class="form-label">Course Title *</label>
+            <input class="form-control" type="text" placeholder="e.g. Advanced Cybersecurity Defense" [(ngModel)]="contentSubmissionForm.courseTitle">
+          </div>
+          <div class="grid-2" style="margin-bottom:16px;">
+            <div class="form-group">
+              <label class="form-label">Track</label>
+              <select class="form-control form-select" [(ngModel)]="contentSubmissionForm.courseTrack">
+                <option value="coding">Coding & Algorithms</option>
+                <option value="robotics">Robotics</option>
+                <option value="ai">Artificial Intelligence</option>
+                <option value="cyber">Cybersecurity</option>
+                <option value="innovation">Innovation & Entrepreneurship</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Level</label>
+              <select class="form-control form-select" [(ngModel)]="contentSubmissionForm.courseLevel">
+                <option value="Beginner">Beginner</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:20px;">
+            <label class="form-label">Course Description *</label>
+            <textarea class="form-control" rows="4" placeholder="Describe the course content, objectives, and target audience..." [(ngModel)]="contentSubmissionForm.courseDescription"></textarea>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="contentSubmissionForm.type === 'module'">
+          <div class="form-group" style="margin-bottom:16px;">
+            <label class="form-label">Module Title *</label>
+            <input class="form-control" type="text" placeholder="e.g. Advanced Persistent Threats & APT Simulation" [(ngModel)]="contentSubmissionForm.moduleTitle">
+          </div>
+          <div class="form-group" style="margin-bottom:20px;">
+            <label class="form-label">Module Description *</label>
+            <textarea class="form-control" rows="4" placeholder="Describe the module content, learning objectives, and key takeaways..." [(ngModel)]="contentSubmissionForm.moduleDescription"></textarea>
+          </div>
+        </ng-container>
+
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn btn-primary" (click)="submitContentForModeration()">
+            <span class="material-symbols-outlined">send</span>
+            Submit for Review
+          </button>
+        </div>
+      </div>
     </div>
 
-    <!-- Assignment Review Panel -->
     <div class="card">
-      <div class="card-header"><h3>Review Panel</h3></div>
+      <div class="card-header">
+        <h3>My Submitted Content ({{ instructorSubmittedContent.length }})</h3>
+      </div>
       <div class="card-body">
-        <div style="background:var(--surface-container-low);border-radius:8px;padding:14px;margin-bottom:16px;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-            <div style="width:36px;height:36px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;">KA</div>
-            <div>
-              <div style="font-weight:700;font-size:14px;">Kwame Asante</div>
-              <div style="font-size:12px;color:var(--on-surface-variant)">STU-0012 &bull; Achimota SHS</div>
-            </div>
-            <span class="track-chip coding" style="margin-left:auto;">coding</span>
+        <div *ngIf="instructorSubmittedContent.length === 0" style="text-align:center;padding:32px 16px;color:var(--on-surface-variant);">
+          <span class="material-symbols-outlined" style="font-size:40px;margin-bottom:8px;">inbox</span>
+          <p style="margin:0;font-size:13px;">You haven't submitted any content for moderation yet.</p>
+        </div>
+        <div *ngFor="let item of instructorSubmittedContent" style="display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--outline-variant);">
+          <span class="material-symbols-outlined" [style.color]="item.type === 'course' ? 'var(--primary)' : 'var(--secondary)'">{{ item.type === 'course' ? 'school' : 'view_list' }}</span>
+          <div style="flex:1;">
+            <strong style="font-size:13px;">{{ item.label }}</strong>
+            <div style="font-size:11px;color:var(--on-surface-variant);">Type: {{ item.type | titlecase }}</div>
           </div>
-          <div style="font-weight:600;font-size:15px;margin-bottom:4px;">Dijkstra's Algorithm Implementation</div>
-          <div style="background:var(--surface-container-lowest);border-radius:6px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--on-surface-variant);">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;color:var(--secondary);"><span class="material-symbols-outlined" style="font-size:16px;">code</span> pathfinder_v2.py</div>
-            <pre style="margin:0;white-space:pre-wrap;">def dijkstra(graph, start):
-    dist = dict.fromkeys(graph, float('inf'))
-    dist[start] = 0
-    pq = [(0, start)]
-    while pq:
-        d, u = heappop(pq)
-        ...</pre>
-          </div>
+          <span class="badge" [class]="item.status === 'approved' ? 'success' : item.status === 'rejected' ? 'error' : 'warning'">{{ item.status }}</span>
+          <span *ngIf="item.reason" style="font-size:11px;color:#ef4444;max-width:200px;text-align:right;">{{ item.reason }}</span>
         </div>
-        <div class="form-group">
-          <label class="form-label">Score (0 – 100)</label>
-          <input class="form-control" type="number" min="0" max="100" placeholder="Enter score">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     INSTRUCTOR GRADING MODAL
+     ========================================================= -->
+<div class="modal-backdrop fade-in" *ngIf="showInstructorGradingModal" style="position:fixed;inset:0;background:rgba(2,6,23,0.85);backdrop-filter:blur(10px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div class="modal-card" style="background:var(--surface);border:1px solid var(--outline-variant);border-radius:18px;max-width:600px;width:100%;box-shadow:0 25px 60px rgba(0,0,0,0.5);overflow:hidden;" (click)="$event.stopPropagation()">
+    <div style="padding:22px 26px;border-bottom:1px solid var(--outline-variant);display:flex;justify-content:space-between;align-items:center;background:var(--surface-container-low);">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:40px;height:40px;border-radius:10px;background:rgba(0,102,204,0.1);display:flex;align-items:center;justify-content:center;color:var(--primary);">
+          <span class="material-symbols-outlined">fact_check</span>
         </div>
-        <div class="form-group">
-          <label class="form-label">Instructor Feedback & Comments</label>
-          <textarea class="form-control" rows="5" placeholder="Write detailed feedback for the student..."></textarea>
+        <div>
+          <h3 style="font-size:16px;font-weight:750;color:var(--on-surface);margin:0;">Grade Submission</h3>
+          <span style="font-size:11.5px;color:var(--on-surface-variant);">{{ activeInstructorSubmission?.studentName }}</span>
         </div>
-        <div style="display:flex;gap:10px;">
-          <button class="btn btn-subtle" style="flex:1;justify-content:center;"><span class="material-symbols-outlined">replay</span>Request Resubmission</button>
-          <button class="btn btn-secondary" style="flex:1;justify-content:center;"><span class="material-symbols-outlined">task_alt</span>Approve</button>
+      </div>
+      <button class="btn btn-ghost" (click)="closeInstructorGradingModal()" style="border:none;background:transparent;cursor:pointer;">
+        <span class="material-symbols-outlined" style="font-size:22px;color:var(--on-surface-variant);">close</span>
+      </button>
+    </div>
+
+    <div style="padding:26px;" *ngIf="activeInstructorSubmission">
+      <div style="background:var(--surface-container-low);border-radius:12px;padding:16px;margin-bottom:20px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
+          <div><strong>Assignment:</strong> {{ getAssignmentName(activeInstructorSubmission.assignmentId) }}</div>
+          <div><strong>Course:</strong> {{ getCourseNameForSubmission(activeInstructorSubmission) }}</div>
+          <div><strong>Student Email:</strong> {{ activeInstructorSubmission.studentEmail }}</div>
+          <div><strong>Submitted:</strong> {{ activeInstructorSubmission.submittedAt }}</div>
+          <div><strong>Status:</strong> {{ activeInstructorSubmission.status | titlecase }}</div>
+          <div *ngIf="activeInstructorSubmission.score !== undefined && activeInstructorSubmission.score !== null"><strong>Current Score:</strong> {{ activeInstructorSubmission.score }} pts</div>
         </div>
+        <div *ngIf="activeInstructorSubmission.content" style="margin-top:12px;padding:12px;background:var(--surface-container-lowest);border-radius:8px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--on-surface-variant);">
+          {{ activeInstructorSubmission.content }}
+        </div>
+        <div *ngIf="activeInstructorSubmission.url" style="margin-top:8px;">
+          <a [href]="activeInstructorSubmission.url" target="_blank" class="link-btn" style="font-size:12px;">
+            <span class="material-symbols-outlined" style="font-size:14px;">open_in_new</span> Open Submission URL
+          </a>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:16px;">
+        <label class="form-label">Score (0 – 100)</label>
+        <input class="form-control" type="number" min="0" max="100" [(ngModel)]="instructorGradeScore" placeholder="Enter score">
+      </div>
+
+      <div class="form-group" style="margin-bottom:20px;">
+        <label class="form-label">Feedback *</label>
+        <textarea class="form-control" rows="4" [(ngModel)]="instructorGradeFeedback" placeholder="Write detailed feedback for the student..."></textarea>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-subtle" (click)="closeInstructorGradingModal()">Cancel</button>
+        <button class="btn btn-danger" (click)="rejectInstructorSubmission()" [disabled]="!instructorGradeFeedback.trim()">
+          <span class="material-symbols-outlined">undo</span> Reject
+        </button>
+        <button class="btn btn-primary" (click)="submitInstructorGrade()" [disabled]="instructorGradeScore === null || instructorGradeScore < 0 || instructorGradeScore > 100">
+          <span class="material-symbols-outlined">task_alt</span> Grade &amp; Score
+        </button>
       </div>
     </div>
   </div>
@@ -144,7 +296,6 @@
     </div>
   </div>
 
-  <!-- Student Tab Bar -->
   <div class="tab-bar">
     <div class="tab-item" [class.active]="studentActiveTab === 'courses'" (click)="studentActiveTab = 'courses'">
       <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:6px;">library_books</span>My Training Tracks
@@ -158,13 +309,8 @@
     </div>
   </div>
 
-  <!-- Split Grid Layout -->
   <div class="student-portal-grid">
-    
-    <!-- LEFT MAIN COLUMN -->
     <div class="portal-main-panel">
-      
-      <!-- ══ TAB 1: STUDENT COURSES ══ -->
       <div *ngIf="studentActiveTab === 'courses'" class="fade-in">
         <div class="grid-2">
           <div *ngFor="let course of studentCourses" class="card" style="margin-bottom: 16px;">
@@ -180,7 +326,6 @@
               </div>
               <h3 style="font-size:15px; font-weight:700; margin-bottom:4px;">{{ course.title }}</h3>
               <p style="font-size:12px; color:var(--on-surface-variant); margin-bottom:16px;">{{ course.module }} &bull; Last active {{ course.lastActive }}</p>
-              
               <div>
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
                   <span style="color:var(--on-surface-variant)">Course Progress</span>
@@ -190,7 +335,6 @@
                   <div class="progress-fill" [style.width.%]="course.progress" style="height:100%; background:var(--primary); border-radius:3px;"></div>
                 </div>
               </div>
-              
               <div style="display:flex; gap:6px; margin-top:16px; padding-top:12px; border-top:1px solid var(--outline-variant); align-items:center;">
                 <span class="track-chip" [class]="course.track">{{ course.track | titlecase }}</span>
                 <button class="btn btn-primary btn-sm" style="margin-left:auto; padding:6px 14px; font-size:12px; font-weight:650;" (click)="startCourseLesson(course)">{{ course.buttonText }}</button>
@@ -199,7 +343,6 @@
           </div>
         </div>
 
-        <!-- Course Syllabus / Outline details -->
         <div class="card" style="margin-top:16px;">
           <div class="card-header">
             <h3>Syllabus Overview — {{ primaryCourseTitle }}</h3>
@@ -224,10 +367,7 @@
         </div>
       </div>
 
-      <!-- ══ TAB 2: MY ASSIGNMENTS ══ -->
       <div *ngIf="studentActiveTab === 'assignments'" class="fade-in">
-        
-        <!-- Submit Assignment Form -->
         <div class="card" style="margin-bottom:20px;">
           <div class="card-header">
             <h3>Submit Assignment Source Code</h3>
@@ -290,7 +430,6 @@
           </div>
         </div>
 
-        <!-- Submission History List -->
         <div class="card">
           <div class="card-header">
             <h3>Submission & Evaluation History</h3>
@@ -310,12 +449,10 @@
                     <strong *ngIf="sub.grade !== null" style="font-size:14px; color:var(--primary);">{{ sub.grade }}/100</strong>
                   </div>
                 </div>
-
                 <div style="background:var(--surface-container-lowest); border:1px solid var(--outline-variant); border-radius:8px; padding:8px 12px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--on-surface-variant); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
                   <span class="material-symbols-outlined" style="font-size:16px; color:var(--primary);">code</span>
                   {{ sub.file }}
                 </div>
-
                 <div style="background:rgba(0, 63, 135, 0.03); border-left:3px solid var(--primary); border-radius:4px; padding:8px 12px; font-size:11.5px; color:var(--on-surface-variant);">
                   <strong>Mentor Feedback:</strong> {{ sub.feedback }}
                 </div>
@@ -325,7 +462,6 @@
         </div>
       </div>
 
-      <!-- ══ TAB 3: STUDENT ID PASS DETAIL ══ -->
       <div *ngIf="studentActiveTab === 'badge'" class="fade-in">
         <div class="card">
           <div class="card-header">
@@ -335,7 +471,6 @@
             <p style="font-size:13px; color:var(--on-surface-variant); margin-bottom:16px;">
               This accredited digital ID card verifies your enrollment status and track qualification. It serves as your official championship pass.
             </p>
-            
             <div style="background:var(--surface-container-low); padding:16px; border-radius:12px; margin-bottom:20px;">
               <h4 style="font-size:13px; font-weight:750; color:var(--on-surface); margin:0 0 12px; display:flex; align-items:center; gap:8px;">
                 <span class="material-symbols-outlined" style="color:#10b981;">verified_user</span> MoE Accreditation Data
@@ -347,7 +482,6 @@
                 <li><strong>Privacy Shield:</strong> Compliant with Ghana Data Protection Act 2012 (Act 843).</li>
               </ul>
             </div>
-
             <div style="display:flex; gap:12px;">
               <button class="btn btn-primary">
                 <span class="material-symbols-outlined">download</span> Download PDF Badge
@@ -359,41 +493,30 @@
           </div>
         </div>
       </div>
-
     </div>
 
-    <!-- RIGHT SIDEBAR COLUMN -->
     <div class="portal-sidebar-panel">
-      
-      <!-- Student Badge Card -->
       <div class="student-badge-container">
         <div class="student-pass-card">
           <div class="card-glow-bg"></div>
-          
           <div class="pass-header">
             <span class="pass-brand">NTIC CHAMPIONSHIP</span>
             <span class="pass-status">ACTIVE</span>
           </div>
-
           <div class="pass-avatar-wrap">
             <div class="pass-avatar">
               <span class="avatar-initials">{{ studentProfile.avatar }}</span>
             </div>
           </div>
-
           <h2 class="pass-name">{{ studentProfile.name }}</h2>
           <div class="pass-id">{{ studentProfile.id }}</div>
-
           <div class="pass-school-row">
             <span class="material-symbols-outlined">school</span>
             <span class="school-name">{{ studentProfile.school }}</span>
           </div>
-
           <div class="pass-track-badge">
             {{ studentProfile.track }}
           </div>
-
-          <!-- Skills metrics in badge -->
           <div class="pass-skills">
             <div class="skill-row">
               <span class="skill-label">Algorithm Design</span>
@@ -417,8 +540,6 @@
               <span class="skill-val">Novice</span>
             </div>
           </div>
-
-          <!-- Security Barcode with scanning laser -->
           <div class="pass-barcode-wrap">
             <div class="barcode-laser-line"></div>
             <div class="barcode-lines">
@@ -435,7 +556,6 @@
         </div>
       </div>
 
-      <!-- Mentor Panel -->
       <div class="sidebar-panel-card">
         <h3><span class="material-symbols-outlined">co_present</span> Assigned Mentor</h3>
         <div class="mentor-info-row">
@@ -457,7 +577,6 @@
         </div>
       </div>
 
-      <!-- Active heat schedule tracker -->
       <div class="sidebar-panel-card">
         <h3><span class="material-symbols-outlined">event</span> Next Track Heat</h3>
         <div class="heat-info-box">
@@ -472,8 +591,8 @@
           </div>
           <div class="heat-status">CONFIRMED APPLICANT</div>
         </div>
+      </div>
     </div>
-
   </div>
 </div>
 
@@ -482,7 +601,6 @@
      ========================================================= -->
 <div class="modal-backdrop fade-in" *ngIf="activeLessonCourse" style="position:fixed; inset:0; background:rgba(2,6,23,0.85); backdrop-filter:blur(10px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:20px;">
   <div class="modal-card" style="background:var(--surface); border:1px solid var(--outline-variant); border-radius:18px; max-width:680px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5); overflow:hidden;">
-    
     <div style="padding:22px 26px; border-bottom:1px solid var(--outline-variant); display:flex; justify-content:space-between; align-items:center; background:var(--surface-container-low);">
       <div style="display:flex; align-items:center; gap:12px;">
         <div style="width:40px; height:40px; border-radius:10px; background:rgba(0,102,204,0.1); display:flex; align-items:center; justify-content:center; color:var(--primary);">
@@ -497,13 +615,11 @@
         <span class="material-symbols-outlined" style="font-size:22px; color:var(--on-surface-variant);">close</span>
       </button>
     </div>
-
     <div style="padding:26px;">
       <div *ngIf="lessonSuccessMessage" style="background:rgba(16, 185, 129, 0.12); border:1px solid #10b981; color:#10b981; padding:14px 18px; border-radius:12px; margin-bottom:20px; font-weight:600; display:flex; align-items:center; gap:10px;">
         <span class="material-symbols-outlined">check_circle</span>
         <span>{{ lessonSuccessMessage }}</span>
       </div>
-
       <div style="background:var(--surface-container-low); border-radius:14px; padding:18px; margin-bottom:20px;">
         <span class="badge primary" style="margin-bottom:10px; display:inline-block;">ACTIVE SPRINT LESSON</span>
         <h4 style="font-size:15px; font-weight:700; color:var(--on-surface); margin:0 0 8px;">{{ activeLessonCourse.module }}</h4>
@@ -511,7 +627,6 @@
           In this interactive lesson sprint, you will study core algorithmic principles, hardware interface timing, and real-world system debugging required for the upcoming national qualifiers.
         </p>
       </div>
-
       <div style="background:var(--surface-container-lowest); border:1px solid var(--outline-variant); border-radius:12px; padding:16px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--on-surface-variant); margin-bottom:24px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:var(--primary); font-weight:700;">
           <span>// LESSON CHECKPOINT OBJECTIVES</span>
@@ -521,7 +636,6 @@
         <div>2. Validate edge-case inputs against competition runtime limits.</div>
         <div>3. Submit functional verification code via the Assignments panel.</div>
       </div>
-
       <div style="display:flex; justify-content:flex-end; gap:12px;">
         <button class="btn btn-subtle" (click)="closeLessonModal()">Close Preview</button>
         <button class="btn btn-primary" (click)="completeActiveLesson()">
@@ -530,6 +644,5 @@
         </button>
       </div>
     </div>
-
   </div>
 </div>

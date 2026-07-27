@@ -542,6 +542,14 @@ select.form-control {
 }
 
 /* Track Cards Grid */
+.track-prompt {
+  font-size: 12px;
+  color: var(--on-surface-variant, #64748b);
+  margin-top: 4px;
+  margin-bottom: 2px;
+  font-weight: 500;
+}
+
 .track-selection-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -4801,232 +4809,7 @@ select.form-control {
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-.custom-credentials-modal {
-  background: linear-gradient(145deg, rgba(16, 22, 54, 0.96) 0%, rgba(10, 14, 38, 0.98) 100%);
-  border: 1px solid rgba(0, 242, 254, 0.45);
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75), 0 0 40px rgba(0, 242, 254, 0.15);
-  border-radius: 24px;
-  max-width: 540px;
-  width: 100%;
-  padding: 36px 32px;
-  color: #fff;
-  position: relative;
-  animation: modalScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 
-  .cred-modal-header {
-    text-align: center;
-    margin-bottom: 28px;
-
-    .cred-badge-icon {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(192, 132, 252, 0.2));
-      border: 1.5px solid #00f2fe;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 16px;
-      box-shadow: 0 0 25px rgba(0, 242, 254, 0.35);
-
-      span {
-        font-size: 34px;
-        color: #ffdf70;
-      }
-    }
-
-    .cred-modal-title {
-      font-size: 24px;
-      font-weight: 800;
-      color: #fff;
-      margin-bottom: 8px;
-      letter-spacing: -0.01em;
-    }
-
-    .cred-modal-subtitle {
-      font-size: 14.5px;
-      color: #94a3b8;
-      line-height: 1.5;
-      max-width: 440px;
-      margin: 0 auto;
-    }
-  }
-
-  .cred-cards-container {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    margin-bottom: 20px;
-  }
-
-  .cred-item-card {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 16px;
-    padding: 16px 20px;
-    transition: all 0.25s;
-
-    &:hover {
-      border-color: rgba(0, 242, 254, 0.5);
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    .cred-item-meta {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-
-      .cred-label {
-        font-size: 11.5px;
-        font-weight: 700;
-        letter-spacing: 0.1em;
-        color: #94a3b8;
-      }
-
-      .cred-tag {
-        font-size: 11px;
-        font-weight: 700;
-        padding: 3px 10px;
-        border-radius: 20px;
-        background: rgba(0, 242, 254, 0.15);
-        color: #00f2fe;
-
-        &.pin {
-          background: rgba(255, 223, 112, 0.15);
-          color: #ffdf70;
-        }
-      }
-    }
-
-    .cred-value-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-
-      .cred-code-text {
-        font-family: 'Fira Code', 'Courier New', monospace;
-        font-size: 20px;
-        font-weight: 800;
-        color: #00f2fe;
-        letter-spacing: 0.05em;
-        user-select: all;
-
-        &.pin-code {
-          color: #ffdf70;
-          font-size: 22px;
-          letter-spacing: 0.15em;
-        }
-      }
-
-      .btn-cred-copy {
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: #fff;
-        padding: 8px 16px;
-        border-radius: 10px;
-        font-size: 13px;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        cursor: pointer;
-        transition: all 0.2s;
-
-        &:hover {
-          background: rgba(0, 242, 254, 0.2);
-          border-color: #00f2fe;
-          color: #00f2fe;
-        }
-
-        &.copied {
-          background: rgba(52, 211, 153, 0.25);
-          border-color: #34d399;
-          color: #34d399;
-        }
-      }
-    }
-  }
-
-  .cred-copy-all-wrapper {
-    margin-bottom: 22px;
-
-    .btn-copy-all {
-      width: 100%;
-      padding: 13px 20px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, rgba(0, 242, 254, 0.15), rgba(192, 132, 252, 0.15));
-      border: 1px dashed rgba(0, 242, 254, 0.5);
-      color: #00f2fe;
-      font-size: 14px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      cursor: pointer;
-      transition: all 0.25s;
-
-      &:hover {
-        background: linear-gradient(135deg, rgba(0, 242, 254, 0.25), rgba(192, 132, 252, 0.25));
-        border-color: #00f2fe;
-      }
-
-      &.copied {
-        background: rgba(52, 211, 153, 0.25);
-        border-color: #34d399;
-        color: #34d399;
-      }
-    }
-  }
-
-  .cred-info-banner {
-    background: rgba(0, 242, 254, 0.08);
-    border: 1px solid rgba(0, 242, 254, 0.25);
-    border-radius: 12px;
-    padding: 12px 16px;
-    font-size: 13px;
-    color: #e2e8f0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 24px;
-
-    .info-icon {
-      color: #00f2fe;
-      font-size: 20px;
-    }
-  }
-
-  .cred-modal-footer {
-    display: flex;
-    justify-content: center;
-
-    .btn-cred-proceed {
-      width: 100%;
-      padding: 16px 24px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #00f2fe, #4facfe);
-      border: none;
-      color: #040819;
-      font-size: 16px;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      cursor: pointer;
-      box-shadow: 0 8px 25px rgba(0, 242, 254, 0.4);
-      transition: all 0.25s;
-
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 30px rgba(0, 242, 254, 0.6);
-      }
-    }
-  }
-}
 
 .custom-alert-card {
   background: #0d122b;
@@ -5381,4 +5164,11 @@ select.form-control {
       }
     }
   }
+}
+
+@keyframes barcodeScan {
+  0% { top: 0; opacity: 0; }
+  10% { opacity: 0.8; }
+  90% { opacity: 0.8; }
+  100% { top: 100%; opacity: 0; }
 }

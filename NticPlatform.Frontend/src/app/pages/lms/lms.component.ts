@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ContentService } from '../../services/content.service';
+import { ContentService, LmsSubmission } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
 
 @Component({
@@ -18,49 +18,200 @@ export class LmsComponent implements OnInit {
   constructor(public contentService: ContentService, public fileStorage: FileStorageService) {}
 
   activeRoleId = 'student';
-  activeTab = 'courses'; // default tab for instructors
 
-  // Student specific active tab
-  studentActiveTab = 'courses'; // 'courses', 'assignments', 'badge'
+  activeTab = 'courses';
 
-  get courses(): any[] {
-    return this.contentService.lmsCourses
-      .filter(c => (c.approvalStatus || 'approved') === 'approved' && c.status === 'active')
-      .map(c => ({
-        title: c.title,
-        track: c.track,
-        icon: c.icon,
-        level: c.level,
-        enrolled: c.enrolled,
-        completion: c.completion,
-        modules: c.modules,
-        status: c.status
-      }));
-  }
-  
-  get submissions(): any[] {
-    return this.contentService.submissions.map(s => ({
-      student: s.student,
-      school: s.school,
-      assignment: s.assignment,
-      track: s.track.toLowerCase(),
-      file: s.file,
-      score: s.score,
-      status: s.status,
-      time: s.time
-    }));
-  }
+  studentActiveTab = 'courses';
+
+  activeLessonCourse: any = null;
+  lessonSuccessMessage = '';
 
   submissionError = '';
 
-  // Student Portal Data
+  // ── Instructor data helpers ─────────────────────────────────
+  private get currentUserEmail(): string {
+    return (localStorage.getItem('activeUserEmail') || '').trim().toLowerCase();
+  }
+
+  get myCourses(): any[] {
+    const email = this.currentUserEmail;
+    return this.contentService.lmsCourses
+      .filter(c => c.submittedBy && c.submittedBy.toLowerCase().includes(email))
+      .map(c => {
+        const enrolledCount = this.contentService.lmsEnrollments.filter(e => e.courseId === c.id).length;
+        const moduleCount = this.contentService.lmsModules.filter(m => m.courseId === c.id).length;
+        return { ...c, enrolledCount, moduleCount };
+      });
+  }
+
+  get allCourses(): any[] {
+    return this.contentService.lmsCourses
+      .filter(c => (c.approvalStatus || 'approved') === 'approved' && c.status === 'active');
+  }
+
+  get myCourseIds(): string[] {
+    return this.myCourses.map(c => c.id);
+  }
+
+  get myAssignments(): any[] {
+    const ids = this.myCourseIds;
+    return this.contentService.lmsAssignments.filter(a => ids.includes(a.courseId));
+  }
+
+  get myAssignmentIds(): string[] {
+    return this.myAssignments.map(a => a.id);
+  }
+
+  get instructorSubmissions(): LmsSubmission[] {
+    const ids = this.myAssignmentIds;
+    return this.contentService.lmsSubmissions.filter(s => ids.includes(s.assignmentId));
+  }
+
+  get pendingInstructorSubmissions(): LmsSubmission[] {
+    return this.instructorSubmissions.filter(s => s.status === 'submitted');
+  }
+
+  // ── Instructor Student submissions ──────────────────────────
+  activeInstructorSubmission: LmsSubmission | null = null;
+  showInstructorGradingModal = false;
+  instructorGradeScore: number | null = null;
+  instructorGradeFeedback = '';
+
+  openInstructorGradingModal(sub: LmsSubmission): void {
+    this.activeInstructorSubmission = sub;
+    this.instructorGradeScore = sub.score ?? null;
+    this.instructorGradeFeedback = sub.feedback || '';
+    this.showInstructorGradingModal = true;
+  }
+
+  closeInstructorGradingModal(): void {
+    this.showInstructorGradingModal = false;
+    this.activeInstructorSubmission = null;
+    this.instructorGradeScore = null;
+    this.instructorGradeFeedback = '';
+  }
+
+  getAssignmentName(assignmentId: string): string {
+    const a = this.contentService.lmsAssignments.find(x => x.id === assignmentId);
+    return a ? a.title : 'Assignment';
+  }
+
+  getCourseNameForSubmission(sub: LmsSubmission): string {
+    const c = this.contentService.lmsCourses.find(x => x.id === sub.courseId);
+    return c ? c.title : 'Course';
+  }
+
+  submitInstructorGrade(): void {
+    if (!this.activeInstructorSubmission || this.instructorGradeScore === null || this.instructorGradeScore < 0 || this.instructorGradeScore > 100) return;
+    this.contentService.gradeLmsSubmission(
+      this.activeInstructorSubmission.id,
+      this.instructorGradeScore,
+      this.instructorGradeFeedback || 'Graded by instructor.'
+    );
+    this.closeInstructorGradingModal();
+  }
+
+  rejectInstructorSubmission(): void {
+    if (!this.activeInstructorSubmission || !this.instructorGradeFeedback.trim()) return;
+    this.contentService.rejectLmsSubmission(
+      this.activeInstructorSubmission.id,
+      this.instructorGradeFeedback
+    );
+    this.closeInstructorGradingModal();
+  }
+
+  // ── Content Submission ──────────────────────────────────────
+  showContentSubmitSuccess = false;
+  contentSubmitError = '';
+  contentSubmissionForm = {
+    type: 'course' as 'course' | 'module',
+    courseTitle: '',
+    courseTrack: 'coding',
+    courseLevel: 'Beginner',
+    courseDescription: '',
+    moduleTitle: '',
+    moduleDescription: ''
+  };
+
+  get instructorSubmittedContent(): any[] {
+    const email = this.currentUserEmail;
+    const results: any[] = [];
+    for (const c of this.contentService.lmsCourses) {
+      if (c.submittedBy && c.submittedBy.toLowerCase().includes(email)) {
+        results.push({ type: 'course', data: c, label: c.title, status: c.approvalStatus, reason: c.rejectionReason });
+      }
+    }
+    for (const m of this.contentService.lmsModules) {
+      if (m.submittedBy && m.submittedBy.toLowerCase().includes(email)) {
+        results.push({ type: 'module', data: m, label: m.title, status: m.approvalStatus, reason: m.rejectionReason });
+      }
+    }
+    return results;
+  }
+
+  get pendingContentCount(): number {
+    return this.instructorSubmittedContent.filter(c => c.status === 'pending').length;
+  }
+
+  submitContentForModeration(): void {
+    const form = this.contentSubmissionForm;
+    const email = this.currentUserEmail;
+    if (form.type === 'course') {
+      if (!form.courseTitle.trim() || !form.courseDescription.trim()) {
+        this.contentSubmitError = 'Please enter both course title and description.';
+        return;
+      }
+      this.contentSubmitError = '';
+      const newCourse = {
+        id: 'crs-' + Date.now(),
+        title: form.courseTitle.trim(),
+        track: form.courseTrack,
+        icon: 'school',
+        level: form.courseLevel,
+        description: form.courseDescription.trim(),
+        modules: 0,
+        enrolled: 0,
+        completion: 0,
+        status: 'draft' as const,
+        approvalStatus: 'pending' as const,
+        createdAt: new Date().toISOString().split('T')[0],
+        submittedBy: email
+      };
+      const current = [...this.contentService.lmsCourses, newCourse];
+      this.contentService.saveLmsCourses(current);
+    } else {
+      if (!form.moduleTitle.trim() || !form.moduleDescription.trim()) {
+        this.contentSubmitError = 'Please enter both module title and description.';
+        return;
+      }
+      this.contentSubmitError = '';
+      const newModule = {
+        id: 'mod-' + Date.now(),
+        courseId: '',
+        title: form.moduleTitle.trim(),
+        description: form.moduleDescription.trim(),
+        order: 1,
+        icon: 'view_list',
+        status: 'draft' as const,
+        submittedBy: email,
+        approvalStatus: 'pending' as const
+      };
+      const current = [...this.contentService.lmsModules, newModule];
+      this.contentService.saveLmsModules(current);
+    }
+    this.showContentSubmitSuccess = true;
+    this.contentSubmissionForm = { type: 'course', courseTitle: '', courseTrack: 'coding', courseLevel: 'Beginner', courseDescription: '', moduleTitle: '', moduleDescription: '' };
+    setTimeout(() => { this.showContentSubmitSuccess = false; }, 4000);
+  }
+
+  // ── Student Portal ──────────────────────────────────────────
   get studentProfile() {
-    const activeEmail = (localStorage.getItem('activeUserEmail') || '').trim();
+    const activeEmail = this.currentUserEmail;
     const activeUser = this.contentService.users.find(u => 
-      (u.email && u.email.trim().toLowerCase() === activeEmail.toLowerCase()) ||
-      (u.ticket && u.ticket.trim().toLowerCase() === activeEmail.toLowerCase()) ||
-      (u.id && u.id.trim().toLowerCase() === activeEmail.toLowerCase()) ||
-      (u.fullName && u.fullName.trim().toLowerCase() === activeEmail.toLowerCase())
+      (u.email && u.email.trim().toLowerCase() === activeEmail) ||
+      (u.ticket && u.ticket.trim().toLowerCase() === activeEmail) ||
+      (u.id && u.id.trim().toLowerCase() === activeEmail) ||
+      (u.fullName && u.fullName.trim().toLowerCase() === activeEmail)
     );
 
     if (activeUser) {
@@ -126,16 +277,12 @@ export class LmsComponent implements OnInit {
     };
   }
 
-  activeLessonCourse: any = null;
-  lessonSuccessMessage = '';
-
   getCourseProgress(courseTitle: string): number {
     const key = `ntic_progress_${this.studentProfile.id}_${courseTitle}`;
     const saved = localStorage.getItem(key);
     if (saved !== null) {
       return parseInt(saved, 10) || 0;
     }
-    // Only pre-seeded demo student NTIC-STU-0012 has default sample progress; all new registrations start at 0%
     if (this.studentProfile.id === 'NTIC-STU-0012') {
       return courseTitle.includes('Python') || courseTitle.includes('Arduino') || courseTitle.includes('Ethical') ? 42 : 15;
     }
@@ -302,7 +449,6 @@ export class LmsComponent implements OnInit {
 
   ngOnInit(): void {
     this.activeRoleId = localStorage.getItem('activeRoleId') || 'student';
-    // If student, change the active tab to courses
     if (this.activeRoleId === 'student') {
       this.studentActiveTab = 'courses';
     } else {
@@ -317,9 +463,10 @@ export class LmsComponent implements OnInit {
     }
     this.submissionError = '';
 
+    const subId = 'sub-' + Date.now();
     const currentSubmissions = [...this.contentService.submissions];
     const newSub = {
-      id: 'sub-' + Date.now(),
+      id: subId,
       student: this.studentProfile.name,
       school: this.studentProfile.school,
       assignment: this.newSubmission.assignmentName,
@@ -332,6 +479,28 @@ export class LmsComponent implements OnInit {
     };
     currentSubmissions.unshift(newSub);
     this.contentService.saveSubmissions(currentSubmissions);
+
+    const matchedAssignment = this.contentService.lmsAssignments.find(a =>
+      a.title.toLowerCase().includes(this.newSubmission.assignmentName.toLowerCase()) ||
+      this.newSubmission.assignmentName.toLowerCase().includes(a.title.toLowerCase())
+    );
+    const matchedCourse = this.contentService.lmsCourses.find(c =>
+      c.title === this.newSubmission.courseTitle
+    );
+    const currentLms = [...this.contentService.lmsSubmissions];
+    currentLms.unshift({
+      id: 'lms-' + subId,
+      assignmentId: matchedAssignment?.id || 'asgn-unknown',
+      courseId: matchedCourse?.id || matchedAssignment?.courseId || 'crs-unknown',
+      studentId: this.studentProfile.id,
+      studentName: this.studentProfile.name,
+      studentEmail: this.studentProfile.email,
+      submittedAt: new Date().toISOString(),
+      content: this.newSubmission.notes || `Submitted assignment: ${this.newSubmission.assignmentName}`,
+      url: '',
+      status: 'submitted',
+    });
+    this.contentService.saveLmsSubmissions(currentLms);
 
     const currentAudit = [...this.contentService.auditLogs];
     currentAudit.unshift({

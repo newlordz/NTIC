@@ -177,6 +177,14 @@
                 border-color 0.35s;
     transform-style: preserve-3d;
 
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 15;
+    }
+
     /* Card-number badge — top-right corner */
     .card-num {
       position: absolute;
@@ -201,7 +209,7 @@
     /* removed reading-progress and brace */
 
     /* Top gradient accent bar — grows from center on hover */
-    &::after {
+    .top-accent-bar {
       content: '';
       position: absolute;
       top: 0; left: 50%;
@@ -221,7 +229,15 @@
         0 0 20px rgba(0, 63, 135, 0.1);
       border-color: transparent;
 
-      &::after { width: 100%; }
+      &::before {
+        top: -12px;
+        bottom: -15px;
+        left: -12px;
+        right: -12px;
+        pointer-events: auto;
+      }
+
+      .top-accent-bar { width: 100%; }
 
       .card-img-wrap img {
         transform: scale(1.07);
@@ -1560,6 +1576,16 @@
       box-shadow: 
         0 15px 35px rgba(0, 63, 135, 0.06),
         0 0 25px rgba(var(--track-rgb), 0.12);
+
+      .dept-badge::before {
+        content: '';
+        position: absolute;
+        top: -30px;
+        bottom: -30px;
+        left: -30px;
+        right: -30px;
+        pointer-events: auto;
+      }
 
       &::before {
         width: 100%;
@@ -4754,35 +4780,113 @@
 .editor-actions button {
   display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.8rem 1.5rem;
-  border-radius: 6px;
+  gap: 0.6rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
   font-family: var(--font-sans);
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   cursor: pointer;
-  border: none;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: 1px solid transparent;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+  .material-symbols-outlined {
+    font-size: 20px;
+  }
 }
 .run-btn {
-  background: #238636;
-  color: #fff;
+  background: linear-gradient(135deg, #2ea043, #238636);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
   box-shadow: 0 4px 15px rgba(35, 134, 54, 0.4);
+
+  &:hover:not([disabled]) { 
+    background: linear-gradient(135deg, #3fb950, #2ea043); 
+    transform: translateY(-2px);
+    box-shadow: 0 6px 22px rgba(46, 160, 67, 0.6);
+  }
+
+  &[disabled] { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
 }
-.run-btn:hover:not([disabled]) { 
-  background: #2ea043; 
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(46, 160, 67, 0.6);
-}
-.run-btn[disabled] { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+
 .hint-btn {
-  background: transparent;
-  color: #8b949e;
-  border: 1px solid #30363d !important;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+
+  .material-symbols-outlined {
+    color: #eab308;
+  }
+
+  &:hover {
+    background: rgba(234, 179, 8, 0.12);
+    color: #fef08a;
+    border-color: rgba(234, 179, 8, 0.4) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(234, 179, 8, 0.15);
+  }
 }
-.hint-btn:hover {
-  background: #30363d;
-  color: #c9d1d9;
+
+.editor-actions .solution-btn {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.25) !important;
+  font-weight: 800 !important;
+
+  .material-symbols-outlined {
+    color: #0284c7 !important;
+  }
+
+  &:hover {
+    background: #f1f5f9 !important;
+    color: #0369a1 !important;
+    border-color: #38bdf8 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(56, 189, 248, 0.35) !important;
+  }
+}
+
+/* When switching to Light Mode: Button automatically switches to sleek Dark Slate */
+:host-context(body:not(.dark-theme)) .editor-actions .solution-btn {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2) !important;
+
+  .material-symbols-outlined {
+    color: #38bdf8 !important;
+  }
+
+  &:hover {
+    background: #1e293b !important;
+    color: #ffffff !important;
+    border-color: #38bdf8 !important;
+  }
+}
+
+.preview-btn {
+  background: rgba(255, 255, 255, 0.04);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+
+  .material-symbols-outlined {
+    color: #a855f7;
+  }
+
+  &:hover:not([disabled]) {
+    background: rgba(168, 85, 247, 0.12);
+    color: #e9d5ff;
+    border-color: rgba(168, 85, 247, 0.4) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(168, 85, 247, 0.18);
+  }
+
+  &[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+    .material-symbols-outlined { color: #64748b; }
+  }
 }
 
 .challenge-result {
@@ -5634,12 +5738,28 @@
   cursor: pointer;
   position: relative;
   z-index: 1;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+  }
 }
 .alumni-card:hover {
   transform: translateY(-12px) scale(1.02);
   box-shadow: 0 30px 60px rgba(0, 63, 135, 0.15);
   border-color: var(--primary-fixed-dim);
   z-index: 10;
+
+  &::before {
+    top: -20px;
+    bottom: -30px;
+    left: -20px;
+    right: -20px;
+    pointer-events: auto;
+  }
 }
 .alumni-avatar {
   width: 4.5rem;
@@ -8056,12 +8176,28 @@
   border: 1px solid var(--outline-variant);
   border-radius: 16px;
   overflow: hidden;
+  position: relative;
   transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
 
   &:hover {
     transform: translateY(-6px);
     box-shadow: 0 16px 40px rgba(0,0,0,0.15);
     border-color: var(--primary);
+
+    &::before {
+      top: -10px;
+      bottom: -15px;
+      left: -10px;
+      right: -10px;
+    }
   }
 
   .card-img-wrap {
@@ -8090,6 +8226,9 @@
 
   .card-content {
     padding: 16px;
+    position: relative;
+    z-index: 2;
+    pointer-events: auto;
     .story-date {
       display: flex;
       align-items: center;

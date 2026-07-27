@@ -31,7 +31,7 @@
   <!-- Stories Grid -->
   <div class="stories-section" *ngIf="filteredStories.length > 0; else emptyStories">
     <div class="stories-grid">
-      <div *ngFor="let story of filteredStories; let i = index"
+      <div *ngFor="let story of filteredStories; let i = index; trackBy: trackByStory"
            class="story-card"
            [class.featured]="i === 0">
         <div class="story-img-wrap">
@@ -52,6 +52,15 @@
           </div>
           <h3 class="story-title">{{ story.title }}</h3>
           <p class="story-excerpt">{{ story.body }}</p>
+          <div class="story-card-actions">
+            <button class="btn-story-act like-btn" [class.liked]="isLikedByUser(story)" (click)="likeStory(story.id, $event)">
+              <span class="material-symbols-outlined icon">{{ isLikedByUser(story) ? 'favorite' : 'favorite_border' }}</span>
+              <span class="count">{{ story.likes || 0 }}</span>
+            </button>
+            <button class="btn-story-act share-btn" [attr.data-share]="story.id" (click)="shareStory(story, $event)">
+              <span class="material-symbols-outlined icon">share</span>
+            </button>
+          </div>
           <button class="read-more-btn">
             <span>Read Full Story</span>
             <span class="material-symbols-outlined">arrow_right_alt</span>

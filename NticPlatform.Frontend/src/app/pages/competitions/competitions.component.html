@@ -1,4 +1,4 @@
-<div class="competitions-page">
+<div class="competitions-page" [class.panel-open]="isDetailPanelOpen">
 
   <!-- ═══════════════════════════════════
        CINEMATIC HERO
@@ -60,21 +60,65 @@
   </header>
 
   <!-- ═══════════════════════════════════
-       TOOLBAR + FILTERS
+       SMART TOOLBAR + FILTERS
   ═══════════════════════════════════ -->
   <div class="arena-toolbar">
+    <!-- Search -->
     <div class="search-wrap">
       <span class="material-symbols-outlined search-icon">search</span>
-      <input type="text" class="search-input" placeholder="Search cycles by title, track, category..."
+      <input type="text" class="search-input" placeholder="Search cycles..."
              [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()">
-      <span class="search-hint" *ngIf="filteredCompetitions.length">{{ filteredCompetitions.length }} result{{ filteredCompetitions.length !== 1 ? 's' : '' }}</span>
+      <span class="search-hint" *ngIf="searchQuery && filteredCompetitions.length">{{ filteredCompetitions.length }} result{{ filteredCompetitions.length !== 1 ? 's' : '' }}</span>
+    </div>
+
+    <!-- Filter pills: Tracks -->
+    <div class="filter-pill-group">
+      <span class="filter-label">Track:</span>
+      <button *ngFor="let t of tracks"
+              class="filter-pill"
+              [class.active]="activeTrackFilter === t"
+              (click)="setTrackFilter(t)">
+        <span class="material-symbols-outlined">{{ trackIcons[t] || 'label' }}</span>
+        {{ t === 'all' ? 'All' : (t | titlecase) }}
+      </button>
+    </div>
+
+    <!-- Filter pills: Types -->
+    <div class="filter-pill-group">
+      <span class="filter-label">Type:</span>
+      <button class="filter-pill" [class.active]="activeTypeFilter === 'all'" (click)="setTypeFilter('all')">
+        <span class="material-symbols-outlined">apps</span> All
+      </button>
+      <button *ngFor="let t of cycleTypes"
+              class="filter-pill"
+              [class.active]="activeTypeFilter === t"
+              (click)="setTypeFilter(t)">
+        <span class="material-symbols-outlined">{{ typeIcons[t] }}</span>
+        {{ getTypeLabel(t) }}
+      </button>
+    </div>
+
+    <!-- Right side: clear + view toggle -->
+    <div class="toolbar-right">
+      <button class="btn-clear-filters" *ngIf="hasActiveFilters" (click)="clearFilters()">
+        <span class="material-symbols-outlined">filter_list_off</span>
+        Clear Filters
+      </button>
+      <div class="view-toggle">
+        <button class="view-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'" title="Grid View">
+          <span class="material-symbols-outlined">grid_view</span>
+        </button>
+        <button class="view-btn" [class.active]="viewMode === 'board'" (click)="viewMode = 'board'" title="Board View">
+          <span class="material-symbols-outlined">view_kanban</span>
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- ═══════════════════════════════════
        BATTLE TABS
   ═══════════════════════════════════ -->
-  <nav class="arena-tabs">
+  <nav class="arena-tabs" *ngIf="viewMode === 'grid'">
     <button *ngFor="let tab of displayTabs"
             class="arena-tab"
             [class.active]="activeTab === tab.id"
@@ -86,12 +130,12 @@
   </nav>
 
   <!-- ═══════════════════════════════════
-       CHAMPIONSHIP GRID
+       CHAMPIONSHIP GRID VIEW
   ═══════════════════════════════════ -->
-  <div class="champ-grid" *ngIf="filteredCompetitions.length > 0; else emptyState">
+  <div class="champ-grid" *ngIf="viewMode === 'grid' && filteredCompetitions.length > 0; else gridEmpty">
     <div class="champ-card" *ngFor="let comp of filteredCompetitions; let idx = index"
          [style.--card-delay]="idx * 0.06"
-         (click)="openDetailModal(comp)">
+         (click)="openDetailPanel(comp)">
 
       <!-- Track stripe -->
       <div class="card-stripe" [style.background]="trackGradients[comp.track] || trackGradients['all']"></div>
@@ -115,10 +159,16 @@
         </div>
       </div>
 
+      <!-- Countdown chip -->
+      <div class="countdown-chip" *ngIf="showCountdown(comp)" [class]="countdownClass(comp.deadline)">
+        <span class="material-symbols-outlined">timer</span>
+        {{ getCountdown(comp.deadline) }}
+      </div>
+
       <!-- Card body -->
       <div class="card-body">
         <div class="card-meta-row">
-          <div class="card-meta" [style.color]="trackGradients[comp.track] ? '#fff' : 'var(--on-surface-variant)'">
+          <div class="card-meta">
             <div class="card-meta-icon" [style.background]="trackGradients[comp.track] || trackGradients['all']">
               <span class="material-symbols-outlined">{{ trackIcons[comp.track] || 'emoji_events' }}</span>
             </div>
@@ -158,30 +208,51 @@
         </div>
       </div>
 
+      <!-- Inline Quick Actions (hover reveal) -->
+      <div class="card-quick-actions" *ngIf="canManageCompetitions" (click)="$event.stopPropagation()">
+        <button class="quick-action-btn primary"
+                *ngIf="comp.status !== 'completed' && comp.status !== 'archived'"
+                (click)="quickAdvanceStatus(comp, $event)">
+          <span class="material-symbols-outlined">{{ quickIcon(comp.status) }}</span>
+          {{ quickLabel(comp.status) }}
+        </button>
+        <div class="quick-action-divider" *ngIf="comp.status !== 'completed' && comp.status !== 'archived'"></div>
+        <button class="quick-action-icon" (click)="$event.stopPropagation(); openEditModal(comp)" title="Edit">
+          <span class="material-symbols-outlined">edit</span>
+        </button>
+        <button class="quick-action-icon" (click)="$event.stopPropagation(); duplicateCompetition(comp)" title="Duplicate">
+          <span class="material-symbols-outlined">content_copy</span>
+        </button>
+        <button class="quick-action-icon danger" (click)="$event.stopPropagation(); confirmDelete(comp)" title="Delete">
+          <span class="material-symbols-outlined">delete_outline</span>
+        </button>
+      </div>
+
       <!-- Card footer -->
       <div class="card-footer">
         <span class="card-deadline">
           <span class="material-symbols-outlined">event</span>
           {{ comp.status === 'draft' ? 'Created ' + formatDate(comp.createdAt || '') : 'Deadline: ' + formatDate(comp.deadline) }}
         </span>
-        <button class="card-arrow" (click)="$event.stopPropagation(); openDetailModal(comp)">
+        <button class="card-arrow" (click)="$event.stopPropagation(); openDetailPanel(comp)">
           <span class="material-symbols-outlined">arrow_forward</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Empty state -->
-  <ng-template #emptyState>
-    <div class="arena-empty">
+  <!-- Grid empty state -->
+  <ng-template #gridEmpty>
+    <div class="arena-empty" *ngIf="viewMode === 'grid'">
       <div class="empty-graphic">
         <span class="material-symbols-outlined empty-main">emoji_events</span>
         <span class="material-symbols-outlined empty-sparkle">stars</span>
       </div>
       <h3>No Competition Cycles</h3>
-      <p *ngIf="canManageCompetitions">The arena awaits! Create your first championship cycle — qualifier, semi-final, or the grand finale.</p>
-      <p *ngIf="!canManageCompetitions">No cycles match your filters. Check back soon for upcoming challenges!</p>
-      <button *ngIf="canManageCompetitions" class="btn btn-primary" (click)="openCreateModal()">
+      <p *ngIf="hasActiveFilters">No cycles match your current filters. <button class="link-btn" (click)="clearFilters()">Clear filters</button></p>
+      <p *ngIf="!hasActiveFilters && canManageCompetitions">The arena awaits! Create your first championship cycle.</p>
+      <p *ngIf="!hasActiveFilters && !canManageCompetitions">No cycles match your filters. Check back soon for upcoming challenges!</p>
+      <button *ngIf="canManageCompetitions && !hasActiveFilters" class="btn btn-primary" (click)="openCreateModal()">
         <span class="material-symbols-outlined">add</span>
         Forge New Cycle
       </button>
@@ -189,7 +260,75 @@
   </ng-template>
 
   <!-- ═══════════════════════════════════
-       CREATE / EDIT MODAL
+       KANBAN BOARD VIEW
+  ═══════════════════════════════════ -->
+  <div class="kanban-board" *ngIf="viewMode === 'board'">
+    <div class="kanban-col" *ngFor="let col of boardColumns">
+      <div class="kanban-col-head" [style.--col-color]="col.color">
+        <span class="kanban-col-icon material-symbols-outlined">{{ col.icon }}</span>
+        <span class="kanban-col-label">{{ col.label }}</span>
+        <span class="kanban-col-count">{{ getColumnCycles(col.id).length }}</span>
+      </div>
+
+      <div class="kanban-col-body">
+        <!-- Empty column placeholder -->
+        <div class="kanban-empty-col" *ngIf="getColumnCycles(col.id).length === 0">
+          <span class="material-symbols-outlined">inbox</span>
+          <span>No cycles here</span>
+        </div>
+
+        <!-- Kanban card -->
+        <div class="kanban-card" *ngFor="let comp of getColumnCycles(col.id)"
+             (click)="openDetailPanel(comp)">
+          <div class="kanban-card-stripe" [style.background]="trackGradients[comp.track] || trackGradients['all']"></div>
+          <div class="kanban-card-body">
+            <div class="kanban-card-head">
+              <div class="kanban-card-icon" [style.background]="typeGradients[comp.type || 'qualifier']">
+                <span class="material-symbols-outlined">{{ typeIcons[comp.type || 'qualifier'] }}</span>
+              </div>
+              <div class="kanban-card-title-wrap">
+                <span class="kanban-card-title">{{ comp.title }}</span>
+                <span class="kanban-card-type">{{ getTypeLabel(comp.type || 'qualifier') }}</span>
+              </div>
+            </div>
+
+            <!-- Countdown -->
+            <div class="countdown-chip small" *ngIf="showCountdown(comp)" [class]="countdownClass(comp.deadline)">
+              <span class="material-symbols-outlined">timer</span>
+              {{ getCountdown(comp.deadline) }}
+            </div>
+
+            <div class="kanban-card-meta">
+              <span><span class="material-symbols-outlined">group</span> {{ comp.teams }}/{{ comp.maxTeams || '∞' }}</span>
+              <span *ngIf="comp.phases?.length"><span class="material-symbols-outlined">layers</span> {{ comp.phases?.length }} phases</span>
+              <span *ngIf="comp.prize"><span class="material-symbols-outlined">workspace_premium</span> {{ comp.prize }}</span>
+            </div>
+
+            <!-- Quick actions on kanban card -->
+            <div class="kanban-actions" *ngIf="canManageCompetitions" (click)="$event.stopPropagation()">
+              <button class="kanban-action-btn"
+                      *ngIf="comp.status !== 'completed' && comp.status !== 'archived'"
+                      (click)="quickAdvanceStatus(comp, $event)">
+                <span class="material-symbols-outlined">{{ quickIcon(comp.status) }}</span>
+                {{ quickLabel(comp.status) }}
+              </button>
+              <button class="kanban-action-icon" (click)="$event.stopPropagation(); openEditModal(comp)" title="Edit">
+                <span class="material-symbols-outlined">edit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add button at bottom of column -->
+        <button class="kanban-add-btn" *ngIf="canManageCompetitions && col.id === 'draft'" (click)="openCreateModal()">
+          <span class="material-symbols-outlined">add</span> New Cycle
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════
+       CREATE / EDIT MODAL (3-step wizard)
   ═══════════════════════════════════ -->
   <div class="modal-backdrop" *ngIf="isFormModalOpen" (click)="closeFormModal()"></div>
   <div class="forge-modal" *ngIf="isFormModalOpen" (click)="$event.stopPropagation()">
@@ -200,43 +339,80 @@
         </div>
         <h3>{{ editingCompetition ? 'Edit' : 'Forge New' }} Cycle</h3>
         <p>Set the stage for glory. Define the rules, timeline, and phases of this competition.</p>
-        <div class="forge-side-steps">
-          <div class="forge-step active">
-            <span class="forge-step-num">1</span>
-            <span>Identity</span>
+
+        <!-- Step indicators -->
+        <div class="forge-steps">
+          <div class="forge-step" [class.active]="formStep === 1" [class.done]="formStep > 1" (click)="formStep = 1">
+            <span class="forge-step-num">{{ formStep > 1 ? '✓' : '1' }}</span>
+            <div class="forge-step-info">
+              <span class="forge-step-name">Identity</span>
+              <span class="forge-step-desc">Name, type, track</span>
+            </div>
           </div>
-          <div class="forge-step">
-            <span class="forge-step-num">2</span>
-            <span>Timeline</span>
+          <div class="forge-step-connector"></div>
+          <div class="forge-step" [class.active]="formStep === 2" [class.done]="formStep > 2"
+               (click)="formStep > 1 ? formStep = 2 : null">
+            <span class="forge-step-num">{{ formStep > 2 ? '✓' : '2' }}</span>
+            <div class="forge-step-info">
+              <span class="forge-step-name">Timeline</span>
+              <span class="forge-step-desc">Dates & rewards</span>
+            </div>
           </div>
-          <div class="forge-step">
+          <div class="forge-step-connector"></div>
+          <div class="forge-step" [class.active]="formStep === 3"
+               (click)="formStep > 2 ? formStep = 3 : null">
             <span class="forge-step-num">3</span>
-            <span>Phases</span>
+            <div class="forge-step-info">
+              <span class="forge-step-name">Phases</span>
+              <span class="forge-step-desc">Competition stages</span>
+            </div>
           </div>
         </div>
+
+        <!-- Live preview -->
         <div class="forge-preview" *ngIf="formModel.title">
           <small>Preview</small>
           <strong>{{ formModel.title }}</strong>
           <span>{{ getTypeLabel(formModel.type || 'qualifier') }} · {{ formModel.track === 'all' ? 'Multi-Track' : (formModel.track | titlecase) }}</span>
+          <span *ngIf="formModel.phases?.length" class="preview-phases">
+            <span class="material-symbols-outlined">layers</span> {{ formModel.phases.length }} phase{{ formModel.phases.length !== 1 ? 's' : '' }}
+          </span>
         </div>
       </div>
     </div>
+
     <div class="forge-modal-main">
       <div class="forge-modal-header">
-        <h2>{{ editingCompetition ? 'Edit' : 'Create' }} Competition Cycle</h2>
+        <div class="forge-header-left">
+          <div class="forge-step-pills">
+            <span class="step-pill" [class.active]="formStep === 1" [class.done]="formStep > 1">Identity</span>
+            <span class="step-pill-sep">›</span>
+            <span class="step-pill" [class.active]="formStep === 2" [class.done]="formStep > 2">Timeline</span>
+            <span class="step-pill-sep">›</span>
+            <span class="step-pill" [class.active]="formStep === 3">Phases</span>
+          </div>
+          <h2>{{ editingCompetition ? 'Edit' : 'Create' }} Competition Cycle</h2>
+        </div>
         <button class="modal-close" (click)="closeFormModal()"><span class="material-symbols-outlined">close</span></button>
       </div>
+
       <div class="forge-modal-body">
 
-        <!-- Section: Identity -->
-        <div class="forge-section">
-          <div class="forge-section-title">
-            <span class="material-symbols-outlined">badge</span> Identity
-          </div>
-          <div class="form-row">
-            <div class="form-group flex-2">
-              <label>Title</label>
-              <input type="text" class="form-input" [(ngModel)]="formModel.title" placeholder="e.g. National Qualifier Round">
+        <!-- ── STEP 1: Identity ── -->
+        <div class="forge-step-panel" *ngIf="formStep === 1">
+          <div class="forge-section">
+            <div class="forge-section-title">
+              <span class="material-symbols-outlined">badge</span> Identity
+            </div>
+            <div class="form-row">
+              <div class="form-group flex-2">
+                <label>Title <span class="required">*</span></label>
+                <input type="text" class="form-input" [(ngModel)]="formModel.title" placeholder="e.g. National Qualifier Round">
+              </div>
+              <div class="form-group">
+                <label>Category</label>
+                <input type="text" class="form-input" [(ngModel)]="formModel.category" placeholder="e.g. Coding Challenge">
+              </div>
             </div>
             <div class="form-group">
               <label>Cycle Type</label>
@@ -247,124 +423,152 @@
                 </button>
               </div>
             </div>
-          </div>
-          <div class="form-group">
-            <label>Description</label>
-            <textarea class="form-text" [(ngModel)]="formModel.description" placeholder="Describe the arena — theme, challenge, and what competitors will face..." rows="2"></textarea>
-          </div>
-          <div class="form-row">
             <div class="form-group">
               <label>Track</label>
               <div class="track-pills">
                 <button *ngFor="let t of tracks" class="track-pill" [class.active]="formModel.track === t" (click)="formModel.track = t"
                         [style.--track-grad]="trackGradients[t]">
                   <span class="material-symbols-outlined">{{ trackIcons[t] }}</span>
-                  {{ t === 'all' ? 'All' : (t | titlecase) }}
+                  {{ t === 'all' ? 'All Tracks' : (t | titlecase) }}
                 </button>
               </div>
             </div>
             <div class="form-group">
-              <label>Category</label>
-              <input type="text" class="form-input" [(ngModel)]="formModel.category" placeholder="e.g. Coding Challenge">
+              <label>Description</label>
+              <textarea class="form-text" [(ngModel)]="formModel.description" placeholder="Describe the arena — theme, challenge, and what competitors will face..." rows="3"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group flex-2">
+                <label>Rules &amp; Format</label>
+                <textarea class="form-text" [(ngModel)]="formModel.rules" placeholder="Competition rules, eligibility, format..." rows="2"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Judging Criteria</label>
+                <textarea class="form-text" [(ngModel)]="formModel.criteria" placeholder="How will entries be judged?..." rows="2"></textarea>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Section: Timeline -->
-        <div class="forge-section">
-          <div class="forge-section-title">
-            <span class="material-symbols-outlined">calendar_month</span> Timeline &amp; Rewards
-          </div>
-          <div class="form-row triple">
-            <div class="form-group">
-              <label>Start Date</label>
-              <input type="date" class="form-input" [(ngModel)]="formModel.startDate">
+        <!-- ── STEP 2: Timeline & Rewards ── -->
+        <div class="forge-step-panel" *ngIf="formStep === 2">
+          <div class="forge-section">
+            <div class="forge-section-title">
+              <span class="material-symbols-outlined">calendar_month</span> Timeline &amp; Rewards
             </div>
-            <div class="form-group">
-              <label>End Date</label>
-              <input type="date" class="form-input" [(ngModel)]="formModel.endDate">
-            </div>
-            <div class="form-group">
-              <label>Deadline</label>
-              <input type="date" class="form-input" [(ngModel)]="formModel.deadline">
-            </div>
-          </div>
-          <div class="form-row triple">
-            <div class="form-group">
-              <label>Prize</label>
-              <input type="text" class="form-input" [(ngModel)]="formModel.prize" placeholder="e.g. ₵10,000 + Trophy">
-            </div>
-            <div class="form-group">
-              <label>Max Teams</label>
-              <input type="number" class="form-input" [(ngModel)]="formModel.maxTeams" min="1">
-            </div>
-            <div class="form-group">
-              <label>Status</label>
-              <select class="form-select" [(ngModel)]="formModel.status">
-                <option *ngFor="let s of statuses" [value]="s">{{ s.charAt(0).toUpperCase() + s.slice(1) }}</option>
-              </select>
+            <div class="date-range-visual">
+              <div class="date-range-block">
+                <label>Start Date</label>
+                <input type="date" class="form-input" [(ngModel)]="formModel.startDate">
+              </div>
+              <div class="date-range-arrow">
+                <span class="material-symbols-outlined">arrow_forward</span>
+              </div>
+              <div class="date-range-block">
+                <label>End Date</label>
+                <input type="date" class="form-input" [(ngModel)]="formModel.endDate">
+              </div>
+              <div class="date-range-block deadline-block">
+                <label>Registration Deadline</label>
+                <input type="date" class="form-input" [(ngModel)]="formModel.deadline">
+              </div>
             </div>
           </div>
-        </div>
-
-        <!-- Section: Rules & Criteria -->
-        <div class="forge-section">
-          <div class="forge-section-title">
-            <span class="material-symbols-outlined">gavel</span> Rules &amp; Criteria
-          </div>
-          <div class="form-row">
-            <div class="form-group flex-2">
-              <label>Rules &amp; Format</label>
-              <textarea class="form-text" [(ngModel)]="formModel.rules" placeholder="Competition rules, eligibility, format..." rows="2"></textarea>
+          <div class="forge-section">
+            <div class="forge-section-title">
+              <span class="material-symbols-outlined">workspace_premium</span> Rewards &amp; Capacity
             </div>
-            <div class="form-group">
-              <label>Judging Criteria</label>
-              <textarea class="form-text" [(ngModel)]="formModel.criteria" placeholder="How will entries be judged?..." rows="2"></textarea>
+            <div class="form-row triple">
+              <div class="form-group">
+                <label>Prize</label>
+                <input type="text" class="form-input" [(ngModel)]="formModel.prize" placeholder="e.g. ₵10,000 + Trophy">
+              </div>
+              <div class="form-group">
+                <label>Max Teams</label>
+                <input type="number" class="form-input" [(ngModel)]="formModel.maxTeams" min="1">
+              </div>
+              <div class="form-group">
+                <label>Status</label>
+                <select class="form-select" [(ngModel)]="formModel.status">
+                  <option *ngFor="let s of statuses" [value]="s">{{ s.charAt(0).toUpperCase() + s.slice(1) }}</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Section: Phases -->
-        <div class="forge-section">
-          <div class="forge-section-title">
-            <span class="material-symbols-outlined">layers</span> Phases
-          </div>
-          <div class="phases-builder">
-            <div class="phase-entry" *ngFor="let phase of formModel.phases; let i = index">
-              <div class="phase-entry-indicator" [style.background]="phaseColors[phase.type] || '#94a3b8'"></div>
-              <div class="phase-entry-body">
-                <div class="phase-entry-head">
-                  <strong>{{ phase.name }}</strong>
-                  <span class="phase-entry-type">{{ getTypeLabel(phase.type) }}</span>
+        <!-- ── STEP 3: Phases ── -->
+        <div class="forge-step-panel" *ngIf="formStep === 3">
+          <div class="forge-section">
+            <div class="forge-section-title">
+              <span class="material-symbols-outlined">layers</span> Phases
+              <span class="forge-section-hint">{{ formModel.phases?.length || 0 }} defined</span>
+            </div>
+
+            <!-- Phase quick templates -->
+            <div class="phase-templates">
+              <span class="phase-templates-label">Quick Templates:</span>
+              <button *ngFor="let tpl of phaseTemplates"
+                      class="phase-tpl-btn"
+                      (click)="applyPhaseTemplate(tpl.id)">
+                <span class="material-symbols-outlined">{{ tpl.icon }}</span>
+                {{ tpl.label }}
+              </button>
+            </div>
+
+            <div class="phases-builder">
+              <div class="phase-entry" *ngFor="let phase of formModel.phases; let i = index">
+                <div class="phase-entry-indicator" [style.background]="phaseColors[phase.type] || '#94a3b8'"></div>
+                <div class="phase-entry-body">
+                  <div class="phase-entry-head">
+                    <strong>{{ phase.name }}</strong>
+                    <span class="phase-entry-type" [style.color]="phaseColors[phase.type]">{{ phase.type | titlecase }}</span>
+                  </div>
+                  <span class="phase-entry-dates" *ngIf="phase.startDate || phase.endDate">{{ formatDate(phase.startDate) }} — {{ formatDate(phase.endDate) }}</span>
+                  <span class="phase-entry-dates muted" *ngIf="!phase.startDate && !phase.endDate">Dates not set</span>
                 </div>
-                <span class="phase-entry-dates">{{ formatDate(phase.startDate) }} — {{ formatDate(phase.endDate) }}</span>
+                <span class="phase-entry-status" [style.background]="(statusColors[phase.status] || '#94a3b8') + '18'" [style.color]="statusColors[phase.status] || '#94a3b8'">
+                  {{ phase.status | titlecase }}
+                </span>
+                <div class="phase-entry-actions">
+                  <button class="btn-icon" (click)="openPhaseModal(phase, i)"><span class="material-symbols-outlined">edit</span></button>
+                  <button class="btn-icon danger" (click)="removePhase(i)"><span class="material-symbols-outlined">close</span></button>
+                </div>
               </div>
-              <span class="phase-entry-status" [style.background]="(statusColors[phase.status] || '#94a3b8') + '18'" [style.color]="statusColors[phase.status] || '#94a3b8'">
-                {{ phase.status | titlecase }}
-              </span>
-              <div class="phase-entry-actions">
-                <button class="btn-icon" (click)="openPhaseModal(phase, i)"><span class="material-symbols-outlined">edit</span></button>
-                <button class="btn-icon danger" (click)="removePhase(i)"><span class="material-symbols-outlined">close</span></button>
+              <div class="phase-add-hint" *ngIf="!formModel.phases?.length">
+                <span class="material-symbols-outlined">add_circle</span>
+                <span>Use a template above or add phases manually below.</span>
               </div>
+              <button class="btn btn-subtle btn-sm" (click)="openPhaseModal()">
+                <span class="material-symbols-outlined">add</span>
+                Add Phase Manually
+              </button>
             </div>
-            <div class="phase-add-hint" *ngIf="!formModel.phases?.length">
-              <span class="material-symbols-outlined">add_circle</span>
-              <span>No phases yet — define registration, submission, judging, and results windows.</span>
-            </div>
-            <button class="btn btn-subtle btn-sm" (click)="openPhaseModal()">
-              <span class="material-symbols-outlined">add</span>
-              Add Phase
-            </button>
           </div>
         </div>
 
       </div>
+
+      <!-- Footer with step navigation -->
       <div class="forge-modal-footer">
-        <button class="btn btn-ghost" (click)="closeFormModal()">Cancel</button>
-        <button class="btn btn-primary" (click)="saveCompetition()" [disabled]="!formModel.title">
-          <span class="material-symbols-outlined">{{ editingCompetition ? 'save' : 'add_circle' }}</span>
-          {{ editingCompetition ? 'Save Changes' : 'Launch Cycle' }}
+        <button class="btn btn-ghost" (click)="formStep > 1 ? prevStep() : closeFormModal()">
+          <span class="material-symbols-outlined">{{ formStep > 1 ? 'arrow_back' : 'close' }}</span>
+          {{ formStep > 1 ? 'Back' : 'Cancel' }}
         </button>
+        <div class="footer-step-dots">
+          <span class="footer-dot" [class.active]="formStep === 1"></span>
+          <span class="footer-dot" [class.active]="formStep === 2"></span>
+          <span class="footer-dot" [class.active]="formStep === 3"></span>
+        </div>
+        <div class="footer-right-btns">
+          <button class="btn btn-primary" *ngIf="formStep < 3" (click)="nextStep()" [disabled]="!canAdvanceStep()">
+            Next <span class="material-symbols-outlined">arrow_forward</span>
+          </button>
+          <button class="btn btn-primary" *ngIf="formStep === 3" (click)="saveCompetition()" [disabled]="!formModel.title">
+            <span class="material-symbols-outlined">{{ editingCompetition ? 'save' : 'add_circle' }}</span>
+            {{ editingCompetition ? 'Save Changes' : 'Launch Cycle' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -426,13 +630,13 @@
   </div>
 
   <!-- ═══════════════════════════════════
-       DETAIL MODAL
+       DETAIL SIDE PANEL
   ═══════════════════════════════════ -->
-  <div class="modal-backdrop" *ngIf="isDetailModalOpen" (click)="closeDetailModal()"></div>
-  <div class="detail-modal" *ngIf="isDetailModalOpen && selectedCompetition" (click)="$event.stopPropagation()">
+  <div class="side-panel-backdrop" *ngIf="isDetailPanelOpen" (click)="closeDetailPanel()"></div>
+  <div class="detail-panel" [class.open]="isDetailPanelOpen" *ngIf="selectedCompetition">
     <div class="detail-hero" [style.background]="typeGradients[selectedCompetition.type || 'qualifier']">
       <div class="detail-hero-pattern"></div>
-      <button class="detail-hero-close" (click)="closeDetailModal()"><span class="material-symbols-outlined">close</span></button>
+      <button class="detail-hero-close" (click)="closeDetailPanel()"><span class="material-symbols-outlined">close</span></button>
       <div class="detail-hero-content">
         <div class="detail-hero-icon">
           <span class="material-symbols-outlined">{{ typeIcons[selectedCompetition.type || 'qualifier'] }}</span>
@@ -512,21 +716,15 @@
       <!-- Description / Rules / Criteria -->
       <div class="detail-content-grid" *ngIf="selectedCompetition.description || selectedCompetition.rules || selectedCompetition.criteria">
         <div class="detail-content-card" *ngIf="selectedCompetition.description">
-          <div class="detail-content-head">
-            <span class="material-symbols-outlined">description</span> Description
-          </div>
+          <div class="detail-content-head"><span class="material-symbols-outlined">description</span> Description</div>
           <p>{{ selectedCompetition.description }}</p>
         </div>
         <div class="detail-content-card" *ngIf="selectedCompetition.rules">
-          <div class="detail-content-head">
-            <span class="material-symbols-outlined">gavel</span> Rules &amp; Format
-          </div>
+          <div class="detail-content-head"><span class="material-symbols-outlined">gavel</span> Rules &amp; Format</div>
           <p>{{ selectedCompetition.rules }}</p>
         </div>
         <div class="detail-content-card" *ngIf="selectedCompetition.criteria">
-          <div class="detail-content-head">
-            <span class="material-symbols-outlined">fact_check</span> Judging Criteria
-          </div>
+          <div class="detail-content-head"><span class="material-symbols-outlined">fact_check</span> Judging Criteria</div>
           <p>{{ selectedCompetition.criteria }}</p>
         </div>
       </div>
@@ -579,7 +777,7 @@
         <span class="material-symbols-outlined">delete_outline</span>
         Delete Cycle
       </button>
-      <button class="btn btn-ghost" (click)="closeDetailModal()">Close</button>
+      <button class="btn btn-ghost" (click)="closeDetailPanel()">Close</button>
     </div>
   </div>
 

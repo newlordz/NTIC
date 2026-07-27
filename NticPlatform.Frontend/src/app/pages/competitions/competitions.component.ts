@@ -17,7 +17,7 @@ export class CompetitionsComponent implements OnInit {
   activeTab = 'all';
   searchQuery = '';
   isFormModalOpen = false;
-  isDetailModalOpen = false;
+  isDetailPanelOpen = false;
   isDeleteConfirmOpen = false;
   isPhaseModalOpen = false;
   editingCompetition: Competition | null = null;
@@ -25,6 +25,16 @@ export class CompetitionsComponent implements OnInit {
   deletingCompetition: Competition | null = null;
   editingPhase: CompetitionPhase | null = null;
   editingPhaseIndex = -1;
+
+  // View mode: 'grid' | 'board'
+  viewMode: 'grid' | 'board' = 'grid';
+
+  // Create/edit stepper
+  formStep = 1;
+
+  // Filter pill state
+  activeTrackFilter = 'all';
+  activeTypeFilter = 'all';
 
   formModel: any = {};
   phaseModel: any = {};
@@ -37,11 +47,55 @@ export class CompetitionsComponent implements OnInit {
     { id: 'completed', label: 'Completed', icon: 'check_circle' }
   ];
 
-  cycleTypes = ['qualifier', 'quarter-final', 'semi-final', 'final', 'championship'];
+  cycleTypes = ['qualifier', 'quarter-finals', 'finals'];
   tracks = ['all', 'coding', 'robotics', 'ai', 'cyber', 'innovation'];
   statuses: Competition['status'][] = ['draft', 'registration', 'active', 'completed', 'archived'];
   phaseTypes: CompetitionPhase['type'][] = ['registration', 'submission', 'judging', 'results', 'break'];
   studentRegisteredMap: Record<string, boolean> = {};
+
+  // Phase templates
+  phaseTemplates = [
+    {
+      id: 'standard',
+      label: 'Standard',
+      icon: 'view_timeline',
+      phases: [
+        { name: 'Registration Window', type: 'registration', status: 'pending', description: 'Teams sign up and confirm eligibility.' },
+        { name: 'Project Submission', type: 'submission', status: 'pending', description: 'Teams upload their solutions and presentations.' },
+        { name: 'Judging & Evaluation', type: 'judging', status: 'pending', description: 'Panel reviews and scores all submissions.' },
+        { name: 'Results Announcement', type: 'results', status: 'pending', description: 'Winners revealed and prizes awarded.' }
+      ]
+    },
+    {
+      id: 'speed',
+      label: 'Speed Round',
+      icon: 'bolt',
+      phases: [
+        { name: 'Submission Sprint', type: 'submission', status: 'pending', description: 'Quick-fire submission window.' },
+        { name: 'Results', type: 'results', status: 'pending', description: 'Instant leaderboard reveal.' }
+      ]
+    },
+    {
+      id: 'full',
+      label: 'Full Cycle',
+      icon: 'all_inclusive',
+      phases: [
+        { name: 'Registration Window', type: 'registration', status: 'pending', description: 'Teams sign up.' },
+        { name: 'Project Submission', type: 'submission', status: 'pending', description: 'Teams submit their work.' },
+        { name: 'Judging & Evaluation', type: 'judging', status: 'pending', description: 'Evaluation by the panel.' },
+        { name: 'Break & Deliberation', type: 'break', status: 'pending', description: 'Judges deliberate on final scores.' },
+        { name: 'Results Ceremony', type: 'results', status: 'pending', description: 'Grand reveal and prize ceremony.' }
+      ]
+    }
+  ];
+
+  // Kanban board columns
+  boardColumns = [
+    { id: 'draft', label: 'Drafts', icon: 'edit_note', color: '#94a3b8' },
+    { id: 'registration', label: 'Registration', icon: 'how_to_reg', color: '#f59e0b' },
+    { id: 'active', label: 'Active', icon: 'play_circle', color: '#003f87' },
+    { id: 'completed', label: 'Completed', icon: 'check_circle', color: '#10b981' }
+  ];
 
   get activeRoleId(): string {
     return (typeof localStorage !== 'undefined' && localStorage.getItem('activeRoleId')) || 'student';
@@ -64,6 +118,42 @@ export class CompetitionsComponent implements OnInit {
       return this.tabs.filter(t => t.id !== 'draft');
     }
     return this.tabs;
+  }
+
+  /** Returns cycles for a given board column (ignores tab/search for board view) */
+  getColumnCycles(statusId: string): Competition[] {
+    let list = this.competitions.filter(c => c.status === statusId);
+    if (this.isStudent) list = list.filter(c => c.status !== 'draft');
+    return list;
+  }
+
+  /** Deadline countdown string */
+  getCountdown(dateStr: string): string {
+    if (!dateStr) return '';
+    const diff = new Date(dateStr).getTime() - Date.now();
+    if (diff <= 0) return 'Overdue';
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days === 0) {
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      return hours <= 0 ? 'Due soon' : `${hours}h left`;
+    }
+    return `${days}d left`;
+  }
+
+  /** CSS class for countdown urgency */
+  countdownClass(dateStr: string): string {
+    if (!dateStr) return '';
+    const diff = new Date(dateStr).getTime() - Date.now();
+    if (diff <= 0) return 'overdue';
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days <= 2) return 'urgent';
+    if (days <= 7) return 'warning';
+    return 'normal';
+  }
+
+  /** Whether deadline countdown should be shown on this card */
+  showCountdown(comp: Competition): boolean {
+    return !!comp.deadline && (comp.status === 'active' || comp.status === 'registration');
   }
 
   registerStudentForCycle(comp: Competition): void {
@@ -96,6 +186,14 @@ export class CompetitionsComponent implements OnInit {
       filtered = filtered.filter(c => c.status === this.activeTab);
     }
 
+    if (this.activeTrackFilter !== 'all') {
+      filtered = filtered.filter(c => c.track === this.activeTrackFilter);
+    }
+
+    if (this.activeTypeFilter !== 'all') {
+      filtered = filtered.filter(c => c.type === this.activeTypeFilter);
+    }
+
     if (this.searchQuery.trim()) {
       const q = this.searchQuery.toLowerCase();
       filtered = filtered.filter(c =>
@@ -113,8 +211,38 @@ export class CompetitionsComponent implements OnInit {
     this.applyFilters();
   }
 
+  setTrackFilter(track: string): void {
+    this.activeTrackFilter = track;
+    this.applyFilters();
+  }
+
+  setTypeFilter(type: string): void {
+    this.activeTypeFilter = type;
+    this.applyFilters();
+  }
+
+  clearFilters(): void {
+    this.searchQuery = '';
+    this.activeTrackFilter = 'all';
+    this.activeTypeFilter = 'all';
+    this.applyFilters();
+  }
+
+  get hasActiveFilters(): boolean {
+    return this.searchQuery.trim().length > 0 ||
+      this.activeTrackFilter !== 'all' ||
+      this.activeTypeFilter !== 'all';
+  }
+
+  toggleViewMode(): void {
+    this.viewMode = this.viewMode === 'grid' ? 'board' : 'grid';
+  }
+
+  // ─── Create / Edit Modal ─────────────────────────────────────────────────
+
   openCreateModal(): void {
     this.editingCompetition = null;
+    this.formStep = 1;
     this.formModel = {
       title: '',
       description: '',
@@ -139,6 +267,7 @@ export class CompetitionsComponent implements OnInit {
 
   openEditModal(comp: Competition): void {
     this.editingCompetition = comp;
+    this.formStep = 1;
     this.formModel = {
       title: comp.title,
       description: comp.description || '',
@@ -159,11 +288,28 @@ export class CompetitionsComponent implements OnInit {
       phases: comp.phases || []
     };
     this.isFormModalOpen = true;
+    // Close side panel if open
+    if (this.isDetailPanelOpen) this.closeDetailPanel();
   }
 
   closeFormModal(): void {
     this.isFormModalOpen = false;
     this.editingCompetition = null;
+    this.formStep = 1;
+  }
+
+  canAdvanceStep(): boolean {
+    if (this.formStep === 1) return !!this.formModel.title?.trim();
+    if (this.formStep === 2) return true; // dates optional
+    return true;
+  }
+
+  nextStep(): void {
+    if (this.canAdvanceStep() && this.formStep < 3) this.formStep++;
+  }
+
+  prevStep(): void {
+    if (this.formStep > 1) this.formStep--;
   }
 
   saveCompetition(): void {
@@ -185,15 +331,38 @@ export class CompetitionsComponent implements OnInit {
     this.loadCompetitions();
   }
 
-  openDetailModal(comp: Competition): void {
-    this.selectedCompetition = comp;
-    this.isDetailModalOpen = true;
+  // ─── Apply Phase Template ─────────────────────────────────────────────────
+
+  applyPhaseTemplate(templateId: string): void {
+    const tpl = this.phaseTemplates.find(t => t.id === templateId);
+    if (!tpl) return;
+    const now = new Date();
+    this.formModel.phases = tpl.phases.map((p, i) => ({
+      ...p,
+      id: `phase-${Date.now()}-${i}`,
+      startDate: '',
+      endDate: ''
+    }));
   }
 
-  closeDetailModal(): void {
-    this.isDetailModalOpen = false;
+  // ─── Side-Panel Detail ────────────────────────────────────────────────────
+
+  openDetailPanel(comp: Competition): void {
+    this.selectedCompetition = comp;
+    this.isDetailPanelOpen = true;
+  }
+
+  closeDetailPanel(): void {
+    this.isDetailPanelOpen = false;
     this.selectedCompetition = null;
   }
+
+  // Keep backward compat (called from templates)
+  openDetailModal = this.openDetailPanel.bind(this);
+  closeDetailModal = this.closeDetailPanel.bind(this);
+  get isDetailModalOpen() { return this.isDetailPanelOpen; }
+
+  // ─── Delete ───────────────────────────────────────────────────────────────
 
   confirmDelete(comp: Competition): void {
     this.deletingCompetition = comp;
@@ -205,7 +374,7 @@ export class CompetitionsComponent implements OnInit {
       this.contentService.removeCompetition(this.deletingCompetition.id);
       this.deletingCompetition = null;
       this.isDeleteConfirmOpen = false;
-      this.closeDetailModal();
+      this.closeDetailPanel();
       this.loadCompetitions();
     }
   }
@@ -229,13 +398,38 @@ export class CompetitionsComponent implements OnInit {
 
   updateStatus(comp: Competition, newStatus: Competition['status']): void {
     this.contentService.updateCompetition({ ...comp, status: newStatus });
+    if (this.selectedCompetition?.id === comp.id) {
+      this.selectedCompetition = { ...comp, status: newStatus };
+    }
     this.loadCompetitions();
   }
 
-  getNextStatus(current: Competition['status']): Competition['status'] {
+  /** Quick advance status from card — used in board & grid inline action */
+  quickAdvanceStatus(comp: Competition, event: Event): void {
+    event.stopPropagation();
     const flow: Competition['status'][] = ['draft', 'registration', 'active', 'completed'];
-    const idx = flow.indexOf(current);
-    return idx > -1 && idx < flow.length - 1 ? flow[idx + 1] : current;
+    const idx = flow.indexOf(comp.status);
+    if (idx > -1 && idx < flow.length - 1) {
+      this.updateStatus(comp, flow[idx + 1]);
+    }
+  }
+
+  quickLabel(status: Competition['status']): string {
+    const map: Record<string, string> = {
+      draft: 'Open Registration',
+      registration: 'Activate',
+      active: 'Mark Complete'
+    };
+    return map[status] || '';
+  }
+
+  quickIcon(status: Competition['status']): string {
+    const map: Record<string, string> = {
+      draft: 'how_to_reg',
+      registration: 'play_circle',
+      active: 'check_circle'
+    };
+    return map[status] || '';
   }
 
   /* Phase management */
@@ -284,7 +478,7 @@ export class CompetitionsComponent implements OnInit {
 
     if (this.isFormModalOpen) {
       this.formModel.phases = phases;
-    } else if (this.isDetailModalOpen && this.selectedCompetition) {
+    } else if (this.isDetailPanelOpen && this.selectedCompetition) {
       const updated = { ...this.selectedCompetition, phases };
       this.contentService.updateCompetition(updated);
       this.selectedCompetition = updated;
@@ -302,7 +496,7 @@ export class CompetitionsComponent implements OnInit {
 
     if (this.isFormModalOpen) {
       this.formModel.phases = phases;
-    } else if (this.isDetailModalOpen && this.selectedCompetition) {
+    } else if (this.isDetailPanelOpen && this.selectedCompetition) {
       const updated = { ...this.selectedCompetition, phases };
       this.contentService.updateCompetition(updated);
       this.selectedCompetition = updated;
@@ -311,15 +505,12 @@ export class CompetitionsComponent implements OnInit {
 
   /* Helpers */
   getTypeLabel(type: string): string {
+    if (type === 'finals') return 'Finals (Championship)';
     return type.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   }
 
   getStatusClass(status: string): string {
     return `status-${status}`;
-  }
-
-  getPhaseTypeClass(type: string): string {
-    return `phase-${type}`;
   }
 
   formatDate(dateStr: string): string {
@@ -348,10 +539,8 @@ export class CompetitionsComponent implements OnInit {
   get typeIcons(): { [key: string]: string } {
     return {
       'qualifier': 'filter_1',
-      'quarter-final': 'filter_2',
-      'semi-final': 'filter_3',
-      'final': 'workspace_premium',
-      'championship': 'military_tech'
+      'quarter-finals': 'filter_2',
+      'finals': 'workspace_premium'
     };
   }
 
@@ -379,10 +568,12 @@ export class CompetitionsComponent implements OnInit {
   get typeGradients(): { [key: string]: string } {
     return {
       qualifier: 'linear-gradient(135deg, #003f87, #0056b3)',
+      'quarter-finals': 'linear-gradient(135deg, #006a60, #007166)',
+      'finals': 'linear-gradient(135deg, #f59e0b, #ef4444)',
       'quarter-final': 'linear-gradient(135deg, #006a60, #007166)',
       'semi-final': 'linear-gradient(135deg, #f59e0b, #f97316)',
-      final: 'linear-gradient(135deg, #ef4444, #ec4899)',
-      championship: 'linear-gradient(135deg, #f59e0b, #ef4444)'
+      'final': 'linear-gradient(135deg, #ef4444, #ec4899)',
+      'championship': 'linear-gradient(135deg, #f59e0b, #ef4444)'
     };
   }
 

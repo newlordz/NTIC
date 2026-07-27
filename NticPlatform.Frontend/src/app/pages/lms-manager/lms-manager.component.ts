@@ -430,11 +430,13 @@ export class LmsManagerComponent implements OnInit {
   }
 
   adminRevisionNotes = '';
+  gradeScore: number | null = null;
 
   // ── Submission Audit & Instructor Revision Desk ─────────────────────────
   openGradingModal(submission: LmsSubmission): void {
     this.activeSubmission = submission;
     this.adminRevisionNotes = '';
+    this.gradeScore = submission.score ?? null;
     this.isGradingModalOpen = true;
   }
 
@@ -442,6 +444,7 @@ export class LmsManagerComponent implements OnInit {
     this.isGradingModalOpen = false;
     this.activeSubmission = null;
     this.adminRevisionNotes = '';
+    this.gradeScore = null;
   }
 
   submitInstructorRegradeRequest(): void {
@@ -453,6 +456,12 @@ export class LmsManagerComponent implements OnInit {
   rejectSubmissionToStudent(): void {
     if (!this.activeSubmission || !this.adminRevisionNotes.trim()) return;
     this.contentService.rejectLmsSubmission(this.activeSubmission.id, this.adminRevisionNotes);
+    this.closeGradingModal();
+  }
+
+  gradeSubmission(): void {
+    if (!this.activeSubmission || this.gradeScore === null || this.gradeScore < 0 || this.gradeScore > 100) return;
+    this.contentService.gradeLmsSubmission(this.activeSubmission.id, this.gradeScore, this.adminRevisionNotes || 'Graded by admin. No additional notes.');
     this.closeGradingModal();
   }
 

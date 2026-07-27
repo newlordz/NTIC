@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, ViewChild, Renderer2 } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, ViewChild, Renderer2, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -874,7 +874,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     public themeService: ThemeService,
     public contentService: ContentService,
     private renderer: Renderer2,
-    private fileStorage: FileStorageService
+    private fileStorage: FileStorageService,
+    private cdr: ChangeDetectorRef
   ) {
     this.activeRoleId = '';
     const heroSlides = this.contentService.heroSlides.length > 0
@@ -3533,5 +3534,63 @@ for (let i = people.length - 1; i > 0; i--) {
         el.style.fillOpacity = '0.75';
       }
     });
+  }
+
+  get currentUserEmail(): string {
+    const u = localStorage.getItem('activeUserEmail');
+    if (u && u.trim()) return u.trim().toLowerCase();
+    let guestId = localStorage.getItem('ntic_guest_device_id');
+    if (!guestId) {
+      guestId = 'guest_' + Math.random().toString(36).substring(2, 9);
+      localStorage.setItem('ntic_guest_device_id', guestId);
+    }
+    return guestId;
+  }
+
+  trackByStory(index: number, story: any): string {
+    return story.id;
+  }
+
+  isLikedByUser(story: any): boolean {
+    return story.likedBy && story.likedBy.includes(this.currentUserEmail);
+  }
+
+  likeStory(storyId: string, event?: MouseEvent): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const userEmail = this.currentUserEmail;
+    this.contentService.toggleLikeStory(storyId, userEmail);
+    const story = this.contentService.championshipStories.find(s => s.id === storyId);
+    const liked = story && this.isLikedByUser(story);
+    this.cdr.detectChanges();
+  }
+
+  async shareStory(story: any, event?: MouseEvent): Promise<void> {
+    event?.stopPropagation();
+    const url = `${window.location.origin}/#/news?story=${story.id}`;
+    const shareData = {
+      title: story.title,
+      text: story.body,
+      url: url,
+    };
+    
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch {}
+    }
+    
+    try {
+      await navigator.clipboard.writeText(`${story.title}\n${story.body}\n\n${url}`);
+      const buttons = document.querySelectorAll<HTMLButtonElement>(`[data-share="${story.id}"]`);
+      buttons.forEach(btn => {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">check</span>';
+        setTimeout(() => { btn.innerHTML = orig; }, 2000);
+      });
+    } catch {}
   }
 }

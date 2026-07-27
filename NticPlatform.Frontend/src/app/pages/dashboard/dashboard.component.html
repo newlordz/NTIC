@@ -950,6 +950,10 @@
             <div class="cms-story-meta">{{ story.date }} · {{ story.readTime }}</div>
             <div class="cms-story-title">{{ story.title }}</div>
             <div class="cms-story-body">{{ story.body }}</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11px;color:var(--on-surface-variant);">
+              <span class="material-symbols-outlined" style="font-size:13px;">favorite</span>
+              <span>{{ story.likes || 0 }} likes</span>
+            </div>
           </div>
           <div class="cms-item-actions">
             <button class="cms-edit-btn" (click)="openEditStoryForm(story)" title="Edit">
@@ -2870,6 +2874,92 @@
       <div class="ticket-modal-actions">
         <span class="role-users-count">{{ roleModalUsers.length }} user{{ roleModalUsers.length !== 1 ? 's' : '' }}</span>
         <button class="btn btn-primary" (click)="closeRoleModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       CUSTOM CREDENTIALS & APPROVAL SUCCESS MODAL (WITH ONE-CLICK COPY)
+       ══════════════════════════════════════════════════════════════ -->
+  <div class="custom-modal-backdrop" *ngIf="credentialsModal?.isOpen" (click)="proceedFromCredentialsModal()">
+    <div class="custom-credentials-modal" (click)="$event.stopPropagation()">
+      <div class="cred-modal-header">
+        <div class="cred-badge-icon">
+          <span class="material-symbols-outlined">verified_user</span>
+        </div>
+        <h3 class="cred-modal-title">{{ credentialsModal?.title }}</h3>
+        <p class="cred-modal-subtitle">{{ credentialsModal?.subtitle }}</p>
+      </div>
+
+      <div class="cred-cards-container">
+        <div class="cred-item-card">
+          <div class="cred-item-meta">
+            <span class="cred-label">YOUR ACCESS PASS</span>
+            <span class="cred-tag">OFFICIAL ID</span>
+          </div>
+          <div class="cred-value-row">
+            <code class="cred-code-text">{{ credentialsModal?.accessPass }}</code>
+            <button class="btn-cred-copy" [class.copied]="credentialsModal?.copiedPass" (click)="copyModalText('pass')">
+              <span class="material-symbols-outlined icon">{{ credentialsModal?.copiedPass ? 'check_circle' : 'content_copy' }}</span>
+              <span>{{ credentialsModal?.copiedPass ? 'Copied!' : 'Copy Pass' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="cred-item-card">
+          <div class="cred-item-meta">
+            <span class="cred-label">SECURITY PIN / OTP CODE</span>
+            <span class="cred-tag pin">SECURITY CODE</span>
+          </div>
+          <div class="cred-value-row">
+            <code class="cred-code-text pin-code">{{ credentialsModal?.pin }}</code>
+            <button class="btn-cred-copy" [class.copied]="credentialsModal?.copiedPin" (click)="copyModalText('pin')">
+              <span class="material-symbols-outlined icon">{{ credentialsModal?.copiedPin ? 'check_circle' : 'content_copy' }}</span>
+              <span>{{ credentialsModal?.copiedPin ? 'Copied!' : 'Copy Code' }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cred-copy-all-wrapper">
+        <button class="btn-copy-all" [class.copied]="credentialsModal?.copiedAll" (click)="copyModalText('all')">
+          <span class="material-symbols-outlined">{{ credentialsModal?.copiedAll ? 'done_all' : 'inventory_2' }}</span>
+          <span>{{ credentialsModal?.copiedAll ? 'All Credentials Copied to Clipboard!' : 'Copy Both Credentials (Pass + Code)' }}</span>
+        </button>
+      </div>
+
+      <div class="cred-info-banner" *ngIf="credentialsModal?.extraInfo">
+        <span class="material-symbols-outlined info-icon">info</span>
+        <span>{{ credentialsModal?.extraInfo }}</span>
+      </div>
+
+      <div class="cred-modal-footer">
+        <button class="btn-cred-proceed" (click)="proceedFromCredentialsModal()">
+          <span>Dismiss</span>
+          <span class="material-symbols-outlined">check</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       CUSTOM SLEEK ALERT NOTIFICATION MODAL
+       ══════════════════════════════════════════════════════════════ -->
+  <div class="custom-modal-backdrop" *ngIf="customAlertModal?.isOpen" (click)="closeCustomAlert()">
+    <div class="custom-alert-card" [ngClass]="customAlertModal?.type || 'info'" (click)="$event.stopPropagation()">
+      <div class="custom-alert-icon-wrap">
+        <span class="material-symbols-outlined">
+          {{ customAlertModal?.type === 'success' ? 'check_circle' :
+             customAlertModal?.type === 'warning' ? 'warning' :
+             customAlertModal?.type === 'error' ? 'error' : 'info' }}
+        </span>
+      </div>
+      <div class="custom-alert-content">
+        <h4 class="custom-alert-title">{{ customAlertModal?.title }}</h4>
+        <p class="custom-alert-message">{{ customAlertModal?.message }}</p>
+      </div>
+      <div class="custom-alert-actions">
+        <button class="btn-alert-dismiss" (click)="closeCustomAlert()">Got It</button>
       </div>
     </div>
   </div>

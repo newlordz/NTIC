@@ -10,6 +10,8 @@ export interface ChampionshipStory {
   readTime: string;
   title: string;
   body: string;
+  likes?: number;
+  likedBy?: string[];
 }
 
 export interface HallOfFameEntry {
@@ -454,37 +456,43 @@ export class ContentService {
       id: 'story-1', tag: 'Robotics', tagColor: 'robotics',
       image: 'assets/ntic_image_1.jpeg', date: 'June 28, 2026', readTime: '5 min',
       title: 'Achimota School Builds Autonomous Rover for Desert Navigation',
-      body: 'Team Volta from Achimota School developed an autonomous rover capable of navigating uneven terrain using computer vision and LIDAR sensors, winning the Regional Robotics Qualifier in Greater Accra.'
+      body: 'Team Volta from Achimota School developed an autonomous rover capable of navigating uneven terrain using computer vision and LIDAR sensors, winning the Regional Robotics Qualifier in Greater Accra.',
+      likes: 24, likedBy: []
     },
     {
       id: 'story-2', tag: 'Coding', tagColor: 'coding',
       image: 'assets/ntic_image_2.jpeg', date: 'June 22, 2026', readTime: '4 min',
       title: "Wesley Girls' Coding Team Ships a Full-Stack Health App in 48 Hours",
-      body: "During the national hackathon sprint, a 4-student team from Wesley Girls' built and deployed a telemedicine platform connecting rural clinics with urban doctors — all within a 48-hour deadline."
+      body: "During the national hackathon sprint, a 4-student team from Wesley Girls' built and deployed a telemedicine platform connecting rural clinics with urban doctors — all within a 48-hour deadline.",
+      likes: 18, likedBy: []
     },
     {
       id: 'story-3', tag: 'Cybersecurity', tagColor: 'cyber',
       image: 'assets/ntic_image_3.jpeg', date: 'June 15, 2026', readTime: '6 min',
       title: 'PRESEC Legon Students Simulate a Nation-State Cyber Attack in Finals',
-      body: 'The cybersecurity track finale saw PRESEC Legon team execute a realistic nation-state attack simulation, demonstrating advanced penetration testing skills and incident response protocols.'
+      body: 'The cybersecurity track finale saw PRESEC Legon team execute a realistic nation-state attack simulation, demonstrating advanced penetration testing skills and incident response protocols.',
+      likes: 31, likedBy: []
     },
     {
       id: 'story-4', tag: 'AI', tagColor: 'ai',
       image: 'assets/ntic_image_4.jpeg', date: 'June 10, 2026', readTime: '5 min',
       title: 'Opoku War School AI Team Trains a Local Language Speech Recognition Model',
-      body: 'Using transfer learning on a small dataset, students from Opoku War School built a Twi speech recognition model achieving 87% accuracy — a breakthrough for local language AI in Ghana.'
+      body: 'Using transfer learning on a small dataset, students from Opoku War School built a Twi speech recognition model achieving 87% accuracy — a breakthrough for local language AI in Ghana.',
+      likes: 15, likedBy: []
     },
     {
       id: 'story-5', tag: 'Innovation', tagColor: 'innovation',
       image: 'assets/ntic_image_5.jpeg', date: 'June 5, 2026', readTime: '4 min',
       title: "St. Augustine's Invents a Solar-Powered Water Purification System",
-      body: "Team Innovation from St. Augustine's College designed a low-cost solar-powered water purification unit capable of serving 200 households, addressing clean water access in rural communities."
+      body: "Team Innovation from St. Augustine's College designed a low-cost solar-powered water purification unit capable of serving 200 households, addressing clean water access in rural communities.",
+      likes: 12, likedBy: []
     },
     {
       id: 'story-6', tag: 'Robotics', tagColor: 'robotics',
       image: 'assets/ntic_image_1.jpeg', date: 'May 30, 2026', readTime: '3 min',
       title: "Adisadel College Robotics Team Wins People's Choice Award",
-      body: "Their humanoid robot performing traditional Ghanaian dance moves captured hearts at the national exhibition, earning the People's Choice Award alongside a top-3 finish in the main robotics competition."
+      body: "Their humanoid robot performing traditional Ghanaian dance moves captured hearts at the national exhibition, earning the People's Choice Award alongside a top-3 finish in the main robotics competition.",
+      likes: 20, likedBy: []
     }
   ];
 
@@ -605,7 +613,7 @@ export class ContentService {
       }
 
       // Large datasets — load from localStorage first (sync), then async upgrade to IndexedDB
-      this.users = this.loadKeySync('users', this.defaultUsers);
+      this.users = this.deduplicateUsers(this.loadKeySync('users', this.defaultUsers));
       this.pendingApprovals = this.loadKeySync('pendingApprovals', this.defaultPendingApprovals);
       this.rejectedApprovals = this.loadKeySync('rejectedApprovals', this.defaultRejectedApprovals);
       this.approvedApprovals = this.loadKeySync('approvedApprovals', this.defaultApprovedApprovals);
@@ -785,6 +793,29 @@ export class ContentService {
     }
   }
 
+  toggleLikeStory(storyId: string, userEmail: string): void {
+    const idx = this.championshipStories.findIndex(s => s.id === storyId);
+    if (idx === -1) return;
+    const story = { ...this.championshipStories[idx] };
+    const liked = story.likedBy ? [...story.likedBy] : [];
+    const email = userEmail.trim().toLowerCase();
+    
+    if (liked.includes(email)) {
+      // Unlike: remove user and decrement
+      story.likedBy = liked.filter(e => e !== email);
+      story.likes = Math.max(0, (story.likes || 1) - 1);
+    } else {
+      // Like: add user and increment
+      story.likedBy = [...liked, email];
+      story.likes = (story.likes || 0) + 1;
+    }
+    
+    const updated = [...this.championshipStories];
+    updated[idx] = story;
+    this.championshipStories = updated;
+    this.saveState('championshipStories', this.championshipStories);
+  }
+
   // ── CRUD Hall of Fame ─────────────────────────────────────────────
   
   get activeHallOfFameEntries(): HallOfFameEntry[] {
@@ -880,8 +911,23 @@ export class ContentService {
 
   // ── User Management Helpers ─────────────────────────────────────
   
+  private deduplicateUsers(loadedUsers: User[]): User[] {
+    const uniqueUsers: User[] = [];
+    const seenEmails = new Set<string>();
+    for (const u of loadedUsers) {
+      const e = u.email?.trim().toLowerCase();
+      if (e && seenEmails.has(e)) {
+        console.warn('[ContentService] Filtered duplicate user account with email:', e);
+        continue;
+      }
+      if (e) seenEmails.add(e);
+      uniqueUsers.push(u);
+    }
+    return uniqueUsers;
+  }
+
   saveUsers(usersList: User[]): void {
-    this.users = usersList;
+    this.users = this.deduplicateUsers(usersList);
     this.saveState('users', this.users);
   }
 

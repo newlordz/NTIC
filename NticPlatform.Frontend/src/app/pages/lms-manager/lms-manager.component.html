@@ -829,12 +829,20 @@
         <hr style="margin: 20px 0; border-color: var(--border-color);">
 
         <div class="form-group">
-          <label>Admin Notes / Instructions *</label>
+          <label>Score (0 – 100)</label>
+          <input class="form-control" type="number" min="0" max="100" [(ngModel)]="gradeScore" placeholder="Enter score">
+        </div>
+
+        <div class="form-group">
+          <label>Admin Notes / Feedback *</label>
           <textarea [(ngModel)]="adminRevisionNotes" rows="3" placeholder="Enter your instructions for the instructor or student..."></textarea>
         </div>
       </div>
       <div class="modal-footer" style="gap: 8px;">
         <button class="btn btn-outline" (click)="closeGradingModal()">Close</button>
+        <button class="btn btn-success" (click)="gradeSubmission()" [disabled]="gradeScore === null || gradeScore < 0 || gradeScore > 100">
+          <span class="material-symbols-outlined">task_alt</span> Grade &amp; Score
+        </button>
         <button class="btn btn-danger" (click)="rejectSubmissionToStudent()" [disabled]="!adminRevisionNotes.trim()">
           <span class="material-symbols-outlined">undo</span> Reject &mdash; Return to Student
         </button>

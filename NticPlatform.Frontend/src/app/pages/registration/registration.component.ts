@@ -21,7 +21,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   schoolStep = 1; // 1, 2, or 3
   maxSchoolStepReached = 1;
   studentRegMode = 'group';
-  selectedTrack = 'robotics';
+  selectedTrack = '';
   showAdminPaths = false;
 
   verificationMethod = 'email'; // 'email' | 'mobile'
@@ -142,9 +142,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     id: '',
     email: '',
     dob: '',
-    gender: 'Male',
+    gender: '',
     school: '',
-    class: 'Form 1',
+    class: '',
     guardian: '',
     track: 'coding',
     skills: {
@@ -156,8 +156,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   teamForm = {
     name: '',
-    school: 'Achimota SHS',
-    track: 'Coding',
+    school: '',
+    track: '',
     leadName: '',
     leadEmail: '',
     member2Name: '',
@@ -1364,11 +1364,11 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         id: '',
         email: '',
         dob: '',
-        gender: 'Male',
+        gender: '',
         school: '',
-        class: 'Form 1',
+        class: '',
         guardian: '',
-        track: 'coding',
+        track: '',
         skills: {
           alg: 'intermediate',
           hw: 'novice',
@@ -1503,11 +1503,11 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       id: '',
       email: '',
       dob: '',
-      gender: 'Male',
+      gender: '',
       school: '',
-      class: 'Form 1',
+      class: '',
       guardian: '',
-      track: 'coding',
+      track: '',
       skills: {
         alg: 'intermediate',
         hw: 'novice',
@@ -1517,8 +1517,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
     this.teamForm = {
       name: '',
-      school: 'Achimota SHS',
-      track: 'Coding',
+      school: '',
+      track: '',
       leadName: '',
       leadEmail: '',
       member2Name: '',
@@ -1593,7 +1593,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         break;
       case 'student':
         this.studentForm = { ...this.studentForm, ...draft.data };
-        this.selectedTrack = draft.data?.selectedTrack || 'coding';
+        this.selectedTrack = draft.data?.selectedTrack || '';
         break;
       case 'judge':
         this.judgeForm = { ...this.judgeForm, ...draft.data };
@@ -1628,6 +1628,22 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   async submitRegistration(): Promise<void> {
     if (this.isSubmitting) return;
     if (!this.validateCurrentTab()) return;
+
+    // Final pre-submit guard against duplicate emails across active/pending accounts
+    let targetEmail = '';
+    if (this.activeTab === 'school') targetEmail = this.schoolForm.repEmail || this.schoolForm.email;
+    else if (this.activeTab === 'instructor') targetEmail = this.instructorForm.email;
+    else if (this.activeTab === 'judge') targetEmail = this.judgeForm.email;
+    else if (this.activeTab === 'sponsor') targetEmail = this.sponsorForm.email;
+    else if (this.activeTab === 'team') targetEmail = this.teamForm.leadEmail;
+
+    if (targetEmail && this.contentService.isEmailTaken(targetEmail)) {
+      this.isSubmitting = false;
+      this.isPreviewModalOpen = false;
+      this.showCustomAlert(`The email address "${targetEmail}" is already registered to an active account or pending request. Multiple accounts cannot be created using the same email address.`, 'Email Already Registered', 'warning');
+      return;
+    }
+
     this.isSubmitting = true;
 
     // Capture school logo file ID (not base64 — too large for storage)
