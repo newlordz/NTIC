@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService, SponsorPayment, User } from '../../services/content.service';
+import { DialogService } from '../../services/dialog.service';
 
 @Component({
   selector: 'app-sponsors',
@@ -11,6 +12,7 @@ import { ContentService, SponsorPayment, User } from '../../services/content.ser
   styleUrl: './sponsors.component.scss'
 })
 export class SponsorsComponent implements OnInit {
+  constructor(public contentService: ContentService, public dialogService: DialogService) {}
   isEditProfileModalOpen = false;
   profileEditForm = {
     organization: '',
@@ -42,8 +44,6 @@ export class SponsorsComponent implements OnInit {
 
   isSubmittingPayment = false;
   paymentSuccessMessage = '';
-
-  constructor(public contentService: ContentService) {}
 
   ngOnInit(): void {}
 
@@ -170,7 +170,7 @@ export class SponsorsComponent implements OnInit {
 
   submitPayment(): void {
     if (!this.paymentForm.amount.trim() || !this.paymentForm.refNo.trim()) {
-      alert('Please enter both the payment amount and reference number.');
+      this.dialogService.toast('Please enter both the payment amount and reference number.', 'warning');
       return;
     }
 
@@ -224,6 +224,10 @@ export class SponsorsComponent implements OnInit {
   }
 
   downloadCertificate(): void {
+    this.viewCSRCertificate();
+  }
+
+  viewCSRCertificate(): void {
     const sponsor = this.loggedInSponsor;
     const orgName = this.getSponsorName(sponsor);
     const repName = sponsor?.fullName || 'Corporate Representative';
@@ -233,7 +237,7 @@ export class SponsorsComponent implements OnInit {
 
     const certWindow = window.open('', '_blank', 'width=950,height=700');
     if (!certWindow) {
-      alert('Please allow popups to view and download your CSR Certificate.');
+      this.dialogService.toast('Please allow popups to view and download your CSR Certificate.', 'warning');
       return;
     }
 
@@ -390,13 +394,9 @@ export class SponsorsComponent implements OnInit {
     certWindow.document.close();
   }
 
-  viewReport(sponsorName: string): void {
-    this.downloadTaxReceipt(sponsorName);
-  }
-
-  downloadTaxReceipt(sponsorName?: string): void {
+  printTaxReceipt(receipt: SponsorPayment): void {
     const sponsor = this.loggedInSponsor;
-    const name = sponsorName || this.getSponsorName(sponsor);
+    const name = this.getSponsorName(sponsor);
     const rep = sponsor?.fullName || 'Corporate Representative';
     const email = sponsor?.email || 'sponsor@company.com';
     const phone = sponsor?.phone || '—';
@@ -408,7 +408,7 @@ export class SponsorsComponent implements OnInit {
 
     const invoiceWindow = window.open('', '_blank', 'width=900,height=750');
     if (!invoiceWindow) {
-      alert('Please allow popups to view and print your Tax Receipt.');
+      this.dialogService.toast('Please allow popups to view and print your Tax Receipt.', 'warning');
       return;
     }
 

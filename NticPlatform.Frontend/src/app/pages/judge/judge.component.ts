@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { ContentService } from '../../services/content.service';
 import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
 
@@ -21,6 +22,7 @@ export interface JudgeTeam {
   members: number;
   submittedAt: string;
   status: 'pending' | 'scored' | 'in-progress';
+  score?: number;
   avatar: string;
   description: string;
 }
@@ -32,6 +34,8 @@ export interface RubricCategory {
   weight: number;
   score: number;
   maxScore: number;
+  description: string;
+  feedback: string;
 }
 
 export interface CompetitionRound {
@@ -95,7 +99,7 @@ export interface CompetitionRound {
 export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('arenaCanvas') arenaCanvas?: ElementRef<HTMLCanvasElement>;
 
-  activeRoundId = 'round-coding-finals';
+  activeRoundId = '';
   selectedTeam: JudgeTeam | null = null;
   showScoringPanel = false;
   showSuccessBurst = false;
@@ -103,7 +107,13 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
   toastMessage = '';
   judgeNotes = '';
   trackFilter = 'all';
+  statusFilter: 'all' | 'pending' | 'scored' = 'all';
   cycleFilter = 'all';
+  showConfirmPublish = false;
+
+  searchQuery = '';
+  sortField: 'name' | 'submittedAt' | 'score' = 'submittedAt';
+  sortDir: 'asc' | 'desc' = 'desc';
 
   // Media preview modal state
   showMediaModal = false;
@@ -118,10 +128,10 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
   private toastTimer?: ReturnType<typeof setTimeout>;
 
   rubric: RubricCategory[] = [
-    { id: 'technical', label: 'Technical Excellence', icon: 'engineering', weight: 30, score: 0, maxScore: 30 },
-    { id: 'innovation', label: 'Innovation & Creativity', icon: 'lightbulb', weight: 25, score: 0, maxScore: 25 },
-    { id: 'presentation', label: 'Presentation & Demo', icon: 'present_to_all', weight: 25, score: 0, maxScore: 25 },
-    { id: 'teamwork', label: 'Team Collaboration', icon: 'diversity_3', weight: 20, score: 0, maxScore: 20 }
+    { id: 'technical', label: 'Technical Excellence', icon: 'engineering', weight: 30, score: 0, maxScore: 30, description: 'Code quality, algorithm efficiency, system architecture, and correctness of implementation.', feedback: '' },
+    { id: 'innovation', label: 'Innovation & Creativity', icon: 'lightbulb', weight: 25, score: 0, maxScore: 25, description: 'Originality of idea, creative problem-solving, and novel approach to the challenge.', feedback: '' },
+    { id: 'presentation', label: 'Presentation & Demo', icon: 'present_to_all', weight: 25, score: 0, maxScore: 25, description: 'Clarity of demo, quality of documentation, and effectiveness of project communication.', feedback: '' },
+    { id: 'teamwork', label: 'Team Collaboration', icon: 'diversity_3', weight: 20, score: 0, maxScore: 20, description: 'Division of work, team coordination, and evidence of collaborative development.', feedback: '' }
   ];
 
   get computedRounds(): CompetitionRound[] {
@@ -187,6 +197,7 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
         members: matchingTeam?.members || 4,
         submittedAt: s.time,
         status: s.score !== null ? 'scored' as const : s.status === 'pending' ? 'pending' as const : 'in-progress' as const,
+        score: s.score ?? undefined,
         avatar: s.student.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
         description: `Source code at ${s.file}. Demonstration video at ${s.videoUrl || 'not provided'}.`
       };
@@ -204,9 +215,19 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
       }));
   }
 
-  constructor(public contentService: ContentService) {}
+  constructor(
+    public contentService: ContentService,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
+    const role = localStorage.getItem('activeRoleId');
+    const email = localStorage.getItem('activeUserEmail');
+    if (role !== 'judge' || !email) {
+      this.router.navigate(['/']);
+      return;
+    }
+
     const pendingVal = this.teams.filter(t => t.status === 'pending').length;
     const scoredVal = this.teams.filter(t => t.status === 'scored').length;
     const roundsVal = this.rounds.length;
@@ -218,6 +239,10 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
       rounds: roundsVal,
       teams: teamsVal
     };
+
+    if (this.rounds.length > 0 && !this.activeRoundId) {
+      this.activeRoundId = this.rounds[0].id;
+    }
 
     this.animateCounters();
   }
@@ -238,9 +263,37 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   get filteredTeams(): JudgeTeam[] {
     let list = this.teams;
+
+    const round = this.rounds.find(r => r.id === this.activeRoundId);
+    if (round) {
+      list = list.filter(t => t.track === round.track);
+    }
+
     if (this.trackFilter !== 'all') {
       list = list.filter(t => t.track === this.trackFilter);
     }
+
+    if (this.statusFilter !== 'all') {
+      list = list.filter(t => t.status === this.statusFilter);
+    }
+
+    if (this.searchQuery.trim()) {
+      const q = this.searchQuery.trim().toLowerCase();
+      list = list.filter(t =>
+        t.name.toLowerCase().includes(q) ||
+        t.school.toLowerCase().includes(q) ||
+        t.projectTitle.toLowerCase().includes(q)
+      );
+    }
+
+    list.sort((a, b) => {
+      let cmp = 0;
+      if (this.sortField === 'name') cmp = a.name.localeCompare(b.name);
+      else if (this.sortField === 'submittedAt') cmp = a.submittedAt.localeCompare(b.submittedAt);
+      else if (this.sortField === 'score') cmp = (a.score ?? 0) - (b.score ?? 0);
+      return this.sortDir === 'asc' ? cmp : -cmp;
+    });
+
     return list;
   }
 
@@ -302,14 +355,59 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
   openScoring(team: JudgeTeam): void {
     this.selectedTeam = team;
     this.showScoringPanel = true;
+    this.showConfirmPublish = false;
     this.resetRubric();
     this.judgeNotes = '';
+
+    const sub = this.contentService.submissions.find(s => s.id === team.id);
+    if (sub && sub.score !== null) {
+      const ratio = sub.score / 100;
+      this.rubric.forEach((cat, i) => {
+        cat.score = Math.round(cat.maxScore * ratio);
+        cat.feedback = '';
+      });
+      this.judgeNotes = sub.feedback || '';
+    }
+  }
+
+  navigateTeam(dir: 'prev' | 'next'): void {
+    const all = this.filteredTeams;
+    if (all.length === 0 || !this.selectedTeam) return;
+    const idx = all.findIndex(t => t.id === this.selectedTeam!.id);
+    if (idx === -1) return;
+    const next = dir === 'next' ? idx + 1 : idx - 1;
+    if (next < 0 || next >= all.length) return;
+    this.openScoring(all[next]);
+  }
+
+  exportScores(): void {
+    const scored = this.teams.filter(t => t.status === 'scored');
+    if (scored.length === 0) {
+      this.showToastMsg('No scored teams to export.');
+      return;
+    }
+    const rows = [
+      ['Team', 'School', 'Track', 'Region', 'Score', 'Submitted'],
+      ...scored.map(t => [t.name, t.school, t.track, t.region, t.score ?? '', t.submittedAt])
+    ];
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `scores-${this.activeRound?.name?.replace(/\s+/g, '-') || 'export'}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    this.showToastMsg(`Exported ${scored.length} score(s)`);
   }
 
   closeScoring(): void {
     this.showScoringPanel = false;
     this.selectedTeam = null;
     this.showSuccessBurst = false;
+    this.showConfirmPublish = false;
   }
 
   setRubricScore(category: RubricCategory, value: number): void {
@@ -323,6 +421,11 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   submitScore(): void {
     if (!this.selectedTeam || this.totalScore === 0) return;
+
+    if (!this.showConfirmPublish) {
+      this.showConfirmPublish = true;
+      return;
+    }
 
     this.showSuccessBurst = true;
 

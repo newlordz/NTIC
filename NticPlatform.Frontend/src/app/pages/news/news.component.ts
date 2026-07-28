@@ -1,7 +1,7 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { ContentService, ChampionshipStory, NewsFeedItem } from '../../services/content.service';
+import { ContentService, ChampionshipStory, NewsFeedItem, UpcomingEvent } from '../../services/content.service';
 
 @Component({
   selector: 'app-news',
@@ -10,16 +10,38 @@ import { ContentService, ChampionshipStory, NewsFeedItem } from '../../services/
   templateUrl: './news.component.html',
   styleUrl: './news.component.scss'
 })
-export class NewsComponent implements OnInit {
+export class NewsComponent implements OnInit, OnDestroy {
   activeTag = 'all';
   tags = ['all', 'robotics', 'coding', 'cyber', 'ai', 'innovation'];
+  private liveTimer: any;
 
   constructor(
     public contentService: ContentService,
     private cdr: ChangeDetectorRef
   ) {}
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.liveTimer = setInterval(() => this.cdr.detectChanges(), 30_000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.liveTimer) clearInterval(this.liveTimer);
+  }
+
+  timeAgo(date: string): string {
+    const parsed = Date.parse(date);
+    if (!parsed) return '';
+    const diff = Date.now() - parsed;
+    const mins = Math.floor(diff / 60_000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return mins + ' min ago';
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + ' hr ago';
+    const days = Math.floor(hrs / 24);
+    if (days < 30) return days + ' days ago';
+    const months = Math.floor(days / 30);
+    return months + ' months ago';
+  }
 
   get currentUserEmail(): string {
     const u = localStorage.getItem('activeUserEmail');
@@ -83,6 +105,10 @@ export class NewsComponent implements OnInit {
 
   get latestNews(): NewsFeedItem[] {
     return this.contentService.newsFeedItems.slice(0, 12);
+  }
+
+  get upcomingEvents(): UpcomingEvent[] {
+    return this.contentService.upcomingEvents;
   }
 
   filterByTag(tag: string): void {

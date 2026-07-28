@@ -132,6 +132,48 @@
 }
 
 /* ── Hall of Fame Cards ──────────────────────── */
+.hof-card {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;
+
+  &.is-group {
+    border: 1.5px solid rgba(0, 63, 135, 0.25);
+    background: linear-gradient(180deg, rgba(243, 250, 255, 0.6) 0%, rgba(255, 255, 255, 1) 100%);
+  }
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(0, 63, 135, 0.12);
+
+    .hof-members-popover {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(-6px);
+    }
+  }
+}
+
+.hof-type-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 10.5px;
+  font-weight: 700;
+  margin-bottom: 8px;
+
+  &.group-pill {
+    background: var(--primary-bg-light, rgba(0, 63, 135, 0.1));
+    color: var(--primary, #003f87);
+    border: 1px solid rgba(0, 63, 135, 0.2);
+  }
+
+  &.ind-pill {
+    background: var(--surface-container-high, #cfe6f2);
+    color: var(--on-surface-variant, #424752);
+  }
+}
+
 .hof-card .card-body {
   padding: 20px;
 }
@@ -148,12 +190,136 @@
   color: #fff;
   background: var(--primary);
   margin: 0 auto 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 
   &.coding-track      { background: var(--primary);   }
   &.robotics-track    { background: var(--tertiary);  }
   &.ai-track          { background: var(--secondary); }
   &.cyber-track       { background: var(--error);     }
   &.innovation-track  { background: #7c4dff;          }
+}
+
+/* Hover Popover Panel for Group Members */
+.hof-members-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface-container-high, #d5ecf8);
+  color: var(--primary, #003f87);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--primary, #003f87);
+    color: #ffffff;
+
+    .hof-members-popover {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(-6px);
+    }
+  }
+}
+
+.hof-members-popover {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  width: 240px;
+  background: var(--surface-container-lowest, #ffffff);
+  color: var(--on-surface, #071e27);
+  border: 1px solid var(--border-color, #e2ebf5);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 16px 36px rgba(0, 63, 135, 0.18);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 100;
+  pointer-events: none;
+  text-align: left;
+  margin-bottom: 8px;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: var(--surface-container-lowest, #ffffff) transparent transparent transparent;
+  }
+
+  .popover-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color, #e2ebf5);
+    margin-bottom: 8px;
+
+    .popover-title {
+      font-size: 12.5px;
+      font-weight: 800;
+      color: var(--on-surface);
+      line-height: 1.2;
+    }
+    .popover-sub {
+      font-size: 10.5px;
+      color: var(--on-surface-variant);
+    }
+  }
+
+  .popover-project {
+    font-size: 11px;
+    color: var(--on-surface-variant);
+    background: var(--surface-container-low, #e6f6ff);
+    padding: 6px 8px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+
+  .popover-members-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+
+  .popover-member-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--surface-container-lowest, #ffffff);
+    border: 1px solid var(--outline-variant, #cfe6f2);
+
+    .member-num {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--primary, #003f87);
+      background: var(--primary-bg-light, rgba(0, 63, 135, 0.1));
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .member-name {
+      font-weight: 600;
+      color: var(--on-surface);
+    }
+  }
 }
 
 /* ── Leaderboard Table ───────────────────────── */

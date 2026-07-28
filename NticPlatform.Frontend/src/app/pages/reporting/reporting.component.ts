@@ -51,65 +51,21 @@ export class ReportingComponent implements OnInit {
 
     if (this.activeRoleId === 'school_admin') {
       this.selectedReportType = 'School Performance Summary';
-      
-      if (teamsCount > 0) {
-        this.reports = [
-          {
-            title: `${this.schoolName} — Roster Export`,
-            type: 'School',
-            date: new Date().toISOString().split('T')[0],
-            size: '1.2 MB',
-            status: 'ready',
-            icon: 'group'
-          },
-          {
-            title: `${this.schoolName} — Compliance Summary`,
-            type: 'School',
-            date: new Date().toISOString().split('T')[0],
-            size: '0.8 MB',
-            status: 'ready',
-            icon: 'account_balance'
-          }
-        ];
-      } else {
-        this.reports = [];
-      }
-
+      this.reports = [];
       this.auditLogs = [
         { action: 'Admin Portal Login', user: this.userName, time: new Date().toISOString(), icon: 'login', color: 'primary' },
         { action: 'Institutional Profile Verified', user: 'NTIC System', time: new Date().toISOString(), icon: 'verified', color: 'success' }
       ];
-
-      if (teamsCount > 0) {
-        this.contentService.teams.forEach(t => {
-          this.auditLogs.unshift({
-            action: `Squad Enlisted: ${t.name}`,
-            user: this.userName,
-            time: 'Recent',
-            icon: 'group_add',
-            color: 'secondary'
-          });
-        });
-      }
     } else if (this.activeRoleId === 'instructor') {
       this.selectedReportType = 'Instructor Course Progress';
-      this.reports = [
-        { title: 'Cohort Assessment Breakdown', type: 'Instructor', date: new Date().toISOString().split('T')[0], size: '1.5 MB', status: 'ready', icon: 'badge' },
-        { title: 'Student Assignment Completion', type: 'Student', date: new Date().toISOString().split('T')[0], size: '2.1 MB', status: 'ready', icon: 'assignment' }
-      ];
+      this.reports = [];
       this.auditLogs = [
         { action: 'LMS Portal Access', user: this.userName, time: new Date().toISOString(), icon: 'login', color: 'primary' },
         { action: 'Curriculum Module Reviewed', user: this.userName, time: '09:30', icon: 'menu_book', color: 'secondary' }
       ];
     } else {
       this.selectedReportType = 'National Platform Overview';
-      this.reports = [
-        { title: 'National School Performance Report', type: 'School', date: '2026-06-17', size: '2.4 MB', status: 'ready', icon: 'account_balance' },
-        { title: 'Student Progress Report — Q2', type: 'Student', date: '2026-06-15', size: '5.1 MB', status: 'ready', icon: 'person' },
-        { title: 'Instructor Effectiveness Report', type: 'Instructor', date: '2026-06-10', size: '1.8 MB', status: 'ready', icon: 'badge' },
-        { title: 'Sponsor Impact Report — MTN', type: 'Sponsor', date: '2026-06-08', size: '3.2 MB', status: 'ready', icon: 'handshake' },
-        { title: 'Competition Results — Round 2', type: 'Competition', date: '2026-06-05', size: '4.4 MB', status: 'ready', icon: 'emoji_events' }
-      ];
+      this.reports = [];
       this.auditLogs = [
         { action: 'Report Generated', user: 'Dr. Amponsah', time: '09:42', icon: 'description', color: 'primary' },
         { action: 'Student Registered', user: 'SchAdmin-ACC', time: '09:38', icon: 'person_add', color: 'secondary' },
@@ -200,13 +156,53 @@ export class ReportingComponent implements OnInit {
 
   generateReport(): void {
     const reportTitle = this.selectedReportType || this.reportOptions[0];
+
+    const typeMap: Record<string, string> = {
+      'School Performance Summary': 'School',
+      'National Platform Overview': 'National',
+      'School Performance Report': 'School',
+      'Student Progress Report': 'Student',
+      'Student Progress Report — Q2': 'Student',
+      'Instructor Effectiveness': 'Instructor',
+      'Instructor Course Progress': 'Instructor',
+      'Instructor Effectiveness Report': 'Instructor',
+      'Sponsor Impact Report': 'Sponsor',
+      'Sponsor Impact Report — MTN': 'Sponsor',
+      'Competition Results': 'Competition',
+      'Competition Results — Round 2': 'Competition',
+      'Executive Summary': 'National',
+      'Student Squad Roster Export': 'School',
+      'Mentor Assignment Report': 'School',
+      'Regional Rank Analytics': 'School',
+      'STEM Compliance Certificate': 'School',
+      'Student Cohort Grades': 'Student',
+      'Assignment Completion Analytics': 'Student',
+      'Lab Safety Compliance': 'Instructor',
+      'Cohort Assessment Breakdown': 'Instructor',
+      'Student Assignment Completion': 'Student'
+    };
+
+    const type = typeMap[reportTitle] || (
+      this.activeRoleId === 'school_admin' ? 'School' :
+      this.activeRoleId === 'instructor' ? 'Instructor' : 'National'
+    );
+
+    const iconMap: Record<string, string> = {
+      'School': 'account_balance',
+      'Student': 'person',
+      'Instructor': 'badge',
+      'Sponsor': 'handshake',
+      'Competition': 'emoji_events',
+      'National': 'public'
+    };
+
     const newReport = {
       title: `${reportTitle} (${new Date().toLocaleDateString()})`,
-      type: this.activeRoleId === 'school_admin' ? 'School' : this.activeRoleId === 'instructor' ? 'Instructor' : 'National',
+      type,
       date: new Date().toISOString().split('T')[0],
       size: (Math.random() * 2 + 0.5).toFixed(1) + ' MB',
       status: 'generating',
-      icon: 'description'
+      icon: iconMap[type] || 'description'
     };
 
     this.reports.unshift(newReport);

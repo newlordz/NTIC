@@ -70,13 +70,37 @@
     <section class="teams-section">
       <div class="section-toolbar">
         <h2>Teams to Evaluate</h2>
-        <div class="track-filters">
-          <button [class.active]="trackFilter === 'all'" (click)="trackFilter = 'all'">All</button>
-          <button [class.active]="trackFilter === 'coding'" (click)="trackFilter = 'coding'">Coding</button>
-          <button [class.active]="trackFilter === 'robotics'" (click)="trackFilter = 'robotics'">Robotics</button>
-          <button [class.active]="trackFilter === 'ai'" (click)="trackFilter = 'ai'">AI</button>
-          <button [class.active]="trackFilter === 'cyber'" (click)="trackFilter = 'cyber'">Cyber</button>
-          <button [class.active]="trackFilter === 'innovation'" (click)="trackFilter = 'innovation'">Innovation</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <div class="search-wrap" style="position:relative;">
+            <span class="material-symbols-outlined" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--on-surface-variant);pointer-events:none;">search</span>
+            <input type="text" [(ngModel)]="searchQuery" placeholder="Search team, school, project..." style="padding:6px 10px 6px 32px;border:1px solid var(--outline-variant);border-radius:8px;background:var(--surface-container-lowest);font-size:12px;width:200px;outline:none;">
+          </div>
+          <select [(ngModel)]="sortField" style="padding:6px 10px;border:1px solid var(--outline-variant);border-radius:8px;background:var(--surface-container-lowest);font-size:12px;outline:none;">
+            <option value="submittedAt">Date</option>
+            <option value="name">Name</option>
+            <option value="score">Score</option>
+          </select>
+          <button class="btn btn-subtle btn-sm" (click)="sortDir = sortDir === 'asc' ? 'desc' : 'asc'" title="Toggle sort direction" style="padding:4px 8px;">
+            <span class="material-symbols-outlined" style="font-size:16px;">{{ sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</span>
+          </button>
+          <span style="width:1px;height:24px;background:var(--outline-variant);display:inline-block;"></span>
+          <div class="track-filters">
+            <button [class.active]="trackFilter === 'all'" (click)="trackFilter = 'all'">All</button>
+            <button [class.active]="trackFilter === 'coding'" (click)="trackFilter = 'coding'">Coding</button>
+            <button [class.active]="trackFilter === 'robotics'" (click)="trackFilter = 'robotics'">Robotics</button>
+            <button [class.active]="trackFilter === 'ai'" (click)="trackFilter = 'ai'">AI</button>
+            <button [class.active]="trackFilter === 'cyber'" (click)="trackFilter = 'cyber'">Cyber</button>
+            <button [class.active]="trackFilter === 'innovation'" (click)="trackFilter = 'innovation'">Innovation</button>
+          </div>
+          <span style="width:1px;height:24px;background:var(--outline-variant);display:inline-block;"></span>
+          <div class="track-filters">
+            <button [class.active]="statusFilter === 'all'" (click)="statusFilter = 'all'">All</button>
+            <button [class.active]="statusFilter === 'pending'" (click)="statusFilter = 'pending'">Pending</button>
+            <button [class.active]="statusFilter === 'scored'" (click)="statusFilter = 'scored'">Scored</button>
+          </div>
+          <button class="btn btn-subtle btn-sm" (click)="exportScores()" title="Export scored teams as CSV" style="padding:4px 8px;">
+            <span class="material-symbols-outlined" style="font-size:16px;">download</span>
+          </button>
         </div>
       </div>
 
@@ -87,7 +111,7 @@
           [class.pending]="team.status === 'pending'"
           [class.scored]="team.status === 'scored'"
           [class.in-progress]="team.status === 'in-progress'"
-          (click)="team.status !== 'scored' && openScoring(team)">
+          (click)="openScoring(team)">
           <div class="card-shimmer"></div>
           <div class="team-card-header">
             <div class="team-avatar" [class]="team.track">{{ team.avatar }}</div>
@@ -120,13 +144,16 @@
             <span><span class="material-symbols-outlined">group</span> {{ team.members }} members</span>
             <span class="track-chip" [class]="team.track">{{ team.track }}</span>
           </div>
-          <button class="score-btn" *ngIf="team.status !== 'scored'" (click)="openScoring(team); $event.stopPropagation()">
-            <span class="material-symbols-outlined">gavel</span>
-            Begin Scoring
+          <button class="score-btn" (click)="openScoring(team); $event.stopPropagation()" [class.review]="team.status === 'scored'">
+            <span class="material-symbols-outlined">{{ team.status === 'scored' ? 'rate_review' : 'gavel' }}</span>
+            {{ team.status === 'scored' ? 'Review Score' : 'Begin Scoring' }}
           </button>
           <div class="scored-overlay" *ngIf="team.status === 'scored'">
             <span class="material-symbols-outlined">check_circle</span>
-            Officially Scored
+            <div>
+              <div style="font-size:13px;font-weight:700;">Officially Scored</div>
+              <div style="font-size:11px;opacity:0.75;">{{ team.score }}/100 · Click to review</div>
+            </div>
           </div>
         </article>
       </div>
@@ -154,7 +181,7 @@
 
       <div class="sidebar-panel rubric-preview">
         <h3><span class="material-symbols-outlined">fact_check</span> Scoring Rubric</h3>
-        <div class="rubric-item" *ngFor="let cat of rubric">
+        <div class="rubric-item" *ngFor="let cat of rubric" [title]="cat.description" style="cursor:help;">
           <span class="material-symbols-outlined">{{ cat.icon }}</span>
           <div>
             <strong>{{ cat.label }}</strong>
@@ -224,7 +251,25 @@
         <span>{{ totalScore }}/100</span>
       </div>
 
-      <div class="panel-header" *ngIf="!showSuccessBurst">
+      <!-- Confirm Publish Step -->
+      <div class="panel-header confirm-step" *ngIf="showConfirmPublish && !showSuccessBurst">
+        <div style="text-align:center;padding:20px 0;">
+          <span class="material-symbols-outlined" style="font-size:48px;color:var(--primary);margin-bottom:12px;">gavel</span>
+          <h2 style="margin:0 0 4px;font-size:18px;">Confirm Official Score</h2>
+          <p style="margin:0 0 16px;color:var(--on-surface-variant);font-size:13px;">This score will be published to the leaderboard and cannot be undone without admin override.</p>
+          <div style="font-size:42px;font-weight:800;color:var(--primary);margin-bottom:4px;">{{ totalScore }}<span style="font-size:18px;color:var(--on-surface-variant);">/100</span></div>
+          <div style="font-size:12px;color:var(--on-surface-variant);">{{ selectedTeam.name }} — {{ selectedTeam.projectTitle }}</div>
+          <div style="margin-top:20px;display:flex;gap:12px;justify-content:center;">
+            <button class="btn-cancel" (click)="showConfirmPublish = false">Adjust Score</button>
+            <button class="btn-publish" (click)="submitScore()">
+              <span class="material-symbols-outlined">publish</span>
+              Confirm & Publish
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-header" *ngIf="!showConfirmPublish && !showSuccessBurst">
         <div class="panel-team">
           <div class="team-avatar large" [class]="selectedTeam.track">{{ selectedTeam.avatar }}</div>
           <div>
@@ -260,9 +305,9 @@
         <div class="rubric-sliders">
           <div class="rubric-row" *ngFor="let cat of rubric">
             <div class="rubric-header">
-              <span class="material-symbols-outlined">{{ cat.icon }}</span>
+              <span class="material-symbols-outlined" [title]="cat.description" style="cursor:help;">{{ cat.icon }}</span>
               <div>
-                <strong>{{ cat.label }}</strong>
+                <strong [title]="cat.description" style="cursor:help;">{{ cat.label }}</strong>
                 <span>{{ cat.weight }}% weight · Max {{ cat.maxScore }}</span>
               </div>
               <div class="rubric-score-display">{{ cat.score }}</div>
@@ -277,6 +322,7 @@
                 (input)="onSliderInput(cat, $event)"
                 class="rubric-slider">
             </div>
+            <input type="text" [(ngModel)]="cat.feedback" placeholder="Brief note for this category..." style="margin-top:6px;padding:6px 10px;border:1px solid var(--outline-variant);border-radius:6px;background:var(--surface-container-lowest);font-size:12px;width:100%;outline:none;box-sizing:border-box;">
           </div>
         </div>
 
@@ -286,11 +332,21 @@
         </div>
 
         <div class="panel-actions">
-          <button class="btn-cancel" (click)="closeScoring()">Cancel</button>
-          <button class="btn-publish" (click)="submitScore()" [disabled]="totalScore === 0">
-            <span class="material-symbols-outlined">publish</span>
-            Publish Official Score
-          </button>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-cancel" (click)="navigateTeam('prev')" [disabled]="!selectedTeam || filteredTeams.indexOf(selectedTeam) <= 0" style="padding:6px 12px;font-size:12px;">
+              <span class="material-symbols-outlined" style="font-size:14px;">chevron_left</span> Previous
+            </button>
+            <button class="btn-cancel" (click)="navigateTeam('next')" [disabled]="!selectedTeam || filteredTeams.indexOf(selectedTeam) >= filteredTeams.length - 1" style="padding:6px 12px;font-size:12px;">
+              Next <span class="material-symbols-outlined" style="font-size:14px;">chevron_right</span>
+            </button>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-cancel" (click)="closeScoring()">Close</button>
+            <button class="btn-publish" (click)="submitScore()" [disabled]="totalScore === 0">
+              <span class="material-symbols-outlined">publish</span>
+              Publish Official Score
+            </button>
+          </div>
         </div>
       </div>
     </div>

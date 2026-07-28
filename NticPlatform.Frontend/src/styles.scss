@@ -3193,3 +3193,198 @@ body.dark-theme {
   50% { transform: scale(1.35); }
   100% { transform: scale(1); }
 }
+
+/* ══════════════════════════════════════════
+   GLOBAL CUSTOM DIALOG & TOAST STYLES
+══════════════════════════════════════════ */
+.custom-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 30, 39, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: dialogFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.custom-dialog-card {
+  background: var(--surface-container-lowest, #ffffff);
+  color: var(--on-surface, #071e27);
+  border: 1px solid var(--border-color, #e2ebf5);
+  border-radius: 16px;
+  max-width: 440px;
+  width: 100%;
+  padding: 24px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.2);
+  animation: dialogPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.custom-dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+
+  .custom-dialog-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--primary-bg-light, rgba(0, 63, 135, 0.1));
+    color: var(--primary, #003f87);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    &.danger {
+      background: var(--error-container, #ffdad6);
+      color: var(--error, #ba1a1a);
+    }
+    &.warning {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    span {
+      font-size: 24px;
+    }
+  }
+
+  .custom-dialog-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+}
+
+.custom-dialog-body {
+  margin-bottom: 24px;
+  p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--on-surface-variant, #424752);
+  }
+}
+
+.custom-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+
+  .dialog-btn {
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: none;
+  }
+
+  .dialog-btn-cancel {
+    background: var(--surface-container-high, #d5ecf8);
+    color: var(--on-surface, #071e27);
+    &:hover {
+      background: var(--surface-variant, #cfe6f2);
+    }
+  }
+
+  .dialog-btn-confirm {
+    background: var(--primary, #003f87);
+    color: #ffffff;
+    &:hover {
+      opacity: 0.9;
+    }
+    &.danger {
+      background: var(--error, #ba1a1a);
+      color: #ffffff;
+      &:hover {
+        background: #93000a;
+      }
+    }
+  }
+}
+
+/* Toast Container */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10001;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 400px;
+  pointer-events: none;
+}
+
+.toast-card {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--surface-container-lowest, #ffffff);
+  color: var(--on-surface, #071e27);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color, #e2ebf5);
+  animation: toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+  .toast-icon {
+    font-size: 20px;
+  }
+
+  .toast-message {
+    font-size: 13px;
+    font-weight: 500;
+    flex: 1;
+    line-height: 1.4;
+  }
+
+  .toast-close {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: var(--on-surface-variant, #424752);
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+  }
+
+  &.toast-success {
+    border-left: 4px solid var(--success, #059669);
+    .toast-icon { color: var(--success, #059669); }
+  }
+  &.toast-error {
+    border-left: 4px solid var(--error, #ba1a1a);
+    .toast-icon { color: var(--error, #ba1a1a); }
+  }
+  &.toast-warning {
+    border-left: 4px solid #d97706;
+    .toast-icon { color: #d97706; }
+  }
+  &.toast-info {
+    border-left: 4px solid var(--primary, #003f87);
+    .toast-icon { color: var(--primary, #003f87); }
+  }
+}
+
+@keyframes dialogFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dialogPop {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+

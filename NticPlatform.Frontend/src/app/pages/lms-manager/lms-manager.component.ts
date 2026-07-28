@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ContentService, LmsCourse, LmsModule, LmsMaterial, LmsAssignment, LmsSubmission, LmsEnrollment } from '../../services/content.service';
+import { DialogService } from '../../services/dialog.service';
 
 export interface PendingModerationItem {
   id: string;
@@ -58,7 +59,7 @@ export class LmsManagerComponent implements OnInit {
   activeRejectItem: PendingModerationItem | null = null;
   rejectionReasonInput: string = '';
 
-  constructor(public contentService: ContentService) {}
+  constructor(public contentService: ContentService, private dialogService: DialogService) {}
 
   ngOnInit(): void {}
 
@@ -301,8 +302,14 @@ export class LmsManagerComponent implements OnInit {
     this.closeCourseModal();
   }
 
-  deleteCourse(id: string): void {
-    if (confirm('Are you sure you want to delete this course and all associated modules, materials, and assignments?')) {
+  async deleteCourse(id: string): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Delete Course',
+      message: 'Are you sure you want to delete this course and all associated modules, materials, and assignments?',
+      confirmText: 'Delete Course',
+      type: 'danger'
+    });
+    if (ok) {
       this.contentService.removeLmsCourse(id);
     }
   }
@@ -349,8 +356,14 @@ export class LmsManagerComponent implements OnInit {
     this.closeModuleModal();
   }
 
-  deleteModule(id: string): void {
-    if (confirm('Delete this module? Associated materials will also be removed.')) {
+  async deleteModule(id: string): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Delete Curriculum Module',
+      message: 'Delete this module? Associated materials will also be removed.',
+      confirmText: 'Delete Module',
+      type: 'danger'
+    });
+    if (ok) {
       this.contentService.removeLmsModule(id);
     }
   }
@@ -386,8 +399,14 @@ export class LmsManagerComponent implements OnInit {
     this.closeMaterialModal();
   }
 
-  deleteMaterial(id: string): void {
-    if (confirm('Delete this learning material?')) {
+  async deleteMaterial(id: string): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Delete Learning Asset',
+      message: 'Delete this learning material?',
+      confirmText: 'Delete Asset',
+      type: 'danger'
+    });
+    if (ok) {
       this.contentService.removeLmsMaterial(id);
     }
   }
@@ -423,8 +442,14 @@ export class LmsManagerComponent implements OnInit {
     this.closeAssignmentModal();
   }
 
-  deleteAssignment(id: string): void {
-    if (confirm('Delete this assignment?')) {
+  async deleteAssignment(id: string): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Delete Assignment',
+      message: 'Delete this assignment?',
+      confirmText: 'Delete Assignment',
+      type: 'danger'
+    });
+    if (ok) {
       this.contentService.removeLmsAssignment(id);
     }
   }

@@ -850,6 +850,10 @@
         <span class="material-symbols-outlined">slideshow</span>Slideshow
         <span class="cms-count-badge">{{ contentService.heroSlides.length }}</span>
       </button>
+      <button class="cms-sub-tab" [class.active]="contentTab === 'events'" (click)="contentTab = 'events'">
+        <span class="material-symbols-outlined">event</span>Upcoming Events
+        <span class="cms-count-badge">{{ contentService.upcomingEvents.length }}</span>
+      </button>
       <button class="cms-sub-tab" [class.active]="contentTab === 'philosophy'" (click)="contentTab = 'philosophy'">
         <span class="material-symbols-outlined">lightbulb</span>Philosophy Cards
         <span class="cms-count-badge">{{ contentService.philosophyCards.length }}</span>
@@ -999,14 +1003,53 @@
         </div>
         <div class="cms-form-error" *ngIf="hofFormError">{{ hofFormError }}</div>
         <div class="cms-form-grid">
-          <div class="cms-field">
-            <label>Full Name <span class="req">*</span></label>
-            <input type="text" [(ngModel)]="hofForm.name" placeholder="e.g. Kwame Asante">
+          <div class="cms-field" style="grid-column: span 2;">
+            <label>Entry Type <span class="req">*</span></label>
+            <div style="display:flex; gap:16px; margin-top:4px;">
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; font-size:13px;">
+                <input type="radio" [(ngModel)]="hofForm.type" value="individual" name="hofType">
+                👤 Individual Champion
+              </label>
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; font-size:13px;">
+                <input type="radio" [(ngModel)]="hofForm.type" value="group" name="hofType">
+                👥 Group / Squad Champions
+              </label>
+            </div>
           </div>
+
+          <!-- Squad Auto-Fill Selector -->
+          <div class="cms-field" *ngIf="hofForm.type === 'group'" style="grid-column: span 2; background: var(--primary-bg-light); padding: 10px 14px; border-radius: 10px; border: 1px solid var(--header-highlight-border);">
+            <label style="color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 6px;">
+              <span class="material-symbols-outlined" style="font-size: 18px;">auto_awesome</span>
+              Auto-Fill from Registered System Squads
+            </label>
+            <select [(ngModel)]="hofForm.selectedTeamId" (ngModelChange)="onHofTeamSelect($event)" style="margin-top: 4px; border-color: var(--primary);">
+              <option value="">-- Select a registered team to auto-fill roster & school --</option>
+              <option *ngFor="let t of contentService.teams" [value]="t.id || t.name">{{ t.name }} — {{ t.schoolName || 'Partner School' }} ({{ t.track || 'General' }})</option>
+            </select>
+          </div>
+
+          <div class="cms-field">
+            <label>{{ hofForm.type === 'group' ? 'Group / Squad Name' : 'Full Name' }} <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="hofForm.name" [placeholder]="hofForm.type === 'group' ? 'e.g. CyberRangers Squad' : 'e.g. Kwame Asante'">
+          </div>
+
           <div class="cms-field">
             <label>Initials (auto if blank)</label>
-            <input type="text" [(ngModel)]="hofForm.initials" placeholder="KA" maxlength="3">
+            <input type="text" [(ngModel)]="hofForm.initials" placeholder="CR" maxlength="3">
           </div>
+
+          <div class="cms-field" *ngIf="hofForm.type === 'group'" style="grid-column: span 2;">
+            <label>Team Members (comma-separated)</label>
+            <input type="text" [(ngModel)]="hofForm.membersInput" placeholder="e.g. Kofi Nyarko, Abena Mensah, Emmanuel Osei, Selorm Adjei">
+            <span style="font-size:11px; color:var(--on-surface-variant); margin-top:2px;">Members will appear in a popup card when users hover over this group card.</span>
+          </div>
+
+          <div class="cms-field" *ngIf="hofForm.type === 'group'" style="grid-column: span 2;">
+            <label>Project / Innovation Title</label>
+            <input type="text" [(ngModel)]="hofForm.projectTitle" placeholder="e.g. Zero-Trust Autonomous Firewall System">
+          </div>
+
           <div class="cms-field">
             <label>School <span class="req">*</span></label>
             <input type="text" [(ngModel)]="hofForm.school" placeholder="e.g. PRESEC Legon">
@@ -1017,7 +1060,7 @@
           </div>
           <div class="cms-field">
             <label>Award / Badge <span class="req">*</span></label>
-            <input type="text" [(ngModel)]="hofForm.badge" placeholder="🥇 Coding Champion">
+            <input type="text" [(ngModel)]="hofForm.badge" placeholder="🏆 Cybersecurity Grand Champions">
           </div>
           <div class="cms-field">
             <label>Track</label>
@@ -1042,11 +1085,20 @@
       <!-- HoF List -->
       <div class="cms-hof-grid">
         <div *ngFor="let entry of contentService.hallOfFameEntries" class="cms-hof-card" [class]="entry.trackClass">
-          <div class="cms-hof-avatar">{{ entry.initials }}</div>
+          <div class="cms-hof-avatar">
+            <span *ngIf="entry.type !== 'group'">{{ entry.initials }}</span>
+            <span *ngIf="entry.type === 'group'" class="material-symbols-outlined" style="font-size:24px;">groups</span>
+          </div>
           <div class="cms-hof-info">
-            <strong>{{ entry.name }}</strong>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <strong>{{ entry.name }}</strong>
+              <span *ngIf="entry.type === 'group'" style="background:var(--primary-bg-light); color:var(--primary); font-size:10px; font-weight:800; padding:1px 6px; border-radius:10px;">GROUP</span>
+            </div>
             <span>{{ entry.school }} · {{ entry.year }}</span>
             <span class="cms-hof-badge">{{ entry.badge }}</span>
+            <div *ngIf="entry.members && entry.members.length > 0" style="font-size:11px; color:var(--primary); font-weight:700; margin-top:2px;">
+              👥 {{ entry.members.length }} Members: {{ entry.members.join(', ') }}
+            </div>
             
             <!-- Expiry info and status badge -->
             <div style="font-size:10.5px; margin-top:6px; display:flex; align-items:center; gap:6px; font-weight:700;">
@@ -1732,6 +1784,108 @@
               <span class="material-symbols-outlined">edit</span>
             </button>
             <button class="cms-delete-btn" title="Delete" (click)="deletePhilCard(card)">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── UPCOMING EVENTS PANEL ── -->
+    <div *ngIf="contentTab === 'events'" class="cms-panel">
+      <div class="cms-panel-header">
+        <div>
+          <h3 class="cms-panel-title"><span class="material-symbols-outlined">event</span>Upcoming Events</h3>
+          <p class="cms-panel-desc">Events shown on the News page. Add, edit, or remove upcoming championship events.</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('events')">
+            <span class="material-symbols-outlined">open_in_full</span>
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="!eventFormOpen" style="padding:16px;">
+        <button class="btn btn-primary" (click)="openEventForm(null)">
+          <span class="material-symbols-outlined">add</span> Add Event
+        </button>
+      </div>
+
+      <!-- Edit Form -->
+      <div *ngIf="eventFormOpen" class="cms-form-card">
+        <div class="cms-form-card-header">
+          <h4>
+            <span class="material-symbols-outlined">edit_note</span>
+            {{ editingEvent.id && !editingEvent.id.startsWith('evt-new') ? 'Edit' : 'New' }} Event
+          </h4>
+          <button class="cms-form-close" (click)="eventFormOpen = false"><span class="material-symbols-outlined">close</span></button>
+        </div>
+
+        <!-- Live Preview -->
+        <div style="padding:16px 20px 0;display:flex;justify-content:center;">
+          <div style="display:flex;gap:16px;align-items:stretch;background:var(--surface-container-low);border-radius:12px;border:1px solid var(--outline-variant);padding:16px;max-width:420px;width:100%;">
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--primary);color:#fff;border-radius:10px;min-width:60px;padding:8px 12px;">
+              <span style="font-size:11px;font-weight:700;line-height:1;">{{ editingEvent.month || 'MON' }}</span>
+              <span style="font-size:24px;font-weight:800;line-height:1.2;">{{ editingEvent.day || '--' }}</span>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:2px;">
+              <div style="font-size:14px;font-weight:700;color:var(--on-surface);">{{ editingEvent.title || 'Event Title' }}</div>
+              <div style="font-size:12px;color:var(--on-surface-variant);">{{ editingEvent.description || 'Event description preview' }}</div>
+              <div style="font-size:12px;color:var(--on-surface-variant);display:flex;align-items:center;gap:4px;margin-top:4px;">
+                <span class="material-symbols-outlined" style="font-size:14px;">location_on</span>
+                {{ editingEvent.location || 'Location' }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cms-form-grid" style="margin-top:16px;">
+          <div class="cms-field">
+            <label>Event Date</label>
+            <input type="date" [value]="eventDate" (input)="onEventDateInput($event)" style="text-transform:uppercase;">
+          </div>
+          <div class="cms-field cms-field-full">
+            <label>Title</label>
+            <input type="text" [(ngModel)]="editingEvent.title" placeholder="Regional Qualifier — Greater Accra">
+          </div>
+          <div class="cms-field cms-field-full">
+            <label>Description</label>
+            <textarea rows="2" [(ngModel)]="editingEvent.description" placeholder="STEM teams compete for national qualification spots..."></textarea>
+          </div>
+          <div class="cms-field cms-field-full">
+            <label>Location</label>
+            <input type="text" [(ngModel)]="editingEvent.location" placeholder="Accra International Conference Centre">
+          </div>
+        </div>
+        <div style="padding:16px 20px; display:flex; gap:8px;">
+          <button class="btn btn-primary" (click)="saveEvent()">
+            <span class="material-symbols-outlined">save</span> Save Event
+          </button>
+          <button class="btn btn-subtle" (click)="eventFormOpen = false">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Event List -->
+      <div *ngIf="!eventFormOpen" class="cms-item-list" style="padding:0 16px 16px;">
+        <div *ngIf="contentService.upcomingEvents.length === 0" style="text-align:center;padding:48px;color:var(--on-surface-variant);">
+          <span class="material-symbols-outlined" style="font-size:48px;opacity:0.3;">event</span>
+          <p>No upcoming events yet. Add the first one above.</p>
+        </div>
+
+        <div *ngFor="let event of contentService.upcomingEvents" class="cms-story-item">
+          <div class="cms-story-thumb" style="flex-direction:column;gap:0;background:var(--primary);color:#fff;border-radius:10px;">
+            <span style="font-size:10px;font-weight:700;line-height:1;">{{ event.month }}</span>
+            <span style="font-size:18px;font-weight:800;line-height:1.2;">{{ event.day }}</span>
+          </div>
+          <div class="cms-story-info">
+            <div class="cms-story-title">{{ event.title }}</div>
+            <div class="cms-story-meta">{{ event.location }} &middot; {{ event.description }}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
+            <button class="cms-edit-btn" title="Edit" (click)="openEventForm(event)">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button class="cms-delete-btn" title="Delete" (click)="deleteEvent(event)">
               <span class="material-symbols-outlined">delete</span>
             </button>
           </div>

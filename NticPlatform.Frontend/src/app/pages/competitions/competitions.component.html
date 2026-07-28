@@ -773,7 +773,7 @@
     </div>
 
     <div class="detail-footer">
-      <button class="btn btn-danger-outline" (click)="confirmDelete(selectedCompetition)">
+      <button class="btn btn-danger-outline" *ngIf="canManageCompetitions" (click)="confirmDelete(selectedCompetition)">
         <span class="material-symbols-outlined">delete_outline</span>
         Delete Cycle
       </button>

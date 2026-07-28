@@ -8,10 +8,12 @@ import {
   HallOfFameEntry,
   LeaderboardEntry,
   NewsFeedItem,
-  TalentDiscovery
+  TalentDiscovery,
+  UpcomingEvent
 } from '../../services/content.service';
 import { BrevoEmailService } from '../../services/brevo-email.service';
 import { FileStorageService } from '../../services/file-storage.service';
+import { DialogService } from '../../services/dialog.service';
 import { TimeAgoPipe } from '../../services/time-ago.pipe';
 import { LmsManagerComponent } from '../lms-manager/lms-manager.component';
 
@@ -158,7 +160,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   deleteUserConfirm: any = null;
 
   // ─── CONTENT MANAGER STATE ──────────────────────
-  contentTab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' | 'philosophy' = 'stories';
+  contentTab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' | 'philosophy' | 'events' = 'stories';
   maximizedContentTab: string | null = null;
 
   // Story form
@@ -176,9 +178,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   editingStoryId: string | null = null;
 
   // HoF form
-  hofForm: Omit<HallOfFameEntry, 'id'> = {
+  hofForm: Omit<HallOfFameEntry, 'id'> & { membersInput?: string; selectedTeamId?: string } = {
+    type: 'individual',
+    selectedTeamId: '',
     initials: '',
     name: '',
+    teamName: '',
+    projectTitle: '',
+    membersInput: '',
+    members: [],
     school: '',
     year: new Date().getFullYear().toString(),
     badge: '',
@@ -484,7 +492,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { text: 'Mentor feedback published for AI Division', time: '5h ago' }
   ];
 
-  constructor(public contentService: ContentService, private route: ActivatedRoute, private router: Router, private emailService: BrevoEmailService, private fileStorage: FileStorageService, private cdr: ChangeDetectorRef) {
+  constructor(public contentService: ContentService, private route: ActivatedRoute, private router: Router, private emailService: BrevoEmailService, private fileStorage: FileStorageService, private cdr: ChangeDetectorRef, public dialogService: DialogService) {
     this.route.queryParams.subscribe(params => {
       if (params['tab']) {
         this.adminTab = params['tab'];
@@ -861,7 +869,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const file = event.target.files?.[0];
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) {
-      alert('Logo exceeds 3MB limit.');
+      this.dialogService.toast('Logo exceeds 3MB limit.', 'warning');
       return;
     }
     if (this.adminRegLogoFileId) {
@@ -1666,6 +1674,64 @@ export class DashboardComponent implements OnInit, OnDestroy {
     reader.readAsDataURL(file);
   }
 
+  // ── Upcoming Events ──────────────────────────────────
+  eventFormOpen = false;
+  editingEvent: UpcomingEvent = { id: '', month: '', day: '', title: '', description: '', location: '' };
+  eventDate = '';
+
+  openEventForm(event: UpcomingEvent | null): void {
+    if (event) {
+      this.editingEvent = { ...event };
+      this.eventDate = this.eventDateFromMonthDay(event.month, event.day);
+    } else {
+      this.editingEvent = { id: 'evt-new-' + Date.now(), month: '', day: '', title: '', description: '', location: '' };
+      this.eventDate = '';
+    }
+    this.eventFormOpen = true;
+  }
+
+  onEventDateChange(): void {
+    if (!this.eventDate) { this.editingEvent.month = ''; this.editingEvent.day = ''; return; }
+    const d = new Date(this.eventDate + 'T12:00:00');
+    if (isNaN(d.getTime())) return;
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    this.editingEvent.month = months[d.getMonth()];
+    this.editingEvent.day = String(d.getDate());
+  }
+
+  onEventDateInput(event: Event): void {
+    const target = event.target as HTMLInputElement | null;
+    if (target) {
+      this.eventDate = target.value;
+      this.onEventDateChange();
+    }
+  }
+
+  private eventDateFromMonthDay(month: string, day: string): string {
+    const months: Record<string, number> = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11 };
+    const m = months[month?.toLowerCase().slice(0, 3)];
+    if (m === undefined || !day) return '';
+    const y = new Date().getFullYear();
+    return `${y}-${String(m + 1).padStart(2, '0')}-${String(Number(day)).padStart(2, '0')}`;
+  }
+
+  saveEvent(): void {
+    const e = this.editingEvent;
+    if (!e.title) return;
+    if (e.id.startsWith('evt-new-')) {
+      this.contentService.addEvent({ month: e.month, day: e.day, title: e.title, description: e.description, location: e.location });
+    } else {
+      this.contentService.updateEvent(e);
+    }
+    this.eventFormOpen = false;
+    this.addAuditLog({ action: `Event saved: "${e.title}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
+  }
+
+  deleteEvent(event: UpcomingEvent): void {
+    this.contentService.removeEvent(event.id);
+    this.addAuditLog({ action: `Event deleted: "${event.title}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
+  }
+
   // Hall of Fame
   openHofForm(): void {
     this.editingHofId = null;
@@ -1674,8 +1740,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const expiryStr = defaultExpiry.toISOString().split('T')[0];
     
     this.hofForm = {
+      type: 'individual',
       initials: '',
       name: '',
+      teamName: '',
+      projectTitle: '',
+      membersInput: '',
+      members: [],
       school: '',
       year: new Date().getFullYear().toString(),
       badge: '',
@@ -1689,16 +1760,65 @@ export class DashboardComponent implements OnInit, OnDestroy {
   openEditHofForm(entry: any): void {
     this.editingHofId = entry.id;
     this.hofForm = {
-      initials: entry.initials,
-      name: entry.name,
-      school: entry.school,
-      year: entry.year,
-      badge: entry.badge,
-      trackClass: entry.trackClass,
+      type: entry.type || 'individual',
+      initials: entry.initials || '',
+      name: entry.name || '',
+      teamName: entry.teamName || '',
+      projectTitle: entry.projectTitle || '',
+      membersInput: entry.members ? entry.members.join(', ') : '',
+      members: entry.members ? [...entry.members] : [],
+      school: entry.school || '',
+      year: entry.year || '',
+      badge: entry.badge || '',
+      trackClass: entry.trackClass || 'coding-track',
       expiryDate: entry.expiryDate || ''
     };
     this.hofFormError = '';
     this.hofFormOpen = true;
+  }
+
+  onHofTeamSelect(teamId: string): void {
+    if (!teamId) return;
+    const team = this.contentService.teams.find(t => t.id === teamId || t.name === teamId);
+    if (!team) return;
+
+    this.hofForm.name = team.name;
+    this.hofForm.teamName = team.name;
+    this.hofForm.school = team.schoolName || '';
+    
+    // Extract member names safely
+    let memberList: string[] = [];
+    const tAny = team as any;
+    if (Array.isArray(tAny.memberNames) && tAny.memberNames.length > 0) {
+      memberList = [...tAny.memberNames];
+    } else if (Array.isArray(tAny.rosterList) && tAny.rosterList.length > 0) {
+      memberList = [...tAny.rosterList];
+    } else if (Array.isArray(tAny.members)) {
+      memberList = tAny.members.map((m: any) => String(m));
+    } else if (typeof tAny.members === 'string' && tAny.members) {
+      memberList = tAny.members.split(',').map((m: string) => m.trim()).filter((m: string) => m.length > 0);
+    }
+    
+    if (team.lead && !memberList.includes(team.lead)) {
+      memberList.unshift(team.lead);
+    }
+
+    this.hofForm.members = memberList;
+    this.hofForm.membersInput = memberList.join(', ');
+
+    // Match trackClass from team.track
+    const track = (team.track || '').toLowerCase();
+    if (track.includes('robot')) this.hofForm.trackClass = 'robotics-track';
+    else if (track.includes('ai') || track.includes('artificial')) this.hofForm.trackClass = 'ai-track';
+    else if (track.includes('cyber') || track.includes('security')) this.hofForm.trackClass = 'cyber-track';
+    else if (track.includes('innovat')) this.hofForm.trackClass = 'innovation-track';
+    else this.hofForm.trackClass = 'coding-track';
+
+    if (!this.hofForm.badge) {
+      this.hofForm.badge = `🏆 ${team.track || 'Championship'} Squad Winners`;
+    }
+
+    this.hofForm.initials = this.getInitials(team.name);
   }
 
   isEntryExpired(entry: any): boolean {
@@ -1711,18 +1831,42 @@ export class DashboardComponent implements OnInit, OnDestroy {
   
   submitHofForm(): void {
     if (!this.hofForm.name || !this.hofForm.school || !this.hofForm.badge) {
-      this.hofFormError = 'Name, school, and badge/title are required.';
+      this.hofFormError = 'Name/Squad Name, school, and badge/title are required.';
       return;
     }
+
+    if (this.hofForm.type === 'group' && this.hofForm.membersInput) {
+      this.hofForm.members = this.hofForm.membersInput
+        .split(',')
+        .map(m => m.trim())
+        .filter(m => m.length > 0);
+    } else if (this.hofForm.type === 'individual') {
+      this.hofForm.members = [];
+    }
+
     if (!this.hofForm.initials) {
       this.hofForm.initials = this.getInitials(this.hofForm.name);
     }
     
+    const payload = {
+      type: this.hofForm.type,
+      initials: this.hofForm.initials,
+      name: this.hofForm.name,
+      teamName: this.hofForm.teamName || this.hofForm.name,
+      projectTitle: this.hofForm.projectTitle || '',
+      members: this.hofForm.members || [],
+      school: this.hofForm.school,
+      year: this.hofForm.year,
+      badge: this.hofForm.badge,
+      trackClass: this.hofForm.trackClass,
+      expiryDate: this.hofForm.expiryDate || ''
+    };
+
     if (this.editingHofId) {
-      this.contentService.updateHofEntry({ id: this.editingHofId, ...this.hofForm });
+      this.contentService.updateHofEntry({ id: this.editingHofId, ...payload });
       this.addAuditLog({ action: `Hall of Fame entry updated: ${this.hofForm.name}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     } else {
-      this.contentService.addHofEntry({ ...this.hofForm });
+      this.contentService.addHofEntry({ ...payload });
       this.addAuditLog({ action: `Hall of Fame entry added: ${this.hofForm.name}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     }
     this.hofFormOpen = false;
@@ -1841,18 +1985,30 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.addAuditLog({ action: 'Platform impact stats updated', user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
-  clearAllData(): void {
-    if (confirm('Are you sure you want to clear all data and start with a clean slate? This will reset all portals.')) {
+  async clearAllData(): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Wipe & Reset Platform Data',
+      message: 'Are you sure you want to clear all data and start with a clean slate? This will reset all portals.',
+      confirmText: 'Clear All Data',
+      type: 'danger'
+    });
+    if (ok) {
       this.contentService.clearAllData();
-      alert('All data wiped! You are now in a clean testing state.');
+      this.dialogService.toast('All data wiped! You are now in a clean testing state.', 'warning');
       this.loadDashboardData();
     }
   }
 
-  loadSampleData(): void {
-    if (confirm('Are you sure you want to restore the original sample data? This will overwrite your current test inputs.')) {
+  async loadSampleData(): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Restore Sample Data',
+      message: 'Are you sure you want to restore the original sample data? This will overwrite your current test inputs.',
+      confirmText: 'Restore Data',
+      type: 'warning'
+    });
+    if (ok) {
       this.contentService.loadSampleData();
-      alert('Sample data restored successfully!');
+      this.dialogService.toast('Sample data restored successfully!', 'success');
       this.loadDashboardData();
     }
   }
@@ -2097,8 +2253,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.isAddTeamModalOpen = true;
   }
 
-  disbandTeam(team: any): void {
-    if (confirm(`Are you sure you want to disband squad "${team.name}" and remove all registered student members from the tournament?`)) {
+  async disbandTeam(team: any): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Disband Squad',
+      message: `Are you sure you want to disband squad "${team.name}" and remove all registered student members from the tournament?`,
+      confirmText: 'Disband Squad',
+      type: 'danger'
+    });
+    if (ok) {
       const currentTeams = this.contentService.teams.filter(t => t !== team && t.name !== team.name);
       this.contentService.saveTeams(currentTeams);
       this.addAuditLog({
@@ -2107,6 +2269,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         time: new Date().toISOString(),
         type: 'approval'
       });
+      this.dialogService.toast(`Squad "${team.name}" has been disbanded.`, 'info');
     }
   }
 
@@ -2228,7 +2391,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   closeLmsCourseModal(): void { this.isLmsCourseModalOpen = false; }
 
   saveLmsCourse(): void {
-    if (!this.lmsCourseForm.title?.trim()) { alert('Course title is required.'); return; }
+    if (!this.lmsCourseForm.title?.trim()) { this.dialogService.toast('Course title is required.', 'warning'); return; }
     const course = {
       id: this.lmsFormMode === 'edit' ? this.lmsCourseForm.id : 'crs-' + Date.now(),
       ...this.lmsCourseForm,
@@ -2238,12 +2401,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
       createdAt: this.lmsFormMode === 'edit' ? this.lmsCourseForm.createdAt : new Date().toISOString().split('T')[0]
     };
     this.contentService.saveLmsCourse(course);
+    this.dialogService.toast(`Course "${course.title}" saved successfully.`, 'success');
     this.closeLmsCourseModal();
   }
 
-  removeLmsCourse(id: string): void {
-    if (!confirm('Delete this course and all its modules, materials, and assignments?')) return;
-    this.contentService.removeLmsCourse(id);
+  async removeLmsCourse(id: string): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Delete LMS Course',
+      message: 'Delete this course and all its modules, materials, and assignments?',
+      confirmText: 'Delete Course',
+      type: 'danger'
+    });
+    if (ok) {
+      this.contentService.removeLmsCourse(id);
+      this.dialogService.toast('Course removed.', 'info');
+    }
   }
 
   openLmsModuleModal(mod?: any): void {
@@ -2255,19 +2427,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
   closeLmsModuleModal(): void { this.isLmsModuleModalOpen = false; }
 
   saveLmsModule(): void {
-    if (!this.lmsModuleForm.title?.trim()) { alert('Module title is required.'); return; }
-    if (!this.lmsModuleForm.courseId) { alert('Please select a course.'); return; }
+    if (!this.lmsModuleForm.title?.trim()) { this.dialogService.toast('Module title is required.', 'warning'); return; }
+    if (!this.lmsModuleForm.courseId) { this.dialogService.toast('Please select a course.', 'warning'); return; }
     const mod = {
       id: this.lmsFormMode === 'edit' ? this.lmsModuleForm.id : 'mod-' + Date.now(),
       ...this.lmsModuleForm
     };
     this.contentService.saveLmsModule(mod);
+    this.dialogService.toast(`Module "${mod.title}" saved.`, 'success');
     this.closeLmsModuleModal();
   }
 
-  removeLmsModule(id: string): void {
-    if (!confirm('Delete this module and its materials?')) return;
-    this.contentService.removeLmsModule(id);
+  async removeLmsModule(id: string): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Delete Module',
+      message: 'Delete this module and its materials?',
+      confirmText: 'Delete Module',
+      type: 'danger'
+    });
+    if (ok) {
+      this.contentService.removeLmsModule(id);
+      this.dialogService.toast('Module removed.', 'info');
+    }
   }
 
   openLmsMaterialModal(mat?: any): void {
@@ -2279,20 +2460,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
   closeLmsMaterialModal(): void { this.isLmsMaterialModalOpen = false; }
 
   saveLmsMaterial(): void {
-    if (!this.lmsMaterialForm.title?.trim()) { alert('Material title is required.'); return; }
-    if (!this.lmsMaterialForm.courseId) { alert('Please select a course.'); return; }
+    if (!this.lmsMaterialForm.title?.trim()) { this.dialogService.toast('Material title is required.', 'warning'); return; }
+    if (!this.lmsMaterialForm.courseId) { this.dialogService.toast('Please select a course.', 'warning'); return; }
     const mat = {
       id: this.lmsFormMode === 'edit' ? this.lmsMaterialForm.id : 'mat-' + Date.now(),
       ...this.lmsMaterialForm,
       createdAt: this.lmsFormMode === 'edit' ? this.lmsMaterialForm.createdAt : new Date().toISOString().split('T')[0]
     };
     this.contentService.saveLmsMaterial(mat);
+    this.dialogService.toast(`Material "${mat.title}" saved.`, 'success');
     this.closeLmsMaterialModal();
   }
 
-  removeLmsMaterial(id: string): void {
-    if (!confirm('Delete this material?')) return;
-    this.contentService.removeLmsMaterial(id);
+  async removeLmsMaterial(id: string): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Delete Material',
+      message: 'Delete this material?',
+      confirmText: 'Delete Material',
+      type: 'danger'
+    });
+    if (ok) {
+      this.contentService.removeLmsMaterial(id);
+      this.dialogService.toast('Material removed.', 'info');
+    }
   }
 
   openLmsAssignmentModal(asgn?: any): void {
@@ -2304,19 +2494,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
   closeLmsAssignmentModal(): void { this.isLmsAssignmentModalOpen = false; }
 
   saveLmsAssignment(): void {
-    if (!this.lmsAssignmentForm.title?.trim()) { alert('Assignment title is required.'); return; }
-    if (!this.lmsAssignmentForm.courseId) { alert('Please select a course.'); return; }
+    if (!this.lmsAssignmentForm.title?.trim()) { this.dialogService.toast('Assignment title is required.', 'warning'); return; }
+    if (!this.lmsAssignmentForm.courseId) { this.dialogService.toast('Please select a course.', 'warning'); return; }
     const asgn = {
       id: this.lmsFormMode === 'edit' ? this.lmsAssignmentForm.id : 'asgn-' + Date.now(),
       ...this.lmsAssignmentForm,
       createdAt: this.lmsFormMode === 'edit' ? this.lmsAssignmentForm.createdAt : new Date().toISOString().split('T')[0]
     };
     this.contentService.saveLmsAssignment(asgn);
+    this.dialogService.toast(`Assignment "${asgn.title}" saved.`, 'success');
     this.closeLmsAssignmentModal();
   }
 
-  removeLmsAssignment(id: string): void {
-    if (!confirm('Delete this assignment?')) return;
-    this.contentService.removeLmsAssignment(id);
+  async removeLmsAssignment(id: string): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Delete Assignment',
+      message: 'Delete this assignment?',
+      confirmText: 'Delete Assignment',
+      type: 'danger'
+    });
+    if (ok) {
+      this.contentService.removeLmsAssignment(id);
+      this.dialogService.toast('Assignment removed.', 'info');
+    }
   }
 }

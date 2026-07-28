@@ -1,6 +1,15 @@
 import { Injectable } from '@angular/core';
 import { DataStorageService } from './data-storage.service';
 
+export interface UpcomingEvent {
+  id: string;
+  month: string;
+  day: string;
+  title: string;
+  description: string;
+  location: string;
+}
+
 export interface ChampionshipStory {
   id: string;
   tag: string;
@@ -16,8 +25,12 @@ export interface ChampionshipStory {
 
 export interface HallOfFameEntry {
   id: string;
+  type?: 'individual' | 'group'; // 'individual' by default if undefined
   initials: string;
-  name: string;
+  name: string; // Used as display title or individual name
+  teamName?: string; // Optional team/squad name
+  projectTitle?: string; // Optional project title
+  members?: string[]; // Array of member names for groups
   school: string;
   year: string;
   badge: string;
@@ -313,6 +326,8 @@ export interface Team {
   mentor?: string;
   motto?: string;
   rosterList?: string[];
+  memberNames?: string[];
+  memberList?: string[];
 }
 
 export interface Submission {
@@ -340,6 +355,9 @@ export class ContentService {
   
   // ── Hall of Fame ─────────────────────────────────────────────
   hallOfFameEntries: HallOfFameEntry[] = [];
+
+  // ── Upcoming Events ───────────────────────────────────────────
+  upcomingEvents: UpcomingEvent[] = [];
 
   // ── Leaderboard ──────────────────────────────────────────────
   leaderboardData: LeaderboardEntry[] = [];
@@ -451,6 +469,11 @@ export class ContentService {
     { id: 'enr-4', courseId: 'crs-3', studentId: 'usr-104', studentName: 'Ama Boateng', studentEmail: 'ama@school.edu.gh', progressPct: 45, enrolledAt: '2026-02-02', lastActive: '2026-07-25', status: 'active' },
     { id: 'enr-5', courseId: 'crs-4', studentId: 'usr-105', studentName: 'Yaw Appiah', studentEmail: 'yaw@school.edu.gh', progressPct: 30, enrolledAt: '2026-02-12', lastActive: '2026-07-20', status: 'active' }
   ];
+  private readonly defaultEvents: UpcomingEvent[] = [
+    { id: 'evt-1', month: 'AUG', day: '15', title: 'Regional Qualifier — Greater Accra', description: 'STEM teams compete for national qualification spots across all 5 tracks.', location: 'Accra International Conference Centre' },
+    { id: 'evt-2', month: 'SEP', day: '22', title: 'Regional Qualifier — Ashanti', description: 'Kumasi hosts the Ashanti regional championships with 40+ competing teams.', location: 'Kumasi Cultural Centre' },
+    { id: 'evt-3', month: 'DEC', day: '07', title: 'National Grand Final', description: 'The ultimate showdown — top teams from all regions battle for the NTIC Championship crown.', location: 'National Theatre of Ghana, Accra' }
+  ];
   private readonly defaultStories: ChampionshipStory[] = [
     {
       id: 'story-1', tag: 'Robotics', tagColor: 'robotics',
@@ -498,7 +521,21 @@ export class ContentService {
 
   private readonly defaultHof: HallOfFameEntry[] = [
     {
+      id: 'hof-group-1',
+      type: 'group',
+      initials: 'CR',
+      name: 'CyberRangers',
+      teamName: 'CyberRangers Squad',
+      projectTitle: 'Zero-Trust Autonomous Firewall System',
+      members: ['Kofi Nyarko', 'Abena Mensah', 'Emmanuel Osei', 'Selorm Adjei'],
+      school: 'Prempeh College',
+      year: '2025',
+      badge: '🏆 Cybersecurity Grand Champions',
+      trackClass: 'cyber-track'
+    },
+    {
       id: 'hof-1',
+      type: 'individual',
       initials: 'EA',
       name: 'Ekow Asante',
       school: 'Mfantsipim School',
@@ -507,16 +544,21 @@ export class ContentService {
       trackClass: 'coding-track'
     },
     {
-      id: 'hof-2',
-      initials: 'AS',
-      name: 'Abigail Serwaa',
+      id: 'hof-group-2',
+      type: 'group',
+      initials: 'AI',
+      name: 'RoboQuest Alpha',
+      teamName: 'RoboQuest Alpha',
+      projectTitle: 'Solar Autonomous Agri-Rover',
+      members: ['Abigail Serwaa', 'Akosua Baako', 'Ama Opoku'],
       school: 'Wesley Girls High School',
       year: '2025',
-      badge: 'Robotics Champion',
+      badge: '🤖 Robotics Team Champions',
       trackClass: 'robotics-track'
     },
     {
       id: 'hof-3',
+      type: 'individual',
       initials: 'KN',
       name: 'Kofi Nyarko',
       school: 'Prempeh College',
@@ -526,6 +568,7 @@ export class ContentService {
     },
     {
       id: 'hof-4',
+      type: 'individual',
       initials: 'ED',
       name: 'Efua Donkor',
       school: 'Achimota School',
@@ -575,7 +618,44 @@ export class ContentService {
   private readonly defaultRejectedApprovals: ApprovalRequest[] = [];
   private readonly defaultApprovedApprovals: ApprovalRequest[] = [];
 
-  private readonly defaultTeams: Team[] = [];
+  private readonly defaultTeams: Team[] = [
+    {
+      id: 'team-1',
+      name: 'CyberRangers Squad',
+      track: 'Cybersecurity',
+      lead: 'Kofi Nyarko',
+      members: 4,
+      status: 'Qualified',
+      schoolName: 'Prempeh College',
+      mentor: 'Dr. Emmanuel Osei',
+      motto: 'Shielding Ghana Digital Frontier',
+      rosterList: ['Kofi Nyarko', 'Abena Mensah', 'Emmanuel Osei', 'Selorm Adjei']
+    },
+    {
+      id: 'team-2',
+      name: 'RoboQuest Alpha',
+      track: 'Robotics',
+      lead: 'Abigail Serwaa',
+      members: 3,
+      status: 'Qualified',
+      schoolName: 'Wesley Girls High School',
+      mentor: 'Mrs. Efua Mensah',
+      motto: 'Automating Tomorrow',
+      rosterList: ['Abigail Serwaa', 'Akosua Baako', 'Ama Opoku']
+    },
+    {
+      id: 'team-3',
+      name: 'Apex Coders',
+      track: 'Coding',
+      lead: 'Ekow Asante',
+      members: 4,
+      status: 'Qualified',
+      schoolName: 'Mfantsipim School',
+      mentor: 'Mr. Sampson Cudjoe',
+      motto: 'Logic Meets Innovation',
+      rosterList: ['Ekow Asante', 'Kweku Addo', 'Paa Kwesi', 'Yao Mensah']
+    }
+  ];
 
   private readonly defaultSubmissions: Submission[] = [];
 
@@ -584,6 +664,30 @@ export class ContentService {
   private readonly defaultCsrUpdates = [];
 
   private storageReady = false;
+
+  private enrichHofEntries(entries: HallOfFameEntry[]): HallOfFameEntry[] {
+    if (!Array.isArray(entries)) return entries;
+    return entries.map(entry => {
+      const isGroupBadge = entry.badge && (entry.badge.toLowerCase().includes('squad') || entry.badge.toLowerCase().includes('team') || entry.badge.toLowerCase().includes('group'));
+      const type = entry.type || (isGroupBadge ? 'group' : 'individual');
+      
+      let members = entry.members;
+      if (type === 'group' && (!members || members.length === 0)) {
+        // Auto-generate sample roster if squad entry lacks member details
+        if (entry.name && entry.name.toLowerCase().includes('gsts')) {
+          members = ['Kofi Boateng', 'Yaw Appiah', 'Seth Addo', 'Emmanuel Quaye'];
+        } else if (entry.teamName || entry.name) {
+          members = ['Kwame Asante', 'Abena Mensah', 'Kofi Nyarko', 'Efua Donkor'];
+        }
+      }
+
+      return {
+        ...entry,
+        type,
+        members: members || []
+      };
+    });
+  }
 
   constructor(private dataStorage: DataStorageService) {
     this.loadStateAndFallback();
@@ -594,7 +698,8 @@ export class ContentService {
     if (typeof window !== 'undefined' && window.localStorage) {
       // Basic ContentService data — small, sync is fine
       this.championshipStories = this.loadKeySync('championshipStories', this.defaultStories);
-      this.hallOfFameEntries = this.loadKeySync('hallOfFameEntries', this.defaultHof);
+      this.hallOfFameEntries = this.enrichHofEntries(this.loadKeySync('hallOfFameEntries', this.defaultHof));
+      this.upcomingEvents = this.loadKeySync('upcomingEvents', this.defaultEvents);
       this.leaderboardData = this.loadKeySync('leaderboardData', this.defaultLeaderboard);
       this.talentDiscovery = this.loadKeySync('talentDiscovery', this.defaultTalentDiscovery);
       this.platformStats = this.loadKeySync('platformStats', this.defaultStats);
@@ -632,6 +737,7 @@ export class ContentService {
     } else {
       this.championshipStories = [...this.defaultStories];
       this.hallOfFameEntries = [...this.defaultHof];
+      this.upcomingEvents = [...this.defaultEvents];
       this.leaderboardData = [...this.defaultLeaderboard];
       this.talentDiscovery = [...this.defaultTalentDiscovery];
       this.platformStats = { ...this.defaultStats };
@@ -840,6 +946,29 @@ export class ContentService {
       this.hallOfFameEntries[idx] = { ...entry };
       this.hallOfFameEntries = [...this.hallOfFameEntries];
       this.saveState('hallOfFameEntries', this.hallOfFameEntries);
+    }
+  }
+
+  // ── CRUD Upcoming Events ───────────────────────────────────────────
+
+  addEvent(event: Omit<UpcomingEvent, 'id'>): void {
+    const id = 'evt-' + Date.now();
+    this.upcomingEvents.push({ id, ...event });
+    this.upcomingEvents = [...this.upcomingEvents];
+    this.saveState('upcomingEvents', this.upcomingEvents);
+  }
+
+  removeEvent(id: string): void {
+    this.upcomingEvents = this.upcomingEvents.filter(e => e.id !== id);
+    this.saveState('upcomingEvents', this.upcomingEvents);
+  }
+
+  updateEvent(event: UpcomingEvent): void {
+    const idx = this.upcomingEvents.findIndex(e => e.id === event.id);
+    if (idx !== -1) {
+      this.upcomingEvents[idx] = { ...event };
+      this.upcomingEvents = [...this.upcomingEvents];
+      this.saveState('upcomingEvents', this.upcomingEvents);
     }
   }
 

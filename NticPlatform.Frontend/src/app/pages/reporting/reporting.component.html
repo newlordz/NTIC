@@ -25,7 +25,7 @@
           <button class="btn btn-subtle btn-sm"><span class="material-symbols-outlined">search</span>Search</button>
         </div>
       </div>
-      <div style="overflow-x:auto;" *ngIf="reports.length > 0">
+      <div style="overflow-x:auto;max-height:400px;overflow-y:auto;" *ngIf="reports.length > 0">
         <table class="data-table">
           <thead>
             <tr><th>Report</th><th>Type</th><th>Generated</th><th>Size</th><th>Status</th><th>Actions</th></tr>
@@ -53,6 +53,7 @@
                 <div style="display:flex;gap:6px;align-items:center;" *ngIf="r.status==='ready'">
                   <button class="btn btn-ghost btn-sm" (click)="downloadReport(r, 'PDF')" title="Download PDF Export"><span class="material-symbols-outlined">picture_as_pdf</span>PDF</button>
                   <button class="btn btn-subtle btn-sm" (click)="downloadReport(r, 'Excel')" title="Download Excel Export"><span class="material-symbols-outlined">table_view</span>Excel</button>
+                  <button class="btn btn-subtle btn-sm" (click)="downloadReport(r, 'Word')" title="Download Word Export"><span class="material-symbols-outlined">description</span>Word</button>
                   <button class="btn btn-subtle btn-sm" (click)="openDeleteModal(r)" title="Delete Report" style="color:#dc2626;background:#fef2f2;border-color:#fecaca;padding:4px 8px;min-width:auto;"><span class="material-symbols-outlined" style="font-size:16px;">delete</span></button>
                 </div>
                 <span *ngIf="r.status!=='ready'" style="font-size:12px;color:var(--on-surface-variant)">Generating...</span>
@@ -111,7 +112,7 @@
       <!-- Audit Log -->
       <div class="card">
         <div class="card-header"><h3>Audit Log</h3><span class="badge neutral">Live</span></div>
-        <div class="card-body" style="display:flex;flex-direction:column;gap:8px;">
+        <div class="card-body" style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;">
           <div *ngFor="let log of auditLogs" style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--outline-variant);">
             <div style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;" [style.background]="'rgba(0,63,135,0.08)'">
               <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary)">{{log.icon}}</span>

@@ -6,6 +6,8 @@ import { ThemeService } from './services/theme.service';
 import { ContentService } from './services/content.service';
 import { TimeAgoPipe } from './services/time-ago.pipe';
 
+import { DialogService } from './services/dialog.service';
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -54,7 +56,7 @@ export class AppComponent implements OnInit, OnDestroy {
     'reporting':    'Reports & Analytics',
   };
 
-  constructor(private router: Router, public themeService: ThemeService, public contentService: ContentService, private renderer: Renderer2) {
+  constructor(private router: Router, public themeService: ThemeService, public contentService: ContentService, public dialogService: DialogService, private renderer: Renderer2) {
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
@@ -138,6 +140,19 @@ export class AppComponent implements OnInit, OnDestroy {
 
   scrollToTop(): void {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  navigateSidebarCTA(): void {
+    const roleId = this.currentUser?.roleId;
+    if (roleId === 'judge') {
+      window.location.hash = '#/judge';
+    } else if (roleId === 'instructor') {
+      window.location.hash = '#/instructor';
+    } else if (roleId === 'school_admin') {
+      window.location.hash = '#/dashboard?action=add_team';
+    } else {
+      window.location.hash = '#/competitions';
+    }
   }
 
   logout(): void {

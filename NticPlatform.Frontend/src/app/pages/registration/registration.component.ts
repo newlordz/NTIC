@@ -6,6 +6,7 @@ import { ThemeService } from '../../services/theme.service';
 import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { BrevoEmailService } from '../../services/brevo-email.service';
+import { DialogService } from '../../services/dialog.service';
 
 @Component({
   selector: 'app-registration',
@@ -583,7 +584,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       const names: string[] = [];
       for (const file of Array.from(files)) {
         if (file.size > maxSize) {
-          alert(`"${file.name}" exceeds the maximum size of ${Math.round(maxSize / (1024 * 1024))}MB.`);
+          this.dialogService.toast(`"${file.name}" exceeds the maximum size of ${Math.round(maxSize / (1024 * 1024))}MB.`, 'warning');
           continue;
         }
         const id = this.fileStorage.generateId();
@@ -689,7 +690,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.showPrivacyModal = false;
   }
 
-  constructor(private route: ActivatedRoute, private router: Router, public themeService: ThemeService, public contentService: ContentService, public fileStorage: FileStorageService, private emailService: BrevoEmailService) {}
+  constructor(private route: ActivatedRoute, private router: Router, public themeService: ThemeService, public contentService: ContentService, public fileStorage: FileStorageService, private emailService: BrevoEmailService, public dialogService: DialogService) {}
 
   logoUrls: Record<string, string> = {};
 
@@ -1933,7 +1934,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       console.error('[Registration] Submission error:', err);
       this.isSubmitting = false;
       this.isPreviewModalOpen = false;
-      alert('Submission failed. Please try again. Error: ' + (err as any)?.message);
+      this.dialogService.toast('Submission failed. Please try again. Error: ' + (err as any)?.message, 'error');
     }
     }, 1500);
   }

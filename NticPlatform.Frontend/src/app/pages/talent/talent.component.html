@@ -81,15 +81,62 @@
 
   <!-- Hall of Fame cards -->
   <div *ngIf="contentService.hallOfFameEntries.length > 0" class="grid-4" style="gap:16px;margin-bottom:40px;">
-    <div *ngFor="let h of contentService.hallOfFameEntries" class="card hof-card">
-      <div class="card-body" style="text-align:center;">
-        <div class="hof-initials {{ h.trackClass || '' }}">{{ h.initials || (h.name ? h.name[0].toUpperCase() : '?') }}</div>
+    <div *ngFor="let h of contentService.hallOfFameEntries" class="card hof-card" [class.is-group]="isGroupEntry(h)">
+      <div class="card-body" style="text-align:center; position:relative;">
+        
+        <!-- Type Pill (Individual / Squad) -->
+        <div *ngIf="isGroupEntry(h)" class="hof-type-pill group-pill">
+          <span class="material-symbols-outlined" style="font-size:12px;">groups</span> Group Champion
+        </div>
+        <div *ngIf="!isGroupEntry(h)" class="hof-type-pill ind-pill">
+          <span class="material-symbols-outlined" style="font-size:12px;">person</span> Individual
+        </div>
+
+        <!-- Initials Avatar -->
+        <div class="hof-initials {{ h.trackClass || '' }}">
+          <span *ngIf="!isGroupEntry(h)">{{ h.initials || (h.name ? h.name[0].toUpperCase() : '?') }}</span>
+          <span *ngIf="isGroupEntry(h)" class="material-symbols-outlined" style="font-size:28px;">groups</span>
+        </div>
+
         <div style="font-weight:700;font-size:15px;margin-bottom:2px;">{{ h.name }}</div>
-        <div style="font-size:12px;color:var(--on-surface-variant);margin-bottom:8px;">{{ h.school }}</div>
-        <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
+        <div style="font-size:12px;color:var(--on-surface-variant);margin-bottom:6px;">{{ h.school }}</div>
+        
+        <div *ngIf="h.projectTitle" style="font-size:11px; font-weight:600; color:var(--primary); margin-bottom:8px; font-style:italic;">
+          "{{ h.projectTitle }}"
+        </div>
+
+        <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap; margin-bottom:8px;">
           <span class="badge neutral" style="font-size:11px;">{{ h.year }}</span>
           <span class="badge primary" style="font-size:11px;">{{ h.badge }}</span>
         </div>
+
+        <!-- Group Members Indicator & Hover Trigger -->
+        <div class="hof-members-trigger" *ngIf="getMembers(h).length > 0">
+          <span class="material-symbols-outlined" style="font-size:15px;">group</span>
+          <span>{{ getMembers(h).length }} Team Members</span>
+          <span class="material-symbols-outlined" style="font-size:14px;">info</span>
+
+          <!-- Hover Popover Panel -->
+          <div class="hof-members-popover">
+            <div class="popover-header">
+              <span class="material-symbols-outlined" style="font-size:18px;">groups</span>
+              <div>
+                <div class="popover-title">{{ h.name }} Roster</div>
+                <div class="popover-sub">{{ h.school }} ({{ h.year }})</div>
+              </div>
+            </div>
+            <div *ngIf="h.projectTitle" class="popover-project">
+              🚀 <strong>Project:</strong> {{ h.projectTitle }}
+            </div>
+            <div class="popover-members-list">
+              <div *ngFor="let member of getMembers(h); let idx = index" class="popover-member-item">
+                <span class="member-num">#{{ idx + 1 }}</span>
+                <span class="member-name">{{ member }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>

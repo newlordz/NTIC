@@ -189,6 +189,9 @@
         [class.active]="i === activeSlideIndex"
         [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + slide.image + ')'"
       >
+        <!-- Uploaded Video Background -->
+        <video *ngIf="slide.video" [src]="slide.video" autoplay muted playsinline loop preload="auto" class="slide-video-bg"></video>
+
         <!-- Browser-Native Image & Animation Background -->
 
         <!-- Browser-Native Video Edit Montage if present -->
@@ -464,7 +467,7 @@
               <span>{{ story.date }}</span>
               <span class="story-date-sep">•</span>
               <span class="material-symbols-outlined story-date-icon">schedule</span>
-              <span>{{ story.readTime }}</span>
+              <span>{{ timeAgo(story.date) }}</span>
             </span>
             <h3>{{ story.title }}</h3>
             <p>{{ story.body }}</p>
@@ -497,7 +500,7 @@
                 <span>{{ story.date }}</span>
                 <span class="story-date-sep">•</span>
                 <span class="material-symbols-outlined story-date-icon">schedule</span>
-                <span>{{ story.readTime }}</span>
+                <span>{{ timeAgo(story.date) }}</span>
               </span>
               <h3>{{ story.title }}</h3>
               <p>{{ story.body }}</p>
@@ -562,12 +565,46 @@
     <div class="alumni-track-wrap" [class.static-wrap]="contentService.activeHallOfFameEntries.length < 4">
       <div class="alumni-marquee" [class.static-marquee]="contentService.activeHallOfFameEntries.length < 4">
         <!-- Set A - driven by ContentService -->
-        <div *ngFor="let entry of contentService.activeHallOfFameEntries" class="alumni-card" [class]="entry.trackClass">
-          <div class="alumni-avatar">{{ entry.initials }}</div>
+        <div *ngFor="let entry of contentService.activeHallOfFameEntries" class="alumni-card" [class]="entry.trackClass" [class.is-group]="isGroupEntry(entry)">
+          <div class="alumni-avatar">
+            <span *ngIf="!isGroupEntry(entry)">{{ entry.initials }}</span>
+            <span *ngIf="isGroupEntry(entry)" class="material-symbols-outlined" style="font-size:32px;">groups</span>
+          </div>
           <div class="alumni-info">
-            <strong>{{ entry.name }}</strong>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <strong>{{ entry.name }}</strong>
+              <span *ngIf="isGroupEntry(entry)" style="background:linear-gradient(135deg, #003f87, #0066cc); color:#ffffff; font-size:9.5px; font-weight:800; padding:2px 8px; border-radius:12px; letter-spacing:0.5px;">SQUAD</span>
+            </div>
             <span>{{ entry.school }} · {{ entry.year }}</span>
-            <span class="alumni-badge" [class]="entry.trackClass.replace('-track','') ">{{ entry.badge }}</span>
+            <span class="alumni-badge" [class]="(entry.trackClass || 'coding-track').replace('-track','')">{{ entry.badge }}</span>
+            
+            <div *ngIf="isGroupEntry(entry) && getMembers(entry).length > 0" class="alumni-members-trigger">
+              <span class="material-symbols-outlined trigger-icon">groups</span>
+              <span>{{ getMembers(entry).length }} Team Members</span>
+              <span class="material-symbols-outlined" style="font-size:13px; opacity:0.8;">info</span>
+              
+              <!-- Hover Popover Panel -->
+              <div class="alumni-members-popover">
+                <div class="popover-header">
+                  <div class="popover-header-icon">
+                    <span class="material-symbols-outlined" style="font-size:20px;">groups</span>
+                  </div>
+                  <div>
+                    <div class="popover-title">{{ entry.name }} Roster</div>
+                    <div class="popover-sub">{{ entry.school }} ({{ entry.year }})</div>
+                  </div>
+                </div>
+                <div *ngIf="entry.projectTitle" class="popover-project">
+                  🚀 <strong>Project:</strong> {{ entry.projectTitle }}
+                </div>
+                <div class="popover-members-list">
+                  <div *ngFor="let member of getMembers(entry); let idx = index" class="popover-member-item">
+                    <span class="member-num">#{{ idx + 1 }}</span>
+                    <span class="member-name">{{ member }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="alumni-medal-badge">
             <img src="assets/hall_of_fame_medal.png" alt="NTIC Medal">
@@ -575,12 +612,46 @@
         </div>
         <!-- Set B (duplicate for seamless loop, only needed when >= 4 items) -->
         <ng-container *ngIf="contentService.activeHallOfFameEntries.length >= 4">
-          <div *ngFor="let entry of contentService.activeHallOfFameEntries" class="alumni-card" [class]="entry.trackClass">
-            <div class="alumni-avatar">{{ entry.initials }}</div>
+          <div *ngFor="let entry of contentService.activeHallOfFameEntries" class="alumni-card" [class]="entry.trackClass" [class.is-group]="isGroupEntry(entry)">
+            <div class="alumni-avatar">
+              <span *ngIf="!isGroupEntry(entry)">{{ entry.initials }}</span>
+              <span *ngIf="isGroupEntry(entry)" class="material-symbols-outlined" style="font-size:32px;">groups</span>
+            </div>
             <div class="alumni-info">
-              <strong>{{ entry.name }}</strong>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <strong>{{ entry.name }}</strong>
+                <span *ngIf="isGroupEntry(entry)" style="background:linear-gradient(135deg, #003f87, #0066cc); color:#ffffff; font-size:9.5px; font-weight:800; padding:2px 8px; border-radius:12px; letter-spacing:0.5px;">SQUAD</span>
+              </div>
               <span>{{ entry.school }} · {{ entry.year }}</span>
-              <span class="alumni-badge" [class]="entry.trackClass.replace('-track','') ">{{ entry.badge }}</span>
+              <span class="alumni-badge" [class]="(entry.trackClass || 'coding-track').replace('-track','')">{{ entry.badge }}</span>
+              
+              <div *ngIf="isGroupEntry(entry) && getMembers(entry).length > 0" class="alumni-members-trigger">
+                <span class="material-symbols-outlined trigger-icon">groups</span>
+                <span>{{ getMembers(entry).length }} Team Members</span>
+                <span class="material-symbols-outlined" style="font-size:13px; opacity:0.8;">info</span>
+                
+                <!-- Hover Popover Panel -->
+                <div class="alumni-members-popover">
+                  <div class="popover-header">
+                    <div class="popover-header-icon">
+                      <span class="material-symbols-outlined" style="font-size:20px;">groups</span>
+                    </div>
+                    <div>
+                      <div class="popover-title">{{ entry.name }} Roster</div>
+                      <div class="popover-sub">{{ entry.school }} ({{ entry.year }})</div>
+                    </div>
+                  </div>
+                  <div *ngIf="entry.projectTitle" class="popover-project">
+                    🚀 <strong>Project:</strong> {{ entry.projectTitle }}
+                  </div>
+                  <div class="popover-members-list">
+                    <div *ngFor="let member of getMembers(entry); let idx = index" class="popover-member-item">
+                      <span class="member-num">#{{ idx + 1 }}</span>
+                      <span class="member-name">{{ member }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="alumni-medal-badge">
               <img src="assets/hall_of_fame_medal.png" alt="NTIC Medal">

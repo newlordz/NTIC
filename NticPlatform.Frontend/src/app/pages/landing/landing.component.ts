@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../services/theme.service';
 import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
+import { DialogService } from '../../services/dialog.service';
 
 interface UserRole {
   id: string;
@@ -97,6 +98,26 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   isLoggingIn = false;
   loginError = '';
   isPasswordVisible = false;
+
+  isGroupEntry(h: any): boolean {
+    if (!h) return false;
+    if (h.type === 'group') return true;
+    if (h.members && Array.isArray(h.members) && h.members.length > 0) return true;
+    if (h.badge && (h.badge.includes('Squad') || h.badge.includes('Team') || h.badge.includes('SQUAD') || h.badge.includes('TEAM'))) return true;
+    return false;
+  }
+
+  getMembers(h: any): string[] {
+    if (!h) return [];
+    if (Array.isArray(h.members) && h.members.length > 0) return h.members;
+    if (this.isGroupEntry(h)) {
+      if (h.name && h.name.toLowerCase().includes('gsts')) {
+        return ['Kofi Boateng', 'Yaw Appiah', 'Seth Addo', 'Emmanuel Quaye'];
+      }
+      return ['Kwame Asante', 'Abena Mensah', 'Kofi Nyarko', 'Efua Donkor'];
+    }
+    return [];
+  }
   detectedRoleName = '';
 
   get isAdminEmail(): boolean {
@@ -170,6 +191,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   countdownSecs = 0;
   countdownTick = false;
   private countdownInterval: any;
+  private storyTimer: any;
 
   // ── COMPETITIONS HERO + GRID ─────────────────────────────────
   get featuredCompetition(): any | null {
@@ -875,7 +897,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     public contentService: ContentService,
     private renderer: Renderer2,
     private fileStorage: FileStorageService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    public dialogService: DialogService
   ) {
     this.activeRoleId = '';
     const heroSlides = this.contentService.heroSlides.length > 0
@@ -915,19 +938,31 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  clearAllData(): void {
-    if (confirm('Are you sure you want to clear all data and start with a clean slate? This will reset all portals.')) {
+  async clearAllData(): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Wipe & Reset Platform Data',
+      message: 'Are you sure you want to clear all data and start with a clean slate? This will reset all portals.',
+      confirmText: 'Clear All Data',
+      type: 'danger'
+    });
+    if (ok) {
       this.contentService.clearAllData();
-      alert('All data wiped! You are now in a clean testing state.');
-      window.location.reload();
+      this.dialogService.toast('All data wiped! Reloading...', 'warning');
+      setTimeout(() => window.location.reload(), 800);
     }
   }
 
-  loadSampleData(): void {
-    if (confirm('Are you sure you want to restore the original sample data? This will overwrite your current test inputs.')) {
+  async loadSampleData(): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Restore Sample Data',
+      message: 'Are you sure you want to restore the original sample data? This will overwrite your current test inputs.',
+      confirmText: 'Restore Data',
+      type: 'warning'
+    });
+    if (ok) {
       this.contentService.loadSampleData();
-      alert('Sample data restored successfully!');
-      window.location.reload();
+      this.dialogService.toast('Sample data restored successfully! Reloading...', 'success');
+      setTimeout(() => window.location.reload(), 800);
     }
   }
 
@@ -957,6 +992,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.startMatrixRain();
     this.applyRegionColors();
     this.setupScrollAnimations();
+    this.storyTimer = setInterval(() => this.cdr.detectChanges(), 30_000);
   }
 
   ngOnDestroy(): void {
@@ -1002,6 +1038,22 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       item.card.removeEventListener('mouseleave', item.mouseLeave);
     });
     this.cardListeners = [];
+    if (this.storyTimer) clearInterval(this.storyTimer);
+  }
+
+  timeAgo(date: string): string {
+    const parsed = Date.parse(date);
+    if (!parsed) return '';
+    const diff = Date.now() - parsed;
+    const mins = Math.floor(diff / 60_000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return mins + ' min ago';
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + ' hr ago';
+    const days = Math.floor(hrs / 24);
+    if (days < 30) return days + ' days ago';
+    const months = Math.floor(days / 30);
+    return months + ' months ago';
   }
 
   private preloadNextImages(currentIndex: number, count: number = 3): void {
@@ -1194,6 +1246,18 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         if (url) { this.slides[i].image = url; }
       }
     }
+    this.cdr.detectChanges();
+    setTimeout(() => this.playActiveSlideVideo(), 100);
+  }
+
+  private playActiveSlideVideo(): void {
+    const videoElements = this.elementRef.nativeElement.querySelectorAll('.slide-item video') as NodeListOf<HTMLVideoElement>;
+    videoElements.forEach((video) => {
+      const slideItem = video.closest('.slide-item');
+      if (slideItem && slideItem.classList.contains('active')) {
+        video.play().catch(() => {});
+      }
+    });
   }
 
   nextSlide(): void {

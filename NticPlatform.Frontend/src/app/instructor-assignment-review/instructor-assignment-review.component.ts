@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { CommonModule } from '@angular/common';
 import { Subject, Observable, of } from 'rxjs';
 import { takeUntil, tap, delay } from 'rxjs/operators';
+import { DialogService } from '../services/dialog.service';
 
 export interface SubmissionModel {
   id: string;
@@ -26,20 +27,23 @@ export class InstructorAssignmentReviewComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   public currentSubmissionId: string | null = null;
 
-  constructor(private fb: FormBuilder) {}
+  constructor(private fb: FormBuilder, public dialogService: DialogService) {}
 
   ngOnInit(): void {
     this.initForm();
     
-    // Declarative RxJS stream simulating fetching incoming assignments from LMS Context
-    this.activeSubmission$ = this.mockPendingSubmission().pipe(
-      takeUntil(this.destroy$),
-      tap(submission => {
-        if (submission) {
-          this.currentSubmissionId = submission.id;
-          this.reviewForm.reset();
-        }
-      })
+    // Simulate API fetch via RxJS pipeline
+    this.activeSubmission$ = of({
+      id: 'sub-88912',
+      studentId: 'stu-5412',
+      sourceCodePath: 'https://github.com/ntic/sample-repo',
+      videoUrl: 'https://youtube.com/watch?v=demo',
+      track: 'Coding & Algorithms',
+      status: 'PendingReview'
+    }).pipe(
+      delay(300),
+      tap(sub => this.currentSubmissionId = sub.id),
+      takeUntil(this.destroy$)
     );
   }
 
@@ -59,7 +63,7 @@ export class InstructorAssignmentReviewComponent implements OnInit, OnDestroy {
     };
 
     console.log(`Submitting decision to LMS API via MediatR Commands:`, reviewData);
-    alert(`Decision: ${decision} recorded for submission ${this.currentSubmissionId}.`);
+    this.dialogService.toast(`Decision: ${decision} recorded for submission ${this.currentSubmissionId}.`, 'success');
     
     // Clear and fetch next tenant-isolated record
     this.reviewForm.reset();

@@ -15,8 +15,7 @@
     </div>
  
     <a class="sidebar-new-btn" *ngIf="currentUser?.roleId !== 'student' && currentUser?.roleId !== 'sponsor' && currentUser?.roleId !== 'super_admin' && currentUser?.roleId !== 'content_manager' && currentUser?.roleId !== 'reviewer' && currentUser?.roleId !== 'competition_manager'"
-       [routerLink]="currentUser?.roleId === 'judge' ? '/judge' : currentUser?.roleId === 'instructor' ? '/instructor' : currentUser?.roleId === 'school_admin' ? '/dashboard' : '/competitions'"
-       [queryParams]="currentUser?.roleId === 'school_admin' ? { action: 'add_team' } : null">
+       (click)="navigateSidebarCTA()">
       <span class="material-symbols-outlined" style="font-size:18px;">{{ currentUser?.roleId === 'judge' ? 'gavel' : currentUser?.roleId === 'school_admin' ? 'group_add' : currentUser?.roleId === 'instructor' ? 'assignment_turned_in' : 'add' }}</span>
       {{ currentUser?.roleId === 'instructor' ? 'Grade Work' : currentUser?.roleId === 'school_admin' ? 'Add Team' : currentUser?.roleId === 'judge' ? 'Score Challenge' : 'New Challenge' }}
     </a>
@@ -233,6 +232,40 @@
  
     <!-- Router Outlet -->
     <router-outlet></router-outlet>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     GLOBAL SYSTEM CONFIRM MODAL
+══════════════════════════════════════════ -->
+<div class="custom-dialog-backdrop" *ngIf="(dialogService.confirmState$ | async) as confirmItem" (click)="dialogService.closeConfirm(false)">
+  <div class="custom-dialog-card" (click)="$event.stopPropagation()">
+    <div class="custom-dialog-header">
+      <div class="custom-dialog-icon-wrapper" [class.danger]="confirmItem.data.type === 'danger'" [class.warning]="confirmItem.data.type === 'warning'">
+        <span class="material-symbols-outlined">{{ confirmItem.data.type === 'danger' ? 'warning' : 'help_outline' }}</span>
+      </div>
+      <h3 class="custom-dialog-title">{{ confirmItem.data.title }}</h3>
+    </div>
+    <div class="custom-dialog-body">
+      <p>{{ confirmItem.data.message }}</p>
+    </div>
+    <div class="custom-dialog-footer">
+      <button class="dialog-btn dialog-btn-cancel" (click)="dialogService.closeConfirm(false)">{{ confirmItem.data.cancelText }}</button>
+      <button class="dialog-btn dialog-btn-confirm" [class.danger]="confirmItem.data.type === 'danger'" (click)="dialogService.closeConfirm(true)">{{ confirmItem.data.confirmText }}</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     GLOBAL TOAST NOTIFICATION CONTAINER
+══════════════════════════════════════════ -->
+<div class="toast-container" *ngIf="(dialogService.toasts$ | async) as toasts">
+  <div *ngFor="let t of toasts" class="toast-card" [class]="'toast-' + (t.type || 'info')">
+    <span class="material-symbols-outlined toast-icon">
+      {{ t.type === 'success' ? 'check_circle' : t.type === 'error' ? 'error' : t.type === 'warning' ? 'warning' : 'info' }}
+    </span>
+    <span class="toast-message">{{ t.message }}</span>
+    <button class="toast-close" (click)="dialogService.removeToast(t.id)">&times;</button>
   </div>
 </div>
 
