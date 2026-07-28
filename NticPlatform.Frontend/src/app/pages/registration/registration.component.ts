@@ -536,6 +536,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   schoolLogoUrl: string | null = null;
   judgeLogoUrl: string | null = null;
   sponsorLogoUrl: string | null = null;
+  studentPhotoUrl: string | null = null;
+  groupPhotoUrl: string | null = null;
   missingDocsError = '';
 
   get hasRequiredDocs(): boolean {
@@ -580,7 +582,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         accredDocs: 10 * 1024 * 1024,
         instructorDocs: 10 * 1024 * 1024,
         sponsorLogo: 3 * 1024 * 1024,
-        judgeLogo: 3 * 1024 * 1024
+        judgeLogo: 3 * 1024 * 1024,
+        studentPhoto: 5 * 1024 * 1024,
+        groupPhoto: 5 * 1024 * 1024
       };
       const maxSize = sizeLimits[field] || 10 * 1024 * 1024;
       const ids: string[] = [];
@@ -607,6 +611,10 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         this.loadJudgeLogo();
       } else if (field === 'sponsorLogo') {
         this.loadSponsorLogo();
+      } else if (field === 'studentPhoto') {
+        this.loadStudentPhoto();
+      } else if (field === 'groupPhoto') {
+        this.loadGroupPhoto();
       }
     }
     event.target.value = '';
@@ -633,6 +641,20 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     }
   }
 
+  private async loadStudentPhoto(): Promise<void> {
+    const id = this.selectedFileIds['studentPhoto']?.[0];
+    if (id) {
+      this.studentPhotoUrl = await this.fileStorage.getUrl(id);
+    }
+  }
+
+  private async loadGroupPhoto(): Promise<void> {
+    const id = this.selectedFileIds['groupPhoto']?.[0];
+    if (id) {
+      this.groupPhotoUrl = await this.fileStorage.getUrl(id);
+    }
+  }
+
   async removeFile(field: string, index: number): Promise<void> {
     const id = this.selectedFileIds[field]?.[index];
     if (id) await this.fileStorage.remove(id);
@@ -647,6 +669,12 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     } else if (field === 'sponsorLogo') {
       if (this.sponsorLogoUrl) { this.fileStorage.revokeUrl(this.sponsorLogoUrl); }
       this.sponsorLogoUrl = null;
+    } else if (field === 'studentPhoto') {
+      if (this.studentPhotoUrl) { this.fileStorage.revokeUrl(this.studentPhotoUrl); }
+      this.studentPhotoUrl = null;
+    } else if (field === 'groupPhoto') {
+      if (this.groupPhotoUrl) { this.fileStorage.revokeUrl(this.groupPhotoUrl); }
+      this.groupPhotoUrl = null;
     }
   }
 
@@ -1129,6 +1157,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         lead: this.teamForm.leadName,
         members: membersList.length,
         rosterList: membersList.map(m => m.name),
+        photoFileId: this.selectedFileIds['groupPhoto']?.[0] || undefined,
         status: 'Approved'
       };
       this.contentService.saveTeams([...this.contentService.teams, newTeam]);
@@ -1184,6 +1213,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       phone: '',
       guardianName: this.studentForm.guardianName,
       guardianPhone: this.studentForm.guardianPhone,
+      photoFileId: this.selectedFileIds['studentPhoto']?.[0] || undefined,
       otp,
       password: otp,
       organization: this.studentForm.school || 'Independent Competitor',
@@ -1461,6 +1491,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.schoolLogoUrl = null;
     this.judgeLogoUrl = null;
     this.sponsorLogoUrl = null;
+    this.studentPhotoUrl = null;
+    this.groupPhotoUrl = null;
     this.missingDocsError = '';
 
     // Clear validation states

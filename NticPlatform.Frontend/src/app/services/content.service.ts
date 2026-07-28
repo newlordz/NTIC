@@ -246,6 +246,7 @@ export interface User {
   phone: string;
   guardianName?: string;
   guardianPhone?: string;
+  photoFileId?: string;
   password?: string;
   otp: string;
   organization: string;
@@ -327,6 +328,7 @@ export interface Team {
   status: string;
   schoolName?: string;
   region?: string;
+  photoFileId?: string;
   mentor?: string;
   motto?: string;
   rosterList?: string[];
@@ -1117,10 +1119,24 @@ export class ContentService {
 
   isValidGhanaPhone(phone: string): boolean {
     const cleaned = phone.replace(/[\s\-().]/g, '');
-    if (/^\+233[0-9]{9}$/.test(cleaned)) return true;
-    if (/^233[0-9]{9}$/.test(cleaned)) return true;
-    if (/^0[0-9]{9}$/.test(cleaned)) return true;
-    return false;
+    // MTN: 024, 025, 053, 054, 055, 059
+    // Telecel (Vodafone): 020, 050
+    // AirtelTigo: 026, 027, 056, 057
+    // Landlines: 030 - 039 (Accra, Kumasi, Takoradi, Cape Coast, Koforidua, Sunyani, Ho, Tamale, Bolgatanga, Wa)
+    const pattern = /^(?:\+233|233|0)(2[04567]|5[0345679]|3[0-9])[0-9]{7}$/;
+    return pattern.test(cleaned);
+  }
+
+  getTelecomOperator(phone: string): 'MTN' | 'Telecel' | 'AirtelTigo' | 'Landline' | 'Unknown' {
+    const cleaned = phone.replace(/[\s\-().]/g, '');
+    const match = cleaned.match(/^(?:\+233|233|0)(\d{2})/);
+    if (!match) return 'Unknown';
+    const code = match[1];
+    if (['24', '25', '53', '54', '55', '59'].includes(code)) return 'MTN';
+    if (['20', '50'].includes(code)) return 'Telecel';
+    if (['26', '27', '56', '57'].includes(code)) return 'AirtelTigo';
+    if (code.startsWith('3')) return 'Landline';
+    return 'Unknown';
   }
 
   isPhoneTaken(phone: string, excludeId?: string): boolean {

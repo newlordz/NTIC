@@ -1536,6 +1536,23 @@
               </div>
             </div>
 
+            <div class="form-group">
+              <label class="form-label">Profile Photo</label>
+              <div class="upload-zone" (click)="studentPhotoInput.click()">
+                <span class="material-symbols-outlined upload-icon">cloud_upload</span>
+                <p *ngIf="!selectedFileNames['studentPhoto']?.length">Drag & drop or <strong>Browse</strong></p>
+                <div *ngIf="selectedFileNames['studentPhoto']?.length" style="display:flex;align-items:center;gap:8px;">
+                  <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['studentPhoto'][0] }}</span>
+                  <span class="material-symbols-outlined" (click)="removeFile('studentPhoto', 0); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);">close</span>
+                </div>
+                <span>PNG, JPG (Max 5MB)</span>
+              </div>
+              <input #studentPhotoInput type="file" (change)="onFileSelected($event, 'studentPhoto')" accept=".png,.jpg,.jpeg" style="display:none">
+              <div *ngIf="studentPhotoUrl" class="photo-preview" style="margin-top:8px;">
+                <img [src]="studentPhotoUrl" alt="Preview" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--border-color);">
+              </div>
+            </div>
+
             <div style="margin-bottom: 20px;">
               <label class="form-label">Competition Track *</label>
               <div class="track-prompt" *ngIf="!selectedTrack">Select a track below</div>
