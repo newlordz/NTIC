@@ -1675,15 +1675,15 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         const m = Math.floor(ease * stats.mentors);
         const s = Math.floor(ease * stats.schools);
         const st = Math.floor(ease * stats.students);
-        const p = (ease * stats.projects).toFixed(1);
+        const p = Math.floor(ease * stats.projects);
         const g = Math.floor(ease * stats.grants);
 
         if (regionsEl) regionsEl.textContent = `${r}`;
         if (mentorsEl) mentorsEl.textContent = `${m}+`;
         if (schoolsEl) schoolsEl.textContent = `${s}+`;
-        if (studentsEl) studentsEl.textContent = `${st}K+`;
-        if (projectsEl) projectsEl.textContent = `${p}K+`;
-        if (grantsEl) grantsEl.textContent = `₵${g}M+`;
+        if (studentsEl) studentsEl.textContent = `${st}+`;
+        if (projectsEl) projectsEl.textContent = `${p}+`;
+        if (grantsEl) grantsEl.textContent = `${g}`;
 
         if (progress < 1) {
           requestAnimationFrame(step);
@@ -1691,9 +1691,9 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
           if (regionsEl) regionsEl.textContent = `${stats.regions}`;
           if (mentorsEl) mentorsEl.textContent = `${stats.mentors}+`;
           if (schoolsEl) schoolsEl.textContent = `${stats.schools}+`;
-          if (studentsEl) studentsEl.textContent = `${stats.students}K+`;
-          if (projectsEl) projectsEl.textContent = `${stats.projects}K+`;
-          if (grantsEl) grantsEl.textContent = `₵${stats.grants}M+`;
+          if (studentsEl) studentsEl.textContent = `${stats.students}+`;
+          if (projectsEl) projectsEl.textContent = `${stats.projects}+`;
+          if (grantsEl) grantsEl.textContent = `${stats.grants}`;
           
           this.ngZone.run(() => {
             this.regionsCount = stats.regions;

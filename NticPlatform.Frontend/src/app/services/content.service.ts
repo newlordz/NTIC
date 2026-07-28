@@ -1036,6 +1036,40 @@ export class ContentService {
     this.saveState('platformStats', this.platformStats);
   }
 
+  recalculatePlatformStats(): void {
+    const schoolNames = new Set<string>();
+    const regions = new Set<string>();
+    let studentCount = 0;
+
+    for (const u of this.users) {
+      if (u.role === 'student') studentCount++;
+      if (u.organization && !u.organization.startsWith('Independent')) {
+        schoolNames.add(u.organization);
+      }
+    }
+
+    for (const a of [...this.approvedApprovals, ...this.pendingApprovals]) {
+      if (a.type === 'School Registration') {
+        schoolNames.add(a.entity);
+        if (a.details?.region) regions.add(a.details.region);
+        if (a.details?.district) regions.add(a.details.district);
+        if (a.details?.studentCount) studentCount += a.details.studentCount;
+      }
+    }
+
+    const mentorCount = this.users.filter(u => u.role === 'instructor').length;
+
+    this.platformStats = {
+      regions: regions.size || 16,
+      mentors: mentorCount || this.platformStats.mentors,
+      schools: schoolNames.size || this.platformStats.schools,
+      students: studentCount || this.platformStats.students,
+      projects: this.platformStats.projects,
+      grants: this.platformStats.grants
+    };
+    this.saveState('platformStats', this.platformStats);
+  }
+
   updateCountdownDate(dateStr: string): void {
     this.countdownDate = dateStr;
     this.saveState('countdownDate', this.countdownDate);
@@ -1061,6 +1095,7 @@ export class ContentService {
   saveUsers(usersList: User[]): void {
     this.users = this.deduplicateUsers(usersList);
     this.saveState('users', this.users);
+    this.recalculatePlatformStats();
   }
 
   // ── Validation Helpers ───────────────────────────────────────────

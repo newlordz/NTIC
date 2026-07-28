@@ -2595,6 +2595,7 @@
       position: absolute;
       left: 50%;
       width: 250px;
+      max-width: calc(100vw - 40px);
       background: #1c1c1c;
       color: #ffffff;
       padding: 14px 16px;
@@ -2606,6 +2607,7 @@
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
+      overflow-wrap: break-word;
       transition: 
         opacity 0.3s ease, 
         transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), 
@@ -2625,51 +2627,51 @@
       }
     }
 
-    /* Position Tooltips based on layout - Placed on the outer sides to prevent any overlaps or header cutoff */
-    &.node-regions, &.node-students {
+    /* Position Tooltips based on layout - vertical positioning to avoid horizontal overflow */
+    &.node-regions, &.node-schools {
       .node-tooltip {
-        right: 110%;
-        left: auto;
-        top: 50%;
-        transform: translateY(-50%) translateX(10px) scale(0.95);
+        top: 110%;
+        bottom: auto;
+        left: 50%;
+        transform: translateX(-50%) translateY(-10px) scale(0.95);
         
         .tooltip-arrow {
           position: absolute;
-          top: 50%;
-          left: 100%;
-          transform: translateY(-50%);
+          bottom: 100%;
+          left: 50%;
+          transform: translateX(-50%);
           border-width: 6px;
           border-style: solid;
-          border-color: transparent transparent transparent #1c1c1c;
+          border-color: transparent transparent #1c1c1c transparent;
         }
       }
       &.active, &:hover {
         .node-tooltip {
-          transform: translateY(-50%) translateX(0) scale(1);
+          transform: translateX(-50%) translateY(0) scale(1);
         }
       }
     }
 
-    &.node-schools, &.node-grants {
+    &.node-students, &.node-grants {
       .node-tooltip {
-        left: 110%;
-        right: auto;
-        top: 50%;
-        transform: translateY(-50%) translateX(-10px) scale(0.95);
+        bottom: 110%;
+        top: auto;
+        left: 50%;
+        transform: translateX(-50%) translateY(10px) scale(0.95);
         
         .tooltip-arrow {
           position: absolute;
-          top: 50%;
-          right: 100%;
-          transform: translateY(-50%);
+          top: 100%;
+          left: 50%;
+          transform: translateX(-50%);
           border-width: 6px;
           border-style: solid;
-          border-color: transparent #1c1c1c transparent transparent;
+          border-color: #1c1c1c transparent transparent transparent;
         }
       }
       &.active, &:hover {
         .node-tooltip {
-          transform: translateY(-50%) translateX(0) scale(1);
+          transform: translateX(-50%) translateY(0) scale(1);
         }
       }
     }
