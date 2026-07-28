@@ -2,7 +2,7 @@ export const environment = {
   production: false,
   brevo: {
     apiKey: 'REPLACE_BREVO_API_KEY',
-    senderEmail: 'enochessel5@gmail.com',
+    senderEmail: 'noreply@ntic.edu.gh',
     senderName: 'NTIC Ghana Championship'
   },
   smsmode: {

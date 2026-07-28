@@ -1007,12 +1007,12 @@
             <label>Entry Type <span class="req">*</span></label>
             <div style="display:flex; gap:16px; margin-top:4px;">
               <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; font-size:13px;">
-                <input type="radio" [(ngModel)]="hofForm.type" value="individual" name="hofType">
-                👤 Individual Champion
+                <input type="radio" [(ngModel)]="hofForm.type" (ngModelChange)="onHofTypeChange($event)" value="group" name="hofType">
+                👥 Group / Squad Champions
               </label>
               <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; font-size:13px;">
-                <input type="radio" [(ngModel)]="hofForm.type" value="group" name="hofType">
-                👥 Group / Squad Champions
+                <input type="radio" [(ngModel)]="hofForm.type" (ngModelChange)="onHofTypeChange($event)" value="individual" name="hofType">
+                👤 Individual Champion
               </label>
             </div>
           </div>

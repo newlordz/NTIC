@@ -200,7 +200,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     member4Name: '',
     member4Email: '',
     member5Name: '',
-    member5Email: ''
+    member5Email: '',
+    skills: { alg: 'intermediate', hw: 'novice', ai: 'novice' }
   };
 
   instructorForm = {
@@ -1162,7 +1163,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.schoolForm.teams.splice(index, 1);
   }
 
-  competitorMode: 'individual' | 'group' = 'individual';
+  competitorMode: 'individual' | 'group' = 'group';
 
   registerStudent(): void {
     if (this.competitorMode === 'group') {
@@ -1208,6 +1209,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         members: membersList.length,
         rosterList: membersList.map(m => m.name),
         photoFileId: this.selectedFileIds['groupPhoto']?.[0] || undefined,
+        skills: { ...this.teamForm.skills },
         status: 'Approved'
       };
       this.contentService.saveTeams([...this.contentService.teams, newTeam]);
@@ -1269,6 +1271,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       organization: this.studentForm.school || 'Independent Competitor',
       region: this.studentForm.region,
       track: this.selectedTrack,
+      skills: { ...this.studentForm.skills },
       ticket,
       status: 'Active' as const,
       registeredAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
@@ -1461,6 +1464,23 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           ai: 'novice'
         }
       };
+      this.teamForm = {
+        name: '',
+        school: '',
+        region: 'Greater Accra',
+        track: '',
+        leadName: '',
+        leadEmail: '',
+        member2Name: '',
+        member2Email: '',
+        member3Name: '',
+        member3Email: '',
+        member4Name: '',
+        member4Email: '',
+        member5Name: '',
+        member5Email: '',
+        skills: { alg: 'intermediate', hw: 'novice', ai: 'novice' }
+      };
       this.regState = 'new';
       this.saveRegState();
       return;
@@ -1619,7 +1639,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       member4Name: '',
       member4Email: '',
       member5Name: '',
-      member5Email: ''
+      member5Email: '',
+      skills: { alg: 'intermediate', hw: 'novice', ai: 'novice' }
     };
 
     this.judgeForm = {

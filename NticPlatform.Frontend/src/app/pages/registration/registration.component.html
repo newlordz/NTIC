@@ -1432,18 +1432,18 @@
           </div>
           <div class="competitor-mode-toggle" style="display: flex; gap: 6px; background: var(--surface-container); padding: 4px; border-radius: 10px;">
             <button type="button" class="btn btn-sm"
-                    [class.btn-primary]="competitorMode === 'individual'"
-                    [class.btn-subtle]="competitorMode !== 'individual'"
-                    (click)="competitorMode = 'individual'">
-              <span class="material-symbols-outlined" style="font-size: 16px;">person</span>
-              Individual Competitor
-            </button>
-            <button type="button" class="btn btn-sm"
                     [class.btn-primary]="competitorMode === 'group'"
                     [class.btn-subtle]="competitorMode !== 'group'"
                     (click)="competitorMode = 'group'">
               <span class="material-symbols-outlined" style="font-size: 16px;">groups</span>
               Group / Squad (3–5)
+            </button>
+            <button type="button" class="btn btn-sm"
+                    [class.btn-primary]="competitorMode === 'individual'"
+                    [class.btn-subtle]="competitorMode !== 'individual'"
+                    (click)="competitorMode = 'individual'">
+              <span class="material-symbols-outlined" style="font-size: 16px;">person</span>
+              Individual Competitor
             </button>
           </div>
         </div>
@@ -1571,6 +1571,42 @@
               </div>
             </div>
 
+            <div class="form-group">
+              <label class="form-label">Skills Assessment</label>
+              <div class="table-border-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Domain</th>
+                      <th style="text-align:center">Novice</th>
+                      <th style="text-align:center">Intermediate</th>
+                      <th style="text-align:center">Advanced</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Algorithm Design</td>
+                      <td style="text-align:center"><input type="radio" name="stuAlg" value="novice" [(ngModel)]="studentForm.skills.alg" style="accent-color:var(--primary)"></td>
+                      <td style="text-align:center"><input type="radio" name="stuAlg" value="intermediate" [(ngModel)]="studentForm.skills.alg" style="accent-color:var(--primary)"></td>
+                      <td style="text-align:center"><input type="radio" name="stuAlg" value="advanced" [(ngModel)]="studentForm.skills.alg" style="accent-color:var(--primary)"></td>
+                    </tr>
+                    <tr>
+                      <td>Hardware / Robotics</td>
+                      <td style="text-align:center"><input type="radio" name="stuHw" value="novice" [(ngModel)]="studentForm.skills.hw" style="accent-color:var(--primary)"></td>
+                      <td style="text-align:center"><input type="radio" name="stuHw" value="intermediate" [(ngModel)]="studentForm.skills.hw" style="accent-color:var(--primary)"></td>
+                      <td style="text-align:center"><input type="radio" name="stuHw" value="advanced" [(ngModel)]="studentForm.skills.hw" style="accent-color:var(--primary)"></td>
+                    </tr>
+                    <tr>
+                      <td>Data & AI</td>
+                      <td style="text-align:center"><input type="radio" name="stuAi" value="novice" [(ngModel)]="studentForm.skills.ai" style="accent-color:var(--primary)"></td>
+                      <td style="text-align:center"><input type="radio" name="stuAi" value="intermediate" [(ngModel)]="studentForm.skills.ai" style="accent-color:var(--primary)"></td>
+                      <td style="text-align:center"><input type="radio" name="stuAi" value="advanced" [(ngModel)]="studentForm.skills.ai" style="accent-color:var(--primary)"></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             <div style="display: flex; gap: 12px; margin-top: 8px;">
               <button class="btn btn-subtle" (click)="saveDraft()">Save Draft</button>
               <button class="btn btn-primary" (click)="registerStudent()">
@@ -1627,6 +1663,42 @@
                   <option value="Cybersecurity">Cybersecurity</option>
                   <option value="Innovation">Innovation</option>
                 </select>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+              <label class="form-label">Skills Assessment</label>
+              <div class="table-border-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Domain</th>
+                      <th style="text-align:center">Novice</th>
+                      <th style="text-align:center">Intermediate</th>
+                      <th style="text-align:center">Advanced</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Algorithm Design</td>
+                      <td style="text-align:center"><input type="radio" name="tmAlg" value="novice" [(ngModel)]="teamForm.skills.alg" style="accent-color:var(--primary)"></td>
+                      <td style="text-align:center"><input type="radio" name="tmAlg" value="intermediate" [(ngModel)]="teamForm.skills.alg" style="accent-color:var(--primary)"></td>
+                      <td style="text-align:center"><input type="radio" name="tmAlg" value="advanced" [(ngModel)]="teamForm.skills.alg" style="accent-color:var(--primary)"></td>
+                    </tr>
+                    <tr>
+                      <td>Hardware / Robotics</td>
+                      <td style="text-align:center"><input type="radio" name="tmHw" value="novice" [(ngModel)]="teamForm.skills.hw" style="accent-color:var(--primary)"></td>
+                      <td style="text-align:center"><input type="radio" name="tmHw" value="intermediate" [(ngModel)]="teamForm.skills.hw" style="accent-color:var(--primary)"></td>
+                      <td style="text-align:center"><input type="radio" name="tmHw" value="advanced" [(ngModel)]="teamForm.skills.hw" style="accent-color:var(--primary)"></td>
+                    </tr>
+                    <tr>
+                      <td>Data & AI</td>
+                      <td style="text-align:center"><input type="radio" name="tmAi" value="novice" [(ngModel)]="teamForm.skills.ai" style="accent-color:var(--primary)"></td>
+                      <td style="text-align:center"><input type="radio" name="tmAi" value="intermediate" [(ngModel)]="teamForm.skills.ai" style="accent-color:var(--primary)"></td>
+                      <td style="text-align:center"><input type="radio" name="tmAi" value="advanced" [(ngModel)]="teamForm.skills.ai" style="accent-color:var(--primary)"></td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
@@ -1927,16 +1999,40 @@
                     <span>Captain: {{ teamForm.leadName }}</span>
                   </div>
 
-                  <div class="team-roster-preview">
-                    <span class="roster-label">Squad Roster (3–5 Members)</span>
-                    <div class="roster-avatars">
-                      <span class="avatar-bubble">{{ getInitials(teamForm.leadName || 'Lead', 'L') }}</span>
-                      <span class="avatar-bubble" *ngIf="teamForm.member2Name">{{ getInitials(teamForm.member2Name, 'M2') }}</span>
-                      <span class="avatar-bubble" *ngIf="teamForm.member3Name">{{ getInitials(teamForm.member3Name, 'M3') }}</span>
-                      <span class="avatar-bubble" *ngIf="teamForm.member4Name">{{ getInitials(teamForm.member4Name, 'M4') }}</span>
-                      <span class="avatar-bubble" *ngIf="teamForm.member5Name">{{ getInitials(teamForm.member5Name, 'M5') }}</span>
+                    <div class="team-roster-preview">
+                      <span class="roster-label">Squad Roster (3–5 Members)</span>
+                      <div class="roster-avatars">
+                        <span class="avatar-bubble">{{ getInitials(teamForm.leadName || 'Lead', 'L') }}</span>
+                        <span class="avatar-bubble" *ngIf="teamForm.member2Name">{{ getInitials(teamForm.member2Name, 'M2') }}</span>
+                        <span class="avatar-bubble" *ngIf="teamForm.member3Name">{{ getInitials(teamForm.member3Name, 'M3') }}</span>
+                        <span class="avatar-bubble" *ngIf="teamForm.member4Name">{{ getInitials(teamForm.member4Name, 'M4') }}</span>
+                        <span class="avatar-bubble" *ngIf="teamForm.member5Name">{{ getInitials(teamForm.member5Name, 'M5') }}</span>
+                      </div>
                     </div>
-                  </div>
+
+                    <div class="student-card-skills" style="margin-top: 14px;">
+                      <div class="skill-row">
+                        <span class="skill-label">Algorithm</span>
+                        <div class="skill-bar-wrap">
+                          <div class="skill-bar-fill" [class]="teamForm.skills.alg || 'novice'"></div>
+                        </div>
+                        <span class="skill-val">{{ teamForm.skills.alg | titlecase }}</span>
+                      </div>
+                      <div class="skill-row">
+                        <span class="skill-label">Robotics</span>
+                        <div class="skill-bar-wrap">
+                          <div class="skill-bar-fill" [class]="teamForm.skills.hw || 'novice'"></div>
+                        </div>
+                        <span class="skill-val">{{ teamForm.skills.hw | titlecase }}</span>
+                      </div>
+                      <div class="skill-row">
+                        <span class="skill-label">AI / Data</span>
+                        <div class="skill-bar-wrap">
+                          <div class="skill-bar-fill" [class]="teamForm.skills.ai || 'novice'"></div>
+                        </div>
+                        <span class="skill-val">{{ teamForm.skills.ai | titlecase }}</span>
+                      </div>
+                    </div>
                 </div>
 
                 <div class="team-card-footer">

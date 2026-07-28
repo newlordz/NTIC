@@ -1776,6 +1776,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.hofFormError = '';
     this.hofFormOpen = true;
   }
+  onHofTypeChange(newType: string): void {
+    // Reset autofilled fields when switching types so group data doesn't bleed into individual
+    this.hofForm.name = '';
+    this.hofForm.teamName = '';
+    this.hofForm.school = '';
+    this.hofForm.members = [];
+    this.hofForm.membersInput = '';
+    this.hofForm.selectedTeamId = '';
+    this.hofForm.badge = '';
+    this.hofForm.initials = '';
+  }
 
   onHofTeamSelect(teamId: string): void {
     if (!teamId) return;

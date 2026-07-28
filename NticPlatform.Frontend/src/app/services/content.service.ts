@@ -257,6 +257,7 @@ export interface User {
   status: string;
   registeredAt: string;
   lastLogin: string;
+  skills?: { alg: string; hw: string; ai: string };
   total?: string;
   package?: string;
   payments?: SponsorPayment[];
@@ -335,6 +336,7 @@ export interface Team {
   memberNames?: string[];
   memberList?: string[];
   memberPhotos?: string[];
+  skills?: { alg: string; hw: string; ai: string };
 }
 
 export interface Submission {
