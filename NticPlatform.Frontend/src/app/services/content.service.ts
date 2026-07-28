@@ -244,6 +244,8 @@ export interface User {
   fullName: string;
   email: string;
   phone: string;
+  guardianName?: string;
+  guardianPhone?: string;
   password?: string;
   otp: string;
   organization: string;
@@ -283,7 +285,7 @@ export interface ApprovalRequest {
     logo?: string;
     logoFileId?: string;
     studentCount?: number;
-    students?: { name: string; track: string; class: string }[];
+    students?: { name: string; track: string; class: string; guardianName?: string; guardianPhone?: string }[];
     school?: string;
     track?: string;
     project?: string;

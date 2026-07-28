@@ -1185,6 +1185,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       fullName: this.studentForm.name,
       email: studentEmail,
       phone: '',
+      guardianName: this.studentForm.guardianName,
+      guardianPhone: this.studentForm.guardianPhone,
       otp,
       password: otp,
       organization: this.studentForm.school || 'Independent Competitor',
