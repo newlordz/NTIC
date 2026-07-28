@@ -1106,10 +1106,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       }
       const ticket = `NTIC-GRP-${Math.floor(1000 + Math.random() * 9000)}`;
       const leadEmail = this.teamForm.leadEmail?.trim() || `${ticket.toLowerCase()}@squad.ntic.gh`;
-      const found = this.contentService.users.find(u =>
-        u.email?.trim().toLowerCase() === leadEmail.toLowerCase()
-      );
-      if (found && this.teamForm.leadEmail?.trim()) {
+      if (this.teamForm.leadEmail?.trim() && this.contentService.isEmailTaken(leadEmail)) {
         this.showCustomAlert('An account with this Team Lead email already exists. Please log in instead.', 'Account Exists', 'warning');
         return;
       }
@@ -1174,10 +1171,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     }
     const ticket = `NTIC-STU-${Math.floor(1000 + Math.random() * 9000)}`;
     const studentEmail = this.studentForm.email?.trim() || `${ticket.toLowerCase()}@stu.ntic.gh`;
-    const found = this.contentService.users.find(u =>
-      u.email?.trim().toLowerCase() === studentEmail.toLowerCase()
-    );
-    if (found && this.studentForm.email?.trim()) {
+    if (this.studentForm.email?.trim() && this.contentService.isEmailTaken(studentEmail)) {
       this.showCustomAlert('An account with this email already exists. Please log in instead.', 'Account Exists', 'warning');
       return;
     }
