@@ -711,38 +711,26 @@
               </div>
               
               <div class="form-group">
-                <label class="form-label">Skills Assessment</label>
-                <div class="table-border-wrap">
-                  <table class="data-table">
-                    <thead>
-                      <tr>
-                        <th>Domain</th>
-                        <th style="text-align:center">Novice</th>
-                        <th style="text-align:center">Intermediate</th>
-                        <th style="text-align:center">Advanced</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>Algorithm Design</td>
-                        <td style="text-align:center"><input type="radio" name="alg" value="novice" [(ngModel)]="studentForm.skills.alg" style="accent-color:var(--primary)"></td>
-                        <td style="text-align:center"><input type="radio" name="alg" value="intermediate" [(ngModel)]="studentForm.skills.alg" style="accent-color:var(--primary)"></td>
-                        <td style="text-align:center"><input type="radio" name="alg" value="advanced" [(ngModel)]="studentForm.skills.alg" style="accent-color:var(--primary)"></td>
-                      </tr>
-                      <tr>
-                        <td>Hardware / Robotics</td>
-                        <td style="text-align:center"><input type="radio" name="hw" value="novice" [(ngModel)]="studentForm.skills.hw" style="accent-color:var(--primary)"></td>
-                        <td style="text-align:center"><input type="radio" name="hw" value="intermediate" [(ngModel)]="studentForm.skills.hw" style="accent-color:var(--primary)"></td>
-                        <td style="text-align:center"><input type="radio" name="hw" value="advanced" [(ngModel)]="studentForm.skills.hw" style="accent-color:var(--primary)"></td>
-                      </tr>
-                      <tr>
-                        <td>Data & AI</td>
-                        <td style="text-align:center"><input type="radio" name="ai" value="novice" [(ngModel)]="studentForm.skills.ai" style="accent-color:var(--primary)"></td>
-                        <td style="text-align:center"><input type="radio" name="ai" value="intermediate" [(ngModel)]="studentForm.skills.ai" style="accent-color:var(--primary)"></td>
-                        <td style="text-align:center"><input type="radio" name="ai" value="advanced" [(ngModel)]="studentForm.skills.ai" style="accent-color:var(--primary)"></td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <label class="form-label">Competition Experience</label>
+                <div class="experience-radio-group">
+                  <label class="exp-radio-card" [class.selected]="studentForm.skills.alg === 'first-time'">
+                    <input type="radio" name="schExp" value="first-time" [(ngModel)]="studentForm.skills.alg" style="display:none">
+                    <span class="exp-icon">🌟</span>
+                    <span class="exp-title">First Timer</span>
+                    <span class="exp-sub">Never competed before</span>
+                  </label>
+                  <label class="exp-radio-card" [class.selected]="studentForm.skills.alg === 'returning'">
+                    <input type="radio" name="schExp" value="returning" [(ngModel)]="studentForm.skills.alg" style="display:none">
+                    <span class="exp-icon">🏅</span>
+                    <span class="exp-title">Returning</span>
+                    <span class="exp-sub">Competed before</span>
+                  </label>
+                  <label class="exp-radio-card" [class.selected]="studentForm.skills.alg === 'regular'">
+                    <input type="radio" name="schExp" value="regular" [(ngModel)]="studentForm.skills.alg" style="display:none">
+                    <span class="exp-icon">🏆</span>
+                    <span class="exp-title">Regular</span>
+                    <span class="exp-sub">Competes frequently</span>
+                  </label>
                 </div>
               </div>
 
@@ -1572,38 +1560,26 @@
             </div>
 
             <div class="form-group">
-              <label class="form-label">Skills Assessment</label>
-              <div class="table-border-wrap">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th>Domain</th>
-                      <th style="text-align:center">Novice</th>
-                      <th style="text-align:center">Intermediate</th>
-                      <th style="text-align:center">Advanced</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Algorithm Design</td>
-                      <td style="text-align:center"><input type="radio" name="stuAlg" value="novice" [(ngModel)]="studentForm.skills.alg" style="accent-color:var(--primary)"></td>
-                      <td style="text-align:center"><input type="radio" name="stuAlg" value="intermediate" [(ngModel)]="studentForm.skills.alg" style="accent-color:var(--primary)"></td>
-                      <td style="text-align:center"><input type="radio" name="stuAlg" value="advanced" [(ngModel)]="studentForm.skills.alg" style="accent-color:var(--primary)"></td>
-                    </tr>
-                    <tr>
-                      <td>Hardware / Robotics</td>
-                      <td style="text-align:center"><input type="radio" name="stuHw" value="novice" [(ngModel)]="studentForm.skills.hw" style="accent-color:var(--primary)"></td>
-                      <td style="text-align:center"><input type="radio" name="stuHw" value="intermediate" [(ngModel)]="studentForm.skills.hw" style="accent-color:var(--primary)"></td>
-                      <td style="text-align:center"><input type="radio" name="stuHw" value="advanced" [(ngModel)]="studentForm.skills.hw" style="accent-color:var(--primary)"></td>
-                    </tr>
-                    <tr>
-                      <td>Data & AI</td>
-                      <td style="text-align:center"><input type="radio" name="stuAi" value="novice" [(ngModel)]="studentForm.skills.ai" style="accent-color:var(--primary)"></td>
-                      <td style="text-align:center"><input type="radio" name="stuAi" value="intermediate" [(ngModel)]="studentForm.skills.ai" style="accent-color:var(--primary)"></td>
-                      <td style="text-align:center"><input type="radio" name="stuAi" value="advanced" [(ngModel)]="studentForm.skills.ai" style="accent-color:var(--primary)"></td>
-                    </tr>
-                  </tbody>
-                </table>
+              <label class="form-label">Competition Experience</label>
+              <div class="experience-radio-group">
+                <label class="exp-radio-card" [class.selected]="studentForm.skills.alg === 'first-time'">
+                  <input type="radio" name="stuExp" value="first-time" [(ngModel)]="studentForm.skills.alg" style="display:none">
+                  <span class="exp-icon">🌟</span>
+                  <span class="exp-title">First Timer</span>
+                  <span class="exp-sub">Never competed before</span>
+                </label>
+                <label class="exp-radio-card" [class.selected]="studentForm.skills.alg === 'returning'">
+                  <input type="radio" name="stuExp" value="returning" [(ngModel)]="studentForm.skills.alg" style="display:none">
+                  <span class="exp-icon">🏅</span>
+                  <span class="exp-title">Returning</span>
+                  <span class="exp-sub">Competed before</span>
+                </label>
+                <label class="exp-radio-card" [class.selected]="studentForm.skills.alg === 'regular'">
+                  <input type="radio" name="stuExp" value="regular" [(ngModel)]="studentForm.skills.alg" style="display:none">
+                  <span class="exp-icon">🏆</span>
+                  <span class="exp-title">Regular</span>
+                  <span class="exp-sub">Competes frequently</span>
+                </label>
               </div>
             </div>
 
@@ -1667,38 +1643,26 @@
             </div>
 
             <div class="form-group" style="margin-bottom: 20px;">
-              <label class="form-label">Skills Assessment</label>
-              <div class="table-border-wrap">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th>Domain</th>
-                      <th style="text-align:center">Novice</th>
-                      <th style="text-align:center">Intermediate</th>
-                      <th style="text-align:center">Advanced</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Algorithm Design</td>
-                      <td style="text-align:center"><input type="radio" name="tmAlg" value="novice" [(ngModel)]="teamForm.skills.alg" style="accent-color:var(--primary)"></td>
-                      <td style="text-align:center"><input type="radio" name="tmAlg" value="intermediate" [(ngModel)]="teamForm.skills.alg" style="accent-color:var(--primary)"></td>
-                      <td style="text-align:center"><input type="radio" name="tmAlg" value="advanced" [(ngModel)]="teamForm.skills.alg" style="accent-color:var(--primary)"></td>
-                    </tr>
-                    <tr>
-                      <td>Hardware / Robotics</td>
-                      <td style="text-align:center"><input type="radio" name="tmHw" value="novice" [(ngModel)]="teamForm.skills.hw" style="accent-color:var(--primary)"></td>
-                      <td style="text-align:center"><input type="radio" name="tmHw" value="intermediate" [(ngModel)]="teamForm.skills.hw" style="accent-color:var(--primary)"></td>
-                      <td style="text-align:center"><input type="radio" name="tmHw" value="advanced" [(ngModel)]="teamForm.skills.hw" style="accent-color:var(--primary)"></td>
-                    </tr>
-                    <tr>
-                      <td>Data & AI</td>
-                      <td style="text-align:center"><input type="radio" name="tmAi" value="novice" [(ngModel)]="teamForm.skills.ai" style="accent-color:var(--primary)"></td>
-                      <td style="text-align:center"><input type="radio" name="tmAi" value="intermediate" [(ngModel)]="teamForm.skills.ai" style="accent-color:var(--primary)"></td>
-                      <td style="text-align:center"><input type="radio" name="tmAi" value="advanced" [(ngModel)]="teamForm.skills.ai" style="accent-color:var(--primary)"></td>
-                    </tr>
-                  </tbody>
-                </table>
+              <label class="form-label">Competition Experience</label>
+              <div class="experience-radio-group">
+                <label class="exp-radio-card" [class.selected]="teamForm.skills.alg === 'first-time'">
+                  <input type="radio" name="tmExp" value="first-time" [(ngModel)]="teamForm.skills.alg" style="display:none">
+                  <span class="exp-icon">🌟</span>
+                  <span class="exp-title">First Timer</span>
+                  <span class="exp-sub">Never competed before</span>
+                </label>
+                <label class="exp-radio-card" [class.selected]="teamForm.skills.alg === 'returning'">
+                  <input type="radio" name="tmExp" value="returning" [(ngModel)]="teamForm.skills.alg" style="display:none">
+                  <span class="exp-icon">🏅</span>
+                  <span class="exp-title">Returning</span>
+                  <span class="exp-sub">Competed before</span>
+                </label>
+                <label class="exp-radio-card" [class.selected]="teamForm.skills.alg === 'regular'">
+                  <input type="radio" name="tmExp" value="regular" [(ngModel)]="teamForm.skills.alg" style="display:none">
+                  <span class="exp-icon">🏆</span>
+                  <span class="exp-title">Regular</span>
+                  <span class="exp-sub">Competes frequently</span>
+                </label>
               </div>
             </div>
 
@@ -1945,28 +1909,10 @@
 
                 <div class="student-card-track-title">{{ selectedTrack | uppercase }} COMPETITOR {{ studentForm.class ? '• ' + studentForm.class : '' }}</div>
 
-                <div class="student-card-skills">
-                  <div class="skill-row">
-                    <span class="skill-label">Algorithm</span>
-                    <div class="skill-bar-wrap">
-                      <div class="skill-bar-fill" [class]="studentForm.skills.alg || 'novice'"></div>
-                    </div>
-                    <span class="skill-val">{{ studentForm.skills.alg | titlecase }}</span>
-                  </div>
-                  <div class="skill-row">
-                    <span class="skill-label">Robotics</span>
-                    <div class="skill-bar-wrap">
-                      <div class="skill-bar-fill" [class]="studentForm.skills.hw || 'novice'"></div>
-                    </div>
-                    <span class="skill-val">{{ studentForm.skills.hw | titlecase }}</span>
-                  </div>
-                  <div class="skill-row">
-                    <span class="skill-label">AI / Data</span>
-                    <div class="skill-bar-wrap">
-                      <div class="skill-bar-fill" [class]="studentForm.skills.ai || 'novice'"></div>
-                    </div>
-                    <span class="skill-val">{{ studentForm.skills.ai | titlecase }}</span>
-                  </div>
+                <div class="student-card-experience" *ngIf="studentForm.skills.alg">
+                  <span class="exp-badge" [ngClass]="studentForm.skills.alg">
+                    {{ studentForm.skills.alg === 'first-time' ? '🌟 First Timer' : studentForm.skills.alg === 'returning' ? '🏅 Returning Competitor' : '🏆 Regular Competitor' }}
+                  </span>
                 </div>
 
                 <div class="student-card-barcode-wrap">
@@ -2010,28 +1956,10 @@
                       </div>
                     </div>
 
-                    <div class="student-card-skills" style="margin-top: 14px;">
-                      <div class="skill-row">
-                        <span class="skill-label">Algorithm</span>
-                        <div class="skill-bar-wrap">
-                          <div class="skill-bar-fill" [class]="teamForm.skills.alg || 'novice'"></div>
-                        </div>
-                        <span class="skill-val">{{ teamForm.skills.alg | titlecase }}</span>
-                      </div>
-                      <div class="skill-row">
-                        <span class="skill-label">Robotics</span>
-                        <div class="skill-bar-wrap">
-                          <div class="skill-bar-fill" [class]="teamForm.skills.hw || 'novice'"></div>
-                        </div>
-                        <span class="skill-val">{{ teamForm.skills.hw | titlecase }}</span>
-                      </div>
-                      <div class="skill-row">
-                        <span class="skill-label">AI / Data</span>
-                        <div class="skill-bar-wrap">
-                          <div class="skill-bar-fill" [class]="teamForm.skills.ai || 'novice'"></div>
-                        </div>
-                        <span class="skill-val">{{ teamForm.skills.ai | titlecase }}</span>
-                      </div>
+                    <div class="student-card-experience" *ngIf="teamForm.skills.alg">
+                      <span class="exp-badge" [ngClass]="teamForm.skills.alg">
+                        {{ teamForm.skills.alg === 'first-time' ? '🌟 First Timer' : teamForm.skills.alg === 'returning' ? '🏅 Returning' : '🏆 Regular Competitors' }}
+                      </span>
                     </div>
                 </div>
 
