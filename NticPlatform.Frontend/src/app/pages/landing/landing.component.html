@@ -41,16 +41,18 @@
       <nav class="nav-links">
         <!-- Hover/Click dropdown for Academics/Tracks -->
         <div class="nav-item-dropdown" (click)="$event.stopPropagation()">
-          <button class="nav-link dropdown-toggle" [class.active]="activeMegaMenu === 'tracks'" (click)="toggleMegaMenu('tracks')">
+          <button class="nav-link dropdown-toggle" [class.active]="activeMegaMenu === 'tracks'"
+            (click)="toggleMegaMenu('tracks')">
             <span>Competition</span>
             <span class="material-symbols-outlined arrow-icon">keyboard_arrow_down</span>
           </button>
-          
+
           <div class="mega-menu" [class.open]="activeMegaMenu === 'tracks'">
             <div class="mega-menu-grid">
               <div class="mega-col intro-col">
                 <h3>The 5 Core Arenas</h3>
-                <p>High school squads specialize in a track, preparing projects and competing under strict national rules.</p>
+                <p>High school squads specialize in a track, preparing projects and competing under strict national
+                  rules.</p>
                 <a class="mega-cta-link" (click)="closeMegaMenu(); scrollToSection('tracks')">
                   <span>All Tracks Guide</span>
                   <span class="material-symbols-outlined">arrow_right_alt</span>
@@ -108,7 +110,8 @@
         <a routerLink="/registration" class="btn btn-crimson btn-sm">Apply now</a>
       </div>
 
-      <button class="mobile-hamburger" (click)="toggleMobileMenu()" [class.active]="isMobileMenuOpen" aria-label="Toggle menu">
+      <button class="mobile-hamburger" (click)="toggleMobileMenu()" [class.active]="isMobileMenuOpen"
+        aria-label="Toggle menu">
         <span></span><span></span><span></span>
       </button>
     </div>
@@ -128,7 +131,8 @@
       <div class="mobile-nav-section">
         <button class="mobile-nav-link dropdown-toggle" (click)="toggleMegaMenu('tracks')">
           <span>Competition</span>
-          <span class="material-symbols-outlined arrow-icon" [class.rotated]="activeMegaMenu === 'tracks'">keyboard_arrow_down</span>
+          <span class="material-symbols-outlined arrow-icon"
+            [class.rotated]="activeMegaMenu === 'tracks'">keyboard_arrow_down</span>
         </button>
         <div class="mobile-sub-nav" [class.open]="activeMegaMenu === 'tracks'">
           <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
@@ -156,7 +160,8 @@
 
       <a class="mobile-nav-link" (click)="closeMobileMenu(); scrollToSection('about')">Concept</a>
       <a class="mobile-nav-link" (click)="closeMobileMenu(); scrollToSection('tracks')">Competition Track Arenas</a>
-      <button type="button" class="mobile-nav-link portal-highlight" (click)="openLoginModal($event); closeMobileMenu()">Login</button>
+      <button type="button" class="mobile-nav-link portal-highlight"
+        (click)="openLoginModal($event); closeMobileMenu()">Login</button>
 
       <div class="mobile-nav-divider"></div>
 
@@ -183,29 +188,22 @@
   ══════════════════════════════════════════ -->
   <section class="hero-section">
     <div class="slideshow-container">
-      <div 
-        *ngFor="let slide of slides; let i = index" 
-        class="slide-item" 
-        [class.active]="i === activeSlideIndex"
-        [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + slide.image + ')'"
-      >
+      <div *ngFor="let slide of slides; let i = index" class="slide-item" [class.active]="i === activeSlideIndex"
+        [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + slide.image + ')'">
         <!-- Uploaded Video Background -->
-        <video *ngIf="slide.video" [src]="slide.video" autoplay muted playsinline loop preload="auto" class="slide-video-bg"></video>
+        <video *ngIf="slide.video" [src]="slide.video" autoplay muted playsinline loop preload="auto"
+          class="slide-video-bg"></video>
 
         <!-- Browser-Native Image & Animation Background -->
 
         <!-- Browser-Native Video Edit Montage if present -->
         <div *ngIf="slide.isVideoEdit" class="video-edit-container">
-          <div 
-            class="video-edit-frame" 
-            [class.active]="activeFrame === 1"
-            [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + image1Url + ')'"
-          ></div>
-          <div 
-            class="video-edit-frame" 
-            [class.active]="activeFrame === 2"
-            [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + image2Url + ')'"
-          ></div>
+          <div class="video-edit-frame" [class.active]="activeFrame === 1"
+            [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + image1Url + ')'">
+          </div>
+          <div class="video-edit-frame" [class.active]="activeFrame === 2"
+            [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + image2Url + ')'">
+          </div>
           <div class="video-edit-overlay"></div>
         </div>
         <!-- Overlay Text Block -->
@@ -217,7 +215,9 @@
           <h1>{{ slide.title }}</h1>
           <p>{{ slide.description }}</p>
           <div class="card-actions">
-            <a [href]="(slide.ctaLink && slide.ctaLink.startsWith('#')) ? 'javascript:void(0)' : slide.ctaLink" (click)="(slide.ctaLink && slide.ctaLink.startsWith('#')) ? openLoginModal($event) : null" class="btn btn-gold btn-lg">
+            <a [href]="(slide.ctaLink && slide.ctaLink.startsWith('#')) ? 'javascript:void(0)' : slide.ctaLink"
+              (click)="(slide.ctaLink && slide.ctaLink.startsWith('#')) ? openLoginModal($event) : null"
+              class="btn btn-gold btn-lg">
               <span>{{ slide.ctaText }}</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
             </a>
@@ -272,7 +272,8 @@
           <h2 class="featured-comp-title">{{ featuredCompetition.title }}</h2>
           <div class="featured-comp-tags">
             <span class="comp-tag comp-tag-track">
-              <span class="material-symbols-outlined" style="font-size:14px;">{{ trackIcon(featuredCompetition.track) }}</span>
+              <span class="material-symbols-outlined" style="font-size:14px;">{{ trackIcon(featuredCompetition.track)
+                }}</span>
               {{ featuredCompetition.track | titlecase }}
             </span>
             <span class="comp-tag" *ngIf="featuredCompetition.type">
@@ -330,9 +331,12 @@
       <!-- Time label -->
       <div class="countdown-time-label">{{ featuredTimeLabel }}</div>
 
-      <a routerLink="/registration" [queryParams]="{ track: featuredCompetition.track }" class="countdown-cta stagger-8">
-        <span class="material-symbols-outlined">{{ featuredCompetition.status === 'registration' ? 'app_registration' : 'emoji_events' }}</span>
-        <span>{{ featuredCompetition.status === 'registration' ? 'Register Now' : featuredCompetition.status === 'completed' ? 'View Results' : 'Join Competition' }}</span>
+      <a routerLink="/registration" [queryParams]="{ track: featuredCompetition.track }"
+        class="countdown-cta stagger-8">
+        <span class="material-symbols-outlined">{{ featuredCompetition.status === 'registration' ? 'app_registration' :
+          'emoji_events' }}</span>
+        <span>{{ featuredCompetition.status === 'registration' ? 'Register Now' : featuredCompetition.status ===
+          'completed' ? 'View Results' : 'Join Competition' }}</span>
         <span class="material-symbols-outlined">arrow_right_alt</span>
       </a>
     </div>
@@ -348,7 +352,8 @@
             <span class="comp-card-status" [ngClass]="statusClass(comp.status)">{{ statusLabel(comp.status) }}</span>
           </div>
           <h3 class="comp-card-title">{{ comp.title }}</h3>
-          <p class="comp-card-track">{{ comp.track | titlecase }}<span *ngIf="comp.type"> · {{ comp.type | titlecase }}</span></p>
+          <p class="comp-card-track">{{ comp.track | titlecase }}<span *ngIf="comp.type"> · {{ comp.type | titlecase
+              }}</span></p>
           <div class="comp-card-info">
             <div class="comp-card-info-item" *ngIf="comp.status !== 'completed'">
               <span class="material-symbols-outlined" style="font-size:14px;">schedule</span>
@@ -381,7 +386,8 @@
           <span class="academic-sub">Our Purpose</span>
           <h2><span class="word">Why</span> <span class="word">We</span> <span class="word">Exist</span></h2>
         </div>
-        <p class="academic-desc-lead">Our Statement of Operation defines what we do, why you should support, and who reaps the rewards of our national NTI Championship ecosystem.</p>
+        <p class="academic-desc-lead">Our Statement of Operation defines what we do, why you should support, and who
+          reaps the rewards of our national NTI Championship ecosystem.</p>
       </div>
 
       <div class="concept-grid">
@@ -392,7 +398,9 @@
           </div>
           <div class="card-content">
             <h3>Statement of Operation</h3>
-            <p>We build and run Ghana’s premier National Technology and Innovation (NTI) Championship, integrating high-school teams from all 16 regions. Through rigorous coursework, sandbox tasks, and competitive arenas, we turn classrooms into innovation labs.</p>
+            <p>We build and run Ghana’s premier National Technology and Innovation (NTI) Championship, integrating
+              high-school teams from all 16 regions. Through rigorous coursework, sandbox tasks, and competitive arenas,
+              we turn classrooms into innovation labs.</p>
             <a href="#tracks" class="read-more-link">
               <span>Explore Tracks</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
@@ -408,7 +416,9 @@
           </div>
           <div class="card-content">
             <h3>Why Support Champions?</h3>
-            <p>A thriving nation depends on scientific literacy and technical leadership. Your support supplies physical robotics kits, funds regional travel, provides university scholarships, and empowers high school students to build local solutions.</p>
+            <p>A thriving nation depends on scientific literacy and technical leadership. Your support supplies physical
+              robotics kits, funds regional travel, provides university scholarships, and empowers high school students
+              to build local solutions.</p>
             <a (click)="openSupportModal('team')" class="read-more-link" style="cursor: pointer;">
               <span>Ways to Sponsor</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
@@ -423,7 +433,9 @@
           </div>
           <div class="card-content">
             <h3>Who Reaps the Rewards?</h3>
-            <p>The benefits ripple from the classroom to the nation. Students gain elite computational skills, educators receive certified modern training, local industries discover top-tier engineering talent, and Ghana accelerates its technological independence.</p>
+            <p>The benefits ripple from the classroom to the nation. Students gain elite computational skills, educators
+              receive certified modern training, local industries discover top-tier engineering talent, and Ghana
+              accelerates its technological independence.</p>
             <a href="#stats" class="read-more-link">
               <span>View Impact Metrics</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
@@ -444,7 +456,8 @@
           <span class="academic-sub">Spotlight &amp; Research</span>
           <h2><span class="word">Championship</span> <span class="word">Stories</span></h2>
         </div>
-        <p class="academic-desc-lead">Explore how Ghana's next generation of scientists, developers, and engineers are scaling technical hurdles, building local industries, and defining the future.</p>
+        <p class="academic-desc-lead">Explore how Ghana's next generation of scientists, developers, and engineers are
+          scaling technical hurdles, building local industries, and defining the future.</p>
       </div>
       <a routerLink="/news" class="view-all-stories-btn">
         <span>View All News &amp; Events</span>
@@ -453,7 +466,8 @@
     </div>
     <!-- Full-width sliding marquee -->
     <div class="stories-marquee-wrap" [class.static-wrap]="contentService.championshipStories.length < 4">
-      <div class="stories-marquee" [class.static-marquee]="contentService.championshipStories.length < 4" [style.animation-duration]="(contentService.championshipStories.length * 8) + 's'">
+      <div class="stories-marquee" [class.static-marquee]="contentService.championshipStories.length < 4"
+        [style.animation-duration]="(contentService.championshipStories.length * 8) + 's'">
         <!-- Set A -->
         <div *ngFor="let story of contentService.championshipStories; trackBy: trackByStory" class="spotlight-card">
           <span class="top-accent-bar"></span>
@@ -472,8 +486,10 @@
             <h3>{{ story.title }}</h3>
             <p>{{ story.body }}</p>
             <div class="story-card-actions">
-              <button class="btn-story-act like-btn" [class.liked]="isLikedByUser(story)" (click)="likeStory(story.id, $event)">
-                <span class="material-symbols-outlined icon">{{ isLikedByUser(story) ? 'favorite' : 'favorite_border' }}</span>
+              <button class="btn-story-act like-btn" [class.liked]="isLikedByUser(story)"
+                (click)="likeStory(story.id, $event)">
+                <span class="material-symbols-outlined icon">{{ isLikedByUser(story) ? 'favorite' : 'favorite_border'
+                  }}</span>
                 <span class="count">{{ story.likes || 0 }}</span>
               </button>
               <button class="btn-story-act share-btn" [attr.data-share]="story.id" (click)="shareStory(story, $event)">
@@ -505,11 +521,14 @@
               <h3>{{ story.title }}</h3>
               <p>{{ story.body }}</p>
               <div class="story-card-actions">
-                <button class="btn-story-act like-btn" [class.liked]="isLikedByUser(story)" (click)="likeStory(story.id, $event)">
-                  <span class="material-symbols-outlined icon">{{ isLikedByUser(story) ? 'favorite' : 'favorite_border' }}</span>
+                <button class="btn-story-act like-btn" [class.liked]="isLikedByUser(story)"
+                  (click)="likeStory(story.id, $event)">
+                  <span class="material-symbols-outlined icon">{{ isLikedByUser(story) ? 'favorite' : 'favorite_border'
+                    }}</span>
                   <span class="count">{{ story.likes || 0 }}</span>
                 </button>
-                <button class="btn-story-act share-btn" [attr.data-share]="story.id" (click)="shareStory(story, $event)">
+                <button class="btn-story-act share-btn" [attr.data-share]="story.id"
+                  (click)="shareStory(story, $event)">
                   <span class="material-symbols-outlined icon">share</span>
                 </button>
               </div>
@@ -536,7 +555,8 @@
           <span class="animated-word w2">Innovate.</span>
           <span class="animated-word w3">Build.</span>
         </h2>
-        <p class="scroll-animate fade-up" style="transition-delay: 0.3s">A glimpse into the real faces and moments that define our pursuit of excellence.</p>
+        <p class="scroll-animate fade-up" style="transition-delay: 0.3s">A glimpse into the real faces and moments that
+          define our pursuit of excellence.</p>
       </div>
       <div class="philosophy-grid">
         <div *ngFor="let card of contentService.philosophyCards" class="philosophy-card">
@@ -562,27 +582,33 @@
         <h2>National Technology and Innovation Champions</h2>
       </div>
     </div>
+
     <div class="alumni-track-wrap" [class.static-wrap]="contentService.activeHallOfFameEntries.length < 4">
       <div class="alumni-marquee" [class.static-marquee]="contentService.activeHallOfFameEntries.length < 4">
-        <!-- Set A - driven by ContentService -->
-        <div *ngFor="let entry of contentService.activeHallOfFameEntries" class="alumni-card" [class]="entry.trackClass" [class.is-group]="isGroupEntry(entry)">
+        <!-- Set A -->
+        <div *ngFor="let entry of contentService.activeHallOfFameEntries" class="alumni-card" [class]="entry.trackClass"
+          [class.is-group]="isGroupEntry(entry)">
           <div class="alumni-avatar">
-            <span *ngIf="!isGroupEntry(entry)">{{ entry.initials }}</span>
-            <span *ngIf="isGroupEntry(entry)" class="material-symbols-outlined" style="font-size:32px;">groups</span>
+            <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" [alt]="entry.school + ' Logo'"
+              style="width:100%; height:100%; object-fit:cover; border-radius:50%; background: #fff;">
+            <span *ngIf="!getSchoolLogo(entry) && !isGroupEntry(entry)">{{ entry.initials }}</span>
+            <span *ngIf="!getSchoolLogo(entry) && isGroupEntry(entry)" class="material-symbols-outlined"
+              style="font-size:32px;">groups</span>
           </div>
           <div class="alumni-info">
             <div style="display:flex; align-items:center; gap:8px;">
               <strong>{{ entry.name }}</strong>
-              <span *ngIf="isGroupEntry(entry)" style="background:linear-gradient(135deg, #003f87, #0066cc); color:#ffffff; font-size:9.5px; font-weight:800; padding:2px 8px; border-radius:12px; letter-spacing:0.5px;">SQUAD</span>
+              <span *ngIf="isGroupEntry(entry)" class="squad-tag-badge">SQUAD</span>
             </div>
             <span>{{ entry.school }} · {{ entry.year }}</span>
-            <span class="alumni-badge" [class]="(entry.trackClass || 'coding-track').replace('-track','')">{{ entry.badge }}</span>
-            
+            <span class="alumni-badge" [class]="(entry.trackClass || 'coding-track').replace('-track','')">{{
+              entry.badge }}</span>
+
             <div *ngIf="isGroupEntry(entry) && getMembers(entry).length > 0" class="alumni-members-trigger">
               <span class="material-symbols-outlined trigger-icon">groups</span>
               <span>{{ getMembers(entry).length }} Team Members</span>
-              <span class="material-symbols-outlined" style="font-size:13px; opacity:0.8;">info</span>
-              
+              <span class="material-symbols-outlined" style="font-size:13px; opacity:0.8;">arrow_forward</span>
+
               <!-- Hover Popover Panel -->
               <div class="alumni-members-popover">
                 <div class="popover-header">
@@ -610,26 +636,32 @@
             <img src="assets/hall_of_fame_medal.png" alt="NTIC Medal">
           </div>
         </div>
-        <!-- Set B (duplicate for seamless loop, only needed when >= 4 items) -->
+
+        <!-- Set B (duplicate loop) -->
         <ng-container *ngIf="contentService.activeHallOfFameEntries.length >= 4">
-          <div *ngFor="let entry of contentService.activeHallOfFameEntries" class="alumni-card" [class]="entry.trackClass" [class.is-group]="isGroupEntry(entry)">
+          <div *ngFor="let entry of contentService.activeHallOfFameEntries" class="alumni-card"
+            [class]="entry.trackClass" [class.is-group]="isGroupEntry(entry)">
             <div class="alumni-avatar">
-              <span *ngIf="!isGroupEntry(entry)">{{ entry.initials }}</span>
-              <span *ngIf="isGroupEntry(entry)" class="material-symbols-outlined" style="font-size:32px;">groups</span>
+              <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" [alt]="entry.school + ' Logo'"
+                style="width:100%; height:100%; object-fit:cover; border-radius:50%; background: #fff;">
+              <span *ngIf="!getSchoolLogo(entry) && !isGroupEntry(entry)">{{ entry.initials }}</span>
+              <span *ngIf="!getSchoolLogo(entry) && isGroupEntry(entry)" class="material-symbols-outlined"
+                style="font-size:32px;">groups</span>
             </div>
             <div class="alumni-info">
               <div style="display:flex; align-items:center; gap:8px;">
                 <strong>{{ entry.name }}</strong>
-                <span *ngIf="isGroupEntry(entry)" style="background:linear-gradient(135deg, #003f87, #0066cc); color:#ffffff; font-size:9.5px; font-weight:800; padding:2px 8px; border-radius:12px; letter-spacing:0.5px;">SQUAD</span>
+                <span *ngIf="isGroupEntry(entry)" class="squad-tag-badge">SQUAD</span>
               </div>
               <span>{{ entry.school }} · {{ entry.year }}</span>
-              <span class="alumni-badge" [class]="(entry.trackClass || 'coding-track').replace('-track','')">{{ entry.badge }}</span>
-              
+              <span class="alumni-badge" [class]="(entry.trackClass || 'coding-track').replace('-track','')">{{
+                entry.badge }}</span>
+
               <div *ngIf="isGroupEntry(entry) && getMembers(entry).length > 0" class="alumni-members-trigger">
                 <span class="material-symbols-outlined trigger-icon">groups</span>
                 <span>{{ getMembers(entry).length }} Team Members</span>
-                <span class="material-symbols-outlined" style="font-size:13px; opacity:0.8;">info</span>
-                
+                <span class="material-symbols-outlined" style="font-size:13px; opacity:0.8;">arrow_forward</span>
+
                 <!-- Hover Popover Panel -->
                 <div class="alumni-members-popover">
                   <div class="popover-header">
@@ -670,18 +702,21 @@
       <div class="section-header-academic text-center">
         <span class="academic-sub font-crimson">The Technical Pillars</span>
         <h2>Competition Track Arenas</h2>
-        <p class="academic-desc-lead center">Click any track to see a live code preview. Each arena tests specific disciplines and demands deep practical application.</p>
+        <p class="academic-desc-lead center">Click any track to see a live code preview. Each arena tests specific
+          disciplines and demands deep practical application.</p>
       </div>
 
       <div class="tracks-with-preview">
         <div class="departments-grid">
           <!-- Coding -->
-          <div class="dept-card coding" [class.active-track]="activeTrackPreview === 'coding'" (click)="setTrackPreview('coding')">
+          <div class="dept-card coding" [class.active-track]="activeTrackPreview === 'coding'"
+            (click)="setTrackPreview('coding')">
             <div class="dept-header-wrap">
               <span class="material-symbols-outlined dept-icon">data_object</span>
               <h3>Coding &amp; Algorithms</h3>
             </div>
-            <p>Sprints in Python, C++, and Java. Tests data structures, algorithm optimization, and competitive speed-solving.</p>
+            <p>Sprints in Python, C++, and Java. Tests data structures, algorithm optimization, and competitive
+              speed-solving.</p>
             <ul class="dept-bullet-list">
               <li>Speed &amp; Accuracy challenge</li>
               <li>Computational Complexity limits</li>
@@ -689,17 +724,20 @@
             </ul>
             <div class="dept-actions-row">
               <span class="dept-preview-btn">Preview Solution &rarr;</span>
-              <a [routerLink]="['/registration']" [queryParams]="{ track: 'coding' }" class="dept-cta" (click)="$event.stopPropagation()">Explore Tracks</a>
+              <a [routerLink]="['/registration']" [queryParams]="{ track: 'coding' }" class="dept-cta"
+                (click)="$event.stopPropagation()">Explore Tracks</a>
             </div>
           </div>
 
           <!-- Robotics -->
-          <div class="dept-card robotics" [class.active-track]="activeTrackPreview === 'robotics'" (click)="setTrackPreview('robotics')">
+          <div class="dept-card robotics" [class.active-track]="activeTrackPreview === 'robotics'"
+            (click)="setTrackPreview('robotics')">
             <div class="dept-header-wrap">
               <span class="material-symbols-outlined dept-icon">memory</span>
               <h3>Robotics &amp; IoT</h3>
             </div>
-            <p>Navigating autonomous bots through agricultural and logistics tasks with sensors, actuators, and embedded boards.</p>
+            <p>Navigating autonomous bots through agricultural and logistics tasks with sensors, actuators, and embedded
+              boards.</p>
             <ul class="dept-bullet-list">
               <li>Lego EV3 &amp; Arduino integrations</li>
               <li>Real-world mapping algorithms</li>
@@ -707,7 +745,8 @@
             </ul>
             <div class="dept-actions-row">
               <span class="dept-preview-btn">Preview Solution &rarr;</span>
-              <a [routerLink]="['/registration']" [queryParams]="{ track: 'robotics' }" class="dept-cta" (click)="$event.stopPropagation()">Explore Tracks</a>
+              <a [routerLink]="['/registration']" [queryParams]="{ track: 'robotics' }" class="dept-cta"
+                (click)="$event.stopPropagation()">Explore Tracks</a>
             </div>
           </div>
 
@@ -717,7 +756,8 @@
               <span class="material-symbols-outlined dept-icon">model_training</span>
               <h3>Artificial Intelligence</h3>
             </div>
-            <p>Train models to solve local agricultural, diagnostic, and climate problems using modern Machine Learning pipelines.</p>
+            <p>Train models to solve local agricultural, diagnostic, and climate problems using modern Machine Learning
+              pipelines.</p>
             <ul class="dept-bullet-list">
               <li>Crop disease computer vision</li>
               <li>Weather pattern neural networks</li>
@@ -725,17 +765,20 @@
             </ul>
             <div class="dept-actions-row">
               <span class="dept-preview-btn">Preview Solution &rarr;</span>
-              <a [routerLink]="['/registration']" [queryParams]="{ track: 'ai' }" class="dept-cta" (click)="$event.stopPropagation()">Explore Tracks</a>
+              <a [routerLink]="['/registration']" [queryParams]="{ track: 'ai' }" class="dept-cta"
+                (click)="$event.stopPropagation()">Explore Tracks</a>
             </div>
           </div>
 
           <!-- Cyber -->
-          <div class="dept-card cyber" [class.active-track]="activeTrackPreview === 'cyber'" (click)="setTrackPreview('cyber')">
+          <div class="dept-card cyber" [class.active-track]="activeTrackPreview === 'cyber'"
+            (click)="setTrackPreview('cyber')">
             <div class="dept-header-wrap">
               <span class="material-symbols-outlined dept-icon">security</span>
               <h3>Cybersecurity CTF</h3>
             </div>
-            <p>Capture the Flag sprints testing cryptographic decryption, network intrusion logs audit, and secure server builds.</p>
+            <p>Capture the Flag sprints testing cryptographic decryption, network intrusion logs audit, and secure
+              server builds.</p>
             <ul class="dept-bullet-list">
               <li>SQL Injection defense</li>
               <li>Cipher decryption cycles</li>
@@ -743,17 +786,20 @@
             </ul>
             <div class="dept-actions-row">
               <span class="dept-preview-btn">Preview Solution &rarr;</span>
-              <a [routerLink]="['/registration']" [queryParams]="{ track: 'cyber' }" class="dept-cta" (click)="$event.stopPropagation()">Explore Tracks</a>
+              <a [routerLink]="['/registration']" [queryParams]="{ track: 'cyber' }" class="dept-cta"
+                (click)="$event.stopPropagation()">Explore Tracks</a>
             </div>
           </div>
 
           <!-- Innovation -->
-          <div class="dept-card innovation" [class.active-track]="activeTrackPreview === 'innovation'" (click)="setTrackPreview('innovation')">
+          <div class="dept-card innovation" [class.active-track]="activeTrackPreview === 'innovation'"
+            (click)="setTrackPreview('innovation')">
             <div class="dept-header-wrap">
               <span class="material-symbols-outlined dept-icon">tips_and_updates</span>
               <h3>Open Innovation</h3>
             </div>
-            <p>Research, prototype, and pitch creative systems addressing healthcare, green power, and waste in Ghana.</p>
+            <p>Research, prototype, and pitch creative systems addressing healthcare, green power, and waste in Ghana.
+            </p>
             <ul class="dept-bullet-list">
               <li>Renewable power generation</li>
               <li>Public health data dashboards</li>
@@ -761,7 +807,8 @@
             </ul>
             <div class="dept-actions-row">
               <span class="dept-preview-btn">Preview Solution &rarr;</span>
-              <a [routerLink]="['/registration']" [queryParams]="{ track: 'innovation' }" class="dept-cta" (click)="$event.stopPropagation()">Explore Tracks</a>
+              <a [routerLink]="['/registration']" [queryParams]="{ track: 'innovation' }" class="dept-cta"
+                (click)="$event.stopPropagation()">Explore Tracks</a>
             </div>
           </div>
         </div>
@@ -769,8 +816,9 @@
         <!-- Interactive Arena Showcase Modal Popup -->
         <div *ngIf="isTrackModalOpen && activeTrackPreview" class="code-modal-backdrop" (click)="setTrackPreview(null)">
           <div class="code-modal-content arena-modal visual-showcase-modal" (click)="$event.stopPropagation()">
-            <div class="code-preview-panel open arena-panel" [style.--track-rgb]="activeTrackPreview === 'coding' ? '0, 136, 204' : activeTrackPreview === 'robotics' ? '212, 160, 23' : activeTrackPreview === 'ai' ? '156, 39, 176' : activeTrackPreview === 'cyber' ? '183, 28, 28' : '0, 127, 95'">
-              
+            <div class="code-preview-panel open arena-panel"
+              [style.--track-rgb]="activeTrackPreview === 'coding' ? '0, 136, 204' : activeTrackPreview === 'robotics' ? '212, 160, 23' : activeTrackPreview === 'ai' ? '156, 39, 176' : activeTrackPreview === 'cyber' ? '183, 28, 28' : '0, 127, 95'">
+
               <!-- Modal Top Title Bar -->
               <div class="arena-modal-header">
                 <div class="arena-title-left">
@@ -793,47 +841,45 @@
 
               <!-- Modal Full-Width Visual Showcase Body (Split Cockpit) -->
               <div class="arena-showcase-body">
-                
+
                 <!-- Live Track Animation & Telemetry Dashboard -->
                 <div class="arena-sim-box full-width-arena">
                   <div class="sim-box-header">
                     <span class="sim-label">⚡ LIVE INTERACTIVE TELEMETRY &amp; TELEOPERATION SIMULATION</span>
-                    <span class="sim-status-badge" [style.color]="arenaState[activeTrackPreview]?.statusColor" [style.border-color]="arenaState[activeTrackPreview]?.statusColor">
+                    <span class="sim-status-badge" [style.color]="arenaState[activeTrackPreview]?.statusColor"
+                      [style.border-color]="arenaState[activeTrackPreview]?.statusColor">
                       ● {{ arenaState[activeTrackPreview]?.status }}
                     </span>
                   </div>
 
                   <!-- 1. Robotics Rover Arena -->
-                    <div *ngIf="activeTrackPreview === 'robotics'" class="track-sim-content robotics-sim split-cockpit">
-                      <!-- Left: Rover Visual Stage -->
-                      <div class="cockpit-left">
-                        <div class="visual-stage rover-stage">
+                  <div *ngIf="activeTrackPreview === 'robotics'" class="track-sim-content robotics-sim split-cockpit">
+                    <!-- Left: Rover Visual Stage -->
+                    <div class="cockpit-left">
+                      <div class="visual-stage rover-stage">
                         <div class="stage-grid-bg"></div>
 
                         <!-- Obstacle on Arena Floor -->
-                        <div class="stage-obstacle"
-                             *ngIf="arenaState.robotics?.cargo !== 'Stone'"
-                             [class.danger]="arenaState.robotics?.distance < 20"
-                             [style.left.%]="arenaState.robotics?.obstacleX || 25"
-                             [style.top.%]="arenaState.robotics?.obstacleY || 35">
+                        <div class="stage-obstacle" *ngIf="arenaState.robotics?.cargo !== 'Stone'"
+                          [class.danger]="arenaState.robotics?.distance < 20"
+                          [style.left.%]="arenaState.robotics?.obstacleX || 25"
+                          [style.top.%]="arenaState.robotics?.obstacleY || 35">
                           <div class="obstacle-body">🪨</div>
                           <div class="obstacle-dist-tag">{{ arenaState.robotics?.obstacleStatus || 'Target' }}</div>
                         </div>
 
                         <!-- Rover -->
-                        <div class="rover-bot-wrap"
-                             [style.left.%]="getRoverLeft()"
-                             [style.top.%]="getRoverTop()"
-                             [style.transform]="getRoverTransform()">
+                        <div class="rover-bot-wrap" [style.left.%]="getRoverLeft()" [style.top.%]="getRoverTop()"
+                          [style.transform]="getRoverTransform()">
                           <div class="rover-chassis">
                             <div class="rover-solar-panel"></div>
-                            <div class="rover-lidar-beam" [style.transform]="'rotate(' + arenaState.robotics?.radarSweep + 'deg)'"></div>
+                            <div class="rover-lidar-beam"
+                              [style.transform]="'rotate(' + arenaState.robotics?.radarSweep + 'deg)'"></div>
                             <div class="rover-camera-eye" [class.alert]="arenaState.robotics?.distance < 20"></div>
 
                             <!-- Articulated Robotic Arm -->
-                            <div class="rover-robotic-arm"
-                                 [class.extending]="arenaState.robotics?.armAnimating"
-                                 [class.loaded]="arenaState.robotics?.cargo === 'Stone'">
+                            <div class="rover-robotic-arm" [class.extending]="arenaState.robotics?.armAnimating"
+                              [class.loaded]="arenaState.robotics?.cargo === 'Stone'">
                               <div class="arm-boom"></div>
                               <div class="arm-gripper">
                                 <span class="gripper-stone" *ngIf="arenaState.robotics?.cargo === 'Stone'">🪨</span>
@@ -874,27 +920,34 @@
                           <div class="game-section-label">Movement</div>
                           <div class="game-dpad">
                             <div class="dpad-pivot-row">
-                              <button class="dpad-btn dpad-pivot" (click)="triggerArenaAction('robotics', 'turn_left')" title="Pivot Left">
+                              <button class="dpad-btn dpad-pivot" (click)="triggerArenaAction('robotics', 'turn_left')"
+                                title="Pivot Left">
                                 <span class="dpad-pivot">↩</span>
                               </button>
-                              <button class="dpad-btn dpad-pivot" (click)="triggerArenaAction('robotics', 'turn_right')" title="Pivot Right">
+                              <button class="dpad-btn dpad-pivot" (click)="triggerArenaAction('robotics', 'turn_right')"
+                                title="Pivot Right">
                                 <span class="dpad-pivot">↪</span>
                               </button>
                             </div>
                             <div class="dpad-cross">
-                              <button class="dpad-btn dpad-up" (click)="triggerArenaAction('robotics', 'forward')" title="Drive Forward along Heading">
+                              <button class="dpad-btn dpad-up" (click)="triggerArenaAction('robotics', 'forward')"
+                                title="Drive Forward along Heading">
                                 <span class="dpad-arrow">▲</span>
                               </button>
-                              <button class="dpad-btn dpad-left" (click)="triggerArenaAction('robotics', 'left')" title="Turn Left 45°">
+                              <button class="dpad-btn dpad-left" (click)="triggerArenaAction('robotics', 'left')"
+                                title="Turn Left 45°">
                                 <span class="dpad-arrow">◀</span>
                               </button>
-                              <button class="dpad-btn dpad-center" (click)="triggerArenaAction('robotics', 'stop')" title="Stop">
+                              <button class="dpad-btn dpad-center" (click)="triggerArenaAction('robotics', 'stop')"
+                                title="Stop">
                                 <span class="dpad-circle">●</span>
                               </button>
-                              <button class="dpad-btn dpad-right" (click)="triggerArenaAction('robotics', 'right')" title="Turn Right 45°">
+                              <button class="dpad-btn dpad-right" (click)="triggerArenaAction('robotics', 'right')"
+                                title="Turn Right 45°">
                                 <span class="dpad-arrow">▶</span>
                               </button>
-                              <button class="dpad-btn dpad-down" (click)="triggerArenaAction('robotics', 'reverse')" title="Reverse along Heading">
+                              <button class="dpad-btn dpad-down" (click)="triggerArenaAction('robotics', 'reverse')"
+                                title="Reverse along Heading">
                                 <span class="dpad-arrow">▼</span>
                               </button>
                             </div>
@@ -905,15 +958,18 @@
                         <div class="game-section">
                           <div class="game-section-label">Commands</div>
                           <div class="game-action-group">
-                            <button class="game-action-btn action-grab" (click)="triggerArenaAction('robotics', 'claw')">
+                            <button class="game-action-btn action-grab"
+                              (click)="triggerArenaAction('robotics', 'claw')">
                               <span class="action-icon material-symbols-outlined">precision_manufacturing</span>
                               <span class="action-label">{{ arenaState.robotics?.clawOpen ? 'Release' : 'Grab' }}</span>
                             </button>
-                            <button class="game-action-btn action-spawn" (click)="triggerArenaAction('robotics', 'obstacle')">
+                            <button class="game-action-btn action-spawn"
+                              (click)="triggerArenaAction('robotics', 'obstacle')">
                               <span class="action-icon material-symbols-outlined">warning</span>
                               <span class="action-label">Spawn</span>
                             </button>
-                            <button class="game-action-btn action-auto" (click)="triggerArenaAction('robotics', 'autopilot')">
+                            <button class="game-action-btn action-auto"
+                              (click)="triggerArenaAction('robotics', 'autopilot')">
                               <span class="action-icon material-symbols-outlined">smart_toy</span>
                               <span class="action-label">Auto</span>
                             </button>
@@ -935,16 +991,17 @@
                             Contestants ({{ arenaState.coding?.people?.length || 0 }})
                           </span>
                           <span class="people-visual-badge"
-                                [style.background]="arenaState.coding?.sortField !== 'none' ? '#00e676' : '#38bdf8'">
-                            {{ arenaState.coding?.sortField !== 'none' ? 'SORTED BY: ' + (arenaState.coding?.sortField | uppercase) : 'UNSORTED' }}
+                            [style.background]="arenaState.coding?.sortField !== 'none' ? '#00e676' : '#38bdf8'">
+                            {{ arenaState.coding?.sortField !== 'none' ? 'SORTED BY: ' + (arenaState.coding?.sortField |
+                            uppercase) : 'UNSORTED' }}
                           </span>
                         </div>
                         <div class="people-bars">
                           <div class="person-bar" *ngFor="let p of arenaState.coding?.people; let i = index"
-                               [style.animation-delay]="i * 60 + 'ms'"
-                               [style.--bar-h]="((p.age - 10) / 12) * 100 + '%'">
+                            [style.animation-delay]="i * 60 + 'ms'" [style.--bar-h]="((p.age - 10) / 12) * 100 + '%'">
                             <div class="bar-top">
-                              <div class="human-figure" [class.male]="p.gender === 'male'" [class.female]="p.gender === 'female'">
+                              <div class="human-figure" [class.male]="p.gender === 'male'"
+                                [class.female]="p.gender === 'female'">
                                 <div class="human-head">
                                   <div class="hair-acc"></div>
                                 </div>
@@ -958,7 +1015,8 @@
                                 </div>
                               </div>
                             </div>
-                            <div class="bar-fill" [class.male]="p.gender === 'male'" [class.female]="p.gender === 'female'"></div>
+                            <div class="bar-fill" [class.male]="p.gender === 'male'"
+                              [class.female]="p.gender === 'female'"></div>
                             <div class="bar-label">
                               <span class="bar-age">{{ p.age }}</span>
                             </div>
@@ -985,7 +1043,8 @@
                             <span class="material-symbols-outlined">arrow_upward</span>
                             <span>Age ↑</span>
                           </button>
-                          <button class="ctrl-btn ctrl-age-desc" (click)="triggerArenaAction('coding', 'sort-age-desc')">
+                          <button class="ctrl-btn ctrl-age-desc"
+                            (click)="triggerArenaAction('coding', 'sort-age-desc')">
                             <span class="material-symbols-outlined">arrow_downward</span>
                             <span>Age ↓</span>
                           </button>
@@ -1045,12 +1104,13 @@
                           <div class="vf-grid-lines"></div>
                           <div class="vf-corners"></div>
                           <div class="vf-corners-bot"></div>
-                          <div class="vf-crop-icon"
-                               [class.disease-rust]="arenaState.ai?.statusColor === '#ff9100'"
-                               [class.disease-blight]="arenaState.ai?.statusColor === '#ff1744'"
-                               [class.disease-healthy]="arenaState.ai?.statusColor === '#00e676'">{{ arenaState.ai?.sampleIcon || '🌿' }}</div>
+                          <div class="vf-crop-icon" [class.disease-rust]="arenaState.ai?.statusColor === '#ff9100'"
+                            [class.disease-blight]="arenaState.ai?.statusColor === '#ff1744'"
+                            [class.disease-healthy]="arenaState.ai?.statusColor === '#00e676'">{{
+                            arenaState.ai?.sampleIcon || '🌿' }}</div>
                           <div class="laser-scanner-bar"></div>
-                          <div class="vf-result" [style.background]="'linear-gradient(transparent, ' + (arenaState.ai?.statusColor || '#ab47bc') + '88)'">
+                          <div class="vf-result"
+                            [style.background]="'linear-gradient(transparent, ' + (arenaState.ai?.statusColor || '#ab47bc') + '88)'">
                             <span class="vf-result-name">{{ arenaState.ai?.label || 'Select a crop' }}</span>
                             <span class="vf-result-conf">{{ arenaState.ai?.confidence }}% confidence</span>
                           </div>
@@ -1064,7 +1124,8 @@
 
                       <div class="ai-description">
                         <span class="material-symbols-outlined">info</span>
-                        <span>Point the scanner at a crop leaf — the AI tells you if the plant is healthy or diseased, and what disease it might have.</span>
+                        <span>Point the scanner at a crop leaf — the AI tells you if the plant is healthy or diseased,
+                          and what disease it might have.</span>
                       </div>
 
                       <div class="ai-log-bar">
@@ -1077,7 +1138,8 @@
                         <div class="td-header">
                           <span class="material-symbols-outlined">grid_view</span>
                           <span>Confusion Matrix</span>
-                          <span class="td-acc-badge" [style.background]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'">
+                          <span class="td-acc-badge"
+                            [style.background]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'">
                             {{ arenaState.ai?.accuracy }}%
                           </span>
                         </div>
@@ -1086,10 +1148,9 @@
                           <div class="cm-label top" *ngFor="let label of arenaState.ai?.classLabels">{{ label }}</div>
                           <ng-container *ngFor="let row of arenaState.ai?.confusionMatrix; let ri = index">
                             <div class="cm-label side">{{ arenaState.ai?.classLabels[ri] }}</div>
-                            <div class="cm-cell" *ngFor="let val of row; let ci = index"
-                                 [class.cm-diag]="ri === ci"
-                                 [style.--cm-pct]="val / 100"
-                                 [style.background]="ri === ci ? 'rgba(0, 230, 118, ' + (0.1 + val / 100 * 0.7) + ')' : 'rgba(255, 23, 68, ' + (0.05 + (100 - val) / 100 * 0.4) + ')'">
+                            <div class="cm-cell" *ngFor="let val of row; let ci = index" [class.cm-diag]="ri === ci"
+                              [style.--cm-pct]="val / 100"
+                              [style.background]="ri === ci ? 'rgba(0, 230, 118, ' + (0.1 + val / 100 * 0.7) + ')' : 'rgba(255, 23, 68, ' + (0.05 + (100 - val) / 100 * 0.4) + ')'">
                               <span class="cm-val">{{ val }}%</span>
                             </div>
                           </ng-container>
@@ -1102,22 +1163,26 @@
                       <div class="controls-card">
                         <div class="controls-card-title">🌱 Select Crop Sample</div>
                         <div class="sample-grid">
-                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🌿'" (click)="triggerArenaAction('ai', 'sample_cocoa')">
+                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🌿'"
+                            (click)="triggerArenaAction('ai', 'sample_cocoa')">
                             <span class="sample-card-icon">🌿</span>
                             <span class="sample-card-name">Cocoa Pod</span>
                             <span class="sample-card-status healthy">Healthy</span>
                           </button>
-                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🌽'" (click)="triggerArenaAction('ai', 'sample_maize')">
+                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🌽'"
+                            (click)="triggerArenaAction('ai', 'sample_maize')">
                             <span class="sample-card-icon">🌽</span>
                             <span class="sample-card-name">Maize Leaf</span>
                             <span class="sample-card-status warning">Rust</span>
                           </button>
-                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🥔'" (click)="triggerArenaAction('ai', 'sample_potato')">
+                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🥔'"
+                            (click)="triggerArenaAction('ai', 'sample_potato')">
                             <span class="sample-card-icon">🥔</span>
                             <span class="sample-card-name">Potato Tuber</span>
                             <span class="sample-card-status danger">Blight</span>
                           </button>
-                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🍅'" (click)="triggerArenaAction('ai', 'sample_tomato')">
+                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🍅'"
+                            (click)="triggerArenaAction('ai', 'sample_tomato')">
                             <span class="sample-card-icon">🍅</span>
                             <span class="sample-card-name">Tomato Leaf</span>
                             <span class="sample-card-status warning">Leaf Spot</span>
@@ -1146,25 +1211,31 @@
                             <span class="train-metric-label">Accuracy</span>
                             <div class="train-metric-bar-bg">
                               <div class="train-metric-bar-fill" [style.width.%]="arenaState.ai?.accuracy || 0"
-                                   [style.background]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'"></div>
+                                [style.background]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'">
+                              </div>
                             </div>
-                            <span class="train-metric-value" [style.color]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'">{{ arenaState.ai?.accuracy }}%</span>
+                            <span class="train-metric-value"
+                              [style.color]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'">{{
+                              arenaState.ai?.accuracy }}%</span>
                           </div>
                           <div class="train-metric-row">
                             <span class="train-metric-label">Loss</span>
                             <div class="train-metric-bar-bg">
-                              <div class="train-metric-bar-fill loss" [style.width.%]="getLossBarWidth(arenaState.ai?.loss)"
-                                   style="background: #f43f5e;"></div>
+                              <div class="train-metric-bar-fill loss"
+                                [style.width.%]="getLossBarWidth(arenaState.ai?.loss)" style="background: #f43f5e;">
+                              </div>
                             </div>
                             <span class="train-metric-value" style="color:#f43f5e">{{ arenaState.ai?.loss }}</span>
                           </div>
                           <div class="train-metric-row">
                             <span class="train-metric-label">Epoch</span>
                             <div class="train-metric-bar-bg">
-                              <div class="train-metric-bar-fill" [style.width.%]="(arenaState.ai?.epoch || 0) / 50 * 100"
-                                   style="background: linear-gradient(90deg, #ab47bc, #7c3aed);"></div>
+                              <div class="train-metric-bar-fill"
+                                [style.width.%]="(arenaState.ai?.epoch || 0) / 50 * 100"
+                                style="background: linear-gradient(90deg, #ab47bc, #7c3aed);"></div>
                             </div>
-                            <span class="train-metric-value" style="color:#ab47bc">{{ arenaState.ai?.epoch }}<small>/50</small></span>
+                            <span class="train-metric-value" style="color:#ab47bc">{{ arenaState.ai?.epoch
+                              }}<small>/50</small></span>
                           </div>
                         </div>
                       </div>
@@ -1181,15 +1252,18 @@
                           <div class="cm-table-row" *ngFor="let label of arenaState.ai?.classLabels; let i = index">
                             <span class="cm-td class-col">{{ label }}</span>
                             <span class="cm-td">
-                              <span class="cm-td-dot" [style.background]="parseNum(arenaState.ai?.classPrecision[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classPrecision[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classPrecision[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
+                              <span class="cm-td-dot"
+                                [style.background]="parseNum(arenaState.ai?.classPrecision[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classPrecision[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classPrecision[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
                               {{ arenaState.ai?.classPrecision[i] }}
                             </span>
                             <span class="cm-td">
-                              <span class="cm-td-dot" [style.background]="parseNum(arenaState.ai?.classRecall[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classRecall[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classRecall[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
+                              <span class="cm-td-dot"
+                                [style.background]="parseNum(arenaState.ai?.classRecall[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classRecall[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classRecall[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
                               {{ arenaState.ai?.classRecall[i] }}
                             </span>
                             <span class="cm-td">
-                              <span class="cm-td-dot" [style.background]="parseNum(arenaState.ai?.classF1[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classF1[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classF1[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
+                              <span class="cm-td-dot"
+                                [style.background]="parseNum(arenaState.ai?.classF1[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classF1[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classF1[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
                               {{ arenaState.ai?.classF1[i] }}
                             </span>
                           </div>
@@ -1207,7 +1281,8 @@
                           <span class="material-symbols-outlined">network_intel</span>
                           <span>Network Security Monitor</span>
                           <span class="cyber-status-badge" [style.background]="arenaState.cyber?.statusColor">
-                            {{ arenaState.cyber?.status?.includes('BLOCKED') || arenaState.cyber?.status?.includes('NEUTRALIZED') ? 'PROTECTED' : 'MONITORING' }}
+                            {{ arenaState.cyber?.status?.includes('BLOCKED') ||
+                            arenaState.cyber?.status?.includes('NEUTRALIZED') ? 'PROTECTED' : 'MONITORING' }}
                           </span>
                         </div>
                         <div class="cyber-network-viz">
@@ -1220,7 +1295,8 @@
                           <div class="cyber-arrow">➜</div>
                           <!-- Firewall -->
                           <div class="cyber-node firewall-node">
-                            <span class="material-symbols-outlined" [style.color]="arenaState.cyber?.statusColor">shield</span>
+                            <span class="material-symbols-outlined"
+                              [style.color]="arenaState.cyber?.statusColor">shield</span>
                             <span class="cyber-node-label">Firewall</span>
                             <span class="cyber-node-stat">{{ arenaState.cyber?.blockedCount }} blocked</span>
                             <div class="firewall-bar" [style.width.%]="(arenaState.cyber?.blockedCount || 0) * 3">
@@ -1290,7 +1366,8 @@
                           </div>
                           <div class="perf-item">
                             <div class="perf-label">Firewall</div>
-                            <div class="perf-value" [style.color]="arenaState.cyber?.statusColor">{{ arenaState.cyber?.firewall }}</div>
+                            <div class="perf-value" [style.color]="arenaState.cyber?.statusColor">{{
+                              arenaState.cyber?.firewall }}</div>
                           </div>
                         </div>
                       </div>
@@ -1298,7 +1375,8 @@
                   </div>
 
                   <!-- 5. Open Innovation — Smart Clean Energy Grid -->
-                  <div *ngIf="activeTrackPreview === 'innovation'" class="track-sim-content innovation-sim split-cockpit">
+                  <div *ngIf="activeTrackPreview === 'innovation'"
+                    class="track-sim-content innovation-sim split-cockpit">
                     <!-- Left: Energy Dashboard -->
                     <div class="cockpit-left">
                       <div class="energy-dashboard">
@@ -1319,20 +1397,22 @@
                               <span class="source-value">{{ arenaState.innovation?.solarKw }} <small>kW</small></span>
                             </div>
                             <div class="source-bar">
-                              <div class="source-bar-fill solar-fill" [style.width.%]="(+(arenaState.innovation?.solarKw || 0) / 70) * 100"></div>
+                              <div class="source-bar-fill solar-fill"
+                                [style.width.%]="(+(arenaState.innovation?.solarKw || 0) / 70) * 100"></div>
                             </div>
                           </div>
                           <div class="energy-source">
                             <div class="source-icon-wrap wind-icon">
                               <span class="source-icon spinning"
-                                    [style.animation-duration]="getWindSpeed() + 's'">🌀</span>
+                                [style.animation-duration]="getWindSpeed() + 's'">🌀</span>
                             </div>
                             <div class="source-info">
                               <span class="source-label">Wind Turbines</span>
                               <span class="source-value">{{ arenaState.innovation?.windKw }} <small>kW</small></span>
                             </div>
                             <div class="source-bar">
-                              <div class="source-bar-fill wind-fill" [style.width.%]="(+(arenaState.innovation?.windKw || 0) / 30) * 100"></div>
+                              <div class="source-bar-fill wind-fill"
+                                [style.width.%]="(+(arenaState.innovation?.windKw || 0) / 30) * 100"></div>
                             </div>
                           </div>
                         </div>
@@ -1351,14 +1431,17 @@
                             <span class="consumer-label">Battery Storage</span>
                             <span class="consumer-status">{{ arenaState.innovation?.battery }}%</span>
                             <div class="battery-visual">
-                              <div class="battery-level" [style.width.%]="arenaState.innovation?.battery" [style.background]="(arenaState.innovation?.battery || 0) > 50 ? '#00e676' : (arenaState.innovation?.battery || 0) > 20 ? '#ffea00' : '#ff1744'"></div>
+                              <div class="battery-level" [style.width.%]="arenaState.innovation?.battery"
+                                [style.background]="(arenaState.innovation?.battery || 0) > 50 ? '#00e676' : (arenaState.innovation?.battery || 0) > 20 ? '#ffea00' : '#ff1744'">
+                              </div>
                             </div>
                           </div>
                         </div>
                         <div class="energy-footer">
                           <span class="material-symbols-outlined">co2</span>
                           <span>CO₂ Saved: <strong>{{ arenaState.innovation?.co2Saved }} kg</strong></span>
-                          <span class="energy-footer-status" [style.color]="arenaState.innovation?.statusColor">{{ arenaState.innovation?.status }}</span>
+                          <span class="energy-footer-status" [style.color]="arenaState.innovation?.statusColor">{{
+                            arenaState.innovation?.status }}</span>
                         </div>
                       </div>
 
@@ -1373,21 +1456,25 @@
                       <div class="controls-card">
                         <div class="controls-card-title">⚡ Generate Power</div>
                         <div class="controls-btn-group">
-                          <button class="ctrl-btn ctrl-innovation-solar" (click)="triggerArenaAction('innovation', 'solar')">
+                          <button class="ctrl-btn ctrl-innovation-solar"
+                            (click)="triggerArenaAction('innovation', 'solar')">
                             <span class="material-symbols-outlined">wb_sunny</span>
                             <span>Solar Boost</span>
                           </button>
-                          <button class="ctrl-btn ctrl-innovation-wind" (click)="triggerArenaAction('innovation', 'wind')">
+                          <button class="ctrl-btn ctrl-innovation-wind"
+                            (click)="triggerArenaAction('innovation', 'wind')">
                             <span class="material-symbols-outlined">air</span>
                             <span>Wind Boost</span>
                           </button>
                         </div>
                         <div class="controls-btn-group" style="margin-top: 8px">
-                          <button class="ctrl-btn ctrl-innovation-hospital" (click)="triggerArenaAction('innovation', 'hospital')">
+                          <button class="ctrl-btn ctrl-innovation-hospital"
+                            (click)="triggerArenaAction('innovation', 'hospital')">
                             <span class="material-symbols-outlined">local_hospital</span>
                             <span>Power Hospital</span>
                           </button>
-                          <button class="ctrl-btn ctrl-innovation-sync" (click)="triggerArenaAction('innovation', 'sync')">
+                          <button class="ctrl-btn ctrl-innovation-sync"
+                            (click)="triggerArenaAction('innovation', 'sync')">
                             <span class="material-symbols-outlined">sync</span>
                             <span>Sync Grid</span>
                           </button>
@@ -1425,7 +1512,8 @@
               <div class="arena-modal-footer">
                 <div class="footer-info">
                   <span class="material-symbols-outlined icon-pulse">lightbulb</span>
-                  <span>Interact with the real-time teleoperation deck on the right while watching the simulation respond instantly on the left!</span>
+                  <span>Interact with the real-time teleoperation deck on the right while watching the simulation
+                    respond instantly on the left!</span>
                 </div>
                 <button type="button" class="arena-register-btn" (click)="navigateToRegistration(activeTrackPreview)">
                   Register for {{ activeTrackPreview | titlecase }} Arena →
@@ -1448,11 +1536,15 @@
         <div class="challenge-info">
           <span class="academic-sub">Daily Problem</span>
           <h2>Try Coding now</h2>
-          <p>Pick a language, solve bite-sized challenges, and level up your skills. Hints included — solutions revealed when you're stuck.</p>
+          <p>Pick a language, solve bite-sized challenges, and level up your skills. Hints included — solutions revealed
+            when you're stuck.</p>
           <div class="challenge-meta">
-            <span class="difficulty-badge" [class]="'diff-' + currentChallenge.difficulty">{{ currentChallenge.difficulty }}</span>
-            <span class="challenge-track-tag"><span class="material-symbols-outlined">data_object</span>{{ currentChallenge.track }}</span>
-            <span class="challenge-time-tag"><span class="material-symbols-outlined">timer</span>{{ currentChallenge.timeLimit }}</span>
+            <span class="difficulty-badge" [class]="'diff-' + currentChallenge.difficulty">{{
+              currentChallenge.difficulty }}</span>
+            <span class="challenge-track-tag"><span class="material-symbols-outlined">data_object</span>{{
+              currentChallenge.track }}</span>
+            <span class="challenge-time-tag"><span class="material-symbols-outlined">timer</span>{{
+              currentChallenge.timeLimit }}</span>
           </div>
           <div class="challenge-stats-row">
             <div class="ch-stat stagger-1">
@@ -1482,10 +1574,8 @@
           </div>
 
           <div class="language-tabs">
-            <button *ngFor="let lang of challengeLanguages"
-                    class="lang-tab"
-                    [class.active]="selectedChallengeLanguage === lang"
-                    (click)="selectLanguage(lang)">
+            <button *ngFor="let lang of challengeLanguages" class="lang-tab"
+              [class.active]="selectedChallengeLanguage === lang" (click)="selectLanguage(lang)">
               {{ lang }}
             </button>
           </div>
@@ -1498,17 +1588,12 @@
             <div class="line-numbers">
               <span *ngFor="let n of codeLineNumbers">{{ n }}</span>
             </div>
-            <textarea
-              class="code-editor-input"
-              [(ngModel)]="userCode"
-              (input)="onCodeInput()"
-              spellcheck="false"
-              placeholder="# Write your solution here..."
-              rows="6"
-            ></textarea>
+            <textarea class="code-editor-input" [(ngModel)]="userCode" (input)="onCodeInput()" spellcheck="false"
+              placeholder="# Write your solution here..." rows="6"></textarea>
           </div>
 
-          <div class="challenge-result" [class.show]="challengeResult !== null" [class.success]="challengeResult === true" [class.fail]="challengeResult === false">
+          <div class="challenge-result" [class.show]="challengeResult !== null"
+            [class.success]="challengeResult === true" [class.fail]="challengeResult === false">
             <ng-container *ngIf="challengeResult === true">
               <span class="material-symbols-outlined">check_circle</span>
               <span>Correct! +{{ currentChallenge.points }} pts — Well done, champion!</span>
@@ -1586,47 +1671,33 @@
         <div class="scoreboard-info">
           <span class="academic-sub">Real-time Standing</span>
           <h2>The Leaderboard</h2>
-          <p>Points aggregate dynamically as student squads complete courses, submit assignments, and compete in the track heats.</p>
-          
+          <p>Points aggregate dynamically as student squads complete courses, submit assignments, and compete in the
+            track heats.</p>
+
           <!-- Track Filters Tabs -->
           <div class="leaderboard-tabs">
-            <button 
-              class="tab-btn" 
-              [class.active]="activeLeaderboardFilter === 'all'"
-              (click)="changeLeaderboardFilter('all')"
-            >
+            <button class="tab-btn" [class.active]="activeLeaderboardFilter === 'all'"
+              (click)="changeLeaderboardFilter('all')">
               <span class="material-symbols-outlined tab-icon">emoji_events</span>
               <span>All Heats</span>
             </button>
-            <button 
-              class="tab-btn" 
-              [class.active]="activeLeaderboardFilter === 'coding'"
-              (click)="changeLeaderboardFilter('coding')"
-            >
+            <button class="tab-btn" [class.active]="activeLeaderboardFilter === 'coding'"
+              (click)="changeLeaderboardFilter('coding')">
               <span class="material-symbols-outlined tab-icon">data_object</span>
               <span>Coding</span>
             </button>
-            <button 
-              class="tab-btn" 
-              [class.active]="activeLeaderboardFilter === 'robotics'"
-              (click)="changeLeaderboardFilter('robotics')"
-            >
+            <button class="tab-btn" [class.active]="activeLeaderboardFilter === 'robotics'"
+              (click)="changeLeaderboardFilter('robotics')">
               <span class="material-symbols-outlined tab-icon">memory</span>
               <span>Robotics</span>
             </button>
-            <button 
-              class="tab-btn" 
-              [class.active]="activeLeaderboardFilter === 'ai'"
-              (click)="changeLeaderboardFilter('ai')"
-            >
+            <button class="tab-btn" [class.active]="activeLeaderboardFilter === 'ai'"
+              (click)="changeLeaderboardFilter('ai')">
               <span class="material-symbols-outlined tab-icon">model_training</span>
               <span>AI</span>
             </button>
-            <button 
-              class="tab-btn" 
-              [class.active]="activeLeaderboardFilter === 'cyber'"
-              (click)="changeLeaderboardFilter('cyber')"
-            >
+            <button class="tab-btn" [class.active]="activeLeaderboardFilter === 'cyber'"
+              (click)="changeLeaderboardFilter('cyber')">
               <span class="material-symbols-outlined tab-icon">security</span>
               <span>Cyber</span>
             </button>
@@ -1641,20 +1712,19 @@
         <div class="scoreboard-table-card" [class.transitioning]="isLeaderboardTransitioning">
           <div class="sc-header">
             <span class="material-symbols-outlined sc-trophy">emoji_events</span>
-            <span>Top Performing Schools — {{ activeLeaderboardFilter === 'all' ? 'All Heats' : (activeLeaderboardFilter | titlecase) }}</span>
+            <span>Top Performing Schools — {{ activeLeaderboardFilter === 'all' ? 'All Heats' : (activeLeaderboardFilter
+              | titlecase) }}</span>
           </div>
-          
+
           <div class="sc-rows-container">
-            <div 
-              *ngFor="let entry of filteredLeaderboard; let idx = index" 
-              class="sc-row"
-              [class.first-place]="entry.displayRank === '01'"
-              [class.second-place]="entry.displayRank === '02'"
-              [class.third-place]="entry.displayRank === '03'"
-            >
+            <div *ngFor="let entry of filteredLeaderboard; let idx = index" class="sc-row"
+              [class.first-place]="entry.displayRank === '01'" [class.second-place]="entry.displayRank === '02'"
+              [class.third-place]="entry.displayRank === '03'">
               <div class="sc-rank">
                 <span class="rank-badge">
-                  <span class="badge-num" *ngIf="entry.displayRank !== '01' && entry.displayRank !== '02' && entry.displayRank !== '03'">{{ entry.displayRank }}</span>
+                  <span class="badge-num"
+                    *ngIf="entry.displayRank !== '01' && entry.displayRank !== '02' && entry.displayRank !== '03'">{{
+                    entry.displayRank }}</span>
                   <span class="medal-icon" *ngIf="entry.displayRank === '01'">🏆</span>
                   <span class="medal-icon" *ngIf="entry.displayRank === '02'">🥈</span>
                   <span class="medal-icon" *ngIf="entry.displayRank === '03'">🥉</span>
@@ -1663,10 +1733,12 @@
               <div class="sc-school">
                 <strong>{{ entry.schoolName }}</strong>
                 <span>{{ entry.location }}</span>
-                
+
                 <!-- Performance Bar (fills up dynamically when scoreboard is in-view) -->
                 <div class="score-progress-track">
-                  <div class="score-progress-bar" [style.width]="(entry.displayPoints / (activeLeaderboardFilter === 'all' ? 500 : 150) * 100) + '%'"></div>
+                  <div class="score-progress-bar"
+                    [style.width]="(entry.displayPoints / (activeLeaderboardFilter === 'all' ? 500 : 150) * 100) + '%'">
+                  </div>
                 </div>
               </div>
               <div class="sc-points">
@@ -1694,24 +1766,34 @@
   <section id="stats" class="academic-stats-tree-section">
     <div class="container">
       <div class="tree-wrapper">
-        
+
         <!-- SVG Connecting Lines -->
         <svg class="tree-svg-lines" viewBox="0 0 1200 540" preserveAspectRatio="xMidYMid slice">
           <!-- Main connecting lines -->
-          <path d="M 600 270 L 150 100" class="tree-line line-regions" [class.highlighted]="hoveredNode === 'regions'" />
+          <path d="M 600 270 L 150 100" class="tree-line line-regions"
+            [class.highlighted]="hoveredNode === 'regions'" />
           <path d="M 600 270 L 600 60" class="tree-line line-mentors" [class.highlighted]="hoveredNode === 'mentors'" />
-          <path d="M 600 270 L 1050 100" class="tree-line line-schools" [class.highlighted]="hoveredNode === 'schools'" />
-          <path d="M 600 270 L 150 440" class="tree-line line-students" [class.highlighted]="hoveredNode === 'students'" />
-          <path d="M 600 270 L 600 480" class="tree-line line-projects" [class.highlighted]="hoveredNode === 'projects'" />
+          <path d="M 600 270 L 1050 100" class="tree-line line-schools"
+            [class.highlighted]="hoveredNode === 'schools'" />
+          <path d="M 600 270 L 150 440" class="tree-line line-students"
+            [class.highlighted]="hoveredNode === 'students'" />
+          <path d="M 600 270 L 600 480" class="tree-line line-projects"
+            [class.highlighted]="hoveredNode === 'projects'" />
           <path d="M 600 270 L 1050 440" class="tree-line line-grants" [class.highlighted]="hoveredNode === 'grants'" />
- 
+
           <!-- Animated energy pulse overlays (flowing outwards from center) -->
-          <path d="M 600 270 L 150 100" class="tree-line-pulse pulse-regions" [class.highlighted]="hoveredNode === 'regions'" />
-          <path d="M 600 270 L 600 60" class="tree-line-pulse pulse-mentors" [class.highlighted]="hoveredNode === 'mentors'" />
-          <path d="M 600 270 L 1050 100" class="tree-line-pulse pulse-schools" [class.highlighted]="hoveredNode === 'schools'" />
-          <path d="M 600 270 L 150 440" class="tree-line-pulse pulse-students" [class.highlighted]="hoveredNode === 'students'" />
-          <path d="M 600 270 L 600 480" class="tree-line-pulse pulse-projects" [class.highlighted]="hoveredNode === 'projects'" />
-          <path d="M 600 270 L 1050 440" class="tree-line-pulse pulse-grants" [class.highlighted]="hoveredNode === 'grants'" />
+          <path d="M 600 270 L 150 100" class="tree-line-pulse pulse-regions"
+            [class.highlighted]="hoveredNode === 'regions'" />
+          <path d="M 600 270 L 600 60" class="tree-line-pulse pulse-mentors"
+            [class.highlighted]="hoveredNode === 'mentors'" />
+          <path d="M 600 270 L 1050 100" class="tree-line-pulse pulse-schools"
+            [class.highlighted]="hoveredNode === 'schools'" />
+          <path d="M 600 270 L 150 440" class="tree-line-pulse pulse-students"
+            [class.highlighted]="hoveredNode === 'students'" />
+          <path d="M 600 270 L 600 480" class="tree-line-pulse pulse-projects"
+            [class.highlighted]="hoveredNode === 'projects'" />
+          <path d="M 600 270 L 1050 440" class="tree-line-pulse pulse-grants"
+            [class.highlighted]="hoveredNode === 'grants'" />
         </svg>
 
         <!-- Center Hub Node representing the championship -->
@@ -1726,12 +1808,8 @@
         </div>
 
         <!-- Node 1: Regions -->
-        <div 
-          class="tree-node node-regions" 
-          [class.active]="hoveredNode === 'regions'"
-          (mouseenter)="hoveredNode = 'regions'"
-          (mouseleave)="hoveredNode = null"
-        >
+        <div class="tree-node node-regions" [class.active]="hoveredNode === 'regions'"
+          (mouseenter)="hoveredNode = 'regions'" (mouseleave)="hoveredNode = null">
           <div class="node-circle">
             <div class="node-icon-wrap">
               <span class="material-symbols-outlined">map</span>
@@ -1742,17 +1820,14 @@
           <div class="node-tooltip">
             <div class="tooltip-arrow"></div>
             <strong>16 Regions Covered</strong>
-            <p>From the Upper West to Volta Region, linking remote and municipal districts to national coding and robotics opportunities.</p>
+            <p>From the Upper West to Volta Region, linking remote and municipal districts to national coding and
+              robotics opportunities.</p>
           </div>
         </div>
 
         <!-- Node 5: Mentors (NEW, Top-Center) -->
-        <div 
-          class="tree-node node-mentors" 
-          [class.active]="hoveredNode === 'mentors'"
-          (mouseenter)="hoveredNode = 'mentors'"
-          (mouseleave)="hoveredNode = null"
-        >
+        <div class="tree-node node-mentors" [class.active]="hoveredNode === 'mentors'"
+          (mouseenter)="hoveredNode = 'mentors'" (mouseleave)="hoveredNode = null">
           <div class="node-circle">
             <div class="node-icon-wrap">
               <span class="material-symbols-outlined">psychology</span>
@@ -1763,17 +1838,14 @@
           <div class="node-tooltip">
             <div class="tooltip-arrow"></div>
             <strong>800+ Educators Trained</strong>
-            <p>School instructors and regional coordinators equipped with advanced curriculum training in robotics, IoT, and machine learning.</p>
+            <p>School instructors and regional coordinators equipped with advanced curriculum training in robotics, IoT,
+              and machine learning.</p>
           </div>
         </div>
 
         <!-- Node 2: Schools -->
-        <div 
-          class="tree-node node-schools" 
-          [class.active]="hoveredNode === 'schools'"
-          (mouseenter)="hoveredNode = 'schools'"
-          (mouseleave)="hoveredNode = null"
-        >
+        <div class="tree-node node-schools" [class.active]="hoveredNode === 'schools'"
+          (mouseenter)="hoveredNode = 'schools'" (mouseleave)="hoveredNode = null">
           <div class="node-circle">
             <div class="node-icon-wrap">
               <span class="material-symbols-outlined">school</span>
@@ -1784,17 +1856,14 @@
           <div class="node-tooltip">
             <div class="tooltip-arrow"></div>
             <strong>180+ High Schools</strong>
-            <p>Active enrollment of top-tier schools and regional technical academies, creating a collaborative learning community.</p>
+            <p>Active enrollment of top-tier schools and regional technical academies, creating a collaborative learning
+              community.</p>
           </div>
         </div>
 
         <!-- Node 3: Students -->
-        <div 
-          class="tree-node node-students" 
-          [class.active]="hoveredNode === 'students'"
-          (mouseenter)="hoveredNode = 'students'"
-          (mouseleave)="hoveredNode = null"
-        >
+        <div class="tree-node node-students" [class.active]="hoveredNode === 'students'"
+          (mouseenter)="hoveredNode = 'students'" (mouseleave)="hoveredNode = null">
           <div class="node-circle">
             <div class="node-icon-wrap">
               <span class="material-symbols-outlined">groups</span>
@@ -1805,17 +1874,14 @@
           <div class="node-tooltip">
             <div class="tooltip-arrow"></div>
             <strong>12,000+ Active Students</strong>
-            <p>Students actively collaborating, developing algorithms, training models, and deploying smart hardware on the LMS.</p>
+            <p>Students actively collaborating, developing algorithms, training models, and deploying smart hardware on
+              the LMS.</p>
           </div>
         </div>
 
         <!-- Node 6: Projects (NEW, Bottom-Center) -->
-        <div 
-          class="tree-node node-projects" 
-          [class.active]="hoveredNode === 'projects'"
-          (mouseenter)="hoveredNode = 'projects'"
-          (mouseleave)="hoveredNode = null"
-        >
+        <div class="tree-node node-projects" [class.active]="hoveredNode === 'projects'"
+          (mouseenter)="hoveredNode = 'projects'" (mouseleave)="hoveredNode = null">
           <div class="node-circle">
             <div class="node-icon-wrap">
               <span class="material-symbols-outlined">rocket_launch</span>
@@ -1826,17 +1892,14 @@
           <div class="node-tooltip">
             <div class="tooltip-arrow"></div>
             <strong>1,500+ Smart Prototypes</strong>
-            <p>Unique hardware models, automated agricultural systems, and software solutions designed by students to address local issues.</p>
+            <p>Unique hardware models, automated agricultural systems, and software solutions designed by students to
+              address local issues.</p>
           </div>
         </div>
 
         <!-- Node 4: Grants -->
-        <div 
-          class="tree-node node-grants" 
-          [class.active]="hoveredNode === 'grants'"
-          (mouseenter)="hoveredNode = 'grants'"
-          (mouseleave)="hoveredNode = null"
-        >
+        <div class="tree-node node-grants" [class.active]="hoveredNode === 'grants'"
+          (mouseenter)="hoveredNode = 'grants'" (mouseleave)="hoveredNode = null">
           <div class="node-circle">
             <div class="node-icon-wrap">
               <span class="material-symbols-outlined">payments</span>
@@ -1847,7 +1910,8 @@
           <div class="node-tooltip">
             <div class="tooltip-arrow"></div>
             <strong>₵2M+ Support Fund</strong>
-            <p>Direct sponsorship, equipment packages, and tertiary engineering scholarships provided by our state and corporate partners.</p>
+            <p>Direct sponsorship, equipment packages, and tertiary engineering scholarships provided by our state and
+              corporate partners.</p>
           </div>
         </div>
 
@@ -1900,10 +1964,8 @@
       </div>
       <!-- Interactive Tech Track Filter Pills -->
       <div class="map-filter-pills text-center">
-        <button *ngFor="let filter of mapFilters" 
-                class="map-filter-btn" 
-                [class.active]="activeMapFilter === filter"
-                (click)="setMapFilter(filter)">
+        <button *ngFor="let filter of mapFilters" class="map-filter-btn" [class.active]="activeMapFilter === filter"
+          (click)="setMapFilter(filter)">
           <span class="material-symbols-outlined" *ngIf="filter === 'All'">public</span>
           <span class="material-symbols-outlined" *ngIf="filter === 'Robotics'">precision_manufacturing</span>
           <span class="material-symbols-outlined" *ngIf="filter === 'Coding'">code</span>
@@ -1918,37 +1980,69 @@
         <div class="ghana-svg-wrap">
           <svg class="ghana-map" viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
             <!-- Western North -->
-            <path class="gh-region" id="western-north" d="M 60 180 L 100 160 L 130 170 L 140 200 L 120 230 L 80 230 Z" (mouseenter)="hoverRegion('western-north')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('western-north')"/>
+            <path class="gh-region" id="western-north" d="M 60 180 L 100 160 L 130 170 L 140 200 L 120 230 L 80 230 Z"
+              (mouseenter)="hoverRegion('western-north')" (mouseleave)="hoverRegion(null)"
+              (click)="selectRegion('western-north')" />
             <!-- Western -->
-            <path class="gh-region" id="western" d="M 60 230 L 120 230 L 130 270 L 100 300 L 55 280 L 45 250 Z" (mouseenter)="hoverRegion('western')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('western')"/>
+            <path class="gh-region" id="western" d="M 60 230 L 120 230 L 130 270 L 100 300 L 55 280 L 45 250 Z"
+              (mouseenter)="hoverRegion('western')" (mouseleave)="hoverRegion(null)"
+              (click)="selectRegion('western')" />
             <!-- Central -->
-            <path class="gh-region" id="central" d="M 120 280 L 170 270 L 185 290 L 175 320 L 130 320 L 110 305 Z" (mouseenter)="hoverRegion('central')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('central')"/>
+            <path class="gh-region" id="central" d="M 120 280 L 170 270 L 185 290 L 175 320 L 130 320 L 110 305 Z"
+              (mouseenter)="hoverRegion('central')" (mouseleave)="hoverRegion(null)"
+              (click)="selectRegion('central')" />
             <!-- Greater Accra -->
-            <path class="gh-region" id="greater-accra" d="M 185 290 L 230 280 L 240 300 L 220 330 L 185 325 Z" (mouseenter)="hoverRegion('greater-accra')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('greater-accra')"/>
+            <path class="gh-region" id="greater-accra" d="M 185 290 L 230 280 L 240 300 L 220 330 L 185 325 Z"
+              (mouseenter)="hoverRegion('greater-accra')" (mouseleave)="hoverRegion(null)"
+              (click)="selectRegion('greater-accra')" />
             <!-- Eastern -->
-            <path class="gh-region" id="eastern" d="M 175 240 L 220 230 L 245 255 L 235 285 L 185 290 L 170 270 Z" (mouseenter)="hoverRegion('eastern')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('eastern')"/>
+            <path class="gh-region" id="eastern" d="M 175 240 L 220 230 L 245 255 L 235 285 L 185 290 L 170 270 Z"
+              (mouseenter)="hoverRegion('eastern')" (mouseleave)="hoverRegion(null)"
+              (click)="selectRegion('eastern')" />
             <!-- Ashanti -->
-            <path class="gh-region" id="ashanti" d="M 130 200 L 175 190 L 200 210 L 195 245 L 175 255 L 140 240 L 125 225 Z" (mouseenter)="hoverRegion('ashanti')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('ashanti')"/>
+            <path class="gh-region" id="ashanti"
+              d="M 130 200 L 175 190 L 200 210 L 195 245 L 175 255 L 140 240 L 125 225 Z"
+              (mouseenter)="hoverRegion('ashanti')" (mouseleave)="hoverRegion(null)"
+              (click)="selectRegion('ashanti')" />
             <!-- Bono -->
-            <path class="gh-region" id="bono" d="M 100 160 L 145 140 L 165 160 L 175 190 L 130 200 L 100 185 Z" (mouseenter)="hoverRegion('bono')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('bono')"/>
+            <path class="gh-region" id="bono" d="M 100 160 L 145 140 L 165 160 L 175 190 L 130 200 L 100 185 Z"
+              (mouseenter)="hoverRegion('bono')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('bono')" />
             <!-- Bono East -->
-            <path class="gh-region" id="bono-east" d="M 165 140 L 210 130 L 225 155 L 210 175 L 185 180 L 175 190 L 165 160 Z" (mouseenter)="hoverRegion('bono-east')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('bono-east')"/>
+            <path class="gh-region" id="bono-east"
+              d="M 165 140 L 210 130 L 225 155 L 210 175 L 185 180 L 175 190 L 165 160 Z"
+              (mouseenter)="hoverRegion('bono-east')" (mouseleave)="hoverRegion(null)"
+              (click)="selectRegion('bono-east')" />
             <!-- Ahafo -->
-            <path class="gh-region" id="ahafo" d="M 120 175 L 130 160 L 165 160 L 175 190 L 155 195 L 135 195 Z" (mouseenter)="hoverRegion('ahafo')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('ahafo')"/>
+            <path class="gh-region" id="ahafo" d="M 120 175 L 130 160 L 165 160 L 175 190 L 155 195 L 135 195 Z"
+              (mouseenter)="hoverRegion('ahafo')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('ahafo')" />
             <!-- Oti -->
-            <path class="gh-region" id="oti" d="M 225 155 L 270 140 L 285 165 L 270 195 L 245 190 L 225 175 Z" (mouseenter)="hoverRegion('oti')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('oti')"/>
+            <path class="gh-region" id="oti" d="M 225 155 L 270 140 L 285 165 L 270 195 L 245 190 L 225 175 Z"
+              (mouseenter)="hoverRegion('oti')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('oti')" />
             <!-- Volta -->
-            <path class="gh-region" id="volta" d="M 245 190 L 280 175 L 310 200 L 295 260 L 265 270 L 245 250 L 240 220 Z" (mouseenter)="hoverRegion('volta')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('volta')"/>
+            <path class="gh-region" id="volta"
+              d="M 245 190 L 280 175 L 310 200 L 295 260 L 265 270 L 245 250 L 240 220 Z"
+              (mouseenter)="hoverRegion('volta')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('volta')" />
             <!-- Northern -->
-            <path class="gh-region" id="northern" d="M 145 90 L 200 70 L 250 80 L 270 110 L 265 140 L 225 155 L 210 130 L 165 120 L 145 105 Z" (mouseenter)="hoverRegion('northern')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('northern')"/>
+            <path class="gh-region" id="northern"
+              d="M 145 90 L 200 70 L 250 80 L 270 110 L 265 140 L 225 155 L 210 130 L 165 120 L 145 105 Z"
+              (mouseenter)="hoverRegion('northern')" (mouseleave)="hoverRegion(null)"
+              (click)="selectRegion('northern')" />
             <!-- Savannah -->
-            <path class="gh-region" id="savannah" d="M 80 80 L 130 60 L 145 90 L 130 115 L 100 120 L 75 110 Z" (mouseenter)="hoverRegion('savannah')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('savannah')"/>
+            <path class="gh-region" id="savannah" d="M 80 80 L 130 60 L 145 90 L 130 115 L 100 120 L 75 110 Z"
+              (mouseenter)="hoverRegion('savannah')" (mouseleave)="hoverRegion(null)"
+              (click)="selectRegion('savannah')" />
             <!-- North East -->
-            <path class="gh-region" id="north-east" d="M 200 70 L 250 55 L 285 75 L 280 110 L 250 115 L 225 100 Z" (mouseenter)="hoverRegion('north-east')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('north-east')"/>
+            <path class="gh-region" id="north-east" d="M 200 70 L 250 55 L 285 75 L 280 110 L 250 115 L 225 100 Z"
+              (mouseenter)="hoverRegion('north-east')" (mouseleave)="hoverRegion(null)"
+              (click)="selectRegion('north-east')" />
             <!-- Upper West -->
-            <path class="gh-region" id="upper-west" d="M 60 30 L 110 20 L 130 45 L 115 70 L 80 80 L 55 65 Z" (mouseenter)="hoverRegion('upper-west')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('upper-west')"/>
+            <path class="gh-region" id="upper-west" d="M 60 30 L 110 20 L 130 45 L 115 70 L 80 80 L 55 65 Z"
+              (mouseenter)="hoverRegion('upper-west')" (mouseleave)="hoverRegion(null)"
+              (click)="selectRegion('upper-west')" />
             <!-- Upper East -->
-            <path class="gh-region" id="upper-east" d="M 165 25 L 215 15 L 250 30 L 250 55 L 210 65 L 175 60 L 155 45 Z" (mouseenter)="hoverRegion('upper-east')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('upper-east')"/>
+            <path class="gh-region" id="upper-east" d="M 165 25 L 215 15 L 250 30 L 250 55 L 210 65 L 175 60 L 155 45 Z"
+              (mouseenter)="hoverRegion('upper-east')" (mouseleave)="hoverRegion(null)"
+              (click)="selectRegion('upper-east')" />
             <!-- Region Labels -->
             <text class="region-label" x="82" y="208">W. North</text>
             <text class="region-label" x="72" y="260">West</text>
@@ -1968,39 +2062,47 @@
             <text class="region-label" x="196" y="42">U. East</text>
           </svg>
           <!-- Tooltip -->
-          <div class="region-tooltip" [class.visible]="hoveredRegionData !== null && !selectedRegion" *ngIf="hoveredRegionData && !selectedRegion">
+          <div class="region-tooltip" [class.visible]="hoveredRegionData !== null && !selectedRegion"
+            *ngIf="hoveredRegionData && !selectedRegion">
             <strong>{{ hoveredRegionData.name }}</strong>
-            <div class="rtt-row"><span class="material-symbols-outlined">school</span> {{ hoveredRegionData.schools }} Schools</div>
-            <div class="rtt-row"><span class="material-symbols-outlined">emoji_events</span> Top: {{ hoveredRegionData.topSchool }}</div>
-            <div class="rtt-row specialty-row"><span class="material-symbols-outlined">data_object</span> {{ hoveredRegionData.specialty }}</div>
+            <div class="rtt-row"><span class="material-symbols-outlined">school</span> {{ hoveredRegionData.schools }}
+              Schools</div>
+            <div class="rtt-row"><span class="material-symbols-outlined">emoji_events</span> Top: {{
+              hoveredRegionData.topSchool }}</div>
+            <div class="rtt-row specialty-row"><span class="material-symbols-outlined">data_object</span> {{
+              hoveredRegionData.specialty }}</div>
           </div>
         </div>
         <div class="region-legend">
           <!-- Dynamic Command Spotlight when region is selected -->
           <div class="region-spotlight-card" *ngIf="getSelectedRegionData() as activeRd; else defaultLegend">
             <div class="spotlight-header">
-              <span class="spotlight-badge"><span class="material-symbols-outlined">verified</span> Active Spotlight</span>
+              <span class="spotlight-badge"><span class="material-symbols-outlined">verified</span> Active
+                Spotlight</span>
               <button class="spotlight-close" (click)="selectRegion(null)" title="Close Spotlight">
                 <span class="material-symbols-outlined">close</span>
               </button>
             </div>
             <h3>{{ activeRd.name }} Region</h3>
             <p class="spotlight-sub">{{ activeRd.schools }} STEM Institutions Competing</p>
-            
+
             <div class="spotlight-stat-box">
-              <div class="ss-label"><span class="material-symbols-outlined">emoji_events</span> Regional Champion School</div>
+              <div class="ss-label"><span class="material-symbols-outlined">emoji_events</span> Regional Champion School
+              </div>
               <div class="ss-value">{{ activeRd.topSchool }}</div>
             </div>
 
             <div class="spotlight-stat-box">
-              <div class="ss-label"><span class="material-symbols-outlined">data_object</span> Dominant Tech Specialization</div>
+              <div class="ss-label"><span class="material-symbols-outlined">data_object</span> Dominant Tech
+                Specialization</div>
               <div class="ss-value track-badge">{{ activeRd.specialty }}</div>
             </div>
 
             <div class="spotlight-meter-wrap">
               <div class="sm-header">
                 <span>National Qualification Heat</span>
-                <strong>{{ getQualificationHeat(activeRd) }}% Qualified <span style="font-weight:400; opacity:0.7;">({{ activeRd.schools }}/{{ activeRd.target }} schools)</span></strong>
+                <strong>{{ getQualificationHeat(activeRd) }}% Qualified <span style="font-weight:400; opacity:0.7;">({{
+                    activeRd.schools }}/{{ activeRd.target }} schools)</span></strong>
               </div>
               <div class="sm-track">
                 <div class="sm-bar" [style.width.%]="getQualificationHeat(activeRd)"></div>
@@ -2020,7 +2122,9 @@
               <div class="ls-labels"><span>Low</span><span>High</span></div>
             </div>
             <div class="region-list">
-              <div class="rl-item stagger-1" *ngFor="let rd of regionDataList; let i = index; trackBy: trackByRegionId" [class]="'stagger-' + (i % 8 + 1)" (click)="selectRegion(rd.id)" [class.active]="selectedRegion === rd.id">
+              <div class="rl-item stagger-1" *ngFor="let rd of regionDataList; let i = index; trackBy: trackByRegionId"
+                [class]="'stagger-' + (i % 8 + 1)" (click)="selectRegion(rd.id)"
+                [class.active]="selectedRegion === rd.id">
                 <div class="rl-dot" [style.background]="getRegionColor(rd.schools)"></div>
                 <span>{{ rd.name }}</span>
                 <span class="rl-count">{{ rd.schools }} schools</span>
@@ -2040,7 +2144,8 @@
       <div class="section-header-academic text-center">
         <span class="academic-sub">Make an Impact</span>
         <h2>Support a Champion</h2>
-        <p class="academic-desc-lead center">Empower school squads, fund technical arenas, or share programmatic suggestions to help shape Ghana's technological frontier.</p>
+        <p class="academic-desc-lead center">Empower school squads, fund technical arenas, or share programmatic
+          suggestions to help shape Ghana's technological frontier.</p>
       </div>
 
       <div class="support-grid">
@@ -2051,7 +2156,8 @@
           </div>
           <div class="card-content">
             <h3>Inquire via Mail</h3>
-            <p>Send institutional correspondence, coordinate equipment deliveries, or mail donation checks directly to our central coordination registry.</p>
+            <p>Send institutional correspondence, coordinate equipment deliveries, or mail donation checks directly to
+              our central coordination registry.</p>
             <span class="read-more-link">
               <span>Get Mail Details</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
@@ -2066,7 +2172,8 @@
           </div>
           <div class="card-content">
             <h3>Sponsor a Team</h3>
-            <p>Directly fund microcontrollers, sensor kits, and laptop devices for high-need school squads preparing for active tracks.</p>
+            <p>Directly fund microcontrollers, sensor kits, and laptop devices for high-need school squads preparing for
+              active tracks.</p>
             <span class="read-more-link">
               <span>Sponsor a Squad</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
@@ -2081,7 +2188,8 @@
           </div>
           <div class="card-content">
             <h3>Sponsor Competition</h3>
-            <p>Partner with us as a corporate or individual underwriter for regional qualifier events and the national grand final arena.</p>
+            <p>Partner with us as a corporate or individual underwriter for regional qualifier events and the national
+              grand final arena.</p>
             <span class="read-more-link">
               <span>Sponsor Events</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
@@ -2096,7 +2204,8 @@
           </div>
           <div class="card-content">
             <h3>Submit Suggestions</h3>
-            <p>Share syllabus advice, volunteer offers, or platform feedback with our academic committee to guide our roadmap.</p>
+            <p>Share syllabus advice, volunteer offers, or platform feedback with our academic committee to guide our
+              roadmap.</p>
             <span class="read-more-link">
               <span>Submit Ideas</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
@@ -2116,7 +2225,7 @@
     <div class="gateway-bg-grid"></div>
     <div class="container">
       <div class="gateway-content">
-        
+
         <div class="gateway-intro">
           <div class="gateway-crest">
             <div class="crest-ring"></div>
@@ -2126,12 +2235,13 @@
           </div>
           <span class="gateway-badge">Accredited Portal v2.0</span>
           <h2>NTI Championship Gateway</h2>
-          <p class="gateway-desc">Enter your institutional credentials below. The system will automatically identify your role and route you to the appropriate workspace.</p>
+          <p class="gateway-desc">Enter your institutional credentials below. The system will automatically identify
+            your role and route you to the appropriate workspace.</p>
         </div>
 
         <div class="gateway-card">
           <div class="gateway-card-inner">
-            
+
             <div class="gateway-card-header">
               <div class="shield-crest" [class.scanning]="isLoggingIn">
                 <span class="material-symbols-outlined">menu_book</span>
@@ -2147,22 +2257,14 @@
             </div>
 
             <form (ngSubmit)="login()" #loginForm="ngForm" class="gateway-form">
-              
+
               <div class="gf-group">
                 <label for="gw-email">Email or Access Pass</label>
                 <div class="gf-input-wrap">
                   <span class="material-symbols-outlined gf-icon">mail</span>
-                  <input 
-                    type="text" 
-                    id="gw-email" 
-                    name="email" 
-                    [(ngModel)]="email" 
-                    required 
-                    placeholder="name@school.edu.gh or NTI Championship ticket"
-                    class="gf-input"
-                    (input)="detectRoleFromInput(email)"
-                    autocomplete="username"
-                  >
+                  <input type="text" id="gw-email" name="email" [(ngModel)]="email" required
+                    placeholder="name@school.edu.gh or NTI Championship ticket" class="gf-input"
+                    (input)="detectRoleFromInput(email)" autocomplete="username">
                 </div>
               </div>
 
@@ -2170,18 +2272,14 @@
                 <label for="gw-pass">Password / OTP</label>
                 <div class="gf-input-wrap">
                   <span class="material-symbols-outlined gf-icon">lock</span>
-                  <input 
-                    [type]="isPasswordVisible ? 'text' : 'password'"
-                    id="gw-pass" 
-                    name="password" 
-                    [(ngModel)]="password" 
-                    [required]="!isAdminEmail"
-                    placeholder="Enter your password or verification code"
-                    class="gf-input"
-                    autocomplete="current-password"
-                  >
-                  <button type="button" class="gf-pass-toggle" (click)="isPasswordVisible = !isPasswordVisible" tabindex="-1">
-                    <span class="material-symbols-outlined">{{ isPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
+                  <input [type]="isPasswordVisible ? 'text' : 'password'" id="gw-pass" name="password"
+                    [(ngModel)]="password" [required]="!isAdminEmail"
+                    placeholder="Enter your password or verification code" class="gf-input"
+                    autocomplete="current-password">
+                  <button type="button" class="gf-pass-toggle" (click)="isPasswordVisible = !isPasswordVisible"
+                    tabindex="-1">
+                    <span class="material-symbols-outlined">{{ isPasswordVisible ? 'visibility_off' : 'visibility'
+                      }}</span>
                   </button>
                 </div>
               </div>
@@ -2249,7 +2347,7 @@
   ══════════════════════════════════════════ -->
   <footer class="academic-footer">
     <div class="container">
-      
+
       <div class="footer-top-crest">
         <div class="footer-seal-wrap">
           <div class="footer-seal">
@@ -2265,7 +2363,8 @@
 
       <div class="footer-cols-grid">
         <div class="footer-brief">
-          <p>Designed to replicate the scholastic integrity of top-tier academic systems, enabling students to construct pathways from local innovation to global engineering programs.</p>
+          <p>Designed to replicate the scholastic integrity of top-tier academic systems, enabling students to construct
+            pathways from local innovation to global engineering programs.</p>
           <div class="contact-info-ac">
             <p><strong>Contact:</strong> info&#64;ntic.gov.gh</p>
             <p><strong>Hotline:</strong> +233 (0) 302 999 888</p>
@@ -2305,7 +2404,7 @@
 
       <div class="footer-bottom-bar" style="flex-direction: column; gap: 16px; align-items: center;">
         <p>&copy; 2026 &#64;Qliq_Integrations. All rights reserved.</p>
-        
+
         <div class="data-shield-badge">
           <span class="ds-icon">🛡️</span>
           <span>GDPA PROTECTED · Act 843</span>
@@ -2324,38 +2423,57 @@
       </button>
 
       <div class="modal-header-ac" style="text-align:center; padding-bottom:0;">
-        <span class="crest-icon material-symbols-outlined" style="font-size:40px; color:var(--primary);">apartment</span>
+        <span class="crest-icon material-symbols-outlined"
+          style="font-size:40px; color:var(--primary);">apartment</span>
         <h3 style="margin:8px 0 0;">{{ regionDetailModal.rd?.name }} Region</h3>
       </div>
 
       <div style="padding:24px 28px;">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
-          <div style="background:var(--surface-container-low,#f1f5f9); border-radius:14px; padding:16px; text-align:center;">
-            <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--on-surface-variant,#64748b); letter-spacing:0.06em; margin-bottom:6px;">Schools</div>
-            <div style="font-size:28px; font-weight:800; color:var(--on-surface,#0f172a);">{{ regionDetailModal.rd?.schools }}</div>
+          <div
+            style="background:var(--surface-container-low,#f1f5f9); border-radius:14px; padding:16px; text-align:center;">
+            <div
+              style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--on-surface-variant,#64748b); letter-spacing:0.06em; margin-bottom:6px;">
+              Schools</div>
+            <div style="font-size:28px; font-weight:800; color:var(--on-surface,#0f172a);">{{
+              regionDetailModal.rd?.schools }}</div>
           </div>
-          <div style="background:var(--surface-container-low,#f1f5f9); border-radius:14px; padding:16px; text-align:center;">
-            <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--on-surface-variant,#64748b); letter-spacing:0.06em; margin-bottom:6px;">Squads</div>
-            <div style="font-size:28px; font-weight:800; color:var(--on-surface,#0f172a);">{{ getRegionTeams(regionDetailModal.rd) }}</div>
+          <div
+            style="background:var(--surface-container-low,#f1f5f9); border-radius:14px; padding:16px; text-align:center;">
+            <div
+              style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--on-surface-variant,#64748b); letter-spacing:0.06em; margin-bottom:6px;">
+              Squads</div>
+            <div style="font-size:28px; font-weight:800; color:var(--on-surface,#0f172a);">{{
+              getRegionTeams(regionDetailModal.rd) }}</div>
           </div>
         </div>
 
-        <div style="background:var(--surface-container-low,#f1f5f9); border-radius:14px; padding:16px; margin-bottom:20px;">
+        <div
+          style="background:var(--surface-container-low,#f1f5f9); border-radius:14px; padding:16px; margin-bottom:20px;">
           <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
             <span class="material-symbols-outlined" style="font-size:18px; color:var(--primary);">emoji_events</span>
-            <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant,#64748b); text-transform:uppercase; letter-spacing:0.04em;">Regional Champion</span>
+            <span
+              style="font-size:12px; font-weight:700; color:var(--on-surface-variant,#64748b); text-transform:uppercase; letter-spacing:0.04em;">Regional
+              Champion</span>
           </div>
-          <div style="font-size:16px; font-weight:800; color:var(--on-surface,#0f172a);">{{ regionDetailModal.rd?.topSchool }}</div>
-          <div style="font-size:12px; color:var(--on-surface-variant,#94a3b8); margin-top:2px;">Specialization: {{ regionDetailModal.rd?.specialty }}</div>
+          <div style="font-size:16px; font-weight:800; color:var(--on-surface,#0f172a);">{{
+            regionDetailModal.rd?.topSchool }}</div>
+          <div style="font-size:12px; color:var(--on-surface-variant,#94a3b8); margin-top:2px;">Specialization: {{
+            regionDetailModal.rd?.specialty }}</div>
         </div>
 
         <div style="margin-bottom:24px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant,#64748b);">Qualification Progress</span>
-            <strong style="font-size:12px; color:var(--primary);">{{ getRegionQualifiedPct(regionDetailModal.rd) }}%</strong>
+            <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant,#64748b);">Qualification
+              Progress</span>
+            <strong style="font-size:12px; color:var(--primary);">{{ getRegionQualifiedPct(regionDetailModal.rd)
+              }}%</strong>
           </div>
-          <div style="width:100%; height:6px; background:var(--surface-container-high,#e2e8f0); border-radius:3px; overflow:hidden;">
-            <div [style.width.%]="getRegionQualifiedPct(regionDetailModal.rd)" style="height:100%; background:linear-gradient(90deg, var(--primary), #0056b3); border-radius:3px; transition:width 0.6s ease;"></div>
+          <div
+            style="width:100%; height:6px; background:var(--surface-container-high,#e2e8f0); border-radius:3px; overflow:hidden;">
+            <div [style.width.%]="getRegionQualifiedPct(regionDetailModal.rd)"
+              style="height:100%; background:linear-gradient(90deg, var(--primary), #0056b3); border-radius:3px; transition:width 0.6s ease;">
+            </div>
           </div>
         </div>
 
@@ -2384,18 +2502,18 @@
 
       <!-- Content based on selected type -->
       <div class="modal-body" *ngIf="!supportSubmitted">
-        
+
         <!-- Header -->
         <div class="modal-header-crest">
           <span class="material-symbols-outlined crest-icon">
-            {{ activeSupportType === 'mail' ? 'mail' : 
-               activeSupportType === 'team' ? 'diversity_1' : 
-               activeSupportType === 'competition' ? 'emoji_events' : 'reviews' }}
+            {{ activeSupportType === 'mail' ? 'mail' :
+            activeSupportType === 'team' ? 'diversity_1' :
+            activeSupportType === 'competition' ? 'emoji_events' : 'reviews' }}
           </span>
           <h3>
-            {{ activeSupportType === 'mail' ? 'Inquire via Mail' : 
-               activeSupportType === 'team' ? 'Sponsor a Registered Team' : 
-               activeSupportType === 'competition' ? 'Sponsor Competition' : 'Submit Suggestions' }}
+            {{ activeSupportType === 'mail' ? 'Inquire via Mail' :
+            activeSupportType === 'team' ? 'Sponsor a Registered Team' :
+            activeSupportType === 'competition' ? 'Sponsor Competition' : 'Submit Suggestions' }}
           </h3>
           <p class="modal-subtitle">Direct correspondence path to the NTI Championship National Committee</p>
         </div>
@@ -2406,14 +2524,16 @@
               <label for="sup-name">Full Name / Organization</label>
               <div class="academic-input-wrap">
                 <span class="material-symbols-outlined input-icon-ac">person</span>
-                <input type="text" id="sup-name" name="sup-name" [(ngModel)]="supportForm.name" required placeholder="Dr. Kwame Mensah" class="ac-input">
+                <input type="text" id="sup-name" name="sup-name" [(ngModel)]="supportForm.name" required
+                  placeholder="Dr. Kwame Mensah" class="ac-input">
               </div>
             </div>
             <div class="form-group-academic">
               <label for="sup-email">Contact E-mail</label>
               <div class="academic-input-wrap">
                 <span class="material-symbols-outlined input-icon-ac">mail</span>
-                <input type="email" id="sup-email" name="sup-email" [(ngModel)]="supportForm.email" required placeholder="kwame@mensah.com" class="ac-input">
+                <input type="email" id="sup-email" name="sup-email" [(ngModel)]="supportForm.email" required
+                  placeholder="kwame@mensah.com" class="ac-input">
               </div>
             </div>
           </div>
@@ -2425,7 +2545,8 @@
               <span class="material-symbols-outlined input-icon-ac">school</span>
               <select id="sup-school" name="sup-school" [(ngModel)]="supportForm.schoolName" class="ac-input select-ac">
                 <option *ngIf="sponsorTeamSchools.length === 0" value="">No registered schools yet</option>
-                <option *ngFor="let school of sponsorTeamSchools" [value]="school.name">{{ school.name }}<span *ngIf="school.region"> - {{ school.region }}</span></option>
+                <option *ngFor="let school of sponsorTeamSchools" [value]="school.name">{{ school.name }}<span
+                    *ngIf="school.region"> - {{ school.region }}</span></option>
                 <option value="Other">Other / General Team Allocation Fund</option>
               </select>
             </div>
@@ -2436,9 +2557,11 @@
             <label for="sup-tier">Championship Sponsorship Level</label>
             <div class="academic-input-wrap">
               <span class="material-symbols-outlined input-icon-ac">payments</span>
-              <select id="sup-tier" name="sup-tier" [(ngModel)]="supportForm.competitionTier" class="ac-input select-ac">
+              <select id="sup-tier" name="sup-tier" [(ngModel)]="supportForm.competitionTier"
+                class="ac-input select-ac">
                 <option *ngIf="sponsorCompetitions.length === 0" value="">No active competitions yet</option>
-                <option *ngFor="let comp of sponsorCompetitions" [value]="comp.id">{{ comp.title }} ({{ comp.track }})</option>
+                <option *ngFor="let comp of sponsorCompetitions" [value]="comp.id">{{ comp.title }} ({{ comp.track }})
+                </option>
                 <option value="general">General Logistics & Lab Equipment Grant (Any amount)</option>
               </select>
             </div>
@@ -2447,12 +2570,14 @@
           <!-- Message Field -->
           <div class="form-group-academic">
             <label for="sup-message">
-              {{ activeSupportType === 'mail' ? 'Mailing Address & Query Details' : 
-                 activeSupportType === 'suggestion' ? 'Your Ideas / Syllabus Suggestions' : 'Support / Partnership Message' }}
+              {{ activeSupportType === 'mail' ? 'Mailing Address & Query Details' :
+              activeSupportType === 'suggestion' ? 'Your Ideas / Syllabus Suggestions' : 'Support / Partnership Message'
+              }}
             </label>
             <div class="academic-input-wrap textarea-wrap">
               <span class="material-symbols-outlined input-icon-ac">edit_note</span>
-              <textarea id="sup-message" name="sup-message" [(ngModel)]="supportForm.message" required rows="4" placeholder="Share your details with our desk..." class="ac-input ac-textarea"></textarea>
+              <textarea id="sup-message" name="sup-message" [(ngModel)]="supportForm.message" required rows="4"
+                placeholder="Share your details with our desk..." class="ac-input ac-textarea"></textarea>
             </div>
           </div>
 
@@ -2469,10 +2594,12 @@
           <span class="material-symbols-outlined check-icon">check_circle</span>
         </div>
         <h3>Request Lodged Successfully</h3>
-        <p>Your support token has been encrypted and securely delivered to the National NTI Championship Secretariat. An officer will reply to your registered contact channel shortly.</p>
-        
+        <p>Your support token has been encrypted and securely delivered to the National NTI Championship Secretariat. An
+          officer will reply to your registered contact channel shortly.</p>
+
         <div class="ticket-receipt">
-          <div class="receipt-row"><span>Receipt ID:</span> <strong>NTI-{{ 100000 + (activeSupportType ? activeSupportType.charCodeAt(0) : 77) }}-2026</strong></div>
+          <div class="receipt-row"><span>Receipt ID:</span> <strong>NTI-{{ 100000 + (activeSupportType ?
+              activeSupportType.charCodeAt(0) : 77) }}-2026</strong></div>
           <div class="receipt-row"><span>Status:</span> <strong class="badge-status">SECURE_QUEUED</strong></div>
         </div>
 
@@ -2491,9 +2618,9 @@
       <button class="close-modal-btn" (click)="closeLoginModal()" aria-label="Close modal">
         <span class="material-symbols-outlined">close</span>
       </button>
-      
+
       <div class="modal-body">
-        
+
         <div class="login-modal-header">
           <div class="lm-crest">
             <span class="material-symbols-outlined">vpn_key</span>
@@ -2507,22 +2634,14 @@
         </div>
 
         <form (ngSubmit)="login()" #loginModalForm="ngForm" class="lm-form">
-          
+
           <div class="lm-group">
             <label for="lm-email">Email or Access Pass</label>
             <div class="lm-input-wrap">
               <span class="material-symbols-outlined lm-icon">mail</span>
-              <input 
-                type="text" 
-                id="lm-email" 
-                name="email" 
-                [(ngModel)]="email" 
-                required 
-                placeholder="name@school.edu.gh or NTI Championship ticket code"
-                class="lm-input"
-                (input)="detectRoleFromInput(email)"
-                autocomplete="username"
-              >
+              <input type="text" id="lm-email" name="email" [(ngModel)]="email" required
+                placeholder="name@school.edu.gh or NTI Championship ticket code" class="lm-input"
+                (input)="detectRoleFromInput(email)" autocomplete="username">
               <span class="lm-input-glow"></span>
             </div>
           </div>
@@ -2531,17 +2650,11 @@
             <label for="lm-pass">Password / OTP</label>
             <div class="lm-input-wrap">
               <span class="material-symbols-outlined lm-icon">lock</span>
-              <input 
-                [type]="isPasswordVisible ? 'text' : 'password'"
-                id="lm-pass" 
-                name="password" 
-                [(ngModel)]="password" 
-                [required]="!isAdminEmail"
-                placeholder="Enter your password or verification code"
-                class="lm-input"
-                autocomplete="current-password"
-              >
-              <button type="button" class="lm-pass-toggle" (click)="isPasswordVisible = !isPasswordVisible" tabindex="-1">
+              <input [type]="isPasswordVisible ? 'text' : 'password'" id="lm-pass" name="password"
+                [(ngModel)]="password" [required]="!isAdminEmail" placeholder="Enter your password or verification code"
+                class="lm-input" autocomplete="current-password">
+              <button type="button" class="lm-pass-toggle" (click)="isPasswordVisible = !isPasswordVisible"
+                tabindex="-1">
                 <span class="material-symbols-outlined">{{ isPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
               </button>
               <span class="lm-input-glow"></span>

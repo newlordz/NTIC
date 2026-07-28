@@ -218,34 +218,28 @@
   &:hover {
     background: var(--primary, #003f87);
     color: #ffffff;
-
-    .hof-members-popover {
-      opacity: 1;
-      visibility: visible;
-      transform: translateX(-50%) translateY(-6px);
-    }
   }
 }
 
 .hof-members-popover {
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% + 10px);
   left: 50%;
   transform: translateX(-50%) translateY(0);
-  width: 240px;
+  width: 250px;
   background: var(--surface-container-lowest, #ffffff);
   color: var(--on-surface, #071e27);
-  border: 1px solid var(--border-color, #e2ebf5);
+  border: 1px solid var(--border-color, #cfe6f2);
   border-radius: 14px;
   padding: 14px;
-  box-shadow: 0 16px 36px rgba(0, 63, 135, 0.18);
+  box-shadow: 0 18px 40px rgba(0, 40, 90, 0.25);
   opacity: 0;
   visibility: hidden;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 100;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 99999;
   pointer-events: none;
   text-align: left;
-  margin-bottom: 8px;
+  margin-bottom: 0;
 
   &::after {
     content: '';

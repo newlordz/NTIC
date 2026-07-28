@@ -99,6 +99,33 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   loginError = '';
   isPasswordVisible = false;
 
+  hoveredHofEntry: any = null;
+
+  get activeHofEntry(): any {
+    return this.hoveredHofEntry || (this.contentService.activeHallOfFameEntries.length > 0 ? this.contentService.activeHallOfFameEntries[0] : null);
+  }
+
+  setHoveredHofEntry(entry: any): void {
+    this.hoveredHofEntry = entry;
+  }
+
+  clearHoveredHofEntry(): void {
+    this.hoveredHofEntry = null;
+  }
+
+  getSchoolLogo(h: any): string | null {
+    if (!h) return null;
+    if (h.logoUrl) return h.logoUrl;
+    
+    const schoolName = (h.school || '').toLowerCase();
+    if (schoolName.includes('prempeh')) return 'assets/logos/prempeh.png';
+    if (schoolName.includes('wesley girls')) return 'assets/logos/weygeyhey.png';
+    if (schoolName.includes('mfantsipim')) return 'assets/logos/mfantsipim.png';
+    if (schoolName.includes('gsts') || schoolName.includes('technical')) return 'assets/logos/gsts.png';
+    
+    return null;
+  }
+
   isGroupEntry(h: any): boolean {
     if (!h) return false;
     if (h.type === 'group') return true;

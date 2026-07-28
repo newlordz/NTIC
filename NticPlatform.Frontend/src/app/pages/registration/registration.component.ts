@@ -146,7 +146,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     gender: '',
     school: '',
     class: '',
-    guardian: '',
+    guardianName: '',
+    guardianPhone: '',
     track: 'coding',
     skills: {
       alg: 'intermediate',
@@ -1029,13 +1030,15 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       dob: this.studentForm.dob,
       gender: this.studentForm.gender,
       class: this.studentForm.class,
-      guardian: this.studentForm.guardian,
+      guardianName: this.studentForm.guardianName,
+      guardianPhone: this.studentForm.guardianPhone,
       track: this.selectedTrack,
       skills: { ...this.studentForm.skills }
     });
     this.studentForm.id = '';
     this.studentForm.name = '';
-    this.studentForm.guardian = '';
+    this.studentForm.guardianName = '';
+    this.studentForm.guardianPhone = '';
   }
 
   removeStudent(index: number): void {
@@ -1368,7 +1371,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         gender: '',
         school: '',
         class: '',
-        guardian: '',
+        guardianName: '',
+        guardianPhone: '',
         track: '',
         skills: {
           alg: 'intermediate',
@@ -1507,7 +1511,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       gender: '',
       school: '',
       class: '',
-      guardian: '',
+      guardianName: '',
+      guardianPhone: '',
       track: '',
       skills: {
         alg: 'intermediate',
@@ -1684,7 +1689,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           tracks: this.schoolForm.teams.map((t: any) => t.track).filter((value: any, index: number, self: any[]) => self.indexOf(value) === index).join(', ') || 'Coding, Robotics',
           teamsList: this.schoolForm.teams,
           studentCount: this.schoolForm.students.length,
-          students: this.schoolForm.students.map((s: any) => ({ id: s.id, name: s.name, track: s.track, class: s.class, dob: s.dob, gender: s.gender, guardian: s.guardian, skills: s.skills })),
+          students: this.schoolForm.students.map((s: any) => ({ id: s.id, name: s.name, track: s.track, class: s.class, dob: s.dob, gender: s.gender, guardianName: s.guardianName, guardianPhone: s.guardianPhone, skills: s.skills })),
           docs: this.selectedFileIds['accredDocs']?.length
             ? this.selectedFileIds['accredDocs'].map((id, i) => `${id}::${this.selectedFileNames['accredDocs']?.[i] || 'document.pdf'}`)
             : []

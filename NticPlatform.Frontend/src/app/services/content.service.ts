@@ -32,6 +32,7 @@ export interface HallOfFameEntry {
   projectTitle?: string; // Optional project title
   members?: string[]; // Array of member names for groups
   school: string;
+  logoUrl?: string; // Optional school logo URL
   year: string;
   badge: string;
   trackClass: string; // 'coding-track' | 'robotics-track' | 'ai-track' | 'cyber-track' | 'innovation-track'
