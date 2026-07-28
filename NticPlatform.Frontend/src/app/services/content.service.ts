@@ -334,6 +334,7 @@ export interface Team {
   rosterList?: string[];
   memberNames?: string[];
   memberList?: string[];
+  memberPhotos?: string[];
 }
 
 export interface Submission {

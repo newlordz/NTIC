@@ -567,6 +567,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   sponsorLogoUrl: string | null = null;
   studentPhotoUrl: string | null = null;
   groupPhotoUrl: string | null = null;
+  memberPhotoUrls: Record<string, string | null> = { lead: null, m2: null, m3: null, m4: null, m5: null };
   missingDocsError = '';
 
   get hasRequiredDocs(): boolean {
@@ -612,14 +613,20 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         instructorDocs: 10 * 1024 * 1024,
         sponsorLogo: 3 * 1024 * 1024,
         judgeLogo: 3 * 1024 * 1024,
-        studentPhoto: 5 * 1024 * 1024,
-        groupPhoto: 5 * 1024 * 1024
+        studentPhoto: 10 * 1024 * 1024,
+        groupPhoto: 10 * 1024 * 1024,
+        memberLeadPhoto: 10 * 1024 * 1024,
+        member2Photo: 10 * 1024 * 1024,
+        member3Photo: 10 * 1024 * 1024,
+        member4Photo: 10 * 1024 * 1024,
+        member5Photo: 10 * 1024 * 1024
       };
       const maxSize = sizeLimits[field] || 10 * 1024 * 1024;
       const ids: string[] = [];
       const names: string[] = [];
       for (const file of Array.from(files)) {
         if (file.size > maxSize) {
+          console.warn(`[FileUpload] "${file.name}" size=${file.size} bytes (${(file.size / 1024).toFixed(1)} KB), limit=${maxSize} bytes (${Math.round(maxSize / (1024 * 1024))} MB)`);
           this.dialogService.toast(`"${file.name}" exceeds the maximum size of ${Math.round(maxSize / (1024 * 1024))}MB.`, 'warning');
           continue;
         }
@@ -644,6 +651,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         this.loadStudentPhoto();
       } else if (field === 'groupPhoto') {
         this.loadGroupPhoto();
+      } else if (field.startsWith('member') && field.endsWith('Photo')) {
+        this.loadMemberPhoto(field);
       }
     }
     event.target.value = '';
@@ -684,6 +693,14 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     }
   }
 
+  private async loadMemberPhoto(field: string): Promise<void> {
+    const id = this.selectedFileIds[field]?.[0];
+    if (id) {
+      const key = field.replace('member', '').replace('Photo', '').toLowerCase() || 'lead';
+      this.memberPhotoUrls[key] = await this.fileStorage.getUrl(id);
+    }
+  }
+
   async removeFile(field: string, index: number): Promise<void> {
     const id = this.selectedFileIds[field]?.[index];
     if (id) await this.fileStorage.remove(id);
@@ -704,6 +721,10 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     } else if (field === 'groupPhoto') {
       if (this.groupPhotoUrl) { this.fileStorage.revokeUrl(this.groupPhotoUrl); }
       this.groupPhotoUrl = null;
+    } else if (field.startsWith('member') && field.endsWith('Photo')) {
+      const key = field.replace('member', '').replace('Photo', '').toLowerCase() || 'lead';
+      if (this.memberPhotoUrls[key]) { this.fileStorage.revokeUrl(this.memberPhotoUrls[key]!); }
+      this.memberPhotoUrls[key] = null;
     }
   }
 
@@ -1141,7 +1162,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.schoolForm.teams.splice(index, 1);
   }
 
-  competitorMode: 'individual' | 'group' = 'group';
+  competitorMode: 'individual' | 'group' = 'individual';
 
   registerStudent(): void {
     if (this.competitorMode === 'group') {
@@ -1662,8 +1683,14 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         if (draft.data?.selectedFileNames) this.selectedFileNames = { ...draft.data.selectedFileNames };
         break;
       case 'student':
-        this.studentForm = { ...this.studentForm, ...draft.data };
-        this.selectedTrack = draft.data?.selectedTrack || '';
+        if (draft.data?.competitorMode === 'group') {
+          this.teamForm = { ...this.teamForm, ...draft.data };
+          this.competitorMode = 'group';
+        } else {
+          this.studentForm = { ...this.studentForm, ...draft.data };
+          this.selectedTrack = draft.data?.selectedTrack || '';
+          this.competitorMode = 'individual';
+        }
         break;
       case 'judge':
         this.judgeForm = { ...this.judgeForm, ...draft.data };
@@ -1838,6 +1865,11 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         };
 
         const currentTeams = [...this.contentService.teams];
+        const memberPhotoIds: string[] = [];
+        ['memberLeadPhoto', 'member2Photo', 'member3Photo', 'member4Photo', 'member5Photo'].forEach(k => {
+          const id = this.selectedFileIds[k]?.[0];
+          if (id) memberPhotoIds.push(id);
+        });
         currentTeams.push({
           name: this.teamForm.name,
           track: this.teamForm.track || 'Coding',
@@ -1845,7 +1877,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           members: Math.max(rosterList.length, 3),
           rosterList: rosterList,
           status: 'In Competition',
-          schoolName: this.teamForm.school || 'Registered Institution'
+          schoolName: this.teamForm.school || 'Registered Institution',
+          memberPhotos: memberPhotoIds.length ? memberPhotoIds : undefined
         });
         this.contentService.saveTeams(currentTeams);
       } else if (this.activeTab === 'instructor') {

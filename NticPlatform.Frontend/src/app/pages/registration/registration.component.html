@@ -1432,18 +1432,18 @@
           </div>
           <div class="competitor-mode-toggle" style="display: flex; gap: 6px; background: var(--surface-container); padding: 4px; border-radius: 10px;">
             <button type="button" class="btn btn-sm"
-                    [class.btn-primary]="competitorMode === 'group'"
-                    [class.btn-subtle]="competitorMode !== 'group'"
-                    (click)="competitorMode = 'group'">
-              <span class="material-symbols-outlined" style="font-size: 16px;">groups</span>
-              Group / Squad (3–5)
-            </button>
-            <button type="button" class="btn btn-sm"
                     [class.btn-primary]="competitorMode === 'individual'"
                     [class.btn-subtle]="competitorMode !== 'individual'"
                     (click)="competitorMode = 'individual'">
               <span class="material-symbols-outlined" style="font-size: 16px;">person</span>
               Individual Competitor
+            </button>
+            <button type="button" class="btn btn-sm"
+                    [class.btn-primary]="competitorMode === 'group'"
+                    [class.btn-subtle]="competitorMode !== 'group'"
+                    (click)="competitorMode = 'group'">
+              <span class="material-symbols-outlined" style="font-size: 16px;">groups</span>
+              Group / Squad (3–5)
             </button>
           </div>
         </div>
@@ -1654,61 +1654,141 @@
 
             <div class="form-group" style="margin-bottom: 16px;">
               <label class="form-label">Team Lead (Member 1) *</label>
-              <div class="grid-2">
-                <input class="form-control" type="text" placeholder="Team Lead Full Name" [(ngModel)]="teamForm.leadName" name="squadLeadName">
-                <input class="form-control" type="email" placeholder="Team Lead Email (Optional)" [(ngModel)]="teamForm.leadEmail" name="squadLeadEmail" (ngModelChange)="validateEmailLive('squadLeadEmail', $event)">
-              </div>
-              <div class="field-validation-msg" *ngIf="fieldValidation['squadLeadEmail'] && fieldValidation['squadLeadEmail'].status !== 'idle'" [ngClass]="fieldValidation['squadLeadEmail'].status">
-                <span class="material-symbols-outlined">{{ fieldValidation['squadLeadEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadLeadEmail'].status === 'valid' ? 'check_circle' : fieldValidation['squadLeadEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
-                {{ fieldValidation['squadLeadEmail'].message }}
+              <div style="display:flex;gap:8px;align-items:start;">
+                <div style="flex:1;min-width:0;">
+                  <input class="form-control" type="text" placeholder="Team Lead Full Name" [(ngModel)]="teamForm.leadName" name="squadLeadName">
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <input class="form-control" type="email" placeholder="Team Lead Email (Optional)" [(ngModel)]="teamForm.leadEmail" name="squadLeadEmail" (ngModelChange)="validateEmailLive('squadLeadEmail', $event)">
+                  <div class="field-validation-msg" *ngIf="fieldValidation['squadLeadEmail'] && fieldValidation['squadLeadEmail'].status !== 'idle'" [ngClass]="fieldValidation['squadLeadEmail'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['squadLeadEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadLeadEmail'].status === 'valid' ? 'check_circle' : fieldValidation['squadLeadEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    {{ fieldValidation['squadLeadEmail'].message }}
+                  </div>
+                </div>
+                <div style="flex-shrink:0;">
+                  <div class="member-photo-upload" (click)="memberLeadPhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['lead']">
+                    <input #memberLeadPhotoInput type="file" (change)="onFileSelected($event, 'memberLeadPhoto')" accept=".png,.jpg,.jpeg" style="display:none">
+                    <ng-container *ngIf="!memberPhotoUrls['lead']">
+                      <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
+                    </ng-container>
+                    <img *ngIf="memberPhotoUrls['lead']" [src]="memberPhotoUrls['lead']" alt="Lead photo">
+                    <span *ngIf="memberPhotoUrls['lead']" class="member-photo-remove" (click)="removeFile('memberLeadPhoto', 0); $event.stopPropagation()">
+                      <span class="material-symbols-outlined" style="font-size:14px;">close</span>
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div class="form-group" style="margin-bottom: 16px;">
               <label class="form-label">Competitor 2 *</label>
-              <div class="grid-2">
-                <input class="form-control" type="text" placeholder="Competitor 2 Full Name" [(ngModel)]="teamForm.member2Name" name="squadM2Name">
-                <input class="form-control" type="email" placeholder="Competitor 2 Email (Optional)" [(ngModel)]="teamForm.member2Email" name="squadM2Email" (ngModelChange)="validateEmailLive('squadM2Email', $event)">
-              </div>
-              <div class="field-validation-msg" *ngIf="fieldValidation['squadM2Email'] && fieldValidation['squadM2Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM2Email'].status">
-                <span class="material-symbols-outlined">{{ fieldValidation['squadM2Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM2Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM2Email'].status === 'taken' ? 'error' : 'warning' }}</span>
-                {{ fieldValidation['squadM2Email'].message }}
+              <div style="display:flex;gap:8px;align-items:start;">
+                <div style="flex:1;min-width:0;">
+                  <input class="form-control" type="text" placeholder="Competitor 2 Full Name" [(ngModel)]="teamForm.member2Name" name="squadM2Name">
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <input class="form-control" type="email" placeholder="Competitor 2 Email (Optional)" [(ngModel)]="teamForm.member2Email" name="squadM2Email" (ngModelChange)="validateEmailLive('squadM2Email', $event)">
+                  <div class="field-validation-msg" *ngIf="fieldValidation['squadM2Email'] && fieldValidation['squadM2Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM2Email'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['squadM2Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM2Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM2Email'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    {{ fieldValidation['squadM2Email'].message }}
+                  </div>
+                </div>
+                <div style="flex-shrink:0;">
+                  <div class="member-photo-upload" (click)="member2PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m2']">
+                    <input #member2PhotoInput type="file" (change)="onFileSelected($event, 'member2Photo')" accept=".png,.jpg,.jpeg" style="display:none">
+                    <ng-container *ngIf="!memberPhotoUrls['m2']">
+                      <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
+                    </ng-container>
+                    <img *ngIf="memberPhotoUrls['m2']" [src]="memberPhotoUrls['m2']" alt="Member 2 photo">
+                    <span *ngIf="memberPhotoUrls['m2']" class="member-photo-remove" (click)="removeFile('member2Photo', 0); $event.stopPropagation()">
+                      <span class="material-symbols-outlined" style="font-size:14px;">close</span>
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div class="form-group" style="margin-bottom: 16px;">
               <label class="form-label">Competitor 3 *</label>
-              <div class="grid-2">
-                <input class="form-control" type="text" placeholder="Competitor 3 Full Name" [(ngModel)]="teamForm.member3Name" name="squadM3Name">
-                <input class="form-control" type="email" placeholder="Competitor 3 Email (Optional)" [(ngModel)]="teamForm.member3Email" name="squadM3Email" (ngModelChange)="validateEmailLive('squadM3Email', $event)">
-              </div>
-              <div class="field-validation-msg" *ngIf="fieldValidation['squadM3Email'] && fieldValidation['squadM3Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM3Email'].status">
-                <span class="material-symbols-outlined">{{ fieldValidation['squadM3Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM3Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM3Email'].status === 'taken' ? 'error' : 'warning' }}</span>
-                {{ fieldValidation['squadM3Email'].message }}
+              <div style="display:flex;gap:8px;align-items:start;">
+                <div style="flex:1;min-width:0;">
+                  <input class="form-control" type="text" placeholder="Competitor 3 Full Name" [(ngModel)]="teamForm.member3Name" name="squadM3Name">
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <input class="form-control" type="email" placeholder="Competitor 3 Email (Optional)" [(ngModel)]="teamForm.member3Email" name="squadM3Email" (ngModelChange)="validateEmailLive('squadM3Email', $event)">
+                  <div class="field-validation-msg" *ngIf="fieldValidation['squadM3Email'] && fieldValidation['squadM3Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM3Email'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['squadM3Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM3Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM3Email'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    {{ fieldValidation['squadM3Email'].message }}
+                  </div>
+                </div>
+                <div style="flex-shrink:0;">
+                  <div class="member-photo-upload" (click)="member3PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m3']">
+                    <input #member3PhotoInput type="file" (change)="onFileSelected($event, 'member3Photo')" accept=".png,.jpg,.jpeg" style="display:none">
+                    <ng-container *ngIf="!memberPhotoUrls['m3']">
+                      <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
+                    </ng-container>
+                    <img *ngIf="memberPhotoUrls['m3']" [src]="memberPhotoUrls['m3']" alt="Member 3 photo">
+                    <span *ngIf="memberPhotoUrls['m3']" class="member-photo-remove" (click)="removeFile('member3Photo', 0); $event.stopPropagation()">
+                      <span class="material-symbols-outlined" style="font-size:14px;">close</span>
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div class="form-group" style="margin-bottom: 16px;">
               <label class="form-label">Competitor 4 (Optional)</label>
-              <div class="grid-2">
-                <input class="form-control" type="text" placeholder="Competitor 4 Full Name" [(ngModel)]="teamForm.member4Name" name="squadM4Name">
-                <input class="form-control" type="email" placeholder="Competitor 4 Email (Optional)" [(ngModel)]="teamForm.member4Email" name="squadM4Email" (ngModelChange)="validateEmailLive('squadM4Email', $event)">
-              </div>
-              <div class="field-validation-msg" *ngIf="fieldValidation['squadM4Email'] && fieldValidation['squadM4Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM4Email'].status">
-                <span class="material-symbols-outlined">{{ fieldValidation['squadM4Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM4Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM4Email'].status === 'taken' ? 'error' : 'warning' }}</span>
-                {{ fieldValidation['squadM4Email'].message }}
+              <div style="display:flex;gap:8px;align-items:start;">
+                <div style="flex:1;min-width:0;">
+                  <input class="form-control" type="text" placeholder="Competitor 4 Full Name" [(ngModel)]="teamForm.member4Name" name="squadM4Name">
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <input class="form-control" type="email" placeholder="Competitor 4 Email (Optional)" [(ngModel)]="teamForm.member4Email" name="squadM4Email" (ngModelChange)="validateEmailLive('squadM4Email', $event)">
+                  <div class="field-validation-msg" *ngIf="fieldValidation['squadM4Email'] && fieldValidation['squadM4Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM4Email'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['squadM4Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM4Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM4Email'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    {{ fieldValidation['squadM4Email'].message }}
+                  </div>
+                </div>
+                <div style="flex-shrink:0;">
+                  <div class="member-photo-upload" (click)="member4PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m4']">
+                    <input #member4PhotoInput type="file" (change)="onFileSelected($event, 'member4Photo')" accept=".png,.jpg,.jpeg" style="display:none">
+                    <ng-container *ngIf="!memberPhotoUrls['m4']">
+                      <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
+                    </ng-container>
+                    <img *ngIf="memberPhotoUrls['m4']" [src]="memberPhotoUrls['m4']" alt="Member 4 photo">
+                    <span *ngIf="memberPhotoUrls['m4']" class="member-photo-remove" (click)="removeFile('member4Photo', 0); $event.stopPropagation()">
+                      <span class="material-symbols-outlined" style="font-size:14px;">close</span>
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div class="form-group" style="margin-bottom: 24px;">
               <label class="form-label">Competitor 5 (Optional)</label>
-              <div class="grid-2">
-                <input class="form-control" type="text" placeholder="Competitor 5 Full Name" [(ngModel)]="teamForm.member5Name" name="squadM5Name">
-                <input class="form-control" type="email" placeholder="Competitor 5 Email (Optional)" [(ngModel)]="teamForm.member5Email" name="squadM5Email" (ngModelChange)="validateEmailLive('squadM5Email', $event)">
-              </div>
-              <div class="field-validation-msg" *ngIf="fieldValidation['squadM5Email'] && fieldValidation['squadM5Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM5Email'].status">
-                <span class="material-symbols-outlined">{{ fieldValidation['squadM5Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM5Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM5Email'].status === 'taken' ? 'error' : 'warning' }}</span>
-                {{ fieldValidation['squadM5Email'].message }}
+              <div style="display:flex;gap:8px;align-items:start;">
+                <div style="flex:1;min-width:0;">
+                  <input class="form-control" type="text" placeholder="Competitor 5 Full Name" [(ngModel)]="teamForm.member5Name" name="squadM5Name">
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <input class="form-control" type="email" placeholder="Competitor 5 Email (Optional)" [(ngModel)]="teamForm.member5Email" name="squadM5Email" (ngModelChange)="validateEmailLive('squadM5Email', $event)">
+                  <div class="field-validation-msg" *ngIf="fieldValidation['squadM5Email'] && fieldValidation['squadM5Email'].status !== 'idle'" [ngClass]="fieldValidation['squadM5Email'].status">
+                    <span class="material-symbols-outlined">{{ fieldValidation['squadM5Email'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadM5Email'].status === 'valid' ? 'check_circle' : fieldValidation['squadM5Email'].status === 'taken' ? 'error' : 'warning' }}</span>
+                    {{ fieldValidation['squadM5Email'].message }}
+                  </div>
+                </div>
+                <div style="flex-shrink:0;">
+                  <div class="member-photo-upload" (click)="member5PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m5']">
+                    <input #member5PhotoInput type="file" (change)="onFileSelected($event, 'member5Photo')" accept=".png,.jpg,.jpeg" style="display:none">
+                    <ng-container *ngIf="!memberPhotoUrls['m5']">
+                      <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
+                    </ng-container>
+                    <img *ngIf="memberPhotoUrls['m5']" [src]="memberPhotoUrls['m5']" alt="Member 5 photo">
+                    <span *ngIf="memberPhotoUrls['m5']" class="member-photo-remove" (click)="removeFile('member5Photo', 0); $event.stopPropagation()">
+                      <span class="material-symbols-outlined" style="font-size:14px;">close</span>
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
