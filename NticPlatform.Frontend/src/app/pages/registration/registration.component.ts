@@ -137,6 +137,35 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   gpsLoading = false;
   gpsAddress = '';
   gpsAccuracyWarning = '';
+  gpsLookupLoading = false;
+
+  async lookupSchoolGps(): Promise<void> {
+    const schoolName = this.schoolForm.name?.trim();
+    if (!schoolName) {
+      this.showCustomAlert('Please enter the school name first.', 'Missing School Name', 'warning');
+      return;
+    }
+    this.gpsLookupLoading = true;
+    this.gpsAddress = '';
+    this.gpsAccuracyWarning = '';
+    try {
+      const query = encodeURIComponent(`${schoolName}, Ghana`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${query}&limit=1`);
+      const data = await res.json();
+      if (data?.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        this.schoolForm.gps = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        this.gpsAddress = data[0].display_name || '';
+        this.gpsAccuracyWarning = 'GPS address sourced from OpenStreetMap. Please verify accuracy.';
+      } else {
+        this.showCustomAlert(`Could not find GPS coordinates for "${schoolName}". Try the "Detect GPS" button or enter coordinates manually.`, 'Not Found', 'warning');
+      }
+    } catch {
+      this.showCustomAlert('Failed to look up school GPS. Check your internet connection or try manual entry.', 'Lookup Failed', 'warning');
+    }
+    this.gpsLookupLoading = false;
+  }
 
   studentForm = {
     name: '',

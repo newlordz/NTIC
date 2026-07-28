@@ -550,12 +550,16 @@
             </div>
             <div class="form-group">
               <label class="form-label">GPS Address</label>
-              <div style="display:flex; gap:8px;">
+              <div style="display:flex; gap:8px; flex-wrap: wrap;">
+                <button class="btn btn-subtle btn-sm" (click)="lookupSchoolGps()" [disabled]="gpsLookupLoading">
+                  <span class="material-symbols-outlined" [class.spin]="gpsLookupLoading">{{ gpsLookupLoading ? 'progress_activity' : 'search' }}</span>
+                  {{ gpsLookupLoading ? 'Looking up...' : 'Lookup School GPS' }}
+                </button>
                 <button class="btn btn-subtle btn-sm" (click)="detectGps()" [disabled]="gpsLoading">
                   <span class="material-symbols-outlined" [class.spin]="gpsLoading">{{ gpsLoading ? 'progress_activity' : 'my_location' }}</span>
                   {{ gpsLoading ? 'Detecting...' : 'Detect GPS' }}
                 </button>
-                <input class="form-control" type="text" placeholder="e.g. 5.6037, -0.1870" style="flex:1;" [(ngModel)]="schoolForm.gps" name="schoolGps" (ngModelChange)="onGpsManualEdit()">
+                <input class="form-control" type="text" placeholder="e.g. 5.6037, -0.1870" style="flex:1; min-width:200px;" [(ngModel)]="schoolForm.gps" name="schoolGps" (ngModelChange)="onGpsManualEdit()">
               </div>
               <small *ngIf="gpsAddress" style="display:block; margin-top:6px; color:var(--on-surface-variant); font-size:12px;">
                 <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">pin_drop</span>
@@ -1623,6 +1627,23 @@
                   <option value="Cybersecurity">Cybersecurity</option>
                   <option value="Innovation">Innovation</option>
                 </select>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+              <label class="form-label">Group / Squad Photo</label>
+              <div class="upload-zone" (click)="groupPhotoInput.click()">
+                <span class="material-symbols-outlined upload-icon">cloud_upload</span>
+                <p *ngIf="!selectedFileNames['groupPhoto']?.length">Drag & drop or <strong>Browse</strong></p>
+                <div *ngIf="selectedFileNames['groupPhoto']?.length" style="display:flex;align-items:center;gap:8px;">
+                  <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['groupPhoto'][0] }}</span>
+                  <span class="material-symbols-outlined" (click)="removeFile('groupPhoto', 0); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);">close</span>
+                </div>
+                <span>PNG, JPG (Max 5MB)</span>
+              </div>
+              <input #groupPhotoInput type="file" (change)="onFileSelected($event, 'groupPhoto')" accept=".png,.jpg,.jpeg" style="display:none">
+              <div *ngIf="groupPhotoUrl" class="photo-preview" style="margin-top:8px;">
+                <img [src]="groupPhotoUrl" alt="Group Photo Preview" style="width:100px;height:100px;border-radius:12px;object-fit:cover;border:2px solid var(--border-color);">
               </div>
             </div>
 
