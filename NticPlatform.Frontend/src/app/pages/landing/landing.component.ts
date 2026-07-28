@@ -799,24 +799,37 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         id: r.id,
         name: r.name,
         schools: 0,
+        students: 0,
+        teams: 0,
         target: r.defaultCount,
         topSchool: 'None',
         specialty: 'Not assigned'
       }));
     } else {
       this._cachedRegionDataList = regions.map(r => {
-        const realSchools = this.contentService.users.filter(u => 
-          u.role === 'school_admin' && 
-          u.organization && 
-          (u.region ? u.region.toLowerCase().replace(/\s+/g, '-') === r.id : this.getRegionForSchool(u.organization) === r.id)
+        const regionId = r.id;
+        const regionUsers = this.contentService.users.filter(u => {
+          const userRegion = u.region || this.getRegionForSchool(u.organization || '');
+          return userRegion.toLowerCase().replace(/\s+/g, '-') === regionId;
+        });
+        const studentCount = regionUsers.filter(u => u.role === 'student').length;
+        const schoolAdmins = regionUsers.filter(u => u.role === 'school_admin');
+        const realSchools = schoolAdmins.length;
+        const teamCount = this.contentService.teams.filter(t =>
+          t.region &&
+          t.region.toLowerCase().replace(/\s+/g, '-') === regionId
         ).length;
+        const schoolNames = [...new Set(schoolAdmins.map(u => u.organization).filter(Boolean))];
 
         return {
           id: r.id,
           name: r.name,
           schools: realSchools,
+          students: studentCount,
+          teams: teamCount,
           target: r.defaultCount,
-          topSchool: realSchools > 0 ? r.topSchool : 'None',
+          topSchool: schoolNames.length > 0 ? schoolNames[0] : (studentCount > 0 ? 'Independent Competitors' : 'None'),
+          schoolList: schoolNames,
           specialty: r.specialty
         };
       });

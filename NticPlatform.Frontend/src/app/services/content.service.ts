@@ -326,6 +326,7 @@ export interface Team {
   members: number;
   status: string;
   schoolName?: string;
+  region?: string;
   mentor?: string;
   motto?: string;
   rosterList?: string[];

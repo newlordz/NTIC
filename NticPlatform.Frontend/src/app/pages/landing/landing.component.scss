@@ -5659,14 +5659,14 @@
 }
 
 .alumni-section {
-  padding: 8rem 0 4rem 0;
+  padding: 1.5rem 0 2.5rem 0;
   background: var(--bg-ivory);
-  overflow: hidden;
   position: relative;
+  z-index: 15;
 }
 .alumni-header {
   text-align: center;
-  margin-bottom: 4rem;
+  margin-bottom: 1.5rem;
 }
 .alumni-crown {
   font-size: 4rem;
@@ -5692,8 +5692,8 @@
   position: relative;
   width: 100%;
   display: flex;
-  overflow: hidden;
-  padding: 2rem 0 6rem 0;
+  overflow: visible;
+  padding: 1rem 0 2rem 0;
 }
 /* Smooth gradient fade edges for the marquee */
 .alumni-track-wrap::before, .alumni-track-wrap::after {
@@ -5740,7 +5740,7 @@
   align-items: center;
   gap: 1.5rem;
   background: var(--bg-white);
-  border: 1px solid rgba(0, 63, 135, 0.05);
+  border: 1px solid var(--border-color);
   padding: 1.5rem 2rem;
   border-radius: 1.5rem;
   min-width: 400px;
@@ -5857,23 +5857,24 @@
 .alumni-card:hover .alumni-members-popover {
   opacity: 1;
   visibility: visible;
-  transform: translateY(-50%) translateX(10px);
+  transform: translateY(0) translateX(10px);
 }
 
 .alumni-members-popover {
   position: absolute;
-  top: 50%;
+  bottom: -10px;
+  top: auto;
   left: 100%;
-  transform: translateY(-50%) translateX(0);
+  transform: translateY(0) translateX(0);
   width: 270px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--bg-white);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  color: var(--charcoal, #071e27);
-  border: 1.5px solid rgba(0, 63, 135, 0.15);
+  color: var(--charcoal);
+  border: 1.5px solid var(--border-color);
   border-radius: 18px;
   padding: 16px;
-  box-shadow: 0 20px 48px rgba(0, 40, 90, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+  box-shadow: 0 20px 48px rgba(0, 40, 90, 0.22);
   opacity: 0;
   visibility: hidden;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -5886,12 +5887,13 @@
   &::after {
     content: '';
     position: absolute;
-    top: 50%;
-    right: 100%; /* Point arrow leftwards towards trigger */
-    transform: translateY(-50%);
+    bottom: 14px;
+    top: auto;
+    right: 100%;
+    transform: none;
     border-width: 7px;
     border-style: solid;
-    border-color: transparent rgba(255, 255, 255, 0.96) transparent transparent;
+    border-color: transparent var(--bg-white) transparent transparent;
   }
 
   .popover-header {
@@ -5913,6 +5915,14 @@
       justify-content: center;
       flex-shrink: 0;
       box-shadow: 0 4px 10px rgba(0, 63, 135, 0.25);
+      overflow: hidden;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        background: #ffffff;
+      }
     }
 
     .popover-title {
@@ -5995,7 +6005,7 @@
   align-items: center;
   gap: 1.5rem;
   background: var(--bg-white);
-  border: 1px solid rgba(0, 63, 135, 0.08);
+  border: 1px solid var(--border-color);
   padding: 1.5rem 2rem;
   border-radius: 1.5rem;
   min-width: 420px;
@@ -6006,8 +6016,8 @@
   z-index: 1;
 
   &.is-group {
-    background: linear-gradient(135deg, rgba(240, 249, 255, 0.8) 0%, rgba(255, 255, 255, 1) 100%);
-    border: 1.5px solid rgba(0, 63, 135, 0.18);
+    background: linear-gradient(135deg, var(--bg-ivory) 0%, var(--bg-white) 100%);
+    border: 1.5px solid var(--border-color);
   }
 }
 

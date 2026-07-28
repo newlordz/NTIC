@@ -613,7 +613,8 @@
               <div class="alumni-members-popover">
                 <div class="popover-header">
                   <div class="popover-header-icon">
-                    <span class="material-symbols-outlined" style="font-size:20px;">groups</span>
+                    <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" [alt]="entry.school + ' Logo'">
+                    <span *ngIf="!getSchoolLogo(entry)" class="material-symbols-outlined" style="font-size:20px;">groups</span>
                   </div>
                   <div>
                     <div class="popover-title">{{ entry.name }} Roster</div>
@@ -666,7 +667,8 @@
                 <div class="alumni-members-popover">
                   <div class="popover-header">
                     <div class="popover-header-icon">
-                      <span class="material-symbols-outlined" style="font-size:20px;">groups</span>
+                      <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" [alt]="entry.school + ' Logo'">
+                      <span *ngIf="!getSchoolLogo(entry)" class="material-symbols-outlined" style="font-size:20px;">groups</span>
                     </div>
                     <div>
                       <div class="popover-title">{{ entry.name }} Roster</div>
@@ -2067,6 +2069,8 @@
             <strong>{{ hoveredRegionData.name }}</strong>
             <div class="rtt-row"><span class="material-symbols-outlined">school</span> {{ hoveredRegionData.schools }}
               Schools</div>
+            <div class="rtt-row"><span class="material-symbols-outlined">groups</span> {{ hoveredRegionData.students || 0 }}
+              Students</div>
             <div class="rtt-row"><span class="material-symbols-outlined">emoji_events</span> Top: {{
               hoveredRegionData.topSchool }}</div>
             <div class="rtt-row specialty-row"><span class="material-symbols-outlined">data_object</span> {{

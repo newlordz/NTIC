@@ -475,6 +475,15 @@
                   <option value="Northern">Northern</option>
                   <option value="Central">Central</option>
                   <option value="Volta">Volta</option>
+                  <option value="Western North">Western North</option>
+                  <option value="Bono">Bono</option>
+                  <option value="Bono East">Bono East</option>
+                  <option value="Ahafo">Ahafo</option>
+                  <option value="Oti">Oti</option>
+                  <option value="Savannah">Savannah</option>
+                  <option value="North East">North East</option>
+                  <option value="Upper West">Upper West</option>
+                  <option value="Upper East">Upper East</option>
                 </select>
               </div>
             </div>
@@ -1492,12 +1501,38 @@
 
             <div class="grid-2" style="margin-bottom: 20px;">
               <div>
+                <label class="form-label">Region</label>
+                <select class="form-control form-select" [(ngModel)]="studentForm.region" name="stuRegion">
+                  <option value="Greater Accra">Greater Accra</option>
+                  <option value="Ashanti">Ashanti</option>
+                  <option value="Eastern">Eastern</option>
+                  <option value="Western">Western</option>
+                  <option value="Northern">Northern</option>
+                  <option value="Central">Central</option>
+                  <option value="Volta">Volta</option>
+                  <option value="Western North">Western North</option>
+                  <option value="Bono">Bono</option>
+                  <option value="Bono East">Bono East</option>
+                  <option value="Ahafo">Ahafo</option>
+                  <option value="Oti">Oti</option>
+                  <option value="Savannah">Savannah</option>
+                  <option value="North East">North East</option>
+                  <option value="Upper West">Upper West</option>
+                  <option value="Upper East">Upper East</option>
+                </select>
+              </div>
+              <div>
                 <label class="form-label">Guardian Name</label>
                 <input class="form-control" type="text" placeholder="Parent / guardian full name" [(ngModel)]="studentForm.guardianName" name="stuGuardianName2">
               </div>
+            </div>
+
+            <div class="grid-2" style="margin-bottom: 20px;">
               <div>
                 <label class="form-label">Guardian Phone</label>
                 <input class="form-control" type="tel" placeholder="+233 XX XXX XXXX" [(ngModel)]="studentForm.guardianPhone" name="stuGuardianPhone2">
+              </div>
+              <div>
               </div>
             </div>
 
@@ -1539,16 +1574,39 @@
               </div>
             </div>
 
-            <div style="margin-bottom: 20px;">
-              <label class="form-label">Competition Track *</label>
-              <select class="form-control form-select" [(ngModel)]="teamForm.track" name="squadTrack">
-                <option value="" disabled selected>-- Select Competition Track --</option>
-                <option value="Coding">Coding</option>
-                <option value="Robotics">Robotics</option>
-                <option value="AI">AI</option>
-                <option value="Cybersecurity">Cybersecurity</option>
-                <option value="Innovation">Innovation</option>
-              </select>
+            <div class="grid-2" style="margin-bottom: 20px;">
+              <div>
+                <label class="form-label">Region</label>
+                <select class="form-control form-select" [(ngModel)]="teamForm.region" name="squadRegion">
+                  <option value="Greater Accra">Greater Accra</option>
+                  <option value="Ashanti">Ashanti</option>
+                  <option value="Eastern">Eastern</option>
+                  <option value="Western">Western</option>
+                  <option value="Northern">Northern</option>
+                  <option value="Central">Central</option>
+                  <option value="Volta">Volta</option>
+                  <option value="Western North">Western North</option>
+                  <option value="Bono">Bono</option>
+                  <option value="Bono East">Bono East</option>
+                  <option value="Ahafo">Ahafo</option>
+                  <option value="Oti">Oti</option>
+                  <option value="Savannah">Savannah</option>
+                  <option value="North East">North East</option>
+                  <option value="Upper West">Upper West</option>
+                  <option value="Upper East">Upper East</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label">Competition Track *</label>
+                <select class="form-control form-select" [(ngModel)]="teamForm.track" name="squadTrack">
+                  <option value="" disabled selected>-- Select Competition Track --</option>
+                  <option value="Coding">Coding</option>
+                  <option value="Robotics">Robotics</option>
+                  <option value="AI">AI</option>
+                  <option value="Cybersecurity">Cybersecurity</option>
+                  <option value="Innovation">Innovation</option>
+                </select>
+              </div>
             </div>
 
             <div style="margin: 20px 0 14px; border-bottom: 1px solid var(--outline-variant); padding-bottom: 8px;">

@@ -146,6 +146,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     gender: '',
     school: '',
     class: '',
+    region: 'Greater Accra',
     guardianName: '',
     guardianPhone: '',
     track: 'coding',
@@ -159,6 +160,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   teamForm = {
     name: '',
     school: '',
+    region: 'Greater Accra',
     track: '',
     leadName: '',
     leadEmail: '',
@@ -1125,6 +1127,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         id: `TM-${Date.now()}`,
         name: this.teamForm.name,
         schoolName: this.teamForm.school || 'Independent Squad',
+        region: this.teamForm.region,
         track: this.teamForm.track || 'Coding',
         lead: this.teamForm.leadName,
         members: membersList.length,
@@ -1190,6 +1193,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       otp,
       password: otp,
       organization: this.studentForm.school || 'Independent Competitor',
+      region: this.studentForm.region,
       track: this.selectedTrack,
       ticket,
       status: 'Active' as const,
@@ -1375,6 +1379,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         class: '',
         guardianName: '',
         guardianPhone: '',
+        region: 'Greater Accra',
         track: '',
         skills: {
           alg: 'intermediate',
@@ -1515,6 +1520,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       class: '',
       guardianName: '',
       guardianPhone: '',
+      region: 'Greater Accra',
       track: '',
       skills: {
         alg: 'intermediate',
@@ -1526,6 +1532,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.teamForm = {
       name: '',
       school: '',
+      region: 'Greater Accra',
       track: '',
       leadName: '',
       leadEmail: '',
