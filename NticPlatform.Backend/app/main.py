@@ -1,10 +1,13 @@
+import os
 import uuid
 from app.config import settings
 from app.database import init_postgres_db, get_db_connection
 
 try:
-    from fastapi import FastAPI, HTTPException, status
+    from fastapi import FastAPI, HTTPException, status, Request
     from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse, JSONResponse
     from pydantic import BaseModel
 
     app = FastAPI(
@@ -38,10 +41,6 @@ try:
         source_code_path: str
         video_url: str = ""
         tenant_id: str = "11111111-1111-1111-1111-111111111111"
-
-    @app.get("/")
-    def read_root():
-        return {"status": "ok", "message": "NTIC Platform API is running"}
 
     @app.get("/api/health")
     def health_check():
@@ -158,6 +157,27 @@ try:
         cur.close()
         conn.close()
         return {"id": sub_id, "status": "Pending"}
+
+    # Mount the Angular frontend static files
+    # The output path from angular.json is 'dist/stem-frontend' but with the new application builder, it's under 'browser'
+    frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "NticPlatform.Frontend", "dist", "stem-frontend", "browser")
+    frontend_dist = os.path.abspath(frontend_dist)
+
+    if os.path.isdir(frontend_dist):
+        app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="static")
+
+        # Catch-all for Angular client-side routing
+        @app.exception_handler(404)
+        async def custom_404_handler(request: Request, exc: HTTPException):
+            if request.url.path.startswith("/api/"):
+                return JSONResponse(status_code=404, content={"detail": "API Endpoint Not Found"})
+            index_path = os.path.join(frontend_dist, "index.html")
+            if os.path.exists(index_path):
+                return FileResponse(index_path)
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    else:
+        print(f"[Warning] Frontend dist directory not found at: {frontend_dist}")
+
 
 except ImportError:
     app = None
