@@ -1,0 +1,113 @@
+<!-- ══════════════════════════════════════════
+     NTIC AI CHATBOT WIDGET
+══════════════════════════════════════════ -->
+
+<!-- FLOATING ACTION BUTTON -->
+<button
+  class="chatbot-fab"
+  (click)="toggleChat()"
+  [class.is-open]="chatbot.isOpen()"
+  [attr.aria-label]="chatbot.isOpen() ? 'Close AI Assistant' : 'Open AI Assistant'"
+  title="NTIC AI Assistant">
+  <span class="fab-icon-open material-symbols-outlined">smart_toy</span>
+  <span class="fab-icon-close material-symbols-outlined">close</span>
+  <span class="fab-badge" *ngIf="unreadCount > 0 && !chatbot.isOpen()">{{ unreadCount }}</span>
+  <span class="fab-pulse"></span>
+</button>
+
+<!-- CHAT PANEL -->
+<div class="chatbot-panel" [class.is-open]="chatbot.isOpen()">
+
+  <!-- HEADER -->
+  <div class="chatbot-header">
+    <div class="chatbot-header-info">
+      <div class="chatbot-avatar">
+        <span class="material-symbols-outlined">smart_toy</span>
+      </div>
+      <div class="chatbot-header-text">
+        <span class="chatbot-title">NTIC AI Assistant</span>
+        <span class="chatbot-status">
+          <span class="status-dot"></span>
+          Online &mdash; {{ currentUser?.roleName || 'Guest' }} Mode
+        </span>
+      </div>
+    </div>
+    <div class="chatbot-header-actions">
+      <button class="header-action-btn" (click)="clearHistory()" title="Clear conversation">
+        <span class="material-symbols-outlined">refresh</span>
+      </button>
+      <button class="header-action-btn" (click)="closeChat()" title="Close">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MESSAGES -->
+  <div class="chatbot-messages" #messagesContainer>
+    <ng-container *ngFor="let msg of chatbot.messages(); trackBy: trackByIndex">
+
+      <!-- BOT MESSAGE -->
+      <div class="chat-bubble-row bot-row" *ngIf="msg.role === 'model'">
+        <div class="bot-avatar">
+          <span class="material-symbols-outlined">smart_toy</span>
+        </div>
+        <div class="chat-bubble bot-bubble">
+          <!-- Typing indicator -->
+          <div class="typing-indicator" *ngIf="msg.isTyping">
+            <span></span><span></span><span></span>
+          </div>
+          <!-- Real message -->
+          <p *ngIf="!msg.isTyping">{{ msg.text }}</p>
+        </div>
+      </div>
+
+      <!-- USER MESSAGE -->
+      <div class="chat-bubble-row user-row" *ngIf="msg.role === 'user'">
+        <div class="chat-bubble user-bubble">
+          <p>{{ msg.text }}</p>
+        </div>
+        <div class="user-avatar">{{ currentUser?.avatar || '?' }}</div>
+      </div>
+
+    </ng-container>
+
+    <!-- Empty state -->
+    <div class="empty-chat" *ngIf="chatbot.messages().length === 0">
+      <span class="material-symbols-outlined">chat_bubble_outline</span>
+      <p>Ask me anything about the platform!</p>
+    </div>
+  </div>
+
+  <!-- QUICK SUGGESTIONS (show when chat is new) -->
+  <div class="quick-suggestions" *ngIf="chatbot.messages().length <= 1 && !chatbot.isLoading()">
+    <button class="suggestion-chip" (click)="userInput = 'What can you help me with?'; onSend()">What can you help me with?</button>
+    <button class="suggestion-chip" (click)="userInput = 'How does this platform work?'; onSend()">How does this platform work?</button>
+  </div>
+
+  <!-- INPUT AREA -->
+  <div class="chatbot-input-area">
+    <div class="chatbot-input-wrap">
+      <textarea
+        class="chatbot-input"
+        [(ngModel)]="userInput"
+        (keydown)="onKeydown($event)"
+        placeholder="Type a message... (Enter to send)"
+        rows="1"
+        [disabled]="chatbot.isLoading()"
+        id="chatbot-input"
+        aria-label="Chat message input"
+        maxlength="500">
+      </textarea>
+      <button
+        class="chatbot-send-btn"
+        (click)="onSend()"
+        [disabled]="!userInput.trim() || chatbot.isLoading()"
+        title="Send message">
+        <span class="material-symbols-outlined" *ngIf="!chatbot.isLoading()">send</span>
+        <span class="send-spinner" *ngIf="chatbot.isLoading()"></span>
+      </button>
+    </div>
+    <p class="chatbot-footer-note">Powered by Gemini AI &bull; NTIC Ghana</p>
+  </div>
+
+</div>

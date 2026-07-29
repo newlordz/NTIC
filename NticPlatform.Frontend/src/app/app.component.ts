@@ -5,13 +5,13 @@ import { filter } from 'rxjs/operators';
 import { ThemeService } from './services/theme.service';
 import { ContentService } from './services/content.service';
 import { TimeAgoPipe } from './services/time-ago.pipe';
-
 import { DialogService } from './services/dialog.service';
+import { ChatbotComponent } from './chatbot/chatbot.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, TimeAgoPipe],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, TimeAgoPipe, ChatbotComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
