@@ -27,7 +27,13 @@ def run_standalone_server(port):
 
         def do_GET(self):
             path = self.path.split('?')[0]
-            if path == '/api/health':
+            if path == '/':
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "ok", "message": "NTIC Platform API is running"}).encode('utf-8'))
+            elif path == '/api/health':
                 conn = get_db_connection()
                 status_msg = "connected" if conn else "disconnected"
                 if conn:

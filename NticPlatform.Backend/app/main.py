@@ -39,6 +39,10 @@ try:
         video_url: str = ""
         tenant_id: str = "11111111-1111-1111-1111-111111111111"
 
+    @app.get("/")
+    def read_root():
+        return {"status": "ok", "message": "NTIC Platform API is running"}
+
     @app.get("/api/health")
     def health_check():
         conn = get_db_connection()
