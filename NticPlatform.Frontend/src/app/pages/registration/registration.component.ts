@@ -7,11 +7,12 @@ import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { BrevoEmailService } from '../../services/brevo-email.service';
 import { DialogService } from '../../services/dialog.service';
+import { ChatbotComponent } from '../../chatbot/chatbot.component';
 
 @Component({
   selector: 'app-registration',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, ChatbotComponent],
   templateUrl: './registration.component.html',
   styleUrl: './registration.component.scss'
 })
