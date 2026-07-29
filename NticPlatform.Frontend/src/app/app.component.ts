@@ -41,6 +41,7 @@ export class AppComponent implements OnInit, OnDestroy {
     content_manager:{ name: 'Content Manager',      avatar: 'CM', roleName: 'Content Manager' },
     reviewer:       { name: 'Reviewer',             avatar: 'RV', roleName: 'Reviewer' },
     competition_manager:{ name: 'Competition Manager', avatar: 'CP', roleName: 'Competition Manager' },
+    support_admin:  { name: 'Support Agent',        avatar: 'SA', roleName: 'Support Admin' },
   };
 
   pageTitles: Record<string, string> = {
@@ -221,6 +222,7 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'records':      return ['instructor', 'school_admin', 'super_admin', 'reviewer'].includes(role);
       case 'users':        return ['super_admin'].includes(role);
       case 'lms_admin':    return ['super_admin', 'content_manager'].includes(role);
+      case 'support':      return ['super_admin', 'support_admin'].includes(role);
       default:             return false;
     }
   }

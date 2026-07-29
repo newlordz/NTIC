@@ -3,11 +3,13 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ContentService, User } from '../../services/content.service';
+import { ChatbotService, SupportTicket } from '../../services/chatbot.service';
+import { FilterTicketsPipe } from '../../services/filter-tickets.pipe';
 
 @Component({
   selector: 'app-user-management',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FilterTicketsPipe],
   templateUrl: './user-management.component.html',
   styleUrl: './user-management.component.scss'
 })
@@ -28,6 +30,12 @@ export class UserManagementComponent implements OnInit {
   toastTitle = '';
   toastDetail = '';
 
+  // ── Support Center ──────────────────────────────────
+  activeMainTab: 'users' | 'support' = 'users';
+  selectedTicket: SupportTicket | null = null;
+  adminReplyText = '';
+  ticketStatusFilter: 'all' | 'open' | 'in_progress' | 'resolved' = 'all';
+
   roleTabs = [
     { id: 'all', label: 'All Users', icon: 'group' },
     { id: 'school_admin', label: 'School Admins', icon: 'school' },
@@ -41,11 +49,11 @@ export class UserManagementComponent implements OnInit {
     { id: 'super_admin', label: 'Admins', icon: 'admin_panel_settings' },
   ];
 
-  constructor(public contentService: ContentService, private router: Router) {}
+  constructor(public contentService: ContentService, private router: Router, public chatbotService: ChatbotService) {}
 
   get canManageUsers(): boolean {
     const role = localStorage.getItem('activeRoleId') || '';
-    return role === 'super_admin';
+    return role === 'super_admin' || role === 'support_admin';
   }
 
   isCurrentUser(user: User): boolean {
@@ -254,5 +262,42 @@ export class UserManagementComponent implements OnInit {
     a.href = URL.createObjectURL(blob);
     a.download = `ntic-users-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
+  }
+
+  // ── Support Center Methods ──────────────────────────────────────────
+  get filteredTickets(): SupportTicket[] {
+    const tickets = this.chatbotService.supportTickets();
+    if (this.ticketStatusFilter === 'all') return tickets;
+    return tickets.filter(t => t.status === this.ticketStatusFilter);
+  }
+
+  selectTicket(ticket: SupportTicket): void {
+    this.selectedTicket = ticket;
+    this.adminReplyText = '';
+  }
+
+  closeTicketPanel(): void {
+    this.selectedTicket = null;
+    this.adminReplyText = '';
+  }
+
+  sendAdminReply(): void {
+    if (!this.adminReplyText.trim() || !this.selectedTicket) return;
+    const agentName = localStorage.getItem('activeUserEmail') || 'Support Agent';
+    this.chatbotService.addAdminReply(this.selectedTicket.id, agentName, this.adminReplyText.trim());
+    this.adminReplyText = '';
+    this.showToast('Reply Sent', 'Your response has been delivered to the user.');
+  }
+
+  resolveTicket(ticket: SupportTicket): void {
+    this.chatbotService.resolveTicket(ticket.id);
+    this.showToast('Ticket Resolved', `Ticket ${ticket.id} has been marked as resolved.`);
+    if (this.selectedTicket?.id === ticket.id) {
+      this.closeTicketPanel();
+    }
+  }
+
+  getTicketStatusClass(status: string): string {
+    return { open: 'status-open', in_progress: 'status-in-progress', resolved: 'status-resolved' }[status] || '';
   }
 }

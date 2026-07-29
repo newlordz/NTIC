@@ -26,12 +26,12 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
   @ViewChild('messagesContainer') messagesContainer!: ElementRef<HTMLDivElement>;
 
   userInput = '';
+  showEscalateConfirm = false;
   private shouldScrollToBottom = false;
 
   constructor(public chatbot: ChatbotService, private cdr: ChangeDetectorRef) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    // If user just logged in and chat is open, ensure greeting is shown
     if (changes['currentUser'] && this.currentUser && this.chatbot.isOpen()) {
       this.cdr.markForCheck();
     }
@@ -47,7 +47,9 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
   toggleChat(): void {
     const name = this.currentUser?.name || 'there';
     const role = this.currentUser?.roleId || 'student';
-    this.chatbot.toggleChat(name, role);
+    const userId = this.getUserId();
+    const email = this.getUserEmail();
+    this.chatbot.toggleChat(name, role, userId, email);
     if (this.chatbot.isOpen()) {
       this.shouldScrollToBottom = true;
     }
@@ -56,6 +58,7 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
 
   closeChat(): void {
     this.chatbot.closeChat();
+    this.showEscalateConfirm = false;
     this.cdr.markForCheck();
   }
 
@@ -63,6 +66,7 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
     const name = this.currentUser?.name || 'there';
     const role = this.currentUser?.roleId || 'student';
     this.chatbot.clearHistory(name, role);
+    this.showEscalateConfirm = false;
     this.cdr.markForCheck();
   }
 
@@ -83,6 +87,26 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
     }
   }
 
+  requestEscalation(): void {
+    this.showEscalateConfirm = true;
+    this.cdr.markForCheck();
+  }
+
+  confirmEscalation(): void {
+    const name = this.currentUser?.name || 'User';
+    const role = this.currentUser?.roleId || 'student';
+    const email = this.getUserEmail();
+    this.chatbot.escalateToHuman(name, role, email);
+    this.showEscalateConfirm = false;
+    this.shouldScrollToBottom = true;
+    this.cdr.markForCheck();
+  }
+
+  cancelEscalation(): void {
+    this.showEscalateConfirm = false;
+    this.cdr.markForCheck();
+  }
+
   private scrollToBottom(): void {
     try {
       if (this.messagesContainer) {
@@ -92,8 +116,20 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
     } catch (_) {}
   }
 
+  private getUserId(): string {
+    return localStorage.getItem('activeUserEmail') || '';
+  }
+
+  private getUserEmail(): string {
+    return localStorage.getItem('activeUserEmail') || '';
+  }
+
   get unreadCount(): number {
     return this.chatbot.isOpen() ? 0 : (this.chatbot.messages().length > 1 ? 1 : 0);
+  }
+
+  get canEscalate(): boolean {
+    return !this.chatbot.isEscalated() && (this.chatbot.messages().length > 1);
   }
 
   trackByIndex(index: number): number {

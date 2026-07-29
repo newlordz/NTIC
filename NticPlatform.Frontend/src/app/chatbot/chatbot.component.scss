@@ -542,3 +542,158 @@ $shadow-panel: 0 24px 60px rgba(0, 30, 80, 0.18), 0 8px 24px rgba(0, 30, 80, 0.1
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+// ─── HUMAN SUPPORT MESSAGE ───────────────────────────────────────────────────
+.human-agent-avatar {
+  background: linear-gradient(135deg, #059669, #10b981) !important;
+}
+
+.human-support-bubble {
+  background: linear-gradient(135deg, rgba(5, 150, 105, 0.08), rgba(16, 185, 129, 0.06)) !important;
+  border: 1px solid rgba(16, 185, 129, 0.2) !important;
+  color: #064e3b !important;
+
+  .agent-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #059669;
+    margin-bottom: 4px;
+  }
+}
+
+// ─── ESCALATION BUTTON ───────────────────────────────────────────────────────
+.escalate-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  margin-bottom: 8px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(5, 150, 105, 0.3);
+  background: rgba(5, 150, 105, 0.06);
+  color: #059669;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  justify-content: center;
+
+  .material-symbols-outlined { font-size: 16px; }
+
+  &:hover {
+    background: rgba(5, 150, 105, 0.12);
+    border-color: rgba(5, 150, 105, 0.5);
+    transform: translateY(-1px);
+  }
+}
+
+.escalate-confirm {
+  padding: 10px 14px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  background: rgba(5, 150, 105, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  p {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: $text;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .material-symbols-outlined { font-size: 18px; color: #059669; }
+  }
+
+  .escalate-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .escalate-cancel-btn,
+  .escalate-ok-btn {
+    flex: 1;
+    padding: 7px;
+    border-radius: 8px;
+    border: none;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .escalate-cancel-btn {
+    background: rgba(0,0,0,0.06);
+    color: $text-muted;
+    &:hover { background: rgba(0,0,0,0.1); }
+  }
+
+  .escalate-ok-btn {
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: #fff;
+    &:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  }
+}
+
+.escalated-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: rgba(5, 150, 105, 0.08);
+  border: 1px solid rgba(5, 150, 105, 0.2);
+  color: #059669;
+  font-size: 11.5px;
+  font-weight: 600;
+
+  .material-symbols-outlined { font-size: 15px; }
+}
+
+// ─── HEADER STATUS DOT ESCALATED ─────────────────────────────────────────────
+.status-dot.escalated {
+  background: #10b981 !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7) !important;
+}
+
+// ─── DARK MODE — ADDITIONS ───────────────────────────────────────────────────
+:host-context(body.dark-theme) {
+  .human-support-bubble {
+    background: rgba(16, 185, 129, 0.1) !important;
+    border-color: rgba(16, 185, 129, 0.25) !important;
+    color: #a7f3d0 !important;
+
+    .agent-label { color: #34d399; }
+  }
+
+  .escalate-btn {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: #34d399;
+  }
+
+  .escalate-confirm {
+    background: rgba(16, 185, 129, 0.06);
+    border-top-color: rgba(255,255,255,0.06);
+
+    p { color: #f1f5f9; }
+
+    .escalate-cancel-btn {
+      background: rgba(255,255,255,0.08);
+      color: #94a3b8;
+    }
+  }
+
+  .escalated-banner {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: #34d399;
+  }
+}

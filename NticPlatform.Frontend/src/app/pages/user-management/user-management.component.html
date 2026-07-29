@@ -22,6 +22,22 @@
     </div>
   </header>
 
+  <!-- Main Tab Switcher -->
+  <div class="main-tab-bar">
+    <button class="main-tab-btn" [class.active]="activeMainTab === 'users'" (click)="activeMainTab = 'users'">
+      <span class="material-symbols-outlined">group</span>
+      User Management
+    </button>
+    <button class="main-tab-btn" [class.active]="activeMainTab === 'support'" (click)="activeMainTab = 'support'">
+      <span class="material-symbols-outlined">support_agent</span>
+      Support Center
+      <span class="main-tab-badge" *ngIf="chatbotService.openTicketsCount > 0">{{ chatbotService.openTicketsCount }}</span>
+    </button>
+  </div>
+
+  <!-- ═══ USERS TAB ═══ -->
+  <ng-container *ngIf="activeMainTab === 'users'">
+
   <!-- Executive KPI Summary Cards -->
   <div class="kpi-grid">
     <div class="kpi-card total-theme">
@@ -352,4 +368,158 @@
       </div>
     </div>
   </div>
+
+  </ng-container>
+  <!-- ═══ END USERS TAB ═══ -->
+
+  <!-- ═══ SUPPORT CENTER TAB ═══ -->
+  <div class="support-center" *ngIf="activeMainTab === 'support'">
+
+    <!-- Support KPI Row -->
+    <div class="support-kpis">
+      <div class="support-kpi open-kpi">
+        <span class="material-symbols-outlined">inbox</span>
+        <div>
+          <span class="kpi-num">{{ chatbotService.supportTickets() | filterTickets:'open' }}</span>
+          <span class="kpi-lbl">Open</span>
+        </div>
+      </div>
+      <div class="support-kpi progress-kpi">
+        <span class="material-symbols-outlined">pending</span>
+        <div>
+          <span class="kpi-num">{{ chatbotService.supportTickets() | filterTickets:'in_progress' }}</span>
+          <span class="kpi-lbl">In Progress</span>
+        </div>
+      </div>
+      <div class="support-kpi resolved-kpi">
+        <span class="material-symbols-outlined">task_alt</span>
+        <div>
+          <span class="kpi-num">{{ chatbotService.supportTickets() | filterTickets:'resolved' }}</span>
+          <span class="kpi-lbl">Resolved</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Support Layout -->
+    <div class="support-layout">
+
+      <!-- Ticket List -->
+      <div class="ticket-list-panel">
+        <div class="ticket-list-header">
+          <h3>Support Tickets</h3>
+          <div class="ticket-filter-tabs">
+            <button [class.active]="ticketStatusFilter === 'all'" (click)="ticketStatusFilter = 'all'">All</button>
+            <button [class.active]="ticketStatusFilter === 'open'" (click)="ticketStatusFilter = 'open'">Open</button>
+            <button [class.active]="ticketStatusFilter === 'in_progress'" (click)="ticketStatusFilter = 'in_progress'">In Progress</button>
+            <button [class.active]="ticketStatusFilter === 'resolved'" (click)="ticketStatusFilter = 'resolved'">Resolved</button>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div class="ticket-empty" *ngIf="filteredTickets.length === 0">
+          <span class="material-symbols-outlined">inbox</span>
+          <p>No support tickets yet.<br>When users request human support, tickets appear here.</p>
+        </div>
+
+        <!-- Ticket Items -->
+        <div
+          class="ticket-item"
+          *ngFor="let ticket of filteredTickets"
+          [class.selected]="selectedTicket?.id === ticket.id"
+          (click)="selectTicket(ticket)">
+          <div class="ticket-item-top">
+            <span class="ticket-id">{{ ticket.id }}</span>
+            <span class="ticket-status-badge" [class]="getTicketStatusClass(ticket.status)">
+              {{ ticket.status === 'in_progress' ? 'In Progress' : ticket.status | titlecase }}
+            </span>
+          </div>
+          <div class="ticket-item-user">
+            <span class="material-symbols-outlined">person</span>
+            <strong>{{ ticket.userName }}</strong>
+            <span class="ticket-role-tag">{{ ticket.userRole }}</span>
+          </div>
+          <div class="ticket-item-preview">{{ ticket.chatHistory.at(-1)?.text | slice:0:60 }}...</div>
+          <div class="ticket-item-time">{{ ticket.createdAt | date:'MMM d, h:mm a' }}</div>
+        </div>
+      </div>
+
+      <!-- Ticket Detail Panel -->
+      <div class="ticket-detail-panel" *ngIf="selectedTicket; else noTicketSelected">
+        <!-- Header -->
+        <div class="ticket-detail-header">
+          <div>
+            <h4>{{ selectedTicket.id }}</h4>
+            <span class="ticket-status-badge" [class]="getTicketStatusClass(selectedTicket.status)">
+              {{ selectedTicket.status === 'in_progress' ? 'In Progress' : selectedTicket.status | titlecase }}
+            </span>
+          </div>
+          <div class="ticket-detail-actions">
+            <button class="td-action-btn resolve-btn" *ngIf="selectedTicket.status !== 'resolved'"
+              (click)="resolveTicket(selectedTicket)">
+              <span class="material-symbols-outlined">task_alt</span> Resolve
+            </button>
+            <button class="td-action-btn close-panel-btn" (click)="closeTicketPanel()">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- User Info -->
+        <div class="ticket-user-info">
+          <div class="ticket-user-avatar">{{ getInitials(selectedTicket.userName) }}</div>
+          <div>
+            <strong>{{ selectedTicket.userName }}</strong>
+            <span>{{ selectedTicket.userEmail }}</span>
+            <span class="ticket-role-tag">{{ selectedTicket.userRole }}</span>
+          </div>
+        </div>
+
+        <!-- Chat History -->
+        <div class="ticket-chat-history">
+          <div *ngFor="let msg of selectedTicket.chatHistory"
+               class="th-bubble-row"
+               [class.th-user]="msg.role === 'user'"
+               [class.th-bot]="msg.role !== 'user'">
+            <div class="th-bubble">
+              <span class="th-role-label">{{ msg.role === 'user' ? selectedTicket.userName : (msg.agentName || 'AI Assistant') }}</span>
+              <p>{{ msg.text }}</p>
+            </div>
+          </div>
+          <!-- Admin replies already sent -->
+          <div *ngFor="let reply of selectedTicket.adminReplies" class="th-bubble-row th-admin">
+            <div class="th-bubble th-admin-bubble">
+              <span class="th-role-label">{{ reply.agentName }} (You)</span>
+              <p>{{ reply.text }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reply Input -->
+        <div class="ticket-reply-area" *ngIf="selectedTicket.status !== 'resolved'">
+          <textarea
+            [(ngModel)]="adminReplyText"
+            placeholder="Type your reply to {{ selectedTicket.userName }}..."
+            rows="3"
+            maxlength="1000"
+            class="reply-textarea">
+          </textarea>
+          <button class="btn btn-primary reply-send-btn" (click)="sendAdminReply()" [disabled]="!adminReplyText.trim()">
+            <span class="material-symbols-outlined">send</span> Send Reply
+          </button>
+        </div>
+        <div class="ticket-resolved-banner" *ngIf="selectedTicket.status === 'resolved'">
+          <span class="material-symbols-outlined">check_circle</span> This ticket has been resolved.
+        </div>
+      </div>
+
+      <ng-template #noTicketSelected>
+        <div class="ticket-no-selection">
+          <span class="material-symbols-outlined">support_agent</span>
+          <p>Select a ticket to view conversation and reply</p>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+  <!-- ═══ END SUPPORT CENTER TAB ═══ -->
+
 </div>
