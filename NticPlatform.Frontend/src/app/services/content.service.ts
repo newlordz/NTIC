@@ -330,6 +330,7 @@ export interface Team {
   schoolName?: string;
   region?: string;
   photoFileId?: string;
+  logoFileId?: string;
   mentor?: string;
   motto?: string;
   rosterList?: string[];

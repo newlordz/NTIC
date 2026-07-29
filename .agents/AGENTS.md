@@ -19,3 +19,12 @@ After providing the direct, flawless answer, apply lateral thinking to deliver a
 - Direct Answer First: Lead immediately with the core solution or conclusion. No conversational filler or preamble.
 - Flawless Execution: Structure content cleanly using bullet points, bold emphasis, or logical steps for maximum clarity.
 - Beyond-the-Box Insights: Conclude with a dedicated section featuring non-obvious recommendations, hidden risks, or lateral strategies.
+
+### GIT SYNC WORKFLOW
+When the user says "sync to git", you must run the following sequence to ensure harmony with other AI agents:
+1. `git stash` (to safely store any local changes made by the other AI)
+2. `git pull --rebase origin main` (to fetch any remote changes)
+3. `git stash pop` (and handle conflicts if any)
+4. `git add .` (to stage all local changes)
+5. `git commit -m "chore: auto-sync with AI agents"`
+6. `git push origin main`
