@@ -2,14 +2,14 @@ export const environment = {
   production: true,
   apiUrl: 'http://localhost:5000/api',
   brevo: {
-    apiKey: '',
+    apiKey: 'REPLACE_BREVO_API_KEY',
     senderEmail: 'enochessel5@gmail.com',
     senderName: 'NTIC Ghana Championship'
   },
   smsmode: {
-    apiKey: ''
+    apiKey: 'REPLACE_SMSMODE_API_KEY'
   },
   gemini: {
-    apiKey: ''
+    apiKey: 'REPLACE_GEMINI_API_KEY'
   }
 };
