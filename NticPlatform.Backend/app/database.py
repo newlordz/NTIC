@@ -130,6 +130,19 @@ def init_postgres_db():
                 time VARCHAR(50),
                 type VARCHAR(50)
             );
+
+            CREATE TABLE IF NOT EXISTS support_tickets (
+                id VARCHAR(64) PRIMARY KEY,
+                user_id VARCHAR(150) NOT NULL,
+                user_name VARCHAR(200) NOT NULL,
+                user_role VARCHAR(50) NOT NULL,
+                user_email VARCHAR(150) NOT NULL,
+                status VARCHAR(20) DEFAULT 'open',
+                chat_history JSONB DEFAULT '[]',
+                admin_replies JSONB DEFAULT '[]',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         """)
         conn.commit()
         cur.close()

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -13,7 +13,7 @@ import { FilterTicketsPipe } from '../../services/filter-tickets.pipe';
   templateUrl: './user-management.component.html',
   styleUrl: './user-management.component.scss'
 })
-export class UserManagementComponent implements OnInit {
+export class UserManagementComponent implements OnInit, OnDestroy {
   users: User[] = [];
   filteredUsers: User[] = [];
   searchQuery = '';
@@ -77,6 +77,21 @@ export class UserManagementComponent implements OnInit {
       return;
     }
     this.loadUsers();
+    this.loadTickets();
+  }
+
+  loadTickets(): void {
+    this.chatbotService.loadAllTickets();
+    if (!this.ticketRefreshTimer) {
+      this.ticketRefreshTimer = setInterval(() => this.chatbotService.loadAllTickets(), 10000);
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.ticketRefreshTimer) {
+      clearInterval(this.ticketRefreshTimer);
+      this.ticketRefreshTimer = null;
+    }
   }
 
   loadUsers(): void {
@@ -264,7 +279,16 @@ export class UserManagementComponent implements OnInit {
     a.click();
   }
 
+  private ticketRefreshTimer: any = null;
+
   // ── Support Center Methods ──────────────────────────────────────────
+  setActiveMainTab(tab: 'users' | 'support'): void {
+    this.activeMainTab = tab;
+    if (tab === 'support') {
+      this.loadTickets();
+    }
+  }
+
   get filteredTickets(): SupportTicket[] {
     const tickets = this.chatbotService.supportTickets();
     if (this.ticketStatusFilter === 'all') return tickets;

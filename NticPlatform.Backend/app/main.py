@@ -102,6 +102,138 @@ try:
             resp = await client.post(url, json=body)
             return resp.json()
 
+    # TICKETS
+    class TicketCreate(BaseModel):
+        userId: str
+        userName: str
+        userRole: str
+        userEmail: str
+        chatHistory: list
+
+    class TicketReply(BaseModel):
+        agentName: str
+        text: str
+
+    class TicketStatusUpdate(BaseModel):
+        status: str
+
+    @app.post("/api/tickets", status_code=status.HTTP_201_CREATED)
+    def create_ticket(payload: TicketCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        ticket_id = f"TKT-{uuid.uuid4().hex[:8].upper()}"
+        cur = conn.cursor()
+        import json as _json
+        try:
+            cur.execute("""
+                INSERT INTO support_tickets (id, user_id, user_name, user_role, user_email, chat_history)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (
+                ticket_id, payload.userId, payload.userName,
+                payload.userRole, payload.userEmail,
+                _json.dumps([m.model_dump() if hasattr(m, 'model_dump') else m for m in payload.chatHistory])
+            ))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        return {"id": ticket_id, "status": "open"}
+
+    @app.get("/api/tickets")
+    def list_tickets(user_id: str = None):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        import json as _json
+        if user_id:
+            cur.execute("SELECT * FROM support_tickets WHERE user_id = %s ORDER BY last_updated DESC", (user_id,))
+        else:
+            cur.execute("SELECT * FROM support_tickets ORDER BY last_updated DESC")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        cols = ["id", "user_id", "user_name", "user_role", "user_email", "status", "chat_history", "admin_replies", "created_at", "last_updated"]
+        result = []
+        for r in rows:
+            d = dict(zip(cols, r))
+            d["chat_history"] = _json.loads(d["chat_history"]) if isinstance(d["chat_history"], str) else d["chat_history"]
+            d["admin_replies"] = _json.loads(d["admin_replies"]) if isinstance(d["admin_replies"], str) else d["admin_replies"]
+            d["created_at"] = str(d["created_at"])
+            d["last_updated"] = str(d["last_updated"])
+            result.append(d)
+        return result
+
+    @app.get("/api/tickets/{ticket_id}")
+    def get_ticket(ticket_id: str):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        import json as _json
+        cur.execute("SELECT * FROM support_tickets WHERE id = %s", (ticket_id,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        cols = ["id", "user_id", "user_name", "user_role", "user_email", "status", "chat_history", "admin_replies", "created_at", "last_updated"]
+        d = dict(zip(cols, row))
+        d["chat_history"] = _json.loads(d["chat_history"]) if isinstance(d["chat_history"], str) else d["chat_history"]
+        d["admin_replies"] = _json.loads(d["admin_replies"]) if isinstance(d["admin_replies"], str) else d["admin_replies"]
+        d["created_at"] = str(d["created_at"])
+        d["last_updated"] = str(d["last_updated"])
+        return d
+
+    @app.post("/api/tickets/{ticket_id}/reply")
+    def reply_to_ticket(ticket_id: str, payload: TicketReply):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        import json as _json
+        import datetime
+        cur.execute("SELECT admin_replies FROM support_tickets WHERE id = %s", (ticket_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        existing = _json.loads(row[0]) if isinstance(row[0], str) else (row[0] or [])
+        existing.append({
+            "agentName": payload.agentName,
+            "text": payload.text,
+            "timestamp": datetime.datetime.utcnow().isoformat()
+        })
+        cur.execute(
+            "UPDATE support_tickets SET admin_replies = %s, status = 'in_progress', last_updated = CURRENT_TIMESTAMP WHERE id = %s",
+            (_json.dumps(existing), ticket_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "ok"}
+
+    @app.patch("/api/tickets/{ticket_id}/status")
+    def update_ticket_status(ticket_id: str, payload: TicketStatusUpdate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE support_tickets SET status = %s, last_updated = CURRENT_TIMESTAMP WHERE id = %s",
+            (payload.status, ticket_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": payload.status}
+
     # STUDENTS
     @app.get("/api/students")
     def list_students():

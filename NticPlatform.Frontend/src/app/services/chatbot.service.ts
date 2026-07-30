@@ -219,7 +219,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
   }
 
   // ─── CHAT LIFECYCLE ─────────────────────────────────────────────────
-  openChat(userName: string, role: string, userId?: string, email?: string): void {
+  async openChat(userName: string, role: string, userId?: string, email?: string): Promise<void> {
     this.isOpen.set(true);
     const targetUserId = userId || '';
     const targetEmail = email || '';
@@ -241,29 +241,40 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
       this.currentUserRole = targetRole;
     }
 
+    // Fetch existing ticket from backend and inject admin replies
+    if (this.currentUserId) {
+      const ticket = await this.fetchMyTicket(this.currentUserId);
+      if (ticket) {
+        this.isEscalated.set(true);
+        if (this.messages().length > 0) {
+          this.injectPendingAdminReplies(ticket);
+        }
+        this.startPolling(this.currentUserId);
+      }
+    }
+
     if (this.messages().length === 0) {
       const greeting = this.DEFAULT_GREETING(userName.split(' ')[0], targetRole);
       this.messages.set([{ role: 'model', text: greeting, timestamp: new Date() }]);
       this.saveToSession();
-    } else {
-      // Check if admin has replied while chat was closed
-      this.injectPendingAdminReplies();
     }
   }
 
   closeChat(): void {
     this.isOpen.set(false);
+    this.stopPolling();
   }
 
-  toggleChat(userName: string, role: string, userId?: string, email?: string): void {
+  async toggleChat(userName: string, role: string, userId?: string, email?: string): Promise<void> {
     if (this.isOpen()) {
       this.closeChat();
     } else {
-      this.openChat(userName, role, userId, email);
+      await this.openChat(userName, role, userId, email);
     }
   }
 
   clearHistory(userName: string, role: string): void {
+    this.stopPolling();
     this.isEscalated.set(false);
     this.messages.set([]);
     sessionStorage.removeItem(STORAGE_KEY);
@@ -339,76 +350,153 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
     }
   }
 
+  // ─── TICKET PERSISTENCE ─────────────────────────────────────────────
+  private ticketPollTimer: any = null;
+
+  /** Admin: load all tickets from backend */
+  async loadAllTickets(): Promise<void> {
+    try {
+      const tickets: any = await this.http.get(`${environment.apiUrl}/tickets`).toPromise();
+      this.supportTickets.set(tickets.map((t: any) => this.parseTicket(t)));
+    } catch (_) {}
+  }
+
+  /** User: fetch own ticket from backend and merge into local state */
+  async fetchMyTicket(userId: string): Promise<SupportTicket | null> {
+    try {
+      const tickets: any = await this.http.get(`${environment.apiUrl}/tickets?user_id=${encodeURIComponent(userId)}`).toPromise();
+      if (tickets && tickets.length > 0) {
+        const t = this.parseTicket(tickets[0]);
+        this.supportTickets.update(list => {
+          const existing = list.find(x => x.id === t.id);
+          if (existing) {
+            return list.map(x => x.id === t.id ? t : x);
+          }
+          return [t, ...list];
+        });
+        return t;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  private parseTicket(t: any): SupportTicket {
+    return {
+      id: t.id,
+      userId: t.user_id,
+      userName: t.user_name,
+      userRole: t.user_role,
+      userEmail: t.user_email,
+      status: t.status || 'open',
+      chatHistory: (t.chat_history || []).map((m: any) => ({ ...m, timestamp: new Date(m.timestamp || m.created_at || Date.now()) })),
+      adminReplies: (t.admin_replies || []).map((r: any) => ({ ...r, timestamp: new Date(r.timestamp || Date.now()) })),
+      createdAt: new Date(t.created_at || Date.now()),
+      lastUpdated: new Date(t.last_updated || Date.now()),
+      unreadByUser: false
+    };
+  }
+
+  /** Start polling for admin replies (user's chat is open) */
+  startPolling(userId: string): void {
+    this.stopPolling();
+    this.ticketPollTimer = setInterval(async () => {
+      const ticket = await this.fetchMyTicket(userId);
+      if (ticket) {
+        this.injectPendingAdminReplies(ticket);
+      }
+    }, 8000);
+  }
+
+  stopPolling(): void {
+    if (this.ticketPollTimer) {
+      clearInterval(this.ticketPollTimer);
+      this.ticketPollTimer = null;
+    }
+  }
+
   // ─── HUMAN ESCALATION ───────────────────────────────────────────────
-  escalateToHuman(userName: string, userRole: string, userEmail: string): void {
+  async escalateToHuman(userName: string, userRole: string, userEmail: string): Promise<void> {
     if (this.isEscalated()) return;
 
     this.isEscalated.set(true);
 
-    const ticketId = `TKT-${Date.now().toString(36).toUpperCase()}`;
-    const ticket: SupportTicket = {
-      id: ticketId,
-      userId: this.currentUserId || userEmail,
-      userName,
-      userRole,
-      userEmail,
-      status: 'open',
-      createdAt: new Date(),
-      lastUpdated: new Date(),
-      chatHistory: [...this.messages().filter(m => !m.isTyping)],
-      adminReplies: [],
-      unreadByUser: false
-    };
+    const chatHistory = this.messages().filter(m => !m.isTyping);
+    try {
+      const result: any = await this.http.post(`${environment.apiUrl}/tickets`, {
+        userId: this.currentUserId || userEmail,
+        userName,
+        userRole,
+        userEmail,
+        chatHistory
+      }).toPromise();
 
-    this.supportTickets.update(tickets => [ticket, ...tickets]);
-
-    const confirmMsg: ChatMessage = {
-      role: 'model',
-      text: `✅ Your support ticket **${ticketId}** has been created! A human support agent will review your conversation and respond here shortly. You can continue chatting with AI in the meantime.`,
-      timestamp: new Date()
-    };
-    this.messages.update(msgs => [...msgs, confirmMsg]);
-    this.saveToSession();
-  }
-
-  // ─── ADMIN REPLY ─────────────────────────────────────────────────────
-  addAdminReply(ticketId: string, agentName: string, replyText: string): void {
-    this.supportTickets.update(tickets => tickets.map(t => {
-      if (t.id !== ticketId) return t;
-      return {
-        ...t,
-        status: 'in_progress',
+      const ticketId = result.id;
+      const ticket: SupportTicket = {
+        id: ticketId,
+        userId: this.currentUserId || userEmail,
+        userName,
+        userRole,
+        userEmail,
+        status: 'open',
+        createdAt: new Date(),
         lastUpdated: new Date(),
-        adminReplies: [...t.adminReplies, { agentName, text: replyText, timestamp: new Date() }],
-        unreadByUser: true
+        chatHistory,
+        adminReplies: [],
+        unreadByUser: false
       };
-    }));
+      this.supportTickets.update(tickets => [ticket, ...tickets]);
 
-    // If this user's chat is the one being replied to, inject message
-    const ticket = this.supportTickets().find(t => t.id === ticketId);
-    if (ticket && ticket.userId === this.currentUserId) {
-      const adminMsg: ChatMessage = {
-        role: 'human_support',
-        text: replyText,
-        timestamp: new Date(),
-        agentName
+      const confirmMsg: ChatMessage = {
+        role: 'model',
+        text: `✅ Support ticket **${ticketId}** created! A human agent will review your conversation and respond here shortly. You can keep chatting with AI in the meantime.`,
+        timestamp: new Date()
       };
-      this.messages.update(msgs => [...msgs, adminMsg]);
+      this.messages.update(msgs => [...msgs, confirmMsg]);
       this.saveToSession();
+
+      // Start polling for admin replies
+      this.startPolling(ticket.userId);
+    } catch (_) {
+      this.isEscalated.set(false);
+      const errMsg: ChatMessage = {
+        role: 'model',
+        text: '⚠️ Could not create support ticket right now. Please try again later.',
+        timestamp: new Date()
+      };
+      this.messages.update(msgs => [...msgs, errMsg]);
     }
   }
 
-  resolveTicket(ticketId: string): void {
-    this.supportTickets.update(tickets => tickets.map(t =>
-      t.id === ticketId ? { ...t, status: 'resolved', lastUpdated: new Date() } : t
-    ));
+  // ─── ADMIN REPLY ─────────────────────────────────────────────────────
+  async addAdminReply(ticketId: string, agentName: string, replyText: string): Promise<void> {
+    try {
+      await this.http.post(`${environment.apiUrl}/tickets/${ticketId}/reply`, { agentName, text: replyText }).toPromise();
+
+      const reply = { agentName, text: replyText, timestamp: new Date() };
+      this.supportTickets.update(tickets => tickets.map(t => {
+        if (t.id !== ticketId) return t;
+        return { ...t, status: 'in_progress', lastUpdated: new Date(), adminReplies: [...t.adminReplies, reply], unreadByUser: true };
+      }));
+
+      const ticket = this.supportTickets().find(t => t.id === ticketId);
+      if (ticket && ticket.userId === this.currentUserId) {
+        this.messages.update(msgs => [...msgs, { role: 'human_support', text: replyText, timestamp: new Date(), agentName }]);
+        this.saveToSession();
+      }
+    } catch (_) {}
   }
 
-  private injectPendingAdminReplies(): void {
-    const ticket = this.supportTickets().find(t =>
-      t.userId === this.currentUserId && t.unreadByUser
-    );
-    if (!ticket) return;
+  async resolveTicket(ticketId: string): Promise<void> {
+    try {
+      await this.http.patch(`${environment.apiUrl}/tickets/${ticketId}/status`, { status: 'resolved' }).toPromise();
+      this.supportTickets.update(tickets => tickets.map(t =>
+        t.id === ticketId ? { ...t, status: 'resolved', lastUpdated: new Date() } : t
+      ));
+    } catch (_) {}
+  }
+
+  private injectPendingAdminReplies(ticket: SupportTicket): void {
+    if (!ticket || ticket.status === 'resolved') return;
 
     const lastMsgTime = this.messages().at(-1)?.timestamp?.getTime() || 0;
     const newReplies = ticket.adminReplies.filter(r => new Date(r.timestamp).getTime() > lastMsgTime);
@@ -422,11 +510,6 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
       }));
       this.messages.update(msgs => [...msgs, ...newMsgs]);
       this.saveToSession();
-
-      // Mark as read
-      this.supportTickets.update(tickets => tickets.map(t =>
-        t.id === ticket.id ? { ...t, unreadByUser: false } : t
-      ));
     }
   }
 

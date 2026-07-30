@@ -24,11 +24,11 @@
 
   <!-- Main Tab Switcher -->
   <div class="main-tab-bar">
-    <button class="main-tab-btn" [class.active]="activeMainTab === 'users'" (click)="activeMainTab = 'users'">
+    <button class="main-tab-btn" [class.active]="activeMainTab === 'users'" (click)="setActiveMainTab('users')">
       <span class="material-symbols-outlined">group</span>
       User Management
     </button>
-    <button class="main-tab-btn" [class.active]="activeMainTab === 'support'" (click)="activeMainTab = 'support'">
+    <button class="main-tab-btn" [class.active]="activeMainTab === 'support'" (click)="setActiveMainTab('support')">
       <span class="material-symbols-outlined">support_agent</span>
       Support Center
       <span class="main-tab-badge" *ngIf="chatbotService.openTicketsCount > 0">{{ chatbotService.openTicketsCount }}</span>
