@@ -28,7 +28,7 @@ const STORAGE_KEY = 'ntic_chat_session';
 
 @Injectable({ providedIn: 'root' })
 export class ChatbotService {
-  private readonly API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${environment.gemini.apiKey}`;
+  private readonly API_URL = `${environment.apiUrl}/chat`;
 
   isOpen = signal(false);
   isLoading = signal(false);

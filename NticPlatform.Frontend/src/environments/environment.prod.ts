@@ -8,8 +8,5 @@ export const environment = {
   },
   smsmode: {
     apiKey: 'REPLACE_SMSMODE_API_KEY'
-  },
-  gemini: {
-    apiKey: 'REPLACE_GEMINI_API_KEY'
   }
 };

@@ -8,6 +8,7 @@ try:
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.staticfiles import StaticFiles
     from fastapi.responses import FileResponse, JSONResponse
+    from httpx import AsyncClient
     from pydantic import BaseModel
 
     app = FastAPI(
@@ -80,6 +81,26 @@ try:
                 "user": settings.POSTGRES_USER
             }
         }
+
+    # CHAT
+    class ChatRequest(BaseModel):
+        system_instruction: dict
+        contents: list
+        generationConfig: dict
+
+    @app.post("/api/chat")
+    async def chat_proxy(payload: ChatRequest):
+        if not settings.GEMINI_API_KEY:
+            raise HTTPException(status_code=403, detail="AI service not configured")
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={settings.GEMINI_API_KEY}"
+        body = {
+            "system_instruction": payload.system_instruction,
+            "contents": payload.contents,
+            "generationConfig": payload.generationConfig
+        }
+        async with AsyncClient(timeout=60) as client:
+            resp = await client.post(url, json=body)
+            return resp.json()
 
     # STUDENTS
     @app.get("/api/students")

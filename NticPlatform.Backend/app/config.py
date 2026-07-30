@@ -20,6 +20,8 @@ class Config:
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD") or os.getenv("PGPASSWORD", "botsio212nyc")
     POSTGRES_DB: str = os.getenv("POSTGRES_DB") or os.getenv("PGDATABASE", "NticPlatformDb")
     
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    
     PORT: int = int(os.getenv("PORT", 5000))
     
     @classmethod
