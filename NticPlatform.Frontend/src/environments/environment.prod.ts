@@ -1,6 +1,6 @@
 export const environment = {
   production: true,
-  apiUrl: 'http://localhost:5000/api',
+  apiUrl: 'https://ntic-production-a69b.up.railway.app/api',
   brevo: {
     apiKey: 'REPLACE_BREVO_API_KEY',
     senderEmail: 'enochessel5@gmail.com',
