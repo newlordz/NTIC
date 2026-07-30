@@ -3,8 +3,8 @@
 /* ── FLOATING SCROLL TO TOP BUTTON ── */
 .scroll-to-top-btn {
   position: fixed;
-  bottom: 2.5rem;
-  right: 2.5rem;
+  bottom: 24px;
+  right: 24px;
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -62,8 +62,8 @@
 
 @media (max-width: 768px) {
   .scroll-to-top-btn {
-    bottom: 1.5rem;
-    right: 1.5rem;
+    bottom: 20px;
+    right: 20px;
     width: 44px;
     height: 44px;
 

@@ -7,6 +7,7 @@ import { ContentService } from './services/content.service';
 import { TimeAgoPipe } from './services/time-ago.pipe';
 import { DialogService } from './services/dialog.service';
 import { ChatbotComponent } from './chatbot/chatbot.component';
+import { ChatbotService } from './services/chatbot.service';
 
 @Component({
   selector: 'app-root',
@@ -57,7 +58,7 @@ export class AppComponent implements OnInit, OnDestroy {
     'reporting':    'Reports & Analytics',
   };
 
-  constructor(private router: Router, public themeService: ThemeService, public contentService: ContentService, public dialogService: DialogService, private renderer: Renderer2) {
+  constructor(private router: Router, public themeService: ThemeService, public contentService: ContentService, public dialogService: DialogService, private renderer: Renderer2, private chatbot: ChatbotService) {
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
@@ -160,6 +161,7 @@ export class AppComponent implements OnInit, OnDestroy {
     localStorage.removeItem('activeRoleId');
     localStorage.removeItem('activeUserEmail');
     this.currentUser = null;
+    this.chatbot.resetSession();
     this.closeMobileSidebar();
     this.router.navigate(['/']);
   }

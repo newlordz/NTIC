@@ -9,8 +9,8 @@
       <div class="utility-container">
         <div class="utility-right">
           <button class="theme-toggle-btn ut-link" (click)="themeService.toggleTheme()">
-            <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'dark_mode' : 'light_mode' }}</span>
-            <span>{{ themeService.isDarkMode ? 'Dark' : 'Light' }}</span>
+            <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
+            <span>{{ themeService.isDarkMode ? 'Light' : 'Dark' }}</span>
           </button>
           <a routerLink="/news" class="ut-link">
             <span class="material-symbols-outlined">campaign</span>
@@ -167,8 +167,8 @@
 
       <div class="mobile-nav-utilities">
         <button class="mobile-ut-link" (click)="themeService.toggleTheme(); closeMobileMenu()">
-          <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'dark_mode' : 'light_mode' }}</span>
-          <span>{{ themeService.isDarkMode ? 'Dark Mode' : 'Light Mode' }}</span>
+          <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
+          <span>{{ themeService.isDarkMode ? 'Light Mode' : 'Dark Mode' }}</span>
         </button>
         <a routerLink="/news" class="mobile-ut-link" (click)="closeMobileMenu()">
           <span class="material-symbols-outlined">campaign</span>
@@ -245,7 +245,20 @@
   ══════════════════════════════════════════ -->
   <section class="countdown-section scroll-animate fade-up">
 
+    <!-- ── DECORATIVE BACKGROUND (light mode) ── -->
+    <div class="cd-deco" aria-hidden="true">
+      <div class="cd-deco-ring cd-deco-ring-1"></div>
+      <div class="cd-deco-ring cd-deco-ring-2"></div>
+      <div class="cd-deco-ring cd-deco-ring-3"></div>
+      <div class="cd-deco-orb cd-deco-orb-1"></div>
+      <div class="cd-deco-orb cd-deco-orb-2"></div>
+      <div class="cd-deco-orb cd-deco-orb-3"></div>
+      <div class="cd-deco-line cd-deco-line-1"></div>
+      <div class="cd-deco-line cd-deco-line-2"></div>
+    </div>
+
     <!-- ── EMPTY STATE ─────────────────────────────────── -->
+
     <div class="countdown-inner" *ngIf="!hasCompetitions">
       <div class="countdown-label">
         <span class="material-symbols-outlined" style="font-size:2rem;">emoji_events</span>
@@ -2720,3 +2733,6 @@
   </div>
 
 </div>
+
+<!-- Support Chatbot -->
+<app-chatbot></app-chatbot>

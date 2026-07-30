@@ -6,6 +6,7 @@ import { ThemeService } from '../../services/theme.service';
 import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
+import { ChatbotComponent } from '../../chatbot/chatbot.component';
 
 interface UserRole {
   id: string;
@@ -46,7 +47,7 @@ interface LeaderboardEntry {
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, DecimalPipe],
+  imports: [CommonModule, RouterLink, FormsModule, DecimalPipe, ChatbotComponent],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss'
 })

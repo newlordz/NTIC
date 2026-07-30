@@ -55,14 +55,14 @@
           <div class="typing-indicator" *ngIf="msg.isTyping">
             <span></span><span></span><span></span>
           </div>
-          <p *ngIf="!msg.isTyping">{{ msg.text }}</p>
+          <p *ngIf="!msg.isTyping" style="white-space: pre-wrap;">{{ formatMessage(msg.text) }}</p>
         </div>
       </div>
 
       <!-- USER MESSAGE -->
       <div class="chat-bubble-row user-row" *ngIf="msg.role === 'user'">
         <div class="chat-bubble user-bubble">
-          <p>{{ msg.text }}</p>
+          <p style="white-space: pre-wrap;">{{ formatMessage(msg.text) }}</p>
         </div>
         <div class="user-avatar">{{ currentUser?.avatar || '?' }}</div>
       </div>
@@ -74,7 +74,7 @@
         </div>
         <div class="chat-bubble human-support-bubble">
           <span class="agent-label">{{ msg.agentName || 'Support Agent' }}</span>
-          <p>{{ msg.text }}</p>
+          <p style="white-space: pre-wrap;">{{ formatMessage(msg.text) }}</p>
         </div>
       </div>
 

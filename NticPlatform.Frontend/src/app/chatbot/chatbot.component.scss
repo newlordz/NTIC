@@ -17,8 +17,8 @@ $shadow-panel: 0 24px 60px rgba(0, 30, 80, 0.18), 0 8px 24px rgba(0, 30, 80, 0.1
 // ─── FAB ─────────────────────────────────────────────────────────────────────
 .chatbot-fab {
   position: fixed;
-  bottom: 90px; // Sit above the scroll-to-top button
-  right: 24px;
+  bottom: 96px; // Sit above the scroll-to-top button with a clean 20px gap
+  right: 22px;  // Aligns precisely with the vertical center of the scroll-to-top button
   z-index: 9000;
   width: 56px;
   height: 56px;

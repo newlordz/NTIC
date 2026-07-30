@@ -40,6 +40,7 @@ export class ChatbotService {
 
   private currentUserId = '';
   private currentUserEmail = '';
+  private currentUserRole = '';
 
   private readonly ROLE_CONTEXTS: Record<string, string> = {
     student: `You are a friendly and encouraging AI assistant for the NTIC Ghana Championship platform, helping a STUDENT user.
@@ -143,6 +144,14 @@ Keep responses empathetic, solutions-focused, and professional.`,
       const stored = sessionStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
+        const activeEmail = localStorage.getItem('activeUserEmail') || '';
+        
+        // If stored session belonged to a logged-in user but active email is now different or gone, clear stale session
+        if (parsed.userId && parsed.userId !== activeEmail) {
+          sessionStorage.removeItem(STORAGE_KEY);
+          return;
+        }
+
         if (parsed.messages?.length) {
           // Restore timestamps as Date objects
           const msgs: ChatMessage[] = parsed.messages.map((m: any) => ({
@@ -154,10 +163,9 @@ Keep responses empathetic, solutions-focused, and professional.`,
         if (parsed.isEscalated) {
           this.isEscalated.set(true);
         }
-        if (parsed.userId) {
-          this.currentUserId = parsed.userId;
-          this.currentUserEmail = parsed.userEmail || '';
-        }
+        this.currentUserId = parsed.userId || '';
+        this.currentUserEmail = parsed.userEmail || '';
+        this.currentUserRole = parsed.userRole || '';
       }
     } catch (_) {}
   }
@@ -168,19 +176,49 @@ Keep responses empathetic, solutions-focused, and professional.`,
         messages: this.messages(),
         isEscalated: this.isEscalated(),
         userId: this.currentUserId,
-        userEmail: this.currentUserEmail
+        userEmail: this.currentUserEmail,
+        userRole: this.currentUserRole
       }));
+    } catch (_) {}
+  }
+
+  resetSession(): void {
+    this.isOpen.set(false);
+    this.isEscalated.set(false);
+    this.messages.set([]);
+    this.currentUserId = '';
+    this.currentUserEmail = '';
+    this.currentUserRole = '';
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
     } catch (_) {}
   }
 
   // ─── CHAT LIFECYCLE ─────────────────────────────────────────────────
   openChat(userName: string, role: string, userId?: string, email?: string): void {
     this.isOpen.set(true);
-    if (userId) this.currentUserId = userId;
-    if (email) this.currentUserEmail = email;
+    const targetUserId = userId || '';
+    const targetEmail = email || '';
+    const targetRole = role || 'guest';
+
+    // If user ID or role has changed (e.g. admin logged out to landing page / guest), clear history
+    const identityChanged = (targetUserId !== this.currentUserId) || (targetRole !== this.currentUserRole);
+
+    if (identityChanged) {
+      this.currentUserId = targetUserId;
+      this.currentUserEmail = targetEmail;
+      this.currentUserRole = targetRole;
+      this.isEscalated.set(false);
+      this.messages.set([]);
+      sessionStorage.removeItem(STORAGE_KEY);
+    } else {
+      this.currentUserId = targetUserId;
+      this.currentUserEmail = targetEmail;
+      this.currentUserRole = targetRole;
+    }
 
     if (this.messages().length === 0) {
-      const greeting = this.DEFAULT_GREETING(userName.split(' ')[0], role);
+      const greeting = this.DEFAULT_GREETING(userName.split(' ')[0], targetRole);
       this.messages.set([{ role: 'model', text: greeting, timestamp: new Date() }]);
       this.saveToSession();
     } else {
@@ -222,10 +260,22 @@ Keep responses empathetic, solutions-focused, and professional.`,
 
     try {
       const systemInstruction = this.ROLE_CONTEXTS[userRole] || this.ROLE_CONTEXTS['student'];
-      const history = this.messages()
-        .filter(m => !m.isTyping && m.role !== 'human_support')
+      let rawHistory = this.messages()
+        .filter(m => !m.isTyping && m.role !== 'human_support');
+
+      // The Gemini API STRICTLY requires the history to start with a 'user' role
+      // and alternate 'user' -> 'model'. It will throw 400 Bad Request otherwise.
+      while (rawHistory.length > 0 && rawHistory[0].role !== 'user') {
+        rawHistory.shift();
+      }
+
+      let history = rawHistory
         .slice(-12)
         .map(m => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] }));
+
+      if (history.length > 0 && history[0].role !== 'user') {
+         history.shift();
+      }
 
       const body = {
         system_instruction: {
@@ -239,14 +289,19 @@ Keep responses empathetic, solutions-focused, and professional.`,
         headers: new HttpHeaders({ 'Content-Type': 'application/json' })
       }).toPromise();
 
-      const botText = response?.candidates?.[0]?.content?.parts?.[0]?.text
+      let botText = response?.candidates?.[0]?.content?.parts?.[0]?.text
         || 'I apologise, I could not generate a response. Please try again.';
+
+      // Remove markdown asterisks
+      botText = botText.replace(/\*\*/g, '').replace(/\*/g, '-');
 
       this.messages.update(msgs => [
         ...msgs.filter(m => !m.isTyping),
         { role: 'model', text: botText, timestamp: new Date() }
       ]);
     } catch (error: any) {
+      console.error('CHATBOT DEBUG: API_URL is', this.API_URL);
+      console.error('CHATBOT DEBUG: Error is', error);
       const errorText = error?.status === 403
         ? '⚠️ AI service not configured yet. You can still use "Talk to a Human" to get support!'
         : '⚠️ I\'m having trouble connecting right now. Please try again in a moment.';

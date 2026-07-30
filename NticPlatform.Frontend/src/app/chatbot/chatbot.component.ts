@@ -75,8 +75,16 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
     const text = this.userInput;
     this.userInput = '';
     const role = this.currentUser?.roleId || 'student';
-    await this.chatbot.sendMessage(text, role);
+    
+    // Scroll down immediately to show the user's message and the typing indicator
     this.shouldScrollToBottom = true;
+    this.cdr.markForCheck();
+
+    await this.chatbot.sendMessage(text, role);
+    
+    // When the AI finishes, we ONLY mark for check.
+    // We intentionally DO NOT scroll to bottom here, so the view stays
+    // anchored at the top of the AI's newly generated message.
     this.cdr.markForCheck();
   }
 
@@ -134,5 +142,10 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
 
   trackByIndex(index: number): number {
     return index;
+  }
+
+  formatMessage(text: string): string {
+    if (!text) return '';
+    return text.replace(/\*\*/g, '').replace(/\*/g, '-');
   }
 }

@@ -871,14 +871,14 @@ select.form-control {
   h2 {
     font-size: 36px;
     font-weight: 800;
-    color: #0f172a;
+    color: var(--on-surface, #0f172a);
     letter-spacing: -0.02em;
     margin: 0 0 12px;
   }
 
   .gateway-lead {
     font-size: 16px;
-    color: #64748b;
+    color: var(--on-surface-variant, #64748b);
     max-width: 580px;
     margin: 0 auto;
     line-height: 1.6;
