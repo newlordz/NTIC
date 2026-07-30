@@ -322,6 +322,13 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   isLoginModalOpen = false;
 
+  openInfoModal(event?: Event, section?: string): void {
+    if (event) {
+      event.preventDefault();
+    }
+    this.openLoginModal(event);
+  }
+
   openLoginModal(event?: Event): void {
     if (event) {
       event.preventDefault();
@@ -531,15 +538,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         validator: (code: string) => /print/.test(code) && /hello|Hello/i.test(code)
       },
       {
-        title: 'name.py', track: 'Coding', difficulty: 'Very Easy',
-        timeLimit: '5 min', solvedCount: 680, successRate: 96, points: 10,
-        problem: 'Create a variable called name with your name, then print it.',
-        hint: 'Use name = "YourName" then print(name)',
-        solution: 'name = "Ghana"\nprint(name)',
-        validator: (code: string) => /name\s*=/.test(code) && /print/.test(code)
-      },
-      {
-        title: 'add.py', track: 'Coding', difficulty: 'Very Easy',
+        title: 'add.py', track: 'Coding', difficulty: 'Easy',
         timeLimit: '5 min', solvedCount: 650, successRate: 95, points: 15,
         problem: 'Add two numbers (5 and 3) together and print the result.',
         hint: 'Use print(5 + 3) or make variables: a = 5, b = 3, print(a + b)',
@@ -547,15 +546,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         validator: (code: string) => /\+\s*/.test(code) && /print/.test(code) && /[53]/.test(code)
       },
       {
-        title: 'color.py', track: 'Coding', difficulty: 'Very Easy',
-        timeLimit: '5 min', solvedCount: 610, successRate: 93, points: 15,
-        problem: 'Print "My favorite color is blue" using a variable called color.',
-        hint: 'Set color = "blue" then use print("My favorite color is", color)',
-        solution: 'color = "blue"\nprint("My favorite color is", color)',
-        validator: (code: string) => /color\s*=/.test(code) && /print/.test(code) && /blue/i.test(code)
-      },
-      {
-        title: 'loop.py', track: 'Coding', difficulty: 'Easy',
+        title: 'loop.py', track: 'Coding', difficulty: 'Medium',
         timeLimit: '8 min', solvedCount: 550, successRate: 88, points: 25,
         problem: 'Use a for loop to print numbers 1 to 5, each on a new line.',
         hint: 'Use: for i in range(1, 6): print(i)',
@@ -563,8 +554,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         validator: (code: string) => /for/.test(code) && /range/.test(code) && /print/.test(code)
       },
       {
-        title: 'if.py', track: 'Coding', difficulty: 'Easy',
-        timeLimit: '8 min', solvedCount: 490, successRate: 84, points: 25,
+        title: 'if.py', track: 'Coding', difficulty: 'Hard',
+        timeLimit: '8 min', solvedCount: 490, successRate: 74, points: 35,
         problem: 'Set a variable age to 10. If age is greater than 5, print "Big kid!".',
         hint: 'Use: age = 10\nif age > 5: print("Big kid!")',
         solution: 'age = 10\nif age > 5:\n    print("Big kid!")',
@@ -581,31 +572,15 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         validator: (code: string) => /console\.log/.test(code) && /hello|Hello/i.test(code)
       },
       {
-        title: 'greet.js', track: 'Coding', difficulty: 'Very Easy',
-        timeLimit: '5 min', solvedCount: 650, successRate: 95, points: 10,
-        problem: 'Create a variable called name and print "Hello" + name.',
+        title: 'greet.js', track: 'Coding', difficulty: 'Easy',
+        timeLimit: '5 min', solvedCount: 650, successRate: 95, points: 15,
+        problem: 'Create a variable called name and print "Hello " + name.',
         hint: 'Use let name = "Kofi"; then console.log("Hello " + name);',
         solution: 'let name = "Kofi";\nconsole.log("Hello " + name);',
         validator: (code: string) => /let\s+name|var\s+name|const\s+name/.test(code) && /console\.log/.test(code)
       },
       {
-        title: 'add.js', track: 'Coding', difficulty: 'Very Easy',
-        timeLimit: '5 min', solvedCount: 620, successRate: 94, points: 15,
-        problem: 'Add two numbers (5 and 3) and show the result with console.log.',
-        hint: 'Use console.log(5 + 3); or make variables first.',
-        solution: 'let x = 5;\nlet y = 3;\nconsole.log(x + y);',
-        validator: (code: string) => /console\.log/.test(code) && /\+\s*/.test(code)
-      },
-      {
-        title: 'alert.js', track: 'Coding', difficulty: 'Very Easy',
-        timeLimit: '5 min', solvedCount: 590, successRate: 92, points: 15,
-        problem: 'Show a popup alert that says "Welcome to Coding!".',
-        hint: 'Use alert("Welcome to Coding!");',
-        solution: 'alert("Welcome to Coding!");',
-        validator: (code: string) => /alert/.test(code) && /welcome|Welcome/i.test(code)
-      },
-      {
-        title: 'loop.js', track: 'Coding', difficulty: 'Easy',
+        title: 'loop.js', track: 'Coding', difficulty: 'Medium',
         timeLimit: '8 min', solvedCount: 510, successRate: 85, points: 25,
         problem: 'Use a for loop to print numbers 1 to 5 in the console.',
         hint: 'Use: for (let i = 1; i <= 5; i++) { console.log(i); }',
@@ -613,8 +588,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         validator: (code: string) => /for/.test(code) && /console\.log/.test(code) && /\+\+|i\+\+|i\s*=\s*i\s*\+\s*1|i\s*\+=/.test(code)
       },
       {
-        title: 'if.js', track: 'Coding', difficulty: 'Easy',
-        timeLimit: '8 min', solvedCount: 460, successRate: 80, points: 25,
+        title: 'if.js', track: 'Coding', difficulty: 'Hard',
+        timeLimit: '8 min', solvedCount: 460, successRate: 72, points: 35,
         problem: 'Set a variable age to 10. If age is greater than 5, show an alert.',
         hint: 'Use: let age = 10;\nif (age > 5) { alert("Big kid!"); }',
         solution: 'let age = 10;\nif (age > 5) {\n  alert("Big kid!");\n}',
@@ -631,15 +606,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         validator: (code: string) => /cout/.test(code) && /hello|Hello/i.test(code) && /int\s+main/.test(code)
       },
       {
-        title: 'name.cpp', track: 'Coding', difficulty: 'Very Easy',
-        timeLimit: '5 min', solvedCount: 550, successRate: 93, points: 10,
-        problem: 'Make a variable called name and print it with cout.',
-        hint: 'Use: string name = "Akua"; cout << name;',
-        solution: '#include <iostream>\n#include <string>\nusing namespace std;\nint main() {\n  string name = "Akua";\n  cout << name;\n  return 0;\n}',
-        validator: (code: string) => /string\s+\w+\s*=/.test(code) && /cout/.test(code) && /int\s+main/.test(code)
-      },
-      {
-        title: 'add.cpp', track: 'Coding', difficulty: 'Very Easy',
+        title: 'add.cpp', track: 'Coding', difficulty: 'Easy',
         timeLimit: '5 min', solvedCount: 520, successRate: 91, points: 15,
         problem: 'Add 5 and 3 and print the result using cout.',
         hint: 'Use: cout << 5 + 3; or make int variables and add them.',
@@ -647,15 +614,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         validator: (code: string) => /cout/.test(code) && /int/.test(code) && /\+/.test(code) && /main/.test(code)
       },
       {
-        title: 'age.cpp', track: 'Coding', difficulty: 'Very Easy',
-        timeLimit: '5 min', solvedCount: 480, successRate: 89, points: 15,
-        problem: 'Create an int variable called age with value 10, then print "I am " and the age.',
-        hint: 'Use: int age = 10; cout << "I am " << age;',
-        solution: '#include <iostream>\nusing namespace std;\nint main() {\n  int age = 10;\n  cout << "I am " << age;\n  return 0;\n}',
-        validator: (code: string) => /int\s+age\s*=\s*10/.test(code) && /cout/.test(code) && /main/.test(code)
-      },
-      {
-        title: 'loop.cpp', track: 'Coding', difficulty: 'Easy',
+        title: 'loop.cpp', track: 'Coding', difficulty: 'Medium',
         timeLimit: '8 min', solvedCount: 410, successRate: 82, points: 25,
         problem: 'Use a for loop to print numbers 1 to 5, each on a new line (use endl).',
         hint: 'Use: for (int i = 1; i <= 5; i++) { cout << i << endl; }',
@@ -663,8 +622,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         validator: (code: string) => /for/.test(code) && /cout/.test(code) && /endl/.test(code) && /main/.test(code)
       },
       {
-        title: 'if.cpp', track: 'Coding', difficulty: 'Easy',
-        timeLimit: '8 min', solvedCount: 370, successRate: 78, points: 25,
+        title: 'if.cpp', track: 'Coding', difficulty: 'Hard',
+        timeLimit: '8 min', solvedCount: 370, successRate: 71, points: 35,
         problem: 'Set int age = 10. If age is greater than 5, print "Big kid!" using cout.',
         hint: 'Use: if (age > 5) { cout << "Big kid!"; }',
         solution: '#include <iostream>\nusing namespace std;\nint main() {\n  int age = 10;\n  if (age > 5) {\n    cout << "Big kid!";\n  }\n  return 0;\n}',
@@ -681,40 +640,24 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         validator: (code: string) => /h1/.test(code) && /color\s*:\s*blue|#0000ff|#00f/i.test(code) && /hello/i.test(code)
       },
       {
-        title: 'paragraph.html', track: 'Frontend', difficulty: 'Very Easy',
-        timeLimit: '5 min', solvedCount: 600, successRate: 94, points: 10,
+        title: 'paragraph.html', track: 'Frontend', difficulty: 'Easy',
+        timeLimit: '5 min', solvedCount: 600, successRate: 94, points: 15,
         problem: 'Create a paragraph with the text "I love coding" and make the text color red.',
         hint: 'Use <p>I love coding</p> with style="color: red;" inside the tag.',
         solution: '<!DOCTYPE html>\n<html>\n<body>\n  <p style="color: red;">I love coding</p>\n</body>\n</html>',
         validator: (code: string) => /<p/.test(code) && /color\s*:\s*red|#ff0000|#f00/i.test(code) && /love/i.test(code)
       },
       {
-        title: 'background.html', track: 'Frontend', difficulty: 'Very Easy',
-        timeLimit: '5 min', solvedCount: 570, successRate: 92, points: 15,
-        problem: 'Change the background color of the page to yellow.\nUse the body tag with a style.',
-        hint: 'Add style="background: yellow;" to the <body> tag.',
-        solution: '<!DOCTYPE html>\n<html>\n<body style="background: yellow;">\n  <h1>Sunny Day!</h1>\n</body>\n</html>',
-        validator: (code: string) => /body/.test(code) && /background\s*:\s*yellow|#ffff00|#ff0/i.test(code)
-      },
-      {
-        title: 'bigtext.html', track: 'Frontend', difficulty: 'Very Easy',
-        timeLimit: '5 min', solvedCount: 540, successRate: 90, points: 15,
-        problem: 'Make some text very big! Set font-size to 50px on a paragraph.',
-        hint: 'Use <p style="font-size: 50px;">Big text</p>',
-        solution: '<!DOCTYPE html>\n<html>\n<body>\n  <p style="font-size: 50px;">This is big!</p>\n</body>\n</html>',
-        validator: (code: string) => /font-size\s*:\s*50/.test(code) && /<p/.test(code)
-      },
-      {
-        title: 'center.html', track: 'Frontend', difficulty: 'Very Easy',
-        timeLimit: '5 min', solvedCount: 510, successRate: 88, points: 20,
+        title: 'center.html', track: 'Frontend', difficulty: 'Medium',
+        timeLimit: '5 min', solvedCount: 510, successRate: 88, points: 25,
         problem: 'Center a heading on the page using text-align.',
         hint: 'Use <h1 style="text-align: center;">Centered</h1>',
         solution: '<!DOCTYPE html>\n<html>\n<body>\n  <h1 style="text-align: center;">Centered Title</h1>\n</body>\n</html>',
         validator: (code: string) => /text-align\s*:\s*center/.test(code) && /h1/.test(code)
       },
       {
-        title: 'border.html', track: 'Frontend', difficulty: 'Easy',
-        timeLimit: '8 min', solvedCount: 460, successRate: 83, points: 25,
+        title: 'border.html', track: 'Frontend', difficulty: 'Hard',
+        timeLimit: '8 min', solvedCount: 460, successRate: 75, points: 35,
         problem: 'Make a box with a black border around it.\nCreate a div and give it a border.',
         hint: 'Use <div style="border: 2px solid black; padding: 20px;">Hello</div>',
         solution: '<!DOCTYPE html>\n<html>\n<body>\n  <div style="border: 2px solid black; padding: 20px;">Hello</div>\n</body>\n</html>',
@@ -740,8 +683,43 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.selectedChallengeLanguage = lang;
     this.currentChallengeIndex = 0;
     this.showSolution = false;
+    this.userCode = '';
     this.typeProblem();
+    this.resetChallengeTimer();
   }
+
+  challengeTimerSeconds = 300;
+  isChallengeTimerRunning = false;
+  private challengeTimerInterval: any;
+
+  resetChallengeTimer(): void {
+    if (this.challengeTimerInterval) clearInterval(this.challengeTimerInterval);
+    this.challengeTimerSeconds = 300;
+    this.isChallengeTimerRunning = false;
+  }
+
+  startChallengeTimer(): void {
+    if (this.isChallengeTimerRunning) return;
+    if (this.challengeTimerInterval) clearInterval(this.challengeTimerInterval);
+    this.isChallengeTimerRunning = true;
+    this.challengeTimerInterval = setInterval(() => {
+      this.ngZone.run(() => {
+        if (this.challengeTimerSeconds > 0) {
+          this.challengeTimerSeconds--;
+        } else {
+          this.isChallengeTimerRunning = false;
+          clearInterval(this.challengeTimerInterval);
+        }
+      });
+    }, 1000);
+  }
+
+  get currentChallengeTimerFormatted(): string {
+    const m = Math.floor(this.challengeTimerSeconds / 60);
+    const s = this.challengeTimerSeconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  }
+
   typedProblem = '';
   userCode = '';
   codeLineNumbers = [1, 2, 3, 4, 5, 6];
@@ -1005,6 +983,11 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       this.dialogService.toast('Sample data restored successfully! Reloading...', 'success');
       setTimeout(() => window.location.reload(), 800);
     }
+  }
+
+  showComingSoon(event: Event, featureName: string = 'This feature'): void {
+    event.preventDefault();
+    this.dialogService.toast(featureName + ' is coming soon!', 'info');
   }
 
   ngOnInit(): void {
@@ -3431,7 +3414,7 @@ for (let i = people.length - 1; i > 0; i--) {
     }
   }
 
-    private syntaxHighlight(code: string): string {
+  private syntaxHighlight(code: string): string {
     return code
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/(#(?!include|define)[^\n]+)/g, "<span class='c-comment'>$1</span>")
@@ -3468,13 +3451,18 @@ for (let i = people.length - 1; i > 0; i--) {
   nextChallenge(): void {
     this.currentChallengeIndex = (this.currentChallengeIndex + 1) % this.filteredChallenges.length;
     this.showSolution = false;
+    this.userCode = '';
     this.typeProblem();
+    this.resetChallengeTimer();
   }
 
   onCodeInput(): void {
     const lines = this.userCode.split('\n').length;
     this.codeLineNumbers = Array.from({ length: Math.max(6, lines) }, (_, i) => i + 1);
     this.challengeResult = null;
+    if (this.userCode.trim().length > 0 && !this.isChallengeTimerRunning) {
+      this.startChallengeTimer();
+    }
   }
 
   runChallenge(): void {
@@ -3699,3 +3687,4 @@ for (let i = people.length - 1; i > 0; i--) {
     } catch {}
   }
 }
+

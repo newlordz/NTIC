@@ -871,7 +871,7 @@ select.form-control {
   h2 {
     font-size: 36px;
     font-weight: 800;
-    color: var(--on-surface, #0f172a);
+    color: #0f172a;
     letter-spacing: -0.02em;
     margin: 0 0 12px;
   }
@@ -3792,16 +3792,6 @@ select.form-control {
     }
   }
 
-  .gateway-header {
-    h2 {
-      color: #ffffff !important;
-    }
-    
-    .gateway-lead {
-      color: var(--on-surface-variant) !important;
-    }
-  }
-
   .gateway-card {
     background: var(--surface-container-lowest) !important;
     border-color: var(--outline-variant) !important;
@@ -3941,81 +3931,8 @@ select.form-control {
       background: var(--surface-container-highest, #304e75) !important;
       color: #ffffff !important;
     }
-    }
   }
-
-  /* Gateway screen dark mode */
-  .gateway-header {
-    h2 {
-      color: #ffffff !important;
-    }
-    .gateway-lead {
-      color: var(--on-surface-variant) !important;
-    }
-  }
-  .gateway-card {
-    background: var(--surface-container-lowest) !important;
-    border-color: var(--outline-variant) !important;
-    h3 { color: var(--on-surface) !important; }
-    p, li { color: var(--on-surface-variant) !important; }
-    .feat-icon { color: var(--primary) !important; }
-  }
-  .brand-text {
-    .brand-name { color: #ffffff !important; }
-    .brand-sub { color: var(--on-surface-variant) !important; }
-  }
-  .gateway-login-btn {
-    color: #ffffff !important;
-  }
-
-  .landing-brand-logo-wrap .brand-text {
-    .brand-name { color: #ffffff !important; }
-    .brand-sub { color: var(--on-surface-variant) !important; }
-  }
-
-  /* Login modal dark mode */
-  .login-modal-card {
-    background: var(--surface-container-lowest) !important;
-    border-color: var(--outline-variant) !important;
-    .login-modal-header {
-      h3 { color: var(--on-surface) !important; }
-      p { color: var(--on-surface-variant) !important; }
-    }
-    .close-modal-btn {
-      background: var(--surface-container-high) !important;
-      border-color: var(--outline-variant) !important;
-      color: var(--on-surface-variant) !important;
-    }
-    .lm-form {
-      .lm-group label {
-        color: var(--on-surface-variant) !important;
-      }
-      .lm-input-wrap {
-        .lm-input {
-          background: var(--surface-container-low) !important;
-          border-color: var(--outline-variant) !important;
-          color: var(--on-surface) !important;
-          &::placeholder { color: var(--outline) !important; }
-          &:focus {
-            border-color: var(--primary) !important;
-            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25) !important;
-          }
-        }
-        .lm-icon { color: var(--outline) !important; }
-        .lm-pass-toggle { color: var(--outline) !important; }
-      }
-      .lm-error {
-        color: #fca5a5 !important;
-        .material-symbols-outlined { color: #fca5a5 !important; }
-      }
-      .lm-submit {
-        background: linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%) !important;
-        color: #ffffff !important;
-        &:hover { box-shadow: 0 6px 20px rgba(0, 63, 135, 0.4) !important; }
-        &:disabled { opacity: 0.5 !important; }
-      }
-    }
-  }
+}
 
 /* =========================================================
    PATHWAY SELECTOR POPUP MODAL STYLES (LIGHT/GENERAL)
@@ -5572,73 +5489,4 @@ select.form-control {
   }
 }
 
-/* ─────────────────────────────────────────────
-   DARK THEME OVERRIDES FOR LOGIN MODAL
-   ───────────────────────────────────────────── */
-:host-context(body.dark-theme) {
-  .login-modal-card {
-    background: #1e293b;
-    border-color: rgba(255, 255, 255, 0.1);
-    box-shadow: 
-      0 12px 36px rgba(0, 0, 0, 0.3),
-      0 24px 72px rgba(0, 0, 0, 0.4);
 
-    .close-modal-btn {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.1);
-      color: #94a3b8;
-
-      &:hover {
-        background: rgba(220, 38, 38, 0.15);
-        border-color: rgba(220, 38, 38, 0.3);
-        color: #ef4444;
-      }
-    }
-
-    .modal-body {
-      .login-modal-header {
-        h2 { color: #f8fafc; }
-        p { color: #94a3b8; }
-        .lm-crest {
-          background: rgba(15, 23, 42, 0.5);
-          border-color: rgba(255, 255, 255, 0.05);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-      }
-
-      .lm-form {
-        .lm-group {
-          label { color: #94a3b8; }
-          
-          .lm-input-wrap {
-            .lm-input {
-              background: rgba(15, 23, 42, 0.6);
-              border-color: rgba(255, 255, 255, 0.15);
-              color: #f8fafc;
-              
-              &::placeholder {
-                color: #64748b;
-              }
-
-              &:focus {
-                background: rgba(15, 23, 42, 0.9);
-                border-color: #60a5fa;
-                box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.15);
-              }
-            }
-            .lm-icon, .lm-pass-toggle {
-              color: #64748b;
-            }
-            .lm-pass-toggle:hover {
-              color: #f8fafc;
-            }
-          }
-        }
-        
-        .lm-remember {
-          color: #94a3b8;
-        }
-      }
-    }
-  }
-}

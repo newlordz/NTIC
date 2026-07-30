@@ -1,5 +1,6 @@
 import logging
 from app.config import settings
+from app.seed import seed_initial_data
 
 logger = logging.getLogger("ntic.db")
 
@@ -86,11 +87,58 @@ def init_postgres_db():
                 status VARCHAR(50) DEFAULT 'Active',
                 school_name VARCHAR(200)
             );
+
+            CREATE TABLE IF NOT EXISTS events (
+                id VARCHAR(64) PRIMARY KEY,
+                title VARCHAR(200) NOT NULL,
+                date VARCHAR(50),
+                time VARCHAR(50),
+                location VARCHAR(150),
+                description TEXT,
+                type VARCHAR(50)
+            );
+
+            CREATE TABLE IF NOT EXISTS stories (
+                id VARCHAR(64) PRIMARY KEY,
+                title VARCHAR(200) NOT NULL,
+                excerpt TEXT,
+                date VARCHAR(50),
+                image VARCHAR(255)
+            );
+
+            CREATE TABLE IF NOT EXISTS philosophy_cards (
+                id VARCHAR(64) PRIMARY KEY,
+                title VARCHAR(100) NOT NULL,
+                description TEXT,
+                image VARCHAR(255)
+            );
+
+            CREATE TABLE IF NOT EXISTS schools (
+                id VARCHAR(64) PRIMARY KEY,
+                name VARCHAR(200) NOT NULL,
+                region VARCHAR(100),
+                teams INTEGER DEFAULT 0,
+                score INTEGER DEFAULT 0,
+                rank INTEGER,
+                status VARCHAR(50) DEFAULT 'Active'
+            );
+
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id SERIAL PRIMARY KEY,
+                action TEXT NOT NULL,
+                usr VARCHAR(150),
+                time VARCHAR(50),
+                type VARCHAR(50)
+            );
         """)
         conn.commit()
         cur.close()
+
+        # Run seeder
+        seed_initial_data(conn)
+
         conn.close()
-        logger.info(f"Successfully connected to PostgreSQL ({settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}) and initialized tables.")
+        logger.info(f"Successfully connected to PostgreSQL ({settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}), created tables, and seeded initial data.")
         return True, "OK"
     except Exception as e:
         logger.error(f"Error initializing schema: {e}")

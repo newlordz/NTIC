@@ -32,6 +32,7 @@ export const routes: Routes = [
   { path: 'sponsors',     component: SponsorsComponent },
   { path: 'reporting',    component: ReportingComponent },
   { path: 'records',      component: RecordsComponent },
+  { path: 'database',     redirectTo: 'records' },
   { path: 'user-management', component: UserManagementComponent },
   { path: '**',           redirectTo: '' }
 ];

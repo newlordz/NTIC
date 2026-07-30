@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { ContentService, ApprovalRequest } from '../../services/content.service';
 import { ThemeService } from '../../services/theme.service';
 import { FileStorageService } from '../../services/file-storage.service';
+import { ApiService } from '../../services/api.service';
+import { ActivatedRoute } from '@angular/router';
 
 interface RecordFile {
   name: string;
@@ -89,9 +91,105 @@ export class RecordsComponent implements OnInit {
     { id: 'trash', label: '', icon: 'delete' }
   ];
 
-  constructor(public contentService: ContentService, public themeService: ThemeService, public fileStorage: FileStorageService) {}
+  constructor(
+    public contentService: ContentService,
+    public themeService: ThemeService,
+    public fileStorage: FileStorageService,
+    private apiService: ApiService,
+    private route: ActivatedRoute
+  ) {}
+
+    // --- LIVE DATABASE MANAGER ---
+  activeDbTable: 'events' | 'stories' | 'schools' | 'philosophy' | 'students' | 'submissions' = 'events';
+  dbData: any[] = [];
+  dbLoading = false;
+  isAddModalOpen = false;
+  newRecordPayload: any = {};
+
+  dbTables = [
+    { key: 'events' as const,      label: 'events',      icon: 'event' },
+    { key: 'stories' as const,     label: 'stories',     icon: 'article' },
+    { key: 'schools' as const,     label: 'schools',     icon: 'school' },
+    { key: 'students' as const,    label: 'students',    icon: 'person' },
+    { key: 'submissions' as const, label: 'submissions', icon: 'upload_file' },
+    { key: 'philosophy' as const,  label: 'philosophy',  icon: 'auto_stories' },
+  ];
+
+  isNumber(val: any): boolean {
+    return typeof val === 'number';
+  }
+
+  selectDbTable(table: 'events' | 'stories' | 'schools' | 'philosophy' | 'students' | 'submissions'): void {
+    this.activeDbTable = table;
+    this.loadDbData();
+  }
+
+  loadDbData(): void {
+    this.dbLoading = true;
+    this.dbData = [];
+    const done = (res: any) => { this.dbData = res; this.dbLoading = false; };
+    const fail = () => { this.dbLoading = false; };
+    if (this.activeDbTable === 'events') {
+      this.apiService.getEvents().subscribe({ next: done, error: fail });
+    } else if (this.activeDbTable === 'stories') {
+      this.apiService.getStories().subscribe({ next: done, error: fail });
+    } else if (this.activeDbTable === 'schools') {
+      this.apiService.getSchools().subscribe({ next: done, error: fail });
+    } else if (this.activeDbTable === 'philosophy') {
+      this.apiService.getPhilosophy().subscribe({ next: done, error: fail });
+    } else if (this.activeDbTable === 'students') {
+      this.apiService.getStudents().subscribe({ next: done, error: fail });
+    } else if (this.activeDbTable === 'submissions') {
+      this.apiService.getSubmissions().subscribe({ next: done, error: fail });
+    }
+  }
+
+  deleteDbRecord(id: string): void {
+    if (!confirm('Are you sure you want to delete this row from PostgreSQL?')) return;
+    if (this.activeDbTable === 'events') {
+      this.apiService.deleteEvent(id).subscribe(() => this.loadDbData());
+    } else if (this.activeDbTable === 'stories') {
+      this.apiService.deleteStory(id).subscribe(() => this.loadDbData());
+    } else if (this.activeDbTable === 'schools') {
+      this.apiService.deleteSchool(id).subscribe(() => this.loadDbData());
+    } else if (this.activeDbTable === 'students') {
+      this.apiService.deleteStudent(id).subscribe(() => this.loadDbData());
+    } else if (this.activeDbTable === 'submissions') {
+      this.apiService.deleteSubmission(id).subscribe(() => this.loadDbData());
+    }
+  }
+
+  openAddModal(): void {
+    this.newRecordPayload = {};
+    this.isAddModalOpen = true;
+  }
+
+  saveNewDbRecord(): void {
+    const refreshAll = () => {
+      this.isAddModalOpen = false;
+      this.loadDbData();
+      this.loadRecords();
+      this.contentService.refreshBackendData();
+    };
+
+    if (this.activeDbTable === 'events') {
+      this.apiService.createEvent(this.newRecordPayload).subscribe(refreshAll);
+    } else if (this.activeDbTable === 'stories') {
+      this.apiService.createStory(this.newRecordPayload).subscribe(refreshAll);
+    } else if (this.activeDbTable === 'schools') {
+      this.apiService.createSchool(this.newRecordPayload).subscribe(refreshAll);
+    } else if (this.activeDbTable === 'students') {
+      this.apiService.createStudent(this.newRecordPayload).subscribe(refreshAll);
+    }
+  }
 
   ngOnInit(): void {
+    const urlPath = this.route.snapshot.url[0]?.path;
+    const tabParam = this.route.snapshot.queryParams['tab'];
+    if (urlPath === 'database' || tabParam === 'database') {
+      this.activeTab = 'database';
+    }
+    this.loadDbData();
     this.loadTrashState();
     this.loadRecords();
   }
@@ -246,17 +344,41 @@ export class RecordsComponent implements OnInit {
       });
     });
 
-    const seenRecord = new Set<string>();
-    const dedupedRecords: any[] = [];
-    for (const r of liveRecords) {
-      const key = `${r.type}::${(r.title || '').trim()}::${(r.entityName || '').trim()}`.toLowerCase();
-      if (!seenRecord.has(key)) {
-        seenRecord.add(key);
-        dedupedRecords.push(r);
+    // Pull from PostgreSQL backend Students
+    this.apiService.getStudents().subscribe((students: any[]) => {
+      if (Array.isArray(students)) {
+        students.forEach(s => {
+          const sName = `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email || 'Student';
+          liveRecords.push({
+            id: s.id || `std-${Math.random()}`,
+            type: 'student',
+            title: `${sName} — PostgreSQL Student Record`,
+            entityName: sName,
+            entityType: s.track || 'Student',
+            region: '',
+            district: '',
+            contactEmail: s.email || '',
+            contactPhone: '',
+            submittedAt: s.created_at || new Date().toISOString(),
+            status: 'approved',
+            files: []
+          });
+        });
       }
-    }
 
-    this.allRecords = dedupedRecords.filter(r => !this.isTrashed(r) && !this.permanentlyDeletedIds.has(r.id));
+      const seenRecord = new Set<string>();
+      const dedupedRecords: any[] = [];
+      for (const r of liveRecords) {
+        const key = `${r.type}::${(r.title || '').trim()}::${(r.entityName || '').trim()}`.toLowerCase();
+        if (!seenRecord.has(key)) {
+          seenRecord.add(key);
+          dedupedRecords.push(r);
+        }
+      }
+
+      this.allRecords = dedupedRecords.filter(r => !this.isTrashed(r) && !this.permanentlyDeletedIds.has(r.id));
+      this.applyFilters();
+    });
     this.records = [...this.allRecords];
     this.applyFilters();
   }

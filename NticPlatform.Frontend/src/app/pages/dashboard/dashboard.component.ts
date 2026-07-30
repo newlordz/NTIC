@@ -14,6 +14,7 @@ import {
 import { BrevoEmailService } from '../../services/brevo-email.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
+import { ApiService } from '../../services/api.service';
 import { TimeAgoPipe } from '../../services/time-ago.pipe';
 import { LmsManagerComponent } from '../lms-manager/lms-manager.component';
 
@@ -53,7 +54,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ];
 
   // ─── SUPER ADMIN STATE ─────────────────────────
-  adminTab: 'overview' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' = 'overview';
+  adminTab: 'overview' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'overview';
   lmsSubTab: 'courses' | 'modules' | 'materials' | 'assignments' = 'courses';
   lmsFormMode: 'add' | 'edit' = 'add';
   editingLmsCourse: any = null;
@@ -492,7 +493,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { text: 'Mentor feedback published for AI Division', time: '5h ago' }
   ];
 
-  constructor(public contentService: ContentService, private route: ActivatedRoute, private router: Router, private emailService: BrevoEmailService, private fileStorage: FileStorageService, private cdr: ChangeDetectorRef, public dialogService: DialogService) {
+  constructor(public contentService: ContentService, private route: ActivatedRoute, private router: Router, private emailService: BrevoEmailService, private fileStorage: FileStorageService, private cdr: ChangeDetectorRef, public dialogService: DialogService, public apiService: ApiService) {
     this.route.queryParams.subscribe(params => {
       if (params['tab']) {
         this.adminTab = params['tab'];
@@ -541,7 +542,78 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.contentService.saveAuditLogs(currentAudit);
   }
 
+    // --- LIVE POSTGRESQL DATABASE MANAGER FOR ADMIN DASHBOARD ---
+  activeDbTable: 'events' | 'stories' | 'schools' | 'philosophy' | 'students' | 'submissions' = 'events';
+  dbData: any[] = [];
+  isAddModalOpen = false;
+  newRecordPayload: any = {};
+
+  selectDbTable(table: 'events' | 'stories' | 'schools' | 'philosophy' | 'students' | 'submissions'): void {
+    this.activeDbTable = table;
+    this.loadDbData();
+  }
+
+  loadDbData(): void {
+    if (this.activeDbTable === 'events') {
+      this.apiService.getEvents().subscribe((res: any) => this.dbData = res);
+    } else if (this.activeDbTable === 'stories') {
+      this.apiService.getStories().subscribe((res: any) => this.dbData = res);
+    } else if (this.activeDbTable === 'schools') {
+      this.apiService.getSchools().subscribe((res: any) => this.dbData = res);
+    } else if (this.activeDbTable === 'philosophy') {
+      this.apiService.getPhilosophy().subscribe((res: any) => this.dbData = res);
+    } else if (this.activeDbTable === 'students') {
+      this.apiService.getStudents().subscribe((res: any) => this.dbData = res);
+    } else if (this.activeDbTable === 'submissions') {
+      this.apiService.getSubmissions().subscribe((res: any) => this.dbData = res);
+    }
+  }
+
+  deleteDbRecord(id: string): void {
+    if (!confirm('Are you sure you want to delete this row from PostgreSQL?')) return;
+    if (this.activeDbTable === 'events') {
+      this.apiService.deleteEvent(id).subscribe(() => this.loadDbData());
+    } else if (this.activeDbTable === 'stories') {
+      this.apiService.deleteStory(id).subscribe(() => this.loadDbData());
+    } else if (this.activeDbTable === 'schools') {
+      this.apiService.deleteSchool(id).subscribe(() => this.loadDbData());
+    } else if (this.activeDbTable === 'students') {
+      this.apiService.deleteStudent(id).subscribe(() => this.loadDbData());
+    } else if (this.activeDbTable === 'submissions') {
+      this.apiService.deleteSubmission(id).subscribe(() => this.loadDbData());
+    }
+  }
+
+  openAddModal(): void {
+    this.newRecordPayload = {};
+    this.isAddModalOpen = true;
+  }
+
+  saveNewDbRecord(): void {
+    if (this.activeDbTable === 'events') {
+      this.apiService.createEvent(this.newRecordPayload).subscribe(() => {
+        this.isAddModalOpen = false;
+        this.loadDbData();
+      });
+    } else if (this.activeDbTable === 'stories') {
+      this.apiService.createStory(this.newRecordPayload).subscribe(() => {
+        this.isAddModalOpen = false;
+        this.loadDbData();
+      });
+    } else if (this.activeDbTable === 'schools') {
+      this.apiService.createSchool(this.newRecordPayload).subscribe(() => {
+        this.isAddModalOpen = false;
+        this.loadDbData();
+      });
+    } else if (this.activeDbTable === 'students') {
+      this.apiService.createStudent(this.newRecordPayload).subscribe(() => {
+        this.isAddModalOpen = false;
+        this.loadDbData();
+      });
+    }
+  }
   ngOnInit(): void {
+    this.loadDbData();
     if (typeof window !== 'undefined') {
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
@@ -2530,3 +2602,5 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 }
+
+// trigger hot reload

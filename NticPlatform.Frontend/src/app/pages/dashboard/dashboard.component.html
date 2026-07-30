@@ -356,6 +356,7 @@
       <button class="admin-tab" [class.active]="adminTab === 'overview'" (click)="adminTab = 'overview'">
         <span class="material-symbols-outlined">dashboard</span>Overview
       </button>
+
       <button class="admin-tab" *ngIf="activeRoleId === 'super_admin'" (click)="openRegisterModal()">
         <span class="material-symbols-outlined">person_add</span>Register User
       </button>
@@ -381,7 +382,7 @@
     </div>
 
     <!-- ── TAB: OVERVIEW ── -->
-    <div *ngIf="adminTab === 'overview'" class="admin-tab-body">
+      <div *ngIf="adminTab === 'overview'" class="admin-tab-body">
       <div class="admin-two-col">
 
         <!-- System Infrastructure -->

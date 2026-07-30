@@ -1549,17 +1549,23 @@
     <div class="container">
       <div class="challenge-grid">
         <div class="challenge-info">
+          <div class="coding-icon-top">
+            <span class="material-symbols-outlined">code_blocks</span>
+          </div>
           <span class="academic-sub">Daily Problem</span>
           <h2>Try Coding now</h2>
           <p>Pick a language, solve bite-sized challenges, and level up your skills. Hints included — solutions revealed
             when you're stuck.</p>
           <div class="challenge-meta">
-            <span class="difficulty-badge" [class]="'diff-' + currentChallenge.difficulty">{{
-              currentChallenge.difficulty }}</span>
-            <span class="challenge-track-tag"><span class="material-symbols-outlined">data_object</span>{{
-              currentChallenge.track }}</span>
-            <span class="challenge-time-tag"><span class="material-symbols-outlined">timer</span>{{
-              currentChallenge.timeLimit }}</span>
+            <span class="difficulty-badge" [class]="'diff-' + currentChallenge.difficulty.replace(' ', '-')">
+              <span class="material-symbols-outlined" *ngIf="currentChallenge.difficulty === 'Very Easy'">eco</span>
+              <span class="material-symbols-outlined" *ngIf="currentChallenge.difficulty === 'Easy'">bolt</span>
+              <span class="material-symbols-outlined" *ngIf="currentChallenge.difficulty === 'Medium'">local_fire_department</span>
+              <span class="material-symbols-outlined" *ngIf="currentChallenge.difficulty === 'Hard'">whatshot</span>
+              {{ currentChallenge.difficulty }}
+            </span>
+            <span class="challenge-track-tag"><span class="material-symbols-outlined">terminal</span>{{ currentChallenge.track }}</span>
+            <span class="challenge-time-tag"><span class="material-symbols-outlined">timer</span>{{ currentChallengeTimerFormatted }}</span>
           </div>
           <div class="challenge-stats-row">
             <div class="ch-stat stagger-1">
@@ -1590,7 +1596,9 @@
 
           <div class="language-tabs">
             <button *ngFor="let lang of challengeLanguages" class="lang-tab"
-              [class.active]="selectedChallengeLanguage === lang" (click)="selectLanguage(lang)">
+              [class.active]="selectedChallengeLanguage === lang"
+              [attr.data-lang]="lang"
+              (click)="selectLanguage(lang)">
               {{ lang }}
             </button>
           </div>
@@ -2394,17 +2402,17 @@
             <li><a href="#about">About The Heats</a></li>
             <li><a href="#tracks">Tracks &amp; Syllabus</a></li>
             <li><a routerLink="/leaderboard">School Leaderboard</a></li>
-            <li><a href="javascript:void(0)" (click)="openLoginModal($event)">Rules &amp; Regulations</a></li>
+            <li><a href="#" (click)="openInfoModal($event, 'rules')">Rules &amp; Regulations</a></li>
           </ul>
         </div>
 
         <div class="footer-nav-col">
           <h4>Portals</h4>
           <ul>
-            <li><a href="javascript:void(0)" (click)="openLoginModal($event)">Student Courses</a></li>
-            <li><a href="javascript:void(0)" (click)="openLoginModal($event)">Instructor Mentoring</a></li>
-            <li><a href="javascript:void(0)" (click)="openLoginModal($event)">School Admins Directory</a></li>
-            <li><a href="javascript:void(0)" (click)="openLoginModal($event)">Judge Rubrics</a></li>
+            <li><a href="#" (click)="openInfoModal($event, 'courses')">Student Courses</a></li>
+            <li><a href="#" (click)="openInfoModal($event, 'instructor')">Instructor Mentoring</a></li>
+            <li><a href="#" (click)="openInfoModal($event, 'admin')">School Admins Directory</a></li>
+            <li><a href="#" (click)="openInfoModal($event, 'rubrics')">Judge Rubrics</a></li>
           </ul>
         </div>
 

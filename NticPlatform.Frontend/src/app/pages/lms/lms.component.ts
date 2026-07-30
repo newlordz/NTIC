@@ -3,6 +3,7 @@ import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService, LmsSubmission } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
+import { ApiService } from '../../services/api.service';
 
 @Component({
   selector: 'app-lms',
@@ -15,7 +16,7 @@ export class LmsComponent implements OnInit {
   selectedUploadFileId = '';
   selectedUploadFileName = '';
 
-  constructor(public contentService: ContentService, public fileStorage: FileStorageService) {}
+  constructor(public contentService: ContentService, public fileStorage: FileStorageService, private apiService: ApiService) {}
 
   activeRoleId = 'student';
 
@@ -464,6 +465,20 @@ export class LmsComponent implements OnInit {
     this.submissionError = '';
 
     const subId = 'sub-' + Date.now();
+
+      // --- INTEGRATION: POSTGRESQL BACKEND ---
+      try {
+        this.apiService.createSubmission({
+          student_id: this.studentProfile.id || 'stu-test',
+          source_code_path: this.newSubmission.fileName,
+          video_url: ''
+        }).subscribe({
+          next: (res) => console.log('Successfully saved submission to PostgreSQL DB:', res),
+          error: (err) => console.error('Failed to save submission to PostgreSQL:', err)
+        });
+      } catch(e) {}
+      // ---------------------------------------
+
     const currentSubmissions = [...this.contentService.submissions];
     const newSub = {
       id: subId,

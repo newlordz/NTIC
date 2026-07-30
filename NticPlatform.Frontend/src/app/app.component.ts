@@ -221,7 +221,7 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'talent':       return ['instructor', 'sponsor'].includes(role);
       case 'sponsors':     return ['sponsor'].includes(role);
       case 'reporting':    return ['instructor', 'school_admin', 'super_admin', 'reviewer'].includes(role);
-      case 'records':      return ['instructor', 'school_admin', 'super_admin', 'reviewer'].includes(role);
+      case 'records':      return true;
       case 'users':        return ['super_admin'].includes(role);
       case 'lms_admin':    return ['super_admin', 'content_manager'].includes(role);
       case 'support':      return ['super_admin', 'support_admin'].includes(role);

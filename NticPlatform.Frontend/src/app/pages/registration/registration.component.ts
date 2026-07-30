@@ -7,6 +7,7 @@ import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { BrevoEmailService } from '../../services/brevo-email.service';
 import { DialogService } from '../../services/dialog.service';
+import { ApiService } from '../../services/api.service';
 
 @Component({
   selector: 'app-registration',
@@ -789,7 +790,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.showPrivacyModal = false;
   }
 
-  constructor(private route: ActivatedRoute, private router: Router, public themeService: ThemeService, public contentService: ContentService, public fileStorage: FileStorageService, private emailService: BrevoEmailService, public dialogService: DialogService) {}
+  constructor(private route: ActivatedRoute, private router: Router, public themeService: ThemeService, public contentService: ContentService, public fileStorage: FileStorageService, private emailService: BrevoEmailService, public dialogService: DialogService, private apiService: ApiService) {}
 
   logoUrls: Record<string, string> = {};
 
@@ -1869,7 +1870,24 @@ export class RegistrationComponent implements OnInit, OnDestroy {
               t.member5Name
             ].filter(Boolean).map((n: string) => n.trim()).filter((n: string) => n.length > 0);
             
-            currentTeams.push({
+            
+          // --- INTEGRATION: POSTGRESQL BACKEND ---
+          try {
+            const names = this.teamForm.leadName.trim().split(' ');
+            this.apiService.createStudent({
+              first_name: names[0] || 'Unknown',
+              last_name: names.slice(1).join(' ') || 'Student',
+              email: this.teamForm.leadEmail,
+              track: this.teamForm.track,
+              consent_granted: true
+            }).subscribe({
+              next: (res) => console.log('Successfully saved student to PostgreSQL DB:', res),
+              error: (err) => console.error('Failed to save to PostgreSQL:', err)
+            });
+          } catch(e) {}
+          // ---------------------------------------
+
+          currentTeams.push({
               name: t.name,
               track: t.track || 'Coding',
               lead: t.leadName || 'Student Captain',
@@ -1941,7 +1959,24 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           const id = this.selectedFileIds[k]?.[0];
           if (id) memberPhotoIds.push(id);
         });
-        currentTeams.push({
+        
+          // --- INTEGRATION: POSTGRESQL BACKEND ---
+          try {
+            const names = this.teamForm.leadName.trim().split(' ');
+            this.apiService.createStudent({
+              first_name: names[0] || 'Unknown',
+              last_name: names.slice(1).join(' ') || 'Student',
+              email: this.teamForm.leadEmail,
+              track: this.teamForm.track,
+              consent_granted: true
+            }).subscribe({
+              next: (res) => console.log('Successfully saved student to PostgreSQL DB:', res),
+              error: (err) => console.error('Failed to save to PostgreSQL:', err)
+            });
+          } catch(e) {}
+          // ---------------------------------------
+
+          currentTeams.push({
           name: this.teamForm.name,
           track: this.teamForm.track || 'Coding',
           lead: this.teamForm.leadName || 'Student Captain',

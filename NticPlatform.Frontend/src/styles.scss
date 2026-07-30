@@ -2285,6 +2285,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   position: relative;
   height: 640px;
   background: #0a051b;
+  color: #ffffff;
   overflow: hidden;
   clip-path: polygon(0 0, 100% 0, 100% 92%, 0 100%);
 
@@ -2716,6 +2717,89 @@ body.dark-theme {
   .badge.warning {
     background: #472f00;
     color: #ffd880;
+  }
+
+  /* ── Registration gateway dark overrides ───────────── */
+  .gateway-screen .gateway-header h2 {
+    color: #ffffff !important;
+  }
+  .gateway-screen .gateway-header .gateway-lead {
+    color: var(--on-surface-variant) !important;
+  }
+  .gateway-screen .gateway-card {
+    background: var(--surface-container-lowest) !important;
+    border-color: var(--outline-variant) !important;
+  }
+  .gateway-screen .gateway-card h3 {
+    color: var(--on-surface) !important;
+  }
+  .gateway-screen .gateway-card p,
+  .gateway-screen .gateway-card li {
+    color: var(--on-surface-variant) !important;
+  }
+  .gateway-screen .gateway-card .feat-icon {
+    color: var(--primary) !important;
+  }
+  .gateway-screen .brand-text .brand-name {
+    color: #ffffff !important;
+  }
+  .gateway-screen .brand-text .brand-sub {
+    color: var(--on-surface-variant) !important;
+  }
+  .gateway-screen .gateway-login-btn {
+    color: #ffffff !important;
+  }
+
+  /* ── Login modal dark overrides ───────────────────── */
+  .login-modal-backdrop .login-modal-card {
+    background: var(--surface-container-lowest) !important;
+    border-color: var(--outline-variant) !important;
+  }
+  .login-modal-backdrop .login-modal-card .login-modal-header h3 {
+    color: var(--on-surface) !important;
+  }
+  .login-modal-backdrop .login-modal-card .login-modal-header p {
+    color: var(--on-surface-variant) !important;
+  }
+  .login-modal-backdrop .login-modal-card .close-modal-btn {
+    background: var(--surface-container-high) !important;
+    border-color: var(--outline-variant) !important;
+    color: var(--on-surface-variant) !important;
+  }
+  .login-modal-backdrop .login-modal-card .lm-form .lm-group label {
+    color: var(--on-surface-variant) !important;
+  }
+  .login-modal-backdrop .login-modal-card .lm-form .lm-input-wrap .lm-input {
+    background: var(--surface-container-low) !important;
+    border-color: var(--outline-variant) !important;
+    color: var(--on-surface) !important;
+  }
+  .login-modal-backdrop .login-modal-card .lm-form .lm-input-wrap .lm-input::placeholder {
+    color: var(--outline) !important;
+  }
+  .login-modal-backdrop .login-modal-card .lm-form .lm-input-wrap .lm-input:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25) !important;
+  }
+  .login-modal-backdrop .login-modal-card .lm-form .lm-input-wrap .lm-icon,
+  .login-modal-backdrop .login-modal-card .lm-form .lm-input-wrap .lm-pass-toggle {
+    color: var(--outline) !important;
+  }
+  .login-modal-backdrop .login-modal-card .lm-form .lm-error {
+    color: #fca5a5 !important;
+  }
+  .login-modal-backdrop .login-modal-card .lm-form .lm-error .material-symbols-outlined {
+    color: #fca5a5 !important;
+  }
+  .login-modal-backdrop .login-modal-card .lm-form .lm-submit {
+    background: linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%) !important;
+    color: #ffffff !important;
+  }
+  .login-modal-backdrop .login-modal-card .lm-form .lm-submit:hover {
+    box-shadow: 0 6px 20px rgba(0, 63, 135, 0.4) !important;
+  }
+  .login-modal-backdrop .login-modal-card .lm-form .lm-submit:disabled {
+    opacity: 0.5 !important;
   }
 }
 

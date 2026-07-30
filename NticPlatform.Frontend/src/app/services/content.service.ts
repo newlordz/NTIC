@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { DataStorageService } from './data-storage.service';
+import { ApiService } from './api.service';
 
 export interface UpcomingEvent {
   id: string;
@@ -699,11 +700,68 @@ export class ContentService {
     });
   }
 
-  constructor(private dataStorage: DataStorageService) {
+  constructor(private dataStorage: DataStorageService, private apiService: ApiService) {
     this.loadStateAndFallback();
+      this.loadFromBackend();
     this.migrateToIndexedDB();
   }
 
+  refreshBackendData(): void {
+    this.loadFromBackend();
+  }
+
+  private loadFromBackend(): void {
+    this.apiService.getEvents().subscribe({
+      next: (events: any) => {
+        if (events && events.length > 0) this.upcomingEvents = events;
+      },
+      error: (e: any) => console.log('Backend events fallback to local cache')
+    });
+
+    this.apiService.getStories().subscribe({
+      next: (stories: any) => {
+        if (stories && stories.length > 0) this.championshipStories = stories;
+      },
+      error: (e: any) => console.log('Backend stories fallback to local cache')
+    });
+
+    this.apiService.getPhilosophy().subscribe({
+      next: (cards: any) => {
+        if (cards && cards.length > 0) this.philosophyCards = cards;
+      },
+      error: (e: any) => console.log('Backend philosophy fallback to local cache')
+    });
+
+    this.apiService.getStudents().subscribe({
+      next: (students: any[]) => {
+        if (students && students.length > 0) {
+          const currentUsers = [...this.users];
+          students.forEach(s => {
+            const fullName = `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email || 'Student';
+            const sEmail = s.email || `${s.id}@ntic.edu.gh`;
+            if (!currentUsers.some(u => u.id === s.id || (u.email && u.email.toLowerCase() === sEmail.toLowerCase()))) {
+              currentUsers.push({
+                id: s.id,
+                fullName: fullName,
+                email: sEmail,
+                phone: s.phone || '',
+                otp: '',
+                organization: s.school || 'NTIC Member Institution',
+                ticket: `TICK-${(s.id || '0000').slice(0, 6).toUpperCase()}`,
+                role: 'student',
+                track: s.track || 'Coding',
+                status: 'Active',
+                registeredAt: s.created_at || new Date().toISOString(),
+                lastLogin: new Date().toISOString()
+              });
+            }
+          });
+          this.saveUsers(currentUsers);
+        }
+      },
+      error: (e: any) => console.log('Backend students fallback to local cache')
+    });
+  }
   private loadStateAndFallback(): void {
     if (typeof window !== 'undefined' && window.localStorage) {
       // Basic ContentService data — small, sync is fine
@@ -885,6 +943,7 @@ export class ContentService {
       contentKeys.forEach(k => localStorage.removeItem(k));
     }
     this.loadStateAndFallback();
+      this.loadFromBackend();
   }
 
   // ── CRUD Championship Stories ─────────────────────────────────────

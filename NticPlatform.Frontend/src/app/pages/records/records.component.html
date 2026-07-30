@@ -7,7 +7,7 @@
           <span class="material-symbols-outlined">folder_open</span>
         </div>
         <div>
-          <h1>Document & Entity Records Archive</h1>
+          <h1>Document &amp; Entity Records Archive</h1>
           <p>Centralized repository for all registered schools, instructors, judges, sponsors, teams, and submitted documentation.</p>
         </div>
       </div>
@@ -75,7 +75,7 @@
   </nav>
 
   <!-- Control Toolbar -->
-  <div class="toolbar-card" *ngIf="activeTab !== 'trash'">
+  <div class="toolbar-card" *ngIf="activeTab !== 'trash' && activeTab !== 'database'">
     <div class="search-box">
       <span class="material-symbols-outlined">search</span>
       <input type="text" [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()" placeholder="Search by entity name, ID, contact email, region..." />
@@ -113,7 +113,7 @@
   </div>
 
   <!-- Records View Panel (Non-trash) -->
-  <div *ngIf="activeTab !== 'trash'" class="records-panel">
+  <div *ngIf="activeTab !== 'trash' && activeTab !== 'database'" class="records-panel">
     <!-- VIEW 1: DATA TABLE -->
     <div class="table-responsive" *ngIf="viewMode === 'table' && filteredRecords.length > 0">
       <table class="records-table">
@@ -122,7 +122,7 @@
             <th style="width:48px;"></th>
             <th>Record Entity</th>
             <th>Category / Type</th>
-            <th>Region & District</th>
+            <th>Region &amp; District</th>
             <th>Status</th>
             <th>Attached Files</th>
             <th>Submitted Date</th>
@@ -308,7 +308,7 @@
             </span>
           </div>
           <div class="info-item" *ngIf="selectedRecord.region">
-            <span class="info-label">Region & District</span>
+            <span class="info-label">Region &amp; District</span>
             <span class="info-val">{{ selectedRecord.region }}<span *ngIf="selectedRecord.district">, {{ selectedRecord.district }}</span></span>
           </div>
           <div class="info-item" *ngIf="selectedRecord.contactEmail">
@@ -326,7 +326,7 @@
         </div>
 
         <div class="attachments-section mt-6">
-          <h4>Attached Documentation & Credentials ({{ selectedRecord.files.length }})</h4>
+          <h4>Attached Documentation &amp; Credentials ({{ selectedRecord.files.length }})</h4>
           
           <div class="files-list" *ngIf="selectedRecord.files.length > 0">
             <div *ngFor="let file of selectedRecord.files" class="file-item-card">
