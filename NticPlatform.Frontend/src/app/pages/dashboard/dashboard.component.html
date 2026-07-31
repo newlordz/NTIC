@@ -915,7 +915,7 @@
             <div style="display:flex; gap:10px; align-items:center;">
               <input type="text" [(ngModel)]="storyForm.image" placeholder="Image URL, e.g. assets/ntic_image_1.jpeg" style="flex:1;">
               <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant);">OR</span>
-              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;">
+              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropStoryImage($event)">
                 <span class="material-symbols-outlined" style="font-size:16px;">upload</span>Import
                 <input type="file" (change)="onStoryImageSelected($event)" accept="image/*" style="display:none;">
               </label>
@@ -1612,7 +1612,7 @@
             <div style="display:flex; gap:10px; align-items:center;">
               <input type="text" [(ngModel)]="slideForm.image" placeholder="assets/ntic_image_1.jpeg" style="flex:1;">
               <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant);">OR</span>
-              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;">
+              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropSlideImage($event)">
                 <span class="material-symbols-outlined" style="font-size:16px;">upload</span>Import
                 <input type="file" accept="image/*" (change)="onSlideImageSelected($event)" style="display:none;">
               </label>
@@ -1625,7 +1625,7 @@
           <div class="cms-field cms-field-full">
             <label>Video</label>
             <div style="display:flex; gap:10px; align-items:center;">
-              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;">
+              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropSlideVideo($event)">
                 <span class="material-symbols-outlined" style="font-size:16px;">videocam</span>{{ slideForm.videoFileId ? 'Replace Video' : 'Upload Video' }}
                 <input type="file" accept="video/*" (change)="onSlideVideoSelected($event)" style="display:none;">
               </label>
@@ -1737,7 +1737,7 @@
             <div style="display:flex; gap:10px; align-items:center;">
               <input type="text" [(ngModel)]="editingPhilCard.image" placeholder="assets/ntic_image_14.jpeg" style="flex:1;">
               <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant);">OR</span>
-              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;">
+              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropPhilCardImage($event)">
                 <span class="material-symbols-outlined" style="font-size:16px;">upload</span>Import
                 <input type="file" accept="image/*" (change)="onPhilCardImageUpload($event)" style="display:none;">
               </label>
@@ -2391,7 +2391,7 @@
                 </div>
                 <div class="admin-form-field admin-form-full">
                   <label>{{ registerRole === 'judge' ? 'Judge' : 'Sponsor' }} Logo</label>
-                  <div class="admin-reg-logo-upload" style="display:flex;align-items:center;gap:12px; padding:12px; border:1px dashed var(--outline-variant); border-radius:8px; cursor:pointer;" (click)="adminRegLogoInput.click()">
+                  <div class="admin-reg-logo-upload" style="display:flex;align-items:center;gap:12px; padding:12px; border:1px dashed var(--outline-variant); border-radius:8px; cursor:pointer;" (click)="adminRegLogoInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropAdminRegLogo($event)">
                     <span class="material-symbols-outlined" style="color:var(--primary);font-size:28px;">cloud_upload</span>
                     <div *ngIf="!adminRegLogoUrl" style="flex:1;">
                       <p style="margin:0;font-size:13px;font-weight:500;">Upload logo for profile display</p>

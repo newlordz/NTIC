@@ -607,6 +607,87 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     return this.selectedPackages.includes(label);
   }
 
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const el = event.currentTarget as HTMLElement;
+    el.style.borderColor = 'var(--primary)';
+    el.style.background = 'rgba(0, 63, 135, 0.08)';
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const el = event.currentTarget as HTMLElement;
+    el.style.borderColor = '';
+    el.style.background = '';
+  }
+
+  onDropFile(event: DragEvent, field: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const el = event.currentTarget as HTMLElement;
+    el.style.borderColor = '';
+    el.style.background = '';
+    const files = event.dataTransfer?.files;
+    if (files?.length) {
+      this.processFiles(files, field);
+    }
+  }
+
+  private async processFiles(files: FileList, field: string): Promise<void> {
+    const sizeLimits: Record<string, number> = {
+      schoolLogo: 5 * 1024 * 1024,
+      accredDocs: 10 * 1024 * 1024,
+      instructorDocs: 10 * 1024 * 1024,
+      sponsorLogo: 3 * 1024 * 1024,
+      judgeLogo: 3 * 1024 * 1024,
+      studentPhoto: 10 * 1024 * 1024,
+      groupPhoto: 10 * 1024 * 1024,
+      groupLogo: 10 * 1024 * 1024,
+      memberLeadPhoto: 10 * 1024 * 1024,
+      member2Photo: 10 * 1024 * 1024,
+      member3Photo: 10 * 1024 * 1024,
+      member4Photo: 10 * 1024 * 1024,
+      member5Photo: 10 * 1024 * 1024
+    };
+    const maxSize = sizeLimits[field] || 10 * 1024 * 1024;
+    const ids: string[] = [];
+    const names: string[] = [];
+    for (const file of Array.from(files)) {
+      if (file.size > maxSize) {
+        console.warn(`[FileUpload] "${file.name}" size=${file.size} bytes (${(file.size / 1024).toFixed(1)} KB), limit=${maxSize} bytes (${Math.round(maxSize / (1024 * 1024))} MB)`);
+        this.dialogService.toast(`"${file.name}" exceeds the maximum size of ${Math.round(maxSize / (1024 * 1024))}MB.`, 'warning');
+        continue;
+      }
+      const id = this.fileStorage.generateId();
+      await this.fileStorage.store(id, file);
+      ids.push(id);
+      names.push(file.name);
+    }
+    if (ids.length) {
+      this.selectedFileIds[field] = [...(this.selectedFileIds[field] || []), ...ids];
+      this.selectedFileNames[field] = [...(this.selectedFileNames[field] || []), ...names];
+    }
+    this.missingDocsError = '';
+
+    if (field === 'schoolLogo') {
+      this.loadSchoolLogo();
+    } else if (field === 'judgeLogo') {
+      this.loadJudgeLogo();
+    } else if (field === 'sponsorLogo') {
+      this.loadSponsorLogo();
+    } else if (field === 'studentPhoto') {
+      this.loadStudentPhoto();
+    } else if (field === 'groupPhoto') {
+      this.loadGroupPhoto();
+    } else if (field === 'groupLogo') {
+      this.loadGroupLogo();
+    } else if (field.startsWith('member') && field.endsWith('Photo')) {
+      this.loadMemberPhoto(field);
+    }
+  }
+
   async onFileSelected(event: any, field: string): Promise<void> {
     const files: FileList = event.target.files;
     if (files?.length) {

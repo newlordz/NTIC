@@ -940,6 +940,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
   async onAdminRegLogoSelected(event: any): Promise<void> {
     const file = event.target.files?.[0];
     if (!file) return;
+    await this.storeAdminRegLogo(file);
+    event.target.value = '';
+  }
+
+  onDropAdminRegLogo(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.resetDragStyle(event);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      this.storeAdminRegLogo(file);
+    }
+  }
+
+  private async storeAdminRegLogo(file: File): Promise<void> {
     if (file.size > 3 * 1024 * 1024) {
       this.dialogService.toast('Logo exceeds 3MB limit.', 'warning');
       return;
@@ -952,7 +967,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     await this.fileStorage.store(id, file);
     this.adminRegLogoFileId = id;
     this.adminRegLogoUrl = await this.fileStorage.getUrl(id);
-    event.target.value = '';
   }
 
   removeAdminRegLogo(): void {
@@ -1522,6 +1536,83 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.storyFormOpen = true;
   }
 
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const el = event.currentTarget as HTMLElement;
+    el.style.borderColor = 'var(--primary)';
+    el.style.background = 'rgba(0, 63, 135, 0.08)';
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const el = event.currentTarget as HTMLElement;
+    el.style.borderColor = '';
+    el.style.background = '';
+  }
+
+  onDropStoryImage(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.resetDragStyle(event);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.storyForm.image = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  onDropSlideImage(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.resetDragStyle(event);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        this.slideForm.image = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  onDropSlideVideo(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.resetDragStyle(event);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      this.handleVideoFile(file);
+    }
+  }
+
+  onDropPhilCardImage(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.resetDragStyle(event);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      this.handlePhilCardImage(file);
+    }
+  }
+
+  private resetDragStyle(event: DragEvent): void {
+    const el = event.currentTarget as HTMLElement;
+    el.style.borderColor = '';
+    el.style.background = '';
+  }
+
+  private async handleVideoFile(file: File): Promise<void> {
+    const id = `slide-video-${Date.now()}`;
+    await this.fileStorage.store(id, file);
+    this.slideForm.videoFileId = id;
+    this.slideForm.videoThumbnail = await this.captureVideoThumbnail(file);
+  }
+
   onStoryImageSelected(event: any): void {
     const file = event.target.files?.[0];
     if (file) {
@@ -1738,7 +1829,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   onPhilCardImageUpload(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
-    const file = input.files[0];
+    this.handlePhilCardImage(input.files[0]);
+  }
+
+  private handlePhilCardImage(file: File): void {
     const reader = new FileReader();
     reader.onload = () => {
       this.editingPhilCard.image = reader.result as string;

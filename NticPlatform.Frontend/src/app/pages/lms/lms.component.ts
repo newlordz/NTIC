@@ -440,12 +440,44 @@ export class LmsComponent implements OnInit {
   async onUploadFileSelected(event: any): Promise<void> {
     const file = event.target.files?.[0];
     if (file) {
-      const id = this.fileStorage.generateId();
-      await this.fileStorage.store(id, file);
-      this.selectedUploadFileId = id;
-      this.selectedUploadFileName = file.name;
-      this.newSubmission.fileName = file.name;
+      await this.storeUploadedFile(file);
     }
+  }
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const el = event.currentTarget as HTMLElement;
+    el.style.borderColor = 'var(--primary)';
+    el.style.background = 'rgba(0, 63, 135, 0.08)';
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const el = event.currentTarget as HTMLElement;
+    el.style.borderColor = '';
+    el.style.background = '';
+  }
+
+  onDropFile(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const el = event.currentTarget as HTMLElement;
+    el.style.borderColor = '';
+    el.style.background = '';
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      this.storeUploadedFile(file);
+    }
+  }
+
+  private async storeUploadedFile(file: File): Promise<void> {
+    const id = this.fileStorage.generateId();
+    await this.fileStorage.store(id, file);
+    this.selectedUploadFileId = id;
+    this.selectedUploadFileName = file.name;
+    this.newSubmission.fileName = file.name;
   }
 
   ngOnInit(): void {

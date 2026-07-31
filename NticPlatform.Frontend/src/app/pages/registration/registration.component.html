@@ -780,7 +780,7 @@
                     </div>
                   </div>
                   <div style="flex-shrink:0;">
-                    <div class="member-photo-upload" (click)="schLeadPhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['lead']">
+                    <div class="member-photo-upload" (click)="schLeadPhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['lead']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'memberLeadPhoto')" style="transition:border-color .2s, background .2s;">
                       <input #schLeadPhotoInput type="file" (change)="onFileSelected($event, 'memberLeadPhoto')" accept=".png,.jpg,.jpeg" style="display:none">
                       <ng-container *ngIf="!memberPhotoUrls['lead']">
                         <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
@@ -807,7 +807,7 @@
                     </div>
                   </div>
                   <div style="flex-shrink:0;">
-                    <div class="member-photo-upload" (click)="schM2PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m2']">
+                    <div class="member-photo-upload" (click)="schM2PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m2']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'member2Photo')" style="transition:border-color .2s, background .2s;">
                       <input #schM2PhotoInput type="file" (change)="onFileSelected($event, 'member2Photo')" accept=".png,.jpg,.jpeg" style="display:none">
                       <ng-container *ngIf="!memberPhotoUrls['m2']">
                         <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
@@ -834,7 +834,7 @@
                     </div>
                   </div>
                   <div style="flex-shrink:0;">
-                    <div class="member-photo-upload" (click)="schM3PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m3']">
+                    <div class="member-photo-upload" (click)="schM3PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m3']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'member3Photo')" style="transition:border-color .2s, background .2s;">
                       <input #schM3PhotoInput type="file" (change)="onFileSelected($event, 'member3Photo')" accept=".png,.jpg,.jpeg" style="display:none">
                       <ng-container *ngIf="!memberPhotoUrls['m3']">
                         <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
@@ -861,7 +861,7 @@
                     </div>
                   </div>
                   <div style="flex-shrink:0;">
-                    <div class="member-photo-upload" (click)="schM4PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m4']">
+                    <div class="member-photo-upload" (click)="schM4PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m4']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'member4Photo')" style="transition:border-color .2s, background .2s;">
                       <input #schM4PhotoInput type="file" (change)="onFileSelected($event, 'member4Photo')" accept=".png,.jpg,.jpeg" style="display:none">
                       <ng-container *ngIf="!memberPhotoUrls['m4']">
                         <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
@@ -888,7 +888,7 @@
                     </div>
                   </div>
                   <div style="flex-shrink:0;">
-                    <div class="member-photo-upload" (click)="schM5PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m5']">
+                    <div class="member-photo-upload" (click)="schM5PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m5']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'member5Photo')" style="transition:border-color .2s, background .2s;">
                       <input #schM5PhotoInput type="file" (change)="onFileSelected($event, 'member5Photo')" accept=".png,.jpg,.jpeg" style="display:none">
                       <ng-container *ngIf="!memberPhotoUrls['m5']">
                         <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
@@ -982,7 +982,7 @@
           <div *ngIf="schoolStep === 4" class="step-content-pane fade-in">
             <div class="form-group">
               <label class="form-label">School Logo</label>
-              <div class="upload-zone" (click)="schoolLogoInput.click()">
+              <div class="upload-zone" (click)="schoolLogoInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'schoolLogo')" style="transition:border-color .2s, background .2s;">
                 <span class="material-symbols-outlined upload-icon">cloud_upload</span>
                 <p *ngIf="!selectedFileNames['schoolLogo']?.length">Drag & drop or <strong>Browse</strong></p>
                 <div *ngIf="selectedFileNames['schoolLogo']?.length" style="display:flex;align-items:center;gap:8px;">
@@ -995,7 +995,7 @@
             </div>
             <div class="form-group">
               <label class="form-label">Accreditation Documents *</label>
-              <div class="upload-zone" (click)="accredInput.click()">
+              <div class="upload-zone" (click)="accredInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'accredDocs')" style="transition:border-color .2s, background .2s;">
                 <span class="material-symbols-outlined upload-icon">folder_open</span>
                 <p *ngIf="!selectedFileNames['accredDocs']?.length">Registration Certificate, Accreditation Documents</p>
                 <ul *ngIf="selectedFileNames['accredDocs']?.length" style="margin:0;padding:0;list-style:none;text-align:left;">
@@ -1386,7 +1386,7 @@
 
           <div style="margin-bottom: 20px;">
             <label class="form-label">Documents (CV, Certificates, National ID) *</label>
-            <div class="upload-zone" (click)="instructorDocsInput.click()">
+            <div class="upload-zone" (click)="instructorDocsInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'instructorDocs')" style="transition:border-color .2s, background .2s;">
               <span class="material-symbols-outlined upload-icon">upload_file</span>
               <p *ngIf="!selectedFileNames['instructorDocs']?.length">Drag &amp; drop or <strong>Browse</strong></p>
               <ul *ngIf="selectedFileNames['instructorDocs']?.length" style="margin:0;padding:0;list-style:none;text-align:left;">
@@ -1610,7 +1610,7 @@
 
             <div class="form-group">
               <label class="form-label">Profile Photo</label>
-              <div class="upload-zone" (click)="studentPhotoInput.click()">
+              <div class="upload-zone" (click)="studentPhotoInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'studentPhoto')" style="transition:border-color .2s, background .2s;">
                 <span class="material-symbols-outlined upload-icon">cloud_upload</span>
                 <p *ngIf="!selectedFileNames['studentPhoto']?.length">Drag & drop or <strong>Browse</strong></p>
                 <div *ngIf="selectedFileNames['studentPhoto']?.length" style="display:flex;align-items:center;gap:8px;">
@@ -1749,7 +1749,7 @@
             <div class="grid-2" style="margin-bottom: 20px; gap: 16px;">
               <div class="form-group" style="margin:0;">
                 <label class="form-label">Group / Squad Photo</label>
-                <div class="upload-zone" (click)="groupPhotoInput.click()">
+                <div class="upload-zone" (click)="groupPhotoInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'groupPhoto')" style="transition:border-color .2s, background .2s;">
                   <span class="material-symbols-outlined upload-icon">cloud_upload</span>
                   <p *ngIf="!selectedFileNames['groupPhoto']?.length">Drag & drop or <strong>Browse</strong></p>
                   <div *ngIf="selectedFileNames['groupPhoto']?.length" style="display:flex;align-items:center;gap:8px;">
@@ -1765,7 +1765,7 @@
               </div>
               <div class="form-group" style="margin:0;">
                 <label class="form-label">Group / Squad Logo</label>
-                <div class="upload-zone" (click)="groupLogoInput.click()">
+                <div class="upload-zone" (click)="groupLogoInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'groupLogo')" style="transition:border-color .2s, background .2s;">
                   <span class="material-symbols-outlined upload-icon">cloud_upload</span>
                   <p *ngIf="!selectedFileNames['groupLogo']?.length">Drag & drop or <strong>Browse</strong></p>
                   <div *ngIf="selectedFileNames['groupLogo']?.length" style="display:flex;align-items:center;gap:8px;">
@@ -1800,7 +1800,7 @@
                   </div>
                 </div>
                 <div style="flex-shrink:0;">
-                  <div class="member-photo-upload" (click)="memberLeadPhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['lead']">
+                  <div class="member-photo-upload" (click)="memberLeadPhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['lead']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'memberLeadPhoto')" style="transition:border-color .2s, background .2s;">
                     <input #memberLeadPhotoInput type="file" (change)="onFileSelected($event, 'memberLeadPhoto')" accept=".png,.jpg,.jpeg" style="display:none">
                     <ng-container *ngIf="!memberPhotoUrls['lead']">
                       <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
@@ -1828,7 +1828,7 @@
                   </div>
                 </div>
                 <div style="flex-shrink:0;">
-                  <div class="member-photo-upload" (click)="member2PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m2']">
+                  <div class="member-photo-upload" (click)="member2PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m2']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'member2Photo')" style="transition:border-color .2s, background .2s;">
                     <input #member2PhotoInput type="file" (change)="onFileSelected($event, 'member2Photo')" accept=".png,.jpg,.jpeg" style="display:none">
                     <ng-container *ngIf="!memberPhotoUrls['m2']">
                       <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
@@ -1856,7 +1856,7 @@
                   </div>
                 </div>
                 <div style="flex-shrink:0;">
-                  <div class="member-photo-upload" (click)="member3PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m3']">
+                  <div class="member-photo-upload" (click)="member3PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m3']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'member3Photo')" style="transition:border-color .2s, background .2s;">
                     <input #member3PhotoInput type="file" (change)="onFileSelected($event, 'member3Photo')" accept=".png,.jpg,.jpeg" style="display:none">
                     <ng-container *ngIf="!memberPhotoUrls['m3']">
                       <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
@@ -1884,7 +1884,7 @@
                   </div>
                 </div>
                 <div style="flex-shrink:0;">
-                  <div class="member-photo-upload" (click)="member4PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m4']">
+                  <div class="member-photo-upload" (click)="member4PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m4']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'member4Photo')" style="transition:border-color .2s, background .2s;">
                     <input #member4PhotoInput type="file" (change)="onFileSelected($event, 'member4Photo')" accept=".png,.jpg,.jpeg" style="display:none">
                     <ng-container *ngIf="!memberPhotoUrls['m4']">
                       <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
@@ -1912,7 +1912,7 @@
                   </div>
                 </div>
                 <div style="flex-shrink:0;">
-                  <div class="member-photo-upload" (click)="member5PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m5']">
+                  <div class="member-photo-upload" (click)="member5PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m5']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'member5Photo')" style="transition:border-color .2s, background .2s;">
                     <input #member5PhotoInput type="file" (change)="onFileSelected($event, 'member5Photo')" accept=".png,.jpg,.jpeg" style="display:none">
                     <ng-container *ngIf="!memberPhotoUrls['m5']">
                       <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
@@ -2161,7 +2161,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">CSR / Partnership Logo</label>
-            <div class="upload-zone" (click)="sponsorLogoInput.click()">
+            <div class="upload-zone" (click)="sponsorLogoInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'sponsorLogo')" style="transition:border-color .2s, background .2s;">
               <span class="material-symbols-outlined upload-icon">cloud_upload</span>
               <p *ngIf="!selectedFileNames['sponsorLogo']?.length">Upload corporate logo for website display & banners</p>
               <div *ngIf="selectedFileNames['sponsorLogo']?.length" style="display:flex;align-items:center;gap:8px;">
@@ -2367,7 +2367,7 @@
           </div>
           <div class="form-group">
             <label class="form-label">Judge / Personal Logo</label>
-            <div class="upload-zone" (click)="judgeLogoInput.click()">
+            <div class="upload-zone" (click)="judgeLogoInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'judgeLogo')" style="transition:border-color .2s, background .2s;">
               <span class="material-symbols-outlined upload-icon">cloud_upload</span>
               <p *ngIf="!selectedFileNames['judgeLogo']?.length">Upload a professional logo or headshot for your judge profile</p>
               <div *ngIf="selectedFileNames['judgeLogo']?.length" style="display:flex;align-items:center;gap:8px;">
