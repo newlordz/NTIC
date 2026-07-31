@@ -1,3 +1,4 @@
+﻿import { getAuthValue } from './session.util';
 import { Injectable, signal } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../environments/environment';
@@ -168,7 +169,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
       const stored = sessionStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        const activeEmail = localStorage.getItem('activeUserEmail') || '';
+        const activeEmail = getAuthValue('activeUserEmail') || '';
         
         // If stored session belonged to a logged-in user but active email is now different or gone, clear stale session
         if (parsed.userId && parsed.userId !== activeEmail) {

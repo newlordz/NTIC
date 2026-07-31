@@ -1,3 +1,4 @@
+﻿import { getAuthValue } from '../services/session.util';
 import {
   Component,
   Input,
@@ -125,11 +126,11 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
   }
 
   private getUserId(): string {
-    return localStorage.getItem('activeUserEmail') || '';
+    return getAuthValue('activeUserEmail') || '';
   }
 
   private getUserEmail(): string {
-    return localStorage.getItem('activeUserEmail') || '';
+    return getAuthValue('activeUserEmail') || '';
   }
 
   get unreadCount(): number {

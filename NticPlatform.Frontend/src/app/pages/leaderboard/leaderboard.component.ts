@@ -1,3 +1,4 @@
+﻿import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, TitleCasePipe, DecimalPipe } from '@angular/common';
 import { ContentService, LeaderboardEntry } from '../../services/content.service';
@@ -38,7 +39,7 @@ export class LeaderboardComponent implements OnInit {
   }
 
   get isStudentUser(): boolean {
-    const roleId = (typeof localStorage !== 'undefined' && localStorage.getItem('activeRoleId')) || 'student';
+    const roleId = (typeof localStorage !== 'undefined' && getAuthValue('activeRoleId')) || 'student';
     return roleId === 'student';
   }
 

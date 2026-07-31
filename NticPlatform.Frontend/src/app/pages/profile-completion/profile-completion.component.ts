@@ -1,3 +1,4 @@
+﻿import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -29,8 +30,8 @@ export class ProfileCompletionComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    const userEmail = localStorage.getItem('activeUserEmail');
-    const userTicket = localStorage.getItem('activeUserTicket');
+    const userEmail = getAuthValue('activeUserEmail');
+    const userTicket = getAuthValue('activeUserTicket');
 
     if (userEmail || userTicket) {
       this.currentUser = this.contentService.users.find(u => 

@@ -1,3 +1,4 @@
+﻿import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -52,12 +53,12 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   constructor(public contentService: ContentService, private router: Router, public chatbotService: ChatbotService) {}
 
   get canManageUsers(): boolean {
-    const role = localStorage.getItem('activeRoleId') || '';
+    const role = getAuthValue('activeRoleId') || '';
     return role === 'super_admin' || role === 'support_admin';
   }
 
   isCurrentUser(user: User): boolean {
-    const email = localStorage.getItem('activeUserEmail') || '';
+    const email = getAuthValue('activeUserEmail') || '';
     return user.email === email;
   }
 
@@ -307,7 +308,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   sendAdminReply(): void {
     if (!this.adminReplyText.trim() || !this.selectedTicket) return;
-    const agentName = localStorage.getItem('activeUserEmail') || 'Support Agent';
+    const agentName = getAuthValue('activeUserEmail') || 'Support Agent';
     this.chatbotService.addAdminReply(this.selectedTicket.id, agentName, this.adminReplyText.trim());
     this.adminReplyText = '';
     this.showToast('Reply Sent', 'Your response has been delivered to the user.');

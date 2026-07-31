@@ -3688,22 +3688,37 @@
   background: var(--surface-container) !important;
 }
 :host-context(body.dark-theme) .challenge-meta span {
-  background: var(--surface-container) !important;
+  box-shadow: none !important;
+}
+:host-context(body.dark-theme) .challenge-meta .difficulty-badge.diff-Very-Easy {
+  background: rgba(52, 211, 153, 0.08) !important;
+  color: #34d399 !important;
+  border-color: rgba(52, 211, 153, 0.2) !important;
 }
 :host-context(body.dark-theme) .challenge-meta .difficulty-badge.diff-Easy {
-  background: rgba(22, 163, 74, 0.15) !important;
+  background: rgba(74, 222, 128, 0.08) !important;
   color: #4ade80 !important;
-  border-color: rgba(22, 163, 74, 0.3) !important;
+  border-color: rgba(74, 222, 128, 0.2) !important;
 }
 :host-context(body.dark-theme) .challenge-meta .difficulty-badge.diff-Medium {
-  background: rgba(202, 138, 4, 0.15) !important;
-  color: #facc15 !important;
-  border-color: rgba(202, 138, 4, 0.3) !important;
+  background: rgba(251, 191, 36, 0.08) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(251, 191, 36, 0.2) !important;
 }
 :host-context(body.dark-theme) .challenge-meta .difficulty-badge.diff-Hard {
-  background: rgba(220, 38, 38, 0.15) !important;
+  background: rgba(248, 113, 113, 0.08) !important;
   color: #f87171 !important;
-  border-color: rgba(220, 38, 38, 0.3) !important;
+  border-color: rgba(248, 113, 113, 0.2) !important;
+}
+:host-context(body.dark-theme) .challenge-meta .challenge-track-tag {
+  background: rgba(96, 165, 250, 0.08) !important;
+  color: #60a5fa !important;
+  border-color: rgba(96, 165, 250, 0.2) !important;
+}
+:host-context(body.dark-theme) .challenge-meta .challenge-time-tag {
+  background: rgba(148, 163, 184, 0.08) !important;
+  color: #94a3b8 !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
 }
 :host-context(body.dark-theme) .alumni-badge.coding {
   background: rgba(37, 99, 235, 0.15) !important;
@@ -4630,81 +4645,75 @@
   margin-bottom: 0.75rem;
 }
 
-.challenge-meta .difficulty-badge {
-  font-weight: 800 !important;
-}
-
 .challenge-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 3rem;
-  flex-wrap: nowrap;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  margin-bottom: 2.5rem !important;
+  flex-wrap: wrap !important;
 }
 
 .challenge-meta span {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 0.45rem !important;
-  padding: 0.55rem 1.25rem !important;
-  border-radius: 2rem !important;
-  font-size: 0.92rem !important;
-  font-weight: 800 !important;
+  gap: 0.4rem !important;
+  padding: 0.45rem 1rem !important;
+  border-radius: 9999px !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
   white-space: nowrap !important;
-  line-height: 1 !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12) !important;
+  line-height: 1.2 !important;
+  box-shadow: none !important;
+  border: 1px solid transparent !important;
+  transition: all 0.2s ease-in-out !important;
 }
 .challenge-meta span .material-symbols-outlined {
   background: transparent !important;
   border-radius: 0 !important;
   padding: 0 !important;
-  font-size: 20px !important;
-  color: #ffffff !important;
-  margin-right: 2px !important;
+  font-size: 1.15rem !important;
+  color: inherit !important;
+  margin-right: 0 !important;
   line-height: 1 !important;
+  display: inline-block !important;
+  vertical-align: middle !important;
 }
 
 .challenge-meta .difficulty-badge.diff-Very-Easy {
-  background: linear-gradient(135deg, #059669, #10b981) !important;
-  color: #ffffff !important;
-  border: 1px solid #34d399 !important;
-  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35) !important;
+  background: rgba(16, 185, 129, 0.06) !important;
+  color: #065f46 !important;
+  border: 1px solid rgba(16, 185, 129, 0.18) !important;
 }
 
 .challenge-meta .difficulty-badge.diff-Easy {
-  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
-  color: #ffffff !important;
-  border: 1px solid #4ade80 !important;
-  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.35) !important;
+  background: rgba(34, 197, 94, 0.06) !important;
+  color: #166534 !important;
+  border: 1px solid rgba(34, 197, 94, 0.18) !important;
 }
 
 .challenge-meta .difficulty-badge.diff-Medium {
-  background: linear-gradient(135deg, #d97706, #f59e0b) !important;
-  color: #ffffff !important;
-  border: 1px solid #fbbf24 !important;
-  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35) !important;
+  background: rgba(245, 158, 11, 0.06) !important;
+  color: #b45309 !important;
+  border: 1px solid rgba(245, 158, 11, 0.18) !important;
 }
 
 .challenge-meta .difficulty-badge.diff-Hard {
-  background: linear-gradient(135deg, #dc2626, #ef4444) !important;
-  color: #ffffff !important;
-  border: 1px solid #f87171 !important;
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.35) !important;
+  background: rgba(239, 68, 68, 0.06) !important;
+  color: #b91c1c !important;
+  border: 1px solid rgba(239, 68, 68, 0.18) !important;
 }
 
 .challenge-meta .challenge-track-tag {
-  background: linear-gradient(135deg, #1d4ed8, #2563eb) !important;
-  color: #ffffff !important;
-  border: 1px solid #60a5fa !important;
-  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35) !important;
+  background: rgba(37, 99, 235, 0.06) !important;
+  color: #1e40af !important;
+  border: 1px solid rgba(37, 99, 235, 0.18) !important;
 }
 
 .challenge-meta .challenge-time-tag {
-  background: linear-gradient(135deg, #b45309, #d97706) !important;
-  color: #ffffff !important;
-  border: 1px solid #fde047 !important;
+  background: rgba(100, 116, 139, 0.06) !important;
+  color: #475569 !important;
+  border: 1px solid rgba(100, 116, 139, 0.18) !important;
   font-family: "JetBrains Mono", monospace !important;
-  box-shadow: 0 4px 15px rgba(217, 119, 6, 0.35) !important;
 }
 
 /* 3. Floating Action Button (FAB) */

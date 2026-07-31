@@ -1,3 +1,4 @@
+﻿import { getAuthValue } from './session.util';
 import { Injectable } from '@angular/core';
 import { DataStorageService } from './data-storage.service';
 import { ApiService } from './api.service';
@@ -1344,7 +1345,7 @@ export class ContentService {
       {
         id: `LOG-${Date.now()}`,
         action: `Created Competition: ${comp.title}`,
-        user: localStorage.getItem('activeUserEmail') || 'System',
+        user: getAuthValue('activeUserEmail') || 'System',
         time: new Date().toISOString(),
         category: 'approval'
       },
@@ -1363,7 +1364,7 @@ export class ContentService {
         {
           id: `LOG-${Date.now()}`,
           action: `Updated Competition: ${comp.title} (status: ${comp.status})`,
-          user: localStorage.getItem('activeUserEmail') || 'System',
+          user: getAuthValue('activeUserEmail') || 'System',
           time: new Date().toISOString(),
           category: 'approval'
         },
@@ -1383,7 +1384,7 @@ export class ContentService {
         {
           id: `LOG-${Date.now()}`,
           action: `Removed Competition: ${found.title}`,
-          user: localStorage.getItem('activeUserEmail') || 'System',
+          user: getAuthValue('activeUserEmail') || 'System',
           time: new Date().toISOString(),
           category: 'revoked'
         },

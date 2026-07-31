@@ -84,9 +84,9 @@ try:
 
     # CHAT
     class ChatRequest(BaseModel):
-        system_instruction: dict
-        contents: list
-        generationConfig: dict
+        system_instruction: dict = {}
+        contents: list = []
+        generationConfig: dict = {}
 
     @app.post("/api/chat")
     async def chat_proxy(payload: ChatRequest):

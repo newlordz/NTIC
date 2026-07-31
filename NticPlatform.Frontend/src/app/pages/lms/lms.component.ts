@@ -1,3 +1,4 @@
+﻿import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -13,8 +14,7 @@ import { ApiService } from '../../services/api.service';
   styleUrl: './lms.component.scss'
 })
 export class LmsComponent implements OnInit {
-  selectedUploadFileId = '';
-  selectedUploadFileName = '';
+  selectedUploadFiles: { id: string; name: string }[] = [];
 
   constructor(public contentService: ContentService, public fileStorage: FileStorageService, private apiService: ApiService) {}
 
@@ -31,7 +31,7 @@ export class LmsComponent implements OnInit {
 
   // ── Instructor data helpers ─────────────────────────────────
   private get currentUserEmail(): string {
-    return (localStorage.getItem('activeUserEmail') || '').trim().toLowerCase();
+    return (getAuthValue('activeUserEmail') || '').trim().toLowerCase();
   }
 
   get myCourses(): any[] {
@@ -438,10 +438,13 @@ export class LmsComponent implements OnInit {
   showUploadSuccess = false;
 
   async onUploadFileSelected(event: any): Promise<void> {
-    const file = event.target.files?.[0];
-    if (file) {
-      await this.storeUploadedFile(file);
+    const files: FileList = event.target.files;
+    if (files?.length) {
+      for (const file of Array.from(files)) {
+        await this.storeUploadedFile(file);
+      }
     }
+    event.target.value = '';
   }
 
   onDragOver(event: DragEvent): void {
@@ -466,22 +469,34 @@ export class LmsComponent implements OnInit {
     const el = event.currentTarget as HTMLElement;
     el.style.borderColor = '';
     el.style.background = '';
-    const file = event.dataTransfer?.files?.[0];
-    if (file) {
-      this.storeUploadedFile(file);
+    const files = event.dataTransfer?.files;
+    if (files?.length) {
+      for (const file of Array.from(files)) {
+        this.storeUploadedFile(file);
+      }
     }
   }
 
   private async storeUploadedFile(file: File): Promise<void> {
     const id = this.fileStorage.generateId();
     await this.fileStorage.store(id, file);
-    this.selectedUploadFileId = id;
-    this.selectedUploadFileName = file.name;
+    this.selectedUploadFiles = [...this.selectedUploadFiles, { id, name: file.name }];
     this.newSubmission.fileName = file.name;
   }
 
+  removeUploadFile(index: number): void {
+    const file = this.selectedUploadFiles[index];
+    if (file) this.fileStorage.remove(file.id);
+    this.selectedUploadFiles = this.selectedUploadFiles.filter((_, i) => i !== index);
+  }
+
+  fileNames(file: string): string[] {
+    if (!file) return [];
+    return file.split('||').map(f => f.includes('::') ? f.split('::')[1] : f);
+  }
+
   ngOnInit(): void {
-    this.activeRoleId = localStorage.getItem('activeRoleId') || 'student';
+    this.activeRoleId = getAuthValue('activeRoleId') || 'student';
     if (this.activeRoleId === 'student') {
       this.studentActiveTab = 'courses';
     } else {
@@ -490,7 +505,7 @@ export class LmsComponent implements OnInit {
   }
 
   submitAssignment(): void {
-    if (!this.newSubmission.assignmentName || !this.newSubmission.fileName) {
+    if (!this.newSubmission.assignmentName || !this.selectedUploadFiles.length) {
       this.submissionError = 'Please enter assignment name and upload or select a file.';
       return;
     }
@@ -518,7 +533,9 @@ export class LmsComponent implements OnInit {
       school: this.studentProfile.school,
       assignment: this.newSubmission.assignmentName,
       track: this.studentProfile.track,
-      file: this.selectedUploadFileId ? `${this.selectedUploadFileId}::${this.selectedUploadFileName}` : this.newSubmission.fileName,
+      file: this.selectedUploadFiles.length
+        ? this.selectedUploadFiles.map(f => `${f.id}::${f.name}`).join('||')
+        : this.newSubmission.fileName,
       score: null,
       status: 'pending' as const,
       time: new Date().toISOString(),
@@ -559,6 +576,7 @@ export class LmsComponent implements OnInit {
     this.contentService.saveAuditLogs(currentAudit);
 
     this.showUploadSuccess = true;
+    this.selectedUploadFiles = [];
     this.newSubmission = {
       courseTitle: this.studentCourses[0]?.title || '',
       assignmentName: '',

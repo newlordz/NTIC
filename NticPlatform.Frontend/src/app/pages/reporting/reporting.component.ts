@@ -1,3 +1,4 @@
+﻿import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -31,7 +32,7 @@ export class ReportingComponent implements OnInit {
 
   ngOnInit(): void {
     if (typeof window !== 'undefined') {
-      this.activeRoleId = localStorage.getItem('activeRoleId') || 'super_admin';
+      this.activeRoleId = getAuthValue('activeRoleId') || 'super_admin';
       const activeUserStr = localStorage.getItem('activeUser');
       if (activeUserStr) {
         try {

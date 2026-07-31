@@ -1,3 +1,4 @@
+﻿import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -102,11 +103,11 @@ export class SponsorsComponent implements OnInit {
   }
 
   get loggedInSponsor(): User | null {
-    const activeRole = localStorage.getItem('activeRoleId');
+    const activeRole = getAuthValue('activeRoleId');
     if (activeRole !== 'sponsor') return null;
 
-    const email = localStorage.getItem('activeUserEmail') || '';
-    const ticket = localStorage.getItem('activeUserTicket') || '';
+    const email = getAuthValue('activeUserEmail') || '';
+    const ticket = getAuthValue('activeUserTicket') || '';
 
     return this.contentService.users.find(u =>
       u.role === 'sponsor' && (

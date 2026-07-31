@@ -1,3 +1,4 @@
+﻿import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
@@ -350,11 +351,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .filter(s => s.student === 'Kwame Asante')
       .map(s => ({
         track: s.track,
-        file: s.file,
+        file: this.formatSubmissionFiles(s.file),
         date: s.time,
         status: s.status === 'approved' ? 'Approved' : s.status === 'pending' ? 'Pending' : 'Needs Resubmission',
         feedback: s.feedback || (s.status === 'pending' ? 'Awaiting mentor evaluation' : '')
       }));
+  }
+
+  formatSubmissionFiles(file: string): string {
+    if (!file) return '';
+    return file.split('||').map(f => f.includes('::') ? f.split('::')[1] : f).join(', ');
   }
 
   get recentSubmissions(): any[] {
@@ -369,7 +375,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   get assignedSubmissions(): any[] {
-    const activeUserEmail = localStorage.getItem('activeUserEmail') || '';
+    const activeUserEmail = getAuthValue('activeUserEmail') || '';
     const activeUser = this.contentService.users.find(u => u.email === activeUserEmail || u.ticket === activeUserEmail);
     const judgeTrack = activeUser?.track?.toLowerCase() || '';
 
@@ -626,7 +632,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       }, 0);
     }
-    this.activeRoleId = localStorage.getItem('activeRoleId') || 'student';
+    this.activeRoleId = getAuthValue('activeRoleId') || 'student';
     this.loadDashboardData();
     this.preloadLogos();
 
@@ -658,7 +664,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   loadDashboardData(): void {
-    const activeEmail = localStorage.getItem('activeUserEmail') || '';
+    const activeEmail = getAuthValue('activeUserEmail') || '';
     const activeUser = this.contentService.users.find(u => 
       u.email?.trim().toLowerCase() === activeEmail.toLowerCase() ||
       u.ticket?.trim().toUpperCase() === activeEmail.toUpperCase()
@@ -687,7 +693,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       case 'instructor':
         this.dashboardTitle = 'Instructor Dashboard';
         this.dashboardSubtitle = `Welcome back, ${userName}. Manage your courses and review student submissions.`;
-        const instEmail = (localStorage.getItem('activeUserEmail') || '').trim().toLowerCase();
+        const instEmail = (getAuthValue('activeUserEmail') || '').trim().toLowerCase();
         const myCourseIds = this.contentService.lmsCourses
           .filter(c => c.submittedBy && c.submittedBy.toLowerCase().includes(instEmail))
           .map(c => c.id);
@@ -790,7 +796,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const audit = [...this.contentService.auditLogs];
     audit.unshift({
       action: `${this.settleType === 'full' ? 'Full' : 'Partial'} payment of GH₵${this.settleAmount.toLocaleString()} via ${modeLabels[this.settlePaymentMode]} (${scheduleLabels[this.settleBillingSchedule]}) by ${name}`,
-      user: localStorage.getItem('activeUserEmail') || 'Sponsor',
+      user: getAuthValue('activeUserEmail') || 'Sponsor',
       time: new Date().toISOString(),
       type: 'payment'
     });
@@ -2442,7 +2448,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.contentService.saveTeams(currentTeams);
       this.addAuditLog({
         action: `School Admin (${this.schoolName}) disbanded squad: ${team.name}`,
-        user: localStorage.getItem('activeUserEmail') || 'School Admin',
+        user: getAuthValue('activeUserEmail') || 'School Admin',
         time: new Date().toISOString(),
         type: 'approval'
       });
@@ -2499,7 +2505,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const currentAudit = [...this.contentService.auditLogs];
     currentAudit.unshift({
       action: `School Admin (${this.schoolName}) registered/updated Team: ${newTeam.name} under ${newTeam.track}`,
-      user: localStorage.getItem('activeUserEmail') || 'School Admin',
+      user: getAuthValue('activeUserEmail') || 'School Admin',
       time: new Date().toISOString(),
       type: 'approval'
     });

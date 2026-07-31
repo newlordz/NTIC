@@ -2888,6 +2888,11 @@
           <span>{{ loginError }}</span>
         </div>
 
+        <label class="lm-remember" style="display:flex;align-items:center;gap:8px;margin:2px 0 14px;cursor:pointer;font-size:13px;color:var(--on-surface-variant);">
+          <input type="checkbox" [(ngModel)]="rememberDevice" name="rememberDevice" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer;">
+          <span>Remember this device</span>
+        </label>
+
         <button type="submit" class="lm-submit" [disabled]="isLoggingIn || !loginEmail.trim()">
           <ng-container *ngIf="!isLoggingIn">
             <span>Enter Authorized Workspace</span>

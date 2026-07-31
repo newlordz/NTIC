@@ -1,3 +1,4 @@
+﻿import { getAuthValue } from '../../services/session.util';
 import {
   Component,
   OnInit,
@@ -176,7 +177,7 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   get teams(): JudgeTeam[] {
-    const activeUserEmail = localStorage.getItem('activeUserEmail') || '';
+    const activeUserEmail = getAuthValue('activeUserEmail') || '';
     const activeUser = this.contentService.users.find(u => u.email === activeUserEmail || u.ticket === activeUserEmail);
     const judgeTrack = activeUser?.track?.toLowerCase() || '';
 
@@ -221,8 +222,8 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    const role = localStorage.getItem('activeRoleId');
-    const email = localStorage.getItem('activeUserEmail');
+    const role = getAuthValue('activeRoleId');
+    const email = getAuthValue('activeUserEmail');
     if (role !== 'judge' || !email) {
       this.router.navigate(['/']);
       return;
@@ -306,8 +307,8 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   get loggedInJudge(): any {
-    const activeUserEmail = localStorage.getItem('activeUserEmail') || '';
-    const activeTicket = localStorage.getItem('activeUserTicket') || '';
+    const activeUserEmail = getAuthValue('activeUserEmail') || '';
+    const activeTicket = getAuthValue('activeUserTicket') || '';
     const activeUser = this.contentService.users.find(u => 
       (activeUserEmail && u.email?.toLowerCase() === activeUserEmail.toLowerCase()) ||
       (activeTicket && u.ticket?.toLowerCase() === activeTicket.toLowerCase())

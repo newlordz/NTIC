@@ -1,3 +1,4 @@
+﻿import { getAuthValue, setAuthValue } from '../../services/session.util';
 import { Component, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, ViewChild, Renderer2, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
@@ -321,6 +322,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   isLoginModalOpen = false;
+  rememberDevice = true;
 
   openInfoModal(event?: Event, section?: string): void {
     if (event) {
@@ -338,6 +340,10 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.email = '';
     this.password = '';
     this.loginError = '';
+    const rememberedEmail = getAuthValue('activeUserEmail');
+    if (rememberedEmail && typeof window !== 'undefined' && window.localStorage.getItem('activeUserEmail') !== null) {
+      this.email = rememberedEmail;
+    }
     this.detectedRoleName = '';
     if (typeof document !== 'undefined') {
       document.body.style.overflow = 'hidden';
@@ -1470,8 +1476,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
       // Super admin bypass
       if (credential === 'admin@ntic.org.gh') {
-        localStorage.setItem('activeRoleId', 'super_admin');
-        localStorage.setItem('activeUserEmail', credential);
+        setAuthValue('activeRoleId', 'super_admin', this.rememberDevice);
+        setAuthValue('activeUserEmail', credential, this.rememberDevice);
         this.contentService.saveAuditLogs([
           { action: 'Admin login: ' + credential, user: credential, time: 'Just now', type: 'auth' },
           ...this.contentService.auditLogs
@@ -1503,9 +1509,9 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       registeredUser.lastLogin = 'Just now';
       this.contentService.saveUsers([...this.contentService.users]);
 
-      localStorage.setItem('activeRoleId', finalRole);
-      localStorage.setItem('activeUserEmail', registeredUser.email || credential);
-      localStorage.setItem('activeUserTicket', registeredUser.ticket || credential);
+      setAuthValue('activeRoleId', finalRole, this.rememberDevice);
+      setAuthValue('activeUserEmail', registeredUser.email || credential, this.rememberDevice);
+      setAuthValue('activeUserTicket', registeredUser.ticket || credential, this.rememberDevice);
       this.contentService.saveAuditLogs([
         { action: `${finalRole} login: ${credential}`, user: credential, time: new Date().toISOString(), type: 'auth' },
         ...this.contentService.auditLogs
@@ -3630,7 +3636,7 @@ for (let i = people.length - 1; i > 0; i--) {
   }
 
   get currentUserEmail(): string {
-    const u = localStorage.getItem('activeUserEmail');
+    const u = getAuthValue('activeUserEmail');
     if (u && u.trim()) return u.trim().toLowerCase();
     let guestId = localStorage.getItem('ntic_guest_device_id');
     if (!guestId) {

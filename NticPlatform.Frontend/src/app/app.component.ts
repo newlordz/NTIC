@@ -1,3 +1,4 @@
+﻿import { getAuthValue, clearAllAuthValues } from './services/session.util';
 import { Component, OnInit, OnDestroy, HostListener, Renderer2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
@@ -158,8 +159,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   logout(): void {
-    localStorage.removeItem('activeRoleId');
-    localStorage.removeItem('activeUserEmail');
+    clearAllAuthValues();
     this.currentUser = null;
     this.chatbot.resetSession();
     this.closeMobileSidebar();
@@ -172,8 +172,8 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   loadUserProfile(): void {
-    const roleId = localStorage.getItem('activeRoleId');
-    const activeEmail = localStorage.getItem('activeUserEmail') || '';
+    const roleId = getAuthValue('activeRoleId');
+    const activeEmail = getAuthValue('activeUserEmail') || '';
     
     if (!roleId || !activeEmail) {
       this.currentUser = null;

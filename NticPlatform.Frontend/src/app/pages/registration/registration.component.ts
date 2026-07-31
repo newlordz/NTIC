@@ -1,3 +1,4 @@
+﻿import { getAuthValue, setAuthValue, clearAuthValue } from '../../services/session.util';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -888,12 +889,17 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   isLoggingIn = false;
   loginError = '';
   isPasswordVisible = false;
+  rememberDevice = true;
 
   openLoginModal(): void {
     this.isLoginModalOpen = true;
     this.loginEmail = '';
     this.loginPassword = '';
     this.loginError = '';
+    const rememberedEmail = getAuthValue('activeUserEmail');
+    if (rememberedEmail && typeof window !== 'undefined' && window.localStorage.getItem('activeUserEmail') !== null) {
+      this.loginEmail = rememberedEmail;
+    }
   }
 
   closeLoginModal(): void {
@@ -917,8 +923,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       const pass = this.loginPassword.trim();
 
       if (credential === 'admin@ntic.org.gh') {
-        localStorage.setItem('activeRoleId', 'super_admin');
-        localStorage.setItem('activeUserEmail', credential);
+        setAuthValue('activeRoleId', 'super_admin', this.rememberDevice);
+        setAuthValue('activeUserEmail', credential, this.rememberDevice);
         this.contentService.saveAuditLogs([
           { action: 'Admin login: ' + credential, user: credential, time: new Date().toISOString(), type: 'auth' },
           ...this.contentService.auditLogs
@@ -949,9 +955,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       registeredUser.lastLogin = 'Just now';
       this.contentService.saveUsers([...this.contentService.users]);
 
-      localStorage.setItem('activeRoleId', finalRole);
-      localStorage.setItem('activeUserEmail', registeredUser.email || credential);
-      localStorage.setItem('activeUserTicket', registeredUser.ticket || credential);
+      setAuthValue('activeRoleId', finalRole, this.rememberDevice);
+      setAuthValue('activeUserEmail', registeredUser.email || credential, this.rememberDevice);
+      setAuthValue('activeUserTicket', registeredUser.ticket || credential, this.rememberDevice);
       this.contentService.saveAuditLogs([
         { action: `${finalRole} login: ${credential}`, user: credential, time: new Date().toISOString(), type: 'auth' },
         ...this.contentService.auditLogs
@@ -985,7 +991,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.purgeExpiredDrafts();
-    const activeRoleId = localStorage.getItem('activeRoleId');
+    const activeRoleId = getAuthValue('activeRoleId');
     this.isAuthorizedUser = !!(activeRoleId && ['super_admin', 'school_admin', 'instructor'].includes(activeRoleId));
 
     this.route.queryParams.subscribe(params => {
@@ -1363,8 +1369,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       this.contentService.users = [newUser, ...this.contentService.users];
       this.contentService.saveUsers(this.contentService.users);
 
-      localStorage.setItem('activeRoleId', 'student');
-      localStorage.setItem('activeUserEmail', leadEmail);
+      setAuthValue('activeRoleId', 'student', true);
+      setAuthValue('activeUserEmail', leadEmail, true);
       this.openCredentialsModal(
         'Group Registration Successful! 🎉',
         `Your team "${this.teamForm.name}" has been registered. Copy and save your login credentials below:`,
@@ -1411,8 +1417,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.contentService.users = [newUser, ...this.contentService.users];
     this.contentService.saveUsers(this.contentService.users);
 
-    localStorage.setItem('activeRoleId', 'student');
-    localStorage.setItem('activeUserEmail', studentEmail);
+    setAuthValue('activeRoleId', 'student', true);
+    setAuthValue('activeUserEmail', studentEmail, true);
     this.openCredentialsModal(
       'Registration Successful! 🎉',
       'Your registration has been approved. Copy and save your secure login credentials below:',

@@ -1,3 +1,4 @@
+﻿import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -98,7 +99,7 @@ export class CompetitionsComponent implements OnInit {
   ];
 
   get activeRoleId(): string {
-    return (typeof localStorage !== 'undefined' && localStorage.getItem('activeRoleId')) || 'student';
+    return (typeof localStorage !== 'undefined' && getAuthValue('activeRoleId')) || 'student';
   }
 
   get isStudent(): boolean {

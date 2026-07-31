@@ -1,3 +1,4 @@
+﻿import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
@@ -44,7 +45,7 @@ export class NewsComponent implements OnInit, OnDestroy {
   }
 
   get currentUserEmail(): string {
-    const u = localStorage.getItem('activeUserEmail');
+    const u = getAuthValue('activeUserEmail');
     if (u && u.trim()) return u.trim().toLowerCase();
     let guestId = localStorage.getItem('ntic_guest_device_id');
     if (!guestId) {
