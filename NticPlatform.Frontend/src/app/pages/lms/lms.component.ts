@@ -520,7 +520,15 @@ export class LmsComponent implements OnInit {
           source_code_path: this.newSubmission.fileName,
           video_url: ''
         }).subscribe({
-          next: (res) => console.log('Successfully saved submission to PostgreSQL DB:', res),
+          next: (res) => {
+            console.log('Successfully saved submission to PostgreSQL DB:', res);
+            const currentSubs = [...this.contentService.submissions];
+            const idx = currentSubs.findIndex(s => s.id === subId);
+            if (idx !== -1 && res && res.id) {
+              currentSubs[idx] = { ...currentSubs[idx], backendId: res.id };
+              this.contentService.saveSubmissions(currentSubs);
+            }
+          },
           error: (err) => console.error('Failed to save submission to PostgreSQL:', err)
         });
       } catch(e) {}
@@ -539,7 +547,8 @@ export class LmsComponent implements OnInit {
       score: null,
       status: 'pending' as const,
       time: new Date().toISOString(),
-      feedback: 'Submitted successfully. Awaiting mentor evaluation.'
+      feedback: 'Submitted successfully. Awaiting mentor evaluation.',
+      backendId: ''
     };
     currentSubmissions.unshift(newSub);
     this.contentService.saveSubmissions(currentSubmissions);

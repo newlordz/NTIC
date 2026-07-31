@@ -1148,6 +1148,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         organization: req.entity,
         region: req.details?.region || '',
         ticket,
+        applicationCode: req.details?.code || '',
         status: 'Active',
         registeredAt: new Date().toLocaleDateString('en-GB'),
         lastLogin: 'Never'
@@ -1165,7 +1166,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         const currentTeams = [...this.contentService.teams];
         req.details.teamsList.forEach((t: any) => {
           const roster = [t.leadName, t.member2Name, t.member3Name, t.member4Name, t.member5Name].filter(Boolean).map((n: string) => n.trim()).filter((n: string) => n.length > 0);
-          currentTeams.push({
+          const newTeam: any = {
             name: t.name,
             track: t.track || 'Coding',
             lead: t.leadName || (roster[0] || 'Student Captain'),
@@ -1175,9 +1176,39 @@ export class DashboardComponent implements OnInit, OnDestroy {
             mentor: 'Assigned Coordinator',
             motto: 'National STEM Competition Squad',
             schoolName: req.entity
-          });
+          };
+          currentTeams.push(newTeam);
+          this.contentService.syncNewTeamToBackend(newTeam);
         });
         this.contentService.saveTeams(currentTeams);
+      }
+
+      if (req.details?.students && Array.isArray(req.details.students)) {
+        const currentUsers = [...this.contentService.users];
+        req.details.students.forEach((s: any) => {
+          const existingEmail = s.email || `${s.name?.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`;
+          if (!currentUsers.find((u: any) => u.email?.trim().toLowerCase() === existingEmail.toLowerCase())) {
+            const sTicket = `NTIC-STU-${Math.floor(1000 + Math.random() * 9000)}`;
+            const sOtp = Math.floor(100000 + Math.random() * 900000).toString();
+            currentUsers.push({
+              id: `USR-${Date.now()}-${Math.random().toString(36).substring(2, 4)}`,
+              role: 'student' as const,
+              fullName: s.name,
+              email: existingEmail,
+              phone: '',
+              otp: sOtp,
+              password: sOtp,
+              organization: req.entity,
+              track: s.track || (req.details?.teamsList?.length ? req.details.teamsList[0].track : 'coding'),
+              ticket: sTicket,
+              applicationCode: req.details?.code || '',
+              status: 'Active',
+              registeredAt: new Date().toLocaleDateString('en-GB'),
+              lastLogin: 'Never'
+            });
+          }
+        });
+        this.contentService.saveUsers(currentUsers);
       }
 
       this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp, req.details?.phone || req.details?.repTel);
@@ -1194,13 +1225,79 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const currentTeams = [...this.contentService.teams];
       currentTeams.push(newTeam);
       this.contentService.saveTeams(currentTeams);
-      
+      this.contentService.syncNewTeamToBackend(newTeam);
+
       const stats = { ...this.contentService.platformStats };
       stats.projects += 0.1;
       this.contentService.updatePlatformStats(stats);
 
-      this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A — Team Added', 'N/A', req.details?.phone);
-      this.showCustomAlert(`Team "${req.entity}" has been successfully approved and added to national competition tracks.`, 'Team Addition Approved', 'success');
+      const leadEmail = req.details?.leadEmail || req.contact;
+      if (leadEmail) {
+        const ticket = 'NTIC-GRP-' + Math.floor(1000 + Math.random() * 9000);
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const leadName = req.details?.members?.[0] || 'Team Lead';
+        const newLeadUser = {
+          id: 'USR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+          role: 'student' as const,
+          registrationMode: 'group' as const,
+          fullName: `${leadName} (${req.entity})`,
+          email: leadEmail,
+          phone: '',
+          otp,
+          password: otp,
+          organization: req.entity,
+          track: req.details?.track || 'Coding',
+          ticket,
+          applicationCode: req.details?.code || '',
+          status: 'Active',
+          registeredAt: new Date().toLocaleDateString('en-GB'),
+          lastLogin: 'Never'
+        };
+        if (req.details?.memberPhotos?.length) (newLeadUser as any).photoFileId = req.details.memberPhotos[0];
+        const currentUsers = [...this.contentService.users];
+        currentUsers.push(newLeadUser);
+        this.contentService.saveUsers(currentUsers);
+
+        this.emailService.sendApprovalEmail(leadEmail, leadName, req.entity, req.type, ticket, otp, '');
+        this.openCredentialsModal('Team Addition Approved!', `Your squad "${req.entity}" has been approved. Team Lead credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${leadEmail}`);
+      } else {
+        this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A — Team Added', 'N/A', req.details?.phone);
+        this.showCustomAlert(`Team "${req.entity}" has been successfully approved and added to national competition tracks.`, 'Team Addition Approved', 'success');
+      }
+    } else if (req.type === 'Student Registration') {
+      const ticket = 'NTIC-STU-' + Math.floor(1000 + Math.random() * 9000);
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const newStudent = {
+        id: 'USR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+        role: 'student' as const,
+        fullName: req.entity,
+        email: req.contact,
+        phone: '',
+        guardianName: req.details?.guardianName || '',
+        guardianPhone: req.details?.guardianPhone || '',
+        photoFileId: req.details?.photoFileId || undefined,
+        otp,
+        password: otp,
+        organization: req.details?.school || 'Independent Competitor',
+        region: req.details?.region || '',
+        track: req.details?.track || 'Coding',
+        skills: req.details?.skills || { alg: 'intermediate', hw: 'novice', ai: 'novice' },
+        ticket,
+        applicationCode: req.details?.code || '',
+        status: 'Active',
+        registeredAt: new Date().toLocaleDateString('en-GB'),
+        lastLogin: 'Never'
+      };
+      const currentUsers = [...this.contentService.users];
+      currentUsers.push(newStudent);
+      this.contentService.saveUsers(currentUsers);
+
+      const stats = { ...this.contentService.platformStats };
+      stats.students += 1;
+      this.contentService.updatePlatformStats(stats);
+
+      this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp, req.details?.guardianPhone);
+      this.openCredentialsModal('Student Registration Approved!', `Competitor account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
     } else if (req.type === 'Instructor Access') {
       const ticket = 'NTIC-INS-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -1215,6 +1312,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         organization: req.details?.institution || 'NTIC partner',
         track: req.details?.specialization || 'Coding & AI',
         ticket,
+        applicationCode: req.details?.code || '',
         status: 'Active',
         registeredAt: new Date().toLocaleDateString('en-GB'),
         lastLogin: 'Never'
@@ -1267,6 +1365,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
         'Student team list missing crucial details',
         'Selected competition track has reached capacity',
         'Project proposal description too vague',
+        'Duplicate registration detected'
+      ];
+    } else if (type === 'Student Registration') {
+      return [
+        'Student eligibility details incomplete',
+        'Guardian consent not verified',
+        'Contact email or phone invalid',
         'Duplicate registration detected'
       ];
     } else {
@@ -1354,6 +1459,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const defaultReasons: Record<string, string> = {
       'School Registration': 'Application did not meet accreditation requirements',
       'Team Addition': 'Team registration did not meet competition criteria',
+      'Student Registration': 'Student registration did not meet eligibility requirements',
       'Instructor Access': 'Instructor credentials could not be verified'
     };
     const reason = defaultReasons[req.type] || 'Application did not meet requirements';

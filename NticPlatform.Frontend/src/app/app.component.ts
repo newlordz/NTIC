@@ -9,6 +9,7 @@ import { TimeAgoPipe } from './services/time-ago.pipe';
 import { DialogService } from './services/dialog.service';
 import { ChatbotComponent } from './chatbot/chatbot.component';
 import { ChatbotService } from './services/chatbot.service';
+import { ApiService } from './services/api.service';
 
 @Component({
   selector: 'app-root',
@@ -59,7 +60,7 @@ export class AppComponent implements OnInit, OnDestroy {
     'reporting':    'Reports & Analytics',
   };
 
-  constructor(private router: Router, public themeService: ThemeService, public contentService: ContentService, public dialogService: DialogService, private renderer: Renderer2, private chatbot: ChatbotService) {
+  constructor(private router: Router, public themeService: ThemeService, public contentService: ContentService, public dialogService: DialogService, private renderer: Renderer2, private chatbot: ChatbotService, private apiService: ApiService) {
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
@@ -159,7 +160,15 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   logout(): void {
-    clearAllAuthValues();
+    const token = getAuthValue('activeUserToken');
+    if (token) {
+      this.apiService.logout(token).subscribe({
+        next: () => clearAllAuthValues(),
+        error: () => clearAllAuthValues()
+      });
+    } else {
+      clearAllAuthValues();
+    }
     this.currentUser = null;
     this.chatbot.resetSession();
     this.closeMobileSidebar();

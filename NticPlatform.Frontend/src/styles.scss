@@ -214,13 +214,13 @@ button,
 /* ── Micro-interactions ── */
 .btn:hover,
 .sidebar-new-btn:hover {
-  transform: translateY(-2px) scale(1.01);
+  transform: scale(1.03);
   box-shadow: 0 8px 24px rgba(0, 63, 135, 0.22);
 }
 
 .btn:active,
 .sidebar-new-btn:active {
-  transform: translateY(0) scale(0.98);
+  transform: scale(0.98);
   box-shadow: none;
 }
 

@@ -5,7 +5,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 PG_HOST = os.getenv("POSTGRES_HOST", "localhost")
 PG_PORT = os.getenv("POSTGRES_PORT", "5432")
 PG_USER = os.getenv("POSTGRES_USER", "postgres")
-PG_PASSWORD = os.getenv("POSTGRES_PASSWORD", "botsio212nyc")
+PG_PASSWORD = os.getenv("POSTGRES_PASSWORD", os.getenv("PGPASSWORD", ""))
 PG_DB = os.getenv("POSTGRES_DB", "NticPlatformDb")
 
 def get_pg_connection():

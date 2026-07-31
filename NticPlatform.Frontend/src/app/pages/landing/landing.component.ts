@@ -7,6 +7,7 @@ import { ThemeService } from '../../services/theme.service';
 import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
+import { ApiService } from '../../services/api.service';
 import { ChatbotComponent } from '../../chatbot/chatbot.component';
 
 interface UserRole {
@@ -923,7 +924,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     private renderer: Renderer2,
     private fileStorage: FileStorageService,
     private cdr: ChangeDetectorRef,
-    public dialogService: DialogService
+    public dialogService: DialogService,
+    private apiService: ApiService
   ) {
     this.activeRoleId = '';
     const heroSlides = this.contentService.heroSlides.length > 0
@@ -1465,76 +1467,106 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loginError = '';
     this.detectedRoleName = '';
 
-    setTimeout(() => {
-      this.isLoggingIn = false;
-      if (typeof document !== 'undefined') {
-        document.body.style.overflow = '';
+    const credential = this.email.trim().toLowerCase();
+    const pass = this.password.trim();
+
+    this.apiService.login(credential, pass).subscribe({
+      next: (res) => this.completeLogin(res.role, res, credential),
+      error: (err) => {
+        if (err.status === 0 || err.status === 502 || err.status === 503) {
+          this.localLogin(credential, pass);
+        } else if (err.status === 401) {
+          this.isLoggingIn = false;
+          if (typeof document !== 'undefined') {
+            document.body.style.overflow = '';
+          }
+          this.loginError = 'Incorrect email or password. Please try again.';
+        } else {
+          this.isLoggingIn = false;
+          if (typeof document !== 'undefined') {
+            document.body.style.overflow = '';
+          }
+          this.loginError = 'Login is unavailable right now. Please try again later.';
+        }
       }
+    });
+  }
 
-      const credential = this.email.trim().toLowerCase();
-      const pass = this.password.trim();
+  private localLogin(credential: string, pass: string): void {
+    this.isLoggingIn = false;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+    }
 
-      // Super admin bypass
-      if (credential === 'admin@ntic.org.gh') {
-        setAuthValue('activeRoleId', 'super_admin', this.rememberDevice);
-        setAuthValue('activeUserEmail', credential, this.rememberDevice);
-        this.contentService.saveAuditLogs([
-          { action: 'Admin login: ' + credential, user: credential, time: 'Just now', type: 'auth' },
-          ...this.contentService.auditLogs
-        ]);
-        this.router.navigate(['/dashboard']);
-        return;
-      }
+    if (credential === 'admin@ntic.org.gh') {
+      this.loginError = 'Admin login requires the backend server. Please make sure it is running.';
+      return;
+    }
 
-      // Look up user by email or ticket
-      const registeredUser = this.contentService.users.find(u =>
-        (u.email?.trim().toLowerCase() === credential) ||
-        (u.ticket?.trim().toLowerCase() === credential)
-      );
+    const registeredUser = this.contentService.users.find(u =>
+      (u.email?.trim().toLowerCase() === credential) ||
+      (u.ticket?.trim().toLowerCase() === credential)
+    );
 
-      if (!registeredUser) {
-        this.loginError = 'Unrecognized credentials. Please check your email or access pass and try again.';
-        return;
-      }
+    if (!registeredUser) {
+      this.loginError = 'Unrecognized credentials. Please check your email or access pass and try again.';
+      return;
+    }
 
-      // Verify password (check password field first, then OTP as fallback)
-      const expectedPass = registeredUser.password || registeredUser.otp || '';
-      if (!expectedPass || pass !== expectedPass) {
-        this.loginError = 'Incorrect password or verification code. Please try again.';
-        return;
-      }
+    const expectedPass = registeredUser.password || registeredUser.otp || '';
+    if (!expectedPass || pass !== expectedPass) {
+      this.loginError = 'Incorrect password or verification code. Please try again.';
+      return;
+    }
 
-      const finalRole = registeredUser.role;
-      registeredUser.status = 'Active';
-      registeredUser.lastLogin = 'Just now';
-      this.contentService.saveUsers([...this.contentService.users]);
+    const finalRole = registeredUser.role;
+    registeredUser.status = 'Active';
+    registeredUser.lastLogin = 'Just now';
+    this.contentService.saveUsers([...this.contentService.users]);
 
-      setAuthValue('activeRoleId', finalRole, this.rememberDevice);
-      setAuthValue('activeUserEmail', registeredUser.email || credential, this.rememberDevice);
-      setAuthValue('activeUserTicket', registeredUser.ticket || credential, this.rememberDevice);
-      this.contentService.saveAuditLogs([
-        { action: `${finalRole} login: ${credential}`, user: credential, time: new Date().toISOString(), type: 'auth' },
-        ...this.contentService.auditLogs
-      ]);
+    this.completeLogin(finalRole, {
+      email: registeredUser.email || credential,
+      ticket: registeredUser.ticket || credential
+    }, credential);
+  }
 
-      const roleRoutes: Record<string, string> = {
-        instructor: '/instructor',
-        judge: '/judge',
-        student: '/lms',
-        school_admin: '/dashboard',
-        sponsor: '/sponsors',
-        super_admin: '/dashboard',
-        content_manager: '/dashboard',
-        reviewer: '/dashboard',
-        competition_manager: '/dashboard'
-      };
+  private completeLogin(role: string, user: any, credential: string): void {
+    this.isLoggingIn = false;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+    }
 
-      if ((finalRole === 'judge' || finalRole === 'sponsor') && registeredUser.organization === '_pending_profile') {
-        this.router.navigate(['/profile-completion']);
-      } else {
-        this.router.navigate([roleRoutes[finalRole] || '/dashboard']);
-      }
-    }, 800);
+    const email = user.email || credential;
+    const ticket = user.ticket || credential;
+
+    setAuthValue('activeRoleId', role, this.rememberDevice);
+    setAuthValue('activeUserEmail', email, this.rememberDevice);
+    setAuthValue('activeUserTicket', ticket, this.rememberDevice);
+    if (user.token) {
+      setAuthValue('activeUserToken', user.token, this.rememberDevice);
+    }
+    this.contentService.saveAuditLogs([
+      { action: `${role} login: ${email}`, user: email, time: new Date().toISOString(), type: 'auth' },
+      ...this.contentService.auditLogs
+    ]);
+
+    const roleRoutes: Record<string, string> = {
+      instructor: '/instructor',
+      judge: '/judge',
+      student: '/lms',
+      school_admin: '/dashboard',
+      sponsor: '/sponsors',
+      super_admin: '/dashboard',
+      content_manager: '/dashboard',
+      reviewer: '/dashboard',
+      competition_manager: '/dashboard'
+    };
+
+    if ((role === 'judge' || role === 'sponsor') && user.organization === '_pending_profile') {
+      this.router.navigate(['/profile-completion']);
+    } else {
+      this.router.navigate([roleRoutes[role] || '/dashboard']);
+    }
   }
 
   // ─── Championship Stories Animations ────────────────────────────────

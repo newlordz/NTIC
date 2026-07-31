@@ -441,6 +441,11 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
         feedback: this.judgeNotes || 'Scored by judge.'
       };
       this.contentService.saveSubmissions(currentSubmissions);
+      this.contentService.syncGradeToBackend(this.selectedTeam!.id, {
+        score: this.totalScore,
+        feedback: this.judgeNotes || 'Scored by judge.',
+        status: 'approved'
+      });
     }
 
     // 2. Update Leaderboard Entry points dynamically

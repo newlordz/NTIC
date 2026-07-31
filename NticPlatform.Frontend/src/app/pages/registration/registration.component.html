@@ -78,7 +78,7 @@
         </div>
         <div class="gateway-card-body">
           <h3>Resume Registration</h3>
-          <p>Resume a saved draft application. Requires identity verification via OTP sent to your email or phone.</p>
+          <p>Resume a saved draft application, or track and correct an already-submitted application that is still under review.</p>
           <ul class="gateway-features">
             <li>
               <span class="material-symbols-outlined feat-icon">check_circle</span> 
@@ -94,8 +94,12 @@
             </li>
           </ul>
         </div>
-        <div class="gateway-card-footer">
+        <div class="gateway-card-footer" style="display:flex; flex-direction:column; gap:8px;">
           <button class="btn btn-secondary btn-full">Resume Application</button>
+          <button class="btn btn-subtle btn-full" (click)="$event.stopPropagation(); openTracker()">
+            <span class="material-symbols-outlined" style="font-size: 17px; vertical-align: middle; margin-right: 4px;">manage_search</span>
+            Track / Edit Submitted Application
+          </button>
         </div>
       </div>
     </div>
@@ -113,7 +117,7 @@
       <div class="landing-brand-logo-wrap">
         <div class="brand-crest">
           <div class="crest-shield" style="background: linear-gradient(135deg, #065f46, #10b981);">
-            <span class="material-symbols-outlined shield-icon">search_track</span>
+            <span class="material-symbols-outlined shield-icon">manage_search</span>
           </div>
         </div>
         <div class="brand-text">
@@ -172,11 +176,19 @@
         </div>
         <div style="background: var(--surface-container, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px; padding: 16px 20px;">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+            <div><span style="color: var(--on-surface-variant);">Application Code:</span> <strong style="font-family: 'Courier New', monospace; letter-spacing: 0.5px; color: #92400e;">{{ trackerResult?.application?.details?.code || '—' }}</strong></div>
             <div><span style="color: var(--on-surface-variant);">Type:</span> <strong>{{ trackerResult?.application?.type }}</strong></div>
             <div><span style="color: var(--on-surface-variant);">Entity:</span> <strong>{{ trackerResult?.application?.entity }}</strong></div>
             <div><span style="color: var(--on-surface-variant);">Contact:</span> <strong>{{ trackerResult?.application?.contact }}</strong></div>
             <div><span style="color: var(--on-surface-variant);">Region:</span> <strong>{{ trackerResult?.application?.details?.region || '—' }}</strong></div>
           </div>
+        </div>
+        <div style="text-align: center; padding: 20px 0;">
+          <button class="btn btn-primary" (click)="startEditApplication()">
+            <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">edit</span>
+            Edit Application
+          </button>
+          <p style="font-size: 12px; color: var(--on-surface-variant); margin: 10px 0 0;">While your application is still under review, you can correct or update any details you submitted.</p>
         </div>
       </div>
 
@@ -196,6 +208,7 @@
         </div>
         <div style="background: var(--surface-container, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px; padding: 16px 20px;">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+            <div><span style="color: var(--on-surface-variant);">Application Code:</span> <strong style="font-family: 'Courier New', monospace; letter-spacing: 0.5px; color: #047857;">{{ trackerResult?.application?.details?.code || '—' }}</strong></div>
             <div><span style="color: var(--on-surface-variant);">Type:</span> <strong>{{ trackerResult?.application?.type }}</strong></div>
             <div><span style="color: var(--on-surface-variant);">Entity:</span> <strong>{{ trackerResult?.application?.entity }}</strong></div>
             <div><span style="color: var(--on-surface-variant);">Contact:</span> <strong>{{ trackerResult?.application?.contact }}</strong></div>
@@ -418,8 +431,10 @@
           <button class="btn btn-ghost btn-sm" (click)="goBackToGateway()" style="padding: 4px; border-radius: 50%; color:var(--on-surface-variant); display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;"><span class="material-symbols-outlined" style="margin:0;">arrow_back</span></button>
           {{ activeTab === 'school' ? 'Institution' : activeTab === 'instructor' ? 'Instructor' : activeTab === 'judge' ? 'Judge' : activeTab === 'student' ? 'Group/Individual' : 'Sponsor' }} Registration
           <span *ngIf="isDraftResumed" class="badge warning" style="vertical-align: middle; margin-left: 8px;">Draft Resumed</span>
+          <span *ngIf="editingApprovalId" class="badge" style="vertical-align: middle; margin-left: 8px; background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd;">Editing Pending Application</span>
         </h1>
-        <p class="page-subtitle">{{ activeTab === 'student' ? 'Register onto the national championship platform as an independent competitor or competition squad' : 'Register onto the national championship platform as a chosen ' + (activeTab === 'school' ? 'institution representative' : activeTab) }}</p>
+        <p class="page-subtitle" *ngIf="!editingApprovalId">{{ activeTab === 'student' ? 'Register onto the national championship platform as an independent competitor or competition squad' : 'Register onto the national championship platform as a chosen ' + (activeTab === 'school' ? 'institution representative' : activeTab) }}</p>
+        <p class="page-subtitle" *ngIf="editingApprovalId">You are correcting details on a pending application. Changes will be synced to your submitted application, which remains under review.</p>
       </div>
       <div style="display:flex; gap:10px; align-items:center;">
         <button type="button" class="btn btn-subtle" (click)="openLoginModal()" style="display: flex; align-items: center; gap: 6px;">
@@ -2674,10 +2689,32 @@
         </div>
       </div>
       
-      <h3 *ngIf="activeTab !== 'judge'">Registration Submitted!</h3>
+      <h3 *ngIf="activeTab !== 'judge' && !justUpdatedApplication">Registration Submitted!</h3>
+      <h3 *ngIf="activeTab !== 'judge' && justUpdatedApplication">Application Updated!</h3>
       <h3 *ngIf="activeTab === 'judge'">Judge Account Active!</h3>
-      
-      <p *ngIf="activeTab !== 'judge'">Your institutional application for the Ghana National Technology & Innovation Championship has been securely processed and recorded.</p>
+
+      <p *ngIf="activeTab !== 'judge' && !justUpdatedApplication && activeTab !== 'student'">Your institutional application for the Ghana National Technology & Innovation Championship has been securely processed and recorded.</p>
+      <p *ngIf="activeTab === 'student' && !justUpdatedApplication">Your registration for the Ghana National Technology & Innovation Championship has been securely processed and recorded.</p>
+      <p *ngIf="activeTab !== 'judge' && justUpdatedApplication">Your application details have been successfully updated. The review team will now see your latest information while your application remains under review.</p>
+
+      <div *ngIf="activeTab !== 'judge' && lastApplicationCode" style="width: 100%; background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(5,150,105,0.06)); border: 1px dashed rgba(16,185,129,0.4); border-radius: 12px; padding: 16px 18px; margin: 4px 0 8px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+          <div>
+            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #059669; margin-bottom: 4px;">
+              <span class="material-symbols-outlined" style="font-size: 13px; vertical-align: -2px; margin-right: 3px;">confirmation_number</span>
+              Application Code — Save This
+            </div>
+            <div style="font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: #065f46; letter-spacing: 1.5px;">{{ lastApplicationCode }}</div>
+          </div>
+          <button (click)="copyApplicationCode()" style="display:flex; align-items:center; gap:6px; background:linear-gradient(135deg,#10b981,#059669); color:#fff; border:none; border-radius:8px; padding:9px 14px; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(16,185,129,0.3);">
+            <span class="material-symbols-outlined" style="font-size:17px;">{{ copiedApplicationCode ? 'check' : 'content_copy' }}</span>
+            {{ copiedApplicationCode ? 'Copied!' : 'Copy Code' }}
+          </button>
+        </div>
+        <p style="margin: 10px 0 0; font-size: 12px; color: var(--on-surface-variant); text-align: left;">
+          Use this code to track your application status anytime. It is also linked to the account that will be generated once your application is approved.
+        </p>
+      </div>
       
       <div *ngIf="activeTab === 'judge'" style="width: 100%;">
         <p>Your registration as an official NTIC Judge has been successfully completed. An access token and activation OTP have been generated.</p>

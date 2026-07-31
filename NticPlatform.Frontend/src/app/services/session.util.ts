@@ -1,4 +1,4 @@
-const AUTH_KEYS = ['activeRoleId', 'activeUserEmail', 'activeUserTicket'] as const;
+const AUTH_KEYS = ['activeRoleId', 'activeUserEmail', 'activeUserTicket', 'activeUserToken'] as const;
 
 export type AuthKey = typeof AUTH_KEYS[number];
 

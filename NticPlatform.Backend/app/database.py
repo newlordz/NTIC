@@ -143,6 +143,25 @@ def init_postgres_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS users (
+                id VARCHAR(64) PRIMARY KEY,
+                email VARCHAR(150) UNIQUE NOT NULL,
+                full_name VARCHAR(200),
+                role VARCHAR(50) NOT NULL DEFAULT 'student',
+                ticket VARCHAR(64),
+                password_hash VARCHAR(255) NOT NULL,
+                status VARCHAR(20) DEFAULT 'Active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS auth_sessions (
+                token VARCHAR(128) PRIMARY KEY,
+                user_id VARCHAR(64) REFERENCES users(id) ON DELETE CASCADE,
+                email VARCHAR(150) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL
+            );
         """)
         conn.commit()
         cur.close()

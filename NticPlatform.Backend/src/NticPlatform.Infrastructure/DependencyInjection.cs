@@ -10,9 +10,19 @@ namespace NticPlatform.Infrastructure
     {
         public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
+            var connectionString = configuration.GetConnectionString("DefaultConnection") ?? "";
+            var password = configuration["POSTGRES_PASSWORD"]
+                ?? configuration["PGPASSWORD"]
+                ?? Environment.GetEnvironmentVariable("POSTGRES_PASSWORD")
+                ?? Environment.GetEnvironmentVariable("PGPASSWORD");
+            if (!string.IsNullOrEmpty(password) && !connectionString.Contains("Password=", StringComparison.OrdinalIgnoreCase))
+            {
+                connectionString += $";Password={password}";
+            }
+
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(
-                    configuration.GetConnectionString("DefaultConnection"),
+                    connectionString,
                     b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
 
             services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());

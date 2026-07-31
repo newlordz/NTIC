@@ -1,7 +1,9 @@
 import os
 import uuid
+import datetime
 from app.config import settings
 from app.database import init_postgres_db, get_db_connection
+from app.security import verify_password, create_token
 
 try:
     from fastapi import FastAPI, HTTPException, status, Request
@@ -73,14 +75,84 @@ try:
             conn.close()
         return {
             "status": "ok",
-            "database": db_status,
-            "config": {
-                "host": settings.POSTGRES_HOST,
-                "port": settings.POSTGRES_PORT,
-                "db": settings.POSTGRES_DB,
-                "user": settings.POSTGRES_USER
-            }
+            "database": db_status
         }
+
+    # AUTH
+    class LoginRequest(BaseModel):
+        email: str
+        password: str
+
+    def _get_db():
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        return conn
+
+    @app.post("/api/login")
+    def login(payload: LoginRequest):
+        conn = _get_db()
+        cur = conn.cursor()
+        email = payload.email.strip().lower()
+        try:
+            cur.execute(
+                "SELECT id, email, full_name, role, ticket, password_hash, status FROM users WHERE lower(email) = %s",
+                (email,),
+            )
+            row = cur.fetchone()
+        finally:
+            cur.close()
+            conn.close()
+
+        if not row:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        user_id, db_email, full_name, role, ticket, password_hash, status = row
+        if not verify_password(payload.password, password_hash):
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        token = create_token()
+        expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=7)
+        conn = _get_db()
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "INSERT INTO auth_sessions (token, user_id, email, expires_at) VALUES (%s, %s, %s, %s)",
+                (token, user_id, db_email, expires_at),
+            )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=500, detail=str(e))
+        cur.close()
+        conn.close()
+
+        return {
+            "token": token,
+            "user_id": user_id,
+            "email": db_email,
+            "full_name": full_name,
+            "role": role,
+            "ticket": ticket,
+            "status": status,
+        }
+
+    @app.post("/api/logout")
+    def logout(payload: dict = None):
+        payload = payload or {}
+        token = payload.get("token", "")
+        if token:
+            conn = _get_db()
+            cur = conn.cursor()
+            try:
+                cur.execute("DELETE FROM auth_sessions WHERE token = %s", (token,))
+                conn.commit()
+            except Exception:
+                conn.rollback()
+            cur.close()
+            conn.close()
+        return {"status": "ok"}
 
     # CHAT
     class ChatRequest(BaseModel):
@@ -279,6 +351,30 @@ try:
         conn.close()
         return {"status": "deleted", "id": item_id}
 
+    @app.patch("/api/students/{item_id}")
+    def update_student(item_id: str, payload: StudentCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "UPDATE students SET first_name = %s, last_name = %s, email = %s, track = %s, consent_granted = %s WHERE id = %s RETURNING id",
+                (payload.first_name, payload.last_name, payload.email, payload.track, payload.consent_granted, item_id)
+            )
+            row = cur.fetchone()
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="Student not found")
+        return {"id": item_id, "status": "updated"}
+
     # SUBMISSIONS
     @app.get("/api/submissions")
     def list_submissions():
@@ -324,6 +420,190 @@ try:
         conn.close()
         return {"status": "deleted", "id": item_id}
 
+    # SUBMISSION GRADING
+    class GradeSubmissionRequest(BaseModel):
+        score: int = None
+        feedback: str = ""
+        status: str = None
+
+    @app.patch("/api/submissions/{item_id}/grade")
+    def grade_submission(item_id: str, payload: GradeSubmissionRequest):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "UPDATE assignment_submissions SET score = COALESCE(%s, score), feedback = COALESCE(%s, feedback), status = COALESCE(%s, status) WHERE id = %s RETURNING id",
+                (payload.score, payload.feedback if payload.feedback != "" else None, payload.status, item_id)
+            )
+            row = cur.fetchone()
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="Submission not found")
+        return {"id": item_id, "status": "graded"}
+
+    # COMPETITIONS
+    class CompetitionCreate(BaseModel):
+        title: str
+        description: str = ""
+        track: str = "Coding"
+        category: str = ""
+        deadline: str = ""
+        status: str = "active"
+
+    @app.get("/api/competitions")
+    def list_competitions():
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT id, title, description, track, category, deadline, status, created_at FROM competitions ORDER BY created_at DESC")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [{"id": r[0], "title": r[1], "description": r[2], "track": r[3], "category": r[4], "deadline": r[5], "status": r[6], "created_at": str(r[7])} for r in rows]
+
+    @app.post("/api/competitions", status_code=status.HTTP_201_CREATED)
+    def create_competition(payload: CompetitionCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        comp_id = "comp-" + str(uuid.uuid4())[:8]
+        cur = conn.cursor()
+        try:
+            cur.execute("INSERT INTO competitions (id, title, description, track, category, deadline, status) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                        (comp_id, payload.title, payload.description, payload.track, payload.category, payload.deadline, payload.status))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        return {"id": comp_id, "title": payload.title, "status": payload.status}
+
+    @app.patch("/api/competitions/{item_id}")
+    def update_competition(item_id: str, payload: CompetitionCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "UPDATE competitions SET title = %s, description = %s, track = %s, category = %s, deadline = %s, status = %s WHERE id = %s RETURNING id",
+                (payload.title, payload.description, payload.track, payload.category, payload.deadline, payload.status, item_id)
+            )
+            row = cur.fetchone()
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="Competition not found")
+        return {"id": item_id, "status": "updated"}
+
+    @app.delete("/api/competitions/{item_id}")
+    def delete_competition(item_id: str):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("DELETE FROM competitions WHERE id = %s", (item_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "deleted", "id": item_id}
+
+    # TEAMS
+    class TeamCreate(BaseModel):
+        name: str
+        track: str = ""
+        lead: str = ""
+        members: int = 1
+        status: str = "Active"
+        school_name: str = ""
+
+    @app.get("/api/teams")
+    def list_teams():
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT id, name, track, lead, members, status, school_name FROM teams ORDER BY name ASC")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [{"id": r[0], "name": r[1], "track": r[2], "lead": r[3], "members": r[4], "status": r[5], "school_name": r[6]} for r in rows]
+
+    @app.post("/api/teams", status_code=status.HTTP_201_CREATED)
+    def create_team(payload: TeamCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        team_id = "team-" + str(uuid.uuid4())[:8]
+        cur = conn.cursor()
+        try:
+            cur.execute("INSERT INTO teams (id, name, track, lead, members, status, school_name) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                        (team_id, payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        return {"id": team_id, "name": payload.name, "status": payload.status}
+
+    @app.patch("/api/teams/{item_id}")
+    def update_team(item_id: str, payload: TeamCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "UPDATE teams SET name = %s, track = %s, lead = %s, members = %s, status = %s, school_name = %s WHERE id = %s RETURNING id",
+                (payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name, item_id)
+            )
+            row = cur.fetchone()
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="Team not found")
+        return {"id": item_id, "status": "updated"}
+
+    @app.delete("/api/teams/{item_id}")
+    def delete_team(item_id: str):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("DELETE FROM teams WHERE id = %s", (item_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "deleted", "id": item_id}
+
     # EVENTS
     @app.get("/api/events")
     def list_events():
@@ -362,6 +642,30 @@ try:
         cur.close()
         conn.close()
         return {"status": "deleted", "id": item_id}
+
+    @app.patch("/api/events/{item_id}")
+    def update_event(item_id: str, payload: EventCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "UPDATE events SET title = %s, date = %s, time = %s, location = %s, description = %s, type = %s WHERE id = %s RETURNING id",
+                (payload.title, payload.date, payload.time, payload.location, payload.description, payload.type, item_id)
+            )
+            row = cur.fetchone()
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="Event not found")
+        return {"id": item_id, "status": "updated"}
 
     # STORIES
     @app.get("/api/stories")
@@ -402,6 +706,30 @@ try:
         conn.close()
         return {"status": "deleted", "id": item_id}
 
+    @app.patch("/api/stories/{item_id}")
+    def update_story(item_id: str, payload: StoryCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "UPDATE stories SET title = %s, excerpt = %s, date = %s, image = %s WHERE id = %s RETURNING id",
+                (payload.title, payload.excerpt, payload.date, payload.image, item_id)
+            )
+            row = cur.fetchone()
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="Story not found")
+        return {"id": item_id, "status": "updated"}
+
     # SCHOOLS
     @app.get("/api/schools")
     def list_schools():
@@ -440,6 +768,30 @@ try:
         cur.close()
         conn.close()
         return {"status": "deleted", "id": item_id}
+
+    @app.patch("/api/schools/{item_id}")
+    def update_school(item_id: str, payload: SchoolCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "UPDATE schools SET name = %s, region = %s, teams = %s, score = %s, rank = %s, status = %s WHERE id = %s RETURNING id",
+                (payload.name, payload.region, payload.teams, payload.score, payload.rank, payload.status, item_id)
+            )
+            row = cur.fetchone()
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="School not found")
+        return {"id": item_id, "status": "updated"}
 
     # PHILOSOPHY
     @app.get("/api/philosophy")

@@ -257,6 +257,7 @@ export interface User {
   track?: string;
   tier?: string;
   ticket: string;
+  applicationCode?: string;
   status: string;
   registeredAt: string;
   lastLogin: string;
@@ -268,7 +269,7 @@ export interface User {
 
 export interface ApprovalRequest {
   id: string;
-  type: 'School Registration' | 'Team Addition' | 'Instructor Access';
+  type: 'School Registration' | 'Team Addition' | 'Student Registration' | 'Instructor Access';
   entity: string;
   contact: string;
   submitted: string;
@@ -295,7 +296,17 @@ export interface ApprovalRequest {
     track?: string;
     project?: string;
     members?: string[];
+    memberEmails?: string[];
+    leadEmail?: string;
     coach?: string;
+    photoFileId?: string;
+    memberPhotos?: string[];
+    skills?: any;
+    dob?: string;
+    gender?: string;
+    guardianName?: string;
+    guardianPhone?: string;
+    class?: string;
     institution?: string;
     credentials?: string;
     specialization?: string;
@@ -356,6 +367,7 @@ export interface Submission {
   feedback?: string;
   videoUrl?: string;
   sourceCodePath?: string;
+  backendId?: string;
 }
 
 @Injectable({
@@ -763,6 +775,67 @@ export class ContentService {
       },
       error: (e: any) => console.log('Backend students fallback to local cache')
     });
+
+    this.apiService.getCompetitions().subscribe({
+      next: (comps: any[]) => {
+        if (comps && comps.length > 0) {
+          const merged = this.mergeCompetitions(comps);
+          this.competitions = merged;
+          this.saveState('competitions', merged);
+        }
+      },
+      error: (e: any) => console.log('Backend competitions fallback to local cache')
+    });
+
+    this.apiService.getTeams().subscribe({
+      next: (teams: any[]) => {
+        if (teams && teams.length > 0) {
+          const merged = this.mergeTeams(teams);
+          this.teams = merged;
+          this.saveState('teams', merged);
+        }
+      },
+      error: (e: any) => console.log('Backend teams fallback to local cache')
+    });
+  }
+
+  private mergeCompetitions(backendComps: any[]): Competition[] {
+    const localById = new Map<string, Competition>();
+    this.competitions.forEach(c => localById.set(c.id, c));
+    backendComps.forEach((b: any) => {
+      localById.set(b.id, {
+        id: b.id,
+        title: b.title || 'Untitled Competition',
+        description: b.description || '',
+        track: b.track || 'Coding',
+        icon: 'emoji_events',
+        category: b.category || '',
+        teams: 0,
+        deadline: b.deadline || '',
+        prize: '',
+        status: (b.status === 'active' ? 'active' : b.status === 'registration' ? 'registration' : b.status === 'completed' ? 'completed' : b.status === 'draft' ? 'draft' : 'archived'),
+        progress: 0,
+        createdAt: b.created_at || new Date().toISOString()
+      });
+    });
+    return Array.from(localById.values());
+  }
+
+  private mergeTeams(backendTeams: any[]): Team[] {
+    const localById = new Map<string, Team>();
+    this.teams.forEach(t => { if (t.id) localById.set(t.id, t); });
+    backendTeams.forEach((b: any) => {
+      localById.set(b.id, {
+        id: b.id,
+        name: b.name || 'Untitled Team',
+        track: b.track || 'Coding',
+        lead: b.lead || 'Team Lead',
+        members: b.members ?? 1,
+        status: b.status || 'Active',
+        schoolName: b.school_name || ''
+      });
+    });
+    return Array.from(localById.values());
   }
   private loadStateAndFallback(): void {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -1181,8 +1254,6 @@ export class ContentService {
     if (!e) return false;
     if (this.users.some(u => u.id !== excludeId && u.email?.trim().toLowerCase() === e)) return true;
     if (this.pendingApprovals.some(a => a.id !== excludeId && (a.contact?.trim().toLowerCase() === e || a.details?.email?.trim().toLowerCase() === e || a.details?.repEmail?.trim().toLowerCase() === e))) return true;
-    if (this.approvedApprovals.some(a => a.id !== excludeId && (a.contact?.trim().toLowerCase() === e || a.details?.email?.trim().toLowerCase() === e || a.details?.repEmail?.trim().toLowerCase() === e))) return true;
-    if (this.rejectedApprovals.some(a => a.id !== excludeId && (a.contact?.trim().toLowerCase() === e || a.details?.email?.trim().toLowerCase() === e || a.details?.repEmail?.trim().toLowerCase() === e))) return true;
     return false;
   }
 
@@ -1218,8 +1289,6 @@ export class ContentService {
     };
     if (this.users.some(u => u.id !== excludeId && matches(u.phone))) return true;
     if (this.pendingApprovals.some(a => a.id !== excludeId && (matches(a.contact) || matches(a.details?.phone) || matches(a.details?.repTel)))) return true;
-    if (this.approvedApprovals.some(a => a.id !== excludeId && (matches(a.contact) || matches(a.details?.phone) || matches(a.details?.repTel)))) return true;
-    if (this.rejectedApprovals.some(a => a.id !== excludeId && (matches(a.contact) || matches(a.details?.phone) || matches(a.details?.repTel)))) return true;
     return false;
   }
 
@@ -1292,11 +1361,34 @@ export class ContentService {
     this.saveState('teams', this.teams);
   }
 
+  syncNewTeamToBackend(team: Team): void {
+    this.apiService.createTeam({
+      name: team.name,
+      track: team.track || 'Coding',
+      lead: team.lead || 'Team Lead',
+      members: team.members ?? 1,
+      status: team.status || 'Active',
+      school_name: team.schoolName || ''
+    }).subscribe({
+      next: (res: any) => console.log('Backend team created', res),
+      error: (e: any) => console.log('Backend create team fallback to local cache')
+    });
+  }
+
   // ── Submission Management Helpers ────────────────────────────────
   
   saveSubmissions(submissionsList: Submission[]): void {
     this.submissions = submissionsList;
     this.saveState('submissions', this.submissions);
+  }
+
+  syncGradeToBackend(submissionId: string, payload: { score?: number; feedback?: string; status?: string }): void {
+    const local = this.submissions.find(s => s.id === submissionId);
+    const backendId = (local && (local as any).backendId) || submissionId;
+    this.apiService.gradeSubmission(backendId, payload).subscribe({
+      next: (res: any) => console.log('Backend grade saved', res),
+      error: (e: any) => console.log('Backend grade fallback to local cache')
+    });
   }
 
   // ── Audit Log Helpers ────────────────────────────────────────────
@@ -1344,7 +1436,24 @@ export class ContentService {
     const newComp = { id, ...comp, createdAt: new Date().toISOString() };
     this.competitions = [...this.competitions, newComp];
     this.saveCompetitions(this.competitions);
-    
+
+    this.apiService.createCompetition({
+      title: comp.title,
+      description: comp.description || '',
+      track: comp.track || 'Coding',
+      category: comp.category || '',
+      deadline: comp.deadline || '',
+      status: comp.status || 'active'
+    }).subscribe({
+      next: (res: any) => {
+        if (res && res.id) {
+          this.competitions = this.competitions.map(c => c.id === id ? { ...c, id: res.id } : c);
+          this.saveCompetitions(this.competitions);
+        }
+      },
+      error: (e: any) => console.log('Backend create competition fallback to local cache')
+    });
+
     // Log audit log
     const auditLogsList = [
       {
@@ -1365,6 +1474,18 @@ export class ContentService {
       this.competitions[idx] = comp;
       this.saveCompetitions(this.competitions);
 
+      this.apiService.updateCompetition(comp.id, {
+        title: comp.title,
+        description: comp.description || '',
+        track: comp.track || 'Coding',
+        category: comp.category || '',
+        deadline: comp.deadline || '',
+        status: comp.status || 'active'
+      }).subscribe({
+        next: (res: any) => console.log('Backend competition updated', res),
+        error: (e: any) => console.log('Backend update competition fallback to local cache')
+      });
+
       const auditLogsList = [
         {
           id: `LOG-${Date.now()}`,
@@ -1383,6 +1504,11 @@ export class ContentService {
     const found = this.competitions.find(c => c.id === id);
     this.competitions = this.competitions.filter(c => c.id !== id);
     this.saveCompetitions(this.competitions);
+
+    this.apiService.deleteCompetition(id).subscribe({
+      next: (res: any) => console.log('Backend competition deleted', res),
+      error: (e: any) => console.log('Backend delete competition fallback to local cache')
+    });
 
     if (found) {
       const auditLogsList = [

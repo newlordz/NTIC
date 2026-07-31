@@ -95,4 +95,64 @@ export class ApiService {
   deleteSchool(id: string): Observable<any> {
     return this.http.delete(this.apiUrl + '/schools/' + id);
   }
+
+  login(email: string, password: string): Observable<any> {
+    return this.http.post(this.apiUrl + '/login', { email, password });
+  }
+
+  logout(token: string): Observable<any> {
+    return this.http.post(this.apiUrl + '/logout', { token });
+  }
+
+  getCompetitions(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl + '/competitions');
+  }
+
+  createCompetition(payload: { title: string; description?: string; track?: string; category?: string; deadline?: string; status?: string }): Observable<any> {
+    return this.http.post(this.apiUrl + '/competitions', payload);
+  }
+
+  updateCompetition(id: string, payload: { title: string; description?: string; track?: string; category?: string; deadline?: string; status?: string }): Observable<any> {
+    return this.http.patch(this.apiUrl + '/competitions/' + id, payload);
+  }
+
+  deleteCompetition(id: string): Observable<any> {
+    return this.http.delete(this.apiUrl + '/competitions/' + id);
+  }
+
+  getTeams(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl + '/teams');
+  }
+
+  createTeam(payload: { name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string }): Observable<any> {
+    return this.http.post(this.apiUrl + '/teams', payload);
+  }
+
+  updateTeam(id: string, payload: { name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string }): Observable<any> {
+    return this.http.patch(this.apiUrl + '/teams/' + id, payload);
+  }
+
+  deleteTeam(id: string): Observable<any> {
+    return this.http.delete(this.apiUrl + '/teams/' + id);
+  }
+
+  gradeSubmission(id: string, payload: { score?: number; feedback?: string; status?: string }): Observable<any> {
+    return this.http.patch(this.apiUrl + '/submissions/' + id + '/grade', payload);
+  }
+
+  updateStudent(id: string, payload: { first_name: string; last_name: string; email: string; track: string; consent_granted: boolean }): Observable<any> {
+    return this.http.patch(this.apiUrl + '/students/' + id, payload);
+  }
+
+  updateEvent(id: string, payload: { title: string; date: string; time: string; location: string; description: string; type?: string }): Observable<any> {
+    return this.http.patch(this.apiUrl + '/events/' + id, payload);
+  }
+
+  updateStory(id: string, payload: { title: string; excerpt: string; date: string; image?: string }): Observable<any> {
+    return this.http.patch(this.apiUrl + '/stories/' + id, payload);
+  }
+
+  updateSchool(id: string, payload: { name: string; region: string; teams?: number; score?: number; rank?: number; status?: string }): Observable<any> {
+    return this.http.patch(this.apiUrl + '/schools/' + id, payload);
+  }
 }

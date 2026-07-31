@@ -42,6 +42,10 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   trackerResult: any = null;
   trackerStatus: 'idle' | 'pending' | 'approved' | 'rejected' | 'not_found' = 'idle';
   trackerSearched = false;
+  editingApprovalId: string | null = null;
+  justUpdatedApplication = false;
+  lastApplicationCode: string | null = null;
+  copiedApplicationCode = false;
 
   credentialsModal: {
     isOpen: boolean;
@@ -353,7 +357,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       }
       if (!this.contentService.isValidEmail(value)) {
         this.fieldValidation[fieldName] = { status: 'invalid', message: 'Invalid email format' };
-      } else if (this.contentService.isEmailTaken(value)) {
+      } else if (this.contentService.isEmailTaken(value, this.editingApprovalId || undefined)) {
         this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered' };
       } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
         const timeRemaining = this.getDraftTimeRemaining(value);
@@ -381,7 +385,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       }
       if (!this.contentService.isValidGhanaPhone(value)) {
         this.fieldValidation[fieldName] = { status: 'invalid', message: 'Enter a valid Ghana number (0XX XXX XXXX or +233...)' };
-      } else if (this.contentService.isPhoneTaken(value)) {
+      } else if (this.contentService.isPhoneTaken(value, this.editingApprovalId || undefined)) {
         this.fieldValidation[fieldName] = { status: 'taken', message: 'This number is already registered' };
       } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
         const timeRemaining = this.getDraftTimeRemaining(value);
@@ -423,7 +427,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         if (!this.contentService.isValidEmail(value)) {
           this.fieldValidation[key] = { status: 'invalid', message: 'Invalid email format' };
           blocked = true;
-        } else if (this.contentService.isEmailTaken(value)) {
+        } else if (this.contentService.isEmailTaken(value, this.editingApprovalId || undefined)) {
           this.fieldValidation[key] = { status: 'taken', message: 'This email is already registered' };
           blocked = true;
         }
@@ -431,7 +435,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         if (!this.contentService.isValidGhanaPhone(value)) {
           this.fieldValidation[key] = { status: 'invalid', message: 'Enter a valid Ghana number' };
           blocked = true;
-        } else if (this.contentService.isPhoneTaken(value)) {
+        } else if (this.contentService.isPhoneTaken(value, this.editingApprovalId || undefined)) {
           this.fieldValidation[key] = { status: 'taken', message: 'This number is already registered' };
           blocked = true;
         }
@@ -920,71 +924,94 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.isLoggingIn = true;
     this.loginError = '';
 
-    setTimeout(() => {
-      this.isLoggingIn = false;
-      const credential = this.loginEmail.trim().toLowerCase();
-      const pass = this.loginPassword.trim();
+    const credential = this.loginEmail.trim().toLowerCase();
+    const pass = this.loginPassword.trim();
 
-      if (credential === 'admin@ntic.org.gh') {
-        setAuthValue('activeRoleId', 'super_admin', this.rememberDevice);
-        setAuthValue('activeUserEmail', credential, this.rememberDevice);
-        this.contentService.saveAuditLogs([
-          { action: 'Admin login: ' + credential, user: credential, time: new Date().toISOString(), type: 'auth' },
-          ...this.contentService.auditLogs
-        ]);
-        this.isLoginModalOpen = false;
-        this.router.navigate(['/dashboard']);
-        return;
+    this.apiService.login(credential, pass).subscribe({
+      next: (res) => this.completeLogin(res.role, res, credential),
+      error: (err) => {
+        if (err.status === 0 || err.status === 502 || err.status === 503) {
+          this.localLogin(credential, pass);
+        } else if (err.status === 401) {
+          this.isLoggingIn = false;
+          this.loginError = 'Incorrect email or password. Please try again.';
+        } else {
+          this.isLoggingIn = false;
+          this.loginError = 'Login is unavailable right now. Please try again later.';
+        }
       }
+    });
+  }
 
-      const registeredUser = this.contentService.users.find(u =>
-        (u.email?.trim().toLowerCase() === credential) ||
-        (u.ticket?.trim().toLowerCase() === credential)
-      );
+  private localLogin(credential: string, pass: string): void {
+    this.isLoggingIn = false;
 
-      if (!registeredUser) {
-        this.loginError = 'Unrecognized credentials. Please check your email or access pass and try again.';
-        return;
-      }
+    if (credential === 'admin@ntic.org.gh') {
+      this.loginError = 'Admin login requires the backend server. Please make sure it is running.';
+      return;
+    }
 
-      const expectedPass = registeredUser.password || registeredUser.otp || '';
-      if (pass && expectedPass && pass !== expectedPass) {
-        this.loginError = 'Incorrect password or verification code. Please try again.';
-        return;
-      }
+    const registeredUser = this.contentService.users.find(u =>
+      (u.email?.trim().toLowerCase() === credential) ||
+      (u.ticket?.trim().toLowerCase() === credential)
+    );
 
-      const finalRole = registeredUser.role;
-      registeredUser.status = 'Active';
-      registeredUser.lastLogin = 'Just now';
-      this.contentService.saveUsers([...this.contentService.users]);
+    if (!registeredUser) {
+      this.loginError = 'Unrecognized credentials. Please check your email or access pass and try again.';
+      return;
+    }
 
-      setAuthValue('activeRoleId', finalRole, this.rememberDevice);
-      setAuthValue('activeUserEmail', registeredUser.email || credential, this.rememberDevice);
-      setAuthValue('activeUserTicket', registeredUser.ticket || credential, this.rememberDevice);
-      this.contentService.saveAuditLogs([
-        { action: `${finalRole} login: ${credential}`, user: credential, time: new Date().toISOString(), type: 'auth' },
-        ...this.contentService.auditLogs
-      ]);
+    const expectedPass = registeredUser.password || registeredUser.otp || '';
+    if (pass && expectedPass && pass !== expectedPass) {
+      this.loginError = 'Incorrect password or verification code. Please try again.';
+      return;
+    }
 
-      const roleRoutes: Record<string, string> = {
-        instructor: '/instructor',
-        judge: '/judge',
-        student: '/lms',
-        school_admin: '/dashboard',
-        sponsor: '/sponsors',
-        super_admin: '/dashboard',
-        content_manager: '/dashboard',
-        reviewer: '/dashboard',
-        competition_manager: '/dashboard'
-      };
+    const finalRole = registeredUser.role;
+    registeredUser.status = 'Active';
+    registeredUser.lastLogin = 'Just now';
+    this.contentService.saveUsers([...this.contentService.users]);
 
-      this.isLoginModalOpen = false;
-      if ((finalRole === 'judge' || finalRole === 'sponsor') && registeredUser.organization === '_pending_profile') {
-        this.router.navigate(['/profile-completion']);
-      } else {
-        this.router.navigate([roleRoutes[finalRole] || '/dashboard']);
-      }
-    }, 600);
+    this.completeLogin(finalRole, {
+      email: registeredUser.email || credential,
+      ticket: registeredUser.ticket || credential
+    }, credential);
+  }
+
+  private completeLogin(role: string, user: any, credential: string): void {
+    this.isLoggingIn = false;
+    const email = user.email || credential;
+    const ticket = user.ticket || credential;
+
+    setAuthValue('activeRoleId', role, this.rememberDevice);
+    setAuthValue('activeUserEmail', email, this.rememberDevice);
+    setAuthValue('activeUserTicket', ticket, this.rememberDevice);
+    if (user.token) {
+      setAuthValue('activeUserToken', user.token, this.rememberDevice);
+    }
+    this.contentService.saveAuditLogs([
+      { action: `${role} login: ${email}`, user: email, time: new Date().toISOString(), type: 'auth' },
+      ...this.contentService.auditLogs
+    ]);
+
+    const roleRoutes: Record<string, string> = {
+      instructor: '/instructor',
+      judge: '/judge',
+      student: '/lms',
+      school_admin: '/dashboard',
+      sponsor: '/sponsors',
+      super_admin: '/dashboard',
+      content_manager: '/dashboard',
+      reviewer: '/dashboard',
+      competition_manager: '/dashboard'
+    };
+
+    this.isLoginModalOpen = false;
+    if ((role === 'judge' || role === 'sponsor') && user.organization === '_pending_profile') {
+      this.router.navigate(['/profile-completion']);
+    } else {
+      this.router.navigate([roleRoutes[role] || '/dashboard']);
+    }
   }
 
   getLogoUrl(details: any): string {
@@ -1053,12 +1080,158 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.trackerSearched = false;
   }
 
+  generateApplicationCode(type: 'school' | 'team' | 'instructor' | 'student'): string {
+    const prefix = type === 'school' ? 'SCH' : type === 'team' ? 'TM' : type === 'student' ? 'STU' : 'INS';
+    const year = new Date().getFullYear();
+    const block = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `NTIC-${prefix}-${year}-${block}`;
+  }
+
+  copyApplicationCode(): void {
+    if (!this.lastApplicationCode) return;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(this.lastApplicationCode).then(() => {
+        this.copiedApplicationCode = true;
+        setTimeout(() => this.copiedApplicationCode = false, 2000);
+      }).catch(() => this.fallbackCopy(this.lastApplicationCode!));
+    } else {
+      this.fallbackCopy(this.lastApplicationCode);
+    }
+  }
+
+  private fallbackCopy(text: string): void {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    this.copiedApplicationCode = true;
+    setTimeout(() => this.copiedApplicationCode = false, 2000);
+  }
+
   searchApplication(): void {
     if (!this.trackerQuery.trim()) return;
     const result = this.contentService.lookupApplication(this.trackerQuery);
     this.trackerResult = result;
     this.trackerStatus = result.status;
     this.trackerSearched = true;
+  }
+
+  startEditApplication(): void {
+    const app = this.trackerResult?.application;
+    if (!app) return;
+    this.editingApprovalId = app.id;
+    this.justUpdatedApplication = false;
+    this.loadApprovalIntoForm(app);
+    this.regState = 'new';
+    this.isDraftResumed = false;
+    this.saveRegState();
+  }
+
+  private loadApprovalIntoForm(app: any): void {
+    const d = app.details || {};
+    this.clearDraftPrefills();
+    if (app.type === 'School Registration') {
+      this.activeTab = 'school';
+      this.schoolForm = {
+        name: app.entity || '',
+        category: d.category || 'Public High School',
+        region: d.region || 'Greater Accra',
+        district: d.district || '',
+        tel: d.phone || '',
+        email: d.email || '',
+        gps: d.gps || '',
+        repName: d.repName || '',
+        repEmail: d.repEmail || '',
+        repTel: d.repTel || '',
+        students: d.students || [],
+        teams: d.teamsList || [],
+        acceptedTerms: true
+      };
+      this.gpsAddress = d.gpsAddress || '';
+      this.schoolStep = 1;
+      this.maxSchoolStepReached = 4;
+      if (d.docs?.length) {
+        this.selectedFileIds['accredDocs'] = d.docs.map((x: string) => x.split('::')[0]);
+        this.selectedFileNames['accredDocs'] = d.docs.map((x: string) => x.split('::')[1] || 'document.pdf');
+      }
+      if (d.logoFileId) {
+        this.selectedFileIds['schoolLogo'] = [d.logoFileId];
+        this.selectedFileNames['schoolLogo'] = ['School Logo'];
+        this.loadSchoolLogo();
+      }
+    } else if (app.type === 'Team Addition') {
+      this.activeTab = 'student';
+      this.competitorMode = 'group';
+      const members = d.members || [];
+      this.teamForm = {
+        name: app.entity || '',
+        school: d.school || '',
+        region: d.region || 'Greater Accra',
+        track: d.track || '',
+        leadName: members[0] || '',
+        leadEmail: app.contact || '',
+        member2Name: members[1] || '',
+        member2Email: '',
+        member3Name: members[2] || '',
+        member3Email: '',
+        member4Name: members[3] || '',
+        member4Email: '',
+        member5Name: members[4] || '',
+        member5Email: '',
+        skills: { alg: 'intermediate', hw: 'novice', ai: 'novice' }
+      };
+    } else if (app.type === 'Student Registration') {
+      this.activeTab = 'student';
+      this.competitorMode = 'individual';
+      this.selectedTrack = d.track || '';
+      this.studentForm = {
+        name: app.entity || '',
+        id: d.id || '',
+        email: app.contact || '',
+        dob: d.dob || '',
+        gender: d.gender || '',
+        school: d.school || '',
+        class: d.class || '',
+        guardianName: d.guardianName || '',
+        guardianPhone: d.guardianPhone || '',
+        region: d.region || 'Greater Accra',
+        track: d.track || '',
+        skills: { alg: 'intermediate', hw: 'novice', ai: 'novice' }
+      };
+      if (d.photoFileId) {
+        this.selectedFileIds['studentPhoto'] = [d.photoFileId];
+        this.selectedFileNames['studentPhoto'] = ['Student Photo'];
+        this.loadStudentPhoto();
+      }
+    } else if (app.type === 'Instructor Access') {
+      this.activeTab = 'instructor';
+      const expertiseMap: Record<string, boolean> = { Python: false, JavaScript: false, 'C#': false, AI: false, Robotics: false, Cybersecurity: false, 'Data Science': false };
+      (d.specialization || '').split(',').forEach((s: string) => {
+        const k = s.trim();
+        if (k in expertiseMap) expertiseMap[k] = true;
+      });
+      this.instructorForm = {
+        name: app.entity || '',
+        tel: d.phone || '',
+        email: app.contact || '',
+        address: d.address || '',
+        region: d.region || 'Greater Accra',
+        qualification: d.credentials || 'BSc',
+        institution: d.institution === 'Independent Mentor' ? '' : (d.institution || ''),
+        isIndependent: !!d.isIndependent,
+        acceptedTerms: true,
+        portfolio: d.portfolio || '',
+        expertise: expertiseMap
+      };
+      if (d.docs?.length) {
+        this.selectedFileIds['instructorDocs'] = d.docs.map((x: string) => x.split('::')[0]);
+        this.selectedFileNames['instructorDocs'] = d.docs.map((x: string) => x.split('::')[1] || 'document.pdf');
+      }
+    }
   }
 
   goBackToGatewayFromTracker(): void {
@@ -1068,6 +1241,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.trackerResult = null;
     this.trackerStatus = 'idle';
     this.trackerSearched = false;
+    this.editingApprovalId = null;
   }
 
   goBackToGateway(): void {
@@ -1075,6 +1249,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.regState = 'gateway';
     this.clearRegState();
     this.clearTimer();
+    this.editingApprovalId = null;
   }
 
   setVerificationMethod(method: 'email' | 'mobile'): void {
@@ -1310,18 +1485,61 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           this.showCustomAlert('One or more team emails have invalid format. Please check.', 'Invalid Email', 'warning');
           return;
         }
-        if (this.contentService.isEmailTaken(email!)) {
+        if (this.contentService.isEmailTaken(email!, this.editingApprovalId || undefined)) {
           this.showCustomAlert(`The email "${email}" is already registered. Please use a different email.`, 'Email Taken', 'warning');
           return;
         }
       }
       const ticket = `NTIC-GRP-${Math.floor(1000 + Math.random() * 9000)}`;
       const leadEmail = this.teamForm.leadEmail?.trim() || `${ticket.toLowerCase()}@squad.ntic.gh`;
-      if (this.teamForm.leadEmail?.trim() && this.contentService.isEmailTaken(leadEmail)) {
+      if (this.teamForm.leadEmail?.trim() && this.contentService.isEmailTaken(leadEmail, this.editingApprovalId || undefined)) {
         this.showCustomAlert('An account with this Team Lead email already exists. Please log in instead.', 'Account Exists', 'warning');
         return;
       }
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      if (this.editingApprovalId) {
+        const rosterList = [this.teamForm.leadName, this.teamForm.member2Name, this.teamForm.member3Name, this.teamForm.member4Name, this.teamForm.member5Name].filter(Boolean).map((n: string) => n.trim()).filter((n: string) => n.length > 0);
+        const currentApprovals = [...this.contentService.pendingApprovals];
+        const idx = currentApprovals.findIndex(a => a.id === this.editingApprovalId);
+        if (idx > -1) {
+          currentApprovals[idx] = {
+            ...currentApprovals[idx],
+            type: 'Team Addition',
+            entity: this.teamForm.name,
+            contact: leadEmail,
+            submitted: 'Updated ' + new Date().toLocaleString('en-GB'),
+            details: {
+              school: this.teamForm.school,
+              region: this.teamForm.region,
+              track: this.teamForm.track,
+              project: this.teamForm.name + ' Sandbox Project',
+              members: rosterList,
+              memberEmails: [this.teamForm.leadEmail, this.teamForm.member2Email, this.teamForm.member3Email, this.teamForm.member4Email, this.teamForm.member5Email].filter(Boolean),
+              leadEmail,
+              coach: 'Instructor assigned by ' + (this.teamForm.school || 'Registered Institution'),
+              code: currentApprovals[idx].details?.code || this.generateApplicationCode('team')
+            }
+          };
+          this.contentService.saveApprovals(currentApprovals);
+
+          const currentAudit = [...this.contentService.auditLogs];
+          currentAudit.unshift({
+            action: `Application updated (Team Addition): ${this.teamForm.name}`,
+            user: leadEmail,
+            time: new Date().toISOString(),
+            type: 'approval'
+          });
+          this.contentService.saveAuditLogs(currentAudit);
+
+          this.justUpdatedApplication = true;
+          this.editingApprovalId = null;
+          this.lastApplicationCode = currentApprovals[idx].details?.code || null;
+          this.copiedApplicationCode = false;
+          this.isSuccessModalOpen = true;
+          this.clearDraftPrefills();
+        }
+        return;
+      }
 
       const membersList = [
         { name: this.teamForm.leadName, email: leadEmail, role: 'Lead' },
@@ -1337,52 +1555,53 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         if (id) memberPhotoIds.push(id);
       });
 
-      const newTeam = {
-        id: `TM-${Date.now()}`,
-        name: this.teamForm.name,
-        schoolName: this.teamForm.school || 'Independent Squad',
+      const code = this.generateApplicationCode('team');
+      const details: any = {
+        school: this.teamForm.school || '',
         region: this.teamForm.region,
         track: this.teamForm.track || 'Coding',
-        lead: this.teamForm.leadName,
-        members: membersList.length,
-        rosterList: membersList.map(m => m.name),
+        project: this.teamForm.name + ' Sandbox Project',
+        members: membersList.map(m => m.name),
+        memberEmails: membersList.map(m => m.email).filter(Boolean),
+        leadEmail,
+        coach: 'Instructor assigned by ' + (this.teamForm.school || 'Registered Institution'),
+        code,
         photoFileId: this.selectedFileIds['groupPhoto']?.[0] || undefined,
         logoFileId: this.selectedFileIds['groupLogo']?.[0] || undefined,
         memberPhotos: memberPhotoIds.length ? memberPhotoIds : undefined,
-        skills: { ...this.teamForm.skills },
-        status: 'Approved'
+        skills: { ...this.teamForm.skills }
       };
-      this.contentService.saveTeams([...this.contentService.teams, newTeam]);
 
-      const newUser = {
-        id: `USR-${Date.now()}`,
-        role: 'student' as const,
-        registrationMode: 'group' as const,
-        fullName: `${this.teamForm.leadName} (${this.teamForm.name})`,
-        email: leadEmail,
-        phone: '',
-        otp,
-        password: otp,
-        organization: this.teamForm.name,
-        track: this.teamForm.track || 'Coding',
-        ticket,
-        status: 'Active' as const,
-        registeredAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        lastLogin: 'Just now'
-      };
-      this.contentService.users = [newUser, ...this.contentService.users];
-      this.contentService.saveUsers(this.contentService.users);
+      const currentApprovals = [...this.contentService.pendingApprovals];
+      currentApprovals.unshift({
+        id: 'REQ-' + Date.now(),
+        type: 'Team Addition',
+        entity: this.teamForm.name,
+        contact: leadEmail,
+        submitted: 'Just now',
+        details
+      });
+      this.contentService.saveApprovals(currentApprovals);
 
-      setAuthValue('activeRoleId', 'student', true);
-      setAuthValue('activeUserEmail', leadEmail, true);
-      this.openCredentialsModal(
-        'Group Registration Successful! 🎉',
-        `Your team "${this.teamForm.name}" has been registered. Copy and save your login credentials below:`,
-        ticket,
-        otp,
-        'Use these credentials to log in to the Championship Arena.',
-        '/competitions'
-      );
+      if (leadEmail) {
+        this.emailService.sendPendingConfirmation(leadEmail, this.teamForm.leadName, this.teamForm.name, 'Team Addition');
+      }
+
+      const currentAudit = [...this.contentService.auditLogs];
+      currentAudit.unshift({
+        action: `New Team Addition requested: ${this.teamForm.name}`,
+        user: leadEmail,
+        time: new Date().toISOString(),
+        type: 'approval'
+      });
+      this.contentService.saveAuditLogs(currentAudit);
+
+      this.justUpdatedApplication = false;
+      this.editingApprovalId = null;
+      this.lastApplicationCode = code;
+      this.copiedApplicationCode = false;
+      this.isSuccessModalOpen = true;
+      this.clearDraftPrefills();
       return;
     }
 
@@ -1393,44 +1612,81 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     }
     const ticket = `NTIC-STU-${Math.floor(1000 + Math.random() * 9000)}`;
     const studentEmail = this.studentForm.email?.trim() || `${ticket.toLowerCase()}@stu.ntic.gh`;
-    if (this.studentForm.email?.trim() && this.contentService.isEmailTaken(studentEmail)) {
+    if (this.contentService.isEmailTaken(studentEmail, this.editingApprovalId || undefined)) {
       this.showCustomAlert('An account with this email already exists. Please log in instead.', 'Account Exists', 'warning');
       return;
     }
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const newUser = {
-      id: `USR-${Date.now()}`,
-      role: 'student' as const,
-      fullName: this.studentForm.name,
-      email: studentEmail,
-      phone: '',
-      guardianName: this.studentForm.guardianName,
-      guardianPhone: this.studentForm.guardianPhone,
-      photoFileId: this.selectedFileIds['studentPhoto']?.[0] || undefined,
-      otp,
-      password: otp,
-      organization: this.studentForm.school || 'Independent Competitor',
+    const code = this.editingApprovalId
+      ? (this.contentService.pendingApprovals.find(a => a.id === this.editingApprovalId)?.details?.code || this.generateApplicationCode('student'))
+      : this.generateApplicationCode('student');
+    const details: any = {
       region: this.studentForm.region,
-      track: this.selectedTrack,
+      school: this.studentForm.school || '',
+      class: this.studentForm.class || '',
+      dob: this.studentForm.dob || '',
+      gender: this.studentForm.gender || '',
+      guardianName: this.studentForm.guardianName || '',
+      guardianPhone: this.studentForm.guardianPhone || '',
+      track: this.selectedTrack || '',
       skills: { ...this.studentForm.skills },
-      ticket,
-      status: 'Active' as const,
-      registeredAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      lastLogin: 'Just now'
+      code
     };
-    this.contentService.users = [newUser, ...this.contentService.users];
-    this.contentService.saveUsers(this.contentService.users);
+    const photoFileId = this.selectedFileIds['studentPhoto']?.[0];
+    if (photoFileId) details.photoFileId = photoFileId;
 
-    setAuthValue('activeRoleId', 'student', true);
-    setAuthValue('activeUserEmail', studentEmail, true);
-    this.openCredentialsModal(
-      'Registration Successful! 🎉',
-      'Your registration has been approved. Copy and save your secure login credentials below:',
-      ticket,
-      otp,
-      'Use your Access Pass and PIN to log in from the homepage.',
-      '/lms'
-    );
+    const currentApprovals = [...this.contentService.pendingApprovals];
+    if (this.editingApprovalId) {
+      const idx = currentApprovals.findIndex(a => a.id === this.editingApprovalId);
+      if (idx > -1) {
+        currentApprovals[idx] = {
+          ...currentApprovals[idx],
+          type: 'Student Registration',
+          entity: this.studentForm.name,
+          contact: studentEmail,
+          submitted: 'Updated ' + new Date().toLocaleString('en-GB'),
+          details
+        };
+      } else {
+        currentApprovals.unshift({
+          id: 'REQ-' + Date.now(),
+          type: 'Student Registration',
+          entity: this.studentForm.name,
+          contact: studentEmail,
+          submitted: 'Just now',
+          details
+        });
+      }
+    } else {
+      currentApprovals.unshift({
+        id: 'REQ-' + Date.now(),
+        type: 'Student Registration',
+        entity: this.studentForm.name,
+        contact: studentEmail,
+        submitted: 'Just now',
+        details
+      });
+    }
+    this.contentService.saveApprovals(currentApprovals);
+
+    if (studentEmail) {
+      this.emailService.sendPendingConfirmation(studentEmail, this.studentForm.name, this.studentForm.name, 'Student Registration', this.studentForm.guardianPhone || '');
+    }
+
+    const currentAudit = [...this.contentService.auditLogs];
+    currentAudit.unshift({
+      action: this.editingApprovalId ? `Application updated (Student Registration): ${this.studentForm.name}` : `New Student Registration requested: ${this.studentForm.name}`,
+      user: studentEmail,
+      time: new Date().toISOString(),
+      type: 'approval'
+    });
+    this.contentService.saveAuditLogs(currentAudit);
+
+    this.justUpdatedApplication = !!this.editingApprovalId;
+    this.editingApprovalId = null;
+    this.lastApplicationCode = code;
+    this.copiedApplicationCode = false;
+    this.isSuccessModalOpen = true;
+    this.clearDraftPrefills();
   }
 
   detectGps(): void {
@@ -1901,7 +2157,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     else if (this.activeTab === 'sponsor') targetEmail = this.sponsorForm.email;
     else if (this.activeTab === 'team') targetEmail = this.teamForm.leadEmail;
 
-    if (targetEmail && this.contentService.isEmailTaken(targetEmail)) {
+    if (targetEmail && this.contentService.isEmailTaken(targetEmail, this.editingApprovalId || undefined)) {
       this.isSubmitting = false;
       this.isPreviewModalOpen = false;
       this.showCustomAlert(`The email address "${targetEmail}" is already registered to an active account or pending request. Multiple accounts cannot be created using the same email address.`, 'Email Already Registered', 'warning');
@@ -1943,7 +2199,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           repName: this.schoolForm.repName,
           repEmail: this.schoolForm.repEmail,
           repTel: this.schoolForm.repTel,
-          code: this.schoolForm.name.slice(0, 3).toUpperCase() + '-REG-2026',
+          code: this.editingApprovalId
+            ? (this.contentService.pendingApprovals.find(a => a.id === this.editingApprovalId)?.details?.code || this.generateApplicationCode('school'))
+            : this.generateApplicationCode('school'),
           tracks: this.schoolForm.teams.map((t: any) => t.track).filter((value: any, index: number, self: any[]) => self.indexOf(value) === index).join(', ') || 'Coding, Robotics',
           teamsList: this.schoolForm.teams,
           studentCount: this.schoolForm.students.length,
@@ -1954,76 +2212,6 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         };
         if (logoFileId) details.logoFileId = logoFileId;
 
-        // Save teams created during school registration into ContentService
-        if (this.schoolForm.teams && this.schoolForm.teams.length > 0) {
-          const currentTeams = [...this.contentService.teams];
-          this.schoolForm.teams.forEach((t: any) => {
-            const rosterList = [
-              t.leadName,
-              t.member2Name,
-              t.member3Name,
-              t.member4Name,
-              t.member5Name
-            ].filter(Boolean).map((n: string) => n.trim()).filter((n: string) => n.length > 0);
-            
-            
-          // --- INTEGRATION: POSTGRESQL BACKEND ---
-          try {
-            const names = this.teamForm.leadName.trim().split(' ');
-            this.apiService.createStudent({
-              first_name: names[0] || 'Unknown',
-              last_name: names.slice(1).join(' ') || 'Student',
-              email: this.teamForm.leadEmail,
-              track: this.teamForm.track,
-              consent_granted: true
-            }).subscribe({
-              next: (res) => console.log('Successfully saved student to PostgreSQL DB:', res),
-              error: (err) => console.error('Failed to save to PostgreSQL:', err)
-            });
-          } catch(e) {}
-          // ---------------------------------------
-
-          currentTeams.push({
-              name: t.name,
-              track: t.track || 'Coding',
-              lead: t.leadName || 'Student Captain',
-              members: Math.max(rosterList.length, 3),
-              rosterList: rosterList,
-              status: 'In Competition',
-              schoolName: this.schoolForm.name,
-              memberPhotos: t.memberPhotos || undefined
-            });
-          });
-          this.contentService.saveTeams(currentTeams);
-        }
-
-        // Generate user accounts for all students registered by school admin
-        if (this.schoolForm.students && this.schoolForm.students.length > 0) {
-          const currentUsers = [...this.contentService.users];
-          this.schoolForm.students.forEach((s: any) => {
-            const existingEmail = s.email || `${s.name.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`;
-            if (!currentUsers.find((u: any) => u.email?.trim().toLowerCase() === existingEmail.toLowerCase())) {
-              const ticket = `NTIC-STU-${Math.floor(1000 + Math.random() * 9000)}`;
-              const otp = Math.floor(100000 + Math.random() * 900000).toString();
-              currentUsers.push({
-                id: `USR-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-                role: 'student' as const,
-                fullName: s.name,
-                email: existingEmail,
-                phone: '',
-                otp,
-                password: otp,
-                organization: this.schoolForm.name,
-                track: s.track || (this.schoolForm.teams.length > 0 ? this.schoolForm.teams[0].track : 'coding'),
-                ticket,
-                status: 'Active' as const,
-                registeredAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                lastLogin: 'Never'
-              });
-            }
-          });
-          this.contentService.saveUsers(currentUsers);
-        }
 
         // Log student registrations
         if (this.activeTab === 'school' && this.schoolForm.students?.length) {
@@ -2046,7 +2234,10 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           track: this.teamForm.track,
           project: this.teamForm.name + ' Sandbox Project',
           members: rosterList,
-          coach: 'Instructor assigned by ' + this.teamForm.school
+          coach: 'Instructor assigned by ' + this.teamForm.school,
+          code: this.editingApprovalId
+            ? (this.contentService.pendingApprovals.find(a => a.id === this.editingApprovalId)?.details?.code || this.generateApplicationCode('team'))
+            : this.generateApplicationCode('team')
         };
 
         const currentTeams = [...this.contentService.teams];
@@ -2072,7 +2263,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           } catch(e) {}
           // ---------------------------------------
 
-          currentTeams.push({
+          const regTeam: any = {
           name: this.teamForm.name,
           track: this.teamForm.track || 'Coding',
           lead: this.teamForm.leadName || 'Student Captain',
@@ -2081,7 +2272,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           status: 'In Competition',
           schoolName: this.teamForm.school || 'Registered Institution',
           memberPhotos: memberPhotoIds.length ? memberPhotoIds : undefined
-        });
+        };
+        currentTeams.push(regTeam);
+        this.contentService.syncNewTeamToBackend(regTeam);
         this.contentService.saveTeams(currentTeams);
       } else if (this.activeTab === 'instructor') {
         approvalType = 'Instructor Access';
@@ -2101,6 +2294,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           portfolio: this.instructorForm.portfolio || '',
           experience: 'Mentor with registered history',
           courses: ['LMS Course 101: Python Intro', 'LMS Course 202: Robotics Base'],
+          code: this.editingApprovalId
+            ? (this.contentService.pendingApprovals.find(a => a.id === this.editingApprovalId)?.details?.code || this.generateApplicationCode('instructor'))
+            : this.generateApplicationCode('instructor'),
           docs: this.selectedFileIds['instructorDocs']?.length
             ? this.selectedFileIds['instructorDocs'].map((id, i) => `${id}::${this.selectedFileNames['instructorDocs']?.[i] || 'document.pdf'}`)
             : undefined
@@ -2196,16 +2392,38 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       }
 
       if (approvalType) {
-        const newApproval = {
-          id: 'REQ-' + Date.now(),
-          type: approvalType,
-          entity,
-          contact,
-          submitted: 'Just now',
-          details
-        };
         const currentApprovals = [...this.contentService.pendingApprovals];
-        currentApprovals.unshift(newApproval);
+        if (this.editingApprovalId) {
+          const idx = currentApprovals.findIndex(a => a.id === this.editingApprovalId);
+          if (idx > -1) {
+            currentApprovals[idx] = {
+              ...currentApprovals[idx],
+              type: approvalType,
+              entity,
+              contact,
+              submitted: 'Updated ' + new Date().toLocaleString('en-GB'),
+              details
+            };
+          } else {
+            currentApprovals.unshift({
+              id: 'REQ-' + Date.now(),
+              type: approvalType,
+              entity,
+              contact,
+              submitted: 'Just now',
+              details
+            });
+          }
+        } else {
+          currentApprovals.unshift({
+            id: 'REQ-' + Date.now(),
+            type: approvalType,
+            entity,
+            contact,
+            submitted: 'Just now',
+            details
+          });
+        }
         this.contentService.saveApprovals(currentApprovals);
 
         const emailTo = contact || '';
@@ -2220,7 +2438,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
         const currentAudit = [...this.contentService.auditLogs];
         currentAudit.unshift({
-          action: `New ${approvalType} requested: ${entity}`,
+          action: this.editingApprovalId ? `Application updated (${approvalType}): ${entity}` : `New ${approvalType} requested: ${entity}`,
           user: contact,
           time: new Date().toISOString(),
           type: 'approval'
@@ -2235,6 +2453,10 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         localStorage.setItem('ntic_drafts', JSON.stringify(drafts));
       }
 
+      this.justUpdatedApplication = !!this.editingApprovalId;
+      this.editingApprovalId = null;
+      this.lastApplicationCode = details.code || null;
+      this.copiedApplicationCode = false;
       this.isSuccessModalOpen = true;
       this.clearDraftPrefills();
     } catch (err) {
@@ -2248,6 +2470,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   closeSuccessModal(): void {
     this.isSuccessModalOpen = false;
+    this.justUpdatedApplication = false;
+    this.lastApplicationCode = null;
+    this.copiedApplicationCode = false;
     this.regState = 'gateway';
     this.clearRegState();
     this.judgeForm = {

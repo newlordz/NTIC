@@ -1,5 +1,24 @@
+import os
+from app.security import hash_password
+
 def seed_initial_data(conn):
     cur = conn.cursor()
+
+    # Platform users (real login accounts)
+    cur.execute("SELECT count(*) FROM users")
+    if cur.fetchone()[0] == 0:
+        admin_password = os.getenv("NTIC_ADMIN_PASSWORD", "Admin@Ntic2026!")
+        cur.execute(
+            "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status) VALUES (%s, %s, %s, %s, %s, %s, 'Active')",
+            (
+                "USR-000",
+                "admin@ntic.org.gh",
+                "Admin",
+                "super_admin",
+                "NTIC-ADM-0000",
+                hash_password(admin_password),
+            ),
+        )
     # Philosophy Cards
     cur.execute("SELECT count(*) FROM philosophy_cards")
     if cur.fetchone()[0] == 0:
