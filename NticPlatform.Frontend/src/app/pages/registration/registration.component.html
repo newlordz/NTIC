@@ -1353,8 +1353,25 @@
 
           <div class="grid-2" style="margin-bottom: 20px;">
             <div>
-              <label class="form-label">City / Region</label>
-              <input class="form-control" type="text" placeholder="City, Region" [(ngModel)]="instructorForm.address" name="instAddress">
+              <label class="form-label">Region</label>
+              <select class="form-control form-select" [(ngModel)]="instructorForm.region" name="instRegion">
+                <option value="Greater Accra">Greater Accra</option>
+                <option value="Ashanti">Ashanti</option>
+                <option value="Eastern">Eastern</option>
+                <option value="Western">Western</option>
+                <option value="Northern">Northern</option>
+                <option value="Central">Central</option>
+                <option value="Volta">Volta</option>
+                <option value="Western North">Western North</option>
+                <option value="Bono">Bono</option>
+                <option value="Bono East">Bono East</option>
+                <option value="Ahafo">Ahafo</option>
+                <option value="Oti">Oti</option>
+                <option value="Savannah">Savannah</option>
+                <option value="North East">North East</option>
+                <option value="Upper West">Upper West</option>
+                <option value="Upper East">Upper East</option>
+              </select>
             </div>
             <div>
               <label class="form-label">Highest Qualification</label>
@@ -1463,9 +1480,9 @@
                     <span class="material-symbols-outlined">mail</span>
                     <span>{{ instructorForm.email }}</span>
                   </div>
-                  <div class="detail-item" *ngIf="instructorForm.address">
+                  <div class="detail-item" *ngIf="instructorForm.region">
                     <span class="material-symbols-outlined">location_on</span>
-                    <span>{{ instructorForm.address }}</span>
+                    <span>{{ instructorForm.region }}</span>
                   </div>
                   <div class="detail-item" *ngIf="instructorForm.portfolio">
                     <span class="material-symbols-outlined">link</span>
@@ -2139,6 +2156,27 @@
             </div>
           </div>
           <div class="form-group">
+            <label class="form-label">Region *</label>
+            <select class="form-control form-select" [(ngModel)]="sponsorForm.region" name="sponsRegion">
+              <option value="Greater Accra">Greater Accra</option>
+              <option value="Ashanti">Ashanti</option>
+              <option value="Eastern">Eastern</option>
+              <option value="Western">Western</option>
+              <option value="Northern">Northern</option>
+              <option value="Central">Central</option>
+              <option value="Volta">Volta</option>
+              <option value="Western North">Western North</option>
+              <option value="Bono">Bono</option>
+              <option value="Bono East">Bono East</option>
+              <option value="Ahafo">Ahafo</option>
+              <option value="Oti">Oti</option>
+              <option value="Savannah">Savannah</option>
+              <option value="North East">North East</option>
+              <option value="Upper West">Upper West</option>
+              <option value="Upper East">Upper East</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label class="form-label">Sponsorship Packages — Choose What to Support</label>
             <p style="font-size:12px;color:var(--on-surface-variant);margin:0 0 12px;">Select items below to indicate what you'd like to support.</p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -2332,9 +2370,32 @@
                 </span>
               </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Organization / Institution</label>
-              <input class="form-control" type="text" placeholder="Your organization or institution" [(ngModel)]="judgeForm.organization" name="jdOrg">
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label">Region</label>
+                <select class="form-control form-select" [(ngModel)]="judgeForm.region" name="jdRegion">
+                  <option value="Greater Accra">Greater Accra</option>
+                  <option value="Ashanti">Ashanti</option>
+                  <option value="Eastern">Eastern</option>
+                  <option value="Western">Western</option>
+                  <option value="Northern">Northern</option>
+                  <option value="Central">Central</option>
+                  <option value="Volta">Volta</option>
+                  <option value="Western North">Western North</option>
+                  <option value="Bono">Bono</option>
+                  <option value="Bono East">Bono East</option>
+                  <option value="Ahafo">Ahafo</option>
+                  <option value="Oti">Oti</option>
+                  <option value="Savannah">Savannah</option>
+                  <option value="North East">North East</option>
+                  <option value="Upper West">Upper West</option>
+                  <option value="Upper East">Upper East</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Organization / Institution</label>
+                <input class="form-control" type="text" placeholder="Your organization or institution" [(ngModel)]="judgeForm.organization" name="jdOrg">
+              </div>
             </div>
           </div>
           <div class="grid-2">
@@ -2447,6 +2508,10 @@
                   <div class="detail-row" *ngIf="judgeForm.organization">
                     <span class="detail-label">AFFILIATION</span>
                     <span class="detail-val">{{ judgeForm.organization }}</span>
+                  </div>
+                  <div class="detail-row" *ngIf="judgeForm.region">
+                    <span class="detail-label">REGION</span>
+                    <span class="detail-val">{{ judgeForm.region }}</span>
                   </div>
                   <div class="detail-row" *ngIf="judgeForm.expertise">
                     <span class="detail-label">EXPERTISE</span>

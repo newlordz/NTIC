@@ -534,8 +534,8 @@
           </div>
           <div>
             <span class="admin-role-badge" [class]="user.role">
-              <span class="material-symbols-outlined">{{ getRoleIcon(user.role) }}</span>
-              {{ getRoleLabel(user.role) }}
+              <span class="material-symbols-outlined">{{ getUserRoleIcon(user) }}</span>
+              {{ getUserRoleLabel(user) }}
             </span>
           </div>
           <div class="admin-date-cell">{{ user.organization || '—' }}</div>
@@ -755,8 +755,8 @@
           </div>
           <div>
             <span class="admin-role-badge" [class]="user.role">
-              <span class="material-symbols-outlined">{{ getRoleIcon(user.role) }}</span>
-              {{ getRoleLabel(user.role) }}
+              <span class="material-symbols-outlined">{{ getUserRoleIcon(user) }}</span>
+              {{ getUserRoleLabel(user) }}
             </span>
           </div>
           <div class="admin-ticket-cell">
@@ -2702,7 +2702,7 @@
           <div>
             <div class="ticket-platform-name">National NTIC Platform</div>
             <div class="ticket-role-label" [class]="viewTicketUser?.role">
-              {{ getRoleLabel(viewTicketUser?.role) }}
+              {{ getUserRoleLabel(viewTicketUser) }}
             </div>
           </div>
         </div>

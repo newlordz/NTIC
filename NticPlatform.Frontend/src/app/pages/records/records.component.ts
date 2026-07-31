@@ -308,12 +308,13 @@ export class RecordsComponent implements OnInit {
           files: []
         });
       } else if (u.role === 'student') {
+        const isGroupLead = this.contentService.isGroupLeadUser(u);
         liveRecords.push({
           id: u.id,
           type: 'student',
-          title: `${u.fullName} — Student Registration`,
+          title: `${u.fullName} — ${isGroupLead ? 'Group Registration' : 'Student Registration'}`,
           entityName: u.fullName,
-          entityType: 'Student Competitor',
+          entityType: isGroupLead ? 'Group Competitor' : 'Student Competitor',
           region: '',
           district: '',
           contactEmail: u.email,

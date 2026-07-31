@@ -148,7 +148,7 @@
               <div class="user-email-subtle">{{ u.email }}</div>
             </td>
             <td>
-              <span class="role-pill" [class]="'role-' + u.role">{{ getRoleLabel(u.role) }}</span>
+              <span class="role-pill" [class]="'role-' + u.role">{{ getUserRoleLabel(u) }}</span>
             </td>
             <td>
               <span class="text-sm font-semibold">{{ u.organization || 'NTIC Platform' }}</span>
@@ -195,7 +195,7 @@
         <div class="card-body">
           <h3>{{ u.fullName }} <span *ngIf="isCurrentUser(u)" class="badge-you">(You)</span></h3>
           <div class="text-xs text-subtle mb-2">{{ u.email }}</div>
-          <span class="role-pill" [class]="'role-' + u.role">{{ getRoleLabel(u.role) }}</span>
+          <span class="role-pill" [class]="'role-' + u.role">{{ getUserRoleLabel(u) }}</span>
 
           <div class="info-row mt-3">
             <span class="material-symbols-outlined icon-sm">business</span>
@@ -243,7 +243,7 @@
           </div>
           <div>
             <h3>{{ selectedUser.fullName }}</h3>
-            <span class="role-pill" [class]="'role-' + selectedUser.role">{{ getRoleLabel(selectedUser.role) }}</span>
+            <span class="role-pill" [class]="'role-' + selectedUser.role">{{ getUserRoleLabel(selectedUser) }}</span>
           </div>
         </div>
         <button class="close-btn" (click)="closeDetail()">&times;</button>

@@ -257,6 +257,16 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     return map[role] || role;
   }
 
+  getUserRoleLabel(u: any): string {
+    if (this.contentService.isGroupLeadUser(u)) return 'Group';
+    return this.getRoleLabel(u?.role);
+  }
+
+  getUserRoleIcon(u: any): string {
+    if (this.contentService.isGroupLeadUser(u)) return 'groups';
+    return this.getRoleIcon(u?.role);
+  }
+
   getRoleIcon(role: string): string {
     const map: Record<string, string> = {
       super_admin: 'admin_panel_settings', admin: 'shield', content_manager: 'edit_note',
@@ -270,7 +280,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   exportCSV(): void {
     const headers = ['Name', 'Email', 'Phone', 'Role', 'Organization', 'Ticket', 'OTP', 'Status', 'Registered'];
     const rows = this.filteredUsers.map(u => [
-      u.fullName, u.email, u.phone, u.role, u.organization, u.ticket, u.otp, u.status, u.registeredAt
+      u.fullName, u.email, u.phone, this.getUserRoleLabel(u), u.organization, u.ticket, u.otp, u.status, u.registeredAt
     ]);
     const csv = [headers, ...rows].map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });

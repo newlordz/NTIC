@@ -2529,6 +2529,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return role.charAt(0).toUpperCase() + role.slice(1);
   }
 
+  getUserRoleLabel(u: any): string {
+    if (this.contentService.isGroupLeadUser(u)) return 'Group';
+    return this.getRoleLabel(u?.role);
+  }
+
+  getUserRoleIcon(u: any): string {
+    if (this.contentService.isGroupLeadUser(u)) return 'groups';
+    return this.getRoleIcon(u?.role);
+  }
+
   getRoleIcon(role: string): string {
     if (!role) return 'person';
     const r = role.toLowerCase();

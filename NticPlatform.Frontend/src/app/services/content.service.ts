@@ -243,6 +243,7 @@ export interface SponsorPayment {
 export interface User {
   id: string;
   role: 'super_admin' | 'admin' | 'content_manager' | 'reviewer' | 'competition_manager' | 'school_admin' | 'instructor' | 'student' | 'judge' | 'sponsor';
+  registrationMode?: 'group' | 'individual';
   fullName: string;
   email: string;
   phone: string;
@@ -1163,6 +1164,10 @@ export class ContentService {
     this.users = this.deduplicateUsers(usersList);
     this.saveState('users', this.users);
     this.recalculatePlatformStats();
+  }
+
+  isGroupLeadUser(u: any): boolean {
+    return !!u && (u.registrationMode === 'group' || (!!u.ticket && String(u.ticket).startsWith('NTIC-GRP-')));
   }
 
   // ── Validation Helpers ───────────────────────────────────────────
