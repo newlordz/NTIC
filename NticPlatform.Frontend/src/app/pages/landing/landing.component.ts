@@ -193,7 +193,6 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   compSlideInterval: any;
   activeVideoEditImageIndex = 0;
   videoEditInterval: any;
-  videoStates: { paused?: boolean; error?: boolean }[] = [];
   image1Url = '';
   image2Url = '';
   activeFrame = 1;
@@ -1303,9 +1302,13 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!this.slides[i].video && hs?.image === 'assets/ntic_image_8.jpeg') {
         this.slides[i].video = 'assets/ntic_slideshow.mp4';
       }
+      // Last-resort fallback: if a slide still has no video, use the slideshow video
+      if (!this.slides[i].video) {
+        this.slides[i].video = 'assets/ntic_slideshow.mp4';
+      }
     }
     this.cdr.detectChanges();
-    setTimeout(() => this.playActiveSlideVideo(), 100);
+    setTimeout(() => this.playActiveSlideVideo(), 150);
   }
 
   private playActiveSlideVideo(): void {
@@ -1313,37 +1316,25 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     videoElements.forEach((video) => {
       const slideItem = video.closest('.slide-item');
       if (slideItem && slideItem.classList.contains('active')) {
-        video.play().catch(() => {});
+        // Muted autoplay is allowed by browsers — set muted via JS property to guarantee it
+        video.muted = true;
+        video.defaultMuted = true;
+        video.play().then(() => {}).catch((err) => {
+          // Retry once after a tick in case the element wasn't ready
+          setTimeout(() => {
+            video.muted = true;
+            video.play().catch(() => {});
+          }, 100);
+        });
+      } else {
+        video.pause();
       }
     });
   }
 
-  // Video fallback handlers for autoplay-blocked scenarios
-  onVideoPlay(event: Event, index?: number): void {
-    const idx = index ?? this.activeSlideIndex;
-    this.videoStates[idx] = { ...this.videoStates[idx], paused: false, error: false };
-  }
-
-  onVideoPause(event: Event, index?: number): void {
-    const idx = index ?? this.activeSlideIndex;
-    this.videoStates[idx] = { ...this.videoStates[idx], paused: true };
-  }
-
-  onVideoError(event: Event, index: number): void {
+  // Video error fallback — log if asset fails to load
+  onVideoError(event: Event): void {
     console.warn('Video failed to load:', event);
-    this.videoStates[index] = { ...this.videoStates[index], error: true, paused: true };
-  }
-
-  toggleVideoPlay(event: MouseEvent): void {
-    event.stopPropagation();
-    const wrapper = event.currentTarget as HTMLElement;
-    const video = wrapper.querySelector('video') as HTMLVideoElement;
-    if (!video) return;
-    if (video.paused) {
-      video.play().catch(() => {});
-    } else {
-      video.pause();
-    }
   }
 
   nextSlide(): void {
