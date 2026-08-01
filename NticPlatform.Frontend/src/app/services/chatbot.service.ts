@@ -49,6 +49,17 @@ export class ChatbotService {
   private currentUserRole = '';
   private escapeCount = 0;
 
+  // Shared guidance appended to every role's system prompt
+  private readonly ACCOUNT_FLOW = `
+
+ACCOUNT & LOGIN RULES (apply to all roles):
+- If someone says "I created an account" / "I just registered" / "I signed up" — their account IS READY. Tell them to log in with their email and password using the Login button on the landing page. Do NOT tell them to go to /registration again.
+- If someone asks "how do I log in" — tell them to click the Login button on the landing page and enter their email + password.
+- If someone says "I registered but can't log in" — tell them to double-check their email and password are correct. If still stuck, offer to create a support ticket.
+- If someone asks "where is my account" or "do I have an account" — tell them: if you already registered, just log in to see your dashboard.
+- Normal flow: Register (/registration) → Log in → Dashboard (/dashboard).
+- NEVER tell someone who says they already registered to "go to registration page" again. That makes no sense. Instead, help them log in.`;
+
   private readonly ROLE_CONTEXTS: Record<string, string> = {
     student: `You are a friendly AI helper for the NTIC Ghana Championship website. A student is talking to you.
 
@@ -154,7 +165,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
 
   private readonly DEFAULT_GREETING = (userName: string, role: string): string => {
     const greetings: Record<string, string> = {
-      student: `Hey ${userName}! 👋 I'm your NTIC helper. Ask me about tracks, submissions, courses, or anything on the platform. What's up?`,
+      student: `Hey ${userName}! 👋 I'm your NTIC helper. Ask me about tracks, submissions, courses, your account, or anything on the platform. What's up?`,
       instructor: `Hi ${userName}! I can help with grading, student work, and the instructor tools. What do you need?`,
       school_admin: `Hi ${userName}! Ask me about registrations, teams, or school stats. What can I help with?`,
       judge: `Hi ${userName}! I can help with rubrics, scoring, and reviews. What do you need?`,
@@ -365,7 +376,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
 
       const body = {
         system_instruction: {
-          parts: [{ text: `${systemInstruction}\n\nCRITICAL RULES:\n- Keep responses under 80 words.\n- Give the page path (e.g. /registration).\n- Use simple words. No fluff. Be friendly but direct.\n- If you genuinely cannot answer (out of scope, needs human, unclear), put [ESCALATE] at the end. Only use this when you truly can't help. Do NOT use it for simple questions.` }]
+          parts: [{ text: `${systemInstruction}${this.ACCOUNT_FLOW}\n\nCRITICAL RULES:\n- Keep responses under 80 words.\n- Give the page path (e.g. /registration).\n- Use simple words. No fluff. Be friendly but direct.\n- If you genuinely cannot answer (out of scope, needs human, unclear), put [ESCALATE] at the end. Only use this when you truly can't help. Do NOT use it for simple questions.` }]
         },
         contents: history,
         generationConfig: { temperature: 0.7, maxOutputTokens: 512, topP: 0.9 }
