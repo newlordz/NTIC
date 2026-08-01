@@ -5497,6 +5497,73 @@
       }
     }
   }
+
+  // ─── People Visualization ───
+  .people-visual {
+    background: rgba(0, 63, 135, 0.04);
+    border: 1px solid rgba(0, 63, 135, 0.08);
+
+    .people-visual-title {
+      color: #0a1628 !important;
+
+      .material-symbols-outlined { color: #0056b3 !important; }
+    }
+
+    .bar-age { color: #1e293b !important; }
+    .bar-name { color: rgba(10, 22, 40, 0.5) !important; }
+  }
+
+  .people-visual-footer {
+    color: rgba(10, 22, 40, 0.45) !important;
+  }
+
+  // ─── AI Viewfinder ───
+  .ai-viewfinder {
+    background: rgba(0, 63, 135, 0.04);
+    border: 1px solid rgba(0, 63, 135, 0.1);
+
+    .viewfinder-header {
+      background: rgba(0, 63, 135, 0.06);
+      border-bottom: 1px solid rgba(0, 63, 135, 0.08);
+      color: rgba(10, 22, 40, 0.75);
+    }
+  }
+
+  // ─── D-Pad (fix class name mismatch) ───
+  .dpad-btn {
+    background: linear-gradient(145deg, #f0f5ff, #e8f0fe);
+    border: 1px solid rgba(0, 63, 135, 0.15);
+    color: #1e293b;
+
+    &:hover {
+      background: #0056b3;
+      color: #ffffff;
+      border-color: #0056b3;
+      box-shadow: 0 0 12px rgba(0, 86, 179, 0.4);
+    }
+
+    &.center {
+      background: #e11d48;
+      color: #ffffff;
+      border-color: #f43f5e;
+
+      &:hover { background: #f43f5e; color: #ffffff; }
+    }
+  }
+
+  .dpad-group {
+    background: rgba(0, 63, 135, 0.04);
+    border: 1px solid rgba(0, 63, 135, 0.1);
+  }
+
+  // ─── Action Buttons ───
+  .action-btn {
+    background: rgba(0, 63, 135, 0.05);
+    color: #475569;
+    border: 1px solid rgba(0, 63, 135, 0.12);
+
+    &:hover { background: rgba(0, 63, 135, 0.1); }
+  }
 }
 
 .preview-btn {
