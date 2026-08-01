@@ -3458,20 +3458,68 @@ for (let i = people.length - 1; i > 0; i--) {
         }
         state.log = `Loaded ${state.sampleName} into visual scanner. ResNet-50 inferred classification with ${state.confidence}% confidence.`;
       } else if (actionType === 'scan') {
-        // Re-scan the currently selected sample (not random)
+        // Smart scan — uses training accuracy to influence results
         const currentIcon = state.sampleIcon;
-        const sampleMap: Record<string, string> = {
-          '🌿': 'sample_cocoa',
-          '🌽': 'sample_maize',
-          '🥔': 'sample_potato',
-          '🍅': 'sample_tomato'
+        const sampleMap: Record<string, { name: string; disease: string; diseaseClass: number; healthy: boolean }> = {
+          '🌿': { name: 'Cocoa Pod', disease: 'Healthy', diseaseClass: 0, healthy: true },
+          '🌽': { name: 'Maize Leaf', disease: 'Rust Mildew', diseaseClass: 1, healthy: false },
+          '🥔': { name: 'Potato Tuber', disease: 'Blight Virus', diseaseClass: 2, healthy: false },
+          '🍅': { name: 'Tomato Leaf', disease: 'Septoria Leaf Spot', diseaseClass: 3, healthy: false }
         };
-        const currentSample = sampleMap[currentIcon] || 'sample_cocoa';
+        const sample = sampleMap[currentIcon] || sampleMap['🌿'];
+
         state.status = '🔍 Scanning crop sample...';
         state.statusColor = '#ab47bc';
         state.log = 'Running AI inference on leaf image. Analyzing texture, color, and pattern...';
         if (this.scanTimeout) clearTimeout(this.scanTimeout);
-        this.scanTimeout = setTimeout(() => this.triggerArenaAction('ai', currentSample), 900);
+        this.scanTimeout = setTimeout(() => {
+          const trained = state.epoch > 7 && (state.accuracy || 0) > 0;
+
+          // Determine predicted class — trained models may misclassify
+          let predictedClass = sample.diseaseClass;
+          if (trained && state.confusionMatrix) {
+            const row = state.confusionMatrix[sample.diseaseClass];
+            const sum = row.reduce((s: number, v: number) => s + v, 0) || 1;
+            const r = Math.random() * sum;
+            let acc = 0;
+            for (let c = 0; c < row.length; c++) {
+              acc += row[c];
+              if (r <= acc) { predictedClass = c; break; }
+            }
+          } else {
+            // Untrained — 65% correct, else misclassify to a random wrong class
+            if (Math.random() > 0.35) {
+              predictedClass = sample.diseaseClass;
+            } else {
+              const wrongClasses = [0, 1, 2, 3].filter(c => c !== sample.diseaseClass);
+              predictedClass = wrongClasses[Math.floor(Math.random() * wrongClasses.length)];
+            }
+          }
+
+          const realNames = ['Cocoa Pod', 'Maize Leaf', 'Potato Tuber', 'Tomato Leaf'];
+          const classDiseases: Record<number, string> = {
+            0: '🟢 CROP DIAGNOSTIC • HEALTHY',
+            1: '⚠️ CROP PATHOLOGY • RUST MILDEW',
+            2: '🚨 CROP PATHOLOGY • BLIGHT DETECTED',
+            3: '⚠️ CROP PATHOLOGY • LEAF SPOT'
+          };
+          const classColors = ['#00e676', '#ff9100', '#ff1744', '#ff9100'];
+          const classIcons = ['🌿', '🌽', '🥔', '🍅'];
+          const diseaseLabels: Record<number, string> = { 0: 'Healthy', 1: 'Rust Mildew Detected', 2: 'Blight Virus Alert', 3: 'Septoria Leaf Spot' };
+
+          const confidence = trained
+            ? Math.round(75 + Math.random() * 23)
+            : Math.round(55 + Math.random() * 35);
+
+          const correct = predictedClass === sample.diseaseClass;
+          state.confidence = String(confidence);
+          state.label = `${realNames[predictedClass]} • ${diseaseLabels[predictedClass]} (Class ${predictedClass})`;
+          state.status = classDiseases[predictedClass];
+          state.statusColor = classColors[predictedClass];
+          state.sampleIcon = classIcons[predictedClass];
+          state.sampleName = realNames[predictedClass];
+          state.log = `Inference done. ${correct ? 'Correct' : 'Misclassified'}: ${realNames[predictedClass]} — ${classDiseases[predictedClass]}. Confidence ${confidence}%.`;
+        }, 900);
       } else if (actionType === 'epoch') {
         state.epoch = Math.min(50, state.epoch + 1);
         const e = state.epoch;
