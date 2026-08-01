@@ -1057,6 +1057,8 @@ export class ContentService {
       this.platformStats = this.loadKeySync('platformStats', this.defaultStats);
       this.heroSlides = this.loadKeySync('heroSlides', this.defaultHero);
       this.newsFeedItems = this.loadKeySync('newsFeedItems', this.defaultNews);
+      // Users — always start fresh, backend sync replaces with real data
+      this.users = [...this.defaultUsers];
       
       const savedCountdown = localStorage.getItem('countdownDate');
       if (savedCountdown) {
@@ -1070,7 +1072,7 @@ export class ContentService {
       }
 
       // Large datasets — load from localStorage first (sync), then async upgrade to IndexedDB
-      this.users = this.deduplicateUsers(this.loadKeySync('users', this.defaultUsers));
+      // Users are NOT loaded from localStorage — always fresh from backend sync
       this.pendingApprovals = this.loadKeySync('pendingApprovals', this.defaultPendingApprovals);
       this.rejectedApprovals = this.loadKeySync('rejectedApprovals', this.defaultRejectedApprovals);
       this.approvedApprovals = this.loadKeySync('approvedApprovals', this.defaultApprovedApprovals);
