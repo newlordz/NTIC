@@ -821,6 +821,21 @@ try:
         conn.close()
         return [{"id": r[0], "email": r[1], "full_name": r[2], "role": r[3], "ticket": r[4], "status": r[5], "created_at": str(r[6])} for r in rows]
 
+    @app.get("/api/users/lookup")
+    def lookup_user(email: str = ""):
+        """Look up whether an email is registered. Safe for public use - returns only existence and status."""
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT id, email, full_name, role, status FROM users WHERE lower(email) = %s", (email.strip().lower(),))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if not row:
+            return {"found": False, "email": email}
+        return {"found": True, "email": row[1], "full_name": row[2], "role": row[3], "status": row[4]}
+
     class UserCreate(BaseModel):
         email: str
         full_name: str = ""

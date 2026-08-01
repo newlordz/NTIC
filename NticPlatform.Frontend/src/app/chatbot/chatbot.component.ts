@@ -29,6 +29,7 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
   userInput = '';
   ticketLookupInput = '';
   ticketEmailInput = '';
+  accountLookupInput = '';
   private shouldScrollToBottom = false;
 
   constructor(public chatbot: ChatbotService, private cdr: ChangeDetectorRef) {}
@@ -115,6 +116,13 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
     if (!this.ticketEmailInput.trim()) return;
     this.chatbot.createTicket(this.ticketEmailInput.trim());
     this.ticketEmailInput = '';
+    this.cdr.markForCheck();
+  }
+
+  lookupAccount(): void {
+    if (!this.accountLookupInput.trim()) return;
+    this.chatbot.lookupAccount(this.accountLookupInput);
+    this.accountLookupInput = '';
     this.cdr.markForCheck();
   }
 

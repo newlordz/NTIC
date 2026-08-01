@@ -40,6 +40,7 @@ export class ChatbotService {
   showTicketLookup = signal(false);
   ticketLookupId = signal('');
   ticketLookupResult = signal<SupportTicket | null>(null);
+  showAccountLookup = signal(false);
 
   // Shared in-memory support tickets (acts as a simple store)
   supportTickets = signal<SupportTicket[]>([]);
@@ -334,6 +335,28 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
       return;
     }
 
+    // Handle account verification request
+    if (/verify.*account|check.*account|account.*ready|is.*my.*account|registration.*(status|confirmed|complete|go.*through)|did.*register|am.*i.*registered/i.test(userText)) {
+      this.showAccountLookup.set(true);
+      const prompt: ChatMessage = { role: 'model', text: 'I can check that for you! Enter the email address you registered with and I\'ll look it up.', timestamp: new Date() };
+      this.messages.update(msgs => [...msgs, prompt]);
+      this.saveToSession();
+      return;
+    }
+
+    // Handle account lookup email input
+    if (this.showAccountLookup()) {
+      const email = userText.trim();
+      if (email.includes('@') && email.includes('.')) {
+        this.lookupAccount(email);
+        return;
+      }
+      const warn: ChatMessage = { role: 'model', text: 'That doesn\'t look like a valid email. Please enter the email you registered with.', timestamp: new Date() };
+      this.messages.update(msgs => [...msgs, warn]);
+      this.saveToSession();
+      return;
+    }
+
     // Handle ticket prompt responses
     if (this.showTicketPrompt()) {
       const lower = userText.toLowerCase();
@@ -616,6 +639,42 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
     } finally {
       this.isLoading.set(false);
       this.ticketLookupId.set('');
+      this.saveToSession();
+    }
+  }
+
+  // ─── ACCOUNT LOOKUP ──────────────────────────────────────────────────
+  async lookupAccount(email: string): Promise<void> {
+    this.isLoading.set(true);
+    try {
+      const result: any = await this.http.get(`${environment.apiUrl}/users/lookup?email=${encodeURIComponent(email.trim().toLowerCase())}`).toPromise();
+      let msg: ChatMessage;
+      if (result.found) {
+        const status = result.status === 'Active' ? '✅ Active' : `⏳ ${result.status}`;
+        const role = result.role ? ` (${result.role})` : '';
+        msg = {
+          role: 'model',
+          text: `✅ **Account Found!**\n\nName: ${result.full_name || 'N/A'}\nEmail: ${result.email}\nStatus: ${status}${role}\n\nYour account is ready to use. Just log in with your email and password!`,
+          timestamp: new Date()
+        };
+      } else {
+        msg = {
+          role: 'model',
+          text: `❌ **No account found** for **${email}**.\n\nThat email is not registered. Would you like to sign up? Go to the /registration page to create an account.`,
+          timestamp: new Date()
+        };
+      }
+      this.messages.update(msgs => [...msgs, msg]);
+    } catch (_) {
+      const msg: ChatMessage = {
+        role: 'model',
+        text: `⚠️ I couldn't reach the verification service right now. Please try again in a moment, or create a support ticket and I'll check for you.`,
+        timestamp: new Date()
+      };
+      this.messages.update(msgs => [...msgs, msg]);
+    } finally {
+      this.isLoading.set(false);
+      this.showAccountLookup.set(false);
       this.saveToSession();
     }
   }

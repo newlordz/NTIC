@@ -120,6 +120,15 @@
     </div>
   </div>
 
+  <!-- ACCOUNT LOOKUP INPUT -->
+  <div class="escalate-confirm" *ngIf="chatbot.showAccountLookup()">
+    <p><span class="material-symbols-outlined">how_to_reg</span> Enter the email you registered with:</p>
+    <div class="ticket-lookup-row">
+      <input type="email" [(ngModel)]="accountLookupInput" placeholder="Enter your registered email" class="ticket-lookup-input" />
+      <button class="escalate-ok-btn" (click)="lookupAccount()" [disabled]="!accountLookupInput.trim()">Check</button>
+    </div>
+  </div>
+
   <!-- INPUT AREA -->
   <div class="chatbot-input-area">
     <div class="escalated-banner" *ngIf="chatbot.isEscalated()">
