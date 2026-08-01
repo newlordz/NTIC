@@ -2,7 +2,9 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
+import { environment } from '../../../environments/environment';
 import { ContentService, User } from '../../services/content.service';
 import { ChatbotService, SupportTicket } from '../../services/chatbot.service';
 import { FilterTicketsPipe } from '../../services/filter-tickets.pipe';
@@ -50,7 +52,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     { id: 'super_admin', label: 'Admins', icon: 'admin_panel_settings' },
   ];
 
-  constructor(public contentService: ContentService, private router: Router, public chatbotService: ChatbotService) {}
+constructor(public contentService: ContentService, private router: Router, public chatbotService: ChatbotService, private http: HttpClient) {}
 
   get canManageUsers(): boolean {
     const role = getAuthValue('activeRoleId') || '';
@@ -96,8 +98,32 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   loadUsers(): void {
-    this.users = [...this.contentService.users];
-    this.applyFilters();
+    // Fetch fresh users from backend, then save to content service
+    this.http.get<any[]>(`${environment.apiUrl}/users`).subscribe({
+      next: (backendUsers) => {
+        const mapped: User[] = backendUsers.map((u: any) => ({
+          id: u.id,
+          email: u.email,
+          fullName: u.full_name || 'Unknown',
+          phone: u.phone || '',
+          otp: '',
+          organization: u.organization || '',
+          role: u.role || 'student',
+          ticket: u.ticket || '',
+          status: u.status || 'Active',
+          registeredAt: u.created_at || '',
+          lastLogin: ''
+        }));
+        this.contentService.users = mapped;
+        this.contentService.saveUsers(mapped);
+        this.users = [...mapped];
+        this.applyFilters();
+      },
+      error: () => {
+        this.users = [...this.contentService.users];
+        this.applyFilters();
+      }
+    });
   }
 
   applyFilters(): void {
