@@ -3,10 +3,10 @@ import uuid
 import datetime
 from app.config import settings
 from app.database import init_postgres_db, get_db_connection
-from app.security import verify_password, create_token
+from app.security import verify_password, create_token, require_auth, require_admin
 
 try:
-    from fastapi import FastAPI, HTTPException, status, Request
+    from fastapi import FastAPI, HTTPException, status, Request, Depends
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.staticfiles import StaticFiles
     from fastapi.responses import FileResponse, JSONResponse
@@ -805,6 +805,386 @@ try:
         cur.close()
         conn.close()
         return [{"id": r[0], "title": r[1], "description": r[2], "image": r[3]} for r in rows]
+
+    # USERS
+    @app.get("/api/users")
+    def list_users():
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT id, email, full_name, role, ticket, status, created_at FROM users ORDER BY created_at DESC")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [{"id": r[0], "email": r[1], "full_name": r[2], "role": r[3], "ticket": r[4], "status": r[5], "created_at": str(r[6])} for r in rows]
+
+    class UserCreate(BaseModel):
+        email: str
+        full_name: str = ""
+        role: str = "student"
+        ticket: str = ""
+        password: str = ""
+        status: str = "Active"
+
+    @app.post("/api/users", status_code=status.HTTP_201_CREATED)
+    def create_user(payload: UserCreate, _admin: dict = Depends(require_admin)):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        from app.security import hash_password
+        user_id = "USR-" + str(uuid.uuid4())[:8]
+        password_hash = hash_password(payload.password) if payload.password else hash_password("changeme123")
+        ticket = payload.ticket or f"NTIC-{payload.role.upper()[:3]}-{str(uuid.uuid4())[:4].upper()}"
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, payload.status)
+            )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        return {"id": user_id, "email": payload.email, "role": payload.role, "ticket": ticket}
+
+    @app.patch("/api/users/{user_id}")
+    def update_user(user_id: str, payload: UserCreate, _admin: dict = Depends(require_admin)):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        parts = ["full_name = %s", "role = %s", "status = %s", "ticket = %s"]
+        vals = [payload.full_name, payload.role, payload.status, payload.ticket or None]
+        if payload.password:
+            from app.security import hash_password
+            parts.append("password_hash = %s")
+            vals.append(hash_password(payload.password))
+        if payload.email:
+            parts.append("email = %s")
+            vals.append(payload.email.strip().lower())
+        vals.append(user_id)
+        try:
+            cur.execute(f"UPDATE users SET {', '.join(parts)} WHERE id = %s RETURNING id", vals)
+            row = cur.fetchone()
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {"id": user_id, "status": "updated"}
+
+    @app.delete("/api/users/{user_id}")
+    def delete_user(user_id: str, _admin: dict = Depends(require_admin)):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (user_id,))
+        cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "deleted", "id": user_id}
+
+    # HALL OF FAME
+    class HofCreate(BaseModel):
+        type: str = "individual"
+        initials: str = ""
+        name: str
+        team_name: str = ""
+        project_title: str = ""
+        members: list = []
+        school: str = ""
+        year: str = ""
+        badge: str = ""
+        track_class: str = ""
+        expiry_date: str = ""
+
+    @app.get("/api/hof")
+    def list_hof():
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        import json as _json
+        cur.execute("SELECT id, type, initials, name, team_name, project_title, members, school, year, badge, track_class, expiry_date FROM hof_entries ORDER BY year DESC")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [{"id": r[0], "type": r[1], "initials": r[2], "name": r[3], "team_name": r[4], "project_title": r[5], "members": (_json.loads(r[6]) if isinstance(r[6], str) else (r[6] or [])), "school": r[7], "year": r[8], "badge": r[9], "track_class": r[10], "expiry_date": r[11]} for r in rows]
+
+    @app.post("/api/hof", status_code=status.HTTP_201_CREATED)
+    def create_hof(payload: HofCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        import json as _json
+        hof_id = "hof-" + str(uuid.uuid4())[:8]
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "INSERT INTO hof_entries (id, type, initials, name, team_name, project_title, members, school, year, badge, track_class, expiry_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (hof_id, payload.type, payload.initials, payload.name, payload.team_name, payload.project_title, _json.dumps(payload.members or []), payload.school, payload.year, payload.badge, payload.track_class, payload.expiry_date)
+            )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        return {"id": hof_id, "name": payload.name}
+
+    @app.patch("/api/hof/{item_id}")
+    def update_hof(item_id: str, payload: HofCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        import json as _json
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "UPDATE hof_entries SET type = %s, initials = %s, name = %s, team_name = %s, project_title = %s, members = %s, school = %s, year = %s, badge = %s, track_class = %s, expiry_date = %s WHERE id = %s RETURNING id",
+                (payload.type, payload.initials, payload.name, payload.team_name, payload.project_title, _json.dumps(payload.members or []), payload.school, payload.year, payload.badge, payload.track_class, payload.expiry_date, item_id)
+            )
+            row = cur.fetchone()
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="HOF entry not found")
+        return {"id": item_id, "status": "updated"}
+
+    @app.delete("/api/hof/{item_id}")
+    def delete_hof(item_id: str):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("DELETE FROM hof_entries WHERE id = %s", (item_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "deleted", "id": item_id}
+
+    # NEWS ITEMS
+    class NewsCreate(BaseModel):
+        headline: str
+        tag: str = ""
+        date: str = ""
+        link: str = ""
+
+    @app.get("/api/news")
+    def list_news():
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT id, headline, tag, date, link FROM news_items ORDER BY date DESC")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [{"id": r[0], "headline": r[1], "tag": r[2], "date": r[3], "link": r[4]} for r in rows]
+
+    @app.post("/api/news", status_code=status.HTTP_201_CREATED)
+    def create_news(payload: NewsCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        news_id = "news-" + str(uuid.uuid4())[:8]
+        cur = conn.cursor()
+        try:
+            cur.execute("INSERT INTO news_items (id, headline, tag, date, link) VALUES (%s, %s, %s, %s, %s)",
+                        (news_id, payload.headline, payload.tag, payload.date, payload.link))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        return {"id": news_id, "headline": payload.headline}
+
+    @app.delete("/api/news/{item_id}")
+    def delete_news(item_id: str):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("DELETE FROM news_items WHERE id = %s", (item_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "deleted", "id": item_id}
+
+    # AUDIT LOGS
+    class AuditCreate(BaseModel):
+        action: str
+        usr: str = ""
+        time: str = ""
+        type: str = ""
+
+    @app.get("/api/audit-logs")
+    def list_audit_logs():
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT id, action, usr, time, type FROM audit_logs ORDER BY id DESC LIMIT 200")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [{"id": r[0], "action": r[1], "user": r[2], "time": r[3], "type": r[4]} for r in rows]
+
+    @app.post("/api/audit-logs", status_code=status.HTTP_201_CREATED)
+    def create_audit_log(payload: AuditCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            cur.execute("INSERT INTO audit_logs (action, usr, time, type) VALUES (%s, %s, %s, %s) RETURNING id",
+                        (payload.action, payload.usr, payload.time, payload.type))
+            row = cur.fetchone()
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        return {"id": row[0] if row else None, "status": "created"}
+
+    # LMS COURSES
+    class LmsCourseCreate(BaseModel):
+        title: str
+        track: str = ""
+        icon: str = ""
+        level: str = ""
+        description: str = ""
+        modules: int = 0
+        enrolled: int = 0
+        completion: int = 0
+        status: str = "active"
+        created_at: str = ""
+        submitted_by: str = ""
+        approval_status: str = "approved"
+        rejection_reason: str = ""
+
+    @app.get("/api/lms-courses")
+    def list_lms_courses():
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status, rejection_reason FROM lms_courses ORDER BY created_at DESC")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [{"id": r[0], "title": r[1], "track": r[2], "icon": r[3], "level": r[4], "description": r[5], "modules": r[6], "enrolled": r[7], "completion": r[8], "status": r[9], "created_at": r[10], "submitted_by": r[11], "approval_status": r[12], "rejection_reason": r[13]} for r in rows]
+
+    @app.post("/api/lms-courses", status_code=status.HTTP_201_CREATED)
+    def create_lms_course(payload: LmsCourseCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        course_id = "crs-" + str(uuid.uuid4())[:8]
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "INSERT INTO lms_courses (id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status, rejection_reason) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (course_id, payload.title, payload.track, payload.icon, payload.level, payload.description, payload.modules, payload.enrolled, payload.completion, payload.status, payload.created_at, payload.submitted_by, payload.approval_status, payload.rejection_reason)
+            )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        return {"id": course_id, "title": payload.title}
+
+    # BULK SYNC endpoint for LMS and other localStorage collections
+    class BulkSyncPayload(BaseModel):
+        collection: str
+        items: list = []
+
+    @app.post("/api/bulk-sync")
+    def bulk_sync(payload: BulkSyncPayload, _admin: dict = Depends(require_admin)):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        import json as _json
+        cur = conn.cursor()
+
+        if payload.collection == "lms_courses":
+            for item in payload.items:
+                cur.execute("INSERT INTO lms_courses (id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status, rejection_reason) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, track = EXCLUDED.track, status = EXCLUDED.status",
+                            (item.get("id"), item.get("title"), item.get("track",""), item.get("icon",""), item.get("level",""), item.get("description",""), item.get("modules",0), item.get("enrolled",0), item.get("completion",0), item.get("status","active"), item.get("created_at",""), item.get("submitted_by",""), item.get("approval_status","approved"), item.get("rejection_reason","")))
+        elif payload.collection == "lms_modules":
+            for item in payload.items:
+                cur.execute("INSERT INTO lms_modules (id, course_id, title, description, order_num, icon, status, submitted_by, approval_status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, status = EXCLUDED.status",
+                            (item.get("id"), item.get("courseId"), item.get("title"), item.get("description",""), item.get("order",1), item.get("icon",""), item.get("status","published"), item.get("submitted_by",""), item.get("approval_status","approved")))
+        elif payload.collection == "lms_materials":
+            for item in payload.items:
+                cur.execute("INSERT INTO lms_materials (id, course_id, module_id, title, type, url, description, created_at, submitted_by, approval_status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title",
+                            (item.get("id"), item.get("courseId"), item.get("moduleId"), item.get("title"), item.get("type",""), item.get("url",""), item.get("description",""), item.get("created_at",""), item.get("submitted_by",""), item.get("approval_status","approved")))
+        elif payload.collection == "lms_assignments":
+            for item in payload.items:
+                cur.execute("INSERT INTO lms_assignments (id, course_id, title, description, due_date, max_score, track, status, created_at, submitted_by, approval_status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, status = EXCLUDED.status",
+                            (item.get("id"), item.get("courseId"), item.get("title"), item.get("description",""), item.get("due_date",""), item.get("maxScore",100), item.get("track",""), item.get("status","active"), item.get("created_at",""), item.get("submitted_by",""), item.get("approval_status","approved")))
+        elif payload.collection == "lms_submissions":
+            for item in payload.items:
+                cur.execute("INSERT INTO lms_submissions (id, assignment_id, course_id, student_id, student_name, student_email, submitted_at, content, url, score, status, feedback) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET score = EXCLUDED.score, status = EXCLUDED.status, feedback = EXCLUDED.feedback",
+                            (item.get("id"), item.get("assignmentId"), item.get("courseId"), item.get("studentId"), item.get("studentName"), item.get("studentEmail"), item.get("submitted_at",""), item.get("content",""), item.get("url",""), item.get("score"), item.get("status","submitted"), item.get("feedback","")))
+        elif payload.collection == "lms_enrollments":
+            for item in payload.items:
+                cur.execute("INSERT INTO lms_enrollments (id, course_id, student_id, student_name, student_email, progress_pct, enrolled_at, last_active, status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET progress_pct = EXCLUDED.progress_pct, status = EXCLUDED.status",
+                            (item.get("id"), item.get("courseId"), item.get("studentId"), item.get("studentName"), item.get("studentEmail"), item.get("progressPct",0), item.get("enrolled_at",""), item.get("lastActive",""), item.get("status","active")))
+        elif payload.collection == "hof":
+            for item in payload.items:
+                cur.execute("INSERT INTO hof_entries (id, type, initials, name, team_name, project_title, members, school, year, badge, track_class, expiry_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, badge = EXCLUDED.badge, school = EXCLUDED.school",
+                            (item.get("id"), item.get("type","individual"), item.get("initials",""), item.get("name"), item.get("team_name",""), item.get("project_title",""), _json.dumps(item.get("members",[])), item.get("school",""), item.get("year",""), item.get("badge",""), item.get("track_class",""), item.get("expiry_date","")))
+        elif payload.collection == "news":
+            for item in payload.items:
+                cur.execute("INSERT INTO news_items (id, headline, tag, date, link) VALUES (%s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET headline = EXCLUDED.headline, tag = EXCLUDED.tag",
+                            (item.get("id"), item.get("headline"), item.get("tag",""), item.get("date",""), item.get("link","")))
+        elif payload.collection == "audit_logs":
+            for item in payload.items:
+                cur.execute("INSERT INTO audit_logs (action, usr, time, type) VALUES (%s, %s, %s, %s)",
+                            (item.get("action",""), item.get("user",""), item.get("time",""), item.get("type","")))
+        elif payload.collection == "users":
+            for item in payload.items:
+                cur.execute("INSERT INTO users (id, email, full_name, role, ticket, password_hash, status) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name, role = EXCLUDED.role, status = EXCLUDED.status",
+                            (item.get("id"), item.get("email",""), item.get("fullName",""), item.get("role","student"), item.get("ticket",""), "synced_noauth", "Active"))
+        else:
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=f"Unsupported collection: {payload.collection}")
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "synced", "collection": payload.collection, "count": len(payload.items)}
 
     # Mount static files
     frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "NticPlatform.Frontend", "dist", "stem-frontend", "browser")

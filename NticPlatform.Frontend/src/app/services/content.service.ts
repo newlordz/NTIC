@@ -724,6 +724,13 @@ export class ContentService {
     this.loadFromBackend();
   }
 
+  syncToBackend(collection: string, items: any[]): void {
+    this.apiService.bulkSync(collection, items).subscribe({
+      next: () => {},
+      error: () => {}
+    });
+  }
+
   private loadFromBackend(): void {
     this.apiService.getEvents().subscribe({
       next: (events: any) => {
@@ -797,6 +804,206 @@ export class ContentService {
       },
       error: (e: any) => console.log('Backend teams fallback to local cache')
     });
+
+    this.apiService.getSubmissions().subscribe({
+      next: (subs: any[]) => {
+        if (subs && subs.length > 0) {
+          const merged = this.mergeSubmissions(subs);
+          this.submissions = merged;
+          this.saveState('submissions', merged);
+        }
+      },
+      error: (e: any) => console.log('Backend submissions fallback to local cache')
+    });
+
+    this.apiService.getSchools().subscribe({
+      next: (schools: any[]) => {
+        if (schools && schools.length > 0) {
+          const merged = this.mergeLeaderboardFromSchools(schools);
+          if (merged.length > 0) {
+            this.leaderboardData = merged;
+            this.saveState('leaderboardData', merged);
+          }
+        }
+      },
+      error: (e: any) => console.log('Backend schools->leaderboard fallback to local cache')
+    });
+
+    this.apiService.getHof().subscribe({
+      next: (entries: any[]) => {
+        if (entries && entries.length > 0) {
+          const merged = this.mergeHof(entries);
+          this.hallOfFameEntries = this.enrichHofEntries(merged);
+          this.saveState('hallOfFameEntries', this.hallOfFameEntries);
+        }
+      },
+      error: (e: any) => console.log('Backend hof fallback to local cache')
+    });
+
+    this.apiService.getNewsItems().subscribe({
+      next: (items: any[]) => {
+        if (items && items.length > 0) {
+          const existing = new Map<string, any>();
+          this.newsFeedItems.forEach(n => existing.set(n.id, n));
+          items.forEach((n: any) => { if (!existing.has(n.id)) existing.set(n.id, n); });
+          this.newsFeedItems = Array.from(existing.values());
+          this.saveState('newsFeedItems', this.newsFeedItems);
+        }
+      },
+      error: (e: any) => console.log('Backend news fallback to local cache')
+    });
+
+    this.apiService.getAuditLogs().subscribe({
+      next: (logs: any[]) => {
+        if (logs && logs.length > 0) {
+          const existingIds = new Set(this.auditLogs.map((l: any) => l.id));
+          const newLogs = logs.filter((l: any) => !existingIds.has(l.id));
+          if (newLogs.length > 0) {
+            this.auditLogs = [...newLogs, ...this.auditLogs];
+            this.saveState('auditLogs', this.auditLogs);
+          }
+        }
+      },
+      error: (e: any) => console.log('Backend audit fallback to local cache')
+    });
+
+    this.apiService.getLmsCourses().subscribe({
+      next: (courses: any[]) => {
+        if (courses && courses.length > 0) {
+          const merged = this.mergeLmsCourses(courses);
+          if (merged.length > 0) {
+            this.lmsCourses = merged;
+            this.saveState('lmsCourses', merged);
+          }
+        }
+      },
+      error: (e: any) => console.log('Backend LMS fallback to local cache')
+    });
+
+    this.apiService.getUsers().subscribe({
+      next: (backendUsers: any[]) => {
+        if (backendUsers && backendUsers.length > 0) {
+          const current = [...this.users];
+          backendUsers.forEach(bu => {
+            if (!current.some(u => u.id === bu.id)) {
+              current.push({
+                id: bu.id,
+                fullName: bu.full_name || 'User',
+                email: bu.email || '',
+                phone: '',
+                otp: '',
+                organization: '',
+                ticket: bu.ticket || '',
+                role: bu.role || 'student',
+                status: bu.status || 'Active',
+                registeredAt: bu.created_at || new Date().toISOString(),
+                lastLogin: new Date().toISOString()
+              });
+            }
+          });
+          if (current.length > this.users.length) this.saveUsers(current);
+        }
+      },
+      error: (e: any) => console.log('Backend users fallback to local cache')
+    });
+  }
+
+  private mergeSubmissions(backendSubs: any[]): Submission[] {
+    const localById = new Map<string, Submission>();
+    this.submissions.forEach(s => localById.set(s.id, s));
+    backendSubs.forEach((b: any) => {
+      if (!localById.has(b.id)) {
+        localById.set(b.id, {
+          id: b.id,
+          student: b.student_id || 'Unknown Student',
+          school: '',
+          assignment: b.source_code_path || '',
+          track: '',
+          file: b.source_code_path || '',
+          score: b.score ?? null,
+          status: b.status || 'pending',
+          time: b.created_at || '',
+          feedback: b.feedback || '',
+          videoUrl: b.video_url || '',
+          sourceCodePath: b.source_code_path || '',
+          backendId: b.id
+        });
+      }
+    });
+    return Array.from(localById.values());
+  }
+
+  private mergeLeaderboardFromSchools(schools: any[]): LeaderboardEntry[] {
+    const existing = new Map<string, LeaderboardEntry>();
+    this.leaderboardData.forEach(e => existing.set(e.id, e));
+    schools.forEach((s: any) => {
+      if (!existing.has(s.id)) {
+        existing.set(s.id, {
+          id: s.id,
+          rank: String(s.rank || 99).padStart(2, '0'),
+          schoolName: s.name || 'Unknown School',
+          location: s.region || '',
+          points: s.score || 100,
+          trackPoints: { all: s.score || 100, coding: 0, robotics: 0, ai: 0, cyber: 0 },
+          region: s.region || ''
+        });
+      } else {
+        const e = existing.get(s.id)!;
+        e.points = Math.max(e.points, s.score || 0);
+        if (s.region) e.region = s.region;
+      }
+    });
+    return Array.from(existing.values()).sort((a, b) => b.points - a.points);
+  }
+
+  private mergeHof(backendEntries: any[]): HallOfFameEntry[] {
+    const localById = new Map<string, HallOfFameEntry>();
+    this.hallOfFameEntries.forEach(e => localById.set(e.id, e));
+    backendEntries.forEach((b: any) => {
+      if (!localById.has(b.id)) {
+        localById.set(b.id, {
+          id: b.id,
+          type: b.type || 'individual',
+          initials: b.initials || '',
+          name: b.name || '',
+          teamName: b.team_name || '',
+          projectTitle: b.project_title || '',
+          members: b.members || [],
+          school: b.school || '',
+          year: b.year || '',
+          badge: b.badge || '',
+          trackClass: b.track_class || '',
+          expiryDate: b.expiry_date || ''
+        });
+      }
+    });
+    return Array.from(localById.values());
+  }
+
+  private mergeLmsCourses(backendCourses: any[]): LmsCourse[] {
+    const localById = new Map<string, LmsCourse>();
+    this.lmsCourses.forEach(c => localById.set(c.id, c));
+    backendCourses.forEach((b: any) => {
+      if (!localById.has(b.id)) {
+        localById.set(b.id, {
+          id: b.id,
+          title: b.title || '',
+          track: b.track || '',
+          icon: b.icon || '',
+          level: b.level || '',
+          description: b.description || '',
+          modules: b.modules || 0,
+          enrolled: b.enrolled || 0,
+          completion: b.completion || 0,
+          status: b.status || 'active',
+          createdAt: b.created_at || '',
+          submittedBy: b.submitted_by || '',
+          approvalStatus: b.approval_status || 'approved',
+          rejectionReason: b.rejection_reason || ''
+        });
+      }
+    });
+    return Array.from(localById.values());
   }
 
   private mergeCompetitions(backendComps: any[]): Competition[] {
@@ -1077,11 +1284,23 @@ export class ContentService {
     const id = 'hof-' + Date.now();
     this.hallOfFameEntries.unshift({ id, ...entry });
     this.saveState('hallOfFameEntries', this.hallOfFameEntries);
+    this.syncToBackend('hof', this.hallOfFameEntries.map(e => ({
+      id: e.id, type: e.type || 'individual', initials: e.initials || '',
+      name: e.name, team_name: e.teamName, project_title: e.projectTitle,
+      members: e.members || [], school: e.school, year: e.year,
+      badge: e.badge, track_class: e.trackClass, expiry_date: e.expiryDate
+    })));
   }
 
   removeHofEntry(id: string): void {
     this.hallOfFameEntries = this.hallOfFameEntries.filter(e => e.id !== id);
     this.saveState('hallOfFameEntries', this.hallOfFameEntries);
+    this.syncToBackend('hof', this.hallOfFameEntries.map(e => ({
+      id: e.id, type: e.type || 'individual', initials: e.initials || '',
+      name: e.name, team_name: e.teamName, project_title: e.projectTitle,
+      members: e.members || [], school: e.school, year: e.year,
+      badge: e.badge, track_class: e.trackClass, expiry_date: e.expiryDate
+    })));
   }
 
   updateHofEntry(entry: HallOfFameEntry): void {
@@ -1090,6 +1309,12 @@ export class ContentService {
       this.hallOfFameEntries[idx] = { ...entry };
       this.hallOfFameEntries = [...this.hallOfFameEntries];
       this.saveState('hallOfFameEntries', this.hallOfFameEntries);
+      this.syncToBackend('hof', this.hallOfFameEntries.map(e => ({
+        id: e.id, type: e.type || 'individual', initials: e.initials || '',
+        name: e.name, team_name: e.teamName, project_title: e.projectTitle,
+        members: e.members || [], school: e.school, year: e.year,
+        badge: e.badge, track_class: e.trackClass, expiry_date: e.expiryDate
+      })));
     }
   }
 
@@ -1156,11 +1381,17 @@ export class ContentService {
     const id = 'news-' + Date.now();
     this.newsFeedItems.unshift({ id, ...item });
     this.saveState('newsFeedItems', this.newsFeedItems);
+    this.syncToBackend('news', this.newsFeedItems.map(n => ({
+      id: n.id, headline: n.headline, tag: n.tag, date: n.date, link: n.link
+    })));
   }
 
   removeNewsItem(id: string): void {
     this.newsFeedItems = this.newsFeedItems.filter(n => n.id !== id);
     this.saveState('newsFeedItems', this.newsFeedItems);
+    this.syncToBackend('news', this.newsFeedItems.map(n => ({
+      id: n.id, headline: n.headline, tag: n.tag, date: n.date, link: n.link
+    })));
   }
 
   updateNewsItem(item: NewsFeedItem): void {
@@ -1169,6 +1400,9 @@ export class ContentService {
       this.newsFeedItems[idx] = { ...item };
       this.newsFeedItems = [...this.newsFeedItems];
       this.saveState('newsFeedItems', this.newsFeedItems);
+      this.syncToBackend('news', this.newsFeedItems.map(n => ({
+        id: n.id, headline: n.headline, tag: n.tag, date: n.date, link: n.link
+      })));
     }
   }
 
@@ -1234,9 +1468,12 @@ export class ContentService {
   }
 
   saveUsers(usersList: User[]): void {
-    this.users = this.deduplicateUsers(usersList);
+    this.users = usersList;
     this.saveState('users', this.users);
-    this.recalculatePlatformStats();
+    this.syncToBackend('users', this.users.map(u => ({
+      id: u.id, email: u.email, fullName: u.fullName, role: u.role,
+      ticket: u.ticket, status: u.status
+    })));
   }
 
   isGroupLeadUser(u: any): boolean {
@@ -1380,6 +1617,9 @@ export class ContentService {
   saveSubmissions(submissionsList: Submission[]): void {
     this.submissions = submissionsList;
     this.saveState('submissions', this.submissions);
+    this.syncToBackend('submissions', this.submissions.map(s => ({
+      id: s.id, status: s.status, score: s.score, feedback: s.feedback || ''
+    })));
   }
 
   syncGradeToBackend(submissionId: string, payload: { score?: number; feedback?: string; status?: string }): void {
@@ -1396,6 +1636,10 @@ export class ContentService {
   saveAuditLogs(auditLogsList: any[]): void {
     this.auditLogs = auditLogsList;
     this.saveState('auditLogs', this.auditLogs);
+    const latest = auditLogsList.slice(0, 5);
+    this.syncToBackend('audit_logs', latest.map((l: any) => ({
+      action: l.action || '', user: l.user || '', time: l.time || '', type: l.type || ''
+    })));
   }
 
   // ── CSR Updates Helpers ──────────────────────────────────────────
@@ -1545,6 +1789,13 @@ export class ContentService {
   saveLmsCourses(list: LmsCourse[]): void {
     this.lmsCourses = list;
     this.saveState('lmsCourses', this.lmsCourses);
+    this.syncToBackend('lms_courses', this.lmsCourses.map(c => ({
+      id: c.id, title: c.title, track: c.track, icon: c.icon, level: c.level,
+      description: c.description, modules: c.modules, enrolled: c.enrolled,
+      completion: c.completion, status: c.status, created_at: c.createdAt,
+      submitted_by: c.submittedBy, approval_status: c.approvalStatus,
+      rejection_reason: c.rejectionReason
+    })));
   }
 
   saveLmsCourse(course: LmsCourse): void {
@@ -1571,6 +1822,11 @@ export class ContentService {
   saveLmsModules(list: LmsModule[]): void {
     this.lmsModules = list;
     this.saveState('lmsModules', this.lmsModules);
+    this.syncToBackend('lms_modules', this.lmsModules.map(m => ({
+      id: m.id, courseId: m.courseId, title: m.title, description: m.description,
+      order: m.order, icon: m.icon, status: m.status,
+      submitted_by: m.submittedBy, approval_status: m.approvalStatus
+    })));
   }
 
   saveLmsModule(mod: LmsModule): void {
@@ -1593,6 +1849,11 @@ export class ContentService {
   saveLmsMaterials(list: LmsMaterial[]): void {
     this.lmsMaterials = list;
     this.saveState('lmsMaterials', this.lmsMaterials);
+    this.syncToBackend('lms_materials', this.lmsMaterials.map(m => ({
+      id: m.id, courseId: m.courseId, moduleId: m.moduleId, title: m.title,
+      type: m.type, url: m.url, description: m.description, created_at: m.createdAt,
+      submitted_by: m.submittedBy, approval_status: m.approvalStatus
+    })));
   }
 
   saveLmsMaterial(mat: LmsMaterial): void {
@@ -1603,16 +1864,32 @@ export class ContentService {
       this.lmsMaterials.push({ ...mat });
     }
     this.saveState('lmsMaterials', this.lmsMaterials);
+    this.syncToBackend('lms_materials', this.lmsMaterials.map(m => ({
+      id: m.id, courseId: m.courseId, moduleId: m.moduleId, title: m.title,
+      type: m.type, url: m.url, description: m.description, created_at: m.createdAt,
+      submitted_by: m.submittedBy, approval_status: m.approvalStatus
+    })));
   }
 
   removeLmsMaterial(id: string): void {
     this.lmsMaterials = this.lmsMaterials.filter(m => m.id !== id);
     this.saveState('lmsMaterials', this.lmsMaterials);
+    this.syncToBackend('lms_materials', this.lmsMaterials.map(m => ({
+      id: m.id, courseId: m.courseId, moduleId: m.moduleId, title: m.title,
+      type: m.type, url: m.url, description: m.description, created_at: m.createdAt,
+      submitted_by: m.submittedBy, approval_status: m.approvalStatus
+    })));
   }
 
   saveLmsAssignments(list: LmsAssignment[]): void {
-    this.lmsAssignments = list;
+    this.lmsAssignments = list; 
     this.saveState('lmsAssignments', this.lmsAssignments);
+    this.syncToBackend('lms_assignments', this.lmsAssignments.map(a => ({
+      id: a.id, courseId: a.courseId, title: a.title, description: a.description,
+      due_date: a.dueDate, maxScore: a.maxScore, track: a.track, status: a.status,
+      created_at: a.createdAt, submitted_by: a.submittedBy,
+      approval_status: a.approvalStatus
+    })));
   }
 
   saveLmsAssignment(asgn: LmsAssignment): void {
@@ -1662,11 +1939,23 @@ export class ContentService {
   saveLmsSubmissions(list: LmsSubmission[]): void {
     this.lmsSubmissions = list;
     this.saveState('lmsSubmissions', this.lmsSubmissions);
+    this.syncToBackend('lms_submissions', this.lmsSubmissions.map(s => ({
+      id: s.id, assignmentId: s.assignmentId, courseId: s.courseId,
+      studentId: s.studentId, studentName: s.studentName, studentEmail: s.studentEmail,
+      submitted_at: s.submittedAt, content: s.content, url: s.url,
+      score: s.score, status: s.status, feedback: s.feedback
+    })));
   }
 
   saveLmsEnrollments(list: LmsEnrollment[]): void {
     this.lmsEnrollments = list;
     this.saveState('lmsEnrollments', this.lmsEnrollments);
+    this.syncToBackend('lms_enrollments', this.lmsEnrollments.map(e => ({
+      id: e.id, courseId: e.courseId, studentId: e.studentId,
+      studentName: e.studentName, studentEmail: e.studentEmail,
+      progressPct: e.progressPct, enrolled_at: e.enrolledAt,
+      lastActive: e.lastActive, status: e.status
+    })));
   }
 
   // ── LMS Moderation & Approvals ──────────────────────────────

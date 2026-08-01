@@ -225,3 +225,243 @@ class TestShapes:
             expected = ["id", "first_name", "last_name", "email", "track", "consent_granted", "created_at"]
             for key in expected:
                 assert key in data, f"Missing key: {key}"
+
+
+class TestHof:
+    def test_list_hof(self, client):
+        resp = client.get("/api/hof")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    def test_create_hof(self, client):
+        resp = client.post("/api/hof", json={
+            "name": "Test Champion",
+            "school": "Test School",
+            "year": "2026",
+            "badge": "Test Badge",
+            "type": "individual",
+            "track_class": "coding-track"
+        })
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["name"] == "Test Champion"
+        assert "id" in data
+
+    def test_update_hof(self, client):
+        resp = client.post("/api/hof", json={
+            "name": "Update HOF",
+            "school": "School A",
+            "year": "2025"
+        })
+        hof_id = resp.json()["id"]
+        resp2 = client.patch(f"/api/hof/{hof_id}", json={
+            "name": "Updated Champion",
+            "school": "School B",
+            "year": "2025"
+        })
+        assert resp2.status_code == 200
+        assert resp2.json()["status"] == "updated"
+
+    def test_delete_hof(self, client):
+        resp = client.post("/api/hof", json={
+            "name": "Delete Me",
+            "school": "School D"
+        })
+        hof_id = resp.json()["id"]
+        resp2 = client.delete(f"/api/hof/{hof_id}")
+        assert resp2.status_code == 200
+        assert resp2.json()["status"] == "deleted"
+
+    def test_hof_shape(self, client):
+        resp = client.get("/api/hof")
+        assert resp.status_code == 200
+        expected = ["id", "type", "initials", "name", "team_name", "project_title", "members", "school", "year", "badge", "track_class"]
+
+
+class TestNews:
+    def test_list_news(self, client):
+        resp = client.get("/api/news")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    def test_create_news(self, client):
+        resp = client.post("/api/news", json={
+            "headline": "Test News Headline",
+            "tag": "Test",
+            "date": "2026-08-01",
+            "link": "#test"
+        })
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["headline"] == "Test News Headline"
+        assert "id" in data
+
+    def test_delete_news(self, client):
+        resp = client.post("/api/news", json={
+            "headline": "Delete News"
+        })
+        news_id = resp.json()["id"]
+        resp2 = client.delete(f"/api/news/{news_id}")
+        assert resp2.status_code == 200
+        assert resp2.json()["status"] == "deleted"
+
+
+class TestAuditLogs:
+    def test_list_audit_logs(self, client):
+        resp = client.get("/api/audit-logs")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    def test_create_audit_log(self, client):
+        resp = client.post("/api/audit-logs", json={
+            "action": "Test action logged",
+            "usr": "tester@test.com",
+            "time": "2026-08-01T12:00:00",
+            "type": "system"
+        })
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["status"] == "created"
+
+
+class TestUsers:
+    def test_list_users(self, client):
+        resp = client.get("/api/users")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    def test_users_shape(self, client):
+        resp = client.get("/api/users")
+        if resp.json():
+            data = resp.json()[0]
+            expected = ["id", "email", "full_name", "role", "ticket", "status", "created_at"]
+            for key in expected:
+                assert key in data, f"Missing key: {key}"
+
+
+class TestLmsCourses:
+    def test_list_lms_courses(self, client):
+        resp = client.get("/api/lms-courses")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    def test_create_lms_course(self, client):
+        resp = client.post("/api/lms-courses", json={
+            "title": "Test LMS Course",
+            "track": "coding",
+            "status": "active"
+        })
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["title"] == "Test LMS Course"
+        assert "id" in data
+
+
+class TestBulkSync:
+    def test_bulk_sync_hof(self, client, admin_token):
+        resp = client.post("/api/bulk-sync", json={
+            "collection": "hof",
+            "items": [{
+                "id": "hof-sync-1",
+                "type": "individual",
+                "name": "Synced Champion",
+                "school": "Sync School",
+                "year": "2025",
+                "badge": "Sync Badge",
+                "track_class": "ai-track"
+            }]
+        }, headers={"Authorization": f"Bearer {admin_token}"})
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "synced"
+        assert resp.json()["count"] == 1
+
+    def test_bulk_sync_lms_courses(self, client, admin_token):
+        resp = client.post("/api/bulk-sync", json={
+            "collection": "lms_courses",
+            "items": [{
+                "id": "crs-sync-1",
+                "title": "Synced Course",
+                "track": "ai",
+                "status": "active"
+            }]
+        }, headers={"Authorization": f"Bearer {admin_token}"})
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "synced"
+
+    def test_bulk_sync_news(self, client, admin_token):
+        resp = client.post("/api/bulk-sync", json={
+            "collection": "news",
+            "items": [{
+                "id": "news-sync-1",
+                "headline": "Synced News",
+                "tag": "Test"
+            }]
+        }, headers={"Authorization": f"Bearer {admin_token}"})
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "synced"
+
+    def test_bulk_sync_unsupported_collection(self, client, admin_token):
+        resp = client.post("/api/bulk-sync", json={
+            "collection": "unsupported",
+            "items": [{"x": 1}]
+        }, headers={"Authorization": f"Bearer {admin_token}"})
+        assert resp.status_code == 400
+
+    def test_bulk_sync_requires_auth(self, client):
+        resp = client.post("/api/bulk-sync", json={
+            "collection": "news",
+            "items": [{"id": "x", "headline": "No Auth"}]
+        })
+        assert resp.status_code == 401
+
+
+class TestUserCrud:
+    def test_create_user(self, client, admin_token):
+        email = f"newuser_{str(uuid.uuid4())[:8]}@test.com"
+        resp = client.post("/api/users", json={
+            "email": email,
+            "full_name": "New User",
+            "role": "reviewer",
+            "password": "TestPass123!"
+        }, headers={"Authorization": f"Bearer {admin_token}"})
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["email"] == email
+        assert data["role"] == "reviewer"
+
+    def test_update_user(self, client, admin_token):
+        email = f"update_{str(uuid.uuid4())[:8]}@test.com"
+        create_resp = client.post("/api/users", json={
+            "email": email,
+            "full_name": "Original Name",
+            "role": "student"
+        }, headers={"Authorization": f"Bearer {admin_token}"})
+        user_id = create_resp.json()["id"]
+        resp = client.patch(f"/api/users/{user_id}", json={
+            "email": email,
+            "full_name": "Updated Name",
+            "role": "instructor",
+            "status": "Active"
+        }, headers={"Authorization": f"Bearer {admin_token}"})
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "updated"
+
+    def test_delete_user(self, client, admin_token):
+        email = f"delete_{str(uuid.uuid4())[:8]}@test.com"
+        create_resp = client.post("/api/users", json={
+            "email": email,
+            "full_name": "Delete Me",
+            "role": "student"
+        }, headers={"Authorization": f"Bearer {admin_token}"})
+        user_id = create_resp.json()["id"]
+        resp = client.delete(f"/api/users/{user_id}", headers={"Authorization": f"Bearer {admin_token}"})
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "deleted"
+
+    def test_create_user_requires_admin(self, client):
+        resp = client.post("/api/users", json={
+            "email": "hacker@test.com",
+            "full_name": "Hacker",
+            "role": "super_admin"
+        })
+        assert resp.status_code == 401

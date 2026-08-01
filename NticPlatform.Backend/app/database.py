@@ -162,6 +162,115 @@ def init_postgres_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 expires_at TIMESTAMP NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS hof_entries (
+                id VARCHAR(64) PRIMARY KEY,
+                type VARCHAR(20) DEFAULT 'individual',
+                initials VARCHAR(10),
+                name VARCHAR(200) NOT NULL,
+                team_name VARCHAR(200),
+                project_title TEXT,
+                members JSONB DEFAULT '[]',
+                school VARCHAR(200),
+                year VARCHAR(10),
+                badge VARCHAR(200),
+                track_class VARCHAR(50),
+                expiry_date VARCHAR(50)
+            );
+
+            CREATE TABLE IF NOT EXISTS news_items (
+                id VARCHAR(64) PRIMARY KEY,
+                headline VARCHAR(300) NOT NULL,
+                tag VARCHAR(100),
+                date VARCHAR(50),
+                link VARCHAR(500)
+            );
+
+            CREATE TABLE IF NOT EXISTS lms_courses (
+                id VARCHAR(64) PRIMARY KEY,
+                title VARCHAR(200) NOT NULL,
+                track VARCHAR(50),
+                icon VARCHAR(50),
+                level VARCHAR(50),
+                description TEXT,
+                modules INTEGER DEFAULT 0,
+                enrolled INTEGER DEFAULT 0,
+                completion INTEGER DEFAULT 0,
+                status VARCHAR(20) DEFAULT 'active',
+                created_at VARCHAR(50),
+                submitted_by VARCHAR(200),
+                approval_status VARCHAR(20) DEFAULT 'approved',
+                rejection_reason TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS lms_modules (
+                id VARCHAR(64) PRIMARY KEY,
+                course_id VARCHAR(64) REFERENCES lms_courses(id) ON DELETE CASCADE,
+                title VARCHAR(200) NOT NULL,
+                description TEXT,
+                order_num INTEGER DEFAULT 1,
+                icon VARCHAR(50),
+                status VARCHAR(20) DEFAULT 'published',
+                submitted_by VARCHAR(200),
+                approval_status VARCHAR(20) DEFAULT 'approved',
+                rejection_reason TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS lms_materials (
+                id VARCHAR(64) PRIMARY KEY,
+                course_id VARCHAR(64) REFERENCES lms_courses(id) ON DELETE CASCADE,
+                module_id VARCHAR(64) REFERENCES lms_modules(id) ON DELETE CASCADE,
+                title VARCHAR(200) NOT NULL,
+                type VARCHAR(20),
+                url TEXT,
+                description TEXT,
+                created_at VARCHAR(50),
+                submitted_by VARCHAR(200),
+                approval_status VARCHAR(20) DEFAULT 'approved',
+                rejection_reason TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS lms_assignments (
+                id VARCHAR(64) PRIMARY KEY,
+                course_id VARCHAR(64) REFERENCES lms_courses(id) ON DELETE CASCADE,
+                title VARCHAR(200) NOT NULL,
+                description TEXT,
+                due_date VARCHAR(50),
+                max_score INTEGER DEFAULT 100,
+                track VARCHAR(50),
+                status VARCHAR(20) DEFAULT 'active',
+                created_at VARCHAR(50),
+                submitted_by VARCHAR(200),
+                approval_status VARCHAR(20) DEFAULT 'approved',
+                rejection_reason TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS lms_submissions (
+                id VARCHAR(64) PRIMARY KEY,
+                assignment_id VARCHAR(64) REFERENCES lms_assignments(id) ON DELETE CASCADE,
+                course_id VARCHAR(64) REFERENCES lms_courses(id) ON DELETE CASCADE,
+                student_id VARCHAR(64),
+                student_name VARCHAR(200),
+                student_email VARCHAR(150),
+                submitted_at VARCHAR(50),
+                content TEXT,
+                url TEXT,
+                score INTEGER,
+                status VARCHAR(30) DEFAULT 'submitted',
+                feedback TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS lms_enrollments (
+                id VARCHAR(64) PRIMARY KEY,
+                course_id VARCHAR(64) REFERENCES lms_courses(id) ON DELETE CASCADE,
+                student_id VARCHAR(64),
+                student_name VARCHAR(200),
+                student_email VARCHAR(150),
+                progress_pct INTEGER DEFAULT 0,
+                enrolled_at VARCHAR(50),
+                last_active VARCHAR(50),
+                status VARCHAR(20) DEFAULT 'active'
+            );
         """)
         conn.commit()
         cur.close()

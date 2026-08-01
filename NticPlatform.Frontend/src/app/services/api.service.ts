@@ -155,4 +155,64 @@ export class ApiService {
   updateSchool(id: string, payload: { name: string; region: string; teams?: number; score?: number; rank?: number; status?: string }): Observable<any> {
     return this.http.patch(this.apiUrl + '/schools/' + id, payload);
   }
+
+  getUsers(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl + '/users');
+  }
+
+  createUser(payload: { email: string; full_name?: string; role?: string; ticket?: string; password?: string; status?: string }): Observable<any> {
+    return this.http.post(this.apiUrl + '/users', payload);
+  }
+
+  updateUser(id: string, payload: { email: string; full_name?: string; role?: string; ticket?: string; password?: string; status?: string }): Observable<any> {
+    return this.http.patch(this.apiUrl + '/users/' + id, payload);
+  }
+
+  deleteUser(id: string): Observable<any> {
+    return this.http.delete(this.apiUrl + '/users/' + id);
+  }
+
+  getHof(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl + '/hof');
+  }
+
+  createHof(payload: any): Observable<any> {
+    return this.http.post(this.apiUrl + '/hof', payload);
+  }
+
+  deleteHof(id: string): Observable<any> {
+    return this.http.delete(this.apiUrl + '/hof/' + id);
+  }
+
+  getNewsItems(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl + '/news');
+  }
+
+  createNewsItem(payload: { headline: string; tag?: string; date?: string; link?: string }): Observable<any> {
+    return this.http.post(this.apiUrl + '/news', payload);
+  }
+
+  deleteNewsItem(id: string): Observable<any> {
+    return this.http.delete(this.apiUrl + '/news/' + id);
+  }
+
+  getAuditLogs(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl + '/audit-logs');
+  }
+
+  createAuditLog(payload: { action: string; usr?: string; time?: string; type?: string }): Observable<any> {
+    return this.http.post(this.apiUrl + '/audit-logs', payload);
+  }
+
+  getLmsCourses(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl + '/lms-courses');
+  }
+
+  createLmsCourse(payload: any): Observable<any> {
+    return this.http.post(this.apiUrl + '/lms-courses', payload);
+  }
+
+  bulkSync(collection: string, items: any[]): Observable<any> {
+    return this.http.post(this.apiUrl + '/bulk-sync', { collection, items });
+  }
 }
