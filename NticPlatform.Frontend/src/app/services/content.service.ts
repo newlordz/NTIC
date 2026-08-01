@@ -834,8 +834,21 @@ export class ContentService {
     this.apiService.getHof().subscribe({
       next: (entries: any[]) => {
         if (entries && entries.length > 0) {
-          const merged = this.mergeHof(entries);
-          this.hallOfFameEntries = this.enrichHofEntries(merged);
+          // Backend is the source of truth — REPLACE, don't merge, so stale local/test entries never resurface
+          this.hallOfFameEntries = this.enrichHofEntries(entries.map((b: any) => ({
+            id: b.id,
+            type: b.type || 'individual',
+            initials: b.initials || '',
+            name: b.name || '',
+            teamName: b.team_name || '',
+            projectTitle: b.project_title || '',
+            members: b.members || [],
+            school: b.school || '',
+            year: b.year || '',
+            badge: b.badge || '',
+            trackClass: b.track_class || '',
+            expiryDate: b.expiry_date || ''
+          })));
           this.saveState('hallOfFameEntries', this.hallOfFameEntries);
         }
       },
@@ -958,30 +971,6 @@ export class ContentService {
     return Array.from(existing.values()).sort((a, b) => b.points - a.points);
   }
 
-  private mergeHof(backendEntries: any[]): HallOfFameEntry[] {
-    const localById = new Map<string, HallOfFameEntry>();
-    this.hallOfFameEntries.forEach(e => localById.set(e.id, e));
-    backendEntries.forEach((b: any) => {
-      if (!localById.has(b.id)) {
-        localById.set(b.id, {
-          id: b.id,
-          type: b.type || 'individual',
-          initials: b.initials || '',
-          name: b.name || '',
-          teamName: b.team_name || '',
-          projectTitle: b.project_title || '',
-          members: b.members || [],
-          school: b.school || '',
-          year: b.year || '',
-          badge: b.badge || '',
-          trackClass: b.track_class || '',
-          expiryDate: b.expiry_date || ''
-        });
-      }
-    });
-    return Array.from(localById.values());
-  }
-
   private mergeLmsCourses(backendCourses: any[]): LmsCourse[] {
     const localById = new Map<string, LmsCourse>();
     this.lmsCourses.forEach(c => localById.set(c.id, c));
@@ -1050,7 +1039,7 @@ export class ContentService {
     if (typeof window !== 'undefined' && window.localStorage) {
       // Basic ContentService data — small, sync is fine
       this.championshipStories = this.loadKeySync('championshipStories', this.defaultStories);
-      this.hallOfFameEntries = this.enrichHofEntries(this.loadKeySync('hallOfFameEntries', this.defaultHof));
+      this.hallOfFameEntries = [];
       this.upcomingEvents = this.loadKeySync('upcomingEvents', this.defaultEvents);
       this.leaderboardData = this.loadKeySync('leaderboardData', this.defaultLeaderboard);
       this.talentDiscovery = this.loadKeySync('talentDiscovery', this.defaultTalentDiscovery);
