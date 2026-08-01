@@ -193,6 +193,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   compSlideInterval: any;
   activeVideoEditImageIndex = 0;
   videoEditInterval: any;
+  videoStates: { paused?: boolean; error?: boolean }[] = [];
   image1Url = '';
   image2Url = '';
   activeFrame = 1;
@@ -1315,6 +1316,34 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         video.play().catch(() => {});
       }
     });
+  }
+
+  // Video fallback handlers for autoplay-blocked scenarios
+  onVideoPlay(event: Event, index?: number): void {
+    const idx = index ?? this.activeSlideIndex;
+    this.videoStates[idx] = { ...this.videoStates[idx], paused: false, error: false };
+  }
+
+  onVideoPause(event: Event, index?: number): void {
+    const idx = index ?? this.activeSlideIndex;
+    this.videoStates[idx] = { ...this.videoStates[idx], paused: true };
+  }
+
+  onVideoError(event: Event, index: number): void {
+    console.warn('Video failed to load:', event);
+    this.videoStates[index] = { ...this.videoStates[index], error: true, paused: true };
+  }
+
+  toggleVideoPlay(event: MouseEvent): void {
+    event.stopPropagation();
+    const wrapper = event.currentTarget as HTMLElement;
+    const video = wrapper.querySelector('video') as HTMLVideoElement;
+    if (!video) return;
+    if (video.paused) {
+      video.play().catch(() => {});
+    } else {
+      video.pause();
+    }
   }
 
   nextSlide(): void {
