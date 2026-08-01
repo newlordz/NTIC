@@ -733,6 +733,29 @@ export class ContentService {
   }
 
   private loadFromBackend(): void {
+    // Users — replace entirely from backend (source of truth)
+    this.apiService.getUsers().subscribe({
+      next: (backendUsers: any[]) => {
+        if (backendUsers && backendUsers.length > 0) {
+          const mapped: User[] = backendUsers.map((u: any) => ({
+            id: u.id,
+            email: u.email,
+            fullName: u.full_name || 'Unknown',
+            phone: u.phone || '',
+            otp: '',
+            organization: u.organization || '',
+            role: u.role || 'student',
+            ticket: u.ticket || '',
+            status: u.status || 'Active',
+            registeredAt: u.created_at || '',
+            lastLogin: ''
+          }));
+          this.users = mapped;
+          this.saveState('users', mapped);
+        }
+      },
+      error: () => console.log('Backend users fallback to local cache')
+    });
     this.apiService.getEvents().subscribe({
       next: (events: any) => {
         if (events && events.length > 0) this.upcomingEvents = events;
