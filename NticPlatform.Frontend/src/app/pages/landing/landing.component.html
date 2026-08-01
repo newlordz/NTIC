@@ -191,7 +191,7 @@
       <div *ngFor="let slide of slides; let i = index" class="slide-item" [class.active]="i === activeSlideIndex"
         [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + slide.image + ')'">
         <!-- Uploaded Video Background -->
-        <video *ngIf="slide.video" [src]="slide.video" autoplay muted playsinline loop preload="auto"
+        <video *ngIf="slide.video" [src]="slide.video" [poster]="slide.image" autoplay muted playsinline loop preload="auto"
           class="slide-video-bg"></video>
 
         <!-- Browser-Native Image & Animation Background -->
@@ -354,37 +354,61 @@
       </a>
     </div>
 
-    <!-- ── COMPETITION GRID ────────────────────────────── -->
-    <div class="comp-grid-wrap" *ngIf="gridCompetitions.length > 0">
-      <div class="comp-grid-scroll">
-        <div class="comp-card" *ngFor="let comp of gridCompetitions">
-          <div class="comp-card-top">
-            <div class="comp-card-icon">
-              <span class="material-symbols-outlined">{{ trackIcon(comp.track) }}</span>
+    <!-- ── COMPETITION SLIDESHOW ────────────────────────── -->
+    <div class="comp-carousel-wrap" *ngIf="gridCompetitions.length > 0">
+      <div class="comp-carousel-stage">
+        <div class="comp-carousel-track" [style.transform]="'translateX(-' + (activeCompSlideIndex * 100) + '%)'">
+          <div class="comp-carousel-card" *ngFor="let comp of gridCompetitions; let i = index"
+               [class.active]="i === activeCompSlideIndex">
+            <div class="comp-carousel-card-inner" (click)="$event.stopPropagation()">
+              <div class="ccc-icon" [style.background]="'linear-gradient(135deg, #003f87, #0056b3)'">
+                <span class="material-symbols-outlined">{{ trackIcon(comp.track) }}</span>
+              </div>
+              <div class="ccc-body">
+                <span class="ccc-status" [ngClass]="statusClass(comp.status)">{{ statusLabel(comp.status) }}</span>
+                <h3 class="ccc-title">{{ comp.title }}</h3>
+                <p class="ccc-track">{{ comp.track | titlecase }}<span *ngIf="comp.type"> · {{ comp.type | titlecase }}</span></p>
+                <div class="ccc-meta">
+                  <div class="ccc-meta-item" *ngIf="comp.status !== 'completed'">
+                    <span class="material-symbols-outlined">schedule</span>
+                    <span *ngIf="compMiniCountdown(comp) as mc">{{ mc.days }}d {{ mc.hours }}h {{ mc.mins }}m</span>
+                    <span *ngIf="!compMiniCountdown(comp)">{{ comp.deadline ? 'TBD' : 'No deadline' }}</span>
+                  </div>
+                  <div class="ccc-meta-item" *ngIf="comp.status === 'completed'">
+                    <span class="material-symbols-outlined">event_available</span>
+                    <span>Ended</span>
+                  </div>
+                  <div class="ccc-meta-item">
+                    <span class="material-symbols-outlined">groups</span>
+                    <span>{{ compTeamsLabel(comp) }}</span>
+                  </div>
+                  <div class="ccc-meta-item" *ngIf="comp.prize">
+                    <span class="material-symbols-outlined">workspace_premium</span>
+                    <span>{{ comp.prize }}</span>
+                  </div>
+                </div>
+                <div class="ccc-teams-bar" *ngIf="comp.maxTeams">
+                  <div class="ccc-teams-fill" [style.width.%]="(comp.teams / comp.maxTeams) * 100"></div>
+                </div>
+              </div>
             </div>
-            <span class="comp-card-status" [ngClass]="statusClass(comp.status)">{{ statusLabel(comp.status) }}</span>
-          </div>
-          <h3 class="comp-card-title">{{ comp.title }}</h3>
-          <p class="comp-card-track">{{ comp.track | titlecase }}<span *ngIf="comp.type"> · {{ comp.type | titlecase
-              }}</span></p>
-          <div class="comp-card-info">
-            <div class="comp-card-info-item" *ngIf="comp.status !== 'completed'">
-              <span class="material-symbols-outlined" style="font-size:14px;">schedule</span>
-              <span *ngIf="compMiniCountdown(comp) as mc">{{ mc.days }}d {{ mc.hours }}h {{ mc.mins }}m</span>
-            </div>
-            <div class="comp-card-info-item" *ngIf="comp.status === 'completed'">
-              <span class="material-symbols-outlined" style="font-size:14px;">event_available</span>
-              <span>Ended {{ compDeadlineLabel(comp) }}</span>
-            </div>
-            <div class="comp-card-info-item">
-              <span class="material-symbols-outlined" style="font-size:14px;">groups</span>
-              <span>{{ compTeamsLabel(comp) }}</span>
-            </div>
-          </div>
-          <div class="comp-card-progress" *ngIf="comp.maxTeams">
-            <div class="comp-card-progress-fill" [style.width.%]="(comp.teams / comp.maxTeams) * 100"></div>
           </div>
         </div>
+      </div>
+
+      <!-- Arrows -->
+      <button class="comp-carousel-arrow prev" *ngIf="gridCompetitions.length > 1" (click)="prevCompSlide()" [disabled]="activeCompSlideIndex === 0">
+        <span class="material-symbols-outlined">chevron_left</span>
+      </button>
+      <button class="comp-carousel-arrow next" *ngIf="gridCompetitions.length > 1" (click)="nextCompSlide()" [disabled]="activeCompSlideIndex === gridCompetitions.length - 1">
+        <span class="material-symbols-outlined">chevron_right</span>
+      </button>
+
+      <!-- Dots -->
+      <div class="comp-carousel-dots" *ngIf="gridCompetitions.length > 1">
+        <button class="comp-carousel-dot" *ngFor="let comp of gridCompetitions; let i = index"
+                [class.active]="i === activeCompSlideIndex" (click)="goToCompSlide(i)"
+                [attr.aria-label]="'Go to slide ' + (i + 1)"></button>
       </div>
     </div>
   </section>
@@ -485,7 +509,7 @@
         <div *ngFor="let story of contentService.championshipStories; trackBy: trackByStory" class="spotlight-card">
           <span class="top-accent-bar"></span>
           <div class="card-img-wrap">
-            <img [src]="story.image" [alt]="story.title" onerror="this.src='assets/ntic_image_1.jpeg'">
+            <img [src]="story.image" [alt]="story.title" onerror="this.src='assets/ntic_image_1.jpeg'" loading="lazy" decoding="async">
             <span class="story-tag" [class]="story.tagColor">{{ story.tag }}</span>
           </div>
           <div class="card-content">
@@ -520,7 +544,7 @@
           <div *ngFor="let story of contentService.championshipStories; trackBy: trackByStory" class="spotlight-card">
             <span class="top-accent-bar"></span>
             <div class="card-img-wrap">
-              <img [src]="story.image" [alt]="story.title" onerror="this.src='assets/ntic_image_1.jpeg'">
+              <img [src]="story.image" [alt]="story.title" onerror="this.src='assets/ntic_image_1.jpeg'" loading="lazy" decoding="async">
               <span class="story-tag" [class]="story.tagColor">{{ story.tag }}</span>
             </div>
             <div class="card-content">
@@ -590,7 +614,7 @@
   <section class="alumni-section scroll-animate fade-up">
     <div class="container">
       <div class="alumni-header">
-        <img src="assets/hall_of_fame_medal.png" class="alumni-medal-img" alt="NTIC Hall of Fame Medal">
+        <img src="assets/hall_of_fame_medal.png" loading="lazy" decoding="async" class="alumni-medal-img" alt="NTIC Hall of Fame Medal">
         <span class="academic-sub">Hall of Fame</span>
         <h2>National Technology and Innovation Champions</h2>
       </div>
@@ -647,7 +671,7 @@
             </div>
           </div>
           <div class="alumni-medal-badge">
-            <img src="assets/hall_of_fame_medal.png" alt="NTIC Medal">
+            <img src="assets/hall_of_fame_medal.png" loading="lazy" decoding="async" alt="NTIC Medal">
           </div>
         </div>
 
@@ -701,7 +725,7 @@
               </div>
             </div>
             <div class="alumni-medal-badge">
-              <img src="assets/hall_of_fame_medal.png" alt="NTIC Medal">
+              <img src="assets/hall_of_fame_medal.png" loading="lazy" decoding="async" alt="NTIC Medal">
             </div>
           </div>
         </ng-container>
@@ -828,716 +852,7 @@
           </div>
         </div>
 
-        <!-- Interactive Arena Showcase Modal Popup -->
-        <div *ngIf="isTrackModalOpen && activeTrackPreview" class="code-modal-backdrop" (click)="setTrackPreview(null)">
-          <div class="code-modal-content arena-modal visual-showcase-modal" (click)="$event.stopPropagation()">
-            <div class="code-preview-panel open arena-panel"
-              [style.--track-rgb]="activeTrackPreview === 'coding' ? '0, 136, 204' : activeTrackPreview === 'robotics' ? '212, 160, 23' : activeTrackPreview === 'ai' ? '156, 39, 176' : activeTrackPreview === 'cyber' ? '183, 28, 28' : '0, 127, 95'">
-
-              <!-- Modal Top Title Bar -->
-              <div class="arena-modal-header">
-                <div class="arena-title-left">
-                  <div class="arena-icon-box">
-                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'robotics'">smart_toy</span>
-                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'coding'">data_object</span>
-                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'ai'">psychology</span>
-                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'cyber'">security</span>
-                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'innovation'">bolt</span>
-                  </div>
-                  <div>
-                    <h3 class="arena-main-title">{{ trackModalTitles[activeTrackPreview] }}</h3>
-                    <p class="arena-sub-title">{{ trackModalSubtitles[activeTrackPreview] }}</p>
-                  </div>
-                </div>
-                <button class="close-preview arena-close" (click)="setTrackPreview(null)">
-                  <span class="material-symbols-outlined">close</span>
-                </button>
-              </div>
-
-              <!-- Modal Full-Width Visual Showcase Body (Split Cockpit) -->
-              <div class="arena-showcase-body">
-
-                <!-- Live Track Animation & Telemetry Dashboard -->
-                <div class="arena-sim-box full-width-arena">
-                  <div class="sim-box-header">
-                    <span class="sim-label">⚡ LIVE INTERACTIVE TELEMETRY &amp; TELEOPERATION SIMULATION</span>
-                    <span class="sim-status-badge" [style.color]="arenaState[activeTrackPreview]?.statusColor"
-                      [style.border-color]="arenaState[activeTrackPreview]?.statusColor">
-                      ● {{ arenaState[activeTrackPreview]?.status }}
-                    </span>
-                  </div>
-
-                  <!-- 1. Robotics Rover Arena -->
-                  <div *ngIf="activeTrackPreview === 'robotics'" class="track-sim-content robotics-sim split-cockpit">
-                    <!-- Left: Rover Visual Stage -->
-                    <div class="cockpit-left">
-                      <div class="visual-stage rover-stage">
-                        <div class="stage-grid-bg"></div>
-
-                        <!-- Obstacle on Arena Floor -->
-                        <div class="stage-obstacle" *ngIf="arenaState.robotics?.cargo !== 'Stone'"
-                          [class.danger]="arenaState.robotics?.distance < 20"
-                          [style.left.%]="arenaState.robotics?.obstacleX || 25"
-                          [style.top.%]="arenaState.robotics?.obstacleY || 35">
-                          <div class="obstacle-body">🪨</div>
-                          <div class="obstacle-dist-tag">{{ arenaState.robotics?.obstacleStatus || 'Target' }}</div>
-                        </div>
-
-                        <!-- Rover -->
-                        <div class="rover-bot-wrap" [style.left.%]="getRoverLeft()" [style.top.%]="getRoverTop()"
-                          [style.transform]="getRoverTransform()">
-                          <div class="rover-chassis">
-                            <div class="rover-solar-panel"></div>
-                            <div class="rover-lidar-beam"
-                              [style.transform]="'rotate(' + arenaState.robotics?.radarSweep + 'deg)'"></div>
-                            <div class="rover-camera-eye" [class.alert]="arenaState.robotics?.distance < 20"></div>
-
-                            <!-- Articulated Robotic Arm -->
-                            <div class="rover-robotic-arm" [class.extending]="arenaState.robotics?.armAnimating"
-                              [class.loaded]="arenaState.robotics?.cargo === 'Stone'">
-                              <div class="arm-boom"></div>
-                              <div class="arm-gripper">
-                                <span class="gripper-stone" *ngIf="arenaState.robotics?.cargo === 'Stone'">🪨</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div class="rover-wheel w-fl"></div>
-                          <div class="rover-wheel w-fr"></div>
-                          <div class="rover-wheel w-rl"></div>
-                          <div class="rover-wheel w-rr"></div>
-                        </div>
-
-                        <div class="stage-target-flag">🏁</div>
-
-                        <!-- Mission Success -->
-                        <div class="mission-congrats-overlay" *ngIf="arenaState.robotics?.missionSuccess">
-                          <div class="congrats-card">
-                            <div class="congrats-badge">Mission Complete</div>
-                            <h3>Stone Delivered to Target</h3>
-                            <p>Robot navigated the arena, grabbed the stone obstacle, and delivered it successfully.</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Status Log -->
-                      <div class="sim-log-bar">
-                        <div class="status-indicator" [style.background]="arenaState.robotics?.statusColor"></div>
-                        <span class="log-text">{{ arenaState.robotics?.log }}</span>
-                      </div>
-                    </div>
-
-                    <!-- Right: Controls & Telemetry -->
-                    <div class="cockpit-right">
-                      <div class="game-controls-panel">
-
-                        <!-- D-Pad (Hexagonal Cross) -->
-                        <div class="game-section">
-                          <div class="game-section-label">Movement</div>
-                          <div class="game-dpad">
-                            <div class="dpad-pivot-row">
-                              <button class="dpad-btn dpad-pivot" (click)="triggerArenaAction('robotics', 'turn_left')"
-                                title="Pivot Left">
-                                <span class="dpad-pivot">↩</span>
-                              </button>
-                              <button class="dpad-btn dpad-pivot" (click)="triggerArenaAction('robotics', 'turn_right')"
-                                title="Pivot Right">
-                                <span class="dpad-pivot">↪</span>
-                              </button>
-                            </div>
-                            <div class="dpad-cross">
-                              <button class="dpad-btn dpad-up" (click)="triggerArenaAction('robotics', 'forward')"
-                                title="Drive Forward along Heading">
-                                <span class="dpad-arrow">▲</span>
-                              </button>
-                              <button class="dpad-btn dpad-left" (click)="triggerArenaAction('robotics', 'left')"
-                                title="Turn Left 45°">
-                                <span class="dpad-arrow">◀</span>
-                              </button>
-                              <button class="dpad-btn dpad-center" (click)="triggerArenaAction('robotics', 'stop')"
-                                title="Stop">
-                                <span class="dpad-circle">●</span>
-                              </button>
-                              <button class="dpad-btn dpad-right" (click)="triggerArenaAction('robotics', 'right')"
-                                title="Turn Right 45°">
-                                <span class="dpad-arrow">▶</span>
-                              </button>
-                              <button class="dpad-btn dpad-down" (click)="triggerArenaAction('robotics', 'reverse')"
-                                title="Reverse along Heading">
-                                <span class="dpad-arrow">▼</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Action Buttons (Game-Controller Style) -->
-                        <div class="game-section">
-                          <div class="game-section-label">Commands</div>
-                          <div class="game-action-group">
-                            <button class="game-action-btn action-grab"
-                              (click)="triggerArenaAction('robotics', 'claw')">
-                              <span class="action-icon material-symbols-outlined">precision_manufacturing</span>
-                              <span class="action-label">{{ arenaState.robotics?.clawOpen ? 'Release' : 'Grab' }}</span>
-                            </button>
-                            <button class="game-action-btn action-spawn"
-                              (click)="triggerArenaAction('robotics', 'obstacle')">
-                              <span class="action-icon material-symbols-outlined">warning</span>
-                              <span class="action-label">Spawn</span>
-                            </button>
-                            <button class="game-action-btn action-auto"
-                              (click)="triggerArenaAction('robotics', 'autopilot')">
-                              <span class="action-icon material-symbols-outlined">smart_toy</span>
-                              <span class="action-label">Auto</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- 2. Coding & Algorithms — Speed Sprints Arena -->
-                  <div *ngIf="activeTrackPreview === 'coding'" class="track-sim-content coding-sim split-cockpit">
-                    <!-- Left: People Visualization + Code -->
-                    <div class="cockpit-left">
-                      <!-- Human Sorting Grid -->
-                      <div class="people-visual">
-                        <div class="people-visual-header">
-                          <span class="people-visual-title">
-                            <span class="material-symbols-outlined">groups</span>
-                            Contestants ({{ arenaState.coding?.people?.length || 0 }})
-                          </span>
-                          <span class="people-visual-badge"
-                            [style.background]="arenaState.coding?.sortField !== 'none' ? '#00e676' : '#38bdf8'">
-                            {{ arenaState.coding?.sortField !== 'none' ? 'SORTED BY: ' + (arenaState.coding?.sortField |
-                            uppercase) : 'UNSORTED' }}
-                          </span>
-                        </div>
-                        <div class="people-bars">
-                          <div class="person-bar" *ngFor="let p of arenaState.coding?.people; let i = index"
-                            [style.animation-delay]="i * 60 + 'ms'" [style.--bar-h]="((p.age - 10) / 12) * 100 + '%'">
-                            <div class="bar-top">
-                              <div class="human-figure" [class.male]="p.gender === 'male'"
-                                [class.female]="p.gender === 'female'">
-                                <div class="human-head">
-                                  <div class="hair-acc"></div>
-                                </div>
-                                <div class="human-torso">
-                                  <div class="arm arm-l"></div>
-                                  <div class="arm arm-r"></div>
-                                </div>
-                                <div class="human-legs">
-                                  <div class="leg leg-l"></div>
-                                  <div class="leg leg-r"></div>
-                                </div>
-                              </div>
-                            </div>
-                            <div class="bar-fill" [class.male]="p.gender === 'male'"
-                              [class.female]="p.gender === 'female'"></div>
-                            <div class="bar-label">
-                              <span class="bar-age">{{ p.age }}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Code Preview -->
-                      <div class="algo-code-preview">
-                        <div class="algo-code-header">
-                          <span class="material-symbols-outlined">code</span>
-                          <span>solution.js</span>
-                        </div>
-                        <pre class="algo-code-body">{{ arenaState.coding?.code }}</pre>
-                      </div>
-                    </div>
-
-                    <!-- Right: Sort Controls -->
-                    <div class="cockpit-right">
-                      <div class="controls-card">
-                        <div class="controls-card-title">🧑‍🤝‍🧑 Sort People</div>
-                        <div class="controls-btn-group sort-buttons">
-                          <button class="ctrl-btn ctrl-age-asc" (click)="triggerArenaAction('coding', 'sort-age-asc')">
-                            <span class="material-symbols-outlined">arrow_upward</span>
-                            <span>Age ↑</span>
-                          </button>
-                          <button class="ctrl-btn ctrl-age-desc"
-                            (click)="triggerArenaAction('coding', 'sort-age-desc')">
-                            <span class="material-symbols-outlined">arrow_downward</span>
-                            <span>Age ↓</span>
-                          </button>
-                          <button class="ctrl-btn ctrl-gender" (click)="triggerArenaAction('coding', 'sort-gender')">
-                            <span class="material-symbols-outlined">group_work</span>
-                            <span>Gender</span>
-                          </button>
-                          <button class="ctrl-btn ctrl-shuffle" (click)="triggerArenaAction('coding', 'shuffle')">
-                            <span class="material-symbols-outlined">shuffle</span>
-                            <span>Shuffle</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div class="controls-card">
-                        <div class="controls-card-title">💻 Output</div>
-                        <div class="terminal-output">{{ arenaState.coding?.log }}</div>
-                      </div>
-
-                      <div class="controls-card">
-                        <div class="controls-card-title">📊 Results</div>
-                        <div class="perf-grid">
-                          <div class="perf-item">
-                            <div class="perf-label">Total</div>
-                            <div class="perf-value">{{ arenaState.coding?.people?.length }}<small>ppl</small></div>
-                          </div>
-                          <div class="perf-item">
-                            <div class="perf-label">Males</div>
-                            <div class="perf-value">{{ countMales(arenaState.coding?.people) }}</div>
-                          </div>
-                          <div class="perf-item">
-                            <div class="perf-label">Females</div>
-                            <div class="perf-value">{{ countFemales(arenaState.coding?.people) }}</div>
-                          </div>
-                          <div class="perf-item">
-                            <div class="perf-label">Age Range</div>
-                            <div class="perf-value">{{ getAgeRange(arenaState.coding?.people) }}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- 3. Artificial Intelligence — Crop Disease Detector -->
-                  <div *ngIf="activeTrackPreview === 'ai'" class="track-sim-content ai-sim split-cockpit">
-                    <!-- Left: Camera Scanner -->
-                    <div class="cockpit-left">
-                      <div class="ai-viewfinder">
-                        <div class="viewfinder-header">
-                          <span class="material-symbols-outlined">photo_camera</span>
-                          <span class="vf-title">AI Crop Disease Detector</span>
-                          <span class="viewfinder-live" [style.background]="arenaState.ai?.statusColor">
-                            {{ arenaState.ai?.statusColor === '#00e676' ? 'HEALTHY' : 'ALERT' }}
-                          </span>
-                        </div>
-                        <div class="viewfinder-screen">
-                          <div class="vf-grid-lines"></div>
-                          <div class="vf-corners"></div>
-                          <div class="vf-corners-bot"></div>
-                          <div class="vf-crop-icon" [class.disease-rust]="arenaState.ai?.statusColor === '#ff9100'"
-                            [class.disease-blight]="arenaState.ai?.statusColor === '#ff1744'"
-                            [class.disease-healthy]="arenaState.ai?.statusColor === '#00e676'">{{
-                            arenaState.ai?.sampleIcon || '🌿' }}</div>
-                          <div class="laser-scanner-bar"></div>
-                          <div class="vf-result"
-                            [style.background]="'linear-gradient(transparent, ' + (arenaState.ai?.statusColor || '#ab47bc') + '88)'">
-                            <span class="vf-result-name">{{ arenaState.ai?.label || 'Select a crop' }}</span>
-                            <span class="vf-result-conf">{{ arenaState.ai?.confidence }}% confidence</span>
-                          </div>
-                        </div>
-                        <div class="viewfinder-footer">
-                          <span class="vf-status" [style.color]="arenaState.ai?.statusColor">
-                            {{ arenaState.ai?.status }}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div class="ai-description">
-                        <span class="material-symbols-outlined">info</span>
-                        <span>Point the scanner at a crop leaf — the AI tells you if the plant is healthy or diseased,
-                          and what disease it might have.</span>
-                      </div>
-
-                      <div class="ai-log-bar">
-                        <span class="material-symbols-outlined">terminal</span>
-                        <span class="log-text">{{ arenaState.ai?.log }}</span>
-                      </div>
-
-                      <!-- Training Dashboard -->
-                      <div class="training-dashboard" *ngIf="arenaState.ai?.epoch > 0">
-                        <div class="td-header">
-                          <span class="material-symbols-outlined">grid_view</span>
-                          <span>Confusion Matrix</span>
-                          <span class="td-acc-badge"
-                            [style.background]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'">
-                            {{ arenaState.ai?.accuracy }}%
-                          </span>
-                        </div>
-                        <div class="cm-grid">
-                          <div class="cm-corner"></div>
-                          <div class="cm-label top" *ngFor="let label of arenaState.ai?.classLabels">{{ label }}</div>
-                          <ng-container *ngFor="let row of arenaState.ai?.confusionMatrix; let ri = index">
-                            <div class="cm-label side">{{ arenaState.ai?.classLabels[ri] }}</div>
-                            <div class="cm-cell" *ngFor="let val of row; let ci = index" [class.cm-diag]="ri === ci"
-                              [style.--cm-pct]="val / 100"
-                              [style.background]="ri === ci ? 'rgba(0, 230, 118, ' + (0.1 + val / 100 * 0.7) + ')' : 'rgba(255, 23, 68, ' + (0.05 + (100 - val) / 100 * 0.4) + ')'">
-                              <span class="cm-val">{{ val }}%</span>
-                            </div>
-                          </ng-container>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Right: Controls -->
-                    <div class="cockpit-right">
-                      <div class="controls-card">
-                        <div class="controls-card-title">🌱 Select Crop Sample</div>
-                        <div class="sample-grid">
-                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🌿'"
-                            (click)="triggerArenaAction('ai', 'sample_cocoa')">
-                            <span class="sample-card-icon">🌿</span>
-                            <span class="sample-card-name">Cocoa Pod</span>
-                            <span class="sample-card-status healthy">Healthy</span>
-                          </button>
-                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🌽'"
-                            (click)="triggerArenaAction('ai', 'sample_maize')">
-                            <span class="sample-card-icon">🌽</span>
-                            <span class="sample-card-name">Maize Leaf</span>
-                            <span class="sample-card-status warning">Rust</span>
-                          </button>
-                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🥔'"
-                            (click)="triggerArenaAction('ai', 'sample_potato')">
-                            <span class="sample-card-icon">🥔</span>
-                            <span class="sample-card-name">Potato Tuber</span>
-                            <span class="sample-card-status danger">Blight</span>
-                          </button>
-                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🍅'"
-                            (click)="triggerArenaAction('ai', 'sample_tomato')">
-                            <span class="sample-card-icon">🍅</span>
-                            <span class="sample-card-name">Tomato Leaf</span>
-                            <span class="sample-card-status warning">Leaf Spot</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div class="controls-card">
-                        <div class="controls-card-title">🔬 Actions</div>
-                        <div class="controls-btn-group">
-                          <button class="ctrl-btn ctrl-ai-scan" (click)="triggerArenaAction('ai', 'scan')">
-                            <span class="material-symbols-outlined">center_focus_strong</span>
-                            <span>Quick Scan</span>
-                          </button>
-                          <button class="ctrl-btn ctrl-ai-train" (click)="triggerArenaAction('ai', 'epoch')">
-                            <span class="material-symbols-outlined">model_training</span>
-                            <span>Train</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div class="controls-card">
-                        <div class="controls-card-title">📈 Training Metrics</div>
-                        <div class="train-metrics">
-                          <div class="train-metric-row">
-                            <span class="train-metric-label">Accuracy</span>
-                            <div class="train-metric-bar-bg">
-                              <div class="train-metric-bar-fill" [style.width.%]="arenaState.ai?.accuracy || 0"
-                                [style.background]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'">
-                              </div>
-                            </div>
-                            <span class="train-metric-value"
-                              [style.color]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'">{{
-                              arenaState.ai?.accuracy }}%</span>
-                          </div>
-                          <div class="train-metric-row">
-                            <span class="train-metric-label">Loss</span>
-                            <div class="train-metric-bar-bg">
-                              <div class="train-metric-bar-fill loss"
-                                [style.width.%]="getLossBarWidth(arenaState.ai?.loss)" style="background: #f43f5e;">
-                              </div>
-                            </div>
-                            <span class="train-metric-value" style="color:#f43f5e">{{ arenaState.ai?.loss }}</span>
-                          </div>
-                          <div class="train-metric-row">
-                            <span class="train-metric-label">Epoch</span>
-                            <div class="train-metric-bar-bg">
-                              <div class="train-metric-bar-fill"
-                                [style.width.%]="(arenaState.ai?.epoch || 0) / 50 * 100"
-                                style="background: linear-gradient(90deg, #ab47bc, #7c3aed);"></div>
-                            </div>
-                            <span class="train-metric-value" style="color:#ab47bc">{{ arenaState.ai?.epoch
-                              }}<small>/50</small></span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="controls-card" *ngIf="arenaState.ai?.epoch > 0">
-                        <div class="controls-card-title">📊 Per-Class Metrics</div>
-                        <div class="class-metrics-table">
-                          <div class="cm-table-header">
-                            <span class="cm-th class-col">Class</span>
-                            <span class="cm-th">Precision</span>
-                            <span class="cm-th">Recall</span>
-                            <span class="cm-th">F1</span>
-                          </div>
-                          <div class="cm-table-row" *ngFor="let label of arenaState.ai?.classLabels; let i = index">
-                            <span class="cm-td class-col">{{ label }}</span>
-                            <span class="cm-td">
-                              <span class="cm-td-dot"
-                                [style.background]="parseNum(arenaState.ai?.classPrecision[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classPrecision[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classPrecision[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
-                              {{ arenaState.ai?.classPrecision[i] }}
-                            </span>
-                            <span class="cm-td">
-                              <span class="cm-td-dot"
-                                [style.background]="parseNum(arenaState.ai?.classRecall[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classRecall[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classRecall[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
-                              {{ arenaState.ai?.classRecall[i] }}
-                            </span>
-                            <span class="cm-td">
-                              <span class="cm-td-dot"
-                                [style.background]="parseNum(arenaState.ai?.classF1[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classF1[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classF1[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
-                              {{ arenaState.ai?.classF1[i] }}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- 4. Cybersecurity — Network Defense Simulator -->
-                  <div *ngIf="activeTrackPreview === 'cyber'" class="track-sim-content cyber-sim split-cockpit">
-                    <!-- Left: Network Monitor -->
-                    <div class="cockpit-left">
-                      <div class="cyber-monitor">
-                        <div class="cyber-monitor-header">
-                          <span class="material-symbols-outlined">network_intel</span>
-                          <span>Network Security Monitor</span>
-                          <span class="cyber-status-badge" [style.background]="arenaState.cyber?.statusColor">
-                            {{ arenaState.cyber?.status?.includes('BLOCKED') ||
-                            arenaState.cyber?.status?.includes('NEUTRALIZED') ? 'PROTECTED' : 'MONITORING' }}
-                          </span>
-                        </div>
-                        <div class="cyber-network-viz">
-                          <!-- Internet / Attack Source -->
-                          <div class="cyber-node internet-node">
-                            <span class="material-symbols-outlined">public</span>
-                            <span class="cyber-node-label">Internet</span>
-                            <div class="attack-pulse" *ngIf="arenaState.cyber?.blockedCount > 0"></div>
-                          </div>
-                          <div class="cyber-arrow">➜</div>
-                          <!-- Firewall -->
-                          <div class="cyber-node firewall-node">
-                            <span class="material-symbols-outlined"
-                              [style.color]="arenaState.cyber?.statusColor">shield</span>
-                            <span class="cyber-node-label">Firewall</span>
-                            <span class="cyber-node-stat">{{ arenaState.cyber?.blockedCount }} blocked</span>
-                            <div class="firewall-bar" [style.width.%]="(arenaState.cyber?.blockedCount || 0) * 3">
-                              <div class="firewall-bar-fill" [style.background]="arenaState.cyber?.statusColor"></div>
-                            </div>
-                          </div>
-                          <div class="cyber-arrow">➜</div>
-                          <!-- Server -->
-                          <div class="cyber-node server-node">
-                            <span class="material-symbols-outlined">dns</span>
-                            <span class="cyber-node-label">Server</span>
-                            <span class="cyber-node-stat">Secure</span>
-                          </div>
-                        </div>
-                        <div class="cyber-status-line">
-                          <span class="cyber-alert-dot" [style.background]="arenaState.cyber?.statusColor"></span>
-                          <span class="cyber-alert-text">{{ arenaState.cyber?.status }}</span>
-                        </div>
-                      </div>
-
-                      <div class="cyber-log-bar">
-                        <span class="material-symbols-outlined">terminal</span>
-                        <span class="log-text">{{ arenaState.cyber?.log }}</span>
-                      </div>
-                    </div>
-
-                    <!-- Right: Controls -->
-                    <div class="cockpit-right">
-                      <div class="controls-card">
-                        <div class="controls-card-title">🛡️ Defend</div>
-                        <div class="controls-btn-group">
-                          <button class="ctrl-btn ctrl-cyber-defend" (click)="triggerArenaAction('cyber', 'defend')">
-                            <span class="material-symbols-outlined">shield_lock</span>
-                            <span>Block Attack</span>
-                          </button>
-                          <button class="ctrl-btn ctrl-cyber-scan" (click)="triggerArenaAction('cyber', 'ddos')">
-                            <span class="material-symbols-outlined">radar</span>
-                            <span>Scan Network</span>
-                          </button>
-                        </div>
-                        <div class="controls-btn-group" style="margin-top: 8px">
-                          <button class="ctrl-btn ctrl-cyber-trap" (click)="triggerArenaAction('cyber', 'honeypot')">
-                            <span class="material-symbols-outlined">phishing</span>
-                            <span>Set Trap</span>
-                          </button>
-                          <button class="ctrl-btn ctrl-cyber-key" (click)="triggerArenaAction('cyber', 'cipher')">
-                            <span class="material-symbols-outlined">key</span>
-                            <span>Rotate Keys</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div class="controls-card">
-                        <div class="controls-card-title">📊 Security Status</div>
-                        <div class="perf-grid">
-                          <div class="perf-item">
-                            <div class="perf-label">Attacks Blocked</div>
-                            <div class="perf-value">{{ arenaState.cyber?.blockedCount }}</div>
-                          </div>
-                          <div class="perf-item">
-                            <div class="perf-label">Traffic</div>
-                            <div class="perf-value">{{ arenaState.cyber?.packetsSec }}<small>pkt/s</small></div>
-                          </div>
-                          <div class="perf-item">
-                            <div class="perf-label">Encryption</div>
-                            <div class="perf-value" style="font-size:0.7rem">{{ arenaState.cyber?.encryption }}</div>
-                          </div>
-                          <div class="perf-item">
-                            <div class="perf-label">Firewall</div>
-                            <div class="perf-value" [style.color]="arenaState.cyber?.statusColor">{{
-                              arenaState.cyber?.firewall }}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- 5. Open Innovation — Smart Clean Energy Grid -->
-                  <div *ngIf="activeTrackPreview === 'innovation'"
-                    class="track-sim-content innovation-sim split-cockpit">
-                    <!-- Left: Energy Dashboard -->
-                    <div class="cockpit-left">
-                      <div class="energy-dashboard">
-                        <div class="energy-header">
-                          <span class="material-symbols-outlined">bolt</span>
-                          <span>Smart Clean Energy Grid</span>
-                          <span class="energy-badge" [style.background]="arenaState.innovation?.statusColor">
-                            {{ arenaState.innovation?.efficiency }}
-                          </span>
-                        </div>
-                        <div class="energy-sources">
-                          <div class="energy-source">
-                            <div class="source-icon-wrap solar-icon">
-                              <span class="source-icon">☀️</span>
-                            </div>
-                            <div class="source-info">
-                              <span class="source-label">Solar Panels</span>
-                              <span class="source-value">{{ arenaState.innovation?.solarKw }} <small>kW</small></span>
-                            </div>
-                            <div class="source-bar">
-                              <div class="source-bar-fill solar-fill"
-                                [style.width.%]="(+(arenaState.innovation?.solarKw || 0) / 70) * 100"></div>
-                            </div>
-                          </div>
-                          <div class="energy-source">
-                            <div class="source-icon-wrap wind-icon">
-                              <span class="source-icon spinning"
-                                [style.animation-duration]="getWindSpeed() + 's'">🌀</span>
-                            </div>
-                            <div class="source-info">
-                              <span class="source-label">Wind Turbines</span>
-                              <span class="source-value">{{ arenaState.innovation?.windKw }} <small>kW</small></span>
-                            </div>
-                            <div class="source-bar">
-                              <div class="source-bar-fill wind-fill"
-                                [style.width.%]="(+(arenaState.innovation?.windKw || 0) / 30) * 100"></div>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="energy-flow-row">
-                          <div class="flow-line"></div>
-                          <span class="flow-label">Grid Distribution</span>
-                        </div>
-                        <div class="energy-consumers">
-                          <div class="consumer-item">
-                            <span class="material-symbols-outlined">local_hospital</span>
-                            <span class="consumer-label">Hospital</span>
-                            <span class="consumer-status">{{ arenaState.innovation?.hospitalPower }}</span>
-                          </div>
-                          <div class="consumer-item">
-                            <span class="material-symbols-outlined">battery_charging_full</span>
-                            <span class="consumer-label">Battery Storage</span>
-                            <span class="consumer-status">{{ arenaState.innovation?.battery }}%</span>
-                            <div class="battery-visual">
-                              <div class="battery-level" [style.width.%]="arenaState.innovation?.battery"
-                                [style.background]="(arenaState.innovation?.battery || 0) > 50 ? '#00e676' : (arenaState.innovation?.battery || 0) > 20 ? '#ffea00' : '#ff1744'">
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="energy-footer">
-                          <span class="material-symbols-outlined">co2</span>
-                          <span>CO₂ Saved: <strong>{{ arenaState.innovation?.co2Saved }} kg</strong></span>
-                          <span class="energy-footer-status" [style.color]="arenaState.innovation?.statusColor">{{
-                            arenaState.innovation?.status }}</span>
-                        </div>
-                      </div>
-
-                      <div class="innovation-log-bar">
-                        <span class="material-symbols-outlined">terminal</span>
-                        <span class="log-text">{{ arenaState.innovation?.log }}</span>
-                      </div>
-                    </div>
-
-                    <!-- Right: Controls -->
-                    <div class="cockpit-right">
-                      <div class="controls-card">
-                        <div class="controls-card-title">⚡ Generate Power</div>
-                        <div class="controls-btn-group">
-                          <button class="ctrl-btn ctrl-innovation-solar"
-                            (click)="triggerArenaAction('innovation', 'solar')">
-                            <span class="material-symbols-outlined">wb_sunny</span>
-                            <span>Solar Boost</span>
-                          </button>
-                          <button class="ctrl-btn ctrl-innovation-wind"
-                            (click)="triggerArenaAction('innovation', 'wind')">
-                            <span class="material-symbols-outlined">air</span>
-                            <span>Wind Boost</span>
-                          </button>
-                        </div>
-                        <div class="controls-btn-group" style="margin-top: 8px">
-                          <button class="ctrl-btn ctrl-innovation-hospital"
-                            (click)="triggerArenaAction('innovation', 'hospital')">
-                            <span class="material-symbols-outlined">local_hospital</span>
-                            <span>Power Hospital</span>
-                          </button>
-                          <button class="ctrl-btn ctrl-innovation-sync"
-                            (click)="triggerArenaAction('innovation', 'sync')">
-                            <span class="material-symbols-outlined">sync</span>
-                            <span>Sync Grid</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div class="controls-card">
-                        <div class="controls-card-title">📊 Grid Metrics</div>
-                        <div class="perf-grid">
-                          <div class="perf-item">
-                            <div class="perf-label">Solar Output</div>
-                            <div class="perf-value">{{ arenaState.innovation?.solarKw }}<small>kW</small></div>
-                          </div>
-                          <div class="perf-item">
-                            <div class="perf-label">Wind Output</div>
-                            <div class="perf-value">{{ arenaState.innovation?.windKw }}<small>kW</small></div>
-                          </div>
-                          <div class="perf-item">
-                            <div class="perf-label">Battery</div>
-                            <div class="perf-value">{{ arenaState.innovation?.battery }}<small>%</small></div>
-                          </div>
-                          <div class="perf-item">
-                            <div class="perf-label">CO₂ Saved</div>
-                            <div class="perf-value">{{ arenaState.innovation?.co2Saved }}<small>kg</small></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              <!-- Modal Bottom Action Footer -->
-              <div class="arena-modal-footer">
-                <div class="footer-info">
-                  <span class="material-symbols-outlined icon-pulse">lightbulb</span>
-                  <span>Interact with the real-time teleoperation deck on the right while watching the simulation
-                    respond instantly on the left!</span>
-                </div>
-                <button type="button" class="arena-register-btn" (click)="navigateToRegistration(activeTrackPreview)">
-                  Register for {{ activeTrackPreview | titlecase }} Arena →
-                </button>
-              </div>
-
-            </div>
-          </div>
-        </div>
+        
       </div>
     </div>
   </section>
@@ -2743,4 +2058,715 @@
 </div>
 
 <!-- Support Chatbot -->
+<!-- Interactive Arena Showcase Modal Popup -->
+        <div *ngIf="isTrackModalOpen && activeTrackPreview" class="code-modal-backdrop" (click)="setTrackPreview(null)">
+          <div class="code-modal-content arena-modal visual-showcase-modal" (click)="$event.stopPropagation()">
+            <div class="code-preview-panel open arena-panel"
+              [style.--track-rgb]="activeTrackPreview === 'coding' ? '0, 136, 204' : activeTrackPreview === 'robotics' ? '212, 160, 23' : activeTrackPreview === 'ai' ? '156, 39, 176' : activeTrackPreview === 'cyber' ? '183, 28, 28' : '0, 127, 95'">
+
+              <!-- Modal Top Title Bar -->
+              <div class="arena-modal-header">
+                <div class="arena-title-left">
+                  <div class="arena-icon-box">
+                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'robotics'">smart_toy</span>
+                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'coding'">data_object</span>
+                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'ai'">psychology</span>
+                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'cyber'">security</span>
+                    <span class="material-symbols-outlined" *ngIf="activeTrackPreview === 'innovation'">bolt</span>
+                  </div>
+                  <div>
+                    <h3 class="arena-main-title">{{ trackModalTitles[activeTrackPreview] }}</h3>
+                    <p class="arena-sub-title">{{ trackModalSubtitles[activeTrackPreview] }}</p>
+                  </div>
+                </div>
+                <button class="close-preview arena-close" (click)="setTrackPreview(null)">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <!-- Modal Full-Width Visual Showcase Body (Split Cockpit) -->
+              <div class="arena-showcase-body">
+
+                <!-- Live Track Animation & Telemetry Dashboard -->
+                <div class="arena-sim-box full-width-arena">
+                  <div class="sim-box-header">
+                    <span class="sim-label">⚡ LIVE INTERACTIVE TELEMETRY &amp; TELEOPERATION SIMULATION</span>
+                    <span class="sim-status-badge" [style.color]="arenaState[activeTrackPreview]?.statusColor"
+                      [style.border-color]="arenaState[activeTrackPreview]?.statusColor">
+                      ● {{ arenaState[activeTrackPreview]?.status }}
+                    </span>
+                  </div>
+
+                  <!-- 1. Robotics Rover Arena -->
+                  <div *ngIf="activeTrackPreview === 'robotics'" class="track-sim-content robotics-sim split-cockpit">
+                    <!-- Left: Rover Visual Stage -->
+                    <div class="cockpit-left">
+                      <div class="visual-stage rover-stage">
+                        <div class="stage-grid-bg"></div>
+
+                        <!-- Obstacle on Arena Floor -->
+                        <div class="stage-obstacle" *ngIf="arenaState.robotics?.cargo !== 'Stone'"
+                          [class.danger]="arenaState.robotics?.distance < 20"
+                          [style.left.%]="arenaState.robotics?.obstacleX || 25"
+                          [style.top.%]="arenaState.robotics?.obstacleY || 35">
+                          <div class="obstacle-body">🪨</div>
+                          <div class="obstacle-dist-tag">{{ arenaState.robotics?.obstacleStatus || 'Target' }}</div>
+                        </div>
+
+                        <!-- Rover -->
+                        <div class="rover-bot-wrap" [style.left.%]="getRoverLeft()" [style.top.%]="getRoverTop()"
+                          [style.transform]="getRoverTransform()">
+                          <div class="rover-chassis">
+                            <div class="rover-solar-panel"></div>
+                            <div class="rover-lidar-beam"
+                              [style.transform]="'rotate(' + arenaState.robotics?.radarSweep + 'deg)'"></div>
+                            <div class="rover-camera-eye" [class.alert]="arenaState.robotics?.distance < 20"></div>
+
+                            <!-- Articulated Robotic Arm -->
+                            <div class="rover-robotic-arm" [class.extending]="arenaState.robotics?.armAnimating"
+                              [class.loaded]="arenaState.robotics?.cargo === 'Stone'">
+                              <div class="arm-boom"></div>
+                              <div class="arm-gripper">
+                                <span class="gripper-stone" *ngIf="arenaState.robotics?.cargo === 'Stone'">🪨</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="rover-wheel w-fl"></div>
+                          <div class="rover-wheel w-fr"></div>
+                          <div class="rover-wheel w-rl"></div>
+                          <div class="rover-wheel w-rr"></div>
+                        </div>
+
+                        <div class="stage-target-flag">🏁</div>
+
+                        <!-- Mission Success -->
+                        <div class="mission-congrats-overlay" *ngIf="arenaState.robotics?.missionSuccess">
+                          <div class="congrats-card">
+                            <div class="congrats-badge">Mission Complete</div>
+                            <h3>Stone Delivered to Target</h3>
+                            <p>Robot navigated the arena, grabbed the stone obstacle, and delivered it successfully.</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Status Log -->
+                      <div class="sim-log-bar">
+                        <div class="status-indicator" [style.background]="arenaState.robotics?.statusColor"></div>
+                        <span class="log-text">{{ arenaState.robotics?.log }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Right: Controls & Telemetry -->
+                    <div class="cockpit-right">
+                      <div class="game-controls-panel">
+
+                        <!-- D-Pad (Hexagonal Cross) -->
+                        <div class="game-section">
+                          <div class="game-section-label">Movement</div>
+                          <div class="game-dpad">
+                            <div class="dpad-pivot-row">
+                              <button class="dpad-btn dpad-pivot" (click)="triggerArenaAction('robotics', 'turn_left')"
+                                title="Pivot Left">
+                                <span class="dpad-pivot">↩</span>
+                              </button>
+                              <button class="dpad-btn dpad-pivot" (click)="triggerArenaAction('robotics', 'turn_right')"
+                                title="Pivot Right">
+                                <span class="dpad-pivot">↪</span>
+                              </button>
+                            </div>
+                            <div class="dpad-cross">
+                              <button class="dpad-btn dpad-up" (click)="triggerArenaAction('robotics', 'forward')"
+                                title="Drive Forward along Heading">
+                                <span class="dpad-arrow">▲</span>
+                              </button>
+                              <button class="dpad-btn dpad-left" (click)="triggerArenaAction('robotics', 'left')"
+                                title="Turn Left 45°">
+                                <span class="dpad-arrow">◀</span>
+                              </button>
+                              <button class="dpad-btn dpad-center" (click)="triggerArenaAction('robotics', 'stop')"
+                                title="Stop">
+                                <span class="dpad-circle">●</span>
+                              </button>
+                              <button class="dpad-btn dpad-right" (click)="triggerArenaAction('robotics', 'right')"
+                                title="Turn Right 45°">
+                                <span class="dpad-arrow">▶</span>
+                              </button>
+                              <button class="dpad-btn dpad-down" (click)="triggerArenaAction('robotics', 'reverse')"
+                                title="Reverse along Heading">
+                                <span class="dpad-arrow">▼</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Action Buttons (Game-Controller Style) -->
+                        <div class="game-section">
+                          <div class="game-section-label">Commands</div>
+                          <div class="game-action-group">
+                            <button class="game-action-btn action-grab"
+                              (click)="triggerArenaAction('robotics', 'claw')">
+                              <span class="action-icon material-symbols-outlined">precision_manufacturing</span>
+                              <span class="action-label">{{ arenaState.robotics?.clawOpen ? 'Release' : 'Grab' }}</span>
+                            </button>
+                            <button class="game-action-btn action-spawn"
+                              (click)="triggerArenaAction('robotics', 'obstacle')">
+                              <span class="action-icon material-symbols-outlined">warning</span>
+                              <span class="action-label">Spawn</span>
+                            </button>
+                            <button class="game-action-btn action-auto"
+                              (click)="triggerArenaAction('robotics', 'autopilot')">
+                              <span class="action-icon material-symbols-outlined">smart_toy</span>
+                              <span class="action-label">Auto</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 2. Coding & Algorithms — Speed Sprints Arena -->
+                  <div *ngIf="activeTrackPreview === 'coding'" class="track-sim-content coding-sim split-cockpit">
+                    <!-- Left: People Visualization + Code -->
+                    <div class="cockpit-left">
+                      <!-- Human Sorting Grid -->
+                      <div class="people-visual">
+                        <div class="people-visual-header">
+                          <span class="people-visual-title">
+                            <span class="material-symbols-outlined">groups</span>
+                            Contestants ({{ arenaState.coding?.people?.length || 0 }})
+                          </span>
+                          <span class="people-visual-badge"
+                            [style.background]="arenaState.coding?.sortField !== 'none' ? '#00e676' : '#38bdf8'">
+                            {{ arenaState.coding?.sortField !== 'none' ? 'SORTED BY: ' + (arenaState.coding?.sortField |
+                            uppercase) : 'UNSORTED' }}
+                          </span>
+                        </div>
+                        <div class="people-bars">
+                          <div class="person-bar" *ngFor="let p of arenaState.coding?.people; let i = index"
+                            [style.animation-delay]="i * 60 + 'ms'" [style.--bar-h]="((p.age - 10) / 12) * 100 + '%'">
+                            <div class="bar-top">
+                              <div class="human-figure" [class.male]="p.gender === 'male'"
+                                [class.female]="p.gender === 'female'">
+                                <div class="human-head">
+                                  <div class="hair-acc"></div>
+                                </div>
+                                <div class="human-torso">
+                                  <div class="arm arm-l"></div>
+                                  <div class="arm arm-r"></div>
+                                </div>
+                                <div class="human-legs">
+                                  <div class="leg leg-l"></div>
+                                  <div class="leg leg-r"></div>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="bar-fill" [class.male]="p.gender === 'male'"
+                              [class.female]="p.gender === 'female'"></div>
+                            <div class="bar-label">
+                              <span class="bar-age">{{ p.age }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Code Preview -->
+                      <div class="algo-code-preview">
+                        <div class="algo-code-header">
+                          <span class="material-symbols-outlined">code</span>
+                          <span>solution.js</span>
+                        </div>
+                        <pre class="algo-code-body">{{ arenaState.coding?.code }}</pre>
+                      </div>
+                    </div>
+
+                    <!-- Right: Sort Controls -->
+                    <div class="cockpit-right">
+                      <div class="controls-card">
+                        <div class="controls-card-title">🧑‍🤝‍🧑 Sort People</div>
+                        <div class="controls-btn-group sort-buttons">
+                          <button class="ctrl-btn ctrl-age-asc" (click)="triggerArenaAction('coding', 'sort-age-asc')">
+                            <span class="material-symbols-outlined">arrow_upward</span>
+                            <span>Age ↑</span>
+                          </button>
+                          <button class="ctrl-btn ctrl-age-desc"
+                            (click)="triggerArenaAction('coding', 'sort-age-desc')">
+                            <span class="material-symbols-outlined">arrow_downward</span>
+                            <span>Age ↓</span>
+                          </button>
+                          <button class="ctrl-btn ctrl-gender" (click)="triggerArenaAction('coding', 'sort-gender')">
+                            <span class="material-symbols-outlined">group_work</span>
+                            <span>Gender</span>
+                          </button>
+                          <button class="ctrl-btn ctrl-shuffle" (click)="triggerArenaAction('coding', 'shuffle')">
+                            <span class="material-symbols-outlined">shuffle</span>
+                            <span>Shuffle</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="controls-card">
+                        <div class="controls-card-title">💻 Output</div>
+                        <div class="terminal-output">{{ arenaState.coding?.log }}</div>
+                      </div>
+
+                      <div class="controls-card">
+                        <div class="controls-card-title">📊 Results</div>
+                        <div class="perf-grid">
+                          <div class="perf-item">
+                            <div class="perf-label">Total</div>
+                            <div class="perf-value">{{ arenaState.coding?.people?.length }}<small>ppl</small></div>
+                          </div>
+                          <div class="perf-item">
+                            <div class="perf-label">Males</div>
+                            <div class="perf-value">{{ countMales(arenaState.coding?.people) }}</div>
+                          </div>
+                          <div class="perf-item">
+                            <div class="perf-label">Females</div>
+                            <div class="perf-value">{{ countFemales(arenaState.coding?.people) }}</div>
+                          </div>
+                          <div class="perf-item">
+                            <div class="perf-label">Age Range</div>
+                            <div class="perf-value">{{ getAgeRange(arenaState.coding?.people) }}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 3. Artificial Intelligence — Crop Disease Detector -->
+                  <div *ngIf="activeTrackPreview === 'ai'" class="track-sim-content ai-sim split-cockpit">
+                    <!-- Left: Camera Scanner -->
+                    <div class="cockpit-left">
+                      <div class="ai-viewfinder">
+                        <div class="viewfinder-header">
+                          <span class="material-symbols-outlined">photo_camera</span>
+                          <span class="vf-title">AI Crop Disease Detector</span>
+                          <span class="viewfinder-live" [style.background]="arenaState.ai?.statusColor">
+                            {{ arenaState.ai?.statusColor === '#00e676' ? 'HEALTHY' : 'ALERT' }}
+                          </span>
+                        </div>
+                        <div class="viewfinder-screen">
+                          <div class="vf-grid-lines"></div>
+                          <div class="vf-corners"></div>
+                          <div class="vf-corners-bot"></div>
+                          <div class="vf-crop-icon" [class.disease-rust]="arenaState.ai?.statusColor === '#ff9100'"
+                            [class.disease-blight]="arenaState.ai?.statusColor === '#ff1744'"
+                            [class.disease-healthy]="arenaState.ai?.statusColor === '#00e676'">{{
+                            arenaState.ai?.sampleIcon || '🌿' }}</div>
+                          <div class="laser-scanner-bar"></div>
+                          <div class="vf-result"
+                            [style.background]="'linear-gradient(transparent, ' + (arenaState.ai?.statusColor || '#ab47bc') + '88)'">
+                            <span class="vf-result-name">{{ arenaState.ai?.label || 'Select a crop' }}</span>
+                            <span class="vf-result-conf">{{ arenaState.ai?.confidence }}% confidence</span>
+                          </div>
+                        </div>
+                        <div class="viewfinder-footer">
+                          <span class="vf-status" [style.color]="arenaState.ai?.statusColor">
+                            {{ arenaState.ai?.status }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="ai-description">
+                        <span class="material-symbols-outlined">info</span>
+                        <span>Point the scanner at a crop leaf — the AI tells you if the plant is healthy or diseased,
+                          and what disease it might have.</span>
+                      </div>
+
+                      <div class="ai-log-bar">
+                        <span class="material-symbols-outlined">terminal</span>
+                        <span class="log-text">{{ arenaState.ai?.log }}</span>
+                      </div>
+
+                      <!-- Training Dashboard -->
+                      <div class="training-dashboard" *ngIf="arenaState.ai?.epoch > 0">
+                        <div class="td-header">
+                          <span class="material-symbols-outlined">grid_view</span>
+                          <span>Confusion Matrix</span>
+                          <span class="td-acc-badge"
+                            [style.background]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'">
+                            {{ arenaState.ai?.accuracy }}%
+                          </span>
+                        </div>
+                        <div class="cm-grid">
+                          <div class="cm-corner"></div>
+                          <div class="cm-label top" *ngFor="let label of arenaState.ai?.classLabels">{{ label }}</div>
+                          <ng-container *ngFor="let row of arenaState.ai?.confusionMatrix; let ri = index">
+                            <div class="cm-label side">{{ arenaState.ai?.classLabels[ri] }}</div>
+                            <div class="cm-cell" *ngFor="let val of row; let ci = index" [class.cm-diag]="ri === ci"
+                              [style.--cm-pct]="val / 100"
+                              [style.background]="ri === ci ? 'rgba(0, 230, 118, ' + (0.1 + val / 100 * 0.7) + ')' : 'rgba(255, 23, 68, ' + (0.05 + (100 - val) / 100 * 0.4) + ')'">
+                              <span class="cm-val">{{ val }}%</span>
+                            </div>
+                          </ng-container>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Right: Controls -->
+                    <div class="cockpit-right">
+                      <div class="controls-card">
+                        <div class="controls-card-title">🌱 Select Crop Sample</div>
+                        <div class="sample-grid">
+                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🌿'"
+                            (click)="triggerArenaAction('ai', 'sample_cocoa')">
+                            <span class="sample-card-icon">🌿</span>
+                            <span class="sample-card-name">Cocoa Pod</span>
+                            <span class="sample-card-status healthy">Healthy</span>
+                          </button>
+                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🌽'"
+                            (click)="triggerArenaAction('ai', 'sample_maize')">
+                            <span class="sample-card-icon">🌽</span>
+                            <span class="sample-card-name">Maize Leaf</span>
+                            <span class="sample-card-status warning">Rust</span>
+                          </button>
+                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🥔'"
+                            (click)="triggerArenaAction('ai', 'sample_potato')">
+                            <span class="sample-card-icon">🥔</span>
+                            <span class="sample-card-name">Potato Tuber</span>
+                            <span class="sample-card-status danger">Blight</span>
+                          </button>
+                          <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🍅'"
+                            (click)="triggerArenaAction('ai', 'sample_tomato')">
+                            <span class="sample-card-icon">🍅</span>
+                            <span class="sample-card-name">Tomato Leaf</span>
+                            <span class="sample-card-status warning">Leaf Spot</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="controls-card">
+                        <div class="controls-card-title">🔬 Actions</div>
+                        <div class="controls-btn-group">
+                          <button class="ctrl-btn ctrl-ai-scan" (click)="triggerArenaAction('ai', 'scan')">
+                            <span class="material-symbols-outlined">center_focus_strong</span>
+                            <span>Quick Scan</span>
+                          </button>
+                          <button class="ctrl-btn ctrl-ai-train" (click)="triggerArenaAction('ai', 'epoch')">
+                            <span class="material-symbols-outlined">model_training</span>
+                            <span>Train</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="controls-card">
+                        <div class="controls-card-title">📈 Training Metrics</div>
+                        <div class="train-metrics">
+                          <div class="train-metric-row">
+                            <span class="train-metric-label">Accuracy</span>
+                            <div class="train-metric-bar-bg">
+                              <div class="train-metric-bar-fill" [style.width.%]="arenaState.ai?.accuracy || 0"
+                                [style.background]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'">
+                              </div>
+                            </div>
+                            <span class="train-metric-value"
+                              [style.color]="(arenaState.ai?.accuracy || 0) >= 90 ? '#00e676' : (arenaState.ai?.accuracy || 0) >= 70 ? '#38bdf8' : (arenaState.ai?.accuracy || 0) >= 50 ? '#ff9100' : '#ab47bc'">{{
+                              arenaState.ai?.accuracy }}%</span>
+                          </div>
+                          <div class="train-metric-row">
+                            <span class="train-metric-label">Loss</span>
+                            <div class="train-metric-bar-bg">
+                              <div class="train-metric-bar-fill loss"
+                                [style.width.%]="getLossBarWidth(arenaState.ai?.loss)" style="background: #f43f5e;">
+                              </div>
+                            </div>
+                            <span class="train-metric-value" style="color:#f43f5e">{{ arenaState.ai?.loss }}</span>
+                          </div>
+                          <div class="train-metric-row">
+                            <span class="train-metric-label">Epoch</span>
+                            <div class="train-metric-bar-bg">
+                              <div class="train-metric-bar-fill"
+                                [style.width.%]="(arenaState.ai?.epoch || 0) / 50 * 100"
+                                style="background: linear-gradient(90deg, #ab47bc, #7c3aed);"></div>
+                            </div>
+                            <span class="train-metric-value" style="color:#ab47bc">{{ arenaState.ai?.epoch
+                              }}<small>/50</small></span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="controls-card" *ngIf="arenaState.ai?.epoch > 0">
+                        <div class="controls-card-title">📊 Per-Class Metrics</div>
+                        <div class="class-metrics-table">
+                          <div class="cm-table-header">
+                            <span class="cm-th class-col">Class</span>
+                            <span class="cm-th">Precision</span>
+                            <span class="cm-th">Recall</span>
+                            <span class="cm-th">F1</span>
+                          </div>
+                          <div class="cm-table-row" *ngFor="let label of arenaState.ai?.classLabels; let i = index">
+                            <span class="cm-td class-col">{{ label }}</span>
+                            <span class="cm-td">
+                              <span class="cm-td-dot"
+                                [style.background]="parseNum(arenaState.ai?.classPrecision[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classPrecision[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classPrecision[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
+                              {{ arenaState.ai?.classPrecision[i] }}
+                            </span>
+                            <span class="cm-td">
+                              <span class="cm-td-dot"
+                                [style.background]="parseNum(arenaState.ai?.classRecall[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classRecall[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classRecall[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
+                              {{ arenaState.ai?.classRecall[i] }}
+                            </span>
+                            <span class="cm-td">
+                              <span class="cm-td-dot"
+                                [style.background]="parseNum(arenaState.ai?.classF1[i]) >= 90 ? '#00e676' : parseNum(arenaState.ai?.classF1[i]) >= 70 ? '#38bdf8' : parseNum(arenaState.ai?.classF1[i]) >= 50 ? '#ff9100' : '#f43f5e'"></span>
+                              {{ arenaState.ai?.classF1[i] }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 4. Cybersecurity — Network Defense Simulator -->
+                  <div *ngIf="activeTrackPreview === 'cyber'" class="track-sim-content cyber-sim split-cockpit">
+                    <!-- Left: Network Monitor -->
+                    <div class="cockpit-left">
+                      <div class="cyber-monitor">
+                        <div class="cyber-monitor-header">
+                          <span class="material-symbols-outlined">network_intel</span>
+                          <span>Network Security Monitor</span>
+                          <span class="cyber-status-badge" [style.background]="arenaState.cyber?.statusColor">
+                            {{ arenaState.cyber?.status?.includes('BLOCKED') ||
+                            arenaState.cyber?.status?.includes('NEUTRALIZED') ? 'PROTECTED' : 'MONITORING' }}
+                          </span>
+                        </div>
+                        <div class="cyber-network-viz">
+                          <!-- Internet / Attack Source -->
+                          <div class="cyber-node internet-node">
+                            <span class="material-symbols-outlined">public</span>
+                            <span class="cyber-node-label">Internet</span>
+                            <div class="attack-pulse" *ngIf="arenaState.cyber?.blockedCount > 0"></div>
+                          </div>
+                          <div class="cyber-arrow">➜</div>
+                          <!-- Firewall -->
+                          <div class="cyber-node firewall-node">
+                            <span class="material-symbols-outlined"
+                              [style.color]="arenaState.cyber?.statusColor">shield</span>
+                            <span class="cyber-node-label">Firewall</span>
+                            <span class="cyber-node-stat">{{ arenaState.cyber?.blockedCount }} blocked</span>
+                            <div class="firewall-bar" [style.width.%]="(arenaState.cyber?.blockedCount || 0) * 3">
+                              <div class="firewall-bar-fill" [style.background]="arenaState.cyber?.statusColor"></div>
+                            </div>
+                          </div>
+                          <div class="cyber-arrow">➜</div>
+                          <!-- Server -->
+                          <div class="cyber-node server-node">
+                            <span class="material-symbols-outlined">dns</span>
+                            <span class="cyber-node-label">Server</span>
+                            <span class="cyber-node-stat">Secure</span>
+                          </div>
+                        </div>
+                        <div class="cyber-status-line">
+                          <span class="cyber-alert-dot" [style.background]="arenaState.cyber?.statusColor"></span>
+                          <span class="cyber-alert-text">{{ arenaState.cyber?.status }}</span>
+                        </div>
+                      </div>
+
+                      <div class="cyber-log-bar">
+                        <span class="material-symbols-outlined">terminal</span>
+                        <span class="log-text">{{ arenaState.cyber?.log }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Right: Controls -->
+                    <div class="cockpit-right">
+                      <div class="controls-card">
+                        <div class="controls-card-title">🛡️ Defend</div>
+                        <div class="controls-btn-group">
+                          <button class="ctrl-btn ctrl-cyber-defend" (click)="triggerArenaAction('cyber', 'defend')">
+                            <span class="material-symbols-outlined">shield_lock</span>
+                            <span>Block Attack</span>
+                          </button>
+                          <button class="ctrl-btn ctrl-cyber-scan" (click)="triggerArenaAction('cyber', 'ddos')">
+                            <span class="material-symbols-outlined">radar</span>
+                            <span>Scan Network</span>
+                          </button>
+                        </div>
+                        <div class="controls-btn-group" style="margin-top: 8px">
+                          <button class="ctrl-btn ctrl-cyber-trap" (click)="triggerArenaAction('cyber', 'honeypot')">
+                            <span class="material-symbols-outlined">phishing</span>
+                            <span>Set Trap</span>
+                          </button>
+                          <button class="ctrl-btn ctrl-cyber-key" (click)="triggerArenaAction('cyber', 'cipher')">
+                            <span class="material-symbols-outlined">key</span>
+                            <span>Rotate Keys</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="controls-card">
+                        <div class="controls-card-title">📊 Security Status</div>
+                        <div class="perf-grid">
+                          <div class="perf-item">
+                            <div class="perf-label">Attacks Blocked</div>
+                            <div class="perf-value">{{ arenaState.cyber?.blockedCount }}</div>
+                          </div>
+                          <div class="perf-item">
+                            <div class="perf-label">Traffic</div>
+                            <div class="perf-value">{{ arenaState.cyber?.packetsSec }}<small>pkt/s</small></div>
+                          </div>
+                          <div class="perf-item">
+                            <div class="perf-label">Encryption</div>
+                            <div class="perf-value" style="font-size:0.7rem">{{ arenaState.cyber?.encryption }}</div>
+                          </div>
+                          <div class="perf-item">
+                            <div class="perf-label">Firewall</div>
+                            <div class="perf-value" [style.color]="arenaState.cyber?.statusColor">{{
+                              arenaState.cyber?.firewall }}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 5. Open Innovation — Smart Clean Energy Grid -->
+                  <div *ngIf="activeTrackPreview === 'innovation'"
+                    class="track-sim-content innovation-sim split-cockpit">
+                    <!-- Left: Energy Dashboard -->
+                    <div class="cockpit-left">
+                      <div class="energy-dashboard">
+                        <div class="energy-header">
+                          <span class="material-symbols-outlined">bolt</span>
+                          <span>Smart Clean Energy Grid</span>
+                          <span class="energy-badge" [style.background]="arenaState.innovation?.statusColor">
+                            {{ arenaState.innovation?.efficiency }}
+                          </span>
+                        </div>
+                        <div class="energy-sources">
+                          <div class="energy-source">
+                            <div class="source-icon-wrap solar-icon">
+                              <span class="source-icon">☀️</span>
+                            </div>
+                            <div class="source-info">
+                              <span class="source-label">Solar Panels</span>
+                              <span class="source-value">{{ arenaState.innovation?.solarKw }} <small>kW</small></span>
+                            </div>
+                            <div class="source-bar">
+                              <div class="source-bar-fill solar-fill"
+                                [style.width.%]="(+(arenaState.innovation?.solarKw || 0) / 70) * 100"></div>
+                            </div>
+                          </div>
+                          <div class="energy-source">
+                            <div class="source-icon-wrap wind-icon">
+                              <span class="source-icon spinning"
+                                [style.animation-duration]="getWindSpeed() + 's'">🌀</span>
+                            </div>
+                            <div class="source-info">
+                              <span class="source-label">Wind Turbines</span>
+                              <span class="source-value">{{ arenaState.innovation?.windKw }} <small>kW</small></span>
+                            </div>
+                            <div class="source-bar">
+                              <div class="source-bar-fill wind-fill"
+                                [style.width.%]="(+(arenaState.innovation?.windKw || 0) / 30) * 100"></div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="energy-flow-row">
+                          <div class="flow-line"></div>
+                          <span class="flow-label">Grid Distribution</span>
+                        </div>
+                        <div class="energy-consumers">
+                          <div class="consumer-item">
+                            <span class="material-symbols-outlined">local_hospital</span>
+                            <span class="consumer-label">Hospital</span>
+                            <span class="consumer-status">{{ arenaState.innovation?.hospitalPower }}</span>
+                          </div>
+                          <div class="consumer-item">
+                            <span class="material-symbols-outlined">battery_charging_full</span>
+                            <span class="consumer-label">Battery Storage</span>
+                            <span class="consumer-status">{{ arenaState.innovation?.battery }}%</span>
+                            <div class="battery-visual">
+                              <div class="battery-level" [style.width.%]="arenaState.innovation?.battery"
+                                [style.background]="(arenaState.innovation?.battery || 0) > 50 ? '#00e676' : (arenaState.innovation?.battery || 0) > 20 ? '#ffea00' : '#ff1744'">
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="energy-footer">
+                          <span class="material-symbols-outlined">co2</span>
+                          <span>CO₂ Saved: <strong>{{ arenaState.innovation?.co2Saved }} kg</strong></span>
+                          <span class="energy-footer-status" [style.color]="arenaState.innovation?.statusColor">{{
+                            arenaState.innovation?.status }}</span>
+                        </div>
+                      </div>
+
+                      <div class="innovation-log-bar">
+                        <span class="material-symbols-outlined">terminal</span>
+                        <span class="log-text">{{ arenaState.innovation?.log }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Right: Controls -->
+                    <div class="cockpit-right">
+                      <div class="controls-card">
+                        <div class="controls-card-title">⚡ Generate Power</div>
+                        <div class="controls-btn-group">
+                          <button class="ctrl-btn ctrl-innovation-solar"
+                            (click)="triggerArenaAction('innovation', 'solar')">
+                            <span class="material-symbols-outlined">wb_sunny</span>
+                            <span>Solar Boost</span>
+                          </button>
+                          <button class="ctrl-btn ctrl-innovation-wind"
+                            (click)="triggerArenaAction('innovation', 'wind')">
+                            <span class="material-symbols-outlined">air</span>
+                            <span>Wind Boost</span>
+                          </button>
+                        </div>
+                        <div class="controls-btn-group" style="margin-top: 8px">
+                          <button class="ctrl-btn ctrl-innovation-hospital"
+                            (click)="triggerArenaAction('innovation', 'hospital')">
+                            <span class="material-symbols-outlined">local_hospital</span>
+                            <span>Power Hospital</span>
+                          </button>
+                          <button class="ctrl-btn ctrl-innovation-sync"
+                            (click)="triggerArenaAction('innovation', 'sync')">
+                            <span class="material-symbols-outlined">sync</span>
+                            <span>Sync Grid</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="controls-card">
+                        <div class="controls-card-title">📊 Grid Metrics</div>
+                        <div class="perf-grid">
+                          <div class="perf-item">
+                            <div class="perf-label">Solar Output</div>
+                            <div class="perf-value">{{ arenaState.innovation?.solarKw }}<small>kW</small></div>
+                          </div>
+                          <div class="perf-item">
+                            <div class="perf-label">Wind Output</div>
+                            <div class="perf-value">{{ arenaState.innovation?.windKw }}<small>kW</small></div>
+                          </div>
+                          <div class="perf-item">
+                            <div class="perf-label">Battery</div>
+                            <div class="perf-value">{{ arenaState.innovation?.battery }}<small>%</small></div>
+                          </div>
+                          <div class="perf-item">
+                            <div class="perf-label">CO₂ Saved</div>
+                            <div class="perf-value">{{ arenaState.innovation?.co2Saved }}<small>kg</small></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Modal Bottom Action Footer -->
+              <div class="arena-modal-footer">
+                <div class="footer-info">
+                  <span class="material-symbols-outlined icon-pulse">lightbulb</span>
+                  <span>Interact with the real-time teleoperation deck on the right while watching the simulation
+                    respond instantly on the left!</span>
+                </div>
+                <button type="button" class="arena-register-btn" (click)="navigateToRegistration(activeTrackPreview)">
+                  Register for {{ activeTrackPreview | titlecase }} Arena →
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
 <app-chatbot></app-chatbot>

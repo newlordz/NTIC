@@ -131,7 +131,9 @@ export class CompetitionsComponent implements OnInit {
   /** Deadline countdown string */
   getCountdown(dateStr: string): string {
     if (!dateStr) return '';
-    const diff = new Date(dateStr).getTime() - Date.now();
+    const ts = new Date(dateStr).getTime();
+    if (isNaN(ts)) return '';
+    const diff = ts - Date.now();
     if (diff <= 0) return 'Overdue';
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     if (days === 0) {
@@ -144,7 +146,9 @@ export class CompetitionsComponent implements OnInit {
   /** CSS class for countdown urgency */
   countdownClass(dateStr: string): string {
     if (!dateStr) return '';
-    const diff = new Date(dateStr).getTime() - Date.now();
+    const ts = new Date(dateStr).getTime();
+    if (isNaN(ts)) return '';
+    const diff = ts - Date.now();
     if (diff <= 0) return 'overdue';
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     if (days <= 2) return 'urgent';

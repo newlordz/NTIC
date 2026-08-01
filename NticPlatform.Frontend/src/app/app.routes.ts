@@ -1,39 +1,23 @@
 import { Routes } from '@angular/router';
-import { LandingComponent } from './pages/landing/landing.component';
-import { DashboardComponent } from './pages/dashboard/dashboard.component';
-import { RegistrationComponent } from './pages/registration/registration.component';
-import { ProfileCompletionComponent } from './pages/profile-completion/profile-completion.component';
-import { LmsComponent } from './pages/lms/lms.component';
-import { InstructorComponent } from './pages/instructor/instructor.component';
-import { JudgeComponent } from './pages/judge/judge.component';
-import { CompetitionsComponent } from './pages/competitions/competitions.component';
-import { LeaderboardComponent } from './pages/leaderboard/leaderboard.component';
-import { TalentComponent } from './pages/talent/talent.component';
-import { SponsorsComponent } from './pages/sponsors/sponsors.component';
-import { ReportingComponent } from './pages/reporting/reporting.component';
-import { RecordsComponent } from './pages/records/records.component';
-import { UserManagementComponent } from './pages/user-management/user-management.component';
-import { NewsComponent } from './pages/news/news.component';
-import { LmsManagerComponent } from './pages/lms-manager/lms-manager.component';
 import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
-  { path: '',             component: LandingComponent, pathMatch: 'full' },
-  { path: 'news',         component: NewsComponent },
-  { path: 'registration', component: RegistrationComponent },
-  { path: 'competitions', component: CompetitionsComponent },
-  { path: 'leaderboard',  component: LeaderboardComponent },
-  { path: 'talent',       component: TalentComponent },
-  { path: 'dashboard',    component: DashboardComponent,         canActivate: [authGuard] },
-  { path: 'profile-completion', component: ProfileCompletionComponent, canActivate: [authGuard] },
-  { path: 'lms',          component: LmsComponent,              canActivate: [authGuard] },
-  { path: 'lms-manager',  component: LmsManagerComponent,       canActivate: [authGuard] },
-  { path: 'instructor',   component: InstructorComponent,        canActivate: [authGuard] },
-  { path: 'judge',        component: JudgeComponent,             canActivate: [authGuard] },
-  { path: 'sponsors',     component: SponsorsComponent,          canActivate: [authGuard] },
-  { path: 'reporting',    component: ReportingComponent,         canActivate: [authGuard] },
-  { path: 'records',      component: RecordsComponent,           canActivate: [authGuard] },
+  { path: '',             loadComponent: () => import('./pages/landing/landing.component').then(m => m.LandingComponent), pathMatch: 'full' },
+  { path: 'news',         loadComponent: () => import('./pages/news/news.component').then(m => m.NewsComponent) },
+  { path: 'registration', loadComponent: () => import('./pages/registration/registration.component').then(m => m.RegistrationComponent) },
+  { path: 'competitions', loadComponent: () => import('./pages/competitions/competitions.component').then(m => m.CompetitionsComponent) },
+  { path: 'leaderboard',  loadComponent: () => import('./pages/leaderboard/leaderboard.component').then(m => m.LeaderboardComponent) },
+  { path: 'talent',       loadComponent: () => import('./pages/talent/talent.component').then(m => m.TalentComponent) },
+  { path: 'dashboard',    loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent), canActivate: [authGuard] },
+  { path: 'profile-completion', loadComponent: () => import('./pages/profile-completion/profile-completion.component').then(m => m.ProfileCompletionComponent), canActivate: [authGuard] },
+  { path: 'lms',          loadComponent: () => import('./pages/lms/lms.component').then(m => m.LmsComponent), canActivate: [authGuard] },
+  { path: 'lms-manager',  loadComponent: () => import('./pages/lms-manager/lms-manager.component').then(m => m.LmsManagerComponent), canActivate: [authGuard] },
+  { path: 'instructor',   loadComponent: () => import('./pages/instructor/instructor.component').then(m => m.InstructorComponent), canActivate: [authGuard] },
+  { path: 'judge',        loadComponent: () => import('./pages/judge/judge.component').then(m => m.JudgeComponent), canActivate: [authGuard] },
+  { path: 'sponsors',     loadComponent: () => import('./pages/sponsors/sponsors.component').then(m => m.SponsorsComponent), canActivate: [authGuard] },
+  { path: 'reporting',    loadComponent: () => import('./pages/reporting/reporting.component').then(m => m.ReportingComponent), canActivate: [authGuard] },
+  { path: 'records',      loadComponent: () => import('./pages/records/records.component').then(m => m.RecordsComponent), canActivate: [authGuard] },
   { path: 'database',     redirectTo: 'records' },
-  { path: 'user-management', component: UserManagementComponent,  canActivate: [authGuard] },
+  { path: 'user-management', loadComponent: () => import('./pages/user-management/user-management.component').then(m => m.UserManagementComponent), canActivate: [authGuard] },
   { path: '**',           redirectTo: '' }
 ];

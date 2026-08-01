@@ -616,6 +616,7 @@ export class ContentService {
       title: 'Where Ghana\'s Brightest Minds Compete & Innovate',
       description: 'Bringing together high school teams from all 16 regions to solve real-world problems through Coding, Robotics, AI, Cybersecurity, and Open Innovation.',
       image: 'assets/ntic_image_8.jpeg',
+      videoUrl: 'assets/ntic_slideshow.mp4',
       ctaText: 'Enter Portal',
       ctaLink: '#portal'
     }

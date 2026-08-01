@@ -73,9 +73,10 @@
         <span class="material-symbols-outlined">assessment</span>
         {{ currentUser?.roleId === 'school_admin' ? 'School Reports' : 'Reports' }}
       </a>
-      <a class="nav-item" *ngIf="hasAccess('users')" routerLink="/user-management" routerLinkActive="active" (click)="closeMobileSidebar()">
+<a class="nav-item" *ngIf="hasAccess('users')" routerLink="/user-management" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">manage_accounts</span>
         Users
+        <span class="nav-badge nav-badge-tickets" *ngIf="openTicketCount > 0">{{ openTicketCount }}</span>
       </a>
       <a class="nav-item" routerLink="/records" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">folder_open</span>

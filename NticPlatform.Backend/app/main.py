@@ -1,6 +1,7 @@
 import os
 import uuid
 import datetime
+from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import init_postgres_db, get_db_connection
 from app.security import verify_password, create_token, require_auth, require_admin
@@ -13,10 +14,16 @@ try:
     from httpx import AsyncClient
     from pydantic import BaseModel
 
+    @asynccontextmanager
+    async def lifespan(application: FastAPI):
+        init_postgres_db()
+        yield
+
     app = FastAPI(
         title="NTIC Platform Python API",
         description="Backend API powered by Python & PostgreSQL",
-        version="1.0.0"
+        version="1.0.0",
+        lifespan=lifespan,
     )
 
     app.add_middleware(
@@ -26,10 +33,6 @@ try:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    @app.on_event("startup")
-    def on_startup():
-        init_postgres_db()
 
     class StudentCreate(BaseModel):
         first_name: str
@@ -111,7 +114,7 @@ try:
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
         token = create_token()
-        expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=7)
+        expires_at = datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=7)
         conn = _get_db()
         cur = conn.cursor()
         try:
@@ -269,7 +272,6 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         import json as _json
-        import datetime
         cur.execute("SELECT admin_replies FROM support_tickets WHERE id = %s", (ticket_id,))
         row = cur.fetchone()
         if not row:
@@ -280,7 +282,7 @@ try:
         existing.append({
             "agentName": payload.agentName,
             "text": payload.text,
-            "timestamp": datetime.datetime.utcnow().isoformat()
+            "timestamp": datetime.datetime.now(datetime.UTC).isoformat()
         })
         cur.execute(
             "UPDATE support_tickets SET admin_replies = %s, status = 'in_progress', last_updated = CURRENT_TIMESTAMP WHERE id = %s",

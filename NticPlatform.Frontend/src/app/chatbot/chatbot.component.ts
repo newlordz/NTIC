@@ -27,7 +27,8 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
   @ViewChild('messagesContainer') messagesContainer!: ElementRef<HTMLDivElement>;
 
   userInput = '';
-  showEscalateConfirm = false;
+  ticketLookupInput = '';
+  ticketEmailInput = '';
   private shouldScrollToBottom = false;
 
   constructor(public chatbot: ChatbotService, private cdr: ChangeDetectorRef) {}
@@ -59,7 +60,6 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
 
   closeChat(): void {
     this.chatbot.closeChat();
-    this.showEscalateConfirm = false;
     this.cdr.markForCheck();
   }
 
@@ -67,7 +67,6 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
     const name = this.currentUser?.name || 'there';
     const role = this.currentUser?.roleId || 'student';
     this.chatbot.clearHistory(name, role);
-    this.showEscalateConfirm = false;
     this.cdr.markForCheck();
   }
 
@@ -96,23 +95,26 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
     }
   }
 
-  requestEscalation(): void {
-    this.showEscalateConfirm = true;
+  acceptTicket(): void {
+    this.chatbot.acceptTicketCreation();
     this.cdr.markForCheck();
   }
 
-  confirmEscalation(): void {
-    const name = this.currentUser?.name || 'User';
-    const role = this.currentUser?.roleId || 'student';
-    const email = this.getUserEmail();
-    this.chatbot.escalateToHuman(name, role, email);
-    this.showEscalateConfirm = false;
-    this.shouldScrollToBottom = true;
+  rejectTicket(): void {
+    this.chatbot.rejectTicketCreation();
     this.cdr.markForCheck();
   }
 
-  cancelEscalation(): void {
-    this.showEscalateConfirm = false;
+  lookupTicket(): void {
+    if (!this.ticketLookupInput.trim()) return;
+    this.chatbot.checkTicketById(this.ticketLookupInput);
+    this.cdr.markForCheck();
+  }
+
+  submitEmail(): void {
+    if (!this.ticketEmailInput.trim()) return;
+    this.chatbot.createTicket(this.ticketEmailInput.trim());
+    this.ticketEmailInput = '';
     this.cdr.markForCheck();
   }
 
@@ -135,10 +137,6 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
 
   get unreadCount(): number {
     return this.chatbot.isOpen() ? 0 : (this.chatbot.messages().length > 1 ? 1 : 0);
-  }
-
-  get canEscalate(): boolean {
-    return !this.chatbot.isEscalated() && (this.chatbot.messages().length > 1);
   }
 
   trackByIndex(index: number): number {

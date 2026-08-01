@@ -93,29 +93,38 @@
     <button class="suggestion-chip" (click)="userInput = 'How does this platform work?'; onSend()">How does this platform work?</button>
   </div>
 
-  <!-- ESCALATION CONFIRM PROMPT -->
-  <div class="escalate-confirm" *ngIf="showEscalateConfirm">
-    <p><span class="material-symbols-outlined">support_agent</span> Connect to a human agent?</p>
+  <!-- TICKET CREATION PROMPT -->
+  <div class="escalate-confirm" *ngIf="chatbot.showTicketPrompt()">
+    <p><span class="material-symbols-outlined">support_agent</span> I couldn't find a good answer. Create a support ticket?</p>
     <div class="escalate-actions">
-      <button class="escalate-cancel-btn" (click)="cancelEscalation()">Cancel</button>
-      <button class="escalate-ok-btn" (click)="confirmEscalation()">Yes, Connect Me</button>
+      <button class="escalate-cancel-btn" (click)="rejectTicket()">No, I'm good</button>
+      <button class="escalate-ok-btn" (click)="acceptTicket()">Yes, create ticket</button>
+    </div>
+  </div>
+
+  <!-- TICKET LOOKUP INPUT -->
+  <div class="escalate-confirm" *ngIf="chatbot.showTicketLookup()">
+    <p><span class="material-symbols-outlined">confirmation_number</span> Enter your ticket ID:</p>
+    <div class="ticket-lookup-row">
+      <input type="text" [(ngModel)]="ticketLookupInput" placeholder="e.g. TKT-ABC12345" class="ticket-lookup-input" maxlength="32" />
+      <button class="escalate-ok-btn" (click)="lookupTicket()" [disabled]="!ticketLookupInput.trim()">Check</button>
+    </div>
+  </div>
+
+  <!-- EMAIL INPUT -->
+  <div class="escalate-confirm" *ngIf="chatbot.showEmailInput()">
+    <p><span class="material-symbols-outlined">mail</span> What email should we send the ticket to?</p>
+    <div class="ticket-lookup-row">
+      <input type="email" [(ngModel)]="ticketEmailInput" placeholder="Enter your email address" class="ticket-lookup-input" />
+      <button class="escalate-ok-btn" (click)="submitEmail()" [disabled]="!ticketEmailInput.trim()">Send</button>
     </div>
   </div>
 
   <!-- INPUT AREA -->
   <div class="chatbot-input-area">
-    <!-- Escalate button (only if not yet escalated and messages exist) -->
-    <button
-      class="escalate-btn"
-      *ngIf="canEscalate && !showEscalateConfirm"
-      (click)="requestEscalation()"
-      title="Talk to a human support agent">
-      <span class="material-symbols-outlined">support_agent</span>
-      Talk to a Human
-    </button>
     <div class="escalated-banner" *ngIf="chatbot.isEscalated()">
       <span class="material-symbols-outlined">verified</span>
-      Support ticket created — agent will respond here
+      Ticket active — admin will respond here. Type "check ticket" to view replies.
     </div>
 
     <div class="chatbot-input-wrap">

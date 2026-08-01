@@ -1,4 +1,4 @@
-﻿import { getAuthValue, clearAllAuthValues } from './services/session.util';
+import { getAuthValue, clearAllAuthValues } from './services/session.util';
 import { Component, OnInit, OnDestroy, HostListener, Renderer2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
@@ -24,6 +24,7 @@ export class AppComponent implements OnInit, OnDestroy {
   currentUser: { name: string; avatar: string; roleName: string; roleId: string } | null = null;
   showScrollToTop = false;
   isMobileSidebarOpen = false;
+  private ticketPollTimer: any = null;
   private scrollRafPending = false;
   private scrollListener = () => {
     if (this.scrollRafPending) return;
@@ -65,7 +66,7 @@ export class AppComponent implements OnInit, OnDestroy {
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
       const url = event.urlAfterRedirects || event.url;
-      const parsedUrl = url.split('?')[0];
+      const parsedUrl = url.split('?')[0].split('#')[0];
       this.loadUserProfile();
 
       this.isLandingPage =
@@ -99,6 +100,15 @@ export class AppComponent implements OnInit, OnDestroy {
         e.preventDefault();
       });
     }
+    // Load support tickets for admin badge
+    if (this.currentUser?.roleId === 'super_admin' || this.currentUser?.roleId === 'support_admin') {
+      this.chatbot.loadAllTickets();
+      this.ticketPollTimer = setInterval(() => this.chatbot.loadAllTickets(), 15000);
+    }
+  }
+
+  get openTicketCount(): number {
+    return this.chatbot.supportTickets().filter(t => t.status === 'open' || t.status === 'in_progress').length;
   }
 
   toggleMobileSidebar(): void {
@@ -126,6 +136,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (typeof window !== 'undefined') {
       window.removeEventListener('scroll', this.scrollListener, true);
     }
+    if (this.ticketPollTimer) clearInterval(this.ticketPollTimer);
     this.closeMobileSidebar();
   }
 

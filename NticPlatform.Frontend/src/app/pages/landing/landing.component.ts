@@ -1,5 +1,5 @@
 ﻿import { getAuthValue, setAuthValue } from '../../services/session.util';
-import { Component, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, ViewChild, Renderer2, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, ViewChild, Renderer2, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -51,7 +51,8 @@ interface LeaderboardEntry {
   standalone: true,
   imports: [CommonModule, RouterLink, FormsModule, DecimalPipe, ChatbotComponent],
   templateUrl: './landing.component.html',
-  styleUrl: './landing.component.scss'
+  styleUrl: './landing.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('matrixCanvas') matrixCanvasRef!: ElementRef<HTMLCanvasElement>;
@@ -188,6 +189,8 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   activeMegaMenu: string | null = null;
   activeSlideIndex = 0;
   slideInterval: any;
+  activeCompSlideIndex = 0;
+  compSlideInterval: any;
   activeVideoEditImageIndex = 0;
   videoEditInterval: any;
   image1Url = '';
@@ -248,8 +251,13 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   get competitionDate(): Date {
     const feat = this.featuredCompetition;
-    if (feat) return new Date(feat.deadline);
-    return new Date(this.contentService.countdownDate || '2026-08-15T09:00:00');
+    if (feat) {
+      const d = new Date(feat.deadline);
+      if (!isNaN(d.getTime())) return d;
+    }
+    const fallback = new Date(this.contentService.countdownDate || '2026-08-15T09:00:00');
+    if (!isNaN(fallback.getTime())) return fallback;
+    return new Date('2026-12-31T23:59:59');
   }
 
   get featuredStatusClass(): string {
@@ -312,7 +320,10 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   compMiniCountdown(comp: any): { days: number; hours: number; mins: number } | null {
     if (comp.status === 'completed') return null;
-    const dist = new Date(comp.deadline).getTime() - Date.now();
+    if (!comp.deadline) return null;
+    const target = new Date(comp.deadline).getTime();
+    if (isNaN(target)) return null;
+    const dist = target - Date.now();
     if (dist <= 0) return { days: 0, hours: 0, mins: 0 };
     return {
       days: Math.floor(dist / (1000 * 60 * 60 * 24)),
@@ -376,10 +387,12 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // ── STRIPE HERO CANVAS (RADIAL BEAMS & PARTICLE STARBURST) ───
   private matrixAnimFrame: number | null = null;
+  private matrixObserver: IntersectionObserver | null = null;
   private matrixResizeListener: any;
   private matrixMouseListener: any;
   private matrixTouchListener: any;
   private matrixClickListener: any;
+  private matrixStaticDrawListener: any;
   private stripeMouseX: number = 0;
   private stripeMouseY: number = 0;
   private stripeTargetMouseX: number = 0;
@@ -1015,6 +1028,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.setupSupportObserver();
     this.preloadNextImages(0, 3);
     this.startCountdown();
+    this.startCompSlideshow();
     this.typeProblem();
     this.setupFabScroll();
   }
@@ -1025,6 +1039,9 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.applyRegionColors();
     this.setupScrollAnimations();
     this.storyTimer = setInterval(() => this.cdr.detectChanges(), 30_000);
+
+    // Pause matrix rain when off-screen to save CPU
+    this.setupMatrixRainObserver();
   }
 
   ngOnDestroy(): void {
@@ -1032,6 +1049,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       document.body.style.overflow = '';
     }
     this.stopSlideShow();
+    this.stopCompSlideshow();
     this.stopVideoEditLoop();
     if (this.decryptInterval) clearInterval(this.decryptInterval);
     if (this.scanTimeout) clearTimeout(this.scanTimeout);
@@ -1039,6 +1057,10 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.telemetryTimeouts = [];
     if (this.countdownInterval) clearInterval(this.countdownInterval);
     if (this.matrixAnimFrame) cancelAnimationFrame(this.matrixAnimFrame);
+    if (this.matrixObserver) { this.matrixObserver.disconnect(); this.matrixObserver = null; }
+    if (this.matrixStaticDrawListener && typeof window !== 'undefined') {
+      window.removeEventListener('resize', this.matrixStaticDrawListener);
+    }
     if (this.matrixResizeListener && typeof window !== 'undefined') {
       window.removeEventListener('resize', this.matrixResizeListener);
     }
@@ -1277,6 +1299,9 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         const url = await this.fileStorage.getUrl(hs.imageFileId);
         if (url) { this.slides[i].image = url; }
       }
+      if (!this.slides[i].video && hs?.image === 'assets/ntic_image_8.jpeg') {
+        this.slides[i].video = 'assets/ntic_slideshow.mp4';
+      }
     }
     this.cdr.detectChanges();
     setTimeout(() => this.playActiveSlideVideo(), 100);
@@ -1300,6 +1325,47 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   prevSlide(): void {
     this.activeSlideIndex = (this.activeSlideIndex - 1 + this.slides.length) % this.slides.length;
     this.startSlideShow();
+  }
+
+  nextCompSlide(): void {
+    if (!this.gridCompetitions.length) return;
+    this.activeCompSlideIndex = (this.activeCompSlideIndex + 1) % this.gridCompetitions.length;
+    this.resetCompAutoTimer();
+  }
+
+  prevCompSlide(): void {
+    if (!this.gridCompetitions.length) return;
+    this.activeCompSlideIndex = (this.activeCompSlideIndex - 1 + this.gridCompetitions.length) % this.gridCompetitions.length;
+    this.resetCompAutoTimer();
+  }
+
+  goToCompSlide(idx: number): void {
+    this.activeCompSlideIndex = idx;
+    this.resetCompAutoTimer();
+  }
+
+  startCompSlideshow(): void {
+    if (this.gridCompetitions.length <= 1) return;
+    this.resetCompAutoTimer();
+  }
+
+  private resetCompAutoTimer(): void {
+    if (this.compSlideInterval) clearInterval(this.compSlideInterval);
+    if (this.gridCompetitions.length <= 1) return;
+    this.ngZone.runOutsideAngular(() => {
+      this.compSlideInterval = setInterval(() => {
+        this.ngZone.run(() => {
+          this.activeCompSlideIndex = (this.activeCompSlideIndex + 1) % this.gridCompetitions.length;
+        });
+      }, 5000);
+    });
+  }
+
+  stopCompSlideshow(): void {
+    if (this.compSlideInterval) {
+      clearInterval(this.compSlideInterval);
+      this.compSlideInterval = null;
+    }
   }
 
   toggleMobileMenu(): void {
@@ -1807,7 +1873,12 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   startCountdown(): void {
     const update = () => {
       const now = new Date().getTime();
-      const dist = this.competitionDate.getTime() - now;
+      const target = this.competitionDate.getTime();
+      if (isNaN(target)) {
+        this.countdownDays = this.countdownHours = this.countdownMins = this.countdownSecs = 0;
+        return;
+      }
+      const dist = target - now;
       if (dist <= 0) {
         this.countdownDays = this.countdownHours = this.countdownMins = this.countdownSecs = 0;
         return;
@@ -1832,6 +1903,27 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     const canvas = this.matrixCanvasRef.nativeElement;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // Skip complex animation on mobile — poor UX, high battery cost
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      // Draw a simple static gradient and return
+      const drawStatic = () => {
+        const w = canvas.parentElement?.clientWidth || window.innerWidth;
+        const h = canvas.parentElement?.clientHeight || 440;
+        canvas.width = w; canvas.height = h;
+        const grad = ctx.createLinearGradient(0, 0, 0, h);
+        grad.addColorStop(0, '#0a0e1a');
+        grad.addColorStop(0.5, '#111b36');
+        grad.addColorStop(1, '#1a2748');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+      };
+      drawStatic();
+      this.matrixStaticDrawListener = drawStatic;
+      window.addEventListener('resize', this.matrixStaticDrawListener, { passive: true });
+      return;
+    }
 
     if (this.matrixAnimFrame) { cancelAnimationFrame(this.matrixAnimFrame); this.matrixAnimFrame = null; }
     if (this.matrixResizeListener) window.removeEventListener('resize', this.matrixResizeListener);
@@ -2933,6 +3025,28 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.startMatrixRain();
   }
 
+  private setupMatrixRainObserver(): void {
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
+    if (window.innerWidth < 768) return;
+    const section = document.querySelector('.starburst-section');
+    if (!section) return;
+
+    this.matrixObserver = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          this.restartMatrixRain();
+        } else {
+          if (this.matrixAnimFrame) {
+            cancelAnimationFrame(this.matrixAnimFrame);
+            this.matrixAnimFrame = null;
+          }
+        }
+      }
+    }, { rootMargin: '100px', threshold: 0 });
+
+    this.matrixObserver.observe(section);
+  }
+
   scrollToSection(sectionId: string): void {
     if (typeof document !== 'undefined') {
       const element = document.getElementById(sectionId);
@@ -2983,10 +3097,16 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!track) {
       this.isTrackModalOpen = false;
       this.typedCodePreview = '';
+      if (typeof document !== 'undefined') {
+        document.body.style.overflow = '';
+      }
       return;
     }
     if (openModal) {
       this.isTrackModalOpen = true;
+      if (typeof document !== 'undefined') {
+        document.body.style.overflow = 'hidden';
+      }
     }
     this.typedCodePreview = '';
     const raw = this.trackCodeSnippets[track] || '';

@@ -35,6 +35,11 @@ export class ChatbotService {
   isLoading = signal(false);
   isEscalated = signal(false);
   messages = signal<ChatMessage[]>([]);
+  showTicketPrompt = signal(false);
+  showEmailInput = signal(false);
+  showTicketLookup = signal(false);
+  ticketLookupId = signal('');
+  ticketLookupResult = signal<SupportTicket | null>(null);
 
   // Shared in-memory support tickets (acts as a simple store)
   supportTickets = signal<SupportTicket[]>([]);
@@ -42,6 +47,7 @@ export class ChatbotService {
   private currentUserId = '';
   private currentUserEmail = '';
   private currentUserRole = '';
+  private escapeCount = 0;
 
   private readonly ROLE_CONTEXTS: Record<string, string> = {
     student: `You are a friendly AI helper for the NTIC Ghana Championship website. A student is talking to you.
@@ -59,7 +65,8 @@ How to help:
 - Always say which page to go to (e.g. "Go to the Registration page to sign up.")
 - Use very simple words — talk like you're explaining to a 12-year-old.
 - Be friendly and encouraging.
-- Never say "I'd love to help" or "feel free to". Just answer.`,
+- Never say "I'd love to help" or "feel free to". Just answer.
+- IMPORTANT: If you genuinely cannot help (the question is outside NTIC, requires human judgment, or you lack the info), end your message with [ESCALATE]. Do NOT use this for simple questions you can answer.`,
 
     instructor: `You are an AI assistant for the NTIC Ghana Championship. An instructor is talking to you.
 
@@ -234,6 +241,10 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
       this.currentUserEmail = targetEmail;
       this.currentUserRole = targetRole;
       this.isEscalated.set(false);
+      this.showTicketPrompt.set(false);
+      this.showEmailInput.set(false);
+      this.showTicketLookup.set(false);
+      this.escapeCount = 0;
       this.messages.set([]);
       sessionStorage.removeItem(STORAGE_KEY);
     } else {
@@ -277,6 +288,10 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
   clearHistory(userName: string, role: string): void {
     this.stopPolling();
     this.isEscalated.set(false);
+    this.showTicketPrompt.set(false);
+    this.showEmailInput.set(false);
+    this.showTicketLookup.set(false);
+    this.escapeCount = 0;
     this.messages.set([]);
     sessionStorage.removeItem(STORAGE_KEY);
     this.openChat(userName, role);
@@ -285,6 +300,41 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
   // ─── SEND MESSAGE ────────────────────────────────────────────────────
   async sendMessage(userText: string, userRole: string): Promise<void> {
     if (!userText.trim() || this.isLoading()) return;
+
+    // Handle email collection state
+    if (this.showEmailInput()) {
+      const email = userText.trim();
+      if (email.includes('@') && email.includes('.')) {
+        this.createTicket(email);
+        return;
+      }
+      const warn: ChatMessage = { role: 'model', text: 'That doesn\'t look like a valid email. Please enter a working email address.', timestamp: new Date() };
+      this.messages.update(msgs => [...msgs, warn]);
+      this.saveToSession();
+      return;
+    }
+
+    // Handle "check ticket" keyword
+    if (/check\s+ticket|ticket\s+status|lookup/i.test(userText)) {
+      this.showTicketLookup.set(true);
+      const prompt: ChatMessage = { role: 'model', text: 'Enter your ticket ID below and I\'ll check it for you.', timestamp: new Date() };
+      this.messages.update(msgs => [...msgs, prompt]);
+      this.saveToSession();
+      return;
+    }
+
+    // Handle ticket prompt responses
+    if (this.showTicketPrompt()) {
+      const lower = userText.toLowerCase();
+      if (/yes|ok|sure|yeah|create|do it|go ahead/.test(lower)) {
+        this.acceptTicketCreation();
+        return;
+      }
+      if (/no|nope|not now|never mind|cancel/.test(lower)) {
+        this.rejectTicketCreation();
+        return;
+      }
+    }
 
     const userMsg: ChatMessage = { role: 'user', text: userText.trim(), timestamp: new Date() };
     this.messages.update(msgs => [...msgs, userMsg]);
@@ -315,7 +365,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
 
       const body = {
         system_instruction: {
-          parts: [{ text: `${systemInstruction}\n\nCRITICAL: Keep every response under 80 words. Give the page path (like /registration) when relevant. Use simple words a 12-year-old can understand. No fluff. No "feel free". No "I'd love to". Just answer. Be friendly but get to the point.` }]
+          parts: [{ text: `${systemInstruction}\n\nCRITICAL RULES:\n- Keep responses under 80 words.\n- Give the page path (e.g. /registration).\n- Use simple words. No fluff. Be friendly but direct.\n- If you genuinely cannot answer (out of scope, needs human, unclear), put [ESCALATE] at the end. Only use this when you truly can't help. Do NOT use it for simple questions.` }]
         },
         contents: history,
         generationConfig: { temperature: 0.7, maxOutputTokens: 512, topP: 0.9 }
@@ -331,20 +381,40 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
       // Remove markdown asterisks
       botText = botText.replace(/\*\*/g, '').replace(/\*/g, '-');
 
-      this.messages.update(msgs => [
-        ...msgs.filter(m => !m.isTyping),
-        { role: 'model', text: botText, timestamp: new Date() }
-      ]);
+      // Check for escalation marker
+      const needsTicket = botText.includes('[ESCALATE]');
+      botText = botText.replace(/\[ESCALATE\]/g, '').trim();
+
+      this.messages.update(msgs => {
+        const filtered = msgs.filter(m => !m.isTyping);
+        const result: ChatMessage[] = [...filtered, { role: 'model', text: botText, timestamp: new Date() }];
+
+        if (needsTicket) {
+          this.escapeCount++;
+          if (this.escapeCount >= 2) {
+            this.showTicketPrompt.set(true);
+            this.escapeCount = 0;
+          }
+        } else {
+          this.escapeCount = 0;
+        }
+
+        return result;
+      });
     } catch (error: any) {
       console.error('CHATBOT DEBUG: API_URL is', this.API_URL);
       console.error('CHATBOT DEBUG: Error is', error);
       const errorText = error?.status === 403
-        ? '⚠️ AI service not configured yet. You can still use "Talk to a Human" to get support!'
+        ? '⚠️ The AI service is not configured right now. But I can create a support ticket for you — just reply "yes" and I\'ll ask for your email.'
         : '⚠️ I\'m having trouble connecting right now. Please try again in a moment.';
-      this.messages.update(msgs => [
-        ...msgs.filter(m => !m.isTyping),
-        { role: 'model', text: errorText, timestamp: new Date() }
-      ]);
+      this.messages.update(msgs => {
+        const filtered = msgs.filter(m => !m.isTyping);
+        const result: ChatMessage[] = [...filtered, { role: 'model', text: errorText, timestamp: new Date() }];
+        if (error?.status === 403) {
+          this.showTicketPrompt.set(true);
+        }
+        return result;
+      });
     } finally {
       this.isLoading.set(false);
       this.saveToSession();
@@ -415,18 +485,45 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
     }
   }
 
-  // ─── HUMAN ESCALATION ───────────────────────────────────────────────
-  async escalateToHuman(userName: string, userRole: string, userEmail: string): Promise<void> {
-    if (this.isEscalated()) return;
+  // ─── SMART TICKET ESCALATION ────────────────────────────────────────
 
+  /** User accepted the bot's offer to create a ticket — ask for email */
+  acceptTicketCreation(): void {
+    this.showTicketPrompt.set(false);
+    this.showEmailInput.set(true);
+    const prompt: ChatMessage = {
+      role: 'model',
+      text: 'Okay! What email address should I send the ticket to?',
+      timestamp: new Date()
+    };
+    this.messages.update(msgs => [...msgs, prompt]);
+    this.saveToSession();
+  }
+
+  /** User rejected the offer */
+  rejectTicketCreation(): void {
+    this.showTicketPrompt.set(false);
+    const prompt: ChatMessage = {
+      role: 'model',
+      text: 'No problem! I\'ll keep trying to help. Just ask me anything.',
+      timestamp: new Date()
+    };
+    this.messages.update(msgs => [...msgs, prompt]);
+    this.saveToSession();
+  }
+
+  /** Create a support ticket after user provides their email */
+  async createTicket(userEmail: string): Promise<void> {
+    this.showEmailInput.set(false);
+    this.isLoading.set(true);
     this.isEscalated.set(true);
 
-    const chatHistory = this.messages().filter(m => !m.isTyping);
+    const chatHistory = this.messages().filter(m => !m.isTyping && m.role !== 'human_support');
     try {
       const result: any = await this.http.post(`${environment.apiUrl}/tickets`, {
         userId: this.currentUserId || userEmail,
-        userName,
-        userRole,
+        userName: this.currentUserId ? 'User' : userEmail.split('@')[0],
+        userRole: this.currentUserRole || 'guest',
         userEmail,
         chatHistory
       }).toPromise();
@@ -435,8 +532,8 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
       const ticket: SupportTicket = {
         id: ticketId,
         userId: this.currentUserId || userEmail,
-        userName,
-        userRole,
+        userName: 'User',
+        userRole: this.currentUserRole || 'guest',
         userEmail,
         status: 'open',
         createdAt: new Date(),
@@ -449,11 +546,10 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
 
       const confirmMsg: ChatMessage = {
         role: 'model',
-        text: `✅ Support ticket **${ticketId}** created! A human agent will review your conversation and respond here shortly. You can keep chatting with AI in the meantime.`,
+        text: `✅ Done! Your support ticket **${ticketId}** has been created.\n\nWe sent a confirmation to **${userEmail}**.\n\n📋 **Save your ticket ID!** When an admin replies, come back and type "check ticket" to see the response.`,
         timestamp: new Date()
       };
       this.messages.update(msgs => [...msgs, confirmMsg]);
-      this.saveToSession();
 
       // Start polling for admin replies
       this.startPolling(ticket.userId);
@@ -461,10 +557,55 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
       this.isEscalated.set(false);
       const errMsg: ChatMessage = {
         role: 'model',
-        text: '⚠️ Could not create support ticket right now. Please try again later.',
+        text: '⚠️ Sorry, I couldn\'t create the ticket right now. Please try again later.',
         timestamp: new Date()
       };
       this.messages.update(msgs => [...msgs, errMsg]);
+    } finally {
+      this.isLoading.set(false);
+      this.saveToSession();
+    }
+  }
+
+  /** Look up ticket by ID */
+  async checkTicketById(ticketId: string): Promise<void> {
+    if (!ticketId.trim()) return;
+    this.isLoading.set(true);
+
+    try {
+      const result: any = await this.http.get(`${environment.apiUrl}/tickets/${ticketId.trim()}`).toPromise();
+      const ticket = this.parseTicket(result);
+
+      if (ticket.adminReplies.length > 0) {
+        const replyText = ticket.adminReplies
+          .map(r => `📝 **${r.agentName}**: ${r.text}`)
+          .join('\n\n');
+        const status = ticket.status === 'resolved' ? '✅ Resolved' : '⏳ In Progress';
+        const msg: ChatMessage = {
+          role: 'model',
+          text: `📋 **Ticket ${ticketId}** — ${status}\n\n${replyText}`,
+          timestamp: new Date()
+        };
+        this.messages.update(msgs => [...msgs, msg]);
+      } else {
+        const msg: ChatMessage = {
+          role: 'model',
+          text: `📋 **Ticket ${ticketId}** is still open. No replies yet — an admin will respond soon. Check back later!`,
+          timestamp: new Date()
+        };
+        this.messages.update(msgs => [...msgs, msg]);
+      }
+    } catch (_) {
+      const msg: ChatMessage = {
+        role: 'model',
+        text: `❌ I couldn't find ticket **${ticketId}**. Double-check the ID and try again.`,
+        timestamp: new Date()
+      };
+      this.messages.update(msgs => [...msgs, msg]);
+    } finally {
+      this.isLoading.set(false);
+      this.ticketLookupId.set('');
+      this.saveToSession();
     }
   }
 

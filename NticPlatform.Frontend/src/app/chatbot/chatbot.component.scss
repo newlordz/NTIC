@@ -641,6 +641,34 @@ $shadow-panel: 0 24px 60px rgba(0, 30, 80, 0.18), 0 8px 24px rgba(0, 30, 80, 0.1
   }
 }
 
+.ticket-lookup-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+
+  .ticket-lookup-input {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(0,0,0,0.12);
+    font-size: 13px;
+    background: #fff;
+    color: $text;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+    &:focus {
+      border-color: $primary;
+      box-shadow: 0 0 0 3px rgba($primary, 0.1);
+    }
+
+    &::placeholder {
+      color: $text-muted;
+      font-size: 12px;
+    }
+  }
+}
+
 .escalated-banner {
   display: flex;
   align-items: center;
@@ -695,5 +723,11 @@ $shadow-panel: 0 24px 60px rgba(0, 30, 80, 0.18), 0 8px 24px rgba(0, 30, 80, 0.1
     background: rgba(16, 185, 129, 0.1);
     border-color: rgba(16, 185, 129, 0.25);
     color: #34d399;
+  }
+
+  .ticket-lookup-input {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.12);
+    color: #f1f5f9;
   }
 }
