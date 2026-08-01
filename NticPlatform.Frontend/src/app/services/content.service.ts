@@ -779,30 +779,8 @@ export class ContentService {
 
     this.apiService.getStudents().subscribe({
       next: (students: any[]) => {
-        if (students && students.length > 0) {
-          const currentUsers = [...this.users];
-          students.forEach(s => {
-            const fullName = `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email || 'Student';
-            const sEmail = s.email || `${s.id}@ntic.edu.gh`;
-            if (!currentUsers.some(u => u.id === s.id || (u.email && u.email.toLowerCase() === sEmail.toLowerCase()))) {
-              currentUsers.push({
-                id: s.id,
-                fullName: fullName,
-                email: sEmail,
-                phone: s.phone || '',
-                otp: '',
-                organization: s.school || 'NTIC Member Institution',
-                ticket: `TICK-${(s.id || '0000').slice(0, 6).toUpperCase()}`,
-                role: 'student',
-                track: s.track || 'Coding',
-                status: 'Active',
-                registeredAt: s.created_at || new Date().toISOString(),
-                lastLogin: new Date().toISOString()
-              });
-            }
-          });
-          this.saveUsers(currentUsers);
-        }
+        // Students are for leaderboard/competitions, NOT for the admin Users list.
+        // Users now sync from GET /api/users above.
       },
       error: (e: any) => console.log('Backend students fallback to local cache')
     });
