@@ -409,15 +409,7 @@
   font-size: 16px;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.spotlight-section.in-view {
-  /* Dot grid fades in */
-  /* Section underline grows full width */
-  /* Heading words reveal */
-  /* Card entrance — staggered */
-  /* Card number badge slides in */
-  /* Reading progress bar fills in */
-  /* Image shimmer sweeps across */
-}
+
 .spotlight-section.in-view::before {
   opacity: 1;
 }
@@ -3613,17 +3605,7 @@
 /* =========================================================
    DARK THEME OVERRIDES FOR LANDING COMPONENT
    ========================================================= */
-:host-context(body.dark-theme) {
-  /* ── Concept icon wraps ── */
-  /* ── Input focus ── */
-  /* ── Challenge meta badges ── */
-  /* ── Alumni badges ── */
-  /* ── Spotlight story tags ── */
-  /* ── Scoreboard progress track ── */
-  /* ── Track department cards: accent colors for dark bg ── */
-  /* ── Login Modal Dark Overrides ── */
-  /* ── Gateway Form Dark Refinements ── */
-}
+
 :host-context(body.dark-theme) .scoreboard-card-container {
   background: var(--bg-white) !important;
   border-color: var(--border-color) !important;
@@ -7078,11 +7060,7 @@
   height: 380px;
   min-height: 380px;
 }
-.code-modal-backdrop .code-modal-content.visual-showcase-modal .arena-panel .arena-showcase-body .arena-sim-box.full-width-arena .split-cockpit .cockpit-right {
-  /* ════════════════════════════════════════════════════
-     ROBOTICS CONTROL STATION — World-Class Aerospace Console
-     ════════════════════════════════════════════════════ */
-}
+
 .code-modal-backdrop .code-modal-content.visual-showcase-modal .arena-panel .arena-showcase-body .arena-sim-box.full-width-arena .split-cockpit .cockpit-right .game-controls-panel {
   display: flex;
   flex-direction: column;
@@ -9362,9 +9340,7 @@
 .login-modal-backdrop .login-modal-card .close-modal-btn .material-symbols-outlined {
   font-size: 18px;
 }
-.login-modal-backdrop .login-modal-card .modal-body {
-  /* Telemetry Console */
-}
+
 .login-modal-backdrop .login-modal-card .modal-body .login-modal-header {
   text-align: center;
   margin-bottom: 32px;
