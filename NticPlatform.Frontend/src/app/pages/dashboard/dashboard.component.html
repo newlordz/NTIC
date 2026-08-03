@@ -724,7 +724,7 @@
             <span class="material-symbols-outlined">badge</span>Access Passes
           </button>
           <button class="admin-filter-btn" [class.active]="tokenViewMode === 'sessions'" (click)="tokenViewMode = 'sessions'; loadAuthSessions()">
-            <span class="material-symbols-outlined">vpn_key</span>Active Sessions ({{ authSessionCount }})
+            <span class="material-symbols-outlined">vpn_key</span>Active Sessions{{ authSessionCount >= 0 ? ' (' + authSessionCount + ')' : '' }}
           </button>
         </div>
         <button *ngIf="tokenViewMode === 'tickets'" class="btn btn-primary btn-sm" (click)="openRegisterModal()">

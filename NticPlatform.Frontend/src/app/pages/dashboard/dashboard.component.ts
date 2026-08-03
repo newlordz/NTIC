@@ -338,7 +338,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   adminRegLogoFileId: string | null = null;
 
   // Registered users with generated tickets
-  authSessionCount = 0;
+  authSessionCount = -1;
   authSessions: any[] = [];
   tokenViewMode: 'tickets' | 'sessions' = 'tickets';
   get registeredUsers(): any[] {
@@ -826,7 +826,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           { label: 'Total Registered Users', value: String(this.registeredUsers.length), icon: 'manage_accounts', meta: '6 distinct portals', color: 'primary' },
           { label: 'System Health', value: '100%', icon: 'cloud_done', meta: 'All 4 nodes green', color: 'secondary' },
           { label: 'Pending Approvals', value: String(this.pendingApprovals.length), icon: 'verified_user', meta: this.pendingApprovals.length > 0 ? 'Action required' : 'All clear', color: 'error' },
-          { label: 'Active Tokens', value: String(this.authSessionCount || this.registeredUsers.filter(u => u.status === 'Active').length), icon: 'token', meta: `${this.registeredUsers.filter(u => u.role === 'judge').length} Judges · ${this.registeredUsers.filter(u => u.role === 'sponsor').length} Sponsors`, color: 'tertiary' }
+          { label: 'Active Tokens', value: String(this.authSessionCount >= 0 ? this.authSessionCount : this.registeredUsers.filter(u => u.status === 'Active').length), icon: 'token', meta: `${this.registeredUsers.filter(u => u.role === 'judge').length} Judges · ${this.registeredUsers.filter(u => u.role === 'sponsor').length} Sponsors`, color: 'tertiary' }
         ];
         break;
     }
