@@ -2443,11 +2443,11 @@
         <div class="admin-register-left">
           <!-- Role Picker -->
           <div class="admin-role-picker">
-            <button class="admin-role-btn" [class.active]="registerRole === 'judge'" (click)="registerRole = 'judge'">
+            <button class="admin-role-btn" [class.active]="registerRole === 'judge'" (click)="setRegisterRole('judge')">
               <span class="material-symbols-outlined">gavel</span>
               <span>Register Judge</span>
             </button>
-            <button class="admin-role-btn" [class.active]="registerRole === 'sponsor'" (click)="registerRole = 'sponsor'">
+            <button class="admin-role-btn" [class.active]="registerRole === 'sponsor'" (click)="setRegisterRole('sponsor')">
               <span class="material-symbols-outlined">handshake</span>
               <span>Register Sponsor</span>
             </button>
@@ -2616,7 +2616,7 @@
                 <div class="preview-code-label">ACCESS TOKEN</div>
                 <div class="preview-code" [class.preview-code-pending]="!regSuccess" [class.preview-code-live]="regSuccess">
                   <span *ngIf="!regSuccess && !regSubmitting">
-                    NTIC-{{ registerRole === 'judge' ? 'JDG' : 'SPO' }}-<span class="preview-code-dots">????</span>
+                    NTIC-{{ registerRole === 'judge' ? 'JDG' : 'SPO' }}-<span class="preview-code-dots">{{ regPreviewTicket || '????' }}</span>
                   </span>
                   <span *ngIf="regSubmitting" class="preview-code-generating">Generating<span class="dot-pulse">...</span></span>
                   <span *ngIf="regSuccess && viewTicketUser">{{ viewTicketUser.ticket }}</span>

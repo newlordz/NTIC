@@ -63,6 +63,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
   editingLmsMaterial: any = null;
   editingLmsAssignment: any = null;
   registerRole: 'judge' | 'sponsor' = 'judge';
+
+  setRegisterRole(role: 'judge' | 'sponsor'): void {
+    this.registerRole = role;
+    this.regForm = { fullName: '', email: '', organization: '', phone: '', track: '', tracks: [], tier: '', notes: '' };
+    this.selectedAdminPackages = [];
+    this.removeAdminRegLogo();
+    this.regError = '';
+    this.generatePreviewTicket();
+  }
+
+  generatePreviewTicket(): void {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 4; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    this.regPreviewTicket = code;
+  }
   ticketFilter: 'all' | 'judge' | 'sponsor' = 'all';
   isRegModalOpen = false;
   isAdminModalOpen = false;
@@ -274,6 +292,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   regSubmitting = false;
   regSuccess = false;
   regError = '';
+  regPreviewTicket = '';
   adminRegLogoUrl: string | null = null;
   adminRegLogoFileId: string | null = null;
 
@@ -991,6 +1010,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.regSuccess = false;
     this.regForm = { fullName: '', email: '', organization: '', phone: '', track: '', tracks: [], tier: '', notes: '' };
     this.selectedAdminPackages = [];
+    this.generatePreviewTicket();
   }
 
   closeRegisterModal(): void {
@@ -1050,22 +1070,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.regError = 'Please select at least one assigned track.';
       return;
     }
+    // Check for duplicate email
+    const existing = this.contentService.users.find(u =>
+      u.email?.trim().toLowerCase() === this.regForm.email.trim().toLowerCase()
+    );
+    if (existing) {
+      this.regError = `A user with email "${this.regForm.email}" already exists.`;
+      return;
+    }
     this.regError = '';
     this.regSubmitting = true;
 
 setTimeout(async () => {
       const ticket = await this.generateTicket(this.registerRole);
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const userId = 'USR-' + Date.now().toString(36).toUpperCase();
       const newUser: any = {
-        id: `USR-${String(this.registeredUsers.length + 1).padStart(3, '0')}`,
+        id: userId,
         role: this.registerRole,
         fullName: this.regForm.fullName,
         email: this.regForm.email,
-        phone: this.regForm.phone || '+233 24 555 0192',
+        phone: this.regForm.phone || '',
         otp,
         password: otp,
-        organization: '_pending_profile',
-        track: this.registerRole === 'judge' ? (this.regForm.track || (this.regForm.tracks && this.regForm.tracks.join(', '))) : undefined,
+        organization: this.regForm.organization,
+        track: this.registerRole === 'judge' ? (this.regForm.tracks?.join(', ')) : undefined,
         package: this.registerRole === 'sponsor' ? this.regForm.tier : undefined,
         ticket,
         status: 'Active',
@@ -1073,9 +1102,23 @@ setTimeout(async () => {
         lastLogin: 'Never'
       };
       if (this.adminRegLogoFileId) newUser.logoFileId = this.adminRegLogoFileId;
+
+      // Save locally
       const currentUsers = [...this.contentService.users];
       currentUsers.unshift(newUser);
       this.contentService.saveUsers(currentUsers);
+
+      // Sync to backend
+      try {
+        await this.apiService.createUser({
+          email: newUser.email,
+          full_name: newUser.fullName,
+          role: newUser.role,
+          ticket: newUser.ticket,
+          password: newUser.password || newUser.otp || '',
+          status: 'Active'
+        } as any).toPromise();
+      } catch (_) {}
 
       const currentAudit = [...this.contentService.auditLogs];
       currentAudit.unshift({
@@ -1105,15 +1148,14 @@ setTimeout(async () => {
 
       this.regSubmitting = false;
       this.regSuccess = true;
-      this.isRegModalOpen = false; // Close the registration popup modal
+      this.isRegModalOpen = false;
       this.showTicketModal(newUser);
 
-      // Reset form
       this.regForm = { fullName: '', email: '', organization: '', phone: '', track: '', tracks: [], tier: '', notes: '' };
-    this.selectedAdminPackages = [];
+      this.selectedAdminPackages = [];
       this.removeAdminRegLogo();
+      this.generatePreviewTicket();
 
-      // Clear the query parameter so the modal doesn't reopen
       this.router.navigate([], {
         relativeTo: this.route,
         queryParams: { openRegModal: null },
