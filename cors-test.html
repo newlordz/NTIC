@@ -1,0 +1,10 @@
+<!DOCTYPE html><html><head><title>CORS Test</title></head><body>
+<script>
+fetch('http://localhost:5000/api/login', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({email:'admin@ntic.org.gh', password:'Admin@Ntic2026!'})
+}).then(r => r.json()).then(d => document.body.innerHTML = '<h1 style="color:green">SUCCESS: ' + JSON.stringify(d).substring(0,200) + '</h1>')
+  .catch(e => document.body.innerHTML = '<h1 style="color:red">FAILED: ' + e.message + '</h1>');
+</script>
+</body></html>
