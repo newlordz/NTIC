@@ -1,5 +1,6 @@
 import os
 import uuid
+import random
 import datetime
 from contextlib import asynccontextmanager
 from app.config import settings
@@ -156,6 +157,85 @@ try:
             cur.close()
             conn.close()
         return {"status": "ok"}
+
+    # ─── AUTH SESSION MANAGEMENT ─────────────────────────────────────
+    @app.get("/api/auth/sessions/count")
+    def auth_sessions_count():
+        conn = _get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT u.role, COUNT(*) FROM auth_sessions s "
+            "JOIN users u ON s.user_id = u.id "
+            "WHERE s.expires_at > CURRENT_TIMESTAMP "
+            "GROUP BY u.role"
+        )
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        total = sum(r[1] for r in rows)
+        by_role = {r[0]: r[1] for r in rows}
+        return {"total": total, "by_role": by_role}
+
+    @app.get("/api/auth/sessions")
+    def auth_sessions_list(_admin: dict = Depends(require_admin)):
+        conn = _get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT s.token, s.user_id, s.email, s.created_at, s.expires_at, u.full_name, u.role "
+            "FROM auth_sessions s JOIN users u ON s.user_id = u.id "
+            "ORDER BY s.created_at DESC"
+        )
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        return [
+            {"token": r[0], "user_id": r[1], "email": r[2], "created_at": str(r[3]),
+             "expires_at": str(r[4]), "full_name": r[5], "role": r[6], "active": r[4] > datetime.datetime.now(datetime.UTC)}
+            for r in rows
+        ]
+
+    @app.post("/api/auth/sessions/revoke")
+    def auth_revoke_session(payload: dict, _admin: dict = Depends(require_admin)):
+        token = payload.get("token", "").strip()
+        if not token:
+            raise HTTPException(status_code=400, detail="Token is required")
+        conn = _get_db()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM auth_sessions WHERE token = %s", (token,))
+        deleted = cur.rowcount
+        conn.commit()
+        cur.close(); conn.close()
+        return {"status": "ok", "revoked": deleted > 0}
+
+    @app.post("/api/auth/sessions/expire-user/{user_id}")
+    def auth_expire_user_sessions(user_id: str, _admin: dict = Depends(require_admin)):
+        conn = _get_db()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (user_id,))
+        deleted = cur.rowcount
+        conn.commit()
+        cur.close(); conn.close()
+        return {"status": "ok", "expired": deleted}
+
+    @app.post("/api/auth/token/generate")
+    def generate_access_token(payload: dict = None, _admin: dict = Depends(require_admin)):
+        payload = payload or {}
+        role = payload.get("role", "student").lower()
+        prefix_map = {
+            "super_admin": "ADM", "judge": "JDG", "sponsor": "SPO",
+            "student": "STU", "instructor": "INS", "content_manager": "MGR",
+            "reviewer": "REV", "competition_manager": "CMP", "school_admin": "SCH"
+        }
+        prefix = prefix_map.get(role, "USR")
+        while True:
+            code = ''.join(random.choices('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', k=4))
+            ticket = f"NTIC-{prefix}-{code}"
+            conn = _get_db()
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM users WHERE ticket = %s", (ticket,))
+            if cur.fetchone()[0] == 0:
+                cur.close(); conn.close()
+                break
+            cur.close(); conn.close()
+        return {"ticket": ticket}
 
     # CHAT
     class ChatRequest(BaseModel):
@@ -815,11 +895,11 @@ try:
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, email, full_name, role, ticket, status, created_at FROM users ORDER BY created_at DESC")
+        cur.execute("SELECT id, email, full_name, role, ticket, status, created_at, phone FROM users ORDER BY created_at DESC")
         rows = cur.fetchall()
         cur.close()
         conn.close()
-        return [{"id": r[0], "email": r[1], "full_name": r[2], "role": r[3], "ticket": r[4], "status": r[5], "created_at": str(r[6])} for r in rows]
+        return [{"id": r[0], "email": r[1], "full_name": r[2], "role": r[3], "ticket": r[4], "status": r[5], "created_at": str(r[6]), "phone": r[7] or ""} for r in rows]
 
     @app.get("/api/users/lookup")
     def lookup_user(email: str = ""):
@@ -843,6 +923,7 @@ try:
         ticket: str = ""
         password: str = ""
         status: str = "Active"
+        phone: str = ""
 
     @app.post("/api/users", status_code=status.HTTP_201_CREATED)
     def create_user(payload: UserCreate, _admin: dict = Depends(require_admin)):
@@ -856,8 +937,47 @@ try:
         cur = conn.cursor()
         try:
             cur.execute(
-                "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, payload.status)
+                "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, payload.status, payload.phone)
+            )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        return {"id": user_id, "email": payload.email, "role": payload.role, "ticket": ticket}
+
+    @app.post("/api/users/register", status_code=status.HTTP_201_CREATED)
+    def register_user_public(payload: UserCreate):
+        if payload.role not in ["judge", "sponsor"]:
+            raise HTTPException(status_code=403, detail="Role not allowed for public registration")
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        from app.security import hash_password
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM users WHERE lower(email) = %s", (payload.email.strip().lower(),))
+        if cur.fetchone():
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail="This email is already registered")
+        if payload.phone:
+            cur.execute("SELECT id FROM users WHERE phone = %s", (payload.phone,))
+            if cur.fetchone():
+                cur.close()
+                conn.close()
+                raise HTTPException(status_code=400, detail="This phone number is already registered")
+        
+        user_id = "USR-" + str(uuid.uuid4())[:8]
+        password_hash = hash_password(payload.password) if payload.password else hash_password("changeme123")
+        ticket = payload.ticket or f"NTIC-{payload.role.upper()[:3]}-{str(uuid.uuid4())[:4].upper()}"
+        try:
+            cur.execute(
+                "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, payload.status, payload.phone)
             )
             conn.commit()
         except Exception as e:
@@ -875,8 +995,8 @@ try:
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        parts = ["full_name = %s", "role = %s", "status = %s", "ticket = %s"]
-        vals = [payload.full_name, payload.role, payload.status, payload.ticket or None]
+        parts = ["full_name = %s", "role = %s", "status = %s", "ticket = %s", "phone = %s"]
+        vals = [payload.full_name, payload.role, payload.status, payload.ticket or None, payload.phone]
         if payload.password:
             from app.security import hash_password
             parts.append("password_hash = %s")
@@ -1191,8 +1311,8 @@ try:
                             (item.get("action",""), item.get("user",""), item.get("time",""), item.get("type","")))
         elif payload.collection == "users":
             for item in payload.items:
-                cur.execute("INSERT INTO users (id, email, full_name, role, ticket, password_hash, status) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name, role = EXCLUDED.role, status = EXCLUDED.status",
-                            (item.get("id"), item.get("email",""), item.get("fullName",""), item.get("role","student"), item.get("ticket",""), "synced_noauth", "Active"))
+                cur.execute("INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name, role = EXCLUDED.role, status = EXCLUDED.status, phone = EXCLUDED.phone",
+                            (item.get("id"), item.get("email",""), item.get("fullName",""), item.get("role","student"), item.get("ticket",""), "synced_noauth", "Active", item.get("phone","")))
         else:
             cur.close()
             conn.close()

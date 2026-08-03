@@ -24,16 +24,20 @@ $shadow-panel: 0 24px 60px rgba(0, 30, 80, 0.18), 0 8px 24px rgba(0, 30, 80, 0.1
   height: 56px;
   border-radius: 50%;
   border: none;
-  cursor: pointer;
+  cursor: grab;
   background: linear-gradient(135deg, $primary, $primary-light);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 6px 20px rgba(0, 63, 135, 0.35);
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), background 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: visible;
   outline: none;
+
+  &:active {
+    cursor: grabbing;
+  }
 
   .fab-icon-open,
   .fab-icon-close {
@@ -125,7 +129,7 @@ $shadow-panel: 0 24px 60px rgba(0, 30, 80, 0.18), 0 8px 24px rgba(0, 30, 80, 0.1
   opacity: 0;
   pointer-events: none;
   transform-origin: bottom right;
-  transition: all 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.38s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.38s cubic-bezier(0.16, 1, 0.3, 1);
 
   &.is-open {
     transform: scale(1) translateY(0);

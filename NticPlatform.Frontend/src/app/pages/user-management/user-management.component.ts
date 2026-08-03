@@ -1,4 +1,4 @@
-﻿import { getAuthValue } from '../../services/session.util';
+import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -207,32 +207,60 @@ constructor(public contentService: ContentService, private router: Router, publi
       this.showToast('Email Taken', `The email ${this.editForm.email} is already registered to another user account.`, 4500);
       return;
     }
-    const users = [...this.contentService.users];
-    const idx = users.findIndex(u => u.id === this.editForm.id);
-    if (idx > -1) {
-      if (this.isMainAdmin(users[idx])) {
-        this.showToast('Protected Account', 'Main Super Admin accounts cannot be edited or modified.', 4000);
+    const userId = this.editForm.id;
+    this.http.patch(`${environment.apiUrl}/users/${userId}`, {
+      email: this.editForm.email,
+      full_name: this.editForm.fullName,
+      role: this.editForm.role,
+      status: this.editForm.status,
+      ticket: this.editForm.ticket,
+      password: this.editForm.password || '',
+      phone: this.editForm.phone || ''
+    }).subscribe({
+      next: () => {
+        const users = [...this.contentService.users];
+        const idx = users.findIndex(u => u.id === userId);
+        if (idx > -1) {
+          users[idx] = { ...users[idx], ...this.editForm };
+          this.contentService.saveUsers(users);
+        }
+        this.showToast('User Updated', `${this.editForm.fullName} has been updated.`);
         this.closeEdit();
-        return;
+        this.loadUsers();
+      },
+      error: (err) => {
+        console.error('Failed to update user in backend:', err);
+        this.showToast('Error', 'Failed to update user in backend database.', 4000);
       }
-      users[idx] = { ...users[idx], ...this.editForm };
-      this.contentService.saveUsers(users);
-      this.loadUsers();
-      this.showToast('User Updated', `${this.editForm.fullName} has been updated.`);
-    }
-    this.closeEdit();
+    });
   }
 
   toggleStatus(user: User): void {
     if (this.isMainAdmin(user)) return;
-    const users = [...this.contentService.users];
-    const idx = users.findIndex(u => u.id === user.id);
-    if (idx > -1) {
-      users[idx].status = users[idx].status === 'Active' ? 'Suspended' : 'Active';
-      this.contentService.saveUsers(users);
-      this.loadUsers();
-      this.showToast('Status Changed', `${user.fullName} is now ${users[idx].status}.`);
-    }
+    const newStatus = user.status === 'Active' ? 'Suspended' : 'Active';
+    this.http.patch(`${environment.apiUrl}/users/${user.id}`, {
+      email: user.email,
+      full_name: user.fullName,
+      role: user.role,
+      status: newStatus,
+      ticket: user.ticket,
+      phone: user.phone || ''
+    }).subscribe({
+      next: () => {
+        const users = [...this.contentService.users];
+        const idx = users.findIndex(u => u.id === user.id);
+        if (idx > -1) {
+          users[idx].status = newStatus;
+          this.contentService.saveUsers(users);
+        }
+        this.showToast('Status Changed', `${user.fullName} is now ${newStatus}.`);
+        this.loadUsers();
+      },
+      error: (err) => {
+        console.error('Failed to change user status in backend:', err);
+        this.showToast('Error', 'Failed to update user status in backend database.', 4000);
+      }
+    });
   }
 
   deleteUser(user: User): void {
@@ -245,11 +273,21 @@ constructor(public contentService: ContentService, private router: Router, publi
 
   confirmDelete(): void {
     if (!this.deleteUserConfirm) return;
-    const users = this.contentService.users.filter(u => u.id !== this.deleteUserConfirm!.id);
-    this.contentService.saveUsers(users);
-    this.showToast('User Deleted', `${this.deleteUserConfirm.fullName} has been removed.`);
-    this.deleteUserConfirm = null;
-    this.loadUsers();
+    const userToDelete = this.deleteUserConfirm;
+    this.http.delete(`${environment.apiUrl}/users/${userToDelete.id}`).subscribe({
+      next: () => {
+        const users = this.contentService.users.filter(u => u.id !== userToDelete.id);
+        this.contentService.saveUsers(users);
+        this.showToast('User Deleted', `${userToDelete.fullName} has been removed.`);
+        this.deleteUserConfirm = null;
+        this.loadUsers();
+      },
+      error: (err) => {
+        console.error('Failed to delete user in backend:', err);
+        this.showToast('Error', 'Failed to delete user from backend database.', 4000);
+        this.deleteUserConfirm = null;
+      }
+    });
   }
 
   cancelDelete(): void {
@@ -257,17 +295,33 @@ constructor(public contentService: ContentService, private router: Router, publi
   }
 
   regenerateOTP(user: User): void {
-    const users = [...this.contentService.users];
-    const idx = users.findIndex(u => u.id === user.id);
-    if (idx > -1) {
-      const newOTP = Math.floor(100000 + Math.random() * 900000).toString();
-      users[idx].otp = newOTP;
-      users[idx].password = newOTP;
-      this.contentService.saveUsers(users);
-      this.loadUsers();
-      this.showToast('OTP Regenerated', `New code for ${user.fullName}: ${newOTP}`, 6000);
-    }
+    const newOTP = Math.floor(100000 + Math.random() * 900000).toString();
+    this.http.patch(`${environment.apiUrl}/users/${user.id}`, {
+      email: user.email,
+      full_name: user.fullName,
+      role: user.role,
+      status: user.status,
+      ticket: user.ticket,
+      password: newOTP
+    }).subscribe({
+      next: () => {
+        const users = [...this.contentService.users];
+        const idx = users.findIndex(u => u.id === user.id);
+        if (idx > -1) {
+          users[idx].otp = newOTP;
+          users[idx].password = newOTP;
+          this.contentService.saveUsers(users);
+        }
+        this.showToast('OTP Regenerated', `New code for ${user.fullName}: ${newOTP}`, 6000);
+        this.loadUsers();
+      },
+      error: (err) => {
+        console.error('Failed to regenerate OTP in backend:', err);
+        this.showToast('Error', 'Failed to regenerate OTP in backend database.', 4000);
+      }
+    });
   }
+
 
   getInitials(name: string): string {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '??';

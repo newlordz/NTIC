@@ -5,7 +5,10 @@
 <!-- FLOATING ACTION BUTTON -->
 <button
   class="chatbot-fab"
-  (click)="toggleChat()"
+  [style.bottom.px]="fabBottom"
+  (click)="onFabClick($event)"
+  (mousedown)="onMouseDown($event)"
+  (touchstart)="onTouchStart($event)"
   [class.is-open]="chatbot.isOpen()"
   [attr.aria-label]="chatbot.isOpen() ? 'Close AI Assistant' : 'Open AI Assistant'"
   title="NTIC AI Assistant">
@@ -16,7 +19,8 @@
 </button>
 
 <!-- CHAT PANEL -->
-<div class="chatbot-panel" [class.is-open]="chatbot.isOpen()">
+<div class="chatbot-panel" [style.bottom.px]="panelBottom" [class.is-open]="chatbot.isOpen()">
+
 
   <!-- HEADER -->
   <div class="chatbot-header">

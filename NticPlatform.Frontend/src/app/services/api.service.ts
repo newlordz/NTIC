@@ -106,6 +106,27 @@ export class ApiService {
     return this.http.post(this.apiUrl + '/logout', { token });
   }
 
+  // ─── Auth Session Management ─────────────────────────────────────────
+  getAuthSessionsCount(): Observable<{ total: number; by_role: Record<string, number> }> {
+    return this.http.get<{ total: number; by_role: Record<string, number> }>(this.apiUrl + '/auth/sessions/count');
+  }
+
+  getAuthSessions(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl + '/auth/sessions');
+  }
+
+  revokeAuthSession(token: string): Observable<any> {
+    return this.http.post(this.apiUrl + '/auth/sessions/revoke', { token });
+  }
+
+  expireUserSessions(userId: string): Observable<any> {
+    return this.http.post(this.apiUrl + '/auth/sessions/expire-user/' + userId, {});
+  }
+
+  generateAccessToken(role: string): Observable<{ ticket: string }> {
+    return this.http.post<{ ticket: string }>(this.apiUrl + '/auth/token/generate', { role });
+  }
+
   getCompetitions(): Observable<any[]> {
     return this.http.get<any[]>(this.apiUrl + '/competitions');
   }
@@ -162,11 +183,15 @@ export class ApiService {
     return this.http.get<any[]>(this.apiUrl + '/users');
   }
 
-  createUser(payload: { email: string; full_name?: string; role?: string; ticket?: string; password?: string; status?: string }): Observable<any> {
+  createUser(payload: { email: string; full_name?: string; role?: string; ticket?: string; password?: string; status?: string; phone?: string }): Observable<any> {
     return this.http.post(this.apiUrl + '/users', payload);
   }
 
-  updateUser(id: string, payload: { email: string; full_name?: string; role?: string; ticket?: string; password?: string; status?: string }): Observable<any> {
+  registerPublicUser(payload: { email: string; full_name?: string; role?: string; ticket?: string; password?: string; status?: string; phone?: string }): Observable<any> {
+    return this.http.post(this.apiUrl + '/users/register', payload);
+  }
+
+  updateUser(id: string, payload: { email: string; full_name?: string; role?: string; ticket?: string; password?: string; status?: string; phone?: string }): Observable<any> {
     return this.http.patch(this.apiUrl + '/users/' + id, payload);
   }
 

@@ -1,4 +1,4 @@
-﻿import { getAuthValue } from './session.util';
+import { getAuthValue } from './session.util';
 import { Injectable } from '@angular/core';
 import { DataStorageService } from './data-storage.service';
 import { ApiService } from './api.service';
@@ -1465,7 +1465,7 @@ export class ContentService {
     this.saveState('users', this.users);
     this.syncToBackend('users', this.users.map(u => ({
       id: u.id, email: u.email, fullName: u.fullName, role: u.role,
-      ticket: u.ticket, status: u.status
+      ticket: u.ticket, status: u.status, phone: u.phone || ''
     })));
   }
 
@@ -1600,10 +1600,16 @@ export class ContentService {
       status: team.status || 'Active',
       school_name: team.schoolName || ''
     }).subscribe({
-      next: (res: any) => console.log('Backend team created', res),
+      next: (res: any) => {
+        if (res && res.id) {
+          this.teams = this.teams.map(t => (t.name === team.name && t.schoolName === team.schoolName && !t.id) ? { ...t, id: res.id } : t);
+          this.saveState('teams', this.teams);
+        }
+      },
       error: (e: any) => console.log('Backend create team fallback to local cache')
     });
   }
+
 
   // ── Submission Management Helpers ────────────────────────────────
   
@@ -1798,7 +1804,7 @@ export class ContentService {
     } else {
       this.lmsCourses.push({ ...course });
     }
-    this.saveState('lmsCourses', this.lmsCourses);
+    this.saveLmsCourses(this.lmsCourses);
   }
 
   removeLmsCourse(id: string): void {
@@ -1806,10 +1812,10 @@ export class ContentService {
     this.lmsModules = this.lmsModules.filter(m => m.courseId !== id);
     this.lmsMaterials = this.lmsMaterials.filter(m => m.courseId !== id);
     this.lmsAssignments = this.lmsAssignments.filter(a => a.courseId !== id);
-    this.saveState('lmsCourses', this.lmsCourses);
-    this.saveState('lmsModules', this.lmsModules);
-    this.saveState('lmsMaterials', this.lmsMaterials);
-    this.saveState('lmsAssignments', this.lmsAssignments);
+    this.saveLmsCourses(this.lmsCourses);
+    this.saveLmsModules(this.lmsModules);
+    this.saveLmsMaterials(this.lmsMaterials);
+    this.saveLmsAssignments(this.lmsAssignments);
   }
 
   saveLmsModules(list: LmsModule[]): void {
@@ -1829,14 +1835,14 @@ export class ContentService {
     } else {
       this.lmsModules.push({ ...mod });
     }
-    this.saveState('lmsModules', this.lmsModules);
+    this.saveLmsModules(this.lmsModules);
   }
 
   removeLmsModule(id: string): void {
     this.lmsModules = this.lmsModules.filter(m => m.id !== id);
     this.lmsMaterials = this.lmsMaterials.filter(m => m.moduleId !== id);
-    this.saveState('lmsModules', this.lmsModules);
-    this.saveState('lmsMaterials', this.lmsMaterials);
+    this.saveLmsModules(this.lmsModules);
+    this.saveLmsMaterials(this.lmsMaterials);
   }
 
   saveLmsMaterials(list: LmsMaterial[]): void {
@@ -1856,22 +1862,12 @@ export class ContentService {
     } else {
       this.lmsMaterials.push({ ...mat });
     }
-    this.saveState('lmsMaterials', this.lmsMaterials);
-    this.syncToBackend('lms_materials', this.lmsMaterials.map(m => ({
-      id: m.id, courseId: m.courseId, moduleId: m.moduleId, title: m.title,
-      type: m.type, url: m.url, description: m.description, created_at: m.createdAt,
-      submitted_by: m.submittedBy, approval_status: m.approvalStatus
-    })));
+    this.saveLmsMaterials(this.lmsMaterials);
   }
 
   removeLmsMaterial(id: string): void {
     this.lmsMaterials = this.lmsMaterials.filter(m => m.id !== id);
-    this.saveState('lmsMaterials', this.lmsMaterials);
-    this.syncToBackend('lms_materials', this.lmsMaterials.map(m => ({
-      id: m.id, courseId: m.courseId, moduleId: m.moduleId, title: m.title,
-      type: m.type, url: m.url, description: m.description, created_at: m.createdAt,
-      submitted_by: m.submittedBy, approval_status: m.approvalStatus
-    })));
+    this.saveLmsMaterials(this.lmsMaterials);
   }
 
   saveLmsAssignments(list: LmsAssignment[]): void {
@@ -1892,12 +1888,12 @@ export class ContentService {
     } else {
       this.lmsAssignments.push({ ...asgn });
     }
-    this.saveState('lmsAssignments', this.lmsAssignments);
+    this.saveLmsAssignments(this.lmsAssignments);
   }
 
   removeLmsAssignment(id: string): void {
     this.lmsAssignments = this.lmsAssignments.filter(a => a.id !== id);
-    this.saveState('lmsAssignments', this.lmsAssignments);
+    this.saveLmsAssignments(this.lmsAssignments);
   }
 
   gradeLmsSubmission(id: string, score: number, feedback: string): void {
@@ -1906,7 +1902,7 @@ export class ContentService {
       sub.score = score;
       sub.feedback = feedback;
       sub.status = 'graded';
-      this.saveState('lmsSubmissions', this.lmsSubmissions);
+      this.saveLmsSubmissions(this.lmsSubmissions);
     }
   }
 
@@ -1915,7 +1911,7 @@ export class ContentService {
     if (sub) {
       sub.status = 'regrade_requested';
       sub.feedback = (sub.feedback ? sub.feedback + '\n\n' : '') + `[Admin Note — Instructor Revision Requested]: ${adminNotes}`;
-      this.saveState('lmsSubmissions', this.lmsSubmissions);
+      this.saveLmsSubmissions(this.lmsSubmissions);
     }
   }
 
@@ -1925,9 +1921,10 @@ export class ContentService {
       sub.status = 'rejected';
       sub.score = undefined;
       sub.feedback = (sub.feedback ? sub.feedback + '\n\n' : '') + `[Admin Note — Rejected, Resubmit Required]: ${adminNotes}`;
-      this.saveState('lmsSubmissions', this.lmsSubmissions);
+      this.saveLmsSubmissions(this.lmsSubmissions);
     }
   }
+
 
   saveLmsSubmissions(list: LmsSubmission[]): void {
     this.lmsSubmissions = list;

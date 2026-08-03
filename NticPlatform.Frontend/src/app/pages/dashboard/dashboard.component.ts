@@ -1,4 +1,4 @@
-﻿import { getAuthValue } from '../../services/session.util';
+import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
@@ -258,7 +258,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // School Admin Portal Specific Flow
   schoolName = '';
   isAddTeamModalOpen = false;
-  teamForm = { name: '', track: 'Coding', lead: '', members: 4, mentor: '', motto: '', memberNames: ['', '', '', '', '', '', '', ''] };
+  teamForm = { id: undefined as string | undefined, name: '', track: 'Coding', lead: '', members: 4, mentor: '', motto: '', memberNames: ['', '', '', '', '', '', '', ''] };
 
   // Registration form
   regForm = {
@@ -278,6 +278,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   adminRegLogoFileId: string | null = null;
 
   // Registered users with generated tickets
+  authSessionCount = 0;
   get registeredUsers(): any[] {
     return this.contentService.users;
   }
@@ -634,6 +635,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     this.activeRoleId = getAuthValue('activeRoleId') || 'student';
     this.loadDashboardData();
+    this.loadAuthSessionCount();
     this.preloadLogos();
 
     // Read query params to set active tab & modal state reactively
@@ -762,10 +764,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
           { label: 'Total Registered Users', value: String(this.registeredUsers.length), icon: 'manage_accounts', meta: '6 distinct portals', color: 'primary' },
           { label: 'System Health', value: '100%', icon: 'cloud_done', meta: 'All 4 nodes green', color: 'secondary' },
           { label: 'Pending Approvals', value: String(this.pendingApprovals.length), icon: 'verified_user', meta: this.pendingApprovals.length > 0 ? 'Action required' : 'All clear', color: 'error' },
-          { label: 'Active Tokens', value: String(this.registeredUsers.filter(u => u.status === 'Active').length), icon: 'token', meta: `${this.registeredUsers.filter(u => u.role === 'judge').length} Judges · ${this.registeredUsers.filter(u => u.role === 'sponsor').length} Sponsors`, color: 'tertiary' }
+          { label: 'Active Tokens', value: String(this.authSessionCount || this.registeredUsers.filter(u => u.status === 'Active').length), icon: 'token', meta: `${this.registeredUsers.filter(u => u.role === 'judge').length} Judges · ${this.registeredUsers.filter(u => u.role === 'sponsor').length} Sponsors`, color: 'tertiary' }
         ];
         break;
     }
+  }
+
+  loadAuthSessionCount(): void {
+    if (this.activeRoleId !== 'super_admin') return;
+    this.apiService.getAuthSessionsCount().subscribe({
+      next: (res) => {
+        this.authSessionCount = res.total;
+        // Patch the stat card with the real count
+        const tokensIdx = this.stats.findIndex(s => s.label === 'Active Tokens');
+        if (tokensIdx >= 0) {
+          this.stats[tokensIdx] = { ...this.stats[tokensIdx], value: String(res.total) };
+        }
+      },
+      error: () => {} // Silently fall back to the default count from registeredUsers
+    });
   }
 
   settleSponsorship(type: 'full' | 'partial'): void {
@@ -897,7 +914,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.selectedAdminPackages.includes(label);
   }
 
-  generateTicket(role: 'judge' | 'sponsor'): string {
+  async generateTicket(role: 'judge' | 'sponsor'): Promise<string> {
+    try {
+      const res = await this.apiService.generateAccessToken(role).toPromise();
+      if (res?.ticket) return res.ticket;
+    } catch (_) {}
+    // Fallback if backend is unreachable
     const prefix = role === 'judge' ? 'JDG' : 'SPO';
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -994,8 +1016,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.regError = '';
     this.regSubmitting = true;
 
-    setTimeout(() => {
-      const ticket = this.generateTicket(this.registerRole);
+setTimeout(async () => {
+      const ticket = await this.generateTicket(this.registerRole);
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const newUser: any = {
         id: `USR-${String(this.registeredUsers.length + 1).padStart(3, '0')}`,
@@ -2518,7 +2540,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   openAddTeamModal(): void {
     this.editingTeamOriginalName = null;
-    this.teamForm = { name: '', track: 'Coding', lead: '', members: 4, mentor: '', motto: '', memberNames: ['', '', '', '', '', '', '', ''] };
+    this.teamForm = { id: undefined, name: '', track: 'Coding', lead: '', members: 4, mentor: '', motto: '', memberNames: ['', '', '', '', '', '', '', ''] };
     this.isAddTeamModalOpen = true;
   }
 
@@ -2531,6 +2553,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     this.teamForm = {
+      id: team.id,
       name: team.name,
       track: team.track || 'Coding',
       lead: team.lead || (roster[0] || ''),
@@ -2542,6 +2565,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.isAddTeamModalOpen = true;
   }
 
+
   async disbandTeam(team: any): Promise<void> {
     const ok = await this.dialogService.confirm({
       title: 'Disband Squad',
@@ -2550,17 +2574,32 @@ export class DashboardComponent implements OnInit, OnDestroy {
       type: 'danger'
     });
     if (ok) {
-      const currentTeams = this.contentService.teams.filter(t => t !== team && t.name !== team.name);
-      this.contentService.saveTeams(currentTeams);
-      this.addAuditLog({
-        action: `School Admin (${this.schoolName}) disbanded squad: ${team.name}`,
-        user: getAuthValue('activeUserEmail') || 'School Admin',
-        time: new Date().toISOString(),
-        type: 'approval'
-      });
-      this.dialogService.toast(`Squad "${team.name}" has been disbanded.`, 'info');
+      const deleteSuccess = () => {
+        const currentTeams = this.contentService.teams.filter(t => t !== team && t.name !== team.name && t.id !== team.id);
+        this.contentService.saveTeams(currentTeams);
+        this.addAuditLog({
+          action: `School Admin (${this.schoolName}) disbanded squad: ${team.name}`,
+          user: getAuthValue('activeUserEmail') || 'School Admin',
+          time: new Date().toISOString(),
+          type: 'approval'
+        });
+        this.dialogService.toast(`Squad "${team.name}" has been disbanded.`, 'info');
+      };
+
+      if (team.id && !team.id.startsWith('temp-')) {
+        this.apiService.deleteTeam(team.id).subscribe({
+          next: deleteSuccess,
+          error: (err) => {
+            console.error('Failed to delete team in backend:', err);
+            this.dialogService.toast('Failed to disband squad in database.', 'error');
+          }
+        });
+      } else {
+        deleteSuccess();
+      }
     }
   }
+
 
   closeAddTeamModal(): void {
     this.isAddTeamModalOpen = false;
@@ -2581,44 +2620,80 @@ export class DashboardComponent implements OnInit, OnDestroy {
         .filter(name => name.length > 0)
     ];
 
-    const newTeam: any = {
+    const teamPayload = {
       name: this.teamForm.name.trim(),
       track: this.teamForm.track,
       lead: this.teamForm.lead.trim(),
       members: Math.max(this.teamForm.members || 4, activeMembersList.length),
-      rosterList: activeMembersList,
-      mentor: this.teamForm.mentor || 'Assigned Coordinator',
-      motto: this.teamForm.motto ? this.teamForm.motto.trim() : '',
       status: 'In Competition',
-      schoolName: this.schoolName
+      school_name: this.schoolName
     };
 
-    const currentTeams = [...this.contentService.teams];
-    if (this.editingTeamOriginalName) {
-      const idx = currentTeams.findIndex(t => t.name === this.editingTeamOriginalName && t.schoolName === this.schoolName);
-      if (idx !== -1) {
-        currentTeams[idx] = newTeam;
+    const done = (dbTeam: any) => {
+      const newTeam: any = {
+        id: dbTeam?.id || this.teamForm.id || `team-${Date.now()}`,
+        name: this.teamForm.name.trim(),
+        track: this.teamForm.track,
+        lead: this.teamForm.lead.trim(),
+        members: Math.max(this.teamForm.members || 4, activeMembersList.length),
+        rosterList: activeMembersList,
+        mentor: this.teamForm.mentor || 'Assigned Coordinator',
+        motto: this.teamForm.motto ? this.teamForm.motto.trim() : '',
+        status: 'In Competition',
+        schoolName: this.schoolName
+      };
+
+      const currentTeams = [...this.contentService.teams];
+      if (this.editingTeamOriginalName) {
+        const idx = currentTeams.findIndex(t => t.name === this.editingTeamOriginalName && t.schoolName === this.schoolName);
+        if (idx !== -1) {
+          currentTeams[idx] = newTeam;
+        } else {
+          currentTeams.push(newTeam);
+        }
+        this.editingTeamOriginalName = null;
       } else {
         currentTeams.push(newTeam);
       }
-      this.editingTeamOriginalName = null;
+      this.contentService.saveTeams(currentTeams);
+
+      // Add audit log
+      const currentAudit = [...this.contentService.auditLogs];
+      currentAudit.unshift({
+        action: `School Admin (${this.schoolName}) registered/updated Team: ${newTeam.name} under ${newTeam.track}`,
+        user: getAuthValue('activeUserEmail') || 'School Admin',
+        time: new Date().toISOString(),
+        type: 'approval'
+      });
+      this.contentService.saveAuditLogs(currentAudit);
+
+      this.closeAddTeamModal();
+    };
+
+    if (this.editingTeamOriginalName) {
+      const existingTeam = this.contentService.teams.find(t => t.name === this.editingTeamOriginalName && t.schoolName === this.schoolName);
+      if (existingTeam && existingTeam.id && !existingTeam.id.startsWith('temp-')) {
+        this.apiService.updateTeam(existingTeam.id, teamPayload).subscribe({
+          next: (res) => done({ id: existingTeam.id }),
+          error: (err) => {
+            console.error('Failed to update team in backend:', err);
+            this.dialogService.toast('Failed to save team updates to database.', 'error');
+          }
+        });
+      } else {
+        done(null);
+      }
     } else {
-      currentTeams.push(newTeam);
+      this.apiService.createTeam(teamPayload).subscribe({
+        next: (res) => done(res),
+        error: (err) => {
+          console.error('Failed to create team in backend:', err);
+          this.dialogService.toast('Failed to create team in database.', 'error');
+        }
+      });
     }
-    this.contentService.saveTeams(currentTeams);
-
-    // Add audit log
-    const currentAudit = [...this.contentService.auditLogs];
-    currentAudit.unshift({
-      action: `School Admin (${this.schoolName}) registered/updated Team: ${newTeam.name} under ${newTeam.track}`,
-      user: getAuthValue('activeUserEmail') || 'School Admin',
-      time: new Date().toISOString(),
-      type: 'approval'
-    });
-    this.contentService.saveAuditLogs(currentAudit);
-
-    this.closeAddTeamModal();
   }
+
 
   getRoleLabel(role: string): string {
     if (!role) return 'User';

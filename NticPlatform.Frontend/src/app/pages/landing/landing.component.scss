@@ -4413,6 +4413,16 @@
   color: #f5e6b8;
   text-shadow: 0 2px 10px rgba(0, 63, 135, 0.4);
 }
+.countdown-description {
+  color: rgba(0, 63, 135, 0.7);
+  font-size: 1.1rem;
+  max-width: 500px;
+  margin: 0 auto;
+  z-index: 2;
+}
+:host-context(body.dark-theme) .countdown-description {
+  color: rgba(255, 255, 255, 0.7);
+}
 .countdown-clock {
   display: flex;
   justify-content: center;
@@ -6102,7 +6112,7 @@
 .alumni-marquee {
   display: flex;
   gap: 3rem;
-  animation: scrollMarquee 200s linear infinite;
+  animation: scrollMarquee 40s linear infinite;
   width: max-content;
   padding-left: 3rem;
   will-change: transform;

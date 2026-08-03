@@ -152,6 +152,7 @@ def init_postgres_db():
                 ticket VARCHAR(64),
                 password_hash VARCHAR(255) NOT NULL,
                 status VARCHAR(20) DEFAULT 'Active',
+                phone VARCHAR(50),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -272,6 +273,7 @@ def init_postgres_db():
                 status VARCHAR(20) DEFAULT 'active'
             );
         """)
+        cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);")
         conn.commit()
         cur.close()
 

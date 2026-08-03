@@ -1,4 +1,4 @@
-﻿import { getAuthValue } from '../services/session.util';
+import { getAuthValue } from '../services/session.util';
 import {
   Component,
   Input,
@@ -32,6 +32,24 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
   accountLookupInput = '';
   private shouldScrollToBottom = false;
 
+  // Draggable FAB state variables
+  fabBottom = 96;
+  private isDragging = false;
+  private startY = 0;
+  private startBottom = 96;
+  private dragThreshold = 5;
+  private hasMoved = false;
+
+  private mouseMoveListener = (e: MouseEvent) => this.onDrag(e.clientY);
+  private mouseUpListener = () => this.onDragEnd();
+
+  private touchMoveListener = (e: TouchEvent) => {
+    if (e.touches.length > 0) {
+      this.onDrag(e.touches[0].clientY);
+    }
+  };
+  private touchEndListener = () => this.onDragEnd();
+
   constructor(public chatbot: ChatbotService, private cdr: ChangeDetectorRef) {}
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -45,6 +63,90 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
       this.scrollToBottom();
       this.shouldScrollToBottom = false;
     }
+  }
+
+  onMouseDown(event: MouseEvent): void {
+    event.preventDefault();
+    this.startDrag(event.clientY);
+    document.addEventListener('mousemove', this.mouseMoveListener);
+    document.addEventListener('mouseup', this.mouseUpListener);
+  }
+
+  onTouchStart(event: TouchEvent): void {
+    if (event.touches.length > 0) {
+      this.startDrag(event.touches[0].clientY);
+      document.addEventListener('touchmove', this.touchMoveListener, { passive: true });
+      document.addEventListener('touchend', this.touchEndListener);
+    }
+  }
+
+  private startDrag(clientY: number): void {
+    this.isDragging = true;
+    this.hasMoved = false;
+    this.startY = clientY;
+    this.startBottom = this.fabBottom;
+  }
+
+  get panelBottom(): number {
+    const viewportHeight = window.innerHeight;
+    const panelHeight = 520;
+    
+    // Default position (above FAB)
+    let bottom = this.fabBottom + 64;
+    
+    // If the panel would go off the top of the screen
+    if (bottom + panelHeight > viewportHeight - 20) {
+      // If the FAB is in the upper half, place the panel below the FAB
+      if (this.fabBottom > (viewportHeight / 2)) {
+        bottom = this.fabBottom - panelHeight - 8;
+      } else {
+        // Otherwise, just cap the panel at the top of the viewport
+        bottom = viewportHeight - panelHeight - 20;
+      }
+    }
+    
+    // Ensure the panel does not go off the bottom of the screen
+    if (bottom < 20) {
+      bottom = 20;
+    }
+    
+    return bottom;
+  }
+
+  private onDrag(clientY: number): void {
+    if (!this.isDragging) return;
+    const deltaY = this.startY - clientY;
+    if (Math.abs(deltaY) > this.dragThreshold) {
+      this.hasMoved = true;
+    }
+    let newBottom = this.startBottom + deltaY;
+
+    // Boundary check to keep FAB on screen
+    const minBottom = 20;
+    const maxBottom = window.innerHeight - 100;
+    if (newBottom < minBottom) newBottom = minBottom;
+    if (newBottom > maxBottom) newBottom = maxBottom;
+
+    this.fabBottom = newBottom;
+    this.cdr.detectChanges();
+  }
+
+  private onDragEnd(): void {
+    this.isDragging = false;
+    document.removeEventListener('mousemove', this.mouseMoveListener);
+    document.removeEventListener('mouseup', this.mouseUpListener);
+    document.removeEventListener('touchmove', this.touchMoveListener);
+    document.removeEventListener('touchend', this.touchEndListener);
+  }
+
+  onFabClick(event: Event): void {
+    if (this.hasMoved) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.hasMoved = false;
+      return;
+    }
+    this.toggleChat();
   }
 
   toggleChat(): void {
@@ -63,6 +165,7 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
     this.chatbot.closeChat();
     this.cdr.markForCheck();
   }
+
 
   clearHistory(): void {
     const name = this.currentUser?.name || 'there';
