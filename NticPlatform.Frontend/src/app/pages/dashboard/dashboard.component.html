@@ -2477,29 +2477,31 @@
                   <label>Full Name <span class="req">*</span></label>
                   <input type="text" [(ngModel)]="regForm.fullName" name="fullName" placeholder="e.g. Dr. Efua Mensah" required>
                 </div>
-                <div class="admin-form-field admin-form-field-validate">
+                <div class="admin-form-field">
                   <label>Email Address <span class="req">*</span></label>
-                  <div class="validate-input-wrap">
+                  <div class="admin-input-icon-wrap">
                     <input type="email" [(ngModel)]="regForm.email" name="email" placeholder="e.g. efua@university.edu.gh" required
-                      (input)="validateEmail()">
-                    <span class="validate-icon" *ngIf="emailValid === true" style="color:#00e676;">&#10003;</span>
-                    <span class="validate-icon" *ngIf="emailValid === false" style="color:#ff1744;">&#10007;</span>
+                      (input)="validateEmail()"
+                      [class.input-valid]="emailValid === true"
+                      [class.input-invalid]="emailValid === false">
+                    <span *ngIf="emailValid === true" class="material-symbols-outlined input-ok-icon">check_circle</span>
+                    <span *ngIf="emailValid === false" class="material-symbols-outlined input-err-icon">cancel</span>
                   </div>
-                  <span class="validate-msg" *ngIf="emailMessage" [style.color]="emailValid === false ? '#ff1744' : '#00e676'">{{ emailMessage }}</span>
                 </div>
                 <div class="admin-form-field">
                   <label>Organization / Institution <span class="req">*</span></label>
                   <input type="text" [(ngModel)]="regForm.organization" name="organization" placeholder="e.g. University of Ghana" required>
                 </div>
-                <div class="admin-form-field admin-form-field-validate">
+                <div class="admin-form-field">
                   <label>Phone Number</label>
-                  <div class="validate-input-wrap">
+                  <div class="admin-input-icon-wrap">
                     <input type="tel" [(ngModel)]="regForm.phone" name="phone" placeholder="+233 24 000 0000"
-                      (input)="validatePhone()">
-                    <span class="validate-icon" *ngIf="regForm.phone && phoneValid === true" style="color:#00e676;">&#10003;</span>
-                    <span class="validate-icon" *ngIf="regForm.phone && phoneValid === false" style="color:#ff1744;">&#10007;</span>
+                      (input)="validatePhone()"
+                      [class.input-valid]="phoneValid === true"
+                      [class.input-invalid]="phoneValid === false">
+                    <span *ngIf="regForm.phone && phoneValid === true" class="material-symbols-outlined input-ok-icon">check_circle</span>
+                    <span *ngIf="regForm.phone && phoneValid === false" class="material-symbols-outlined input-err-icon">cancel</span>
                   </div>
-                  <span class="validate-msg" *ngIf="regForm.phone && phoneMessage" [style.color]="phoneValid === false ? '#ff1744' : '#00e676'">{{ phoneMessage }}</span>
                 </div>
                 <div class="admin-form-field" *ngIf="registerRole === 'judge'">
                   <label style="margin-bottom: 8px; display: block;">Assigned Tracks <span class="req">*</span></label>

@@ -716,6 +716,37 @@
   select option { background: var(--surface-container-lowest); color: var(--on-surface); }
 }
 
+.admin-input-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  input {
+    flex: 1;
+    padding-right: 36px;
+  }
+
+  .input-ok-icon, .input-err-icon {
+    position: absolute;
+    right: 12px;
+    font-size: 20px;
+    pointer-events: none;
+  }
+
+  .input-ok-icon { color: #00c853; }
+  .input-err-icon { color: #ff1744; }
+
+  input.input-valid {
+    border-color: #00c853 !important;
+    box-shadow: 0 0 0 3px rgba(0, 200, 83, 0.1) !important;
+  }
+
+  input.input-invalid {
+    border-color: #ff1744 !important;
+    box-shadow: 0 0 0 3px rgba(255, 23, 68, 0.1) !important;
+  }
+}
+
 .admin-form-actions {
   display: flex;
   justify-content: flex-end;
