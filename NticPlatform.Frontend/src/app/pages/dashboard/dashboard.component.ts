@@ -70,7 +70,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.selectedAdminPackages = [];
     this.removeAdminRegLogo();
     this.regError = '';
+    this.clearValidation();
     this.generatePreviewTicket();
+  }
+
+  clearValidation(): void {
+    this.emailValid = null;
+    this.emailMessage = '';
+    this.phoneValid = null;
+    this.phoneMessage = '';
   }
 
   generatePreviewTicket(): void {
@@ -80,6 +88,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
       code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     this.regPreviewTicket = code;
+  }
+
+  validateEmail(): void {
+    const email = this.regForm.email.trim();
+    if (!email) { this.emailValid = null; this.emailMessage = ''; return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      this.emailValid = false;
+      this.emailMessage = 'Invalid email format';
+      return;
+    }
+    if (this.contentService.users.some(u => u.email?.trim().toLowerCase() === email.toLowerCase())) {
+      this.emailValid = false;
+      this.emailMessage = 'Email already registered';
+      return;
+    }
+    this.emailValid = true;
+    this.emailMessage = 'Email available';
+  }
+
+  validatePhone(): void {
+    const phone = this.regForm.phone.trim();
+    if (!phone) { this.phoneValid = null; this.phoneMessage = ''; return; }
+    if (/^\+?[0-9]{8,15}$/.test(phone.replace(/[\s\-\(\)]/g, ''))) {
+      this.phoneValid = true;
+      this.phoneMessage = 'Valid phone number';
+    } else {
+      this.phoneValid = false;
+      this.phoneMessage = 'Invalid phone number (8-15 digits)';
+    }
   }
   ticketFilter: 'all' | 'judge' | 'sponsor' = 'all';
   isRegModalOpen = false;
@@ -293,6 +330,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   regSuccess = false;
   regError = '';
   regPreviewTicket = '';
+  emailValid: boolean | null = null;
+  emailMessage = '';
+  phoneValid: boolean | null = null;
+  phoneMessage = '';
   adminRegLogoUrl: string | null = null;
   adminRegLogoFileId: string | null = null;
 
@@ -1010,6 +1051,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.regSuccess = false;
     this.regForm = { fullName: '', email: '', organization: '', phone: '', track: '', tracks: [], tier: '', notes: '' };
     this.selectedAdminPackages = [];
+    this.clearValidation();
     this.generatePreviewTicket();
   }
 
