@@ -720,67 +720,120 @@
 
       <div class="admin-tickets-header">
         <div class="admin-tickets-filters">
-          <button class="admin-filter-btn" [class.active]="ticketFilter === 'all'" (click)="ticketFilter = 'all'">All Users</button>
-          <button class="admin-filter-btn" [class.active]="ticketFilter === 'judge'" (click)="ticketFilter = 'judge'">
-            <span class="material-symbols-outlined">gavel</span>Judges
+          <button class="admin-filter-btn" [class.active]="tokenViewMode === 'tickets'" (click)="tokenViewMode = 'tickets'">
+            <span class="material-symbols-outlined">badge</span>Access Passes
           </button>
-          <button class="admin-filter-btn" [class.active]="ticketFilter === 'sponsor'" (click)="ticketFilter = 'sponsor'">
-            <span class="material-symbols-outlined">handshake</span>Sponsors
+          <button class="admin-filter-btn" [class.active]="tokenViewMode === 'sessions'" (click)="tokenViewMode = 'sessions'; loadAuthSessions()">
+            <span class="material-symbols-outlined">vpn_key</span>Active Sessions ({{ authSessionCount }})
           </button>
         </div>
-        <button class="btn btn-primary btn-sm" (click)="openRegisterModal()">
+        <button *ngIf="tokenViewMode === 'tickets'" class="btn btn-primary btn-sm" (click)="openRegisterModal()">
           <span class="material-symbols-outlined">add</span>New Registration
         </button>
       </div>
 
-      <div class="admin-tickets-table">
-        <div class="admin-table-head">
-          <span>User</span>
-          <span>Role</span>
-          <span>Access Token</span>
-          <span>Status</span>
-          <span>Registered</span>
-          <span>Last Login</span>
-          <span>Actions</span>
-        </div>
-        <div *ngFor="let user of filteredRegisteredUsers" class="admin-table-row">
-          <div class="admin-user-cell">
-            <div class="admin-user-avatar" [class]="user.role">
-              {{ getInitials(user.fullName) }}
+      <!-- Access Passes View -->
+      <ng-container *ngIf="tokenViewMode === 'tickets'">
+        <div class="admin-tickets-table">
+          <div class="admin-table-head">
+            <span>User</span>
+            <span>Role</span>
+            <span>Access Token</span>
+            <span>Status</span>
+            <span>Registered</span>
+            <span>Last Login</span>
+            <span>Actions</span>
+          </div>
+          <div *ngFor="let user of filteredRegisteredUsers" class="admin-table-row">
+            <div class="admin-user-cell">
+              <div class="admin-user-avatar" [class]="user.role">
+                {{ getInitials(user.fullName) }}
+              </div>
+              <div>
+                <div class="admin-user-name">{{ user.fullName }}</div>
+                <div class="admin-user-email">{{ user.email }}</div>
+              </div>
             </div>
             <div>
-              <div class="admin-user-name">{{ user.fullName }}</div>
-              <div class="admin-user-email">{{ user.email }}</div>
+              <span class="admin-role-badge" [class]="user.role">
+                <span class="material-symbols-outlined">{{ getUserRoleIcon(user) }}</span>
+                {{ getUserRoleLabel(user) }}
+              </span>
+            </div>
+            <div class="admin-ticket-cell">
+              <code class="admin-ticket-code">{{ user.ticket }}</code>
+              <button class="admin-copy-btn" (click)="copyTicket(user.ticket)" [title]="copiedTicket === user.ticket ? 'Copied!' : 'Copy Ticket'">
+                <span class="material-symbols-outlined">{{ copiedTicket === user.ticket ? 'check' : 'content_copy' }}</span>
+              </button>
+            </div>
+            <div>
+              <span class="admin-status-badge" [class]="user.status.toLowerCase()">{{ user.status }}</span>
+            </div>
+            <div class="admin-date-cell">{{ user.registeredAt }}</div>
+            <div class="admin-date-cell">{{ user.lastLogin }}</div>
+            <div class="admin-actions-cell">
+              <button class="admin-action-btn" title="View Details" (click)="viewUserDetails(user); $event.stopPropagation()">
+                <span class="material-symbols-outlined">open_in_new</span>
+              </button>
             </div>
           </div>
-          <div>
-            <span class="admin-role-badge" [class]="user.role">
-              <span class="material-symbols-outlined">{{ getUserRoleIcon(user) }}</span>
-              {{ getUserRoleLabel(user) }}
-            </span>
-          </div>
-          <div class="admin-ticket-cell">
-            <code class="admin-ticket-code">{{ user.ticket }}</code>
-            <button class="admin-copy-btn" (click)="copyTicket(user.ticket)" [title]="copiedTicket === user.ticket ? 'Copied!' : 'Copy Ticket'">
-              <span class="material-symbols-outlined">{{ copiedTicket === user.ticket ? 'check' : 'content_copy' }}</span>
-            </button>
-          </div>
-          <div>
-            <span class="admin-status-badge" [class]="user.status.toLowerCase()">{{ user.status }}</span>
-          </div>
-          <div class="admin-date-cell">{{ user.registeredAt }}</div>
-          <div class="admin-date-cell">{{ user.lastLogin }}</div>
-          <div class="admin-actions-cell">
-            <button class="admin-action-btn" title="View Details" (click)="viewUserDetails(user); $event.stopPropagation()">
-              <span class="material-symbols-outlined">open_in_new</span>
-            </button>
+          <div *ngIf="filteredRegisteredUsers.length === 0" class="admin-table-empty">
+            <span class="material-symbols-outlined">person_off</span>
+            No {{ ticketFilter === 'all' ? 'users' : ticketFilter + 's' }} registered yet.
           </div>
         </div>
-        <div *ngIf="filteredRegisteredUsers.length === 0" class="admin-table-empty">
-          <span class="material-symbols-outlined">person_off</span>
-          No {{ ticketFilter === 'all' ? 'users' : ticketFilter + 's' }} registered yet.
+      </ng-container>
+
+      <!-- Active Sessions View -->
+      <ng-container *ngIf="tokenViewMode === 'sessions'">
+        <div class="admin-tickets-table">
+          <div class="admin-table-head">
+            <span>User</span>
+            <span>Role</span>
+            <span>Token</span>
+            <span>Started</span>
+            <span>Expires</span>
+            <span>Status</span>
+            <span>Actions</span>
+          </div>
+          <div *ngFor="let session of authSessions" class="admin-table-row">
+            <div class="admin-user-cell">
+              <div class="admin-user-avatar" [class]="session.role">
+                {{ getInitials(session.full_name) }}
+              </div>
+              <div>
+                <div class="admin-user-name">{{ session.full_name }}</div>
+                <div class="admin-user-email">{{ session.email }}</div>
+              </div>
+            </div>
+            <div>
+              <span class="admin-role-badge" [class]="session.role">
+                <span class="material-symbols-outlined">person</span>
+                {{ session.role || 'unknown' }}
+              </span>
+            </div>
+            <div class="admin-ticket-cell">
+              <code class="admin-ticket-code" style="font-size:0.65rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;">{{ session.token }}</code>
+            </div>
+            <div class="admin-date-cell">{{ session.created_at | slice:0:16 }}</div>
+            <div class="admin-date-cell">{{ session.expires_at | slice:0:16 }}</div>
+            <div>
+              <span class="admin-status-badge" [class]="session.active ? 'active' : 'expired'">
+                {{ session.active ? 'Active' : 'Expired' }}
+              </span>
+            </div>
+            <div class="admin-actions-cell">
+              <button class="admin-action-btn admin-action-danger" title="Revoke Session" (click)="revokeSession(session.token); $event.stopPropagation()">
+                <span class="material-symbols-outlined">link_off</span>
+              </button>
+            </div>
+          </div>
+          <div *ngIf="authSessions.length === 0" class="admin-table-empty">
+            <span class="material-symbols-outlined">vpn_key_off</span>
+            No active sessions found.
+          </div>
         </div>
-      </div>
+      </ng-container>
     </div>
 
     <!-- ── TAB: PENDING APPROVALS ── -->

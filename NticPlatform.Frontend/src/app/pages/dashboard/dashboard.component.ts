@@ -279,6 +279,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // Registered users with generated tickets
   authSessionCount = 0;
+  authSessions: any[] = [];
+  tokenViewMode: 'tickets' | 'sessions' = 'tickets';
   get registeredUsers(): any[] {
     return this.contentService.users;
   }
@@ -782,6 +784,41 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       },
       error: () => {} // Silently fall back to the default count from registeredUsers
+    });
+  }
+
+  loadAuthSessions(): void {
+    this.apiService.getAuthSessions().subscribe({
+      next: (sessions) => { this.authSessions = sessions; },
+      error: () => {}
+    });
+  }
+
+  revokeSession(token: string): void {
+    this.apiService.revokeAuthSession(token).subscribe({
+      next: () => {
+        this.authSessions = this.authSessions.filter(s => s.token !== token);
+        this.authSessionCount = Math.max(0, this.authSessionCount - 1);
+        const tokensIdx = this.stats.findIndex(s => s.label === 'Active Tokens');
+        if (tokensIdx >= 0) {
+          this.stats[tokensIdx] = { ...this.stats[tokensIdx], value: String(this.authSessionCount) };
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  expireUserSessions(userId: string): void {
+    this.apiService.expireUserSessions(userId).subscribe({
+      next: (res: any) => {
+        this.authSessions = this.authSessions.filter(s => s.user_id !== userId);
+        this.authSessionCount = Math.max(0, this.authSessionCount - (res?.expired || 0));
+        const tokensIdx = this.stats.findIndex(s => s.label === 'Active Tokens');
+        if (tokensIdx >= 0) {
+          this.stats[tokensIdx] = { ...this.stats[tokensIdx], value: String(this.authSessionCount) };
+        }
+      },
+      error: () => {}
     });
   }
 
