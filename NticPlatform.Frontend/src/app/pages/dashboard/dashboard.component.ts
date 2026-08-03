@@ -340,6 +340,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // Registered users with generated tickets
   authSessionCount = -1;
   authSessions: any[] = [];
+  authSessionsLoading = false;
+  authSessionsError = '';
   tokenViewMode: 'tickets' | 'sessions' = 'tickets';
   get registeredUsers(): any[] {
     return this.contentService.users;
@@ -848,9 +850,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   loadAuthSessions(): void {
+    this.authSessionsError = '';
+    // Guard: no stored backend token means the request will always fail with 401.
+    const storedToken = getAuthValue('activeUserToken');
+    if (!storedToken) {
+      this.authSessionsError = 'No active session token found. Please log out and log back in to view active sessions.';
+      return;
+    }
+    this.authSessionsLoading = true;
     this.apiService.getAuthSessions().subscribe({
-      next: (sessions) => { this.authSessions = sessions; },
-      error: () => {}
+      next: (sessions) => {
+        this.authSessions = sessions;
+        this.authSessionsLoading = false;
+      },
+      error: (err) => {
+        this.authSessionsLoading = false;
+        if (err.status === 401 || err.status === 403) {
+          this.authSessionsError = 'Session expired. Please log out and log back in to view active sessions.';
+        } else if (err.status === 0 || err.status === 502 || err.status === 503) {
+          this.authSessionsError = 'Cannot reach the backend server. Please make sure it is running.';
+        } else {
+          this.authSessionsError = 'Failed to load sessions. Please try again.';
+        }
+      }
     });
   }
 
@@ -865,6 +887,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       },
       error: () => {}
+    });
+  }
+
+  revokeAllSessions(): void {
+    if (!confirm('This will revoke ALL active sessions except your current one. Proceed?')) return;
+    this.apiService.revokeAllSessions().subscribe({
+      next: (res) => {
+        const currentToken = getAuthValue('activeUserToken');
+        // Keep only the current admin's session in the local list
+        this.authSessions = this.authSessions.filter(s => s.token === currentToken);
+        this.authSessionCount = this.authSessions.length;
+        const tokensIdx = this.stats.findIndex(s => s.label === 'Active Tokens');
+        if (tokensIdx >= 0) {
+          this.stats[tokensIdx] = { ...this.stats[tokensIdx], value: String(this.authSessionCount) };
+        }
+        alert(`Done — ${res.revoked} session(s) revoked.`);
+      },
+      error: (err) => {
+        alert('Failed to revoke sessions: ' + (err?.error?.detail || 'Unknown error'));
+      }
     });
   }
 

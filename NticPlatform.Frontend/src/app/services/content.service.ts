@@ -1143,7 +1143,8 @@ export class ContentService {
   }
 
   private async migrateToIndexedDB(): Promise<void> {
-    const largeKeys = ['users', 'pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs'];
+    // Users always come fresh from backend — never from cache
+    const largeKeys = ['pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs'];
     for (const key of largeKeys) {
       await this.loadKeyAsync(key, (this as any)[key]);
     }

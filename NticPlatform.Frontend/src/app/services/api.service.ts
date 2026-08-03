@@ -119,6 +119,10 @@ export class ApiService {
     return this.http.post(this.apiUrl + '/auth/sessions/revoke', { token });
   }
 
+  revokeAllSessions(): Observable<{ status: string; revoked: number }> {
+    return this.http.post<{ status: string; revoked: number }>(this.apiUrl + '/auth/sessions/revoke-all', {});
+  }
+
   expireUserSessions(userId: string): Observable<any> {
     return this.http.post(this.apiUrl + '/auth/sessions/expire-user/' + userId, {});
   }

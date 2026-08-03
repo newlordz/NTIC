@@ -796,7 +796,7 @@
             <span>Status</span>
             <span>Actions</span>
           </div>
-          <div *ngFor="let session of authSessions" class="admin-table-row">
+          <div *ngFor="let session of (!authSessionsLoading && !authSessionsError ? authSessions : [])" class="admin-table-row">
             <div class="admin-user-cell">
               <div class="admin-user-avatar" [class]="session.role">
                 {{ getInitials(session.full_name) }}
@@ -828,7 +828,15 @@
               </button>
             </div>
           </div>
-          <div *ngIf="authSessions.length === 0" class="admin-table-empty">
+          <div *ngIf="authSessionsLoading" class="admin-table-empty">
+            <span class="material-symbols-outlined" style="animation:spin 1s linear infinite">progress_activity</span>
+            Loading active sessions...
+          </div>
+          <div *ngIf="!authSessionsLoading && authSessionsError" class="admin-table-empty" style="color:var(--color-error,#e74c3c)">
+            <span class="material-symbols-outlined">warning</span>
+            {{ authSessionsError }}
+          </div>
+          <div *ngIf="!authSessionsLoading && !authSessionsError && authSessions.length === 0" class="admin-table-empty">
             <span class="material-symbols-outlined">vpn_key_off</span>
             No active sessions found.
           </div>

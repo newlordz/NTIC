@@ -182,13 +182,14 @@ try:
         cur.execute(
             "SELECT s.token, s.user_id, s.email, s.created_at, s.expires_at, u.full_name, u.role "
             "FROM auth_sessions s JOIN users u ON s.user_id = u.id "
+            "WHERE s.expires_at > CURRENT_TIMESTAMP "
             "ORDER BY s.created_at DESC"
         )
         rows = cur.fetchall()
         cur.close(); conn.close()
         return [
             {"token": r[0], "user_id": r[1], "email": r[2], "created_at": str(r[3]),
-             "expires_at": str(r[4]), "full_name": r[5], "role": r[6], "active": r[4] > datetime.datetime.now(datetime.UTC)}
+             "expires_at": str(r[4]), "full_name": r[5], "role": r[6], "active": True}
             for r in rows
         ]
 
@@ -214,6 +215,21 @@ try:
         conn.commit()
         cur.close(); conn.close()
         return {"status": "ok", "expired": deleted}
+
+    @app.post("/api/auth/sessions/revoke-all")
+    def auth_revoke_all_sessions(request: Request, _admin: dict = Depends(require_admin)):
+        """Revoke all active sessions except the caller's current token."""
+        current_token = request.headers.get("Authorization", "")[7:]  # strip "Bearer "
+        conn = _get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE FROM auth_sessions WHERE token != %s",
+            (current_token,)
+        )
+        deleted = cur.rowcount
+        conn.commit()
+        cur.close(); conn.close()
+        return {"status": "ok", "revoked": deleted}
 
     @app.post("/api/auth/token/generate")
     def generate_access_token(payload: dict = None, _admin: dict = Depends(require_admin)):
