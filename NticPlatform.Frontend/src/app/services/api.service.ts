@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, timeout } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface BackendStudent {
@@ -28,7 +28,7 @@ export interface BackendSubmission {
   providedIn: 'root'
 })
 export class ApiService {
-  private apiUrl = environment.apiUrl || 'http://localhost:5000/api';
+  private apiUrl = environment.apiUrl || 'http://localhost:5001/api';
 
   constructor(private http: HttpClient) {}
 
@@ -97,7 +97,9 @@ export class ApiService {
   }
 
   login(email: string, password: string): Observable<any> {
-    return this.http.post(this.apiUrl + '/login', { email, password });
+    return this.http.post(this.apiUrl + '/login', { email, password }).pipe(
+      timeout(8000)
+    );
   }
 
   logout(token: string): Observable<any> {

@@ -1559,7 +1559,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.apiService.login(credential, pass).subscribe({
       next: (res) => this.completeLogin(res.role, res, credential),
       error: (err) => {
-        if (err.status === 0 || err.status === 502 || err.status === 503) {
+        if (err.status === 0 || err.status === 502 || err.status === 503 || err.name === 'TimeoutError') {
           this.localLogin(credential, pass);
         } else if (err.status === 401) {
           this.isLoggingIn = false;

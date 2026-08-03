@@ -1,3 +1,3 @@
 @echo off
 echo Starting NTIC Platform Python Backend...
-python NticPlatform.Backend\run.py
+.venv\Scripts\python NticPlatform.Backend\run.py
