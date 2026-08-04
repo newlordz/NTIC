@@ -316,29 +316,56 @@ try:
         return {"id": ticket_id, "status": "open"}
 
     @app.get("/api/tickets")
-    def list_tickets(user_id: str = None):
+    def list_tickets(user_id: str = None, recycled: bool = False):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         import json as _json
-        if user_id:
-            cur.execute("SELECT * FROM support_tickets WHERE user_id = %s ORDER BY last_updated DESC", (user_id,))
+        if recycled:
+            if user_id:
+                cur.execute("SELECT * FROM support_tickets WHERE user_id = %s AND is_deleted IS TRUE ORDER BY deleted_at DESC NULLS LAST", (user_id,))
+            else:
+                cur.execute("SELECT * FROM support_tickets WHERE is_deleted IS TRUE ORDER BY deleted_at DESC NULLS LAST")
         else:
-            cur.execute("SELECT * FROM support_tickets ORDER BY last_updated DESC")
+            if user_id:
+                cur.execute("SELECT * FROM support_tickets WHERE user_id = %s AND (is_deleted IS FALSE OR is_deleted IS NULL) ORDER BY last_updated DESC", (user_id,))
+            else:
+                cur.execute("SELECT * FROM support_tickets WHERE (is_deleted IS FALSE OR is_deleted IS NULL) ORDER BY last_updated DESC")
         rows = cur.fetchall()
         cur.close()
         conn.close()
-        cols = ["id", "user_id", "user_name", "user_role", "user_email", "status", "chat_history", "admin_replies", "created_at", "last_updated"]
+        cols = ["id", "user_id", "user_name", "user_role", "user_email", "status", "chat_history", "admin_replies", "is_deleted", "deleted_at", "created_at", "last_updated"]
         result = []
         for r in rows:
             d = dict(zip(cols, r))
-            d["chat_history"] = _json.loads(d["chat_history"]) if isinstance(d["chat_history"], str) else d["chat_history"]
-            d["admin_replies"] = _json.loads(d["admin_replies"]) if isinstance(d["admin_replies"], str) else d["admin_replies"]
+            d["chat_history"] = _json.loads(d["chat_history"]) if isinstance(d["chat_history"], str) else (d["chat_history"] or [])
+            d["admin_replies"] = _json.loads(d["admin_replies"]) if isinstance(d["admin_replies"], str) else (d["admin_replies"] or [])
+            d["is_deleted"] = bool(d.get("is_deleted"))
+            d["deleted_at"] = str(d["deleted_at"]) if d.get("deleted_at") else None
             d["created_at"] = str(d["created_at"])
             d["last_updated"] = str(d["last_updated"])
             result.append(d)
         return result
+
+    @app.delete("/api/tickets/recycle-bin/empty")
+    def empty_recycle_bin():
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            cur.execute("DELETE FROM support_tickets WHERE is_deleted IS TRUE")
+            count = cur.rowcount
+            conn.commit()
+            cur.close()
+            conn.close()
+            return {"status": "emptied", "count": count}
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
 
     @app.get("/api/tickets/{ticket_id}")
     def get_ticket(ticket_id: str):
@@ -353,10 +380,12 @@ try:
         conn.close()
         if not row:
             raise HTTPException(status_code=404, detail="Ticket not found")
-        cols = ["id", "user_id", "user_name", "user_role", "user_email", "status", "chat_history", "admin_replies", "created_at", "last_updated"]
+        cols = ["id", "user_id", "user_name", "user_role", "user_email", "status", "chat_history", "admin_replies", "is_deleted", "deleted_at", "created_at", "last_updated"]
         d = dict(zip(cols, row))
-        d["chat_history"] = _json.loads(d["chat_history"]) if isinstance(d["chat_history"], str) else d["chat_history"]
-        d["admin_replies"] = _json.loads(d["admin_replies"]) if isinstance(d["admin_replies"], str) else d["admin_replies"]
+        d["chat_history"] = _json.loads(d["chat_history"]) if isinstance(d["chat_history"], str) else (d["chat_history"] or [])
+        d["admin_replies"] = _json.loads(d["admin_replies"]) if isinstance(d["admin_replies"], str) else (d["admin_replies"] or [])
+        d["is_deleted"] = bool(d.get("is_deleted"))
+        d["deleted_at"] = str(d["deleted_at"]) if d.get("deleted_at") else None
         d["created_at"] = str(d["created_at"])
         d["last_updated"] = str(d["last_updated"])
         return d
@@ -368,12 +397,12 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         import json as _json
-        cur.execute("SELECT admin_replies FROM support_tickets WHERE id = %s", (ticket_id,))
+        cur.execute("SELECT admin_replies FROM support_tickets WHERE id = %s AND (is_deleted IS FALSE OR is_deleted IS NULL)", (ticket_id,))
         row = cur.fetchone()
         if not row:
             cur.close()
             conn.close()
-            raise HTTPException(status_code=404, detail="Ticket not found")
+            raise HTTPException(status_code=404, detail="Ticket not found or deleted")
         existing = _json.loads(row[0]) if isinstance(row[0], str) else (row[0] or [])
         existing.append({
             "agentName": payload.agentName,
@@ -396,13 +425,71 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         cur.execute(
-            "UPDATE support_tickets SET status = %s, last_updated = CURRENT_TIMESTAMP WHERE id = %s",
+            "UPDATE support_tickets SET status = %s, last_updated = CURRENT_TIMESTAMP WHERE id = %s AND (is_deleted IS FALSE OR is_deleted IS NULL)",
             (payload.status, ticket_id)
         )
+        if cur.rowcount == 0:
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Ticket not found or deleted")
         conn.commit()
         cur.close()
         conn.close()
         return {"status": payload.status}
+
+    @app.delete("/api/tickets/{ticket_id}")
+    def delete_ticket(ticket_id: str):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE support_tickets SET is_deleted = TRUE, deleted_at = CURRENT_TIMESTAMP WHERE id = %s",
+            (ticket_id,)
+        )
+        if cur.rowcount == 0:
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "deleted", "id": ticket_id}
+
+    @app.post("/api/tickets/{ticket_id}/restore")
+    def restore_ticket(ticket_id: str):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE support_tickets SET is_deleted = FALSE, deleted_at = NULL WHERE id = %s",
+            (ticket_id,)
+        )
+        if cur.rowcount == 0:
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "restored", "id": ticket_id}
+
+    @app.delete("/api/tickets/{ticket_id}/permanent")
+    def permanently_delete_ticket(ticket_id: str):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("DELETE FROM support_tickets WHERE id = %s", (ticket_id,))
+        if cur.rowcount == 0:
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Ticket not found")
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "permanently_deleted", "id": ticket_id}
 
     # STUDENTS
     @app.get("/api/students")

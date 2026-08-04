@@ -140,6 +140,8 @@ def init_postgres_db():
                 status VARCHAR(20) DEFAULT 'open',
                 chat_history JSONB DEFAULT '[]',
                 admin_replies JSONB DEFAULT '[]',
+                is_deleted BOOLEAN DEFAULT false,
+                deleted_at TIMESTAMP NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -274,6 +276,8 @@ def init_postgres_db():
             );
         """)
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);")
+        cur.execute("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false;")
+        cur.execute("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL;")
         conn.commit()
         cur.close()
 

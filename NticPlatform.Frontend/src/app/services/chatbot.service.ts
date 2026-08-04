@@ -1,4 +1,4 @@
-﻿import { getAuthValue } from './session.util';
+import { getAuthValue } from './session.util';
 import { Injectable, signal } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../environments/environment';
@@ -23,6 +23,8 @@ export interface SupportTicket {
   chatHistory: ChatMessage[];
   adminReplies: { agentName: string; text: string; timestamp: Date }[];
   unreadByUser: boolean;
+  isDeleted?: boolean;
+  deletedAt?: Date | null;
 }
 
 const STORAGE_KEY = 'ntic_chat_session';
@@ -44,6 +46,7 @@ export class ChatbotService {
 
   // Shared in-memory support tickets (acts as a simple store)
   supportTickets = signal<SupportTicket[]>([]);
+  recycleBinTickets = signal<SupportTicket[]>([]);
 
   private currentUserId = '';
   private currentUserEmail = '';
@@ -497,7 +500,9 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
       adminReplies: (t.admin_replies || []).map((r: any) => ({ ...r, timestamp: new Date(r.timestamp || Date.now()) })),
       createdAt: new Date(t.created_at || Date.now()),
       lastUpdated: new Date(t.last_updated || Date.now()),
-      unreadByUser: false
+      unreadByUser: false,
+      isDeleted: !!t.is_deleted,
+      deletedAt: t.deleted_at ? new Date(t.deleted_at) : null
     };
   }
 
@@ -705,6 +710,75 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
         t.id === ticketId ? { ...t, status: 'resolved', lastUpdated: new Date() } : t
       ));
     } catch (_) {}
+  }
+
+  /** Admin: load soft-deleted tickets from backend */
+  async loadRecycleBinTickets(): Promise<void> {
+    try {
+      const tickets: any = await this.http.get(`${environment.apiUrl}/tickets?recycled=true`).toPromise();
+      this.recycleBinTickets.set((tickets || []).map((t: any) => this.parseTicket(t)));
+    } catch (_) {}
+  }
+
+  /** Soft-delete a ticket (move to Recycle Bin) */
+  async deleteTicket(ticketId: string): Promise<boolean> {
+    try {
+      await this.http.delete(`${environment.apiUrl}/tickets/${ticketId}`).toPromise();
+      const target = this.supportTickets().find(t => t.id === ticketId);
+      if (target) {
+        const deletedTicket: SupportTicket = { ...target, isDeleted: true, deletedAt: new Date() };
+        this.supportTickets.update(tickets => tickets.filter(t => t.id !== ticketId));
+        this.recycleBinTickets.update(recycled => [deletedTicket, ...recycled.filter(r => r.id !== ticketId)]);
+      } else {
+        await this.loadAllTickets();
+        await this.loadRecycleBinTickets();
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /** Restore soft-deleted ticket back to active list */
+  async restoreTicket(ticketId: string): Promise<boolean> {
+    try {
+      await this.http.post(`${environment.apiUrl}/tickets/${ticketId}/restore`, {}).toPromise();
+      const target = this.recycleBinTickets().find(t => t.id === ticketId);
+      if (target) {
+        const restoredTicket: SupportTicket = { ...target, isDeleted: false, deletedAt: null, lastUpdated: new Date() };
+        this.recycleBinTickets.update(recycled => recycled.filter(r => r.id !== ticketId));
+        this.supportTickets.update(tickets => [restoredTicket, ...tickets.filter(t => t.id !== ticketId)]);
+      } else {
+        await this.loadAllTickets();
+        await this.loadRecycleBinTickets();
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /** Permanently purge a single ticket */
+  async permanentlyDeleteTicket(ticketId: string): Promise<boolean> {
+    try {
+      await this.http.delete(`${environment.apiUrl}/tickets/${ticketId}/permanent`).toPromise();
+      this.recycleBinTickets.update(recycled => recycled.filter(r => r.id !== ticketId));
+      this.supportTickets.update(tickets => tickets.filter(t => t.id !== ticketId));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /** Empty all soft-deleted tickets from Recycle Bin */
+  async emptyRecycleBin(): Promise<boolean> {
+    try {
+      await this.http.delete(`${environment.apiUrl}/tickets/recycle-bin/empty`).toPromise();
+      this.recycleBinTickets.set([]);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   private injectPendingAdminReplies(ticket: SupportTicket): void {

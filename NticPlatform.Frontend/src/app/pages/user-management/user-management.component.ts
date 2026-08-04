@@ -37,7 +37,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   activeMainTab: 'users' | 'support' = 'users';
   selectedTicket: SupportTicket | null = null;
   adminReplyText = '';
-  ticketStatusFilter: 'all' | 'open' | 'in_progress' | 'resolved' = 'all';
+  ticketStatusFilter: 'all' | 'open' | 'in_progress' | 'resolved' | 'recycle_bin' = 'all';
 
   roleTabs = [
     { id: 'all', label: 'All Users', icon: 'group' },
@@ -52,7 +52,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     { id: 'super_admin', label: 'Admins', icon: 'admin_panel_settings' },
   ];
 
-constructor(public contentService: ContentService, private router: Router, public chatbotService: ChatbotService, private http: HttpClient) {}
+  constructor(public contentService: ContentService, private router: Router, public chatbotService: ChatbotService, private http: HttpClient) {}
 
   get canManageUsers(): boolean {
     const role = getAuthValue('activeRoleId') || '';
@@ -85,8 +85,12 @@ constructor(public contentService: ContentService, private router: Router, publi
 
   loadTickets(): void {
     this.chatbotService.loadAllTickets();
+    this.chatbotService.loadRecycleBinTickets();
     if (!this.ticketRefreshTimer) {
-      this.ticketRefreshTimer = setInterval(() => this.chatbotService.loadAllTickets(), 10000);
+      this.ticketRefreshTimer = setInterval(() => {
+        this.chatbotService.loadAllTickets();
+        this.chatbotService.loadRecycleBinTickets();
+      }, 10000);
     }
   }
 
@@ -381,6 +385,9 @@ constructor(public contentService: ContentService, private router: Router, publi
   }
 
   get filteredTickets(): SupportTicket[] {
+    if (this.ticketStatusFilter === 'recycle_bin') {
+      return this.chatbotService.recycleBinTickets();
+    }
     const tickets = this.chatbotService.supportTickets();
     if (this.ticketStatusFilter === 'all') return tickets;
     return tickets.filter(t => t.status === this.ticketStatusFilter);
@@ -409,6 +416,50 @@ constructor(public contentService: ContentService, private router: Router, publi
     this.showToast('Ticket Resolved', `Ticket ${ticket.id} has been marked as resolved.`);
     if (this.selectedTicket?.id === ticket.id) {
       this.closeTicketPanel();
+    }
+  }
+
+  async deleteTicket(ticket: SupportTicket): Promise<void> {
+    const ok = await this.chatbotService.deleteTicket(ticket.id);
+    if (ok) {
+      this.showToast('Moved to Recycle Bin', `Ticket ${ticket.id} was moved to Recycle Bin.`);
+      if (this.selectedTicket?.id === ticket.id) {
+        this.closeTicketPanel();
+      }
+    }
+  }
+
+  async restoreTicket(ticket: SupportTicket): Promise<void> {
+    const ok = await this.chatbotService.restoreTicket(ticket.id);
+    if (ok) {
+      this.showToast('Ticket Restored', `Ticket ${ticket.id} restored to active list.`);
+      if (this.selectedTicket?.id === ticket.id) {
+        this.closeTicketPanel();
+      }
+    }
+  }
+
+  async permanentlyDeleteTicket(ticket: SupportTicket): Promise<void> {
+    if (confirm(`Are you sure you want to PERMANENTLY delete ticket ${ticket.id}? This action cannot be undone.`)) {
+      const ok = await this.chatbotService.permanentlyDeleteTicket(ticket.id);
+      if (ok) {
+        this.showToast('Permanently Deleted', `Ticket ${ticket.id} was permanently purged.`);
+        if (this.selectedTicket?.id === ticket.id) {
+          this.closeTicketPanel();
+        }
+      }
+    }
+  }
+
+  async emptyRecycleBin(): Promise<void> {
+    if (confirm('Are you sure you want to permanently delete ALL tickets in the Recycle Bin?')) {
+      const ok = await this.chatbotService.emptyRecycleBin();
+      if (ok) {
+        this.showToast('Recycle Bin Emptied', 'All recycled support tickets were permanently purged.');
+        if (this.selectedTicket?.isDeleted) {
+          this.closeTicketPanel();
+        }
+      }
     }
   }
 

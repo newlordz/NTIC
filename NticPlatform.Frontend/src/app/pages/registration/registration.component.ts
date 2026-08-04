@@ -1028,21 +1028,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         this.activeTab = params['tab'] === 'student' ? 'school' : params['tab'];
         this.regState = 'new';
       } else {
-        // Restore persisted UI state so refresh keeps the user where they were
-        const saved = localStorage.getItem('ntic_reg_ui');
-        if (saved) {
-          try {
-            const s = JSON.parse(saved);
-            this.regState = s.regState || 'gateway';
-            this.activeTab = s.activeTab || 'school';
-            this.schoolStep = s.schoolStep || 1;
-            this.maxSchoolStepReached = s.maxSchoolStepReached || 1;
-          } catch {
-            this.regState = 'gateway';
-          }
-        } else {
-          this.regState = 'gateway';
-        }
+        // Fresh visit (no tab/track param) — always show the gateway
+        this.regState = 'gateway';
       }
     });
   }

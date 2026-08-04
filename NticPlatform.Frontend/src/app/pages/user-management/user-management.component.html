@@ -406,31 +406,45 @@
       <!-- Ticket List -->
       <div class="ticket-list-panel">
         <div class="ticket-list-header">
-          <h3>Support Tickets</h3>
+          <div class="tlh-title-row">
+            <h3>Support Tickets</h3>
+            <button class="empty-bin-btn" *ngIf="ticketStatusFilter === 'recycle_bin' && chatbotService.recycleBinTickets().length > 0" (click)="emptyRecycleBin()">
+              <span class="material-symbols-outlined">delete_sweep</span> Empty Bin
+            </button>
+          </div>
           <div class="ticket-filter-tabs">
             <button [class.active]="ticketStatusFilter === 'all'" (click)="ticketStatusFilter = 'all'">All</button>
             <button [class.active]="ticketStatusFilter === 'open'" (click)="ticketStatusFilter = 'open'">Open</button>
             <button [class.active]="ticketStatusFilter === 'in_progress'" (click)="ticketStatusFilter = 'in_progress'">In Progress</button>
             <button [class.active]="ticketStatusFilter === 'resolved'" (click)="ticketStatusFilter = 'resolved'">Resolved</button>
+            <button [class.active]="ticketStatusFilter === 'recycle_bin'" (click)="ticketStatusFilter = 'recycle_bin'" class="recycle-bin-tab">
+              <span class="material-symbols-outlined">delete</span> Recycle Bin
+              <span class="tab-badge" *ngIf="chatbotService.recycleBinTickets().length > 0">{{ chatbotService.recycleBinTickets().length }}</span>
+            </button>
           </div>
         </div>
 
         <!-- Empty state -->
         <div class="ticket-empty" *ngIf="filteredTickets.length === 0">
-          <span class="material-symbols-outlined">inbox</span>
-          <p>No support tickets yet.<br>When users request human support, tickets appear here.</p>
+          <span class="material-symbols-outlined">{{ ticketStatusFilter === 'recycle_bin' ? 'delete_outline' : 'inbox' }}</span>
+          <p *ngIf="ticketStatusFilter === 'recycle_bin'">Recycle Bin is empty.<br>Deleted tickets will appear here before permanent removal.</p>
+          <p *ngIf="ticketStatusFilter !== 'recycle_bin'">No support tickets yet.<br>When users request human support, tickets appear here.</p>
         </div>
 
         <!-- Ticket Items -->
         <div
           class="ticket-item"
+          [class.recycled-item]="ticket.isDeleted"
           *ngFor="let ticket of filteredTickets"
           [class.selected]="selectedTicket?.id === ticket.id"
           (click)="selectTicket(ticket)">
           <div class="ticket-item-top">
             <span class="ticket-id">{{ ticket.id }}</span>
-            <span class="ticket-status-badge" [class]="getTicketStatusClass(ticket.status)">
+            <span class="ticket-status-badge" [class]="getTicketStatusClass(ticket.status)" *ngIf="!ticket.isDeleted">
               {{ ticket.status === 'in_progress' ? 'In Progress' : ticket.status | titlecase }}
+            </span>
+            <span class="ticket-status-badge status-deleted" *ngIf="ticket.isDeleted">
+              <span class="material-symbols-outlined">delete</span> Deleted
             </span>
           </div>
           <div class="ticket-item-user">
@@ -439,7 +453,8 @@
             <span class="ticket-role-tag">{{ ticket.userRole }}</span>
           </div>
           <div class="ticket-item-preview">{{ ticket.chatHistory.at(-1)?.text | slice:0:60 }}...</div>
-          <div class="ticket-item-time">{{ ticket.createdAt | date:'MMM d, h:mm a' }}</div>
+          <div class="ticket-item-time" *ngIf="!ticket.isDeleted">{{ ticket.createdAt | date:'MMM d, h:mm a' }}</div>
+          <div class="ticket-item-time text-danger" *ngIf="ticket.isDeleted">Deleted: {{ ticket.deletedAt | date:'MMM d, h:mm a' }}</div>
         </div>
       </div>
 
@@ -449,19 +464,45 @@
         <div class="ticket-detail-header">
           <div>
             <h4>{{ selectedTicket.id }}</h4>
-            <span class="ticket-status-badge" [class]="getTicketStatusClass(selectedTicket.status)">
+            <span class="ticket-status-badge" [class]="getTicketStatusClass(selectedTicket.status)" *ngIf="!selectedTicket.isDeleted">
               {{ selectedTicket.status === 'in_progress' ? 'In Progress' : selectedTicket.status | titlecase }}
+            </span>
+            <span class="ticket-status-badge status-deleted" *ngIf="selectedTicket.isDeleted">
+              Deleted
             </span>
           </div>
           <div class="ticket-detail-actions">
-            <button class="td-action-btn resolve-btn" *ngIf="selectedTicket.status !== 'resolved'"
-              (click)="resolveTicket(selectedTicket)">
-              <span class="material-symbols-outlined">task_alt</span> Resolve
-            </button>
+            <!-- Active Ticket Actions -->
+            <ng-container *ngIf="!selectedTicket.isDeleted">
+              <button class="td-action-btn resolve-btn" *ngIf="selectedTicket.status !== 'resolved'"
+                (click)="resolveTicket(selectedTicket)">
+                <span class="material-symbols-outlined">task_alt</span> Resolve
+              </button>
+              <button class="td-action-btn delete-btn" (click)="deleteTicket(selectedTicket)" title="Move to Recycle Bin">
+                <span class="material-symbols-outlined">delete</span> Delete
+              </button>
+            </ng-container>
+
+            <!-- Recycled Ticket Actions -->
+            <ng-container *ngIf="selectedTicket.isDeleted">
+              <button class="td-action-btn restore-btn" (click)="restoreTicket(selectedTicket)" title="Restore Ticket">
+                <span class="material-symbols-outlined">restore_from_trash</span> Restore
+              </button>
+              <button class="td-action-btn perm-delete-btn" (click)="permanentlyDeleteTicket(selectedTicket)" title="Permanently Delete">
+                <span class="material-symbols-outlined">delete_forever</span> Delete Permanently
+              </button>
+            </ng-container>
+
             <button class="td-action-btn close-panel-btn" (click)="closeTicketPanel()">
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
+        </div>
+
+        <!-- Recycled Banner -->
+        <div class="ticket-recycled-banner" *ngIf="selectedTicket.isDeleted">
+          <span class="material-symbols-outlined">auto_delete</span>
+          <span>This ticket is currently in the <strong>Recycle Bin</strong> (Deleted {{ selectedTicket.deletedAt | date:'MMM d, y, h:mm a' }}). You can restore it or permanently delete it.</span>
         </div>
 
         <!-- User Info -->
@@ -495,7 +536,7 @@
         </div>
 
         <!-- Reply Input -->
-        <div class="ticket-reply-area" *ngIf="selectedTicket.status !== 'resolved'">
+        <div class="ticket-reply-area" *ngIf="!selectedTicket.isDeleted && selectedTicket.status !== 'resolved'">
           <textarea
             [(ngModel)]="adminReplyText"
             placeholder="Type your reply to {{ selectedTicket.userName }}..."
@@ -507,7 +548,7 @@
             <span class="material-symbols-outlined">send</span> Send Reply
           </button>
         </div>
-        <div class="ticket-resolved-banner" *ngIf="selectedTicket.status === 'resolved'">
+        <div class="ticket-resolved-banner" *ngIf="!selectedTicket.isDeleted && selectedTicket.status === 'resolved'">
           <span class="material-symbols-outlined">check_circle</span> This ticket has been resolved.
         </div>
       </div>
