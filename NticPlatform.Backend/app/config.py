@@ -15,7 +15,11 @@ except ImportError:
 class Config:
     # Supports both local .env vars and Railway automatic PostgreSQL env vars
     POSTGRES_HOST: str = os.getenv("POSTGRES_HOST") or os.getenv("PGHOST", "localhost")
-    POSTGRES_PORT: int = int(os.getenv("POSTGRES_PORT") or os.getenv("PGPORT", 5432))
+    POSTGRES_PORT: int = int(
+        (os.getenv("POSTGRES_PORT") or "").strip()
+        or (os.getenv("PGPORT") or "").strip()
+        or "5432"
+    )
     POSTGRES_USER: str = os.getenv("POSTGRES_USER") or os.getenv("PGUSER", "postgres")
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD") or os.getenv("PGPASSWORD", "")
     POSTGRES_DB: str = os.getenv("POSTGRES_DB") or os.getenv("PGDATABASE", "NticPlatformDb")
