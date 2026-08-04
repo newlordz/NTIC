@@ -672,6 +672,53 @@ private readonly defaultTeams: Team[] = [];
       error: (e: any) => console.log('Backend philosophy fallback to local cache')
     });
 
+    // Load platform stats and countdown from backend
+    this.apiService.getPlatformStats().subscribe({
+      next: (stats: any) => {
+        if (stats) {
+          if (stats.regions !== undefined) {
+            this.platformStats = { regions: stats.regions, mentors: stats.mentors, schools: stats.schools, students: stats.students, projects: stats.projects, grants: stats.grants };
+            this.saveState('platformStats', this.platformStats);
+          }
+          if (stats.countdownDate) {
+            this.countdownDate = stats.countdownDate;
+            this.saveState('countdownDate', this.countdownDate);
+          }
+        }
+      },
+      error: () => {}
+    });
+
+    this.apiService.getHeroSlides().subscribe({
+      next: (slides: any[]) => {
+        if (slides && slides.length > 0) {
+          this.heroSlides = slides;
+          this.saveState('heroSlides', this.heroSlides);
+        }
+      },
+      error: () => {}
+    });
+
+    this.apiService.getTalent().subscribe({
+      next: (items: any[]) => {
+        if (items && items.length > 0) {
+          this.talentDiscovery = items;
+          this.saveState('talentDiscovery', this.talentDiscovery);
+        }
+      },
+      error: () => {}
+    });
+
+    this.apiService.getCsrUpdates().subscribe({
+      next: (items: any[]) => {
+        if (items && items.length > 0) {
+          this.csrUpdates = items;
+          this.saveState('csrUpdates', this.csrUpdates);
+        }
+      },
+      error: () => {}
+    });
+
     this.apiService.getStudents().subscribe({
       next: (students: any[]) => {
         // Students are for leaderboard/competitions, NOT for the admin Users list.
