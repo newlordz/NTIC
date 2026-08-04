@@ -274,7 +274,7 @@
               <div class="mentor-avatar-initials">{{ getInitials(inst.fullName) }}</div>
               <div class="mentor-details">
                 <strong>{{ inst.fullName }}</strong>
-                <span>{{ inst.track || 'General STEM' }}</span>
+                <span>{{ inst.track || 'General NTI' }}</span>
                 <span class="mentor-email">{{ inst.email }}</span>
               </div>
             </div>
@@ -1912,7 +1912,7 @@
           </div>
           <div class="cms-field cms-field-full">
             <label>Description</label>
-            <textarea rows="2" [(ngModel)]="editingEvent.description" placeholder="STEM teams compete for national qualification spots..."></textarea>
+            <textarea rows="2" [(ngModel)]="editingEvent.description" placeholder="NTI teams compete for national qualification spots..."></textarea>
           </div>
           <div class="cms-field cms-field-full">
             <label>Location</label>
@@ -2953,7 +2953,7 @@
           <div>
             <div class="enlist-badge-tag">{{ editingTeamOriginalName ? 'SQUAD ROSTER MODIFICATION' : 'OFFICIAL NTIC TOURNAMENT REGISTRATION' }}</div>
             <h3 class="enlist-title">{{ editingTeamOriginalName ? 'Edit Squad Roster' : 'National Squad Enlistment' }}</h3>
-            <p class="enlist-subtitle">{{ editingTeamOriginalName ? 'Update student member names, track assignment, or mentor details.' : 'Register your school\'s competitive STEM team into active tournament brackets.' }}</p>
+            <p class="enlist-subtitle">{{ editingTeamOriginalName ? 'Update student member names, track assignment, or mentor details.' : 'Register your school\'s competitive NTI team into active tournament brackets.' }}</p>
           </div>
         </div>
         <button class="enlist-close-btn" (click)="closeAddTeamModal()" title="Close modal">
@@ -3050,7 +3050,7 @@
                   class="enlist-select"
                 >
                   <option value="">General School Coordinator</option>
-                  <option *ngFor="let inst of schoolInstructors" [value]="inst.fullName">{{ inst.fullName }} ({{ inst.track || 'STEM' }})</option>
+                  <option *ngFor="let inst of schoolInstructors" [value]="inst.fullName">{{ inst.fullName }} ({{ inst.track || 'NTI' }})</option>
                 </select>
               </div>
               <span class="field-hint">Supervising instructor for this competition track.</span>

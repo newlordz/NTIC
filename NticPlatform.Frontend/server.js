@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 8080;
-const DIST_DIR = path.join(__dirname, 'dist', 'stem-frontend', 'browser');
+const DIST_DIR = path.join(__dirname, 'dist', 'ntic-frontend', 'browser');
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',

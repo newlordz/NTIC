@@ -222,16 +222,6 @@ export class LmsComponent implements OnInit {
                               tId.includes('cyber') || tId.includes('security') ? 'cyber' :
                               tId.includes('innovat') ? 'innovation' : 'coding';
 
-      const mentorsMap: Record<string, { name: string; email: string }> = {
-        robotics: { name: 'Ing. Kofi Amponsah', email: 'k.amponsah@ntic.gov.gh' },
-        ai: { name: 'Dr. Abena Owusu', email: 'a.owusu@ntic.gov.gh' },
-        cyber: { name: 'Cpt. Kwame Mensah', email: 'k.mensah@ntic.gov.gh' },
-        innovation: { name: 'Akua Addo, MBA', email: 'a.addo@ntic.gov.gh' },
-        coding: { name: 'Efua Mensah', email: 'e.mensah@ntic.gov.gh' }
-      };
-
-      const mentorInfo = mentorsMap[resolvedTrackId] || mentorsMap['coding'];
-
       return {
         name: activeUser.fullName,
         id: activeUser.ticket || activeUser.id || 'NTIC-STU-8263',
@@ -240,9 +230,9 @@ export class LmsComponent implements OnInit {
         trackId: resolvedTrackId,
         avatar: (activeUser.fullName || 'CS').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
         email: activeUser.email || activeEmail,
-        mentor: mentorInfo.name,
-        mentorAvatar: mentorInfo.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
-        mentorEmail: mentorInfo.email
+        mentor: '',
+        mentorAvatar: '',
+        mentorEmail: ''
       };
     }
 
@@ -284,52 +274,22 @@ export class LmsComponent implements OnInit {
     if (saved !== null) {
       return parseInt(saved, 10) || 0;
     }
-    if (this.studentProfile.id === 'NTIC-STU-0012') {
-      return courseTitle.includes('Python') || courseTitle.includes('Arduino') || courseTitle.includes('Ethical') ? 42 : 15;
-    }
     return 0;
   }
 
   get studentCourses() {
-    const track = (this.studentProfile.trackId || 'coding').toLowerCase();
-    let rawCourses = [];
-
-    if (track === 'robotics') {
-      rawCourses = [
-        { title: 'Arduino Robotics Base', track: 'robotics', icon: 'memory', totalModules: 6, color: 'primary' },
-        { title: 'Sensor Integration Lab', track: 'robotics', icon: 'sensors', totalModules: 5, color: 'secondary' }
-      ];
-    } else if (track === 'ai') {
-      rawCourses = [
-        { title: 'Intro to Neural Networks', track: 'ai', icon: 'model_training', totalModules: 7, color: 'primary' },
-        { title: 'Computer Vision Basics', track: 'ai', icon: 'visibility', totalModules: 6, color: 'secondary' }
-      ];
-    } else if (track === 'cyber') {
-      rawCourses = [
-        { title: 'Ethical Hacking 101', track: 'cyber', icon: 'security', totalModules: 5, color: 'primary' },
-        { title: 'Digital Safety & CTF Lab', track: 'cyber', icon: 'security', totalModules: 4, color: 'secondary' }
-      ];
-    } else if (track === 'innovation') {
-      rawCourses = [
-        { title: 'Design Thinking Sprint', track: 'innovation', icon: 'tips_and_updates', totalModules: 4, color: 'primary' },
-        { title: 'Product Prototyping Lab', track: 'innovation', icon: 'rocket_launch', totalModules: 4, color: 'secondary' }
-      ];
-    } else {
-      rawCourses = [
-        { title: 'Python Data Structures', track: 'coding', icon: 'data_object', totalModules: 8, color: 'primary' },
-        { title: 'Web Dev Bootcamp', track: 'coding', icon: 'code', totalModules: 10, color: 'secondary' }
-      ];
-    }
-
-    return rawCourses.map(c => {
+    return this.contentService.lmsCourses.map((c: any) => {
       const progress = this.getCourseProgress(c.title);
-      const modIndex = progress === 0 ? 1 : Math.min(c.totalModules, Math.ceil((progress / 100) * c.totalModules) + 1);
       return {
-        ...c,
+        title: c.title,
+        track: c.track,
+        icon: c.icon,
+        totalModules: c.modules || 0,
+        color: 'primary',
         progress,
-        module: progress === 0 ? `Module 1 of ${c.totalModules}: Core Fundamentals & Setup` : `Module ${modIndex} of ${c.totalModules}: Active Lesson Sprint`,
-        lastActive: progress === 0 ? 'Ready to Start' : 'Recently Active',
-        badgeText: progress === 0 ? 'Not Started' : progress >= 100 ? 'Completed' : 'In Progress',
+        module: c.description || '',
+        lastActive: 'Recently Active',
+        badgeText: progress >= 100 ? 'Completed' : 'In Progress',
         buttonText: progress === 0 ? 'START COURSE →' : 'RESUME COURSE'
       };
     });
@@ -341,55 +301,20 @@ export class LmsComponent implements OnInit {
   }
 
   getCourseModules(courseTitle: string) {
-    const title = (courseTitle || '').toLowerCase();
+    const course = this.contentService.lmsCourses.find((c: any) => c.title === courseTitle);
+    if (!course) return [];
     const progress = this.getCourseProgress(courseTitle || '');
-
-    let modulesList = [];
-    if (title.includes('robot') || title.includes('sensor')) {
-      modulesList = [
-        { id: '1', title: 'Module 1: Microcontroller GPIO & Digital Logic', desc: 'Working with Arduino Uno pins, voltages, and pull-up resistors.' },
-        { id: '2', title: 'Module 2: PWM & DC/Servo Motor Drive Systems', desc: 'Controlling speed, torque, and directional H-bridge drivers.' },
-        { id: '3', title: 'Module 3: Ultrasonic & Infrared Obstacle Detection', desc: 'Sensor telemetry calibration and autonomous collision avoidance.' },
-        { id: '4', title: 'Module 4: PID Line Tracking & Feedback Loops', desc: 'Fine-tuning proportional-integral-derivative algorithms.' },
-        { id: '5', title: 'Module 5: Championship Arena Challenge Sprint', desc: 'Final autonomous navigation mission and hardware testing.' }
-      ];
-    } else if (title.includes('neural') || title.includes('vision') || title.includes('ai')) {
-      modulesList = [
-        { id: '1', title: 'Module 1: Linear Algebra & Matrix Operations', desc: 'Vector tensors, dot products, and NumPy calculations.' },
-        { id: '2', title: 'Module 2: Perceptrons & Activation Functions', desc: 'Sigmoid, ReLU, Softmax and forward propagation basics.' },
-        { id: '3', title: 'Module 3: Backpropagation & Loss Optimization', desc: 'Gradient descent optimization and preventing overfitting.' },
-        { id: '4', title: 'Module 4: Convolutional Neural Networks (CNNs)', desc: 'Image feature extraction, pooling, and classification kernels.' },
-        { id: '5', title: 'Module 5: Championship AI Model Deployment', desc: 'Exporting lightweight models for embedded competition hardware.' }
-      ];
-    } else if (title.includes('hack') || title.includes('cyber') || title.includes('safety')) {
-      modulesList = [
-        { id: '1', title: 'Module 1: Network Protocols & Packet Analysis', desc: 'Inspecting TCP/IP, DNS, and HTTP traffic with Wireshark.' },
-        { id: '2', title: 'Module 2: Web Application Vulnerabilities (OWASP)', desc: 'Identifying SQL injections, XSS, and CSRF attack vectors.' },
-        { id: '3', title: 'Module 3: Cryptography & Key Exchange Protocols', desc: 'Symmetric encryption, RSA handshakes, and hashing integrity.' },
-        { id: '4', title: 'Module 4: Digital Forensics & Capture The Flag (CTF)', desc: 'Reverse engineering binaries and analyzing memory dumps.' },
-        { id: '5', title: 'Module 5: Live Defense & Hardening Sprint', desc: 'Securing server configurations for the championship finals.' }
-      ];
-    } else {
-      modulesList = [
-        { id: '1', title: 'Module 1: Big O & Complexity Sprints', desc: 'Analyzing execution steps, auxiliary memory, and run-time optimization.' },
-        { id: '2', title: 'Module 2: Custom List & Stack Engines', desc: 'Designing linear nodes, stacks, and double-ended queues from scratch.' },
-        { id: '3', title: 'Module 3: Binary Tree Rotations & AVL', desc: 'Implementing height balance, search traversals, and dynamic index trees.' },
-        { id: '4', title: 'Module 4: Dijkstra & Graph Pathfinders', desc: 'Coding shortest paths, adjacency weights, and priority heap routers.' },
-        { id: '5', title: 'Module 5: Dynamic Programming Sprints', desc: 'Memoization, tabulation, knapsack solver, and substring scoring.' }
-      ];
-    }
-
-    return modulesList.map((mod, idx) => {
-      const completedThreshold = (idx + 1) * 20;
-      let status = 'pending';
-      if (progress === 0) {
-        status = idx === 0 ? 'active' : 'pending';
-      } else if (progress >= completedThreshold) {
-        status = 'completed';
-      } else if (progress >= completedThreshold - 20) {
-        status = 'active';
-      }
-      return { ...mod, status };
+    const totalModules = course.modules || 0;
+    return Array.from({ length: totalModules }, (_, i) => {
+      const completedThreshold = (i + 1) * (100 / totalModules);
+      return {
+        id: String(i + 1),
+        title: `Module ${i + 1}`,
+        desc: '',
+        status: progress === 0 ? (i === 0 ? 'active' : 'pending') :
+                progress >= completedThreshold ? 'completed' :
+                progress >= completedThreshold - (100 / totalModules) ? 'active' : 'pending'
+      };
     });
   }
 

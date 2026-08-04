@@ -375,6 +375,17 @@ export interface Submission {
 })
 export class ContentService {
 
+  private readonly CACHE_VERSION_KEY = 'ntic_cache_version';
+  private readonly CURRENT_CACHE_VERSION = 'ntic-cache-v3';
+  private readonly CONTENT_CACHE_KEYS = [
+    'championshipStories','upcomingEvents','hallOfFameEntries','leaderboardData',
+    'talentDiscovery','platformStats','heroSlides','newsFeedItems','countdownDate',
+    'users','pendingApprovals','rejectedApprovals','approvedApprovals','teams',
+    'submissions','auditLogs','csrUpdates','competitions','philosophyCards',
+    'lmsCourses','lmsModules','lmsMaterials','lmsAssignments','lmsSubmissions','lmsEnrollments'
+  ];
+  private needsIdbPurge = false;
+
   // ── Championship Stories ─────────────────────────────────────
   championshipStories: ChampionshipStory[] = [];
   
@@ -438,64 +449,24 @@ export class ContentService {
     { id: 'phil-3', title: 'Build', description: 'Turning abstract ideas into concrete reality through engineering.', image: 'assets/ntic_image_33.jpeg' },
   ];
 
-  private readonly defaultLmsCourses: LmsCourse[] = [
+private readonly defaultLmsCourses: LmsCourse[] = [
     { id: 'crs-1', title: 'Python Data Structures', track: 'coding', icon: 'data_object', level: 'Intermediate', description: 'Master lists, dicts, sets, and tuples for competitive programming.', modules: 8, enrolled: 320, completion: 68, status: 'active', createdAt: '2026-01-15', submittedBy: 'Dr. Ebenezer Mensah (Achimota School)', approvalStatus: 'approved' },
     { id: 'crs-2', title: 'Arduino Robotics Base', track: 'robotics', icon: 'memory', level: 'Beginner', description: 'Build and program your first autonomous robot with Arduino.', modules: 6, enrolled: 180, completion: 42, status: 'active', createdAt: '2026-01-20', submittedBy: 'Eng. Sarah Kwofie (PRESEC Legon)', approvalStatus: 'approved' },
-    { id: 'crs-3', title: 'AI Fundamentals with TensorFlow', track: 'ai', icon: 'psychology', level: 'Intermediate', description: 'Train, evaluate, and deploy machine learning models.', modules: 10, enrolled: 210, completion: 55, status: 'active', createdAt: '2026-02-01', submittedBy: 'Prof. Kwesi Appiah (KNUST STEM Lab)', approvalStatus: 'approved' },
-    { id: 'crs-4', title: 'Network Security Essentials', track: 'cyber', icon: 'shield', level: 'Beginner', description: 'Learn firewalls, encryption, and penetration testing basics.', modules: 7, enrolled: 145, completion: 38, status: 'active', createdAt: '2026-02-10', submittedBy: 'Dr. Ebenezer Mensah (Achimota School)', approvalStatus: 'approved' },
-    { id: 'crs-5', title: 'Full-Stack Web Development', track: 'coding', icon: 'code', level: 'Advanced', description: 'End-to-end web apps with Angular, Node.js, and PostgreSQL.', modules: 12, enrolled: 260, completion: 45, status: 'active', createdAt: '2026-02-15', submittedBy: 'Eng. Sarah Kwofie (PRESEC Legon)', approvalStatus: 'approved' },
-    { id: 'crs-6', title: 'IoT Sensor Networks', track: 'robotics', icon: 'sensors', level: 'Intermediate', description: 'Connect sensors, collect data, and build smart systems.', modules: 8, enrolled: 95, completion: 30, status: 'active', createdAt: '2026-03-01', submittedBy: 'Prof. Kwesi Appiah (KNUST STEM Lab)', approvalStatus: 'approved' },
-    { id: 'crs-7', title: 'Deep Learning & Computer Vision', track: 'ai', icon: 'visibility', level: 'Advanced', description: 'CNNs, object detection, and real-time image classification.', modules: 9, enrolled: 130, completion: 25, status: 'draft', createdAt: '2026-03-10', submittedBy: 'Prof. Kwesi Appiah (KNUST STEM Lab)', approvalStatus: 'approved' },
-    { id: 'crs-8', title: 'Ethical Hacking Lab', track: 'cyber', icon: 'bug_report', level: 'Advanced', description: 'Hands-on penetration testing in controlled lab environments.', modules: 10, enrolled: 88, completion: 20, status: 'active', createdAt: '2026-03-15', submittedBy: 'Dr. Ebenezer Mensah (Achimota School)', approvalStatus: 'approved' },
-    { id: 'crs-9', title: 'Quantum Computing Intro', track: 'innovation', icon: 'science', level: 'Advanced', description: 'Qubits, quantum logic gates, and IBM Qiskit fundamentals.', modules: 5, enrolled: 0, completion: 0, status: 'active', createdAt: '2026-07-24', submittedBy: 'Dr. Ebenezer Mensah (Achimota School)', approvalStatus: 'pending' },
+    { id: 'crs-3', title: 'AI Fundamentals with TensorFlow', track: 'ai', icon: 'psychology', level: 'Intermediate', description: 'Train, evaluate, and deploy machine learning models.', modules: 10, enrolled: 210, completion: 55, status: 'active', createdAt: '2026-02-01', submittedBy: 'Prof. Kwesi Appiah (KNUST NTI Lab)', approvalStatus: 'approved' },
+    { id: 'crs-4', title: 'Network Security Essentials', track: 'cyber', icon: 'shield', level: 'Beginner', description: 'Learn firewalls, encryption, and penetration testing basics.', modules: 7, enrolled: 145, completion: 38, status: 'active', createdAt: '2026-02-10', submittedBy: 'Dr. Ebenezer Mensah (Achimota School)', approvalStatus: 'approved' }
   ];
 
-  private readonly defaultLmsModules: LmsModule[] = [
-    { id: 'mod-1', courseId: 'crs-1', title: 'Arrays & Linked Lists', description: 'Sequential data storage and traversal algorithms.', order: 1, icon: 'view_list', status: 'published', submittedBy: 'Dr. Ebenezer Mensah', approvalStatus: 'approved' },
-    { id: 'mod-2', courseId: 'crs-1', title: 'Stacks & Queues', description: 'LIFO and FIFO data structures with real-world use cases.', order: 2, icon: 'swap_vert', status: 'published', submittedBy: 'Dr. Ebenezer Mensah', approvalStatus: 'approved' },
-    { id: 'mod-3', courseId: 'crs-1', title: 'Hash Tables', description: 'Key-value storage, collision handling, and O(1) lookups.', order: 3, icon: 'table_chart', status: 'published', submittedBy: 'Dr. Ebenezer Mensah', approvalStatus: 'approved' },
-    { id: 'mod-4', courseId: 'crs-1', title: 'Binary Trees & Heaps', description: 'Hierarchical data and priority queue implementations.', order: 4, icon: 'account_tree', status: 'published', submittedBy: 'Dr. Ebenezer Mensah', approvalStatus: 'approved' },
-    { id: 'mod-5', courseId: 'crs-2', title: 'GPIO Fundamentals', description: 'Digital I/O, PWM signals, and sensor interfacing.', order: 1, icon: 'electrical_services', status: 'published', submittedBy: 'Eng. Sarah Kwofie', approvalStatus: 'approved' },
-    { id: 'mod-6', courseId: 'crs-2', title: 'Motor Control', description: 'DC motors, servos, and H-bridge circuits.', order: 2, icon: 'settings', status: 'published', submittedBy: 'Eng. Sarah Kwofie', approvalStatus: 'approved' },
-    { id: 'mod-7', courseId: 'crs-3', title: 'Linear Algebra for ML', description: 'Vectors, matrices, and transformations in model training.', order: 1, icon: 'functions', status: 'published', submittedBy: 'Prof. Kwesi Appiah', approvalStatus: 'approved' },
-    { id: 'mod-8', courseId: 'crs-3', title: 'Neural Network Basics', description: 'Perceptrons, activation functions, and backpropagation.', order: 2, icon: 'neurology', status: 'published', submittedBy: 'Prof. Kwesi Appiah', approvalStatus: 'approved' },
-    { id: 'mod-9', courseId: 'crs-4', title: 'Network Protocols', description: 'TCP/IP, DNS, HTTP, and packet analysis.', order: 1, icon: 'lan', status: 'published', submittedBy: 'Dr. Ebenezer Mensah', approvalStatus: 'approved' },
-    { id: 'mod-10', courseId: 'crs-4', title: 'Firewall Configuration', description: 'iptables, rulesets, and traffic filtering.', order: 2, icon: 'security', status: 'published', submittedBy: 'Dr. Ebenezer Mensah', approvalStatus: 'approved' },
-    { id: 'mod-11', courseId: 'crs-9', title: 'Superposition & Qubits', description: 'Quantum states, Bloch sphere, and qubit initialization.', order: 1, icon: 'grain', status: 'published', submittedBy: 'Dr. Ebenezer Mensah', approvalStatus: 'pending' }
-  ];
+private readonly defaultLmsModules: LmsModule[] = [];
 
-  private readonly defaultLmsMaterials: LmsMaterial[] = [
-    { id: 'mat-1', courseId: 'crs-1', moduleId: 'mod-1', title: 'Arrays Lecture Notes', type: 'document', url: '', description: 'Comprehensive guide to array operations and Big-O.', createdAt: '2026-01-15', submittedBy: 'Dr. Ebenezer Mensah', approvalStatus: 'approved' },
-    { id: 'mat-2', courseId: 'crs-1', moduleId: 'mod-1', title: 'Python Arrays Tutorial', type: 'video', url: 'https://youtube.com/watch?v=example1', description: 'Video walkthrough of array implementations in Python.', createdAt: '2026-01-16', submittedBy: 'Dr. Ebenezer Mensah', approvalStatus: 'approved' },
-    { id: 'mat-3', courseId: 'crs-2', moduleId: 'mod-5', title: 'Arduino Wiring Guide', type: 'document', url: '', description: 'Step-by-step GPIO wiring diagrams.', createdAt: '2026-01-20', submittedBy: 'Eng. Sarah Kwofie', approvalStatus: 'approved' },
-    { id: 'mat-4', courseId: 'crs-3', moduleId: 'mod-7', title: 'Linear Algebra Refresher', type: 'link', url: 'https://khanacademy.org/linear-algebra', description: 'Khan Academy linear algebra course.', createdAt: '2026-02-01', submittedBy: 'Prof. Kwesi Appiah', approvalStatus: 'approved' },
-    { id: 'mat-5', courseId: 'crs-9', moduleId: 'mod-11', title: 'IBM Qiskit Starter Notebook', type: 'link', url: 'https://qiskit.org/documentation', description: 'Jupyter notebook starter for quantum circuit simulation.', createdAt: '2026-07-24', submittedBy: 'Dr. Ebenezer Mensah', approvalStatus: 'pending' }
-  ];
+  private readonly defaultLmsMaterials: LmsMaterial[] = [];
 
-  private readonly defaultLmsAssignments: LmsAssignment[] = [
-    { id: 'asgn-1', courseId: 'crs-1', title: 'Array Manipulation Challenge', description: 'Solve 5 problems involving array rotation, merging, and searching.', dueDate: '2026-08-01', maxScore: 100, track: 'coding', status: 'active', createdAt: '2026-01-15', submittedBy: 'Dr. Ebenezer Mensah', approvalStatus: 'approved' },
-    { id: 'asgn-2', courseId: 'crs-2', title: 'Build a Line Follower', description: 'Program an Arduino robot to follow a black line on white surface.', dueDate: '2026-08-05', maxScore: 100, track: 'robotics', status: 'active', createdAt: '2026-01-20', submittedBy: 'Eng. Sarah Kwofie', approvalStatus: 'approved' },
-    { id: 'asgn-3', courseId: 'crs-3', title: 'MNIST Digit Classifier', description: 'Train a neural network to recognize handwritten digits with >95% accuracy.', dueDate: '2026-08-10', maxScore: 100, track: 'ai', status: 'active', createdAt: '2026-02-01', submittedBy: 'Prof. Kwesi Appiah', approvalStatus: 'approved' },
-    { id: 'asgn-4', courseId: 'crs-4', title: 'Vulnerability Scan Report', description: 'Run a Nessus scan and produce a remediation report.', dueDate: '2026-08-12', maxScore: 100, track: 'cyber', status: 'draft', createdAt: '2026-02-10', submittedBy: 'Dr. Ebenezer Mensah', approvalStatus: 'approved' },
-    { id: 'asgn-5', courseId: 'crs-9', title: 'Qiskit Circuit Simulation', description: 'Construct a 2-qubit Bell state circuit and measure state vector probabilities.', dueDate: '2026-08-20', maxScore: 100, track: 'innovation', status: 'active', createdAt: '2026-07-24', submittedBy: 'Dr. Ebenezer Mensah', approvalStatus: 'pending' }
-  ];
+private readonly defaultLmsAssignments: LmsAssignment[] = [];
 
-  private readonly defaultLmsSubmissions: LmsSubmission[] = [
-    { id: 'sub-1', assignmentId: 'asgn-1', courseId: 'crs-1', studentId: 'usr-101', studentName: 'Kwame Mensah', studentEmail: 'kwame@school.edu.gh', submittedAt: '2026-07-20 14:30', content: 'Implemented array rotation using reversal algorithm in O(n) time.', url: 'https://github.com/kwame/array-challenge', score: 95, status: 'graded', feedback: 'Excellent time complexity optimization!' },
-    { id: 'sub-2', assignmentId: 'asgn-1', courseId: 'crs-1', studentId: 'usr-102', studentName: 'Abena Osei', studentEmail: 'abena@school.edu.gh', submittedAt: '2026-07-22 09:15', content: 'Submitted Python solution with unit tests for all 5 cases.', url: 'https://github.com/abena/python-arrays', status: 'submitted' },
-    { id: 'sub-3', assignmentId: 'asgn-2', courseId: 'crs-2', studentId: 'usr-103', studentName: 'Kofi Annan', studentEmail: 'kofi@school.edu.gh', submittedAt: '2026-07-23 16:45', content: 'Arduino C++ line follower code with PID loop.', url: 'https://github.com/kofi/line-follower-robot', score: 88, status: 'graded', feedback: 'Good PID tuning. Servo delay could be reduced.' },
-    { id: 'sub-4', assignmentId: 'asgn-3', courseId: 'crs-3', studentId: 'usr-104', studentName: 'Ama Boateng', studentEmail: 'ama@school.edu.gh', submittedAt: '2026-07-24 11:20', content: 'TensorFlow CNN model achieving 98.2% test accuracy.', url: 'https://colab.research.google.com/drive/mnist-nn', status: 'submitted' }
-  ];
+  private readonly defaultLmsSubmissions: LmsSubmission[] = [];
 
-  private readonly defaultLmsEnrollments: LmsEnrollment[] = [
-    { id: 'enr-1', courseId: 'crs-1', studentId: 'usr-101', studentName: 'Kwame Mensah', studentEmail: 'kwame@school.edu.gh', progressPct: 85, enrolledAt: '2026-01-16', lastActive: '2026-07-24', status: 'active' },
-    { id: 'enr-2', courseId: 'crs-1', studentId: 'usr-102', studentName: 'Abena Osei', studentEmail: 'abena@school.edu.gh', progressPct: 60, enrolledAt: '2026-01-18', lastActive: '2026-07-23', status: 'active' },
-    { id: 'enr-3', courseId: 'crs-2', studentId: 'usr-103', studentName: 'Kofi Annan', studentEmail: 'kofi@school.edu.gh', progressPct: 100, enrolledAt: '2026-01-21', lastActive: '2026-07-24', status: 'completed' },
-    { id: 'enr-4', courseId: 'crs-3', studentId: 'usr-104', studentName: 'Ama Boateng', studentEmail: 'ama@school.edu.gh', progressPct: 45, enrolledAt: '2026-02-02', lastActive: '2026-07-25', status: 'active' },
-    { id: 'enr-5', courseId: 'crs-4', studentId: 'usr-105', studentName: 'Yaw Appiah', studentEmail: 'yaw@school.edu.gh', progressPct: 30, enrolledAt: '2026-02-12', lastActive: '2026-07-20', status: 'active' }
-  ];
+  private readonly defaultLmsEnrollments: LmsEnrollment[] = [];
   private readonly defaultEvents: UpcomingEvent[] = [
-    { id: 'evt-1', month: 'AUG', day: '15', title: 'Regional Qualifier — Greater Accra', description: 'STEM teams compete for national qualification spots across all 5 tracks.', location: 'Accra International Conference Centre' },
+    { id: 'evt-1', month: 'AUG', day: '15', title: 'Regional Qualifier — Greater Accra', description: 'NTI teams compete for national qualification spots across all 5 tracks.', location: 'Accra International Conference Centre' },
     { id: 'evt-2', month: 'SEP', day: '22', title: 'Regional Qualifier — Ashanti', description: 'Kumasi hosts the Ashanti regional championships with 40+ competing teams.', location: 'Kumasi Cultural Centre' },
     { id: 'evt-3', month: 'DEC', day: '07', title: 'National Grand Final', description: 'The ultimate showdown — top teams from all regions battle for the NTIC Championship crown.', location: 'National Theatre of Ghana, Accra' }
   ];
@@ -520,27 +491,6 @@ export class ContentService {
       title: 'PRESEC Legon Students Simulate a Nation-State Cyber Attack in Finals',
       body: 'The cybersecurity track finale saw PRESEC Legon team execute a realistic nation-state attack simulation, demonstrating advanced penetration testing skills and incident response protocols.',
       likes: 31, likedBy: []
-    },
-    {
-      id: 'story-4', tag: 'AI', tagColor: 'ai',
-      image: 'assets/ntic_image_4.jpeg', date: 'June 10, 2026', readTime: '5 min',
-      title: 'Opoku War School AI Team Trains a Local Language Speech Recognition Model',
-      body: 'Using transfer learning on a small dataset, students from Opoku War School built a Twi speech recognition model achieving 87% accuracy — a breakthrough for local language AI in Ghana.',
-      likes: 15, likedBy: []
-    },
-    {
-      id: 'story-5', tag: 'Innovation', tagColor: 'innovation',
-      image: 'assets/ntic_image_5.jpeg', date: 'June 5, 2026', readTime: '4 min',
-      title: "St. Augustine's Invents a Solar-Powered Water Purification System",
-      body: "Team Innovation from St. Augustine's College designed a low-cost solar-powered water purification unit capable of serving 200 households, addressing clean water access in rural communities.",
-      likes: 12, likedBy: []
-    },
-    {
-      id: 'story-6', tag: 'Robotics', tagColor: 'robotics',
-      image: 'assets/ntic_image_1.jpeg', date: 'May 30, 2026', readTime: '3 min',
-      title: "Adisadel College Robotics Team Wins People's Choice Award",
-      body: "Their humanoid robot performing traditional Ghanaian dance moves captured hearts at the national exhibition, earning the People's Choice Award alongside a top-3 finish in the main robotics competition.",
-      likes: 20, likedBy: []
     }
   ];
 
@@ -580,26 +530,6 @@ export class ContentService {
       year: '2025',
       badge: '🤖 Robotics Team Champions',
       trackClass: 'robotics-track'
-    },
-    {
-      id: 'hof-3',
-      type: 'individual',
-      initials: 'KN',
-      name: 'Kofi Nyarko',
-      school: 'Prempeh College',
-      year: '2024',
-      badge: 'AI Champion',
-      trackClass: 'ai-track'
-    },
-    {
-      id: 'hof-4',
-      type: 'individual',
-      initials: 'ED',
-      name: 'Efua Donkor',
-      school: 'Achimota School',
-      year: '2024',
-      badge: 'Innovation Champion',
-      trackClass: 'innovation-track'
     }
   ];
 
@@ -609,20 +539,13 @@ export class ContentService {
 
   private readonly defaultStats: PlatformStats = { regions: 0, mentors: 0, schools: 0, students: 0, projects: 0, grants: 0 };
 
-  private readonly defaultHero: HeroSlide[] = [
-    {
-      id: 'slide-1',
-      tag: 'National Championship',
-      title: 'Where Ghana\'s Brightest Minds Compete & Innovate',
-      description: 'Bringing together high school teams from all 16 regions to solve real-world problems through Coding, Robotics, AI, Cybersecurity, and Open Innovation.',
-      image: 'assets/ntic_image_8.jpeg',
-      videoUrl: 'assets/ntic_slideshow.mp4',
-      ctaText: 'Enter Portal',
-      ctaLink: '#portal'
-    }
-  ];
+  private readonly defaultHero: HeroSlide[] = [];
 
-  private readonly defaultNews: NewsFeedItem[] = [];
+  private readonly defaultNews: NewsFeedItem[] = [
+    { id: 'news-1', headline: 'Phase 2 Registration Opens for All 16 Regions', tag: 'Competition', date: '2026-07-28', link: '#registration' },
+    { id: 'news-2', headline: 'NTIC 2026 Sees Record 500+ School Registrations', tag: 'Milestone', date: '2026-07-25', link: '#news' },
+    { id: 'news-3', headline: 'New AI & Machine Learning Track Launched', tag: 'Track', date: '2026-07-20', link: '#competitions' }
+  ];
 
   private readonly defaultUsers: User[] = [
     {
@@ -644,44 +567,7 @@ export class ContentService {
   private readonly defaultRejectedApprovals: ApprovalRequest[] = [];
   private readonly defaultApprovedApprovals: ApprovalRequest[] = [];
 
-  private readonly defaultTeams: Team[] = [
-    {
-      id: 'team-1',
-      name: 'CyberRangers Squad',
-      track: 'Cybersecurity',
-      lead: 'Kofi Nyarko',
-      members: 4,
-      status: 'Qualified',
-      schoolName: 'Prempeh College',
-      mentor: 'Dr. Emmanuel Osei',
-      motto: 'Shielding Ghana Digital Frontier',
-      rosterList: ['Kofi Nyarko', 'Abena Mensah', 'Emmanuel Osei', 'Selorm Adjei']
-    },
-    {
-      id: 'team-2',
-      name: 'RoboQuest Alpha',
-      track: 'Robotics',
-      lead: 'Abigail Serwaa',
-      members: 3,
-      status: 'Qualified',
-      schoolName: 'Wesley Girls High School',
-      mentor: 'Mrs. Efua Mensah',
-      motto: 'Automating Tomorrow',
-      rosterList: ['Abigail Serwaa', 'Akosua Baako', 'Ama Opoku']
-    },
-    {
-      id: 'team-3',
-      name: 'Apex Coders',
-      track: 'Coding',
-      lead: 'Ekow Asante',
-      members: 4,
-      status: 'Qualified',
-      schoolName: 'Mfantsipim School',
-      mentor: 'Mr. Sampson Cudjoe',
-      motto: 'Logic Meets Innovation',
-      rosterList: ['Ekow Asante', 'Kweku Addo', 'Paa Kwesi', 'Yao Mensah']
-    }
-  ];
+private readonly defaultTeams: Team[] = [];
 
   private readonly defaultSubmissions: Submission[] = [];
 
@@ -698,14 +584,6 @@ export class ContentService {
       const type = entry.type || (isGroupBadge ? 'group' : 'individual');
       
       let members = entry.members;
-      if (type === 'group' && (!members || members.length === 0)) {
-        // Auto-generate sample roster if squad entry lacks member details
-        if (entry.name && entry.name.toLowerCase().includes('gsts')) {
-          members = ['Kofi Boateng', 'Yaw Appiah', 'Seth Addo', 'Emmanuel Quaye'];
-        } else if (entry.teamName || entry.name) {
-          members = ['Kwame Asante', 'Abena Mensah', 'Kofi Nyarko', 'Efua Donkor'];
-        }
-      }
 
       return {
         ...entry,
@@ -716,9 +594,26 @@ export class ContentService {
   }
 
   constructor(private dataStorage: DataStorageService, private apiService: ApiService) {
+    this.purgeStaleCache();
     this.loadStateAndFallback();
       this.loadFromBackend();
     this.migrateToIndexedDB();
+  }
+
+  private purgeStaleCache(): void {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    try {
+      const storedVersion = localStorage.getItem(this.CACHE_VERSION_KEY);
+      if (storedVersion === this.CURRENT_CACHE_VERSION) return;
+
+      // Version mismatch or first run — drop all cached content so the
+      // freshly built defaults (NTI branding) take effect.
+      this.CONTENT_CACHE_KEYS.forEach(key => {
+        try { localStorage.removeItem(key); } catch { /* ignore */ }
+      });
+      localStorage.setItem(this.CACHE_VERSION_KEY, this.CURRENT_CACHE_VERSION);
+      this.needsIdbPurge = true;
+    } catch { /* storage unavailable — skip */ }
   }
 
   refreshBackendData(): void {
@@ -1145,6 +1040,12 @@ export class ContentService {
   private async migrateToIndexedDB(): Promise<void> {
     // Users always come fresh from backend — never from cache
     const largeKeys = ['pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs'];
+    if (this.needsIdbPurge) {
+      this.needsIdbPurge = false;
+      for (const key of largeKeys) {
+        await this.dataStorage.remove(key).catch(() => {});
+      }
+    }
     for (const key of largeKeys) {
       await this.loadKeyAsync(key, (this as any)[key]);
     }

@@ -551,13 +551,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     { id: 'innovation', label: 'Innovation', icon: 'tips_and_updates' },
   ];
 
-  recentStudents = [
-    { name: 'Kwame Asante', id: 'STU-0012', school: 'Achimota', track: 'coding', date: '2026-06-18' },
-    { name: 'Abena Mensah', id: 'STU-0013', school: 'Wesley Girls', track: 'robotics', date: '2026-06-18' },
-    { name: 'Kofi Boateng', id: 'STU-0014', school: 'Prempeh', track: 'cyber', date: '2026-06-17' },
-    { name: 'Ama Darko', id: 'STU-0015', school: 'Holy Child', track: 'innovation', date: '2026-06-17' },
-    { name: 'Yaw Mensah', id: 'STU-0016', school: 'PRESEC', track: 'ai', date: '2026-06-16' },
-  ];
+  recentStudents: any[] = [];
 
   sponsors = [
     { name: 'Tullow Ghana', package: 'Full Championship', tier: 'Platinum', support: 'Coding & AI', items: 'Team ×3, Equipment ×5', amount: '₵ 120,000', total: '₵ 120,000', status: 'Confirmed' },

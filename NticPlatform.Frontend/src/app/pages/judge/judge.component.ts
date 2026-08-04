@@ -318,8 +318,8 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     return {
       fullName: activeUserEmail ? activeUserEmail.split('@')[0] : 'Judge Account',
-      organization: 'STEM Evaluation Board',
-      track: 'General STEM'
+      organization: 'NTI Evaluation Board',
+      track: 'General NTI'
     };
   }
 
@@ -337,7 +337,7 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (type === 'video') {
       this.mediaModalUrl = sub?.videoUrl || 'https://www.youtube.com';
     } else if (type === 'code') {
-      this.mediaModalUrl = sub?.file ? `https://github.com/ntic-stem/repository-${sub.id}` : 'https://github.com/ntic-stem';
+      this.mediaModalUrl = sub?.file ? `https://github.com/ntic/repository-${sub.id}` : 'https://github.com/ntic';
     } else {
       this.mediaModalUrl = sub?.file || 'Official Submission PDF Document';
     }

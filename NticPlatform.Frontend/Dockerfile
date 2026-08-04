@@ -20,7 +20,7 @@ WORKDIR /usr/share/nginx/html
 RUN rm -rf ./*
 
 # Copy built artifacts from Stage 1
-COPY --from=build /app/dist/stem-frontend/browser .
+COPY --from=build /app/dist/ntic-frontend/browser .
 
 # Copy custom Nginx SPA configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf

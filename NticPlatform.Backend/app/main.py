@@ -1340,7 +1340,7 @@ try:
         return {"status": "synced", "collection": payload.collection, "count": len(payload.items)}
 
     # Mount static files
-    frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "NticPlatform.Frontend", "dist", "stem-frontend", "browser")
+    frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "NticPlatform.Frontend", "dist", "ntic-frontend", "browser")
     frontend_dist = os.path.abspath(frontend_dist)
 
     if os.path.isdir(frontend_dist):

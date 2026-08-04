@@ -364,7 +364,7 @@ export class SponsorsComponent implements OnInit {
           <div class="cert-badge">${tier}</div>
 
           <p class="cert-desc">
-            In recognition of outstanding corporate social responsibility, leadership, and generous financial partnership in empowering Ghana's next generation of STEM innovators, engineers, and digital champions during the <strong>NTIC National Championship</strong>.
+            In recognition of outstanding corporate social responsibility, leadership, and generous financial partnership in empowering Ghana's next generation of NTI innovators, engineers, and digital champions during the <strong>NTIC National Championship</strong>.
           </p>
 
           <div class="cert-meta">
@@ -527,7 +527,7 @@ export class SponsorsComponent implements OnInit {
         <div class="invoice-card">
           <div class="inv-header">
             <div>
-              <h1 class="inv-title">NTIC STEM FOUNDATION</h1>
+              <h1 class="inv-title">NTIC FOUNDATION</h1>
               <div class="inv-sub">Official Tax Invoice & CSR Payment Receipt</div>
               <div style="font-size:12px;color:#64748b;margin-top:4px;">TIN: <strong>C002938101-NTIC</strong></div>
             </div>
@@ -576,7 +576,7 @@ export class SponsorsComponent implements OnInit {
           </div>
 
           <div style="margin-top:40px;font-size:12px;color:#64748b;text-align:center;border-top:1px solid #e2e8f0;padding-top:16px;">
-            Thank you for supporting the Ghana National STEM & Technology Championship.
+            Thank you for supporting the Ghana National NTI & Technology Championship.
           </div>
         </div>
         <script>

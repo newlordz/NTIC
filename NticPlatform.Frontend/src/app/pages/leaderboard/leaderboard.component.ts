@@ -14,14 +14,9 @@ export class LeaderboardComponent implements OnInit {
   constructor(public contentService: ContentService) {}
 
   activeTab: 'courses' | 'schools' = 'courses';
-  selectedCourseTrack = 'Python Data Structures';
+  selectedCourseTrack = '';
 
-  courseTracks = [
-    { id: 'Python Data Structures', label: 'Python Data Structures', icon: 'data_object' },
-    { id: 'Intro to Neural Networks', label: 'Intro to Neural Networks', icon: 'model_training' },
-    { id: 'Arduino Robotics Base', label: 'Arduino Robotics Base', icon: 'memory' },
-    { id: 'Ethical Hacking 101', label: 'Ethical Hacking 101', icon: 'security' },
-  ];
+  courseTracks: any[] = [];
 
   courseStudentRankings: Record<string, Array<{
     rank: number;

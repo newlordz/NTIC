@@ -529,12 +529,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   activeDocumentSchool: string = '';
 
   // Role-Specific Data for other roles
-  enrolledTracks = [
-    { name: 'Python Data Structures', icon: 'data_object', progress: 68, lastActive: '2 days ago', module: 'Module 4 of 8', color: 'primary' },
-    { name: 'Intro to Neural Networks', icon: 'model_training', progress: 15, lastActive: '1 week ago', module: 'Module 1 of 6', color: 'tertiary' }
-  ];
+  enrolledTracks: any[] = [];
 
-  selectedCourseLeaderboardTrack = 'Python Data Structures';
+  selectedCourseLeaderboardTrack = '';
+
+  activeTracks: any[] = [];
+
+  milestoneActivity: any[] = [];
 
   courseCycleLeaderboards: Record<string, Array<{
     rank: number;
@@ -550,19 +551,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   get activeCourseLeaderboardList() {
     return this.courseCycleLeaderboards[this.selectedCourseLeaderboardTrack] || [];
   }
-
-  activeTracks = [
-    { name: 'Python Data Structures', icon: 'data_object', module: 'Module 4 of 8', enrolled: 320, completion: 68, color: 'primary', status: 'In Progress' },
-    { name: 'Arduino Robotics Base', icon: 'memory', module: 'Module 3 of 6', enrolled: 180, completion: 42, color: 'secondary', status: 'In Progress' },
-    { name: 'Intro to Neural Networks', icon: 'model_training', module: 'Starting Soon', enrolled: 85, completion: 85, color: 'tertiary', status: 'Planning' },
-    { name: 'Ethical Hacking 101', icon: 'security', module: 'Module 1 of 5', enrolled: 140, completion: 22, color: 'error', status: 'In Progress' },
-  ];
-
-  milestoneActivity = [
-    { text: 'Robotics Team A completed Module 3 base assessment', time: '1h ago' },
-    { text: 'Coding Team Alpha submitted pathfinder_v2.py', time: '3h ago' },
-    { text: 'Mentor feedback published for AI Division', time: '5h ago' }
-  ];
 
   constructor(public contentService: ContentService, private route: ActivatedRoute, private router: Router, private emailService: BrevoEmailService, private fileStorage: FileStorageService, private cdr: ChangeDetectorRef, public dialogService: DialogService, public apiService: ApiService) {
     this.route.queryParams.subscribe(params => {
@@ -816,7 +804,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.stats = [
           { label: 'Total Contribution', value: String(sponsorTotal), icon: 'payments', meta: `${tierName}`, color: 'primary' },
           { label: 'Payments Settled', value: String(paymentCount), icon: 'receipt_long', meta: paymentCount > 0 ? 'Verified transactions' : 'No payments yet', color: 'secondary' },
-          { label: 'Supported Track', value: String(trackScope), icon: 'category', meta: 'STEM Championship', color: 'tertiary' },
+          { label: 'Supported Track', value: String(trackScope), icon: 'category', meta: 'NTI Championship', color: 'tertiary' },
           { label: 'Account Status', value: sponsorUser?.status || 'Active', icon: 'verified', meta: 'Verified Partner', color: 'error' }
         ];
         break;
@@ -1359,7 +1347,7 @@ setTimeout(async () => {
             rosterList: roster,
             status: 'In Competition',
             mentor: 'Assigned Coordinator',
-            motto: 'National STEM Competition Squad',
+            motto: 'National NTI Competition Squad',
             schoolName: req.entity
           };
           currentTeams.push(newTeam);
@@ -2654,7 +2642,7 @@ setTimeout(async () => {
                 rosterList: roster,
                 status: 'In Competition',
                 mentor: 'Assigned Coordinator',
-                motto: 'National STEM Competition Squad',
+                motto: 'National NTI Competition Squad',
                 schoolName: this.schoolName
               });
             });

@@ -1,4 +1,4 @@
-ï»¿import { getAuthValue } from '../../services/session.util';
+import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -134,7 +134,7 @@ export class ReportingComponent implements OnInit {
         'Student Squad Roster Export',
         'Mentor Assignment Report',
         'Regional Rank Analytics',
-        'STEM Compliance Certificate'
+        'NTI Compliance Certificate'
       ];
     } else if (this.activeRoleId === 'instructor') {
       return [
@@ -163,19 +163,19 @@ export class ReportingComponent implements OnInit {
       'National Platform Overview': 'National',
       'School Performance Report': 'School',
       'Student Progress Report': 'Student',
-      'Student Progress Report â€” Q2': 'Student',
+      'Student Progress Report — Q2': 'Student',
       'Instructor Effectiveness': 'Instructor',
       'Instructor Course Progress': 'Instructor',
       'Instructor Effectiveness Report': 'Instructor',
       'Sponsor Impact Report': 'Sponsor',
-      'Sponsor Impact Report â€” MTN': 'Sponsor',
+      'Sponsor Impact Report — MTN': 'Sponsor',
       'Competition Results': 'Competition',
-      'Competition Results â€” Round 2': 'Competition',
+      'Competition Results — Round 2': 'Competition',
       'Executive Summary': 'National',
       'Student Squad Roster Export': 'School',
       'Mentor Assignment Report': 'School',
       'Regional Rank Analytics': 'School',
-      'STEM Compliance Certificate': 'School',
+      'NTI Compliance Certificate': 'School',
       'Student Cohort Grades': 'Student',
       'Assignment Completion Analytics': 'Student',
       'Lab Safety Compliance': 'Instructor',
@@ -261,7 +261,7 @@ export class ReportingComponent implements OnInit {
     }
 
     content += `==========================================================\n`;
-    content += `End of Official Report â€” Ghana Data Protection Act Compliant\n`;
+    content += `End of Official Report — Ghana Data Protection Act Compliant\n`;
 
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);

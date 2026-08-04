@@ -72,8 +72,8 @@ export class ProfileCompletionComponent implements OnInit {
     else if (userSector.includes('Health')) resolvedSector = 'Healthcare';
     else if (userSector.includes('NGO')) resolvedSector = 'NGO / Development';
 
-    const userTrack = this.currentUser.track || 'General STEM';
-    let resolvedExpertise = 'General STEM';
+    const userTrack = this.currentUser.track || 'General NTI';
+    let resolvedExpertise = 'General NTI';
     if (userTrack.includes('Coding')) resolvedExpertise = 'Coding & Software Engineering';
     else if (userTrack.includes('Robotics')) resolvedExpertise = 'Robotics & Embedded Systems';
     else if (userTrack.includes('AI')) resolvedExpertise = 'AI & Data Science';

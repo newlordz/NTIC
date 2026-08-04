@@ -36,7 +36,7 @@ def seed_initial_data(conn):
     # Stories
     cur.execute("SELECT count(*) FROM stories")
     if cur.fetchone()[0] == 0:
-        cur.execute("INSERT INTO stories (id, title, excerpt, date, image) VALUES ('st-1', 'NTIC 2026 Launch Exceeds Expectations', 'Over 500 schools registered in the first week, setting a new record for STEM participation in Ghana.', '2026-07-28', 'assets/ntic_image_4.jpeg')")
+        cur.execute("INSERT INTO stories (id, title, excerpt, date, image) VALUES ('st-1', 'NTIC 2026 Launch Exceeds Expectations', 'Over 500 schools registered in the first week, setting a new record for NTI participation in Ghana.', '2026-07-28', 'assets/ntic_image_4.jpeg')")
         cur.execute("INSERT INTO stories (id, title, excerpt, date, image) VALUES ('st-2', 'New Quantum Computing Track Announced', 'In partnership with IBM, we are introducing a pilot track for quantum programming.', '2026-07-29', 'assets/ntic_image_7.jpeg')")
         cur.execute("INSERT INTO stories (id, title, excerpt, date, image) VALUES ('st-3', 'Meet the Lead Judges for 2026', 'Get to know the industry experts who will be evaluating your final project submissions.', '2026-07-30', 'assets/ntic_image_12.jpeg')")
 
@@ -67,7 +67,7 @@ def seed_initial_data(conn):
     if cur.fetchone()[0] == 0:
         cur.execute("INSERT INTO lms_courses (id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status) VALUES ('crs-1', 'Python Data Structures', 'coding', 'data_object', 'Intermediate', 'Master lists, dicts, sets, and tuples for competitive programming.', 8, 320, 68, 'active', '2026-01-15', 'Dr. Ebenezer Mensah (Achimota School)', 'approved')")
         cur.execute("INSERT INTO lms_courses (id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status) VALUES ('crs-2', 'Arduino Robotics Base', 'robotics', 'memory', 'Beginner', 'Build and program your first autonomous robot with Arduino.', 6, 180, 42, 'active', '2026-01-20', 'Eng. Sarah Kwofie (PRESEC Legon)', 'approved')")
-        cur.execute("INSERT INTO lms_courses (id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status) VALUES ('crs-3', 'AI Fundamentals with TensorFlow', 'ai', 'psychology', 'Intermediate', 'Train, evaluate, and deploy machine learning models.', 10, 210, 55, 'active', '2026-02-01', 'Prof. Kwesi Appiah (KNUST STEM Lab)', 'approved')")
+        cur.execute("INSERT INTO lms_courses (id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status) VALUES ('crs-3', 'AI Fundamentals with TensorFlow', 'ai', 'psychology', 'Intermediate', 'Train, evaluate, and deploy machine learning models.', 10, 210, 55, 'active', '2026-02-01', 'Prof. Kwesi Appiah (KNUST NTI Lab)', 'approved')")
         cur.execute("INSERT INTO lms_courses (id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status) VALUES ('crs-4', 'Network Security Essentials', 'cyber', 'shield', 'Beginner', 'Learn firewalls, encryption, and penetration testing basics.', 7, 145, 38, 'active', '2026-02-10', 'Dr. Ebenezer Mensah (Achimota School)', 'approved')")
 
     conn.commit()

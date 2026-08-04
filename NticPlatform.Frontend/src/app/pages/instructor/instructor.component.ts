@@ -96,7 +96,7 @@ export class InstructorComponent implements OnInit, AfterViewInit, OnDestroy {
   mouseY = 0;
 
   animatedStats = { pending: 0, reviewed: 0, students: 0, courses: 0 };
-  private statTargets = { pending: 42, reviewed: 318, students: 1240, courses: 9 };
+  private statTargets = { pending: 0, reviewed: 0, students: 0, courses: 0 };
   private animFrame?: number;
   private canvasAnim?: number;
   private toastTimer?: ReturnType<typeof setTimeout>;
@@ -107,125 +107,13 @@ export class InstructorComponent implements OnInit, AfterViewInit, OnDestroy {
     { id: 'mentorship' as const, label: 'Team Mentorship', icon: 'groups', badge: 6 }
   ];
 
-  submissions: InstructorSubmission[] = [
-    {
-      id: 'sub-001',
-      student: 'Kwame Asante',
-      avatar: 'KA',
-      school: 'Achimota SHS',
-      assignment: "Dijkstra's Algorithm Implementation",
-      track: 'coding',
-      file: 'pathfinder_v2.py',
-      status: 'pending',
-      time: '10m ago',
-      priority: 'high',
-      codeSnippet: `def dijkstra(graph, start):
-    dist = {node: float('inf') for node in graph}
-    dist[start] = 0
-    pq = [(0, start)]
-    while pq:
-        d, u = heappop(pq)
-        if d > dist[u]: continue
-        for v, w in graph[u]:
-            if dist[u] + w < dist[v]:
-                dist[v] = dist[u] + w
-                heappush(pq, (dist[v], v))
-    return dist`
-    },
-    {
-      id: 'sub-002',
-      student: 'Abena Mensah',
-      avatar: 'AM',
-      school: 'Wesley Girls',
-      assignment: 'Line Follower Demo',
-      track: 'robotics',
-      file: 'demo_run.mp4',
-      status: 'pending',
-      time: '1h ago',
-      priority: 'normal',
-      codeSnippet: `void loop() {
-  int left = analogRead(L_SENSOR);
-  int right = analogRead(R_SENSOR);
-  if (left > threshold) motorLeft();
-  else if (right > threshold) motorRight();
-  else motorForward();
-}`
-    },
-    {
-      id: 'sub-003',
-      student: 'Team Alpha',
-      avatar: 'TA',
-      school: 'PRESEC Legon',
-      assignment: 'Physics Engine Core',
-      track: 'coding',
-      file: 'src_final_v3.zip',
-      status: 'resubmission',
-      time: '2h ago',
-      priority: 'high',
-      codeSnippet: `class RigidBody {
-  constructor(mass, pos, vel) {
-    this.mass = mass;
-    this.position = pos;
-    this.velocity = vel;
-  }
-  applyForce(f) { this.velocity.add(f.div(this.mass)); }
-}`
-    },
-    {
-      id: 'sub-004',
-      student: 'Kofi Boateng',
-      avatar: 'KB',
-      school: 'Prempeh College',
-      assignment: 'SQL Injection Demo',
-      track: 'cyber',
-      file: 'writeup.pdf',
-      status: 'approved',
-      time: '3h ago',
-      priority: 'normal',
-      codeSnippet: `# CTF Writeup: SQLi bypass via UNION SELECT
-# Payload: ' OR 1=1 UNION SELECT username,password FROM users--`
-    },
-    {
-      id: 'sub-005',
-      student: 'Ama Darko',
-      avatar: 'AD',
-      school: 'Holy Child',
-      assignment: 'AgriBot Prototype',
-      track: 'robotics',
-      file: 'bot_demo.mp4',
-      status: 'pending',
-      time: '4h ago',
-      priority: 'normal',
-      codeSnippet: `servo.attach(SERVO_PIN);
-void harvestLoop() {
-  if (soilMoisture < DRY_THRESHOLD) waterPlants();
-  if (fruitDetected()) pickFruit();
-}`
-    }
-  ];
+  submissions: InstructorSubmission[] = [];
 
-  courses: InstructorCourse[] = [
-    { title: 'Python Data Structures', track: 'coding', icon: 'data_object', level: 'Intermediate', enrolled: 320, completion: 68, modules: 8, pendingReviews: 12 },
-    { title: 'Arduino Robotics Base', track: 'robotics', icon: 'memory', level: 'Beginner', enrolled: 180, completion: 42, modules: 6, pendingReviews: 8 },
-    { title: 'Intro to Neural Networks', track: 'ai', icon: 'model_training', level: 'Advanced', enrolled: 85, completion: 15, modules: 7, pendingReviews: 3 },
-    { title: 'Ethical Hacking 101', track: 'cyber', icon: 'security', level: 'Intermediate', enrolled: 140, completion: 22, modules: 5, pendingReviews: 6 },
-    { title: 'Design Thinking Sprint', track: 'innovation', icon: 'tips_and_updates', level: 'Beginner', enrolled: 210, completion: 55, modules: 4, pendingReviews: 4 },
-    { title: 'Web Dev Bootcamp', track: 'coding', icon: 'code', level: 'Beginner', enrolled: 290, completion: 61, modules: 10, pendingReviews: 9 }
-  ];
+  courses: InstructorCourse[] = [];
 
-  mentoredTeams = [
-    { name: 'PRESEC Robotics A', track: 'robotics', school: 'PRESEC Legon', progress: 78, nextDeadline: 'Jun 28', members: 5, status: 'on-track' },
-    { name: 'Achimota Code Squad', track: 'coding', school: 'Achimota SHS', progress: 62, nextDeadline: 'Jul 2', members: 4, status: 'needs-attention' },
-    { name: 'Wesley AI Pioneers', track: 'ai', school: 'Wesley Girls', progress: 91, nextDeadline: 'Jun 25', members: 5, status: 'excellent' },
-    { name: 'Holy Child Cyber Unit', track: 'cyber', school: 'Holy Child', progress: 45, nextDeadline: 'Jul 5', members: 3, status: 'at-risk' }
-  ];
+  mentoredTeams: any[] = [];
 
-  activityFeed = [
-    { icon: 'upload_file', text: 'Kwame Asante submitted pathfinder_v2.py', time: '10m ago', track: 'coding' },
-    { icon: 'task_alt', text: 'You approved Kofi Boateng\'s CTF writeup', time: '3h ago', track: 'cyber' },
-    { icon: 'forum', text: 'New mentor note on Team Alpha resubmission', time: '2h ago', track: 'coding' },
-    { icon: 'school', text: '18 new enrollments in Python Data Structures', time: '5h ago', track: 'coding' }
-  ];
+  activityFeed: any[] = [];
 
   constructor(private apiService: ApiService, private contentService: ContentService) {}
 
