@@ -2322,6 +2322,15 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         const currentUsers = [...this.contentService.users];
         currentUsers.unshift(newJudge);
         this.contentService.saveUsers(currentUsers);
+        this.apiService.createUser({
+          email: newJudge.email,
+          full_name: newJudge.fullName,
+          role: newJudge.role,
+          ticket: newJudge.ticket,
+          password: newJudge.password || newJudge.otp || '',
+          status: 'Active',
+          phone: newJudge.phone || ''
+        }).subscribe({ next: () => {}, error: () => {} });
         
         const currentAudit = [...this.contentService.auditLogs];
         currentAudit.unshift({
@@ -2366,6 +2375,15 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         const currentUsers = [...this.contentService.users];
         currentUsers.unshift(newSponsor);
         this.contentService.saveUsers(currentUsers);
+        this.apiService.createUser({
+          email: newSponsor.email,
+          full_name: newSponsor.fullName,
+          role: newSponsor.role,
+          ticket: newSponsor.ticket,
+          password: newSponsor.password || newSponsor.otp || '',
+          status: 'Active',
+          phone: newSponsor.phone || ''
+        }).subscribe({ next: () => {}, error: () => {} });
 
         const currentAudit = [...this.contentService.auditLogs];
         currentAudit.unshift({

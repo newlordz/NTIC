@@ -1855,16 +1855,35 @@ private readonly defaultTeams: Team[] = [];
     const timestamp = new Date().toISOString().split('T')[0];
     if (type === 'course') {
       const item = this.lmsCourses.find(c => c.id === id);
-      if (item) { item.approvalStatus = 'approved'; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsCourses', this.lmsCourses); }
+      if (item) { item.approvalStatus = 'approved'; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsCourses', this.lmsCourses); this.syncToBackend('lms_courses', this.lmsCourses.map(c => ({
+        id: c.id, title: c.title, track: c.track, icon: c.icon, level: c.level,
+        description: c.description, modules: c.modules, enrolled: c.enrolled,
+        completion: c.completion, status: c.status, created_at: c.createdAt,
+        submitted_by: c.submittedBy, approval_status: c.approvalStatus,
+        rejection_reason: c.rejectionReason
+      }))); }
     } else if (type === 'module') {
       const item = this.lmsModules.find(m => m.id === id);
-      if (item) { item.approvalStatus = 'approved'; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsModules', this.lmsModules); }
+      if (item) { item.approvalStatus = 'approved'; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsModules', this.lmsModules); this.syncToBackend('lms_modules', this.lmsModules.map(m => ({
+        id: m.id, courseId: m.courseId, title: m.title, description: m.description,
+        order: m.order, icon: m.icon, status: m.status,
+        submitted_by: m.submittedBy, approval_status: m.approvalStatus
+      }))); }
     } else if (type === 'material') {
       const item = this.lmsMaterials.find(m => m.id === id);
-      if (item) { item.approvalStatus = 'approved'; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsMaterials', this.lmsMaterials); }
+      if (item) { item.approvalStatus = 'approved'; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsMaterials', this.lmsMaterials); this.syncToBackend('lms_materials', this.lmsMaterials.map(m => ({
+        id: m.id, courseId: m.courseId, moduleId: m.moduleId, title: m.title,
+        type: m.type, url: m.url, description: m.description, created_at: m.createdAt,
+        submitted_by: m.submittedBy, approval_status: m.approvalStatus
+      }))); }
     } else if (type === 'assignment') {
       const item = this.lmsAssignments.find(a => a.id === id);
-      if (item) { item.approvalStatus = 'approved'; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsAssignments', this.lmsAssignments); }
+      if (item) { item.approvalStatus = 'approved'; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsAssignments', this.lmsAssignments); this.syncToBackend('lms_assignments', this.lmsAssignments.map(a => ({
+        id: a.id, courseId: a.courseId, title: a.title, description: a.description,
+        due_date: a.dueDate, maxScore: a.maxScore, track: a.track, status: a.status,
+        created_at: a.createdAt, submitted_by: a.submittedBy,
+        approval_status: a.approvalStatus
+      }))); }
     }
   }
 
@@ -1872,16 +1891,35 @@ private readonly defaultTeams: Team[] = [];
     const timestamp = new Date().toISOString().split('T')[0];
     if (type === 'course') {
       const item = this.lmsCourses.find(c => c.id === id);
-      if (item) { item.approvalStatus = 'rejected'; item.rejectionReason = reason; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsCourses', this.lmsCourses); }
+      if (item) { item.approvalStatus = 'rejected'; item.rejectionReason = reason; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsCourses', this.lmsCourses); this.syncToBackend('lms_courses', this.lmsCourses.map(c => ({
+        id: c.id, title: c.title, track: c.track, icon: c.icon, level: c.level,
+        description: c.description, modules: c.modules, enrolled: c.enrolled,
+        completion: c.completion, status: c.status, created_at: c.createdAt,
+        submitted_by: c.submittedBy, approval_status: c.approvalStatus,
+        rejection_reason: c.rejectionReason
+      }))); }
     } else if (type === 'module') {
       const item = this.lmsModules.find(m => m.id === id);
-      if (item) { item.approvalStatus = 'rejected'; item.rejectionReason = reason; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsModules', this.lmsModules); }
+      if (item) { item.approvalStatus = 'rejected'; item.rejectionReason = reason; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsModules', this.lmsModules); this.syncToBackend('lms_modules', this.lmsModules.map(m => ({
+        id: m.id, courseId: m.courseId, title: m.title, description: m.description,
+        order: m.order, icon: m.icon, status: m.status,
+        submitted_by: m.submittedBy, approval_status: m.approvalStatus
+      }))); }
     } else if (type === 'material') {
       const item = this.lmsMaterials.find(m => m.id === id);
-      if (item) { item.approvalStatus = 'rejected'; item.rejectionReason = reason; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsMaterials', this.lmsMaterials); }
+      if (item) { item.approvalStatus = 'rejected'; item.rejectionReason = reason; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsMaterials', this.lmsMaterials); this.syncToBackend('lms_materials', this.lmsMaterials.map(m => ({
+        id: m.id, courseId: m.courseId, moduleId: m.moduleId, title: m.title,
+        type: m.type, url: m.url, description: m.description, created_at: m.createdAt,
+        submitted_by: m.submittedBy, approval_status: m.approvalStatus
+      }))); }
     } else if (type === 'assignment') {
       const item = this.lmsAssignments.find(a => a.id === id);
-      if (item) { item.approvalStatus = 'rejected'; item.rejectionReason = reason; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsAssignments', this.lmsAssignments); }
+      if (item) { item.approvalStatus = 'rejected'; item.rejectionReason = reason; item.reviewedBy = adminEmail; item.reviewedAt = timestamp; this.saveState('lmsAssignments', this.lmsAssignments); this.syncToBackend('lms_assignments', this.lmsAssignments.map(a => ({
+        id: a.id, courseId: a.courseId, title: a.title, description: a.description,
+        due_date: a.dueDate, maxScore: a.maxScore, track: a.track, status: a.status,
+        created_at: a.createdAt, submitted_by: a.submittedBy,
+        approval_status: a.approvalStatus
+      }))); }
     }
   }
 }

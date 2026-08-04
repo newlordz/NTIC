@@ -991,6 +991,188 @@ try:
         conn.close()
         return [{"id": r[0], "title": r[1], "description": r[2], "image": r[3]} for r in rows]
 
+    class PhilCardCreate(BaseModel):
+        title: str
+        description: str = ""
+        image: str = ""
+
+    @app.post("/api/philosophy", status_code=status.HTTP_201_CREATED)
+    def create_philosophy_card(payload: PhilCardCreate):
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        pid = "phil-" + str(uuid.uuid4())[:8]
+        cur = conn.cursor()
+        cur.execute("INSERT INTO philosophy_cards (id, title, description, image) VALUES (%s, %s, %s, %s)", (pid, payload.title, payload.description, payload.image))
+        conn.commit(); cur.close(); conn.close()
+        return {"id": pid, "title": payload.title}
+
+    @app.patch("/api/philosophy/{item_id}")
+    def update_philosophy_card(item_id: str, payload: PhilCardCreate):
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("UPDATE philosophy_cards SET title=%s, description=%s, image=%s WHERE id=%s RETURNING id", (payload.title, payload.description, payload.image, item_id))
+        row = cur.fetchone(); conn.commit(); cur.close(); conn.close()
+        if not row: raise HTTPException(status_code=404, detail="Card not found")
+        return {"id": item_id, "status": "updated"}
+
+    @app.delete("/api/philosophy/{item_id}")
+    def delete_philosophy_card(item_id: str):
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("DELETE FROM philosophy_cards WHERE id=%s", (item_id,)); conn.commit(); cur.close(); conn.close()
+        return {"status": "deleted", "id": item_id}
+
+    # HERO SLIDES
+    class HeroSlideCreate(BaseModel):
+        tag: str = ""
+        title: str = ""
+        description: str = ""
+        image: str = ""
+        image_file_id: str = ""
+        video_file_id: str = ""
+        video_url: str = ""
+        sort_order: int = 0
+
+    @app.get("/api/hero-slides")
+    def list_hero_slides():
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT id, tag, title, description, image, image_file_id, video_file_id, video_url, sort_order FROM hero_slides ORDER BY sort_order")
+        rows = cur.fetchall(); cur.close(); conn.close()
+        return [{"id": r[0], "tag": r[1], "title": r[2], "description": r[3], "image": r[4], "imageFileId": r[5], "videoFileId": r[6], "videoUrl": r[7], "sortOrder": r[8]} for r in rows]
+
+    @app.post("/api/hero-slides", status_code=status.HTTP_201_CREATED)
+    def create_hero_slide(payload: HeroSlideCreate):
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        sid = "slide-" + str(uuid.uuid4())[:8]
+        cur = conn.cursor()
+        cur.execute("INSERT INTO hero_slides (id, tag, title, description, image, image_file_id, video_file_id, video_url, sort_order) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)", (sid, payload.tag, payload.title, payload.description, payload.image, payload.image_file_id, payload.video_file_id, payload.video_url, payload.sort_order))
+        conn.commit(); cur.close(); conn.close()
+        return {"id": sid, "title": payload.title}
+
+    @app.delete("/api/hero-slides/{item_id}")
+    def delete_hero_slide(item_id: str):
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("DELETE FROM hero_slides WHERE id=%s", (item_id,)); conn.commit(); cur.close(); conn.close()
+        return {"status": "deleted", "id": item_id}
+
+    # TALENT DISCOVERY
+    class TalentCreate(BaseModel):
+        student_name: str = ""
+        school: str = ""
+        track: str = ""
+        project_title: str = ""
+        talent_tags: str = ""
+        description: str = ""
+        mentor: str = ""
+        status: str = "active"
+
+    @app.get("/api/talent")
+    def list_talent():
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT id, student_name, school, track, project_title, talent_tags, description, mentor, status FROM talent_discovery ORDER BY created_at DESC")
+        rows = cur.fetchall(); cur.close(); conn.close()
+        return [{"id": r[0], "studentName": r[1], "school": r[2], "track": r[3], "projectTitle": r[4], "talentTags": r[5], "description": r[6], "mentor": r[7], "status": r[8]} for r in rows]
+
+    @app.post("/api/talent", status_code=status.HTTP_201_CREATED)
+    def create_talent(payload: TalentCreate):
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        tid = "td-" + str(uuid.uuid4())[:8]
+        cur = conn.cursor()
+        cur.execute("INSERT INTO talent_discovery (id, student_name, school, track, project_title, talent_tags, description, mentor, status) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)", (tid, payload.student_name, payload.school, payload.track, payload.project_title, payload.talent_tags, payload.description, payload.mentor, payload.status))
+        conn.commit(); cur.close(); conn.close()
+        return {"id": tid, "studentName": payload.student_name}
+
+    @app.patch("/api/talent/{item_id}")
+    def update_talent(item_id: str, payload: TalentCreate):
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("UPDATE talent_discovery SET student_name=%s, school=%s, track=%s, project_title=%s, talent_tags=%s, description=%s, mentor=%s, status=%s WHERE id=%s RETURNING id", (payload.student_name, payload.school, payload.track, payload.project_title, payload.talent_tags, payload.description, payload.mentor, payload.status, item_id))
+        row = cur.fetchone(); conn.commit(); cur.close(); conn.close()
+        if not row: raise HTTPException(status_code=404, detail="Talent entry not found")
+        return {"id": item_id, "status": "updated"}
+
+    @app.delete("/api/talent/{item_id}")
+    def delete_talent(item_id: str):
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("DELETE FROM talent_discovery WHERE id=%s", (item_id,)); conn.commit(); cur.close(); conn.close()
+        return {"status": "deleted", "id": item_id}
+
+    # PLATFORM STATS + COUNTDOWN
+    @app.get("/api/platform-stats")
+    def get_platform_stats():
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT regions, mentors, schools, students, projects, grants, countdown_date FROM platform_stats WHERE id='stats-1'")
+        row = cur.fetchone(); cur.close(); conn.close()
+        if not row: return {"regions": 0, "mentors": 0, "schools": 0, "students": 0, "projects": 0, "grants": 0, "countdownDate": "2026-08-15T09:00:00"}
+        return {"regions": row[0], "mentors": row[1], "schools": row[2], "students": row[3], "projects": row[4], "grants": row[5], "countdownDate": row[6] or "2026-08-15T09:00:00"}
+
+    class StatsUpdate(BaseModel):
+        regions: int = 0
+        mentors: int = 0
+        schools: int = 0
+        students: int = 0
+        projects: float = 0
+        grants: float = 0
+        countdown_date: str = ""
+
+    @app.patch("/api/platform-stats")
+    def update_platform_stats(payload: StatsUpdate):
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("INSERT INTO platform_stats (id, regions, mentors, schools, students, projects, grants, countdown_date) VALUES ('stats-1',%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO UPDATE SET regions=EXCLUDED.regions, mentors=EXCLUDED.mentors, schools=EXCLUDED.schools, students=EXCLUDED.students, projects=EXCLUDED.projects, grants=EXCLUDED.grants, countdown_date=EXCLUDED.countdown_date, updated_at=CURRENT_TIMESTAMP", (payload.regions, payload.mentors, payload.schools, payload.students, payload.projects, payload.grants, payload.countdown_date))
+        conn.commit(); cur.close(); conn.close()
+        return {"status": "updated"}
+
+    # CSR UPDATES
+    class CsrCreate(BaseModel):
+        title: str = ""
+        description: str = ""
+        date: str = ""
+        icon: str = ""
+
+    @app.get("/api/csr")
+    def list_csr():
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT id, title, description, date, icon FROM csr_updates ORDER BY created_at DESC")
+        rows = cur.fetchall(); cur.close(); conn.close()
+        return [{"id": r[0], "title": r[1], "description": r[2], "date": r[3], "icon": r[4]} for r in rows]
+
+    @app.post("/api/csr", status_code=status.HTTP_201_CREATED)
+    def create_csr(payload: CsrCreate):
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cid = "csr-" + str(uuid.uuid4())[:8]
+        cur = conn.cursor()
+        cur.execute("INSERT INTO csr_updates (id, title, description, date, icon) VALUES (%s,%s,%s,%s,%s)", (cid, payload.title, payload.description, payload.date, payload.icon))
+        conn.commit(); cur.close(); conn.close()
+        return {"id": cid, "title": payload.title}
+
+    @app.delete("/api/csr/{item_id}")
+    def delete_csr(item_id: str):
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("DELETE FROM csr_updates WHERE id=%s", (item_id,)); conn.commit(); cur.close(); conn.close()
+        return {"status": "deleted", "id": item_id}
+
     # USERS
     @app.get("/api/users")
     def list_users():

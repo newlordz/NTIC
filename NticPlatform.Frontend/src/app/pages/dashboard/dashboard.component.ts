@@ -1999,11 +1999,20 @@ setTimeout(async () => {
       this.storyForm.image = 'assets/ntic_image_1.jpeg'; // fallback
     }
     
+    const payload = {
+      title: this.storyForm.title,
+      excerpt: this.storyForm.body,
+      date: this.storyForm.date || '',
+      image: this.storyForm.image
+    };
+
     if (this.editingStoryId) {
       this.contentService.updateStory({ id: this.editingStoryId, ...this.storyForm });
+      this.apiService.updateStory(this.editingStoryId, payload).subscribe({ next: () => {}, error: () => {} });
       this.addAuditLog({ action: `Championship Story updated: "${this.storyForm.title.slice(0, 40)}..."`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     } else {
       this.contentService.addStory({ ...this.storyForm });
+      this.apiService.createStory(payload).subscribe({ next: () => {}, error: () => {} });
       this.addAuditLog({ action: `Championship Story added: "${this.storyForm.title.slice(0, 40)}..."`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     }
     this.storyFormOpen = false;
@@ -2011,6 +2020,7 @@ setTimeout(async () => {
 
   removeStory(id: string): void {
     this.contentService.removeStory(id);
+    this.apiService.deleteStory(id).subscribe({ next: () => {}, error: () => {} });
     this.addAuditLog({ action: `Championship Story removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
@@ -2106,22 +2116,25 @@ setTimeout(async () => {
     if (!this.slideForm.title && !this.slideForm.image && !this.slideForm.videoFileId && !this.slideForm.videoUrl) return;
     const slides = [...this.contentService.heroSlides];
     const saved = {
-      ...this.slideForm,
-      tag: this.slideForm.tag || 'National Championship',
-      description: this.slideForm.description || 'Bringing together high school teams from all 16 regions to solve real-world problems through Coding, Robotics, AI, Cybersecurity, and Open Innovation.',
-      ctaText: this.slideForm.ctaText || 'Enter Portal',
-      ctaLink: this.slideForm.ctaLink || '#portal'
+      ...this.slideForm, tag: this.slideForm.tag || 'National Championship',
+      description: this.slideForm.description || '',
+      ctaText: this.slideForm.ctaText || 'Enter Portal', ctaLink: this.slideForm.ctaLink || '#portal'
     };
+    const slideId = this.editingSlideId || `slide-${Date.now()}`;
     if (this.editingSlideId) {
       const idx = slides.findIndex(s => s.id === this.editingSlideId);
-      if (idx > -1) slides[idx] = { ...slides[idx], ...saved };
+      if (idx > -1) slides[idx] = { ...slides[idx], ...saved, id: slideId };
+      this.apiService.deleteHeroSlide(this.editingSlideId).subscribe({
+        next: () => this.apiService.createHeroSlide({ id: slideId, title: saved.title, tag: saved.tag, description: saved.description, image: saved.image || '', videoFileId: saved.videoFileId || '', videoUrl: saved.videoUrl || '' }).subscribe({ next: () => {}, error: () => {} }),
+        error: () => {}
+      });
       this.addAuditLog({ action: `Slide updated: "${(this.slideForm.title || 'Untitled').slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     } else {
-      slides.push({ id: `slide-${Date.now()}`, ...saved });
+      slides.push({ id: slideId, ...saved });
+      this.apiService.createHeroSlide({ id: slideId, title: saved.title, tag: saved.tag, description: saved.description, image: saved.image || '', videoFileId: saved.videoFileId || '', videoUrl: saved.videoUrl || '' }).subscribe({ next: () => {}, error: () => {} });
       this.addAuditLog({ action: `Slide added: "${(this.slideForm.title || 'Untitled').slice(0, 40)}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     }
-    this.contentService.saveHeroSlides(slides);
-    this.slideFormOpen = false;
+    this.contentService.saveHeroSlides(slides); this.slideFormOpen = false;
   }
 
   saveSlideField(field: string): void {
@@ -2140,6 +2153,7 @@ setTimeout(async () => {
   deleteSlide(slide: any): void {
     const slides = this.contentService.heroSlides.filter(s => s.id !== slide.id);
     this.contentService.saveHeroSlides(slides);
+    this.apiService.deleteHeroSlide(slide.id).subscribe({ next: () => {}, error: () => {} });
     this.addAuditLog({ action: `Slide deleted: "${slide.title}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
@@ -2172,6 +2186,13 @@ setTimeout(async () => {
 
   savePhilCard(): void {
     this.contentService.savePhilosophyCard(this.editingPhilCard);
+    const isNew = !this.editingPhilCard.id || this.editingPhilCard.id.length < 12;
+    const payload = { title: this.editingPhilCard.title, description: this.editingPhilCard.description || '', image: this.editingPhilCard.image || '' };
+    if (isNew) {
+      this.apiService.createPhilosophy(payload).subscribe({ next: () => {}, error: () => {} });
+    } else {
+      this.apiService.updatePhilosophy(this.editingPhilCard.id, payload).subscribe({ next: () => {}, error: () => {} });
+    }
     this.philCardFormOpen = false;
     this.addAuditLog({ action: `Philosophy card saved: "${this.editingPhilCard.title}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
@@ -2179,6 +2200,7 @@ setTimeout(async () => {
   deletePhilCard(card: any): void {
     const list = this.contentService.philosophyCards.filter(c => c.id !== card.id);
     this.contentService.savePhilosophyCards(list);
+    this.apiService.deletePhilosophy(card.id).subscribe({ next: () => {}, error: () => {} });
     this.addAuditLog({ action: `Philosophy card deleted: "${card.title}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
@@ -2248,17 +2270,38 @@ setTimeout(async () => {
   saveEvent(): void {
     const e = this.editingEvent;
     if (!e.title) return;
-    if (e.id.startsWith('evt-new-')) {
+    const isNew = e.id.startsWith('evt-new-');
+    if (isNew) {
       this.contentService.addEvent({ month: e.month, day: e.day, title: e.title, description: e.description, location: e.location });
     } else {
       this.contentService.updateEvent(e);
+    }
+    // Persist to backend
+    const dateStr = e.month && e.day ? `2026-${this.monthToNumber(e.month)}-${String(e.day).padStart(2, '0')}` : '';
+    const payload = {
+      title: e.title,
+      date: dateStr,
+      time: '',
+      location: e.location || '',
+      description: e.description || ''
+    };
+    if (isNew) {
+      this.apiService.createEvent(payload).subscribe({ next: () => {}, error: () => {} });
+    } else {
+      this.apiService.updateEvent(e.id, payload).subscribe({ next: () => {}, error: () => {} });
     }
     this.eventFormOpen = false;
     this.addAuditLog({ action: `Event saved: "${e.title}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
+  private monthToNumber(m: string): string {
+    const months: Record<string, string> = { 'Jan':'01','Feb':'02','Mar':'03','Apr':'04','May':'05','Jun':'06','Jul':'07','Aug':'08','Sep':'09','Oct':'10','Nov':'11','Dec':'12' };
+    return months[m] || '01';
+  }
+
   deleteEvent(event: UpcomingEvent): void {
     this.contentService.removeEvent(event.id);
+    this.apiService.deleteEvent(event.id).subscribe({ next: () => {}, error: () => {} });
     this.addAuditLog({ action: `Event deleted: "${event.title}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
@@ -2451,9 +2494,25 @@ setTimeout(async () => {
     this.onLbTrackChange(); // recalc total
     if (this.lbEditId) {
       this.contentService.updateLeaderboardEntry(this.lbEditId, { ...this.lbForm });
+      this.apiService.updateSchool(this.lbEditId, {
+        name: this.lbForm.schoolName,
+        region: this.lbForm.region,
+        teams: 1,
+        score: this.lbForm.points,
+        rank: parseInt(this.lbForm.rank, 10) || 0,
+        status: 'active'
+      }).subscribe({ next: () => {}, error: () => {} });
       this.addAuditLog({ action: `Leaderboard updated: ${this.lbForm.schoolName}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     } else {
       this.contentService.addLeaderboardEntry({ ...this.lbForm });
+      this.apiService.createSchool({
+        name: this.lbForm.schoolName,
+        region: this.lbForm.region,
+        teams: 1,
+        score: this.lbForm.points,
+        rank: parseInt(this.lbForm.rank, 10) || 0,
+        status: 'active'
+      }).subscribe({ next: () => {}, error: () => {} });
       this.addAuditLog({ action: `Leaderboard entry added: ${this.lbForm.schoolName}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     }
     this.lbFormOpen = false;
@@ -2461,6 +2520,7 @@ setTimeout(async () => {
   }
   removeLbEntry(id: string): void {
     this.contentService.removeLeaderboardEntry(id);
+    this.apiService.deleteSchool(id).subscribe({ next: () => {}, error: () => {} });
     this.addAuditLog({ action: `Leaderboard entry removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
@@ -2501,9 +2561,30 @@ setTimeout(async () => {
     }
     if (this.tdEditId) {
       this.contentService.updateTalentDiscovery(this.tdEditId, { ...this.tdForm });
+      this.apiService.updateTalent(this.tdEditId, {
+        student_name: this.tdForm.studentName,
+        school: this.tdForm.schoolAndGrade,
+        track: this.tdForm.category,
+        project_title: `${this.tdForm.studentName} - ${this.tdForm.category}`,
+        talent_tags: this.tdForm.category,
+        description: `${this.tdForm.studentName} scoring ${this.tdForm.score} in ${this.tdForm.category}`,
+        mentor: '',
+        status: 'active'
+      }).subscribe({ next: () => {}, error: () => {} });
       this.addAuditLog({ action: `Talent Discovery entry updated for ${this.tdForm.studentName}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     } else {
+      const newId = 'td-' + Date.now();
       this.contentService.addTalentDiscovery({ ...this.tdForm });
+      this.apiService.createTalent({
+        student_name: this.tdForm.studentName,
+        school: this.tdForm.schoolAndGrade,
+        track: this.tdForm.category,
+        project_title: `${this.tdForm.studentName} - ${this.tdForm.category}`,
+        talent_tags: this.tdForm.category,
+        description: `${this.tdForm.studentName} scoring ${this.tdForm.score} in ${this.tdForm.category}`,
+        mentor: '',
+        status: 'active'
+      }).subscribe({ next: () => {}, error: () => {} });
       this.addAuditLog({ action: `Talent Discovery entry added for ${this.tdForm.studentName}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
     }
     this.tdFormOpen = false;
@@ -2512,6 +2593,7 @@ setTimeout(async () => {
 
   removeTdEntry(id: string): void {
     this.contentService.removeTalentDiscovery(id);
+    this.apiService.deleteTalent(id).subscribe({ next: () => {}, error: () => {} });
     this.addAuditLog({ action: `Talent Discovery entry removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
@@ -2522,6 +2604,14 @@ setTimeout(async () => {
   }
   saveStats(): void {
     this.contentService.updatePlatformStats({ ...this.statsForm });
+    this.apiService.updatePlatformStats({
+      regions: this.statsForm.regions,
+      mentors: this.statsForm.mentors,
+      schools: this.statsForm.schools,
+      students: this.statsForm.students,
+      projects: this.statsForm.projects,
+      grants: this.statsForm.grants
+    }).subscribe({ next: () => {}, error: () => {} });
     this.statsEditMode = false;
     this.addAuditLog({ action: 'Platform impact stats updated', user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
@@ -2562,6 +2652,7 @@ setTimeout(async () => {
       dateStr += ':00';
     }
     this.contentService.updateCountdownDate(dateStr);
+    this.apiService.updatePlatformStats({ countdown_date: dateStr }).subscribe({ next: () => {}, error: () => {} });
     this.addAuditLog({ action: `Countdown target date updated to ${dateStr}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 

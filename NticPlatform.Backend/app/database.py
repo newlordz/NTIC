@@ -294,6 +294,53 @@ def init_postgres_db():
                 rejection_notes TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS hero_slides (
+                id VARCHAR(64) PRIMARY KEY,
+                tag VARCHAR(100),
+                title VARCHAR(200),
+                description TEXT,
+                image VARCHAR(500),
+                image_file_id VARCHAR(200),
+                video_file_id VARCHAR(200),
+                video_url VARCHAR(500),
+                sort_order INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS talent_discovery (
+                id VARCHAR(64) PRIMARY KEY,
+                student_name VARCHAR(200),
+                school VARCHAR(200),
+                track VARCHAR(100),
+                project_title VARCHAR(200),
+                talent_tags VARCHAR(500),
+                description TEXT,
+                mentor VARCHAR(200),
+                status VARCHAR(50) DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS platform_stats (
+                id VARCHAR(64) PRIMARY KEY DEFAULT 'stats-1',
+                regions INTEGER DEFAULT 0,
+                mentors INTEGER DEFAULT 0,
+                schools INTEGER DEFAULT 0,
+                students INTEGER DEFAULT 0,
+                projects REAL DEFAULT 0,
+                grants REAL DEFAULT 0,
+                countdown_date VARCHAR(50),
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS csr_updates (
+                id VARCHAR(64) PRIMARY KEY,
+                title VARCHAR(200),
+                description TEXT,
+                date VARCHAR(50),
+                icon VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         """)
         conn.commit()
         cur.close()

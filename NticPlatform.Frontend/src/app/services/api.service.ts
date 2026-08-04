@@ -84,6 +84,66 @@ export class ApiService {
     return this.http.get<any[]>(this.apiUrl + '/philosophy');
   }
 
+  createPhilosophy(payload: { title: string; description?: string; image?: string }): Observable<any> {
+    return this.http.post(this.apiUrl + '/philosophy', payload);
+  }
+
+  updatePhilosophy(id: string, payload: { title: string; description?: string; image?: string }): Observable<any> {
+    return this.http.patch(this.apiUrl + '/philosophy/' + id, payload);
+  }
+
+  deletePhilosophy(id: string): Observable<any> {
+    return this.http.delete(this.apiUrl + '/philosophy/' + id);
+  }
+
+  getHeroSlides(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl + '/hero-slides');
+  }
+
+  createHeroSlide(payload: any): Observable<any> {
+    return this.http.post(this.apiUrl + '/hero-slides', payload);
+  }
+
+  deleteHeroSlide(id: string): Observable<any> {
+    return this.http.delete(this.apiUrl + '/hero-slides/' + id);
+  }
+
+  getTalent(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl + '/talent');
+  }
+
+  createTalent(payload: any): Observable<any> {
+    return this.http.post(this.apiUrl + '/talent', payload);
+  }
+
+  updateTalent(id: string, payload: any): Observable<any> {
+    return this.http.patch(this.apiUrl + '/talent/' + id, payload);
+  }
+
+  deleteTalent(id: string): Observable<any> {
+    return this.http.delete(this.apiUrl + '/talent/' + id);
+  }
+
+  getPlatformStats(): Observable<any> {
+    return this.http.get<any>(this.apiUrl + '/platform-stats');
+  }
+
+  updatePlatformStats(payload: any): Observable<any> {
+    return this.http.patch(this.apiUrl + '/platform-stats', payload);
+  }
+
+  getCsrUpdates(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl + '/csr');
+  }
+
+  createCsrUpdate(payload: any): Observable<any> {
+    return this.http.post(this.apiUrl + '/csr', payload);
+  }
+
+  deleteCsrUpdate(id: string): Observable<any> {
+    return this.http.delete(this.apiUrl + '/csr/' + id);
+  }
+
   getSchools(): Observable<any[]> {
     return this.http.get<any[]>(this.apiUrl + '/schools');
   }
