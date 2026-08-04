@@ -979,20 +979,20 @@ private readonly defaultTeams: Team[] = [];
   }
   private loadStateAndFallback(): void {
     if (typeof window !== 'undefined' && window.localStorage) {
-      // Backend-backed collections — never load from localStorage first.
-      // Use defaults; loadFromBackend will replace with real data immediately.
-      this.championshipStories = [...this.defaultStories];
-      this.hallOfFameEntries = [...this.defaultHof];
-      this.upcomingEvents = [...this.defaultEvents];
-      this.leaderboardData = [...this.defaultLeaderboard];
-      this.talentDiscovery = [...this.defaultTalentDiscovery];
-      this.platformStats = { ...this.defaultStats };
-      this.heroSlides = [...this.defaultHero];
-      this.newsFeedItems = [...this.defaultNews];
-      this.countdownDate = '2026-08-15T09:00:00';
-
-      // Users — always start fresh, backend sync replaces with real data
+      // Load from localStorage first for instant render.
+      // loadFromBackend() refreshes all collections from the API immediately after.
+      this.championshipStories = this.loadKeySync('championshipStories', this.defaultStories);
+      this.hallOfFameEntries = [];
+      this.upcomingEvents = this.loadKeySync('upcomingEvents', this.defaultEvents);
+      this.leaderboardData = this.loadKeySync('leaderboardData', this.defaultLeaderboard);
+      this.talentDiscovery = this.loadKeySync('talentDiscovery', this.defaultTalentDiscovery);
+      this.platformStats = this.loadKeySync('platformStats', this.defaultStats);
+      this.heroSlides = this.loadKeySync('heroSlides', this.defaultHero);
+      this.newsFeedItems = this.loadKeySync('newsFeedItems', this.defaultNews);
       this.users = [...this.defaultUsers];
+
+      const savedCountdown = localStorage.getItem('countdownDate');
+      this.countdownDate = savedCountdown || '2026-08-15T09:00:00';
 
       // Large datasets — load from localStorage first (sync), then async upgrade to IndexedDB
       // Users are NOT loaded from localStorage — always fresh from backend sync
