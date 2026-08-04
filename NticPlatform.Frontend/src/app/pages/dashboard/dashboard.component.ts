@@ -1730,6 +1730,17 @@ setTimeout(async () => {
         users[idx] = { ...users[idx], ...this.adminForm };
         this.contentService.saveUsers(users);
       }
+      this.apiService.updateUser(this.editingAdmin.id, {
+        email: this.adminForm.email,
+        full_name: this.adminForm.fullName,
+        role: this.adminForm.role,
+        ticket: this.adminForm.ticket,
+        status: this.adminForm.status,
+        phone: this.adminForm.phone || ''
+      }).subscribe({
+        next: () => {},
+        error: () => {}
+      });
     } else {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const newUser = {
@@ -1750,6 +1761,19 @@ setTimeout(async () => {
       currentUsers.unshift(newUser);
       this.contentService.saveUsers(currentUsers);
 
+      this.apiService.createUser({
+        email: newUser.email,
+        full_name: newUser.fullName,
+        role: newUser.role,
+        ticket: newUser.ticket,
+        password: newUser.password || otp,
+        status: 'Active',
+        phone: newUser.phone
+      }).subscribe({
+        next: () => {},
+        error: () => {}
+      });
+
       this.addAuditLog({ action: `Created ${this.adminForm.role} account: ${this.adminForm.fullName} (${this.adminForm.email})`, type: 'approval' });
       this.closeAdminModal();
       this.showTicketModal(newUser);
@@ -1766,6 +1790,10 @@ setTimeout(async () => {
 
   deleteAdminUser(): void {
     if (!this.deleteConfirmAdmin) return;
+    this.apiService.deleteUser(this.deleteConfirmAdmin.id).subscribe({
+      next: () => {},
+      error: () => {}
+    });
     const users = this.contentService.users.filter(u => u.id !== this.deleteConfirmAdmin.id);
     this.contentService.saveUsers(users);
     this.addAuditLog({ action: `Removed admin: ${this.deleteConfirmAdmin.fullName} (${this.deleteConfirmAdmin.role})`, type: 'revoked' });
