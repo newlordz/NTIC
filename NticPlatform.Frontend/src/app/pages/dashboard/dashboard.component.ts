@@ -694,6 +694,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.route.queryParams.subscribe(params => {
       if (params['tab'] && ['overview', 'register', 'tickets', 'approvals', 'content', 'users', 'admins'].includes(params['tab'])) {
         this.adminTab = params['tab'] as any;
+        if (params['tab'] === 'approvals') {
+          this.loadApprovalsFromBackend();
+        }
       }
       this.isRegModalOpen = params['openRegModal'] === 'true';
       if (params['action'] === 'add_team') {
@@ -834,6 +837,38 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       },
       error: () => {} // Silently fall back to the default count from registeredUsers
+    });
+  }
+
+  loadApprovalsFromBackend(): void {
+    this.apiService.getApprovals().subscribe({
+      next: (backendApprovals: any[]) => {
+        if (!backendApprovals || backendApprovals.length === 0) return;
+        const pending: any[] = [];
+        const approved: any[] = [];
+        const rejected: any[] = [];
+        backendApprovals.forEach((a: any) => {
+          const mapped = {
+            id: a.id,
+            type: a.type,
+            entity: a.entity,
+            contact: a.contact,
+            submitted: a.submitted,
+            details: a.details || {},
+            reviewedAt: a.reviewedAt,
+            reviewer: a.reviewer,
+            rejectionReasons: a.rejectionReasons,
+            rejectionNotes: a.rejectionNotes
+          };
+          if (a.status === 'pending') pending.push(mapped);
+          else if (a.status === 'approved') approved.push(mapped);
+          else if (a.status === 'rejected') rejected.push(mapped);
+        });
+        if (pending.length > 0) this.contentService.saveApprovals(pending);
+        if (approved.length > 0) this.contentService.saveApprovedApprovals(approved);
+        if (rejected.length > 0) this.contentService.saveRejectedApprovals(rejected);
+      },
+      error: () => {} // Silently fall back to localStorage
     });
   }
 
@@ -1306,6 +1341,13 @@ setTimeout(async () => {
 
     this.pendingApprovals = this.pendingApprovals.filter(r => r.id !== req.id);
 
+    // Persist to backend so other machines see the approval
+    this.apiService.updateApproval(req.id, {
+      status: 'approved',
+      reviewed_at: new Date().toLocaleString('en-GB'),
+      reviewer: 'admin@ntic.org.gh'
+    }).subscribe({ next: () => {}, error: () => {} });
+
     // Apply side-effects depending on the type of approval request
     if (req.type === 'School Registration') {
       const ticket = 'NTIC-SCH-' + Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -1592,6 +1634,15 @@ setTimeout(async () => {
     this.contentService.saveRejectedApprovals(currentRejected);
 
     this.pendingApprovals = this.pendingApprovals.filter(r => r.id !== this.activeReviewRequest.id);
+
+    // Persist to backend so other machines see the rejection
+    this.apiService.updateApproval(this.activeReviewRequest.id, {
+      status: 'rejected',
+      reviewed_at: new Date().toLocaleString('en-GB'),
+      reviewer: 'admin@ntic.org.gh',
+      rejection_reasons: reasons || 'No specific reason provided',
+      rejection_notes: this.rejectionNotes || ''
+    }).subscribe({ next: () => {}, error: () => {} });
 
     this.emailService.sendRejectionEmail(
       this.activeReviewRequest.contact,

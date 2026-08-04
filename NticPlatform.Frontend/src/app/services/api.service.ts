@@ -199,9 +199,27 @@ export class ApiService {
     return this.http.patch(this.apiUrl + '/users/' + id, payload);
   }
 
-  deleteUser(id: string): Observable<any> {
-    return this.http.delete(this.apiUrl + '/users/' + id);
-  }
+   deleteUser(id: string): Observable<any> {
+     return this.http.delete(this.apiUrl + '/users/' + id);
+   }
+
+   // Pending Approvals (cross-machine sync)
+   getApprovals(status?: string): Observable<any[]> {
+     const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+     return this.http.get<any[]>(this.apiUrl + '/approvals' + qs);
+   }
+
+   createApproval(payload: any): Observable<any> {
+     return this.http.post(this.apiUrl + '/approvals', payload);
+   }
+
+   updateApproval(id: string, payload: any): Observable<any> {
+     return this.http.patch(this.apiUrl + '/approvals/' + id, payload);
+   }
+
+   deleteApproval(id: string): Observable<any> {
+     return this.http.delete(this.apiUrl + '/approvals/' + id);
+   }
 
   getHof(): Observable<any[]> {
     return this.http.get<any[]>(this.apiUrl + '/hof');

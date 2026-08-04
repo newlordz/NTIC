@@ -1501,7 +1501,21 @@ export class RegistrationComponent implements OnInit, OnDestroy {
               code: currentApprovals[idx].details?.code || this.generateApplicationCode('team')
             }
           };
-          this.contentService.saveApprovals(currentApprovals);
+        this.contentService.saveApprovals(currentApprovals);
+
+        // Also persist to backend so other machines see pending approvals
+        const latestApproval = currentApprovals[0];
+        if (latestApproval) {
+          this.apiService.createApproval({
+            id: latestApproval.id,
+            type: latestApproval.type,
+            entity: latestApproval.entity,
+            contact: latestApproval.contact,
+            submitted: latestApproval.submitted,
+            details: latestApproval.details,
+            status: 'pending'
+          }).subscribe({ next: () => {}, error: () => {} });
+        }
 
           const currentAudit = [...this.contentService.auditLogs];
           currentAudit.unshift({

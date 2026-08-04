@@ -278,6 +278,23 @@ def init_postgres_db():
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);")
         cur.execute("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false;")
         cur.execute("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL;")
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS pending_approvals (
+                id VARCHAR(64) PRIMARY KEY,
+                type VARCHAR(50) NOT NULL,
+                entity VARCHAR(200) NOT NULL,
+                contact VARCHAR(150),
+                submitted VARCHAR(50),
+                details JSONB DEFAULT '{}',
+                status VARCHAR(20) DEFAULT 'pending',
+                reviewed_at VARCHAR(50),
+                reviewer VARCHAR(100),
+                rejection_reasons TEXT,
+                rejection_notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
         conn.commit()
         cur.close()
 

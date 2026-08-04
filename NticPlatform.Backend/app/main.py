@@ -1363,6 +1363,97 @@ try:
         conn.close()
         return {"id": course_id, "title": payload.title}
 
+    # PENDING APPROVALS (cross-machine sync)
+    class ApprovalCreate(BaseModel):
+        id: str
+        type: str
+        entity: str
+        contact: str = ""
+        submitted: str = ""
+        details: dict = {}
+        status: str = "pending"
+
+    class ApprovalUpdate(BaseModel):
+        status: str = ""
+        reviewed_at: str = ""
+        reviewer: str = ""
+        rejection_reasons: str = ""
+        rejection_notes: str = ""
+
+    @app.get("/api/approvals")
+    def list_approvals(status: str = ""):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        import json as _json
+        if status:
+            cur.execute("SELECT id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes, created_at FROM pending_approvals WHERE status = %s ORDER BY created_at DESC", (status,))
+        else:
+            cur.execute("SELECT id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes, created_at FROM pending_approvals ORDER BY created_at DESC")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return [{"id": r[0], "type": r[1], "entity": r[2], "contact": r[3], "submitted": r[4], "details": r[5] if isinstance(r[5], dict) else _json.loads(r[5] or "{}"), "status": r[6], "reviewedAt": r[7], "reviewer": r[8], "rejectionReasons": r[9], "rejectionNotes": r[10], "created_at": str(r[11])} for r in rows]
+
+    @app.post("/api/approvals", status_code=status.HTTP_201_CREATED)
+    def create_approval(payload: ApprovalCreate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        import json as _json
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "INSERT INTO pending_approvals (id, type, entity, contact, submitted, details, status) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET type = EXCLUDED.type, entity = EXCLUDED.entity, contact = EXCLUDED.contact, submitted = EXCLUDED.submitted, details = EXCLUDED.details, status = EXCLUDED.status",
+                (payload.id, payload.type, payload.entity, payload.contact, payload.submitted, _json.dumps(payload.details), payload.status)
+            )
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        return {"id": payload.id, "status": "created"}
+
+    @app.patch("/api/approvals/{item_id}")
+    def update_approval(item_id: str, payload: ApprovalUpdate):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                "UPDATE pending_approvals SET status = %s, reviewed_at = %s, reviewer = %s, rejection_reasons = %s, rejection_notes = %s WHERE id = %s RETURNING id",
+                (payload.status, payload.reviewed_at, payload.reviewer, payload.rejection_reasons, payload.rejection_notes, item_id)
+            )
+            row = cur.fetchone()
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="Approval not found")
+        return {"id": item_id, "status": "updated"}
+
+    @app.delete("/api/approvals/{item_id}")
+    def delete_approval(item_id: str):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("DELETE FROM pending_approvals WHERE id = %s", (item_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "deleted", "id": item_id}
+
     # BULK SYNC endpoint for LMS and other localStorage collections
     class BulkSyncPayload(BaseModel):
         collection: str
