@@ -539,7 +539,11 @@ private readonly defaultLmsAssignments: LmsAssignment[] = [];
 
   private readonly defaultStats: PlatformStats = { regions: 0, mentors: 0, schools: 0, students: 0, projects: 0, grants: 0 };
 
-  private readonly defaultHero: HeroSlide[] = [];
+  private readonly defaultHero: HeroSlide[] = [
+    { id: 'slide-1', tag: 'Ghana\'s Premier Tech Championship', title: 'National Tech Innovation Championship 2026', description: 'Empowering the next generation of Ghanaian innovators through Coding, Robotics, AI, Cybersecurity, and Open Innovation.', image: 'assets/ntic_image_1.jpeg', ctaText: 'Enter Portal', ctaLink: '#portal' },
+    { id: 'slide-2', tag: '500+ Schools Registered', title: 'Over 16 Regions Represented', description: 'From Accra to Tamale, young minds are competing to solve real-world problems with technology.', image: 'assets/ntic_image_4.jpeg', ctaText: 'Enter Portal', ctaLink: '#portal' },
+    { id: 'slide-3', tag: 'Innovate. Build. Lead.', title: 'Ready to Make an Impact?', description: 'Join Ghana\'s largest high school tech competition. Registration is open for all tracks.', image: 'assets/ntic_image_7.jpeg', ctaText: 'Enter Portal', ctaLink: '#portal' }
+  ];
 
   private readonly defaultNews: NewsFeedItem[] = [
     { id: 'news-1', headline: 'Phase 2 Registration Opens for All 16 Regions', tag: 'Competition', date: '2026-07-28', link: '#registration' },
