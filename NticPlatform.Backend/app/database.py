@@ -290,7 +290,16 @@ def init_postgres_db():
 
 def get_db_connection():
     """Return a fresh psycopg2 connection to NticPlatformDb."""
-    import psycopg2
+    import os, psycopg2
+    # Try DATABASE_URL first (Railway standard)
+    database_url = os.environ.get("DATABASE_URL")
+    if database_url:
+        try:
+            conn = psycopg2.connect(database_url)
+            return conn
+        except Exception as e:
+            logger.warning(f"PostgreSQL connection via DATABASE_URL failed: {e}")
+    # Fallback to individual POSTGRES_ vars (local dev)
     try:
         conn = psycopg2.connect(
             host=settings.POSTGRES_HOST,
