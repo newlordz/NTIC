@@ -30,6 +30,10 @@ class Config:
 
     @classmethod
     def validate(cls) -> None:
+        # If a DATABASE_URL is provided, credentials live inside the URL and
+        # individual PG vars are not required.
+        if os.getenv("DATABASE_URL"):
+            return
         missing = []
         if not cls.POSTGRES_PASSWORD:
             missing.append("POSTGRES_PASSWORD/PGPASSWORD")
