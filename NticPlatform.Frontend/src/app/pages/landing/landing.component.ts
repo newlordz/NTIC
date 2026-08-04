@@ -447,8 +447,6 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       posX: 50,
       posY: 50,
       obstacleX: 25,
-      obstacleY: 35,
-      obstacleStatus: 'Target Stone',
       missionSuccess: false,
       clawOpen: false,
       cargo: 'None',
@@ -461,32 +459,32 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       memory: '14.2 MB',
       opsSec: '2.4M ops/s',
       people: [
-        { id: 1, name: 'Kojo Mensah', age: 17, gender: 'male', initials: 'KM' },
-        { id: 2, name: 'Ama Serwaa', age: 15, gender: 'female', initials: 'AS' },
-        { id: 3, name: 'Yaw Boateng', age: 19, gender: 'male', initials: 'YB' },
-        { id: 4, name: 'Efua Donkor', age: 14, gender: 'female', initials: 'ED' },
-        { id: 5, name: 'Kwame Asante', age: 16, gender: 'male', initials: 'KW' },
-        { id: 6, name: 'Adwoa Gyasi', age: 18, gender: 'female', initials: 'AG' },
-        { id: 7, name: 'Kofi Nyarko', age: 20, gender: 'male', initials: 'KN' },
-        { id: 8, name: 'Yaa Akoto', age: 13, gender: 'female', initials: 'YA' },
-        { id: 9, name: 'Kwesi Arthur', age: 12, gender: 'male', initials: 'AR' },
-        { id: 10, name: 'Abena Osei', age: 16, gender: 'female', initials: 'AO' },
+        { id: 1, name: 'Kojo Mensah', age: 29, gender: 'male', initials: 'KM' },
+        { id: 2, name: 'Yaa Akoto', age: 12, gender: 'female', initials: 'YA' },
+        { id: 3, name: 'Kwame Asante', age: 68, gender: 'male', initials: 'KW' },
+        { id: 4, name: 'Adwoa Gyasi', age: 22, gender: 'female', initials: 'AG' },
+        { id: 5, name: 'Kofi Nyarko', age: 76, gender: 'male', initials: 'KN' },
+        { id: 6, name: 'Efua Donkor', age: 16, gender: 'female', initials: 'ED' },
+        { id: 7, name: 'Yaw Boateng', age: 48, gender: 'male', initials: 'YB' },
+        { id: 8, name: 'Maame Yaa', age: 84, gender: 'female', initials: 'MY' },
+        { id: 9, name: 'Kwesi Arthur', age: 38, gender: 'male', initials: 'KA' },
+        { id: 10, name: 'Abena Osei', age: 56, gender: 'female', initials: 'AO' },
       ].sort(() => Math.random() - 0.5),
       sortField: 'none',
       status: '// People grid loaded. Choose a sort method below.',
       statusColor: '#38bdf8',
-      log: '> 10 contestants registered. Ready to sort.',
+      log: '> 10 contestants registered (Ages 12-84). Ready to sort.',
       code: `const people = [
-  { name: 'Kojo', age: 17, gender: 'M' },
-  { name: 'Ama',  age: 15, gender: 'F' },
-  { name: 'Yaw',  age: 19, gender: 'M' },
-  { name: 'Efua', age: 14, gender: 'F' },
-  { name: 'Kwame',age: 16, gender: 'M' },
-  { name: 'Adwoa',age: 18, gender: 'F' },
-  { name: 'Kofi', age: 20, gender: 'M' },
-  { name: 'Yaa',  age: 13, gender: 'F' },
-  { name: 'Kwesi',age: 12, gender: 'M' },
-  { name: 'Abena',age: 16, gender: 'F' },
+  { name: 'Kojo',  age: 29, gender: 'M' },
+  { name: 'Yaa',   age: 12, gender: 'F' },
+  { name: 'Kwame', age: 68, gender: 'M' },
+  { name: 'Adwoa', age: 22, gender: 'F' },
+  { name: 'Kofi',  age: 76, gender: 'M' },
+  { name: 'Efua',  age: 16, gender: 'F' },
+  { name: 'Yaw',   age: 48, gender: 'M' },
+  { name: 'Maame', age: 84, gender: 'F' },
+  { name: 'Kwesi', age: 38, gender: 'M' },
+  { name: 'Abena', age: 56, gender: 'F' },
 ];
 
 // Pick a sorting strategy below:`
@@ -3199,6 +3197,38 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     return `translate(-50%, -50%) rotate(${angle - 90}deg)`;
   }
 
+  isNearLeftWall(): boolean {
+    return (this.arenaState.robotics?.posX || 50) <= 18;
+  }
+
+  isNearRightWall(): boolean {
+    return (this.arenaState.robotics?.posX || 50) >= 82;
+  }
+
+  isNearTopWall(): boolean {
+    return (this.arenaState.robotics?.posY || 50) <= 22;
+  }
+
+  isNearBottomWall(): boolean {
+    return (this.arenaState.robotics?.posY || 50) >= 78;
+  }
+
+  isNearWall(): boolean {
+    return this.isNearLeftWall() || this.isNearRightWall() || this.isNearTopWall() || this.isNearBottomWall();
+  }
+
+  getWallDirection(): string {
+    if (this.isNearTopWall()) return 'Top Wall';
+    if (this.isNearBottomWall()) return 'Bottom Wall';
+    if (this.isNearLeftWall()) return 'Left Wall';
+    if (this.isNearRightWall()) return 'Right Wall';
+    return 'Perimeter Wall';
+  }
+
+  isNearObstacle(): boolean {
+    return (this.arenaState.robotics?.distance || 100) < 22 && this.arenaState.robotics?.cargo !== 'Stone';
+  }
+
   triggerArenaAction(track: string, actionType: string): void {
     const state = this.arenaState[track];
     if (!state) return;
@@ -3390,6 +3420,17 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         }, ms + 7000));
       }
 
+      // Apply wall / obstacle proximity log override ONLY for movement actions
+      if (['forward', 'reverse'].includes(actionType)) {
+        if (this.isNearWall()) {
+          state.statusColor = '#ff1744';
+          state.log = `⚠️ PROXIMITY ALERT: ${this.getWallDirection()} ahead (${state.posX}%, ${state.posY}%) — Collision hazard!`;
+        } else if (this.isNearObstacle()) {
+          state.statusColor = '#ffab00';
+          state.log = `⚡ OBSTACLE ALERT: Target Stone ahead (${state.distance}cm) — Ready to grab!`;
+        }
+      }
+
       // Automatically recalculate obstacle proximity distance
       const dx = (state.posX || 50) - (state.obstacleX || 25);
       const dy = (state.posY || 50) - (state.obstacleY || 35);
@@ -3452,78 +3493,50 @@ for (let i = people.length - 1; i > 0; i--) {
     } else if (track === 'ai') {
       if (actionType.startsWith('sample_')) {
         if (actionType === 'sample_cocoa') {
-          state.sampleIcon = '🌿'; state.sampleName = 'Cocoa Pod'; state.label = 'Cocoa Pod • Healthy (Class 0)'; state.confidence = '99.2'; state.status = '🟢 CROP DIAGNOSTIC • HEALTHY'; state.statusColor = '#00e676';
+          state.sampleIcon = '🌿'; state.sampleName = 'Cocoa Pod';
         } else if (actionType === 'sample_maize') {
-          state.sampleIcon = '🌽'; state.sampleName = 'Maize Leaf'; state.label = 'Maize • Rust Mildew Detected (Class 1)'; state.confidence = '97.8'; state.status = '⚠️ CROP PATHOLOGY • RUST MILDEW'; state.statusColor = '#ff9100';
+          state.sampleIcon = '🌽'; state.sampleName = 'Maize Leaf';
         } else if (actionType === 'sample_potato') {
-          state.sampleIcon = '🥔'; state.sampleName = 'Potato Tuber'; state.label = 'Potato • Blight Virus Alert (Class 2)'; state.confidence = '98.5'; state.status = '🚨 CROP PATHOLOGY • BLIGHT DETECTED'; state.statusColor = '#ff1744';
+          state.sampleIcon = '🥔'; state.sampleName = 'Potato Tuber';
         } else if (actionType === 'sample_tomato') {
-          state.sampleIcon = '🍅'; state.sampleName = 'Tomato Leaf'; state.label = 'Tomato • Septoria Leaf Spot (Class 3)'; state.confidence = '96.4'; state.status = '⚠️ CROP PATHOLOGY • LEAF SPOT'; state.statusColor = '#ff9100';
+          state.sampleIcon = '🍅'; state.sampleName = 'Tomato Leaf';
         }
-        state.log = `Loaded ${state.sampleName} into visual scanner. ResNet-50 inferred classification with ${state.confidence}% confidence.`;
+        // Neutral state on selection — disease is unknown until scanned
+        state.label = `${state.sampleName} • Ready to Scan`;
+        state.confidence = '—';
+        state.status = '📷 SAMPLE LOADED — Run Quick Scan to analyse';
+        state.statusColor = '#ab47bc';
+        state.log = `${state.sampleName} loaded into scanner. Press Quick Scan to run inference.`;
       } else if (actionType === 'scan') {
-        // Smart scan — uses training accuracy to influence results
-        const currentIcon = state.sampleIcon;
-        const sampleMap: Record<string, { name: string; disease: string; diseaseClass: number; healthy: boolean }> = {
-          '🌿': { name: 'Cocoa Pod', disease: 'Healthy', diseaseClass: 0, healthy: true },
-          '🌽': { name: 'Maize Leaf', disease: 'Rust Mildew', diseaseClass: 1, healthy: false },
-          '🥔': { name: 'Potato Tuber', disease: 'Blight Virus', diseaseClass: 2, healthy: false },
-          '🍅': { name: 'Tomato Leaf', disease: 'Septoria Leaf Spot', diseaseClass: 3, healthy: false }
+        const currentIcon = state.sampleIcon || '🌿';
+        const sampleMap: Record<string, { name: string; disease: string; label: string; diseaseClass: number; status: string; color: string }> = {
+          '🌿': { name: 'Cocoa Pod', disease: 'Healthy', label: 'Cocoa Pod • Healthy (Class 0)', diseaseClass: 0, status: '🟢 CROP DIAGNOSTIC • HEALTHY', color: '#00e676' },
+          '🌽': { name: 'Maize Leaf', disease: 'Rust Mildew', label: 'Maize Leaf • Rust Mildew Detected (Class 1)', diseaseClass: 1, status: '⚠️ CROP PATHOLOGY • RUST MILDEW', color: '#ff9100' },
+          '🥔': { name: 'Potato Tuber', disease: 'Blight Virus', label: 'Potato Tuber • Blight Virus Alert (Class 2)', diseaseClass: 2, status: '🚨 CROP PATHOLOGY • BLIGHT DETECTED', color: '#ff1744' },
+          '🍅': { name: 'Tomato Leaf', disease: 'Septoria Leaf Spot', label: 'Tomato Leaf • Septoria Leaf Spot (Class 3)', diseaseClass: 3, status: '⚠️ CROP PATHOLOGY • LEAF SPOT', color: '#ff9100' }
         };
         const sample = sampleMap[currentIcon] || sampleMap['🌿'];
 
         state.status = '🔍 Scanning crop sample...';
         state.statusColor = '#ab47bc';
-        state.log = 'Running AI inference on leaf image. Analyzing texture, color, and pattern...';
+        state.log = `Running AI inference on ${sample.name}... Analyzing texture, color, and cellular patterns.`;
+
         if (this.scanTimeout) clearTimeout(this.scanTimeout);
         this.scanTimeout = setTimeout(() => {
-          const trained = state.epoch > 7 && (state.accuracy || 0) > 0;
-
-          // Determine predicted class — trained models may misclassify
-          let predictedClass = sample.diseaseClass;
-          if (trained && state.confusionMatrix) {
-            const row = state.confusionMatrix[sample.diseaseClass];
-            const sum = row.reduce((s: number, v: number) => s + v, 0) || 1;
-            const r = Math.random() * sum;
-            let acc = 0;
-            for (let c = 0; c < row.length; c++) {
-              acc += row[c];
-              if (r <= acc) { predictedClass = c; break; }
-            }
-          } else {
-            // Untrained — 65% correct, else misclassify to a random wrong class
-            if (Math.random() > 0.35) {
-              predictedClass = sample.diseaseClass;
-            } else {
-              const wrongClasses = [0, 1, 2, 3].filter(c => c !== sample.diseaseClass);
-              predictedClass = wrongClasses[Math.floor(Math.random() * wrongClasses.length)];
-            }
-          }
-
-          const realNames = ['Cocoa Pod', 'Maize Leaf', 'Potato Tuber', 'Tomato Leaf'];
-          const classDiseases: Record<number, string> = {
-            0: '🟢 CROP DIAGNOSTIC • HEALTHY',
-            1: '⚠️ CROP PATHOLOGY • RUST MILDEW',
-            2: '🚨 CROP PATHOLOGY • BLIGHT DETECTED',
-            3: '⚠️ CROP PATHOLOGY • LEAF SPOT'
-          };
-          const classColors = ['#00e676', '#ff9100', '#ff1744', '#ff9100'];
-          const classIcons = ['🌿', '🌽', '🥔', '🍅'];
-          const diseaseLabels: Record<number, string> = { 0: 'Healthy', 1: 'Rust Mildew Detected', 2: 'Blight Virus Alert', 3: 'Septoria Leaf Spot' };
-
+          const trained = state.epoch > 0;
           const confidence = trained
-            ? Math.round(75 + Math.random() * 23)
-            : Math.round(55 + Math.random() * 35);
+            ? (Math.round((94 + Math.random() * 5.8) * 10) / 10).toFixed(1)
+            : (Math.round((88 + Math.random() * 9.5) * 10) / 10).toFixed(1);
 
-          const correct = predictedClass === sample.diseaseClass;
-          state.confidence = String(confidence);
-          state.label = `${realNames[predictedClass]} • ${diseaseLabels[predictedClass]} (Class ${predictedClass})`;
-          state.status = classDiseases[predictedClass];
-          state.statusColor = classColors[predictedClass];
-          state.sampleIcon = classIcons[predictedClass];
-          state.sampleName = realNames[predictedClass];
-          state.log = `Inference done. ${correct ? 'Correct' : 'Misclassified'}: ${realNames[predictedClass]} — ${classDiseases[predictedClass]}. Confidence ${confidence}%.`;
-        }, 900);
+          state.confidence = confidence;
+          state.label = sample.label;
+          state.status = sample.status;
+          state.statusColor = sample.color;
+          // Keep physical sample selection intact (never switch to a different crop card!)
+          state.sampleIcon = currentIcon;
+          state.sampleName = sample.name;
+          state.log = `ResNet-50 inference complete. Classified ${sample.name} as ${sample.disease} with ${confidence}% confidence.`;
+        }, 850);
       } else if (actionType === 'epoch') {
         state.epoch = Math.min(50, state.epoch + 1);
         const e = state.epoch;

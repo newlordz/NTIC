@@ -2130,8 +2130,24 @@
                   <div *ngIf="activeTrackPreview === 'robotics'" class="track-sim-content robotics-sim split-cockpit">
                     <!-- Left: Rover Visual Stage -->
                     <div class="cockpit-left">
-                      <div class="visual-stage rover-stage">
+                      <div class="visual-stage rover-stage" [class.wall-alert-stage]="isNearWall()">
                         <div class="stage-grid-bg"></div>
+
+                        <!-- Wall Perimeter Hazard Borders -->
+                        <div class="wall-hazard-border wall-top" [class.active]="isNearTopWall()"></div>
+                        <div class="wall-hazard-border wall-bottom" [class.active]="isNearBottomWall()"></div>
+                        <div class="wall-hazard-border wall-left" [class.active]="isNearLeftWall()"></div>
+                        <div class="wall-hazard-border wall-right" [class.active]="isNearRightWall()"></div>
+
+                        <!-- HUD Proximity Alert Overlay Banner -->
+                        <div class="stage-proximity-alert wall-alert" *ngIf="isNearWall()">
+                          <span class="material-symbols-outlined alert-symbol">warning</span>
+                          <span class="alert-msg">COLLISION WARNING — {{ getWallDirection() }} Ahead!</span>
+                        </div>
+                        <div class="stage-proximity-alert obstacle-alert" *ngIf="!isNearWall() && isNearObstacle()">
+                          <span class="material-symbols-outlined alert-symbol">sensors_off</span>
+                          <span class="alert-msg">OBSTACLE AHEAD — Target Stone {{ arenaState.robotics?.distance }}cm</span>
+                        </div>
 
                         <!-- Obstacle on Arena Floor -->
                         <div class="stage-obstacle" *ngIf="arenaState.robotics?.cargo !== 'Stone'"
@@ -2145,11 +2161,11 @@
                         <!-- Rover -->
                         <div class="rover-bot-wrap" [style.left.%]="getRoverLeft()" [style.top.%]="getRoverTop()"
                           [style.transform]="getRoverTransform()">
-                          <div class="rover-chassis">
+                          <div class="rover-chassis" [class.wall-alert-pulse]="isNearWall()">
                             <div class="rover-solar-panel"></div>
                             <div class="rover-lidar-beam"
                               [style.transform]="'rotate(' + arenaState.robotics?.radarSweep + 'deg)'"></div>
-                            <div class="rover-camera-eye" [class.alert]="arenaState.robotics?.distance < 20"></div>
+                            <div class="rover-camera-eye" [class.alert]="isNearWall() || isNearObstacle()"></div>
 
                             <!-- Articulated Robotic Arm -->
                             <div class="rover-robotic-arm" [class.extending]="arenaState.robotics?.armAnimating"
@@ -2193,36 +2209,45 @@
                         <div class="game-section">
                           <div class="game-section-label">Movement</div>
                           <div class="game-dpad">
+                            <!-- Rotation pivot buttons -->
                             <div class="dpad-pivot-row">
-                              <button class="dpad-btn dpad-pivot" (click)="triggerArenaAction('robotics', 'turn_left')"
-                                title="Pivot Left">
-                                <span class="dpad-pivot">↩</span>
+                              <button class="dpad-btn dpad-pivot-btn" (click)="triggerArenaAction('robotics', 'turn_left')"
+                                title="Rotate Left 45°">
+                                <span class="dpad-pivot-icon">↩</span>
+                                <span class="dpad-btn-label">Rotate L</span>
                               </button>
-                              <button class="dpad-btn dpad-pivot" (click)="triggerArenaAction('robotics', 'turn_right')"
-                                title="Pivot Right">
-                                <span class="dpad-pivot">↪</span>
+                              <button class="dpad-btn dpad-pivot-btn" (click)="triggerArenaAction('robotics', 'turn_right')"
+                                title="Rotate Right 45°">
+                                <span class="dpad-pivot-icon">↪</span>
+                                <span class="dpad-btn-label">Rotate R</span>
                               </button>
                             </div>
+                            <!-- Directional cross -->
                             <div class="dpad-cross">
                               <button class="dpad-btn dpad-up" (click)="triggerArenaAction('robotics', 'forward')"
-                                title="Drive Forward along Heading">
+                                title="Drive Forward">
                                 <span class="dpad-arrow">▲</span>
+                                <span class="dpad-btn-label">Fwd</span>
                               </button>
                               <button class="dpad-btn dpad-left" (click)="triggerArenaAction('robotics', 'left')"
-                                title="Turn Left 45°">
+                                title="Strafe Left">
                                 <span class="dpad-arrow">◀</span>
+                                <span class="dpad-btn-label">Left</span>
                               </button>
                               <button class="dpad-btn dpad-center" (click)="triggerArenaAction('robotics', 'stop')"
                                 title="Stop">
-                                <span class="dpad-circle">●</span>
+                                <span class="dpad-circle">■</span>
+                                <span class="dpad-btn-label">Stop</span>
                               </button>
                               <button class="dpad-btn dpad-right" (click)="triggerArenaAction('robotics', 'right')"
-                                title="Turn Right 45°">
+                                title="Strafe Right">
                                 <span class="dpad-arrow">▶</span>
+                                <span class="dpad-btn-label">Right</span>
                               </button>
                               <button class="dpad-btn dpad-down" (click)="triggerArenaAction('robotics', 'reverse')"
-                                title="Reverse along Heading">
+                                title="Reverse">
                                 <span class="dpad-arrow">▼</span>
+                                <span class="dpad-btn-label">Back</span>
                               </button>
                             </div>
                           </div>
@@ -2272,20 +2297,27 @@
                         </div>
                         <div class="people-bars">
                           <div class="person-bar" *ngFor="let p of arenaState.coding?.people; let i = index"
-                            [style.animation-delay]="i * 60 + 'ms'" [style.--bar-h]="((p.age - 10) / 12) * 100 + '%'">
+                            [style.animation-delay]="i * 60 + 'ms'"
+                            [style.--bar-h]="(((p.age - 10) / 74) * 70 + 12) + '%'">
                             <div class="bar-top">
-                              <div class="human-figure" [class.male]="p.gender === 'male'"
-                                [class.female]="p.gender === 'female'">
-                                <div class="human-head">
-                                  <div class="hair-acc"></div>
-                                </div>
-                                <div class="human-torso">
-                                  <div class="arm arm-l"></div>
-                                  <div class="arm arm-r"></div>
-                                </div>
-                                <div class="human-legs">
-                                  <div class="leg leg-l"></div>
-                                  <div class="leg leg-r"></div>
+                              <!-- Outer wrapper handles scale — inner figure handles float animation -->
+                              <div class="figure-scaler"
+                                [style.transform]="'scale(' + (0.42 + ((p.age - 10) / 74) * 0.88) + ')'"
+                                [style.transform-origin]="'bottom center'">
+                                <div class="human-figure" [class.male]="p.gender === 'male'"
+                                  [class.female]="p.gender === 'female'"
+                                  [class.senior]="p.age >= 60">
+                                  <div class="human-head">
+                                    <div class="hair-acc"></div>
+                                  </div>
+                                  <div class="human-torso">
+                                    <div class="arm arm-l"></div>
+                                    <div class="arm arm-r"></div>
+                                  </div>
+                                  <div class="human-legs">
+                                    <div class="leg leg-l"></div>
+                                    <div class="leg leg-r"></div>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -2293,6 +2325,7 @@
                               [class.female]="p.gender === 'female'"></div>
                             <div class="bar-label">
                               <span class="bar-age">{{ p.age }}</span>
+                              <span class="bar-name">{{ p.name.split(' ')[0] }}</span>
                             </div>
                           </div>
                         </div>
@@ -2371,7 +2404,7 @@
                           <span class="material-symbols-outlined">photo_camera</span>
                           <span class="vf-title">AI Crop Disease Detector</span>
                           <span class="viewfinder-live" [style.background]="arenaState.ai?.statusColor">
-                            {{ arenaState.ai?.statusColor === '#00e676' ? 'HEALTHY' : 'ALERT' }}
+                            {{ arenaState.ai?.statusColor === '#00e676' ? 'HEALTHY' : arenaState.ai?.statusColor === '#ab47bc' ? 'READY' : 'ALERT' }}
                           </span>
                         </div>
                         <div class="viewfinder-screen">
@@ -2386,7 +2419,7 @@
                           <div class="vf-result"
                             [style.background]="'linear-gradient(transparent, ' + (arenaState.ai?.statusColor || '#ab47bc') + '88)'">
                             <span class="vf-result-name">{{ arenaState.ai?.label || 'Select a crop' }}</span>
-                            <span class="vf-result-conf">{{ arenaState.ai?.confidence }}% confidence</span>
+                            <span class="vf-result-conf">{{ arenaState.ai?.confidence === '—' ? 'Awaiting scan' : (arenaState.ai?.confidence + '% confidence') }}</span>
                           </div>
                         </div>
                         <div class="viewfinder-footer">
@@ -2441,25 +2474,25 @@
                             (click)="triggerArenaAction('ai', 'sample_cocoa')">
                             <span class="sample-card-icon">🌿</span>
                             <span class="sample-card-name">Cocoa Pod</span>
-                            <span class="sample-card-status healthy">Healthy</span>
+                            <span class="sample-card-status neutral">Tap to Load</span>
                           </button>
                           <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🌽'"
                             (click)="triggerArenaAction('ai', 'sample_maize')">
                             <span class="sample-card-icon">🌽</span>
                             <span class="sample-card-name">Maize Leaf</span>
-                            <span class="sample-card-status warning">Rust</span>
+                            <span class="sample-card-status neutral">Tap to Load</span>
                           </button>
                           <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🥔'"
                             (click)="triggerArenaAction('ai', 'sample_potato')">
                             <span class="sample-card-icon">🥔</span>
                             <span class="sample-card-name">Potato Tuber</span>
-                            <span class="sample-card-status danger">Blight</span>
+                            <span class="sample-card-status neutral">Tap to Load</span>
                           </button>
                           <button class="sample-card" [class.active]="arenaState.ai?.sampleIcon === '🍅'"
                             (click)="triggerArenaAction('ai', 'sample_tomato')">
                             <span class="sample-card-icon">🍅</span>
                             <span class="sample-card-name">Tomato Leaf</span>
-                            <span class="sample-card-status warning">Leaf Spot</span>
+                            <span class="sample-card-status neutral">Tap to Load</span>
                           </button>
                         </div>
                       </div>
