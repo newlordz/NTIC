@@ -2652,7 +2652,15 @@ setTimeout(async () => {
       dateStr += ':00';
     }
     this.contentService.updateCountdownDate(dateStr);
-    this.apiService.updatePlatformStats({ countdown_date: dateStr }).subscribe({ next: () => {}, error: () => {} });
+    this.apiService.updatePlatformStats({ countdown_date: dateStr }).subscribe({
+      next: () => {
+        this.dialogService.toast('Target countdown date updated successfully!', 'success');
+      },
+      error: (err) => {
+        console.error('Failed to update countdown date on server:', err);
+        this.dialogService.toast('Saved locally, but failed to sync with server.', 'warning');
+      }
+    });
     this.addAuditLog({ action: `Countdown target date updated to ${dateStr}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 

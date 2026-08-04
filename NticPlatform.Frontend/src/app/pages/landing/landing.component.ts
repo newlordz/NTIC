@@ -1,4 +1,4 @@
-﻿import { getAuthValue, setAuthValue } from '../../services/session.util';
+import { getAuthValue, setAuthValue } from '../../services/session.util';
 import { Component, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, ViewChild, Renderer2, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
@@ -250,14 +250,16 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   get competitionDate(): Date {
+    if (this.contentService.countdownDate) {
+      const custom = new Date(this.contentService.countdownDate);
+      if (!isNaN(custom.getTime())) return custom;
+    }
     const feat = this.featuredCompetition;
     if (feat) {
       const d = new Date(feat.deadline);
       if (!isNaN(d.getTime())) return d;
     }
-    const fallback = new Date(this.contentService.countdownDate || '2026-08-15T09:00:00');
-    if (!isNaN(fallback.getTime())) return fallback;
-    return new Date('2026-12-31T23:59:59');
+    return new Date('2026-08-15T09:00:00');
   }
 
   get featuredStatusClass(): string {

@@ -261,12 +261,43 @@
 
     <div class="countdown-inner" *ngIf="!hasCompetitions">
       <div class="countdown-label">
-        <span class="material-symbols-outlined" style="font-size:2rem;">emoji_events</span>
+        <span class="live-dot pulse"></span>
         <span>Competitions Coming Soon</span>
       </div>
       <p class="countdown-description">
-        We're preparing something extraordinary. Stay tuned for competition announcements.
+        We're preparing something extraordinary. Target launch: <strong>{{ competitionDate | date:'medium' }}</strong>
       </p>
+
+      <!-- Flip countdown clock -->
+      <div class="countdown-clock">
+        <div class="flip-unit stagger-1" id="cd-days-empty">
+          <div class="flip-card">
+            <span class="flip-top">{{ countdownDays | number:'2.0-0' }}</span>
+          </div>
+          <span class="flip-label">Days</span>
+        </div>
+        <div class="flip-sep stagger-2">:</div>
+        <div class="flip-unit stagger-3" id="cd-hours-empty">
+          <div class="flip-card">
+            <span class="flip-top">{{ countdownHours | number:'2.0-0' }}</span>
+          </div>
+          <span class="flip-label">Hours</span>
+        </div>
+        <div class="flip-sep stagger-4">:</div>
+        <div class="flip-unit stagger-5" id="cd-mins-empty">
+          <div class="flip-card">
+            <span class="flip-top">{{ countdownMins | number:'2.0-0' }}</span>
+          </div>
+          <span class="flip-label">Mins</span>
+        </div>
+        <div class="flip-sep stagger-6">:</div>
+        <div class="flip-unit stagger-7" id="cd-secs-empty">
+          <div class="flip-card" [class.tick]="countdownTick">
+            <span class="flip-top">{{ countdownSecs | number:'2.0-0' }}</span>
+          </div>
+          <span class="flip-label">Secs</span>
+        </div>
+      </div>
     </div>
 
     <!-- ── FEATURED COMPETITION (HERO) ────────────────── -->

@@ -2,6 +2,7 @@ import os
 import uuid
 import random
 import datetime
+from typing import Optional
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import init_postgres_db, get_db_connection
@@ -1122,20 +1123,42 @@ try:
         return {"regions": row[0], "mentors": row[1], "schools": row[2], "students": row[3], "projects": row[4], "grants": row[5], "countdownDate": row[6] or "2026-08-15T09:00:00"}
 
     class StatsUpdate(BaseModel):
-        regions: int = 0
-        mentors: int = 0
-        schools: int = 0
-        students: int = 0
-        projects: float = 0
-        grants: float = 0
-        countdown_date: str = ""
+        regions: Optional[int] = None
+        mentors: Optional[int] = None
+        schools: Optional[int] = None
+        students: Optional[int] = None
+        projects: Optional[float] = None
+        grants: Optional[float] = None
+        countdown_date: Optional[str] = None
 
     @app.patch("/api/platform-stats")
     def update_platform_stats(payload: StatsUpdate):
         conn = get_db_connection()
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("INSERT INTO platform_stats (id, regions, mentors, schools, students, projects, grants, countdown_date) VALUES ('stats-1',%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO UPDATE SET regions=EXCLUDED.regions, mentors=EXCLUDED.mentors, schools=EXCLUDED.schools, students=EXCLUDED.students, projects=EXCLUDED.projects, grants=EXCLUDED.grants, countdown_date=EXCLUDED.countdown_date, updated_at=CURRENT_TIMESTAMP", (payload.regions, payload.mentors, payload.schools, payload.students, payload.projects, payload.grants, payload.countdown_date))
+        cur.execute("SELECT regions, mentors, schools, students, projects, grants, countdown_date FROM platform_stats WHERE id='stats-1'")
+        existing = cur.fetchone()
+
+        curr_regions = existing[0] if existing and existing[0] is not None else 0
+        curr_mentors = existing[1] if existing and existing[1] is not None else 0
+        curr_schools = existing[2] if existing and existing[2] is not None else 0
+        curr_students = existing[3] if existing and existing[3] is not None else 0
+        curr_projects = existing[4] if existing and existing[4] is not None else 0.0
+        curr_grants = existing[5] if existing and existing[5] is not None else 0.0
+        curr_countdown = existing[6] if existing and existing[6] is not None else "2026-08-15T09:00:00"
+
+        regions = payload.regions if payload.regions is not None else curr_regions
+        mentors = payload.mentors if payload.mentors is not None else curr_mentors
+        schools = payload.schools if payload.schools is not None else curr_schools
+        students = payload.students if payload.students is not None else curr_students
+        projects = payload.projects if payload.projects is not None else curr_projects
+        grants = payload.grants if payload.grants is not None else curr_grants
+        countdown_date = payload.countdown_date if payload.countdown_date is not None else curr_countdown
+
+        cur.execute(
+            "INSERT INTO platform_stats (id, regions, mentors, schools, students, projects, grants, countdown_date) VALUES ('stats-1',%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO UPDATE SET regions=EXCLUDED.regions, mentors=EXCLUDED.mentors, schools=EXCLUDED.schools, students=EXCLUDED.students, projects=EXCLUDED.projects, grants=EXCLUDED.grants, countdown_date=EXCLUDED.countdown_date, updated_at=CURRENT_TIMESTAMP",
+            (regions, mentors, schools, students, projects, grants, countdown_date)
+        )
         conn.commit(); cur.close(); conn.close()
         return {"status": "updated"}
 
