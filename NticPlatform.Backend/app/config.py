@@ -30,18 +30,8 @@ class Config:
 
     @classmethod
     def validate(cls) -> None:
-        # If a DATABASE_URL is provided, credentials live inside the URL and
-        # individual PG vars are not required.
-        if os.getenv("DATABASE_URL"):
-            return
-        missing = []
-        if not cls.POSTGRES_PASSWORD:
-            missing.append("POSTGRES_PASSWORD/PGPASSWORD")
-        if missing:
-            raise RuntimeError(
-                f"Missing required environment variables: {', '.join(missing)}. "
-                "Set them in the .env file or the host environment before starting."
-            )
+        """No-op: always let the app start. DB errors surface via health endpoint."""
+        return
 
     @classmethod
     def get_database_url(cls) -> str:
