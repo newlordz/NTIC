@@ -1898,11 +1898,13 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       const target = this.competitionDate.getTime();
       if (isNaN(target)) {
         this.countdownDays = this.countdownHours = this.countdownMins = this.countdownSecs = 0;
+        this.cdr.detectChanges();
         return;
       }
       const dist = target - now;
       if (dist <= 0) {
         this.countdownDays = this.countdownHours = this.countdownMins = this.countdownSecs = 0;
+        this.cdr.detectChanges();
         return;
       }
       this.countdownDays  = Math.floor(dist / (1000 * 60 * 60 * 24));
@@ -1910,13 +1912,13 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       this.countdownMins  = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
       this.countdownSecs  = Math.floor((dist % (1000 * 60)) / 1000);
       this.countdownTick  = !this.countdownTick;
+      this.cdr.detectChanges();
     };
     update();
-    this.ngZone.runOutsideAngular(() => {
-      this.countdownInterval = setInterval(() => {
-        this.ngZone.run(() => update());
-      }, 1000);
-    });
+    if (this.countdownInterval) clearInterval(this.countdownInterval);
+    this.countdownInterval = setInterval(() => {
+      update();
+    }, 1000);
   }
 
   // ── STRIPE DATA-VIZ CANVAS (Lightweight Underwater Sea Leaves & Fishes) ───
