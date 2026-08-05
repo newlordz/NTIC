@@ -28,7 +28,7 @@ export interface BackendSubmission {
   providedIn: 'root'
 })
 export class ApiService {
-  private apiUrl = environment.apiUrl || 'http://localhost:5001/api';
+  private apiUrl = environment.apiUrl || 'http://localhost:5000/api';
 
   constructor(private http: HttpClient) {}
 
