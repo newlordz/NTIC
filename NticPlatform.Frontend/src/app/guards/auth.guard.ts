@@ -12,7 +12,7 @@ const ROLE_ACCESS: Record<string, string[]> = {
   'reporting':        ['super_admin', 'admin', 'reviewer'],
   'records':          ['super_admin', 'admin', 'content_manager'],
   'user-management':  ['super_admin'],
-  'profile-completion': ['judge', 'sponsor', 'instructor', 'student', 'school_admin'],
+  'profile-completion': ['super_admin', 'admin', 'content_manager', 'reviewer', 'competition_manager', 'judge', 'sponsor', 'instructor', 'student', 'school_admin'],
 };
 
 export const authGuard: CanActivateFn = (_route, state) => {

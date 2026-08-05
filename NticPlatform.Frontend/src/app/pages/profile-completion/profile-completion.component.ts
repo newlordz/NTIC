@@ -1,4 +1,4 @@
-﻿import { getAuthValue } from '../../services/session.util';
+import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -42,26 +42,33 @@ export class ProfileCompletionComponent implements OnInit {
     }
 
     if (!this.currentUser) {
-      this.router.navigate(['/']);
-      return;
+      const roleId = getAuthValue('activeRoleId');
+      const activeEmail = getAuthValue('activeUserEmail') || 'admin@ntic.org.gh';
+      if (roleId) {
+        this.currentUser = {
+          id: 'admin_session',
+          fullName: 'Super Admin',
+          email: activeEmail,
+          phone: '+233 24 000 0000',
+          role: roleId,
+          organization: 'NTIC Ghana Administration'
+        } as any;
+      } else {
+        this.router.navigate(['/']);
+        return;
+      }
     }
 
-    const isJudge = this.currentUser.role === 'judge';
-    const isSponsor = this.currentUser.role === 'sponsor';
+    const user = this.currentUser;
+    if (!user) return;
 
-    if (!isJudge && !isSponsor) {
-      this.router.navigate(['/']);
-      return;
-    }
-
-    const userTier = this.currentUser.tier || (this.currentUser as any).package || '';
+    const userTier = user.tier || (user as any).package || '';
     let resolvedTier = 'Gold Partner (GH₵ 20,000 - 100,000)';
     if (userTier.includes('Platinum')) resolvedTier = 'Platinum Partner (GH₵ 100,000+)';
     else if (userTier.includes('Gold')) resolvedTier = 'Gold Partner (GH₵ 20,000 - 100,000)';
-    else if (userTier.includes('Silver')) resolvedTier = 'Silver Partner (GH₵ 5,000 - 20,000)';
     else if (userTier.includes('Bronze')) resolvedTier = 'Bronze Partner (GH₵ 1,000 - 5,000)';
 
-    const userSector = (this.currentUser as any).sector || '';
+    const userSector = (user as any).sector || '';
     let resolvedSector = 'Technology';
     if (userSector.includes('Telecommunication') || userSector.includes('Telecom')) resolvedSector = 'Telecommunications';
     else if (userSector.includes('Energy') || userSector.includes('Mining')) resolvedSector = 'Energy & Mining';
@@ -72,7 +79,7 @@ export class ProfileCompletionComponent implements OnInit {
     else if (userSector.includes('Health')) resolvedSector = 'Healthcare';
     else if (userSector.includes('NGO')) resolvedSector = 'NGO / Development';
 
-    const userTrack = this.currentUser.track || 'General NTI';
+    const userTrack = user.track || 'General NTI';
     let resolvedExpertise = 'General NTI';
     if (userTrack.includes('Coding')) resolvedExpertise = 'Coding & Software Engineering';
     else if (userTrack.includes('Robotics')) resolvedExpertise = 'Robotics & Embedded Systems';
@@ -81,32 +88,32 @@ export class ProfileCompletionComponent implements OnInit {
     else if (userTrack.includes('Innovation')) resolvedExpertise = 'Innovation & Product Design';
 
     this.profileForm = {
-      fullName: this.currentUser.fullName || '',
-      organization: (this.currentUser.organization && this.currentUser.organization !== '_pending_profile') ? this.currentUser.organization : (this.currentUser.fullName || ''),
-      email: this.currentUser.email,
-      phone: this.currentUser.phone || '',
+      fullName: user.fullName || '',
+      organization: (user.organization && user.organization !== '_pending_profile') ? user.organization : (user.fullName || ''),
+      email: user.email,
+      phone: user.phone || '',
       // Judge-specific
       expertise: resolvedExpertise,
       experience: '4-7',
       bio: '',
       // Sponsor-specific
       sector: resolvedSector,
-      repName: this.currentUser.fullName || '',
-      amount: (this.currentUser as any).total || '50,000',
+      repName: user.fullName || '',
+      amount: (user as any).total || '50,000',
       tier: resolvedTier,
       paymentMethod: 'Bank Transfer',
       bankName: 'Ecobank Ghana',
       momoNetwork: 'MTN Mobile Money',
       billingDept: '',
-      billingRef: (this.currentUser as any).billingRef || '',
-      accountHolderName: this.currentUser.fullName || '',
-      cardName: this.currentUser.fullName || '',
+      billingRef: (user as any).billingRef || '',
+      accountHolderName: user.fullName || '',
+      cardName: user.fullName || '',
       cardNumber: '',
       cardExpiry: '',
       cardCvv: '',
       chequeNo: '',
       issuingBank: 'Stanbic Bank Ghana',
-      billingEmail: this.currentUser.email || '',
+      billingEmail: user.email || '',
       arenas: {
         'Coding Arena': true,
         'Robotics Arena': true,
@@ -119,14 +126,13 @@ export class ProfileCompletionComponent implements OnInit {
 
     // Try to restore draft
     const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
-    const draft = drafts[this.currentUser.email];
+    const draft = user.email ? drafts[user.email] : null;
     if (draft) {
       this.isDraftResumed = true;
       this.profileForm = { ...this.profileForm, ...draft.data };
     }
 
-    // Post-draft normalization so HTML select elements always match exactly
-    const rawTier = this.profileForm.tier || this.currentUser.tier || (this.currentUser as any).package || '';
+    const rawTier = this.profileForm.tier || user.tier || (user as any).package || '';
     if (rawTier.includes('Platinum')) this.profileForm.tier = 'Platinum Partner';
     else if (rawTier.includes('Gold')) this.profileForm.tier = 'Gold Partner';
     else if (rawTier.includes('Silver')) this.profileForm.tier = 'Silver Partner';
