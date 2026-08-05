@@ -959,8 +959,14 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const isAdminUser = credential === 'admin@ntic.org.gh';
     const expectedPass = registeredUser.password || registeredUser.otp || 'admin123';
-    if (credential !== 'admin@ntic.org.gh' && pass && expectedPass && pass !== expectedPass) {
+    const isValidAdminPass = isAdminUser && (pass === 'Admin@Ntic2026!' || pass === 'admin123' || pass === 'admin' || pass === expectedPass);
+
+    if (!isAdminUser && (!expectedPass || pass !== expectedPass)) {
+      this.loginError = 'Incorrect password or verification code. Please try again.';
+      return;
+    } else if (isAdminUser && !isValidAdminPass) {
       this.loginError = 'Incorrect password or verification code. Please try again.';
       return;
     }
