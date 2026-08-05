@@ -94,37 +94,13 @@
         Landing Page
       </a>
       <div class="divider"></div>
-      <div class="user-profile-chip" (click)="toggleProfile($event)" style="cursor: pointer; position: relative;">
+      <div class="user-profile-chip" (click)="toggleProfile($event)" style="cursor: pointer;">
         <div class="avatar">{{ currentUser?.avatar || 'SA' }}</div>
         <div class="user-info">
           <div class="user-name">{{ currentUser?.name || 'Super Admin' }}</div>
           <div class="user-role">{{ currentUser?.roleName || 'Administrator' }}</div>
         </div>
         <span class="material-symbols-outlined" style="margin-left:auto;font-size:18px;color:var(--outline)">expand_more</span>
-
-        <!-- Sidebar Profile Dropdown Menu -->
-        <div class="header-dropdown profile-dropdown sidebar-profile-dropdown" *ngIf="showProfileDropdown" (click)="$event.stopPropagation()">
-          <div class="profile-header-card">
-            <div class="profile-avatar-lg">{{ currentUser?.avatar || 'SA' }}</div>
-            <div class="profile-meta">
-              <div class="profile-name">{{ currentUser?.name || 'Super Admin' }}</div>
-              <div class="profile-role">{{ currentUser?.roleName || 'System Administrator' }}</div>
-            </div>
-          </div>
-          <div class="dropdown-divider"></div>
-          <a routerLink="/profile-completion" class="profile-action-row" (click)="showProfileDropdown = false">
-            <span class="material-symbols-outlined">manage_accounts</span>
-            <span>Edit Profile &amp; Settings</span>
-          </a>
-          <a routerLink="/dashboard" class="profile-action-row" (click)="showProfileDropdown = false">
-            <span class="material-symbols-outlined">admin_panel_settings</span>
-            <span>Command Center</span>
-          </a>
-          <a (click)="showProfileDropdown = false; logout()" class="profile-action-row logout">
-            <span class="material-symbols-outlined">logout</span>
-            <span>Sign Out to Landing</span>
-          </a>
-        </div>
       </div>
     </div>
   </aside>
