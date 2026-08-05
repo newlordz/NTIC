@@ -598,7 +598,8 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
 
       // Start polling for admin replies
       this.startPolling(ticket.userId);
-    } catch (_) {
+    } catch (e) {
+      console.error('createTicket failed', e);
       this.isEscalated.set(false);
       const errMsg: ChatMessage = {
         role: 'model',
@@ -618,7 +619,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
     this.isLoading.set(true);
 
     try {
-      const result: any = await this.http.get(`${environment.apiUrl}/tickets/${ticketId.trim()}`).toPromise();
+      const result: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/tickets/${ticketId.trim()}`));
       const ticket = this.parseTicket(result);
 
       if (ticket.adminReplies.length > 0) {
@@ -658,7 +659,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
   async lookupAccount(email: string): Promise<void> {
     this.isLoading.set(true);
     try {
-      const result: any = await this.http.get(`${environment.apiUrl}/users/lookup?email=${encodeURIComponent(email.trim().toLowerCase())}`).toPromise();
+      const result: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/users/lookup?email=${encodeURIComponent(email.trim().toLowerCase())}`));
       let msg: ChatMessage;
       if (result.found) {
         const status = result.status === 'Active' ? '✅ Active' : `⏳ ${result.status}`;
@@ -693,7 +694,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
   // ─── ADMIN REPLY ─────────────────────────────────────────────────────
   async addAdminReply(ticketId: string, agentName: string, replyText: string): Promise<void> {
     try {
-      await this.http.post(`${environment.apiUrl}/tickets/${ticketId}/reply`, { agentName, text: replyText }).toPromise();
+      await firstValueFrom(this.http.post(`${environment.apiUrl}/tickets/${ticketId}/reply`, { agentName, text: replyText }));
 
       const reply = { agentName, text: replyText, timestamp: new Date() };
       this.supportTickets.update(tickets => tickets.map(t => {
@@ -711,7 +712,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
 
   async resolveTicket(ticketId: string): Promise<void> {
     try {
-      await this.http.patch(`${environment.apiUrl}/tickets/${ticketId}/status`, { status: 'resolved' }).toPromise();
+      await firstValueFrom(this.http.patch(`${environment.apiUrl}/tickets/${ticketId}/status`, { status: 'resolved' }));
       this.supportTickets.update(tickets => tickets.map(t =>
         t.id === ticketId ? { ...t, status: 'resolved', lastUpdated: new Date() } : t
       ));
@@ -721,7 +722,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
   /** Admin: load soft-deleted tickets from backend */
   async loadRecycleBinTickets(): Promise<void> {
     try {
-      const tickets: any = await this.http.get(`${environment.apiUrl}/tickets?recycled=true`).toPromise();
+      const tickets: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/tickets?recycled=true`));
       this.recycleBinTickets.set((tickets || []).map((t: any) => this.parseTicket(t)));
     } catch (_) {}
   }
@@ -729,7 +730,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
   /** Soft-delete a ticket (move to Recycle Bin) */
   async deleteTicket(ticketId: string): Promise<boolean> {
     try {
-      await this.http.delete(`${environment.apiUrl}/tickets/${ticketId}`).toPromise();
+      await firstValueFrom(this.http.delete(`${environment.apiUrl}/tickets/${ticketId}`));
       const target = this.supportTickets().find(t => t.id === ticketId);
       if (target) {
         const deletedTicket: SupportTicket = { ...target, isDeleted: true, deletedAt: new Date() };
@@ -748,7 +749,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
   /** Restore soft-deleted ticket back to active list */
   async restoreTicket(ticketId: string): Promise<boolean> {
     try {
-      await this.http.post(`${environment.apiUrl}/tickets/${ticketId}/restore`, {}).toPromise();
+      await firstValueFrom(this.http.post(`${environment.apiUrl}/tickets/${ticketId}/restore`, {}));
       const target = this.recycleBinTickets().find(t => t.id === ticketId);
       if (target) {
         const restoredTicket: SupportTicket = { ...target, isDeleted: false, deletedAt: null, lastUpdated: new Date() };
@@ -767,7 +768,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
   /** Permanently purge a single ticket */
   async permanentlyDeleteTicket(ticketId: string): Promise<boolean> {
     try {
-      await this.http.delete(`${environment.apiUrl}/tickets/${ticketId}/permanent`).toPromise();
+      await firstValueFrom(this.http.delete(`${environment.apiUrl}/tickets/${ticketId}/permanent`));
       this.recycleBinTickets.update(recycled => recycled.filter(r => r.id !== ticketId));
       this.supportTickets.update(tickets => tickets.filter(t => t.id !== ticketId));
       return true;
@@ -779,7 +780,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
   /** Empty all soft-deleted tickets from Recycle Bin */
   async emptyRecycleBin(): Promise<boolean> {
     try {
-      await this.http.delete(`${environment.apiUrl}/tickets/recycle-bin/empty`).toPromise();
+      await firstValueFrom(this.http.delete(`${environment.apiUrl}/tickets/recycle-bin/empty`));
       this.recycleBinTickets.set([]);
       return true;
     } catch (_) {
