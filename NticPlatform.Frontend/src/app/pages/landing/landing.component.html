@@ -85,7 +85,7 @@
                 <a class="mega-link-item" (click)="closeMegaMenu(); scrollToSection('tracks')">
                   <span class="material-symbols-outlined mc-icon cyber">security</span>
                   <div>
-                    <strong>Cybersecurity CTF</strong>
+                    <strong>Networking & Cybersecurity CTF</strong>
                     <span>Defensive systems and cipher challenges.</span>
                   </div>
                 </a>
@@ -149,7 +149,7 @@
           </a>
           <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
             <span class="material-symbols-outlined" style="color:#ff1744">security</span>
-            Cybersecurity CTF
+            Networking & Cybersecurity CTF
           </a>
           <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
             <span class="material-symbols-outlined" style="color:#ffab00">tips_and_updates</span>
@@ -833,7 +833,7 @@
             (click)="setTrackPreview('cyber')">
             <div class="dept-header-wrap">
               <span class="material-symbols-outlined dept-icon">security</span>
-              <h3>Cybersecurity CTF</h3>
+              <h3>Networking & Cybersecurity CTF</h3>
             </div>
             <p>Capture the Flag sprints testing cryptographic decryption, network intrusion logs audit, and secure
               server builds.</p>
@@ -1327,7 +1327,7 @@
           <span class="material-symbols-outlined" *ngIf="filter === 'Robotics'">precision_manufacturing</span>
           <span class="material-symbols-outlined" *ngIf="filter === 'Coding'">code</span>
           <span class="material-symbols-outlined" *ngIf="filter === 'AI'">psychology</span>
-          <span class="material-symbols-outlined" *ngIf="filter === 'Cybersecurity'">security</span>
+          <span class="material-symbols-outlined" *ngIf="filter === 'Networking & Cybersecurity'">security</span>
           <span class="material-symbols-outlined" *ngIf="filter === 'Innovation'">lightbulb</span>
           <span>{{ filter === 'All' ? 'All 16 Regions' : filter + ' Leaders' }}</span>
         </button>
@@ -2569,7 +2569,7 @@
                     </div>
                   </div>
 
-                  <!-- 4. Cybersecurity — Network Defense Simulator -->
+                  <!-- 4. Networking & Cybersecurity — Network Defense Simulator -->
                   <div *ngIf="activeTrackPreview === 'cyber'" class="track-sim-content cyber-sim split-cockpit">
                     <!-- Left: Network Monitor -->
                     <div class="cockpit-left">

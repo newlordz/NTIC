@@ -1190,7 +1190,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       }
     } else if (app.type === 'Instructor Access') {
       this.activeTab = 'instructor';
-      const expertiseMap: Record<string, boolean> = { Python: false, JavaScript: false, 'C#': false, AI: false, Robotics: false, Cybersecurity: false, 'Data Science': false };
+      const expertiseMap: Record<string, boolean> = { Python: false, JavaScript: false, 'C#': false, AI: false, Robotics: false, 'Networking & Cybersecurity': false, 'Data Science': false };
       (d.specialization || '').split(',').forEach((s: string) => {
         const k = s.trim();
         if (k in expertiseMap) expertiseMap[k] = true;
@@ -1899,7 +1899,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           'C#': false,
           AI: false,
           Robotics: false,
-          Cybersecurity: false,
+          'Networking & Cybersecurity': false,
           'Data Science': false
         }
       };

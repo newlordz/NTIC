@@ -957,7 +957,7 @@
           <div class="cms-field">
             <label>Tag</label>
             <select [(ngModel)]="storyForm.tag">
-              <option>Robotics</option><option>Coding</option><option>Cybersecurity</option>
+              <option>Robotics</option><option>Coding</option><option>Networking & Cybersecurity</option>
               <option>AI</option><option>Innovation</option><option>General</option>
             </select>
           </div>
@@ -3058,11 +3058,11 @@
 
             <div 
               class="track-select-card" 
-              [class.active]="teamForm.track === 'Cybersecurity'" 
-              (click)="teamForm.track = 'Cybersecurity'"
+              [class.active]="teamForm.track === 'Networking & Cybersecurity'" 
+              (click)="teamForm.track = 'Networking & Cybersecurity'"
             >
               <div class="track-card-icon cybersecurity"><span class="material-symbols-outlined">security</span></div>
-              <div class="track-card-name">Cybersecurity CTF</div>
+              <div class="track-card-name">Networking & Cybersecurity CTF</div>
               <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
             </div>
 

@@ -770,7 +770,7 @@
                     <option value="Coding">Coding</option>
                     <option value="Robotics">Robotics</option>
                     <option value="AI">AI</option>
-                    <option value="Cybersecurity">Cybersecurity</option>
+                    <option value="Cybersecurity">Networking & Cybersecurity</option>
                     <option value="Innovation">Innovation</option>
                   </select>
                 </div>
@@ -1409,7 +1409,7 @@
           <div style="margin-bottom: 24px;">
             <label class="form-label">Specialist Tracks / Expertise Areas</label>
             <div class="expertise-chip-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;">
-              <label *ngFor="let exp of ['Python', 'JavaScript', 'C#', 'AI', 'Robotics', 'Cybersecurity', 'Data Science']" class="expertise-chip-label" style="display:flex; align-items:center; gap:6px; cursor:pointer; background:var(--surface-container-low); padding:6px 12px; border-radius:20px; font-size:12px; border:1px solid var(--outline-variant);">
+              <label *ngFor="let exp of ['Python', 'JavaScript', 'C#', 'AI', 'Robotics', 'Networking & Cybersecurity', 'Data Science']" class="expertise-chip-label" style="display:flex; align-items:center; gap:6px; cursor:pointer; background:var(--surface-container-low); padding:6px 12px; border-radius:20px; font-size:12px; border:1px solid var(--outline-variant);">
                 <input type="checkbox" [(ngModel)]="instructorForm.expertise[exp]" name="instExpertise_{{exp}}">
                 {{ exp }}
               </label>
@@ -1508,7 +1508,7 @@
                 <div class="instructor-card-expertise">
                   <div class="title">Expertise Arenas</div>
                   <div class="expertise-chips">
-                    <ng-container *ngFor="let exp of ['Python', 'JavaScript', 'C#', 'AI', 'Robotics', 'Cybersecurity', 'Data Science']">
+                    <ng-container *ngFor="let exp of ['Python', 'JavaScript', 'C#', 'AI', 'Robotics', 'Networking & Cybersecurity', 'Data Science']">
                       <span class="exp-chip animate-pop" *ngIf="instructorForm.expertise[exp]">{{ exp }}</span>
                     </ng-container>
                     <span class="exp-chip empty" *ngIf="!hasExpertiseSelected()">No expertise selected</span>
@@ -1748,7 +1748,7 @@
                   <option value="Coding">Coding</option>
                   <option value="Robotics">Robotics</option>
                   <option value="AI">AI</option>
-                  <option value="Cybersecurity">Cybersecurity</option>
+                  <option value="Cybersecurity">Networking & Cybersecurity</option>
                   <option value="Innovation">Innovation</option>
                 </select>
               </div>
