@@ -119,7 +119,7 @@ export class NewsComponent implements OnInit, OnDestroy {
   getTagLabel(tag: string): string {
     const labels: Record<string, string> = {
       all: 'All Stories', robotics: 'Robotics', coding: 'Coding',
-      cyber: 'Cybersecurity', ai: 'Artificial Intelligence', innovation: 'Innovation'
+      cyber: 'Networking & Cybersecurity', ai: 'Artificial Intelligence', innovation: 'Innovation'
     };
     return labels[tag] || tag;
   }

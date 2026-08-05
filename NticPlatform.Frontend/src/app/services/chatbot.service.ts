@@ -71,7 +71,7 @@ ACCOUNT & LOGIN RULES (apply to all roles):
 Platform pages students use:
 - /registration — Sign up as a student
 - /dashboard — Your profile and submissions
-- /competitions — See all competition tracks: Coding, Robotics, AI, Cybersecurity, Innovation
+- /competitions — See all competition tracks: Coding, Robotics, AI, Networking & Cybersecurity, Innovation
 - /leaderboard — Check rankings
 - /lms — Take courses and lessons
 - /profile-completion — Finish setting up your profile

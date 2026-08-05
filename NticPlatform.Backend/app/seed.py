@@ -31,7 +31,7 @@ def seed_initial_data(conn):
     if cur.fetchone()[0] == 0:
         cur.execute("INSERT INTO events (id, title, date, time, location, description, type) VALUES ('evt-1', 'National Robotics Qualifier', '2026-08-15', '09:00 AM', 'Accra International Conference Centre', 'The first stage of the robotics competition where teams demonstrate their autonomous rovers.', 'competition')")
         cur.execute("INSERT INTO events (id, title, date, time, location, description, type) VALUES ('evt-2', 'AI & Ethics Webinar', '2026-08-22', '02:00 PM', 'Online (Google Meet)', 'A deep dive into the ethical implications of AI models in education and healthcare.', 'webinar')")
-        cur.execute("INSERT INTO events (id, title, date, time, location, description, type) VALUES ('evt-3', 'Cybersecurity Capture The Flag', '2026-09-05', '10:00 AM', 'Virtual Lab Environment', 'Teams will compete to find vulnerabilities and patch systems in a simulated corporate network.', 'competition')")
+        cur.execute("INSERT INTO events (id, title, date, time, location, description, type) VALUES ('evt-3', 'Networking & Cybersecurity Capture The Flag', '2026-09-05', '10:00 AM', 'Virtual Lab Environment', 'Teams will compete to find vulnerabilities and patch systems in a simulated corporate network.', 'competition')")
 
     # Stories
     cur.execute("SELECT count(*) FROM stories")
@@ -73,7 +73,7 @@ def seed_initial_data(conn):
     # Hero Slides
     cur.execute("SELECT count(*) FROM hero_slides")
     if cur.fetchone()[0] == 0:
-        cur.execute("INSERT INTO hero_slides (id, tag, title, description, image, sort_order) VALUES ('slide-1', 'Ghana''s Premier Tech Championship', 'National Tech Innovation Championship 2026', 'Empowering the next generation of Ghanaian innovators through Coding, Robotics, AI, Cybersecurity, and Open Innovation.', 'assets/ntic_image_1.jpeg', 0)")
+        cur.execute("INSERT INTO hero_slides (id, tag, title, description, image, sort_order) VALUES ('slide-1', 'Ghana''s Premier Tech Championship', 'National Tech Innovation Championship 2026', 'Empowering the next generation of Ghanaian innovators through Coding, Robotics, AI, Networking & Cybersecurity, and Open Innovation.', 'assets/ntic_image_1.jpeg', 0)")
         cur.execute("INSERT INTO hero_slides (id, tag, title, description, image, sort_order) VALUES ('slide-2', '500+ Schools Registered', 'Over 16 Regions Represented', 'From Accra to Tamale, young minds are competing to solve real-world problems with technology.', 'assets/ntic_image_4.jpeg', 1)")
         cur.execute("INSERT INTO hero_slides (id, tag, title, description, image, sort_order) VALUES ('slide-3', 'Innovate. Build. Lead.', 'Ready to Make an Impact?', 'Join Ghana''s largest high school tech competition. Registration is open for all tracks.', 'assets/ntic_image_7.jpeg', 2)")
 

@@ -494,7 +494,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     'Coding & Algorithms',
     'Robotics & IoT',
     'Artificial Intelligence',
-    'Cybersecurity CTF',
+    'Networking & Cybersecurity CTF',
     'Open Innovation'
   ];
 
@@ -2040,7 +2040,7 @@ setTimeout(async () => {
     this.slideForm = {
       title: '', image: '', videoFileId: '', videoUrl: '',
       tag: 'National Championship',
-      description: 'Bringing together high school teams from all 16 regions to solve real-world problems through Coding, Robotics, AI, Cybersecurity, and Open Innovation.',
+      description: 'Bringing together high school teams from all 16 regions to solve real-world problems through Coding, Robotics, AI, Networking & Cybersecurity, and Open Innovation.',
       ctaText: 'Enter Portal',
       ctaLink: '#portal'
     };
@@ -2729,7 +2729,7 @@ setTimeout(async () => {
     { value: 'coding-track', label: '⚡ Coding' },
     { value: 'robotics-track', label: '🤖 Robotics' },
     { value: 'ai-track', label: '🧠 AI & ML' },
-    { value: 'cyber-track', label: '🔐 Cybersecurity' },
+    { value: 'cyber-track', label: 'Networking & Cybersecurity' },
     { value: 'innovation-track', label: '💡 Innovation' }
   ];
 

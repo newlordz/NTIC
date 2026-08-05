@@ -171,7 +171,7 @@ export class BrevoEmailService {
   sendOtpEmail(toEmail: string, otp: string): void {
     this.sendEmail({
       sender: this.sender,
-      to: [{ email: toEmail, name: '' }],
+      to: [{ email: toEmail, name: toEmail.split('@')[0] }],
       subject: `Your Verification Code — NTIC Ghana`,
       htmlContent: `
         <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">

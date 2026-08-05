@@ -423,7 +423,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     coding:     'Coding & Algorithms — Speed Sprints Arena',
     robotics:   'Robotics & IoT — Autonomous Navigation Lab',
     ai:         'Artificial Intelligence — Neural Vision Studio',
-    cyber:      'Cybersecurity CTF — Intrusion Defense Matrix',
+      cyber:      'Networking & Cybersecurity CTF — Intrusion Defense Matrix',
     innovation: 'Open Innovation — Smart City Green Tech Grid'
   };
 
@@ -780,7 +780,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       { id: 'central',       name: 'Central',       defaultCount: 22, topSchool: "Wesley Girls' HS", specialty: 'Coding' },
       { id: 'eastern',       name: 'Eastern',       defaultCount: 18, topSchool: 'Koforidua SHTS', specialty: 'AI' },
       { id: 'western',       name: 'Western',       defaultCount: 15, topSchool: 'Fijai SHS', specialty: 'Innovation' },
-      { id: 'volta',         name: 'Volta',         defaultCount: 12, topSchool: 'Ho Technical', specialty: 'Cybersecurity' },
+      { id: 'volta',         name: 'Volta',         defaultCount: 12, topSchool: 'Ho Technical',           specialty: 'Networking & Cybersecurity' },
       { id: 'northern',      name: 'Northern',      defaultCount: 10, topSchool: 'Tamale SHS', specialty: 'Robotics' },
       { id: 'bono',          name: 'Bono',          defaultCount: 8,  topSchool: 'Sunyani SHS', specialty: 'Coding' },
       { id: 'western-north', name: 'Western North', defaultCount: 6,  topSchool: 'Sefwi Wiawso SHS', specialty: 'Innovation' },
@@ -790,7 +790,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       { id: 'savannah',      name: 'Savannah',      defaultCount: 5,  topSchool: 'Damongo SHS', specialty: 'Robotics' },
       { id: 'north-east',    name: 'North East',    defaultCount: 4,  topSchool: 'Nalerigu SHS', specialty: 'AI' },
       { id: 'upper-west',    name: 'Upper West',    defaultCount: 5,  topSchool: 'Wa SHS', specialty: 'Coding' },
-      { id: 'upper-east',    name: 'Upper East',    defaultCount: 6,  topSchool: 'Navrongo SHS', specialty: 'Cybersecurity' },
+      { id: 'upper-east',    name: 'Upper East',    defaultCount: 6,  topSchool: 'Navrongo SHS',           specialty: 'Networking & Cybersecurity' },
     ];
 
     if (isWiped) {
@@ -947,7 +947,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
           id: 'slide-1',
           tag: 'National Championship',
           title: 'Where Ghana\'s Brightest Minds Compete & Innovate',
-          description: 'Bringing together high school teams from all 16 regions to solve real-world problems through Coding, Robotics, AI, Cybersecurity, and Open Innovation.',
+          description: 'Bringing together high school teams from all 16 regions to solve real-world problems through Coding, Robotics, AI, Networking & Cybersecurity, and Open Innovation.',
           image: 'assets/ntic_image_8.jpeg',
           videoUrl: 'assets/ntic_slideshow.mp4',
           ctaText: 'Enter Portal',
@@ -3754,7 +3754,7 @@ for (let i = people.length - 1; i > 0; i--) {
 
   // ── GHANA REGION MAP ─────────────────────────────────────────
   activeMapFilter: string = 'All';
-  mapFilters = ['All', 'Robotics', 'Coding', 'AI', 'Cybersecurity', 'Innovation'];
+  mapFilters = ['All', 'Robotics', 'Coding', 'AI', 'Networking & Cybersecurity', 'Innovation'];
 
   regionalHubs = [
     { id: 'greater-accra', x: 208, y: 308, name: 'Accra Hub' },

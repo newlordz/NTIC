@@ -84,7 +84,7 @@ export class ProfileCompletionComponent implements OnInit {
     if (userTrack.includes('Coding')) resolvedExpertise = 'Coding & Software Engineering';
     else if (userTrack.includes('Robotics')) resolvedExpertise = 'Robotics & Embedded Systems';
     else if (userTrack.includes('AI')) resolvedExpertise = 'AI & Data Science';
-    else if (userTrack.includes('Cyber')) resolvedExpertise = 'Cybersecurity & Defense';
+    else if (userTrack.includes('Cyber')) resolvedExpertise = 'Networking & Cybersecurity';
     else if (userTrack.includes('Innovation')) resolvedExpertise = 'Innovation & Product Design';
 
     this.profileForm = {

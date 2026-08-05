@@ -547,7 +547,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     { id: 'coding', label: 'Coding', icon: 'code' },
     { id: 'robotics', label: 'Robotics', icon: 'smart_toy' },
     { id: 'ai', label: 'AI', icon: 'psychology' },
-    { id: 'cyber', label: 'Cybersecurity', icon: 'security' },
+    { id: 'cyber', label: 'Networking & Cybersecurity', icon: 'security' },
     { id: 'innovation', label: 'Innovation', icon: 'tips_and_updates' },
   ];
 

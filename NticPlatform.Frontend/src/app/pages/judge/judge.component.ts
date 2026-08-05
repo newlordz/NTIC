@@ -144,8 +144,8 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
       'robotics': { name: 'Robotics Semi-Finals', deadline: 'Jul 2' },
       'ai & ml': { name: 'AI & ML Bowl', deadline: 'Jul 5' },
       'ai': { name: 'AI & ML Bowl', deadline: 'Jul 5' },
-      'cybersecurity': { name: 'Cybersecurity CTF', deadline: 'Jun 30' },
-      'cyber': { name: 'Cybersecurity CTF', deadline: 'Jun 30' },
+      'cybersecurity': { name: 'Networking & Cybersecurity CTF', deadline: 'Jun 30' },
+      'cyber': { name: 'Networking & Cybersecurity CTF', deadline: 'Jun 30' },
       'open innovation': { name: 'Innovation Showcase', deadline: 'Jul 8' },
       'innovation': { name: 'Innovation Showcase', deadline: 'Jul 8' }
     };
