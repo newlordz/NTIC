@@ -4,7 +4,7 @@ export const environment: Environment = {
   production: true,
   apiUrl: '/api',
   brevo: {
-    apiKey: '',
+    apiKey: 'REPLACE_BREVO_API_KEY',
     senderEmail: 'enochessel5@gmail.com',
     senderName: 'NTIC Ghana Championship'
   },

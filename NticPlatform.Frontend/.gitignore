@@ -43,3 +43,4 @@ Thumbs.db
 
 # Local Environments
 src/environments/environment.local.ts
+.env-backup/

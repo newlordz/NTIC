@@ -5,7 +5,7 @@
     "ng": "ng",
     "start": "node server.js",
     "dev": "ng serve",
-    "build": "node -e \"const fs=require('fs');['src/environments/environment.ts','src/environments/environment.prod.ts'].forEach(f=>{let c=fs.readFileSync(f,'utf8');c=c.replace('REPLACE_BREVO_API_KEY',process.env.BREVO_API_KEY||'');c=c.replace('REPLACE_SMSMODE_API_KEY',process.env.SMSMODE_API_KEY||'');c=c.replace('REPLACE_GEMINI_API_KEY',process.env.GEMINI_API_KEY||'');fs.writeFileSync(f,c)});\" && ng build",
+    "build": "node inject-env.js && ng build && node inject-env.js restore",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
@@ -30,6 +30,7 @@
     "@angular/compiler-cli": "^17.3.0",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@types/jasmine": "~5.1.0",
+    "dotenv": "^17.4.2",
     "jasmine-core": "~5.1.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
