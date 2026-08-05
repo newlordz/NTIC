@@ -1,0 +1,14 @@
+# Auto-detect text files and normalize line endings to LF in repository
+* text=auto
+
+# Force LF for shell scripts and web assets
+*.sh text eol=lf
+*.ts text=auto
+*.scss text=auto
+*.html text=auto
+*.css text=auto
+*.json text=auto
+
+# Keep Windows batch scripts with CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf

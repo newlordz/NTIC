@@ -15,12 +15,18 @@ def init_postgres_db():
 
     # Step 1: Ensure database exists
     try:
+        # Use hostaddr to force TCP/IP
+        host = settings.POSTGRES_HOST
+        if host in ("localhost", "127.0.0.1", ""):
+            host = None
         admin_conn = psycopg2.connect(
-            host=settings.POSTGRES_HOST,
+            host=host,
+            hostaddr=settings.POSTGRES_HOST if host else settings.POSTGRES_HOST,
             port=settings.POSTGRES_PORT,
             user=settings.POSTGRES_USER,
             password=settings.POSTGRES_PASSWORD,
-            dbname="postgres"
+            dbname="postgres",
+            connect_timeout=10,
         )
         admin_conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
         cur = admin_conn.cursor()
@@ -364,18 +370,27 @@ def get_db_connection():
     if database_url:
         try:
             conn = psycopg2.connect(database_url)
+            logger.info("Connected to PostgreSQL via DATABASE_URL")
             return conn
         except Exception as e:
             logger.warning(f"PostgreSQL connection via DATABASE_URL failed: {e}")
     # Fallback to individual POSTGRES_ vars (local dev)
+    # Use hostaddr to force TCP/IP (prevents Unix socket fallback)
+    host = settings.POSTGRES_HOST
+    if host in ("localhost", "127.0.0.1", ""):
+        logger.warning(f"POSTGRES_HOST='{host}' would trigger Unix socket; forcing TCP via hostaddr")
+        host = None
     try:
         conn = psycopg2.connect(
-            host=settings.POSTGRES_HOST,
+            host=host,
+            hostaddr=settings.POSTGRES_HOST if host else settings.POSTGRES_HOST,
             port=settings.POSTGRES_PORT,
             user=settings.POSTGRES_USER,
             password=settings.POSTGRES_PASSWORD,
-            dbname=settings.POSTGRES_DB
+            dbname=settings.POSTGRES_DB,
+            connect_timeout=10,
         )
+        logger.info(f"Connected to PostgreSQL via individual vars: {settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}")
         return conn
     except Exception as e:
         logger.error(f"PostgreSQL connection failed: {e}")
