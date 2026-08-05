@@ -609,37 +609,38 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px 24px;
-  border-radius: 12px;
-  border: 2px solid var(--outline-variant);
+  padding: 12px 20px;
+  border-radius: 10px;
+  border: 1.5px solid var(--outline-variant);
   background: var(--surface-container-lowest);
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--on-surface-variant);
   cursor: pointer;
-  transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 
-  .material-symbols-outlined { font-size: 22px; }
+  .material-symbols-outlined { font-size: 20px; }
 
   &:hover {
     border-color: var(--primary);
     color: var(--primary);
+    background: rgba(0, 63, 135, 0.03);
   }
 
   &.active {
     border-color: var(--primary);
-    background: rgba(0, 63, 135, 0.06);
+    background: rgba(0, 63, 135, 0.08);
     color: var(--primary);
-    box-shadow: 0 4px 16px rgba(0, 63, 135, 0.12);
+    box-shadow: 0 4px 14px rgba(0, 63, 135, 0.15);
   }
 }
 
 .admin-register-form-card {
   background: var(--surface-container-lowest);
   border: 1px solid var(--outline-variant);
-  border-radius: 16px;
-  padding: 28px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 
 .admin-form-header {
@@ -1815,16 +1816,16 @@
 .preview-ticket {
   width: 100%;
   max-width: 440px;
-  border-radius: 16px;
+  border-radius: 14px;
   overflow: hidden;
-  border: 1px solid rgba(0, 63, 135, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 63, 135, 0.08);
+  border: 1px solid rgba(0, 63, 135, 0.15);
+  box-shadow: 0 6px 24px rgba(0, 63, 135, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
   position: relative;
-  transition: box-shadow 0.4s ease, border-color 0.4s ease;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
 
   &.preview-filled {
-    box-shadow: 0 12px 40px rgba(0, 63, 135, 0.16);
-    border-color: rgba(0, 63, 135, 0.25);
+    box-shadow: 0 12px 36px rgba(0, 63, 135, 0.18);
+    border-color: rgba(0, 63, 135, 0.3);
   }
 }
 
@@ -1833,12 +1834,12 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 18px 20px;
-  background: linear-gradient(135deg, #001a3a 0%, #003175 100%);
-  transition: background 0.5s ease;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #001a3a 0%, #003f87 100%);
+  transition: background 0.4s ease;
 
   &.sponsor {
-    background: linear-gradient(135deg, #001f1c 0%, #005045 100%);
+    background: linear-gradient(135deg, #001f1c 0%, #006a60 100%);
   }
 }
 
