@@ -2,6 +2,7 @@ import { getAuthValue } from './session.util';
 import { Injectable, signal } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../environments/environment';
+import { firstValueFrom } from 'rxjs';
 
 export interface ChatMessage {
   role: 'user' | 'model' | 'human_support';
@@ -316,9 +317,17 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
   async sendMessage(userText: string, userRole: string): Promise<void> {
     if (!userText.trim() || this.isLoading()) return;
 
+    // Helper to push user text into chat before processing special states
+    const addUserMsg = () => {
+      const userMsg: ChatMessage = { role: 'user', text: userText.trim(), timestamp: new Date() };
+      this.messages.update(msgs => [...msgs, userMsg]);
+      this.saveToSession();
+    };
+
     // Handle email collection state
     if (this.showEmailInput()) {
       const email = userText.trim();
+      addUserMsg();
       if (email.includes('@') && email.includes('.')) {
         this.createTicket(email);
         return;
@@ -332,24 +341,19 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
     // Handle "check ticket" keyword
     if (/check\s+ticket|ticket\s+status|lookup/i.test(userText)) {
       this.showTicketLookup.set(true);
-      const prompt: ChatMessage = { role: 'model', text: 'Enter your ticket ID below and I\'ll check it for you.', timestamp: new Date() };
-      this.messages.update(msgs => [...msgs, prompt]);
-      this.saveToSession();
       return;
     }
 
     // Handle account verification request
     if (/verify.*account|check.*account|account.*ready|is.*my.*account|registration.*(status|confirmed|complete|go.*through)|did.*register|am.*i.*registered/i.test(userText)) {
       this.showAccountLookup.set(true);
-      const prompt: ChatMessage = { role: 'model', text: 'I can check that for you! Enter the email address you registered with and I\'ll look it up.', timestamp: new Date() };
-      this.messages.update(msgs => [...msgs, prompt]);
-      this.saveToSession();
       return;
     }
 
     // Handle account lookup email input
     if (this.showAccountLookup()) {
       const email = userText.trim();
+      addUserMsg();
       if (email.includes('@') && email.includes('.')) {
         this.lookupAccount(email);
         return;
@@ -364,10 +368,12 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
     if (this.showTicketPrompt()) {
       const lower = userText.toLowerCase();
       if (/yes|ok|sure|yeah|create|do it|go ahead/.test(lower)) {
+        addUserMsg();
         this.acceptTicketCreation();
         return;
       }
       if (/no|nope|not now|never mind|cancel/.test(lower)) {
+        addUserMsg();
         this.rejectTicketCreation();
         return;
       }
@@ -408,9 +414,9 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
         generationConfig: { temperature: 0.7, maxOutputTokens: 512, topP: 0.9 }
       };
 
-      const response: any = await this.http.post(this.API_URL, body, {
+      const response: any = await firstValueFrom(this.http.post(this.API_URL, body, {
         headers: new HttpHeaders({ 'Content-Type': 'application/json' })
-      }).toPromise();
+      }));
 
       let botText = response?.candidates?.[0]?.content?.parts?.[0]?.text
         || 'I apologise, I could not generate a response. Please try again.';
