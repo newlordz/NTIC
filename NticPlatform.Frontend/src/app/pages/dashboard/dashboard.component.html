@@ -2481,87 +2481,146 @@
 
             <form (ngSubmit)="submitRegistration()" #rf="ngForm">
               <div class="admin-form-grid">
+                
+                <!-- Full Name -->
                 <div class="admin-form-field">
-                  <label>Full Name <span class="req">*</span></label>
-                  <input type="text" [(ngModel)]="regForm.fullName" name="fullName" placeholder="e.g. Dr. Efua Mensah" required>
+                  <label class="admin-field-label">
+                    <span class="material-symbols-outlined field-icon">person</span>
+                    Full Name <span class="req">*</span>
+                  </label>
+                  <div class="admin-input-icon-group">
+                    <span class="material-symbols-outlined input-prefix-icon">badge</span>
+                    <input type="text" [(ngModel)]="regForm.fullName" name="fullName" placeholder="e.g. Dr. Efua Mensah" required class="modern-input">
+                  </div>
                 </div>
+
+                <!-- Email Address -->
                 <div class="admin-form-field">
-                  <label>Email Address <span class="req">*</span></label>
-                  <div class="admin-input-icon-wrap">
+                  <label class="admin-field-label">
+                    <span class="material-symbols-outlined field-icon">mail</span>
+                    Email Address <span class="req">*</span>
+                  </label>
+                  <div class="admin-input-icon-group">
+                    <span class="material-symbols-outlined input-prefix-icon">alternate_email</span>
                     <input type="email" [(ngModel)]="regForm.email" name="email" placeholder="e.g. efua@university.edu.gh" required
                       (input)="validateEmail()"
                       [class.input-valid]="emailValid === true"
-                      [class.input-invalid]="emailValid === false">
+                      [class.input-invalid]="emailValid === false"
+                      class="modern-input">
                     <span *ngIf="emailValid === true" class="material-symbols-outlined input-ok-icon">check_circle</span>
                     <span *ngIf="emailValid === false" class="material-symbols-outlined input-err-icon">cancel</span>
                   </div>
                 </div>
+
+                <!-- Organization -->
                 <div class="admin-form-field">
-                  <label>Organization / Institution <span class="req">*</span></label>
-                  <input type="text" [(ngModel)]="regForm.organization" name="organization" placeholder="e.g. University of Ghana" required>
+                  <label class="admin-field-label">
+                    <span class="material-symbols-outlined field-icon">business</span>
+                    Organization / Institution <span class="req">*</span>
+                  </label>
+                  <div class="admin-input-icon-group">
+                    <span class="material-symbols-outlined input-prefix-icon">account_balance</span>
+                    <input type="text" [(ngModel)]="regForm.organization" name="organization" placeholder="e.g. University of Ghana" required class="modern-input">
+                  </div>
                 </div>
+
+                <!-- Phone Number -->
                 <div class="admin-form-field">
-                  <label>Phone Number</label>
-                  <div class="admin-input-icon-wrap">
+                  <label class="admin-field-label">
+                    <span class="material-symbols-outlined field-icon">call</span>
+                    Phone Number
+                  </label>
+                  <div class="admin-input-icon-group">
+                    <span class="material-symbols-outlined input-prefix-icon">phone_iphone</span>
                     <input type="tel" [(ngModel)]="regForm.phone" name="phone" placeholder="+233 24 000 0000"
                       (input)="validatePhone()"
                       [class.input-valid]="phoneValid === true"
-                      [class.input-invalid]="phoneValid === false">
+                      [class.input-invalid]="phoneValid === false"
+                      class="modern-input">
                     <span *ngIf="regForm.phone && phoneValid === true" class="material-symbols-outlined input-ok-icon">check_circle</span>
                     <span *ngIf="regForm.phone && phoneValid === false" class="material-symbols-outlined input-err-icon">cancel</span>
                   </div>
                 </div>
-                <div class="admin-form-field" *ngIf="registerRole === 'judge'">
-                  <label style="margin-bottom: 8px; display: block;">Assigned Tracks <span class="req">*</span></label>
-                  <div class="tracks-checkbox-grid" style="display: flex; flex-direction: column; gap: 8px; background: var(--surface-container-lowest); border: 1px solid var(--outline-variant); padding: 12px; border-radius: 8px;">
-                    <label *ngFor="let tr of availableTracks" style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13.5px; color: var(--on-surface);">
-                      <input 
-                        type="checkbox" 
-                        [checked]="isRegFormTrackSelected(tr)"
-                        (change)="toggleRegFormTrack(tr)"
-                        style="cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary);"
-                      >
-                      <span>{{ tr }}</span>
-                    </label>
-                  </div>
-                </div>
-                <div class="admin-form-field admin-form-full" *ngIf="registerRole === 'sponsor'">
-                  <label>Sponsorship Packages</label>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    <div *ngFor="let item of adminSponsorItems"
-                         style="padding:10px 12px;border:1.5px solid var(--outline-variant);border-radius:8px;cursor:pointer;transition:all 0.2s;"
-                         [style.border-color]="isAdminPackageSelected(item.label) ? 'var(--primary)' : 'var(--outline-variant)'"
-                         [style.background]="isAdminPackageSelected(item.label) ? 'var(--primary-container)' : 'var(--surface-container-lowest)'"
-                         (click)="toggleAdminPackage(item.label)">
-                      <div style="display:flex;align-items:center;gap:8px;">
-                        <span class="material-symbols-outlined" style="font-size:18px;" [style.color]="isAdminPackageSelected(item.label) ? 'var(--primary)' : 'var(--on-surface-variant)'">{{ item.icon }}</span>
-                        <span style="font-size:12px;font-weight:600;color:var(--on-surface);flex:1;">{{ item.label }}</span>
-                        <span *ngIf="!isAdminPackageSelected(item.label)" class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">add_circle</span>
-                        <span *ngIf="isAdminPackageSelected(item.label)" class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">check_circle</span>
+
+                <!-- Judge Tracks Selector -->
+                <div class="admin-form-field admin-form-full" *ngIf="registerRole === 'judge'">
+                  <label class="admin-field-label">
+                    <span class="material-symbols-outlined field-icon">rule</span>
+                    Assigned Competition Tracks <span class="req">*</span>
+                  </label>
+                  <div class="judge-tracks-chip-grid">
+                    <div 
+                      *ngFor="let tr of availableTracks" 
+                      class="track-chip-card"
+                      [class.selected]="isRegFormTrackSelected(tr)"
+                      (click)="toggleRegFormTrack(tr)">
+                      <div class="track-chip-inner">
+                        <span class="material-symbols-outlined track-chip-icon">
+                          {{ tr.includes('Coding') ? 'code' : tr.includes('Robotics') ? 'smart_toy' : tr.includes('Artificial') ? 'psychology' : tr.includes('Cyber') ? 'security' : 'lightbulb' }}
+                        </span>
+                        <span class="track-chip-title">{{ tr }}</span>
+                        <span class="material-symbols-outlined track-chip-check">
+                          {{ isRegFormTrackSelected(tr) ? 'check_circle' : 'add_circle' }}
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div class="admin-form-field admin-form-full">
-                  <label>Notes (optional)</label>
-                  <textarea [(ngModel)]="regForm.notes" name="notes" rows="3" placeholder="Additional context or notes..."></textarea>
-                </div>
-                <div class="admin-form-field admin-form-full">
-                  <label>{{ registerRole === 'judge' ? 'Judge' : 'Sponsor' }} Logo</label>
-                  <div class="admin-reg-logo-upload" style="display:flex;align-items:center;gap:12px; padding:12px; border:1px dashed var(--outline-variant); border-radius:8px; cursor:pointer;" (click)="adminRegLogoInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropAdminRegLogo($event)">
-                    <span class="material-symbols-outlined" style="color:var(--primary);font-size:28px;">cloud_upload</span>
-                    <div *ngIf="!adminRegLogoUrl" style="flex:1;">
-                      <p style="margin:0;font-size:13px;font-weight:500;">Upload logo for profile display</p>
-                      <p style="margin:2px 0 0;font-size:11px;color:var(--on-surface-variant);">PNG, SVG (Max 3MB)</p>
-                    </div>
-                    <div *ngIf="adminRegLogoUrl" style="flex:1;display:flex;align-items:center;gap:10px;">
-                      <img [src]="adminRegLogoUrl" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:2px solid var(--primary);">
-                      <span style="font-size:13px;font-weight:600;color:var(--primary);flex:1;">Logo uploaded</span>
-                      <span class="material-symbols-outlined" (click)="removeAdminRegLogo(); $event.stopPropagation()" style="cursor:pointer;font-size:18px;color:var(--error);">close</span>
+
+                <!-- Sponsor Packages Selector -->
+                <div class="admin-form-field admin-form-full" *ngIf="registerRole === 'sponsor'">
+                  <label class="admin-field-label">
+                    <span class="material-symbols-outlined field-icon">handshake</span>
+                    Sponsorship Tier Packages
+                  </label>
+                  <div class="sponsor-packages-grid">
+                    <div *ngFor="let item of adminSponsorItems"
+                         class="sponsor-pkg-card"
+                         [class.selected]="isAdminPackageSelected(item.label)"
+                         (click)="toggleAdminPackage(item.label)">
+                      <div class="sponsor-pkg-inner">
+                        <span class="material-symbols-outlined pkg-icon">{{ item.icon }}</span>
+                        <span class="pkg-label">{{ item.label }}</span>
+                        <span class="material-symbols-outlined pkg-check">
+                          {{ isAdminPackageSelected(item.label) ? 'check_circle' : 'add_circle' }}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <input #adminRegLogoInput type="file" (change)="onAdminRegLogoSelected($event)" accept=".png,.svg" style="display:none">
                 </div>
+
+                <!-- Notes -->
+                <div class="admin-form-field admin-form-full">
+                  <label class="admin-field-label">
+                    <span class="material-symbols-outlined field-icon">edit_note</span>
+                    Notes (optional)
+                  </label>
+                  <textarea [(ngModel)]="regForm.notes" name="notes" rows="2" placeholder="Additional context or notes..." class="modern-textarea"></textarea>
+                </div>
+
+                <!-- Logo Upload -->
+                <div class="admin-form-field admin-form-full">
+                  <label class="admin-field-label">
+                    <span class="material-symbols-outlined field-icon">image</span>
+                    {{ registerRole === 'judge' ? 'Judge Profile Photo / Institution Badge' : 'Sponsor Official Logo' }}
+                  </label>
+                  <div class="admin-reg-logo-upload" (click)="adminRegLogoInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropAdminRegLogo($event)">
+                    <span class="material-symbols-outlined upload-cloud-icon">cloud_upload</span>
+                    <div *ngIf="!adminRegLogoUrl" class="upload-text-wrap">
+                      <p class="upload-main-text">Upload image for accreditation badge display</p>
+                      <p class="upload-sub-text">PNG, SVG or JPG (Max 3MB)</p>
+                    </div>
+                    <div *ngIf="adminRegLogoUrl" class="upload-preview-wrap">
+                      <img [src]="adminRegLogoUrl" class="upload-img-thumb">
+                      <span class="upload-status-text">Logo attached</span>
+                      <button type="button" class="upload-remove-btn" (click)="removeAdminRegLogo(); $event.stopPropagation()">
+                        <span class="material-symbols-outlined">close</span>
+                      </button>
+                    </div>
+                  </div>
+                  <input #adminRegLogoInput type="file" (change)="onAdminRegLogoSelected($event)" accept=".png,.svg,.jpg,.jpeg" style="display:none">
+                </div>
+
               </div>
               <div class="admin-form-actions">
                 <button type="button" class="btn btn-subtle" (click)="regForm = {fullName:'',email:'',organization:'',phone:'',track:'',tracks:[],tier:'',notes:''}; selectedAdminPackages = []; removeAdminRegLogo()">Clear</button>
