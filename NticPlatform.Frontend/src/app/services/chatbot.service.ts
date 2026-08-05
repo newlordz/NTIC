@@ -613,7 +613,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
     }
   }
 
-  /** Look up ticket by ID */
+/** Look up ticket by ID */
   async checkTicketById(ticketId: string): Promise<void> {
     if (!ticketId.trim()) return;
     this.isLoading.set(true);
@@ -641,7 +641,8 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
         };
         this.messages.update(msgs => [...msgs, msg]);
       }
-    } catch (_) {
+    } catch (e) {
+      console.error('checkTicketById failed', e);
       const msg: ChatMessage = {
         role: 'model',
         text: `❌ I couldn't find ticket **${ticketId}**. Double-check the ID and try again.`,
@@ -677,7 +678,8 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
         };
       }
       this.messages.update(msgs => [...msgs, msg]);
-    } catch (_) {
+    } catch (e) {
+      console.error('lookupAccount failed', e);
       const msg: ChatMessage = {
         role: 'model',
         text: `⚠️ I couldn't reach the verification service right now. Please try again in a moment, or create a support ticket and I'll check for you.`,
@@ -707,7 +709,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
         this.messages.update(msgs => [...msgs, { role: 'human_support', text: replyText, timestamp: new Date(), agentName }]);
         this.saveToSession();
       }
-    } catch (_) {}
+    } catch (e) { console.error('addAdminReply failed', e); }
   }
 
   async resolveTicket(ticketId: string): Promise<void> {
@@ -716,7 +718,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
       this.supportTickets.update(tickets => tickets.map(t =>
         t.id === ticketId ? { ...t, status: 'resolved', lastUpdated: new Date() } : t
       ));
-    } catch (_) {}
+    } catch (e) { console.error('resolveTicket failed', e); }
   }
 
   /** Admin: load soft-deleted tickets from backend */
@@ -724,7 +726,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
     try {
       const tickets: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/tickets?recycled=true`));
       this.recycleBinTickets.set((tickets || []).map((t: any) => this.parseTicket(t)));
-    } catch (_) {}
+    } catch (e) { console.error('loadRecycleBinTickets failed', e); }
   }
 
   /** Soft-delete a ticket (move to Recycle Bin) */
@@ -741,9 +743,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
         await this.loadRecycleBinTickets();
       }
       return true;
-    } catch (_) {
-      return false;
-    }
+    } catch (e) { console.error('deleteTicket failed', e); return false; }
   }
 
   /** Restore soft-deleted ticket back to active list */
@@ -760,9 +760,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
         await this.loadRecycleBinTickets();
       }
       return true;
-    } catch (_) {
-      return false;
-    }
+    } catch (e) { console.error('restoreTicket failed', e); return false; }
   }
 
   /** Permanently purge a single ticket */
@@ -772,9 +770,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
       this.recycleBinTickets.update(recycled => recycled.filter(r => r.id !== ticketId));
       this.supportTickets.update(tickets => tickets.filter(t => t.id !== ticketId));
       return true;
-    } catch (_) {
-      return false;
-    }
+    } catch (e) { console.error('permanentlyDeleteTicket failed', e); return false; }
   }
 
   /** Empty all soft-deleted tickets from Recycle Bin */
@@ -783,9 +779,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
       await firstValueFrom(this.http.delete(`${environment.apiUrl}/tickets/recycle-bin/empty`));
       this.recycleBinTickets.set([]);
       return true;
-    } catch (_) {
-      return false;
-    }
+    } catch (e) { console.error('emptyRecycleBin failed', e); return false; }
   }
 
   private injectPendingAdminReplies(ticket: SupportTicket): void {

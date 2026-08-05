@@ -15,13 +15,12 @@ def init_postgres_db():
 
     # Step 1: Ensure database exists
     try:
-        # Use hostaddr to force TCP/IP
-        host = settings.POSTGRES_HOST
-        if host in ("localhost", "127.0.0.1", ""):
-            host = None
+        # Force TCP by converting localhost to 127.0.0.1 (Linux defaults localhost to Unix socket)
+        db_host = settings.POSTGRES_HOST
+        if db_host in ("localhost", ""):
+            db_host = "127.0.0.1"
         admin_conn = psycopg2.connect(
-            host=host,
-            hostaddr=settings.POSTGRES_HOST if host else settings.POSTGRES_HOST,
+            host=db_host,
             port=settings.POSTGRES_PORT,
             user=settings.POSTGRES_USER,
             password=settings.POSTGRES_PASSWORD,
@@ -375,22 +374,20 @@ def get_db_connection():
         except Exception as e:
             logger.warning(f"PostgreSQL connection via DATABASE_URL failed: {e}")
     # Fallback to individual POSTGRES_ vars (local dev)
-    # Use hostaddr to force TCP/IP (prevents Unix socket fallback)
-    host = settings.POSTGRES_HOST
-    if host in ("localhost", "127.0.0.1", ""):
-        logger.warning(f"POSTGRES_HOST='{host}' would trigger Unix socket; forcing TCP via hostaddr")
-        host = None
+    # Force TCP by converting localhost to 127.0.0.1 (Linux defaults localhost to Unix socket)
+    db_host = settings.POSTGRES_HOST
+    if db_host in ("localhost", ""):
+        db_host = "127.0.0.1"
     try:
         conn = psycopg2.connect(
-            host=host,
-            hostaddr=settings.POSTGRES_HOST if host else settings.POSTGRES_HOST,
+            host=db_host,
             port=settings.POSTGRES_PORT,
             user=settings.POSTGRES_USER,
             password=settings.POSTGRES_PASSWORD,
             dbname=settings.POSTGRES_DB,
             connect_timeout=10,
         )
-        logger.info(f"Connected to PostgreSQL via individual vars: {settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}")
+        logger.info(f"Connected to PostgreSQL via individual vars: {db_host}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}")
         return conn
     except Exception as e:
         logger.error(f"PostgreSQL connection failed: {e}")
