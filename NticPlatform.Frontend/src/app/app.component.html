@@ -13,13 +13,13 @@
         <div class="brand-sub">{{ currentUser?.roleId === 'student' ? 'Student Workspace' : currentUser?.roleId === 'instructor' ? 'Mentor Workspace' : currentUser?.roleId === 'super_admin' ? 'Admin' : currentUser?.roleId === 'content_manager' || currentUser?.roleId === 'reviewer' || currentUser?.roleId === 'competition_manager' ? 'Command Center' : 'Competition Manager' }}</div>
       </div>
     </div>
- 
+
     <a class="sidebar-new-btn" *ngIf="currentUser?.roleId !== 'student' && currentUser?.roleId !== 'sponsor' && currentUser?.roleId !== 'super_admin' && currentUser?.roleId !== 'content_manager' && currentUser?.roleId !== 'reviewer' && currentUser?.roleId !== 'competition_manager'"
        (click)="navigateSidebarCTA()">
       <span class="material-symbols-outlined" style="font-size:18px;">{{ currentUser?.roleId === 'judge' ? 'gavel' : currentUser?.roleId === 'school_admin' ? 'group_add' : currentUser?.roleId === 'instructor' ? 'assignment_turned_in' : 'add' }}</span>
       {{ currentUser?.roleId === 'instructor' ? 'Grade Work' : currentUser?.roleId === 'school_admin' ? 'Add Team' : currentUser?.roleId === 'judge' ? 'Score Challenge' : 'New Challenge' }}
     </a>
- 
+
     <div class="sidebar-section">
       <div class="sidebar-section-label">Main</div>
       <a class="nav-item" *ngIf="hasAccess('dashboard')" routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" (click)="closeMobileSidebar()">
@@ -28,7 +28,7 @@
       </a>
       <a class="nav-item" *ngIf="hasAccess('roster')" routerLink="/dashboard" [queryParams]="{ action: 'add_team' }" [class.active]="false" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">groups</span>
-        My Teams & Roster
+        My Teams &amp; Roster
       </a>
       <a class="nav-item" *ngIf="hasAccess('registration')" 
          [routerLink]="currentUser?.roleId === 'super_admin' ? '/dashboard' : '/registration'" 
@@ -54,7 +54,7 @@
         Competitions
       </a>
     </div>
- 
+
     <div class="sidebar-section" *ngIf="hasAccess('leaderboard') || hasAccess('talent') || hasAccess('sponsors') || hasAccess('reporting') || hasAccess('records') || hasAccess('lms_admin')">
       <div class="sidebar-section-label">Analytics</div>
       <a class="nav-item" *ngIf="hasAccess('leaderboard')" routerLink="/leaderboard" routerLinkActive="active" (click)="closeMobileSidebar()">
@@ -73,7 +73,7 @@
         <span class="material-symbols-outlined">assessment</span>
         {{ currentUser?.roleId === 'school_admin' ? 'School Reports' : 'Reports' }}
       </a>
-<a class="nav-item" *ngIf="hasAccess('users')" routerLink="/user-management" routerLinkActive="active" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('users')" routerLink="/user-management" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">manage_accounts</span>
         Users
         <span class="nav-badge nav-badge-tickets" *ngIf="openTicketCount > 0">{{ openTicketCount }}</span>
@@ -87,24 +87,48 @@
         LMS Manager
       </a>
     </div>
- 
+
     <div class="sidebar-footer">
       <a class="nav-item" (click)="logout()">
         <span class="material-symbols-outlined">logout</span>
         Landing Page
       </a>
       <div class="divider"></div>
-      <div class="user-profile-chip">
+      <div class="user-profile-chip" (click)="toggleProfile($event)" style="cursor: pointer; position: relative;">
         <div class="avatar">{{ currentUser?.avatar || 'SA' }}</div>
         <div class="user-info">
           <div class="user-name">{{ currentUser?.name || 'Super Admin' }}</div>
           <div class="user-role">{{ currentUser?.roleName || 'Administrator' }}</div>
         </div>
         <span class="material-symbols-outlined" style="margin-left:auto;font-size:18px;color:var(--outline)">expand_more</span>
+
+        <!-- Sidebar Profile Dropdown Menu -->
+        <div class="header-dropdown profile-dropdown sidebar-profile-dropdown" *ngIf="showProfileDropdown" (click)="$event.stopPropagation()">
+          <div class="profile-header-card">
+            <div class="profile-avatar-lg">{{ currentUser?.avatar || 'SA' }}</div>
+            <div class="profile-meta">
+              <div class="profile-name">{{ currentUser?.name || 'Super Admin' }}</div>
+              <div class="profile-role">{{ currentUser?.roleName || 'System Administrator' }}</div>
+            </div>
+          </div>
+          <div class="dropdown-divider"></div>
+          <a routerLink="/profile-completion" class="profile-action-row" (click)="showProfileDropdown = false">
+            <span class="material-symbols-outlined">manage_accounts</span>
+            <span>Edit Profile &amp; Settings</span>
+          </a>
+          <a routerLink="/dashboard" class="profile-action-row" (click)="showProfileDropdown = false">
+            <span class="material-symbols-outlined">admin_panel_settings</span>
+            <span>Command Center</span>
+          </a>
+          <a (click)="showProfileDropdown = false; logout()" class="profile-action-row logout">
+            <span class="material-symbols-outlined">logout</span>
+            <span>Sign Out to Landing</span>
+          </a>
+        </div>
       </div>
     </div>
   </aside>
- 
+
   <!-- ══ MAIN ══ -->
   <div [class.main-content]="!isLandingPage">
     <!-- Top Bar -->
@@ -185,7 +209,7 @@
                 <div class="app-icon primary"><span class="material-symbols-outlined">patient_list</span></div>
                 <span>Instructor</span>
               </a>
-              <a *ngIf="hasAccess('competitions')" routerLink="/competitions" class="app-item" (click)="showAppsDropdown = false">
+              <a *ngIf="hasAccess('competitions')" routerLink="/competitions" routerLinkActive="active" class="app-item" (click)="showAppsDropdown = false">
                 <div class="app-icon warn"><span class="material-symbols-outlined">emoji_events</span></div>
                 <span>Arena</span>
               </a>
@@ -216,7 +240,7 @@
             <div class="dropdown-divider"></div>
             <a routerLink="/profile-completion" class="profile-action-row" (click)="showProfileDropdown = false">
               <span class="material-symbols-outlined">manage_accounts</span>
-              <span>Edit Profile & Settings</span>
+              <span>Edit Profile &amp; Settings</span>
             </a>
             <a routerLink="/dashboard" class="profile-action-row" (click)="showProfileDropdown = false">
               <span class="material-symbols-outlined">admin_panel_settings</span>
@@ -230,54 +254,8 @@
         </div>
       </div>
     </header>
- 
+
     <!-- Router Outlet -->
     <router-outlet></router-outlet>
   </div>
 </div>
-
-<!-- ══════════════════════════════════════════
-     GLOBAL SYSTEM CONFIRM MODAL
-══════════════════════════════════════════ -->
-<div class="custom-dialog-backdrop" *ngIf="(dialogService.confirmState$ | async) as confirmItem" (click)="dialogService.closeConfirm(false)">
-  <div class="custom-dialog-card" (click)="$event.stopPropagation()">
-    <div class="custom-dialog-header">
-      <div class="custom-dialog-icon-wrapper" [class.danger]="confirmItem.data.type === 'danger'" [class.warning]="confirmItem.data.type === 'warning'">
-        <span class="material-symbols-outlined">{{ confirmItem.data.type === 'danger' ? 'warning' : 'help_outline' }}</span>
-      </div>
-      <h3 class="custom-dialog-title">{{ confirmItem.data.title }}</h3>
-    </div>
-    <div class="custom-dialog-body">
-      <p>{{ confirmItem.data.message }}</p>
-    </div>
-    <div class="custom-dialog-footer">
-      <button class="dialog-btn dialog-btn-cancel" (click)="dialogService.closeConfirm(false)">{{ confirmItem.data.cancelText }}</button>
-      <button class="dialog-btn dialog-btn-confirm" [class.danger]="confirmItem.data.type === 'danger'" (click)="dialogService.closeConfirm(true)">{{ confirmItem.data.confirmText }}</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════
-     GLOBAL TOAST NOTIFICATION CONTAINER
-══════════════════════════════════════════ -->
-<div class="toast-container" *ngIf="(dialogService.toasts$ | async) as toasts">
-  <div *ngFor="let t of toasts" class="toast-card" [class]="'toast-' + (t.type || 'info')">
-    <span class="material-symbols-outlined toast-icon">
-      {{ t.type === 'success' ? 'check_circle' : t.type === 'error' ? 'error' : t.type === 'warning' ? 'warning' : 'info' }}
-    </span>
-    <span class="toast-message">{{ t.message }}</span>
-    <button class="toast-close" (click)="dialogService.removeToast(t.id)">&times;</button>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════
-     FLOATING SCROLL TO TOP BUTTON
-══════════════════════════════════════════ -->
-<button class="scroll-to-top-btn" [class.visible]="showScrollToTop" (click)="scrollToTop()" title="Scroll back to top">
-  <span class="material-symbols-outlined">keyboard_arrow_up</span>
-</button>
-
-<!-- ══════════════════════════════════════════
-     AI CHATBOT SUPPORT WIDGET
-══════════════════════════════════════════ -->
-<app-chatbot *ngIf="!isLandingPage" [currentUser]="currentUser"></app-chatbot>
