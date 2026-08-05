@@ -470,15 +470,15 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
   /** Admin: load all tickets from backend */
   async loadAllTickets(): Promise<void> {
     try {
-      const tickets: any = await this.http.get(`${environment.apiUrl}/tickets`).toPromise();
+      const tickets: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/tickets`));
       this.supportTickets.set(tickets.map((t: any) => this.parseTicket(t)));
-    } catch (_) {}
+    } catch (e) { console.error('loadAllTickets failed', e); }
   }
 
   /** User: fetch own ticket from backend and merge into local state */
   async fetchMyTicket(userId: string): Promise<SupportTicket | null> {
     try {
-      const tickets: any = await this.http.get(`${environment.apiUrl}/tickets?user_id=${encodeURIComponent(userId)}`).toPromise();
+      const tickets: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/tickets?user_id=${encodeURIComponent(userId)}`));
       if (tickets && tickets.length > 0) {
         const t = this.parseTicket(tickets[0]);
         this.supportTickets.update(list => {
@@ -490,7 +490,7 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
         });
         return t;
       }
-    } catch (_) {}
+    } catch (e) { console.error('fetchMyTicket failed', e); }
     return null;
   }
 
@@ -565,13 +565,13 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
 
     const chatHistory = this.messages().filter(m => !m.isTyping && m.role !== 'human_support');
     try {
-      const result: any = await this.http.post(`${environment.apiUrl}/tickets`, {
+      const result: any = await firstValueFrom(this.http.post(`${environment.apiUrl}/tickets`, {
         userId: this.currentUserId || userEmail,
         userName: this.currentUserId ? 'User' : userEmail.split('@')[0],
         userRole: this.currentUserRole || 'guest',
         userEmail,
         chatHistory
-      }).toPromise();
+      }));
 
       const ticketId = result.id;
       const ticket: SupportTicket = {
