@@ -4,6 +4,8 @@ WORKDIR /app
 COPY NticPlatform.Frontend/package*.json ./
 RUN npm install --no-audit --no-fund
 COPY NticPlatform.Frontend/ .
+ARG BREVO_API_KEY
+ENV BREVO_API_KEY=$BREVO_API_KEY
 RUN npm run build
 
 # Stage 2: Python backend that serves both API and frontend
