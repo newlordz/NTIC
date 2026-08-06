@@ -2,13 +2,14 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { ContentService, Competition, CompetitionPhase } from '../../services/content.service';
 import { ThemeService } from '../../services/theme.service';
 
 @Component({
   selector: 'app-competitions',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './competitions.component.html',
   styleUrl: './competitions.component.scss'
 })

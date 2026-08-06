@@ -1,20 +1,62 @@
 :host { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 
-/* ── Back Home Button ── */
-.back-home-btn {
+/* ── Public Top Nav ── */
+.pub-topnav {
+  background: var(--bg-white, #fff);
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+
+  .pub-topnav-inner {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+  }
+}
+
+.pub-brand {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 0;
-  color: var(--on-surface-variant);
-  font-size: 13px;
-  font-weight: 600;
+  gap: 8px;
   text-decoration: none;
-  margin-bottom: 16px;
-  transition: color 0.15s;
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--primary, #003f87);
 
-  .material-symbols-outlined { font-size: 18px; }
-  &:hover { color: var(--primary); }
+  .material-symbols-outlined {
+    font-size: 22px;
+    background: var(--primary, #003f87);
+    color: #fff;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.pub-nav-links {
+  display: flex;
+  gap: 4px;
+
+  a {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--slate, #64748b);
+    text-decoration: none;
+    transition: all 0.2s;
+
+    &:hover { color: var(--primary, #003f87); background: rgba(0, 63, 135, 0.05); }
+    &.active { color: var(--primary, #003f87); background: rgba(0, 63, 135, 0.08); }
+  }
 }
 
 /* ── Hero Banner ── */

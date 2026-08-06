@@ -1,8 +1,10 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { URL } = require('url');
 
 const PORT = process.env.PORT || 8080;
+const BACKEND_URL = process.env.BACKEND_URL || 'http://127.0.0.1:5000';
 const DIST_DIR = path.join(__dirname, 'dist', 'ntic-frontend', 'browser');
 
 const MIME_TYPES = {
@@ -27,12 +29,48 @@ const MIME_TYPES = {
 
 const server = http.createServer((req, res) => {
   // Clean URL path
-  let urlPath = req.url.split('?')[0];
-  if (urlPath === '/') {
-    urlPath = '/index.html';
+  const urlPath = req.url.split('?')[0];
+
+  // 1. Proxy /api requests to Python FastAPI backend
+  if (urlPath.startsWith('/api/') || urlPath === '/api') {
+    let backendTarget;
+    try {
+      backendTarget = new URL(req.url, BACKEND_URL);
+    } catch (err) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ detail: 'Invalid target URL' }));
+      return;
+    }
+
+    const options = {
+      hostname: backendTarget.hostname,
+      port: backendTarget.port || (backendTarget.protocol === 'https:' ? 443 : 80),
+      path: backendTarget.pathname + backendTarget.search,
+      method: req.method,
+      headers: {
+        ...req.headers,
+        host: backendTarget.host
+      }
+    };
+
+    const proxyReq = http.request(options, (proxyRes) => {
+      res.writeHead(proxyRes.statusCode, proxyRes.headers);
+      proxyRes.pipe(res, { end: true });
+    });
+
+    proxyReq.on('error', (err) => {
+      console.error(`API Proxy Error [${req.method} ${req.url}]:`, err.message);
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ detail: 'Backend service unavailable', error: err.message }));
+    });
+
+    req.pipe(proxyReq, { end: true });
+    return;
   }
 
-  let filePath = path.join(DIST_DIR, urlPath);
+  // 2. Static file serving & SPA fallback
+  let relativePath = urlPath === '/' ? '/index.html' : urlPath;
+  let filePath = path.join(DIST_DIR, relativePath);
 
   // Security check against directory traversal
   if (!filePath.startsWith(DIST_DIR)) {
@@ -42,8 +80,17 @@ const server = http.createServer((req, res) => {
   }
 
   fs.stat(filePath, (err, stats) => {
+    const extName = path.extname(relativePath);
+    const hasExtension = extName !== '';
+
     if (err || !stats.isFile()) {
-      // SPA Fallback: Serve index.html for client-side routing
+      // If requested path has a static asset extension (.js, .css, .png, etc.) and doesn't exist, return 404
+      if (hasExtension && extName !== '.html') {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('404 Not Found');
+        return;
+      }
+      // SPA Fallback for client-side routes (no file extension or .html)
       filePath = path.join(DIST_DIR, 'index.html');
     }
 
@@ -78,4 +125,5 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`NTIC Platform Production Server running on http://0.0.0.0:${PORT}`);
   console.log(`Serving static files from: ${DIST_DIR}`);
+  console.log(`Proxying /api requests to: ${BACKEND_URL}`);
 });

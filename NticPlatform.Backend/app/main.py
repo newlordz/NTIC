@@ -63,6 +63,10 @@ try:
         excerpt: str
         date: str
         image: str = "assets/ntic_image_4.jpeg"
+        tag: str = ""
+        tag_color: str = ""
+        read_time: str = "5 min"
+        likes: int = 0
 
     class SchoolCreate(BaseModel):
         name: str
@@ -860,11 +864,18 @@ try:
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, title, excerpt, date, image FROM stories")
+        cur.execute("SELECT id, title, excerpt, date, image, tag, tag_color, read_time, likes FROM stories ORDER BY date DESC")
         rows = cur.fetchall()
         cur.close()
         conn.close()
-        return [{"id": r[0], "title": r[1], "excerpt": r[2], "date": r[3], "image": r[4]} for r in rows]
+        return [
+            {
+                "id": r[0], "title": r[1], "body": r[2], "date": r[3], "image": r[4],
+                "tag": r[5] or "", "tagColor": r[6] or "", "readTime": r[7] or "5 min",
+                "likes": r[8] or 0, "likedBy": []
+            }
+            for r in rows
+        ]
 
     @app.post("/api/stories", status_code=status.HTTP_201_CREATED)
     def create_story(payload: StoryCreate):
@@ -873,8 +884,8 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         st_id = "st-" + str(uuid.uuid4())[:8]
         cur = conn.cursor()
-        cur.execute("INSERT INTO stories (id, title, excerpt, date, image) VALUES (%s, %s, %s, %s, %s)",
-                    (st_id, payload.title, payload.excerpt, payload.date, payload.image))
+        cur.execute("INSERT INTO stories (id, title, excerpt, date, image, tag, tag_color, read_time, likes) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    (st_id, payload.title, payload.excerpt, payload.date, payload.image, payload.tag, payload.tag_color, payload.read_time, payload.likes))
         conn.commit()
         cur.close()
         conn.close()

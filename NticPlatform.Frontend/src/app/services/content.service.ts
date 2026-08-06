@@ -491,6 +491,41 @@ private readonly defaultLmsAssignments: LmsAssignment[] = [];
       title: 'PRESEC Legon Students Simulate a Nation-State Cyber Attack in Finals',
       body: 'The cybersecurity track finale saw PRESEC Legon team execute a realistic nation-state attack simulation, demonstrating advanced penetration testing skills and incident response protocols.',
       likes: 31, likedBy: []
+    },
+    {
+      id: 'story-4', tag: 'AI', tagColor: 'ai',
+      image: 'assets/ntic_image_4.jpeg', date: 'June 10, 2026', readTime: '5 min',
+      title: 'Opoku War School AI Model Detects Cassava Disease with 94% Accuracy',
+      body: 'A machine learning pipeline built by three SHS students uses convolutional neural networks to identify cassava mosaic disease from leaf photos, helping farmers act before crops are lost.',
+      likes: 42, likedBy: []
+    },
+    {
+      id: 'story-5', tag: 'Innovation', tagColor: 'innovation',
+      image: 'assets/ntic_image_7.jpeg', date: 'June 5, 2026', readTime: '4 min',
+      title: 'Mfantsipim Students Prototype a Solar-Powered Water Purification System',
+      body: 'Drawing on Ghana\'s abundant sunlight, the team designed a low-cost purification unit that provides clean drinking water to off-grid communities using UV sterilisation and solar panels.',
+      likes: 27, likedBy: []
+    },
+    {
+      id: 'story-6', tag: 'Coding', tagColor: 'coding',
+      image: 'assets/ntic_image_12.jpeg', date: 'May 30, 2026', readTime: '3 min',
+      title: 'Adisadel College Dominates Regional Algorithm Sprint',
+      body: 'Adisadel College students swept the top three spots in the Western Region algorithm sprint, solving dynamic programming and graph traversal challenges at record speed.',
+      likes: 15, likedBy: []
+    },
+    {
+      id: 'story-7', tag: 'Robotics', tagColor: 'robotics',
+      image: 'assets/ntic_image_9.jpeg', date: 'May 24, 2026', readTime: '5 min',
+      title: 'GHACSE Robotics Bridge Challenge Draws 80 Teams Nationwide',
+      body: 'The annual structural engineering sprint challenged teams to build load-bearing bridges from limited materials, with Kumasi Academy taking first place with a span holding 45 kg.',
+      likes: 19, likedBy: []
+    },
+    {
+      id: 'story-8', tag: 'AI', tagColor: 'ai',
+      image: 'assets/ntic_image_14.jpeg', date: 'May 18, 2026', readTime: '6 min',
+      title: 'Accra Academy Students Build a Multilingual Voice Assistant for Farmers',
+      body: 'Using open-source speech models fine-tuned on Twi, Ewe, and Ga, the team created a voice-first interface that answers crop pricing and weather questions in local languages.',
+      likes: 36, likedBy: []
     }
   ];
 

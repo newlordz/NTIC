@@ -459,7 +459,7 @@
             <p>We build and run Ghana’s premier National Technology and Innovation (NTI) Championship, integrating
               high-school teams from all 16 regions. Through rigorous coursework, sandbox tasks, and competitive arenas,
               we turn classrooms into innovation labs.</p>
-            <a href="#tracks" class="read-more-link">
+            <a (click)="scrollToSection('tracks')" class="read-more-link" style="cursor:pointer">
               <span>Experience the Tracks</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
             </a>
@@ -504,98 +504,111 @@
   </section>
 
   <!-- ══════════════════════════════════════════
-       SPOTLIGHT / STORIES — Auto-sliding Carousel (admin-controlled)
+       NEWS & EVENTS — Premium Editorial Grid
   ══════════════════════════════════════════ -->
-  <section class="spotlight-section scroll-animate fade-up">
+  <section class="news-editorial-section scroll-animate fade-up">
     <div class="container">
-      <div class="section-header-academic">
-        <div class="academic-title-wrap">
-          <span class="academic-sub">Spotlight &amp; Research</span>
-          <h2><span class="word">Championship</span> <span class="word">Stories</span></h2>
+
+      <!-- Editorial Header -->
+      <div class="editorial-header">
+        <div class="editorial-header-top">
+          <span class="editorial-badge">
+            <span class="badge-dot"></span>
+            Latest
+          </span>
+          <a routerLink="/news" class="editorial-view-all">
+            View All Stories
+            <span class="material-symbols-outlined">arrow_forward</span>
+          </a>
         </div>
-        <p class="academic-desc-lead">Discover how Ghana's next generattion of scientists, developers,engineers and innovators are scaling technical hurdles, building local solutions chatting their path, and defining the future.</p>
-      </div>
-      <a routerLink="/news" class="view-all-stories-btn">
-        <span>View All News &amp; Events</span>
-        <span class="material-symbols-outlined">arrow_forward</span>
-      </a>
-    </div>
-    <!-- Full-width sliding marquee -->
-    <div class="stories-marquee-wrap" [class.static-wrap]="contentService.championshipStories.length < 4">
-      <div class="stories-marquee" [class.static-marquee]="contentService.championshipStories.length < 4"
-        [style.animation-duration]="(contentService.championshipStories.length * 8) + 's'">
-        <!-- Set A -->
-        <div *ngFor="let story of contentService.championshipStories; trackBy: trackByStory" class="spotlight-card">
-          <span class="top-accent-bar"></span>
-          <div class="card-img-wrap">
-            <img [src]="story.image" [alt]="story.title" onerror="this.src='assets/ntic_image_1.jpeg'" loading="lazy" decoding="async">
-            <span class="story-tag" [class]="story.tagColor">{{ story.tag }}</span>
+        <div class="editorial-header-body">
+          <div class="editorial-title-wrap">
+            <h2>
+              <span class="word">News</span>
+              <span class="word">&amp;</span>
+              <span class="word">Events</span>
+            </h2>
           </div>
-          <div class="card-content">
-            <span class="story-date">
-              <span class="material-symbols-outlined story-date-icon">calendar_today</span>
-              <span>{{ story.date }}</span>
-              <span class="story-date-sep">•</span>
-              <span class="material-symbols-outlined story-date-icon">schedule</span>
-              <span>{{ timeAgo(story.date) }}</span>
+          <p class="editorial-desc">
+            Championship stories &amp; updates — how Ghana's next generation of scientists,
+            developers, engineers, and innovators are building the future.
+          </p>
+        </div>
+        <div class="editorial-divider"></div>
+      </div>
+
+      <!-- Magazine Grid -->
+      <div class="editorial-grid" *ngIf="contentService.championshipStories.length">
+        <!-- Hero Card (first story) -->
+        <a [routerLink]="['/news']"            [queryParams]="{ story: contentService.championshipStories[0].id }"
+           class="editorial-hero-card" *ngIf="contentService.championshipStories[0] as heroStory">
+          <div class="hero-img-wrap">
+            <img [src]="heroStory.image" [alt]="heroStory.title"
+                 onerror="this.src='assets/ntic_image_1.jpeg'" loading="lazy" decoding="async">
+            <div class="hero-overlay"></div>
+            <span class="hero-tag" [class]="heroStory.tagColor">{{ heroStory.tag }}</span>
+          </div>
+          <div class="hero-body">
+            <span class="hero-date">
+              <span class="material-symbols-outlined">calendar_today</span>
+              {{ heroStory.date }}
+              <span class="hero-date-sep">&bull;</span>
+              {{ timeAgo(heroStory.date) }}
             </span>
-            <h3>{{ story.title }}</h3>
-            <p>{{ story.body }}</p>
-            <div class="story-card-actions">
-              <button class="btn-story-act like-btn" [class.liked]="isLikedByUser(story)"
-                (click)="likeStory(story.id, $event)">
-                <span class="material-symbols-outlined icon">{{ isLikedByUser(story) ? 'favorite' : 'favorite_border'
-                  }}</span>
-                <span class="count">{{ story.likes || 0 }}</span>
-              </button>
-              <button class="btn-story-act share-btn" [attr.data-share]="story.id" (click)="shareStory(story, $event)">
-                <span class="material-symbols-outlined icon">share</span>
-              </button>
-            </div>
-            <a href="#tracks" class="read-more-link">
-              <span>Read The Story</span>
+            <h3>{{ heroStory.title }}</h3>
+            <p>{{ heroStory.body }}</p>
+            <span class="hero-read-cta">
+              Read the Story
               <span class="material-symbols-outlined">arrow_right_alt</span>
-            </a>
+            </span>
           </div>
-        </div>
-        <!-- Set B (duplicate for seamless loop, only when >= 4 items) -->
-        <ng-container *ngIf="contentService.championshipStories.length >= 4">
-          <div *ngFor="let story of contentService.championshipStories; trackBy: trackByStory" class="spotlight-card">
-            <span class="top-accent-bar"></span>
-            <div class="card-img-wrap">
-              <img [src]="story.image" [alt]="story.title" onerror="this.src='assets/ntic_image_1.jpeg'" loading="lazy" decoding="async">
-              <span class="story-tag" [class]="story.tagColor">{{ story.tag }}</span>
+          <div class="hero-actions">
+            <button class="hero-action-btn" [class.liked]="isLikedByUser(heroStory)"
+                    (click)="likeStory(heroStory.id, $event); $event.preventDefault(); $event.stopPropagation()">
+              <span class="material-symbols-outlined">{{ isLikedByUser(heroStory) ? 'favorite' : 'favorite_border' }}</span>
+              {{ heroStory.likes || 0 }}
+            </button>
+            <button class="hero-action-btn"
+                    (click)="shareStory(heroStory, $event); $event.preventDefault(); $event.stopPropagation()">
+              <span class="material-symbols-outlined">share</span>
+            </button>
+          </div>
+        </a>
+
+        <!-- Secondary Cards Grid -->
+        <div class="editorial-secondary-grid" *ngIf="contentService.championshipStories.length > 1">
+          <a *ngFor="let story of contentService.championshipStories | slice:1:5; trackBy: trackByStory"
+             [routerLink]="['/news']"
+             [queryParams]="{ story: story.id }"
+             class="editorial-secondary-card">
+            <div class="sec-img-wrap">
+              <img [src]="story.image" [alt]="story.title"
+                   onerror="this.src='assets/ntic_image_1.jpeg'" loading="lazy" decoding="async">
+              <span class="sec-tag" [class]="story.tagColor">{{ story.tag }}</span>
             </div>
-            <div class="card-content">
-              <span class="story-date">
-                <span class="material-symbols-outlined story-date-icon">calendar_today</span>
-                <span>{{ story.date }}</span>
-                <span class="story-date-sep">•</span>
-                <span class="material-symbols-outlined story-date-icon">schedule</span>
-                <span>{{ timeAgo(story.date) }}</span>
+            <div class="sec-body">
+              <span class="sec-date">
+                <span class="material-symbols-outlined">schedule</span>
+                {{ timeAgo(story.date) }}
               </span>
-              <h3>{{ story.title }}</h3>
+              <h4>{{ story.title }}</h4>
               <p>{{ story.body }}</p>
-              <div class="story-card-actions">
-                <button class="btn-story-act like-btn" [class.liked]="isLikedByUser(story)"
-                  (click)="likeStory(story.id, $event)">
-                  <span class="material-symbols-outlined icon">{{ isLikedByUser(story) ? 'favorite' : 'favorite_border'
-                    }}</span>
-                  <span class="count">{{ story.likes || 0 }}</span>
+              <div class="sec-footer">
+                <button class="sec-action-btn" [class.liked]="isLikedByUser(story)"
+                        (click)="likeStory(story.id, $event); $event.preventDefault(); $event.stopPropagation()">
+                  <span class="material-symbols-outlined">{{ isLikedByUser(story) ? 'favorite' : 'favorite_border' }}</span>
+                  {{ story.likes || 0 }}
                 </button>
-                <button class="btn-story-act share-btn" [attr.data-share]="story.id"
-                  (click)="shareStory(story, $event)">
-                  <span class="material-symbols-outlined icon">share</span>
-                </button>
+                <span class="sec-read-link">
+                  Read
+                  <span class="material-symbols-outlined">arrow_forward</span>
+                </span>
               </div>
-              <a href="#tracks" class="read-more-link">
-                <span>Read The Story</span>
-                <span class="material-symbols-outlined">arrow_right_alt</span>
-              </a>
             </div>
-          </div>
-        </ng-container>
+          </a>
+        </div>
       </div>
+
     </div>
   </section>
 
@@ -2829,5 +2842,17 @@
             </div>
           </div>
         </div>
+
+<!-- Floating Scroll to Top FAB -->
+<button 
+  type="button" 
+  class="fab-scroll" 
+  [class.show]="fabVisible" 
+  (click)="scrollToTop()" 
+  aria-label="Scroll to top">
+  <div class="fab-pulse-ring"></div>
+  <span class="material-symbols-outlined fab-icon">arrow_upward</span>
+  <span class="fab-tooltip">Back to Top</span>
+</button>
 
 <app-chatbot></app-chatbot>

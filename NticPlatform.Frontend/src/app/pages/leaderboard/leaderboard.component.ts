@@ -1,48 +1,19 @@
-﻿import { getAuthValue } from '../../services/session.util';
-import { Component, OnInit } from '@angular/core';
-import { CommonModule, TitleCasePipe, DecimalPipe } from '@angular/common';
+﻿import { Component, OnInit } from '@angular/core';
+import { CommonModule, DecimalPipe } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { ContentService, LeaderboardEntry } from '../../services/content.service';
 
 @Component({
   selector: 'app-leaderboard',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, DecimalPipe],
+  imports: [CommonModule, DecimalPipe, RouterModule],
   templateUrl: './leaderboard.component.html',
   styleUrl: './leaderboard.component.scss'
 })
 export class LeaderboardComponent implements OnInit {
   constructor(public contentService: ContentService) {}
 
-  activeTab: 'courses' | 'schools' = 'courses';
-  selectedCourseTrack = '';
-
-  courseTracks: any[] = [];
-
-  courseStudentRankings: Record<string, Array<{
-    rank: number;
-    name: string;
-    school: string;
-    progressPct: number;
-    accuracyPct: number;
-    streakDays: number;
-    algoScore: number;
-    isCurrentUser: boolean;
-  }>> = {};
-
-  get filteredCourseStandings() {
-    return this.courseStudentRankings[this.selectedCourseTrack] || [];
-  }
-
-  get isStudentUser(): boolean {
-    const roleId = (typeof localStorage !== 'undefined' && getAuthValue('activeRoleId')) || 'student';
-    return roleId === 'student';
-  }
-
-  ngOnInit(): void {
-    if (this.isStudentUser) {
-      this.activeTab = 'courses';
-    }
-  }
+  ngOnInit(): void {}
 
   get firstPlace(): LeaderboardEntry | null {
     return this.contentService.leaderboardData[0] || null;
@@ -61,20 +32,13 @@ export class LeaderboardComponent implements OnInit {
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   }
 
-  get standings(): any[] {
+  get restStandings(): any[] {
     const data = this.contentService.leaderboardData;
-    return data.slice(3).map((entry, index) => {
-      const rankVal = index + 4;
-      const avg = Math.min(100, parseFloat((entry.points / 5).toFixed(1)));
-      const attendance = `${95 + (index % 5)}%`;
-      return {
-        rank: rankVal,
-        school: entry.schoolName,
-        region: entry.region || 'Ghana',
-        attendance: attendance,
-        avg: avg,
-        pts: entry.points
-      };
-    });
+    return data.slice(3).map((entry, index) => ({
+      rank: index + 4,
+      school: entry.schoolName,
+      region: entry.region || 'Ghana',
+      pts: entry.points
+    }));
   }
 }

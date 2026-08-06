@@ -1,11 +1,12 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { ContentService } from '../../services/content.service';
 
 @Component({
   selector: 'app-talent',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   templateUrl: './talent.component.html',
   styleUrl: './talent.component.scss'
 })

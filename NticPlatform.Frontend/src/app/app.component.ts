@@ -74,7 +74,10 @@ export class AppComponent implements OnInit, OnDestroy {
         parsedUrl === '/landing' ||
         parsedUrl === '' ||
         parsedUrl === '/registration' ||
-        parsedUrl === '/news';
+        parsedUrl === '/news' ||
+        parsedUrl === '/leaderboard' ||
+        parsedUrl === '/competitions' ||
+        parsedUrl === '/talent';
 
       if (typeof window !== 'undefined') {
         document.body.style.overflow = '';

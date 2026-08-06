@@ -108,7 +108,11 @@ def init_postgres_db():
                 title VARCHAR(200) NOT NULL,
                 excerpt TEXT,
                 date VARCHAR(50),
-                image VARCHAR(255)
+                image VARCHAR(255),
+                tag VARCHAR(64) DEFAULT '',
+                tag_color VARCHAR(64) DEFAULT '',
+                read_time VARCHAR(32) DEFAULT '5 min',
+                likes INT DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS philosophy_cards (
@@ -283,6 +287,10 @@ def init_postgres_db():
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);")
         cur.execute("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false;")
         cur.execute("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL;")
+        cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS tag VARCHAR(64) DEFAULT '';")
+        cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS tag_color VARCHAR(64) DEFAULT '';")
+        cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS read_time VARCHAR(32) DEFAULT '5 min';")
+        cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS likes INT DEFAULT 0;")
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS pending_approvals (

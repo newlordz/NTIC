@@ -1703,7 +1703,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         }
       });
     }, { threshold: 0.12 });
-    const el = this.elementRef.nativeElement.querySelector('.spotlight-section');
+    const el = this.elementRef.nativeElement.querySelector('.news-editorial-section');
     if (el) this.spotlightObserver.observe(el);
   }
 
@@ -3113,6 +3113,13 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       }
     }
   }
+
+  scrollToTop(): void {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
 
   // ── FLOATING FAB ────────────────────────────────────────────
   setupFabScroll(): void {

@@ -33,12 +33,41 @@ def seed_initial_data(conn):
         cur.execute("INSERT INTO events (id, title, date, time, location, description, type) VALUES ('evt-2', 'AI & Ethics Webinar', '2026-08-22', '02:00 PM', 'Online (Google Meet)', 'A deep dive into the ethical implications of AI models in education and healthcare.', 'webinar')")
         cur.execute("INSERT INTO events (id, title, date, time, location, description, type) VALUES ('evt-3', 'Networking & Cybersecurity Capture The Flag', '2026-09-05', '10:00 AM', 'Virtual Lab Environment', 'Teams will compete to find vulnerabilities and patch systems in a simulated corporate network.', 'competition')")
 
-    # Stories
+    # Stories (upsert — skip if ID already exists)
+    stories = [
+        ('st-1', 'Achimota School Builds Autonomous Rover for Desert Navigation', 'Team Volta developed an autonomous rover using computer vision and LIDAR sensors, winning the Regional Robotics Qualifier in Greater Accra.', '2026-06-28', 'assets/ntic_image_1.jpeg', 'Robotics', 'robotics', '5 min', 24),
+        ('st-2', "Wesley Girls' Coding Team Ships a Full-Stack Health App in 48 Hours", "A 4-student team built and deployed a telemedicine platform connecting rural clinics with urban doctors within a 48-hour hackathon deadline.", '2026-06-22', 'assets/ntic_image_2.jpeg', 'Coding', 'coding', '4 min', 18),
+        ('st-3', 'PRESEC Legon Students Simulate a Nation-State Cyber Attack in Finals', 'The cybersecurity track finale saw PRESEC Legon execute a realistic nation-state attack simulation with advanced penetration testing skills.', '2026-06-15', 'assets/ntic_image_3.jpeg', 'Networking & Cybersecurity', 'cyber', '6 min', 31),
+        ('st-4', 'Opoku War School AI Model Detects Cassava Disease with 94% Accuracy', 'Three SHS students built a CNN pipeline that identifies cassava mosaic disease from leaf photos, helping farmers act before crops are lost.', '2026-06-10', 'assets/ntic_image_4.jpeg', 'AI', 'ai', '5 min', 42),
+        ('st-5', 'Mfantsipim Students Prototype a Solar-Powered Water Purification System', "Using Ghana's abundant sunlight, the team designed a low-cost UV sterilisation unit providing clean water to off-grid communities.", '2026-06-05', 'assets/ntic_image_7.jpeg', 'Innovation', 'innovation', '4 min', 27),
+        ('st-6', 'Adisadel College Dominates Regional Algorithm Sprint', 'Adisadel College students swept the top three spots in the Western Region algorithm sprint, solving dynamic programming challenges at record speed.', '2026-05-30', 'assets/ntic_image_12.jpeg', 'Coding', 'coding', '3 min', 15),
+        ('st-7', 'GHACSE Robotics Bridge Challenge Draws 80 Teams Nationwide', 'Kumasi Academy took first place with a span holding 45 kg in the annual structural engineering sprint challenging teams to build load-bearing bridges.', '2026-05-24', 'assets/ntic_image_9.jpeg', 'Robotics', 'robotics', '5 min', 19),
+        ('st-8', 'Accra Academy Students Build a Multilingual Voice Assistant for Farmers', 'Using open-source speech models fine-tuned on Twi, Ewe, and Ga, the team created a voice-first interface for crop pricing and weather info.', '2026-05-18', 'assets/ntic_image_14.jpeg', 'AI', 'ai', '6 min', 36),
+    ]
     cur.execute("SELECT count(*) FROM stories")
     if cur.fetchone()[0] == 0:
-        cur.execute("INSERT INTO stories (id, title, excerpt, date, image) VALUES ('st-1', 'NTIC 2026 Launch Exceeds Expectations', 'Over 500 schools registered in the first week, setting a new record for NTI participation in Ghana.', '2026-07-28', 'assets/ntic_image_4.jpeg')")
-        cur.execute("INSERT INTO stories (id, title, excerpt, date, image) VALUES ('st-2', 'New Quantum Computing Track Announced', 'In partnership with IBM, we are introducing a pilot track for quantum programming.', '2026-07-29', 'assets/ntic_image_7.jpeg')")
-        cur.execute("INSERT INTO stories (id, title, excerpt, date, image) VALUES ('st-3', 'Meet the Lead Judges for 2026', 'Get to know the industry experts who will be evaluating your final project submissions.', '2026-07-30', 'assets/ntic_image_12.jpeg')")
+        for s in stories:
+            cur.execute(
+                "INSERT INTO stories (id, title, excerpt, date, image, tag, tag_color, read_time, likes) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", s
+            )
+    else:
+        # Backfill tag/tag_color on old rows that have empty tags
+        tag_map = {
+            'st-1': ('Robotics', 'robotics'), 'st-2': ('Coding', 'coding'),
+            'st-3': ('Networking & Cybersecurity', 'cyber'),
+        }
+        for sid, (tag, color) in tag_map.items():
+            cur.execute("UPDATE stories SET tag=%s, tag_color=%s WHERE id=%s AND (tag IS NULL OR tag='')", (tag, color, sid))
+        # Insert any missing stories (st-4 through st-8)
+        existing = set()
+        cur.execute("SELECT id FROM stories")
+        for row in cur.fetchall():
+            existing.add(row[0])
+        for s in stories:
+            if s[0] not in existing:
+                cur.execute(
+                    "INSERT INTO stories (id, title, excerpt, date, image, tag, tag_color, read_time, likes) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", s
+                )
 
     # Schools
     cur.execute("SELECT count(*) FROM schools")
