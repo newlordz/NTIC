@@ -2366,13 +2366,13 @@
         strong {
           font-size: 14px;
           font-weight: 700;
-          color: #ffffff;
+          color: var(--text-heading, #0f172a);
           line-height: 1.35;
         }
 
         span {
           font-size: 11px;
-          color: var(--slate);
+          color: var(--text-muted, #64748b);
           margin-top: 3px;
         }
 

@@ -167,7 +167,7 @@ def init_postgres_db():
                 ticket VARCHAR(64),
                 password_hash VARCHAR(255) NOT NULL,
                 status VARCHAR(20) DEFAULT 'Active',
-                phone VARCHAR(50),
+                phone VARCHAR(50) UNIQUE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -289,6 +289,13 @@ def init_postgres_db():
             );
         """)
         cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);")
+        # Resolve duplicate non-null phones before adding UNIQUE
+        cur.execute("""
+            UPDATE users u1 SET phone = u1.phone || '_dup' || u1.id
+            WHERE u1.phone IS NOT NULL
+            AND EXISTS (SELECT 1 FROM users u2 WHERE u2.phone = u1.phone AND u2.id <> u1.id)
+        """)
+        cur.execute("ALTER TABLE users ADD CONSTRAINT IF NOT EXISTS users_phone_unique UNIQUE (phone);")
         cur.execute("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false;")
         cur.execute("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL;")
         cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS tag VARCHAR(64) DEFAULT '';")

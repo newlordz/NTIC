@@ -357,6 +357,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       }
       if (!this.contentService.isValidEmail(value)) {
         this.fieldValidation[fieldName] = { status: 'invalid', message: 'Invalid email format' };
+      } else if (this.isDuplicateInForm(fieldName, value)) {
+        this.fieldValidation[fieldName] = { status: 'taken', message: 'Same email used in another field on this form' };
       } else if (this.contentService.isEmailTaken(value, this.editingApprovalId || undefined)) {
         this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered' };
       } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
@@ -367,6 +369,26 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         this.fieldValidation[fieldName] = { status: 'valid', message: 'Email available' };
       }
     }, 400);
+  }
+
+  private isDuplicateInForm(fieldName: string, value: string): boolean {
+    const v = value.trim().toLowerCase();
+    if (!v) return false;
+    if (this.activeTab === 'school') {
+      if (fieldName === 'schoolEmail') return this.schoolForm.repEmail?.trim().toLowerCase() === v;
+      if (fieldName === 'schoolRepEmail') return this.schoolForm.email?.trim().toLowerCase() === v;
+    }
+    if (this.activeTab === 'team') {
+      const emails: { name: string; value: string }[] = [
+        { name: 'squadLeadEmail', value: this.teamForm.leadEmail },
+        { name: 'squadM2Email', value: this.teamForm.member2Email },
+        { name: 'squadM3Email', value: this.teamForm.member3Email },
+        { name: 'squadM4Email', value: this.teamForm.member4Email },
+        { name: 'squadM5Email', value: this.teamForm.member5Email },
+      ];
+      return emails.some(e => e.name !== fieldName && e.value?.trim().toLowerCase() === v);
+    }
+    return false;
   }
 
   validatePhoneLive(fieldName: string, value: string): void {
@@ -409,6 +431,12 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       fields['schoolRepEmail'] = { value: this.schoolForm.repEmail, type: 'email' };
       fields['schoolTel'] = { value: this.schoolForm.tel, type: 'phone' };
       fields['schoolRepTel'] = { value: this.schoolForm.repTel, type: 'phone' };
+      // Prevent same email for school and representative
+      if (this.schoolForm.email?.trim() && this.schoolForm.repEmail?.trim() &&
+          this.schoolForm.email.trim().toLowerCase() === this.schoolForm.repEmail.trim().toLowerCase()) {
+        this.showCustomAlert('The school email and representative email cannot be the same. Please use distinct email addresses.', 'Duplicate Email', 'warning');
+        return false;
+      }
     } else if (this.activeTab === 'instructor') {
       fields['instEmail'] = { value: this.instructorForm.email, type: 'email' };
       fields['instTel'] = { value: this.instructorForm.tel, type: 'phone' };
@@ -1471,6 +1499,12 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       }
       // Validate all provided emails
       const teamEmails = [this.teamForm.leadEmail, this.teamForm.member2Email, this.teamForm.member3Email, this.teamForm.member4Email, this.teamForm.member5Email].filter(e => e?.trim());
+      const lowerEmails = teamEmails.map(e => e!.trim().toLowerCase());
+      const dupEmail = lowerEmails.find((e, i) => lowerEmails.indexOf(e) !== i);
+      if (dupEmail) {
+        this.showCustomAlert(`The email "${dupEmail}" is used multiple times in this form. Each team member must have a unique email.`, 'Duplicate Email', 'warning');
+        return;
+      }
       for (const email of teamEmails) {
         if (!this.contentService.isValidEmail(email!)) {
           this.showCustomAlert('One or more team emails have invalid format. Please check.', 'Invalid Email', 'warning');
