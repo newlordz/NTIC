@@ -2,11 +2,12 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ContentService } from '../../services/content.service';
+import { PublicNavComponent } from '../../components/public-nav/public-nav.component';
 
 @Component({
   selector: 'app-talent',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, PublicNavComponent],
   templateUrl: './talent.component.html',
   styleUrl: './talent.component.scss'
 })

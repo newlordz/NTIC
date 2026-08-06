@@ -449,12 +449,7 @@ export class ContentService {
     { id: 'phil-3', title: 'Build', description: 'Turning abstract ideas into concrete reality through engineering.', image: 'assets/ntic_image_33.jpeg' },
   ];
 
-private readonly defaultLmsCourses: LmsCourse[] = [
-    { id: 'crs-1', title: 'Python Data Structures', track: 'coding', icon: 'data_object', level: 'Intermediate', description: 'Master lists, dicts, sets, and tuples for competitive programming.', modules: 8, enrolled: 320, completion: 68, status: 'active', createdAt: '2026-01-15', submittedBy: 'Dr. Ebenezer Mensah (Achimota School)', approvalStatus: 'approved' },
-    { id: 'crs-2', title: 'Arduino Robotics Base', track: 'robotics', icon: 'memory', level: 'Beginner', description: 'Build and program your first autonomous robot with Arduino.', modules: 6, enrolled: 180, completion: 42, status: 'active', createdAt: '2026-01-20', submittedBy: 'Eng. Sarah Kwofie (PRESEC Legon)', approvalStatus: 'approved' },
-    { id: 'crs-3', title: 'AI Fundamentals with TensorFlow', track: 'ai', icon: 'psychology', level: 'Intermediate', description: 'Train, evaluate, and deploy machine learning models.', modules: 10, enrolled: 210, completion: 55, status: 'active', createdAt: '2026-02-01', submittedBy: 'Prof. Kwesi Appiah (KNUST NTI Lab)', approvalStatus: 'approved' },
-    { id: 'crs-4', title: 'Network Security Essentials', track: 'cyber', icon: 'shield', level: 'Beginner', description: 'Learn firewalls, encryption, and penetration testing basics.', modules: 7, enrolled: 145, completion: 38, status: 'active', createdAt: '2026-02-10', submittedBy: 'Dr. Ebenezer Mensah (Achimota School)', approvalStatus: 'approved' }
-  ];
+private readonly defaultLmsCourses: LmsCourse[] = [];
 
 private readonly defaultLmsModules: LmsModule[] = [];
 
@@ -465,108 +460,10 @@ private readonly defaultLmsAssignments: LmsAssignment[] = [];
   private readonly defaultLmsSubmissions: LmsSubmission[] = [];
 
   private readonly defaultLmsEnrollments: LmsEnrollment[] = [];
-  private readonly defaultEvents: UpcomingEvent[] = [
-    { id: 'evt-1', month: 'AUG', day: '15', title: 'Regional Qualifier — Greater Accra', description: 'NTI teams compete for national qualification spots across all 5 tracks.', location: 'Accra International Conference Centre' },
-    { id: 'evt-2', month: 'SEP', day: '22', title: 'Regional Qualifier — Ashanti', description: 'Kumasi hosts the Ashanti regional championships with 40+ competing teams.', location: 'Kumasi Cultural Centre' },
-    { id: 'evt-3', month: 'DEC', day: '07', title: 'National Grand Final', description: 'The ultimate showdown — top teams from all regions battle for the NTIC Championship crown.', location: 'National Theatre of Ghana, Accra' }
-  ];
-  private readonly defaultStories: ChampionshipStory[] = [
-    {
-      id: 'story-1', tag: 'Robotics', tagColor: 'robotics',
-      image: 'assets/ntic_image_1.jpeg', date: 'June 28, 2026', readTime: '5 min',
-      title: 'Achimota School Builds Autonomous Rover for Desert Navigation',
-      body: 'Team Volta from Achimota School developed an autonomous rover capable of navigating uneven terrain using computer vision and LIDAR sensors, winning the Regional Robotics Qualifier in Greater Accra.',
-      likes: 24, likedBy: []
-    },
-    {
-      id: 'story-2', tag: 'Coding', tagColor: 'coding',
-      image: 'assets/ntic_image_2.jpeg', date: 'June 22, 2026', readTime: '4 min',
-      title: "Wesley Girls' Coding Team Ships a Full-Stack Health App in 48 Hours",
-      body: "During the national hackathon sprint, a 4-student team from Wesley Girls' built and deployed a telemedicine platform connecting rural clinics with urban doctors — all within a 48-hour deadline.",
-      likes: 18, likedBy: []
-    },
-    {
-      id: 'story-3', tag: 'Networking & Cybersecurity', tagColor: 'cyber',
-      image: 'assets/ntic_image_3.jpeg', date: 'June 15, 2026', readTime: '6 min',
-      title: 'PRESEC Legon Students Simulate a Nation-State Cyber Attack in Finals',
-      body: 'The cybersecurity track finale saw PRESEC Legon team execute a realistic nation-state attack simulation, demonstrating advanced penetration testing skills and incident response protocols.',
-      likes: 31, likedBy: []
-    },
-    {
-      id: 'story-4', tag: 'AI', tagColor: 'ai',
-      image: 'assets/ntic_image_4.jpeg', date: 'June 10, 2026', readTime: '5 min',
-      title: 'Opoku War School AI Model Detects Cassava Disease with 94% Accuracy',
-      body: 'A machine learning pipeline built by three SHS students uses convolutional neural networks to identify cassava mosaic disease from leaf photos, helping farmers act before crops are lost.',
-      likes: 42, likedBy: []
-    },
-    {
-      id: 'story-5', tag: 'Innovation', tagColor: 'innovation',
-      image: 'assets/ntic_image_7.jpeg', date: 'June 5, 2026', readTime: '4 min',
-      title: 'Mfantsipim Students Prototype a Solar-Powered Water Purification System',
-      body: 'Drawing on Ghana\'s abundant sunlight, the team designed a low-cost purification unit that provides clean drinking water to off-grid communities using UV sterilisation and solar panels.',
-      likes: 27, likedBy: []
-    },
-    {
-      id: 'story-6', tag: 'Coding', tagColor: 'coding',
-      image: 'assets/ntic_image_12.jpeg', date: 'May 30, 2026', readTime: '3 min',
-      title: 'Adisadel College Dominates Regional Algorithm Sprint',
-      body: 'Adisadel College students swept the top three spots in the Western Region algorithm sprint, solving dynamic programming and graph traversal challenges at record speed.',
-      likes: 15, likedBy: []
-    },
-    {
-      id: 'story-7', tag: 'Robotics', tagColor: 'robotics',
-      image: 'assets/ntic_image_9.jpeg', date: 'May 24, 2026', readTime: '5 min',
-      title: 'GHACSE Robotics Bridge Challenge Draws 80 Teams Nationwide',
-      body: 'The annual structural engineering sprint challenged teams to build load-bearing bridges from limited materials, with Kumasi Academy taking first place with a span holding 45 kg.',
-      likes: 19, likedBy: []
-    },
-    {
-      id: 'story-8', tag: 'AI', tagColor: 'ai',
-      image: 'assets/ntic_image_14.jpeg', date: 'May 18, 2026', readTime: '6 min',
-      title: 'Accra Academy Students Build a Multilingual Voice Assistant for Farmers',
-      body: 'Using open-source speech models fine-tuned on Twi, Ewe, and Ga, the team created a voice-first interface that answers crop pricing and weather questions in local languages.',
-      likes: 36, likedBy: []
-    }
-  ];
+  private readonly defaultEvents: UpcomingEvent[] = [];
+  private readonly defaultStories: ChampionshipStory[] = [];
 
-  private readonly defaultHof: HallOfFameEntry[] = [
-    {
-      id: 'hof-group-1',
-      type: 'group',
-      initials: 'CR',
-      name: 'CyberRangers',
-      teamName: 'CyberRangers Squad',
-      projectTitle: 'Zero-Trust Autonomous Firewall System',
-      members: ['Kofi Nyarko', 'Abena Mensah', 'Emmanuel Osei', 'Selorm Adjei'],
-      school: 'Prempeh College',
-      year: '2025',
-      badge: '🏆 Cybersecurity Grand Champions',
-      trackClass: 'cyber-track'
-    },
-    {
-      id: 'hof-1',
-      type: 'individual',
-      initials: 'EA',
-      name: 'Ekow Asante',
-      school: 'Mfantsipim School',
-      year: '2025',
-      badge: 'Coding Champion',
-      trackClass: 'coding-track'
-    },
-    {
-      id: 'hof-group-2',
-      type: 'group',
-      initials: 'AI',
-      name: 'RoboQuest Alpha',
-      teamName: 'RoboQuest Alpha',
-      projectTitle: 'Solar Autonomous Agri-Rover',
-      members: ['Abigail Serwaa', 'Akosua Baako', 'Ama Opoku'],
-      school: 'Wesley Girls High School',
-      year: '2025',
-      badge: '🤖 Robotics Team Champions',
-      trackClass: 'robotics-track'
-    }
-  ];
+  private readonly defaultHof: HallOfFameEntry[] = [];
 
   private readonly defaultLeaderboard: LeaderboardEntry[] = [];
 
@@ -580,11 +477,7 @@ private readonly defaultLmsAssignments: LmsAssignment[] = [];
     { id: 'slide-3', tag: 'Innovate. Build. Lead.', title: 'Ready to Make an Impact?', description: 'Join Ghana\'s largest high school tech competition. Registration is open for all tracks.', image: 'assets/ntic_image_7.jpeg', ctaText: 'Enter Portal', ctaLink: '#portal' }
   ];
 
-  private readonly defaultNews: NewsFeedItem[] = [
-    { id: 'news-1', headline: 'Phase 2 Registration Opens for All 16 Regions', tag: 'Competition', date: '2026-07-28', link: '#registration' },
-    { id: 'news-2', headline: 'NTIC 2026 Sees Record 500+ School Registrations', tag: 'Milestone', date: '2026-07-25', link: '#news' },
-    { id: 'news-3', headline: 'New AI & Machine Learning Track Launched', tag: 'Track', date: '2026-07-20', link: '#competitions' }
-  ];
+  private readonly defaultNews: NewsFeedItem[] = [];
 
   private readonly defaultUsers: User[] = [
     {
@@ -933,20 +826,32 @@ private readonly defaultTeams: Team[] = [];
     const existing = new Map<string, LeaderboardEntry>();
     this.leaderboardData.forEach(e => existing.set(e.id, e));
     schools.forEach((s: any) => {
+      const allScore = s.score || 100;
       if (!existing.has(s.id)) {
         existing.set(s.id, {
           id: s.id,
           rank: String(s.rank || 99).padStart(2, '0'),
           schoolName: s.name || 'Unknown School',
           location: s.region || '',
-          points: s.score || 100,
-          trackPoints: { all: s.score || 100, coding: 0, robotics: 0, ai: 0, cyber: 0 },
+          points: allScore,
+          trackPoints: {
+            all: allScore,
+            coding: s.coding_score ?? 0,
+            robotics: s.robotics_score ?? 0,
+            ai: s.ai_score ?? 0,
+            cyber: s.cyber_score ?? 0
+          },
           region: s.region || ''
         });
       } else {
         const e = existing.get(s.id)!;
-        e.points = Math.max(e.points, s.score || 0);
+        e.points = Math.max(e.points, allScore);
         if (s.region) e.region = s.region;
+        e.trackPoints.all = Math.max(e.trackPoints.all, allScore);
+        e.trackPoints.coding = Math.max(e.trackPoints.coding, s.coding_score ?? 0);
+        e.trackPoints.robotics = Math.max(e.trackPoints.robotics, s.robotics_score ?? 0);
+        e.trackPoints.ai = Math.max(e.trackPoints.ai, s.ai_score ?? 0);
+        e.trackPoints.cyber = Math.max(e.trackPoints.cyber, s.cyber_score ?? 0);
       }
     });
     return Array.from(existing.values()).sort((a, b) => b.points - a.points);
@@ -1018,6 +923,14 @@ private readonly defaultTeams: Team[] = [];
   }
   private loadStateAndFallback(): void {
     if (typeof window !== 'undefined' && window.localStorage) {
+      // Clear stale localStorage cache if version bumped (prevents old mock data lingering)
+      const DATA_VERSION = '2';
+      if (localStorage.getItem('_dataVersion') !== DATA_VERSION) {
+        const keysToClear = ['championshipStories','upcomingEvents','hallOfFameEntries','leaderboardData',
+          'talentDiscovery','platformStats','heroSlides','newsFeedItems','countdownDate'];
+        keysToClear.forEach(k => localStorage.removeItem(k));
+        localStorage.setItem('_dataVersion', DATA_VERSION);
+      }
       // Load from localStorage first for instant render.
       // loadFromBackend() refreshes all collections from the API immediately after.
       this.championshipStories = this.loadKeySync('championshipStories', this.defaultStories);

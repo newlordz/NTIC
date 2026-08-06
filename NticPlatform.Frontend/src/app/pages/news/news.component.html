@@ -1,19 +1,6 @@
 <div class="page-canvas fade-in">
   <!-- Top Nav -->
-  <nav class="pub-topnav">
-    <div class="pub-topnav-inner">
-      <a routerLink="/" class="pub-brand">
-        <span class="material-symbols-outlined fill">rocket_launch</span>
-        <span>NTIC</span>
-      </a>
-      <div class="pub-nav-links">
-        <a routerLink="/">Home</a>
-        <a routerLink="/competitions">Competitions</a>
-        <a routerLink="/news" class="active">News</a>
-        <a routerLink="/leaderboard">Leaderboard</a>
-      </div>
-    </div>
-  </nav>
+  <app-public-nav activePage="news"></app-public-nav>
 
   <!-- Hero Banner -->
   <div class="news-hero">
@@ -23,20 +10,10 @@
         News &amp; Events
       </span>
       <h1>Championship <span class="highlight">Stories</span> &amp; Updates</h1>
-      <p>Discover how Ghana's next generattion of scientists, developers,engineers and innovators are scaling technical hurdles, building local solutions chatting their path, and defining the future.</p>
+      <p>Discover how Ghana's next generation of scientists, developers, engineers and innovators are scaling technical hurdles, building local solutions charting their path, and defining the future.</p>
     </div>
   </div>
 
-  <!-- Tag Filter Bar -->
-  <div class="tag-filter-bar">
-    <button *ngFor="let tag of tags"
-            class="tag-chip"
-            [class.active]="activeTag === tag"
-            (click)="filterByTag(tag)">
-      <span class="material-symbols-outlined">{{ getTagIcon(tag) }}</span>
-      {{ getTagLabel(tag) }}
-    </button>
-  </div>
 
   <!-- Stories Grid -->
   <div class="stories-section" *ngIf="filteredStories.length > 0; else emptyStories">

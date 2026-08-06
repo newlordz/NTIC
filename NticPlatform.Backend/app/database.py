@@ -129,7 +129,11 @@ def init_postgres_db():
                 teams INTEGER DEFAULT 0,
                 score INTEGER DEFAULT 0,
                 rank INTEGER,
-                status VARCHAR(50) DEFAULT 'Active'
+                status VARCHAR(50) DEFAULT 'Active',
+                coding_score INTEGER DEFAULT 0,
+                robotics_score INTEGER DEFAULT 0,
+                ai_score INTEGER DEFAULT 0,
+                cyber_score INTEGER DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS audit_logs (
@@ -291,6 +295,10 @@ def init_postgres_db():
         cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS tag_color VARCHAR(64) DEFAULT '';")
         cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS read_time VARCHAR(32) DEFAULT '5 min';")
         cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS likes INT DEFAULT 0;")
+        cur.execute("ALTER TABLE schools ADD COLUMN IF NOT EXISTS coding_score INTEGER DEFAULT 0;")
+        cur.execute("ALTER TABLE schools ADD COLUMN IF NOT EXISTS robotics_score INTEGER DEFAULT 0;")
+        cur.execute("ALTER TABLE schools ADD COLUMN IF NOT EXISTS ai_score INTEGER DEFAULT 0;")
+        cur.execute("ALTER TABLE schools ADD COLUMN IF NOT EXISTS cyber_score INTEGER DEFAULT 0;")
 
         cur.execute("""
             CREATE TABLE IF NOT EXISTS pending_approvals (

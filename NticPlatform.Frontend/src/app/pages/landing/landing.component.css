@@ -4827,10 +4827,11 @@
 /* 3. Floating Action Button (FAB) */
 .fab-scroll {
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  width: 4rem;
-  height: 4rem;
+  bottom: 24px;
+  right: 24px;
+  width: 52px;
+  height: 52px;
+  box-sizing: border-box;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
   color: #fff;
@@ -4857,6 +4858,15 @@
   color: #ffffff;
   transform: translateY(-8px) scale(1.1);
   box-shadow: 0 15px 35px rgba(212, 160, 23, 0.5);
+}
+
+@media (max-width: 768px) {
+  .fab-scroll {
+    bottom: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+  }
 }
 
 /* 4. Premium Mini Coding Challenge Widget */

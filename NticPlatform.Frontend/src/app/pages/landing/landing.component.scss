@@ -131,6 +131,114 @@
   &.in-view::before { opacity: 1; }
 
   > .container { position: relative; z-index: 1; }
+
+  // ── Dark Mode ────────────────────────────────────────
+  &.dark-mode {
+    background: linear-gradient(172deg, #0a1628 0%, #0e2530 40%, #112a3a 100%);
+    border-bottom-color: transparent;
+
+    &::before { opacity: 0; }
+
+    .editorial-badge {
+      background: rgba(172, 199, 255, 0.1);
+      border-color: rgba(172, 199, 255, 0.2);
+      color: #acc7ff;
+    }
+
+.editorial-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-white, #fff);
+  color: var(--slate, #64748b);
+  cursor: pointer;
+  transition: all 0.25s;
+
+  .material-symbols-outlined { font-size: 19px; transition: transform 0.3s; }
+
+  &:hover {
+    color: var(--primary, #003f87);
+    border-color: rgba(0, 63, 135, 0.25);
+    background: rgba(0, 63, 135, 0.04);
+    .material-symbols-outlined { transform: rotate(20deg); }
+  }
+}
+
+.editorial-view-all {
+      color: rgba(255, 255, 255, 0.5);
+      border-color: rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.04);
+      &:hover { color: #fff; background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); }
+    }
+
+    .theme-toggle-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.6);
+      &:hover { color: #fff; background: rgba(255, 255, 255, 0.1); }
+    }
+
+    .editorial-title-wrap h2 { color: #fff; }
+    .editorial-desc { color: rgba(255, 255, 255, 0.5); }
+    .editorial-divider { background: linear-gradient(90deg, rgba(255,255,255,0.12) 0%, rgba(172, 199, 255, 0.2) 40%, transparent 100%); }
+
+    .story-filter-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.5);
+      &:hover { color: #acc7ff; border-color: rgba(172, 199, 255, 0.25); background: rgba(172, 199, 255, 0.06); }
+      &.active { background: #acc7ff; color: #0a1628; border-color: #acc7ff; .material-symbols-outlined { color: #0a1628; } }
+    }
+
+    .editorial-hero-card {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.08);
+      &:hover { border-color: rgba(172, 199, 255, 0.3); box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35); }
+      .hero-body {
+        .hero-date { color: #f3c242; .material-symbols-outlined { color: #f3c242; } }
+        h3 { color: #fff; &:hover { color: #acc7ff; } }
+        p { color: rgba(255, 255, 255, 0.5); }
+        .hero-read-cta { color: rgba(255, 255, 255, 0.7); &:hover { color: #acc7ff; } }
+      }
+      .hero-overlay { background: linear-gradient(180deg, transparent 50%, rgba(10, 22, 40, 0.85) 100%); }
+    }
+
+    .hero-action-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.5);
+      &:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+      &.liked { color: #ef4444; border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.1); }
+    }
+
+    .editorial-secondary-card {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.07);
+      &:hover { border-color: rgba(172, 199, 255, 0.2); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); }
+      &:hover h4 { color: #acc7ff; }
+      .sec-date { color: rgba(255, 255, 255, 0.4); }
+      h4 { color: #fff; }
+      p { color: rgba(255, 255, 255, 0.4); }
+    }
+
+    .sec-action-btn {
+      color: rgba(255, 255, 255, 0.4);
+      &:hover { color: #acc7ff; background: rgba(172, 199, 255, 0.08); }
+      &.liked { color: #ef4444; }
+    }
+
+    .sec-read-link { color: #acc7ff; &:hover { color: #fff; } }
+  }
 }
 
 /* ── Editorial Header ────────────────────────────────────── */
@@ -250,12 +358,60 @@
   transform: translateY(0);
 }
 
+/* ── Story Filter Bar ────────────────────────────────────── */
+.story-filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
+.story-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-white, #fff);
+  color: var(--slate, #64748b);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s;
+
+  .material-symbols-outlined { font-size: 17px; }
+
+  &:hover {
+    border-color: rgba(0, 63, 135, 0.25);
+    color: var(--primary, #003f87);
+    background: rgba(0, 63, 135, 0.04);
+  }
+
+  &.active {
+    background: var(--primary, #003f87);
+    color: #fff;
+    border-color: var(--primary, #003f87);
+
+    .material-symbols-outlined { color: #fff; }
+  }
+}
+
 /* ── Magazine Grid ───────────────────────────────────────── */
 .editorial-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
   align-items: stretch;
+}
+
+.news-rotate {
+  animation: rotateStoriesFade 0.6s ease-in-out;
+}
+
+@keyframes rotateStoriesFade {
+  0% { opacity: 0.7; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Hero Card ───────────────────────────────────────────── */
@@ -4963,10 +5119,11 @@
 /* 3. Floating Action Button (FAB) - Ultra-Premium Glassmorphic Design */
 .fab-scroll {
   position: fixed;
-  bottom: 1.8rem;
-  right: 1.8rem;
-  width: 3.5rem;
-  height: 3.5rem;
+  bottom: 24px;
+  right: 24px;
+  width: 52px;
+  height: 52px;
+  box-sizing: border-box;
   border-radius: 50%;
   background: linear-gradient(135deg, rgba(0, 31, 63, 0.92) 0%, rgba(0, 63, 135, 0.92) 65%, rgba(212, 160, 23, 0.85) 100%);
   color: #ffffff;
@@ -5076,6 +5233,15 @@
   &:active {
     transform: translateY(-2px) scale(0.98);
     box-shadow: 0 8px 20px rgba(0, 31, 63, 0.4);
+  }
+}
+
+@media (max-width: 768px) {
+  .fab-scroll {
+    bottom: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
   }
 }
 
@@ -7939,35 +8105,36 @@
           }
         }
 
-        /* 4. Cybersecurity CTF Matrix Stage */
         /* 4. Cyber Stage — Network Security Monitor */
         .cyber-monitor {
-          background: rgba(0, 0, 0, 0.3);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          background: #0b0f19 !important;
+          border: 1px solid rgba(56, 189, 248, 0.25) !important;
           border-radius: 12px;
           overflow: hidden;
+          box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
 
           .cyber-monitor-header {
             display: flex;
             align-items: center;
             gap: 8px;
             padding: 10px 16px;
-            background: rgba(0, 0, 0, 0.3);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.8);
+            background: #0f172a !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #f8fafc !important;
 
-            .material-symbols-outlined { font-size: 1.1rem; color: #ff1744; }
+            .material-symbols-outlined { font-size: 1.15rem; color: #ff1744; }
 
             .cyber-status-badge {
               margin-left: auto;
-              font-size: 0.6rem;
-              font-weight: 700;
-              padding: 2px 10px;
+              font-size: 0.65rem;
+              font-weight: 800;
+              padding: 3px 10px;
               border-radius: 10px;
-              color: #000;
+              color: #050811 !important;
               text-transform: uppercase;
+              letter-spacing: 0.5px;
             }
           }
 
@@ -10091,6 +10258,147 @@
 @keyframes wallHazardPulse {
   0% { opacity: 0.65; }
   100% { opacity: 1; filter: brightness(1.35); }
+}
+
+/* ── CTF Cyber Teleoperation Dark Console Theme Overrides (Enforced in Light & Dark Mode) ── */
+.cyber-sim {
+  .cyber-monitor {
+    background: #090d16 !important;
+    border: 1px solid rgba(56, 189, 248, 0.3) !important;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5) !important;
+
+    .cyber-monitor-header {
+      background: #0f172a !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+      color: #f8fafc !important;
+
+      .material-symbols-outlined {
+        color: #ff1744 !important;
+      }
+    }
+
+    .cyber-threat-banner {
+      background: rgba(30, 27, 75, 0.95) !important;
+      border: 1px solid rgba(239, 68, 68, 0.6) !important;
+
+      .threat-info {
+        color: #f8fafc !important;
+        font-weight: 600;
+
+        strong {
+          color: #38bdf8 !important;
+        }
+
+        .payload-code {
+          background: #050811 !important;
+          color: #ff80ab !important;
+          border: 1px solid rgba(255, 128, 171, 0.3) !important;
+        }
+      }
+    }
+
+    .cyber-network-viz {
+      background: #050811 !important;
+
+      .cyber-node {
+        .material-symbols-outlined {
+          color: #cbd5e1 !important;
+        }
+
+        .cyber-node-label {
+          color: #ffffff !important;
+          font-weight: 700 !important;
+        }
+
+        .cyber-node-stat {
+          color: #38bdf8 !important;
+          font-weight: 700 !important;
+        }
+
+        &.server-node .material-symbols-outlined {
+          color: #00e676 !important;
+        }
+      }
+
+      .cyber-arrow {
+        color: #64748b !important;
+        font-weight: 800 !important;
+      }
+    }
+
+    .cyber-status-line {
+      background: #030712 !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+
+      .cyber-alert-text {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+      }
+    }
+  }
+
+  .cyber-log-bar {
+    background: #030712 !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-left: 4px solid #ff1744 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+
+    .log-text {
+      color: #f8fafc !important;
+      font-weight: 600 !important;
+    }
+
+    .material-symbols-outlined {
+      color: #ff1744 !important;
+    }
+  }
+
+  .live-sim-toggle-btn {
+    background: #1e293b !important;
+    border: 1px solid #ff1744 !important;
+    color: #f8fafc !important;
+    font-weight: 700 !important;
+
+    &:hover {
+      background: rgba(255, 23, 68, 0.3) !important;
+      border-color: #ff1744 !important;
+    }
+
+    &.active {
+      background: #ff1744 !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 14px rgba(255, 23, 68, 0.6) !important;
+    }
+  }
+
+  .cockpit-right {
+    .controls-card {
+      background: #090d16 !important;
+      border: 1px solid rgba(56, 189, 248, 0.25) !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+
+      .controls-card-title {
+        color: #f8fafc !important;
+        font-weight: 700 !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+      }
+
+      .perf-grid .perf-item {
+        background: #0f172a !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+
+        .perf-label {
+          color: #94a3b8 !important;
+          font-weight: 600 !important;
+        }
+
+        .perf-value {
+          color: #f8fafc !important;
+          font-weight: 700 !important;
+        }
+      }
+    }
+  }
 }
 
 @keyframes alertBannerSlideDown {

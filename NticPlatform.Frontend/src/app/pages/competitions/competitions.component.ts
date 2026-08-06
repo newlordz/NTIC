@@ -5,11 +5,12 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ContentService, Competition, CompetitionPhase } from '../../services/content.service';
 import { ThemeService } from '../../services/theme.service';
+import { PublicNavComponent } from '../../components/public-nav/public-nav.component';
 
 @Component({
   selector: 'app-competitions',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, PublicNavComponent],
   templateUrl: './competitions.component.html',
   styleUrl: './competitions.component.scss'
 })

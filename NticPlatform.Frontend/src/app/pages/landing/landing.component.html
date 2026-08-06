@@ -506,7 +506,7 @@
   <!-- ══════════════════════════════════════════
        NEWS & EVENTS — Premium Editorial Grid
   ══════════════════════════════════════════ -->
-  <section class="news-editorial-section scroll-animate fade-up">
+  <section id="news" class="news-editorial-section scroll-animate fade-up" [class.dark-mode]="storySectionDark">
     <div class="container">
 
       <!-- Editorial Header -->
@@ -538,10 +538,11 @@
       </div>
 
       <!-- Magazine Grid -->
-      <div class="editorial-grid" *ngIf="contentService.championshipStories.length">
-        <!-- Hero Card (first story) -->
-        <a [routerLink]="['/news']"            [queryParams]="{ story: contentService.championshipStories[0].id }"
-           class="editorial-hero-card" *ngIf="contentService.championshipStories[0] as heroStory">
+      <div class="editorial-grid news-rotate" *ngIf="displayStories.length">
+        <!-- Hero Card (first rotated story) -->
+        <a [routerLink]="['/news']"
+           [queryParams]="{ story: displayStories[0].id }"
+           class="editorial-hero-card" *ngIf="displayStories[0] as heroStory">
           <div class="hero-img-wrap">
             <img [src]="heroStory.image" [alt]="heroStory.title"
                  onerror="this.src='assets/ntic_image_1.jpeg'" loading="lazy" decoding="async">
@@ -576,8 +577,8 @@
         </a>
 
         <!-- Secondary Cards Grid -->
-        <div class="editorial-secondary-grid" *ngIf="contentService.championshipStories.length > 1">
-          <a *ngFor="let story of contentService.championshipStories | slice:1:5; trackBy: trackByStory"
+        <div class="editorial-secondary-grid" *ngIf="displayStories.length > 1">
+          <a *ngFor="let story of displayStories | slice:1:5; trackBy: trackByStory"
              [routerLink]="['/news']"
              [queryParams]="{ story: story.id }"
              class="editorial-secondary-card">
@@ -2587,42 +2588,71 @@
                     <!-- Left: Network Monitor -->
                     <div class="cockpit-left">
                       <div class="cyber-monitor">
-                        <div class="cyber-monitor-header">
-                          <span class="material-symbols-outlined">network_intel</span>
-                          <span>Network Security Monitor</span>
-                          <span class="cyber-status-badge" [style.background]="arenaState.cyber?.statusColor">
-                            {{ arenaState.cyber?.status?.includes('NEUTRALIZED') ? 'SECURED' : 
-                               arenaState.cyber?.status?.includes('SCRUBBING') ? 'MITIGATING' :
-                               arenaState.cyber?.status?.includes('TRAPPED') ? 'DECOYED' :
-                               arenaState.cyber?.status?.includes('ROTATED') ? 'ENCRYPTED' : 'MONITORING' }}
+                        <div class="cyber-monitor-header" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                          <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="material-symbols-outlined">security</span>
+                            <span>Network Security Monitor</span>
+                          </div>
+                          <div style="display:flex; align-items:center; gap:10px;">
+                            <button class="live-sim-toggle-btn" 
+                                    [class.active]="arenaState.cyber?.liveSimRunning"
+                                    (click)="triggerArenaAction('cyber', 'toggle_sim')">
+                              <span class="material-symbols-outlined" style="font-size:15px; vertical-align:middle;">{{ arenaState.cyber?.liveSimRunning ? 'pause_circle' : 'play_circle' }}</span>
+                              <span>{{ arenaState.cyber?.liveSimRunning ? 'Pause Stream' : '⚡ Live Hack Stream' }}</span>
+                            </button>
+                            <span class="cyber-status-badge" [style.background]="arenaState.cyber?.statusColor">
+                              {{ arenaState.cyber?.status?.includes('COUNTER-STRIKE') ? 'COUNTER-ATTACK' :
+                                 arenaState.cyber?.status?.includes('NEUTRALIZED') ? 'SECURED' : 
+                                 arenaState.cyber?.status?.includes('TRAPPED') ? 'DECOYED' :
+                                 arenaState.cyber?.status?.includes('ROTATED') ? 'ENCRYPTED' : 'MONITORING' }}
+                            </span>
+                          </div>
+                        </div>
+
+                        <!-- Active Threat Radar Banner -->
+                        <div class="cyber-threat-banner" *ngIf="arenaState.cyber?.lastAttackerIp">
+                          <span class="pulse-red-badge">LIVE THREAT TARGET</span>
+                          <span class="threat-info">
+                            Origin: <strong>{{ arenaState.cyber?.lastAttackerLoc }} [{{ arenaState.cyber?.lastAttackerIp }}]</strong> &bull; 
+                            Payload: <code class="payload-code">{{ arenaState.cyber?.lastAttackType }}</code>
                           </span>
                         </div>
-                        <div class="cyber-network-viz">
-                          <!-- Internet / Attack Source -->
-                          <div class="cyber-node internet-node">
-                            <span class="material-symbols-outlined">public</span>
-                            <span class="cyber-node-label">Internet</span>
-                            <div class="attack-pulse" *ngIf="arenaState.cyber?.blockedCount > 0"></div>
+
+                        <div class="cyber-network-viz" [class.counter-active]="arenaState.cyber?.counterBeamActive" [class.shield-active]="arenaState.cyber?.shieldPulseActive">
+                          <!-- Internet / Attacker C2 Source -->
+                          <div class="cyber-node internet-node" [class.c2-destroyed]="arenaState.cyber?.c2Destroyed">
+                            <span class="material-symbols-outlined">{{ arenaState.cyber?.c2Destroyed ? 'report_problem' : 'public' }}</span>
+                            <span class="cyber-node-label">{{ arenaState.cyber?.c2Destroyed ? 'C2 DESTROYED' : 'Attacker C2' }}</span>
+                            <span class="cyber-node-stat">{{ arenaState.cyber?.lastAttackerIp || '185.220.101.34' }}</span>
+                            <div class="attack-pulse" *ngIf="!arenaState.cyber?.c2Destroyed && arenaState.cyber?.activeThreats > 0"></div>
                           </div>
-                          <div class="cyber-arrow">➜</div>
+                          
+                          <!-- Visual Laser Arrow / Beam -->
+                          <div class="cyber-arrow" [class.laser-beam]="arenaState.cyber?.counterBeamActive">
+                            {{ arenaState.cyber?.counterBeamActive ? '⚡ 💥 ⚡' : '➜' }}
+                          </div>
+                          
                           <!-- Firewall -->
-                          <div class="cyber-node firewall-node">
+                          <div class="cyber-node firewall-node" [class.shield-pulse]="arenaState.cyber?.shieldPulseActive" [class.honeypot-pulse]="arenaState.cyber?.honeypotTrapActive">
                             <span class="material-symbols-outlined"
                               [style.color]="arenaState.cyber?.statusColor">shield</span>
-                            <span class="cyber-node-label">Firewall</span>
-                            <span class="cyber-node-stat">{{ arenaState.cyber?.blockedCount }} blocked</span>
-                            <div class="firewall-bar" [style.width.%]="(arenaState.cyber?.blockedCount || 0) * 3">
-                              <div class="firewall-bar-fill" [style.background]="arenaState.cyber?.statusColor"></div>
+                            <span class="cyber-node-label">WAF Firewall</span>
+                            <span class="cyber-node-stat">{{ arenaState.cyber?.blockedCount }} Blocked</span>
+                            <div class="firewall-bar">
+                              <div class="firewall-bar-fill" [style.width.%]="(arenaState.cyber?.blockedCount || 0) * 4" [style.background]="arenaState.cyber?.statusColor"></div>
                             </div>
                           </div>
+                          
                           <div class="cyber-arrow">➜</div>
-                          <!-- Server -->
+                          
+                          <!-- Server Core -->
                           <div class="cyber-node server-node">
                             <span class="material-symbols-outlined">dns</span>
-                            <span class="cyber-node-label">Server</span>
-                            <span class="cyber-node-stat">Secure</span>
+                            <span class="cyber-node-label">Core Server</span>
+                            <span class="cyber-node-stat">Protected</span>
                           </div>
                         </div>
+                        
                         <div class="cyber-status-line">
                           <span class="cyber-alert-dot" [style.background]="arenaState.cyber?.statusColor"></span>
                           <span class="cyber-alert-text">{{ arenaState.cyber?.status }}</span>
@@ -2635,26 +2665,30 @@
                       </div>
                     </div>
 
-                    <!-- Right: Controls -->
+                    <!-- Right: Interactive Teleoperation Controls -->
                     <div class="cockpit-right">
                       <div class="controls-card">
-                        <div class="controls-card-title">🛡️ Defend</div>
+                        <div class="controls-card-title">🛡️ Cyber Teleoperation Controls</div>
+                        
                         <div class="controls-btn-group">
-                          <button class="ctrl-btn ctrl-cyber-defend" (click)="triggerArenaAction('cyber', 'defend')">
+                          <button class="ctrl-btn ctrl-cyber-defend" (click)="triggerArenaAction('cyber', 'defend')" title="Block incoming attack IP via WAF shun">
                             <span class="material-symbols-outlined">shield_lock</span>
                             <span>Block Attack</span>
                           </button>
-                          <button class="ctrl-btn ctrl-cyber-scan" (click)="triggerArenaAction('cyber', 'ddos')">
-                            <span class="material-symbols-outlined">radar</span>
-                            <span>Scan Network</span>
-                          </button>
-                        </div>
-                        <div class="controls-btn-group" style="margin-top: 8px">
-                          <button class="ctrl-btn ctrl-cyber-trap" (click)="triggerArenaAction('cyber', 'honeypot')">
+                          
+                          <button class="ctrl-btn ctrl-cyber-trap" (click)="triggerArenaAction('cyber', 'honeypot')" title="Trap attacker in isolated honeypot sandbox">
                             <span class="material-symbols-outlined">phishing</span>
                             <span>Set Trap</span>
                           </button>
-                          <button class="ctrl-btn ctrl-cyber-key" (click)="triggerArenaAction('cyber', 'cipher')">
+                        </div>
+
+                        <div class="controls-btn-group" style="margin-top: 10px">
+                          <button class="ctrl-btn ctrl-cyber-counter" (click)="triggerArenaAction('cyber', 'counter_attack')" title="Launch automated counter-hack strike against attacker C2 server">
+                            <span class="material-symbols-outlined">bolt</span>
+                            <span>ATTACK BACK</span>
+                          </button>
+                          
+                          <button class="ctrl-btn ctrl-cyber-key" (click)="triggerArenaAction('cyber', 'cipher')" title="Rotate AES/Kyber session ciphers">
                             <span class="material-symbols-outlined">key</span>
                             <span>Rotate Keys</span>
                           </button>
@@ -2669,8 +2703,16 @@
                             <div class="perf-value">{{ arenaState.cyber?.blockedCount }}</div>
                           </div>
                           <div class="perf-item">
-                            <div class="perf-label">Throughput</div>
-                            <div class="perf-value">{{ arenaState.cyber?.packetsSec }}<small>pkt/s</small></div>
+                            <div class="perf-label">Honeypots Trapped</div>
+                            <div class="perf-value" style="color: #ffea00">{{ arenaState.cyber?.honeypotDecoys || 5 }}</div>
+                          </div>
+                          <div class="perf-item">
+                            <div class="perf-label">Counter-Strikes</div>
+                            <div class="perf-value" style="color: #ff1744">{{ arenaState.cyber?.counterStrikes || 0 }}</div>
+                          </div>
+                          <div class="perf-item">
+                            <div class="perf-label">CTF Score</div>
+                            <div class="perf-value" style="color: #00e676">{{ arenaState.cyber?.ctfScore || 850 }}</div>
                           </div>
                           <div class="perf-item">
                             <div class="perf-label">Encryption</div>
@@ -2678,15 +2720,7 @@
                           </div>
                           <div class="perf-item">
                             <div class="perf-label">Active Threats</div>
-                            <div class="perf-value" [style.color]="arenaState.cyber?.threatLevel === 'ELEVATED' ? '#ff1744' : '#00e676'">{{ arenaState.cyber?.activeThreats || 3 }}</div>
-                          </div>
-                          <div class="perf-item">
-                            <div class="perf-label">Honeypots</div>
-                            <div class="perf-value">{{ arenaState.cyber?.honeypotDecoys || 5 }}</div>
-                          </div>
-                          <div class="perf-item">
-                            <div class="perf-label">IPS Alerts</div>
-                            <div class="perf-value">{{ arenaState.cyber?.ipsAlerts || 2 }}</div>
+                            <div class="perf-value" [style.color]="(arenaState.cyber?.activeThreats || 0) > 0 ? '#ff1744' : '#00e676'">{{ arenaState.cyber?.activeThreats || 0 }}</div>
                           </div>
                         </div>
                       </div>

@@ -75,6 +75,10 @@ try:
         score: int = 100
         rank: int = 1
         status: str = "Active"
+        coding_score: int = 0
+        robotics_score: int = 0
+        ai_score: int = 0
+        cyber_score: int = 0
 
     @app.get("/api/health")
     def health_check():
@@ -934,11 +938,12 @@ try:
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, name, region, teams, score, rank, status FROM schools ORDER BY rank ASC")
+        cur.execute("SELECT id, name, region, teams, score, rank, status, coding_score, robotics_score, ai_score, cyber_score FROM schools ORDER BY rank ASC")
         rows = cur.fetchall()
         cur.close()
         conn.close()
-        return [{"id": r[0], "name": r[1], "region": r[2], "teams": r[3], "score": r[4], "rank": r[5], "status": r[6]} for r in rows]
+        return [{"id": r[0], "name": r[1], "region": r[2], "teams": r[3], "score": r[4], "rank": r[5], "status": r[6],
+                 "coding_score": r[7], "robotics_score": r[8], "ai_score": r[9], "cyber_score": r[10]} for r in rows]
 
     @app.post("/api/schools", status_code=status.HTTP_201_CREATED)
     def create_school(payload: SchoolCreate):
@@ -947,8 +952,9 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         sch_id = "sch-" + str(uuid.uuid4())[:8]
         cur = conn.cursor()
-        cur.execute("INSERT INTO schools (id, name, region, teams, score, rank, status) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                    (sch_id, payload.name, payload.region, payload.teams, payload.score, payload.rank, payload.status))
+        cur.execute("INSERT INTO schools (id, name, region, teams, score, rank, status, coding_score, robotics_score, ai_score, cyber_score) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    (sch_id, payload.name, payload.region, payload.teams, payload.score, payload.rank, payload.status,
+                     payload.coding_score, payload.robotics_score, payload.ai_score, payload.cyber_score))
         conn.commit()
         cur.close()
         conn.close()
@@ -974,8 +980,9 @@ try:
         cur = conn.cursor()
         try:
             cur.execute(
-                "UPDATE schools SET name = %s, region = %s, teams = %s, score = %s, rank = %s, status = %s WHERE id = %s RETURNING id",
-                (payload.name, payload.region, payload.teams, payload.score, payload.rank, payload.status, item_id)
+                "UPDATE schools SET name = %s, region = %s, teams = %s, score = %s, rank = %s, status = %s, coding_score = %s, robotics_score = %s, ai_score = %s, cyber_score = %s WHERE id = %s RETURNING id",
+                (payload.name, payload.region, payload.teams, payload.score, payload.rank, payload.status,
+                 payload.coding_score, payload.robotics_score, payload.ai_score, payload.cyber_score, item_id)
             )
             row = cur.fetchone()
             conn.commit()

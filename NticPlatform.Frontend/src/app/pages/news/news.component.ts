@@ -3,11 +3,12 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ContentService, ChampionshipStory, NewsFeedItem, UpcomingEvent } from '../../services/content.service';
+import { PublicNavComponent } from '../../components/public-nav/public-nav.component';
 
 @Component({
   selector: 'app-news',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, PublicNavComponent],
   templateUrl: './news.component.html',
   styleUrl: './news.component.scss'
 })

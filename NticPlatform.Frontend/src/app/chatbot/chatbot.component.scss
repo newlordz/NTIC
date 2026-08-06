@@ -17,11 +17,12 @@ $shadow-panel: 0 24px 60px rgba(0, 30, 80, 0.18), 0 8px 24px rgba(0, 30, 80, 0.1
 // ─── FAB ─────────────────────────────────────────────────────────────────────
 .chatbot-fab {
   position: fixed;
-  bottom: 96px; // Sit above the scroll-to-top button with a clean 20px gap
-  right: 22px;  // Aligns precisely with the vertical center of the scroll-to-top button
+  bottom: 92px; // Sit above the scroll-to-top button with a clean 16px gap
+  right: 24px;  // Aligns precisely on the vertical centerline with the scroll-to-top button
   z-index: 9000;
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
+  box-sizing: border-box;
   border-radius: 50%;
   border: none;
   cursor: grab;
@@ -502,17 +503,19 @@ $shadow-panel: 0 24px 60px rgba(0, 30, 80, 0.18), 0 8px 24px rgba(0, 30, 80, 0.1
 }
 
 // ─── RESPONSIVE (MOBILE) ─────────────────────────────────────────────────────
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .chatbot-panel {
     right: 12px;
-    bottom: 140px;
+    bottom: 130px;
     width: calc(100vw - 24px);
     height: 460px;
   }
 
   .chatbot-fab {
-    right: 16px;
-    bottom: 80px;
+    right: 20px;
+    bottom: 76px;
+    width: 44px;
+    height: 44px;
   }
 }
 

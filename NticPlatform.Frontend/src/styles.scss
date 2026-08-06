@@ -3528,3 +3528,83 @@ body.dark-theme {
   }
 }
 
+/* ════════════════════════════════════════════════════════════
+   DARK THEME — Global Overrides
+   ════════════════════════════════════════════════════════════ */
+body.dark-theme {
+  /* ── Core palette overrides ── */
+  --primary:                 #6da5e0;
+  --primary-rgb:             109, 165, 224;
+  --crimson:                 #6da5e0;
+  --crimson-dark:            #1a2744;
+  --primary-container:       #162035;
+  --on-primary:              #0b1120;
+  --on-primary-container:    #d0e3ff;
+  --surface-dim:             #0b1120;
+  --surface:                 #111827;
+  --surface-bright:          #1a2332;
+  --surface-container-lowest:#0b1120;
+  --surface-container-low:   #111827;
+  --surface-container:       #1a2332;
+  --surface-container-high:  #1e2a3a;
+  --surface-container-highest:#243044;
+  --on-surface:              #e2e8f0;
+  --on-surface-variant:      #94a3b8;
+  --outline:                 #334155;
+  --outline-variant:         #1e2a3a;
+  --on-tertiary:             #e2e8f0;
+  --inverse-surface:         #e2e8f0;
+  --inverse-on-surface:      #0b1120;
+
+  /* ── Semantic overrides ── */
+  --bg-ivory:       #0b1120;
+  --bg-white:       #111827;
+  --charcoal:       #f1f5f9;
+  --slate:          #94a3b8;
+  --border-color:   rgba(148, 163, 184, 0.12);
+
+  background: #0b1120;
+  color: #e2e8f0;
+
+  // Top nav
+  .pub-topnav,
+  .lb-topnav {
+    background: #111827;
+    border-bottom-color: rgba(148, 163, 184, 0.1);
+  }
+
+  // Buttons & inputs
+  .btn { border-color: rgba(148, 163, 184, 0.15); }
+  .btn-subtle { background: rgba(255,255,255,0.04); color: #94a3b8; border-color: rgba(148,163,184,0.12); }
+  .btn-primary { background: #6da5e0; color: #0b1120; }
+
+  // Cards
+  .card, .page-canvas .card {
+    background: #1a2332;
+    border-color: rgba(148, 163, 184, 0.1);
+    color: #e2e8f0;
+  }
+
+  // Tables
+  table th { background: rgba(255,255,255,0.03); border-bottom-color: rgba(148,163,184,0.1); color: #64748b; }
+  table td { border-bottom-color: rgba(148,163,184,0.06); color: #cbd5e1; }
+
+  // Badges
+  .badge { background: rgba(109, 165, 224, 0.12); color: #6da5e0; }
+  .badge.primary { background: rgba(109, 165, 224, 0.15); color: #6da5e0; }
+  .badge.secondary { background: rgba(255,255,255,0.06); color: #94a3b8; }
+
+  // Headings
+  h1, h2, h3, h4, h5 { color: #f1f5f9; }
+
+  // Links
+  a { color: inherit; }
+
+  // Scrollbar
+  /* ── Dark Theme Canvas Overrides ── */
+  .page-canvas {
+    background: #0b1120 !important;
+    color: #e2e8f0;
+  }
+}
+

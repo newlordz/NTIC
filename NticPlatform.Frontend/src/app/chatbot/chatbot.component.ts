@@ -33,10 +33,10 @@ export class ChatbotComponent implements OnChanges, AfterViewChecked {
   private shouldScrollToBottom = false;
 
   // Draggable FAB state variables
-  fabBottom = 96;
+  fabBottom = 92;
   private isDragging = false;
   private startY = 0;
-  private startBottom = 96;
+  private startBottom = 92;
   private dragThreshold = 5;
   private hasMoved = false;
 

@@ -2,11 +2,12 @@
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ContentService, LeaderboardEntry } from '../../services/content.service';
+import { PublicNavComponent } from '../../components/public-nav/public-nav.component';
 
 @Component({
   selector: 'app-leaderboard',
   standalone: true,
-  imports: [CommonModule, DecimalPipe, RouterModule],
+  imports: [CommonModule, DecimalPipe, RouterModule, PublicNavComponent],
   templateUrl: './leaderboard.component.html',
   styleUrl: './leaderboard.component.scss'
 })

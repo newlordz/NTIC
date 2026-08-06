@@ -72,10 +72,15 @@ def seed_initial_data(conn):
     # Schools
     cur.execute("SELECT count(*) FROM schools")
     if cur.fetchone()[0] == 0:
-        cur.execute("INSERT INTO schools (id, name, region, teams, score, rank, status) VALUES ('sch-1', 'PRESEC Legon', 'Greater Accra', 12, 1450, 1, 'Active')")
-        cur.execute("INSERT INTO schools (id, name, region, teams, score, rank, status) VALUES ('sch-2', 'Achimota School', 'Greater Accra', 10, 1380, 2, 'Active')")
-        cur.execute("INSERT INTO schools (id, name, region, teams, score, rank, status) VALUES ('sch-3', 'Prempeh College', 'Ashanti', 9, 1320, 3, 'Active')")
-        cur.execute("INSERT INTO schools (id, name, region, teams, score, rank, status) VALUES ('sch-4', 'Wesley Girls High School', 'Central', 8, 1290, 4, 'Active')")
+        cur.execute("INSERT INTO schools (id, name, region, teams, score, rank, status, coding_score, robotics_score, ai_score, cyber_score) VALUES ('sch-1', 'PRESEC Legon', 'Greater Accra', 12, 1450, 1, 'Active', 380, 360, 350, 360)")
+        cur.execute("INSERT INTO schools (id, name, region, teams, score, rank, status, coding_score, robotics_score, ai_score, cyber_score) VALUES ('sch-2', 'Achimota School', 'Greater Accra', 10, 1380, 2, 'Active', 370, 340, 320, 350)")
+        cur.execute("INSERT INTO schools (id, name, region, teams, score, rank, status, coding_score, robotics_score, ai_score, cyber_score) VALUES ('sch-3', 'Prempeh College', 'Ashanti', 9, 1320, 3, 'Active', 320, 350, 340, 310)")
+        cur.execute("INSERT INTO schools (id, name, region, teams, score, rank, status, coding_score, robotics_score, ai_score, cyber_score) VALUES ('sch-4', 'Wesley Girls High School', 'Central', 8, 1290, 4, 'Active', 340, 330, 310, 310)")
+    else:
+        cur.execute("UPDATE schools SET coding_score = 380, robotics_score = 360, ai_score = 350, cyber_score = 360 WHERE id = 'sch-1'")
+        cur.execute("UPDATE schools SET coding_score = 370, robotics_score = 340, ai_score = 320, cyber_score = 350 WHERE id = 'sch-2'")
+        cur.execute("UPDATE schools SET coding_score = 320, robotics_score = 350, ai_score = 340, cyber_score = 310 WHERE id = 'sch-3'")
+        cur.execute("UPDATE schools SET coding_score = 340, robotics_score = 330, ai_score = 310, cyber_score = 310 WHERE id = 'sch-4'")
 
     # HoF Entries
     cur.execute("SELECT count(*) FROM hof_entries")
