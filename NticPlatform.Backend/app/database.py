@@ -295,7 +295,8 @@ def init_postgres_db():
             WHERE u1.phone IS NOT NULL
             AND EXISTS (SELECT 1 FROM users u2 WHERE u2.phone = u1.phone AND u2.id <> u1.id)
         """)
-        cur.execute("ALTER TABLE users ADD CONSTRAINT IF NOT EXISTS users_phone_unique UNIQUE (phone);")
+        cur.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_phone_unique;")
+        cur.execute("ALTER TABLE users ADD CONSTRAINT users_phone_unique UNIQUE (phone);")
         cur.execute("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT false;")
         cur.execute("ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL;")
         cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS tag VARCHAR(64) DEFAULT '';")

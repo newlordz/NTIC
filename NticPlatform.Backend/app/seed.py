@@ -5,9 +5,10 @@ def seed_initial_data(conn):
     cur = conn.cursor()
 
     # Platform users (real login accounts)
-    cur.execute("SELECT count(*) FROM users")
-    if cur.fetchone()[0] == 0:
-        admin_password = os.getenv("NTIC_ADMIN_PASSWORD", "Admin@Ntic2026!")
+    admin_password = os.getenv("NTIC_ADMIN_PASSWORD", "Admin@Ntic2026!")
+    cur.execute("SELECT id FROM users WHERE email = 'admin@ntic.org.gh' OR id = 'USR-000'")
+    admin_row = cur.fetchone()
+    if not admin_row:
         cur.execute(
             "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status) VALUES (%s, %s, %s, %s, %s, %s, 'Active')",
             (
@@ -19,6 +20,8 @@ def seed_initial_data(conn):
                 hash_password(admin_password),
             ),
         )
+    else:
+        cur.execute("UPDATE users SET password_hash = %s, status = 'Active' WHERE id = %s", (hash_password(admin_password), admin_row[0]))
     # Philosophy Cards
     cur.execute("SELECT count(*) FROM philosophy_cards")
     if cur.fetchone()[0] == 0:

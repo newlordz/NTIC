@@ -1,7 +1,93 @@
 <div class="leaderboard-page">
 
   <!-- Top Nav -->
-  <app-public-nav activePage="leaderboard"></app-public-nav>
+  <app-public-nav *ngIf="!isAdmin" activePage="leaderboard"></app-public-nav>
+
+  <!-- ═══ ADMIN TOOLBAR ═══ -->
+  <div class="lb-admin-bar" *ngIf="isAdmin">
+    <div class="container">
+      <div class="admin-bar-inner">
+        <div class="admin-bar-title">
+          <span class="material-symbols-outlined">admin_panel_settings</span>
+          <span>Admin Controls</span>
+        </div>
+        <div class="admin-bar-actions">
+          <button class="btn btn-export" (click)="exportCSV()">
+            <span class="material-symbols-outlined">download</span>Export CSV
+          </button>
+          <button class="btn btn-primary btn-sm" (click)="openAddForm()">
+            <span class="material-symbols-outlined">add</span>Add School
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ADD/EDIT FORM ═══ -->
+  <div class="lb-form-section" *ngIf="isAdmin && showAddForm">
+    <div class="container">
+      <div class="lb-form-card">
+        <div class="lb-form-header">
+          <h4>
+            <span class="material-symbols-outlined">leaderboard</span>
+            {{ editId ? 'Edit School' : 'Add School to Leaderboard' }}
+          </h4>
+          <button class="lb-form-close" (click)="closeForm()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="lb-form-error" *ngIf="formError">{{ formError }}</div>
+        <div class="lb-form-grid">
+          <div class="lb-field">
+            <label>School Name <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="lbForm.schoolName" placeholder="e.g. PRESEC Legon">
+          </div>
+          <div class="lb-field">
+            <label>Location <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="lbForm.location" placeholder="e.g. Legon, Greater Accra">
+          </div>
+          <div class="lb-field">
+            <label>Region</label>
+            <input type="text" [(ngModel)]="lbForm.region" placeholder="e.g. Greater Accra">
+          </div>
+          <div class="lb-points-group">
+            <label>Track Points</label>
+            <div class="lb-points-row">
+              <div class="lb-point-field">
+                <span>Coding</span>
+                <input type="number" [(ngModel)]="lbForm.trackPoints.coding" (ngModelChange)="onTrackChange()" min="0">
+              </div>
+              <div class="lb-point-field">
+                <span>Robotics</span>
+                <input type="number" [(ngModel)]="lbForm.trackPoints.robotics" (ngModelChange)="onTrackChange()" min="0">
+              </div>
+              <div class="lb-point-field">
+                <span>AI</span>
+                <input type="number" [(ngModel)]="lbForm.trackPoints.ai" (ngModelChange)="onTrackChange()" min="0">
+              </div>
+              <div class="lb-point-field">
+                <span>Cyber</span>
+                <input type="number" [(ngModel)]="lbForm.trackPoints.cyber" (ngModelChange)="onTrackChange()" min="0">
+              </div>
+              <div class="lb-point-field total">
+                <span>Total</span>
+                <input type="number" [ngModel]="lbForm.trackPoints.all" readonly>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="lb-form-actions">
+          <button class="btn btn-subtle" (click)="closeForm()">Cancel</button>
+          <button class="btn btn-primary" (click)="submitForm()">
+            <span class="material-symbols-outlined">save</span>
+            {{ editId ? 'Save Changes' : 'Add to Leaderboard' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PUBLIC VIEW ═══ -->
 
   <!-- Header -->
   <header class="lb-header">
@@ -66,17 +152,28 @@
                 <th class="col-school">School</th>
                 <th class="col-region">Region</th>
                 <th class="col-pts">Points</th>
+                <th class="col-edit" *ngIf="isAdmin"></th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let s of restStandings">
-                <td class="col-rank">
-                  <span class="rank-num">#{{ s.rank }}</span>
-                </td>
-                <td class="col-school">{{ s.school }}</td>
-                <td class="col-region">{{ s.region }}</td>
-                <td class="col-pts">{{ s.pts | number }}</td>
-              </tr>
+              <ng-container *ngFor="let s of restStandings; let i = index">
+                <tr>
+                  <td class="col-rank">
+                    <span class="rank-num">#{{ s.rank }}</span>
+                  </td>
+                  <td class="col-school">{{ s.school }}</td>
+                  <td class="col-region">{{ s.region }}</td>
+                  <td class="col-pts">{{ s.pts | number }}</td>
+                  <td class="col-edit" *ngIf="isAdmin">
+                    <button class="row-edit-btn" title="Edit" (click)="editEntry(contentService.leaderboardData[i + 3])">
+                      <span class="material-symbols-outlined">edit</span>
+                    </button>
+                    <button class="row-del-btn" title="Remove" (click)="removeEntry(contentService.leaderboardData[i + 3].id)">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
+                  </td>
+                </tr>
+              </ng-container>
             </tbody>
           </table>
         </div>

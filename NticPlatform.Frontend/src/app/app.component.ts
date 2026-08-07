@@ -79,6 +79,14 @@ export class AppComponent implements OnInit, OnDestroy {
         parsedUrl === '/competitions' ||
         parsedUrl === '/talent';
 
+      // Admins on /leaderboard get the admin shell (sidebar + header), not the public nav
+      if (parsedUrl === '/leaderboard') {
+        const role = getAuthValue('activeRoleId');
+        if (role === 'super_admin' || role === 'admin') {
+          this.isLandingPage = false;
+        }
+      }
+
       if (typeof window !== 'undefined') {
         document.body.style.overflow = '';
         window.scrollTo(0, 0);
