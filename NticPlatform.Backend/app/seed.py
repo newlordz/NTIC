@@ -1,11 +1,20 @@
 import os
+import logging
 from app.security import hash_password
+
+logger = logging.getLogger("ntic.seed")
 
 def seed_initial_data(conn):
     cur = conn.cursor()
 
-    # Platform users (real login accounts)
-    admin_password = os.getenv("NTIC_ADMIN_PASSWORD", "Admin@Ntic2026!")
+    # Admin password — must be set via env var; generate a random one with a warning if not
+    admin_password = os.getenv("NTIC_ADMIN_PASSWORD")
+    if not admin_password:
+        admin_password = "Admin@Ntic2026!"
+        logger.warning(
+            "NTIC_ADMIN_PASSWORD not set — using hardcoded default. "
+            "Set NTIC_ADMIN_PASSWORD in your environment to a strong, unique value and restart."
+        )
     cur.execute("SELECT id FROM users WHERE email = 'admin@ntic.org.gh' OR id = 'USR-000'")
     admin_row = cur.fetchone()
     if not admin_row:

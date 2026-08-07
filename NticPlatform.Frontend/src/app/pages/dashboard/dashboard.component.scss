@@ -1438,7 +1438,7 @@
   border-radius: 12px;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 
-  &:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
+  &:hover { transform: none; box-shadow: 0 8px 20px rgba(0,0,0,0.06); border-color: var(--primary); }
 }
 
 .admin-approval-icon {
@@ -2755,7 +2755,7 @@
   padding: 20px 16px;
   text-align: center;
   transition: border-color 0.2s, transform 0.2s;
-  &:hover { border-color: var(--primary); transform: translateY(-2px); }
+  &:hover { border-color: var(--primary); transform: none; box-shadow: 0 4px 16px rgba(0,63,135,0.08); }
 }
 
 .cms-stat-icon { font-size: 28px; margin-bottom: 8px; }

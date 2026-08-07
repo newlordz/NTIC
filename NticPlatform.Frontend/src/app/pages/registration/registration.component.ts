@@ -535,8 +535,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.verifyOtpSent = true;
     this.showCustomAlert(
       type === 'email'
-        ? `OTP sent to ${value}. For demo: ${this.verifyStoredOtp}`
-        : `OTP sent to ${value}. For demo: ${this.verifyStoredOtp}`,
+        ? `OTP sent to ${value}`
+        : `OTP sent to ${value}`,
       'Verification Code Sent', 'info'
     );
   }
@@ -953,7 +953,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       next: (res) => this.completeLogin(res.role, res, credential),
       error: (err) => {
         if (err.status === 0 || err.status === 502 || err.status === 503 || err.name === 'TimeoutError') {
-          this.localLogin(credential, pass);
+          this.isLoggingIn = false;
+          this.loginError = 'Server unreachable. Please try again once the server is online.';
         } else if (err.status === 401) {
           this.isLoggingIn = false;
           this.loginError = 'Incorrect email or password. Please try again.';
@@ -963,51 +964,6 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         }
       }
     });
-  }
-
-  private localLogin(credential: string, pass: string): void {
-    this.isLoggingIn = false;
-
-    const registeredUser = this.contentService.users.find(u =>
-      (u.email?.trim().toLowerCase() === credential) ||
-      (u.ticket?.trim().toLowerCase() === credential)
-    );
-
-    if (!registeredUser) {
-      if (credential === 'admin@ntic.org.gh') {
-        this.completeLogin('super_admin', {
-          email: 'admin@ntic.org.gh',
-          ticket: 'NTIC-ADM-0000',
-          full_name: 'Admin',
-          role: 'super_admin'
-        }, credential);
-        return;
-      }
-      this.loginError = 'Unrecognized credentials. Please check your email or access pass and try again.';
-      return;
-    }
-
-    const isAdminUser = credential === 'admin@ntic.org.gh';
-    const expectedPass = registeredUser.password || registeredUser.otp || 'admin123';
-    const isValidAdminPass = isAdminUser && (pass === 'Admin@Ntic2026!' || pass === 'admin123' || pass === 'admin' || pass === expectedPass);
-
-    if (!isAdminUser && (!expectedPass || pass !== expectedPass)) {
-      this.loginError = 'Incorrect password or verification code. Please try again.';
-      return;
-    } else if (isAdminUser && !isValidAdminPass) {
-      this.loginError = 'Incorrect password or verification code. Please try again.';
-      return;
-    }
-
-    const finalRole = registeredUser.role;
-    registeredUser.status = 'Active';
-    registeredUser.lastLogin = 'Just now';
-    this.contentService.saveUsers([...this.contentService.users]);
-
-    this.completeLogin(finalRole, {
-      email: registeredUser.email || credential,
-      ticket: registeredUser.ticket || credential
-    }, credential);
   }
 
   private completeLogin(role: string, user: any, credential: string): void {
@@ -1306,7 +1262,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.regState = 'otp_verification';
     this.startResendTimer();
 
-    this.showCustomAlert(`A 6-digit verification code has been sent to ${this.verificationInput}.\n\nFor demo purposes: Your code is ${otp}`, 'Verification Code Sent', 'info');
+    this.showCustomAlert(`A 6-digit verification code has been sent to ${this.verificationInput}.`, 'Verification Code Sent', 'info');
   }
 
   startResendTimer(): void {
@@ -1328,7 +1284,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       stored.code = otp;
       stored.expiresAt = Date.now() + 5 * 60 * 1000;
       localStorage.setItem('ntic_otp', JSON.stringify(stored));
-      this.showCustomAlert(`New verification code sent: ${otp}`, 'Code Resent', 'info');
+      this.showCustomAlert(`New verification code sent.`, 'Code Resent', 'info');
     }
     this.otpCode = '';
     this.otpError = '';

@@ -106,7 +106,12 @@ const server = http.createServer((req, res) => {
 
       const headers = {
         'Content-Type': contentType,
-        'X-Content-Type-Options': 'nosniff'
+        'X-Content-Type-Options': 'nosniff',
+        'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+        'X-Frame-Options': 'DENY',
+        'X-XSS-Protection': '0',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
       };
 
       // Cache static assets (hashed JS/CSS/fonts/images) for 1 year; index.html no-cache

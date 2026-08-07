@@ -5,7 +5,7 @@ export const environment: Environment = {
   apiUrl: '/api',
   brevo: {
     apiKey: 'REPLACE_BREVO_API_KEY',
-    senderEmail: 'enochessel5@gmail.com',
+    senderEmail: 'REPLACE_SENDER_EMAIL',
     senderName: 'NTIC Ghana Championship'
   },
   smsmode: {

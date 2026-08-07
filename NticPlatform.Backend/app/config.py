@@ -36,6 +36,11 @@ class Config:
 
     PORT: int = int(os.getenv("PORT", 5000))
 
+    ALLOWED_ORIGINS: list = os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:4200,http://localhost:8080,https://ntic.up.railway.app",
+    ).split(",")
+
     @classmethod
     def validate(cls) -> None:
         """No-op: always let the app start. DB errors surface via health endpoint."""

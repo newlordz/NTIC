@@ -121,6 +121,8 @@ html {
   margin: 0;
   padding: 0;
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+  overflow-x: hidden;
 }
 
 body {
@@ -128,6 +130,7 @@ body {
   width: 100%;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
   overflow-x: clip;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--background);
@@ -211,10 +214,10 @@ button,
     box-shadow       0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Micro-interactions ── */
+/* ── Micro-interactions (Stable, Non-Shaking) ── */
 .btn:hover,
 .sidebar-new-btn:hover {
-  transform: scale(1.03);
+  transform: none;
   box-shadow: 0 8px 24px rgba(0, 63, 135, 0.22);
 }
 
@@ -225,7 +228,7 @@ button,
 }
 
 .icon-btn:hover {
-  transform: scale(1.1);
+  transform: none;
   background: var(--surface-container);
 }
 
@@ -234,45 +237,20 @@ button,
 }
 
 .nav-item:hover {
-  transform: translateX(3px);
+  transform: none;
+  background: var(--surface-container-low);
 }
 
-/* ── Card hover lift ── */
-.card, .stat-card {
+/* ── Container Cards & Layouts (Stable, Non-Shaking) ── */
+.card, .panel, .form-card, .layout-card, .lms-header, .card-interactive, .stat-card, .gateway-card {
   position: relative;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: border-color 0.25s ease;
 
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    border-radius: inherit;
-  }
-}
-
-.card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 32px rgba(0, 63, 135, 0.1);
-
-  &::before {
-    top: -10px;
-    bottom: -15px;
-    left: -10px;
-    right: -10px;
-    pointer-events: none;
-  }
-}
-
-.stat-card:hover {
-  transform: translateY(-3px) scale(1.01);
-  box-shadow: 0 12px 32px rgba(0, 63, 135, 0.1);
-
-  &::before {
-    top: -10px;
-    bottom: -15px;
-    left: -10px;
-    right: -10px;
-    pointer-events: none;
+  &:hover {
+    transform: none !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+    border-color: rgba(0, 63, 135, 0.25);
   }
 }
 
@@ -1588,7 +1566,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
       transition: all 0.3s ease;
 
       &:hover {
-        transform: scale(1.05) translateY(-2px);
+        transform: none;
         border-color: #008060;
         box-shadow: 0 4px 12px rgba(0, 128, 96, 0.25);
         color: #00e676;
@@ -1635,7 +1613,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
       background: #002f6b;
       border-color: #002f6b;
       box-shadow: 0 4px 16px rgba(0, 63, 135, 0.25);
-      transform: translateY(-2px);
+      transform: none;
     }
   }
 
@@ -1649,7 +1627,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
       background: #b28f42;
       border-color: #b28f42;
       box-shadow: 0 4px 16px rgba(212,160,23,0.3);
-      transform: translateY(-2px);
+      transform: none;
     }
   }
 
@@ -1676,7 +1654,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
       background: #fff;
       color: #1e1e1e;
       border-color: #fff;
-      transform: translateY(-2px);
+      transform: none;
     }
   }
 
@@ -3116,7 +3094,7 @@ body.dark-theme {
       transition: all 0.25s;
 
       &:hover {
-        transform: translateY(-1px);
+        transform: none;
         box-shadow: 0 6px 20px rgba(0, 63, 135, 0.4);
       }
     }
@@ -3192,7 +3170,7 @@ body.dark-theme {
 
       &:hover {
         opacity: 0.9;
-        transform: translateY(-1px);
+        transform: none;
       }
     }
   }
@@ -3248,11 +3226,10 @@ body.dark-theme {
       border-color: rgba(0, 63, 135, 0.28);
       color: #0284c7;
       box-shadow: 0 4px 14px rgba(0, 63, 135, 0.12);
-      transform: translateY(-1px);
+      transform: none;
 
       .icon {
         color: #0284c7;
-        transform: scale(1.2);
       }
     }
 

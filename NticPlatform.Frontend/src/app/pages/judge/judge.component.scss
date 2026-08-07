@@ -699,8 +699,8 @@
     cursor: grab;
     transition: transform 0.2s;
 
-    &:hover { transform: scale(1.15); }
-    &:active { cursor: grabbing; transform: scale(1.1); }
+    &:hover { transform: none; box-shadow: 0 4px 14px rgba(0, 63, 135, 0.4); }
+    &:active { cursor: grabbing; }
   }
 }
 

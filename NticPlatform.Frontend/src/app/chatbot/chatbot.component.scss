@@ -644,7 +644,7 @@ $shadow-panel: 0 24px 60px rgba(0, 30, 80, 0.18), 0 8px 24px rgba(0, 30, 80, 0.1
   .escalate-ok-btn {
     background: linear-gradient(135deg, #059669, #10b981);
     color: #fff;
-    &:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    &:hover { filter: brightness(1.1); transform: none; }
   }
 }
 

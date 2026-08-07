@@ -316,7 +316,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
           users[idx].password = newOTP;
           this.contentService.saveUsers(users);
         }
-        this.showToast('OTP Regenerated', `New code for ${user.fullName}: ${newOTP}`, 6000);
+        this.showToast('OTP Regenerated', `New OTP generated for ${user.fullName}.`, 6000);
         this.loadUsers();
       },
       error: (err) => {

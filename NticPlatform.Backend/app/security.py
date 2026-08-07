@@ -2,7 +2,7 @@ import hashlib
 import secrets
 from fastapi import HTTPException, status, Request
 
-_ITERATIONS = 100_000
+_ITERATIONS = 600_000
 ADMIN_ROLES = {"super_admin", "admin"}
 
 

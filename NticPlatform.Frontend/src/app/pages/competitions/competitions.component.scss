@@ -120,7 +120,7 @@
   border: none; border-radius: 16px;
   padding: 3px; cursor: pointer;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  &:hover { transform: scale(1.04); box-shadow: 0 8px 32px rgba(245,158,11,0.35); }
+  &:hover { transform: none; box-shadow: 0 8px 32px rgba(245,158,11,0.35); }
 }
 
 .btn-create-ring {
@@ -1130,7 +1130,7 @@
     background: linear-gradient(135deg, var(--primary), #0056b3);
     color: #fff;
     box-shadow: 0 2px 8px rgba(0,63,135,0.3);
-    &:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,63,135,0.4); }
+    &:hover { transform: none; box-shadow: 0 4px 12px rgba(0,63,135,0.4); }
   }
 }
 

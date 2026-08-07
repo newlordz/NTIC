@@ -70,7 +70,7 @@
 
   &:hover {
     box-shadow: var(--shadow-elevated);
-    transform: translateY(-2px);
+    transform: none;
 
     &::before {
       top: -8px;
@@ -141,7 +141,7 @@
   }
 
   &:hover {
-    transform: translateY(-3px);
+    transform: none;
     box-shadow: 0 12px 28px rgba(0, 63, 135, 0.12);
 
     .hof-members-popover {

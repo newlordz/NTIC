@@ -87,6 +87,14 @@ export class AppComponent implements OnInit, OnDestroy {
         }
       }
 
+      // Visiting the public homepage ends any lingering authenticated session,
+      // so credentials don't persist on shared/public machines.
+      if ((parsedUrl === '/' || parsedUrl === '/landing' || parsedUrl === '') && getAuthValue('activeRoleId')) {
+        clearAllAuthValues();
+        this.currentUser = null;
+        this.chatbot.resetSession();
+      }
+
       if (typeof window !== 'undefined') {
         document.body.style.overflow = '';
         window.scrollTo(0, 0);

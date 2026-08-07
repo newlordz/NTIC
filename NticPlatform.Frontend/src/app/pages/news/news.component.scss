@@ -194,7 +194,7 @@
     transition: transform 0.4s;
   }
 
-  .story-card:hover & img { transform: scale(1.03); }
+  .story-card:hover & img { transform: none; opacity: 0.95; }
 }
 
 .story-tag-badge {
@@ -268,8 +268,8 @@
 
   .material-symbols-outlined { font-size: 18px; transition: transform 0.2s; }
 
-  &:hover { gap: 10px; }
-  &:hover .material-symbols-outlined { transform: translateX(2px); }
+  &:hover { color: var(--primary-dark); }
+  &:hover .material-symbols-outlined { transform: none; }
 }
 
 /* ── Section Divider ── */

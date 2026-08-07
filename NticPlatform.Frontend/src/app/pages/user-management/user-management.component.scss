@@ -202,7 +202,7 @@ $radius-xl: 20px;
     border-color: $blue;
     box-shadow: 0 2px 10px rgba(37, 99, 235, 0.3);
 
-    &:hover { background: $blue-dk; box-shadow: 0 4px 16px rgba(37, 99, 235, 0.45); transform: translateY(-1px); }
+    &:hover { background: $blue-dk; box-shadow: 0 4px 16px rgba(37, 99, 235, 0.45); transform: none; }
     &:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
   }
 
@@ -212,7 +212,7 @@ $radius-xl: 20px;
     border-color: rgba(255,255,255,0.15);
     backdrop-filter: blur(8px);
 
-    &:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); }
+    &:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); transform: none; }
   }
 
   &.cmd-btn-danger {
@@ -220,7 +220,7 @@ $radius-xl: 20px;
     color: #fff;
     border-color: $red;
 
-    &:hover { background: darken(#ef4444, 8%); box-shadow: 0 4px 12px rgba(239,68,68,0.4); transform: translateY(-1px); }
+    &:hover { background: darken(#ef4444, 8%); box-shadow: 0 4px 12px rgba(239,68,68,0.4); transform: none; }
   }
 
   &.cmd-btn-sm {
@@ -343,7 +343,7 @@ $radius-xl: 20px;
   }
 
   &:hover {
-    transform: translateY(-3px);
+    transform: none;
     box-shadow: 0 12px 32px rgba(0,0,0,0.08);
   }
 
@@ -835,7 +835,7 @@ $radius-xl: 20px;
   position: relative;
 
   &:hover {
-    transform: translateY(-4px);
+    transform: none;
     box-shadow: 0 16px 40px rgba(0,0,0,0.1);
   }
 }

@@ -93,9 +93,9 @@ export class NewsComponent implements OnInit, OnDestroy {
       await navigator.clipboard.writeText(`${story.title}\n${story.body}\n\n${url}`);
       const buttons = document.querySelectorAll<HTMLButtonElement>(`[data-share="${story.id}"]`);
       buttons.forEach(btn => {
-        const orig = btn.innerHTML;
-        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">check</span>';
-        setTimeout(() => { btn.innerHTML = orig; }, 2000);
+        const orig = btn.textContent;
+        btn.textContent = '\u2713';
+        setTimeout(() => { btn.textContent = orig; }, 2000);
       });
     } catch {}
   }

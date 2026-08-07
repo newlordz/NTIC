@@ -1596,7 +1596,11 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       next: (res) => this.completeLogin(res.role, res, credential),
       error: (err) => {
         if (err.status === 0 || err.status === 502 || err.status === 503 || err.name === 'TimeoutError') {
-          this.localLogin(credential, pass);
+          this.isLoggingIn = false;
+          if (typeof document !== 'undefined') {
+            document.body.style.overflow = '';
+          }
+          this.loginError = 'Server unreachable. Please try again once the server is online.';
         } else if (err.status === 401) {
           this.isLoggingIn = false;
           if (typeof document !== 'undefined') {
@@ -1612,55 +1616,6 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         }
       }
     });
-  }
-
-  private localLogin(credential: string, pass: string): void {
-    this.isLoggingIn = false;
-    if (typeof document !== 'undefined') {
-      document.body.style.overflow = '';
-    }
-
-    const registeredUser = this.contentService.users.find(u =>
-      (u.email?.trim().toLowerCase() === credential) ||
-      (u.ticket?.trim().toLowerCase() === credential)
-    );
-
-    if (!registeredUser) {
-      if (credential === 'admin@ntic.org.gh') {
-        // Emergency fallback for default Super Admin if user array was modified
-        this.completeLogin('super_admin', {
-          email: 'admin@ntic.org.gh',
-          ticket: 'NTIC-ADM-0000',
-          full_name: 'Admin',
-          role: 'super_admin'
-        }, credential);
-        return;
-      }
-      this.loginError = 'Unrecognized credentials. Please check your email or access pass and try again.';
-      return;
-    }
-
-    const isAdminUser = credential === 'admin@ntic.org.gh';
-    const expectedPass = registeredUser.password || registeredUser.otp || 'admin123';
-    const isValidAdminPass = isAdminUser && (pass === 'Admin@Ntic2026!' || pass === 'admin123' || pass === 'admin' || pass === expectedPass);
-
-    if (!isAdminUser && (!expectedPass || pass !== expectedPass)) {
-      this.loginError = 'Incorrect password or verification code. Please try again.';
-      return;
-    } else if (isAdminUser && !isValidAdminPass) {
-      this.loginError = 'Incorrect password or verification code. Please try again.';
-      return;
-    }
-
-    const finalRole = registeredUser.role;
-    registeredUser.status = 'Active';
-    registeredUser.lastLogin = 'Just now';
-    this.contentService.saveUsers([...this.contentService.users]);
-
-    this.completeLogin(finalRole, {
-      email: registeredUser.email || credential,
-      ticket: registeredUser.ticket || credential
-    }, credential);
   }
 
   private completeLogin(role: string, user: any, credential: string): void {
@@ -4069,9 +4024,9 @@ for (let i = people.length - 1; i > 0; i--) {
       await navigator.clipboard.writeText(`${story.title}\n${story.body}\n\n${url}`);
       const buttons = document.querySelectorAll<HTMLButtonElement>(`[data-share="${story.id}"]`);
       buttons.forEach(btn => {
-        const orig = btn.innerHTML;
-        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:14px;">check</span>';
-        setTimeout(() => { btn.innerHTML = orig; }, 2000);
+        const orig = btn.textContent;
+        btn.textContent = '\u2713';
+        setTimeout(() => { btn.textContent = orig; }, 2000);
       });
     } catch {}
   }

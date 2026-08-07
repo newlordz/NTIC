@@ -233,7 +233,7 @@
 
   .material-symbols-outlined { font-size: 18px; }
 
-  &:hover { color: var(--on-surface); transform: translateY(-1px); }
+  &:hover { color: var(--on-surface); transform: none; }
 
   &.active {
     color: var(--primary);
@@ -797,7 +797,7 @@
   animation: cardEntrance 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
   transition: transform 0.3s, box-shadow 0.3s;
 
-  &:hover { transform: translateY(-4px); box-shadow: var(--shadow-elevated); }
+  &:hover { transform: none; box-shadow: var(--shadow-elevated); border-color: var(--primary); }
 
   &.excellent { border-left: 4px solid var(--secondary); }
   &.on-track { border-left: 4px solid var(--primary); }

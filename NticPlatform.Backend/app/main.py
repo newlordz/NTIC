@@ -30,11 +30,47 @@ try:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.ALLOWED_ORIGINS,
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def add_security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "0"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        return response
+
+    @app.middleware("http")
+    async def enforce_auth_middleware(request: Request, call_next):
+        PUBLIC_UNSAFE = {"/api/login", "/api/users/register"}
+        if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.url.path not in PUBLIC_UNSAFE:
+            auth_header = request.headers.get("Authorization", "")
+            if not auth_header.startswith("Bearer "):
+                return JSONResponse(status_code=401, content={"detail": "Authentication required"})
+            token = auth_header[7:]
+            conn = get_db_connection()
+            if not conn:
+                return JSONResponse(status_code=503, content={"detail": "Database unreachable"})
+            cur = conn.cursor()
+            try:
+                cur.execute(
+                    "SELECT 1 FROM auth_sessions WHERE token = %s AND expires_at > CURRENT_TIMESTAMP",
+                    (token,),
+                )
+                valid = cur.fetchone() is not None
+            finally:
+                cur.close()
+                conn.close()
+            if not valid:
+                return JSONResponse(status_code=401, content={"detail": "Invalid or expired token"})
+        return await call_next(request)
 
     class StudentCreate(BaseModel):
         first_name: str
@@ -151,8 +187,12 @@ try:
             "status": status,
         }
 
+    @app.get("/api/auth/verify")
+    def auth_verify(user: dict = Depends(require_auth)):
+        return {"role": user["role"], "email": user["email"]}
+
     @app.post("/api/logout")
-    def logout(payload: dict = None):
+    def logout(payload: dict = None, _auth: dict = Depends(require_auth)):
         payload = payload or {}
         token = payload.get("token", "")
         if token:
@@ -169,7 +209,7 @@ try:
 
     # ─── AUTH SESSION MANAGEMENT ─────────────────────────────────────
     @app.get("/api/auth/sessions/count")
-    def auth_sessions_count():
+    def auth_sessions_count(_admin: dict = Depends(require_admin)):
         conn = _get_db()
         cur = conn.cursor()
         cur.execute(
@@ -197,7 +237,7 @@ try:
         rows = cur.fetchall()
         cur.close(); conn.close()
         return [
-            {"token": r[0], "user_id": r[1], "email": r[2], "created_at": str(r[3]),
+            {"token": r[0][:8] + "..." + r[0][-8:], "user_id": r[1], "email": r[2], "created_at": str(r[3]),
              "expires_at": str(r[4]), "full_name": r[5], "role": r[6], "active": True}
             for r in rows
         ]
@@ -272,14 +312,15 @@ try:
     async def chat_proxy(payload: ChatRequest):
         if not settings.GEMINI_API_KEY:
             raise HTTPException(status_code=403, detail="AI service not configured")
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={settings.GEMINI_API_KEY}"
+        url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
+        headers = {"x-goog-api-key": settings.GEMINI_API_KEY}
         body = {
             "system_instruction": payload.system_instruction,
             "contents": payload.contents,
             "generationConfig": payload.generationConfig
         }
         async with AsyncClient(timeout=60) as client:
-            resp = await client.post(url, json=body)
+            resp = await client.post(url, json=body, headers=headers)
             return resp.json()
 
     # TICKETS
@@ -325,7 +366,7 @@ try:
         return {"id": ticket_id, "status": "open"}
 
     @app.get("/api/tickets")
-    def list_tickets(user_id: str = None, recycled: bool = False):
+    def list_tickets(user_id: str = None, recycled: bool = False, _auth: dict = Depends(require_auth)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
@@ -377,7 +418,7 @@ try:
             raise HTTPException(status_code=400, detail=str(e))
 
     @app.get("/api/tickets/{ticket_id}")
-    def get_ticket(ticket_id: str):
+    def get_ticket(ticket_id: str, _auth: dict = Depends(require_auth)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
@@ -502,7 +543,7 @@ try:
 
     # STUDENTS
     @app.get("/api/students")
-    def list_students():
+    def list_students(_auth: dict = Depends(require_auth)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
@@ -571,7 +612,7 @@ try:
 
     # SUBMISSIONS
     @app.get("/api/submissions")
-    def list_submissions():
+    def list_submissions(_auth: dict = Depends(require_auth)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
@@ -731,7 +772,7 @@ try:
         school_name: str = ""
 
     @app.get("/api/teams")
-    def list_teams():
+    def list_teams(_auth: dict = Depends(require_auth)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
@@ -1216,7 +1257,7 @@ try:
 
     # USERS
     @app.get("/api/users")
-    def list_users():
+    def list_users(_admin: dict = Depends(require_admin)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
@@ -1505,7 +1546,7 @@ try:
         type: str = ""
 
     @app.get("/api/audit-logs")
-    def list_audit_logs():
+    def list_audit_logs(_admin: dict = Depends(require_admin)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
@@ -1553,7 +1594,7 @@ try:
         rejection_reason: str = ""
 
     @app.get("/api/lms-courses")
-    def list_lms_courses():
+    def list_lms_courses(_auth: dict = Depends(require_auth)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
@@ -1604,7 +1645,7 @@ try:
         rejection_notes: str = ""
 
     @app.get("/api/approvals")
-    def list_approvals(status: str = ""):
+    def list_approvals(status: str = "", _admin: dict = Depends(require_admin)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")

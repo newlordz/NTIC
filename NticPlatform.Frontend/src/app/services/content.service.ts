@@ -385,6 +385,7 @@ export class ContentService {
     'lmsCourses','lmsModules','lmsMaterials','lmsAssignments','lmsSubmissions','lmsEnrollments'
   ];
   private needsIdbPurge = false;
+  private _syncInterval: any = null;
 
   // ── Championship Stories ─────────────────────────────────────
   championshipStories: ChampionshipStory[] = [];
@@ -486,7 +487,7 @@ private readonly defaultLmsAssignments: LmsAssignment[] = [];
       fullName: 'Admin',
       email: 'admin@ntic.org.gh',
       phone: '+233 20 000 0000',
-      otp: 'admin123',
+      otp: '',
       organization: 'NTIC',
       ticket: 'NTIC-ADM-0000',
       status: 'Active',
@@ -530,6 +531,14 @@ private readonly defaultTeams: Team[] = [];
     this.loadStateAndFallback();
       this.loadFromBackend();
     this.migrateToIndexedDB();
+
+    // Poll backend every 30s when user is authenticated so
+    // multiple machines/tabs stay in sync.
+    this._syncInterval = setInterval(() => {
+      if (getAuthValue('activeUserToken')) {
+        this.loadFromBackend();
+      }
+    }, 30000);
   }
 
   private purgeStaleCache(): void {
@@ -1355,8 +1364,10 @@ private readonly defaultTeams: Team[] = [];
 
   saveUsers(usersList: User[]): void {
     this.users = usersList;
-    this.saveState('users', this.users);
-    this.syncToBackend('users', this.users.map(u => ({
+    // Strip passwords and OTPs before persisting to browser storage
+    const safe = usersList.map(({ password, otp, ...rest }: any) => ({ ...rest }));
+    this.saveState('users', safe);
+    this.syncToBackend('users', usersList.map(u => ({
       id: u.id, email: u.email, fullName: u.fullName, role: u.role,
       ticket: u.ticket, status: u.status, phone: u.phone || ''
     })));
