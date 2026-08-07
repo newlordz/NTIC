@@ -477,6 +477,7 @@
   flex-direction: column;
   transition: border-color 0.25s ease;
   border-top: 3px solid var(--primary);
+  transform: none;
 
   &:hover {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03) !important;
@@ -484,6 +485,22 @@
     border-top-color: var(--primary);
     transform: none !important;
   }
+}
+
+.right-panel-card,
+.school-preview-card,
+.student-preview-card,
+.team-preview-card,
+.instructor-preview-card {
+  transform: none !important;
+}
+
+.right-panel-card:hover,
+.school-preview-card:hover,
+.student-preview-card:hover,
+.team-preview-card:hover,
+.instructor-preview-card:hover {
+  transform: none !important;
 }
 
 .card-header {
@@ -967,7 +984,7 @@ select.form-control {
     align-items: center;
     justify-content: center;
     margin-bottom: 22px;
-    transition: all 0.3s ease;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 
     .material-symbols-outlined {
       font-size: 30px;
@@ -1880,8 +1897,9 @@ select.form-control {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   border: 1px solid rgba(0, 63, 135, 0.06);
+  transform: none;
 
   &.has-data {
     box-shadow:
@@ -2029,7 +2047,7 @@ select.form-control {
       background: #94a3b8; color: #fff; z-index: 2;
       font-size: 8.5px; font-weight: 800; letter-spacing: 0.08em;
       border: 1.5px solid #fff; white-space: nowrap;
-      transition: all 0.3s ease;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
 
       .status-dot {
         width: 5px; height: 5px; border-radius: 50%;
@@ -2322,7 +2340,7 @@ select.form-control {
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: all 0.3s ease;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
   z-index: 1;
 
   .card-bg-glow {
@@ -2438,7 +2456,7 @@ select.form-control {
       justify-content: center;
       border: 2px solid #ffffff;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-      transition: all 0.3s ease;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
 
       .material-symbols-outlined {
         font-size: 14px;
@@ -2620,7 +2638,7 @@ select.form-control {
   padding: 24px;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 
   &.coding { border-left: 5px solid #6366f1; .team-track-pill { background: rgba(99, 102, 241, 0.08); color: #6366f1; } }
   &.robotics { border-left: 5px solid #f97316; .team-track-pill { background: rgba(249, 115, 22, 0.08); color: #f97316; } }
@@ -2744,7 +2762,7 @@ select.form-control {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  transition: all 0.3s ease;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 
   .cert-border-corner {
     position: absolute;
@@ -4080,7 +4098,7 @@ select.form-control {
   background: var(--surface-container-low, #fafbfc);
   cursor: pointer;
   text-align: left;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
   
@@ -4093,7 +4111,7 @@ select.form-control {
     justify-content: center;
     flex-shrink: 0;
     background: var(--surface-container-high, #f1f5f9);
-    transition: all 0.3s ease;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
     
     .material-symbols-outlined {
       font-size: 24px;
@@ -5258,7 +5276,7 @@ select.form-control {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 
   // Track color themes
   &.coding   { border-top: 5px solid #6366f1; .team-track-pill { background: rgba(99,102,241,0.1); color: #6366f1; } .team-status-badge { background: #6366f1; } .avatar-bubble { background: linear-gradient(135deg, #818cf8, #6366f1); } .skill-bar-fill { background: linear-gradient(90deg, #818cf8, #6366f1); } }

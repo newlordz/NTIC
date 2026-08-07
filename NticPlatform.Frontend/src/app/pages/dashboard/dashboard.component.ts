@@ -3,6 +3,7 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import {
   ContentService,
   ChampionshipStory,
@@ -1210,22 +1211,23 @@ setTimeout(async () => {
       };
       if (this.adminRegLogoFileId) newUser.logoFileId = this.adminRegLogoFileId;
 
-      // Save locally
-      const currentUsers = [...this.contentService.users];
-      currentUsers.unshift(newUser);
-      this.contentService.saveUsers(currentUsers);
-
-      // Sync to backend
+      // Save locally only after backend confirms
       try {
-        await this.apiService.createUser({
+        await firstValueFrom(this.apiService.createUser({
           email: newUser.email,
           full_name: newUser.fullName,
           role: newUser.role,
           ticket: newUser.ticket,
           password: newUser.password || newUser.otp || '',
           status: 'Active'
-        } as any).toPromise();
-      } catch (_) {}
+        } as any));
+        const currentUsers = [...this.contentService.users];
+        currentUsers.unshift(newUser);
+        this.contentService.saveUsers(currentUsers);
+      } catch (_) {
+        this.dialogService.toast('Failed to save account to server. Please try again.', 'error');
+        return;
+      }
 
       const currentAudit = [...this.contentService.auditLogs];
       currentAudit.unshift({
@@ -1808,9 +1810,6 @@ setTimeout(async () => {
         registeredAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         lastLogin: 'Never'
       };
-      const currentUsers = [...this.contentService.users];
-      currentUsers.unshift(newUser);
-      this.contentService.saveUsers(currentUsers);
 
       this.apiService.createUser({
         email: newUser.email,
@@ -1821,13 +1820,18 @@ setTimeout(async () => {
         status: 'Active',
         phone: newUser.phone
       }).subscribe({
-        next: () => {},
-        error: () => {}
+        next: () => {
+          const currentUsers = [...this.contentService.users];
+          currentUsers.unshift(newUser);
+          this.contentService.saveUsers(currentUsers);
+          this.addAuditLog({ action: `Created ${this.adminForm.role} account: ${this.adminForm.fullName} (${this.adminForm.email})`, type: 'approval' });
+          this.closeAdminModal();
+          this.showTicketModal(newUser);
+        },
+        error: () => {
+          this.dialogService.toast('Failed to save account to server. Please try again.', 'error');
+        }
       });
-
-      this.addAuditLog({ action: `Created ${this.adminForm.role} account: ${this.adminForm.fullName} (${this.adminForm.email})`, type: 'approval' });
-      this.closeAdminModal();
-      this.showTicketModal(newUser);
       return;
     }
 
