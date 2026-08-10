@@ -6,16 +6,16 @@ import { getAuthValue } from './session.util';
 export class WsSyncService {
   private ws: WebSocket | null = null;
   private reconnectHandle: any = null;
+  private pingHandle: any = null;
   private connected = false;
 
-  /** Fires every time the backend notifies of a data change. */
   private readonly _dataChanged = new Subject<void>();
   readonly dataChanged$ = this._dataChanged.asObservable();
 
   connect(): void {
-    if (this.connected) return;
     const token = getAuthValue('activeUserToken');
     if (!token) return;
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) return;
 
     this.disconnect();
 
@@ -32,12 +32,11 @@ export class WsSyncService {
 
     this.ws.onopen = () => {
       this.connected = true;
-      // ping every 25 s to keep the connection alive
-      const ping = setInterval(() => {
+      this.pingHandle = setInterval(() => {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
           this.ws.send('ping');
         } else {
-          clearInterval(ping);
+          clearInterval(this.pingHandle);
         }
       }, 25000);
     };
@@ -48,12 +47,13 @@ export class WsSyncService {
         if (msg.type === 'data_changed') {
           this._dataChanged.next();
         }
-      } catch { /* ignore malformed */ }
+      } catch { /* ignore */ }
     };
 
     this.ws.onclose = () => {
       this.connected = false;
       this.ws = null;
+      this.scheduleReconnect();
     };
 
     this.ws.onerror = () => {
@@ -65,10 +65,8 @@ export class WsSyncService {
 
   disconnect(): void {
     this.connected = false;
-    if (this.reconnectHandle) {
-      clearTimeout(this.reconnectHandle);
-      this.reconnectHandle = null;
-    }
+    if (this.reconnectHandle) { clearTimeout(this.reconnectHandle); this.reconnectHandle = null; }
+    if (this.pingHandle) { clearInterval(this.pingHandle); this.pingHandle = null; }
     if (this.ws) {
       this.ws.onclose = null;
       this.ws.onerror = null;
@@ -82,6 +80,6 @@ export class WsSyncService {
     this.reconnectHandle = setTimeout(() => {
       this.reconnectHandle = null;
       this.connect();
-    }, 3000);
+    }, 5000);
   }
 }

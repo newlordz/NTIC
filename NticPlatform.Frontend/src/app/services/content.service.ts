@@ -534,15 +534,20 @@ private readonly defaultTeams: Team[] = [];
     this.migrateToIndexedDB();
 
     // ── Real-time sync across machines/tabs ──────────────────────────
+    // Push from backend → instant refresh when another admin changes data
+    this.wsSync.dataChanged$.subscribe(() => this.loadFromBackend());
+
+    // Connect WebSocket + trigger initial load immediately
+    if (getAuthValue('activeUserToken')) {
+      this.wsSync.connect();
+    }
+
     const tick = () => {
       if (getAuthValue('activeUserToken')) {
         this.loadFromBackend();
         this.wsSync.connect();
       }
     };
-
-    // Push from backend → instant refresh when another admin changes data
-    this.wsSync.dataChanged$.subscribe(() => this.loadFromBackend());
 
     // Poll every 15s + reconnect WebSocket (belt-and-suspenders)
     this._syncInterval = setInterval(tick, 15000);
