@@ -58,6 +58,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // ─── SUPER ADMIN STATE ─────────────────────────
   adminTab: 'overview' | 'control' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'overview';
   adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | '' = '';
+
+  goToTab(tab: string): void {
+    this.adminTab = tab as any;
+    this.adminSubTab = '';
+    this.router.navigate([], { relativeTo: this.route, queryParams: { tab }, queryParamsHandling: 'merge' });
+  }
+
+  goToSubTab(sub: string): void {
+    this.adminSubTab = sub as any;
+    this.router.navigate([], { relativeTo: this.route, queryParams: { subtab: sub }, queryParamsHandling: 'merge' });
+  }
   private _expandedSection = false;
   get expandedSection(): boolean { return this._expandedSection; }
   set expandedSection(v: boolean) {
@@ -714,8 +725,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.route.queryParams.subscribe(params => {
       if (params['tab'] && ['overview', 'control', 'register', 'tickets', 'approvals', 'content', 'users', 'admins'].includes(params['tab'])) {
         this.adminTab = params['tab'] as any;
-        if (this.adminTab === 'control') { this.adminSubTab = 'tickets'; }
-        if (params['tab'] === 'approvals') {
+        if (this.adminTab === 'control' && params['subtab'] && ['tickets','approvals','content','users','admins'].includes(params['subtab'])) {
+          this.adminSubTab = params['subtab'] as any;
+        } else if (this.adminTab === 'control') {
+          this.adminSubTab = 'tickets';
+        }
+        if (params['tab'] === 'approvals' || params['subtab'] === 'approvals') {
           this.loadApprovalsFromBackend();
         }
       }
@@ -1010,13 +1025,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     if (this.activeRoleId === 'super_admin') {
       if (label.includes('registered users') || label.includes('users')) {
-        this.adminTab = 'control'; this.adminSubTab = 'users';
+        this.goToTab('control'); this.goToSubTab('users');
       } else if (label.includes('pending approvals') || label.includes('approvals')) {
-        this.adminTab = 'control'; this.adminSubTab = 'approvals';
+        this.goToTab('control'); this.goToSubTab('approvals');
       } else if (label.includes('active tokens') || label.includes('tokens') || label.includes('sessions')) {
-        this.adminTab = 'control'; this.adminSubTab = 'tickets';
+        this.goToTab('control'); this.goToSubTab('tickets');
       } else if (label.includes('system health') || label.includes('health')) {
-        this.adminTab = 'overview';
+        this.goToTab('overview');
       }
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 260, behavior: 'smooth' });

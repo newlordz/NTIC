@@ -353,11 +353,11 @@
 
     <!-- Tab Navigation (hidden when maximized) -->
     <div class="admin-tabs" *ngIf="!maximizedContentTab">
-      <button class="admin-tab" [class.active]="adminTab === 'overview'" (click)="adminTab = 'overview'; adminSubTab = ''">
+      <button class="admin-tab" [class.active]="adminTab === 'overview'" (click)="goToTab('overview')">
         <span class="material-symbols-outlined">dashboard</span>Overview
       </button>
 
-      <button class="admin-tab" [class.active]="adminTab === 'control'" (click)="adminTab = 'control'; adminSubTab = ''">
+      <button class="admin-tab" [class.active]="adminTab === 'control'" (click)="goToTab('control')">
         <span class="material-symbols-outlined">admin_panel_settings</span>Admin Control
       </button>
     </div>
@@ -371,7 +371,7 @@
         </div>
 
         <div class="ac-grid">
-          <div class="ac-card" (click)="adminSubTab = 'tickets'">
+          <div class="ac-card" (click)="goToSubTab('tickets')">
             <div class="ac-card-icon" style="background:linear-gradient(135deg,#6366f1,#4f46e5);">
               <span class="material-symbols-outlined">confirmation_number</span>
             </div>
@@ -383,7 +383,7 @@
             <span class="material-symbols-outlined ac-card-arrow">arrow_forward</span>
           </div>
 
-          <div class="ac-card" (click)="adminSubTab = 'approvals'" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
+          <div class="ac-card" (click)="goToSubTab('approvals')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
             <div class="ac-card-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
               <span class="material-symbols-outlined">verified_user</span>
             </div>
@@ -395,7 +395,7 @@
             <span class="material-symbols-outlined ac-card-arrow">arrow_forward</span>
           </div>
 
-          <div class="ac-card" (click)="adminSubTab = 'content'" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager'">
+          <div class="ac-card" (click)="goToSubTab('content')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager'">
             <div class="ac-card-icon" style="background:linear-gradient(135deg,#10b981,#059669);">
               <span class="material-symbols-outlined">edit_note</span>
             </div>
@@ -407,7 +407,7 @@
             <span class="material-symbols-outlined ac-card-arrow">arrow_forward</span>
           </div>
 
-          <div class="ac-card" (click)="adminSubTab = 'users'" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
+          <div class="ac-card" (click)="goToSubTab('users')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
             <div class="ac-card-icon" style="background:linear-gradient(135deg,#3b82f6,#2563eb);">
               <span class="material-symbols-outlined">group</span>
             </div>
@@ -419,7 +419,7 @@
             <span class="material-symbols-outlined ac-card-arrow">arrow_forward</span>
           </div>
 
-          <div class="ac-card" (click)="adminSubTab = 'admins'" *ngIf="activeRoleId === 'super_admin'">
+          <div class="ac-card" (click)="goToSubTab('admins')" *ngIf="activeRoleId === 'super_admin'">
             <div class="ac-card-icon" style="background:linear-gradient(135deg,#ef4444,#dc2626);">
               <span class="material-symbols-outlined">admin_panel_settings</span>
             </div>
@@ -520,7 +520,7 @@
     <!-- ── TAB: USERS BY ROLE ── -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'users'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
       <div class="ac-top-bar">
-        <button class="ac-back-btn" (click)="adminSubTab = ''; expandedSection = false">
+        <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
           <span class="material-symbols-outlined">arrow_back</span>Admin Control
         </button>
         <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
@@ -652,7 +652,7 @@
     <!-- ── TAB: MANAGE ADMINS ── -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'admins'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
       <div class="ac-top-bar">
-        <button class="ac-back-btn" (click)="adminSubTab = ''; expandedSection = false">
+        <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
           <span class="material-symbols-outlined">arrow_back</span>Admin Control
         </button>
         <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
@@ -790,7 +790,7 @@
     <!-- ── TAB: TICKETS ── -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'tickets'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
       <div class="ac-top-bar">
-        <button class="ac-back-btn" (click)="adminSubTab = ''; expandedSection = false">
+        <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
           <span class="material-symbols-outlined">arrow_back</span>Admin Control
         </button>
         <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
@@ -928,7 +928,7 @@
     <!-- ── TAB: PENDING APPROVALS ── -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'approvals'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
       <div class="ac-top-bar">
-        <button class="ac-back-btn" (click)="adminSubTab = ''; expandedSection = false">
+        <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
           <span class="material-symbols-outlined">arrow_back</span>Admin Control
         </button>
         <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
@@ -970,7 +970,7 @@
   <!-- ── TAB: CONTENT MANAGER ── -->
   <div *ngIf="(adminTab === 'control' && adminSubTab === 'content') || maximizedContentTab" class="admin-tab-body" [class.ac-expanded]="expandedSection" [style.padding]="maximizedContentTab ? '0' : ''">
       <div class="ac-top-bar" *ngIf="!maximizedContentTab">
-        <button class="ac-back-btn" (click)="adminSubTab = ''; expandedSection = false">
+        <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
           <span class="material-symbols-outlined">arrow_back</span>Admin Control
         </button>
         <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
