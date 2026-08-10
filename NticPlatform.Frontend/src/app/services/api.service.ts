@@ -267,6 +267,10 @@ export class ApiService {
      return this.http.delete(this.apiUrl + '/users/' + id);
    }
 
+   resetUserPassword(id: string): Observable<{ email: string; ticket: string; otp: string }> {
+     return this.http.post<{ email: string; ticket: string; otp: string }>(this.apiUrl + '/users/' + id + '/reset-password', {});
+   }
+
    // Pending Approvals (cross-machine sync)
    getApprovals(status?: string): Observable<any[]> {
      const qs = status ? `?status=${encodeURIComponent(status)}` : '';

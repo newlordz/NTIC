@@ -611,8 +611,8 @@
             <button class="admin-action-btn" title="Toggle Status" (click)="toggleUserStatus(user)">
               <span class="material-symbols-outlined">{{ user.status === 'Active' ? 'block' : 'check_circle' }}</span>
             </button>
-            <button class="admin-action-btn" title="Edit" (click)="openAdminModal(user)">
-              <span class="material-symbols-outlined">edit</span>
+            <button class="admin-action-btn" title="Reset Password" (click)="resetUserPassword(user)">
+              <span class="material-symbols-outlined">lock_reset</span>
             </button>
             <button class="admin-action-btn danger" title="Delete" *ngIf="user.role !== 'super_admin'" (click)="deleteUserFromTable(user)">
               <span class="material-symbols-outlined">delete</span>

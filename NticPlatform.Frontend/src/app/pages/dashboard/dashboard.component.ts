@@ -1077,6 +1077,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  resetUserPassword(user: any): void {
+    this.apiService.resetUserPassword(user.id).subscribe({
+      next: (res) => {
+        this.openCredentialsModal(
+          'Password Reset',
+          `New credentials for ${user.fullName || user.email}:`,
+          res.ticket || user.ticket,
+          res.otp,
+          'Share these credentials securely with the user.',
+          ''
+        );
+      },
+      error: () => this.dialogService.toast('Failed to reset password.', 'error')
+    });
+  }
+
   deleteUserFromTable(user: any): void {
     this.deleteUserConfirm = user;
   }

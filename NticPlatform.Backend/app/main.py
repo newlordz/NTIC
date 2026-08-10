@@ -1511,6 +1511,29 @@ try:
         broadcast_async()
         return {"status": "deleted", "id": user_id}
 
+    @app.post("/api/users/{user_id}/reset-password")
+    def reset_user_password(user_id: str, _admin: dict = Depends(require_admin)):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT email, ticket FROM users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        if not row:
+            cur.close(); conn.close()
+            raise HTTPException(status_code=404, detail="User not found")
+        email, ticket = row
+        import random, string
+        otp = ''.join(random.choices(string.digits, k=6))
+        from app.security import hash_password
+        cur.execute("UPDATE users SET password_hash = %s WHERE id = %s",
+                    (hash_password(otp), user_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+        broadcast_async()
+        return {"email": email, "ticket": ticket, "otp": otp}
+
     # HALL OF FAME
     class HofCreate(BaseModel):
         type: str = "individual"
