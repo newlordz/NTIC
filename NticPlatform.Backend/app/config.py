@@ -48,15 +48,18 @@ class Config:
 
     @classmethod
     def get_database_url(cls) -> str:
-        url = os.getenv("DATABASE_URL")
-        if url:
-            return url
+        for key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
+            url = os.getenv(key)
+            if url:
+                return url
         return f"postgresql://{cls.POSTGRES_USER}:{cls.POSTGRES_PASSWORD}@{cls.POSTGRES_HOST}:{cls.POSTGRES_PORT}/{cls.POSTGRES_DB}"
 
     @classmethod
     def log_db_config(cls) -> None:
-        """Log DB config (without password) for debugging."""
-        logger.info(f"DB Config: host={cls.POSTGRES_HOST}, port={cls.POSTGRES_PORT}, user={cls.POSTGRES_USER}, db={cls.POSTGRES_DB}, DATABASE_URL={'set' if os.getenv('DATABASE_URL') else 'not set'}")
+        logger.info(f"DB Config: host={cls.POSTGRES_HOST}, port={cls.POSTGRES_PORT}, user={cls.POSTGRES_USER}, "
+                    f"db={cls.POSTGRES_DB}, "
+                    f"DATABASE_PRIVATE_URL={'set' if os.getenv('DATABASE_PRIVATE_URL') else 'not set'}, "
+                    f"DATABASE_URL={'set' if os.getenv('DATABASE_URL') else 'not set'}")
 
 settings = Config()
 settings.validate()

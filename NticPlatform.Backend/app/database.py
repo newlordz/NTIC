@@ -388,17 +388,19 @@ def init_postgres_db():
 def get_db_connection():
     """Return a fresh psycopg2 connection to NticPlatformDb."""
     import os, psycopg2
-    # Try DATABASE_URL first (Railway standard)
-    database_url = os.environ.get("DATABASE_URL")
-    if database_url:
-        try:
-            conn = psycopg2.connect(database_url)
-            logger.info("Connected to PostgreSQL via DATABASE_URL")
-            return conn
-        except Exception as e:
-            logger.warning(f"PostgreSQL connection via DATABASE_URL failed: {e}")
-    # Fallback to individual POSTGRES_ vars (local dev)
-    # Force TCP by converting localhost to 127.0.0.1 (Linux defaults localhost to Unix socket)
+    # Railway provides DATABASE_PRIVATE_URL (internal network) and DATABASE_URL (public).
+    # Reference variables (${{Postgres.PGHOST}}) often fail to interpolate — the
+    # private URL is a single fully-formed string that always works.
+    for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
+        db_url = os.environ.get(url_key)
+        if db_url:
+            try:
+                conn = psycopg2.connect(db_url)
+                logger.info(f"Connected to PostgreSQL via {url_key}")
+                return conn
+            except Exception as e:
+                logger.warning(f"PostgreSQL connection via {url_key} failed: {e}")
+    # Fallback to individual POSTGRES_ vars (local dev only)
     db_host = settings.POSTGRES_HOST
     if db_host in ("localhost", ""):
         db_host = "127.0.0.1"
