@@ -13,10 +13,18 @@ def init_postgres_db():
         logger.warning("psycopg2 not installed yet. Run 'pip install -r requirements.txt'")
         return False, "psycopg2 not installed"
 
-    import os, urllib.parse
+    import os
 
-    # On Railway / managed Postgres the database already exists — skip create logic.
-    # We try URL-based connections (which always work) first.
+    # ── Diagnose available connection vars ──────────────────────────
+    db_keys = ["DATABASE_PRIVATE_URL", "DATABASE_URL", "PGHOST", "PGPORT", "PGUSER", "PGDATABASE", "POSTGRES_HOST", "POSTGRES_PORT"]
+    for k in db_keys:
+        v = os.environ.get(k, "")
+        if v:
+            logger.info(f"  env {k} = {v[:80]}...")
+        else:
+            logger.info(f"  env {k} = (not set)")
+
+    # ── URL-based connection (works when env var is a real URL) ─────
     conn = get_db_connection()
     if conn:
         _create_tables(conn)
@@ -24,7 +32,7 @@ def init_postgres_db():
         logger.info("Database connected and schema verified via URL-based connection.")
         return True, "OK"
 
-    # ── local-dev fallback: try to create the database using individual PG* vars ──
+    # ── local-dev fallback (will never work on Railway) ─────────────
     db_host = settings.POSTGRES_HOST
     if db_host in ("localhost", ""):
         db_host = "127.0.0.1"
@@ -395,18 +403,17 @@ def _create_tables(conn):
 def get_db_connection():
     """Return a fresh psycopg2 connection to NticPlatformDb."""
     import os, psycopg2
-    # Railway provides DATABASE_PRIVATE_URL (internal network) and DATABASE_URL (public).
-    # Reference variables (${{Postgres.PGHOST}}) often fail to interpolate — the
-    # private URL is a single fully-formed string that always works.
     for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
-        db_url = os.environ.get(url_key)
+        db_url = os.environ.get(url_key, "").strip()
         if db_url:
             try:
-                conn = psycopg2.connect(db_url)
+                conn = psycopg2.connect(db_url, connect_timeout=10)
                 logger.info(f"Connected to PostgreSQL via {url_key}")
                 return conn
             except Exception as e:
                 logger.warning(f"PostgreSQL connection via {url_key} failed: {e}")
+        else:
+            logger.info(f"{url_key} is not set or empty")
     # Fallback to individual POSTGRES_ vars (local dev only)
     db_host = settings.POSTGRES_HOST
     if db_host in ("localhost", ""):
