@@ -1362,6 +1362,18 @@ try:
         conn.close()
         return [{"id": r[0], "email": r[1], "full_name": r[2], "role": r[3], "ticket": r[4], "status": r[5], "created_at": str(r[6]), "phone": r[7] or ""} for r in rows]
 
+    @app.get("/api/users/count")
+    def users_count(_admin: dict = Depends(require_admin)):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM users")
+        total = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return {"total": total}
+
     @app.get("/api/users/lookup")
     def lookup_user(email: str = ""):
         """Look up whether an email is registered. Safe for public use - returns only existence and status."""

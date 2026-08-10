@@ -423,6 +423,7 @@ export class ContentService {
 
   // ── Shared Persistent Collections ────────────────────────────
   users: User[] = [];
+  userCount = 0;
   pendingApprovals: ApprovalRequest[] = [];
   rejectedApprovals: ApprovalRequest[] = [];
   approvedApprovals: ApprovalRequest[] = [];
@@ -591,7 +592,8 @@ private readonly defaultTeams: Team[] = [];
     // Users — replace entirely from backend (source of truth)
     this.apiService.getUsers().subscribe({
       next: (backendUsers: any[]) => {
-        if (backendUsers && backendUsers.length > 0) {
+        const total = backendUsers ? backendUsers.length : 0;
+        if (total > 0) {
           const mapped: User[] = backendUsers.map((u: any) => ({
             id: u.id,
             email: u.email,
@@ -608,6 +610,8 @@ private readonly defaultTeams: Team[] = [];
           this.users = mapped;
           this.saveState('users', mapped);
         }
+        this.userCount = total;
+        this.saveState('userCount', total);
       },
       error: () => console.log('Backend users fallback to local cache')
     });

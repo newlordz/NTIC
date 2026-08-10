@@ -247,6 +247,10 @@ export class ApiService {
     return this.http.get<any[]>(this.apiUrl + '/users');
   }
 
+  getUsersCount(): Observable<{ total: number }> {
+    return this.http.get<{ total: number }>(this.apiUrl + '/users/count');
+  }
+
   createUser(payload: { email: string; full_name?: string; role?: string; ticket?: string; password?: string; status?: string; phone?: string }): Observable<any> {
     return this.http.post(this.apiUrl + '/users', payload);
   }
