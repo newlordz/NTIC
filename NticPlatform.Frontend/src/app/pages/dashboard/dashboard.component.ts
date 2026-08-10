@@ -1427,10 +1427,11 @@ setTimeout(async () => {
         registeredAt: new Date().toLocaleDateString('en-GB'),
         lastLogin: 'Never'
       };
-      
-      const currentUsers = [...this.contentService.users];
-      currentUsers.push(newSchoolAdmin);
-      this.contentService.saveUsers(currentUsers);
+
+      this.apiService.createUser({
+        email: newSchoolAdmin.email, full_name: newSchoolAdmin.fullName, role: 'school_admin',
+        ticket, password: otp, status: 'Active', phone: newSchoolAdmin.phone
+      }).subscribe({ next: () => {}, error: () => {} });
 
       const stats = { ...this.contentService.platformStats };
       stats.schools += 1;
@@ -1458,32 +1459,15 @@ setTimeout(async () => {
       }
 
       if (req.details?.students && Array.isArray(req.details.students)) {
-        const currentUsers = [...this.contentService.users];
         req.details.students.forEach((s: any) => {
           const existingEmail = s.email || `${s.name?.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`;
-          if (!currentUsers.find((u: any) => u.email?.trim().toLowerCase() === existingEmail.toLowerCase())) {
-            const sTicket = `NTIC-STU-${Math.floor(1000 + Math.random() * 9000)}`;
-            const sOtp = Math.floor(100000 + Math.random() * 900000).toString();
-            currentUsers.push({
-              id: `USR-${Date.now()}-${Math.random().toString(36).substring(2, 4)}`,
-              role: 'student' as const,
-              fullName: s.name,
-              email: existingEmail,
-              phone: '',
-              otp: sOtp,
-              password: sOtp,
-              organization: req.entity,
-              track: s.track || (req.details?.teamsList?.length ? req.details.teamsList[0].track : 'coding'),
-              ticket: sTicket,
-              applicationCode: req.details?.code || '',
-              status: 'Active',
-              registeredAt: new Date().toLocaleDateString('en-GB'),
-              lastLogin: 'Never'
-            });
-          }
+          const sTicket = `NTIC-STU-${Math.floor(1000 + Math.random() * 9000)}`;
+          const sOtp = Math.floor(100000 + Math.random() * 900000).toString();
+          this.apiService.createUser({
+            email: existingEmail, full_name: s.name, role: 'student',
+            ticket: sTicket, password: sOtp, status: 'Active', phone: ''
+          }).subscribe({ next: () => {}, error: () => {} });
         });
-        this.contentService.saveUsers(currentUsers);
-      }
 
       this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp);
       this.openCredentialsModal('School Registration Approved!', `School Admin account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access credentials sent to ${req.contact}`);
@@ -1528,9 +1512,10 @@ setTimeout(async () => {
           lastLogin: 'Never'
         };
         if (req.details?.memberPhotos?.length) (newLeadUser as any).photoFileId = req.details.memberPhotos[0];
-        const currentUsers = [...this.contentService.users];
-        currentUsers.push(newLeadUser);
-        this.contentService.saveUsers(currentUsers);
+        this.apiService.createUser({
+          email: newLeadUser.email, full_name: newLeadUser.fullName, role: newLeadUser.role,
+          ticket: newLeadUser.ticket, password: newLeadUser.password || otp, status: 'Active', phone: ''
+        }).subscribe({ next: () => {}, error: () => {} });
 
         this.emailService.sendApprovalEmail(leadEmail, leadName, req.entity, req.type, ticket, otp);
         this.openCredentialsModal('Team Addition Approved!', `Your squad "${req.entity}" has been approved. Team Lead credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${leadEmail}`);
@@ -1562,9 +1547,10 @@ setTimeout(async () => {
         registeredAt: new Date().toLocaleDateString('en-GB'),
         lastLogin: 'Never'
       };
-      const currentUsers = [...this.contentService.users];
-      currentUsers.push(newStudent);
-      this.contentService.saveUsers(currentUsers);
+      this.apiService.createUser({
+        email: newStudent.email, full_name: newStudent.fullName, role: 'student',
+        ticket, password: otp, status: 'Active', phone: ''
+      }).subscribe({ next: () => {}, error: () => {} });
 
       const stats = { ...this.contentService.platformStats };
       stats.students += 1;
@@ -1575,26 +1561,10 @@ setTimeout(async () => {
     } else if (req.type === 'Instructor Access') {
       const ticket = 'NTIC-INS-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const newInstructor = {
-        id: 'USR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
-        role: 'instructor' as const,
-        fullName: req.entity,
-        email: req.contact,
-        phone: req.details?.phone || '+233 24 555 5678',
-        otp,
-        password: otp,
-        organization: req.details?.institution || 'NTIC partner',
-        track: req.details?.specialization || 'Coding & AI',
-        ticket,
-        applicationCode: req.details?.code || '',
-        status: 'Active',
-        registeredAt: new Date().toLocaleDateString('en-GB'),
-        lastLogin: 'Never'
-      };
-
-      const currentUsers = [...this.contentService.users];
-      currentUsers.push(newInstructor);
-      this.contentService.saveUsers(currentUsers);
+      this.apiService.createUser({
+        email: req.contact, full_name: req.entity, role: 'instructor',
+        ticket, password: otp, status: 'Active', phone: req.details?.phone || ''
+      }).subscribe({ next: () => {}, error: () => {} });
 
       const stats = { ...this.contentService.platformStats };
       stats.mentors += 1;
