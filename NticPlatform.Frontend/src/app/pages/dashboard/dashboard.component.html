@@ -353,32 +353,85 @@
 
     <!-- Tab Navigation (hidden when maximized) -->
     <div class="admin-tabs" *ngIf="!maximizedContentTab">
-      <button class="admin-tab" [class.active]="adminTab === 'overview'" (click)="adminTab = 'overview'">
+      <button class="admin-tab" [class.active]="adminTab === 'overview'" (click)="adminTab = 'overview'; adminSubTab = ''">
         <span class="material-symbols-outlined">dashboard</span>Overview
       </button>
 
-      <button class="admin-tab" *ngIf="activeRoleId === 'super_admin'" (click)="openRegisterModal()">
-        <span class="material-symbols-outlined">person_add</span>Register User
+      <button class="admin-tab" [class.active]="adminTab === 'control'" (click)="adminTab = 'control'; adminSubTab = ''">
+        <span class="material-symbols-outlined">admin_panel_settings</span>Admin Control
       </button>
-      <button class="admin-tab" *ngIf="activeRoleId === 'super_admin'" [class.active]="adminTab === 'tickets'" (click)="adminTab = 'tickets'">
-        <span class="material-symbols-outlined">token</span>Access Tokens
-        <span class="admin-tab-badge">{{ registeredUsers.length }}</span>
-      </button>
-      <button class="admin-tab" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'" [class.active]="adminTab === 'approvals'" (click)="adminTab = 'approvals'">
-        <span class="material-symbols-outlined">verified_user</span>Pending Approvals
-        <span class="admin-tab-badge warn" *ngIf="pendingApprovals.length > 0">{{ pendingApprovals.length }}</span>
-      </button>
-      <button class="admin-tab cms-tab" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager'" [class.active]="adminTab === 'content'" (click)="adminTab = 'content'">
-        <span class="material-symbols-outlined">edit_note</span>Content Manager
-      </button>
-      <button class="admin-tab" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'" [class.active]="adminTab === 'users'" (click)="adminTab = 'users'">
-        <span class="material-symbols-outlined">group</span>Users by Role
-        <span class="admin-tab-badge">{{ registeredUsers.length }}</span>
-      </button>
-      <button class="admin-tab" *ngIf="activeRoleId === 'super_admin'" [class.active]="adminTab === 'admins'" (click)="adminTab = 'admins'">
-        <span class="material-symbols-outlined">admin_panel_settings</span>Manage Admins
-        <span class="admin-tab-badge">{{ adminUsers.length }}</span>
-      </button>
+    </div>
+
+    <!-- ── ADMIN CONTROL LANDING PAGE ── -->
+    <div *ngIf="adminTab === 'control' && !adminSubTab" class="admin-tab-body">
+      <div class="ac-landing">
+        <div class="ac-landing-header">
+          <h2>Administration Center</h2>
+          <p>Manage platform users, registrations, content, and access tokens from one place.</p>
+        </div>
+
+        <div class="ac-grid">
+          <div class="ac-card" (click)="adminSubTab = 'tickets'">
+            <div class="ac-card-icon" style="background:linear-gradient(135deg,#6366f1,#4f46e5);">
+              <span class="material-symbols-outlined">confirmation_number</span>
+            </div>
+            <div class="ac-card-body">
+              <h3>Access Tokens</h3>
+              <p>Registered users, judge tokens, sponsor passes, and active sessions.</p>
+              <span class="ac-card-count">{{ registeredUsers.length }} registered</span>
+            </div>
+            <span class="material-symbols-outlined ac-card-arrow">arrow_forward</span>
+          </div>
+
+          <div class="ac-card" (click)="adminSubTab = 'approvals'" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
+            <div class="ac-card-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
+              <span class="material-symbols-outlined">verified_user</span>
+            </div>
+            <div class="ac-card-body">
+              <h3>Pending Approvals</h3>
+              <p>Review and approve registrations from schools, teams, students, and instructors.</p>
+              <span class="ac-card-count" *ngIf="pendingApprovals.length > 0">{{ pendingApprovals.length }} pending</span>
+            </div>
+            <span class="material-symbols-outlined ac-card-arrow">arrow_forward</span>
+          </div>
+
+          <div class="ac-card" (click)="adminSubTab = 'content'" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager'">
+            <div class="ac-card-icon" style="background:linear-gradient(135deg,#10b981,#059669);">
+              <span class="material-symbols-outlined">edit_note</span>
+            </div>
+            <div class="ac-card-body">
+              <h3>Content Manager</h3>
+              <p>Stories, hall of fame, leaderboard, events, news feed, philosophy cards, and stats.</p>
+              <span class="ac-card-count">{{ contentService.championshipStories.length + contentService.hallOfFameEntries.length + contentService.upcomingEvents.length }} items</span>
+            </div>
+            <span class="material-symbols-outlined ac-card-arrow">arrow_forward</span>
+          </div>
+
+          <div class="ac-card" (click)="adminSubTab = 'users'" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
+            <div class="ac-card-icon" style="background:linear-gradient(135deg,#3b82f6,#2563eb);">
+              <span class="material-symbols-outlined">group</span>
+            </div>
+            <div class="ac-card-body">
+              <h3>Users by Role</h3>
+              <p>Browse and manage all platform users categorized by role and status.</p>
+              <span class="ac-card-count">{{ registeredUsers.length }} users</span>
+            </div>
+            <span class="material-symbols-outlined ac-card-arrow">arrow_forward</span>
+          </div>
+
+          <div class="ac-card" (click)="adminSubTab = 'admins'" *ngIf="activeRoleId === 'super_admin'">
+            <div class="ac-card-icon" style="background:linear-gradient(135deg,#ef4444,#dc2626);">
+              <span class="material-symbols-outlined">admin_panel_settings</span>
+            </div>
+            <div class="ac-card-body">
+              <h3>Manage Admins</h3>
+              <p>Create, edit, and manage administrator accounts and their permissions.</p>
+              <span class="ac-card-count">{{ adminUsers.length }} admins</span>
+            </div>
+            <span class="material-symbols-outlined ac-card-arrow">arrow_forward</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ── TAB: OVERVIEW ── -->
@@ -465,7 +518,17 @@
     </div>
 
     <!-- ── TAB: USERS BY ROLE ── -->
-    <div *ngIf="adminTab === 'users'" class="admin-tab-body">
+    <div *ngIf="adminTab === 'control' && adminSubTab === 'users'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
+      <div class="ac-top-bar">
+        <button class="ac-back-btn" (click)="adminSubTab = ''; expandedSection = false">
+          <span class="material-symbols-outlined">arrow_back</span>Admin Control
+        </button>
+        <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
+          <span class="material-symbols-outlined">{{ expandedSection ? 'collapse_content' : 'expand_content' }}</span>
+          {{ expandedSection ? 'Collapse' : 'Expand' }}
+        </button>
+      </div>
+
       <div class="admin-header-actions">
         <div class="section-title">Manage Users <span class="total-users-badge">{{ registeredUsers.length }} total</span></div>
         <button class="btn btn-primary btn-sm" (click)="openRegisterModal()">
@@ -587,7 +650,16 @@
     </div>
 
     <!-- ── TAB: MANAGE ADMINS ── -->
-    <div *ngIf="adminTab === 'admins'" class="admin-tab-body">
+    <div *ngIf="adminTab === 'control' && adminSubTab === 'admins'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
+      <div class="ac-top-bar">
+        <button class="ac-back-btn" (click)="adminSubTab = ''; expandedSection = false">
+          <span class="material-symbols-outlined">arrow_back</span>Admin Control
+        </button>
+        <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
+          <span class="material-symbols-outlined">{{ expandedSection ? 'collapse_content' : 'expand_content' }}</span>
+          {{ expandedSection ? 'Collapse' : 'Expand' }}
+        </button>
+      </div>
       <div class="admin-header-actions">
         <div class="section-title">Manage Admins</div>
         <button class="btn btn-primary btn-sm" (click)="openAdminModal()">
@@ -716,7 +788,16 @@
     </div>
 
     <!-- ── TAB: TICKETS ── -->
-    <div *ngIf="adminTab === 'tickets'" class="admin-tab-body">
+    <div *ngIf="adminTab === 'control' && adminSubTab === 'tickets'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
+      <div class="ac-top-bar">
+        <button class="ac-back-btn" (click)="adminSubTab = ''; expandedSection = false">
+          <span class="material-symbols-outlined">arrow_back</span>Admin Control
+        </button>
+        <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
+          <span class="material-symbols-outlined">{{ expandedSection ? 'collapse_content' : 'expand_content' }}</span>
+          {{ expandedSection ? 'Collapse' : 'Expand' }}
+        </button>
+      </div>
 
       <div class="admin-tickets-header">
         <div class="admin-tickets-filters">
@@ -845,7 +926,16 @@
     </div>
 
     <!-- ── TAB: PENDING APPROVALS ── -->
-    <div *ngIf="adminTab === 'approvals'" class="admin-tab-body">
+    <div *ngIf="adminTab === 'control' && adminSubTab === 'approvals'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
+      <div class="ac-top-bar">
+        <button class="ac-back-btn" (click)="adminSubTab = ''; expandedSection = false">
+          <span class="material-symbols-outlined">arrow_back</span>Admin Control
+        </button>
+        <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
+          <span class="material-symbols-outlined">{{ expandedSection ? 'collapse_content' : 'expand_content' }}</span>
+          {{ expandedSection ? 'Collapse' : 'Expand' }}
+        </button>
+      </div>
       <div *ngIf="pendingApprovals.length === 0" class="admin-empty-state">
         <span class="material-symbols-outlined">check_circle</span>
         <h3>All Clear!</h3>
@@ -878,7 +968,16 @@
     </div>
 
   <!-- ── TAB: CONTENT MANAGER ── -->
-  <div *ngIf="adminTab === 'content' || maximizedContentTab" class="admin-tab-body" [style.padding]="maximizedContentTab ? '0' : ''">
+  <div *ngIf="(adminTab === 'control' && adminSubTab === 'content') || maximizedContentTab" class="admin-tab-body" [class.ac-expanded]="expandedSection" [style.padding]="maximizedContentTab ? '0' : ''">
+      <div class="ac-top-bar" *ngIf="!maximizedContentTab">
+        <button class="ac-back-btn" (click)="adminSubTab = ''; expandedSection = false">
+          <span class="material-symbols-outlined">arrow_back</span>Admin Control
+        </button>
+        <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
+          <span class="material-symbols-outlined">{{ expandedSection ? 'collapse_content' : 'expand_content' }}</span>
+          {{ expandedSection ? 'Collapse' : 'Expand' }}
+        </button>
+      </div>
 
     <!-- Sub-Tab Nav -->
     <div class="cms-sub-tabs" [style.border-bottom]="maximizedContentTab ? '2px solid var(--outline-variant)' : ''" [style.margin-bottom]="maximizedContentTab ? '24px' : ''" [style.padding-bottom]="maximizedContentTab ? '0' : ''">
@@ -930,9 +1029,6 @@
           <p class="cms-panel-desc">Stories appear as an auto-sliding carousel on the landing page.</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('stories')">
-            <span class="material-symbols-outlined">open_in_full</span>
-          </button>
           <button class="btn btn-primary btn-sm" (click)="openStoryForm()">
             <span class="material-symbols-outlined">add</span>Add Story
           </button>
@@ -1045,9 +1141,6 @@
           <p class="cms-panel-desc">Champions scroll as an infinite marquee on the landing page.</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('hof')">
-            <span class="material-symbols-outlined">open_in_full</span>
-          </button>
           <button class="btn btn-primary btn-sm" (click)="openHofForm()">
             <span class="material-symbols-outlined">add</span>Add Champion
           </button>
@@ -1201,9 +1294,6 @@
           <p class="cms-panel-desc">Rankings are auto-sorted by total points and reflected on the landing page.</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('leaderboard')">
-            <span class="material-symbols-outlined">open_in_full</span>
-          </button>
           <button class="btn btn-primary btn-sm" (click)="openLbForm()">
             <span class="material-symbols-outlined">add</span>Add School
           </button>
@@ -1304,9 +1394,6 @@
           <p class="cms-panel-desc">Manage the individual high-talent cards that appear on the Leaderboard sidebar.</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('talent')">
-            <span class="material-symbols-outlined">open_in_full</span>
-          </button>
           <button class="btn btn-primary btn-sm" (click)="openTdForm()">
             <span class="material-symbols-outlined">add</span>Add Talent Highlight
           </button>
@@ -1391,9 +1478,6 @@
           <p class="cms-panel-desc">Platform-wide announcements shown in the landing page news ticker.</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('news')">
-            <span class="material-symbols-outlined">open_in_full</span>
-          </button>
           <button class="btn btn-primary btn-sm" (click)="openNewsForm()">
             <span class="material-symbols-outlined">add</span>Add News Item
           </button>
@@ -1472,9 +1556,6 @@
           <p class="cms-panel-desc">These numbers animate on the landing page stats tree section.</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('stats')">
-            <span class="material-symbols-outlined">open_in_full</span>
-          </button>
           <button class="btn btn-primary btn-sm" *ngIf="!statsEditMode" (click)="openStatsEdit()">
             <span class="material-symbols-outlined">edit</span>Edit Stats
           </button>
@@ -1533,9 +1614,6 @@
           <p class="cms-panel-desc">Configure the date and time when the next national heat begins. Updates reflect on the landing page in real-time.</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('countdown')">
-            <span class="material-symbols-outlined">open_in_full</span>
-          </button>
         </div>
       </div>
 
@@ -1603,9 +1681,6 @@
           <button class="btn btn-subtle btn-sm" [title]="isVideoMuted ? 'Unmute hero video' : 'Mute hero video'" (click)="toggleVideoMute()" style="display:inline-flex;align-items:center;gap:4px;">
             <span class="material-symbols-outlined">{{ isVideoMuted ? 'volume_off' : 'volume_up' }}</span>
             <span style="font-size:12px;">{{ isVideoMuted ? 'Muted' : 'Mute' }}</span>
-          </button>
-          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('slideshow')">
-            <span class="material-symbols-outlined">open_in_full</span>
           </button>
           <button class="btn btn-primary btn-sm" (click)="addSlide()">
             <span class="material-symbols-outlined">add</span>Add Slide
@@ -1763,9 +1838,6 @@
           <p class="cms-panel-desc">Manage the three philosophy cards on the landing page. Upload a new image or edit the title/description.</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('philosophy')">
-            <span class="material-symbols-outlined">open_in_full</span>
-          </button>
         </div>
       </div>
 
@@ -1861,9 +1933,6 @@
           <p class="cms-panel-desc">Events shown on the News page. Add, edit, or remove upcoming championship events.</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <button *ngIf="!maximizedContentTab" class="btn btn-subtle btn-sm" title="Open full page" (click)="maximizeContent('events')">
-            <span class="material-symbols-outlined">open_in_full</span>
-          </button>
         </div>
       </div>
 
@@ -2301,6 +2370,12 @@
               <span class="material-symbols-outlined preview-section-icon">person</span>
               <span class="preview-section-title">Student Profile</span>
             </div>
+
+            <!-- Profile Photo -->
+            <div class="student-profile-photo-wrap" *ngIf="getLogoUrl(activePreviewRequest.details)">
+              <img [src]="getLogoUrl(activePreviewRequest.details)" alt="Student photo" class="student-profile-photo">
+            </div>
+
             <div class="preview-details-grid">
               <div class="preview-detail-card">
                 <span class="material-symbols-outlined detail-icon">badge</span>
@@ -2391,51 +2466,73 @@
   </div>
 
   <!-- ── REVIEW / REJECTION DIALOG ── -->
-  <div class="ticket-modal-backdrop" *ngIf="activeReviewRequest" (click)="closeReview()">
-    <div class="ticket-modal" (click)="$event.stopPropagation()">
-      <div class="ticket-modal-header">
-        <h3>Review & Rejection Reasons</h3>
-        <button class="ticket-modal-close" (click)="closeReview()">
+  <div class="review-dialog-backdrop" *ngIf="activeReviewRequest" (click)="closeReview()">
+    <div class="review-dialog" (click)="$event.stopPropagation()">
+      <div class="review-dialog-header">
+        <div class="review-dialog-title-row">
+          <span class="material-symbols-outlined review-dialog-icon">gavel</span>
+          <div>
+            <h3>Review & Rejection</h3>
+            <p>{{ activeReviewRequest.entity }} — {{ activeReviewRequest.type }}</p>
+          </div>
+        </div>
+        <button class="review-dialog-close" (click)="closeReview()">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
-      <div class="review-modal-body">
-        <div class="review-intro">
-          Reviewing application for <strong>{{ activeReviewRequest.entity }}</strong> ({{ activeReviewRequest.type }}).
-          Please check the issue areas or select reasons for rejection to notify the applicant.
+
+      <div class="review-dialog-body">
+        <div class="review-banner">
+          <span class="material-symbols-outlined">info</span>
+          <span>Select the reasons for rejection and add any notes to guide the applicant on what needs to be corrected.</span>
         </div>
-        
-        <div class="preview-section-title">Rejection Reasons & Issues</div>
-        <div class="rejection-reasons-list">
-          <label *ngFor="let reason of reviewReasons" class="rejection-checkbox-label">
-            <input type="checkbox" [(ngModel)]="selectedReasons[reason]">
-            <span>{{ reason }}</span>
+
+        <div class="rejection-reasons-grid">
+          <label
+            *ngFor="let reason of reviewReasons; let i = index"
+            class="rejection-reason-card"
+            [class.selected]="selectedReasons[reason]"
+          >
+            <input type="checkbox" [(ngModel)]="selectedReasons[reason]" hidden>
+            <span class="reason-icon">
+              <span class="material-symbols-outlined">{{ getReasonIcon(reason) }}</span>
+            </span>
+            <span class="reason-text">{{ reason }}</span>
+            <span class="reason-check">
+              <span class="material-symbols-outlined">{{ selectedReasons[reason] ? 'check_circle' : 'radio_button_unchecked' }}</span>
+            </span>
           </label>
         </div>
 
-        <div class="rejection-textarea-wrap">
-          <label for="rejectNotes">Additional Admin Notes / Instructions</label>
-          <textarea 
-            id="rejectNotes" 
-            [(ngModel)]="rejectionNotes" 
-            rows="3" 
-            placeholder="Specify what needs to be changed, corrected, or why the application was declined..."
+        <div class="rejection-notes-section">
+          <label for="rejectNotes" class="notes-label">
+            <span class="material-symbols-outlined">edit_note</span>
+            Admin Notes
+          </label>
+          <textarea
+            id="rejectNotes"
+            [(ngModel)]="rejectionNotes"
+            rows="4"
+            placeholder="Describe what the applicant needs to fix, correct, or provide..."
           ></textarea>
         </div>
       </div>
-      <div class="ticket-modal-actions">
-        <button class="btn btn-subtle" (click)="closeReview()">Cancel</button>
-        <button class="btn btn-primary" style="background-color:#dc2626; border-color:#dc2626; color:#ffffff;" (click)="submitRejection()">
-          <span class="material-symbols-outlined">close</span>Confirm Rejection
+
+      <div class="review-dialog-footer">
+        <button class="btn-reject-cancel" (click)="closeReview()">Cancel</button>
+        <button class="btn-reject-confirm" (click)="submitRejection()">
+          <span class="material-symbols-outlined">thumb_down</span>
+          Reject Application
         </button>
       </div>
     </div>
   </div>
 
   </ng-container>
+
 </div> <!-- End page-canvas -->
 
-  <!-- ── REGISTRATION POPUP MODAL ── -->
+<!-- ── REGISTRATION POPUP MODAL ── -->
   <div class="ticket-modal-backdrop" *ngIf="isRegModalOpen" (click)="closeRegisterModal()">
     <div class="ticket-modal reg-popup-modal" (click)="$event.stopPropagation()">
       <div class="ticket-modal-header">

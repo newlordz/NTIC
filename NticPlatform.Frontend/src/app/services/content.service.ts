@@ -2,6 +2,7 @@ import { getAuthValue } from './session.util';
 import { Injectable } from '@angular/core';
 import { DataStorageService } from './data-storage.service';
 import { ApiService } from './api.service';
+import { WsSyncService } from './ws-sync.service';
 
 export interface UpcomingEvent {
   id: string;
@@ -526,19 +527,32 @@ private readonly defaultTeams: Team[] = [];
     });
   }
 
-  constructor(private dataStorage: DataStorageService, private apiService: ApiService) {
+  constructor(private dataStorage: DataStorageService, private apiService: ApiService, private wsSync: WsSyncService) {
     this.purgeStaleCache();
     this.loadStateAndFallback();
       this.loadFromBackend();
     this.migrateToIndexedDB();
 
-    // Poll backend every 30s when user is authenticated so
-    // multiple machines/tabs stay in sync.
-    this._syncInterval = setInterval(() => {
+    // ── Real-time sync across machines/tabs ──────────────────────────
+    const tick = () => {
       if (getAuthValue('activeUserToken')) {
         this.loadFromBackend();
+        this.wsSync.connect();
       }
-    }, 30000);
+    };
+
+    // Push from backend → instant refresh when another admin changes data
+    this.wsSync.dataChanged$.subscribe(() => this.loadFromBackend());
+
+    // Poll every 15s + reconnect WebSocket (belt-and-suspenders)
+    this._syncInterval = setInterval(tick, 15000);
+
+    // Refresh when the user switches back to this tab
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') tick();
+      });
+    }
   }
 
   private purgeStaleCache(): void {

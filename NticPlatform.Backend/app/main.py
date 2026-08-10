@@ -7,12 +7,13 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import init_postgres_db, get_db_connection
 from app.security import verify_password, create_token, require_auth, require_admin
+from app.ws_manager import ws_manager, broadcast_async
 
 try:
     from fastapi import FastAPI, HTTPException, status, Request, Depends
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.staticfiles import StaticFiles
-    from fastapi.responses import FileResponse, JSONResponse
+    from fastapi.responses import FileResponse, JSONResponse, Response
     from httpx import AsyncClient
     from pydantic import BaseModel
 
@@ -30,26 +31,52 @@ try:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.ALLOWED_ORIGINS,
-        allow_credentials=False,
+        allow_origins=["*"],
+        allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):
+        origin = request.headers.get("Origin", "*")
+        if request.method == "OPTIONS":
+            response = Response(status_code=204)
+            response.headers["Access-Control-Allow-Origin"] = origin if origin else "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Max-Age"] = "86400"
+            return response
+
         response = await call_next(request)
+        if origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "*"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "0"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         return response
 
     @app.middleware("http")
     async def enforce_auth_middleware(request: Request, call_next):
-        PUBLIC_UNSAFE = {"/api/login", "/api/users/register"}
+        PUBLIC_UNSAFE = {
+            "/api/login",
+            "/api/users/register",
+            "/api/students",
+            "/api/submissions",
+            "/api/tickets",
+            "/api/chat",
+            "/api/csr",
+            "/api/events",
+            "/api/stories",
+            "/api/talent"
+        }
         if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.url.path not in PUBLIC_UNSAFE:
             auth_header = request.headers.get("Authorization", "")
             if not auth_header.startswith("Bearer "):
@@ -301,6 +328,23 @@ try:
                 break
             cur.close(); conn.close()
         return {"ticket": ticket}
+
+    # ─── REAL-TIME SYNC WEBSOCKET ────────────────────────────────────
+    @app.websocket("/api/ws")
+    async def ws_endpoint(ws):
+        token = ws.query_params.get("token", "")
+        ok = await ws_manager.connect(ws, token)
+        if not ok:
+            return
+        try:
+            while True:
+                data = await ws.receive_text()
+                if data == "ping":
+                    await ws.send_text("pong")
+        except Exception:
+            pass
+        finally:
+            ws_manager.disconnect(ws)
 
     # CHAT
     class ChatRequest(BaseModel):
@@ -572,6 +616,7 @@ try:
             raise HTTPException(status_code=400, detail=str(e))
         cur.close()
         conn.close()
+        broadcast_async()
         return {"id": student_id, "first_name": payload.first_name, "last_name": payload.last_name, "email": payload.email, "track": payload.track}
 
     @app.delete("/api/students/{item_id}")
@@ -584,6 +629,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": item_id}
 
     @app.patch("/api/students/{item_id}")
@@ -608,6 +654,7 @@ try:
         conn.close()
         if not row:
             raise HTTPException(status_code=404, detail="Student not found")
+        broadcast_async()
         return {"id": item_id, "status": "updated"}
 
     # SUBMISSIONS
@@ -641,6 +688,7 @@ try:
             raise HTTPException(status_code=400, detail=str(e))
         cur.close()
         conn.close()
+        broadcast_async()
         return {"id": sub_id, "status": "Pending"}
 
     @app.delete("/api/submissions/{item_id}")
@@ -653,6 +701,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": item_id}
 
     # SUBMISSION GRADING
@@ -683,6 +732,7 @@ try:
         conn.close()
         if not row:
             raise HTTPException(status_code=404, detail="Submission not found")
+        broadcast_async()
         return {"id": item_id, "status": "graded"}
 
     # COMPETITIONS
@@ -724,6 +774,7 @@ try:
             raise HTTPException(status_code=400, detail=str(e))
         cur.close()
         conn.close()
+        broadcast_async()
         return {"id": comp_id, "title": payload.title, "status": payload.status}
 
     @app.patch("/api/competitions/{item_id}")
@@ -748,6 +799,7 @@ try:
         conn.close()
         if not row:
             raise HTTPException(status_code=404, detail="Competition not found")
+        broadcast_async()
         return {"id": item_id, "status": "updated"}
 
     @app.delete("/api/competitions/{item_id}")
@@ -760,6 +812,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": item_id}
 
     # TEAMS
@@ -801,6 +854,7 @@ try:
             raise HTTPException(status_code=400, detail=str(e))
         cur.close()
         conn.close()
+        broadcast_async()
         return {"id": team_id, "name": payload.name, "status": payload.status}
 
     @app.patch("/api/teams/{item_id}")
@@ -825,6 +879,7 @@ try:
         conn.close()
         if not row:
             raise HTTPException(status_code=404, detail="Team not found")
+        broadcast_async()
         return {"id": item_id, "status": "updated"}
 
     @app.delete("/api/teams/{item_id}")
@@ -837,6 +892,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": item_id}
 
     # EVENTS
@@ -864,6 +920,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"id": evt_id, "title": payload.title}
 
     @app.delete("/api/events/{item_id}")
@@ -876,6 +933,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": item_id}
 
     @app.patch("/api/events/{item_id}")
@@ -900,6 +958,7 @@ try:
         conn.close()
         if not row:
             raise HTTPException(status_code=404, detail="Event not found")
+        broadcast_async()
         return {"id": item_id, "status": "updated"}
 
     # STORIES
@@ -934,6 +993,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"id": st_id, "title": payload.title}
 
     @app.delete("/api/stories/{item_id}")
@@ -946,6 +1006,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": item_id}
 
     @app.patch("/api/stories/{item_id}")
@@ -970,6 +1031,7 @@ try:
         conn.close()
         if not row:
             raise HTTPException(status_code=404, detail="Story not found")
+        broadcast_async()
         return {"id": item_id, "status": "updated"}
 
     # SCHOOLS
@@ -999,6 +1061,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"id": sch_id, "name": payload.name}
 
     @app.delete("/api/schools/{item_id}")
@@ -1011,6 +1074,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": item_id}
 
     @app.patch("/api/schools/{item_id}")
@@ -1036,6 +1100,7 @@ try:
         conn.close()
         if not row:
             raise HTTPException(status_code=404, detail="School not found")
+        broadcast_async()
         return {"id": item_id, "status": "updated"}
 
     # PHILOSOPHY
@@ -1064,6 +1129,7 @@ try:
         cur = conn.cursor()
         cur.execute("INSERT INTO philosophy_cards (id, title, description, image) VALUES (%s, %s, %s, %s)", (pid, payload.title, payload.description, payload.image))
         conn.commit(); cur.close(); conn.close()
+        broadcast_async()
         return {"id": pid, "title": payload.title}
 
     @app.patch("/api/philosophy/{item_id}")
@@ -1074,6 +1140,7 @@ try:
         cur.execute("UPDATE philosophy_cards SET title=%s, description=%s, image=%s WHERE id=%s RETURNING id", (payload.title, payload.description, payload.image, item_id))
         row = cur.fetchone(); conn.commit(); cur.close(); conn.close()
         if not row: raise HTTPException(status_code=404, detail="Card not found")
+        broadcast_async()
         return {"id": item_id, "status": "updated"}
 
     @app.delete("/api/philosophy/{item_id}")
@@ -1082,6 +1149,7 @@ try:
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         cur.execute("DELETE FROM philosophy_cards WHERE id=%s", (item_id,)); conn.commit(); cur.close(); conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": item_id}
 
     # HERO SLIDES
@@ -1112,6 +1180,7 @@ try:
         cur = conn.cursor()
         cur.execute("INSERT INTO hero_slides (id, tag, title, description, image, image_file_id, video_file_id, video_url, sort_order) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)", (sid, payload.tag, payload.title, payload.description, payload.image, payload.image_file_id, payload.video_file_id, payload.video_url, payload.sort_order))
         conn.commit(); cur.close(); conn.close()
+        broadcast_async()
         return {"id": sid, "title": payload.title}
 
     @app.delete("/api/hero-slides/{item_id}")
@@ -1120,6 +1189,7 @@ try:
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         cur.execute("DELETE FROM hero_slides WHERE id=%s", (item_id,)); conn.commit(); cur.close(); conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": item_id}
 
     # TALENT DISCOVERY
@@ -1150,6 +1220,7 @@ try:
         cur = conn.cursor()
         cur.execute("INSERT INTO talent_discovery (id, student_name, school, track, project_title, talent_tags, description, mentor, status) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)", (tid, payload.student_name, payload.school, payload.track, payload.project_title, payload.talent_tags, payload.description, payload.mentor, payload.status))
         conn.commit(); cur.close(); conn.close()
+        broadcast_async()
         return {"id": tid, "studentName": payload.student_name}
 
     @app.patch("/api/talent/{item_id}")
@@ -1160,6 +1231,7 @@ try:
         cur.execute("UPDATE talent_discovery SET student_name=%s, school=%s, track=%s, project_title=%s, talent_tags=%s, description=%s, mentor=%s, status=%s WHERE id=%s RETURNING id", (payload.student_name, payload.school, payload.track, payload.project_title, payload.talent_tags, payload.description, payload.mentor, payload.status, item_id))
         row = cur.fetchone(); conn.commit(); cur.close(); conn.close()
         if not row: raise HTTPException(status_code=404, detail="Talent entry not found")
+        broadcast_async()
         return {"id": item_id, "status": "updated"}
 
     @app.delete("/api/talent/{item_id}")
@@ -1168,6 +1240,7 @@ try:
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         cur.execute("DELETE FROM talent_discovery WHERE id=%s", (item_id,)); conn.commit(); cur.close(); conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": item_id}
 
     # PLATFORM STATS + COUNTDOWN
@@ -1219,6 +1292,7 @@ try:
             (regions, mentors, schools, students, projects, grants, countdown_date)
         )
         conn.commit(); cur.close(); conn.close()
+        broadcast_async()
         return {"status": "updated"}
 
     # CSR UPDATES
@@ -1245,6 +1319,7 @@ try:
         cur = conn.cursor()
         cur.execute("INSERT INTO csr_updates (id, title, description, date, icon) VALUES (%s,%s,%s,%s,%s)", (cid, payload.title, payload.description, payload.date, payload.icon))
         conn.commit(); cur.close(); conn.close()
+        broadcast_async()
         return {"id": cid, "title": payload.title}
 
     @app.delete("/api/csr/{item_id}")
@@ -1253,6 +1328,7 @@ try:
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         cur.execute("DELETE FROM csr_updates WHERE id=%s", (item_id,)); conn.commit(); cur.close(); conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": item_id}
 
     # USERS
@@ -1315,6 +1391,7 @@ try:
             raise HTTPException(status_code=400, detail=str(e))
         cur.close()
         conn.close()
+        broadcast_async()
         return {"id": user_id, "email": payload.email, "role": payload.role, "ticket": ticket}
 
     @app.post("/api/users/register", status_code=status.HTTP_201_CREATED)
@@ -1354,6 +1431,7 @@ try:
             raise HTTPException(status_code=400, detail=str(e))
         cur.close()
         conn.close()
+        broadcast_async()
         return {"id": user_id, "email": payload.email, "role": payload.role, "ticket": ticket}
 
     @app.patch("/api/users/{user_id}")
@@ -1385,6 +1463,7 @@ try:
         conn.close()
         if not row:
             raise HTTPException(status_code=404, detail="User not found")
+        broadcast_async()
         return {"id": user_id, "status": "updated"}
 
     @app.delete("/api/users/{user_id}")
@@ -1398,6 +1477,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": user_id}
 
     # HALL OF FAME
@@ -1448,6 +1528,7 @@ try:
             raise HTTPException(status_code=400, detail=str(e))
         cur.close()
         conn.close()
+        broadcast_async()
         return {"id": hof_id, "name": payload.name}
 
     @app.patch("/api/hof/{item_id}")
@@ -1473,6 +1554,7 @@ try:
         conn.close()
         if not row:
             raise HTTPException(status_code=404, detail="HOF entry not found")
+        broadcast_async()
         return {"id": item_id, "status": "updated"}
 
     @app.delete("/api/hof/{item_id}")
@@ -1485,6 +1567,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": item_id}
 
     # NEWS ITEMS
@@ -1524,6 +1607,7 @@ try:
             raise HTTPException(status_code=400, detail=str(e))
         cur.close()
         conn.close()
+        broadcast_async()
         return {"id": news_id, "headline": payload.headline}
 
     @app.delete("/api/news/{item_id}")
@@ -1536,6 +1620,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": item_id}
 
     # AUDIT LOGS
@@ -1625,6 +1710,7 @@ try:
             raise HTTPException(status_code=400, detail=str(e))
         cur.close()
         conn.close()
+        broadcast_async()
         return {"id": course_id, "title": payload.title}
 
     # PENDING APPROVALS (cross-machine sync)
@@ -1680,6 +1766,7 @@ try:
             raise HTTPException(status_code=400, detail=str(e))
         cur.close()
         conn.close()
+        broadcast_async()
         return {"id": payload.id, "status": "created"}
 
     @app.patch("/api/approvals/{item_id}")
@@ -1704,6 +1791,7 @@ try:
         conn.close()
         if not row:
             raise HTTPException(status_code=404, detail="Approval not found")
+        broadcast_async()
         return {"id": item_id, "status": "updated"}
 
     @app.delete("/api/approvals/{item_id}")
@@ -1716,6 +1804,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"status": "deleted", "id": item_id}
 
     # BULK SYNC endpoint for LMS and other localStorage collections
@@ -1779,6 +1868,7 @@ try:
         conn.commit()
         cur.close()
         conn.close()
+        broadcast_async()
         return {"status": "synced", "collection": payload.collection, "count": len(payload.items)}
 
     # Mount static files

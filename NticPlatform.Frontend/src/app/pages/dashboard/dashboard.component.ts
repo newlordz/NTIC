@@ -56,7 +56,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ];
 
   // ─── SUPER ADMIN STATE ─────────────────────────
-  adminTab: 'overview' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'overview';
+  adminTab: 'overview' | 'control' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'overview';
+  adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | '' = '';
+  private _expandedSection = false;
+  get expandedSection(): boolean { return this._expandedSection; }
+  set expandedSection(v: boolean) {
+    this._expandedSection = v;
+    if (typeof document !== 'undefined') {
+      document.body.classList.toggle('ac-expanded', v);
+    }
+  }
   lmsSubTab: 'courses' | 'modules' | 'materials' | 'assignments' = 'courses';
   lmsFormMode: 'add' | 'edit' = 'add';
   editingLmsCourse: any = null;
@@ -557,6 +566,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.route.queryParams.subscribe(params => {
       if (params['tab']) {
         this.adminTab = params['tab'];
+        if (this.adminTab === 'control') { this.adminSubTab = 'tickets'; }
       }
     });
   }
@@ -580,11 +590,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (req.details?.logoFileId) {
         this.loadLogo(req.details.logoFileId);
       }
+      if (req.details?.photoFileId) {
+        this.loadLogo(req.details.photoFileId);
+      }
     }
   }
 
   getLogoUrl(details: any): string {
-    if (details?.logoFileId && this.logoUrls[details.logoFileId]) return this.logoUrls[details.logoFileId];
+    const fileId = details?.logoFileId || details?.photoFileId;
+    if (fileId && this.logoUrls[fileId]) return this.logoUrls[fileId];
     return '';
   }
 
@@ -673,6 +687,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
   ngOnInit(): void {
+    this.contentService.refreshBackendData();
     this.loadDbData();
     if (typeof window !== 'undefined') {
       window.scrollTo(0, 0);
@@ -683,7 +698,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
         const mainContent = document.querySelector('.main-content');
         if (mainContent) {
           mainContent.scrollTop = 0;
+          mainContent.scrollLeft = 0;
         }
+        document.querySelectorAll('.admin-tickets-table, .admin-table-sm').forEach(el => {
+          el.scrollLeft = 0;
+        });
       }, 0);
     }
     this.activeRoleId = getAuthValue('activeRoleId') || 'student';
@@ -693,8 +712,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     // Read query params to set active tab & modal state reactively
     this.route.queryParams.subscribe(params => {
-      if (params['tab'] && ['overview', 'register', 'tickets', 'approvals', 'content', 'users', 'admins'].includes(params['tab'])) {
+      if (params['tab'] && ['overview', 'control', 'register', 'tickets', 'approvals', 'content', 'users', 'admins'].includes(params['tab'])) {
         this.adminTab = params['tab'] as any;
+        if (this.adminTab === 'control') { this.adminSubTab = 'tickets'; }
         if (params['tab'] === 'approvals') {
           this.loadApprovalsFromBackend();
         }
@@ -820,7 +840,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           { label: 'Total Registered Users', value: String(this.registeredUsers.length), icon: 'manage_accounts', meta: '6 distinct portals', color: 'primary' },
           { label: 'System Health', value: '100%', icon: 'cloud_done', meta: 'All 4 nodes green', color: 'secondary' },
           { label: 'Pending Approvals', value: String(this.pendingApprovals.length), icon: 'verified_user', meta: this.pendingApprovals.length > 0 ? 'Action required' : 'All clear', color: 'error' },
-          { label: 'Active Tokens', value: String(this.authSessionCount >= 0 ? this.authSessionCount : this.registeredUsers.filter(u => u.status === 'Active').length), icon: 'token', meta: `${this.registeredUsers.filter(u => u.role === 'judge').length} Judges · ${this.registeredUsers.filter(u => u.role === 'sponsor').length} Sponsors`, color: 'tertiary' }
+          { label: 'Active Sessions', value: String(this.authSessionCount >= 0 ? this.authSessionCount : this.registeredUsers.filter(u => u.status === 'Active').length), icon: 'groups', meta: `${this.registeredUsers.filter(u => u.role === 'judge').length} Judges · ${this.registeredUsers.filter(u => u.role === 'sponsor').length} Sponsors`, color: 'tertiary' }
         ];
         break;
     }
@@ -832,7 +852,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       next: (res) => {
         this.authSessionCount = res.total;
         // Patch the stat card with the real count
-        const tokensIdx = this.stats.findIndex(s => s.label === 'Active Tokens');
+        const tokensIdx = this.stats.findIndex(s => s.label === 'Active Sessions');
         if (tokensIdx >= 0) {
           this.stats[tokensIdx] = { ...this.stats[tokensIdx], value: String(res.total) };
         }
@@ -905,7 +925,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       next: () => {
         this.authSessions = this.authSessions.filter(s => s.token !== token);
         this.authSessionCount = Math.max(0, this.authSessionCount - 1);
-        const tokensIdx = this.stats.findIndex(s => s.label === 'Active Tokens');
+        const tokensIdx = this.stats.findIndex(s => s.label === 'Active Sessions');
         if (tokensIdx >= 0) {
           this.stats[tokensIdx] = { ...this.stats[tokensIdx], value: String(this.authSessionCount) };
         }
@@ -922,7 +942,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         // Keep only the current admin's session in the local list
         this.authSessions = this.authSessions.filter(s => s.token === currentToken);
         this.authSessionCount = this.authSessions.length;
-        const tokensIdx = this.stats.findIndex(s => s.label === 'Active Tokens');
+        const tokensIdx = this.stats.findIndex(s => s.label === 'Active Sessions');
         if (tokensIdx >= 0) {
           this.stats[tokensIdx] = { ...this.stats[tokensIdx], value: String(this.authSessionCount) };
         }
@@ -939,7 +959,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       next: (res: any) => {
         this.authSessions = this.authSessions.filter(s => s.user_id !== userId);
         this.authSessionCount = Math.max(0, this.authSessionCount - (res?.expired || 0));
-        const tokensIdx = this.stats.findIndex(s => s.label === 'Active Tokens');
+        const tokensIdx = this.stats.findIndex(s => s.label === 'Active Sessions');
         if (tokensIdx >= 0) {
           this.stats[tokensIdx] = { ...this.stats[tokensIdx], value: String(this.authSessionCount) };
         }
@@ -990,11 +1010,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     if (this.activeRoleId === 'super_admin') {
       if (label.includes('registered users') || label.includes('users')) {
-        this.adminTab = 'users';
+        this.adminTab = 'control'; this.adminSubTab = 'users';
       } else if (label.includes('pending approvals') || label.includes('approvals')) {
-        this.adminTab = 'approvals';
-      } else if (label.includes('active tokens') || label.includes('tokens')) {
-        this.adminTab = 'tickets';
+        this.adminTab = 'control'; this.adminSubTab = 'approvals';
+      } else if (label.includes('active tokens') || label.includes('tokens') || label.includes('sessions')) {
+        this.adminTab = 'control'; this.adminSubTab = 'tickets';
       } else if (label.includes('system health') || label.includes('health')) {
         this.adminTab = 'overview';
       }
@@ -1239,7 +1259,7 @@ setTimeout(async () => {
       this.contentService.saveAuditLogs(currentAudit);
       // Update stat
       this.stats = this.stats.map(s =>
-        s.icon === 'token'
+        s.icon === 'groups'
           ? { ...s, value: String(this.registeredUsers.length), meta: `${this.registeredUsers.filter(u => u.role === 'judge').length} Judges · ${this.registeredUsers.filter(u => u.role === 'sponsor').length} Sponsors` }
           : s
       );
@@ -1599,6 +1619,23 @@ setTimeout(async () => {
         'Instructor credentials unverified'
       ];
     }
+  }
+
+  getReasonIcon(reason: string): string {
+    if (reason.includes('document')) return 'description';
+    if (reason.includes('email') || reason.includes('phone') || reason.includes('contact')) return 'contact_mail';
+    if (reason.includes('lab') || reason.includes('verif')) return 'verified';
+    if (reason.includes('duplicate')) return 'content_copy';
+    if (reason.includes('capacity')) return 'group_off';
+    if (reason.includes('vague') || reason.includes('proposal')) return 'lightbulb';
+    if (reason.includes('eligibility')) return 'person_off';
+    if (reason.includes('guardian') || reason.includes('consent')) return 'family_restroom';
+    if (reason.includes('background') || reason.includes('check')) return 'security';
+    if (reason.includes('mismatch')) return 'swap_horiz';
+    if (reason.includes('credential') || reason.includes('certif')) return 'card_membership';
+    if (reason.includes('registry')) return 'database';
+    if (reason.includes('student team')) return 'groups';
+    return 'error';
   }
 
   openPreview(req: any): void {
@@ -2062,10 +2099,12 @@ setTimeout(async () => {
   maximizeContent(tab: string): void {
     this.contentTab = tab as any;
     this.maximizedContentTab = tab;
+    this.expandedSection = true;
   }
 
   exitMaximize(): void {
     this.maximizedContentTab = null;
+    this.expandedSection = false;
   }
 
   async onSlideVideoSelected(event: Event): Promise<void> {

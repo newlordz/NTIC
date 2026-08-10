@@ -57,3 +57,26 @@ def require_admin(request: Request):
     if user["role"] not in ADMIN_ROLES:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return user
+
+
+def verify_token(token: str) -> dict | None:
+    """Validate a token string and return user info, or None."""
+    from app.database import get_db_connection
+    conn = get_db_connection()
+    if not conn:
+        return None
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT u.id, u.email, u.full_name, u.role, u.status "
+            "FROM auth_sessions s JOIN users u ON s.user_id = u.id "
+            "WHERE s.token = %s AND s.expires_at > CURRENT_TIMESTAMP",
+            (token,),
+        )
+        row = cur.fetchone()
+    finally:
+        cur.close()
+        conn.close()
+    if not row:
+        return None
+    return {"id": row[0], "email": row[1], "full_name": row[2], "role": row[3], "status": row[4]}
