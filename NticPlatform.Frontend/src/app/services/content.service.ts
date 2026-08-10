@@ -1479,16 +1479,33 @@ private readonly defaultTeams: Team[] = [];
   saveApprovals(approvalsList: ApprovalRequest[]): void {
     this.pendingApprovals = approvalsList;
     this.saveState('pendingApprovals', this.pendingApprovals);
+    this.syncToBackend('approvals', approvalsList.map(a => ({
+      id: a.id, type: a.type, entity: a.entity, contact: a.contact,
+      submitted: a.submitted, details: a.details || {},
+      status: 'pending'
+    })));
   }
 
   saveRejectedApprovals(list: ApprovalRequest[]): void {
     this.rejectedApprovals = list;
     this.saveState('rejectedApprovals', this.rejectedApprovals);
+    this.syncToBackend('approvals', list.map(a => ({
+      id: a.id, type: a.type, entity: a.entity, contact: a.contact,
+      submitted: a.submitted, details: a.details || {},
+      reviewed_at: a.reviewedAt, reviewer: a.reviewer,
+      rejection_reasons: a.rejectionReasons, rejection_notes: a.rejectionNotes,
+      status: 'rejected'
+    })));
   }
 
   saveApprovedApprovals(list: ApprovalRequest[]): void {
     this.approvedApprovals = list;
     this.saveState('approvedApprovals', this.approvedApprovals);
+    this.syncToBackend('approvals', list.map(a => ({
+      id: a.id, type: a.type, entity: a.entity, contact: a.contact,
+      submitted: a.submitted, details: a.details || {},
+      reviewed_at: a.reviewedAt, reviewer: a.reviewer, status: 'approved'
+    })));
   }
 
   saveHeroSlides(slidesList: HeroSlide[]): void {

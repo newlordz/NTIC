@@ -1947,6 +1947,10 @@ try:
             for item in payload.items:
                 cur.execute("INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name, role = EXCLUDED.role, status = EXCLUDED.status, phone = EXCLUDED.phone",
                             (item.get("id"), item.get("email",""), item.get("fullName",""), item.get("role","student"), item.get("ticket",""), "synced_noauth", item.get("status","Active"), item.get("phone","")))
+        elif payload.collection == "approvals":
+            for item in payload.items:
+                cur.execute("INSERT INTO pending_approvals (id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status",
+                            (item.get("id"), item.get("type",""), item.get("entity",""), item.get("contact",""), item.get("submitted",""), _json.dumps(item.get("details",{})), item.get("status","pending"), item.get("reviewed_at"), item.get("reviewer"), item.get("rejection_reasons"), item.get("rejection_notes")))
         else:
             cur.close()
             conn.close()
