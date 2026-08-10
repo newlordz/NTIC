@@ -3153,7 +3153,7 @@ body.dark-theme {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
 
     .info-icon {
       color: var(--primary, #003f87);
@@ -3187,6 +3187,23 @@ body.dark-theme {
         box-shadow: 0 6px 20px rgba(0, 63, 135, 0.4);
       }
     }
+  }
+}
+
+/* ── Dark mode overrides for credential modal ── */
+body.dark-theme .custom-credentials-modal {
+  .cred-code-text {
+    &.pin-code { color: #f59e0b; }
+  }
+  .cred-info-banner {
+    background: rgba(109, 165, 224, 0.10);
+    border-color: rgba(109, 165, 224, 0.22);
+  }
+  .btn-copy-all {
+    background: rgba(109, 165, 224, 0.10);
+    border-color: rgba(109, 165, 224, 0.3);
+    color: #acc7ff;
+    &:hover { background: rgba(109, 165, 224, 0.18); }
   }
 }
 
