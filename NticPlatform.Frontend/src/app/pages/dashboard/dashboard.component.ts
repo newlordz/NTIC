@@ -1468,6 +1468,7 @@ setTimeout(async () => {
             ticket: sTicket, password: sOtp, status: 'Active', phone: ''
           }).subscribe({ next: () => {}, error: () => {} });
         });
+      }
 
       this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp);
       this.openCredentialsModal('School Registration Approved!', `School Admin account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access credentials sent to ${req.contact}`);
@@ -1725,12 +1726,12 @@ setTimeout(async () => {
     const req = this.activePreviewRequest;
     if (!req) return;
 
-    const defaultReasons: Record<string, string> = {
+    const defaultReasons = {
       'School Registration': 'Application did not meet accreditation requirements',
       'Team Addition': 'Team registration did not meet competition criteria',
       'Student Registration': 'Student registration did not meet eligibility requirements',
       'Instructor Access': 'Instructor credentials could not be verified'
-    };
+    } as Record<string, string>;
     const reason = defaultReasons[req.type] || 'Application did not meet requirements';
 
     const rejected = {
