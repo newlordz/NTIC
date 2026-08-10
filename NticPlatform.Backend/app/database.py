@@ -14,30 +14,56 @@ def init_postgres_db():
         return False, "psycopg2 not installed"
 
     # Step 1: Ensure database exists
-    try:
-        # Force TCP by converting localhost to 127.0.0.1 (Linux defaults localhost to Unix socket)
-        db_host = settings.POSTGRES_HOST
-        if db_host in ("localhost", ""):
-            db_host = "127.0.0.1"
-        admin_conn = psycopg2.connect(
-            host=db_host,
-            port=settings.POSTGRES_PORT,
-            user=settings.POSTGRES_USER,
-            password=settings.POSTGRES_PASSWORD,
-            dbname="postgres",
-            connect_timeout=10,
-        )
-        admin_conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
-        cur = admin_conn.cursor()
-        cur.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = %s", (settings.POSTGRES_DB,))
-        exists = cur.fetchone()
-        if not exists:
-            logger.info(f"Creating PostgreSQL database: {settings.POSTGRES_DB}...")
-            cur.execute(f'CREATE DATABASE "{settings.POSTGRES_DB}"')
-        cur.close()
-        admin_conn.close()
-    except Exception as e:
-        logger.warning(f"Note checking/creating database: {e}")
+    # Use the same connection fallback chain as get_db_connection(): Railway's
+    # reference variables (${{Postgres.PGHOST}}, etc.) often fail to interpolate
+    # at container start, so prefer the fully-formed DATABASE_PRIVATE_URL / DATABASE_URL
+    # and only fall back to individual POSTGRES_* vars as a last resort.
+    import os
+    admin_conn = None
+    target_db_name = settings.POSTGRES_DB
+    for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
+        db_url = os.environ.get(url_key)
+        if not db_url:
+            continue
+        try:
+            admin_conn = psycopg2.connect(db_url, dbname="postgres", connect_timeout=10)
+            logger.info(f"Connected admin session to PostgreSQL via {url_key}")
+            break
+        except Exception as e:
+            logger.warning(f"Admin PostgreSQL connection via {url_key} failed: {e}")
+
+    if admin_conn is None:
+        try:
+            # Force TCP by converting localhost to 127.0.0.1 (Linux defaults localhost to Unix socket)
+            db_host = settings.POSTGRES_HOST
+            if db_host in ("localhost", ""):
+                db_host = "127.0.0.1"
+            admin_conn = psycopg2.connect(
+                host=db_host,
+                port=settings.POSTGRES_PORT,
+                user=settings.POSTGRES_USER,
+                password=settings.POSTGRES_PASSWORD,
+                dbname="postgres",
+                connect_timeout=10,
+            )
+        except Exception as e:
+            logger.warning(f"Note checking/creating database: {e}")
+            admin_conn = None
+
+    if admin_conn is not None:
+        try:
+            admin_conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+            cur = admin_conn.cursor()
+            cur.execute("SELECT 1 FROM pg_catalog.pg_database WHERE datname = %s", (target_db_name,))
+            exists = cur.fetchone()
+            if not exists:
+                logger.info(f"Creating PostgreSQL database: {target_db_name}...")
+                cur.execute(f'CREATE DATABASE "{target_db_name}"')
+            cur.close()
+        except Exception as e:
+            logger.warning(f"Note checking/creating database: {e}")
+        finally:
+            admin_conn.close()
 
     # Step 2: Connect to target database and create tables
     try:
@@ -378,7 +404,7 @@ def init_postgres_db():
         seed_initial_data(conn)
 
         conn.close()
-        logger.info(f"Successfully connected to PostgreSQL ({settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}), created tables, and seeded initial data.")
+        logger.info(f"Successfully connected to PostgreSQL database '{target_db_name}', created tables, and seeded initial data.")
         return True, "OK"
     except Exception as e:
         logger.error(f"Error initializing schema: {e}")
