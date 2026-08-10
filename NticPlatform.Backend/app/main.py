@@ -19,7 +19,14 @@ try:
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
-        init_postgres_db()
+        import time, asyncio
+        for attempt in range(1, 13):
+            ok, msg = init_postgres_db()
+            if ok:
+                break
+            wait = min(attempt * 2, 20)
+            print(f"[Startup] DB init attempt {attempt}/12 failed ({msg}) — retrying in {wait}s...")
+            await asyncio.sleep(wait)
         yield
 
     app = FastAPI(
@@ -62,6 +69,14 @@ try:
         response.headers["X-XSS-Protection"] = "0"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         return response
+
+    @app.get("/api/health")
+    def health_check():
+        conn = get_db_connection()
+        db_status = "connected" if conn else "disconnected"
+        if conn:
+            conn.close()
+        return {"status": "ok", "database": db_status}
 
     @app.middleware("http")
     async def enforce_auth_middleware(request: Request, call_next):
