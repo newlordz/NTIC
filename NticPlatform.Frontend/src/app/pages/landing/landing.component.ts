@@ -1059,18 +1059,11 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     this.setTrackPreview('coding', false);
 
     this.startSlideShow();
-    this.setupIntersectionObserver();
-    this.setupSpotlightObserver();
-    this.setupTracksObserver();
-    this.setupScoreboardObserver();
-    this.setupStatsObserver();
-    this.setupConceptObserver();
-    this.setupSupportObserver();
-    this.preloadNextImages(0, 3);
     this.startCountdown();
     this.startCompSlideshow();
     this.typeProblem();
     this.setupFabScroll();
+    this.preloadNextImages(0, 3);
     if (this.route.snapshot.fragment === 'news') {
       setTimeout(() => this.scrollToSection('news'), 600);
     }
@@ -1079,6 +1072,13 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
   ngAfterViewInit(): void {
     this.setupCardParallax();
     this.startMatrixRain();
+    this.setupIntersectionObserver();
+    this.setupSpotlightObserver();
+    this.setupTracksObserver();
+    this.setupScoreboardObserver();
+    this.setupStatsObserver();
+    this.setupConceptObserver();
+    this.setupSupportObserver();
     this.applyRegionColors();
     this.setupScrollAnimations();
     this.storyTimer = setInterval(() => {
@@ -1738,31 +1738,41 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
   }
 
   private setupConceptObserver(): void {
-    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
-    this.conceptObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('in-view');
-          this.conceptObserver.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.12 });
+    if (typeof window === 'undefined') return;
     const el = this.elementRef.nativeElement.querySelector('.concept-section');
-    if (el) this.conceptObserver.observe(el);
+    if (el) {
+      el.classList.add('in-view');
+      if ('IntersectionObserver' in window) {
+        this.conceptObserver = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in-view');
+              this.conceptObserver.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.05 });
+        this.conceptObserver.observe(el);
+      }
+    }
   }
 
   private setupSupportObserver(): void {
-    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
-    this.supportObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('in-view');
-          this.supportObserver.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.12 });
+    if (typeof window === 'undefined') return;
     const el = this.elementRef.nativeElement.querySelector('.support-section');
-    if (el) this.supportObserver.observe(el);
+    if (el) {
+      el.classList.add('in-view');
+      if ('IntersectionObserver' in window) {
+        this.supportObserver = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in-view');
+              this.supportObserver.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.05 });
+        this.supportObserver.observe(el);
+      }
+    }
   }
 
   openSupportModal(type: 'mail' | 'team' | 'competition' | 'suggestion'): void {
@@ -3118,7 +3128,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       rafPending = true;
       requestAnimationFrame(() => {
         rafPending = false;
-        const visible = window.scrollY > 400;
+        const visible = window.scrollY > 150;
         if (visible !== this.fabVisible) {
           this.ngZone.run(() => { this.fabVisible = visible; });
         }
