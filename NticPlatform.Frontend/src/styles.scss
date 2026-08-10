@@ -3702,5 +3702,68 @@ body.dark-theme {
     background-size: 16px 16px !important;
     padding-right: 36px !important;
   }
+
+  /* ── Fix hardcoded dark text that becomes invisible on dark backgrounds ── */
+  .brand-name, .brand-name span,
+  .page-title-main, .page-subtitle, .pass-name,
+  .um-name, .dashboard-card-value,
+  .global-search-input, .search-result-card,
+  .official-letterhead h2, .letter-title, .letter-body, .sig-block strong,
+  .flip-top, .member-name, .alumni-stat .stat-number,
+  .timeline-event-label, .timeline-event-type,
+  .td-header, .cm-label, .ai-description, .ai-log-bar {
+    color: var(--on-surface, #e1f3fc) !important;
+  }
+
+  .btn-gold { color: var(--on-surface, #e1f3fc) !important; }
+  .btn-outline { color: var(--primary, #6da5e0) !important; }
+  .btn-white-trans:hover { color: var(--on-surface, #e1f3fc) !important; background: var(--surface-container-low) !important; }
+  .slideshow-nav-btn:hover, .slide-mute-btn:hover { color: var(--on-surface) !important; background: var(--surface-container-low) !important; }
+
+  .btn-story-act, .btn-story-act .count { color: var(--on-surface) !important; }
+  .btn-story-act:hover { background: var(--surface-container-low) !important; }
+  .btn-alert-dismiss { color: var(--on-surface) !important; }
+
+  /* White backgrounds → dark surfaces */
+  .global-search-input, .search-result-card,
+  .digital-pass-card, .gateway-card, .otp-card,
+  .challenge-card, .arena-sim-box, .alumni-popover,
+  .db-modal-content {
+    background: var(--surface-container-lowest) !important;
+  }
+
+  /* Form controls */
+  .form-control, .form-control:focus, input[type="text"], input[type="email"],
+  input[type="password"], input[type="tel"], input[type="search"],
+  textarea, select, .form-select {
+    background: var(--surface-container-low) !important;
+    color: var(--on-surface) !important;
+    border-color: var(--outline-variant) !important;
+  }
+
+  .form-control::placeholder, input::placeholder, textarea::placeholder { color: var(--on-surface-variant) !important; }
+
+  /* Tables and data */
+  td, td strong, .kpi-lbl, .metric-lbl, .stat-badge.neutral,
+  .badge-neutral, .db-status-sep, .text-subtle {
+    color: var(--on-surface-variant) !important;
+  }
+
+  /* Labels, hints, subtitles */
+  .form-help, .form-label, .page-subtitle, .btn-subtle, .verify-hint,
+  .otp-label, .otp-helper, .track-chip-title, .pkg-label,
+  .upload-main-text, .empty-chat, .chatbot-footer-note {
+    color: var(--on-surface-variant) !important;
+  }
+
+  /* Document viewers (letterhead stays readable) */
+  .doc-canvas, .spreadsheet-canvas {
+    background: var(--surface-container-lowest) !important;
+    color: var(--on-surface) !important;
+  }
+  .doc-canvas h2, .doc-canvas h3, .spreadsheet-canvas th,
+  .official-letterhead h2, .letter-meta {
+    color: var(--on-surface-variant) !important;
+  }
 }
 
