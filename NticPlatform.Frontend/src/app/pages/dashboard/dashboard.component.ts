@@ -1070,6 +1070,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (idx > -1) {
       users[idx].status = users[idx].status === 'Active' ? 'Suspended' : 'Active';
       this.contentService.saveUsers(users);
+      this.apiService.updateUser(user.id, {
+        email: user.email, full_name: user.fullName, role: user.role,
+        ticket: user.ticket, status: users[idx].status, phone: user.phone || ''
+      }).subscribe({ next: () => {}, error: () => {} });
     }
   }
 
@@ -1079,6 +1083,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   confirmDeleteUser(): void {
     if (!this.deleteUserConfirm) return;
+    this.apiService.deleteUser(this.deleteUserConfirm.id).subscribe({
+      next: () => {}, error: () => {}
+    });
     const users = this.contentService.users.filter(u => u.id !== this.deleteUserConfirm.id);
     this.contentService.saveUsers(users);
     this.deleteUserConfirm = null;
