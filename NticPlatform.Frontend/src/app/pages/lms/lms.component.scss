@@ -407,7 +407,7 @@
       background: #ffffff !important; /* Keep barcode area white for contrast */
       border-color: var(--outline-variant) !important;
       .line { background: #0f172a !important; }
-      .ticket-code-display { color: #0f172a !important; }
+      .ticket-code-display { color: var(--on-surface) !important; }
     }
   }
 }

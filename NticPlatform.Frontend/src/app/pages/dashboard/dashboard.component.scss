@@ -910,7 +910,7 @@
 
   .field-icon {
     font-size: 16px;
-    color: #003f87;
+    color: var(--primary, #003f87);
   }
 
   .req { color: #ef4444; margin-left: 2px; }
@@ -954,7 +954,7 @@
     }
 
     &:focus {
-      border-color: #003f87;
+      border-color: var(--primary, #003f87);
       box-shadow: 0 0 0 3.5px rgba(0, 63, 135, 0.12);
       background: #ffffff;
     }
@@ -971,7 +971,7 @@
   }
 
   &:focus-within .input-prefix-icon {
-    color: #003f87;
+    color: var(--primary, #003f87);
   }
 
   .input-ok-icon, .input-err-icon {
@@ -1001,7 +1001,7 @@
 
   &::placeholder { color: #94a3b8; }
   &:focus {
-    border-color: #003f87;
+    border-color: var(--primary, #003f87);
     box-shadow: 0 0 0 3.5px rgba(0, 63, 135, 0.12);
   }
 }
@@ -1031,11 +1031,11 @@
 
   &.selected {
     background: linear-gradient(135deg, rgba(0, 63, 135, 0.06) 0%, rgba(0, 86, 179, 0.1) 100%);
-    border-color: #003f87;
+    border-color: var(--primary, #003f87);
 
-    .track-chip-icon { color: #003f87; }
-    .track-chip-title { color: #003f87; font-weight: 700; }
-    .track-chip-check { color: #003f87; }
+    .track-chip-icon { color: var(--primary, #003f87); }
+    .track-chip-title { color: var(--primary, #003f87); font-weight: 700; }
+    .track-chip-check { color: var(--primary, #003f87); }
   }
 }
 
@@ -1119,10 +1119,10 @@
   transition: all 0.2s ease;
 
   &:hover {
-    border-color: #003f87;
+    border-color: var(--primary, #003f87);
     background: rgba(0, 63, 135, 0.02);
 
-    .upload-cloud-icon { color: #003f87; transform: translateY(-2px); }
+    .upload-cloud-icon { color: var(--primary, #003f87); transform: translateY(-2px); }
   }
 }
 
@@ -1158,7 +1158,7 @@
 .upload-status-text {
   font-size: 13px;
   font-weight: 700;
-  color: #003f87;
+  color: var(--primary, #003f87);
   flex: 1;
 }
 
@@ -1468,7 +1468,7 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   font-weight: 700;
-  color: #003f87;
+  color: var(--primary, #003f87);
   background: rgba(0, 63, 135, 0.06);
   padding: 4px 8px;
   border-radius: 5px;
@@ -1997,7 +1997,7 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 22px;
   font-weight: 800;
-  color: #003f87;
+  color: var(--primary, #003f87);
   letter-spacing: 0.15em;
   background: rgba(0, 63, 135, 0.06);
   border: 1px dashed rgba(0, 63, 135, 0.25);
@@ -2503,7 +2503,7 @@
   }
 
   &.preview-code-live {
-    color: #003f87;
+    color: var(--primary, #003f87);
     background: rgba(0, 63, 135, 0.07);
     border: 1px solid rgba(0, 63, 135, 0.2);
     animation: codeReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);

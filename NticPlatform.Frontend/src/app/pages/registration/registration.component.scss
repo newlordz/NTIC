@@ -3425,6 +3425,13 @@ select.form-control {
       background: var(--surface-container-lowest) !important;
     }
   }
+
+  .ticket-barcode-wrap {
+    background: var(--surface-container-low) !important;
+    border-color: rgba(212, 160, 23, 0.3) !important;
+    .barcode-lines .line { background: var(--on-surface) !important; }
+    .ticket-code-display { color: var(--on-surface) !important; }
+  }
   .page-canvas {
     background: var(--background) !important;
     --bg-input: var(--surface-container-low);
