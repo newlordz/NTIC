@@ -797,6 +797,31 @@ private readonly defaultTeams: Team[] = [];
       error: (e: any) => console.log('Backend LMS fallback to local cache')
     });
 
+    this.apiService.getApprovals().subscribe({
+      next: (backendApprovals: any[]) => {
+        if (backendApprovals && backendApprovals.length > 0) {
+          const pending: any[] = [];
+          const approved: any[] = [];
+          const rejected: any[] = [];
+          backendApprovals.forEach((a: any) => {
+            const mapped = {
+              id: a.id, type: a.type, entity: a.entity, contact: a.contact,
+              submitted: a.submitted, details: a.details || {},
+              reviewedAt: a.reviewedAt, reviewer: a.reviewer,
+              rejectionReasons: a.rejectionReasons, rejectionNotes: a.rejectionNotes
+            };
+            if (a.status === 'pending') pending.push(mapped);
+            else if (a.status === 'approved') approved.push(mapped);
+            else if (a.status === 'rejected') rejected.push(mapped);
+          });
+          if (pending.length > 0) this.saveApprovals(pending);
+          if (approved.length > 0) this.saveApprovedApprovals(approved);
+          if (rejected.length > 0) this.saveRejectedApprovals(rejected);
+        }
+      },
+      error: () => {}
+    });
+
     this.apiService.getUsers().subscribe({
       next: (backendUsers: any[]) => {
         if (backendUsers && backendUsers.length > 0) {
