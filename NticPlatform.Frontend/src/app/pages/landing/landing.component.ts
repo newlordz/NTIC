@@ -1,4 +1,4 @@
-import { getAuthValue, setAuthValue } from '../../services/session.util';
+import { getAuthValue, setAuthValue, hasRememberedDevice } from '../../services/session.util';
 import { Component, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, ViewChild, Renderer2, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
@@ -1042,6 +1042,19 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     if (typeof document !== 'undefined') {
       document.body.style.overflow = '';
     }
+
+    // If user chose "Remember this device", skip the login page entirely
+    if (typeof window !== 'undefined' && hasRememberedDevice()) {
+      const role = getAuthValue('activeRoleId') || '';
+      const routes: Record<string, string> = {
+        super_admin: '/dashboard', content_manager: '/dashboard', reviewer: '/dashboard',
+        competition_manager: '/dashboard', school_admin: '/dashboard',
+        instructor: '/instructor', judge: '/judge', student: '/lms', sponsor: '/sponsors'
+      };
+      this.router.navigate([routes[role] || '/dashboard']);
+      return;
+    }
+
     // Pre-populate track preview with coding snippet (no modal popup on load)
     this.setTrackPreview('coding', false);
 
