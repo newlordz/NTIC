@@ -1,4 +1,4 @@
-import { getAuthValue, clearAllAuthValues } from './services/session.util';
+import { getAuthValue, clearAllAuthValues, hasRememberedDevice } from './services/session.util';
 import { Component, OnInit, OnDestroy, HostListener, Renderer2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
@@ -87,9 +87,10 @@ export class AppComponent implements OnInit, OnDestroy {
         }
       }
 
-      // Visiting the public homepage ends any lingering authenticated session,
-      // so credentials don't persist on shared/public machines.
-      if ((parsedUrl === '/' || parsedUrl === '/landing' || parsedUrl === '') && getAuthValue('activeRoleId')) {
+      // Visiting the public homepage ends a NON-remembered session, so
+      // credentials don't linger on shared/public machines. Sessions where
+      // "Remember this device" was ticked are kept (persisted in localStorage).
+      if ((parsedUrl === '/' || parsedUrl === '/landing' || parsedUrl === '') && getAuthValue('activeRoleId') && !hasRememberedDevice()) {
         clearAllAuthValues();
         this.currentUser = null;
         this.chatbot.resetSession();
