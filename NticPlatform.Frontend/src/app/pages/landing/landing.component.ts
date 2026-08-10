@@ -337,7 +337,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
 
 
   isLoginModalOpen = false;
-  rememberDevice = true;
+  rememberDevice = false;
 
   openInfoModal(event?: Event, section?: string): void {
     if (event) {

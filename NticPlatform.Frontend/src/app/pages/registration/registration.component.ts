@@ -918,7 +918,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   isLoggingIn = false;
   loginError = '';
   isPasswordVisible = false;
-  rememberDevice = true;
+  rememberDevice = false;
 
   openLoginModal(): void {
     this.isLoginModalOpen = true;
