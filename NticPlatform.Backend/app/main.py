@@ -172,6 +172,39 @@ try:
             "database": db_status
         }
 
+    # EMAIL PROXY — sends via Brevo from the backend (avoids CORS + exposed API key)
+    class EmailPayload(BaseModel):
+        sender_email: str = "support@ntic.edu.gh"
+        sender_name: str = "NTIC Ghana Championship"
+        to_email: str
+        to_name: str = ""
+        subject: str
+        html_content: str
+
+    @app.post("/api/send-email")
+    def send_email_proxy(payload: EmailPayload, _auth: dict = Depends(require_auth)):
+        if not settings.BREVO_API_KEY:
+            raise HTTPException(status_code=503, detail="Email service not configured")
+        try:
+            resp = httpx.post(
+                "https://api.brevo.com/v3/smtp/email",
+                json={
+                    "sender": {"email": payload.sender_email, "name": payload.sender_name},
+                    "to": [{"email": payload.to_email, "name": payload.to_name or payload.to_email}],
+                    "subject": payload.subject,
+                    "htmlContent": payload.html_content
+                },
+                headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
+                timeout=15
+            )
+            if resp.status_code >= 400:
+                logger.warning(f"Brevo API error {resp.status_code}: {resp.text}")
+                raise HTTPException(status_code=502, detail="Email provider error")
+            return {"status": "sent"}
+        except Exception as e:
+            logger.error(f"Email send failed: {e}")
+            raise HTTPException(status_code=502, detail="Failed to send email")
+
     # AUTH
     class LoginRequest(BaseModel):
         email: str

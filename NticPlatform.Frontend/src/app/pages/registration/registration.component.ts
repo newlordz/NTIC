@@ -1664,7 +1664,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.contentService.saveApprovals(currentApprovals);
 
     if (studentEmail) {
-      this.emailService.sendPendingConfirmation(studentEmail, this.studentForm.name, this.studentForm.name, 'Student Registration', this.studentForm.guardianPhone || '');
+      this.emailService.sendPendingConfirmation(studentEmail, this.studentForm.name, this.studentForm.name, 'Student Registration');
     }
 
     const currentAudit = [...this.contentService.auditLogs];
@@ -2460,7 +2460,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         else if (this.activeTab === 'team') phone = '';
         else if (this.activeTab === 'instructor') phone = this.instructorForm.tel || '';
         if (emailTo) {
-          this.emailService.sendPendingConfirmation(emailTo, emailName, emailName, approvalType, phone);
+          this.emailService.sendPendingConfirmation(emailTo, emailName, emailName, approvalType);
         }
 
         const currentAudit = [...this.contentService.auditLogs];

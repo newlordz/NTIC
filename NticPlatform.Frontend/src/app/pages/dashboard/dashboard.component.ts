@@ -1309,8 +1309,7 @@ setTimeout(async () => {
         this.regForm.organization || 'NTIC Competition',
         roleLabel + ' Access',
         ticket,
-        otp,
-        this.regForm.phone
+        otp
       );
 
       this.regSubmitting = false;
@@ -1486,7 +1485,7 @@ setTimeout(async () => {
         this.contentService.saveUsers(currentUsers);
       }
 
-      this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp, req.details?.phone || req.details?.repTel);
+      this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp);
       this.openCredentialsModal('School Registration Approved!', `School Admin account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access credentials sent to ${req.contact}`);
     } else if (req.type === 'Team Addition') {
       const newTeam = {
@@ -1533,10 +1532,10 @@ setTimeout(async () => {
         currentUsers.push(newLeadUser);
         this.contentService.saveUsers(currentUsers);
 
-        this.emailService.sendApprovalEmail(leadEmail, leadName, req.entity, req.type, ticket, otp, '');
+        this.emailService.sendApprovalEmail(leadEmail, leadName, req.entity, req.type, ticket, otp);
         this.openCredentialsModal('Team Addition Approved!', `Your squad "${req.entity}" has been approved. Team Lead credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${leadEmail}`);
       } else {
-        this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A — Team Added', 'N/A', req.details?.phone);
+        this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A — Team Added', 'N/A');
         this.showCustomAlert(`Team "${req.entity}" has been successfully approved and added to national competition tracks.`, 'Team Addition Approved', 'success');
       }
     } else if (req.type === 'Student Registration') {
@@ -1571,7 +1570,7 @@ setTimeout(async () => {
       stats.students += 1;
       this.contentService.updatePlatformStats(stats);
 
-      this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp, req.details?.guardianPhone);
+      this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
       this.openCredentialsModal('Student Registration Approved!', `Competitor account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
     } else if (req.type === 'Instructor Access') {
       const ticket = 'NTIC-INS-' + Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -1601,7 +1600,7 @@ setTimeout(async () => {
       stats.mentors += 1;
       this.contentService.updatePlatformStats(stats);
 
-      this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp, req.details?.phone);
+      this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
       this.openCredentialsModal('Instructor Access Approved!', `Certified Instructor account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
     }
 
@@ -1727,8 +1726,7 @@ setTimeout(async () => {
       this.activeReviewRequest.entity,
       this.activeReviewRequest.type,
       reasons || 'No specific reason provided',
-      this.rejectionNotes || '',
-      this.activeReviewRequest.details?.phone || this.activeReviewRequest.details?.repTel
+      this.rejectionNotes || ''
     );
     
     const currentAudit = [...this.contentService.auditLogs];
@@ -1780,13 +1778,8 @@ setTimeout(async () => {
     this.pendingApprovals = this.pendingApprovals.filter(r => r.id !== req.id);
 
     this.emailService.sendRejectionEmail(
-      req.contact,
-      req.entity,
-      req.entity,
-      req.type,
-      reason,
-      'Rejected during preview review.',
-      req.details?.phone || req.details?.repTel
+      req.contact, req.entity, req.entity, req.type,
+      reason, 'Rejected during preview review.'
     );
 
     const currentAudit = [...this.contentService.auditLogs];

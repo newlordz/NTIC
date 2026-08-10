@@ -33,6 +33,7 @@ class Config:
     POSTGRES_DB: str = _get_nonempty_env("POSTGRES_DB") or _get_nonempty_env("PGDATABASE", "NticPlatformDb")
 
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    BREVO_API_KEY: str = os.getenv("BREVO_API_KEY", "")
 
     PORT: int = int(os.getenv("PORT", 5000))
 

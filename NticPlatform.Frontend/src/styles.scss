@@ -1062,7 +1062,7 @@ body.ac-expanded .main-content {
 .form-control {
   width: 100%;
   padding: 10px 14px;
-  background: var(--surface-container-lowest);
+  background-color: var(--surface-container-lowest);
   border: 1px solid var(--outline-variant);
   border-radius: 8px;
   font-family: 'Inter', sans-serif;
@@ -1076,7 +1076,14 @@ body.ac-expanded .main-content {
     box-shadow: 0 0 0 3px rgba(0,63,135,0.1);
   }
 }
-.form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23727784' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 20px; padding-right: 36px; }
+select, .form-select { 
+  appearance: none; 
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23727784' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); 
+  background-repeat: no-repeat !important; 
+  background-position: right 10px center !important; 
+  background-size: 20px !important; 
+  padding-right: 36px !important; 
+}
 textarea.form-control { resize: vertical; min-height: 100px; }
 
 /* ── Progress Bars ── */
@@ -3684,10 +3691,16 @@ body.dark-theme {
   a { color: inherit; }
 
   // Scrollbar
-  /* ── Dark Theme Canvas Overrides ── */
-  .page-canvas {
-    background: #0b1120 !important;
-    color: #e2e8f0;
+  // Select & Form controls in Dark Mode
+  select,
+  .form-select,
+  select.form-control,
+  .form-control select {
+    appearance: none !important;
+    background-repeat: no-repeat !important;
+    background-position: right 12px center !important;
+    background-size: 16px 16px !important;
+    padding-right: 36px !important;
   }
 }
 

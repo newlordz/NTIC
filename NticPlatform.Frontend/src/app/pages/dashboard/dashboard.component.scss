@@ -2778,7 +2778,7 @@
     padding: 9px 12px;
     border: 1px solid var(--outline-variant);
     border-radius: 8px;
-    background: var(--surface-container);
+    background-color: var(--surface-container);
     color: var(--on-surface);
     font-size: 13px;
     outline: none;
@@ -4462,7 +4462,7 @@
   font-size: 13.5px;
   font-weight: 500;
   color: var(--on-surface);
-  background: var(--surface-container-low);
+  background-color: var(--surface-container-low);
   border: 1.5px solid var(--outline-variant);
   border-radius: 12px;
   outline: none;
@@ -4476,7 +4476,7 @@
 
   &:hover { border-color: var(--outline); }
   &:focus {
-    background: var(--surface-container-lowest);
+    background-color: var(--surface-container-lowest);
     border-color: var(--primary);
     box-shadow: 0 0 0 4px rgba(0, 63, 135, 0.1);
   }
