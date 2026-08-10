@@ -2319,9 +2319,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           lastLogin: 'Never'
         };
         if (judgeLogoId) (newJudge as any).logoFileId = judgeLogoId;
-        const currentUsers = [...this.contentService.users];
-        currentUsers.unshift(newJudge);
-        this.contentService.saveUsers(currentUsers);
+        // Save to backend FIRST so the password hash is correct
         this.apiService.createUser({
           email: newJudge.email,
           full_name: newJudge.fullName,
@@ -2330,25 +2328,34 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           password: newJudge.password || newJudge.otp || '',
           status: 'Active',
           phone: newJudge.phone || ''
-        }).subscribe({ next: () => {}, error: () => {} });
-        
-        const currentAudit = [...this.contentService.auditLogs];
-        currentAudit.unshift({
-          action: `Judge token ${ticket} generated for ${newJudge.fullName}`,
-          user: 'self-register@ntic.gov.gh',
-          time: new Date().toISOString(),
-          type: 'ticket'
+        }).subscribe({
+          next: () => {
+            const currentUsers = [...this.contentService.users];
+            currentUsers.unshift(newJudge);
+            this.contentService.saveUsers(currentUsers);
+
+            const currentAudit = [...this.contentService.auditLogs];
+            currentAudit.unshift({
+              action: `Judge token ${ticket} generated for ${newJudge.fullName}`,
+              user: 'self-register@ntic.gov.gh',
+              time: new Date().toISOString(),
+              type: 'ticket'
+            });
+            this.contentService.saveAuditLogs(currentAudit);
+
+            this.openCredentialsModal(
+              'Judge Application Submitted! 🎉',
+              'Your judge profile has been created. Copy and save your secure login credentials below:',
+              ticket,
+              otp,
+              'Use these credentials to access the Judge & Grading Portal.',
+              '/dashboard'
+            );
+          },
+          error: () => {
+            this.dialogService.toast('Failed to save account. Please try again.', 'error');
+          }
         });
-        this.contentService.saveAuditLogs(currentAudit);
-        
-        this.openCredentialsModal(
-          'Judge Application Submitted! 🎉',
-          'Your judge profile has been created. Copy and save your secure login credentials below:',
-          ticket,
-          otp,
-          'Use these credentials to access the Judge & Grading Portal.',
-          '/dashboard'
-        );
       } else if (this.activeTab === 'sponsor') {
         const ticket = 'NTIC-SPO-' + Math.random().toString(36).substring(2, 6).toUpperCase();
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -2372,9 +2379,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           lastLogin: 'Never'
         };
         if (logoFileId) (newSponsor as any).logoFileId = logoFileId;
-        const currentUsers = [...this.contentService.users];
-        currentUsers.unshift(newSponsor);
-        this.contentService.saveUsers(currentUsers);
+        // Save to backend FIRST so the password hash is correct
         this.apiService.createUser({
           email: newSponsor.email,
           full_name: newSponsor.fullName,
@@ -2383,25 +2388,34 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           password: newSponsor.password || newSponsor.otp || '',
           status: 'Active',
           phone: newSponsor.phone || ''
-        }).subscribe({ next: () => {}, error: () => {} });
+        }).subscribe({
+          next: () => {
+            const currentUsers = [...this.contentService.users];
+            currentUsers.unshift(newSponsor);
+            this.contentService.saveUsers(currentUsers);
 
-        const currentAudit = [...this.contentService.auditLogs];
-        currentAudit.unshift({
-          action: `Sponsor token ${ticket} generated for ${newSponsor.fullName}`,
-          user: 'self-register@ntic.gov.gh',
-          time: new Date().toISOString(),
-          type: 'ticket'
+            const currentAudit = [...this.contentService.auditLogs];
+            currentAudit.unshift({
+              action: `Sponsor token ${ticket} generated for ${newSponsor.fullName}`,
+              user: 'self-register@ntic.gov.gh',
+              time: new Date().toISOString(),
+              type: 'ticket'
+            });
+            this.contentService.saveAuditLogs(currentAudit);
+
+            this.openCredentialsModal(
+              'Sponsor Profile Registered! 🎉',
+              'Your sponsor account has been created. Copy and save your secure credentials below:',
+              ticket,
+              otp,
+              'Use these credentials to access the Sponsor Portal.',
+              '/dashboard'
+            );
+          },
+          error: () => {
+            this.dialogService.toast('Failed to save account. Please try again.', 'error');
+          }
         });
-        this.contentService.saveAuditLogs(currentAudit);
-        
-        this.openCredentialsModal(
-          'Sponsor Profile Registered! 🎉',
-          'Your sponsor account has been created. Copy and save your secure credentials below:',
-          ticket,
-          otp,
-          'Use these credentials to access the Sponsor Portal.',
-          '/dashboard'
-        );
       }
 
       if (approvalType) {
