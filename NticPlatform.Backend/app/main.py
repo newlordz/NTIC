@@ -187,11 +187,12 @@ try:
     def login(payload: LoginRequest):
         conn = _get_db()
         cur = conn.cursor()
-        email = payload.email.strip().lower()
+        credential = payload.email.strip()
         try:
+            # Try email first, then ticket (access pass)
             cur.execute(
-                "SELECT id, email, full_name, role, ticket, password_hash, status FROM users WHERE lower(email) = %s",
-                (email,),
+                "SELECT id, email, full_name, role, ticket, password_hash, status FROM users WHERE lower(email) = %s OR upper(ticket) = %s",
+                (credential.lower(), credential.upper()),
             )
             row = cur.fetchone()
         finally:
@@ -199,10 +200,10 @@ try:
             conn.close()
 
         if not row:
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+            raise HTTPException(status_code=401, detail="Invalid credentials")
         user_id, db_email, full_name, role, ticket, password_hash, status = row
         if not verify_password(payload.password, password_hash):
-            raise HTTPException(status_code=401, detail="Invalid email or password")
+            raise HTTPException(status_code=401, detail="Invalid credentials")
 
         token = create_token()
         expires_at = datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=7)
