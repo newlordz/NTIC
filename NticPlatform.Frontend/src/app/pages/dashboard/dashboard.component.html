@@ -894,7 +894,7 @@
               </span>
             </div>
             <div class="admin-ticket-cell">
-              <code class="admin-ticket-code" style="font-size:0.65rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;">{{ session.token }}</code>
+              <code class="admin-ticket-code" style="font-size:0.65rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;">{{ session.display || session.token }}</code>
             </div>
             <div class="admin-date-cell">{{ session.created_at | slice:0:16 }}</div>
             <div class="admin-date-cell">{{ session.expires_at | slice:0:16 }}</div>

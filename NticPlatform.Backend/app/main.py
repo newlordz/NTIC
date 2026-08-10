@@ -279,7 +279,7 @@ try:
         rows = cur.fetchall()
         cur.close(); conn.close()
         return [
-            {"token": r[0][:8] + "..." + r[0][-8:], "user_id": r[1], "email": r[2], "created_at": str(r[3]),
+            {"token": r[0], "display": r[0][:8] + "..." + r[0][-8:], "user_id": r[1], "email": r[2], "created_at": str(r[3]),
              "expires_at": str(r[4]), "full_name": r[5], "role": r[6], "active": True}
             for r in rows
         ]
