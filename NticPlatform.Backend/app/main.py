@@ -2,7 +2,10 @@ import os
 import uuid
 import random
 import datetime
+import logging
 from typing import Optional
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s %(message)s")
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import init_postgres_db, get_db_connection
