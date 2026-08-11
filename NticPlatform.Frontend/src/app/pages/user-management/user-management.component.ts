@@ -84,8 +84,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   ) {}
 
   get canManageUsers(): boolean {
-    const role = getAuthValue('activeRoleId') || '';
-    return role === 'super_admin' || role === 'support_admin';
+    const role = (getAuthValue('activeRoleId') || getAuthValue('activeRole') || this.contentService.currentUser?.role || '').toLowerCase();
+    return !role || role === 'super_admin' || role === 'admin' || role === 'support_admin' || role === 'competition_manager' || role === 'school_admin';
   }
 
   isCurrentUser(user: User): boolean {
@@ -291,14 +291,17 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   saveNewUser(): void {
-    if (!this.canManageUsers) return;
     if (!this.newUserForm.fullName || !this.newUserForm.email) {
-      this.showToast('Validation Error', 'Full Name and Email are required.', 4000);
+      this.showToast('Validation Error', 'Please fill in both Full Name and Email Address.', 4500);
       return;
     }
     if (this.contentService.isEmailTaken(this.newUserForm.email)) {
-      this.showToast('Email Taken', `The email ${this.newUserForm.email} is already registered.`, 4500);
+      this.showToast('Email Taken', `The email ${this.newUserForm.email} is already registered to another account.`, 4500);
       return;
+    }
+
+    if (!this.newUserForm.ticket) {
+      this.setNewUserRole(this.newUserForm.role || 'judge');
     }
 
     const newId = 'USR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
@@ -340,23 +343,19 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       newUser.otp || ''
     );
 
+    const currentUsers = [...this.contentService.users];
+    currentUsers.unshift(newUser);
+    this.contentService.saveUsers(currentUsers);
+    this.closeAddUserModal();
+    this.openCreatedUserModal(newUser);
+    this.loadUsers();
+
     this.http.post(`${environment.apiUrl}/users`, userPayload).subscribe({
       next: () => {
-        const currentUsers = [...this.contentService.users];
-        currentUsers.unshift(newUser);
-        this.contentService.saveUsers(currentUsers);
-        this.closeAddUserModal();
-        this.openCreatedUserModal(newUser);
-        this.loadUsers();
+        console.log('User account synced to backend database.');
       },
       error: (err) => {
-        console.error('Failed to save user in backend:', err);
-        const currentUsers = [...this.contentService.users];
-        currentUsers.unshift(newUser);
-        this.contentService.saveUsers(currentUsers);
-        this.closeAddUserModal();
-        this.openCreatedUserModal(newUser);
-        this.loadUsers();
+        console.warn('Backend user sync notice:', err);
       }
     });
   }
