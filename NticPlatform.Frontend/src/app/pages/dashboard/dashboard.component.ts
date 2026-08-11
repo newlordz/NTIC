@@ -1093,6 +1093,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  editUserFromTable(user: any): void {
+    this.router.navigate(['/user-management'], { queryParams: { edit: user.id || user.email } });
+  }
+
   deleteUserFromTable(user: any): void {
     this.deleteUserConfirm = user;
   }
@@ -1271,18 +1275,21 @@ setTimeout(async () => {
 
       // Save locally only after backend confirms
       try {
-        await firstValueFrom(this.apiService.createUser({
+        const apiPayload: any = {
           email: newUser.email,
           full_name: newUser.fullName,
           role: newUser.role,
           ticket: newUser.ticket,
           password: newUser.password || newUser.otp || '',
           status: 'Active'
-        } as any));
+        };
+        if (newUser.phone) apiPayload.phone = newUser.phone;
+        await firstValueFrom(this.apiService.createUser(apiPayload));
         const currentUsers = [...this.contentService.users];
         currentUsers.unshift(newUser);
         this.contentService.saveUsers(currentUsers);
       } catch (_) {
+        this.regSubmitting = false;
         this.dialogService.toast('Failed to save account to server. Please try again.', 'error');
         return;
       }

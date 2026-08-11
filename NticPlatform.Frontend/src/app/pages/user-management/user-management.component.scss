@@ -794,6 +794,14 @@ $radius-xl: 20px;
     color: $text-muted;
     &:hover { background: $blue-lt; color: $blue; }
   }
+  &.ra-status {
+    color: $text-muted;
+    &:hover { background: $amber-lt; color: #f59e0b; }
+  }
+  &.ra-reset {
+    color: $text-muted;
+    &:hover { background: $purple-lt; color: $purple; }
+  }
   &.ra-delete {
     color: $text-muted;
     &:hover { background: $red-lt; color: $red; }
@@ -1864,4 +1872,14 @@ $radius-xl: 20px;
     border-color: rgba(255, 255, 255, 0.08);
   }
 }
+
+.spinning {
+  animation: spin-icon 0.9s linear infinite;
+}
+
+@keyframes spin-icon {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 

@@ -608,6 +608,9 @@
           <div><code style="font-size:11px;background:var(--surface-container);padding:2px 6px;border-radius:4px;">{{ user.ticket }}</code></div>
           <div class="admin-date-cell">{{ user.registeredAt }}</div>
           <div class="admin-actions-cell">
+            <button class="admin-action-btn" title="Edit User" (click)="editUserFromTable(user)">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
             <button class="admin-action-btn" title="Toggle Status" (click)="toggleUserStatus(user)">
               <span class="material-symbols-outlined">{{ user.status === 'Active' ? 'block' : 'check_circle' }}</span>
             </button>
