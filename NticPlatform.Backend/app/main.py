@@ -2065,7 +2065,7 @@ try:
         elif payload.collection == "submissions":
             for item in payload.items:
                 cur.execute("INSERT INTO assignment_submissions (id, tenant_id, student_id, source_code_path, video_url, status, score, feedback) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, score = EXCLUDED.score, feedback = EXCLUDED.feedback",
-                            (item.get("id"), item.get("school","default"), item.get("student",""), item.get("file",""), item.get("videoUrl",""), item.get("status","pending"), item.get("score"), item.get("feedback","")))
+                            (item.get("id"), item.get("school","default"), item.get("student") or None, item.get("file",""), item.get("videoUrl") or None, item.get("status","pending"), item.get("score"), item.get("feedback") or None))
         else:
             cur.close()
             conn.close()
