@@ -5511,6 +5511,17 @@ select.form-control {
           box-shadow: 0 2px 8px rgba(0,0,0,0.15);
           background: linear-gradient(135deg, #818cf8, #6366f1); // fallback, overridden by track theme
           letter-spacing: 0.02em;
+
+          &.lead {
+            width: 40px;
+            height: 40px;
+            font-size: 12px;
+            border: 2.5px solid #fbbf24;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+            box-shadow: 0 0 0 2px rgba(251,191,36,0.3);
+          }
+
+          .material-symbols-outlined { font-size: 18px; }
         }
       }
     }
