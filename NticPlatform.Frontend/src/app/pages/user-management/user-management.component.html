@@ -743,10 +743,6 @@
               <span class="material-symbols-outlined">handshake</span>
               <span>Sponsor</span>
             </button>
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'school_admin'" (click)="setNewUserRole('school_admin')">
-              <span class="material-symbols-outlined">school</span>
-              <span>School Admin</span>
-            </button>
             <button class="ca-role-chip" [class.selected]="newUserForm.role === 'content_manager'" (click)="setNewUserRole('content_manager')">
               <span class="material-symbols-outlined">edit_note</span>
               <span>Content Mgr</span>
@@ -758,10 +754,6 @@
             <button class="ca-role-chip" [class.selected]="newUserForm.role === 'competition_manager'" (click)="setNewUserRole('competition_manager')">
               <span class="material-symbols-outlined">emoji_events</span>
               <span>Comp. Manager</span>
-            </button>
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'admin'" (click)="setNewUserRole('admin')">
-              <span class="material-symbols-outlined">admin_panel_settings</span>
-              <span>Administrator</span>
             </button>
           </div>
         </div>
