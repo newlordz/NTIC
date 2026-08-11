@@ -19,7 +19,7 @@
         <span class="material-symbols-outlined" style="color: #60a5fa; font-size: 26px;">gavel</span>
         <div>
           <div style="font-size: 13px; font-weight: 700; color: #fff;">{{ loggedInJudge.fullName }}</div>
-          <div style="font-size: 11px; color: rgba(255,255,255,0.85);">{{ loggedInJudge.organization }} • Track: <strong style="color: #93c5fd;">{{ loggedInJudge.track }}</strong></div>
+          <div style="font-size: 11px; color: rgba(255,255,255,0.85);">{{ loggedInJudge.organization }} * Track: <strong style="color: #93c5fd;">{{ loggedInJudge.track }}</strong></div>
         </div>
       </div>
     </div>
@@ -258,7 +258,7 @@
           <h2 style="margin:0 0 4px;font-size:18px;">Confirm Official Score</h2>
           <p style="margin:0 0 16px;color:var(--on-surface-variant);font-size:13px;">This score will be published to the leaderboard and cannot be undone without admin override.</p>
           <div style="font-size:42px;font-weight:800;color:var(--primary);margin-bottom:4px;">{{ totalScore }}<span style="font-size:18px;color:var(--on-surface-variant);">/100</span></div>
-          <div style="font-size:12px;color:var(--on-surface-variant);">{{ selectedTeam.name }} — {{ selectedTeam.projectTitle }}</div>
+          <div style="font-size:12px;color:var(--on-surface-variant);">{{ selectedTeam.name }} -- {{ selectedTeam.projectTitle }}</div>
           <div style="margin-top:20px;display:flex;gap:12px;justify-content:center;">
             <button class="btn-cancel" (click)="showConfirmPublish = false">Adjust Score</button>
             <button class="btn-publish" (click)="submitScore()">

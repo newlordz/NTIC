@@ -637,7 +637,7 @@
               {{ getUserRoleLabel(user) }}
             </span>
           </div>
-          <div class="admin-date-cell">{{ user.organization || '—' }}</div>
+          <div class="admin-date-cell">{{ user.organization || '--' }}</div>
           <div>
             <span class="admin-status-badge" [class]="user.status.toLowerCase()">{{ user.status }}</span>
           </div>
@@ -1219,7 +1219,7 @@
             </label>
             <select [(ngModel)]="hofForm.selectedTeamId" (ngModelChange)="onHofTeamSelect($event)" style="margin-top: 4px; border-color: var(--primary);">
               <option value="">-- Select a registered team to auto-fill roster & school --</option>
-              <option *ngFor="let t of contentService.teams" [value]="t.id || t.name">{{ t.name }} — {{ t.schoolName || 'Partner School' }} ({{ t.track || 'General' }})</option>
+              <option *ngFor="let t of contentService.teams" [value]="t.id || t.name">{{ t.name }} -- {{ t.schoolName || 'Partner School' }} ({{ t.track || 'General' }})</option>
             </select>
           </div>
 
@@ -1457,7 +1457,7 @@
           </div>
           <div class="cms-field">
             <label>School &amp; Grade <span class="req">*</span></label>
-            <input type="text" [(ngModel)]="tdForm.schoolAndGrade" placeholder="e.g. Newton Academy • Grade 11">
+            <input type="text" [(ngModel)]="tdForm.schoolAndGrade" placeholder="e.g. Newton Academy * Grade 11">
           </div>
           <div class="cms-field">
             <label>Score / Achievement <span class="req">*</span></label>
@@ -2016,7 +2016,7 @@
           </div>
           <div class="cms-field cms-field-full">
             <label>Title</label>
-            <input type="text" [(ngModel)]="editingEvent.title" placeholder="Regional Qualifier — Greater Accra">
+            <input type="text" [(ngModel)]="editingEvent.title" placeholder="Regional Qualifier -- Greater Accra">
           </div>
           <div class="cms-field cms-field-full">
             <label>Description</label>
@@ -2160,14 +2160,14 @@
                 <span class="material-symbols-outlined detail-icon">location_on</span>
                 <div class="detail-content">
                   <span class="detail-label">District</span>
-                  <span class="detail-value">{{ activePreviewRequest.details.district || '—' }}</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.district || '--' }}</span>
                 </div>
               </div>
               <div class="preview-detail-card">
                 <span class="material-symbols-outlined detail-icon">gps_fixed</span>
                 <div class="detail-content">
                   <span class="detail-label">GPS Address</span>
-                  <span class="detail-value">{{ activePreviewRequest.details.gps || '—' }}</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.gps || '--' }}</span>
                 </div>
               </div>
             </div>
@@ -2184,21 +2184,21 @@
                 <span class="material-symbols-outlined detail-icon">person</span>
                 <div class="detail-content">
                   <span class="detail-label">Representative Name</span>
-                  <span class="detail-value">{{ activePreviewRequest.details.repName || '—' }}</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.repName || '--' }}</span>
                 </div>
               </div>
               <div class="preview-detail-card">
                 <span class="material-symbols-outlined detail-icon">mail</span>
                 <div class="detail-content">
                   <span class="detail-label">Representative Email</span>
-                  <span class="detail-value">{{ activePreviewRequest.details.repEmail || '—' }}</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.repEmail || '--' }}</span>
                 </div>
               </div>
               <div class="preview-detail-card">
                 <span class="material-symbols-outlined detail-icon">phone</span>
                 <div class="detail-content">
                   <span class="detail-label">Representative Phone</span>
-                  <span class="detail-value">{{ activePreviewRequest.details.repTel || '—' }}</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.repTel || '--' }}</span>
                 </div>
               </div>
             </div>
@@ -2455,28 +2455,28 @@
                 <span class="material-symbols-outlined detail-icon">calendar_today</span>
                 <div class="detail-content">
                   <span class="detail-label">Date of Birth</span>
-                  <span class="detail-value">{{ activePreviewRequest.details.dob || '—' }}</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.dob || '--' }}</span>
                 </div>
               </div>
               <div class="preview-detail-card">
                 <span class="material-symbols-outlined detail-icon">wc</span>
                 <div class="detail-content">
                   <span class="detail-label">Gender</span>
-                  <span class="detail-value">{{ activePreviewRequest.details.gender || '—' }}</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.gender || '--' }}</span>
                 </div>
               </div>
               <div class="preview-detail-card">
                 <span class="material-symbols-outlined detail-icon">school</span>
                 <div class="detail-content">
                   <span class="detail-label">Class</span>
-                  <span class="detail-value">{{ activePreviewRequest.details.class || '—' }}</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.class || '--' }}</span>
                 </div>
               </div>
               <div class="preview-detail-card">
                 <span class="material-symbols-outlined detail-icon">family_restroom</span>
                 <div class="detail-content">
                   <span class="detail-label">Guardian</span>
-                  <span class="detail-value">{{ activePreviewRequest.details.guardianName || '—' }} {{ activePreviewRequest.details.guardianPhone ? '• ' + activePreviewRequest.details.guardianPhone : '' }}</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.guardianName || '--' }} {{ activePreviewRequest.details.guardianPhone ? '* ' + activePreviewRequest.details.guardianPhone : '' }}</span>
                 </div>
               </div>
               <div class="preview-detail-card" *ngIf="activePreviewRequest.details.code">
@@ -2512,7 +2512,7 @@
           <span class="material-symbols-outlined review-dialog-icon">gavel</span>
           <div>
             <h3>Review & Rejection</h3>
-            <p>{{ activeReviewRequest.entity }} — {{ activeReviewRequest.type }}</p>
+            <p>{{ activeReviewRequest.entity }} -- {{ activeReviewRequest.type }}</p>
           </div>
         </div>
         <button class="review-dialog-close" (click)="closeReview()">
@@ -2814,19 +2814,19 @@
               <div class="preview-fields">
                 <div class="preview-field">
                   <span class="preview-field-label">Organization</span>
-                  <span class="preview-field-value" [class.preview-placeholder]="!regForm.organization">{{ regForm.organization || '—' }}</span>
+                  <span class="preview-field-value" [class.preview-placeholder]="!regForm.organization">{{ regForm.organization || '--' }}</span>
                 </div>
                 <div class="preview-field" *ngIf="registerRole === 'judge'">
                   <span class="preview-field-label">Track</span>
-                  <span class="preview-field-value" [class.preview-placeholder]="!regForm.track && (!regForm.tracks || regForm.tracks.length === 0)">{{ regForm.track || (regForm.tracks && regForm.tracks.join(', ')) || '—' }}</span>
+                  <span class="preview-field-value" [class.preview-placeholder]="!regForm.track && (!regForm.tracks || regForm.tracks.length === 0)">{{ regForm.track || (regForm.tracks && regForm.tracks.join(', ')) || '--' }}</span>
                 </div>
                 <div class="preview-field" *ngIf="registerRole === 'sponsor'">
                   <span class="preview-field-label">Package</span>
-                  <span class="preview-field-value" [class.preview-placeholder]="!regForm.tier">{{ regForm.tier || '—' }}</span>
+                  <span class="preview-field-value" [class.preview-placeholder]="!regForm.tier">{{ regForm.tier || '--' }}</span>
                 </div>
                 <div class="preview-field">
                   <span class="preview-field-label">Phone</span>
-                  <span class="preview-field-value" [class.preview-placeholder]="!regForm.phone">{{ regForm.phone || '—' }}</span>
+                  <span class="preview-field-value" [class.preview-placeholder]="!regForm.phone">{{ regForm.phone || '--' }}</span>
                 </div>
               </div>
               <div class="preview-code-section">
@@ -2897,8 +2897,8 @@
           <span class="badge" [class]="currentUser?.status === 'Active' ? 'secondary' : 'primary'">{{ currentUser?.status || 'Active' }}</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;border-top:1px solid var(--outline-variant);padding-top:12px;">
-          <div><span style="color:var(--on-surface-variant);">Token</span><br><span style="font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--primary);">{{ currentUser?.ticket || '—' }}</span></div>
-          <div><span style="color:var(--on-surface-variant);">Contact</span><br><span style="font-weight:600;">{{ currentUser?.phone || '—' }}</span></div>
+          <div><span style="color:var(--on-surface-variant);">Token</span><br><span style="font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--primary);">{{ currentUser?.ticket || '--' }}</span></div>
+          <div><span style="color:var(--on-surface-variant);">Contact</span><br><span style="font-weight:600;">{{ currentUser?.phone || '--' }}</span></div>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:24px;">

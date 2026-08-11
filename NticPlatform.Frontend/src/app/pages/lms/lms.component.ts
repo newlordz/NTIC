@@ -1,4 +1,4 @@
-﻿import { getAuthValue } from '../../services/session.util';
+import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -503,7 +503,7 @@ export class LmsComponent implements OnInit {
 
     const currentAudit = [...this.contentService.auditLogs];
     currentAudit.unshift({
-      action: `New submission by ${this.studentProfile.name}: "${this.newSubmission.assignmentName}" — ${this.newSubmission.fileName}`,
+      action: `New submission by ${this.studentProfile.name}: "${this.newSubmission.assignmentName}" -- ${this.newSubmission.fileName}`,
       user: this.studentProfile.email || this.studentProfile.name,
       time: new Date().toISOString(),
       type: 'approval'

@@ -961,7 +961,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         if (tokensIdx >= 0) {
           this.stats[tokensIdx] = { ...this.stats[tokensIdx], value: String(this.authSessionCount) };
         }
-        alert(`Done — ${res.revoked} session(s) revoked.`);
+        alert(`Done -- ${res.revoked} session(s) revoked.`);
       },
       error: (err) => {
         alert('Failed to revoke sessions: ' + (err?.error?.detail || 'Unknown error'));
@@ -1529,7 +1529,7 @@ setTimeout(async () => {
         this.emailService.sendApprovalEmail(leadEmail, leadName, req.entity, req.type, ticket, otp);
         this.openCredentialsModal('Team Addition Approved!', `Your squad "${req.entity}" has been approved. Team Lead credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${leadEmail}`);
       } else {
-        this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A — Team Added', 'N/A');
+        this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A -- Team Added', 'N/A');
         this.showCustomAlert(`Team "${req.entity}" has been successfully approved and added to national competition tracks.`, 'Team Addition Approved', 'success');
       }
     } else if (req.type === 'Student Registration') {
@@ -1763,7 +1763,7 @@ setTimeout(async () => {
 
     const currentAudit = [...this.contentService.auditLogs];
     currentAudit.unshift({
-      action: `${req.type} rejected (quick): ${req.entity} — ${reason}`,
+      action: `${req.type} rejected (quick): ${req.entity} -- ${reason}`,
       user: 'admin@ntic.org.gh',
       time: new Date().toISOString(),
       type: 'system'

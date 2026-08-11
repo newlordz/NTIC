@@ -162,9 +162,9 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getAgeRange(people: any[]): string {
-    if (!people || people.length === 0) return '—';
+    if (!people || people.length === 0) return '--';
     const ages = people.map((p: any) => p.age);
-    return Math.min(...ages) + ' – ' + Math.max(...ages) + ' yrs';
+    return Math.min(...ages) + ' - ' + Math.max(...ages) + ' yrs';
   }
 
   countMales(people: any[]): number {
@@ -421,11 +421,11 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   };
 
   trackModalTitles: any = {
-    coding:     'Coding & Algorithms — Speed Sprints Arena',
-    robotics:   'Robotics & IoT — Autonomous Navigation Lab',
-    ai:         'Artificial Intelligence — Neural Vision Studio',
-      cyber:      'Networking & Cybersecurity CTF — Intrusion Defense Matrix',
-    innovation: 'Open Innovation — Smart City Green Tech Grid'
+    coding:     'Coding & Algorithms -- Speed Sprints Arena',
+    robotics:   'Robotics & IoT -- Autonomous Navigation Lab',
+    ai:         'Artificial Intelligence -- Neural Vision Studio',
+      cyber:      'Networking & Cybersecurity CTF -- Intrusion Defense Matrix',
+    innovation: 'Open Innovation -- Smart City Green Tech Grid'
   };
 
   trackModalSubtitles: any = {
@@ -451,7 +451,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       missionSuccess: false,
       clawOpen: false,
       cargo: 'None',
-      status: 'RADAR SCANNING • PATH CLEAR',
+      status: 'RADAR SCANNING * PATH CLEAR',
       statusColor: '#00e676',
       log: 'Ultrasonic echo return: 24cm. Proceeding forward at 85% RPM.'
     },
@@ -495,11 +495,11 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       epoch: 0,
       loss: '2.3026',
       accuracy: 0,
-      label: 'Cocoa Pod • Healthy (Class 0)',
+      label: 'Cocoa Pod * Healthy (Class 0)',
       sampleIcon: '🌿',
       sampleName: 'Cocoa Pod',
       gpuLoad: '74%',
-      status: '⚡ MODEL INITIALIZED — Ready for training',
+      status: '⚡ MODEL INITIALIZED -- Ready for training',
       statusColor: '#ab47bc',
       log: 'ResNet-50 loaded with random weights. Select a crop or start training.',
       confusionMatrix: [
@@ -509,9 +509,9 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         [25, 25, 25, 25]
       ],
       classLabels: ['Cocoa', 'Maize', 'Potato', 'Tomato'],
-      classPrecision: ['—', '—', '—', '—'],
-      classRecall: ['—', '—', '—', '—'],
-      classF1: ['—', '—', '—', '—']
+      classPrecision: ['--', '--', '--', '--'],
+      classRecall: ['--', '--', '--', '--'],
+      classF1: ['--', '--', '--', '--']
     },
     cyber: {
       packetsSec: 4250,
@@ -522,7 +522,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       honeypotDecoys: 5,
       ipsAlerts: 2,
       threatLevel: 'ELEVATED',
-      status: 'THREAT DETECTED • ANALYZING PAYLOAD ON PORT 443',
+      status: 'THREAT DETECTED * ANALYZING PAYLOAD ON PORT 443',
       statusColor: '#ff1744',
       log: 'Suricata IDS rule trig. CVE-2024-6387 probe from 45.33.32.156 → dropped. Snort sig 1:2029381 matched.'
     },
@@ -540,9 +540,9 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   };
 
     private trackCodeSnippets: any = {
-    coding: `# NTIC Coding Track — Dynamic Programming\n# Problem: Longest Common Subsequence\n\ndef lcs(s1: str, s2: str) -> int:\n    m, n = len(s1), len(s2)\n    dp = [[0]*(n+1) for _ in range(m+1)]\n    for i in range(1, m+1):\n        for j in range(1, n+1):\n            if s1[i-1] == s2[j-1]:\n                dp[i][j] = dp[i-1][j-1] + 1\n            else:\n                dp[i][j] = max(dp[i-1][j], dp[i][j-1])\n    return dp[m][n]\n\nprint(lcs("ABCBDAB", "BDCAB"))  # → 4`,
-    robotics: `// NTIC Robotics — Autonomous Navigation\n// Arduino: Ultrasonic obstacle avoidance\n\n#include <Servo.h>\nconst int TRIG=9, ECHO=10;\n\nvoid setup() {\n  pinMode(TRIG, OUTPUT);\n  pinMode(ECHO, INPUT);\n}\n\nlong readDist() {\n  digitalWrite(TRIG, HIGH); delayMicroseconds(10);\n  return pulseIn(ECHO, HIGH) * 0.034 / 2;\n}\n\nvoid loop() {\n  long d = readDist();\n  if (d < 20) spinRight(400);\n  else        moveForward();\n}`,
-    ai: `# NTIC AI Track — Crop Disease Classifier\nimport torch, torch.nn as nn\nfrom torchvision import models, transforms\n\ntransform = transforms.Compose([\n    transforms.Resize((224, 224)),\n    transforms.ToTensor(),\n    transforms.Normalize([0.485,0.456,0.406],\n                         [0.229,0.224,0.225])\n])\n\nmodel = models.resnet18(pretrained=True)\nmodel.fc = nn.Linear(512, 4)  # 4 disease classes\noptimizer = torch.optim.Adam(\n    model.parameters(), lr=1e-4)`,
+    coding: `# NTIC Coding Track -- Dynamic Programming\n# Problem: Longest Common Subsequence\n\ndef lcs(s1: str, s2: str) -> int:\n    m, n = len(s1), len(s2)\n    dp = [[0]*(n+1) for _ in range(m+1)]\n    for i in range(1, m+1):\n        for j in range(1, n+1):\n            if s1[i-1] == s2[j-1]:\n                dp[i][j] = dp[i-1][j-1] + 1\n            else:\n                dp[i][j] = max(dp[i-1][j], dp[i][j-1])\n    return dp[m][n]\n\nprint(lcs("ABCBDAB", "BDCAB"))  # → 4`,
+    robotics: `// NTIC Robotics -- Autonomous Navigation\n// Arduino: Ultrasonic obstacle avoidance\n\n#include <Servo.h>\nconst int TRIG=9, ECHO=10;\n\nvoid setup() {\n  pinMode(TRIG, OUTPUT);\n  pinMode(ECHO, INPUT);\n}\n\nlong readDist() {\n  digitalWrite(TRIG, HIGH); delayMicroseconds(10);\n  return pulseIn(ECHO, HIGH) * 0.034 / 2;\n}\n\nvoid loop() {\n  long d = readDist();\n  if (d < 20) spinRight(400);\n  else        moveForward();\n}`,
+    ai: `# NTIC AI Track -- Crop Disease Classifier\nimport torch, torch.nn as nn\nfrom torchvision import models, transforms\n\ntransform = transforms.Compose([\n    transforms.Resize((224, 224)),\n    transforms.ToTensor(),\n    transforms.Normalize([0.485,0.456,0.406],\n                         [0.229,0.224,0.225])\n])\n\nmodel = models.resnet18(pretrained=True)\nmodel.fc = nn.Linear(512, 4)  # 4 disease classes\noptimizer = torch.optim.Adam(\n    model.parameters(), lr=1e-4)`,
     cyber: `#!/usr/bin/env python3
 # NTIC CTF - Network Forensic Challenge
 # Analyze a compromised server's DNS exfiltration
@@ -565,7 +565,7 @@ decoded = base64.b64decode(encoded).decode()
 print(f"[+] C2 beacon decrypted")
 print(f"[+] Threat ID: {decoded}")
 print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
-    innovation: `// NTIC Innovation — Solar Dashboard\nimport { useState, useEffect } from 'react';\n\nexport default function SolarDashboard() {\n  const [kw, setKw] = useState(0);\n\n  useEffect(() => {\n    const ws = new WebSocket(\n      'wss://iot.ntic.gov.gh/solar');\n    ws.onmessage = ({ data }) =>\n      setKw(JSON.parse(data).kw);\n    return () => ws.close();\n  }, []);\n\n  return <h2>⚡ {kw} kW Generated</h2>;\n}`
+    innovation: `// NTIC Innovation -- Solar Dashboard\nimport { useState, useEffect } from 'react';\n\nexport default function SolarDashboard() {\n  const [kw, setKw] = useState(0);\n\n  useEffect(() => {\n    const ws = new WebSocket(\n      'wss://iot.ntic.gov.gh/solar');\n    ws.onmessage = ({ data }) =>\n      setKw(JSON.parse(data).kw);\n    return () => ws.close();\n  }, []);\n\n  return <h2>⚡ {kw} kW Generated</h2>;\n}`
   };
 
   // ── CODING CHALLENGE WIDGET ───────────────────────────────────
@@ -924,7 +924,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
   activeLeaderboardFilter = 'all';
   isLeaderboardTransitioning = false;
 
-  leaderboardData: any[] = []; // kept for compatibility but not used directly — use contentService
+  leaderboardData: any[] = []; // kept for compatibility but not used directly -- use contentService
 
   get filteredLeaderboard(): any[] {
     const filter = this.activeLeaderboardFilter;
@@ -1365,7 +1365,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     videoElements.forEach((video) => {
       const slideItem = video.closest('.slide-item');
       if (slideItem && slideItem.classList.contains('active')) {
-        // Muted autoplay is allowed by browsers — set muted via JS property to guarantee it
+        // Muted autoplay is allowed by browsers -- set muted via JS property to guarantee it
         video.muted = true;
         video.defaultMuted = true;
         video.play().then(() => {}).catch((err) => {
@@ -1381,7 +1381,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     });
   }
 
-  // Video error fallback — log if asset fails to load
+  // Video error fallback -- log if asset fails to load
   onVideoError(event: Event): void {
     console.warn('Video failed to load:', event);
   }
@@ -1536,7 +1536,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       clearInterval(this.decryptInterval);
     }
     
-    this.password = '••••••••••••';
+    this.password = '************';
     const emailInput = (this.elementRef.nativeElement.querySelector('#email') || this.elementRef.nativeElement.querySelector('#emailModal')) as HTMLInputElement;
     
     let currentIteration = 0;
@@ -1612,7 +1612,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         this.isLoggingIn = false;
         if (typeof document !== 'undefined') document.body.style.overflow = '';
         if (err.status === 503 || err.status === 0 || err.name === 'TimeoutError') {
-          this.loginError = 'Server is warming up. The database may still be starting — please wait a moment and try again.';
+          this.loginError = 'Server is warming up. The database may still be starting -- please wait a moment and try again.';
         } else {
           this.doLogin(credential, pass);
         }
@@ -1629,7 +1629,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
           document.body.style.overflow = '';
         }
         if (err.status === 0 || err.status === 502 || err.status === 503 || err.name === 'TimeoutError') {
-          this.loginError = 'Server is warming up after deployment. Try again in 20–30 seconds.';
+          this.loginError = 'Server is warming up after deployment. Try again in 20-30 seconds.';
         } else if (err.status === 401) {
           this.loginError = 'Incorrect email or password. Please try again.';
         } else {
@@ -1879,7 +1879,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         const mouseMoveHandler = (event: MouseEvent) => {
           lastX = event.clientX;
           lastY = event.clientY;
-          if (rAFId) return; // Already scheduled — skip
+          if (rAFId) return; // Already scheduled -- skip
 
           rAFId = requestAnimationFrame(() => {
             rAFId = null;
@@ -1959,7 +1959,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Skip complex animation on mobile — poor UX, high battery cost
+    // Skip complex animation on mobile -- poor UX, high battery cost
     const isMobile = window.innerWidth < 768;
     if (isMobile) {
       // Draw a simple static gradient and return
@@ -2027,7 +2027,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       this.stripeTargetMouseX = -9999; this.stripeTargetMouseY = -9999;
       this.stripeMouseX = -9999; this.stripeMouseY = -9999;
 
-      // ── STALKS (80 — down from 160) ────────────────────────
+      // ── STALKS (80 -- down from 160) ────────────────────────
       interface Stalk {
         bx: number; by: number; ba: number; ca: number;
         len: number; ml: number; spd: number; lw: number; dr: number;
@@ -2758,7 +2758,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
             ctx.stroke();
 
             // HUD species label pill above bubble
-            const label = `🎣 Caught: ${f.name} — Click to release`;
+            const label = `🎣 Caught: ${f.name} -- Click to release`;
             ctx.font = `bold ${Math.round(12 * Math.max(sc, 0.7))}px Inter, sans-serif`;
             const tm = ctx.measureText(label);
             const pillW = tm.width + Math.round(24 * sc);
@@ -2794,7 +2794,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
           ctx.restore();
         });
 
-        // Graceful Passing Jellyfishes — bounce off sea level & stay strictly underwater
+        // Graceful Passing Jellyfishes -- bounce off sea level & stay strictly underwater
         jellies.forEach(j => {
           const pulse = Math.sin(frame * 0.045 + j.p);
           j.x += (j.vx + Math.cos(frame * 0.02 + j.p) * 0.15) * dt;
@@ -3064,7 +3064,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
 
             ctx.fillStyle = '#00f2fe';
             ctx.font = `${Math.round(14 * Math.max(sc, 0.7))}px Inter, sans-serif`;
-            ctx.fillText(`Final Challenge Score: ${gameScore} PTS — Click anywhere to play again!`, width / 2, cardY + Math.round(88 * sc));
+            ctx.fillText(`Final Challenge Score: ${gameScore} PTS -- Click anywhere to play again!`, width / 2, cardY + Math.round(88 * sc));
             ctx.restore();
           }
         }
@@ -3194,7 +3194,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
             const dist = Math.floor(Math.random() * 18) + 18; // 18-35cm
             this.arenaState.robotics.distance = dist;
             if (dist > 20) {
-              this.arenaState.robotics.status = '🟢 RADAR SCANNING • PATH CLEAR';
+              this.arenaState.robotics.status = '🟢 RADAR SCANNING * PATH CLEAR';
               this.arenaState.robotics.statusColor = '#00e676';
             }
           } else if (track === 'coding') {
@@ -3279,11 +3279,11 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       if (actionType === 'left' || actionType === 'turn_left') {
         state.angle = (currentAngle - 45 + 360) % 360;
         state.statusColor = '#0088cc';
-        state.log = `Turned left 45° — heading ${state.angle}°`;
+        state.log = `Turned left 45° -- heading ${state.angle}°`;
       } else if (actionType === 'right' || actionType === 'turn_right') {
         state.angle = (currentAngle + 45) % 360;
         state.statusColor = '#0088cc';
-        state.log = `Turned right 45° — heading ${state.angle}°`;
+        state.log = `Turned right 45° -- heading ${state.angle}°`;
       } else if (actionType === 'forward') {
         const rad = (currentAngle - 90) * (Math.PI / 180);
         const step = 8;
@@ -3293,7 +3293,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         state.posY = Math.max(12, Math.min(88, (state.posY || 50) + dy));
         state.motorSpeed = 95;
         state.statusColor = '#00e676';
-        state.log = `Driving forward (heading ${currentAngle}°) — position (${state.posX}%, ${state.posY}%)`;
+        state.log = `Driving forward (heading ${currentAngle}°) -- position (${state.posX}%, ${state.posY}%)`;
       } else if (actionType === 'reverse') {
         const rad = (currentAngle - 90) * (Math.PI / 180);
         const step = 8;
@@ -3303,11 +3303,11 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         state.posY = Math.max(12, Math.min(88, (state.posY || 50) - dy));
         state.motorSpeed = 70;
         state.statusColor = '#38bdf8';
-        state.log = `Reversing (heading ${currentAngle}°) — position (${state.posX}%, ${state.posY}%)`;
+        state.log = `Reversing (heading ${currentAngle}°) -- position (${state.posX}%, ${state.posY}%)`;
       } else if (actionType === 'stop') {
         state.motorSpeed = 0;
         state.statusColor = '#ffea00';
-        state.log = 'Halted — radar monitoring perimeter';
+        state.log = 'Halted -- radar monitoring perimeter';
       } else if (actionType === 'claw') {
         state.clawOpen = !state.clawOpen;
         state.armAnimating = true;
@@ -3317,7 +3317,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
           state.cargo = 'Stone';
           state.obstacleStatus = 'Loaded on Rover';
           state.statusColor = '#00e676';
-          state.log = 'Robotic arm extended — stone grabbed and loaded onto rover cargo bay';
+          state.log = 'Robotic arm extended -- stone grabbed and loaded onto rover cargo bay';
         } else {
           state.obstacleX = state.posX || 50;
           state.obstacleY = state.posY || 50;
@@ -3342,7 +3342,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         state.obstacleY = randY;
         state.obstacleStatus = 'Target Stone';
         state.statusColor = '#ffab00';
-        state.log = `🪨 Stone spawned at (${randX}%, ${randY}%) — ready to grab`;
+        state.log = `🪨 Stone spawned at (${randX}%, ${randY}%) -- ready to grab`;
       } else if (actionType === 'autopilot') {
         while (this.autopilotTimers.length > 0) {
           clearTimeout(this.autopilotTimers.pop());
@@ -3361,7 +3361,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         state.cargo = 'None';
         state.motorSpeed = 70;
         state.statusColor = '#38bdf8';
-        state.log = `Autopilot Engaged — navigating to stone at (${sX}%, ${sY}%)`;
+        state.log = `Autopilot Engaged -- navigating to stone at (${sX}%, ${sY}%)`;
 
         const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t);
         const stepMs = 550;
@@ -3374,14 +3374,14 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
 
         // ── APPROACH: start → stone ──
         const approachLogs = [
-          '⬆️ Moving up — approaching stone...',
-          '⬆️ Gaining elevation — stone on sensors...',
+          '⬆️ Moving up -- approaching stone...',
+          '⬆️ Gaining elevation -- stone on sensors...',
           '⬆️ Closing vertical distance...',
           '↗️ Angling toward stone position...',
           '↗️ Adjusting trajectory...',
           '➡️ Lining up with target...',
-          '➡️ Slow approach — proximity alert...',
-          '📍 Stone dead ahead — final approach...',
+          '➡️ Slow approach -- proximity alert...',
+          '📍 Stone dead ahead -- final approach...',
         ];
         for (let i = 0; i < 8; i++) {
           const t = (i + 1) / 9;
@@ -3400,23 +3400,23 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         addStep(ms += 700, () => {
           state.motorSpeed = 0; state.clawOpen = true;
           state.armAnimating = true;
-          state.log = '🔧 Extending arm — gripping stone...';
+          state.log = '🔧 Extending arm -- gripping stone...';
         });
         addStep(ms += 800, () => {
           state.armAnimating = false; state.cargo = 'Stone';
           state.obstacleStatus = 'Loaded on Rover';
           state.statusColor = '#00e676';
-          state.log = '✅ Stone secured — routing to flag...';
+          state.log = '✅ Stone secured -- routing to flag...';
         });
 
         // ── DEPARTURE ──
         addStep(ms += 800, () => {
           state.angle = 90; state.motorSpeed = 50;
-          state.log = '🔃 Reversing — backing away from stone...';
+          state.log = '🔃 Reversing -- backing away from stone...';
         });
         addStep(ms += 600, () => {
           state.posX = lerp(sX, stX, 0.5); state.posY = sY;
-          state.log = '↩️ Cleared stone position — plotting course to flag...';
+          state.log = '↩️ Cleared stone position -- plotting course to flag...';
         });
 
         // ── TRANSIT: stone → flag ──
@@ -3464,10 +3464,10 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       if (['forward', 'reverse'].includes(actionType)) {
         if (this.isNearWall()) {
           state.statusColor = '#ff1744';
-          state.log = `⚠️ PROXIMITY ALERT: ${this.getWallDirection()} ahead (${state.posX}%, ${state.posY}%) — Collision hazard!`;
+          state.log = `⚠️ PROXIMITY ALERT: ${this.getWallDirection()} ahead (${state.posX}%, ${state.posY}%) -- Collision hazard!`;
         } else if (this.isNearObstacle()) {
           state.statusColor = '#ffab00';
-          state.log = `⚡ OBSTACLE ALERT: Target Stone ahead (${state.distance}cm) — Ready to grab!`;
+          state.log = `⚡ OBSTACLE ALERT: Target Stone ahead (${state.distance}cm) -- Ready to grab!`;
         }
       }
 
@@ -3479,7 +3479,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       if (actionType === 'sort-age-asc') {
         state.people = [...state.people].sort((a: any, b: any) => a.age - b.age);
         state.sortField = 'age-asc';
-        state.status = `// Sorted by age (ascending) — youngest to oldest.`;
+        state.status = `// Sorted by age (ascending) -- youngest to oldest.`;
         state.statusColor = '#00e676';
         state.log = `> ${state.people[0].name} (${state.people[0].age}) → ${state.people[state.people.length - 1].name} (${state.people[state.people.length - 1].age})`;
         state.code = `people.sort((a, b) => a.age - b.age);
@@ -3489,7 +3489,7 @@ console.table(people);
       } else if (actionType === 'sort-age-desc') {
         state.people = [...state.people].sort((a: any, b: any) => b.age - a.age);
         state.sortField = 'age-desc';
-        state.status = `// Sorted by age (descending) — oldest to youngest.`;
+        state.status = `// Sorted by age (descending) -- oldest to youngest.`;
         state.statusColor = '#a855f7';
         state.log = `> ${state.people[0].name} (${state.people[0].age}) → ${state.people[state.people.length - 1].name} (${state.people[state.people.length - 1].age})`;
         state.code = `people.sort((a, b) => b.age - a.age);
@@ -3502,11 +3502,11 @@ console.table(people);
           return a.gender === 'male' ? -1 : 1;
         });
         state.sortField = 'gender';
-        state.status = `// Sorted by gender — males first, then females.`;
+        state.status = `// Sorted by gender -- males first, then females.`;
         state.statusColor = '#38bdf8';
         const maleCount = state.people.filter((p: any) => p.gender === 'male').length;
         const femaleCount = state.people.filter((p: any) => p.gender === 'female').length;
-        state.log = `> ${maleCount} males · ${femaleCount} females — grouped by gender`;
+        state.log = `> ${maleCount} males · ${femaleCount} females -- grouped by gender`;
         state.code = `people.sort((a, b) => {
   if (a.gender === b.gender) return a.age - b.age;
   return a.gender === 'male' ? -1 : 1;
@@ -3522,7 +3522,7 @@ console.table(people);
         state.sortField = 'none';
         state.status = '// Grid shuffled randomly. Try a sort method!';
         state.statusColor = '#f59e0b';
-        state.log = '> People positions randomized — choose a sort below.';
+        state.log = '> People positions randomized -- choose a sort below.';
         state.code = `// Fisher-Yates shuffle
 for (let i = people.length - 1; i > 0; i--) {
   const j = Math.floor(Math.random() * (i + 1));
@@ -3541,19 +3541,19 @@ for (let i = people.length - 1; i > 0; i--) {
         } else if (actionType === 'sample_tomato') {
           state.sampleIcon = '🍅'; state.sampleName = 'Tomato Leaf';
         }
-        // Neutral state on selection — disease is unknown until scanned
-        state.label = `${state.sampleName} • Ready to Scan`;
-        state.confidence = '—';
-        state.status = '📷 SAMPLE LOADED — Run Quick Scan to analyse';
+        // Neutral state on selection -- disease is unknown until scanned
+        state.label = `${state.sampleName} * Ready to Scan`;
+        state.confidence = '--';
+        state.status = '📷 SAMPLE LOADED -- Run Quick Scan to analyse';
         state.statusColor = '#ab47bc';
         state.log = `${state.sampleName} loaded into scanner. Press Quick Scan to run inference.`;
       } else if (actionType === 'scan') {
         const currentIcon = state.sampleIcon || '🌿';
         const sampleMap: Record<string, { name: string; disease: string; label: string; diseaseClass: number; status: string; color: string }> = {
-          '🌿': { name: 'Cocoa Pod', disease: 'Healthy', label: 'Cocoa Pod • Healthy (Class 0)', diseaseClass: 0, status: '🟢 CROP DIAGNOSTIC • HEALTHY', color: '#00e676' },
-          '🌽': { name: 'Maize Leaf', disease: 'Rust Mildew', label: 'Maize Leaf • Rust Mildew Detected (Class 1)', diseaseClass: 1, status: '⚠️ CROP PATHOLOGY • RUST MILDEW', color: '#ff9100' },
-          '🥔': { name: 'Potato Tuber', disease: 'Blight Virus', label: 'Potato Tuber • Blight Virus Alert (Class 2)', diseaseClass: 2, status: '🚨 CROP PATHOLOGY • BLIGHT DETECTED', color: '#ff1744' },
-          '🍅': { name: 'Tomato Leaf', disease: 'Septoria Leaf Spot', label: 'Tomato Leaf • Septoria Leaf Spot (Class 3)', diseaseClass: 3, status: '⚠️ CROP PATHOLOGY • LEAF SPOT', color: '#ff9100' }
+          '🌿': { name: 'Cocoa Pod', disease: 'Healthy', label: 'Cocoa Pod * Healthy (Class 0)', diseaseClass: 0, status: '🟢 CROP DIAGNOSTIC * HEALTHY', color: '#00e676' },
+          '🌽': { name: 'Maize Leaf', disease: 'Rust Mildew', label: 'Maize Leaf * Rust Mildew Detected (Class 1)', diseaseClass: 1, status: '⚠️ CROP PATHOLOGY * RUST MILDEW', color: '#ff9100' },
+          '🥔': { name: 'Potato Tuber', disease: 'Blight Virus', label: 'Potato Tuber * Blight Virus Alert (Class 2)', diseaseClass: 2, status: '🚨 CROP PATHOLOGY * BLIGHT DETECTED', color: '#ff1744' },
+          '🍅': { name: 'Tomato Leaf', disease: 'Septoria Leaf Spot', label: 'Tomato Leaf * Septoria Leaf Spot (Class 3)', diseaseClass: 3, status: '⚠️ CROP PATHOLOGY * LEAF SPOT', color: '#ff9100' }
         };
         const sample = sampleMap[currentIcon] || sampleMap['🌿'];
 
@@ -3625,7 +3625,7 @@ for (let i = people.length - 1; i > 0; i--) {
 
         // Status & log
         const good = acc >= 90 ? '🔥' : acc >= 70 ? '📈' : acc >= 50 ? '⚡' : '🔄';
-        state.status = `${good} EPOCH ${e}/50 • ACC ${acc}% • LOSS ${state.loss}`;
+        state.status = `${good} EPOCH ${e}/50 * ACC ${acc}% * LOSS ${state.loss}`;
         state.statusColor = acc >= 90 ? '#00e676' : acc >= 70 ? '#38bdf8' : acc >= 50 ? '#ff9100' : '#ab47bc';
         const direction = lossVal < 0.05 ? 'converged' : lossVal < 0.3 ? 'improving' : 'descending';
         state.log = `Backprop complete. Training loss ${direction} to ${state.loss}. Accuracy climbing (${acc}%).`;
@@ -3638,7 +3638,7 @@ for (let i = people.length - 1; i > 0; i--) {
         state.shieldPulseActive = true;
         setTimeout(() => { state.shieldPulseActive = false; }, 1500);
 
-        state.status = '🛡️ WAF RULE ENFORCED • ATTACK IP SHUNNED';
+        state.status = '🛡️ WAF RULE ENFORCED * ATTACK IP SHUNNED';
         state.statusColor = '#00e676';
         state.log = `[WAF DROP] Blocked ${state.lastAttackType || 'RCE Probe'} from ${state.lastAttackerIp || '185.220.101.34'}. TCP RST injected. +50 CTF Pts. Total Blocked: ${state.blockedCount}.`;
       } else if (actionType === 'honeypot') {
@@ -3659,20 +3659,20 @@ for (let i = people.length - 1; i > 0; i--) {
         setTimeout(() => { state.counterBeamActive = false; }, 2500);
         setTimeout(() => { state.c2Destroyed = false; }, 4500);
 
-        state.status = '💥 COUNTER-STRIKE DEPLOYED • ATTACKER C2 SERVER DESTROYED!';
+        state.status = '💥 COUNTER-STRIKE DEPLOYED * ATTACKER C2 SERVER DESTROYED!';
         state.statusColor = '#d500f9';
         state.log = `⚡ [COUNTER-ATTACK SUCCESS] Traced origin to ${state.lastAttackerLoc || 'Moscow, RU'} [${state.lastAttackerIp || '185.220.101.34'}]. Fired zero-day counter-payload. Attacker C2 Botnet Node NEUTRALIZED! +150 CTF Pts!`;
       } else if (actionType === 'cipher') {
         const ciphers = ['AES-256-GCM (TLS 1.3)', 'ChaCha20-Poly1305', 'ECDHE_x25519', 'Kyber-1024 Quantum PQC'];
         state.encryption = ciphers[Math.floor(Math.random() * ciphers.length)];
         state.ctfScore = (state.ctfScore || 850) + 30;
-        state.status = '🔐 QUANTUM-RESISTANT KEYS ROTATED • PFS ENFORCED';
+        state.status = '🔐 QUANTUM-RESISTANT KEYS ROTATED * PFS ENFORCED';
         state.statusColor = '#38bdf8';
         state.log = `[KEY ROTATION] Flushed 1,024 compromised tokens. ${state.encryption} cipher suite activated. Handshake latency 0 ms. +30 CTF Pts.`;
       } else if (actionType === 'toggle_sim') {
         state.liveSimRunning = !state.liveSimRunning;
         if (state.liveSimRunning) {
-          state.status = '⚡ LIVE THREAT GENERATOR ACTIVE • SIMULATING HACK ATTACKS';
+          state.status = '⚡ LIVE THREAT GENERATOR ACTIVE * SIMULATING HACK ATTACKS';
           state.statusColor = '#ff1744';
           state.log = '[SIMULATION ENGAGED] Real-time cyber warfare stream active. Incoming hacker probes detected!';
           this.startCyberThreatGenerator();
@@ -3688,7 +3688,7 @@ for (let i = people.length - 1; i > 0; i--) {
         const currentSolar = parseFloat(state.solarKw || '46.8');
         state.solarKw = (currentSolar + Math.random() * 6 + 2).toFixed(1);
         state.battery = Math.min(100, state.battery + 4);
-        state.status = '☀️ SOLAR TRACKING TILTED +15° • PEAK GENERATION';
+        state.status = '☀️ SOLAR TRACKING TILTED +15° * PEAK GENERATION';
         state.statusColor = '#00e676';
         state.log = `Solar panels tilted +15° toward sun. Array output surged to ${state.solarKw} kW. Battery storage at ${state.battery}%.`;
       } else if (actionType === 'wind') {
@@ -3704,14 +3704,14 @@ for (let i = people.length - 1; i > 0; i--) {
           state.statusColor = '#ffea00';
           state.log = `Hospital reverted to normal. Battery preserved at ${state.battery}%.`;
         } else if ((state.battery || 0) < 15) {
-          state.status = '⚠️ NOT ENOUGH BATTERY — Generate more power first';
+          state.status = '⚠️ NOT ENOUGH BATTERY -- Generate more power first';
           state.statusColor = '#ff1744';
-          state.log = `Cannot boost hospital — battery is at ${state.battery}%. Use Solar or Wind to charge.`;
+          state.log = `Cannot boost hospital -- battery is at ${state.battery}%. Use Solar or Wind to charge.`;
         } else {
           state.hospitalPower = 'Emergency Ward Boosted (120%)';
           state.battery = Math.max(0, state.battery - 15);
           state.co2Saved += Math.floor(Math.random() * 20) + 10;
-          state.status = '🏥 EMERGENCY WARD BOOSTED — 25 kW CLEAN POWER DIRECTED';
+          state.status = '🏥 EMERGENCY WARD BOOSTED -- 25 kW CLEAN POWER DIRECTED';
           state.statusColor = '#00e676';
           state.log = `Redirected 25 kW from battery to ICU. Battery dropped to ${state.battery}%. CO₂ savings increased.`;
         }

@@ -29,7 +29,7 @@
         <p class="hero-sub">
           {{ isStudent
             ? 'Explore active championship cycles, register your squad, and track every phase of the competition.'
-            : 'Forge the battleground — create qualifiers, semi-finals, finals, and championship events. Manage every phase from registration to results.' }}
+            : 'Forge the battleground -- create qualifiers, semi-finals, finals, and championship events. Manage every phase from registration to results.' }}
         </p>
         <div class="hero-stats">
           <div class="hero-stat">
@@ -438,7 +438,7 @@
             </div>
             <div class="form-group">
               <label>Description</label>
-              <textarea class="form-text" [(ngModel)]="formModel.description" placeholder="Describe the arena — theme, challenge, and what competitors will face..." rows="3"></textarea>
+              <textarea class="form-text" [(ngModel)]="formModel.description" placeholder="Describe the arena -- theme, challenge, and what competitors will face..." rows="3"></textarea>
             </div>
             <div class="form-row">
               <div class="form-group flex-2">
@@ -527,7 +527,7 @@
                     <strong>{{ phase.name }}</strong>
                     <span class="phase-entry-type" [style.color]="phaseColors[phase.type]">{{ phase.type | titlecase }}</span>
                   </div>
-                  <span class="phase-entry-dates" *ngIf="phase.startDate || phase.endDate">{{ formatDate(phase.startDate) }} — {{ formatDate(phase.endDate) }}</span>
+                  <span class="phase-entry-dates" *ngIf="phase.startDate || phase.endDate">{{ formatDate(phase.startDate) }} -- {{ formatDate(phase.endDate) }}</span>
                   <span class="phase-entry-dates muted" *ngIf="!phase.startDate && !phase.endDate">Dates not set</span>
                 </div>
                 <span class="phase-entry-status" [style.background]="(statusColors[phase.status] || '#94a3b8') + '18'" [style.color]="statusColors[phase.status] || '#94a3b8'">
@@ -712,7 +712,7 @@
         </div>
         <div class="detail-stat">
           <div class="detail-stat-icon" style="background:rgba(139,92,246,0.1);color:#8b5cf6"><span class="material-symbols-outlined">calendar_month</span></div>
-          <div><label>Duration</label><span class="detail-stat-value">{{ formatDate(selectedCompetition.startDate || selectedCompetition.createdAt || '') }} — {{ formatDate(selectedCompetition.endDate || selectedCompetition.deadline || '') }}</span></div>
+          <div><label>Duration</label><span class="detail-stat-value">{{ formatDate(selectedCompetition.startDate || selectedCompetition.createdAt || '') }} -- {{ formatDate(selectedCompetition.endDate || selectedCompetition.deadline || '') }}</span></div>
         </div>
       </div>
 
@@ -753,7 +753,7 @@
               </div>
               <p *ngIf="phase.description">{{ phase.description }}</p>
               <div class="roadmap-meta">
-                <span class="roadmap-date">{{ formatDate(phase.startDate) }} — {{ formatDate(phase.endDate) }}</span>
+                <span class="roadmap-date">{{ formatDate(phase.startDate) }} -- {{ formatDate(phase.endDate) }}</span>
                 <span class="roadmap-status" [style.background]="(statusColors[phase.status] || '#94a3b8') + '18'" [style.color]="statusColors[phase.status] || '#94a3b8'">
                   <span class="status-pulse" *ngIf="phase.status === 'active'"></span>
                   {{ phase.status | titlecase }}

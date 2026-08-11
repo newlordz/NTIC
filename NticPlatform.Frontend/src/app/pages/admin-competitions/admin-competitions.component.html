@@ -17,7 +17,7 @@
             <span>Administrator · Competition Manager</span>
           </div>
           <h1>Competition Cycle Manager</h1>
-          <p>Create, configure and manage championship cycles — from qualifiers to grand finals. Set tracks, deadlines, phases and prizes.</p>
+          <p>Create, configure and manage championship cycles -- from qualifiers to grand finals. Set tracks, deadlines, phases and prizes.</p>
         </div>
       </div>
       <div class="ac-hero-actions">
@@ -305,7 +305,7 @@
         <div class="ac-detail-stat"><label>Status</label><span [style.color]="statusColors[selectedCompetition.status]">{{ selectedCompetition.status | titlecase }}</span></div>
         <div class="ac-detail-stat"><label>Teams</label><span>{{ selectedCompetition.teams }} / {{ selectedCompetition.maxTeams || '∞' }}</span></div>
         <div class="ac-detail-stat"><label>Prize</label><span>{{ selectedCompetition.prize || 'TBD' }}</span></div>
-        <div class="ac-detail-stat"><label>Duration</label><span>{{ formatDate(selectedCompetition.startDate || selectedCompetition.createdAt || '') }} — {{ formatDate(selectedCompetition.endDate || selectedCompetition.deadline || '') }}</span></div>
+        <div class="ac-detail-stat"><label>Duration</label><span>{{ formatDate(selectedCompetition.startDate || selectedCompetition.createdAt || '') }} -- {{ formatDate(selectedCompetition.endDate || selectedCompetition.deadline || '') }}</span></div>
       </div>
       <div *ngIf="selectedCompetition.description" class="ac-detail-section">
         <h4>Description</h4>
@@ -326,7 +326,7 @@
               <strong>{{ phase.name }}</strong>
               <span class="ac-phase-type">{{ getTypeLabel(phase.type) }}</span>
               <span *ngIf="phase.description">{{ phase.description }}</span>
-              <span>{{ formatDate(phase.startDate) }} — {{ formatDate(phase.endDate) }}</span>
+              <span>{{ formatDate(phase.startDate) }} -- {{ formatDate(phase.endDate) }}</span>
               <span class="ac-phase-status" [style.background]="(statusColors[phase.status] || '#94a3b8') + '18'" [style.color]="statusColors[phase.status] || '#94a3b8'">{{ phase.status | titlecase }}</span>
             </div>
             <div class="ac-phase-actions">

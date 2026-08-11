@@ -204,7 +204,7 @@ export class RecordsComponent implements OnInit {
       liveRecords.push({
         id: a.id,
         type: type as Record['type'],
-        title: a.entity ? `${a.entity} — ${a.type}` : a.type,
+        title: a.entity ? `${a.entity} -- ${a.type}` : a.type,
         entityName: a.entity || 'Unknown',
         entityType: detailsAny.institution || detailsAny.school || (type === 'school' ? 'School' : type === 'instructor' ? 'Instructor' : 'Team'),
         region: detailsAny.region || '',
@@ -237,7 +237,7 @@ export class RecordsComponent implements OnInit {
       liveRecords.push({
         id: a.id,
         type: type as Record['type'],
-        title: a.entity ? `${a.entity} — ${a.type}` : a.type,
+        title: a.entity ? `${a.entity} -- ${a.type}` : a.type,
         entityName: a.entity || 'Unknown',
         entityType: detailsAny.institution || detailsAny.school || (type === 'school' ? 'School' : type === 'instructor' ? 'Instructor' : 'Team'),
         region: detailsAny.region || '',
@@ -262,7 +262,7 @@ export class RecordsComponent implements OnInit {
       liveRecords.push({
         id: a.id,
         type: type as Record['type'],
-        title: a.entity ? `${a.entity} — ${a.type}` : a.type,
+        title: a.entity ? `${a.entity} -- ${a.type}` : a.type,
         entityName: a.entity || 'Unknown',
         entityType: detailsAny.institution || detailsAny.school || (type === 'school' ? 'School' : type === 'instructor' ? 'Instructor' : 'Team'),
         region: detailsAny.region || '',
@@ -281,7 +281,7 @@ export class RecordsComponent implements OnInit {
         liveRecords.push({
           id: u.id,
           type: 'judge',
-          title: `${u.fullName} — Judge Application`,
+          title: `${u.fullName} -- Judge Application`,
           entityName: u.fullName,
           entityType: 'Judge',
           region: '',
@@ -296,7 +296,7 @@ export class RecordsComponent implements OnInit {
         liveRecords.push({
           id: u.id,
           type: 'sponsor',
-          title: `${u.fullName} — Sponsor Registration`,
+          title: `${u.fullName} -- Sponsor Registration`,
           entityName: u.fullName,
           entityType: (u as any).tier ? `${(u as any).tier} Sponsor` : 'Corporate Sponsor',
           region: '',
@@ -312,7 +312,7 @@ export class RecordsComponent implements OnInit {
         liveRecords.push({
           id: u.id,
           type: 'student',
-          title: `${u.fullName} — ${isGroupLead ? 'Group Registration' : 'Student Registration'}`,
+          title: `${u.fullName} -- ${isGroupLead ? 'Group Registration' : 'Student Registration'}`,
           entityName: u.fullName,
           entityType: isGroupLead ? 'Group Competitor' : 'Student Competitor',
           region: '',
@@ -332,7 +332,7 @@ export class RecordsComponent implements OnInit {
       liveRecords.push({
         id: teamId,
         type: 'team',
-        title: `${t.name} — Team Registration`,
+        title: `${t.name} -- Team Registration`,
         entityName: t.name,
         entityType: `${t.track || 'Mixed'} Team`,
         region: '',
@@ -353,7 +353,7 @@ export class RecordsComponent implements OnInit {
           liveRecords.push({
             id: s.id || `std-${Math.random()}`,
             type: 'student',
-            title: `${sName} — PostgreSQL Student Record`,
+            title: `${sName} -- PostgreSQL Student Record`,
             entityName: sName,
             entityType: s.track || 'Student',
             region: '',

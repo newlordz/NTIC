@@ -1,4 +1,4 @@
-﻿import { getAuthValue } from '../../services/session.util';
+import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -246,7 +246,7 @@ export class SponsorsComponent implements OnInit {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>CSR Impact Certificate — ${orgName}</title>
+        <title>CSR Impact Certificate -- ${orgName}</title>
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;600;700&display=swap');
           body {
@@ -400,7 +400,7 @@ export class SponsorsComponent implements OnInit {
     const name = this.getSponsorName(sponsor);
     const rep = sponsor?.fullName || 'Corporate Representative';
     const email = sponsor?.email || 'sponsor@company.com';
-    const phone = sponsor?.phone || '—';
+    const phone = sponsor?.phone || '--';
     const tier = sponsor?.tier || 'VIP Partner';
     const token = sponsor?.ticket || 'NTIC-SPO-TAX';
     const payments = sponsor?.payments || [];
@@ -436,7 +436,7 @@ export class SponsorsComponent implements OnInit {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>NTIC Tax Invoice & CSR Receipt — ${name}</title>
+        <title>NTIC Tax Invoice & CSR Receipt -- ${name}</title>
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
           body {

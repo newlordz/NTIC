@@ -231,7 +231,7 @@
   </section>
 
   <!-- ══════════════════════════════════════════
-       COMPETITIONS — HERO COUNTDOWN + GRID
+       COMPETITIONS -- HERO COUNTDOWN + GRID
   ══════════════════════════════════════════ -->
   <section class="countdown-section scroll-animate fade-up">
 
@@ -456,7 +456,7 @@
           </div>
           <div class="card-content">
             <h3>Statement of Operation</h3>
-            <p>We build and run Ghana’s premier National Technology and Innovation (NTI) Championship, integrating
+            <p>We build and run Ghana's premier National Technology and Innovation (NTI) Championship, integrating
               high-school teams from all 16 regions. Through rigorous coursework, sandbox tasks, and competitive arenas,
               we turn classrooms into innovation labs.</p>
             <a (click)="scrollToSection('tracks')" class="read-more-link" style="cursor:pointer">
@@ -504,7 +504,7 @@
   </section>
 
   <!-- ══════════════════════════════════════════
-       NEWS & EVENTS — Premium Editorial Grid
+       NEWS & EVENTS -- Premium Editorial Grid
   ══════════════════════════════════════════ -->
   <section id="news" class="news-editorial-section scroll-animate fade-up" [class.dark-mode]="storySectionDark">
     <div class="container">
@@ -530,7 +530,7 @@
             </h2>
           </div>
           <p class="editorial-desc">
-            Championship stories &amp; updates — how Ghana's next generation of scientists,
+            Championship stories &amp; updates -- how Ghana's next generation of scientists,
             developers, engineers, and innovators are building the future.
           </p>
         </div>
@@ -642,7 +642,7 @@
   </section>
 
   <!-- ══════════════════════════════════════════
-       ALUMNI WALL OF FAME (Infinite Marquee — admin controlled)
+       ALUMNI WALL OF FAME (Infinite Marquee -- admin controlled)
   ══════════════════════════════════════════ -->
   <section class="alumni-section scroll-animate fade-up">
     <div class="container">
@@ -902,7 +902,7 @@
           </div>
           <span class="academic-sub">Daily Problem</span>
           <h2>Try Coding now</h2>
-          <p>Pick a language, solve bite-sized challenges, and level up your skills. Hints included — solutions revealed
+          <p>Pick a language, solve bite-sized challenges, and level up your skills. Hints included -- solutions revealed
             when you're stuck.</p>
           <div class="challenge-meta">
             <span class="difficulty-badge" [class]="'diff-' + currentChallenge.difficulty.replace(' ', '-')">
@@ -967,7 +967,7 @@
             [class.success]="challengeResult === true" [class.fail]="challengeResult === false">
             <ng-container *ngIf="challengeResult === true">
               <span class="material-symbols-outlined">check_circle</span>
-              <span>Correct! +{{ currentChallenge.points }} pts — Well done, champion!</span>
+              <span>Correct! +{{ currentChallenge.points }} pts -- Well done, champion!</span>
             </ng-container>
             <ng-container *ngIf="challengeResult === false">
               <span class="material-symbols-outlined">cancel</span>
@@ -1083,7 +1083,7 @@
         <div class="scoreboard-table-card" [class.transitioning]="isLeaderboardTransitioning">
           <div class="sc-header">
             <span class="material-symbols-outlined sc-trophy">emoji_events</span>
-            <span>Top Performing Schools — {{ activeLeaderboardFilter === 'all' ? 'All Heats' : (activeLeaderboardFilter
+            <span>Top Performing Schools -- {{ activeLeaderboardFilter === 'all' ? 'All Heats' : (activeLeaderboardFilter
               | titlecase) }}</span>
           </div>
 
@@ -1590,7 +1590,7 @@
   </section>
 
   <!-- ══════════════════════════════════════════
-       UNIFIED LOGIN GATEWAY — PHENOMENAL EDITION
+       UNIFIED LOGIN GATEWAY -- PHENOMENAL EDITION
    ══════════════════════════════════════════ -->
   <section id="portal" class="unified-gateway-section">
     <div class="gateway-bg-orb"></div>
@@ -1984,7 +1984,7 @@
   </div>
 
   <!-- ══════════════════════════════════════════
-       LOGIN MODAL — STREAMLINED & PHENOMENAL
+       LOGIN MODAL -- STREAMLINED & PHENOMENAL
    ══════════════════════════════════════════ -->
   <div class="login-modal-backdrop" [class.open]="isLoginModalOpen" (click)="closeLoginModal()">
     <div class="login-modal-card" (click)="$event.stopPropagation()">
@@ -2146,11 +2146,11 @@
                         <!-- HUD Proximity Alert Overlay Banner -->
                         <div class="stage-proximity-alert wall-alert" *ngIf="isNearWall()">
                           <span class="material-symbols-outlined alert-symbol">warning</span>
-                          <span class="alert-msg">COLLISION WARNING — {{ getWallDirection() }} Ahead!</span>
+                          <span class="alert-msg">COLLISION WARNING -- {{ getWallDirection() }} Ahead!</span>
                         </div>
                         <div class="stage-proximity-alert obstacle-alert" *ngIf="!isNearWall() && isNearObstacle()">
                           <span class="material-symbols-outlined alert-symbol">sensors_off</span>
-                          <span class="alert-msg">OBSTACLE AHEAD — Target Stone {{ arenaState.robotics?.distance }}cm</span>
+                          <span class="alert-msg">OBSTACLE AHEAD -- Target Stone {{ arenaState.robotics?.distance }}cm</span>
                         </div>
 
                         <!-- Obstacle on Arena Floor -->
@@ -2282,7 +2282,7 @@
                     </div>
                   </div>
 
-                  <!-- 2. Coding & Algorithms — Speed Sprints Arena -->
+                  <!-- 2. Coding & Algorithms -- Speed Sprints Arena -->
                   <div *ngIf="activeTrackPreview === 'coding'" class="track-sim-content coding-sim split-cockpit">
                     <!-- Left: People Visualization + Code -->
                     <div class="cockpit-left">
@@ -2304,7 +2304,7 @@
                             [style.animation-delay]="i * 60 + 'ms'"
                             [style.--bar-h]="(((p.age - 10) / 74) * 70 + 12) + '%'">
                             <div class="bar-top">
-                              <!-- Outer wrapper handles scale — inner figure handles float animation -->
+                              <!-- Outer wrapper handles scale -- inner figure handles float animation -->
                               <div class="figure-scaler"
                                 [style.transform]="'scale(' + (0.42 + ((p.age - 10) / 74) * 0.88) + ')'"
                                 [style.transform-origin]="'bottom center'">
@@ -2399,7 +2399,7 @@
                     </div>
                   </div>
 
-                  <!-- 3. Artificial Intelligence — Crop Disease Detector -->
+                  <!-- 3. Artificial Intelligence -- Crop Disease Detector -->
                   <div *ngIf="activeTrackPreview === 'ai'" class="track-sim-content ai-sim split-cockpit">
                     <!-- Left: Camera Scanner -->
                     <div class="cockpit-left">
@@ -2423,7 +2423,7 @@
                           <div class="vf-result"
                             [style.background]="'linear-gradient(transparent, ' + (arenaState.ai?.statusColor || '#ab47bc') + '88)'">
                             <span class="vf-result-name">{{ arenaState.ai?.label || 'Select a crop' }}</span>
-                            <span class="vf-result-conf">{{ arenaState.ai?.confidence === '—' ? 'Awaiting scan' : (arenaState.ai?.confidence + '% confidence') }}</span>
+                            <span class="vf-result-conf">{{ arenaState.ai?.confidence === '--' ? 'Awaiting scan' : (arenaState.ai?.confidence + '% confidence') }}</span>
                           </div>
                         </div>
                         <div class="viewfinder-footer">
@@ -2435,7 +2435,7 @@
 
                       <div class="ai-description">
                         <span class="material-symbols-outlined">info</span>
-                        <span>Point the scanner at a crop leaf — the AI tells you if the plant is healthy or diseased,
+                        <span>Point the scanner at a crop leaf -- the AI tells you if the plant is healthy or diseased,
                           and what disease it might have.</span>
                       </div>
 
@@ -2583,7 +2583,7 @@
                     </div>
                   </div>
 
-                  <!-- 4. Networking & Cybersecurity — Network Defense Simulator -->
+                  <!-- 4. Networking & Cybersecurity -- Network Defense Simulator -->
                   <div *ngIf="activeTrackPreview === 'cyber'" class="track-sim-content cyber-sim split-cockpit">
                     <!-- Left: Network Monitor -->
                     <div class="cockpit-left">
@@ -2727,7 +2727,7 @@
                     </div>
                   </div>
 
-                  <!-- 5. Open Innovation — Smart Clean Energy Grid -->
+                  <!-- 5. Open Innovation -- Smart Clean Energy Grid -->
                   <div *ngIf="activeTrackPreview === 'innovation'"
                     class="track-sim-content innovation-sim split-cockpit">
                     <!-- Left: Energy Dashboard -->

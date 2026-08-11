@@ -1085,7 +1085,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         this.activeTab = params['tab'] === 'student' ? 'school' : params['tab'];
         this.regState = 'new';
       } else {
-        // Fresh visit (no tab/track param) — always show the gateway
+        // Fresh visit (no tab/track param) -- always show the gateway
         this.regState = 'gateway';
       }
     });
@@ -1751,7 +1751,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     if (!navigator.geolocation) {
       this.schoolForm.gps = '5.6037, -0.1870';
       this.gpsAddress = 'Accra, Greater Accra, Ghana (fallback)';
-      this.gpsAccuracyWarning = 'Geolocation not available — location set to Accra. You can edit the coordinates manually.';
+      this.gpsAccuracyWarning = 'Geolocation not available -- location set to Accra. You can edit the coordinates manually.';
       return;
     }
     this.gpsLoading = true;
@@ -1772,7 +1772,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       () => {
         this.schoolForm.gps = '5.6037, -0.1870';
         this.gpsAddress = 'Accra, Greater Accra, Ghana (fallback)';
-        this.gpsAccuracyWarning = 'Location detection failed — set to Accra. You can edit the coordinates manually.';
+        this.gpsAccuracyWarning = 'Location detection failed -- set to Accra. You can edit the coordinates manually.';
         this.gpsLoading = false;
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
@@ -1840,7 +1840,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       next: (res) => {
         if (res.email_available) {
           this.openRegForm.emailVerified = true;
-          this.dialogService.toast('Email verified — not already registered.', 'success');
+          this.dialogService.toast('Email verified -- not already registered.', 'success');
         } else {
           this.dialogService.toast('This email is already registered.', 'error');
         }
@@ -1855,7 +1855,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       next: (res) => {
         if (res.phone_available) {
           this.openRegForm.phoneVerified = true;
-          this.dialogService.toast('Phone verified — not already registered.', 'success');
+          this.dialogService.toast('Phone verified -- not already registered.', 'success');
         } else {
           this.dialogService.toast('This phone number is already registered.', 'error');
         }
@@ -2369,7 +2369,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
     this.isSubmitting = true;
 
-    // Capture school logo file ID (not base64 — too large for storage)
+    // Capture school logo file ID (not base64 -- too large for storage)
     let logoFileId: string | null = null;
     if (this.activeTab === 'school' && this.schoolLogoUrl) {
       logoFileId = this.selectedFileIds['schoolLogo']?.[0] || null;
