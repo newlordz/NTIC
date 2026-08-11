@@ -93,7 +93,10 @@ try:
             "/api/csr",
             "/api/events",
             "/api/stories",
-            "/api/talent"
+            "/api/talent",
+            "/api/auth/verify-contact",
+            "/api/drafts",
+            "/api/lms/progress"
         }
         if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.url.path not in PUBLIC_UNSAFE:
             auth_header = request.headers.get("Authorization", "")
