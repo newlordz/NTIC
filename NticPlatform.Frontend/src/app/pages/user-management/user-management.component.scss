@@ -1085,7 +1085,12 @@ $radius-xl: 20px;
 .um-info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 14px 24px;
+  align-items: start;
+  background: $surface-bg;
+  padding: 16px;
+  border-radius: $radius-sm;
+  border: 1px solid $border;
 
   @media (max-width: 480px) { grid-template-columns: 1fr; }
 }
@@ -1093,7 +1098,11 @@ $radius-xl: 20px;
 .um-info-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  padding: 10px 14px;
+  background: $surface;
+  border-radius: 6px;
+  border: 1px solid rgba($border, 0.6);
 }
 
 .um-info-label {
