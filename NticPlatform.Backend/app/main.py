@@ -1441,11 +1441,12 @@ try:
         user_id = "USR-" + str(uuid.uuid4())[:8]
         password_hash = hash_password(payload.password) if payload.password else hash_password("changeme123")
         ticket = payload.ticket or f"NTIC-{payload.role.upper()[:3]}-{str(uuid.uuid4())[:4].upper()}"
+        phone = payload.phone.strip() if payload.phone and payload.phone.strip() else None
         cur = conn.cursor()
         try:
             cur.execute(
                 "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, payload.status, payload.phone)
+                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, payload.status, phone)
             )
             conn.commit()
         except Exception as e:
@@ -1482,10 +1483,11 @@ try:
         user_id = "USR-" + str(uuid.uuid4())[:8]
         password_hash = hash_password(payload.password) if payload.password else hash_password("changeme123")
         ticket = payload.ticket or f"NTIC-{payload.role.upper()[:3]}-{str(uuid.uuid4())[:4].upper()}"
+        phone = payload.phone.strip() if payload.phone and payload.phone.strip() else None
         try:
             cur.execute(
                 "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, payload.status, payload.phone)
+                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, payload.status, phone)
             )
             conn.commit()
         except Exception as e:
@@ -1505,7 +1507,7 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         parts = ["full_name = %s", "role = %s", "status = %s", "ticket = %s", "phone = %s"]
-        vals = [payload.full_name, payload.role, payload.status, payload.ticket or None, payload.phone]
+        vals = [payload.full_name, payload.role, payload.status, payload.ticket or None, payload.phone.strip() if payload.phone and payload.phone.strip() else None]
         if payload.password:
             from app.security import hash_password
             parts.append("password_hash = %s")

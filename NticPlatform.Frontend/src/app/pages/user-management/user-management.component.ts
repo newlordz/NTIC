@@ -3,7 +3,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { ContentService, User } from '../../services/content.service';
 import { ChatbotService, SupportTicket } from '../../services/chatbot.service';
@@ -52,7 +52,13 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     { id: 'super_admin', label: 'Admins', icon: 'admin_panel_settings' },
   ];
 
-  constructor(public contentService: ContentService, private router: Router, public chatbotService: ChatbotService, private http: HttpClient) {}
+  constructor(
+    public contentService: ContentService,
+    private router: Router,
+    private route: ActivatedRoute,
+    public chatbotService: ChatbotService,
+    private http: HttpClient
+  ) {}
 
   get canManageUsers(): boolean {
     const role = getAuthValue('activeRoleId') || '';
@@ -81,6 +87,16 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     }
     this.loadUsers();
     this.loadTickets();
+
+    this.route.queryParams.subscribe(params => {
+      if (params['edit']) {
+        const query = String(params['edit']).toLowerCase();
+        const found = this.users.find(u => String(u.id).toLowerCase() === query || u.email.toLowerCase() === query);
+        if (found) {
+          this.editUser(found);
+        }
+      }
+    });
   }
 
   loadTickets(): void {
@@ -101,8 +117,10 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     }
   }
 
-  loadUsers(): void {
-    // Fetch fresh users from backend, then save to content service
+  isSyncing = false;
+
+  syncAccounts(showToastNotice = true): void {
+    this.isSyncing = true;
     this.http.get<any[]>(`${environment.apiUrl}/users`).subscribe({
       next: (backendUsers) => {
         const mapped: User[] = backendUsers.map((u: any) => ({
@@ -122,12 +140,24 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         this.contentService.saveUsers(mapped);
         this.users = [...mapped];
         this.applyFilters();
+        this.isSyncing = false;
+        if (showToastNotice) {
+          this.showToast('Accounts Synced', `Successfully synchronized ${mapped.length} accounts from backend database.`);
+        }
       },
       error: () => {
         this.users = [...this.contentService.users];
         this.applyFilters();
+        this.isSyncing = false;
+        if (showToastNotice) {
+          this.showToast('Sync Notice', 'Backend sync unavailable. Loaded cached user accounts.', 4000);
+        }
       }
     });
+  }
+
+  loadUsers(): void {
+    this.syncAccounts(false);
   }
 
   applyFilters(): void {

@@ -29,9 +29,9 @@
           <span class="material-symbols-outlined">download</span>
           Export CSV
         </button>
-        <button class="cmd-btn cmd-btn-primary" (click)="loadUsers()">
-          <span class="material-symbols-outlined">sync</span>
-          Sync Accounts
+        <button class="cmd-btn cmd-btn-primary" [disabled]="isSyncing" (click)="syncAccounts()">
+          <span class="material-symbols-outlined" [class.spinning]="isSyncing">sync</span>
+          {{ isSyncing ? 'Syncing...' : 'Sync Accounts' }}
         </button>
       </div>
 
@@ -219,6 +219,12 @@
                   <button class="ra-btn ra-edit" (click)="editUser(u)" title="Edit User">
                     <span class="material-symbols-outlined">edit</span>
                   </button>
+                  <button class="ra-btn ra-status" (click)="toggleStatus(u)" [title]="u.status === 'Active' ? 'Suspend Account' : 'Activate Account'">
+                    <span class="material-symbols-outlined">{{ u.status === 'Active' ? 'block' : 'check_circle' }}</span>
+                  </button>
+                  <button class="ra-btn ra-reset" (click)="regenerateOTP(u)" title="Reset Password / Regenerate Credentials">
+                    <span class="material-symbols-outlined">lock_reset</span>
+                  </button>
                   <button class="ra-btn ra-delete" (click)="deleteUser(u)" title="Delete User">
                     <span class="material-symbols-outlined">delete</span>
                   </button>
@@ -261,10 +267,16 @@
           </div>
         </div>
         <div class="um-card-foot" (click)="$event.stopPropagation()">
-          <button class="cmd-btn cmd-btn-ghost cmd-btn-sm" *ngIf="!isMainAdmin(u)" (click)="editUser(u)">
+          <button class="cmd-btn cmd-btn-ghost cmd-btn-sm" *ngIf="!isMainAdmin(u)" (click)="editUser(u)" title="Edit User">
             <span class="material-symbols-outlined">edit</span> Edit
           </button>
-          <button class="cmd-btn cmd-btn-danger cmd-btn-sm" *ngIf="!isMainAdmin(u)" (click)="deleteUser(u)">
+          <button class="cmd-btn cmd-btn-ghost cmd-btn-sm" *ngIf="!isMainAdmin(u)" (click)="toggleStatus(u)" [title]="u.status === 'Active' ? 'Suspend Account' : 'Activate Account'">
+            <span class="material-symbols-outlined">{{ u.status === 'Active' ? 'block' : 'check_circle' }}</span>
+          </button>
+          <button class="cmd-btn cmd-btn-ghost cmd-btn-sm" *ngIf="!isMainAdmin(u)" (click)="regenerateOTP(u)" title="Reset Password">
+            <span class="material-symbols-outlined">lock_reset</span>
+          </button>
+          <button class="cmd-btn cmd-btn-danger cmd-btn-sm" *ngIf="!isMainAdmin(u)" (click)="deleteUser(u)" title="Delete User">
             <span class="material-symbols-outlined">delete</span>
           </button>
           <span *ngIf="isMainAdmin(u)" class="locked-tag">
