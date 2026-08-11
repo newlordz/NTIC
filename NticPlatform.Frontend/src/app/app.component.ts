@@ -11,10 +11,12 @@ import { ChatbotComponent } from './chatbot/chatbot.component';
 import { ChatbotService } from './services/chatbot.service';
 import { ApiService } from './services/api.service';
 
+import { FormsModule } from '@angular/forms';
+
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, TimeAgoPipe, ChatbotComponent],
+  imports: [CommonModule, FormsModule, RouterOutlet, RouterLink, RouterLinkActive, TimeAgoPipe, ChatbotComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
@@ -194,13 +196,9 @@ export class AppComponent implements OnInit, OnDestroy {
   logout(): void {
     const token = getAuthValue('activeUserToken');
     if (token) {
-      this.apiService.logout(token).subscribe({
-        next: () => clearAllAuthValues(),
-        error: () => clearAllAuthValues()
-      });
-    } else {
-      clearAllAuthValues();
+      this.apiService.logout(token).subscribe({ next: () => {}, error: () => {} });
     }
+    clearAllAuthValues();
     this.currentUser = null;
     this.chatbot.resetSession();
     this.closeMobileSidebar();
@@ -239,10 +237,98 @@ export class AppComponent implements OnInit, OnDestroy {
         avatar: this.getInitials(registeredUser.fullName),
         roleName: roleLabels[registeredUser.role] || 'User'
       };
+      this.checkFirstTimePasswordRequirement(registeredUser);
     } else {
+      const storedName = getAuthValue('activeUserName');
       const profile = this.userProfiles[roleId] || this.userProfiles['super_admin'];
-      this.currentUser = { roleId, ...profile };
+      const displayName = storedName || profile.name;
+      this.currentUser = { 
+        roleId, 
+        name: displayName,
+        avatar: this.getInitials(displayName),
+        roleName: profile.roleName
+      };
     }
+  }
+
+  // ── First-Time Login Password Setup Flow ──
+  showPasswordSetupModal = false;
+  newPasswordInput = '';
+  confirmPasswordInput = '';
+  isNewPasswordVisible = false;
+  passwordSetupError = '';
+  isSavingPassword = false;
+  passwordSetupToast = '';
+
+  checkFirstTimePasswordRequirement(user: any): void {
+    if (!user) return;
+    const role = user.role || getAuthValue('activeRoleId');
+    if (role === 'judge' || role === 'sponsor' || role === 'instructor') {
+      const needsPassword = user.mustSetPassword || user.isFirstLogin || user.passwordChanged === false || (user.otp && user.password === user.otp);
+      if (needsPassword) {
+        this.showPasswordSetupModal = true;
+      }
+    }
+  }
+
+  submitNewPassword(): void {
+    if (!this.newPasswordInput || this.newPasswordInput.length < 6) {
+      this.passwordSetupError = 'Password must be at least 6 characters long.';
+      return;
+    }
+    if (this.newPasswordInput !== this.confirmPasswordInput) {
+      this.passwordSetupError = 'Passwords do not match. Please check and try again.';
+      return;
+    }
+
+    this.isSavingPassword = true;
+    this.passwordSetupError = '';
+
+    const userEmail = getAuthValue('activeUserEmail') || '';
+    const userTicket = getAuthValue('activeUserTicket') || '';
+    const targetUser = this.contentService.users.find(u => 
+      (userEmail && u.email?.trim().toLowerCase() === userEmail.trim().toLowerCase()) ||
+      (userTicket && u.ticket?.trim().toLowerCase() === userTicket.trim().toLowerCase())
+    );
+
+    const newPass = this.newPasswordInput.trim();
+
+    if (targetUser) {
+      const updatedUsers = this.contentService.users.map(u => {
+        if (u.id === targetUser.id) {
+          return {
+            ...u,
+            password: newPass,
+            otp: '', // void temporary OTP
+            mustSetPassword: false,
+            passwordChanged: true
+          };
+        }
+        return u;
+      });
+      this.contentService.saveUsers(updatedUsers);
+
+      this.apiService.updateUser(targetUser.id, {
+        email: targetUser.email,
+        full_name: targetUser.fullName,
+        role: targetUser.role,
+        status: targetUser.status || 'Active',
+        ticket: targetUser.ticket,
+        password: newPass
+      }).subscribe({
+        next: () => console.log('Password updated in backend DB'),
+        error: (err) => console.warn('Backend password sync notice:', err)
+      });
+    }
+
+    setTimeout(() => {
+      this.isSavingPassword = false;
+      this.showPasswordSetupModal = false;
+      this.newPasswordInput = '';
+      this.confirmPasswordInput = '';
+      this.passwordSetupToast = '✅ Permanent password saved! Your temporary OTP access pass has been voided.';
+      setTimeout(() => (this.passwordSetupToast = ''), 5000);
+    }, 800);
   }
 
   hasAccess(menuItem: string): boolean {

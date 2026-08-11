@@ -235,3 +235,107 @@
     <router-outlet></router-outlet>
   </div>
 </div>
+
+<!-- ══ FIRST-TIME LOGIN PASSWORD SETUP MODAL ══ -->
+<div class="pass-modal-overlay" *ngIf="showPasswordSetupModal">
+  <div class="pass-modal-card">
+    <div class="pass-modal-header">
+      <div class="pass-modal-icon">
+        <span class="material-symbols-outlined">lock_reset</span>
+      </div>
+      <div>
+        <h2>Security Setup: Set Permanent Password</h2>
+        <p>You logged in using a temporary access pass/OTP. Create your private permanent password below to activate your account and void the temporary OTP.</p>
+      </div>
+    </div>
+
+    <div class="pass-modal-body">
+      <div *ngIf="passwordSetupError" class="pass-alert pass-alert-danger">
+        <span class="material-symbols-outlined">error</span>
+        <span>{{ passwordSetupError }}</span>
+      </div>
+
+      <div class="form-group">
+        <label>New Permanent Password *</label>
+        <div class="input-with-icon">
+          <span class="material-symbols-outlined icon">key</span>
+          <input [type]="isNewPasswordVisible ? 'text' : 'password'" 
+                 [(ngModel)]="newPasswordInput" 
+                 placeholder="Enter new password (min 6 characters)" 
+                 class="form-control" />
+          <button type="button" class="eye-btn" (click)="isNewPasswordVisible = !isNewPasswordVisible">
+            <span class="material-symbols-outlined">{{ isNewPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:14px;">
+        <label>Confirm Permanent Password *</label>
+        <div class="input-with-icon">
+          <span class="material-symbols-outlined icon">lock</span>
+          <input [type]="isNewPasswordVisible ? 'text' : 'password'" 
+                 [(ngModel)]="confirmPasswordInput" 
+                 placeholder="Re-enter new password" 
+                 class="form-control" />
+        </div>
+      </div>
+
+      <div class="pass-notice">
+        <span class="material-symbols-outlined">verified_user</span>
+        <span>Once saved, your temporary OTP will be permanently voided. You will use this new password for future logins.</span>
+      </div>
+    </div>
+
+    <div class="pass-modal-footer">
+      <button class="btn-save-pass" (click)="submitNewPassword()" [disabled]="isSavingPassword">
+        <span *ngIf="!isSavingPassword" class="material-symbols-outlined">check_circle</span>
+        <span *ngIf="isSavingPassword" class="material-symbols-outlined spinning">sync</span>
+        {{ isSavingPassword ? 'Saving Password...' : 'Save Password & Activate Account' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Password Setup Success Toast -->
+<div class="pass-toast" *ngIf="passwordSetupToast">
+  <span class="material-symbols-outlined">check_circle</span>
+  <span>{{ passwordSetupToast }}</span>
+</div>
+
+<!-- ══ GLOBAL CONFIRM DIALOG MODAL (DialogService) ══ -->
+<ng-container *ngIf="dialogService.confirmState$ | async as confirmState">
+  <div class="global-dialog-overlay" *ngIf="confirmState">
+    <div class="global-dialog-card" [class]="confirmState.data.type || 'danger'">
+      <div class="global-dialog-header">
+        <div class="global-dialog-icon" [class]="confirmState.data.type || 'danger'">
+          <span class="material-symbols-outlined">{{ confirmState.data.type === 'danger' ? 'warning' : 'help_outline' }}</span>
+        </div>
+        <div>
+          <h3>{{ confirmState.data.title || 'Confirm Action' }}</h3>
+          <p>{{ confirmState.data.message }}</p>
+        </div>
+      </div>
+      <div class="global-dialog-footer">
+        <button type="button" class="btn-dialog-cancel" (click)="dialogService.closeConfirm(false)">
+          {{ confirmState.data.cancelText || 'Cancel' }}
+        </button>
+        <button type="button" class="btn-dialog-confirm" [class]="confirmState.data.type || 'danger'" (click)="dialogService.closeConfirm(true)">
+          {{ confirmState.data.confirmText || 'Confirm' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</ng-container>
+
+<!-- ══ GLOBAL TOAST CONTAINER (DialogService) ══ -->
+<div class="global-toast-container">
+  <div *ngFor="let t of (dialogService.toasts$ | async)" class="global-toast-item" [class]="t.type || 'info'">
+    <span class="material-symbols-outlined icon">
+      {{ t.type === 'success' ? 'check_circle' : t.type === 'error' ? 'error' : t.type === 'warning' ? 'warning' : 'info' }}
+    </span>
+    <span>{{ t.message }}</span>
+    <button type="button" class="toast-close" (click)="dialogService.removeToast(t.id)">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+  </div>
+</div>

@@ -227,7 +227,7 @@ try:
         try:
             # Try email first, then ticket (access pass)
             cur.execute(
-                "SELECT id, email, full_name, role, ticket, password_hash, status FROM users WHERE lower(email) = %s OR upper(ticket) = %s",
+                "SELECT id, email, full_name, role, ticket, password_hash, status, organization FROM users WHERE lower(email) = %s OR upper(ticket) = %s",
                 (credential.lower(), credential.upper()),
             )
             row = cur.fetchone()
@@ -237,7 +237,7 @@ try:
 
         if not row:
             raise HTTPException(status_code=401, detail="Invalid credentials")
-        user_id, db_email, full_name, role, ticket, password_hash, status = row
+        user_id, db_email, full_name, role, ticket, password_hash, status, organization = row
         if not verify_password(payload.password, password_hash):
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -267,6 +267,7 @@ try:
             "role": role,
             "ticket": ticket,
             "status": status,
+            "organization": organization or "",
         }
 
     @app.get("/api/auth/verify")
@@ -274,9 +275,13 @@ try:
         return {"role": user["role"], "email": user["email"]}
 
     @app.post("/api/logout")
-    def logout(payload: dict = None, _auth: dict = Depends(require_auth)):
+    def logout(request: Request = None, payload: dict = None):
         payload = payload or {}
         token = payload.get("token", "")
+        if not token and request and request.headers.get("Authorization"):
+            auth_header = request.headers.get("Authorization", "")
+            if auth_header.startswith("Bearer "):
+                token = auth_header[7:]
         if token:
             conn = _get_db()
             cur = conn.cursor()

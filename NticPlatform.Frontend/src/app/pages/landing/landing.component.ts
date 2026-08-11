@@ -355,9 +355,11 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     this.email = '';
     this.password = '';
     this.loginError = '';
+    this.rememberDevice = false;
     const rememberedEmail = getAuthValue('activeUserEmail');
     if (rememberedEmail && typeof window !== 'undefined' && window.localStorage.getItem('activeUserEmail') !== null) {
       this.email = rememberedEmail;
+      this.rememberDevice = true;
     }
     this.detectedRoleName = '';
     if (typeof document !== 'undefined') {
@@ -1049,7 +1051,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       const routes: Record<string, string> = {
         super_admin: '/dashboard', content_manager: '/dashboard', reviewer: '/dashboard',
         competition_manager: '/dashboard', school_admin: '/dashboard',
-        instructor: '/instructor', judge: '/judge', student: '/lms', sponsor: '/sponsors'
+        instructor: '/instructor', judge: '/dashboard', student: '/lms', sponsor: '/sponsors'
       };
       this.router.navigate([routes[role] || '/dashboard']);
       return;
@@ -1651,6 +1653,9 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     setAuthValue('activeRoleId', role, this.rememberDevice);
     setAuthValue('activeUserEmail', email, this.rememberDevice);
     setAuthValue('activeUserTicket', ticket, this.rememberDevice);
+    if (user.fullName) {
+      setAuthValue('activeUserName', user.fullName, this.rememberDevice);
+    }
     if (user.token) {
       setAuthValue('activeUserToken', user.token, this.rememberDevice);
     }
@@ -1661,7 +1666,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
 
     const roleRoutes: Record<string, string> = {
       instructor: '/instructor',
-      judge: '/judge',
+      judge: '/dashboard',
       student: '/lms',
       school_admin: '/dashboard',
       sponsor: '/sponsors',
@@ -1671,7 +1676,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       competition_manager: '/dashboard'
     };
 
-    if ((role === 'judge' || role === 'sponsor') && user.organization === '_pending_profile') {
+    if ((role === 'judge' || role === 'sponsor') && (user.organization === '_pending_profile' || user.organization === '')) {
       this.router.navigate(['/profile-completion']);
     } else {
       this.router.navigate([roleRoutes[role] || '/dashboard']);

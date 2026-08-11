@@ -253,6 +253,8 @@ export interface User {
   photoFileId?: string;
   password?: string;
   otp: string;
+  mustSetPassword?: boolean;
+  passwordChanged?: boolean;
   organization: string;
   region?: string;
   track?: string;

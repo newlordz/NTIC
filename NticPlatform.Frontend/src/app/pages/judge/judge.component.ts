@@ -10,7 +10,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { ContentService } from '../../services/content.service';
+import { ContentService, Competition } from '../../services/content.service';
 import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
 
 export interface JudgeTeam {
@@ -135,45 +135,64 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
     { id: 'teamwork', label: 'Team Collaboration', icon: 'diversity_3', weight: 20, score: 0, maxScore: 20, description: 'Division of work, team coordination, and evidence of collaborative development.', feedback: '' }
   ];
 
-  get computedRounds(): CompetitionRound[] {
-    const teams = this.contentService.teams;
-    if (!teams || teams.length === 0) return [];
-    
-    const trackMetadata: Record<string, { name: string; deadline: string }> = {
-      'coding': { name: 'Coding Finals -- Regionals', deadline: 'Jun 28' },
-      'robotics': { name: 'Robotics Semi-Finals', deadline: 'Jul 2' },
-      'ai & ml': { name: 'AI & ML Bowl', deadline: 'Jul 5' },
-      'ai': { name: 'AI & ML Bowl', deadline: 'Jul 5' },
-      'cybersecurity': { name: 'Networking & Cybersecurity CTF', deadline: 'Jun 30' },
-      'cyber': { name: 'Networking & Cybersecurity CTF', deadline: 'Jun 30' },
-      'open innovation': { name: 'Innovation Showcase', deadline: 'Jul 8' },
-      'innovation': { name: 'Innovation Showcase', deadline: 'Jul 8' }
-    };
+get computedRounds(): CompetitionRound[] {
+    const comps = this.contentService.competitions;
+    if (!comps || comps.length === 0) return [];
 
-    const uniqueTracks = Array.from(new Set(teams.map(t => t.track.toLowerCase())));
-
-    return uniqueTracks.map(track => {
-      const meta = trackMetadata[track] || { name: `${track.toUpperCase()} Challenge`, deadline: 'Jul 15' };
-      const teamCount = teams.filter(t => t.track.toLowerCase() === track).length;
-      
-      let standardTrack = track;
-      if (track === 'ai & ml') standardTrack = 'ai';
-      if (track === 'cybersecurity') standardTrack = 'cyber';
-      if (track === 'open innovation') standardTrack = 'innovation';
-
-      return {
-        id: `round-${standardTrack}`,
-        name: meta.name,
-        track: standardTrack,
-        teams: teamCount,
-        deadline: meta.deadline,
-        status: 'live' as const
-      };
+    const judgeTracks = this.judgeTracks();
+    const visible = comps.filter(c => {
+      if (c.status === 'draft' || c.status === 'archived') return false;
+      if (judgeTracks.includes('all')) return true;
+      return judgeTracks.some(t => this.trackMatches(t, c.track));
     });
+
+    return visible.map(c => ({
+      id: c.id,
+      name: c.title || 'Untitled Competition Round',
+      track: this.normalizeTrack(c.track),
+      teams: this.teams.filter(t => this.trackMatches(t.track, c.track)).length,
+      deadline: this.roundDeadline(c),
+      status: c.status === 'completed' ? 'completed' as const : c.status === 'registration' ? 'upcoming' as const : 'live' as const
+    }));
   }
 
-  get rounds(): CompetitionRound[] {
+get rounds(): CompetitionRound[] {
     return this.computedRounds;
+  }
+
+  private judgeTracks(): string[] {
+    const email = getAuthValue('activeUserEmail') || '';
+    const ticket = getAuthValue('activeUserTicket') || '';
+    const user = this.contentService.users.find(u =>
+      (email && u.email?.toLowerCase() === email.toLowerCase()) ||
+      (ticket && u.ticket?.toLowerCase() === ticket.toLowerCase())
+    );
+    const assigned = (user?.track || '').split(',').map(t => t.trim()).filter(Boolean);
+    return assigned.length === 0 ? ['all'] : assigned.map(t => this.normalizeTrack(t));
+  }
+
+  private normalizeTrack(track: string): string {
+    const t = (track || '').trim().toLowerCase();
+    if (!t) return 'all';
+    if (t.includes('cyber') || t.includes('security') || t.includes('network')) return 'cyber';
+    if (t.includes('robot') || t.includes('hardware') || t.includes('iot')) return 'robotics';
+    if (t.includes('intelligence') || t.includes('machine') || t.includes('learn') || t.includes('data') || t === 'ai' || t.includes('ml')) return 'ai';
+    if (t.includes('innov') || t.includes('design') || t.includes('startup')) return 'innovation';
+    if (t === 'coding' || t.includes('code') || t.includes('program') || t.includes('software') || t.includes('dev')) return 'coding';
+    return 'all';
+  }
+
+  private trackMatches(a: string, b: string): boolean {
+    return this.normalizeTrack(a) === this.normalizeTrack(b);
+  }
+
+  private roundDeadline(c: Competition): string {
+    const judging = (c.phases || []).find(p => p.type === 'judging');
+    const raw = judging?.endDate || c.endDate || c.deadline;
+    if (!raw) return 'TBD';
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return raw;
+    return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
   }
 
   get teams(): JudgeTeam[] {
@@ -265,13 +284,13 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
   get filteredTeams(): JudgeTeam[] {
     let list = this.teams;
 
-    const round = this.rounds.find(r => r.id === this.activeRoundId);
+const round = this.rounds.find(r => r.id === this.activeRoundId);
     if (round) {
-      list = list.filter(t => t.track === round.track);
+      list = list.filter(t => this.trackMatches(t.track, round.track));
     }
 
-    if (this.trackFilter !== 'all') {
-      list = list.filter(t => t.track === this.trackFilter);
+if (this.trackFilter !== 'all') {
+      list = list.filter(t => this.trackMatches(t.track, this.trackFilter));
     }
 
     if (this.statusFilter !== 'all') {
@@ -316,8 +335,10 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
     
     if (activeUser) return activeUser;
 
+    const storedName = getAuthValue('activeUserName');
+
     return {
-      fullName: activeUserEmail ? activeUserEmail.split('@')[0] : 'Judge Account',
+      fullName: storedName || (activeUserEmail ? activeUserEmail.split('@')[0] : 'Judge Account'),
       organization: 'NTI Evaluation Board',
       track: 'General NTI'
     };
@@ -542,12 +563,15 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
     };
     resize();
 
-    const stars = Array.from({ length: 60 }, () => ({
+    const starColors = ['#ffffff', '#93c5fd', '#a78bfa', '#38bdf8', '#c4b5fd'];
+    const stars = Array.from({ length: 150 }, () => ({
       x: Math.random() * canvas.offsetWidth,
       y: Math.random() * canvas.offsetHeight,
-      r: Math.random() * 1.5 + 0.3,
+      r: Math.random() * 1.8 + 0.5,
+      color: starColors[Math.floor(Math.random() * starColors.length)],
       twinkle: Math.random() * Math.PI * 2,
-      speed: Math.random() * 0.02 + 0.01
+      speed: Math.random() * 0.03 + 0.015,
+      glow: Math.random() > 0.6
     }));
 
     let frame = 0;
@@ -559,18 +583,27 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
 
       stars.forEach(s => {
         s.twinkle += s.speed;
-        const alpha = 0.3 + Math.sin(s.twinkle) * 0.3;
+        const alpha = 0.35 + (Math.sin(s.twinkle) + 1) * 0.32;
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(212, 160, 23, ${alpha})`;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = s.color;
+        if (s.glow) {
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = s.color;
+        } else {
+          ctx.shadowBlur = 0;
+        }
         ctx.fill();
       });
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
 
-      // Animated gavel sweep line
-      const sweepX = (Math.sin(frame * 0.008) + 1) / 2 * w;
-      const grad = ctx.createLinearGradient(sweepX - 100, 0, sweepX + 100, 0);
+      // Animated subtle light sweep across arena header
+      const sweepX = ((Math.sin(frame * 0.006) + 1) / 2) * w;
+      const grad = ctx.createLinearGradient(sweepX - 120, 0, sweepX + 120, 0);
       grad.addColorStop(0, 'transparent');
-      grad.addColorStop(0.5, 'rgba(212, 160, 23, 0.08)');
+      grad.addColorStop(0.5, 'rgba(99, 161, 255, 0.06)');
       grad.addColorStop(1, 'transparent');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);

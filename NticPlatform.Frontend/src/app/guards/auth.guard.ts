@@ -6,7 +6,7 @@ import { getAuthValue } from '../services/session.util';
 import { environment } from '../../environments/environment';
 
 const ROLE_ACCESS: Record<string, string[]> = {
-  'dashboard':        ['super_admin', 'admin', 'content_manager', 'reviewer', 'competition_manager', 'school_admin'],
+  'dashboard':        ['super_admin', 'admin', 'content_manager', 'reviewer', 'competition_manager', 'school_admin', 'instructor', 'student', 'judge', 'sponsor', 'support_admin'],
   'lms':              ['student', 'instructor', 'super_admin', 'admin'],
   'lms-manager':      ['super_admin', 'admin', 'content_manager', 'instructor'],
   'instructor':       ['instructor', 'super_admin', 'admin'],
@@ -26,7 +26,10 @@ export const authGuard: CanActivateFn = async (_route, state) => {
   const path = (state.url || '').replace(/^\//, '').split('?')[0];
 
   const allowed = ROLE_ACCESS[path];
-  if (!allowed || allowed.length === 0) return true;
+  if (!allowed || allowed.length === 0) {
+    if (path === '' || path === '/' || path === 'landing') verifiedRole = null;
+    return true;
+  }
 
   if (!token) {
     verifiedRole = null;
@@ -55,6 +58,13 @@ export const authGuard: CanActivateFn = async (_route, state) => {
     }
     return true;
   } catch {
+    // Backend unreachable or error — fall back to locally stored role as a safety net.
+    // This prevents valid sessions from being wiped out due to transient server issues.
+    const localRole = getAuthValue('activeRoleId');
+    if (localRole && allowed.includes(localRole)) {
+      verifiedRole = localRole; // cache it so future nav skips the network call
+      return true;
+    }
     verifiedRole = null;
     router.navigate(['/']);
     return false;

@@ -2,9 +2,22 @@
   <!-- Epic Arena Header -->
   <header class="arena-header">
     <canvas #arenaCanvas class="arena-canvas"></canvas>
-    <div class="arena-gradient"></div>
+    <!-- Space Starfield & Comets Overlay -->
+    <div class="space-starfield">
+      <div class="starfield-stars"></div>
+      <div class="starfield-stars2"></div>
+    </div>
+    <!-- Ambient Orbs & Comets -->
+    <div class="arena-orb orb-1"></div>
+    <div class="arena-orb orb-2"></div>
+    <div class="arena-orb orb-3"></div>
+    <div class="arena-comet comet-1"></div>
+    <div class="arena-comet comet-2"></div>
+    <div class="arena-comet comet-3"></div>
+    <div class="arena-comet comet-4"></div>
     <div class="arena-content">
       <div class="arena-badge">
+        <span class="live-dot"></span>
         <span class="gavel-icon material-symbols-outlined">gavel</span>
         Judging Arena · Live
       </div>
@@ -14,12 +27,14 @@
       </h1>
       <p class="arena-sub">Evaluate NTIC championship submissions with precision rubrics and publish official rankings.</p>
 
-      <!-- Active Judge Credentials Badge -->
-      <div style="margin-top: 14px; padding: 10px 18px; background: rgba(255,255,255,0.08); backdrop-filter: blur(8px); border-radius: 12px; border: 1px solid rgba(59,130,246,0.35); display: inline-flex; align-items: center; gap: 14px; text-align: left;">
-        <span class="material-symbols-outlined" style="color: #60a5fa; font-size: 26px;">gavel</span>
-        <div>
-          <div style="font-size: 13px; font-weight: 700; color: #fff;">{{ loggedInJudge.fullName }}</div>
-          <div style="font-size: 11px; color: rgba(255,255,255,0.85);">{{ loggedInJudge.organization }} * Track: <strong style="color: #93c5fd;">{{ loggedInJudge.track }}</strong></div>
+      <!-- Judge Credential Badge -->
+      <div class="judge-credential">
+        <div class="cred-avatar">
+          <span class="material-symbols-outlined">gavel</span>
+        </div>
+        <div class="cred-info">
+          <div class="cred-name">{{ loggedInJudge.fullName }}</div>
+          <div class="cred-meta">{{ loggedInJudge.organization }} · Track: <strong>{{ loggedInJudge.track }}</strong></div>
         </div>
       </div>
     </div>
@@ -27,11 +42,13 @@
     <div class="arena-stats">
       <div class="arena-stat" *ngFor="let s of [
         { label: 'Awaiting Score', value: animatedStats.pending, icon: 'hourglass_top' },
-        { label: 'Teams Scored', value: animatedStats.scored, icon: 'verified' },
-        { label: 'Active Rounds', value: animatedStats.rounds, icon: 'flag' },
-        { label: 'Teams in Round', value: animatedStats.teams, icon: 'groups' }
-      ]; let i = index" [style.animation-delay.ms]="i * 120">
-        <span class="material-symbols-outlined stat-ico">{{ s.icon }}</span>
+        { label: 'Teams Scored',   value: animatedStats.scored,  icon: 'verified' },
+        { label: 'Active Rounds',  value: animatedStats.rounds,  icon: 'flag' },
+        { label: 'Teams in Round', value: animatedStats.teams,   icon: 'groups' }
+      ]; let i = index" [style.animation-delay.ms]="i * 130">
+        <div class="stat-ico-wrap">
+          <span class="material-symbols-outlined stat-ico">{{ s.icon }}</span>
+        </div>
         <div>
           <strong>{{ s.value }}</strong>
           <span>{{ s.label }}</span>
