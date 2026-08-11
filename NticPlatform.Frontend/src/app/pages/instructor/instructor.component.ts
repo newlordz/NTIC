@@ -384,7 +384,7 @@ export class InstructorComponent implements OnInit, AfterViewInit, OnDestroy {
       status: 'approved'
     });
     this.updateStats();
-    this.showToast(`Approved ${this.selectedSubmission.student} — Score: ${this.reviewScore}/100`);
+    this.showToast(`Approved ${this.selectedSubmission.student} -- Score: ${this.reviewScore}/100`);
     this.advanceQueue();
   }
 

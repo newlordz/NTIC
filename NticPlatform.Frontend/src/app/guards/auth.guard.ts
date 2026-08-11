@@ -34,7 +34,7 @@ export const authGuard: CanActivateFn = async (_route, state) => {
     return false;
   }
 
-  // Use previously verified role from server — never trust client storage
+  // Use previously verified role from server -- never trust client storage
   if (verifiedRole) {
     if (!allowed.includes(verifiedRole)) {
       router.navigate(['/']);

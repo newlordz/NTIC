@@ -34,7 +34,7 @@
 }
 
 /* ═══════════════════════════════════════════
-   SUPER ADMIN — HEADER
+   SUPER ADMIN -- HEADER
 ═══════════════════════════════════════════ */
 .admin-header {
   display: flex;
@@ -140,7 +140,7 @@
 }
 
 /* ═══════════════════════════════════════════
-   SUPER ADMIN — STAT GRID
+   SUPER ADMIN -- STAT GRID
 ═══════════════════════════════════════════ */
 .admin-stat-grid {
   display: grid;
@@ -359,7 +359,7 @@
 }
 
 /* ═══════════════════════════════════════════
-   SUPER ADMIN — TABS
+   SUPER ADMIN -- TABS
 ═══════════════════════════════════════════ */
 .admin-tabs {
   display: flex;
@@ -439,7 +439,7 @@
 }
 
 /* ═══════════════════════════════════════════
-   EXPANDED SECTION — LIVING AURORA BACKDROP
+   EXPANDED SECTION -- LIVING AURORA BACKDROP
 ═══════════════════════════════════════════ */
 .admin-tab-body.ac-expanded {
   animation: none !important;
@@ -447,7 +447,7 @@
   top: 0; left: 0; right: 0; bottom: 0;
   z-index: 9000;
 
-  /* opaque fallback — guarantees the panel is never see-through */
+  /* opaque fallback -- guarantees the panel is never see-through */
   background: var(--surface-container-lowest, #fff);
 
   /* ── static base glows (always visible, even if animation pauses) ── */
@@ -464,7 +464,7 @@
   margin: 0 !important;
   overflow-y: auto;
 
-  /* ── the living aurora — clearly visible, continuously flowing ── */
+  /* ── the living aurora -- clearly visible, continuously flowing ── */
   &::before {
     content: '';
     position: fixed;
@@ -640,7 +640,7 @@
 }
 
 /* ═══════════════════════════════════════════
-   OVERVIEW TAB — INFRASTRUCTURE + AUDIT
+   OVERVIEW TAB -- INFRASTRUCTURE + AUDIT
 ═══════════════════════════════════════════ */
 .admin-two-col {
   display: grid;
@@ -2202,7 +2202,7 @@
 }
 
 /* ═══════════════════════════════════════════
-   LIVE TELEMETRY — SPARKLINES & BADGES
+   LIVE TELEMETRY -- SPARKLINES & BADGES
 ═══════════════════════════════════════════ */
 
 /* Live number flash animation */
@@ -2598,7 +2598,7 @@
 
 
 // ══════════════════════════════════════════════════════════
-//  CMS CONTENT MANAGER — ADMIN DASHBOARD
+//  CMS CONTENT MANAGER -- ADMIN DASHBOARD
 // ══════════════════════════════════════════════════════════
 
 // Content Manager tab accent
@@ -4657,7 +4657,7 @@
 
 
 /* ══════════════════════════════════════════════════════
-   DASHBOARD — MOBILE RESPONSIVE OVERRIDES
+   DASHBOARD -- MOBILE RESPONSIVE OVERRIDES
 ══════════════════════════════════════════════════════ */
 
 @media (max-width: 768px) {
@@ -4824,24 +4824,24 @@
 }
 
 /* ═══════════════════════════════════════════
-   DARK THEME — ADMIN USERS TABLE
+   DARK THEME -- ADMIN USERS TABLE
    ═══════════════════════════════════════════ */
 :host-context(body.dark-theme) {
 
-  /* Status badges — toned for dark mode */
+  /* Status badges -- toned for dark mode */
   .admin-status-badge {
     &.active  { background: rgba(52, 211, 153, 0.14); color: #34d399; border-color: rgba(52, 211, 153, 0.3); }
     &.pending { background: rgba(251, 191, 36, 0.14); color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
     &.revoked { background: rgba(248, 113, 113, 0.14); color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
   }
 
-  /* Row hover — avoid blinding white backgrounds */
+  /* Row hover -- avoid blinding white backgrounds */
   .admin-table-row:hover {
     background: rgba(109, 165, 224, 0.06);
     .admin-user-cell { background: var(--surface-container, #1a2332); }
   }
 
-  /* Avatars — bump opacity so initials are legible */
+  /* Avatars -- bump opacity so initials are legible */
   .admin-user-avatar {
     background: linear-gradient(135deg, rgba(109, 165, 224, 0.2), rgba(109, 165, 224, 0.3));
     border-color: rgba(109, 165, 224, 0.3);
@@ -4856,7 +4856,7 @@
     &.competition_manager { background: linear-gradient(135deg, rgba(251, 146, 60, 0.2), rgba(251, 146, 60, 0.3)); border-color: rgba(251, 146, 60, 0.3); color: #fb923c; }
   }
 
-  /* Role badges — bump opacity + use brighter palette */
+  /* Role badges -- bump opacity + use brighter palette */
   .admin-role-badge {
     background: rgba(109, 165, 224, 0.14);
     border-color: rgba(109, 165, 224, 0.25);
@@ -4871,14 +4871,14 @@
     &.competition_manager { background: rgba(251, 146, 60, 0.12); border-color: rgba(251, 146, 60, 0.25); color: #fb923c; }
   }
 
-  /* Expand/collapse button — was nearly invisible */
+  /* Expand/collapse button -- was nearly invisible */
   .ac-expand-btn {
     background: rgba(109, 165, 224, 0.1);
     border-color: rgba(109, 165, 224, 0.25);
     &:hover { background: rgba(109, 165, 224, 0.18); }
   }
 
-  /* Ticket code — bump contrast */
+  /* Ticket code -- bump contrast */
   code {
     background: var(--surface-container, #1a2332);
     color: var(--on-surface-variant, #94a3b8);

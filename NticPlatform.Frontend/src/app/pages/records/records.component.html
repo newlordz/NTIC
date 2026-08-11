@@ -148,7 +148,7 @@
                 <span class="material-symbols-outlined text-xs">location_on</span>
                 {{ record.region }}<span *ngIf="record.district">, {{ record.district }}</span>
               </div>
-              <span *ngIf="!record.region" class="text-subtle">—</span>
+              <span *ngIf="!record.region" class="text-subtle">--</span>
             </td>
             <td>
               <span class="status-chip" [class]="'status-' + record.status">

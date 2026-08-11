@@ -1,4 +1,4 @@
-﻿import { getAuthValue } from '../../services/session.util';
+import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -411,7 +411,7 @@ export class CompetitionsComponent implements OnInit {
     this.loadCompetitions();
   }
 
-  /** Quick advance status from card — used in board & grid inline action */
+  /** Quick advance status from card -- used in board & grid inline action */
   quickAdvanceStatus(comp: Competition, event: Event): void {
     event.stopPropagation();
     const flow: Competition['status'][] = ['draft', 'registration', 'active', 'completed'];
@@ -521,7 +521,7 @@ export class CompetitionsComponent implements OnInit {
   }
 
   formatDate(dateStr: string): string {
-    if (!dateStr) return '—';
+    if (!dateStr) return '--';
     return new Date(dateStr).toLocaleDateString('en-GB', {
       day: '2-digit', month: 'short', year: 'numeric'
     });

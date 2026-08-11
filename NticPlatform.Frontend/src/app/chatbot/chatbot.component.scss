@@ -698,7 +698,7 @@ $shadow-panel: 0 24px 60px rgba(0, 30, 80, 0.18), 0 8px 24px rgba(0, 30, 80, 0.1
   box-shadow: 0 0 8px rgba(16, 185, 129, 0.7) !important;
 }
 
-// ─── DARK MODE — ADDITIONS ───────────────────────────────────────────────────
+// ─── DARK MODE -- ADDITIONS ───────────────────────────────────────────────────
 :host-context(body.dark-theme) {
   .human-support-bubble {
     background: rgba(16, 185, 129, 0.1) !important;

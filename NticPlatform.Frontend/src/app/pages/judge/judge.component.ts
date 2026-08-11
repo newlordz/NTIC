@@ -1,4 +1,4 @@
-﻿import { getAuthValue } from '../../services/session.util';
+import { getAuthValue } from '../../services/session.util';
 import {
   Component,
   OnInit,
@@ -140,7 +140,7 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!teams || teams.length === 0) return [];
     
     const trackMetadata: Record<string, { name: string; deadline: string }> = {
-      'coding': { name: 'Coding Finals — Regionals', deadline: 'Jun 28' },
+      'coding': { name: 'Coding Finals -- Regionals', deadline: 'Jun 28' },
       'robotics': { name: 'Robotics Semi-Finals', deadline: 'Jul 2' },
       'ai & ml': { name: 'AI & ML Bowl', deadline: 'Jul 5' },
       'ai': { name: 'AI & ML Bowl', deadline: 'Jul 5' },
@@ -331,7 +331,7 @@ export class JudgeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   openMediaPreview(team: JudgeTeam, type: 'video' | 'pdf' | 'code'): void {
     const sub = this.contentService.submissions.find(s => s.id === team.id);
-    this.mediaModalTitle = `${team.name} — ${team.projectTitle}`;
+    this.mediaModalTitle = `${team.name} -- ${team.projectTitle}`;
     this.mediaModalType = type;
     
     if (type === 'video') {

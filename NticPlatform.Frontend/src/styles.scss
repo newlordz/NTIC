@@ -152,7 +152,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════
-   SMOOTH UI — Keyframes
+   SMOOTH UI -- Keyframes
    ═══════════════════════════════════════════════ */
 
 @keyframes fadeUp {
@@ -186,11 +186,11 @@ body {
 }
 
 /* ═══════════════════════════════════════════════
-   SMOOTH UI — Global GPU-accelerated transitions
+   SMOOTH UI -- Global GPU-accelerated transitions
    Only animate composited properties: transform + opacity
    ═══════════════════════════════════════════════ */
 
-/* Base — color tokens animate softly on theme switch 
+/* Base -- color tokens animate softly on theme switch 
    Scoped to theme-aware root elements instead of universal selector for perf */
 .theme-aware,
 .sidebar,
@@ -206,7 +206,7 @@ body {
     box-shadow       0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Interactive elements — only GPU-composited props + paint-safe bg/border */
+/* Interactive elements -- only GPU-composited props + paint-safe bg/border */
 a:not(.nav-link):not(.mega-link-item):not(.footer-nav-col a),
 button,
 .btn,
@@ -274,7 +274,7 @@ button,
   animation: fadeIn 0.4s ease forwards;
 }
 
-/* ── Page route animation — applied via Angular router ── */
+/* ── Page route animation -- applied via Angular router ── */
 .route-animate {
   animation: fadeIn 0.38s ease forwards;
 }
@@ -901,7 +901,7 @@ body.ac-expanded .main-content {
   box-shadow: var(--shadow-card);
   /* Use clip-path so content stays clipped but transform lift isn't blocked by overflow:hidden */
   overflow: hidden;
-  isolation: isolate; /* creates a new stacking context — allows z-index on card contents */
+  isolation: isolate; /* creates a new stacking context -- allows z-index on card contents */
 }
 
 .card-header {
@@ -930,7 +930,7 @@ body.ac-expanded .main-content {
   padding: 20px;
   position: relative;
   cursor: default;
-  /* overflow hidden removed — allows transform lift to be visible */
+  /* overflow hidden removed -- allows transform lift to be visible */
   &:hover { border-color: var(--primary); }
 
   .stat-bg-icon {
@@ -1137,7 +1137,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 }
 
 /* ══════════════════════════════════════════
-   RESPONSIVE — TABLETS (≤1200px)
+   RESPONSIVE -- TABLETS (≤1200px)
 ══════════════════════════════════════════ */
 @media (max-width: 1200px) {
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
@@ -1145,7 +1145,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 }
 
 /* ══════════════════════════════════════════
-   RESPONSIVE — MOBILE DRAWER + LAYOUT (≤768px)
+   RESPONSIVE -- MOBILE DRAWER + LAYOUT (≤768px)
 ══════════════════════════════════════════ */
 @media (max-width: 768px) {
 
@@ -1247,23 +1247,23 @@ textarea.form-control { resize: vertical; min-height: 100px; }
     .avatar-btn { width: 38px; height: 38px; }
   }
 
-  /* ── Main content — remove left margin since sidebar is now a drawer ── */
+  /* ── Main content -- remove left margin since sidebar is now a drawer ── */
   .main-content { width: 100%; }
 
   /* ── Page canvas padding ── */
   .page-canvas { padding: 16px; }
 
-  /* ── Grids — stack to single column ── */
+  /* ── Grids -- stack to single column ── */
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
 
-  /* ── Page header — stack action row ── */
+  /* ── Page header -- stack action row ── */
   .page-header.with-action {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
   }
 
-  /* ── Tab bars — horizontal scroll ── */
+  /* ── Tab bars -- horizontal scroll ── */
   .tab-bar,
   .admin-tabs {
     overflow-x: auto;
@@ -1279,7 +1279,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
     }
   }
 
-  /* ── Tables — horizontal scroll wrapper ── */
+  /* ── Tables -- horizontal scroll wrapper ── */
   .table-border-wrap,
   .card > .data-table,
   .card-body > .data-table {
@@ -1287,7 +1287,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
     -webkit-overflow-scrolling: touch;
   }
 
-  /* ── Header dropdowns — prevent overflow past viewport ── */
+  /* ── Header dropdowns -- prevent overflow past viewport ── */
   .topbar .header-dropdown {
     width: calc(100vw - 24px);
     right: -8px;
@@ -1298,10 +1298,10 @@ textarea.form-control { resize: vertical; min-height: 100px; }
     &.profile-dropdown { width: calc(100vw - 24px); }
   }
 
-  /* ── Podium — compress gaps ── */
+  /* ── Podium -- compress gaps ── */
   .podium-container { gap: 8px; padding: 20px 8px 0; }
 
-  /* ── Hero text card — reduce padding ── */
+  /* ── Hero text card -- reduce padding ── */
   .hero-text-card {
     padding: 24px 20px;
     h1 { font-size: 30px; }
@@ -1315,7 +1315,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 }
 
 /* ══════════════════════════════════════════
-   RESPONSIVE — SMALL PHONES (≤480px)
+   RESPONSIVE -- SMALL PHONES (≤480px)
 ══════════════════════════════════════════ */
 @media (max-width: 480px) {
 
@@ -1333,11 +1333,11 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   /* ── Stat cards ── */
   .stat-card .stat-value { font-size: 26px; }
 
-  /* ── Buttons — allow wrap ── */
+  /* ── Buttons -- allow wrap ── */
   .form-actions,
   .admin-form-actions { flex-wrap: wrap; }
 
-  /* ── Empty state — shrink padding ── */
+  /* ── Empty state -- shrink padding ── */
   .empty-state { padding: 40px 16px; }
 }
 
@@ -1402,7 +1402,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 }
 
 /* ── Page-Specific Animations ── */
-/* .fade-in is an alias for route-animate — both use the same spring-eased fadeUp */
+/* .fade-in is an alias for route-animate -- both use the same spring-eased fadeUp */
 .fade-in,
 .route-animate {
   animation: fadeIn 0.42s ease both;
@@ -2510,7 +2510,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
     /* Reduced from 5px → 3px: visually near-identical, ~40% faster GPU fill */
     backdrop-filter: blur(3px);
     -webkit-backdrop-filter: blur(3px);
-    /* Contain paint to this element — prevents backdrop from affecting siblings */
+    /* Contain paint to this element -- prevents backdrop from affecting siblings */
     contain: paint;
     border: 1px solid rgba(255, 255, 255, 0.15);
     color: #fff;
@@ -2586,7 +2586,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
       display: flex;
       align-items: center;
       justify-content: center;
-      /* Replace transition:all with explicit properties — avoids animating every prop */
+      /* Replace transition:all with explicit properties -- avoids animating every prop */
       transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 
       &:hover {
@@ -3587,7 +3587,7 @@ body.dark-theme .custom-credentials-modal {
 }
 
 /* ────────────────────────────────────────────────
-   prefers-reduced-motion — accessibility + perf
+   prefers-reduced-motion -- accessibility + perf
    ──────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -3621,7 +3621,7 @@ body.dark-theme .custom-credentials-modal {
 }
 
 /* ════════════════════════════════════════════════════════════
-   DARK THEME — Global Overrides
+   DARK THEME -- Global Overrides
    ════════════════════════════════════════════════════════════ */
 body.dark-theme {
   /* ── Core palette overrides ── */
@@ -3707,7 +3707,7 @@ body.dark-theme {
     padding-right: 36px !important;
   }
 
-  /* ── Admin Users Table — dark mode fixes ── */
+  /* ── Admin Users Table -- dark mode fixes ── */
   .admin-status-badge {
     &.active  { background: rgba(52, 211, 153, 0.14); color: #34d399; border-color: rgba(52, 211, 153, 0.3); }
     &.pending { background: rgba(251, 191, 36, 0.14); color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }

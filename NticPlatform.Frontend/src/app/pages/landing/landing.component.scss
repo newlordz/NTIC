@@ -1,5 +1,5 @@
 /* ================================================================
-   Landing Page — Harvard Academic Vibe Redesign
+   Landing Page -- Harvard Academic Vibe Redesign
    Scholastic Integrity · NTIC Championship Ghana
    ================================================================ */
 
@@ -105,7 +105,7 @@
 }
 
 // ══════════════════════════════════════════════════════════
-//  NEWS & EVENTS — Editorial Grid (Light Mode)
+//  NEWS & EVENTS -- Editorial Grid (Light Mode)
 // ══════════════════════════════════════════════════════════
 
 .news-editorial-section {
@@ -1668,7 +1668,7 @@
     --track-color-text: var(--gold-dark);
     --track-rgb: 212, 160, 23;
 
-    /* Initial state for "Sprint Start" entrance animation — starts far off-screen left */
+    /* Initial state for "Sprint Start" entrance animation -- starts far off-screen left */
     opacity: 0;
     transform: translate3d(-100vw, 0, 0) scale(0.85);
     
@@ -1781,7 +1781,7 @@
         transition: color 0.3s ease;
 
         &::before {
-          content: '•';
+          content: '*';
           color: var(--gold-dark);
           font-weight: bold;
           font-size: 14px;
@@ -2983,10 +2983,10 @@
 }
 
 /* ─────────────────────────────────────────────
-   UNIFIED GATEWAY — PHENOMENAL LOGIN DESIGN
+   UNIFIED GATEWAY -- PHENOMENAL LOGIN DESIGN
    ───────────────────────────────────────────── */
 /* ─────────────────────────────────────────────
-   UNIFIED GATEWAY — RESTORED VISUAL DNA
+   UNIFIED GATEWAY -- RESTORED VISUAL DNA
    ───────────────────────────────────────────── */
 .unified-gateway-section {
   padding: 100px 0 120px;
@@ -7015,7 +7015,7 @@
 
           .cockpit-right {
             /* ════════════════════════════════════════════════════
-               ROBOTICS CONTROL STATION — World-Class Aerospace Console
+               ROBOTICS CONTROL STATION -- World-Class Aerospace Console
                ════════════════════════════════════════════════════ */
             .game-controls-panel {
               display: flex;
@@ -7135,7 +7135,7 @@
                   gap: 8px;
                 }
 
-                /* Pivot/rotate buttons — renamed from .dpad-pivot to avoid class collision */
+                /* Pivot/rotate buttons -- renamed from .dpad-pivot to avoid class collision */
                 .dpad-pivot-btn {
                   width: 42px;
                   height: 42px;
@@ -7566,7 +7566,7 @@
           }
         }
 
-        /* 2. Coding Stage — Algorithm Visualizer + Code */
+        /* 2. Coding Stage -- Algorithm Visualizer + Code */
         .people-visual {
           background: rgba(0, 0, 0, 0.3);
           border: 1px solid rgba(255, 255, 255, 0.08);
@@ -7671,7 +7671,7 @@
             }
           }
 
-              /* Wrapper that owns the scale — keeps float animation from clobbering it */
+              /* Wrapper that owns the scale -- keeps float animation from clobbering it */
               .figure-scaler {
                 display: flex;
                 align-items: flex-end;
@@ -7690,7 +7690,7 @@
                 flex-shrink: 0;
                 animation: humanFloat 2.8s ease-in-out infinite;
                 animation-delay: var(--float-delay, 0s);
-                /* NO transition: transform here — float animation owns transform */
+                /* NO transition: transform here -- float animation owns transform */
 
                 .human-head {
                   width: 18px;
@@ -7840,7 +7840,7 @@
           }
         }
 
-        /* 3. AI Stage — Camera Viewfinder */
+        /* 3. AI Stage -- Camera Viewfinder */
         .ai-viewfinder {
           background: rgba(0, 0, 0, 0.4);
           border: 1px solid rgba(255, 255, 255, 0.1);
@@ -8105,7 +8105,7 @@
           }
         }
 
-        /* 4. Cyber Stage — Network Security Monitor */
+        /* 4. Cyber Stage -- Network Security Monitor */
         .cyber-monitor {
           background: #0b0f19 !important;
           border: 1px solid rgba(56, 189, 248, 0.25) !important;
@@ -8258,7 +8258,7 @@
         }
 
         /* 5. Innovation Smart Grid Stage */
-        /* 5. Innovation Stage — Energy Grid Dashboard */
+        /* 5. Innovation Stage -- Energy Grid Dashboard */
         .energy-dashboard {
           background: rgba(0, 0, 0, 0.3);
           border: 1px solid rgba(255, 255, 255, 0.08);
@@ -9830,7 +9830,7 @@
 
 
 /* ─────────────────────────────────────────────
-   LOGIN MODAL — MATCHES HTML STRUCTURE
+   LOGIN MODAL -- MATCHES HTML STRUCTURE
    ───────────────────────────────────────────── */
 .login-modal-card {
   position: relative;
@@ -10509,7 +10509,7 @@
 }
 
 /* ═════════════════════════════════════════════════════════
-   PERFORMANCE — Paint containment & off-screen skip
+   PERFORMANCE -- Paint containment & off-screen skip
    ═════════════════════════════════════════════════════════ */
 .hero-section,
 .countdown-section,

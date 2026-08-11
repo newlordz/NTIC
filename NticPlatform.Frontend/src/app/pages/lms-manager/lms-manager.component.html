@@ -472,7 +472,7 @@
                 <span *ngIf="sub.status === 'regrade_requested'" class="badge badge-warning">Revision Requested</span>
                 <span *ngIf="sub.status === 'resubmitted'" class="badge badge-info">Resubmitted</span>
                 <span *ngIf="sub.status === 'submitted'" class="badge badge-neutral">Pending Review</span>
-                <span *ngIf="sub.status === 'rejected'" class="badge badge-danger">Rejected — Resubmit</span>
+                <span *ngIf="sub.status === 'rejected'" class="badge badge-danger">Rejected -- Resubmit</span>
               </td>
               <td>
                 <button class="btn btn-xs btn-outline" (click)="openGradingModal(sub)">
@@ -829,7 +829,7 @@
         <hr style="margin: 20px 0; border-color: var(--border-color);">
 
         <div class="form-group">
-          <label>Score (0 – 100)</label>
+          <label>Score (0 - 100)</label>
           <input class="form-control" type="number" min="0" max="100" [(ngModel)]="gradeScore" placeholder="Enter score">
         </div>
 

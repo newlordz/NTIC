@@ -23,7 +23,7 @@ export class BrevoEmailService {
   sendPendingConfirmation(toEmail: string, toName: string, entityName: string, applicationType: string): void {
     this.send(
       toEmail, toName,
-      `${applicationType} Received — NTIC Ghana Championship`,
+      `${applicationType} Received -- NTIC Ghana Championship`,
       `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
         <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:24px;border-radius:12px 12px 0 0;text-align:center;">
           <h1 style="color:#fff;margin:0;font-size:22px;">NTIC Ghana Championship</h1>
@@ -44,7 +44,7 @@ export class BrevoEmailService {
   sendApprovalEmail(toEmail: string, toName: string, entityName: string, applicationType: string, ticket: string, otp: string): void {
     this.send(
       toEmail, toName,
-      `Application Approved — ${entityName} | NTIC Ghana`,
+      `Application Approved -- ${entityName} | NTIC Ghana`,
       `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
         <div style="background:linear-gradient(135deg,#065f46,#10b981);padding:24px;border-radius:12px 12px 0 0;text-align:center;">
           <h1 style="color:#fff;margin:0;font-size:22px;">Application Approved!</h1>
@@ -69,7 +69,7 @@ export class BrevoEmailService {
     const reasonList = reasons.split(',').map(r => `<li style="margin-bottom:4px;">${r.trim()}</li>`).join('');
     this.send(
       toEmail, toName,
-      `Application Update — ${entityName} | NTIC Ghana`,
+      `Application Update -- ${entityName} | NTIC Ghana`,
       `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
         <div style="background:linear-gradient(135deg,#991b1b,#ef4444);padding:24px;border-radius:12px 12px 0 0;text-align:center;">
           <h1 style="color:#fff;margin:0;font-size:22px;">Application Update</h1>
@@ -93,9 +93,9 @@ export class BrevoEmailService {
   sendOtpEmail(toEmail: string, otp: string): void {
     this.send(
       toEmail, toEmail.split('@')[0],
-      'Your Verification Code — NTIC Ghana',
+      'Your Verification Code -- NTIC Ghana',
       `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
-        <h2 style="color:#1a237e;">NTIC Ghana — Verification Code</h2>
+        <h2 style="color:#1a237e;">NTIC Ghana -- Verification Code</h2>
         <p style="font-size:15px;color:#333;">Use the code below to verify your email address:</p>
         <div style="background:#f5f5f5;border-radius:12px;padding:20px;text-align:center;margin:24px 0;">
           <span style="font-size:32px;font-weight:800;letter-spacing:8px;color:#d4a017;">${otp}</span>

@@ -567,14 +567,14 @@ private readonly defaultTeams: Team[] = [];
       const storedVersion = localStorage.getItem(this.CACHE_VERSION_KEY);
       if (storedVersion === this.CURRENT_CACHE_VERSION) return;
 
-      // Version mismatch or first run — drop all cached content so the
+      // Version mismatch or first run -- drop all cached content so the
       // freshly built defaults (NTI branding) take effect.
       this.CONTENT_CACHE_KEYS.forEach(key => {
         try { localStorage.removeItem(key); } catch { /* ignore */ }
       });
       localStorage.setItem(this.CACHE_VERSION_KEY, this.CURRENT_CACHE_VERSION);
       this.needsIdbPurge = true;
-    } catch { /* storage unavailable — skip */ }
+    } catch { /* storage unavailable -- skip */ }
   }
 
   refreshBackendData(): void {
@@ -589,7 +589,7 @@ private readonly defaultTeams: Team[] = [];
   }
 
   private loadFromBackend(): void {
-    // Users — replace entirely from backend (source of truth)
+    // Users -- replace entirely from backend (source of truth)
     this.apiService.getUsers().subscribe({
       next: (backendUsers: any[]) => {
         const total = backendUsers ? backendUsers.length : 0;
@@ -740,7 +740,7 @@ private readonly defaultTeams: Team[] = [];
     this.apiService.getHof().subscribe({
       next: (entries: any[]) => {
         if (entries && entries.length > 0) {
-          // Backend is the source of truth — REPLACE, don't merge, so stale local/test entries never resurface
+          // Backend is the source of truth -- REPLACE, don't merge, so stale local/test entries never resurface
           this.hallOfFameEntries = this.enrichHofEntries(entries.map((b: any) => ({
             id: b.id,
             type: b.type || 'individual',
@@ -1010,8 +1010,8 @@ private readonly defaultTeams: Team[] = [];
       const savedCountdown = localStorage.getItem('countdownDate');
       this.countdownDate = savedCountdown || '2026-08-15T09:00:00';
 
-      // Large datasets — load from localStorage first (sync), then async upgrade to IndexedDB
-      // Users are NOT loaded from localStorage — always fresh from backend sync
+      // Large datasets -- load from localStorage first (sync), then async upgrade to IndexedDB
+      // Users are NOT loaded from localStorage -- always fresh from backend sync
       this.pendingApprovals = this.loadKeySync('pendingApprovals', this.defaultPendingApprovals);
       this.rejectedApprovals = this.loadKeySync('rejectedApprovals', this.defaultRejectedApprovals);
       this.approvedApprovals = this.loadKeySync('approvedApprovals', this.defaultApprovedApprovals);
@@ -1093,7 +1093,7 @@ private readonly defaultTeams: Team[] = [];
   }
 
   private async migrateToIndexedDB(): Promise<void> {
-    // Users always come fresh from backend — never from cache
+    // Users always come fresh from backend -- never from cache
     const largeKeys = ['pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs'];
     if (this.needsIdbPurge) {
       this.needsIdbPurge = false;
@@ -1112,12 +1112,12 @@ private readonly defaultTeams: Team[] = [];
     const isLargeCollection = ['users', 'pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs'].includes(key);
 
     if (isLargeCollection) {
-      // Use IndexedDB for large collections — no size limit
+      // Use IndexedDB for large collections -- no size limit
       this.dataStorage.set(key, data).catch(() => {});
       // Also write to localStorage as fallback (may fail silently for large data)
       try { localStorage.setItem(key, json); } catch { /* quota exceeded, IndexedDB has it */ }
     } else {
-      // Small data — localStorage is fine
+      // Small data -- localStorage is fine
       if (typeof window !== 'undefined' && window.localStorage) {
         try { localStorage.setItem(key, json); } catch { /* ignore */ }
       }
@@ -1927,7 +1927,7 @@ private readonly defaultTeams: Team[] = [];
     const sub = this.lmsSubmissions.find(s => s.id === id);
     if (sub) {
       sub.status = 'regrade_requested';
-      sub.feedback = (sub.feedback ? sub.feedback + '\n\n' : '') + `[Admin Note — Instructor Revision Requested]: ${adminNotes}`;
+      sub.feedback = (sub.feedback ? sub.feedback + '\n\n' : '') + `[Admin Note -- Instructor Revision Requested]: ${adminNotes}`;
       this.saveLmsSubmissions(this.lmsSubmissions);
     }
   }
@@ -1937,7 +1937,7 @@ private readonly defaultTeams: Team[] = [];
     if (sub) {
       sub.status = 'rejected';
       sub.score = undefined;
-      sub.feedback = (sub.feedback ? sub.feedback + '\n\n' : '') + `[Admin Note — Rejected, Resubmit Required]: ${adminNotes}`;
+      sub.feedback = (sub.feedback ? sub.feedback + '\n\n' : '') + `[Admin Note -- Rejected, Resubmit Required]: ${adminNotes}`;
       this.saveLmsSubmissions(this.lmsSubmissions);
     }
   }

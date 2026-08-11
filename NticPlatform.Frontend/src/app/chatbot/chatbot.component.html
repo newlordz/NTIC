@@ -32,7 +32,7 @@
         <span class="chatbot-title">NTIC AI Assistant</span>
         <span class="chatbot-status">
           <span class="status-dot" [class.escalated]="chatbot.isEscalated()"></span>
-          {{ chatbot.isEscalated() ? 'Human Agent Assigned' : 'Online — ' + (currentUser?.roleName || 'Guest') + ' Mode' }}
+          {{ chatbot.isEscalated() ? 'Human Agent Assigned' : 'Online -- ' + (currentUser?.roleName || 'Guest') + ' Mode' }}
         </span>
       </div>
     </div>
@@ -137,7 +137,7 @@
   <div class="chatbot-input-area">
     <div class="escalated-banner" *ngIf="chatbot.isEscalated()">
       <span class="material-symbols-outlined">verified</span>
-      Ticket active — admin will respond here. Type "check ticket" to view replies.
+      Ticket active -- admin will respond here. Type "check ticket" to view replies.
     </div>
 
     <div class="chatbot-input-wrap">
