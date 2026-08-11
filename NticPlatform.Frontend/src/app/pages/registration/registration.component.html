@@ -2100,11 +2100,22 @@
                     <div class="team-roster-preview">
                       <span class="roster-label">Squad Roster (3–5 Members)</span>
                       <div class="roster-avatars">
-                        <span class="avatar-bubble">{{ getInitials(teamForm.leadName || 'Lead', 'L') }}</span>
-                        <span class="avatar-bubble" *ngIf="teamForm.member2Name">{{ getInitials(teamForm.member2Name, 'M2') }}</span>
-                        <span class="avatar-bubble" *ngIf="teamForm.member3Name">{{ getInitials(teamForm.member3Name, 'M3') }}</span>
-                        <span class="avatar-bubble" *ngIf="teamForm.member4Name">{{ getInitials(teamForm.member4Name, 'M4') }}</span>
-                        <span class="avatar-bubble" *ngIf="teamForm.member5Name">{{ getInitials(teamForm.member5Name, 'M5') }}</span>
+                        <div class="avatar-bubble lead" [title]="teamForm.leadName || 'Captain'">
+                          <span *ngIf="teamForm.leadName">{{ getInitials(teamForm.leadName, '') }}</span>
+                          <span class="material-symbols-outlined" *ngIf="!teamForm.leadName">person</span>
+                        </div>
+                        <div class="avatar-bubble" *ngIf="teamForm.member2Name" [title]="teamForm.member2Name">
+                          <span>{{ getInitials(teamForm.member2Name, '') }}</span>
+                        </div>
+                        <div class="avatar-bubble" *ngIf="teamForm.member3Name" [title]="teamForm.member3Name">
+                          <span>{{ getInitials(teamForm.member3Name, '') }}</span>
+                        </div>
+                        <div class="avatar-bubble" *ngIf="teamForm.member4Name" [title]="teamForm.member4Name">
+                          <span>{{ getInitials(teamForm.member4Name, '') }}</span>
+                        </div>
+                        <div class="avatar-bubble" *ngIf="teamForm.member5Name" [title]="teamForm.member5Name">
+                          <span>{{ getInitials(teamForm.member5Name, '') }}</span>
+                        </div>
                       </div>
                     </div>
 
