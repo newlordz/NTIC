@@ -1,0 +1,365 @@
+<div class="ac-shell" [class.panel-open]="isDetailPanelOpen">
+
+  <!-- Hero Banner -->
+  <header class="ac-hero">
+    <div class="ac-hero-glow"></div>
+    <div class="ac-hero-inner">
+      <div class="ac-hero-left">
+        <div class="ac-shield-wrap">
+          <div class="ac-shield">
+            <span class="material-symbols-outlined">emoji_events</span>
+          </div>
+          <div class="ac-shield-ring"></div>
+        </div>
+        <div class="ac-hero-text">
+          <div class="ac-badge">
+            <span class="ac-pulse-dot"></span>
+            <span>Administrator · Competition Manager</span>
+          </div>
+          <h1>Competition Cycle Manager</h1>
+          <p>Create, configure and manage championship cycles — from qualifiers to grand finals. Set tracks, deadlines, phases and prizes.</p>
+        </div>
+      </div>
+      <div class="ac-hero-actions">
+        <button class="ac-btn ac-btn-primary" (click)="openCreateModal()">
+          <span class="material-symbols-outlined">add</span>
+          New Cycle
+        </button>
+        <button class="ac-btn ac-btn-ghost" (click)="toggleViewMode()">
+          <span class="material-symbols-outlined">{{ viewMode === 'grid' ? 'view_kanban' : 'grid_view' }}</span>
+          {{ viewMode === 'grid' ? 'Board' : 'Grid' }}
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- KPI Cards -->
+  <div class="ac-kpi-row">
+    <div class="ac-kpi kpi-blue">
+      <div class="ac-kpi-top">
+        <div class="ac-kpi-icon"><span class="material-symbols-outlined">emoji_events</span></div>
+      </div>
+      <div class="ac-kpi-num">{{ totalCycles }}</div>
+      <div class="ac-kpi-lbl">Total Cycles</div>
+    </div>
+    <div class="ac-kpi kpi-green">
+      <div class="ac-kpi-top">
+        <div class="ac-kpi-icon"><span class="material-symbols-outlined">play_circle</span></div>
+      </div>
+      <div class="ac-kpi-num">{{ liveCycles }}</div>
+      <div class="ac-kpi-lbl">Live Now</div>
+    </div>
+    <div class="ac-kpi kpi-amber">
+      <div class="ac-kpi-top">
+        <div class="ac-kpi-icon"><span class="material-symbols-outlined">how_to_reg</span></div>
+      </div>
+      <div class="ac-kpi-num">{{ openRegistrationCycles }}</div>
+      <div class="ac-kpi-lbl">Open Registration</div>
+    </div>
+    <div class="ac-kpi kpi-purple">
+      <div class="ac-kpi-top">
+        <div class="ac-kpi-icon"><span class="material-symbols-outlined">edit_note</span></div>
+      </div>
+      <div class="ac-kpi-num">{{ getTabCount('draft') }}</div>
+      <div class="ac-kpi-lbl">Drafts</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <nav class="ac-tabs">
+    <button *ngFor="let tab of tabs" class="ac-tab" [class.active]="activeTab === tab.id" (click)="setTab(tab.id)">
+      <span class="material-symbols-outlined">{{ tab.icon }}</span>
+      <span>{{ tab.label }}</span>
+      <span class="ac-tab-count" *ngIf="getTabCount(tab.id) > 0">{{ getTabCount(tab.id) }}</span>
+    </button>
+  </nav>
+
+  <!-- Search & Filter Toolbar -->
+  <div class="ac-toolbar">
+    <div class="ac-search">
+      <span class="material-symbols-outlined ac-search-icon">search</span>
+      <input type="text" [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()" placeholder="Search cycles by title, track, or category..." class="ac-search-input">
+      <button class="ac-search-clear" *ngIf="searchQuery" (click)="searchQuery=''; applyFilters()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="ac-toolbar-right">
+      <div class="ac-filter-pills">
+        <span class="ac-filter-label">Track:</span>
+        <button *ngFor="let t of tracks" class="ac-filter-pill" [class.active]="activeTrackFilter === t" (click)="setTrackFilter(t)">
+          {{ t === 'all' ? 'All' : (t | titlecase) }}
+        </button>
+      </div>
+      <div class="ac-filter-pills">
+        <span class="ac-filter-label">Type:</span>
+        <button class="ac-filter-pill" [class.active]="activeTypeFilter === 'all'" (click)="setTypeFilter('all')">All</button>
+        <button *ngFor="let t of cycleTypes" class="ac-filter-pill" [class.active]="activeTypeFilter === t" (click)="setTypeFilter(t)">
+          {{ getTypeLabel(t) }}
+        </button>
+      </div>
+      <button class="ac-btn-clear" *ngIf="hasActiveFilters" (click)="clearFilters()">
+        <span class="material-symbols-outlined">filter_list_off</span> Clear
+      </button>
+    </div>
+  </div>
+
+  <!-- Grid View -->
+  <div class="ac-grid" *ngIf="viewMode === 'grid' && filteredCompetitions.length > 0; else gridEmpty">
+    <div class="ac-card" *ngFor="let comp of filteredCompetitions; let idx = index" [style.--card-delay]="idx * 0.04" (click)="openDetailPanel(comp)">
+      <div class="ac-card-stripe" [style.background]="trackGradients[comp.track] || trackGradients['all']"></div>
+      <div class="ac-card-top">
+        <div class="ac-card-type-icon" [style.background]="typeGradients[comp.type || 'qualifier']">
+          <span class="material-symbols-outlined">{{ typeIcons[comp.type || 'qualifier'] }}</span>
+        </div>
+        <div class="ac-card-head-text">
+          <h3>{{ comp.title }}</h3>
+          <span class="ac-card-type-label">{{ getTypeLabel(comp.type || 'qualifier') }}</span>
+        </div>
+        <span class="ac-card-status" [style.background]="statusColors[comp.status] + '18'" [style.color]="statusColors[comp.status]">
+          <span class="ac-status-dot" *ngIf="comp.status === 'active' || comp.status === 'registration'"></span>
+          {{ comp.status | titlecase }}
+        </span>
+      </div>
+      <div class="ac-card-meta">
+        <span><span class="material-symbols-outlined">{{ trackIcons[comp.track] || 'emoji_events' }}</span> {{ comp.track === 'all' ? 'Multi-Track' : comp.track | titlecase }}</span>
+        <span><span class="material-symbols-outlined">group</span> {{ comp.teams }}/{{ comp.maxTeams || '∞' }}</span>
+        <span *ngIf="comp.prize"><span class="material-symbols-outlined">workspace_premium</span> {{ comp.prize }}</span>
+      </div>
+      <div class="ac-card-countdown" *ngIf="showCountdown(comp)" [class]="countdownClass(comp.deadline)">
+        <span class="material-symbols-outlined">timer</span> {{ getCountdown(comp.deadline) }}
+      </div>
+      <div class="ac-card-actions" (click)="$event.stopPropagation()">
+        <button class="ac-action-btn" *ngIf="comp.status !== 'completed' && comp.status !== 'archived'" (click)="quickAdvanceStatus(comp, $event)">
+          <span class="material-symbols-outlined">{{ quickIcon(comp.status) }}</span> {{ quickLabel(comp.status) }}
+        </button>
+        <button class="ac-action-icon" (click)="openEditModal(comp)" title="Edit"><span class="material-symbols-outlined">edit</span></button>
+        <button class="ac-action-icon" (click)="duplicateCompetition(comp)" title="Duplicate"><span class="material-symbols-outlined">content_copy</span></button>
+        <button class="ac-action-icon danger" (click)="confirmDelete(comp)" title="Delete"><span class="material-symbols-outlined">delete_outline</span></button>
+      </div>
+      <div class="ac-card-footer">
+        <span>{{ formatDate(comp.deadline || comp.createdAt || '') }}</span>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #gridEmpty>
+    <div class="ac-empty" *ngIf="viewMode === 'grid'">
+      <div class="ac-empty-icon"><span class="material-symbols-outlined">emoji_events</span></div>
+      <h3>No Competition Cycles</h3>
+      <p *ngIf="hasActiveFilters">No cycles match your current filters. <button class="ac-link-btn" (click)="clearFilters()">Clear filters</button></p>
+      <p *ngIf="!hasActiveFilters">The arena awaits! Create your first championship cycle to get started.</p>
+      <button class="ac-btn ac-btn-primary" *ngIf="!hasActiveFilters" (click)="openCreateModal()">
+        <span class="material-symbols-outlined">add</span> Forge New Cycle
+      </button>
+    </div>
+  </ng-template>
+
+  <!-- Board View -->
+  <div class="ac-board" *ngIf="viewMode === 'board'">
+    <div class="ac-col" *ngFor="let col of boardColumns">
+      <div class="ac-col-head" [style.--col-color]="col.color">
+        <span class="material-symbols-outlined">{{ col.icon }}</span>
+        <span>{{ col.label }}</span>
+        <span class="ac-col-count">{{ getColumnCycles(col.id).length }}</span>
+      </div>
+      <div class="ac-col-body">
+        <div class="ac-col-empty" *ngIf="getColumnCycles(col.id).length === 0">
+          <span class="material-symbols-outlined">inbox</span> Empty
+        </div>
+        <div class="ac-board-card" *ngFor="let comp of getColumnCycles(col.id)" (click)="openDetailPanel(comp)">
+          <div class="ac-board-stripe" [style.background]="trackGradients[comp.track] || trackGradients['all']"></div>
+          <div class="ac-board-card-body">
+            <div class="ac-board-title">{{ comp.title }}</div>
+            <div class="ac-board-type">{{ getTypeLabel(comp.type || 'qualifier') }}</div>
+            <div class="ac-board-meta">
+              <span><span class="material-symbols-outlined">group</span> {{ comp.teams }}/{{ comp.maxTeams || '∞' }}</span>
+              <span *ngIf="comp.prize"><span class="material-symbols-outlined">workspace_premium</span> {{ comp.prize }}</span>
+            </div>
+            <div class="ac-board-actions" (click)="$event.stopPropagation()">
+              <button *ngIf="comp.status !== 'completed' && comp.status !== 'archived'" (click)="quickAdvanceStatus(comp, $event)">
+                <span class="material-symbols-outlined">{{ quickIcon(comp.status) }}</span> {{ quickLabel(comp.status) }}
+              </button>
+              <button class="ac-action-icon" (click)="openEditModal(comp)"><span class="material-symbols-outlined">edit</span></button>
+            </div>
+          </div>
+        </div>
+        <button class="ac-col-add" *ngIf="col.id === 'draft'" (click)="openCreateModal()">
+          <span class="material-symbols-outlined">add</span> New Cycle
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create/Edit Modal -->
+  <div class="ac-modal-backdrop" *ngIf="isFormModalOpen" (click)="closeFormModal()"></div>
+  <div class="ac-modal" *ngIf="isFormModalOpen" (click)="$event.stopPropagation()">
+    <div class="ac-modal-header">
+      <h3>{{ editingCompetition ? 'Edit' : 'Create' }} Competition Cycle</h3>
+      <button class="ac-modal-close" (click)="closeFormModal()">&times;</button>
+    </div>
+    <div class="ac-modal-body">
+      <div class="ac-form-group">
+        <label>Title <span class="req">*</span></label>
+        <input type="text" [(ngModel)]="formModel.title" placeholder="e.g. National Qualifier Round">
+      </div>
+      <div class="ac-form-row">
+        <div class="ac-form-group">
+          <label>Category</label>
+          <input type="text" [(ngModel)]="formModel.category" placeholder="e.g. Coding Challenge">
+        </div>
+        <div class="ac-form-group">
+          <label>Track</label>
+          <select [(ngModel)]="formModel.track">
+            <option *ngFor="let t of tracks" [value]="t">{{ t === 'all' ? 'Multi-Track' : (t | titlecase) }}</option>
+          </select>
+        </div>
+      </div>
+      <div class="ac-form-row">
+        <div class="ac-form-group">
+          <label>Cycle Type</label>
+          <select [(ngModel)]="formModel.type">
+            <option *ngFor="let t of cycleTypes" [value]="t">{{ getTypeLabel(t) }}</option>
+          </select>
+        </div>
+        <div class="ac-form-group">
+          <label>Status</label>
+          <select [(ngModel)]="formModel.status">
+            <option *ngFor="let s of statuses" [value]="s">{{ s | titlecase }}</option>
+          </select>
+        </div>
+      </div>
+      <div class="ac-form-group">
+        <label>Description</label>
+        <textarea [(ngModel)]="formModel.description" rows="2" placeholder="Describe the competition, theme, and challenge..."></textarea>
+      </div>
+      <div class="ac-form-row">
+        <div class="ac-form-group">
+          <label>Prize</label>
+          <input type="text" [(ngModel)]="formModel.prize" placeholder="e.g. ₵10,000 + Trophy">
+        </div>
+        <div class="ac-form-group">
+          <label>Max Teams</label>
+          <input type="number" [(ngModel)]="formModel.maxTeams" min="1">
+        </div>
+      </div>
+      <div class="ac-form-row triple">
+        <div class="ac-form-group">
+          <label>Start Date</label>
+          <input type="date" [(ngModel)]="formModel.startDate">
+        </div>
+        <div class="ac-form-group">
+          <label>End Date</label>
+          <input type="date" [(ngModel)]="formModel.endDate">
+        </div>
+        <div class="ac-form-group">
+          <label>Registration Deadline</label>
+          <input type="date" [(ngModel)]="formModel.deadline">
+        </div>
+      </div>
+    </div>
+    <div class="ac-modal-footer">
+      <button class="ac-btn ac-btn-ghost" (click)="closeFormModal()">Cancel</button>
+      <button class="ac-btn ac-btn-primary" (click)="saveCompetition()" [disabled]="!formModel.title">
+        <span class="material-symbols-outlined">{{ editingCompetition ? 'save' : 'add' }}</span>
+        {{ editingCompetition ? 'Save Changes' : 'Create Cycle' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Detail Panel -->
+  <div class="ac-panel-backdrop" *ngIf="isDetailPanelOpen" (click)="closeDetailPanel()"></div>
+  <div class="ac-detail" *ngIf="isDetailPanelOpen && selectedCompetition">
+    <div class="ac-detail-hero" [style.background]="typeGradients[selectedCompetition.type || 'qualifier']">
+      <button class="ac-detail-close" (click)="closeDetailPanel()"><span class="material-symbols-outlined">close</span></button>
+      <div class="ac-detail-hero-inner">
+        <div class="ac-detail-hero-icon"><span class="material-symbols-outlined">{{ typeIcons[selectedCompetition.type || 'qualifier'] }}</span></div>
+        <div>
+          <h2>{{ selectedCompetition.title }}</h2>
+          <div class="ac-detail-hero-tags">
+            <span>{{ getTypeLabel(selectedCompetition.type || 'qualifier') }}</span>
+            <span>{{ selectedCompetition.track === 'all' ? 'Multi-Track' : (selectedCompetition.track | titlecase) }}</span>
+            <span>{{ selectedCompetition.teams }}/{{ selectedCompetition.maxTeams || '∞' }} teams</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ac-detail-body">
+      <div class="ac-detail-actions">
+        <button class="ac-action-btn" *ngIf="selectedCompetition.status === 'draft'" (click)="updateStatus(selectedCompetition, 'registration')">
+          <span class="material-symbols-outlined">how_to_reg</span> Open Registration
+        </button>
+        <button class="ac-action-btn" *ngIf="selectedCompetition.status === 'registration'" (click)="updateStatus(selectedCompetition, 'active')">
+          <span class="material-symbols-outlined">play_circle</span> Activate
+        </button>
+        <button class="ac-action-btn" *ngIf="selectedCompetition.status === 'active'" (click)="updateStatus(selectedCompetition, 'completed')">
+          <span class="material-symbols-outlined">check_circle</span> Mark Completed
+        </button>
+        <button class="ac-action-btn subtle" (click)="openEditModal(selectedCompetition)">
+          <span class="material-symbols-outlined">edit</span> Edit
+        </button>
+        <button class="ac-action-btn subtle" (click)="duplicateCompetition(selectedCompetition)">
+          <span class="material-symbols-outlined">content_copy</span> Duplicate
+        </button>
+      </div>
+      <div class="ac-detail-stats">
+        <div class="ac-detail-stat"><label>Status</label><span [style.color]="statusColors[selectedCompetition.status]">{{ selectedCompetition.status | titlecase }}</span></div>
+        <div class="ac-detail-stat"><label>Teams</label><span>{{ selectedCompetition.teams }} / {{ selectedCompetition.maxTeams || '∞' }}</span></div>
+        <div class="ac-detail-stat"><label>Prize</label><span>{{ selectedCompetition.prize || 'TBD' }}</span></div>
+        <div class="ac-detail-stat"><label>Duration</label><span>{{ formatDate(selectedCompetition.startDate || selectedCompetition.createdAt || '') }} — {{ formatDate(selectedCompetition.endDate || selectedCompetition.deadline || '') }}</span></div>
+      </div>
+      <div *ngIf="selectedCompetition.description" class="ac-detail-section">
+        <h4>Description</h4>
+        <p>{{ selectedCompetition.description }}</p>
+      </div>
+      <!-- Phases -->
+      <div class="ac-detail-section">
+        <div class="ac-detail-section-head">
+          <h4>Phase Timeline</h4>
+          <button class="ac-btn ac-btn-sm ac-btn-ghost" (click)="openPhaseModal()"><span class="material-symbols-outlined">add</span> Add Phase</button>
+        </div>
+        <div class="ac-phases" *ngIf="selectedCompetition.phases?.length; else noPhases">
+          <div class="ac-phase" *ngFor="let phase of selectedCompetition.phases; let i = index">
+            <div class="ac-phase-marker" [style.background]="phaseColors[phase.type] || '#94a3b8'">
+              <span class="material-symbols-outlined">{{ phaseIcons[phase.type] || 'circle' }}</span>
+            </div>
+            <div class="ac-phase-content">
+              <strong>{{ phase.name }}</strong>
+              <span class="ac-phase-type">{{ getTypeLabel(phase.type) }}</span>
+              <span *ngIf="phase.description">{{ phase.description }}</span>
+              <span>{{ formatDate(phase.startDate) }} — {{ formatDate(phase.endDate) }}</span>
+              <span class="ac-phase-status" [style.background]="(statusColors[phase.status] || '#94a3b8') + '18'" [style.color]="statusColors[phase.status] || '#94a3b8'">{{ phase.status | titlecase }}</span>
+            </div>
+            <div class="ac-phase-actions">
+              <button (click)="openPhaseModal(phase, i)"><span class="material-symbols-outlined">edit</span></button>
+              <button class="danger" (click)="removePhase(i)"><span class="material-symbols-outlined">delete</span></button>
+            </div>
+          </div>
+        </div>
+        <ng-template #noPhases>
+          <div class="ac-phases-empty">No phases defined yet. Add registration, submission, judging, and results phases.</div>
+        </ng-template>
+      </div>
+    </div>
+    <div class="ac-detail-footer">
+      <button class="ac-btn ac-btn-danger" (click)="confirmDelete(selectedCompetition)">
+        <span class="material-symbols-outlined">delete_outline</span> Delete Cycle
+      </button>
+      <button class="ac-btn ac-btn-ghost" (click)="closeDetailPanel()">Close</button>
+    </div>
+  </div>
+
+  <!-- Delete Confirm -->
+  <div class="ac-modal-backdrop" *ngIf="isDeleteConfirmOpen" (click)="cancelDelete()"></div>
+  <div class="ac-destroy" *ngIf="isDeleteConfirmOpen" (click)="$event.stopPropagation()">
+    <div class="ac-destroy-icon"><span class="material-symbols-outlined">warning_amber</span></div>
+    <h3>Destroy "{{ deletingCompetition?.title }}"?</h3>
+    <p>This permanently removes the cycle and all its phases. Team records and past results are preserved.</p>
+    <div class="ac-destroy-actions">
+      <button class="ac-btn ac-btn-ghost" (click)="cancelDelete()">Cancel</button>
+      <button class="ac-btn ac-btn-danger" (click)="deleteCompetition()">
+        <span class="material-symbols-outlined">delete_forever</span> Destroy Permanently
+      </button>
+    </div>
+  </div>
+
+</div>

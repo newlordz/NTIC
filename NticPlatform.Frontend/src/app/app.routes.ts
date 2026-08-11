@@ -6,6 +6,7 @@ export const routes: Routes = [
   { path: 'news',         loadComponent: () => import('./pages/news/news.component').then(m => m.NewsComponent) },
   { path: 'registration', loadComponent: () => import('./pages/registration/registration.component').then(m => m.RegistrationComponent) },
   { path: 'competitions', loadComponent: () => import('./pages/competitions/competitions.component').then(m => m.CompetitionsComponent) },
+  { path: 'admin/competitions', loadComponent: () => import('./pages/admin-competitions/admin-competitions.component').then(m => m.AdminCompetitionsComponent), canActivate: [authGuard] },
   { path: 'leaderboard',  loadComponent: () => import('./pages/leaderboard/leaderboard.component').then(m => m.LeaderboardComponent) },
   { path: 'talent',       loadComponent: () => import('./pages/talent/talent.component').then(m => m.TalentComponent) },
   { path: 'dashboard',    loadComponent: () => import('./pages/dashboard/dashboard.component').then(m => m.DashboardComponent), canActivate: [authGuard] },

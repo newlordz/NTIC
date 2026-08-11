@@ -55,6 +55,7 @@ export class AppComponent implements OnInit, OnDestroy {
     'instructor':   'Instructor Portal',
     'judge':        'Judging Arena',
     'competitions': 'Competitions',
+    'admin':        'Competition Cycle Manager',
     'leaderboard':  'Leaderboard',
     'talent':       'Talent Discovery',
     'sponsors':     'Sponsors',
@@ -186,7 +187,7 @@ export class AppComponent implements OnInit, OnDestroy {
     } else if (roleId === 'school_admin') {
       window.location.hash = '#/dashboard?action=add_team';
     } else {
-      window.location.hash = '#/competitions';
+      window.location.hash = '#/admin/competitions';
     }
   }
 
