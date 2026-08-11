@@ -9,6 +9,9 @@ import { ContentService, User } from '../../services/content.service';
 import { ChatbotService, SupportTicket } from '../../services/chatbot.service';
 import { FilterTicketsPipe } from '../../services/filter-tickets.pipe';
 
+import { SmsService } from '../../services/sms.service';
+import { BrevoEmailService } from '../../services/brevo-email.service';
+
 @Component({
   selector: 'app-user-management',
   standalone: true,
@@ -38,6 +41,14 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     ticket: '',
     password: ''
   };
+
+  createdUserModal: {
+    isOpen: boolean;
+    user: User;
+    copiedTicket: boolean;
+    copiedPin: boolean;
+  } | null = null;
+
   deleteUserConfirm: User | null = null;
   successMessage = '';
   toastTitle = '';
@@ -67,7 +78,9 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     private router: Router,
     private route: ActivatedRoute,
     public chatbotService: ChatbotService,
-    private http: HttpClient
+    private http: HttpClient,
+    public smsService: SmsService,
+    public emailService: BrevoEmailService
   ) {}
 
   get canManageUsers(): boolean {
@@ -230,6 +243,36 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.isAddUserModalOpen = false;
   }
 
+  openCreatedUserModal(user: User): void {
+    this.createdUserModal = {
+      isOpen: true,
+      user,
+      copiedTicket: false,
+      copiedPin: false
+    };
+  }
+
+  closeCreatedUserModal(): void {
+    this.createdUserModal = null;
+  }
+
+  copyCreatedUserText(type: 'ticket' | 'pin'): void {
+    if (!this.createdUserModal) return;
+    let text = '';
+    if (type === 'ticket') {
+      text = this.createdUserModal.user.ticket || '';
+      this.createdUserModal.copiedTicket = true;
+      setTimeout(() => { if (this.createdUserModal) this.createdUserModal.copiedTicket = false; }, 2500);
+    } else {
+      text = this.createdUserModal.user.otp || '';
+      this.createdUserModal.copiedPin = true;
+      setTimeout(() => { if (this.createdUserModal) this.createdUserModal.copiedPin = false; }, 2500);
+    }
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(text);
+    }
+  }
+
   saveNewUser(): void {
     if (!this.canManageUsers) return;
     if (!this.newUserForm.fullName || !this.newUserForm.email) {
@@ -242,59 +285,60 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     }
 
     const newId = 'USR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+    const newUser: User = {
+      id: newId,
+      role: this.newUserForm.role,
+      fullName: this.newUserForm.fullName,
+      email: this.newUserForm.email,
+      phone: this.newUserForm.phone || '',
+      organization: this.newUserForm.organization || '',
+      ticket: this.newUserForm.ticket,
+      otp: this.newUserForm.password,
+      status: this.newUserForm.status || 'Active',
+      registeredAt: new Date().toLocaleDateString('en-GB'),
+      lastLogin: 'Never'
+    };
+
     const userPayload = {
       id: newId,
-      email: this.newUserForm.email,
-      full_name: this.newUserForm.fullName,
-      role: this.newUserForm.role,
-      status: this.newUserForm.status || 'Active',
-      ticket: this.newUserForm.ticket,
-      password: this.newUserForm.password || '123456',
-      phone: this.newUserForm.phone || ''
+      email: newUser.email,
+      full_name: newUser.fullName,
+      role: newUser.role,
+      status: newUser.status,
+      ticket: newUser.ticket,
+      password: newUser.otp || '123456',
+      phone: newUser.phone || ''
     };
+
+    // Dispatch SMS (WhatsApp) and Email notifications to recipient
+    if (newUser.phone) {
+      this.smsService.sendCredentialsSms(newUser.phone, newUser.fullName, newUser.ticket || '', newUser.otp || '').subscribe();
+    }
+    this.emailService.sendApprovalEmail(
+      newUser.email,
+      newUser.fullName,
+      newUser.organization || 'NTIC Platform',
+      newUser.role,
+      newUser.ticket || '',
+      newUser.otp || ''
+    );
 
     this.http.post(`${environment.apiUrl}/users`, userPayload).subscribe({
       next: () => {
-        const newUser: User = {
-          id: newId,
-          role: this.newUserForm.role,
-          fullName: this.newUserForm.fullName,
-          email: this.newUserForm.email,
-          phone: this.newUserForm.phone || '',
-          organization: this.newUserForm.organization || '',
-          ticket: this.newUserForm.ticket,
-          otp: this.newUserForm.password,
-          status: this.newUserForm.status || 'Active',
-          registeredAt: new Date().toLocaleDateString('en-GB'),
-          lastLogin: 'Never'
-        };
         const currentUsers = [...this.contentService.users];
         currentUsers.unshift(newUser);
         this.contentService.saveUsers(currentUsers);
-        this.showToast('Account Created!', `${newUser.fullName} (${this.getRoleLabel(newUser.role)}) created successfully.`);
         this.closeAddUserModal();
+        this.openCreatedUserModal(newUser);
         this.loadUsers();
       },
       error: (err) => {
         console.error('Failed to save user in backend:', err);
-        const newUser: User = {
-          id: newId,
-          role: this.newUserForm.role,
-          fullName: this.newUserForm.fullName,
-          email: this.newUserForm.email,
-          phone: this.newUserForm.phone || '',
-          organization: this.newUserForm.organization || '',
-          ticket: this.newUserForm.ticket,
-          otp: this.newUserForm.password,
-          status: this.newUserForm.status || 'Active',
-          registeredAt: new Date().toLocaleDateString('en-GB'),
-          lastLogin: 'Never'
-        };
         const currentUsers = [...this.contentService.users];
         currentUsers.unshift(newUser);
         this.contentService.saveUsers(currentUsers);
-        this.showToast('Account Created!', `${newUser.fullName} (${this.getRoleLabel(newUser.role)}) created.`);
         this.closeAddUserModal();
+        this.openCreatedUserModal(newUser);
         this.loadUsers();
       }
     });

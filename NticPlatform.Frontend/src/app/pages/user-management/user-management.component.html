@@ -780,4 +780,63 @@
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════
+       MODAL: ACCOUNT CREATED CREDENTIALS DISPLAY
+  ══════════════════════════════════════════ -->
+  <div class="um-modal-backdrop" *ngIf="createdUserModal?.isOpen" (click)="closeCreatedUserModal()">
+    <div class="um-modal" (click)="$event.stopPropagation()" style="max-width:480px;border-radius:16px;">
+      <div class="um-modal-header" style="background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="material-symbols-outlined" style="font-size:24px;">check_circle</span>
+          <div>
+            <h3 style="margin:0;font-size:16px;color:#fff;">Account Created Successfully! 🎉</h3>
+            <span style="font-size:11px;opacity:0.85;">Credentials generated and sent via SMS &amp; Email</span>
+          </div>
+        </div>
+        <button class="um-modal-close" (click)="closeCreatedUserModal()" style="color:#fff;">&times;</button>
+      </div>
+      <div class="um-modal-body" style="padding:20px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--outline-variant);">
+          <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">
+            {{ getInitials(createdUserModal?.user?.fullName || '') }}
+          </div>
+          <div>
+            <h4 style="margin:0 0 2px 0;font-size:15px;font-weight:700;color:var(--on-surface);">{{ createdUserModal?.user?.fullName }}</h4>
+            <span class="badge primary">{{ getRoleLabel(createdUserModal?.user?.role || '') }}</span>
+            <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">{{ createdUserModal?.user?.email }}</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:var(--surface-container-low);padding:14px;border-radius:10px;border:1px dashed var(--outline-variant);margin-bottom:16px;">
+          <div>
+            <span style="font-size:11px;font-weight:700;color:var(--primary);display:block;margin-bottom:4px;">Access Pass / Ticket</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <code style="font-size:13px;font-weight:700;color:var(--on-surface);">{{ createdUserModal?.user?.ticket }}</code>
+              <button class="cmd-btn cmd-btn-ghost btn-sm" (click)="copyCreatedUserText('ticket')" style="padding:2px 8px;font-size:11px;">
+                {{ createdUserModal?.copiedTicket ? 'Copied!' : 'Copy' }}
+              </button>
+            </div>
+          </div>
+          <div>
+            <span style="font-size:11px;font-weight:700;color:var(--primary);display:block;margin-bottom:4px;">PIN / Password</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <code style="font-size:13px;font-weight:700;color:var(--on-surface);">{{ createdUserModal?.user?.otp }}</code>
+              <button class="cmd-btn cmd-btn-ghost btn-sm" (click)="copyCreatedUserText('pin')" style="padding:2px 8px;font-size:11px;">
+                {{ createdUserModal?.copiedPin ? 'Copied!' : 'Copy' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);padding:10px 12px;border-radius:8px;font-size:12px;color:#065f46;display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-outlined" style="font-size:18px;color:#10b981;">mark_email_read</span>
+          <span>Credentials dispatched to <strong>{{ createdUserModal?.user?.email }}</strong>{{ createdUserModal?.user?.phone ? ' and SMS' : '' }}.</span>
+        </div>
+      </div>
+      <div class="um-modal-footer" style="padding:12px 20px;border-top:1px solid var(--outline-variant);display:flex;justify-content:flex-end;">
+        <button class="cmd-btn cmd-btn-primary" (click)="closeCreatedUserModal()">Done</button>
+      </div>
+    </div>
+  </div>
+
 </div>
