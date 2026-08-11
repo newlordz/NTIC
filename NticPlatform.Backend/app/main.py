@@ -359,6 +359,96 @@ try:
         cur.close(); conn.close()
         return {"status": "ok", "revoked": deleted}
 
+    @app.post("/api/auth/verify-contact")
+    def verify_contact(payload: dict = None):
+        """Check if email or phone is already registered."""
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        result = {"email_available": True, "phone_available": True}
+        if payload and payload.get("email"):
+            cur.execute("SELECT id FROM users WHERE lower(email) = %s", (payload["email"].strip().lower(),))
+            if cur.fetchone():
+                result["email_available"] = False
+        if payload and payload.get("phone"):
+            cur.execute("SELECT id FROM users WHERE phone = %s", (payload["phone"].strip(),))
+            if cur.fetchone():
+                result["phone_available"] = False
+        cur.close(); conn.close()
+        return result
+
+    @app.post("/api/drafts")
+    def save_draft(payload: dict = None):
+        """Save a registration draft."""
+        if not payload or not payload.get("email"):
+            raise HTTPException(status_code=400, detail="Email required")
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        import json as _json
+        cur.execute("""
+            INSERT INTO registration_drafts (email, draft_data, updated_at)
+            VALUES (%s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (email) DO UPDATE SET draft_data = EXCLUDED.draft_data, updated_at = CURRENT_TIMESTAMP
+        """, (payload["email"].strip().lower(), _json.dumps(payload.get("data", {}))))
+        conn.commit()
+        cur.close(); conn.close()
+        return {"status": "saved"}
+
+    @app.get("/api/drafts/{email}")
+    def load_draft(email: str):
+        """Load a registration draft by email."""
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT draft_data FROM registration_drafts WHERE email = %s", (email.strip().lower(),))
+        row = cur.fetchone()
+        cur.close(); conn.close()
+        if row:
+            import json as _json
+            return {"data": _json.loads(row[0])}
+        return {"data": None}
+
+    @app.delete("/api/drafts/{email}")
+    def delete_draft(email: str):
+        """Delete a registration draft."""
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("DELETE FROM registration_drafts WHERE email = %s", (email.strip().lower(),))
+        conn.commit()
+        cur.close(); conn.close()
+        return {"status": "deleted"}
+
+    @app.post("/api/lms/progress")
+    def save_lms_progress(payload: dict = None):
+        """Save student LMS course progress."""
+        if not payload or not payload.get("student_id") or not payload.get("course_title"):
+            raise HTTPException(status_code=400, detail="student_id and course_title required")
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO lms_progress (student_id, course_title, progress_pct, completed_modules, last_accessed)
+            VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (student_id, course_title) DO UPDATE SET progress_pct = EXCLUDED.progress_pct, completed_modules = EXCLUDED.completed_modules, last_accessed = CURRENT_TIMESTAMP
+        """, (payload["student_id"], payload["course_title"], payload.get("progress_pct", 0), payload.get("completed_modules", 0)))
+        conn.commit()
+        cur.close(); conn.close()
+        return {"status": "saved"}
+
+    @app.get("/api/lms/progress/{student_id}")
+    def get_lms_progress(student_id: str):
+        """Get all LMS progress for a student."""
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT course_title, progress_pct, completed_modules, last_accessed FROM lms_progress WHERE student_id = %s ORDER BY last_accessed DESC", (student_id,))
+        rows = cur.fetchall()
+        cur.close(); conn.close()
+        return [{"course_title": r[0], "progress_pct": r[1], "completed_modules": r[2], "last_accessed": str(r[3])} for r in rows]
+
     @app.post("/api/auth/token/generate")
     def generate_access_token(payload: dict = None, _admin: dict = Depends(require_admin)):
         payload = payload or {}

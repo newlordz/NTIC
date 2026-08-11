@@ -347,6 +347,23 @@ def _create_tables(conn):
     cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS rules TEXT DEFAULT '';")
     cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS criteria TEXT DEFAULT '';")
     cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0;")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS registration_drafts (
+            email VARCHAR(150) PRIMARY KEY,
+            draft_data TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS lms_progress (
+            student_id VARCHAR(100) NOT NULL,
+            course_title VARCHAR(200) NOT NULL,
+            progress_pct INTEGER DEFAULT 0,
+            completed_modules INTEGER DEFAULT 0,
+            last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (student_id, course_title)
+        );
+    """)
     cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS tag VARCHAR(64) DEFAULT '';")
     cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS tag_color VARCHAR(64) DEFAULT '';")
     cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS read_time VARCHAR(32) DEFAULT '5 min';")

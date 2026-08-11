@@ -1832,19 +1832,43 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   sendOpenVerificationCode(): void {
     if (!this.openRegForm.email) return;
-    // Simulate OTP verification for now
-    this.openRegForm.emailVerified = true;
-    this.dialogService.toast('Email verified successfully!', 'success');
+    if (!this.contentService.isValidEmail(this.openRegForm.email)) {
+      this.dialogService.toast('Please enter a valid email address.', 'error');
+      return;
+    }
+    this.apiService.verifyContact({ email: this.openRegForm.email }).subscribe({
+      next: (res) => {
+        if (res.email_available) {
+          this.openRegForm.emailVerified = true;
+          this.dialogService.toast('Email verified — not already registered.', 'success');
+        } else {
+          this.dialogService.toast('This email is already registered.', 'error');
+        }
+      },
+      error: () => this.dialogService.toast('Verification unavailable. Try again later.', 'warning')
+    });
   }
 
   sendOpenPhoneVerification(): void {
     if (!this.openRegForm.phone) return;
-    if (this.contentService.isPhoneTaken(this.openRegForm.phone)) {
-      this.dialogService.toast('This phone number is already registered.', 'error');
-      return;
-    }
-    this.openRegForm.phoneVerified = true;
-    this.dialogService.toast('Phone verified successfully!', 'success');
+    this.apiService.verifyContact({ phone: this.openRegForm.phone }).subscribe({
+      next: (res) => {
+        if (res.phone_available) {
+          this.openRegForm.phoneVerified = true;
+          this.dialogService.toast('Phone verified — not already registered.', 'success');
+        } else {
+          this.dialogService.toast('This phone number is already registered.', 'error');
+        }
+      },
+      error: () => {
+        if (this.contentService.isPhoneTaken(this.openRegForm.phone)) {
+          this.dialogService.toast('This phone number is already registered locally.', 'error');
+        } else {
+          this.openRegForm.phoneVerified = true;
+          this.dialogService.toast('Phone verified (offline check).', 'success');
+        }
+      }
+    });
   }
 
   onOpenRegPhotoSelected(event: any): void {
@@ -1949,6 +1973,10 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         contact = this.teamForm.leadEmail;
         formData = { ...this.teamForm };
         break;
+      case 'open':
+        contact = this.openRegForm.email;
+        formData = { ...this.openRegForm };
+        break;
     }
 
     if (!contact) {
@@ -1964,6 +1992,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       savedAt: new Date().toISOString()
     };
     localStorage.setItem('ntic_drafts', JSON.stringify(drafts));
+    this.apiService.saveDraft({ email: contactKey, data: { tab: this.activeTab, data: formData, savedAt: new Date().toISOString() } }).subscribe();
     this.showCustomAlert(`Draft saved successfully! You can resume using ${contact}.`, 'Draft Saved', 'success');
   }
 
@@ -2248,11 +2277,19 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   private applyDraftPrefills(contact: string): void {
     const key = contact?.trim().toLowerCase();
     const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
-    const draft = drafts[key] || drafts[contact];
+    let draft = drafts[key] || drafts[contact];
 
-    if (!draft) return;
+    if (!draft) {
+      this.apiService.loadDraft(key).subscribe({
+        next: (res) => { if (res?.data) { this.restoreDraftData(res.data); } },
+        error: () => {}
+      });
+      return;
+    }
+    this.restoreDraftData(draft);
+  }
 
-    // Reset current memory first
+  private restoreDraftData(draft: any): void {
     this.clearDraftPrefills();
 
     this.isDraftResumed = true;
