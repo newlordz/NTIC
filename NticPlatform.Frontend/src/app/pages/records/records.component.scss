@@ -8,7 +8,7 @@
 
 // ── Hero Header ──────────────────────────────────────────
 .records-hero-header {
-  background: var(--surface-card, #ffffff);
+  background: var(--surface-container-lowest);
   border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
   border-radius: 16px;
   padding: 24px;
@@ -108,11 +108,11 @@
   }
 
   &.btn-subtle {
-    background: rgba(226, 232, 240, 0.6);
-    color: #475569;
+    background: var(--surface-container);
+    color: var(--on-surface-variant);
 
     &:hover {
-      background: #e2e8f0;
+      background: var(--surface-container-high);
     }
   }
 
@@ -142,7 +142,7 @@
 }
 
 .kpi-card {
-  background: var(--surface-card, #ffffff);
+  background: var(--surface-container-lowest);
   border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
   border-radius: 14px;
   padding: 16px 18px;
@@ -227,7 +227,7 @@
 
 // ── Toolbar ──────────────────────────────────────────
 .toolbar-card {
-  background: var(--surface-card, #ffffff);
+  background: var(--surface-container-lowest);
   border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
   border-radius: 12px;
   padding: 12px 16px;
@@ -280,7 +280,7 @@
 
     .view-toggle-group {
       display: flex;
-      background: #f1f5f9;
+      background: var(--surface-container);
       border-radius: 8px;
       padding: 2px;
 
@@ -289,14 +289,14 @@
         border: none;
         padding: 6px 10px;
         border-radius: 6px;
-        color: #64748b;
+        color: var(--on-surface-variant);
         cursor: pointer;
 
         .material-symbols-outlined { font-size: 18px; }
 
         &.active {
-          background: #ffffff;
-          color: #003f87;
+          background: var(--surface-container-lowest);
+          color: var(--primary);
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
       }
@@ -306,7 +306,7 @@
 
 // ── Main Records Panel ──────────────────────────────────────────
 .records-panel {
-  background: var(--surface-card, #ffffff);
+  background: var(--surface-container-lowest);
   border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
   border-radius: 16px;
   padding: 20px;
@@ -426,12 +426,12 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: #f1f5f9;
+  background: var(--surface-container);
   padding: 3px 8px;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
-  color: #475569;
+  color: var(--on-surface-variant);
 
   .material-symbols-outlined { font-size: 14px; }
 }
@@ -447,7 +447,7 @@
   border: 1px solid var(--border-color, #e2e8f0);
   border-radius: 12px;
   padding: 18px;
-  background: var(--surface-card, #ffffff);
+  background: var(--surface-container-lowest);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -495,7 +495,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid var(--outline-variant);
     padding-top: 10px;
 
     .files-meta {
@@ -543,7 +543,7 @@
 }
 
 .modal-card {
-  background: var(--surface-card, #ffffff);
+  background: var(--surface-container-lowest);
   border-radius: 16px;
   width: 100%;
   max-width: 560px;
@@ -612,8 +612,8 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: var(--surface-container-low);
+    border: 1px solid var(--outline-variant);
     border-radius: 8px;
     padding: 10px 12px;
 
@@ -1100,7 +1100,7 @@
   justify-content: space-between;
   padding: 18px 22px 16px;
   border-bottom: 1px solid var(--outline-variant, #e2e8f0);
-  background: #f8fafc;
+  background: var(--surface-container-low);
 }
 
 .db-modal-title {
@@ -1114,11 +1114,11 @@
   .material-symbols-outlined { font-size: 20px; color: var(--primary, #003f87); }
 
   code {
-    background: #e2e8f0;
+    background: var(--surface-container);
     border-radius: 5px;
     padding: 1px 7px;
     font-size: 13px;
-    color: #7c3aed;
+    color: #a78bfa;
     font-family: monospace;
   }
 }
@@ -1223,4 +1223,27 @@
   transition: opacity 0.15s;
   .material-symbols-outlined { font-size: 16px; }
   &:hover { opacity: 0.88; }
+}
+
+/* ═══════════════════════════════════════════
+   DARK THEME — RECORDS / DB MANAGER
+   ═══════════════════════════════════════════ */
+:host-context(body.dark-theme) {
+  .db-manager-shell {
+    --db-bg: var(--surface-container-lowest);
+    --db-bg-alt: var(--surface-container-low);
+    --db-border: var(--outline-variant);
+    --db-text: var(--on-surface);
+    --db-text-muted: var(--on-surface-variant);
+    --db-text-faint: var(--on-surface-variant);
+    --db-hover: var(--surface-container);
+    --db-row-num: var(--outline-variant);
+    --db-th-bg: var(--surface-container);
+    --db-primary: var(--primary);
+    --db-primary-hover: rgba(109, 165, 224, 0.12);
+  }
+
+  .btn-subtle:hover {
+    background: var(--surface-container-high) !important;
+  }
 }

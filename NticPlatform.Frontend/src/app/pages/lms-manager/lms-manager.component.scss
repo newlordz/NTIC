@@ -11,7 +11,7 @@
 // ── Header ──────────────────────────────────────────
 .lms-header {
   margin-bottom: 24px;
-  background: var(--surface-card, #ffffff);
+  background: var(--surface-container-lowest);
   border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
   border-radius: 16px;
   padding: 24px;
@@ -112,11 +112,11 @@
   }
 
   &.btn-subtle {
-    background: rgba(226, 232, 240, 0.6);
-    color: #475569;
+    background: var(--surface-container);
+    color: var(--on-surface-variant);
 
     &:hover {
-      background: #e2e8f0;
+      background: var(--surface-container-high);
     }
   }
 
@@ -151,7 +151,7 @@
 }
 
 .stat-card {
-  background: var(--surface-card, #ffffff);
+  background: var(--surface-container-lowest);
   border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
   border-radius: 12px;
   padding: 14px 16px;
@@ -216,7 +216,7 @@
 .workspace-tabs {
   display: flex;
   gap: 6px;
-  border-bottom: 2px solid var(--border-color, #e2e8f0);
+  border-bottom: 2px solid var(--border-color, var(--surface-container-high));
   margin-bottom: 20px;
   flex-wrap: wrap;
   padding-bottom: 4px;
@@ -266,7 +266,7 @@
 
 // ── Toolbar & Filters ──────────────────────────────────────────
 .toolbar-card {
-  background: var(--surface-card, #ffffff);
+  background: var(--surface-container-lowest);
   border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
   border-radius: 12px;
   padding: 12px 16px;
@@ -289,7 +289,7 @@
     min-width: 240px;
 
     .material-symbols-outlined {
-      color: #94a3b8;
+      color: var(--on-surface-variant);
       font-size: 18px;
     }
 
@@ -323,7 +323,7 @@
 
 // ── Content Panels & Moderation Queue ──────────────────────────────────────────
 .tab-content-panel {
-  background: var(--surface-card, #ffffff);
+  background: var(--surface-container-lowest);
   border: 1px solid var(--border-color, rgba(226, 232, 240, 0.8));
   border-radius: 16px;
   padding: 20px;
@@ -357,7 +357,7 @@
   border-left: 4px solid #f59e0b;
   border-radius: 12px;
   padding: 16px;
-  background: var(--surface-card, #ffffff);
+  background: var(--surface-container-lowest);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -393,7 +393,7 @@
 
     .description-text {
       font-size: 12px;
-      color: #475569;
+      color: var(--on-surface-variant);
       line-height: 1.4;
       margin: 0 0 10px 0;
     }
@@ -427,10 +427,10 @@
 }
 
 .course-card {
-  border: 1px solid var(--border-color, #e2e8f0);
+  border: 1px solid var(--border-color, var(--surface-container-high));
   border-radius: 12px;
   padding: 18px;
-  background: var(--surface-card, #ffffff);
+  background: var(--surface-container-lowest);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -501,7 +501,7 @@
       align-items: center;
 
       .metric-val { font-size: 13px; font-weight: 700; }
-      .metric-lbl { font-size: 10px; color: #64748b; }
+      .metric-lbl { font-size: 10px; color: var(--on-surface-variant); }
     }
   }
 
@@ -527,7 +527,7 @@
   &.badge-ai { background: rgba(236, 72, 153, 0.12); color: #db2777; }
   &.badge-cyber { background: rgba(16, 185, 129, 0.12); color: #059669; }
   &.badge-innovation { background: rgba(14, 165, 233, 0.12); color: #0284c7; }
-  &.badge-neutral { background: rgba(226, 232, 240, 0.8); color: #475569; }
+  &.badge-neutral { background: var(--surface-container-high); color: var(--on-surface-variant); }
   &.badge-success { background: rgba(16, 185, 129, 0.12); color: #059669; }
   &.badge-warning { background: rgba(245, 158, 11, 0.12); color: #d97706; }
   &.badge-danger { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
@@ -548,7 +548,7 @@
 
   th, td {
     padding: 10px 14px;
-    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    border-bottom: 1px solid var(--border-color, var(--surface-container-high));
     vertical-align: middle;
   }
 
@@ -576,7 +576,7 @@
   }
 
   .order-badge {
-    background: #e2e8f0;
+    background: var(--surface-container-high);
     font-weight: 700;
     font-size: 11px;
     padding: 2px 6px;
@@ -603,12 +603,12 @@
     .icon-btn {
       background: transparent;
       border: none;
-      color: #64748b;
+      color: var(--on-surface-variant);
       cursor: pointer;
       padding: 5px;
       border-radius: 5px;
 
-      &:hover { background: #e2e8f0; color: #1e293b; }
+      &:hover { background: var(--surface-container-high); color: #1e293b; }
       &.danger:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
     }
   }
@@ -623,7 +623,7 @@
   .progress-bar {
     flex: 1;
     height: 7px;
-    background: #e2e8f0;
+    background: var(--surface-container-high);
     border-radius: 4px;
     overflow: hidden;
 
@@ -662,14 +662,14 @@
 
   .material-symbols-outlined {
     font-size: 42px;
-    color: #94a3b8;
+    color: var(--on-surface-variant);
     margin-bottom: 10px;
 
     &.text-success { color: #10b981; }
   }
 
   h3 { font-size: 16px; font-weight: 700; margin: 0 0 4px 0; }
-  p { font-size: 13px; color: #64748b; margin: 0; }
+  p { font-size: 13px; color: var(--on-surface-variant); margin: 0; }
 }
 
 // ── Modals ──────────────────────────────────────────
@@ -686,7 +686,7 @@
 }
 
 .modal-card {
-  background: var(--surface-card, #ffffff);
+  background: var(--surface-container-lowest);
   border-radius: 14px;
   width: 100%;
   max-width: 540px;
@@ -696,13 +696,13 @@
 
   .modal-header {
     padding: 16px 20px;
-    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    border-bottom: 1px solid var(--border-color, var(--surface-container-high));
     display: flex;
     justify-content: space-between;
     align-items: center;
 
     h3 { font-size: 16px; font-weight: 700; margin: 0; }
-    .close-btn { background: none; border: none; font-size: 22px; cursor: pointer; color: #94a3b8; }
+    .close-btn { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--on-surface-variant); }
   }
 
   .modal-body {
@@ -713,7 +713,7 @@
 
   .modal-footer {
     padding: 14px 20px;
-    border-top: 1px solid var(--border-color, #e2e8f0);
+    border-top: 1px solid var(--border-color, var(--surface-container-high));
     display: flex;
     justify-content: flex-end;
     gap: 10px;
@@ -737,7 +737,7 @@
     padding: 9px 12px;
     border-radius: 7px;
     border: 1px solid var(--border-color, #cbd5e1);
-    background: var(--surface-card, #ffffff);
+    background: var(--surface-container-lowest);
     color: inherit;
     font-size: 13px;
     outline: none;
@@ -782,7 +782,7 @@
   overflow-y: auto;
 }
 
-.text-subtle { color: #64748b; }
+.text-subtle { color: var(--on-surface-variant); }
 .text-xs { font-size: 11px; }
 .text-sm { font-size: 12px; }
 .font-semibold { font-weight: 600; }

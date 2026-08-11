@@ -49,7 +49,7 @@
         <span class="material-symbols-outlined">gavel</span>
         Judging Arena
       </a>
-      <a class="nav-item" *ngIf="hasAccess('competitions')" routerLink="/competitions" routerLinkActive="active" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('competitions')" [routerLink]="currentUser?.roleId === 'student' || currentUser?.roleId === 'judge' ? '/competitions' : '/admin/competitions'" [routerLinkActiveOptions]="{exact: true}" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">emoji_events</span>
         Competitions
       </a>
@@ -185,7 +185,7 @@
                 <div class="app-icon primary"><span class="material-symbols-outlined">patient_list</span></div>
                 <span>Instructor</span>
               </a>
-              <a *ngIf="hasAccess('competitions')" routerLink="/competitions" routerLinkActive="active" class="app-item" (click)="showAppsDropdown = false">
+              <a *ngIf="hasAccess('competitions')" [routerLink]="currentUser?.roleId === 'student' || currentUser?.roleId === 'judge' ? '/competitions' : '/admin/competitions'" class="app-item" (click)="showAppsDropdown = false">
                 <div class="app-icon warn"><span class="material-symbols-outlined">emoji_events</span></div>
                 <span>Arena</span>
               </a>

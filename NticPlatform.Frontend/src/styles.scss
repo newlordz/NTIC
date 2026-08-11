@@ -26,6 +26,7 @@
   --background:              #eef5ff;
   --on-background:           #071e27;
   --surface:                 #eef5ff;
+  --surface-card:            #ffffff;
   --on-surface:              #071e27;
   --surface-variant:         #cfe6f2;
   --on-surface-variant:      #424752;
@@ -34,6 +35,7 @@
   --surface-container:       #dbf1fe;
   --surface-container-high:  #d5ecf8;
   --surface-container-highest:#cfe6f2;
+  --surface-bg:              #f8fafc;
   --outline:                 #727784;
   --outline-variant:         #c2c6d4;
   --surface-tint:            #115cb9;
@@ -1009,7 +1011,7 @@ body.ac-expanded .main-content {
   &.secondary { background: rgba(0,106,96,0.1);  color: var(--secondary); }
   &.error     { background: var(--error-container); color: var(--on-error-container); }
   &.success   { background: rgba(0,106,96,0.1);  color: var(--secondary); }
-  &.warning   { background: #fff3e0; color: #e65100; }
+  &.warning   { background: rgba(245, 158, 11, 0.12); color: #d97706; }
   &.neutral   { background: var(--surface-container-high); color: var(--on-surface-variant); }
 }
 
@@ -3638,6 +3640,8 @@ body.dark-theme {
   --surface-container:       #1a2332;
   --surface-container-high:  #1e2a3a;
   --surface-container-highest:#243044;
+  --surface-bg:              #0f172a;
+  --surface-card:            #162032;
   --on-surface:              #e2e8f0;
   --on-surface-variant:      #94a3b8;
   --outline:                 #334155;
@@ -3701,6 +3705,50 @@ body.dark-theme {
     background-position: right 12px center !important;
     background-size: 16px 16px !important;
     padding-right: 36px !important;
+  }
+
+  /* ── Admin Users Table — dark mode fixes ── */
+  .admin-status-badge {
+    &.active  { background: rgba(52, 211, 153, 0.14); color: #34d399; border-color: rgba(52, 211, 153, 0.3); }
+    &.pending { background: rgba(251, 191, 36, 0.14); color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
+    &.revoked { background: rgba(248, 113, 113, 0.14); color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
+  }
+
+  .admin-table-row:hover {
+    background: rgba(109, 165, 224, 0.06) !important;
+    .admin-user-cell { background: var(--surface-container, #1a2332) !important; }
+  }
+
+  .admin-user-avatar {
+    background: linear-gradient(135deg, rgba(109, 165, 224, 0.2), rgba(109, 165, 224, 0.3)) !important;
+    border-color: rgba(109, 165, 224, 0.3) !important;
+    &.sponsor              { background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(52, 211, 153, 0.3)) !important; border-color: rgba(52, 211, 153, 0.3) !important; color: #34d399 !important; }
+    &.school_admin, &.school { background: linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(167, 139, 250, 0.3)) !important; border-color: rgba(167, 139, 250, 0.3) !important; color: #a78bfa !important; }
+    &.instructor, &.mentor   { background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(251, 191, 36, 0.3)) !important; border-color: rgba(251, 191, 36, 0.3) !important; color: #fbbf24 !important; }
+    &.student             { background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.3)) !important; border-color: rgba(56, 189, 248, 0.3) !important; color: #38bdf8 !important; }
+    &.super_admin         { background: linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(248, 113, 113, 0.3)) !important; border-color: rgba(248, 113, 113, 0.3) !important; color: #f87171 !important; }
+    &.content_manager     { background: linear-gradient(135deg, rgba(96, 165, 250, 0.2), rgba(96, 165, 250, 0.3)) !important; border-color: rgba(96, 165, 250, 0.3) !important; color: #60a5fa !important; }
+    &.reviewer            { background: linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(167, 139, 250, 0.3)) !important; border-color: rgba(167, 139, 250, 0.3) !important; color: #a78bfa !important; }
+    &.competition_manager { background: linear-gradient(135deg, rgba(251, 146, 60, 0.2), rgba(251, 146, 60, 0.3)) !important; border-color: rgba(251, 146, 60, 0.3) !important; color: #fb923c !important; }
+  }
+
+  .admin-role-badge {
+    background: rgba(109, 165, 224, 0.14) !important;
+    border-color: rgba(109, 165, 224, 0.25) !important;
+    &.sponsor              { background: rgba(52, 211, 153, 0.12) !important; border-color: rgba(52, 211, 153, 0.25) !important; color: #34d399 !important; }
+    &.school_admin, &.school { background: rgba(167, 139, 250, 0.12) !important; border-color: rgba(167, 139, 250, 0.25) !important; color: #a78bfa !important; }
+    &.instructor, &.mentor   { background: rgba(251, 191, 36, 0.12) !important; border-color: rgba(251, 191, 36, 0.25) !important; color: #fbbf24 !important; }
+    &.student             { background: rgba(56, 189, 248, 0.12) !important; border-color: rgba(56, 189, 248, 0.25) !important; color: #38bdf8 !important; }
+    &.super_admin         { background: rgba(248, 113, 113, 0.12) !important; border-color: rgba(248, 113, 113, 0.25) !important; color: #f87171 !important; }
+    &.content_manager     { background: rgba(96, 165, 250, 0.12) !important; border-color: rgba(96, 165, 250, 0.25) !important; color: #60a5fa !important; }
+    &.reviewer            { background: rgba(167, 139, 250, 0.12) !important; border-color: rgba(167, 139, 250, 0.25) !important; color: #a78bfa !important; }
+    &.competition_manager { background: rgba(251, 146, 60, 0.12) !important; border-color: rgba(251, 146, 60, 0.25) !important; color: #fb923c !important; }
+  }
+
+  .ac-expand-btn {
+    background: rgba(109, 165, 224, 0.1) !important;
+    border-color: rgba(109, 165, 224, 0.25) !important;
+    &:hover { background: rgba(109, 165, 224, 0.18) !important; }
   }
 }
 
