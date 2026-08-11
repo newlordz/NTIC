@@ -795,6 +795,16 @@ try:
         category: str = ""
         deadline: str = ""
         status: str = "active"
+        comp_type: str = "qualifier"
+        max_teams: int = 50
+        teams: int = 0
+        prize: str = ""
+        start_date: str = ""
+        end_date: str = ""
+        phases: str = "[]"
+        rules: str = ""
+        criteria: str = ""
+        progress: int = 0
 
     @app.get("/api/competitions")
     def list_competitions():
@@ -802,11 +812,11 @@ try:
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, title, description, track, category, deadline, status, created_at FROM competitions ORDER BY created_at DESC")
+        cur.execute("SELECT id, title, description, track, category, deadline, status, created_at, comp_type, max_teams, teams, prize, start_date, end_date, phases, rules, criteria, progress FROM competitions ORDER BY created_at DESC")
         rows = cur.fetchall()
         cur.close()
         conn.close()
-        return [{"id": r[0], "title": r[1], "description": r[2], "track": r[3], "category": r[4], "deadline": r[5], "status": r[6], "created_at": str(r[7])} for r in rows]
+        return [{"id": r[0], "title": r[1], "description": r[2], "track": r[3], "category": r[4], "deadline": r[5], "status": r[6], "created_at": str(r[7]), "type": r[8], "maxTeams": r[9], "teams": r[10], "prize": r[11], "startDate": r[12], "endDate": r[13], "phases": r[14], "rules": r[15], "criteria": r[16], "progress": r[17]} for r in rows]
 
     @app.post("/api/competitions", status_code=status.HTTP_201_CREATED)
     def create_competition(payload: CompetitionCreate):
@@ -816,8 +826,8 @@ try:
         comp_id = "comp-" + str(uuid.uuid4())[:8]
         cur = conn.cursor()
         try:
-            cur.execute("INSERT INTO competitions (id, title, description, track, category, deadline, status) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                        (comp_id, payload.title, payload.description, payload.track, payload.category, payload.deadline, payload.status))
+            cur.execute("INSERT INTO competitions (id, title, description, track, category, deadline, status, comp_type, max_teams, teams, prize, start_date, end_date, phases, rules, criteria, progress) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                        (comp_id, payload.title, payload.description, payload.track, payload.category, payload.deadline, payload.status, payload.comp_type, payload.max_teams, payload.teams, payload.prize, payload.start_date, payload.end_date, payload.phases, payload.rules, payload.criteria, payload.progress))
             conn.commit()
         except Exception as e:
             conn.rollback()
@@ -837,8 +847,8 @@ try:
         cur = conn.cursor()
         try:
             cur.execute(
-                "UPDATE competitions SET title = %s, description = %s, track = %s, category = %s, deadline = %s, status = %s WHERE id = %s RETURNING id",
-                (payload.title, payload.description, payload.track, payload.category, payload.deadline, payload.status, item_id)
+                "UPDATE competitions SET title = %s, description = %s, track = %s, category = %s, deadline = %s, status = %s, comp_type = %s, max_teams = %s, teams = %s, prize = %s, start_date = %s, end_date = %s, phases = %s, rules = %s, criteria = %s, progress = %s WHERE id = %s RETURNING id",
+                (payload.title, payload.description, payload.track, payload.category, payload.deadline, payload.status, payload.comp_type, payload.max_teams, payload.teams, payload.prize, payload.start_date, payload.end_date, payload.phases, payload.rules, payload.criteria, payload.progress, item_id)
             )
             row = cur.fetchone()
             conn.commit()

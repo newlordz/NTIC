@@ -195,11 +195,11 @@ export class ApiService {
     return this.http.get<any[]>(this.apiUrl + '/competitions');
   }
 
-  createCompetition(payload: { title: string; description?: string; track?: string; category?: string; deadline?: string; status?: string }): Observable<any> {
+  createCompetition(payload: Record<string, any>): Observable<any> {
     return this.http.post(this.apiUrl + '/competitions', payload);
   }
 
-  updateCompetition(id: string, payload: { title: string; description?: string; track?: string; category?: string; deadline?: string; status?: string }): Observable<any> {
+  updateCompetition(id: string, payload: Record<string, any>): Observable<any> {
     return this.http.patch(this.apiUrl + '/competitions/' + id, payload);
   }
 
