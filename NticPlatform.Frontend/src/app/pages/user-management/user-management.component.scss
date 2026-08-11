@@ -1787,92 +1787,14 @@ $radius-xl: 20px;
   .material-symbols-outlined { font-size: 18px; }
 
   &:hover {
-.th-bubble {
-  max-width: 75%;
-  background: $surface;
-  border: 1px solid $border;
-  border-radius: $radius-md;
-  padding: 10px 14px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-
-  .th-user &     { background: $blue-lt; border-color: rgba(37,99,235,0.2); }
-  &.th-admin-bubble { background: $green-lt; border-color: rgba(16,185,129,0.25); }
-}
-
-.th-role-label {
-  display: block;
-  font-size: 10px;
-  font-weight: 700;
-  color: $text-muted;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  margin-bottom: 4px;
-}
-
-.th-bubble p { font-size: 13px; color: $text-primary; margin: 0; line-height: 1.5; }
-
-.ticket-reply-area {
-  padding: 16px 20px;
-  border-top: 1px solid $border;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: $surface;
-}
-
-.reply-textarea {
-  width: 100%;
-  border: 1.5px solid $border;
-  border-radius: $radius-sm;
-  padding: 10px 12px;
-  font-size: 13px;
-  color: $text-primary;
-  background: $surface-bg;
-  outline: none;
-  resize: none;
-  box-sizing: border-box;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  font-family: inherit;
-
-  &:focus {
-    border-color: $blue;
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
-    background: $surface;
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+    transform: translateY(-1px);
   }
+
+  &:active { transform: translateY(0); }
 }
 
-.reply-send-btn { align-self: flex-end; }
-
-.ticket-resolved-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 20px;
-  background: $green-lt;
-  border-top: 1px solid rgba(16,185,129,0.2);
-  font-size: 13px;
-  font-weight: 600;
-  color: darken($green, 8%);
-
-  .material-symbols-outlined { font-size: 20px; }
-}
-
-.ticket-no-selection {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  min-height: 400px;
-  text-align: center;
-  color: $text-muted;
-  background: $surface;
-  border: 1px solid $border;
-  border-radius: $radius-lg;
-
-  .material-symbols-outlined { font-size: 48px; color: #cbd5e1; margin-bottom: 14px; }
-  p { font-size: 13px; }
-}
 
 // ══════════════════════════════════════════════════════
 // RESPONSIVE
