@@ -2629,6 +2629,12 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           ticket: newUser.ticket,
           password: otp,
           phone: newUser.phone || '',
+          organization: newUser.organization || '',
+          age_group: newUser.ageGroup || '',
+          experience_level: newUser.experienceLevel || '',
+          competition_id: newUser.competitionId || '',
+          photo_file_id: this.openRegPhotoFileId || '',
+          doc_file_id: this.openRegDocFileId || '',
           status: 'Active'
         }).subscribe({
           next: () => {
