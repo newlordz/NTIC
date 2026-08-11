@@ -2197,7 +2197,7 @@
                   <span class="material-symbols-outlined upload-icon" *ngIf="!openRegPhotoUrl">add_a_photo</span>
                   <img *ngIf="openRegPhotoUrl" [src]="openRegPhotoUrl" style="max-width:120px;max-height:120px;border-radius:50%;object-fit:cover;border:3px solid var(--primary);">
                   <p *ngIf="!openRegPhotoUrl">Click to upload a professional photo</p>
-                  <div *ngIf="openRegPhotoUrl" style="display:flex;gap:8px;margin-top:8px;">
+                  <div *ngIf="openRegPhotoUrl" style="display:flex;gap:8px;margin-top:8px;justify-content:center;">
                     <button type="button" class="btn btn-sm btn-subtle" (click)="openRegPhotoInput.click(); $event.stopPropagation()">
                       <span class="material-symbols-outlined">swap_horiz</span> Replace
                     </button>
@@ -2218,7 +2218,7 @@
                     <span style="color:var(--primary);font-weight:600;">{{ openRegDocName }}</span>
                   </div>
                   <p *ngIf="!openRegDocName">Upload ID, CV, or competition history (optional)</p>
-                  <div *ngIf="openRegDocName" style="display:flex;gap:8px;margin-top:8px;">
+                  <div *ngIf="openRegDocName" style="display:flex;gap:8px;margin-top:8px;justify-content:center;">
                     <button type="button" class="btn btn-sm btn-subtle" (click)="openRegDocInput.click(); $event.stopPropagation()">
                       <span class="material-symbols-outlined">swap_horiz</span> Replace
                     </button>
