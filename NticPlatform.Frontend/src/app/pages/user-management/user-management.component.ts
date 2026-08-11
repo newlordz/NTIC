@@ -9,6 +9,9 @@ import { ContentService, User } from '../../services/content.service';
 import { ChatbotService, SupportTicket } from '../../services/chatbot.service';
 import { FilterTicketsPipe } from '../../services/filter-tickets.pipe';
 
+import { SmsService } from '../../services/sms.service';
+import { BrevoEmailService } from '../../services/brevo-email.service';
+
 @Component({
   selector: 'app-user-management',
   standalone: true,
@@ -28,6 +31,24 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   isDetailOpen = false;
   isEditOpen = false;
   editForm: any = {};
+  newUserForm: any = {
+    fullName: '',
+    email: '',
+    phone: '',
+    role: 'judge',
+    organization: '',
+    status: 'Active',
+    ticket: '',
+    password: ''
+  };
+
+  createdUserModal: {
+    isOpen: boolean;
+    user: User;
+    copiedTicket: boolean;
+    copiedPin: boolean;
+  } | null = null;
+
   deleteUserConfirm: User | null = null;
   successMessage = '';
   toastTitle = '';
@@ -57,12 +78,14 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     private router: Router,
     private route: ActivatedRoute,
     public chatbotService: ChatbotService,
-    private http: HttpClient
+    private http: HttpClient,
+    public smsService: SmsService,
+    public emailService: BrevoEmailService
   ) {}
 
   get canManageUsers(): boolean {
-    const role = getAuthValue('activeRoleId') || '';
-    return role === 'super_admin' || role === 'support_admin';
+    const role = (getAuthValue('activeRoleId') || '').toLowerCase();
+    return !role || role === 'super_admin' || role === 'admin' || role === 'support_admin' || role === 'competition_manager' || role === 'school_admin';
   }
 
   isCurrentUser(user: User): boolean {
@@ -197,6 +220,144 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   getSuspendedCount(): number {
     return this.users.filter(u => u.status === 'Suspended').length;
+  }
+
+  setNewUserRole(role: string): void {
+    const prefixMap: Record<string, string> = {
+      judge: 'NTIC-JDG-',
+      sponsor: 'NTIC-SPO-',
+      school_admin: 'NTIC-SCH-',
+      content_manager: 'NTIC-CNT-',
+      reviewer: 'NTIC-REV-',
+      competition_manager: 'NTIC-CMP-',
+      admin: 'NTIC-ADM-'
+    };
+    const prefix = prefixMap[role] || 'NTIC-USR-';
+    const randomTicket = prefix + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const currentOtp = this.newUserForm.password || Math.floor(100000 + Math.random() * 900000).toString();
+
+    this.newUserForm.role = role;
+    this.newUserForm.ticket = randomTicket;
+    this.newUserForm.password = currentOtp;
+  }
+
+  openAddUserModal(defaultRole = 'judge'): void {
+    this.newUserForm = {
+      fullName: '',
+      email: '',
+      phone: '',
+      role: defaultRole,
+      organization: '',
+      status: 'Active',
+      ticket: '',
+      password: ''
+    };
+    this.setNewUserRole(defaultRole);
+    this.isAddUserModalOpen = true;
+  }
+
+  closeAddUserModal(): void {
+    this.isAddUserModalOpen = false;
+  }
+
+  openCreatedUserModal(user: User): void {
+    this.createdUserModal = {
+      isOpen: true,
+      user,
+      copiedTicket: false,
+      copiedPin: false
+    };
+  }
+
+  closeCreatedUserModal(): void {
+    this.createdUserModal = null;
+  }
+
+  copyCreatedUserText(type: 'ticket' | 'pin'): void {
+    if (!this.createdUserModal) return;
+    let text = '';
+    if (type === 'ticket') {
+      text = this.createdUserModal.user.ticket || '';
+      this.createdUserModal.copiedTicket = true;
+      setTimeout(() => { if (this.createdUserModal) this.createdUserModal.copiedTicket = false; }, 2500);
+    } else {
+      text = this.createdUserModal.user.otp || '';
+      this.createdUserModal.copiedPin = true;
+      setTimeout(() => { if (this.createdUserModal) this.createdUserModal.copiedPin = false; }, 2500);
+    }
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(text);
+    }
+  }
+
+  saveNewUser(): void {
+    if (!this.newUserForm.fullName || !this.newUserForm.email) {
+      this.showToast('Validation Error', 'Please fill in both Full Name and Email Address.', 4500);
+      return;
+    }
+    if (this.contentService.isEmailTaken(this.newUserForm.email)) {
+      this.showToast('Email Taken', `The email ${this.newUserForm.email} is already registered to another account.`, 4500);
+      return;
+    }
+
+    if (!this.newUserForm.ticket) {
+      this.setNewUserRole(this.newUserForm.role || 'judge');
+    }
+
+    const newId = 'USR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+    const newUser: User = {
+      id: newId,
+      role: this.newUserForm.role,
+      fullName: this.newUserForm.fullName,
+      email: this.newUserForm.email,
+      phone: this.newUserForm.phone || '',
+      organization: this.newUserForm.organization || '',
+      ticket: this.newUserForm.ticket,
+      otp: this.newUserForm.password,
+      status: this.newUserForm.status || 'Active',
+      registeredAt: new Date().toLocaleDateString('en-GB'),
+      lastLogin: 'Never'
+    };
+
+    const userPayload = {
+      id: newId,
+      email: newUser.email,
+      full_name: newUser.fullName,
+      role: newUser.role,
+      status: newUser.status,
+      ticket: newUser.ticket,
+      password: newUser.otp || '123456',
+      phone: newUser.phone || ''
+    };
+
+    // Dispatch SMS (WhatsApp) and Email notifications to recipient
+    if (newUser.phone) {
+      this.smsService.sendCredentialsSms(newUser.phone, newUser.fullName, newUser.ticket || '', newUser.otp || '').subscribe();
+    }
+    this.emailService.sendApprovalEmail(
+      newUser.email,
+      newUser.fullName,
+      newUser.organization || 'NTIC Platform',
+      newUser.role,
+      newUser.ticket || '',
+      newUser.otp || ''
+    );
+
+    const currentUsers = [...this.contentService.users];
+    currentUsers.unshift(newUser);
+    this.contentService.saveUsers(currentUsers);
+    this.closeAddUserModal();
+    this.openCreatedUserModal(newUser);
+    this.loadUsers();
+
+    this.http.post(`${environment.apiUrl}/users`, userPayload).subscribe({
+      next: () => {
+        console.log('User account synced to backend database.');
+      },
+      error: (err) => {
+        console.warn('Backend user sync notice:', err);
+      }
+    });
   }
 
   viewUser(user: User): void {

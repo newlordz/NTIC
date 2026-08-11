@@ -239,6 +239,42 @@
               <span class="material-symbols-outlined">add</span>Register Your First Team
             </button>
           </div>
+
+          <!-- Registered Team Members & Roster Profiles Section -->
+          <div class="card" style="margin-top:20px;">
+            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+              <h3 style="display:flex;align-items:center;gap:8px;margin:0;font-size:14px;">
+                <span class="material-symbols-outlined" style="font-size:18px;">badge</span>
+                Registered Team Members &amp; Profiles ({{ schoolMembers.length }})
+              </h3>
+            </div>
+            <div class="card-body" style="padding:16px;">
+              <div *ngIf="schoolMembers.length > 0" class="school-members-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));gap:12px;">
+                <div *ngFor="let member of schoolMembers" class="member-profile-card" (click)="openMemberProfileModal(member)" style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:10px;padding:12px;cursor:pointer;transition:all 0.2s ease;">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <div class="member-avatar" style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">
+                      {{ getInitials(member.name) }}
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                      <div style="font-size:13px;font-weight:700;color:var(--on-surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ member.name }}</div>
+                      <div style="font-size:11px;color:var(--on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ member.email }}</div>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px dashed var(--outline-variant);font-size:11px;">
+                    <span class="badge secondary" style="font-size:10px;">{{ member.role || 'Member' }}</span>
+                    <span style="color:var(--primary);font-weight:600;display:flex;align-items:center;gap:2px;">
+                      <span class="material-symbols-outlined" style="font-size:14px;">visibility</span> Profile
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div *ngIf="schoolMembers.length === 0" style="text-align:center;padding:24px;color:var(--on-surface-variant);">
+                <span class="material-symbols-outlined" style="font-size:32px;color:var(--outline);">person_off</span>
+                <p style="font-size:13px;margin-top:6px;">No team members registered under your institution yet.</p>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -3431,6 +3467,71 @@
       </div>
       <div class="custom-alert-actions">
         <button class="btn-alert-dismiss" (click)="closeCustomAlert()">Got It</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Member Profile Modal -->
+  <div class="admin-modal-overlay" *ngIf="selectedMemberProfile" (click)="closeMemberProfileModal()">
+    <div class="admin-modal" (click)="$event.stopPropagation()" style="max-width:480px;border-radius:16px;">
+      <div class="admin-modal-header" style="background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="material-symbols-outlined" style="font-size:24px;">badge</span>
+          <div>
+            <h3 style="margin:0;font-size:16px;color:#fff;">Member Profile Details</h3>
+            <span style="font-size:11px;opacity:0.85;">{{ selectedMemberProfile.name }}</span>
+          </div>
+        </div>
+        <button class="admin-modal-close" (click)="closeMemberProfileModal()" style="color:#fff;">&times;</button>
+      </div>
+      <div class="admin-modal-body" style="padding:20px;">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--outline-variant);">
+          <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;">
+            {{ getInitials(selectedMemberProfile.name) }}
+          </div>
+          <div>
+            <h3 style="margin:0 0 2px 0;font-size:16px;font-weight:700;color:var(--on-surface);">{{ selectedMemberProfile.name }}</h3>
+            <span class="badge primary">{{ selectedMemberProfile.role }}</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:13px;">
+          <div>
+            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Email</span>
+            <strong style="color:var(--on-surface);">{{ selectedMemberProfile.email || 'N/A' }}</strong>
+          </div>
+          <div>
+            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Phone</span>
+            <strong style="color:var(--on-surface);">{{ selectedMemberProfile.phone || 'N/A' }}</strong>
+          </div>
+          <div>
+            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Track / Competition</span>
+            <strong style="color:var(--primary);">{{ selectedMemberProfile.track || 'General' }}</strong>
+          </div>
+          <div>
+            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Institution</span>
+            <strong style="color:var(--on-surface);">{{ selectedMemberProfile.organization || schoolName || 'NTIC Member' }}</strong>
+          </div>
+          <div *ngIf="selectedMemberProfile.class">
+            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Class / Form</span>
+            <strong style="color:var(--on-surface);">{{ selectedMemberProfile.class }}</strong>
+          </div>
+          <div *ngIf="selectedMemberProfile.gender">
+            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Gender</span>
+            <strong style="color:var(--on-surface);">{{ selectedMemberProfile.gender }}</strong>
+          </div>
+          <div *ngIf="selectedMemberProfile.guardianName && selectedMemberProfile.guardianName !== 'N/A'">
+            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Guardian Name</span>
+            <strong style="color:var(--on-surface);">{{ selectedMemberProfile.guardianName }}</strong>
+          </div>
+          <div *ngIf="selectedMemberProfile.guardianPhone && selectedMemberProfile.guardianPhone !== 'N/A'">
+            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Guardian Phone</span>
+            <strong style="color:var(--on-surface);">{{ selectedMemberProfile.guardianPhone }}</strong>
+          </div>
+        </div>
+      </div>
+      <div class="admin-modal-footer" style="padding:12px 20px;border-top:1px solid var(--outline-variant);display:flex;justify-content:flex-end;">
+        <button class="btn btn-primary btn-sm" (click)="closeMemberProfileModal()">Close</button>
       </div>
     </div>
   </div>

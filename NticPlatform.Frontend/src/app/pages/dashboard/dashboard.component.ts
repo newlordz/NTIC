@@ -765,8 +765,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const userName = activeUser ? activeUser.fullName : (this.activeRoleId === 'super_admin' ? 'System Administrator' : 'Administrator');
     this.currentUser = activeUser || null;
 
-    if (activeUser && activeUser.role === 'school_admin') {
-      this.schoolName = activeUser.organization || '';
+    if (activeUser) {
+      this.schoolName = activeUser.organization || (activeUser.role === 'school_admin' ? activeUser.fullName : '');
     } else {
       this.schoolName = '';
     }
@@ -2847,20 +2847,37 @@ setTimeout(async () => {
     ];
   }
 
+  selectedMemberProfile: any | null = null;
+
+  openMemberProfileModal(member: any): void {
+    this.selectedMemberProfile = member;
+  }
+
+  closeMemberProfileModal(): void {
+    this.selectedMemberProfile = null;
+  }
+
   get schoolTeams(): any[] {
-    if (!this.schoolName) return [];
-    const cleanSchoolName = this.schoolName.trim().toLowerCase();
+    const activeEmail = (getAuthValue('activeUserEmail') || '').trim().toLowerCase();
+    const cleanSchoolName = (this.schoolName || this.currentUser?.organization || '').trim().toLowerCase();
+
     const myTeams = this.contentService.teams.filter(t => {
       const cleanTeamSchool = (t.schoolName || '').trim().toLowerCase();
-      return cleanTeamSchool === cleanSchoolName || cleanTeamSchool.includes(cleanSchoolName) || cleanSchoolName.includes(cleanTeamSchool);
+      const cleanLeadEmail = ((t as any).leadEmail || '').trim().toLowerCase();
+      const cleanLeadName = (t.lead || '').trim().toLowerCase();
+      return (cleanSchoolName && (cleanTeamSchool === cleanSchoolName || cleanTeamSchool.includes(cleanSchoolName) || cleanSchoolName.includes(cleanTeamSchool))) ||
+             (activeEmail && (cleanLeadEmail === activeEmail || cleanLeadName === activeEmail));
     });
     
-    // If no teams found in active registry, check pending approvals to restore any custom teams created during school/team registration
+    // If no teams found in active registry, check pending and approved requests
     if (myTeams.length === 0) {
       const restoredTeams: any[] = [];
-      this.contentService.pendingApprovals.forEach(req => {
-        const cleanReqSchool = (req.entity || req.details?.school || '').trim().toLowerCase();
-        if (cleanReqSchool === cleanSchoolName || cleanReqSchool.includes(cleanSchoolName) || cleanSchoolName.includes(cleanReqSchool)) {
+      const allReqs = [...this.contentService.pendingApprovals, ...this.contentService.approvedApprovals];
+      allReqs.forEach(req => {
+        const cleanReqSchool = (req.entity || req.details?.school || req.details?.institution || '').trim().toLowerCase();
+        const cleanReqEmail = (req.contact || req.details?.email || req.details?.repEmail || '').trim().toLowerCase();
+        if ((cleanSchoolName && (cleanReqSchool === cleanSchoolName || cleanReqSchool.includes(cleanSchoolName) || cleanSchoolName.includes(cleanReqSchool))) ||
+            (activeEmail && cleanReqEmail === activeEmail)) {
           if (req.details?.teamsList && Array.isArray(req.details.teamsList)) {
             req.details.teamsList.forEach((t: any) => {
               const roster = [t.leadName, t.member2Name, t.member3Name, t.member4Name, t.member5Name].filter(Boolean).map((n: string) => n.trim()).filter((n: string) => n.length > 0);
@@ -2873,7 +2890,7 @@ setTimeout(async () => {
                 status: 'In Competition',
                 mentor: 'Assigned Coordinator',
                 motto: 'National NTI Competition Squad',
-                schoolName: this.schoolName
+                schoolName: this.schoolName || req.entity
               });
             });
           } else if (req.type === 'Team Addition') {
@@ -2886,7 +2903,7 @@ setTimeout(async () => {
               status: 'In Competition',
               mentor: 'Assigned Coordinator',
               motto: 'Sandbox Innovation Project',
-              schoolName: this.schoolName
+              schoolName: this.schoolName || req.details?.school
             });
           }
         }
@@ -2902,11 +2919,96 @@ setTimeout(async () => {
     return myTeams;
   }
 
+  get schoolMembers(): any[] {
+    const activeEmail = (getAuthValue('activeUserEmail') || '').trim().toLowerCase();
+    const activeOrg = (this.schoolName || this.currentUser?.organization || '').trim().toLowerCase();
+
+    const memberList: any[] = [];
+    const seenKeys = new Set<string>();
+
+    const addMember = (m: any) => {
+      const key = (m.email || m.name || m.fullName || '').trim().toLowerCase();
+      if (key && !seenKeys.has(key)) {
+        seenKeys.add(key);
+        memberList.push(m);
+      }
+    };
+
+    // 1. Fetch registered users linked to institution
+    this.contentService.users.forEach(u => {
+      const uOrg = (u.organization || '').trim().toLowerCase();
+      if (u.role === 'student' || u.role === 'instructor') {
+        if ((activeOrg && (uOrg === activeOrg || uOrg.includes(activeOrg) || activeOrg.includes(uOrg))) ||
+            (activeEmail && u.email?.toLowerCase() === activeEmail)) {
+          addMember({
+            name: u.fullName || u.email,
+            email: u.email,
+            phone: u.phone || '',
+            role: u.role === 'instructor' ? 'Mentor / Instructor' : 'Student Competitor',
+            organization: u.organization || this.schoolName,
+            ticket: u.ticket || '',
+            track: u.track || 'General Competition',
+            status: u.status || 'Active',
+            registeredAt: u.registeredAt || 'Registered'
+          });
+        }
+      }
+    });
+
+    // 2. Fetch members from team rosters
+    this.schoolTeams.forEach((t: any) => {
+      if (t.rosterList && Array.isArray(t.rosterList)) {
+        t.rosterList.forEach((memberName: string, idx: number) => {
+          addMember({
+            name: memberName,
+            email: idx === 0 ? (t.leadEmail || `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`) : `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
+            role: idx === 0 ? 'Team Lead / Captain' : 'Team Member',
+            teamName: t.name,
+            track: t.track || 'Coding',
+            organization: t.schoolName || this.schoolName,
+            status: 'In Competition'
+          });
+        });
+      }
+    });
+
+    // 3. Fetch members registered under school / team applications
+    const allReqs = [...this.contentService.pendingApprovals, ...this.contentService.approvedApprovals];
+    allReqs.forEach((req: any) => {
+      const reqOrg = (req.entity || req.details?.school || req.details?.institution || '').trim().toLowerCase();
+      const reqEmail = (req.contact || req.details?.email || req.details?.repEmail || '').trim().toLowerCase();
+
+      if ((activeOrg && (reqOrg === activeOrg || reqOrg.includes(activeOrg) || activeOrg.includes(reqOrg))) ||
+          (activeEmail && reqEmail === activeEmail)) {
+        if (req.details?.students && Array.isArray(req.details.students)) {
+          req.details.students.forEach((s: any) => {
+            addMember({
+              name: s.name,
+              email: s.email || `${s.name?.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
+              role: 'Student Competitor',
+              class: s.class || 'Form 2',
+              dob: s.dob || 'N/A',
+              gender: s.gender || 'N/A',
+              guardianName: s.guardianName || 'N/A',
+              guardianPhone: s.guardianPhone || 'N/A',
+              track: s.track || 'Coding & Algorithms',
+              organization: reqOrg || this.schoolName,
+              status: 'Registered'
+            });
+          });
+        }
+      }
+    });
+
+    return memberList;
+  }
+
   get schoolInstructors(): any[] {
-    if (!this.schoolName) return [];
+    const activeOrg = (this.schoolName || this.currentUser?.organization || '').trim().toLowerCase();
+    if (!activeOrg) return [];
     return this.contentService.users.filter(u => 
       u.role === 'instructor' &&
-      u.organization?.trim().toLowerCase() === this.schoolName.trim().toLowerCase()
+      u.organization?.trim().toLowerCase() === activeOrg
     );
   }
 

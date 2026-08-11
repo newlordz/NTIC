@@ -55,6 +55,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     pin: string;
     extraInfo?: string;
     nextRoute?: string;
+    autoLoginEmail?: string;
+    autoLoginRole?: string;
     copiedPass: boolean;
     copiedPin: boolean;
     copiedAll: boolean;
@@ -67,7 +69,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     type: 'success' | 'warning' | 'info' | 'error';
   } | null = null;
 
-  openCredentialsModal(title: string, subtitle: string, accessPass: string, pin: string, extraInfo?: string, nextRoute?: string) {
+  openCredentialsModal(title: string, subtitle: string, accessPass: string, pin: string, extraInfo?: string, nextRoute?: string, autoLoginEmail?: string, autoLoginRole?: string) {
     this.credentialsModal = {
       isOpen: true,
       title,
@@ -76,6 +78,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       pin,
       extraInfo,
       nextRoute,
+      autoLoginEmail,
+      autoLoginRole,
       copiedPass: false,
       copiedPin: false,
       copiedAll: false
@@ -105,9 +109,23 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   proceedFromCredentialsModal() {
     const route = this.credentialsModal?.nextRoute;
+    const email = this.credentialsModal?.autoLoginEmail;
+    const role = this.credentialsModal?.autoLoginRole;
     this.credentialsModal = null;
+
+    if (email && role) {
+      setAuthValue('activeUserEmail', email, true);
+      setAuthValue('activeRoleId', role, true);
+    }
+
     if (route) {
       this.router.navigate([route]);
+    } else if (role === 'judge') {
+      this.router.navigate(['/judge']);
+    } else if (role === 'sponsor') {
+      this.router.navigate(['/sponsors']);
+    } else {
+      this.router.navigate(['/dashboard']);
     }
   }
 
@@ -2349,7 +2367,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
               ticket,
               otp,
               'Use these credentials to access the Judge & Grading Portal.',
-              '/dashboard'
+              '/judge',
+              newJudge.email,
+              'judge'
             );
           },
           error: () => {
@@ -2409,7 +2429,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
               ticket,
               otp,
               'Use these credentials to access the Sponsor Portal.',
-              '/dashboard'
+              '/sponsors',
+              newSponsor.email,
+              'sponsor'
             );
           },
           error: () => {

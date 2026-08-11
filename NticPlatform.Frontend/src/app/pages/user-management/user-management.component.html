@@ -25,11 +25,15 @@
       </div>
 
       <div class="cmd-hero-actions">
+        <button class="cmd-btn cmd-btn-primary" (click)="openAddUserModal('judge')">
+          <span class="material-symbols-outlined">person_add</span>
+          + Create Account
+        </button>
         <button class="cmd-btn cmd-btn-ghost" (click)="exportCSV()">
           <span class="material-symbols-outlined">download</span>
           Export CSV
         </button>
-        <button class="cmd-btn cmd-btn-primary" [disabled]="isSyncing" (click)="syncAccounts()">
+        <button class="cmd-btn cmd-btn-ghost" [disabled]="isSyncing" (click)="syncAccounts()">
           <span class="material-symbols-outlined" [class.spinning]="isSyncing">sync</span>
           {{ isSyncing ? 'Syncing...' : 'Sync Accounts' }}
         </button>
@@ -691,6 +695,208 @@
         <button class="cmd-btn cmd-btn-danger" (click)="confirmDelete()">
           <span class="material-symbols-outlined">delete_forever</span> Delete Permanently
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODAL: CREATE NEW USER / ACCOUNT (PREMIUM UI)
+  ══════════════════════════════════════════ -->
+  <div class="ca-backdrop" *ngIf="isAddUserModalOpen" (click)="closeAddUserModal()">
+    <div class="ca-panel" (click)="$event.stopPropagation()">
+
+      <!-- Gradient Header -->
+      <div class="ca-header">
+        <div class="ca-header-glow"></div>
+        <div class="ca-header-icon">
+          <span class="material-symbols-outlined">person_add</span>
+        </div>
+        <div class="ca-header-text">
+          <h2 class="ca-title">Create New Account</h2>
+          <p class="ca-subtitle">Generate official credentials &amp; assign system role</p>
+        </div>
+        <button class="ca-close" (click)="closeAddUserModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="ca-body">
+
+        <!-- Section: Role Selection Chips -->
+        <div class="ca-section">
+          <p class="ca-section-label">
+            <span class="material-symbols-outlined">manage_accounts</span>
+            Select User Role
+          </p>
+          <div class="ca-role-grid">
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'judge'" (click)="setNewUserRole('judge')">
+              <span class="material-symbols-outlined">gavel</span>
+              <span>Judge</span>
+            </button>
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'sponsor'" (click)="setNewUserRole('sponsor')">
+              <span class="material-symbols-outlined">handshake</span>
+              <span>Sponsor</span>
+            </button>
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'school_admin'" (click)="setNewUserRole('school_admin')">
+              <span class="material-symbols-outlined">school</span>
+              <span>School Admin</span>
+            </button>
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'content_manager'" (click)="setNewUserRole('content_manager')">
+              <span class="material-symbols-outlined">edit_note</span>
+              <span>Content Mgr</span>
+            </button>
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'reviewer'" (click)="setNewUserRole('reviewer')">
+              <span class="material-symbols-outlined">rate_review</span>
+              <span>Reviewer</span>
+            </button>
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'competition_manager'" (click)="setNewUserRole('competition_manager')">
+              <span class="material-symbols-outlined">emoji_events</span>
+              <span>Comp. Manager</span>
+            </button>
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'admin'" (click)="setNewUserRole('admin')">
+              <span class="material-symbols-outlined">admin_panel_settings</span>
+              <span>Administrator</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Section: Identity -->
+        <div class="ca-section">
+          <p class="ca-section-label">
+            <span class="material-symbols-outlined">badge</span>
+            Identity &amp; Contact
+          </p>
+          <div class="ca-form-grid">
+            <div class="ca-field">
+              <label class="ca-label">Full Name <span class="ca-required">*</span></label>
+              <div class="ca-input-wrap">
+                <span class="material-symbols-outlined ca-input-icon">person</span>
+                <input type="text" [(ngModel)]="newUserForm.fullName" placeholder="e.g. Kwame Mensah" class="ca-input" />
+              </div>
+            </div>
+            <div class="ca-field">
+              <label class="ca-label">Email Address <span class="ca-required">*</span></label>
+              <div class="ca-input-wrap">
+                <span class="material-symbols-outlined ca-input-icon">mail</span>
+                <input type="email" [(ngModel)]="newUserForm.email" placeholder="user@ntic.edu.gh" class="ca-input" />
+              </div>
+            </div>
+            <div class="ca-field">
+              <label class="ca-label">Phone Number</label>
+              <div class="ca-input-wrap">
+                <span class="material-symbols-outlined ca-input-icon">call</span>
+                <input type="text" [(ngModel)]="newUserForm.phone" placeholder="+233 XX XXX XXXX" class="ca-input" />
+              </div>
+            </div>
+            <div class="ca-field">
+              <label class="ca-label">Organization / Institution</label>
+              <div class="ca-input-wrap">
+                <span class="material-symbols-outlined ca-input-icon">business</span>
+                <input type="text" [(ngModel)]="newUserForm.organization" placeholder="School or Sponsor Company" class="ca-input" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Generated Credentials (Read-only display) -->
+        <div class="ca-creds-box">
+          <div class="ca-creds-header">
+            <span class="material-symbols-outlined">key</span>
+            <span>Auto-Generated Access Credentials</span>
+          </div>
+          <div class="ca-creds-row">
+            <div class="ca-cred-item">
+              <span class="ca-cred-label">Ticket / Access Pass</span>
+              <div class="ca-cred-value">
+                <code>{{ newUserForm.ticket }}</code>
+              </div>
+            </div>
+            <div class="ca-cred-divider"></div>
+            <div class="ca-cred-item">
+              <span class="ca-cred-label">Temporary PIN</span>
+              <div class="ca-cred-value">
+                <code>{{ newUserForm.password }}</code>
+              </div>
+            </div>
+          </div>
+          <p class="ca-creds-note">
+            <span class="material-symbols-outlined">info</span>
+            Credentials will be delivered automatically via SMS &amp; Email upon account creation.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="ca-footer">
+        <button class="ca-btn-cancel" (click)="closeAddUserModal()">
+          <span class="material-symbols-outlined">close</span>
+          Cancel
+        </button>
+        <button class="ca-btn-create" (click)="saveNewUser()">
+          <span class="material-symbols-outlined">check_circle</span>
+          Create Account
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODAL: ACCOUNT CREATED CREDENTIALS DISPLAY
+  ══════════════════════════════════════════ -->
+  <div class="um-modal-backdrop" *ngIf="createdUserModal?.isOpen" (click)="closeCreatedUserModal()">
+    <div class="um-modal" (click)="$event.stopPropagation()" style="max-width:480px;border-radius:16px;">
+      <div class="um-modal-header" style="background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="material-symbols-outlined" style="font-size:24px;">check_circle</span>
+          <div>
+            <h3 style="margin:0;font-size:16px;color:#fff;">Account Created Successfully! 🎉</h3>
+            <span style="font-size:11px;opacity:0.85;">Credentials generated and sent via SMS &amp; Email</span>
+          </div>
+        </div>
+        <button class="um-modal-close" (click)="closeCreatedUserModal()" style="color:#fff;">&times;</button>
+      </div>
+      <div class="um-modal-body" style="padding:20px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--outline-variant);">
+          <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">
+            {{ getInitials(createdUserModal?.user?.fullName || '') }}
+          </div>
+          <div>
+            <h4 style="margin:0 0 2px 0;font-size:15px;font-weight:700;color:var(--on-surface);">{{ createdUserModal?.user?.fullName }}</h4>
+            <span class="badge primary">{{ getRoleLabel(createdUserModal?.user?.role || '') }}</span>
+            <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">{{ createdUserModal?.user?.email }}</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:var(--surface-container-low);padding:14px;border-radius:10px;border:1px dashed var(--outline-variant);margin-bottom:16px;">
+          <div>
+            <span style="font-size:11px;font-weight:700;color:var(--primary);display:block;margin-bottom:4px;">Access Pass / Ticket</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <code style="font-size:13px;font-weight:700;color:var(--on-surface);">{{ createdUserModal?.user?.ticket }}</code>
+              <button class="cmd-btn cmd-btn-ghost btn-sm" (click)="copyCreatedUserText('ticket')" style="padding:2px 8px;font-size:11px;">
+                {{ createdUserModal?.copiedTicket ? 'Copied!' : 'Copy' }}
+              </button>
+            </div>
+          </div>
+          <div>
+            <span style="font-size:11px;font-weight:700;color:var(--primary);display:block;margin-bottom:4px;">PIN / Password</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <code style="font-size:13px;font-weight:700;color:var(--on-surface);">{{ createdUserModal?.user?.otp }}</code>
+              <button class="cmd-btn cmd-btn-ghost btn-sm" (click)="copyCreatedUserText('pin')" style="padding:2px 8px;font-size:11px;">
+                {{ createdUserModal?.copiedPin ? 'Copied!' : 'Copy' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);padding:10px 12px;border-radius:8px;font-size:12px;color:#065f46;display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-outlined" style="font-size:18px;color:#10b981;">mark_email_read</span>
+          <span>Credentials dispatched to <strong>{{ createdUserModal?.user?.email }}</strong>{{ createdUserModal?.user?.phone ? ' and SMS' : '' }}.</span>
+        </div>
+      </div>
+      <div class="um-modal-footer" style="padding:12px 20px;border-top:1px solid var(--outline-variant);display:flex;justify-content:flex-end;">
+        <button class="cmd-btn cmd-btn-primary" (click)="closeCreatedUserModal()">Done</button>
       </div>
     </div>
   </div>
