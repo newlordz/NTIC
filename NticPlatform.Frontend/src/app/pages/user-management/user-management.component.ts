@@ -382,12 +382,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   editUser(user: User): void {
-    if (this.isMainAdmin(user)) {
-      this.showToast('Protected Account', 'Main Super Admin accounts cannot be edited or modified.', 4000);
-      return;
-    }
-    this.editForm = { ...user };
-    this.isEditOpen = true;
+    this.showToast('Editing Restricted', 'User details can only be edited by the account owner via Profile Settings.', 4000);
   }
 
   closeEdit(): void {
