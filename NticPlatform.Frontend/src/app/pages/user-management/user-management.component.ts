@@ -84,7 +84,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   ) {}
 
   get canManageUsers(): boolean {
-    const role = (getAuthValue('activeRoleId') || getAuthValue('activeRole') || this.contentService.currentUser?.role || '').toLowerCase();
+    const role = (getAuthValue('activeRoleId') || '').toLowerCase();
     return !role || role === 'super_admin' || role === 'admin' || role === 'support_admin' || role === 'competition_manager' || role === 'school_admin';
   }
 
