@@ -722,6 +722,12 @@
 
       <div class="ca-body">
 
+        <!-- Inline Form Error Banner -->
+        <div *ngIf="formError" style="background:#fee2e2;border:1px solid #f87171;color:#991b1b;padding:10px 14px;border-radius:10px;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-outlined" style="font-size:18px;color:#ef4444;flex-shrink:0;">error</span>
+          <span>{{ formError }}</span>
+        </div>
+
         <!-- Section: Role Selection Chips -->
         <div class="ca-section">
           <p class="ca-section-label">

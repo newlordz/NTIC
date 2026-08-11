@@ -41,6 +41,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     ticket: '',
     password: ''
   };
+  formError = '';
 
   createdUserModal: {
     isOpen: boolean;
@@ -242,6 +243,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   openAddUserModal(defaultRole = 'judge'): void {
+    this.formError = '';
     this.newUserForm = {
       fullName: '',
       email: '',
@@ -258,6 +260,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   closeAddUserModal(): void {
     this.isAddUserModalOpen = false;
+    this.formError = '';
   }
 
   openCreatedUserModal(user: User): void {
@@ -291,12 +294,20 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   saveNewUser(): void {
-    if (!this.newUserForm.fullName || !this.newUserForm.email) {
-      this.showToast('Validation Error', 'Please fill in both Full Name and Email Address.', 4500);
+    this.formError = '';
+    if (!this.newUserForm.fullName || !this.newUserForm.fullName.trim()) {
+      this.formError = 'Please enter the user\'s Full Name.';
+      this.showToast('Validation Error', 'Full Name is required.', 4000);
       return;
     }
-    if (this.contentService.isEmailTaken(this.newUserForm.email)) {
-      this.showToast('Email Taken', `The email ${this.newUserForm.email} is already registered to another account.`, 4500);
+    if (!this.newUserForm.email || !this.newUserForm.email.trim()) {
+      this.formError = 'Please enter a valid Email Address.';
+      this.showToast('Validation Error', 'Email Address is required.', 4000);
+      return;
+    }
+    if (this.contentService.isEmailTaken(this.newUserForm.email.trim())) {
+      this.formError = `The email "${this.newUserForm.email}" is already registered to another account.`;
+      this.showToast('Email Taken', `The email ${this.newUserForm.email} is already registered.`, 4500);
       return;
     }
 
