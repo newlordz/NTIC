@@ -1969,6 +1969,10 @@ try:
             for item in payload.items:
                 cur.execute("INSERT INTO pending_approvals (id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status",
                             (item.get("id"), item.get("type",""), item.get("entity",""), item.get("contact",""), item.get("submitted",""), _json.dumps(item.get("details",{})), item.get("status","pending"), item.get("reviewed_at"), item.get("reviewer"), item.get("rejection_reasons"), item.get("rejection_notes")))
+        elif payload.collection == "submissions":
+            for item in payload.items:
+                cur.execute("INSERT INTO assignment_submissions (id, tenant_id, student_id, source_code_path, video_url, status, score, feedback) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, score = EXCLUDED.score, feedback = EXCLUDED.feedback",
+                            (item.get("id"), item.get("school","default"), item.get("student",""), item.get("file",""), item.get("videoUrl",""), item.get("status","pending"), item.get("score"), item.get("feedback","")))
         else:
             cur.close()
             conn.close()

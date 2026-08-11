@@ -1184,11 +1184,13 @@ private readonly defaultTeams: Team[] = [];
     const id = 'story-' + Date.now();
     this.championshipStories.unshift({ id, ...story });
     this.saveState('championshipStories', this.championshipStories);
+    this.apiService.createStory({ title: story.title, excerpt: story.body || '', date: story.date || new Date().toISOString(), image: story.image || '' }).subscribe();
   }
 
   removeStory(id: string): void {
     this.championshipStories = this.championshipStories.filter(s => s.id !== id);
     this.saveState('championshipStories', this.championshipStories);
+    this.apiService.deleteStory(id).subscribe();
   }
 
   updateStory(story: ChampionshipStory): void {
@@ -1198,6 +1200,7 @@ private readonly defaultTeams: Team[] = [];
       this.championshipStories = [...this.championshipStories];
       this.saveState('championshipStories', this.championshipStories);
     }
+    this.apiService.updateStory(story.id, { title: story.title, excerpt: story.body || '', date: story.date || new Date().toISOString(), image: story.image || '' }).subscribe();
   }
 
   toggleLikeStory(storyId: string, userEmail: string): void {
@@ -1275,11 +1278,13 @@ private readonly defaultTeams: Team[] = [];
     this.upcomingEvents.push({ id, ...event });
     this.upcomingEvents = [...this.upcomingEvents];
     this.saveState('upcomingEvents', this.upcomingEvents);
+    this.apiService.createEvent({ title: event.title, date: `${event.month || ''} ${event.day || ''}`, time: '', location: event.location || '', description: event.description || '' }).subscribe();
   }
 
   removeEvent(id: string): void {
     this.upcomingEvents = this.upcomingEvents.filter(e => e.id !== id);
     this.saveState('upcomingEvents', this.upcomingEvents);
+    this.apiService.deleteEvent(id).subscribe();
   }
 
   updateEvent(event: UpcomingEvent): void {
@@ -1289,6 +1294,7 @@ private readonly defaultTeams: Team[] = [];
       this.upcomingEvents = [...this.upcomingEvents];
       this.saveState('upcomingEvents', this.upcomingEvents);
     }
+    this.apiService.updateEvent(event.id, { title: event.title, date: `${event.month || ''} ${event.day || ''}`, time: '', location: event.location || '', description: event.description || '' }).subscribe();
   }
 
   // ── CRUD Leaderboard ──────────────────────────────────────────────
@@ -1298,6 +1304,7 @@ private readonly defaultTeams: Team[] = [];
     this.leaderboardData.push({ id, ...entry });
     this.recalcLeaderboardRanks();
     this.saveState('leaderboardData', this.leaderboardData);
+    this.apiService.createSchool({ name: entry.schoolName, region: entry.region || '', score: entry.points, rank: parseInt(entry.rank) || 0 }).subscribe();
   }
 
   updateLeaderboardEntry(id: string, updates: Partial<LeaderboardEntry>): void {
@@ -1307,12 +1314,17 @@ private readonly defaultTeams: Team[] = [];
       this.recalcLeaderboardRanks();
       this.saveState('leaderboardData', this.leaderboardData);
     }
+    const entry = this.leaderboardData.find(e => e.id === id);
+    if (entry) {
+      this.apiService.updateSchool(id, { name: entry.schoolName, region: entry.region || '', score: entry.points, rank: parseInt(entry.rank) || 0 }).subscribe();
+    }
   }
 
   removeLeaderboardEntry(id: string): void {
     this.leaderboardData = this.leaderboardData.filter(e => e.id !== id);
     this.recalcLeaderboardRanks();
     this.saveState('leaderboardData', this.leaderboardData);
+    this.apiService.deleteSchool(id).subscribe();
   }
 
   private recalcLeaderboardRanks(): void {
@@ -1359,6 +1371,7 @@ private readonly defaultTeams: Team[] = [];
   updatePlatformStats(stats: PlatformStats): void {
     this.platformStats = { ...stats };
     this.saveState('platformStats', this.platformStats);
+    this.apiService.updatePlatformStats({ countdown_date: this.countdownDate, regions: stats.regions, schools: stats.schools, students: stats.students }).subscribe();
   }
 
   recalculatePlatformStats(): void {
@@ -1398,6 +1411,7 @@ private readonly defaultTeams: Team[] = [];
   updateCountdownDate(dateStr: string): void {
     this.countdownDate = dateStr;
     this.saveState('countdownDate', this.countdownDate);
+    this.apiService.updatePlatformStats({ countdown_date: dateStr }).subscribe();
   }
 
   // ── User Management Helpers ─────────────────────────────────────
@@ -1518,6 +1532,7 @@ private readonly defaultTeams: Team[] = [];
   saveHeroSlides(slidesList: HeroSlide[]): void {
     this.heroSlides = slidesList;
     this.saveState('heroSlides', this.heroSlides);
+    slidesList.forEach(s => this.apiService.createHeroSlide({ id: s.id, title: s.title || '', subtitle: s.description || '', image_url: s.image || '', link: s.ctaLink || '' }).subscribe());
   }
 
   lookupApplication(query: string): ApplicationStatusResult {
@@ -1565,6 +1580,7 @@ private readonly defaultTeams: Team[] = [];
     }
     this.teams = deduped;
     this.saveState('teams', this.teams);
+    deduped.forEach(t => this.apiService.createTeam({ name: t.name, track: t.track || '', school_name: t.schoolName || '', lead: t.lead || '', members: t.members || 1 }).subscribe());
   }
 
   syncNewTeamToBackend(team: Team): void {
@@ -1622,6 +1638,7 @@ private readonly defaultTeams: Team[] = [];
   saveCsrUpdates(csrUpdatesList: any[]): void {
     this.csrUpdates = csrUpdatesList;
     this.saveState('csrUpdates', this.csrUpdates);
+    csrUpdatesList.forEach(c => this.apiService.createCsrUpdate({ id: c.id || '', title: c.title || '', description: c.description || '', date: c.date || '' }).subscribe());
   }
 
   // ── Talent Discovery Management Helpers ───────────────────────────
@@ -1630,6 +1647,7 @@ private readonly defaultTeams: Team[] = [];
     const id = 'td-' + Date.now();
     this.talentDiscovery.push({ id, ...item });
     this.saveState('talentDiscovery', this.talentDiscovery);
+    this.apiService.createTalent({ id, ...item }).subscribe();
   }
 
   updateTalentDiscovery(id: string, updates: Partial<TalentDiscovery>): void {
@@ -1638,11 +1656,13 @@ private readonly defaultTeams: Team[] = [];
       this.talentDiscovery[idx] = { ...this.talentDiscovery[idx], ...updates };
       this.saveState('talentDiscovery', this.talentDiscovery);
     }
+    this.apiService.updateTalent(id, updates).subscribe();
   }
 
   removeTalentDiscovery(id: string): void {
     this.talentDiscovery = this.talentDiscovery.filter(i => i.id !== id);
     this.saveState('talentDiscovery', this.talentDiscovery);
+    this.apiService.deleteTalent(id).subscribe();
   }
 
   saveCompetitions(data: Competition[]): void {
@@ -1767,6 +1787,7 @@ private readonly defaultTeams: Team[] = [];
   savePhilosophyCards(list: PhilosophyCard[]): void {
     this.philosophyCards = [...list];
     this.saveState('philosophyCards', this.philosophyCards);
+    list.forEach(c => this.apiService.createPhilosophy({ title: c.title, description: c.description || '', image: c.image || '' }).subscribe());
   }
 
   savePhilosophyCard(card: PhilosophyCard): void {
