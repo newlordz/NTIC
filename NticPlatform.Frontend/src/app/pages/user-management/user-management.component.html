@@ -729,31 +729,31 @@
             Select User Role
           </p>
           <div class="ca-role-grid">
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'judge'" (click)="newUserForm.role='judge'">
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'judge'" (click)="setNewUserRole('judge')">
               <span class="material-symbols-outlined">gavel</span>
               <span>Judge</span>
             </button>
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'sponsor'" (click)="newUserForm.role='sponsor'">
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'sponsor'" (click)="setNewUserRole('sponsor')">
               <span class="material-symbols-outlined">handshake</span>
               <span>Sponsor</span>
             </button>
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'school_admin'" (click)="newUserForm.role='school_admin'">
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'school_admin'" (click)="setNewUserRole('school_admin')">
               <span class="material-symbols-outlined">school</span>
               <span>School Admin</span>
             </button>
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'content_manager'" (click)="newUserForm.role='content_manager'">
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'content_manager'" (click)="setNewUserRole('content_manager')">
               <span class="material-symbols-outlined">edit_note</span>
               <span>Content Mgr</span>
             </button>
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'reviewer'" (click)="newUserForm.role='reviewer'">
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'reviewer'" (click)="setNewUserRole('reviewer')">
               <span class="material-symbols-outlined">rate_review</span>
               <span>Reviewer</span>
             </button>
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'competition_manager'" (click)="newUserForm.role='competition_manager'">
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'competition_manager'" (click)="setNewUserRole('competition_manager')">
               <span class="material-symbols-outlined">emoji_events</span>
               <span>Comp. Manager</span>
             </button>
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'admin'" (click)="newUserForm.role='admin'">
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'admin'" (click)="setNewUserRole('admin')">
               <span class="material-symbols-outlined">admin_panel_settings</span>
               <span>Administrator</span>
             </button>

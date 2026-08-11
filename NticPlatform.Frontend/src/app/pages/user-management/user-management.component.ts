@@ -222,10 +222,26 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     return this.users.filter(u => u.status === 'Suspended').length;
   }
 
-  openAddUserModal(defaultRole = 'judge'): void {
-    const prefix = defaultRole === 'judge' ? 'NTIC-JDG-' : defaultRole === 'sponsor' ? 'NTIC-SPO-' : defaultRole === 'school_admin' ? 'NTIC-SCH-' : 'NTIC-USR-';
+  setNewUserRole(role: string): void {
+    const prefixMap: Record<string, string> = {
+      judge: 'NTIC-JDG-',
+      sponsor: 'NTIC-SPO-',
+      school_admin: 'NTIC-SCH-',
+      content_manager: 'NTIC-CNT-',
+      reviewer: 'NTIC-REV-',
+      competition_manager: 'NTIC-CMP-',
+      admin: 'NTIC-ADM-'
+    };
+    const prefix = prefixMap[role] || 'NTIC-USR-';
     const randomTicket = prefix + Math.random().toString(36).substring(2, 6).toUpperCase();
-    const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const currentOtp = this.newUserForm.password || Math.floor(100000 + Math.random() * 900000).toString();
+
+    this.newUserForm.role = role;
+    this.newUserForm.ticket = randomTicket;
+    this.newUserForm.password = currentOtp;
+  }
+
+  openAddUserModal(defaultRole = 'judge'): void {
     this.newUserForm = {
       fullName: '',
       email: '',
@@ -233,9 +249,10 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       role: defaultRole,
       organization: '',
       status: 'Active',
-      ticket: randomTicket,
-      password: randomOtp
+      ticket: '',
+      password: ''
     };
+    this.setNewUserRole(defaultRole);
     this.isAddUserModalOpen = true;
   }
 
