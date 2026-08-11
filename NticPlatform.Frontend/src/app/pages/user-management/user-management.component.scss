@@ -1706,21 +1706,6 @@ $radius-xl: 20px;
 }
 
 @media (max-width: 480px) {
-  .kpi-row { grid-template-columns: 1fr; }
-  .um-info-grid { grid-template-columns: 1fr; }
-  .um-form-row { grid-template-columns: 1fr; }
-}
-
-// ══════════════════════════════════════════════════════
-// DARK MODE COMPONENT POLISH OVERRIDES
-// ══════════════════════════════════════════════════════
-:host-context(body.dark-theme) {
-// ── Credentials Preview Box ────────────────────────
-.ca-creds-box {
-  background: linear-gradient(135deg, rgba(10, 22, 40, 0.04), rgba(37, 99, 235, 0.04));
-  border: 1.5px dashed rgba(37, 99, 235, 0.35);
-  border-radius: 12px;
-  overflow: hidden;
 }
 
 .ca-creds-header {
