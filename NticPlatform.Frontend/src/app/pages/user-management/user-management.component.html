@@ -700,82 +700,145 @@
   </div>
 
   <!-- ══════════════════════════════════════════
-       MODAL: CREATE NEW USER / ACCOUNT
+       MODAL: CREATE NEW USER / ACCOUNT (PREMIUM UI)
   ══════════════════════════════════════════ -->
-  <div class="um-modal-backdrop" *ngIf="isAddUserModalOpen" (click)="closeAddUserModal()">
-    <div class="um-modal" (click)="$event.stopPropagation()" style="max-width:540px;">
-      <div class="um-modal-header" style="background:var(--primary);color:#fff;">
-        <div class="um-modal-title-row">
-          <span class="material-symbols-outlined" style="font-size:24px;">person_add</span>
-          <div>
-            <h3 style="margin:0;font-size:16px;color:#fff;">Create New Account</h3>
-            <span style="font-size:11px;opacity:0.85;">Generate user access credentials &amp; assign system role</span>
-          </div>
-        </div>
-        <button class="um-modal-close" (click)="closeAddUserModal()" style="color:#fff;">&times;</button>
-      </div>
-      <div class="um-modal-body" style="padding:20px;">
-        <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-          <div class="um-form-group">
-            <label style="font-size:12px;font-weight:700;margin-bottom:4px;display:block;">Full Name *</label>
-            <input type="text" class="form-control" [(ngModel)]="newUserForm.fullName" placeholder="Full Name" style="width:100%;padding:8px 12px;border:1px solid var(--outline-variant);border-radius:8px;" />
-          </div>
-          <div class="um-form-group">
-            <label style="font-size:12px;font-weight:700;margin-bottom:4px;display:block;">Email Address *</label>
-            <input type="email" class="form-control" [(ngModel)]="newUserForm.email" placeholder="user@ntic.edu.gh" style="width:100%;padding:8px 12px;border:1px solid var(--outline-variant);border-radius:8px;" />
-          </div>
-        </div>
+  <div class="ca-backdrop" *ngIf="isAddUserModalOpen" (click)="closeAddUserModal()">
+    <div class="ca-panel" (click)="$event.stopPropagation()">
 
-        <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-          <div class="um-form-group">
-            <label style="font-size:12px;font-weight:700;margin-bottom:4px;display:block;">User Role *</label>
-            <select class="form-control" [(ngModel)]="newUserForm.role" style="width:100%;padding:8px 12px;border:1px solid var(--outline-variant);border-radius:8px;">
-              <option value="judge">Judge</option>
-              <option value="sponsor">Sponsor</option>
-              <option value="school_admin">School Admin</option>
-              <option value="content_manager">Content Manager</option>
-              <option value="reviewer">Reviewer</option>
-              <option value="competition_manager">Competition Manager</option>
-              <option value="admin">Administrator</option>
-            </select>
-          </div>
-          <div class="um-form-group">
-            <label style="font-size:12px;font-weight:700;margin-bottom:4px;display:block;">Status</label>
-            <select class="form-control" [(ngModel)]="newUserForm.status" style="width:100%;padding:8px 12px;border:1px solid var(--outline-variant);border-radius:8px;">
-              <option value="Active">Active</option>
-              <option value="Suspended">Suspended</option>
-            </select>
-          </div>
+      <!-- Gradient Header -->
+      <div class="ca-header">
+        <div class="ca-header-glow"></div>
+        <div class="ca-header-icon">
+          <span class="material-symbols-outlined">person_add</span>
         </div>
-
-        <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-          <div class="um-form-group">
-            <label style="font-size:12px;font-weight:700;margin-bottom:4px;display:block;">Phone Number</label>
-            <input type="text" class="form-control" [(ngModel)]="newUserForm.phone" placeholder="+233 XX XXX XXXX" style="width:100%;padding:8px 12px;border:1px solid var(--outline-variant);border-radius:8px;" />
-          </div>
-          <div class="um-form-group">
-            <label style="font-size:12px;font-weight:700;margin-bottom:4px;display:block;">Organization / Institution</label>
-            <input type="text" class="form-control" [(ngModel)]="newUserForm.organization" placeholder="School or Sponsor Company" style="width:100%;padding:8px 12px;border:1px solid var(--outline-variant);border-radius:8px;" />
-          </div>
+        <div class="ca-header-text">
+          <h2 class="ca-title">Create New Account</h2>
+          <p class="ca-subtitle">Generate official credentials &amp; assign system role</p>
         </div>
-
-        <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:var(--surface-container-low);padding:12px;border-radius:8px;border:1px dashed var(--outline-variant);">
-          <div class="um-form-group">
-            <label style="font-size:11px;font-weight:700;margin-bottom:2px;display:block;color:var(--primary);">Generated Ticket Code</label>
-            <input type="text" class="form-control" [(ngModel)]="newUserForm.ticket" style="width:100%;padding:6px 10px;font-family:monospace;font-size:12px;border:1px solid var(--outline-variant);border-radius:6px;" />
-          </div>
-          <div class="um-form-group">
-            <label style="font-size:11px;font-weight:700;margin-bottom:2px;display:block;color:var(--primary);">Temporary PIN / Password</label>
-            <input type="text" class="form-control" [(ngModel)]="newUserForm.password" style="width:100%;padding:6px 10px;font-family:monospace;font-size:12px;border:1px solid var(--outline-variant);border-radius:6px;" />
-          </div>
-        </div>
-      </div>
-      <div class="um-modal-footer" style="padding:12px 20px;border-top:1px solid var(--outline-variant);display:flex;justify-content:flex-end;gap:8px;">
-        <button class="cmd-btn cmd-btn-ghost" (click)="closeAddUserModal()">Cancel</button>
-        <button class="cmd-btn cmd-btn-primary" (click)="saveNewUser()">
-          <span class="material-symbols-outlined">check_circle</span> Create Account
+        <button class="ca-close" (click)="closeAddUserModal()">
+          <span class="material-symbols-outlined">close</span>
         </button>
       </div>
+
+      <div class="ca-body">
+
+        <!-- Section: Role Selection Chips -->
+        <div class="ca-section">
+          <p class="ca-section-label">
+            <span class="material-symbols-outlined">manage_accounts</span>
+            Select User Role
+          </p>
+          <div class="ca-role-grid">
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'judge'" (click)="newUserForm.role='judge'">
+              <span class="material-symbols-outlined">gavel</span>
+              <span>Judge</span>
+            </button>
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'sponsor'" (click)="newUserForm.role='sponsor'">
+              <span class="material-symbols-outlined">handshake</span>
+              <span>Sponsor</span>
+            </button>
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'school_admin'" (click)="newUserForm.role='school_admin'">
+              <span class="material-symbols-outlined">school</span>
+              <span>School Admin</span>
+            </button>
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'content_manager'" (click)="newUserForm.role='content_manager'">
+              <span class="material-symbols-outlined">edit_note</span>
+              <span>Content Mgr</span>
+            </button>
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'reviewer'" (click)="newUserForm.role='reviewer'">
+              <span class="material-symbols-outlined">rate_review</span>
+              <span>Reviewer</span>
+            </button>
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'competition_manager'" (click)="newUserForm.role='competition_manager'">
+              <span class="material-symbols-outlined">emoji_events</span>
+              <span>Comp. Manager</span>
+            </button>
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'admin'" (click)="newUserForm.role='admin'">
+              <span class="material-symbols-outlined">admin_panel_settings</span>
+              <span>Administrator</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Section: Identity -->
+        <div class="ca-section">
+          <p class="ca-section-label">
+            <span class="material-symbols-outlined">badge</span>
+            Identity &amp; Contact
+          </p>
+          <div class="ca-form-grid">
+            <div class="ca-field">
+              <label class="ca-label">Full Name <span class="ca-required">*</span></label>
+              <div class="ca-input-wrap">
+                <span class="material-symbols-outlined ca-input-icon">person</span>
+                <input type="text" [(ngModel)]="newUserForm.fullName" placeholder="e.g. Kwame Mensah" class="ca-input" />
+              </div>
+            </div>
+            <div class="ca-field">
+              <label class="ca-label">Email Address <span class="ca-required">*</span></label>
+              <div class="ca-input-wrap">
+                <span class="material-symbols-outlined ca-input-icon">mail</span>
+                <input type="email" [(ngModel)]="newUserForm.email" placeholder="user@ntic.edu.gh" class="ca-input" />
+              </div>
+            </div>
+            <div class="ca-field">
+              <label class="ca-label">Phone Number</label>
+              <div class="ca-input-wrap">
+                <span class="material-symbols-outlined ca-input-icon">call</span>
+                <input type="text" [(ngModel)]="newUserForm.phone" placeholder="+233 XX XXX XXXX" class="ca-input" />
+              </div>
+            </div>
+            <div class="ca-field">
+              <label class="ca-label">Organization / Institution</label>
+              <div class="ca-input-wrap">
+                <span class="material-symbols-outlined ca-input-icon">business</span>
+                <input type="text" [(ngModel)]="newUserForm.organization" placeholder="School or Sponsor Company" class="ca-input" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Generated Credentials (Read-only display) -->
+        <div class="ca-creds-box">
+          <div class="ca-creds-header">
+            <span class="material-symbols-outlined">key</span>
+            <span>Auto-Generated Access Credentials</span>
+          </div>
+          <div class="ca-creds-row">
+            <div class="ca-cred-item">
+              <span class="ca-cred-label">Ticket / Access Pass</span>
+              <div class="ca-cred-value">
+                <code>{{ newUserForm.ticket }}</code>
+              </div>
+            </div>
+            <div class="ca-cred-divider"></div>
+            <div class="ca-cred-item">
+              <span class="ca-cred-label">Temporary PIN</span>
+              <div class="ca-cred-value">
+                <code>{{ newUserForm.password }}</code>
+              </div>
+            </div>
+          </div>
+          <p class="ca-creds-note">
+            <span class="material-symbols-outlined">info</span>
+            Credentials will be delivered automatically via SMS &amp; Email upon account creation.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="ca-footer">
+        <button class="ca-btn-cancel" (click)="closeAddUserModal()">
+          <span class="material-symbols-outlined">close</span>
+          Cancel
+        </button>
+        <button class="ca-btn-create" (click)="saveNewUser()">
+          <span class="material-symbols-outlined">check_circle</span>
+          Create Account
+        </button>
+      </div>
+
     </div>
   </div>
 
