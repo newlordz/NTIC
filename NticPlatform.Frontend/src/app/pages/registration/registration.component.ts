@@ -1037,6 +1037,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     setAuthValue('activeRoleId', role, this.rememberDevice);
     setAuthValue('activeUserEmail', email, this.rememberDevice);
     setAuthValue('activeUserTicket', ticket, this.rememberDevice);
+    if (user.fullName) {
+      setAuthValue('activeUserName', user.fullName, this.rememberDevice);
+    }
     if (user.token) {
       setAuthValue('activeUserToken', user.token, this.rememberDevice);
     }
@@ -1047,7 +1050,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
     const roleRoutes: Record<string, string> = {
       instructor: '/instructor',
-      judge: '/judge',
+      judge: '/dashboard',
       student: '/lms',
       school_admin: '/dashboard',
       sponsor: '/sponsors',
@@ -1058,7 +1061,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     };
 
     this.isLoginModalOpen = false;
-    if ((role === 'judge' || role === 'sponsor') && user.organization === '_pending_profile') {
+    if ((role === 'judge' || role === 'sponsor') && (user.organization === '_pending_profile' || user.organization === '')) {
       this.router.navigate(['/profile-completion']);
     } else {
       this.router.navigate([roleRoutes[role] || '/dashboard']);

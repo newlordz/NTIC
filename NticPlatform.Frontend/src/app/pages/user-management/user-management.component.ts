@@ -325,6 +325,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       organization: this.newUserForm.organization || '',
       ticket: this.newUserForm.ticket,
       otp: this.newUserForm.password,
+      mustSetPassword: true,
+      passwordChanged: false,
       status: this.newUserForm.status || 'Active',
       registeredAt: new Date().toLocaleDateString('en-GB'),
       lastLogin: 'Never'
@@ -511,6 +513,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         if (idx > -1) {
           users[idx].otp = newOTP;
           users[idx].password = newOTP;
+          users[idx].mustSetPassword = true;
+          users[idx].passwordChanged = false;
           this.contentService.saveUsers(users);
         }
         this.showToast('OTP Regenerated', `New OTP generated for ${user.fullName}.`, 6000);

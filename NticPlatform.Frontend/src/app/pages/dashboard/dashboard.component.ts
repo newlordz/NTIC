@@ -18,6 +18,7 @@ import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
 import { ApiService } from '../../services/api.service';
 import { TimeAgoPipe } from '../../services/time-ago.pipe';
+import { WsSyncService } from '../../services/ws-sync.service';
 import { LmsManagerComponent } from '../lms-manager/lms-manager.component';
 
 @Component({
@@ -62,12 +63,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   goToTab(tab: string): void {
     this.adminTab = tab as any;
     this.adminSubTab = '';
-    this.router.navigate([], { relativeTo: this.route, queryParams: { tab }, queryParamsHandling: 'merge' });
+    this.router.navigate([], { relativeTo: this.route, queryParams: { tab } });
   }
 
   goToSubTab(sub: string): void {
     this.adminSubTab = sub as any;
-    this.router.navigate([], { relativeTo: this.route, queryParams: { subtab: sub }, queryParamsHandling: 'merge' });
+    this.router.navigate([], { relativeTo: this.route, queryParams: { tab: 'control', subtab: sub } });
   }
   private _expandedSection = false;
   get expandedSection(): boolean { return this._expandedSection; }
@@ -362,6 +363,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   authSessionCount = -1;
   authSessions: any[] = [];
   authSessionsLoading = false;
+  isRefreshingSessions = false;
   authSessionsError = '';
   tokenViewMode: 'tickets' | 'sessions' = 'tickets';
   get registeredUsers(): any[] {
@@ -469,12 +471,56 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .filter(s => !judgeTrack || s.track.toLowerCase().includes(judgeTrack) || judgeTrack.includes(s.track.toLowerCase()))
       .map(s => ({
         id: s.id,
+        student: s.student,
+        school: s.school,
+        assignment: s.assignment,
         team: s.student + ' (' + s.school + ')',
         project: s.assignment,
-        track: s.track,
+        track: s.track?.toLowerCase() || '',
         submitted: s.time,
         score: s.score
       }));
+  }
+
+  get pendingJudgeSubmissionsCount(): number {
+    return this.assignedSubmissions.filter(s => s.score === null).length;
+  }
+
+  get scoredJudgeSubmissionsCount(): number {
+    return this.assignedSubmissions.filter(s => s.score !== null).length;
+  }
+
+  get judgeScoringCompletionPct(): number {
+    const total = this.assignedSubmissions.length;
+    if (total === 0) return 0;
+    return Math.round((this.scoredJudgeSubmissionsCount / total) * 100);
+  }
+
+  get recentScoredJudgeSubmissions(): any[] {
+    return this.assignedSubmissions.filter(s => s.score !== null).slice(0, 5);
+  }
+
+  exportScoresFromDashboard(): void {
+    const scored = this.assignedSubmissions.filter(s => s.score !== null);
+    if (scored.length === 0) return;
+    const rows = [
+      ['Student', 'School', 'Track', 'Assignment', 'Score', 'Submitted'],
+      ...scored.map(s => [s.student, s.school, s.track, s.assignment, s.score ?? '', s.submitted])
+    ];
+    const csv = rows.map(r => r.map((c: any) => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `judge-scores-${Date.now()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  openScoringFromDashboard(_sub: any): void {
+    this.router.navigate(['/judge']);
   }
 
   get sponsoredTeams(): any[] {
@@ -573,13 +619,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.courseCycleLeaderboards[this.selectedCourseLeaderboardTrack] || [];
   }
 
-  constructor(public contentService: ContentService, private route: ActivatedRoute, private router: Router, private emailService: BrevoEmailService, private fileStorage: FileStorageService, private cdr: ChangeDetectorRef, public dialogService: DialogService, public apiService: ApiService) {
+  constructor(public contentService: ContentService, private route: ActivatedRoute, private router: Router, private emailService: BrevoEmailService, private fileStorage: FileStorageService, private cdr: ChangeDetectorRef, public dialogService: DialogService, public apiService: ApiService, public wsSync: WsSyncService) {
     this.route.queryParams.subscribe(params => {
       if (params['tab']) {
         this.adminTab = params['tab'];
-        if (this.adminTab === 'control') { this.adminSubTab = 'tickets'; }
+        if (this.adminTab === 'control') { this.adminSubTab = params['subtab'] || ''; }
       }
     });
+  }
+
+  isUserOnline(email: string): boolean {
+    if (!email || !this.authSessions || this.authSessions.length === 0) return false;
+    return this.authSessions.some(s => s.email?.trim().toLowerCase() === email.trim().toLowerCase() && s.active !== false);
   }
 
   logoUrls: Record<string, string> = {};
@@ -725,10 +776,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.route.queryParams.subscribe(params => {
       if (params['tab'] && ['overview', 'control', 'register', 'tickets', 'approvals', 'content', 'users', 'admins'].includes(params['tab'])) {
         this.adminTab = params['tab'] as any;
-        if (this.adminTab === 'control' && params['subtab'] && ['tickets','approvals','content','users','admins'].includes(params['subtab'])) {
-          this.adminSubTab = params['subtab'] as any;
-        } else if (this.adminTab === 'control') {
-          this.adminSubTab = 'tickets';
+        if (this.adminTab === 'control') {
+          this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
         }
         if (params['tab'] === 'approvals' || params['subtab'] === 'approvals') {
           this.loadApprovalsFromBackend();
@@ -742,7 +791,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     if (this.activeRoleId === 'super_admin') {
       this.startLiveTelemetry();
+      this.loadAuthSessions();
+      this.loadAuthSessionCount();
+      this.liveIntervals.push(setInterval(() => {
+        this.loadAuthSessions();
+        this.loadAuthSessionCount();
+      }, 12000));
       this.liveIntervals.push(setInterval(() => this.cdr.detectChanges(), 30000));
+      
+      // Real-time WebSocket session update
+      const wsSub = this.wsSync.dataChanged$.subscribe(() => {
+        this.loadAuthSessions();
+        this.loadAuthSessionCount();
+      });
+      this.liveIntervals.push({ unsubscribe: () => wsSub.unsubscribe() });
+
       // Sync stats form from service
       this.statsForm = { ...this.contentService.platformStats };
       // Sync countdown input from service (format: YYYY-MM-DDTHH:mm)
@@ -753,7 +816,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.liveIntervals.forEach(id => clearInterval(id));
+    this.liveIntervals.forEach(item => {
+      if (typeof item === 'number' || typeof item === 'object') {
+        if (item?.unsubscribe) item.unsubscribe();
+        else clearInterval(item);
+      }
+    });
   }
 
   loadDashboardData(): void {
@@ -916,14 +984,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.authSessionsError = 'No active session token found. Please log out and log back in to view active sessions.';
       return;
     }
-    this.authSessionsLoading = true;
+    if (this.authSessions.length === 0) {
+      this.authSessionsLoading = true;
+    }
+    this.isRefreshingSessions = true;
+
     this.apiService.getAuthSessions().subscribe({
       next: (sessions) => {
         this.authSessions = sessions;
         this.authSessionsLoading = false;
+        this.isRefreshingSessions = false;
       },
       error: (err) => {
         this.authSessionsLoading = false;
+        this.isRefreshingSessions = false;
         if (err.status === 401 || err.status === 403) {
           this.authSessionsError = 'Session expired. Please log out and log back in to view active sessions.';
         } else if (err.status === 0 || err.status === 502 || err.status === 503) {
@@ -935,7 +1009,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  revokeSession(token: string): void {
+  async revokeSession(token: string): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Revoke Active Session',
+      message: 'Are you sure you want to terminate this live user session token? The user will be signed out immediately.',
+      confirmText: 'Revoke Session',
+      type: 'danger'
+    });
+    if (!ok) return;
+
     this.apiService.revokeAuthSession(token).subscribe({
       next: () => {
         this.authSessions = this.authSessions.filter(s => s.token !== token);
@@ -944,13 +1026,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
         if (tokensIdx >= 0) {
           this.stats[tokensIdx] = { ...this.stats[tokensIdx], value: String(this.authSessionCount) };
         }
+        this.dialogService.toast('Session revoked successfully.', 'info');
       },
-      error: () => {}
+      error: () => {
+        this.dialogService.toast('Failed to revoke session. Please try again.', 'error');
+      }
     });
   }
 
-  revokeAllSessions(): void {
-    if (!confirm('This will revoke ALL active sessions except your current one. Proceed?')) return;
+  async revokeAllSessions(): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Revoke All Active Sessions',
+      message: 'This will terminate ALL active user sessions across the platform except your current active admin session. Proceed?',
+      confirmText: 'Revoke All Sessions',
+      type: 'danger'
+    });
+    if (!ok) return;
+
     this.apiService.revokeAllSessions().subscribe({
       next: (res) => {
         const currentToken = getAuthValue('activeUserToken');
@@ -961,10 +1053,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
         if (tokensIdx >= 0) {
           this.stats[tokensIdx] = { ...this.stats[tokensIdx], value: String(this.authSessionCount) };
         }
-        alert(`Done -- ${res.revoked} session(s) revoked.`);
+        this.dialogService.toast(`Successfully revoked ${res.revoked} active session(s).`, 'success');
       },
       error: (err) => {
-        alert('Failed to revoke sessions: ' + (err?.error?.detail || 'Unknown error'));
+        this.dialogService.toast('Failed to revoke sessions: ' + (err?.error?.detail || 'Unknown error'), 'error');
       }
     });
   }

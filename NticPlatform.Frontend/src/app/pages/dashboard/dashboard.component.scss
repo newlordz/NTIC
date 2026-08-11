@@ -1296,12 +1296,19 @@
   padding: 12px 20px;
   background: var(--surface-container-low);
   border-bottom: 1px solid var(--outline-variant);
+  align-items: center;
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--on-surface-variant);
   gap: 12px;
+
+  > span {
+    display: flex;
+    align-items: center;
+    min-height: 24px;
+  }
 
   > span:first-child {
     position: sticky;
@@ -1313,14 +1320,23 @@
 
 .admin-table-row {
   display: grid;
-  grid-template-columns: 2.2fr 1fr 1.8fr 0.9fr 1.3fr 1.2fr 0.6fr;
+  grid-template-columns: 2.2fr 1fr 1.8fr 0.9fr 1.3fr 1fr 0.6fr;
   min-width: 780px;
   width: 100%;
-  padding: 14px 20px;
+  padding: 12px 20px;
   border-bottom: 1px solid var(--outline-variant);
   align-items: center;
   gap: 12px;
   transition: background-color 0.2s ease;
+
+  > div {
+    display: flex;
+    align-items: center;
+    align-self: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
   &:last-child { border-bottom: none; }
 
@@ -1479,6 +1495,16 @@
   flex-shrink: 0;
 }
 
+.spin-refresh {
+  animation: spinRefresh 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spinRefresh {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .admin-copy-btn {
   width: 26px;
   height: 26px;
@@ -1496,20 +1522,31 @@
 }
 
 .admin-status-badge {
-  display: inline-block;
-  padding: 3px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px 4px 10px;
   border-radius: 6px;
   font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  line-height: 1;
+  box-sizing: border-box;
 
   &.active  { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
   &.pending { background: #fefce8; color: #ca8a04; border: 1px solid #fde68a; }
   &.revoked { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
 }
 
-.admin-date-cell { font-size: 11px; color: var(--on-surface-variant); }
+.admin-date-cell {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  margin: 0;
+  line-height: 1;
+}
 .admin-actions-cell { display: flex; gap: 6px; }
 
 .admin-action-btn {
@@ -4883,4 +4920,147 @@
     background: var(--surface-container, #1a2332);
     color: var(--on-surface-variant, #94a3b8);
   }
+}
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║  Judges Hero Card  —  Space Starfield & Passing Comets   ║
+// ╚══════════════════════════════════════════════════════════╝
+.judge-hero-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  background: radial-gradient(ellipse at 85% -10%, #0d1e3d 0%, #060d1a 60%, #030712 100%) !important;
+  border: 1px solid rgba(99, 161, 255, 0.3) !important;
+  padding: 30px !important;
+  margin-bottom: 22px !important;
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+
+  .hero-glow-orb {
+    position: absolute;
+    width: 380px;
+    height: 380px;
+    top: -120px;
+    right: -70px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.38) 0%, rgba(124, 58, 237, 0.15) 50%, transparent 75%);
+    filter: blur(65px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .space-starfield {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  .starfield-stars {
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 22%, rgba(255, 255, 255, 0.95) 100%, transparent),
+      radial-gradient(1px 1px at 32% 78%, rgba(147, 197, 253, 0.9) 100%, transparent),
+      radial-gradient(2px 2px at 58% 28%, rgba(255, 255, 255, 0.85) 100%, transparent),
+      radial-gradient(1.5px 1.5px at 82% 68%, rgba(196, 181, 253, 0.9) 100%, transparent),
+      radial-gradient(1px 1px at 94% 18%, rgba(255, 255, 255, 0.8) 100%, transparent),
+      radial-gradient(2px 2px at 22% 52%, rgba(125, 211, 252, 0.85) 100%, transparent),
+      radial-gradient(1px 1px at 48% 12%, rgba(255, 255, 255, 0.9) 100%, transparent),
+      radial-gradient(1.5px 1.5px at 72% 88%, rgba(255, 255, 255, 0.85) 100%, transparent);
+    animation: starfieldPulse 3.5s ease-in-out infinite alternate;
+  }
+
+  .starfield-stars2 {
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 6% 82%, rgba(255, 255, 255, 0.85) 100%, transparent),
+      radial-gradient(2px 2px at 44% 48%, rgba(147, 197, 253, 0.95) 100%, transparent),
+      radial-gradient(1.5px 1.5px at 78% 22%, rgba(255, 255, 255, 0.85) 100%, transparent),
+      radial-gradient(1px 1px at 90% 64%, rgba(167, 139, 250, 0.9) 100%, transparent),
+      radial-gradient(2px 2px at 16% 38%, rgba(255, 255, 255, 0.9) 100%, transparent),
+      radial-gradient(1.5px 1.5px at 64% 92%, rgba(56, 189, 248, 0.85) 100%, transparent);
+    animation: starfieldPulse 5s 1.8s ease-in-out infinite alternate;
+  }
+
+  .comet {
+    position: absolute;
+    width: 75px;
+    height: 1.2px;
+    background: linear-gradient(90deg, transparent 0%, rgba(96, 165, 250, 0.25) 30%, rgba(147, 197, 253, 0.85) 75%, #ffffff 100%);
+    border-radius: 100px;
+    filter: drop-shadow(0 0 5px rgba(96, 165, 250, 0.7)) drop-shadow(0 0 1.5px #ffffff);
+    opacity: 0;
+    pointer-events: none;
+
+    &.comet-1 {
+      top: -20px;
+      right: 12%;
+      animation: cometFly1 15s 1s infinite ease-out;
+    }
+
+    &.comet-2 {
+      top: 10%;
+      right: -30px;
+      width: 90px;
+      height: 1.4px;
+      animation: cometFly2 19s 6s infinite ease-out;
+    }
+
+    &.comet-3 {
+      top: 40%;
+      right: 32%;
+      width: 60px;
+      height: 1px;
+      animation: cometFly3 17s 11s infinite ease-out;
+    }
+
+    &.comet-4 {
+      top: -10px;
+      right: 58%;
+      width: 80px;
+      height: 1.2px;
+      animation: cometFly4 22s 15s infinite ease-out;
+    }
+  }
+}
+
+@keyframes starfieldPulse {
+  0%   { opacity: 0.35; transform: scale(0.99); }
+  50%  { opacity: 1;    transform: scale(1.01); }
+  100% { opacity: 0.5;  transform: scale(1); }
+}
+
+@keyframes cometFly1 {
+  0%   { transform: translate(80px, -80px) rotate(-32deg); opacity: 0; }
+  4%   { opacity: 0.85; }
+  14%  { transform: translate(-380px, 300px) rotate(-32deg); opacity: 0; }
+  100% { opacity: 0; }
+}
+
+@keyframes cometFly2 {
+  0%   { transform: translate(100px, -80px) rotate(-35deg); opacity: 0; }
+  3%   { opacity: 0.9; }
+  12%  { transform: translate(-480px, 380px) rotate(-35deg); opacity: 0; }
+  100% { opacity: 0; }
+}
+
+@keyframes cometFly3 {
+  0%   { transform: translate(60px, -60px) rotate(-28deg); opacity: 0; }
+  5%   { opacity: 0.8; }
+  15%  { transform: translate(-320px, 260px) rotate(-28deg); opacity: 0; }
+  100% { opacity: 0; }
+}
+
+@keyframes cometFly4 {
+  0%   { transform: translate(90px, -70px) rotate(-33deg); opacity: 0; }
+  4%   { opacity: 0.85; }
+  13%  { transform: translate(-440px, 350px) rotate(-33deg); opacity: 0; }
+  100% { opacity: 0; }
 }
