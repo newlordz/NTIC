@@ -25,11 +25,15 @@
       </div>
 
       <div class="cmd-hero-actions">
+        <button class="cmd-btn cmd-btn-primary" (click)="openAddUserModal('judge')">
+          <span class="material-symbols-outlined">person_add</span>
+          + Create Account
+        </button>
         <button class="cmd-btn cmd-btn-ghost" (click)="exportCSV()">
           <span class="material-symbols-outlined">download</span>
           Export CSV
         </button>
-        <button class="cmd-btn cmd-btn-primary" [disabled]="isSyncing" (click)="syncAccounts()">
+        <button class="cmd-btn cmd-btn-ghost" [disabled]="isSyncing" (click)="syncAccounts()">
           <span class="material-symbols-outlined" [class.spinning]="isSyncing">sync</span>
           {{ isSyncing ? 'Syncing...' : 'Sync Accounts' }}
         </button>
@@ -690,6 +694,87 @@
         <button class="cmd-btn cmd-btn-ghost" (click)="cancelDelete()">Cancel</button>
         <button class="cmd-btn cmd-btn-danger" (click)="confirmDelete()">
           <span class="material-symbols-outlined">delete_forever</span> Delete Permanently
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODAL: CREATE NEW USER / ACCOUNT
+  ══════════════════════════════════════════ -->
+  <div class="um-modal-backdrop" *ngIf="isAddUserModalOpen" (click)="closeAddUserModal()">
+    <div class="um-modal" (click)="$event.stopPropagation()" style="max-width:540px;">
+      <div class="um-modal-header" style="background:var(--primary);color:#fff;">
+        <div class="um-modal-title-row">
+          <span class="material-symbols-outlined" style="font-size:24px;">person_add</span>
+          <div>
+            <h3 style="margin:0;font-size:16px;color:#fff;">Create New Account</h3>
+            <span style="font-size:11px;opacity:0.85;">Generate user access credentials &amp; assign system role</span>
+          </div>
+        </div>
+        <button class="um-modal-close" (click)="closeAddUserModal()" style="color:#fff;">&times;</button>
+      </div>
+      <div class="um-modal-body" style="padding:20px;">
+        <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="um-form-group">
+            <label style="font-size:12px;font-weight:700;margin-bottom:4px;display:block;">Full Name *</label>
+            <input type="text" class="form-control" [(ngModel)]="newUserForm.fullName" placeholder="Full Name" style="width:100%;padding:8px 12px;border:1px solid var(--outline-variant);border-radius:8px;" />
+          </div>
+          <div class="um-form-group">
+            <label style="font-size:12px;font-weight:700;margin-bottom:4px;display:block;">Email Address *</label>
+            <input type="email" class="form-control" [(ngModel)]="newUserForm.email" placeholder="user@ntic.edu.gh" style="width:100%;padding:8px 12px;border:1px solid var(--outline-variant);border-radius:8px;" />
+          </div>
+        </div>
+
+        <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="um-form-group">
+            <label style="font-size:12px;font-weight:700;margin-bottom:4px;display:block;">User Role *</label>
+            <select class="form-control" [(ngModel)]="newUserForm.role" style="width:100%;padding:8px 12px;border:1px solid var(--outline-variant);border-radius:8px;">
+              <option value="judge">Judge</option>
+              <option value="sponsor">Sponsor</option>
+              <option value="school_admin">School Admin</option>
+              <option value="instructor">Instructor / Mentor</option>
+              <option value="student">Student Competitor</option>
+              <option value="content_manager">Content Manager</option>
+              <option value="reviewer">Reviewer</option>
+              <option value="admin">Administrator</option>
+            </select>
+          </div>
+          <div class="um-form-group">
+            <label style="font-size:12px;font-weight:700;margin-bottom:4px;display:block;">Status</label>
+            <select class="form-control" [(ngModel)]="newUserForm.status" style="width:100%;padding:8px 12px;border:1px solid var(--outline-variant);border-radius:8px;">
+              <option value="Active">Active</option>
+              <option value="Suspended">Suspended</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div class="um-form-group">
+            <label style="font-size:12px;font-weight:700;margin-bottom:4px;display:block;">Phone Number</label>
+            <input type="text" class="form-control" [(ngModel)]="newUserForm.phone" placeholder="+233 XX XXX XXXX" style="width:100%;padding:8px 12px;border:1px solid var(--outline-variant);border-radius:8px;" />
+          </div>
+          <div class="um-form-group">
+            <label style="font-size:12px;font-weight:700;margin-bottom:4px;display:block;">Organization / Institution</label>
+            <input type="text" class="form-control" [(ngModel)]="newUserForm.organization" placeholder="School or Sponsor Company" style="width:100%;padding:8px 12px;border:1px solid var(--outline-variant);border-radius:8px;" />
+          </div>
+        </div>
+
+        <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:var(--surface-container-low);padding:12px;border-radius:8px;border:1px dashed var(--outline-variant);">
+          <div class="um-form-group">
+            <label style="font-size:11px;font-weight:700;margin-bottom:2px;display:block;color:var(--primary);">Generated Ticket Code</label>
+            <input type="text" class="form-control" [(ngModel)]="newUserForm.ticket" style="width:100%;padding:6px 10px;font-family:monospace;font-size:12px;border:1px solid var(--outline-variant);border-radius:6px;" />
+          </div>
+          <div class="um-form-group">
+            <label style="font-size:11px;font-weight:700;margin-bottom:2px;display:block;color:var(--primary);">Temporary PIN / Password</label>
+            <input type="text" class="form-control" [(ngModel)]="newUserForm.password" style="width:100%;padding:6px 10px;font-family:monospace;font-size:12px;border:1px solid var(--outline-variant);border-radius:6px;" />
+          </div>
+        </div>
+      </div>
+      <div class="um-modal-footer" style="padding:12px 20px;border-top:1px solid var(--outline-variant);display:flex;justify-content:flex-end;gap:8px;">
+        <button class="cmd-btn cmd-btn-ghost" (click)="closeAddUserModal()">Cancel</button>
+        <button class="cmd-btn cmd-btn-primary" (click)="saveNewUser()">
+          <span class="material-symbols-outlined">check_circle</span> Create Account
         </button>
       </div>
     </div>

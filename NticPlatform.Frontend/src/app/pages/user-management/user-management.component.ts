@@ -28,6 +28,16 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   isDetailOpen = false;
   isEditOpen = false;
   editForm: any = {};
+  newUserForm: any = {
+    fullName: '',
+    email: '',
+    phone: '',
+    role: 'judge',
+    organization: '',
+    status: 'Active',
+    ticket: '',
+    password: ''
+  };
   deleteUserConfirm: User | null = null;
   successMessage = '';
   toastTitle = '';
@@ -197,6 +207,97 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   getSuspendedCount(): number {
     return this.users.filter(u => u.status === 'Suspended').length;
+  }
+
+  openAddUserModal(defaultRole = 'judge'): void {
+    const prefix = defaultRole === 'judge' ? 'NTIC-JDG-' : defaultRole === 'sponsor' ? 'NTIC-SPO-' : defaultRole === 'school_admin' ? 'NTIC-SCH-' : 'NTIC-USR-';
+    const randomTicket = prefix + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    this.newUserForm = {
+      fullName: '',
+      email: '',
+      phone: '',
+      role: defaultRole,
+      organization: '',
+      status: 'Active',
+      ticket: randomTicket,
+      password: randomOtp
+    };
+    this.isAddUserModalOpen = true;
+  }
+
+  closeAddUserModal(): void {
+    this.isAddUserModalOpen = false;
+  }
+
+  saveNewUser(): void {
+    if (!this.canManageUsers) return;
+    if (!this.newUserForm.fullName || !this.newUserForm.email) {
+      this.showToast('Validation Error', 'Full Name and Email are required.', 4000);
+      return;
+    }
+    if (this.contentService.isEmailTaken(this.newUserForm.email)) {
+      this.showToast('Email Taken', `The email ${this.newUserForm.email} is already registered.`, 4500);
+      return;
+    }
+
+    const newId = 'USR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+    const userPayload = {
+      id: newId,
+      email: this.newUserForm.email,
+      full_name: this.newUserForm.fullName,
+      role: this.newUserForm.role,
+      status: this.newUserForm.status || 'Active',
+      ticket: this.newUserForm.ticket,
+      password: this.newUserForm.password || '123456',
+      phone: this.newUserForm.phone || ''
+    };
+
+    this.http.post(`${environment.apiUrl}/users`, userPayload).subscribe({
+      next: () => {
+        const newUser: User = {
+          id: newId,
+          role: this.newUserForm.role,
+          fullName: this.newUserForm.fullName,
+          email: this.newUserForm.email,
+          phone: this.newUserForm.phone || '',
+          organization: this.newUserForm.organization || '',
+          ticket: this.newUserForm.ticket,
+          otp: this.newUserForm.password,
+          status: this.newUserForm.status || 'Active',
+          registeredAt: new Date().toLocaleDateString('en-GB'),
+          lastLogin: 'Never'
+        };
+        const currentUsers = [...this.contentService.users];
+        currentUsers.unshift(newUser);
+        this.contentService.saveUsers(currentUsers);
+        this.showToast('Account Created!', `${newUser.fullName} (${this.getRoleLabel(newUser.role)}) created successfully.`);
+        this.closeAddUserModal();
+        this.loadUsers();
+      },
+      error: (err) => {
+        console.error('Failed to save user in backend:', err);
+        const newUser: User = {
+          id: newId,
+          role: this.newUserForm.role,
+          fullName: this.newUserForm.fullName,
+          email: this.newUserForm.email,
+          phone: this.newUserForm.phone || '',
+          organization: this.newUserForm.organization || '',
+          ticket: this.newUserForm.ticket,
+          otp: this.newUserForm.password,
+          status: this.newUserForm.status || 'Active',
+          registeredAt: new Date().toLocaleDateString('en-GB'),
+          lastLogin: 'Never'
+        };
+        const currentUsers = [...this.contentService.users];
+        currentUsers.unshift(newUser);
+        this.contentService.saveUsers(currentUsers);
+        this.showToast('Account Created!', `${newUser.fullName} (${this.getRoleLabel(newUser.role)}) created.`);
+        this.closeAddUserModal();
+        this.loadUsers();
+      }
+    });
   }
 
   viewUser(user: User): void {
