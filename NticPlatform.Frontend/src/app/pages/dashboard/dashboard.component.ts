@@ -1281,6 +1281,7 @@ setTimeout(async () => {
           role: newUser.role,
           ticket: newUser.ticket,
           password: newUser.password || newUser.otp || '',
+          organization: newUser.organization || '',
           status: 'Active'
         };
         if (newUser.phone) apiPayload.phone = newUser.phone;

@@ -1390,11 +1390,11 @@ try:
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, email, full_name, role, ticket, status, created_at, phone FROM users ORDER BY created_at DESC")
+        cur.execute("SELECT id, email, full_name, role, ticket, status, created_at, phone, organization, age_group, experience_level, competition_id, photo_file_id, doc_file_id FROM users ORDER BY created_at DESC")
         rows = cur.fetchall()
         cur.close()
         conn.close()
-        return [{"id": r[0], "email": r[1], "full_name": r[2], "role": r[3], "ticket": r[4], "status": r[5], "created_at": str(r[6]), "phone": r[7] or ""} for r in rows]
+        return [{"id": r[0], "email": r[1], "full_name": r[2], "role": r[3], "ticket": r[4], "status": r[5], "created_at": str(r[6]), "phone": r[7] or "", "organization": r[8] or "", "age_group": r[9] or "", "experience_level": r[10] or "", "competition_id": r[11] or "", "photo_file_id": r[12] or "", "doc_file_id": r[13] or ""} for r in rows]
 
     @app.get("/api/users/count")
     def users_count(_admin: dict = Depends(require_admin)):
@@ -1431,6 +1431,12 @@ try:
         password: str = ""
         status: str = "Active"
         phone: str = ""
+        organization: str = ""
+        age_group: str = ""
+        experience_level: str = ""
+        competition_id: str = ""
+        photo_file_id: str = ""
+        doc_file_id: str = ""
 
     @app.post("/api/users", status_code=status.HTTP_201_CREATED)
     def create_user(payload: UserCreate, _admin: dict = Depends(require_admin)):
@@ -1445,8 +1451,8 @@ try:
         cur = conn.cursor()
         try:
             cur.execute(
-                "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, payload.status, phone)
+                "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone, organization, age_group, experience_level, competition_id, photo_file_id, doc_file_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, payload.status, phone, payload.organization or None, payload.age_group or None, payload.experience_level or None, payload.competition_id or None, payload.photo_file_id or None, payload.doc_file_id or None)
             )
             conn.commit()
         except Exception as e:
@@ -1486,8 +1492,8 @@ try:
         phone = payload.phone.strip() if payload.phone and payload.phone.strip() else None
         try:
             cur.execute(
-                "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, payload.status, phone)
+                "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone, organization, age_group, experience_level, competition_id, photo_file_id, doc_file_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, payload.status, phone, payload.organization or None, payload.age_group or None, payload.experience_level or None, payload.competition_id or None, payload.photo_file_id or None, payload.doc_file_id or None)
             )
             conn.commit()
         except Exception as e:

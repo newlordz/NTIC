@@ -251,11 +251,11 @@ export class ApiService {
     return this.http.get<{ total: number }>(this.apiUrl + '/users/count');
   }
 
-  createUser(payload: { email: string; full_name?: string; role?: string; ticket?: string; password?: string; status?: string; phone?: string }): Observable<any> {
+  createUser(payload: { email: string; full_name?: string; role?: string; ticket?: string; password?: string; status?: string; phone?: string; organization?: string; age_group?: string; experience_level?: string; competition_id?: string; photo_file_id?: string; doc_file_id?: string }): Observable<any> {
     return this.http.post(this.apiUrl + '/users', payload);
   }
 
-  registerPublicUser(payload: { email: string; full_name?: string; role?: string; ticket?: string; password?: string; status?: string; phone?: string }): Observable<any> {
+  registerPublicUser(payload: { email: string; full_name?: string; role?: string; ticket?: string; password?: string; status?: string; phone?: string; organization?: string; age_group?: string; experience_level?: string; competition_id?: string; photo_file_id?: string; doc_file_id?: string }): Observable<any> {
     return this.http.post(this.apiUrl + '/users/register', payload);
   }
 
