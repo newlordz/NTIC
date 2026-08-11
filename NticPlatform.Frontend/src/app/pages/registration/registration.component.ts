@@ -282,6 +282,38 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     } as { [key: string]: boolean }
   };
 
+  openRegForm = {
+    fullName: '',
+    email: '',
+    phone: '',
+    ageGroup: 'junior',
+    experienceLevel: 'beginner',
+    organization: '',
+    selectedCompetitionId: '',
+    acceptedTerms: false,
+    emailVerified: false,
+    phoneVerified: false
+  };
+
+  openRegPhotoUrl: string | null = null;
+  openRegDocName: string | null = null;
+  openRegPhotoFileId: string | null = null;
+  openRegDocFileId: string | null = null;
+
+  availableOpenCompetitions: any[] = [];
+
+  ageGroups = [
+    { value: 'junior', label: 'Junior (13-17)', icon: 'person_raised_hand' },
+    { value: 'senior', label: 'Senior (18+)', icon: 'person' },
+    { value: 'open', label: 'Open Category', icon: 'groups' }
+  ];
+
+  experienceLevels = [
+    { value: 'beginner', label: 'Beginner', icon: 'school' },
+    { value: 'intermediate', label: 'Intermediate', icon: 'trending_up' },
+    { value: 'advanced', label: 'Advanced', icon: 'rocket_launch' }
+  ];
+
   // ── LIVE VALIDATION STATE ────────────────────────────────────────
   fieldValidation: Record<string, { status: 'idle' | 'checking' | 'valid' | 'taken' | 'invalid' | 'draft_found'; message: string }> = {};
   private validationTimers: Record<string, any> = {};
@@ -464,6 +496,13 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     } else if (this.activeTab === 'sponsor') {
       fields['sponsEmail'] = { value: this.sponsorForm.email, type: 'email' };
       fields['sponsContact'] = { value: this.sponsorForm.repContact, type: 'phone' };
+    } else if (this.activeTab === 'open') {
+      fields['openEmail'] = { value: this.openRegForm.email, type: 'email' };
+      fields['openPhone'] = { value: this.openRegForm.phone, type: 'phone' };
+      if (!this.openRegForm.selectedCompetitionId) {
+        this.showCustomAlert('Please select a competition cycle to join.', 'Missing Selection', 'warning');
+        return false;
+      }
     }
 
     let blocked = false;
@@ -697,7 +736,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       member2Photo: 10 * 1024 * 1024,
       member3Photo: 10 * 1024 * 1024,
       member4Photo: 10 * 1024 * 1024,
-      member5Photo: 10 * 1024 * 1024
+      member5Photo: 10 * 1024 * 1024,
+      openRegPhoto: 2 * 1024 * 1024,
+      openRegDocs: 5 * 1024 * 1024
     };
     const maxSize = sizeLimits[field] || 10 * 1024 * 1024;
     const ids: string[] = [];
@@ -733,6 +774,10 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       this.loadGroupLogo();
     } else if (field.startsWith('member') && field.endsWith('Photo')) {
       this.loadMemberPhoto(field);
+    } else if (field === 'openRegPhoto') {
+      this.loadOpenRegPhoto();
+    } else if (field === 'openRegDocs') {
+      this.loadOpenRegDoc();
     }
   }
 
@@ -1765,6 +1810,91 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       });
   }
 
+  loadOpenCompetitions(): void {
+    this.availableOpenCompetitions = this.contentService.competitions
+      .filter(c => c.status === 'registration' || c.status === 'active')
+      .map(c => ({
+        id: c.id,
+        title: c.title,
+        track: c.track,
+        type: c.type,
+        deadline: c.deadline,
+        teams: c.teams,
+        maxTeams: c.maxTeams,
+        prize: c.prize,
+        status: c.status
+      }));
+  }
+
+  getSelectedCompetition(): any {
+    return this.availableOpenCompetitions.find(c => c.id === this.openRegForm.selectedCompetitionId) || null;
+  }
+
+  sendOpenVerificationCode(): void {
+    if (!this.openRegForm.email) return;
+    // Simulate OTP verification for now
+    this.openRegForm.emailVerified = true;
+    this.dialogService.toast('Email verified successfully!', 'success');
+  }
+
+  sendOpenPhoneVerification(): void {
+    if (!this.openRegForm.phone) return;
+    if (this.contentService.isPhoneTaken(this.openRegForm.phone)) {
+      this.dialogService.toast('This phone number is already registered.', 'error');
+      return;
+    }
+    this.openRegForm.phoneVerified = true;
+    this.dialogService.toast('Phone verified successfully!', 'success');
+  }
+
+  onOpenRegPhotoSelected(event: any): void {
+    const files = event.target?.files;
+    if (files?.length) {
+      this.processFiles(files, 'openRegPhoto');
+    }
+  }
+
+  onOpenRegDocSelected(event: any): void {
+    const files = event.target?.files;
+    if (files?.length) {
+      this.processFiles(files, 'openRegDocs');
+    }
+  }
+
+  removeOpenRegPhoto(): void {
+    this.openRegPhotoUrl = null;
+    this.openRegPhotoFileId = null;
+    this.selectedFileIds['openRegPhoto'] = [];
+    this.selectedFileNames['openRegPhoto'] = [];
+  }
+
+  removeOpenRegDoc(): void {
+    this.openRegDocName = null;
+    this.openRegDocFileId = null;
+    this.selectedFileIds['openRegDocs'] = [];
+    this.selectedFileNames['openRegDocs'] = [];
+  }
+
+  async loadOpenRegPhoto(): Promise<void> {
+    const ids = this.selectedFileIds['openRegPhoto'] || [];
+    if (ids.length) {
+      const file = await this.fileStorage.get(ids[ids.length - 1]);
+      if (file?.blob) {
+        this.openRegPhotoUrl = URL.createObjectURL(file.blob);
+        this.openRegPhotoFileId = ids[ids.length - 1];
+      }
+    }
+  }
+
+  async loadOpenRegDoc(): Promise<void> {
+    const names = this.selectedFileNames['openRegDocs'] || [];
+    const ids = this.selectedFileIds['openRegDocs'] || [];
+    if (names.length) {
+      this.openRegDocName = names[names.length - 1];
+      this.openRegDocFileId = ids[ids.length - 1];
+    }
+  }
+
   getInitials(name: string, fallback: string = 'N/A'): string {
     if (!name) return fallback;
     const parts = name.trim().split(/\s+/);
@@ -1891,6 +2021,29 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         member5Email: '',
         skills: { alg: 'intermediate', hw: 'novice', ai: 'novice' }
       };
+      this.regState = 'new';
+      this.saveRegState();
+      return;
+    }
+    if (role === 'open') {
+      this.activeTab = 'open';
+      this.openRegForm = {
+        fullName: '',
+        email: '',
+        phone: '',
+        ageGroup: 'junior',
+        experienceLevel: 'beginner',
+        organization: '',
+        selectedCompetitionId: '',
+        acceptedTerms: false,
+        emailVerified: false,
+        phoneVerified: false
+      };
+      this.openRegPhotoUrl = null;
+      this.openRegDocName = null;
+      this.openRegPhotoFileId = null;
+      this.openRegDocFileId = null;
+      this.loadOpenCompetitions();
       this.regState = 'new';
       this.saveRegState();
       return;
@@ -2432,6 +2585,73 @@ export class RegistrationComponent implements OnInit, OnDestroy {
               '/sponsors',
               newSponsor.email,
               'sponsor'
+            );
+          },
+          error: () => {
+            this.dialogService.toast('Failed to save account. Please try again.', 'error');
+          }
+        });
+      }
+      else if (this.activeTab === 'open' && this.openRegForm.selectedCompetitionId) {
+        const selectedComp = this.getSelectedCompetition();
+        if (!selectedComp) {
+          this.dialogService.toast('Please select a competition cycle.', 'error');
+          return;
+        }
+        const ticket = 'NTIC-OPN-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const newUser = {
+          id: 'USR-' + Date.now(),
+          role: 'student' as const,
+          fullName: this.openRegForm.fullName,
+          email: this.openRegForm.email,
+          phone: this.openRegForm.phone || '',
+          otp,
+          password: otp,
+          organization: this.openRegForm.organization || 'Open Registration',
+          ageGroup: this.openRegForm.ageGroup,
+          experienceLevel: this.openRegForm.experienceLevel,
+          competitionId: selectedComp.id,
+          competitionTitle: selectedComp.title,
+          track: selectedComp.track,
+          ticket,
+          status: 'Active',
+          registeredAt: new Date().toLocaleDateString('en-GB'),
+          lastLogin: 'Never'
+        };
+        if (this.openRegPhotoFileId) (newUser as any).profilePhotoFileId = this.openRegPhotoFileId;
+        if (this.openRegDocFileId) (newUser as any).docFileId = this.openRegDocFileId;
+
+        this.apiService.createUser({
+          email: newUser.email,
+          full_name: newUser.fullName,
+          role: 'student',
+          ticket: newUser.ticket,
+          password: otp,
+          phone: newUser.phone || '',
+          status: 'Active'
+        }).subscribe({
+          next: () => {
+            const currentUsers = [...this.contentService.users];
+            currentUsers.unshift(newUser);
+            this.contentService.saveUsers(currentUsers);
+            const currentAudit = [...this.contentService.auditLogs];
+            currentAudit.unshift({
+              action: `Open registration ticket ${ticket} for ${newUser.fullName} into ${selectedComp.title}`,
+              user: 'self-register@ntic.gov.gh',
+              time: new Date().toISOString(),
+              type: 'ticket'
+            });
+            this.contentService.saveAuditLogs(currentAudit);
+            this.openCredentialsModal(
+              'Open Registration Successful!',
+              `You're registered for "${selectedComp.title}". Copy your credentials below:`,
+              ticket,
+              otp,
+              'Use these credentials to log in and start competing.',
+              '/dashboard',
+              newUser.email,
+              'student'
             );
           },
           error: () => {
