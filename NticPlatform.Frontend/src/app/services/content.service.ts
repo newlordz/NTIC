@@ -951,11 +951,18 @@ private readonly defaultTeams: Team[] = [];
         track: b.track || 'Coding',
         icon: 'emoji_events',
         category: b.category || '',
-        teams: 0,
+        teams: b.teams || 0,
+        maxTeams: b.maxTeams || 50,
         deadline: b.deadline || '',
-        prize: '',
+        prize: b.prize || '',
+        type: b.type || 'qualifier',
+        startDate: b.startDate || '',
+        endDate: b.endDate || '',
+        phases: typeof b.phases === 'string' ? JSON.parse(b.phases || '[]') : (b.phases || []),
+        rules: b.rules || '',
+        criteria: b.criteria || '',
         status: (b.status === 'active' ? 'active' : b.status === 'registration' ? 'registration' : b.status === 'completed' ? 'completed' : b.status === 'draft' ? 'draft' : 'archived'),
-        progress: 0,
+        progress: b.progress || 0,
         createdAt: b.created_at || new Date().toISOString()
       });
     });
@@ -1655,7 +1662,17 @@ private readonly defaultTeams: Team[] = [];
       track: comp.track || 'Coding',
       category: comp.category || '',
       deadline: comp.deadline || '',
-      status: comp.status || 'active'
+      status: comp.status || 'active',
+      comp_type: (comp as any).type || 'qualifier',
+      max_teams: (comp as any).maxTeams || 50,
+      teams: comp.teams || 0,
+      prize: comp.prize || '',
+      start_date: (comp as any).startDate || '',
+      end_date: (comp as any).endDate || '',
+      phases: JSON.stringify(comp.phases || []),
+      rules: (comp as any).rules || '',
+      criteria: (comp as any).criteria || '',
+      progress: comp.progress || 0
     }).subscribe({
       next: (res: any) => {
         if (res && res.id) {
@@ -1692,7 +1709,17 @@ private readonly defaultTeams: Team[] = [];
         track: comp.track || 'Coding',
         category: comp.category || '',
         deadline: comp.deadline || '',
-        status: comp.status || 'active'
+        status: comp.status || 'active',
+        comp_type: (comp as any).type || 'qualifier',
+        max_teams: (comp as any).maxTeams || 50,
+        teams: comp.teams || 0,
+        prize: comp.prize || '',
+        start_date: (comp as any).startDate || '',
+        end_date: (comp as any).endDate || '',
+        phases: JSON.stringify(comp.phases || []),
+        rules: (comp as any).rules || '',
+        criteria: (comp as any).criteria || '',
+        progress: comp.progress || 0
       }).subscribe({
         next: (res: any) => console.log('Backend competition updated', res),
         error: (e: any) => console.log('Backend update competition fallback to local cache')

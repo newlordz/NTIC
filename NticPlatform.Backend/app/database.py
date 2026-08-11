@@ -102,7 +102,17 @@ def _create_tables(conn):
             category VARCHAR(100),
             deadline VARCHAR(50),
             status VARCHAR(50) DEFAULT 'active',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            comp_type VARCHAR(50) DEFAULT 'qualifier',
+            max_teams INTEGER DEFAULT 50,
+            teams INTEGER DEFAULT 0,
+            prize VARCHAR(200) DEFAULT '',
+            start_date VARCHAR(50) DEFAULT '',
+            end_date VARCHAR(50) DEFAULT '',
+            phases TEXT DEFAULT '[]',
+            rules TEXT DEFAULT '',
+            criteria TEXT DEFAULT '',
+            progress INTEGER DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS teams (
@@ -327,6 +337,16 @@ def _create_tables(conn):
     cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS competition_id VARCHAR(100);")
     cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_file_id VARCHAR(255);")
     cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS doc_file_id VARCHAR(255);")
+    cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS comp_type VARCHAR(50) DEFAULT 'qualifier';")
+    cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS max_teams INTEGER DEFAULT 50;")
+    cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS teams INTEGER DEFAULT 0;")
+    cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS prize VARCHAR(200) DEFAULT '';")
+    cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS start_date VARCHAR(50) DEFAULT '';")
+    cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS end_date VARCHAR(50) DEFAULT '';")
+    cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS phases TEXT DEFAULT '[]';")
+    cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS rules TEXT DEFAULT '';")
+    cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS criteria TEXT DEFAULT '';")
+    cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0;")
     cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS tag VARCHAR(64) DEFAULT '';")
     cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS tag_color VARCHAR(64) DEFAULT '';")
     cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS read_time VARCHAR(32) DEFAULT '5 min';")
