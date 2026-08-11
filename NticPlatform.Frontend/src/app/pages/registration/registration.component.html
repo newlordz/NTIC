@@ -739,21 +739,21 @@
               <div class="form-group">
                 <label class="form-label">Competition Experience</label>
                 <div class="experience-radio-group">
-                  <label class="exp-radio-card" [class.selected]="studentForm.skills.alg === 'first-time'">
+                  <label class="exp-radio-card first-time" [class.selected]="studentForm.skills.alg === 'first-time'">
                     <input type="radio" name="schExp" value="first-time" [(ngModel)]="studentForm.skills.alg" style="display:none">
-                    <span class="exp-icon"><span class="material-symbols-outlined" style="font-size:18px;color:#f59e0b;">stars</span></span>
+                    <span class="exp-icon"><span class="material-symbols-outlined">stars</span></span>
                     <span class="exp-title">First Timer</span>
                     <span class="exp-sub">Never competed before</span>
                   </label>
-                  <label class="exp-radio-card" [class.selected]="studentForm.skills.alg === 'returning'">
+                  <label class="exp-radio-card returning" [class.selected]="studentForm.skills.alg === 'returning'">
                     <input type="radio" name="schExp" value="returning" [(ngModel)]="studentForm.skills.alg" style="display:none">
-                    <span class="exp-icon"><span class="material-symbols-outlined" style="font-size:18px;color:#8b5cf6;">military_tech</span></span>
+                    <span class="exp-icon"><span class="material-symbols-outlined">military_tech</span></span>
                     <span class="exp-title">Returning</span>
                     <span class="exp-sub">Competed before</span>
                   </label>
-                  <label class="exp-radio-card" [class.selected]="studentForm.skills.alg === 'regular'">
+                  <label class="exp-radio-card regular" [class.selected]="studentForm.skills.alg === 'regular'">
                     <input type="radio" name="schExp" value="regular" [(ngModel)]="studentForm.skills.alg" style="display:none">
-                    <span class="exp-icon"><span class="material-symbols-outlined" style="font-size:18px;color:#f59e0b;">emoji_events</span></span>
+                    <span class="exp-icon"><span class="material-symbols-outlined">emoji_events</span></span>
                     <span class="exp-title">Regular</span>
                     <span class="exp-sub">Competes frequently</span>
                   </label>
@@ -1685,21 +1685,21 @@
             <div class="form-group">
               <label class="form-label">Competition Experience</label>
               <div class="experience-radio-group">
-                <label class="exp-radio-card" [class.selected]="studentForm.skills.alg === 'first-time'">
+                <label class="exp-radio-card first-time" [class.selected]="studentForm.skills.alg === 'first-time'">
                   <input type="radio" name="stuExp" value="first-time" [(ngModel)]="studentForm.skills.alg" style="display:none">
-                  <span class="exp-icon"><span class="material-symbols-outlined" style="font-size:18px;color:#f59e0b;">stars</span></span>
+                  <span class="exp-icon"><span class="material-symbols-outlined">stars</span></span>
                   <span class="exp-title">First Timer</span>
                   <span class="exp-sub">Never competed before</span>
                 </label>
-                <label class="exp-radio-card" [class.selected]="studentForm.skills.alg === 'returning'">
+                <label class="exp-radio-card returning" [class.selected]="studentForm.skills.alg === 'returning'">
                   <input type="radio" name="stuExp" value="returning" [(ngModel)]="studentForm.skills.alg" style="display:none">
-                  <span class="exp-icon"><span class="material-symbols-outlined" style="font-size:18px;color:#8b5cf6;">military_tech</span></span>
+                  <span class="exp-icon"><span class="material-symbols-outlined">military_tech</span></span>
                   <span class="exp-title">Returning</span>
                   <span class="exp-sub">Competed before</span>
                 </label>
-                <label class="exp-radio-card" [class.selected]="studentForm.skills.alg === 'regular'">
+                <label class="exp-radio-card regular" [class.selected]="studentForm.skills.alg === 'regular'">
                   <input type="radio" name="stuExp" value="regular" [(ngModel)]="studentForm.skills.alg" style="display:none">
-                  <span class="exp-icon"><span class="material-symbols-outlined" style="font-size:18px;color:#f59e0b;">emoji_events</span></span>
+                  <span class="exp-icon"><span class="material-symbols-outlined">emoji_events</span></span>
                   <span class="exp-title">Regular</span>
                   <span class="exp-sub">Competes frequently</span>
                 </label>
@@ -1768,21 +1768,21 @@
             <div class="form-group" style="margin-bottom: 20px;">
               <label class="form-label">Competition Experience</label>
               <div class="experience-radio-group">
-                <label class="exp-radio-card" [class.selected]="teamForm.skills.alg === 'first-time'">
+                <label class="exp-radio-card first-time" [class.selected]="teamForm.skills.alg === 'first-time'">
                   <input type="radio" name="tmExp" value="first-time" [(ngModel)]="teamForm.skills.alg" style="display:none">
-                  <span class="exp-icon"><span class="material-symbols-outlined" style="font-size:18px;color:#f59e0b;">stars</span></span>
+                  <span class="exp-icon"><span class="material-symbols-outlined">stars</span></span>
                   <span class="exp-title">First Timer</span>
                   <span class="exp-sub">Never competed before</span>
                 </label>
-                <label class="exp-radio-card" [class.selected]="teamForm.skills.alg === 'returning'">
+                <label class="exp-radio-card returning" [class.selected]="teamForm.skills.alg === 'returning'">
                   <input type="radio" name="tmExp" value="returning" [(ngModel)]="teamForm.skills.alg" style="display:none">
-                  <span class="exp-icon"><span class="material-symbols-outlined" style="font-size:18px;color:#8b5cf6;">military_tech</span></span>
+                  <span class="exp-icon"><span class="material-symbols-outlined">military_tech</span></span>
                   <span class="exp-title">Returning</span>
                   <span class="exp-sub">Competed before</span>
                 </label>
-                <label class="exp-radio-card" [class.selected]="teamForm.skills.alg === 'regular'">
+                <label class="exp-radio-card regular" [class.selected]="teamForm.skills.alg === 'regular'">
                   <input type="radio" name="tmExp" value="regular" [(ngModel)]="teamForm.skills.alg" style="display:none">
-                  <span class="exp-icon"><span class="material-symbols-outlined" style="font-size:18px;color:#f59e0b;">emoji_events</span></span>
+                  <span class="exp-icon"><span class="material-symbols-outlined">emoji_events</span></span>
                   <span class="exp-title">Regular</span>
                   <span class="exp-sub">Competes frequently</span>
                 </label>
