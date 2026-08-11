@@ -187,6 +187,30 @@ export class ApiService {
     return this.http.post(this.apiUrl + '/auth/sessions/expire-user/' + userId, {});
   }
 
+  verifyContact(payload: { email?: string; phone?: string }): Observable<{ email_available: boolean; phone_available: boolean }> {
+    return this.http.post<{ email_available: boolean; phone_available: boolean }>(this.apiUrl + '/auth/verify-contact', payload);
+  }
+
+  saveDraft(payload: { email: string; data: any }): Observable<any> {
+    return this.http.post(this.apiUrl + '/drafts', payload);
+  }
+
+  loadDraft(email: string): Observable<{ data: any }> {
+    return this.http.get<{ data: any }>(this.apiUrl + '/drafts/' + encodeURIComponent(email));
+  }
+
+  deleteDraft(email: string): Observable<any> {
+    return this.http.delete(this.apiUrl + '/drafts/' + encodeURIComponent(email));
+  }
+
+  saveLmsProgress(payload: { student_id: string; course_title: string; progress_pct: number; completed_modules: number }): Observable<any> {
+    return this.http.post(this.apiUrl + '/lms/progress', payload);
+  }
+
+  getLmsProgress(studentId: string): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl + '/lms/progress/' + encodeURIComponent(studentId));
+  }
+
   generateAccessToken(role: string): Observable<{ ticket: string }> {
     return this.http.post<{ ticket: string }>(this.apiUrl + '/auth/token/generate', { role });
   }

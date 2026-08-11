@@ -329,6 +329,7 @@ export class LmsComponent implements OnInit {
     const updated = Math.min(100, current + 25);
     const key = `ntic_progress_${this.studentProfile.id}_${this.activeLessonCourse.title}`;
     localStorage.setItem(key, updated.toString());
+    this.apiService.saveLmsProgress({ student_id: this.studentProfile.id, course_title: this.activeLessonCourse.title, progress_pct: updated, completed_modules: Math.floor(updated / 25) }).subscribe();
     this.lessonSuccessMessage = `Module completed successfully! Course progress increased to ${updated}%.`;
     setTimeout(() => {
       this.activeLessonCourse = null;
