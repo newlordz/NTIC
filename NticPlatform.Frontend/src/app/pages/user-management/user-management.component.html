@@ -220,9 +220,6 @@
               </td>
               <td class="td-actions" (click)="$event.stopPropagation()">
                 <div class="row-actions" *ngIf="!isMainAdmin(u)">
-                  <button class="ra-btn ra-edit" (click)="editUser(u)" title="Edit User">
-                    <span class="material-symbols-outlined">edit</span>
-                  </button>
                   <button class="ra-btn ra-status" (click)="toggleStatus(u)" [title]="u.status === 'Active' ? 'Suspend Account' : 'Activate Account'">
                     <span class="material-symbols-outlined">{{ u.status === 'Active' ? 'block' : 'check_circle' }}</span>
                   </button>
@@ -590,85 +587,8 @@
       </div>
       <div class="um-modal-footer">
         <button class="cmd-btn cmd-btn-ghost" (click)="closeDetail()">Close</button>
-        <button class="cmd-btn cmd-btn-primary" *ngIf="!isMainAdmin(selectedUser)" (click)="closeDetail(); editUser(selectedUser)">
-          <span class="material-symbols-outlined">edit</span> Edit Account
-        </button>
-        <span *ngIf="isMainAdmin(selectedUser)" class="locked-tag">
+        <span class="locked-tag" *ngIf="isMainAdmin(selectedUser)">
           <span class="material-symbols-outlined">lock</span> Protected Super Admin
-        </span>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════
-       MODAL: EDIT USER
-  ══════════════════════════════════════════ -->
-  <div class="um-modal-backdrop" *ngIf="isEditOpen" (click)="closeEdit()">
-    <div class="um-modal" (click)="$event.stopPropagation()">
-      <div class="um-modal-header um-modal-header-edit">
-        <h3>
-          <span class="material-symbols-outlined">edit</span>
-          Edit User Account
-        </h3>
-        <button class="um-modal-close" (click)="closeEdit()">&times;</button>
-      </div>
-      <div class="um-modal-body">
-        <div *ngIf="isMainAdmin(editForm)" class="um-warning-banner">
-          <span class="material-symbols-outlined">lock</span>
-          <div>
-            <strong>Main Super Admin Account Protected</strong>
-            <div class="um-warning-sub">All fields and credentials for this Super Admin account are locked from edits.</div>
-          </div>
-        </div>
-
-        <div class="um-form-group">
-          <label>Full Name *</label>
-          <input type="text" [(ngModel)]="editForm.fullName" [disabled]="isMainAdmin(editForm)" />
-        </div>
-        <div class="um-form-group">
-          <label>Email Address *</label>
-          <input type="email" [(ngModel)]="editForm.email" [disabled]="isMainAdmin(editForm)" />
-        </div>
-        <div class="um-form-row">
-          <div class="um-form-group">
-            <label>Role Privilege</label>
-            <select [(ngModel)]="editForm.role" [disabled]="isMainAdmin(editForm)">
-              <option value="super_admin">Super Admin (Protected)</option>
-              <option value="school_admin">School Admin</option>
-              <option value="instructor">Instructor</option>
-              <option value="judge">Judge</option>
-              <option value="sponsor">Sponsor</option>
-              <option value="student">Student</option>
-              <option value="content_manager">Content Manager</option>
-              <option value="reviewer">Reviewer</option>
-              <option value="competition_manager">Competition Manager</option>
-            </select>
-          </div>
-          <div class="um-form-group">
-            <label>Account Status</label>
-            <select [(ngModel)]="editForm.status" [disabled]="isMainAdmin(editForm)">
-              <option value="Active">Active</option>
-              <option value="Pending">Pending</option>
-              <option value="Suspended">Suspended</option>
-            </select>
-          </div>
-        </div>
-        <div class="um-form-group">
-          <label>Organization / School</label>
-          <input type="text" [(ngModel)]="editForm.organization" [disabled]="isMainAdmin(editForm)" />
-        </div>
-        <div class="um-form-group">
-          <label>Phone Number</label>
-          <input type="text" [(ngModel)]="editForm.phone" [disabled]="isMainAdmin(editForm)" />
-        </div>
-      </div>
-      <div class="um-modal-footer">
-        <button class="cmd-btn cmd-btn-ghost" (click)="closeEdit()">Cancel</button>
-        <button class="cmd-btn cmd-btn-primary" *ngIf="!isMainAdmin(editForm)" (click)="saveEdit()">
-          <span class="material-symbols-outlined">save</span> Save Changes
-        </button>
-        <span *ngIf="isMainAdmin(editForm)" class="locked-tag">
-          <span class="material-symbols-outlined">lock</span> Account Protected
         </span>
       </div>
     </div>
