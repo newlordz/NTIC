@@ -14,7 +14,7 @@ const ROLE_ACCESS: Record<string, string[]> = {
   'sponsors':         ['sponsor', 'super_admin', 'admin'],
   'reporting':        ['super_admin', 'admin', 'reviewer'],
   'records':          ['super_admin', 'admin', 'content_manager'],
-  'user-management':  ['super_admin'],
+  'user-management':  ['super_admin', 'admin', 'support_admin', 'competition_manager'],
   'profile-completion': ['super_admin', 'admin', 'content_manager', 'reviewer', 'competition_manager', 'judge', 'sponsor', 'instructor', 'student', 'school_admin'],
 };
 
