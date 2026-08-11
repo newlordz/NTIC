@@ -1,0 +1,9 @@
+node_modules/
+.git/
+whatsapp-gateway/node_modules/
+whatsapp-gateway/whatsapp_session/
+whatsapp-gateway/.wwebjs_cache/
+NticPlatform.Frontend/node_modules/
+NticPlatform.Frontend/dist/
+.venv/
+__pycache__/
