@@ -416,7 +416,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
         const timeRemaining = this.getDraftTimeRemaining(value);
         const timeText = timeRemaining ? ` (${timeRemaining})` : '';
-        this.fieldValidation[fieldName] = { status: 'draft_found', message: `A saved draft exists for this email${timeText}.` };
+        this.fieldValidation[fieldName] = { status: 'draft_found', message: `This email is reserved by a saved draft${timeText}. Resume the draft or wait for expiry.` };
       } else {
         this.fieldValidation[fieldName] = { status: 'valid', message: 'Email available' };
       }
@@ -490,7 +490,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
         const timeRemaining = this.getDraftTimeRemaining(value);
         const timeText = timeRemaining ? ` (${timeRemaining})` : '';
-        this.fieldValidation[fieldName] = { status: 'draft_found', message: `A saved draft exists for this phone number${timeText}.` };
+        this.fieldValidation[fieldName] = { status: 'draft_found', message: `This number is reserved by a saved draft${timeText}. Resume the draft or wait for expiry.` };
       } else {
         this.fieldValidation[fieldName] = { status: 'valid', message: 'Number available' };
       }
@@ -498,7 +498,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   }
 
   hasValidationErrors(): boolean {
-    return Object.values(this.fieldValidation).some(v => v.status === 'taken' || v.status === 'invalid');
+    return Object.values(this.fieldValidation).some(v => v.status === 'taken' || v.status === 'invalid' || v.status === 'draft_found');
   }
 
   private validateCurrentTab(): boolean {
@@ -543,6 +543,10 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         } else if (this.contentService.isEmailTaken(value, this.editingApprovalId || undefined)) {
           this.fieldValidation[key] = { status: 'taken', message: 'This email is already registered' };
           blocked = true;
+        } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
+          const timeText = this.getDraftTimeRemaining(value);
+          this.fieldValidation[key] = { status: 'draft_found', message: `This email is reserved by a saved draft${timeText ? ' (' + timeText + ')' : ''}. Resume the draft or wait for expiry.` };
+          blocked = true;
         }
       } else {
         if (!this.contentService.isValidGhanaPhone(value)) {
@@ -550,6 +554,10 @@ export class RegistrationComponent implements OnInit, OnDestroy {
           blocked = true;
         } else if (this.contentService.isPhoneTaken(value, this.editingApprovalId || undefined)) {
           this.fieldValidation[key] = { status: 'taken', message: 'This number is already registered' };
+          blocked = true;
+        } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
+          const timeText = this.getDraftTimeRemaining(value);
+          this.fieldValidation[key] = { status: 'draft_found', message: `This number is reserved by a saved draft${timeText ? ' (' + timeText + ')' : ''}. Resume the draft or wait for expiry.` };
           blocked = true;
         }
       }

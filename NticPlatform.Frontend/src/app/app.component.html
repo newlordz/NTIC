@@ -26,6 +26,14 @@
         <span class="material-symbols-outlined">dashboard</span>
         Dashboard
       </a>
+      <a class="nav-item" *ngIf="hasAccess('overview')" routerLink="/dashboard" [queryParams]="{ tab: 'overview' }" routerLinkActive="active" (click)="closeMobileSidebar()">
+        <span class="material-symbols-outlined">monitoring</span>
+        Overview
+      </a>
+      <a class="nav-item" *ngIf="hasAccess('admin_control')" routerLink="/dashboard" [queryParams]="{ tab: 'control' }" routerLinkActive="active" (click)="closeMobileSidebar()">
+        <span class="material-symbols-outlined">admin_panel_settings</span>
+        Admin Control
+      </a>
       <a class="nav-item" *ngIf="hasAccess('roster')" routerLink="/dashboard" [queryParams]="{ action: 'add_team' }" [class.active]="false" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">groups</span>
         My Teams &amp; Roster

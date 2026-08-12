@@ -290,7 +290,50 @@
                   <div><strong>Members:</strong> {{ team.members }} active students</div>
                   <div *ngIf="team.mentor"><strong>Mentor:</strong> {{ team.mentor }}</div>
                   <div *ngIf="team.motto" style="font-style:italic;color:var(--primary);margin-top:4px;border-top:1px dashed var(--outline-variant);padding-top:4px;">"{{ team.motto }}"</div>
-                  
+    <!-- Dashboard View (hidden when maximized) -->
+    <div class="admin-header" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
+      <div class="admin-header-left">
+        <div class="admin-header-icon">
+          <span class="material-symbols-outlined">shield_person</span>
+        </div>
+        <div>
+          <h1 class="admin-title">Command Center</h1>
+          <p class="admin-subtitle">National NTIC Platform · System Administration & Access Control</p>
+        </div>
+      </div>
+      <div class="admin-header-right">
+        <div class="admin-time-badge">
+          <span class="pulse-dot"></span>
+          <span>All Systems Operational &nbsp;&middot;&nbsp; {{ liveTime }}</span>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="openRegisterModal()">
+          <span class="material-symbols-outlined">person_add</span>Register User
+        </button>
+      </div>
+    </div>
+
+    <!-- Stat Cards (hidden when maximized) -->
+    <div class="admin-stat-grid" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
+      <div *ngFor="let stat of stats; let i = index" 
+           class="admin-stat-card interactive-stat-btn" 
+           [attr.data-index]="i"
+           role="button" tabindex="0"
+           (click)="onStatCardClick(stat)"
+           [title]="'Click to view ' + stat.label">
+        <div class="admin-stat-header-row">
+          <div class="admin-stat-icon"><span class="material-symbols-outlined">{{ stat.icon }}</span></div>
+          <div class="stat-btn-pill">
+            <span>View</span>
+            <span class="material-symbols-outlined">arrow_forward</span>
+          </div>
+        </div>
+        <div class="admin-stat-value">{{ stat.value }}</div>
+        <div class="admin-stat-label">{{ stat.label }}</div>
+        <div class="admin-stat-meta">{{ stat.meta }}</div>
+        <div class="admin-stat-glow"></div>
+      </div>
+    </div>
+
                   <!-- Display Roster Chips if available -->
                   <div *ngIf="team.rosterList && team.rosterList.length > 0" class="roster-chips-container" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--outline-variant);">
                     <span *ngFor="let student of team.rosterList; let i = index" class="roster-student-chip" [style.background]="i === 0 ? '#fef3c7' : 'var(--surface-container)'" [style.color]="i === 0 ? '#d97706' : 'var(--on-surface)'" style="padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;border:1px solid var(--outline-variant);">
@@ -500,60 +543,8 @@
       <span style="font-size:12px;color:var(--on-surface-variant);">Full-page editing mode</span>
     </div>
 
-    <!-- Admin Header (hidden when maximized) -->
-    <div class="admin-header" *ngIf="!maximizedContentTab">
-      <div class="admin-header-left">
-        <div class="admin-header-icon">
-          <span class="material-symbols-outlined">shield_person</span>
-        </div>
-        <div>
-          <h1 class="admin-title">Command Center</h1>
-          <p class="admin-subtitle">National NTIC Platform · System Administration & Access Control</p>
-        </div>
-      </div>
-      <div class="admin-header-right">
-        <div class="admin-time-badge">
-          <span class="pulse-dot"></span>
-          <span>All Systems Operational &nbsp;&middot;&nbsp; {{ liveTime }}</span>
-        </div>
-        <button class="btn btn-primary btn-sm" (click)="openRegisterModal()">
-          <span class="material-symbols-outlined">person_add</span>Register User
-        </button>
-      </div>
-    </div>
 
-    <!-- Stat Cards (hidden when maximized) -->
-    <div class="admin-stat-grid" *ngIf="!maximizedContentTab">
-      <div *ngFor="let stat of stats; let i = index" 
-           class="admin-stat-card interactive-stat-btn" 
-           [attr.data-index]="i"
-           role="button" tabindex="0"
-           (click)="onStatCardClick(stat)"
-           [title]="'Click to view ' + stat.label">
-        <div class="admin-stat-header-row">
-          <div class="admin-stat-icon"><span class="material-symbols-outlined">{{ stat.icon }}</span></div>
-          <div class="stat-btn-pill">
-            <span>View</span>
-            <span class="material-symbols-outlined">arrow_forward</span>
-          </div>
-        </div>
-        <div class="admin-stat-value">{{ stat.value }}</div>
-        <div class="admin-stat-label">{{ stat.label }}</div>
-        <div class="admin-stat-meta">{{ stat.meta }}</div>
-        <div class="admin-stat-glow"></div>
-      </div>
-    </div>
 
-    <!-- Tab Navigation (hidden when maximized) -->
-    <div class="admin-tabs" *ngIf="!maximizedContentTab">
-      <button class="admin-tab" [class.active]="adminTab === 'overview'" (click)="goToTab('overview')">
-        <span class="material-symbols-outlined">dashboard</span>Overview
-      </button>
-
-      <button class="admin-tab" [class.active]="adminTab === 'control'" (click)="goToTab('control')">
-        <span class="material-symbols-outlined">admin_panel_settings</span>Admin Control
-      </button>
-    </div>
 
     <!-- ── ADMIN CONTROL LANDING PAGE ── -->
     <div *ngIf="adminTab === 'control' && !adminSubTab" class="admin-tab-body">
