@@ -219,16 +219,16 @@
 .cc-kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .cc-kpi-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-top: 3px solid transparent;
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: 10px;
+  padding: 10px 14px;
   position: relative;
   overflow: hidden;
   cursor: pointer;
@@ -243,10 +243,10 @@
   &:nth-child(4) { animation-delay: 0.32s; }
 
   &:hover {
-    transform: translateY(-3px);
+    transform: translateY(-2px);
     border-color: #cbd5e1;
     border-top-color: var(--cc-primary);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
     .cc-kpi-glow { opacity: 1; }
     .cc-kpi-icon .material-symbols-outlined { color: var(--cc-primary); transform: scale(1.06); }
     .cc-kpi-action { opacity: 1; color: var(--cc-primary); transform: translateX(2px); }
@@ -257,13 +257,13 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .cc-kpi-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   background: rgba(0, 63, 135, 0.06);
   border: 1px solid rgba(0, 63, 135, 0.12);
   display: flex;
@@ -271,7 +271,7 @@
   justify-content: center;
 
   .material-symbols-outlined {
-    font-size: 18px;
+    font-size: 15px;
     color: var(--cc-primary);
     transition: color 0.2s ease, transform 0.3s ease;
   }
@@ -280,36 +280,36 @@
 .cc-kpi-action {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
+  gap: 3px;
+  padding: 2px 7px;
   border-radius: 999px;
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
   color: #64748b;
   opacity: 0.8;
   transition: all 0.2s ease;
 
-  .material-symbols-outlined { font-size: 12px; }
+  .material-symbols-outlined { font-size: 11px; }
 }
 
 .cc-kpi-value {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 800;
   color: #0f172a;
   line-height: 1;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   letter-spacing: -0.5px;
 }
 
 .cc-kpi-label {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--cc-text-muted);
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 
 .cc-kpi-meta {
@@ -332,7 +332,7 @@
 .cc-viewport-container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -340,15 +340,15 @@
 .cc-middle-visual-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 12px;
 }
 
 /* ── Telemetry Radial Gauge Rings ── */
 .cc-gauges-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  padding: 16px 20px;
+  gap: 8px;
+  padding: 10px 14px;
 }
 
 .cc-gauge-card {
@@ -356,24 +356,24 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 12px 8px;
+  padding: 8px 4px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 10px;
   text-align: center;
 }
 
 .cc-gauge-ring-wrap {
   position: relative;
-  width: 56px;
-  height: 56px;
-  margin-bottom: 6px;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 4px;
   flex-shrink: 0;
 }
 
 .cc-gauge-svg {
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
   transform: rotate(-90deg);
 }
 
@@ -383,18 +383,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
 
   em {
     font-style: normal;
-    font-size: 9px;
+    font-size: 8.5px;
     margin-left: 1px;
   }
 }
 
 .cc-gauge-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: #334155;
   white-space: nowrap;
@@ -404,14 +404,14 @@
 .cc-track-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 20px;
+  gap: 6px;
+  padding: 10px 14px;
 }
 
 .cc-track-row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .cc-track-top {
@@ -423,22 +423,22 @@
 .cc-track-name {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
+  gap: 5px;
+  font-size: 11.5px;
   font-weight: 600;
   color: #0f172a;
 
-  .cc-track-ic { font-size: 16px; }
+  .cc-track-ic { font-size: 14px; }
 }
 
 .cc-track-count {
-  font-size: 11.5px;
+  font-size: 10.5px;
   font-weight: 700;
   color: #64748b;
 }
 
 .cc-role-bar-bg {
-  height: 6px;
+  height: 5px;
   background: #f1f5f9;
   border-radius: 3px;
   overflow: hidden;
@@ -595,7 +595,7 @@
 .cc-bottom-services-section {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
 }
 
 .cc-services-header {
@@ -605,7 +605,7 @@
 }
 
 .cc-services-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.3px;
@@ -615,18 +615,18 @@
 .cc-services-dots {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 
   .cc-dot {
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: #cbd5e1;
     transition: background 0.2s ease;
 
     &.active {
       background: var(--cc-primary);
-      width: 18px;
+      width: 14px;
       border-radius: 4px;
     }
   }
@@ -635,14 +635,14 @@
 .cc-services-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 12px;
 }
 
 .cc-service-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 18px 20px;
+  border-radius: 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -650,13 +650,13 @@
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
-    transform: translateY(-3px);
+    transform: translateY(-2px);
     border-color: #cbd5e1;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
 
     .cc-scard-footer {
       color: var(--cc-primary);
-      .material-symbols-outlined { transform: translateX(4px); }
+      .material-symbols-outlined { transform: translateX(3px); }
     }
   }
 }
@@ -665,11 +665,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 .cc-scard-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: #0f172a;
 }
@@ -677,26 +677,26 @@
 .cc-live-badge {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: 5px;
+  font-size: 10.5px;
   font-weight: 700;
   color: #16a34a;
   background: rgba(22, 163, 74, 0.08);
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 12px;
 }
 
 .cc-scard-body {
   display: flex;
   align-items: center;
-  gap: 18px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .cc-scard-ring-wrap {
   position: relative;
-  width: 76px;
-  height: 76px;
+  width: 52px;
+  height: 52px;
   flex-shrink: 0;
 }
 
