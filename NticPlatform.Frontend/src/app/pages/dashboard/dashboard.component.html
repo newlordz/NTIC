@@ -511,72 +511,32 @@
       </div>
     </div>
 
-    <!-- ══ SINGLE-SCREEN COMMAND CENTER DASHBOARD (ZERO OVERFLOW) ══ -->
-    <div class="cc-viewport-container" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
-
-      <!-- ── TOP TELEMETRY & KPI ROW ── -->
-      <div class="cc-top-visual-row">
-
-        <!-- 1. OVERALL HEALTH DONUT RING CARD -->
-        <div class="cc-gauge-hero-card">
-          <div class="cc-hero-ring-wrap">
-            <svg viewBox="0 0 36 36" class="cc-hero-ring-svg">
-              <path class="cc-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3.5"/>
-              <path class="cc-ring-fill" stroke="#10b981" stroke-dasharray="98, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3.5" stroke-linecap="round"/>
-            </svg>
-            <div class="cc-hero-ring-center">
-              <span class="cc-ring-sub">System Health</span>
-              <span class="cc-ring-val">98%</span>
-            </div>
+    <!-- ══ COMMAND CENTER KPI CARDS ══ -->
+    <div class="cc-kpi-grid" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
+      <div *ngFor="let stat of stats; let i = index"
+           class="cc-kpi-card"
+           [attr.data-index]="i"
+           role="button" tabindex="0"
+           (click)="onStatCardClick(stat)"
+           [title]="'Click to view ' + stat.label">
+        <div class="cc-kpi-top">
+          <div class="cc-kpi-icon">
+            <span class="material-symbols-outlined">{{ stat.icon }}</span>
           </div>
-        </div>
-
-        <!-- 2. KPI METRIC CARD 1: REGISTERED USERS -->
-        <div class="cc-vcard" (click)="goToSubTab('users')" role="button" tabindex="0">
-          <div class="cc-vcard-top">
-            <span class="cc-vcard-title">Total Registered Users</span>
-            <div class="cc-vcard-icon cc-ic-blue">
-              <span class="material-symbols-outlined">group</span>
-            </div>
-          </div>
-          <div class="cc-vcard-num">{{ registeredUsers.length }}</div>
-          <div class="cc-vcard-footer">
-            <span>View Users</span>
+          <div class="cc-kpi-action">
+            <span>View</span>
             <span class="material-symbols-outlined">arrow_forward</span>
           </div>
         </div>
-
-        <!-- 3. KPI METRIC CARD 2: PENDING APPROVALS -->
-        <div class="cc-vcard" (click)="goToSubTab('approvals')" role="button" tabindex="0">
-          <div class="cc-vcard-top">
-            <span class="cc-vcard-title">Pending Approvals</span>
-            <div class="cc-vcard-icon cc-ic-amber">
-              <span class="material-symbols-outlined">verified_user</span>
-            </div>
-          </div>
-          <div class="cc-vcard-num">{{ pendingApprovals.length }}</div>
-          <div class="cc-vcard-footer">
-            <span>View Approvals</span>
-            <span class="material-symbols-outlined">arrow_forward</span>
-          </div>
-        </div>
-
-        <!-- 4. KPI METRIC CARD 3: ACTIVE SESSIONS -->
-        <div class="cc-vcard" (click)="goToSubTab('tickets')" role="button" tabindex="0">
-          <div class="cc-vcard-top">
-            <span class="cc-vcard-title">Active Platform Sessions</span>
-            <div class="cc-vcard-icon cc-ic-indigo">
-              <span class="material-symbols-outlined">devices</span>
-            </div>
-          </div>
-          <div class="cc-vcard-num">4</div>
-          <div class="cc-vcard-footer">
-            <span>View Sessions</span>
-            <span class="material-symbols-outlined">arrow_forward</span>
-          </div>
-        </div>
-
+        <div class="cc-kpi-value">{{ stat.value }}</div>
+        <div class="cc-kpi-label">{{ stat.label }}</div>
+        <div class="cc-kpi-meta">{{ stat.meta }}</div>
+        <div class="cc-kpi-glow"></div>
       </div>
+    </div>
+
+    <!-- ══ SINGLE-SCREEN COMMAND CENTER DASHBOARD ══ -->
+    <div class="cc-viewport-container" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
 
       <!-- ── BOTTOM PLATFORM OVERVIEW & SITE ANALYTICS VISUAL GRID ── -->
       <div class="cc-bottom-services-section">
