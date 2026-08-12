@@ -487,6 +487,8 @@
   <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
        SUPER ADMIN COMMAND CENTER
   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+  <ng-container *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager' || activeRoleId === 'reviewer' || activeRoleId === 'competition_manager'">
+
     <!-- ══ COMMAND CENTER MASTHEAD ══ -->
     <div class="cc-masthead" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
       <div class="cc-scanline"></div>
