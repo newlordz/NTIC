@@ -236,8 +236,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   userRoleFilter = 'all';
   userStatusFilter = 'all';
   accessPassSearchQuery = '';
+  isAccessSearchFocused = false;
   editingUserId: string | null = null;
   deleteUserConfirm: any = null;
+
+  onAccessSearchBlur(): void {
+    setTimeout(() => {
+      this.isAccessSearchFocused = false;
+    }, 200);
+  }
 
   // ─── CONTENT MANAGER STATE ──────────────────────
   contentTab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' | 'philosophy' | 'events' = 'stories';
