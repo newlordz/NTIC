@@ -100,8 +100,10 @@ try:
         }
         auth_header = request.headers.get("Authorization", "")
         has_bearer = auth_header.startswith("Bearer ")
-        is_write_protected = request.method in ("POST", "PUT", "PATCH", "DELETE") and request.url.path not in PUBLIC_UNSAFE
-        is_verify_check = request.url.path == "/api/auth/verify"
+        path = request.url.path
+        is_drafts_route = path == "/api/drafts" or path.startswith("/api/drafts/")
+        is_write_protected = request.method in ("POST", "PUT", "PATCH", "DELETE") and path not in PUBLIC_UNSAFE and not is_drafts_route
+        is_verify_check = path == "/api/auth/verify"
 
         if has_bearer or is_write_protected or is_verify_check:
             if not has_bearer:
@@ -1809,7 +1811,7 @@ try:
         cur = conn.cursor()
         try:
             cur.execute("INSERT INTO news_items (id, headline, tag, date, link) VALUES (%s, %s, %s, %s, %s)",
-                        (news_id, payload.headline, payload.tag, payload.date, payload.link))
+                        (news_id, payload.headline, payload.tag, payload.date or None, payload.link))
             conn.commit()
         except Exception as e:
             conn.rollback()
@@ -1911,7 +1913,7 @@ try:
         try:
             cur.execute(
                 "INSERT INTO lms_courses (id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status, rejection_reason) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                (course_id, payload.title, payload.track, payload.icon, payload.level, payload.description, payload.modules, payload.enrolled, payload.completion, payload.status, payload.created_at, payload.submitted_by, payload.approval_status, payload.rejection_reason)
+                (course_id, payload.title, payload.track, payload.icon, payload.level, payload.description, payload.modules, payload.enrolled, payload.completion, payload.status, payload.created_at or None, payload.submitted_by, payload.approval_status, payload.rejection_reason)
             )
             conn.commit()
         except Exception as e:
@@ -2034,7 +2036,7 @@ try:
         if payload.collection == "lms_courses":
             for item in payload.items:
                 cur.execute("INSERT INTO lms_courses (id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status, rejection_reason) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, track = EXCLUDED.track, status = EXCLUDED.status",
-                            (item.get("id"), item.get("title"), item.get("track",""), item.get("icon",""), item.get("level",""), item.get("description",""), item.get("modules",0), item.get("enrolled",0), item.get("completion",0), item.get("status","active"), item.get("created_at",""), item.get("submitted_by",""), item.get("approval_status","approved"), item.get("rejection_reason","")))
+                            (item.get("id"), item.get("title"), item.get("track",""), item.get("icon",""), item.get("level",""), item.get("description",""), item.get("modules",0), item.get("enrolled",0), item.get("completion",0), item.get("status","active"), item.get("created_at") or None, item.get("submitted_by",""), item.get("approval_status","approved"), item.get("rejection_reason","")))
         elif payload.collection == "lms_modules":
             for item in payload.items:
                 cur.execute("INSERT INTO lms_modules (id, course_id, title, description, order_num, icon, status, submitted_by, approval_status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, status = EXCLUDED.status",
@@ -2042,19 +2044,19 @@ try:
         elif payload.collection == "lms_materials":
             for item in payload.items:
                 cur.execute("INSERT INTO lms_materials (id, course_id, module_id, title, type, url, description, created_at, submitted_by, approval_status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title",
-                            (item.get("id"), item.get("courseId"), item.get("moduleId"), item.get("title"), item.get("type",""), item.get("url",""), item.get("description",""), item.get("created_at",""), item.get("submitted_by",""), item.get("approval_status","approved")))
+                            (item.get("id"), item.get("courseId"), item.get("moduleId"), item.get("title"), item.get("type",""), item.get("url",""), item.get("description",""), item.get("created_at") or None, item.get("submitted_by",""), item.get("approval_status","approved")))
         elif payload.collection == "lms_assignments":
             for item in payload.items:
                 cur.execute("INSERT INTO lms_assignments (id, course_id, title, description, due_date, max_score, track, status, created_at, submitted_by, approval_status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, status = EXCLUDED.status",
-                            (item.get("id"), item.get("courseId"), item.get("title"), item.get("description",""), item.get("due_date",""), item.get("maxScore",100), item.get("track",""), item.get("status","active"), item.get("created_at",""), item.get("submitted_by",""), item.get("approval_status","approved")))
+                            (item.get("id"), item.get("courseId"), item.get("title"), item.get("description",""), item.get("due_date") or None, item.get("maxScore",100), item.get("track",""), item.get("status","active"), item.get("created_at") or None, item.get("submitted_by",""), item.get("approval_status","approved")))
         elif payload.collection == "lms_submissions":
             for item in payload.items:
                 cur.execute("INSERT INTO lms_submissions (id, assignment_id, course_id, student_id, student_name, student_email, submitted_at, content, url, score, status, feedback) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET score = EXCLUDED.score, status = EXCLUDED.status, feedback = EXCLUDED.feedback",
-                            (item.get("id"), item.get("assignmentId"), item.get("courseId"), item.get("studentId"), item.get("studentName"), item.get("studentEmail"), item.get("submitted_at",""), item.get("content",""), item.get("url",""), item.get("score"), item.get("status","submitted"), item.get("feedback","")))
+                            (item.get("id"), item.get("assignmentId"), item.get("courseId"), item.get("studentId"), item.get("studentName"), item.get("studentEmail"), item.get("submitted_at") or None, item.get("content",""), item.get("url",""), item.get("score"), item.get("status","submitted"), item.get("feedback","")))
         elif payload.collection == "lms_enrollments":
             for item in payload.items:
                 cur.execute("INSERT INTO lms_enrollments (id, course_id, student_id, student_name, student_email, progress_pct, enrolled_at, last_active, status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET progress_pct = EXCLUDED.progress_pct, status = EXCLUDED.status",
-                            (item.get("id"), item.get("courseId"), item.get("studentId"), item.get("studentName"), item.get("studentEmail"), item.get("progressPct",0), item.get("enrolled_at",""), item.get("lastActive",""), item.get("status","active")))
+                            (item.get("id"), item.get("courseId"), item.get("studentId"), item.get("studentName"), item.get("studentEmail"), item.get("progressPct",0), item.get("enrolled_at") or None, item.get("lastActive") or None, item.get("status","active")))
         elif payload.collection == "hof":
             for item in payload.items:
                 cur.execute("INSERT INTO hof_entries (id, type, initials, name, team_name, project_title, members, school, year, badge, track_class, expiry_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, badge = EXCLUDED.badge, school = EXCLUDED.school",
@@ -2062,7 +2064,7 @@ try:
         elif payload.collection == "news":
             for item in payload.items:
                 cur.execute("INSERT INTO news_items (id, headline, tag, date, link) VALUES (%s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET headline = EXCLUDED.headline, tag = EXCLUDED.tag",
-                            (item.get("id"), item.get("headline"), item.get("tag",""), item.get("date",""), item.get("link","")))
+                            (item.get("id"), item.get("headline"), item.get("tag",""), item.get("date") or None, item.get("link","")))
         elif payload.collection == "audit_logs":
             for item in payload.items:
                 cur.execute("INSERT INTO audit_logs (action, usr, time, type) VALUES (%s, %s, %s, %s)",

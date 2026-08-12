@@ -44,7 +44,7 @@ class TestLogin:
         assert resp.status_code == 422
 
     def test_logout(self, client, admin_token):
-        resp = client.post("/api/logout", json={"token": admin_token})
+        resp = client.post("/api/logout", json={"token": admin_token}, headers={"Authorization": f"Bearer {admin_token}"})
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
@@ -55,28 +55,31 @@ class TestCompetitions:
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
-    def test_create_competition(self, client):
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def test_create_competition(self, client, admin_token):
         resp = client.post("/api/competitions", json={
             "title": "Test Competition 2026",
             "track": "Coding",
             "status": "active"
-        })
+        }, headers=self._auth(admin_token))
         assert resp.status_code == 201
         data = resp.json()
         assert data["title"] == "Test Competition 2026"
         assert "id" in data
 
-    def test_update_competition(self, client):
+    def test_update_competition(self, client, admin_token):
         resp = client.post("/api/competitions", json={
             "title": "Update Me",
             "track": "Robotics",
             "status": "draft"
-        })
+        }, headers=self._auth(admin_token))
         comp_id = resp.json()["id"]
         resp2 = client.patch(f"/api/competitions/{comp_id}", json={
             "title": "Updated Competition",
             "status": "registration"
-        })
+        }, headers=self._auth(admin_token))
         assert resp2.status_code == 200
         assert resp2.json()["status"] == "updated"
         comps = client.get("/api/competitions").json()
@@ -85,61 +88,61 @@ class TestCompetitions:
         assert match[0]["title"] == "Updated Competition"
         assert match[0]["status"] == "registration"
 
-    def test_delete_competition(self, client):
+    def test_delete_competition(self, client, admin_token):
         resp = client.post("/api/competitions", json={
             "title": "Delete Me",
             "status": "active"
-        })
+        }, headers=self._auth(admin_token))
         comp_id = resp.json()["id"]
-        resp2 = client.delete(f"/api/competitions/{comp_id}")
+        resp2 = client.delete(f"/api/competitions/{comp_id}", headers=self._auth(admin_token))
         assert resp2.status_code == 200
         assert resp2.json()["status"] == "deleted"
 
 
 class TestTeams:
-    def test_list_teams(self, client):
-        resp = client.get("/api/teams")
+    def test_list_teams(self, client, admin_token):
+        resp = client.get("/api/teams", headers={"Authorization": f"Bearer {admin_token}"})
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
-    def test_create_team(self, client):
+    def test_create_team(self, client, admin_token):
         resp = client.post("/api/teams", json={
             "name": "Test Pytest Squad",
             "track": "Coding",
             "lead": "Test Lead",
             "members": 4,
             "status": "Active"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "Test Pytest Squad"
         assert "id" in data
 
-    def test_update_team(self, client):
+    def test_update_team(self, client, admin_token):
         resp = client.post("/api/teams", json={
             "name": "Update Team",
             "track": "Robotics"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         team_id = resp.json()["id"]
         resp2 = client.patch(f"/api/teams/{team_id}", json={
             "name": "Renamed Team",
             "status": "Qualified"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         assert resp2.status_code == 200
         assert resp2.json()["status"] == "updated"
 
-    def test_delete_team(self, client):
+    def test_delete_team(self, client, admin_token):
         resp = client.post("/api/teams", json={
             "name": "Delete Team"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         team_id = resp.json()["id"]
-        resp2 = client.delete(f"/api/teams/{team_id}")
+        resp2 = client.delete(f"/api/teams/{team_id}", headers={"Authorization": f"Bearer {admin_token}"})
         assert resp2.status_code == 200
         assert resp2.json()["status"] == "deleted"
 
 
 class TestGrading:
-    def test_grade_submission(self, client):
+    def test_grade_submission(self, client, admin_token):
         email = f"test{str(uuid.uuid4())[:8]}@test.com"
         stu_resp = client.post("/api/students", json={
             "first_name": "Test",
@@ -163,7 +166,7 @@ class TestGrading:
             "score": 88,
             "feedback": "Good work",
             "status": "Approved"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         assert grade_resp.status_code == 200
         assert grade_resp.json()["status"] == "graded"
 
@@ -174,12 +177,12 @@ class TestCORS:
             "Origin": "http://localhost:4200",
             "Access-Control-Request-Method": "GET"
         })
-        assert resp.status_code == 200
+        assert resp.status_code == 204
         assert "access-control-allow-origin" in resp.headers
 
 
 class TestShapes:
-    def test_competition_get_shape(self, client):
+    def test_competition_get_shape(self, client, admin_token):
         resp = client.post("/api/competitions", json={
             "title": "Shape Check",
             "track": "Coding",
@@ -187,7 +190,7 @@ class TestShapes:
             "deadline": "2026-12-01",
             "status": "active",
             "description": "Test competition"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         comp_id = resp.json()["id"]
         resp_get = client.get("/api/competitions")
         assert resp_get.status_code == 200
@@ -198,7 +201,7 @@ class TestShapes:
         for key in expected:
             assert key in data, f"Missing key in GET response: {key}"
 
-    def test_team_get_shape(self, client):
+    def test_team_get_shape(self, client, admin_token):
         resp = client.post("/api/teams", json={
             "name": "Shape Team",
             "track": "Coding",
@@ -206,9 +209,9 @@ class TestShapes:
             "members": 3,
             "status": "Active",
             "school_name": "Test School"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         team_id = resp.json()["id"]
-        resp_get = client.get("/api/teams")
+        resp_get = client.get("/api/teams", headers={"Authorization": f"Bearer {admin_token}"})
         assert resp_get.status_code == 200
         match = [t for t in resp_get.json() if t["id"] == team_id]
         assert len(match) == 1
@@ -217,8 +220,8 @@ class TestShapes:
         for key in expected:
             assert key in data, f"Missing key in GET response: {key}"
 
-    def test_student_shape(self, client):
-        resp = client.get("/api/students")
+    def test_student_shape(self, client, admin_token):
+        resp = client.get("/api/students", headers={"Authorization": f"Bearer {admin_token}"})
         assert resp.status_code == 200
         if resp.json():
             data = resp.json()[0]
@@ -233,7 +236,7 @@ class TestHof:
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
-    def test_create_hof(self, client):
+    def test_create_hof(self, client, admin_token):
         resp = client.post("/api/hof", json={
             "name": "Test Champion",
             "school": "Test School",
@@ -241,34 +244,34 @@ class TestHof:
             "badge": "Test Badge",
             "type": "individual",
             "track_class": "coding-track"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "Test Champion"
         assert "id" in data
 
-    def test_update_hof(self, client):
+    def test_update_hof(self, client, admin_token):
         resp = client.post("/api/hof", json={
             "name": "Update HOF",
             "school": "School A",
             "year": "2025"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         hof_id = resp.json()["id"]
         resp2 = client.patch(f"/api/hof/{hof_id}", json={
             "name": "Updated Champion",
             "school": "School B",
             "year": "2025"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         assert resp2.status_code == 200
         assert resp2.json()["status"] == "updated"
 
-    def test_delete_hof(self, client):
+    def test_delete_hof(self, client, admin_token):
         resp = client.post("/api/hof", json={
             "name": "Delete Me",
             "school": "School D"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         hof_id = resp.json()["id"]
-        resp2 = client.delete(f"/api/hof/{hof_id}")
+        resp2 = client.delete(f"/api/hof/{hof_id}", headers={"Authorization": f"Bearer {admin_token}"})
         assert resp2.status_code == 200
         assert resp2.json()["status"] == "deleted"
 
@@ -284,54 +287,54 @@ class TestNews:
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
-    def test_create_news(self, client):
+    def test_create_news(self, client, admin_token):
         resp = client.post("/api/news", json={
             "headline": "Test News Headline",
             "tag": "Test",
             "date": "2026-08-01",
             "link": "#test"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         assert resp.status_code == 201
         data = resp.json()
         assert data["headline"] == "Test News Headline"
         assert "id" in data
 
-    def test_delete_news(self, client):
+    def test_delete_news(self, client, admin_token):
         resp = client.post("/api/news", json={
             "headline": "Delete News"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         news_id = resp.json()["id"]
-        resp2 = client.delete(f"/api/news/{news_id}")
+        resp2 = client.delete(f"/api/news/{news_id}", headers={"Authorization": f"Bearer {admin_token}"})
         assert resp2.status_code == 200
         assert resp2.json()["status"] == "deleted"
 
 
 class TestAuditLogs:
-    def test_list_audit_logs(self, client):
-        resp = client.get("/api/audit-logs")
+    def test_list_audit_logs(self, client, admin_token):
+        resp = client.get("/api/audit-logs", headers={"Authorization": f"Bearer {admin_token}"})
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
-    def test_create_audit_log(self, client):
+    def test_create_audit_log(self, client, admin_token):
         resp = client.post("/api/audit-logs", json={
             "action": "Test action logged",
             "usr": "tester@test.com",
             "time": "2026-08-01T12:00:00",
             "type": "system"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         assert resp.status_code == 201
         data = resp.json()
         assert data["status"] == "created"
 
 
 class TestUsers:
-    def test_list_users(self, client):
-        resp = client.get("/api/users")
+    def test_list_users(self, client, admin_token):
+        resp = client.get("/api/users", headers={"Authorization": f"Bearer {admin_token}"})
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
-    def test_users_shape(self, client):
-        resp = client.get("/api/users")
+    def test_users_shape(self, client, admin_token):
+        resp = client.get("/api/users", headers={"Authorization": f"Bearer {admin_token}"})
         if resp.json():
             data = resp.json()[0]
             expected = ["id", "email", "full_name", "role", "ticket", "status", "created_at"]
@@ -340,17 +343,17 @@ class TestUsers:
 
 
 class TestLmsCourses:
-    def test_list_lms_courses(self, client):
-        resp = client.get("/api/lms-courses")
+    def test_list_lms_courses(self, client, admin_token):
+        resp = client.get("/api/lms-courses", headers={"Authorization": f"Bearer {admin_token}"})
         assert resp.status_code == 200
         assert isinstance(resp.json(), list)
 
-    def test_create_lms_course(self, client):
+    def test_create_lms_course(self, client, admin_token):
         resp = client.post("/api/lms-courses", json={
             "title": "Test LMS Course",
             "track": "coding",
             "status": "active"
-        })
+        }, headers={"Authorization": f"Bearer {admin_token}"})
         assert resp.status_code == 201
         data = resp.json()
         assert data["title"] == "Test LMS Course"
