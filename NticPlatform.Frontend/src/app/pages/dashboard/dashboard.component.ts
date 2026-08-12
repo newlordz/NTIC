@@ -793,9 +793,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.startLiveTelemetry();
       this.loadAuthSessions();
       this.loadAuthSessionCount();
+      this.loadAuditLogsFromBackend();
       this.liveIntervals.push(setInterval(() => {
         this.loadAuthSessions();
         this.loadAuthSessionCount();
+        this.loadAuditLogsFromBackend();
       }, 12000));
       this.liveIntervals.push(setInterval(() => this.cdr.detectChanges(), 30000));
       
@@ -973,6 +975,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
         if (rejected.length > 0) this.contentService.saveRejectedApprovals(rejected);
       },
       error: () => {} // Silently fall back to localStorage
+    });
+  }
+
+  loadAuditLogsFromBackend(): void {
+    this.apiService.getAuditLogs().subscribe({
+      next: (logs: any[]) => {
+        if (logs && logs.length > 0) {
+          const mapped = logs.map(l => ({
+            id: l.id,
+            action: l.action,
+            user: l.usr || l.user || 'System',
+            time: l.time || new Date().toISOString(),
+            type: l.type || 'info'
+          }));
+          this.contentService.auditLogs = mapped;
+        }
+      },
+      error: () => {}
     });
   }
 

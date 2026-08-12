@@ -319,6 +319,11 @@ export class AppComponent implements OnInit, OnDestroy {
         next: () => console.log('Password updated in backend DB'),
         error: (err) => console.warn('Backend password sync notice:', err)
       });
+
+      this.contentService.saveAuditLogs([
+        { action: `First-time password setup completed: ${userEmail}`, user: userEmail, time: new Date().toISOString(), type: 'security' },
+        ...this.contentService.auditLogs
+      ]);
     }
 
     setTimeout(() => {

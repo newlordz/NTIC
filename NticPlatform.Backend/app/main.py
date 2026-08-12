@@ -250,6 +250,10 @@ try:
                 "INSERT INTO auth_sessions (token, user_id, email, expires_at) VALUES (%s, %s, %s, %s)",
                 (token, user_id, db_email, expires_at),
             )
+            cur.execute(
+                "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s, %s, %s, %s)",
+                (f"{role} login: {db_email}", db_email, datetime.datetime.now(datetime.UTC).isoformat(), "auth"),
+            )
             conn.commit()
         except Exception as e:
             conn.rollback()
