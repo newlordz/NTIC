@@ -381,20 +381,36 @@ try:
 
     @app.post("/api/auth/verify-contact")
     def verify_contact(payload: dict = None):
-        """Check if email or phone is already registered."""
+        """Check if email or phone is already registered or reserved by a draft."""
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         result = {"email_available": True, "phone_available": True}
         if payload and payload.get("email"):
-            cur.execute("SELECT id FROM users WHERE lower(email) = %s", (payload["email"].strip().lower(),))
+            email = payload["email"].strip().lower()
+            cur.execute("SELECT id FROM users WHERE lower(email) = %s", (email,))
             if cur.fetchone():
                 result["email_available"] = False
+            else:
+                cur.execute(
+                    "SELECT email FROM registration_drafts WHERE lower(email) = %s AND updated_at > CURRENT_TIMESTAMP - INTERVAL '7 days'",
+                    (email,)
+                )
+                if cur.fetchone():
+                    result["email_available"] = False
         if payload and payload.get("phone"):
-            cur.execute("SELECT id FROM users WHERE phone = %s", (payload["phone"].strip(),))
+            phone = payload["phone"].strip()
+            cur.execute("SELECT id FROM users WHERE phone = %s", (phone,))
             if cur.fetchone():
                 result["phone_available"] = False
+            else:
+                cur.execute(
+                    "SELECT email FROM registration_drafts WHERE draft_data::text LIKE %s AND updated_at > CURRENT_TIMESTAMP - INTERVAL '7 days'",
+                    ('%' + phone + '%',)
+                )
+                if cur.fetchone():
+                    result["phone_available"] = False
         cur.close(); conn.close()
         return result
 
