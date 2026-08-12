@@ -538,59 +538,57 @@
     <!-- ══ SINGLE-SCREEN COMMAND CENTER DASHBOARD ══ -->
     <div class="cc-viewport-container" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
 
-      <!-- ── VISUAL ANALYTICS: WEEKLY PLATFORM ACTIVITY TREND ── -->
-      <div class="cc-panel cc-mb-16">
-        <div class="cc-panel-header">
-          <div class="cc-panel-label">
-            <span class="material-symbols-outlined">analytics</span>
-            Weekly Platform Submissions & Activity Trends
+      <!-- ── VISUAL ANALYTICS: SYSTEM TELEMETRY & REGIONAL REACH GRID ── -->
+      <div class="cc-middle-visual-grid cc-mb-16">
+
+        <!-- LEFT: RESOURCE TELEMETRY METERS -->
+        <div class="cc-panel">
+          <div class="cc-panel-header">
+            <div class="cc-panel-label">
+              <span class="material-symbols-outlined">speed</span>
+              System Telemetry & Performance
+            </div>
+            <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>Optimal</span>
           </div>
-          <div class="cc-chart-legend">
-            <span class="cc-legend-item"><span class="cc-legend-dot cc-bg-blue"></span>Logins</span>
-            <span class="cc-legend-item"><span class="cc-legend-dot cc-bg-indigo"></span>Submissions</span>
-            <span class="cc-legend-item"><span class="cc-legend-dot cc-bg-emerald"></span>Registrations</span>
-          </div>
-        </div>
-        <div class="cc-chart-body">
-          <div class="cc-chart-canvas-wrap">
-            <svg viewBox="0 0 500 130" width="100%" height="130" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="chartGradBlue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.30"/>
-                  <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
-                </linearGradient>
-                <linearGradient id="chartGradIndigo" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#6366f1" stop-opacity="0.35"/>
-                  <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
-                </linearGradient>
-                <linearGradient id="chartGradEmerald" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#10b981" stop-opacity="0.30"/>
-                  <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
-                </linearGradient>
-              </defs>
-              <!-- Grid lines -->
-              <line x1="0" y1="25" x2="500" y2="25" stroke="#f1f5f9" stroke-width="1"/>
-              <line x1="0" y1="60" x2="500" y2="60" stroke="#f1f5f9" stroke-width="1"/>
-              <line x1="0" y1="95" x2="500" y2="95" stroke="#f1f5f9" stroke-width="1"/>
-              <line x1="0" y1="125" x2="500" y2="125" stroke="#e2e8f0" stroke-width="1"/>
-
-              <!-- Area fills -->
-              <path [attr.d]="getChartAreaPath('logins')" fill="url(#chartGradBlue)"/>
-              <path [attr.d]="getChartAreaPath('submissions')" fill="url(#chartGradIndigo)"/>
-              <path [attr.d]="getChartAreaPath('registrations')" fill="url(#chartGradEmerald)"/>
-
-              <!-- Stroke lines -->
-              <path [attr.d]="getChartPath('logins')" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
-              <path [attr.d]="getChartPath('submissions')" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round"/>
-              <path [attr.d]="getChartPath('registrations')" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-
-            <!-- Day Labels Axis -->
-            <div class="cc-chart-axis">
-              <span *ngFor="let item of weeklyActivityTrend">{{ item.day }}</span>
+          <div class="cc-gauges-grid">
+            <div *ngFor="let g of systemGauges" class="cc-gauge-card">
+              <div class="cc-gauge-ring-wrap">
+                <svg viewBox="0 0 36 36" class="cc-gauge-svg">
+                  <path class="cc-gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+                  <path class="cc-gauge-fill" [attr.stroke]="g.color" [attr.stroke-dasharray]="g.value + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                <span class="cc-gauge-num" [style.color]="g.color">{{ g.value }}<em>{{ g.unit }}</em></span>
+              </div>
+              <div class="cc-gauge-label">{{ g.label }}</div>
             </div>
           </div>
         </div>
+
+        <!-- RIGHT: REGIONAL COVERAGE & SCHOOL PARTICIPATION -->
+        <div class="cc-panel">
+          <div class="cc-panel-header">
+            <div class="cc-panel-label">
+              <span class="material-symbols-outlined">map</span>
+              Regional School Participation
+            </div>
+            <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>16 Regions</span>
+          </div>
+          <div class="cc-track-list">
+            <div *ngFor="let reg of regionalBreakdown" class="cc-track-row">
+              <div class="cc-track-top">
+                <div class="cc-track-name">
+                  <span class="material-symbols-outlined cc-track-ic" [style.color]="reg.color">location_on</span>
+                  <span>{{ reg.region }}</span>
+                </div>
+                <div class="cc-track-count">{{ reg.schools }} schools</div>
+              </div>
+              <div class="cc-role-bar-bg">
+                <div class="cc-role-bar-fill" [style.background]="reg.color" [style.width]="reg.pct + '%'"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- ── BOTTOM PLATFORM OVERVIEW & SITE ANALYTICS VISUAL GRID ── -->
