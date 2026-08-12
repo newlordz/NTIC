@@ -626,7 +626,7 @@
         </div>
       </div>
     </div>
-                 <!-- ── TAB: OVERVIEW (COMMAND CENTER) ── -->
+    <!-- ── TAB: OVERVIEW (COMMAND CENTER) ── -->
     <div *ngIf="adminTab === 'overview'" class="admin-tab-body">
       <div class="cc-overview-grid">
 
@@ -681,22 +681,45 @@
                   </svg>
                 </div>
               </div>
-          <div class="admin-audit-list">
-            <div *ngFor="let log of auditLogs" class="admin-audit-item" [class]="log.type">
-              <div class="admin-audit-icon">
-                <span class="material-symbols-outlined">
-                  {{ log.type === 'auth' ? 'login' : log.type === 'ticket' ? 'confirmation_number' : log.type === 'approval' ? 'check_circle' : 'settings' }}
-                </span>
-              </div>
-              <div class="admin-audit-body">
-                <div class="admin-audit-action">{{ log.action }}</div>
-                <div class="admin-audit-meta">{{ log.user }} &middot; {{ log.time | timeAgo }}</div>
+              <div class="cc-node-bar-wrap">
+                <div class="cc-node-bar" [style.width]="getNodeLoad(i) + '%'"></div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
+        <!-- ── LIVE AUDIT TRAIL ── -->
+        <div class="cc-panel">
+          <div class="cc-panel-header">
+            <div class="cc-panel-label">
+              <span class="material-symbols-outlined">receipt_long</span>
+              LIVE AUDIT TRAIL
+            </div>
+            <div class="cc-panel-status cc-blink-badge">
+              <span class="cc-live-dot"></span>
+              <span>LIVE</span>
+            </div>
+          </div>
+          <div class="cc-audit-list">
+            <div *ngFor="let log of auditLogs" class="cc-audit-item" [class]="'cc-audit-' + log.type">
+              <div class="cc-audit-icon">
+                <span class="material-symbols-outlined">
+                  {{ log.type === 'auth' ? 'login' : log.type === 'ticket' ? 'confirmation_number' : log.type === 'approval' ? 'check_circle' : 'settings' }}
+                </span>
+              </div>
+              <div class="cc-audit-body">
+                <div class="cc-audit-action">{{ log.action }}</div>
+                <div class="cc-audit-meta">{{ log.user }} &middot; {{ log.time | timeAgo }}</div>
+              </div>
+            </div>
+            <div *ngIf="!auditLogs || auditLogs.length === 0" class="cc-audit-empty">
+              <span class="material-symbols-outlined">history</span>
+              <span>No recent activity</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
 
     <!-- â”€â”€ TAB: USERS BY ROLE â”€â”€ -->
