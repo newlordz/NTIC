@@ -1,5 +1,6 @@
 import { getAuthValue } from './session.util';
 import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
 import { DataStorageService } from './data-storage.service';
 import { ApiService } from './api.service';
 import { WsSyncService } from './ws-sync.service';
@@ -432,6 +433,7 @@ export class ContentService {
   teams: Team[] = [];
   submissions: Submission[] = [];
   auditLogs: any[] = [];
+  readonly auditLogs$ = new BehaviorSubject<any[]>([]);
   csrUpdates: any[] = [];
   competitions: Competition[] = [];
 
@@ -776,19 +778,7 @@ private readonly defaultTeams: Team[] = [];
       error: (e: any) => console.log('Backend news fallback to local cache')
     });
 
-    this.apiService.getAuditLogs().subscribe({
-      next: (logs: any[]) => {
-        if (logs && logs.length > 0) {
-          const existingIds = new Set(this.auditLogs.map((l: any) => l.id));
-          const newLogs = logs.filter((l: any) => !existingIds.has(l.id));
-          if (newLogs.length > 0) {
-            this.auditLogs = [...newLogs, ...this.auditLogs];
-            this.saveState('auditLogs', this.auditLogs);
-          }
-        }
-      },
-      error: (e: any) => console.log('Backend audit fallback to local cache')
-    });
+    this.fetchAuditLogsFromBackend();
 
     this.apiService.getLmsCourses().subscribe({
       next: (courses: any[]) => {
@@ -1055,6 +1045,8 @@ private readonly defaultTeams: Team[] = [];
       this.lmsSubmissions = [...this.defaultLmsSubmissions];
       this.lmsEnrollments = [...this.defaultLmsEnrollments];
     }
+    this.auditLogs = this.mergeAndSortAuditLogs(this.auditLogs);
+    this.auditLogs$.next(this.auditLogs);
   }
 
   private loadKeySync<T>(key: string, defaultValue: T): T {
@@ -1628,15 +1620,93 @@ private readonly defaultTeams: Team[] = [];
 
   // ── Audit Log Helpers ────────────────────────────────────────────
   
-  saveAuditLogs(auditLogsList: any[]): void {
-    this.auditLogs = auditLogsList;
-    this.saveState('auditLogs', this.auditLogs);
-    if (auditLogsList.length > 0) {
-      const top = auditLogsList[0];
-      if (top && top.action) {
-        this.apiService.createAuditLog({ action: top.action, usr: top.user || '', time: top.time || new Date().toISOString(), type: top.type || 'info' }).subscribe({ error: () => {} });
+  mergeAndSortAuditLogs(list: any[]): any[] {
+    if (!list || !Array.isArray(list)) return [];
+    const result: any[] = [];
+    for (const item of list) {
+      if (!item || !item.action) continue;
+      const itemTimeStr = item.time || new Date().toISOString();
+      const itemTime = new Date(itemTimeStr).getTime();
+      const actionText = String(item.action).trim().toLowerCase();
+      const userText = String(item.user || item.usr || 'System').trim().toLowerCase();
+
+      const isDuplicate = result.some(r => {
+        if (item.id && r.id && String(item.id) === String(r.id)) return true;
+        const rTime = new Date(r.time || Date.now()).getTime();
+        const rAction = String(r.action).trim().toLowerCase();
+        const rUser = String(r.user || r.usr || 'System').trim().toLowerCase();
+        return rAction === actionText && rUser === userText && Math.abs(rTime - itemTime) < 30000;
+      });
+
+      if (!isDuplicate) {
+        result.push({
+          id: item.id || ('log-' + Math.random().toString(36).substring(2, 8)),
+          action: item.action,
+          user: item.user || item.usr || 'System',
+          time: itemTimeStr,
+          type: item.type || 'info'
+        });
       }
     }
+    return result
+      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+      .slice(0, 100);
+  }
+
+  saveAuditLogs(auditLogsList: any[]): void {
+    this.auditLogs = this.mergeAndSortAuditLogs(auditLogsList);
+    this.saveState('auditLogs', this.auditLogs);
+    this.auditLogs$.next(this.auditLogs);
+    if (this.auditLogs.length > 0) {
+      const top = this.auditLogs[0];
+      if (top && top.action) {
+        this.apiService.createAuditLog({
+          action: top.action,
+          usr: top.user || top.usr || '',
+          time: top.time || new Date().toISOString(),
+          type: top.type || 'info'
+        }).subscribe({ error: () => {} });
+      }
+    }
+  }
+
+  addAuditLog(log: { action: string; user?: string; usr?: string; time?: string; type?: string }): void {
+    const entry = {
+      id: 'local-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      action: log.action,
+      user: log.user || log.usr || getAuthValue('activeUserEmail') || 'System',
+      time: log.time || new Date().toISOString(),
+      type: log.type || 'info'
+    };
+    this.auditLogs = this.mergeAndSortAuditLogs([entry, ...this.auditLogs]);
+    this.saveState('auditLogs', this.auditLogs);
+    this.auditLogs$.next(this.auditLogs);
+    this.apiService.createAuditLog({
+      action: entry.action,
+      usr: entry.user,
+      time: entry.time,
+      type: entry.type
+    }).subscribe({ error: () => {} });
+  }
+
+  fetchAuditLogsFromBackend(): void {
+    this.apiService.getAuditLogs().subscribe({
+      next: (logs: any[]) => {
+        if (logs && logs.length > 0) {
+          const mapped = logs.map(l => ({
+            id: l.id,
+            action: l.action,
+            user: l.user || l.usr || 'System',
+            time: l.time || new Date().toISOString(),
+            type: l.type || 'info'
+          }));
+          this.auditLogs = this.mergeAndSortAuditLogs([...mapped, ...this.auditLogs]);
+          this.saveState('auditLogs', this.auditLogs);
+          this.auditLogs$.next(this.auditLogs);
+        }
+      },
+      error: (e: any) => console.log('Backend audit fallback to local cache')
+    });
   }
 
   // ── CSR Updates Helpers ──────────────────────────────────────────

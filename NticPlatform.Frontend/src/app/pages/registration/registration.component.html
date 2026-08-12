@@ -2031,7 +2031,8 @@
 
                 <div class="student-card-avatar-row">
                   <div class="student-card-avatar">
-                    <span class="avatar-initials">{{ getInitials(studentForm.name, 'ST') }}</span>
+                    <img *ngIf="studentPhotoUrl" [src]="studentPhotoUrl" class="avatar-photo" alt="Competitor Photo" />
+                    <span *ngIf="!studentPhotoUrl" class="avatar-initials">{{ getInitials(studentForm.name, 'ST') }}</span>
                   </div>
                   <div class="student-card-track-badge">
                     <span class="material-symbols-outlined">
