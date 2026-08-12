@@ -1367,7 +1367,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     } catch { /* ignore */ }
 
     this.showCustomAlert(
-      `A 6-digit verification code has been sent to ${targetEmail}. If you don't receive it, use the demo code: ${otp}`,
+      `A 6-digit verification code has been sent to ${targetEmail}.`,
       'Verification Code Sent', 'info'
     );
   }
@@ -1407,7 +1407,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       try {
         this.emailService.sendOtpEmail(stored.contact || this.verificationInput, otp);
       } catch { /* ignore */ }
-      this.showCustomAlert(`New verification code sent. If you don't receive it, use the demo code: ${otp}`, 'Code Resent', 'info');
+      this.showCustomAlert(`New verification code sent.`, 'Code Resent', 'info');
     }
     this.otpCode = '';
     this.otpError = '';
