@@ -5511,6 +5511,15 @@ select.form-control {
           box-shadow: 0 2px 8px rgba(0,0,0,0.15);
           background: linear-gradient(135deg, #818cf8, #6366f1); // fallback, overridden by track theme
           letter-spacing: 0.02em;
+          position: relative;
+          overflow: hidden;
+
+          img.avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+          }
 
           &.lead {
             width: 40px;
@@ -5523,6 +5532,20 @@ select.form-control {
 
           .material-symbols-outlined { font-size: 18px; }
         }
+      }
+    }
+
+    .team-preview-banner {
+      width: 100%;
+      height: 110px;
+      overflow: hidden;
+      position: relative;
+      border-radius: 12px 12px 0 0;
+      background: #0f172a;
+      img.team-banner-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
     }
 

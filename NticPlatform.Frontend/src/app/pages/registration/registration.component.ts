@@ -403,12 +403,13 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       if (!value || !value.trim()) {
         this.fieldValidation[fieldName] = { status: 'idle', message: '' };
         delete this.fieldVerified[fieldName];
+        this.revalidateOtherSquadEmails(fieldName);
         return;
       }
       if (!this.contentService.isValidEmail(value)) {
         this.fieldValidation[fieldName] = { status: 'invalid', message: 'Invalid email format' };
       } else if (this.isDuplicateInForm(fieldName, value)) {
-        this.fieldValidation[fieldName] = { status: 'taken', message: 'Same email used in another field on this form' };
+        this.fieldValidation[fieldName] = { status: 'taken', message: 'Duplicate email used by another squad member' };
       } else if (this.contentService.isEmailTaken(value, this.editingApprovalId || undefined)) {
         this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered' };
       } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
@@ -418,6 +419,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       } else {
         this.fieldValidation[fieldName] = { status: 'valid', message: 'Email available' };
       }
+      this.revalidateOtherSquadEmails(fieldName);
     }, 400);
   }
 
@@ -428,7 +430,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       if (fieldName === 'schoolEmail') return this.schoolForm.repEmail?.trim().toLowerCase() === v;
       if (fieldName === 'schoolRepEmail') return this.schoolForm.email?.trim().toLowerCase() === v;
     }
-    if (this.activeTab === 'team') {
+    if (this.activeTab === 'team' || (this.activeTab === 'student' && this.competitorMode === 'group')) {
       const emails: { name: string; value: string }[] = [
         { name: 'squadLeadEmail', value: this.teamForm.leadEmail },
         { name: 'squadM2Email', value: this.teamForm.member2Email },
@@ -439,6 +441,31 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       return emails.some(e => e.name !== fieldName && e.value?.trim().toLowerCase() === v);
     }
     return false;
+  }
+
+  private revalidateOtherSquadEmails(currentFieldName: string): void {
+    if (this.activeTab === 'team' || (this.activeTab === 'student' && this.competitorMode === 'group')) {
+      const fields = ['squadLeadEmail', 'squadM2Email', 'squadM3Email', 'squadM4Email', 'squadM5Email'];
+      fields.filter(f => f !== currentFieldName).forEach(f => {
+        const val = this.getSquadEmailValue(f);
+        if (val && this.fieldValidation[f] && (this.fieldValidation[f].status === 'valid' || this.fieldValidation[f].status === 'taken')) {
+          if (this.isDuplicateInForm(f, val)) {
+            this.fieldValidation[f] = { status: 'taken', message: 'Duplicate email used by another squad member' };
+          } else if (!this.contentService.isEmailTaken(val, this.editingApprovalId || undefined)) {
+            this.fieldValidation[f] = { status: 'valid', message: 'Email available' };
+          }
+        }
+      });
+    }
+  }
+
+  private getSquadEmailValue(fieldName: string): string {
+    if (fieldName === 'squadLeadEmail') return this.teamForm.leadEmail || '';
+    if (fieldName === 'squadM2Email') return this.teamForm.member2Email || '';
+    if (fieldName === 'squadM3Email') return this.teamForm.member3Email || '';
+    if (fieldName === 'squadM4Email') return this.teamForm.member4Email || '';
+    if (fieldName === 'squadM5Email') return this.teamForm.member5Email || '';
+    return '';
   }
 
   validatePhoneLive(fieldName: string, value: string): void {
