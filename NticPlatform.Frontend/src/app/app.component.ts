@@ -340,6 +340,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
     switch (menuItem) {
       case 'dashboard':    return true;
+      case 'overview':     return adminRoles.includes(role);
+      case 'admin_control': return adminRoles.includes(role);
       case 'roster':       return ['school_admin'].includes(role);
       case 'registration': return ['instructor', 'super_admin'].includes(role);
       case 'lms':          return ['student'].includes(role);
