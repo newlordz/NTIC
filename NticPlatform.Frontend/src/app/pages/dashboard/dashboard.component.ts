@@ -673,17 +673,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   addAuditLog(log: any): void {
-    const currentAudit = [...this.contentService.auditLogs];
-    currentAudit.unshift({
-      time: new Date().toISOString(),
-      user: 'admin@ntic.org.gh',
-      type: 'system',
-      ...log
-    });
-    if (currentAudit.length > 30) {
-      currentAudit.pop();
-    }
-    this.contentService.saveAuditLogs(currentAudit);
+    this.contentService.addAuditLog(log);
   }
 
     // --- LIVE POSTGRESQL DATABASE MANAGER FOR ADMIN DASHBOARD ---
@@ -809,12 +799,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }, 12000));
       this.liveIntervals.push(setInterval(() => this.cdr.detectChanges(), 30000));
       
-      // Real-time WebSocket session update
+      // Real-time WebSocket session & audit update
       const wsSub = this.wsSync.dataChanged$.subscribe(() => {
         this.loadAuthSessions();
         this.loadAuthSessionCount();
+        this.loadAuditLogsFromBackend();
       });
       this.liveIntervals.push({ unsubscribe: () => wsSub.unsubscribe() });
+
+      const auditSub = this.contentService.auditLogs$.subscribe(() => {
+        this.cdr.markForCheck();
+      });
+      this.liveIntervals.push({ unsubscribe: () => auditSub.unsubscribe() });
 
       // Sync stats form from service
       this.statsForm = { ...this.contentService.platformStats };
@@ -987,30 +983,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   loadAuditLogsFromBackend(): void {
-    this.apiService.getAuditLogs().subscribe({
-      next: (logs: any[]) => {
-        if (logs && logs.length > 0) {
-          const mapped = logs.map(l => ({
-            id: l.id,
-            action: l.action,
-            user: l.usr || l.user || 'System',
-            time: l.time || new Date().toISOString(),
-            type: l.type || 'info'
-          }));
-          const unique: any[] = [];
-          mapped.forEach(item => {
-            const isDup = unique.some(u =>
-              u.action === item.action &&
-              u.user === item.user &&
-              Math.abs(new Date(u.time).getTime() - new Date(item.time).getTime()) < 15000
-            );
-            if (!isDup) unique.push(item);
-          });
-          this.contentService.auditLogs = unique;
-        }
-      },
-      error: () => {}
-    });
+    this.contentService.fetchAuditLogsFromBackend();
   }
 
   loadAuthSessions(): void {
