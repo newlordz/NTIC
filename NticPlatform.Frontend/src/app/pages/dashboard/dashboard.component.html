@@ -490,197 +490,197 @@
   <ng-container *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager' || activeRoleId === 'reviewer' || activeRoleId === 'competition_manager'">
 
     <!-- Maximized Content Mode Header -->
-    <div *ngIf="maximizedContentTab" style="display:flex;align-items:center;gap:12px;padding:16px 24px;background:var(--surface);border-bottom:1px solid var(--outline-variant);border-radius:12px;margin-bottom:16px;">
+    <div *ngIf="maximizedContentTab" style="display:flex;align-items:center;gap:12px;padding:16px 24px;background:#001529;border-bottom:1px solid rgba(0,86,179,0.25);border-radius:12px;margin-bottom:16px;">
       <button class="btn btn-subtle btn-sm" (click)="exitMaximize()">
         <span class="material-symbols-outlined">arrow_back</span>Back to Dashboard
       </button>
       <div style="flex:1;"></div>
-      <span style="font-size:14px;font-weight:600;color:var(--on-surface);text-transform:capitalize;">{{ maximizedContentTab }} Editor</span>
+      <span style="font-size:14px;font-weight:600;color:#acc7ff;text-transform:capitalize;">{{ maximizedContentTab }} Editor</span>
       <div style="flex:1;"></div>
-      <span style="font-size:12px;color:var(--on-surface-variant);">Full-page editing mode</span>
+      <span style="font-size:12px;color:rgba(172,199,255,0.6);">Full-page editing mode</span>
     </div>
 
-    <!-- Admin Header (hidden when maximized) -->
-    <div class="admin-header" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
-      <div class="admin-header-left">
-        <div class="admin-header-icon">
+    <!-- ══ COMMAND CENTER MASTHEAD ══ -->
+    <div class="cc-masthead" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
+      <div class="cc-scanline"></div>
+      <div class="cc-masthead-left">
+        <div class="cc-shield-wrap">
           <span class="material-symbols-outlined">shield_person</span>
         </div>
-        <div>
-          <h1 class="admin-title">Command Center</h1>
-          <p class="admin-subtitle">National NTIC Platform Â· System Administration & Access Control</p>
+        <div class="cc-title-block">
+          <div class="cc-eyebrow">NTIC Platform · Super Admin</div>
+          <h1 class="cc-title">COMMAND CENTER</h1>
         </div>
       </div>
-      <div class="admin-header-right">
-        <div class="admin-time-badge">
-          <span class="pulse-dot"></span>
-          <span>All Systems Operational &nbsp;&middot;&nbsp; {{ liveTime }}</span>
+      <div class="cc-masthead-right">
+        <div class="cc-status-pill">
+          <span class="cc-live-dot"></span>
+          <span class="cc-status-text">ALL SYSTEMS OPERATIONAL</span>
+          <span class="cc-time-divider">|</span>
+          <span class="cc-time">{{ liveTime }}</span>
         </div>
-        <button class="btn btn-primary btn-sm" (click)="openRegisterModal()">
-          <span class="material-symbols-outlined">person_add</span>Register User
+        <button class="cc-register-btn" (click)="openRegisterModal()">
+          <span class="material-symbols-outlined">person_add</span>
+          <span>Register User</span>
         </button>
       </div>
     </div>
 
-    <!-- Stat Cards (hidden when maximized) -->
-    <div class="admin-stat-grid" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
-      <div *ngFor="let stat of stats; let i = index" 
-           class="admin-stat-card interactive-stat-btn" 
+    <!-- ══ COMMAND CENTER KPI CARDS ══ -->
+    <div class="cc-kpi-grid" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
+      <div *ngFor="let stat of stats; let i = index"
+           class="cc-kpi-card"
            [attr.data-index]="i"
            role="button" tabindex="0"
            (click)="onStatCardClick(stat)"
            [title]="'Click to view ' + stat.label">
-        <div class="admin-stat-header-row">
-          <div class="admin-stat-icon"><span class="material-symbols-outlined">{{ stat.icon }}</span></div>
-          <div class="stat-btn-pill">
-            <span>View</span>
+        <div class="cc-kpi-top">
+          <div class="cc-kpi-icon">
+            <span class="material-symbols-outlined">{{ stat.icon }}</span>
+          </div>
+          <div class="cc-kpi-action">
             <span class="material-symbols-outlined">arrow_forward</span>
           </div>
         </div>
-        <div class="admin-stat-value">{{ stat.value }}</div>
-        <div class="admin-stat-label">{{ stat.label }}</div>
-        <div class="admin-stat-meta">{{ stat.meta }}</div>
-        <div class="admin-stat-glow"></div>
+        <div class="cc-kpi-value">{{ stat.value }}</div>
+        <div class="cc-kpi-label">{{ stat.label }}</div>
+        <div class="cc-kpi-meta">{{ stat.meta }}</div>
+        <div class="cc-kpi-glow"></div>
       </div>
-    </div>
-
-    <!-- â”€â”€ ADMIN CONTROL LANDING PAGE â”€â”€ -->
+    </div> 
+    
+    <!-- ── COMMAND CENTER CONTROL LANDING ── -->
     <div *ngIf="adminTab === 'control' && !adminSubTab" class="admin-tab-body">
-      <div class="ac-landing">
-        <div class="ac-landing-header">
-          <h2>Administration Center</h2>
-          <p>Manage platform users, registrations, content, and access tokens from one place.</p>
+      <div class="cc-control-landing">
+        <div class="cc-control-header">
+          <div class="cc-control-header-icon">
+            <span class="material-symbols-outlined">settings_suggest</span>
+          </div>
+          <div>
+            <h2 class="cc-control-title">ADMINISTRATION CENTER</h2>
+            <p class="cc-control-sub">Manage platform users, registrations, content, and access tokens from one place.</p>
+          </div>
         </div>
 
-        <div class="ac-grid">
-          <div class="ac-card" (click)="goToSubTab('tickets')">
-            <div class="ac-card-icon" style="background:linear-gradient(135deg,#6366f1,#4f46e5);">
+        <div class="cc-control-grid">
+          <div class="cc-control-card" (click)="goToSubTab('tickets')">
+            <div class="cc-control-card-icon">
               <span class="material-symbols-outlined">confirmation_number</span>
             </div>
-            <div class="ac-card-body">
-              <h3>Access Tokens</h3>
-              <p>Registered users, judge tokens, sponsor passes, and active sessions.</p>
-              <span class="ac-card-count">{{ registeredUsers.length }} registered</span>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">ACCESS TOKENS</div>
+              <div class="cc-control-card-desc">Registered users, judge tokens, sponsor passes, and active sessions.</div>
+              <div class="cc-control-card-count">{{ registeredUsers.length }} registered</div>
             </div>
-            <span class="material-symbols-outlined ac-card-arrow">arrow_forward</span>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
 
-          <div class="ac-card" (click)="goToSubTab('approvals')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
-            <div class="ac-card-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
+          <div class="cc-control-card" (click)="goToSubTab('approvals')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
+            <div class="cc-control-card-icon cc-icon-warn">
               <span class="material-symbols-outlined">verified_user</span>
             </div>
-            <div class="ac-card-body">
-              <h3>Pending Approvals</h3>
-              <p>Review and approve registrations from schools, teams, students, and instructors.</p>
-              <span class="ac-card-count" *ngIf="pendingApprovals.length > 0">{{ pendingApprovals.length }} pending</span>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">PENDING APPROVALS</div>
+              <div class="cc-control-card-desc">Review and approve registrations from schools, teams, students, and instructors.</div>
+              <div class="cc-control-card-count" *ngIf="pendingApprovals.length > 0">{{ pendingApprovals.length }} pending action</div>
+              <div class="cc-control-card-count cc-count-clear" *ngIf="pendingApprovals.length === 0">All clear</div>
             </div>
-            <span class="material-symbols-outlined ac-card-arrow">arrow_forward</span>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
 
-          <div class="ac-card" (click)="goToSubTab('content')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager'">
-            <div class="ac-card-icon" style="background:linear-gradient(135deg,#10b981,#059669);">
+          <div class="cc-control-card" (click)="goToSubTab('content')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager'">
+            <div class="cc-control-card-icon">
               <span class="material-symbols-outlined">edit_note</span>
             </div>
-            <div class="ac-card-body">
-              <h3>Content Manager</h3>
-              <p>Stories, hall of fame, leaderboard, events, news feed, philosophy cards, and stats.</p>
-              <span class="ac-card-count">{{ contentService.championshipStories.length + contentService.hallOfFameEntries.length + contentService.upcomingEvents.length }} items</span>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">CONTENT MANAGER</div>
+              <div class="cc-control-card-desc">Stories, hall of fame, leaderboard, events, news feed, and stats.</div>
+              <div class="cc-control-card-count">{{ contentService.championshipStories.length + contentService.hallOfFameEntries.length + contentService.upcomingEvents.length }} items managed</div>
             </div>
-            <span class="material-symbols-outlined ac-card-arrow">arrow_forward</span>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
 
-          <div class="ac-card" (click)="goToSubTab('users')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
-            <div class="ac-card-icon" style="background:linear-gradient(135deg,#3b82f6,#2563eb);">
+          <div class="cc-control-card" (click)="goToSubTab('users')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
+            <div class="cc-control-card-icon">
               <span class="material-symbols-outlined">group</span>
             </div>
-            <div class="ac-card-body">
-              <h3>Users by Role</h3>
-              <p>Browse and manage all platform users categorized by role and status.</p>
-              <span class="ac-card-count">{{ registeredUsers.length }} users</span>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">USERS BY ROLE</div>
+              <div class="cc-control-card-desc">Browse and manage all platform users categorized by role and status.</div>
+              <div class="cc-control-card-count">{{ registeredUsers.length }} users on platform</div>
             </div>
-            <span class="material-symbols-outlined ac-card-arrow">arrow_forward</span>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
 
-          <div class="ac-card" (click)="goToSubTab('admins')" *ngIf="activeRoleId === 'super_admin'">
-            <div class="ac-card-icon" style="background:linear-gradient(135deg,#ef4444,#dc2626);">
+          <div class="cc-control-card" (click)="goToSubTab('admins')" *ngIf="activeRoleId === 'super_admin'">
+            <div class="cc-control-card-icon cc-icon-danger">
               <span class="material-symbols-outlined">admin_panel_settings</span>
             </div>
-            <div class="ac-card-body">
-              <h3>Manage Admins</h3>
-              <p>Create, edit, and manage administrator accounts and their permissions.</p>
-              <span class="ac-card-count">{{ adminUsers.length }} admins</span>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">MANAGE ADMINS</div>
+              <div class="cc-control-card-desc">Create, edit, and manage administrator accounts and their permissions.</div>
+              <div class="cc-control-card-count">{{ adminUsers.length }} admins active</div>
             </div>
-            <span class="material-symbols-outlined ac-card-arrow">arrow_forward</span>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
         </div>
       </div>
     </div>
+                 <!-- ── TAB: OVERVIEW (COMMAND CENTER) ── -->
+    <div *ngIf="adminTab === 'overview'" class="admin-tab-body">
+      <div class="cc-overview-grid">
 
-    <!-- â”€â”€ TAB: OVERVIEW â”€â”€ -->
-      <div *ngIf="adminTab === 'overview'" class="admin-tab-body">
-      <div class="admin-two-col">
-
-        <!-- System Infrastructure -->
-        <div>
-          <div class="section-title">
-            System Infrastructure Nodes
-            <span class="status-all-green"><span class="material-symbols-outlined" style="font-size:14px;">circle</span>All Healthy</span>
+        <!-- ── INFRASTRUCTURE NODES ── -->
+        <div class="cc-panel">
+          <div class="cc-panel-header">
+            <div class="cc-panel-label">
+              <span class="material-symbols-outlined">dns</span>
+              INFRASTRUCTURE NODES
+            </div>
+            <div class="cc-panel-status">
+              <span class="cc-live-dot cc-dot-green"></span>
+              <span>ALL HEALTHY</span>
+            </div>
           </div>
-          <div class="admin-node-grid">
-            <div *ngFor="let node of systemNodes; let i = index" class="admin-node-card">
-              <div class="admin-node-header">
-                <div class="admin-node-icon">
+          <div class="cc-node-grid">
+            <div *ngFor="let node of systemNodes; let i = index" class="cc-node-card">
+              <div class="cc-node-top">
+                <div class="cc-node-icon">
                   <span class="material-symbols-outlined">settings_ethernet</span>
                 </div>
-                <div>
-                  <div class="admin-node-name">{{ node.name }}</div>
-                  <div class="admin-node-status">
-                    <span class="pulse-dot green"></span>{{ node.status }}
+                <div class="cc-node-info">
+                  <div class="cc-node-name">{{ node.name }}</div>
+                  <div class="cc-node-status">
+                    <span class="cc-live-dot cc-dot-green"></span>
+                    <span>{{ node.status }}</span>
                   </div>
                 </div>
               </div>
-              <div class="admin-node-metrics">
-                <div class="admin-metric">
-                  <span class="admin-metric-label">Latency</span>
-                  <span class="admin-metric-value live-num">{{ getNodeLatency(i) }}ms</span>
+              <div class="cc-node-metrics">
+                <div class="cc-metric">
+                  <span class="cc-metric-label">LATENCY</span>
+                  <span class="cc-metric-value">{{ getNodeLatency(i) }}<em>ms</em></span>
                 </div>
-                <div class="admin-metric">
-                  <span class="admin-metric-label">Load</span>
-                  <span class="admin-metric-value live-num">{{ getNodeLoad(i) }}%</span>
+                <div class="cc-metric">
+                  <span class="cc-metric-label">LOAD</span>
+                  <span class="cc-metric-value">{{ getNodeLoad(i) }}<em>%</em></span>
                 </div>
-                <!-- Sparkline SVG -->
-                <div class="admin-sparkline">
+                <div class="cc-sparkline-wrap">
                   <svg viewBox="0 0 80 28" width="80" height="28" preserveAspectRatio="none">
                     <defs>
                       <linearGradient [id]="'sg'+i" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#0056b3" stop-opacity="0.35"/>
-                        <stop offset="100%" stop-color="#0056b3" stop-opacity="0"/>
+                        <stop offset="0%" stop-color="#1a7fe6" stop-opacity="0.5"/>
+                        <stop offset="100%" stop-color="#1a7fe6" stop-opacity="0"/>
                       </linearGradient>
                     </defs>
-                    <!-- area fill -->
                     <path [attr.d]="sparklinePath(nodeHistory[i]) + ' L 80,28 L 0,28 Z'"
                           [attr.fill]="'url(#sg'+i+')'" />
-                    <!-- line -->
                     <path [attr.d]="sparklinePath(nodeHistory[i])"
-                          fill="none" stroke="#0056b3" stroke-width="1.5"
+                          fill="none" stroke="#1a7fe6" stroke-width="1.5"
                           stroke-linecap="round" stroke-linejoin="round"/>
-                    <!-- live dot -->
                   </svg>
                 </div>
               </div>
-              <div class="admin-node-bar-wrap">
-                <div class="admin-node-bar" [style.width]="getNodeLoad(i) + '%'"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Audit Logs -->
-        <div>
-          <div class="section-title">
-            Live Audit Trail
-            <span class="live-badge"><span class="live-dot"></span>LIVE</span>
-          </div>
           <div class="admin-audit-list">
             <div *ngFor="let log of auditLogs" class="admin-audit-item" [class]="log.type">
               <div class="admin-audit-icon">
