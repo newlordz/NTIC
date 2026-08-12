@@ -508,6 +508,145 @@
   transition: width 0.6s ease;
 }
 
+/* ── Activity Trend SVG Area Chart ── */
+.cc-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cc-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.cc-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  &.cc-bg-blue { background: #3b82f6; }
+  &.cc-bg-indigo { background: #6366f1; }
+  &.cc-bg-emerald { background: #10b981; }
+}
+
+.cc-chart-body {
+  padding: 16px 20px 14px;
+}
+
+.cc-chart-canvas-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.cc-chart-axis {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+  span {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+  }
+}
+
+/* ── Telemetry Radial Gauge Rings ── */
+.cc-gauges-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+
+.cc-gauge-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.cc-gauge-ring-wrap {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  margin-bottom: 8px;
+}
+
+.cc-gauge-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.cc-gauge-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+
+  em {
+    font-style: normal;
+    font-size: 10px;
+    margin-left: 1px;
+  }
+}
+
+.cc-gauge-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+}
+
+/* ── Track Distribution Matrix ── */
+.cc-track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.cc-track-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cc-track-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cc-track-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0f172a;
+
+  .cc-track-ic { font-size: 16px; }
+}
+
+.cc-track-count {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #64748b;
+}
+
 /* ── Governance Buttons ── */
 .cc-actions-body {
   display: flex;

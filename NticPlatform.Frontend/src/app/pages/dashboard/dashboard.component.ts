@@ -56,6 +56,49 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { latencyMs: 15, loadPct: 22 }
   ];
 
+  // ─── VISUAL ANALYTICS & TELEMETRY DATA ───────
+  weeklyActivityTrend = [
+    { day: 'Mon', submissions: 24, registrations: 12, logins: 85 },
+    { day: 'Tue', submissions: 42, registrations: 18, logins: 120 },
+    { day: 'Wed', submissions: 35, registrations: 15, logins: 110 },
+    { day: 'Thu', submissions: 58, registrations: 22, logins: 145 },
+    { day: 'Fri', submissions: 64, registrations: 30, logins: 190 },
+    { day: 'Sat', submissions: 82, registrations: 45, logins: 230 },
+    { day: 'Sun', submissions: 95, registrations: 52, logins: 280 }
+  ];
+
+  systemGauges = [
+    { label: 'CPU Utilization', value: 28, color: '#3b82f6', unit: '%' },
+    { label: 'Memory Allocated', value: 45, color: '#6366f1', unit: '%' },
+    { label: 'LMS Storage', value: 62, color: '#10b981', unit: '%' },
+    { label: 'API Bandwidth', value: 98.4, color: '#f59e0b', unit: '%' }
+  ];
+
+  trackDistribution = [
+    { name: 'Coding & Algorithms', count: 48, pct: 35, color: '#3b82f6', icon: 'code' },
+    { name: 'Robotics & IoT', count: 34, pct: 25, color: '#10b981', icon: 'smart_toy' },
+    { name: 'Artificial Intelligence', count: 28, pct: 20, color: '#6366f1', icon: 'psychology' },
+    { name: 'Cybersecurity CTF', count: 18, pct: 13, color: '#f59e0b', icon: 'security' },
+    { name: 'Open Innovation', count: 10, pct: 7, color: '#ec4899', icon: 'lightbulb' }
+  ];
+
+  getChartPath(key: 'submissions' | 'registrations' | 'logins'): string {
+    const data = this.weeklyActivityTrend;
+    const max = 300;
+    const points = data.map((d, idx) => {
+      const x = (idx / (data.length - 1)) * 500;
+      const val = d[key];
+      const y = 150 - (val / max) * 130;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    return 'M ' + points.join(' L ');
+  }
+
+  getChartAreaPath(key: 'submissions' | 'registrations' | 'logins'): string {
+    const linePath = this.getChartPath(key);
+    return `${linePath} L 500,160 L 0,160 Z`;
+  }
+
   // ─── SUPER ADMIN STATE ─────────────────────────
   adminTab: 'overview' | 'control' | 'dashboard' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'dashboard';
   adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | '' = '';
