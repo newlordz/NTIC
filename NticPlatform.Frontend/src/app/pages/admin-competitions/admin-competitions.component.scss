@@ -542,8 +542,10 @@ $radius-xl: 20px;
 }
 
 .ac-modal {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  z-index: 1001;
   background: $surface; border-radius: $radius-xl;
-  width: 100%; max-width: 560px; max-height: 90vh;
+  width: 90%; max-width: 560px; max-height: 90vh;
   overflow: hidden; display: flex; flex-direction: column;
   box-shadow: 0 32px 80px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.08);
   animation: modal-up 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
