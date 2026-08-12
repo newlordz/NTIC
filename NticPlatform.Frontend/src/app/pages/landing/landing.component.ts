@@ -1337,25 +1337,51 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     this.startSlideShow();
   }
 
+  private videoBlobCache = new Map<string, string>();
+
+  private async getBlobUrlForVideo(videoUrl: string): Promise<string> {
+    if (!videoUrl) return '';
+    if (videoUrl.startsWith('blob:') || videoUrl.startsWith('data:')) {
+      return videoUrl;
+    }
+    if (this.videoBlobCache.has(videoUrl)) {
+      return this.videoBlobCache.get(videoUrl)!;
+    }
+    try {
+      const resp = await fetch(videoUrl);
+      if (!resp.ok) return videoUrl;
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      this.videoBlobCache.set(videoUrl, blobUrl);
+      return blobUrl;
+    } catch {
+      return videoUrl;
+    }
+  }
+
   async loadSlideMedia(): Promise<void> {
     for (let i = 0; i < this.slides.length; i++) {
       const hs = this.slides[i]._heroSlide;
+      let rawVideoUrl = '';
       if (hs?.videoFileId) {
         const url = await this.fileStorage.getUrl(hs.videoFileId);
-        if (url) { this.slides[i].video = url; }
+        if (url) { rawVideoUrl = url; }
       } else if (hs?.videoUrl) {
-        this.slides[i].video = hs.videoUrl;
+        rawVideoUrl = hs.videoUrl;
       }
       if (hs?.imageFileId) {
         const url = await this.fileStorage.getUrl(hs.imageFileId);
         if (url) { this.slides[i].image = url; }
       }
-      if (!this.slides[i].video && hs?.image === 'assets/ntic_image_8.jpeg') {
-        this.slides[i].video = 'assets/ntic_slideshow.mp4';
+      if (!rawVideoUrl && hs?.image === 'assets/ntic_image_8.jpeg') {
+        rawVideoUrl = 'assets/ntic_slideshow.mp4';
       }
-      // Last-resort fallback: if a slide still has no video, use the slideshow video
-      if (!this.slides[i].video) {
-        this.slides[i].video = 'assets/ntic_slideshow.mp4';
+      if (!rawVideoUrl && !this.slides[i].isVideoEdit) {
+        rawVideoUrl = 'assets/ntic_slideshow.mp4';
+      }
+
+      if (rawVideoUrl) {
+        this.slides[i].video = await this.getBlobUrlForVideo(rawVideoUrl);
       }
     }
     this.cdr.detectChanges();
