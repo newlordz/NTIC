@@ -57,7 +57,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ];
 
   // ─── SUPER ADMIN STATE ─────────────────────────
-  adminTab: 'overview' | 'control' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'overview';
+  adminTab: 'overview' | 'control' | 'dashboard' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'dashboard';
   adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | '' = '';
 
   goToTab(tab: string): void {
@@ -782,7 +782,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     // Read query params to set active tab & modal state reactively
     this.route.queryParams.subscribe(params => {
-      if (params['tab'] && ['overview', 'control', 'register', 'tickets', 'approvals', 'content', 'users', 'admins'].includes(params['tab'])) {
+      if (params['tab'] && ['dashboard', 'overview', 'control', 'register', 'tickets', 'approvals', 'content', 'users', 'admins'].includes(params['tab'])) {
         this.adminTab = params['tab'] as any;
         if (this.adminTab === 'control') {
           this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
