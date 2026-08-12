@@ -191,7 +191,7 @@
       <div *ngFor="let slide of slides; let i = index" class="slide-item" [class.active]="i === activeSlideIndex"
         [style.background-image]="'linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.3) 100%), url(' + slide.image + ')'">
         <!-- Uploaded Video Background -->
-        <video *ngIf="slide.video" [src]="slide.video" [poster]="slide.image" [muted]="true" autoplay playsinline loop preload="auto"
+        <video *ngIf="slide.video && i === activeSlideIndex" [src]="slide.video" [poster]="slide.image" [muted]="true" autoplay playsinline loop preload="metadata"
           class="slide-video-bg" (error)="onVideoError($event)"></video>
 
         <!-- Browser-Native Image & Animation Background -->
