@@ -2670,7 +2670,8 @@ select.form-control {
   border-radius: 20px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
-  padding: 24px;
+  padding: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
@@ -5537,16 +5538,32 @@ select.form-control {
 
     .team-preview-banner {
       width: 100%;
-      height: 110px;
+      height: 120px;
       overflow: hidden;
       position: relative;
-      border-radius: 12px 12px 0 0;
       background: #0f172a;
+      flex-shrink: 0;
       img.team-banner-img {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        display: block;
       }
+    }
+
+    .squad-logo-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1.5px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      margin-right: 6px;
+    }
+
+    .team-header-left {
+      display: flex;
+      align-items: center;
     }
 
     // Reuse student-card-skills layout for team card
