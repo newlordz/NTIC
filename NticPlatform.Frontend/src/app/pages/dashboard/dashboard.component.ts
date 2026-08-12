@@ -997,7 +997,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
             time: l.time || new Date().toISOString(),
             type: l.type || 'info'
           }));
-          this.contentService.auditLogs = mapped;
+          const unique: any[] = [];
+          mapped.forEach(item => {
+            const isDup = unique.some(u =>
+              u.action === item.action &&
+              u.user === item.user &&
+              Math.abs(new Date(u.time).getTime() - new Date(item.time).getTime()) < 15000
+            );
+            if (!isDup) unique.push(item);
+          });
+          this.contentService.auditLogs = unique;
         }
       },
       error: () => {}
