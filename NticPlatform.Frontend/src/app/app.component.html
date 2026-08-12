@@ -22,7 +22,7 @@
 
     <div class="sidebar-section">
       <div class="sidebar-section-label">Main</div>
-      <a class="nav-item" *ngIf="hasAccess('dashboard')" routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('dashboard')" routerLink="/dashboard" [queryParams]="{ tab: 'dashboard' }" routerLinkActive="active" [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'exact', fragment: 'exact', matrixParams: 'exact' }" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">dashboard</span>
         Dashboard
       </a>
