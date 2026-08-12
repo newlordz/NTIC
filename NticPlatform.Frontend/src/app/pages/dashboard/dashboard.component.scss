@@ -220,15 +220,15 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .cc-kpi-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-top: 3px solid transparent;
-  border-radius: 14px;
-  padding: 20px;
+  border-radius: 12px;
+  padding: 14px 16px;
   position: relative;
   overflow: hidden;
   cursor: pointer;
@@ -243,12 +243,12 @@
   &:nth-child(4) { animation-delay: 0.32s; }
 
   &:hover {
-    transform: translateY(-4px);
+    transform: translateY(-3px);
     border-color: #cbd5e1;
     border-top-color: var(--cc-primary);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
     .cc-kpi-glow { opacity: 1; }
-    .cc-kpi-icon .material-symbols-outlined { color: var(--cc-primary); transform: scale(1.08); }
+    .cc-kpi-icon .material-symbols-outlined { color: var(--cc-primary); transform: scale(1.06); }
     .cc-kpi-action { opacity: 1; color: var(--cc-primary); transform: translateX(2px); }
   }
 }
@@ -257,13 +257,13 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 .cc-kpi-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   background: rgba(0, 63, 135, 0.06);
   border: 1px solid rgba(0, 63, 135, 0.12);
   display: flex;
@@ -271,7 +271,7 @@
   justify-content: center;
 
   .material-symbols-outlined {
-    font-size: 20px;
+    font-size: 18px;
     color: var(--cc-primary);
     transition: color 0.2s ease, transform 0.3s ease;
   }
@@ -281,25 +281,25 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 999px;
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   color: #64748b;
   opacity: 0.8;
   transition: all 0.2s ease;
 
-  .material-symbols-outlined { font-size: 13px; }
+  .material-symbols-outlined { font-size: 12px; }
 }
 
 .cc-kpi-value {
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 800;
   color: #0f172a;
   line-height: 1;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   letter-spacing: -0.5px;
 }
 
@@ -309,7 +309,7 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--cc-text-muted);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .cc-kpi-meta {
