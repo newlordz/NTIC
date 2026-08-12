@@ -130,11 +130,10 @@
 
 .cc-title {
   font-size: 22px;
-  font-weight: 900;
+  font-weight: 800;
   color: #0f172a;
   letter-spacing: -0.3px;
   margin: 0;
-  font-family: 'JetBrains Mono', monospace;
 }
 
 .cc-masthead-right {
@@ -168,7 +167,6 @@
 }
 
 .cc-time {
-  font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   font-weight: 600;
   color: #475569;
@@ -302,8 +300,7 @@
   color: #0f172a;
   line-height: 1;
   margin-bottom: 6px;
-  font-family: 'JetBrains Mono', monospace;
-  letter-spacing: -1px;
+  letter-spacing: -0.5px;
 }
 
 .cc-kpi-label {
@@ -480,7 +477,6 @@
   font-size: 15px;
   font-weight: 800;
   color: #0f172a;
-  font-family: 'JetBrains Mono', monospace;
   line-height: 1;
 
   em {
@@ -593,7 +589,6 @@
 .cc-audit-meta {
   font-size: 10px;
   color: var(--cc-text-dim);
-  font-family: 'JetBrains Mono', monospace;
 }
 
 .cc-audit-empty {
@@ -648,11 +643,10 @@
 
 .cc-control-title {
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 800;
   color: #0f172a;
-  letter-spacing: -0.2px;
+  letter-spacing: -0.3px;
   margin: 0 0 4px;
-  font-family: 'JetBrains Mono', monospace;
 }
 
 .cc-control-sub {
