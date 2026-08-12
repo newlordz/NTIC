@@ -1006,10 +1006,90 @@
           <input type="text"
                  class="admin-access-search-input"
                  [(ngModel)]="accessPassSearchQuery"
+                 (focus)="isAccessSearchFocused = true"
+                 (blur)="onAccessSearchBlur()"
                  placeholder="Search by name, email, role, or access token..." />
-          <button *ngIf="accessPassSearchQuery" class="clear-search-btn" (click)="accessPassSearchQuery = ''">
+          <span *ngIf="accessPassSearchQuery" class="search-count-pill">
+            {{ tokenViewMode === 'tickets' ? filteredRegisteredUsers.length : filteredAuthSessions.length }}
+          </span>
+          <button *ngIf="accessPassSearchQuery" class="clear-search-btn" (mousedown)="$event.preventDefault(); accessPassSearchQuery = ''">
             <span class="material-symbols-outlined">close</span>
           </button>
+
+          <!-- Rich Live Search Preview Dropdown Panel -->
+          <div class="access-live-search-dropdown" *ngIf="isAccessSearchFocused && accessPassSearchQuery.trim()">
+            <div class="live-search-header">
+              <div class="live-search-title">
+                <span class="material-symbols-outlined">pageview</span>
+                Live Matches
+              </div>
+              <div class="live-search-badge">
+                {{ tokenViewMode === 'tickets' ? filteredRegisteredUsers.length + ' Pass' + (filteredRegisteredUsers.length === 1 ? '' : 'es') : filteredAuthSessions.length + ' Session' + (filteredAuthSessions.length === 1 ? '' : 's') }}
+              </div>
+            </div>
+
+            <!-- Access Passes Live Results -->
+            <div class="live-results-list" *ngIf="tokenViewMode === 'tickets'">
+              <div *ngFor="let user of filteredRegisteredUsers | slice:0:5" 
+                   class="live-result-item" 
+                   (mousedown)="$event.preventDefault(); viewUserDetails(user)">
+                <div class="live-user-avatar" [class]="user.role">
+                  {{ getInitials(user.fullName) }}
+                </div>
+                <div class="live-user-info">
+                  <div class="live-user-name">
+                    {{ user.fullName }}
+                    <span class="live-role-badge" [class]="user.role">{{ getUserRoleLabel(user) }}</span>
+                  </div>
+                  <div class="live-user-email">{{ user.email }}</div>
+                </div>
+                <div class="live-item-right">
+                  <code class="live-ticket-code">{{ user.ticket }}</code>
+                  <button class="live-action-btn" (mousedown)="$event.stopPropagation(); copyTicket(user.ticket)" [title]="copiedTicket === user.ticket ? 'Copied!' : 'Copy Access Token'">
+                    <span class="material-symbols-outlined">{{ copiedTicket === user.ticket ? 'check' : 'content_copy' }}</span>
+                  </button>
+                </div>
+              </div>
+              <div *ngIf="filteredRegisteredUsers.length === 0" class="live-empty-state">
+                <span class="material-symbols-outlined">search_off</span>
+                <span>No access passes match "<strong>{{ accessPassSearchQuery }}</strong>"</span>
+              </div>
+              <div *ngIf="filteredRegisteredUsers.length > 5" class="live-more-hint">
+                + {{ filteredRegisteredUsers.length - 5 }} more match{{ filteredRegisteredUsers.length - 5 === 1 ? '' : 'es' }} in table below
+              </div>
+            </div>
+
+            <!-- Active Sessions Live Results -->
+            <div class="live-results-list" *ngIf="tokenViewMode === 'sessions'">
+              <div *ngFor="let session of filteredAuthSessions | slice:0:5" 
+                   class="live-result-item" 
+                   (mousedown)="$event.preventDefault()">
+                <div class="live-user-avatar" [class]="session.role">
+                  {{ getInitials(session.full_name) }}
+                </div>
+                <div class="live-user-info">
+                  <div class="live-user-name">
+                    {{ session.full_name }}
+                    <span class="live-role-badge" [class]="session.role">{{ session.role }}</span>
+                  </div>
+                  <div class="live-user-email">{{ session.email }} · <small>Started {{ session.created_at | slice:0:16 }}</small></div>
+                </div>
+                <div class="live-item-right">
+                  <code class="live-ticket-code">{{ session.display || (session.token | slice:0:12) }}...</code>
+                  <button class="live-action-btn danger" (mousedown)="$event.stopPropagation(); revokeSession(session.token)" title="Revoke Session">
+                    <span class="material-symbols-outlined">link_off</span>
+                  </button>
+                </div>
+              </div>
+              <div *ngIf="filteredAuthSessions.length === 0" class="live-empty-state">
+                <span class="material-symbols-outlined">search_off</span>
+                <span>No active sessions match "<strong>{{ accessPassSearchQuery }}</strong>"</span>
+              </div>
+              <div *ngIf="filteredAuthSessions.length > 5" class="live-more-hint">
+                + {{ filteredAuthSessions.length - 5 }} more active session{{ filteredAuthSessions.length - 5 === 1 ? '' : 's' }} in table below
+              </div>
+            </div>
+          </div>
         </div>
         <div *ngIf="tokenViewMode === 'sessions'" style="display:flex;gap:8px;">
           <button class="btn btn-subtle btn-sm" (click)="loadAuthSessions(); loadAuthSessionCount()" title="Refresh live sessions from backend">
