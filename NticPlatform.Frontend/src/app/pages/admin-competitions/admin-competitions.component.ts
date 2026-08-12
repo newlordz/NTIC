@@ -96,7 +96,7 @@ export class AdminCompetitionsComponent implements OnInit {
   }
 
   get canManageCompetitions(): boolean {
-    return ['super_admin', 'school_admin', 'instructor', 'competition_manager'].includes(this.activeRoleId);
+    return ['super_admin', 'admin', 'support_admin', 'school_admin', 'instructor', 'competition_manager', 'content_manager'].includes(this.activeRoleId);
   }
 
   get totalCycles(): number { return this.competitions.length; }
@@ -141,7 +141,7 @@ export class AdminCompetitionsComponent implements OnInit {
 
   ngOnInit(): void {
     const role = getAuthValue('activeRoleId') || '';
-    if (!['super_admin', 'competition_manager', 'content_manager', 'school_admin', 'instructor'].includes(role)) {
+    if (!['super_admin', 'admin', 'support_admin', 'competition_manager', 'content_manager', 'school_admin', 'instructor'].includes(role)) {
       this.router.navigate(['/dashboard']);
       return;
     }

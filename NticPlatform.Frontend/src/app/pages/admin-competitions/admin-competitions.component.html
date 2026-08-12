@@ -190,78 +190,302 @@
     </div>
   </div>
 
-  <!-- Create/Edit Modal -->
-  <div class="ac-modal-backdrop" *ngIf="isFormModalOpen" (click)="closeFormModal()"></div>
-  <div class="ac-modal" *ngIf="isFormModalOpen" (click)="$event.stopPropagation()">
-    <div class="ac-modal-header">
-      <h3>{{ editingCompetition ? 'Edit' : 'Create' }} Competition Cycle</h3>
-      <button class="ac-modal-close" (click)="closeFormModal()">&times;</button>
+  <!-- ═══════════════════════════════════
+       FORGE NEW CYCLE MODAL (3-step wizard)
+  ═══════════════════════════════════ -->
+  <div class="modal-backdrop" *ngIf="isFormModalOpen" (click)="closeFormModal()"></div>
+  <div class="forge-modal" *ngIf="isFormModalOpen" (click)="$event.stopPropagation()">
+    <div class="forge-modal-sidebar">
+      <div class="forge-sidebar-content">
+        <div class="forge-side-icon" [style.background]="typeGradients[formModel.type || 'qualifier']">
+          <span class="material-symbols-outlined">{{ typeIcons[formModel.type || 'qualifier'] }}</span>
+        </div>
+        <h3>{{ editingCompetition ? 'Edit' : 'Forge New' }} Cycle</h3>
+        <p>Set the stage for glory. Define the rules, timeline, and phases of this competition.</p>
+
+        <!-- Step indicators -->
+        <div class="forge-steps">
+          <div class="forge-step" [class.active]="formStep === 1" [class.done]="formStep > 1" (click)="formStep = 1">
+            <span class="forge-step-num">{{ formStep > 1 ? '✓' : '1' }}</span>
+            <div class="forge-step-info">
+              <span class="forge-step-name">Identity</span>
+              <span class="forge-step-desc">Name, type, track</span>
+            </div>
+          </div>
+          <div class="forge-step-connector"></div>
+          <div class="forge-step" [class.active]="formStep === 2" [class.done]="formStep > 2"
+               (click)="formStep > 1 ? formStep = 2 : null">
+            <span class="forge-step-num">{{ formStep > 2 ? '✓' : '2' }}</span>
+            <div class="forge-step-info">
+              <span class="forge-step-name">Timeline</span>
+              <span class="forge-step-desc">Dates &amp; rewards</span>
+            </div>
+          </div>
+          <div class="forge-step-connector"></div>
+          <div class="forge-step" [class.active]="formStep === 3"
+               (click)="formStep > 2 ? formStep = 3 : null">
+            <span class="forge-step-num">3</span>
+            <div class="forge-step-info">
+              <span class="forge-step-name">Phases</span>
+              <span class="forge-step-desc">Competition stages</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live preview -->
+        <div class="forge-preview" *ngIf="formModel.title">
+          <small>Preview</small>
+          <strong>{{ formModel.title }}</strong>
+          <span>{{ getTypeLabel(formModel.type || 'qualifier') }} · {{ formModel.track === 'all' ? 'Multi-Track' : (formModel.track | titlecase) }}</span>
+          <span *ngIf="formModel.phases?.length" class="preview-phases">
+            <span class="material-symbols-outlined">layers</span> {{ formModel.phases.length }} phase{{ formModel.phases.length !== 1 ? 's' : '' }}
+          </span>
+        </div>
+      </div>
     </div>
-    <div class="ac-modal-body">
-      <div class="ac-form-group">
-        <label>Title <span class="req">*</span></label>
-        <input type="text" [(ngModel)]="formModel.title" placeholder="e.g. National Qualifier Round">
+
+    <div class="forge-modal-main">
+      <div class="forge-modal-header">
+        <div class="forge-header-left">
+          <div class="forge-step-pills">
+            <span class="step-pill" [class.active]="formStep === 1" [class.done]="formStep > 1">Identity</span>
+            <span class="step-pill-sep">›</span>
+            <span class="step-pill" [class.active]="formStep === 2" [class.done]="formStep > 2">Timeline</span>
+            <span class="step-pill-sep">›</span>
+            <span class="step-pill" [class.active]="formStep === 3">Phases</span>
+          </div>
+          <h2>{{ editingCompetition ? 'Edit' : 'Create' }} Competition Cycle</h2>
+        </div>
+        <button class="modal-close" (click)="closeFormModal()"><span class="material-symbols-outlined">close</span></button>
       </div>
-      <div class="ac-form-row">
-        <div class="ac-form-group">
-          <label>Category</label>
-          <input type="text" [(ngModel)]="formModel.category" placeholder="e.g. Coding Challenge">
+
+      <div class="forge-modal-body">
+
+        <!-- ── STEP 1: Identity ── -->
+        <div class="forge-step-panel" *ngIf="formStep === 1">
+          <div class="forge-section">
+            <div class="forge-section-title">
+              <span class="material-symbols-outlined">badge</span> Identity
+            </div>
+            <div class="form-row">
+              <div class="form-group flex-2">
+                <label>Title <span class="required">*</span></label>
+                <input type="text" class="form-input" [(ngModel)]="formModel.title" placeholder="e.g. National Qualifier Round">
+              </div>
+              <div class="form-group">
+                <label>Category</label>
+                <input type="text" class="form-input" [(ngModel)]="formModel.category" placeholder="e.g. Coding Challenge">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Cycle Type</label>
+              <div class="type-selector">
+                <button *ngFor="let t of cycleTypes" class="type-chip" [class.active]="formModel.type === t" (click)="formModel.type = t">
+                  <span class="material-symbols-outlined">{{ typeIcons[t] }}</span>
+                  {{ getTypeLabel(t) }}
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Track</label>
+              <div class="track-pills">
+                <button *ngFor="let t of tracks" class="track-pill" [class.active]="formModel.track === t" (click)="formModel.track = t"
+                        [style.--track-grad]="trackGradients[t]">
+                  <span class="material-symbols-outlined">{{ trackIcons[t] }}</span>
+                  {{ t === 'all' ? 'All Tracks' : (t | titlecase) }}
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <textarea class="form-text" [(ngModel)]="formModel.description" placeholder="Describe the arena -- theme, challenge, and what competitors will face..." rows="3"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group flex-2">
+                <label>Rules &amp; Format</label>
+                <textarea class="form-text" [(ngModel)]="formModel.rules" placeholder="Competition rules, eligibility, format..." rows="2"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Judging Criteria</label>
+                <textarea class="form-text" [(ngModel)]="formModel.criteria" placeholder="How will entries be judged?..." rows="2"></textarea>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="ac-form-group">
-          <label>Track</label>
-          <select [(ngModel)]="formModel.track">
-            <option *ngFor="let t of tracks" [value]="t">{{ t === 'all' ? 'Multi-Track' : (t | titlecase) }}</option>
-          </select>
+
+        <!-- ── STEP 2: Timeline & Rewards ── -->
+        <div class="forge-step-panel" *ngIf="formStep === 2">
+          <div class="forge-section">
+            <div class="forge-section-title">
+              <span class="material-symbols-outlined">calendar_month</span> Timeline &amp; Rewards
+            </div>
+            <div class="date-range-visual">
+              <div class="date-range-block">
+                <label>Start Date</label>
+                <input type="date" class="form-input" [(ngModel)]="formModel.startDate">
+              </div>
+              <div class="date-range-arrow">
+                <span class="material-symbols-outlined">arrow_forward</span>
+              </div>
+              <div class="date-range-block">
+                <label>End Date</label>
+                <input type="date" class="form-input" [(ngModel)]="formModel.endDate">
+              </div>
+              <div class="date-range-block deadline-block">
+                <label>Registration Deadline</label>
+                <input type="date" class="form-input" [(ngModel)]="formModel.deadline">
+              </div>
+            </div>
+          </div>
+          <div class="forge-section">
+            <div class="forge-section-title">
+              <span class="material-symbols-outlined">workspace_premium</span> Rewards &amp; Capacity
+            </div>
+            <div class="form-row triple">
+              <div class="form-group">
+                <label>Prize</label>
+                <input type="text" class="form-input" [(ngModel)]="formModel.prize" placeholder="e.g. ₵10,000 + Trophy">
+              </div>
+              <div class="form-group">
+                <label>Max Teams</label>
+                <input type="number" class="form-input" [(ngModel)]="formModel.maxTeams" min="1">
+              </div>
+              <div class="form-group">
+                <label>Status</label>
+                <select class="form-select" [(ngModel)]="formModel.status">
+                  <option *ngFor="let s of statuses" [value]="s">{{ s.charAt(0).toUpperCase() + s.slice(1) }}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── STEP 3: Phases ── -->
+        <div class="forge-step-panel" *ngIf="formStep === 3">
+          <div class="forge-section">
+            <div class="forge-section-title">
+              <span class="material-symbols-outlined">layers</span> Phases
+              <span class="forge-section-hint">{{ formModel.phases?.length || 0 }} defined</span>
+            </div>
+
+            <!-- Phase quick templates -->
+            <div class="phase-templates">
+              <span class="phase-templates-label">Quick Templates:</span>
+              <button *ngFor="let tpl of phaseTemplates"
+                      class="phase-tpl-btn"
+                      (click)="applyPhaseTemplate(tpl.id)">
+                <span class="material-symbols-outlined">{{ tpl.icon }}</span>
+                {{ tpl.label }}
+              </button>
+            </div>
+
+            <div class="phases-builder">
+              <div class="phase-entry" *ngFor="let phase of formModel.phases; let i = index">
+                <div class="phase-entry-indicator" [style.background]="phaseColors[phase.type] || '#94a3b8'"></div>
+                <div class="phase-entry-body">
+                  <div class="phase-entry-head">
+                    <strong>{{ phase.name }}</strong>
+                    <span class="phase-entry-type" [style.color]="phaseColors[phase.type]">{{ phase.type | titlecase }}</span>
+                  </div>
+                  <span class="phase-entry-dates" *ngIf="phase.startDate || phase.endDate">{{ formatDate(phase.startDate) }} -- {{ formatDate(phase.endDate) }}</span>
+                  <span class="phase-entry-dates muted" *ngIf="!phase.startDate && !phase.endDate">Dates not set</span>
+                </div>
+                <span class="phase-entry-status" [style.background]="(statusColors[phase.status] || '#94a3b8') + '18'" [style.color]="statusColors[phase.status] || '#94a3b8'">
+                  {{ phase.status | titlecase }}
+                </span>
+                <div class="phase-entry-actions">
+                  <button class="btn-icon" (click)="openPhaseModal(phase, i)"><span class="material-symbols-outlined">edit</span></button>
+                  <button class="btn-icon danger" (click)="removePhase(i)"><span class="material-symbols-outlined">close</span></button>
+                </div>
+              </div>
+              <div class="phase-add-hint" *ngIf="!formModel.phases?.length">
+                <span class="material-symbols-outlined">add_circle</span>
+                <span>Use a template above or add phases manually below.</span>
+              </div>
+              <button class="btn btn-subtle btn-sm" (click)="openPhaseModal()">
+                <span class="material-symbols-outlined">add</span>
+                Add Phase Manually
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer with step navigation -->
+      <div class="forge-modal-footer">
+        <button class="btn btn-ghost" (click)="formStep > 1 ? prevStep() : closeFormModal()">
+          <span class="material-symbols-outlined">{{ formStep > 1 ? 'arrow_back' : 'close' }}</span>
+          {{ formStep > 1 ? 'Back' : 'Cancel' }}
+        </button>
+        <div class="footer-step-dots">
+          <span class="footer-dot" [class.active]="formStep === 1"></span>
+          <span class="footer-dot" [class.active]="formStep === 2"></span>
+          <span class="footer-dot" [class.active]="formStep === 3"></span>
+        </div>
+        <div class="footer-right-btns">
+          <button class="btn btn-primary" *ngIf="formStep < 3" (click)="nextStep()" [disabled]="!canAdvanceStep()">
+            Next <span class="material-symbols-outlined">arrow_forward</span>
+          </button>
+          <button class="btn btn-primary" *ngIf="formStep === 3" (click)="saveCompetition()" [disabled]="!formModel.title">
+            <span class="material-symbols-outlined">{{ editingCompetition ? 'save' : 'add_circle' }}</span>
+            {{ editingCompetition ? 'Save Changes' : 'Launch Cycle' }}
+          </button>
         </div>
       </div>
-      <div class="ac-form-row">
-        <div class="ac-form-group">
-          <label>Cycle Type</label>
-          <select [(ngModel)]="formModel.type">
-            <option *ngFor="let t of cycleTypes" [value]="t">{{ getTypeLabel(t) }}</option>
-          </select>
-        </div>
-        <div class="ac-form-group">
-          <label>Status</label>
-          <select [(ngModel)]="formModel.status">
-            <option *ngFor="let s of statuses" [value]="s">{{ s | titlecase }}</option>
-          </select>
+    </div>
+  </div>
+
+  <!-- Phase Modal -->
+  <div class="modal-backdrop" *ngIf="isPhaseModalOpen" (click)="closePhaseModal()"></div>
+  <div class="modal-sm phase-sm" *ngIf="isPhaseModalOpen" (click)="$event.stopPropagation()">
+    <div class="modal-form-header">
+      <h2>{{ editingPhase ? 'Edit' : 'Add' }} Phase</h2>
+      <button class="modal-close" (click)="closePhaseModal()"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="modal-form-body">
+      <div class="form-group">
+        <label>Phase Name</label>
+        <input type="text" class="form-input" [(ngModel)]="phaseModel.name" placeholder="e.g. Project Submission Window">
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <div class="phase-type-grid">
+          <button *ngFor="let pt of phaseTypes" class="phase-type-btn" [class.active]="phaseModel.type === pt" (click)="phaseModel.type = pt"
+                  [style.--pt-color]="phaseColors[pt] || '#94a3b8'">
+            <span class="material-symbols-outlined">{{ phaseIcons[pt] }}</span>
+            {{ pt | titlecase }}
+          </button>
         </div>
       </div>
-      <div class="ac-form-group">
+      <div class="form-group">
         <label>Description</label>
-        <textarea [(ngModel)]="formModel.description" rows="2" placeholder="Describe the competition, theme, and challenge..."></textarea>
+        <textarea class="form-text" [(ngModel)]="phaseModel.description" placeholder="What happens in this phase?" rows="2"></textarea>
       </div>
-      <div class="ac-form-row">
-        <div class="ac-form-group">
-          <label>Prize</label>
-          <input type="text" [(ngModel)]="formModel.prize" placeholder="e.g. ₵10,000 + Trophy">
-        </div>
-        <div class="ac-form-group">
-          <label>Max Teams</label>
-          <input type="number" [(ngModel)]="formModel.maxTeams" min="1">
-        </div>
-      </div>
-      <div class="ac-form-row triple">
-        <div class="ac-form-group">
+      <div class="form-row">
+        <div class="form-group">
           <label>Start Date</label>
-          <input type="date" [(ngModel)]="formModel.startDate">
+          <input type="date" class="form-input" [(ngModel)]="phaseModel.startDate">
         </div>
-        <div class="ac-form-group">
+        <div class="form-group">
           <label>End Date</label>
-          <input type="date" [(ngModel)]="formModel.endDate">
+          <input type="date" class="form-input" [(ngModel)]="phaseModel.endDate">
         </div>
-        <div class="ac-form-group">
-          <label>Registration Deadline</label>
-          <input type="date" [(ngModel)]="formModel.deadline">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <div class="phase-status-options">
+          <button class="status-opt" [class.active]="phaseModel.status === 'pending'" (click)="phaseModel.status = 'pending'">Pending</button>
+          <button class="status-opt" [class.active]="phaseModel.status === 'active'" (click)="phaseModel.status = 'active'">Active</button>
+          <button class="status-opt" [class.active]="phaseModel.status === 'completed'" (click)="phaseModel.status = 'completed'">Completed</button>
         </div>
       </div>
     </div>
-    <div class="ac-modal-footer">
-      <button class="ac-btn ac-btn-ghost" (click)="closeFormModal()">Cancel</button>
-      <button class="ac-btn ac-btn-primary" (click)="saveCompetition()" [disabled]="!formModel.title">
-        <span class="material-symbols-outlined">{{ editingCompetition ? 'save' : 'add' }}</span>
-        {{ editingCompetition ? 'Save Changes' : 'Create Cycle' }}
+    <div class="modal-form-footer">
+      <button class="btn btn-ghost" (click)="closePhaseModal()">Cancel</button>
+      <button class="btn btn-primary" (click)="savePhase()" [disabled]="!phaseModel.name">
+        <span class="material-symbols-outlined">check</span>
+        {{ editingPhase ? 'Update' : 'Add' }} Phase
       </button>
     </div>
   </div>
