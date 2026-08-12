@@ -504,9 +504,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return Math.round((this.scoredJudgeSubmissionsCount / total) * 100);
   }
 
+  get activeSessionsMeta(): string {
+    const judgeCount = this.registeredUsers.filter(u => u.role === 'judge').length;
+    const sponsorCount = this.registeredUsers.filter(u => u.role === 'sponsor').length;
+    const judgeStr = `${judgeCount} ${judgeCount === 1 ? 'Judge' : 'Judges'}`;
+    const sponsorStr = `${sponsorCount} ${sponsorCount === 1 ? 'Sponsor' : 'Sponsors'}`;
+    return `${judgeStr} · ${sponsorStr}`;
+  }
+
   get recentScoredJudgeSubmissions(): any[] {
     return this.assignedSubmissions.filter(s => s.score !== null).slice(0, 5);
   }
+
+
 
   exportScoresFromDashboard(): void {
     const scored = this.assignedSubmissions.filter(s => s.score !== null);
@@ -929,7 +939,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           { label: 'Total Registered Users', value: String(this.contentService.userCount || this.registeredUsers.length), icon: 'manage_accounts', meta: '6 distinct portals', color: 'primary' },
           { label: 'System Health', value: '100%', icon: 'cloud_done', meta: 'All 4 nodes green', color: 'secondary' },
           { label: 'Pending Approvals', value: String(this.pendingApprovals.length), icon: 'verified_user', meta: this.pendingApprovals.length > 0 ? 'Action required' : 'All clear', color: 'error' },
-          { label: 'Active Sessions', value: String(this.authSessionCount >= 0 ? this.authSessionCount : this.registeredUsers.filter(u => u.status === 'Active').length), icon: 'groups', meta: `${this.registeredUsers.filter(u => u.role === 'judge').length} Judges · ${this.registeredUsers.filter(u => u.role === 'sponsor').length} Sponsors`, color: 'tertiary' }
+          { label: 'Active Sessions', value: String(this.authSessionCount >= 0 ? this.authSessionCount : this.registeredUsers.filter(u => u.status === 'Active').length), icon: 'groups', meta: this.activeSessionsMeta, color: 'tertiary' }
         ];
         break;
     }
@@ -1437,7 +1447,7 @@ setTimeout(async () => {
       // Update stat
       this.stats = this.stats.map(s =>
         s.icon === 'groups'
-          ? { ...s, value: String(this.registeredUsers.length), meta: `${this.registeredUsers.filter(u => u.role === 'judge').length} Judges · ${this.registeredUsers.filter(u => u.role === 'sponsor').length} Sponsors` }
+          ? { ...s, value: String(this.registeredUsers.length), meta: this.activeSessionsMeta }
           : s
       );
 
