@@ -550,7 +550,7 @@
 
         <div class="cc-control-grid">
           <div class="cc-control-card" (click)="goToSubTab('tickets')">
-            <div class="cc-control-card-icon">
+            <div class="cc-control-card-icon cc-icon-tokens">
               <span class="material-symbols-outlined">confirmation_number</span>
             </div>
             <div class="cc-control-card-body">
@@ -562,7 +562,7 @@
           </div>
 
           <div class="cc-control-card" (click)="goToSubTab('approvals')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
-            <div class="cc-control-card-icon cc-icon-warn">
+            <div class="cc-control-card-icon cc-icon-approvals">
               <span class="material-symbols-outlined">verified_user</span>
             </div>
             <div class="cc-control-card-body">
@@ -575,7 +575,7 @@
           </div>
 
           <div class="cc-control-card" (click)="goToSubTab('content')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager'">
-            <div class="cc-control-card-icon">
+            <div class="cc-control-card-icon cc-icon-content">
               <span class="material-symbols-outlined">edit_note</span>
             </div>
             <div class="cc-control-card-body">
@@ -587,7 +587,7 @@
           </div>
 
           <div class="cc-control-card" (click)="goToSubTab('users')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
-            <div class="cc-control-card-icon">
+            <div class="cc-control-card-icon cc-icon-users">
               <span class="material-symbols-outlined">group</span>
             </div>
             <div class="cc-control-card-body">
@@ -599,7 +599,7 @@
           </div>
 
           <div class="cc-control-card" (click)="goToSubTab('admins')" *ngIf="activeRoleId === 'super_admin'">
-            <div class="cc-control-card-icon cc-icon-danger">
+            <div class="cc-control-card-icon cc-icon-admins">
               <span class="material-symbols-outlined">admin_panel_settings</span>
             </div>
             <div class="cc-control-card-body">
