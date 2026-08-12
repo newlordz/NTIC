@@ -148,6 +148,11 @@ export class AppComponent implements OnInit, OnDestroy {
     this.renderer.removeClass(document.body, 'sidebar-drawer-open');
   }
 
+  navigateToDashboard(): void {
+    this.closeMobileSidebar();
+    this.router.navigate(['/dashboard'], { queryParams: {} });
+  }
+
   @HostListener('window:resize')
   onWindowResize(): void {
     if (typeof window !== 'undefined' && window.innerWidth > 768) {
