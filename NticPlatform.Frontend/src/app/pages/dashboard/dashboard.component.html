@@ -511,333 +511,201 @@
       </div>
     </div>
 
-    <!-- ══ COMMAND CENTER KPI CARDS ══ -->
-    <div class="cc-kpi-grid" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
-      <div *ngFor="let stat of stats; let i = index"
-           class="cc-kpi-card"
-           [attr.data-index]="i"
-           role="button" tabindex="0"
-           (click)="onStatCardClick(stat)"
-           [title]="'Click to view ' + stat.label">
-        <div class="cc-kpi-top">
-          <div class="cc-kpi-icon">
-            <span class="material-symbols-outlined">{{ stat.icon }}</span>
+    <!-- ══ SINGLE-SCREEN COMMAND CENTER DASHBOARD (ZERO OVERFLOW) ══ -->
+    <div class="cc-viewport-container" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
+
+      <!-- ── TOP TELEMETRY & KPI ROW ── -->
+      <div class="cc-top-visual-row">
+
+        <!-- 1. OVERALL HEALTH DONUT RING CARD -->
+        <div class="cc-gauge-hero-card">
+          <div class="cc-hero-ring-wrap">
+            <svg viewBox="0 0 36 36" class="cc-hero-ring-svg">
+              <path class="cc-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3.5"/>
+              <path class="cc-ring-fill" stroke="#10b981" stroke-dasharray="98, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3.5" stroke-linecap="round"/>
+            </svg>
+            <div class="cc-hero-ring-center">
+              <span class="cc-ring-sub">System Health</span>
+              <span class="cc-ring-val">98%</span>
+            </div>
           </div>
-          <div class="cc-kpi-action">
-            <span>View</span>
+        </div>
+
+        <!-- 2. KPI METRIC CARD 1: REGISTERED USERS -->
+        <div class="cc-vcard" (click)="goToSubTab('users')" role="button" tabindex="0">
+          <div class="cc-vcard-top">
+            <span class="cc-vcard-title">Total Registered Users</span>
+            <div class="cc-vcard-icon cc-ic-blue">
+              <span class="material-symbols-outlined">group</span>
+            </div>
+          </div>
+          <div class="cc-vcard-num">{{ registeredUsers.length }}</div>
+          <div class="cc-vcard-footer">
+            <span>View Users</span>
             <span class="material-symbols-outlined">arrow_forward</span>
           </div>
         </div>
-        <div class="cc-kpi-value">{{ stat.value }}</div>
-        <div class="cc-kpi-label">{{ stat.label }}</div>
-        <div class="cc-kpi-meta">{{ stat.meta }}</div>
-        <div class="cc-kpi-glow"></div>
-      </div>
-    </div> 
 
-    <!-- ══ COMMAND CENTER MAIN MONITORING & OPERATIONS DECK ══ -->
-    <div class="cc-dashboard-deck" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
-
-      <!-- ── 1. QUICK COMMAND NAVIGATION HUB ── -->
-      <div class="cc-quick-hub">
-        <div class="cc-hub-card" (click)="goToSubTab('tickets')">
-          <div class="cc-hub-icon cc-icon-tokens">
-            <span class="material-symbols-outlined">confirmation_number</span>
+        <!-- 3. KPI METRIC CARD 2: PENDING APPROVALS -->
+        <div class="cc-vcard" (click)="goToSubTab('approvals')" role="button" tabindex="0">
+          <div class="cc-vcard-top">
+            <span class="cc-vcard-title">Pending Approvals</span>
+            <div class="cc-vcard-icon cc-ic-amber">
+              <span class="material-symbols-outlined">verified_user</span>
+            </div>
           </div>
-          <div class="cc-hub-info">
-            <div class="cc-hub-title">Access Tokens</div>
-            <div class="cc-hub-sub">{{ registeredUsers.length }} registered passes</div>
+          <div class="cc-vcard-num">{{ pendingApprovals.length }}</div>
+          <div class="cc-vcard-footer">
+            <span>View Approvals</span>
+            <span class="material-symbols-outlined">arrow_forward</span>
           </div>
-          <span class="material-symbols-outlined cc-hub-arrow">chevron_right</span>
         </div>
 
-        <div class="cc-hub-card" (click)="goToSubTab('approvals')">
-          <div class="cc-hub-icon cc-icon-approvals">
-            <span class="material-symbols-outlined">verified_user</span>
+        <!-- 4. KPI METRIC CARD 3: ACTIVE SESSIONS -->
+        <div class="cc-vcard" (click)="goToSubTab('tickets')" role="button" tabindex="0">
+          <div class="cc-vcard-top">
+            <span class="cc-vcard-title">Active Platform Sessions</span>
+            <div class="cc-vcard-icon cc-ic-indigo">
+              <span class="material-symbols-outlined">devices</span>
+            </div>
           </div>
-          <div class="cc-hub-info">
-            <div class="cc-hub-title">Pending Approvals</div>
-            <div class="cc-hub-sub" *ngIf="pendingApprovals && pendingApprovals.length > 0">{{ pendingApprovals.length }} awaiting review</div>
-            <div class="cc-hub-sub cc-sub-clear" *ngIf="!pendingApprovals || pendingApprovals.length === 0">All clear</div>
+          <div class="cc-vcard-num">4</div>
+          <div class="cc-vcard-footer">
+            <span>View Sessions</span>
+            <span class="material-symbols-outlined">arrow_forward</span>
           </div>
-          <span class="material-symbols-outlined cc-hub-arrow">chevron_right</span>
         </div>
 
-        <div class="cc-hub-card" (click)="goToSubTab('content')">
-          <div class="cc-hub-icon cc-icon-content">
-            <span class="material-symbols-outlined">edit_note</span>
-          </div>
-          <div class="cc-hub-info">
-            <div class="cc-hub-title">Content Manager</div>
-            <div class="cc-hub-sub">{{ (contentService?.championshipStories?.length || 0) + (contentService?.upcomingEvents?.length || 0) }} stories & events</div>
-          </div>
-          <span class="material-symbols-outlined cc-hub-arrow">chevron_right</span>
-        </div>
-
-        <div class="cc-hub-card" (click)="goToSubTab('users')">
-          <div class="cc-hub-icon cc-icon-users">
-            <span class="material-symbols-outlined">group</span>
-          </div>
-          <div class="cc-hub-info">
-            <div class="cc-hub-title">Users Directory</div>
-            <div class="cc-hub-sub">{{ registeredUsers.length }} active accounts</div>
-          </div>
-          <span class="material-symbols-outlined cc-hub-arrow">chevron_right</span>
-        </div>
       </div>
 
-      <!-- ── 2. VISUAL TELEMETRY & ACTIVITY TREND CHART ── -->
-      <div class="cc-panel cc-mb-20">
-        <div class="cc-panel-header">
-          <div class="cc-panel-label">
-            <span class="material-symbols-outlined">analytics</span>
-            Weekly Platform Activity & Submission Trends
-          </div>
-          <div class="cc-chart-legend">
-            <span class="cc-legend-item"><span class="cc-legend-dot cc-bg-blue"></span>Logins</span>
-            <span class="cc-legend-item"><span class="cc-legend-dot cc-bg-indigo"></span>Submissions</span>
-            <span class="cc-legend-item"><span class="cc-legend-dot cc-bg-emerald"></span>Registrations</span>
+      <!-- ── BOTTOM PRIORITY SERVICES VISUAL GRID ── -->
+      <div class="cc-bottom-services-section">
+        <div class="cc-services-header">
+          <h3 class="cc-services-title">Priority Platform Services</h3>
+          <div class="cc-services-dots">
+            <span class="cc-dot active"></span>
+            <span class="cc-dot"></span>
+            <span class="cc-dot"></span>
           </div>
         </div>
-        <div class="cc-chart-body">
-          <div class="cc-chart-canvas-wrap">
-            <svg viewBox="0 0 500 160" width="100%" height="160" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="chartGradBlue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.30"/>
-                  <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
-                </linearGradient>
-                <linearGradient id="chartGradIndigo" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#6366f1" stop-opacity="0.35"/>
-                  <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
-                </linearGradient>
-                <linearGradient id="chartGradEmerald" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#10b981" stop-opacity="0.30"/>
-                  <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
-                </linearGradient>
-              </defs>
-              <!-- Grid lines -->
-              <line x1="0" y1="30" x2="500" y2="30" stroke="#f1f5f9" stroke-width="1"/>
-              <line x1="0" y1="70" x2="500" y2="70" stroke="#f1f5f9" stroke-width="1"/>
-              <line x1="0" y1="110" x2="500" y2="110" stroke="#f1f5f9" stroke-width="1"/>
-              <line x1="0" y1="150" x2="500" y2="150" stroke="#e2e8f0" stroke-width="1"/>
 
-              <!-- Area fills -->
-              <path [attr.d]="getChartAreaPath('logins')" fill="url(#chartGradBlue)"/>
-              <path [attr.d]="getChartAreaPath('submissions')" fill="url(#chartGradIndigo)"/>
-              <path [attr.d]="getChartAreaPath('registrations')" fill="url(#chartGradEmerald)"/>
+        <div class="cc-services-grid">
 
-              <!-- Stroke lines -->
-              <path [attr.d]="getChartPath('logins')" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
-              <path [attr.d]="getChartPath('submissions')" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round"/>
-              <path [attr.d]="getChartPath('registrations')" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-
-            <!-- Day Labels Axis -->
-            <div class="cc-chart-axis">
-              <span *ngFor="let item of weeklyActivityTrend">{{ item.day }}</span>
+          <!-- SERVICE CARD 1: FRONTEND GATEWAY -->
+          <div class="cc-service-card">
+            <div class="cc-scard-header">
+              <span class="cc-scard-name">Frontend Edge Gateway</span>
+              <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>Active</span>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── 3. TWO-COLUMN COMMAND CENTER LAYOUT ── -->
-      <div class="cc-ops-grid">
-
-        <!-- LEFT COLUMN: SYSTEM INFRASTRUCTURE & LIVE AUDIT TRAIL -->
-        <div class="cc-ops-left">
-
-          <!-- System Infrastructure Nodes -->
-          <div class="cc-panel cc-mb-20">
-            <div class="cc-panel-header">
-              <div class="cc-panel-label">
-                <span class="material-symbols-outlined">dns</span>
-                System Infrastructure Nodes
+            <div class="cc-scard-body">
+              <div class="cc-scard-ring-wrap">
+                <svg viewBox="0 0 36 36" class="cc-mini-ring-svg">
+                  <path class="cc-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+                  <path class="cc-ring-fill" stroke="#10b981" stroke-dasharray="96, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                <div class="cc-mini-ring-center">
+                  <span class="cc-mring-sub">Health</span>
+                  <span class="cc-mring-val" style="color: #10b981;">96%</span>
+                </div>
               </div>
-              <div class="cc-panel-status">
-                <span class="cc-live-dot cc-dot-green"></span>
-                <span>All Healthy</span>
+              <div class="cc-scard-details">
+                <div class="cc-sdetail-row">
+                  <span class="material-symbols-outlined cc-ic-dot">speed</span>
+                  <span class="cc-sdetail-text">Latency: <strong>42ms</strong></span>
+                </div>
+                <div class="cc-sdetail-row">
+                  <span class="material-symbols-outlined cc-ic-dot">memory</span>
+                  <span class="cc-sdetail-text">CPU Load: <strong>12%</strong></span>
+                </div>
+                <div class="cc-sdetail-row">
+                  <span class="material-symbols-outlined cc-ic-dot">check_circle</span>
+                  <span class="cc-sdetail-text">Status: <strong>Operational</strong></span>
+                </div>
               </div>
             </div>
-            <div class="cc-node-grid">
-              <div *ngFor="let node of systemNodes; let i = index" class="cc-node-card">
-                <div class="cc-node-top">
-                  <div class="cc-node-icon">
-                    <span class="material-symbols-outlined">settings_ethernet</span>
-                  </div>
-                  <div class="cc-node-info">
-                    <div class="cc-node-name">{{ node.name }}</div>
-                    <div class="cc-node-status">
-                      <span class="cc-live-dot cc-dot-green"></span>
-                      <span>{{ node.status }}</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="cc-node-metrics">
-                  <div class="cc-metric">
-                    <span class="cc-metric-label">Latency</span>
-                    <span class="cc-metric-value">{{ getNodeLatency(i) }}<em>ms</em></span>
-                  </div>
-                  <div class="cc-metric">
-                    <span class="cc-metric-label">Load</span>
-                    <span class="cc-metric-value">{{ getNodeLoad(i) }}<em>%</em></span>
-                  </div>
-                  <div class="cc-sparkline-wrap">
-                    <svg viewBox="0 0 80 28" width="80" height="28" preserveAspectRatio="none">
-                      <defs>
-                        <linearGradient [id]="'sg_dash_'+i" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stop-color="#0056b3" stop-opacity="0.35"/>
-                          <stop offset="100%" stop-color="#0056b3" stop-opacity="0"/>
-                        </linearGradient>
-                      </defs>
-                      <path [attr.d]="sparklinePath(nodeHistory[i]) + ' L 80,28 L 0,28 Z'"
-                            [attr.fill]="'url(#sg_dash_'+i+')'" />
-                      <path [attr.d]="sparklinePath(nodeHistory[i])"
-                            fill="none" stroke="#0056b3" stroke-width="1.5"
-                            stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  </div>
-                </div>
-                <div class="cc-node-bar-wrap">
-                  <div class="cc-node-bar" [style.width]="getNodeLoad(i) + '%'"></div>
-                </div>
-              </div>
+            <div class="cc-scard-footer">
+              <span>View Log</span>
+              <span class="material-symbols-outlined">arrow_forward</span>
             </div>
           </div>
 
-          <!-- Live Audit Trail Feed -->
-          <div class="cc-panel">
-            <div class="cc-panel-header">
-              <div class="cc-panel-label">
-                <span class="material-symbols-outlined">receipt_long</span>
-                Live Audit Trail
+          <!-- SERVICE CARD 2: CORE API & COMPILER SANDBOX -->
+          <div class="cc-service-card">
+            <div class="cc-scard-header">
+              <span class="cc-scard-name">Core API & Sandbox Engine</span>
+              <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>Active</span>
+            </div>
+            <div class="cc-scard-body">
+              <div class="cc-scard-ring-wrap">
+                <svg viewBox="0 0 36 36" class="cc-mini-ring-svg">
+                  <path class="cc-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+                  <path class="cc-ring-fill" stroke="#3b82f6" stroke-dasharray="94, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                <div class="cc-mini-ring-center">
+                  <span class="cc-mring-sub">Health</span>
+                  <span class="cc-mring-val" style="color: #3b82f6;">94%</span>
+                </div>
               </div>
-              <div class="cc-panel-status cc-blink-badge">
-                <span class="cc-live-dot"></span>
-                <span>LIVE</span>
+              <div class="cc-scard-details">
+                <div class="cc-sdetail-row">
+                  <span class="material-symbols-outlined cc-ic-dot">speed</span>
+                  <span class="cc-sdetail-text">Latency: <strong>85ms</strong></span>
+                </div>
+                <div class="cc-sdetail-row">
+                  <span class="material-symbols-outlined cc-ic-dot">memory</span>
+                  <span class="cc-sdetail-text">CPU Load: <strong>38%</strong></span>
+                </div>
+                <div class="cc-sdetail-row">
+                  <span class="material-symbols-outlined cc-ic-dot">terminal</span>
+                  <span class="cc-sdetail-text">Compiler VM: <strong>Ready</strong></span>
+                </div>
               </div>
             </div>
-            <div class="cc-audit-list">
-              <div *ngFor="let log of auditLogs" class="cc-audit-item" [class]="'cc-audit-' + log.type">
-                <div class="cc-audit-icon">
-                  <span class="material-symbols-outlined">
-                    {{ log.type === 'auth' ? 'login' : log.type === 'ticket' ? 'confirmation_number' : log.type === 'approval' ? 'check_circle' : 'settings' }}
-                  </span>
-                </div>
-                <div class="cc-audit-body">
-                  <div class="cc-audit-action">{{ log.action }}</div>
-                  <div class="cc-audit-meta">{{ log.user }} &middot; {{ log.time | timeAgo }}</div>
+            <div class="cc-scard-footer">
+              <span>View Log</span>
+              <span class="material-symbols-outlined">arrow_forward</span>
+            </div>
+          </div>
+
+          <!-- SERVICE CARD 3: REALTIME DB & ANALYTICS SYNC -->
+          <div class="cc-service-card">
+            <div class="cc-scard-header">
+              <span class="cc-scard-name">Realtime Sync & Storage</span>
+              <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>Active</span>
+            </div>
+            <div class="cc-scard-body">
+              <div class="cc-scard-ring-wrap">
+                <svg viewBox="0 0 36 36" class="cc-mini-ring-svg">
+                  <path class="cc-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+                  <path class="cc-ring-fill" stroke="#6366f1" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                <div class="cc-mini-ring-center">
+                  <span class="cc-mring-sub">Health</span>
+                  <span class="cc-mring-val" style="color: #6366f1;">100%</span>
                 </div>
               </div>
-              <div *ngIf="!auditLogs || auditLogs.length === 0" class="cc-audit-empty">
-                <span class="material-symbols-outlined">history</span>
-                <span>No recent audit logs available</span>
+              <div class="cc-scard-details">
+                <div class="cc-sdetail-row">
+                  <span class="material-symbols-outlined cc-ic-dot">sync</span>
+                  <span class="cc-sdetail-text">Sync Delay: <strong>15ms</strong></span>
+                </div>
+                <div class="cc-sdetail-row">
+                  <span class="material-symbols-outlined cc-ic-dot">storage</span>
+                  <span class="cc-sdetail-text">DB Health: <strong>Optimal</strong></span>
+                </div>
+                <div class="cc-sdetail-row">
+                  <span class="material-symbols-outlined cc-ic-dot">history</span>
+                  <span class="cc-sdetail-text">Audit Trail: <strong>Live</strong></span>
+                </div>
               </div>
+            </div>
+            <div class="cc-scard-footer">
+              <span>View Log</span>
+              <span class="material-symbols-outlined">arrow_forward</span>
             </div>
           </div>
 
         </div>
-
-        <!-- RIGHT COLUMN: TELEMETRY GAUGES, TRACK MATRIX & GOVERNANCE -->
-        <div class="cc-ops-right">
-
-          <!-- Telemetry Gauges Ring Panel -->
-          <div class="cc-panel cc-mb-20">
-            <div class="cc-panel-header">
-              <div class="cc-panel-label">
-                <span class="material-symbols-outlined">speed</span>
-                Resource Telemetry Meters
-              </div>
-            </div>
-            <div class="cc-gauges-grid">
-              <div *ngFor="let g of systemGauges" class="cc-gauge-card">
-                <div class="cc-gauge-ring-wrap">
-                  <svg viewBox="0 0 36 36" class="cc-gauge-svg">
-                    <path class="cc-gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/>
-                    <path class="cc-gauge-fill" [attr.stroke]="g.color" [attr.stroke-dasharray]="g.value + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
-                  </svg>
-                  <span class="cc-gauge-num" [style.color]="g.color">{{ g.value }}<em>{{ g.unit }}</em></span>
-                </div>
-                <div class="cc-gauge-label">{{ g.label }}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Competition Track Distribution Breakdown -->
-          <div class="cc-panel cc-mb-20">
-            <div class="cc-panel-header">
-              <div class="cc-panel-label">
-                <span class="material-symbols-outlined">category</span>
-                Competition Track Matrix
-              </div>
-            </div>
-            <div class="cc-track-list">
-              <div *ngFor="let t of trackDistribution" class="cc-track-row">
-                <div class="cc-track-top">
-                  <div class="cc-track-name">
-                    <span class="material-symbols-outlined cc-track-ic" [style.color]="t.color">{{ t.icon }}</span>
-                    <span>{{ t.name }}</span>
-                  </div>
-                  <div class="cc-track-count">{{ t.count }} projects</div>
-                </div>
-                <div class="cc-role-bar-bg">
-                  <div class="cc-role-bar-fill" [style.background]="t.color" [style.width]="t.pct + '%'"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Users & Role Distribution Panel -->
-          <div class="cc-panel cc-mb-20">
-            <div class="cc-panel-header">
-              <div class="cc-panel-label">
-                <span class="material-symbols-outlined">pie_chart</span>
-                Platform Users & Role Distribution
-              </div>
-              <button class="cc-btn-link" (click)="goToSubTab('users')">View All</button>
-            </div>
-            <div class="cc-role-list">
-              <div *ngFor="let r of roleDistribution" class="cc-role-row" (click)="goToSubTab('users')">
-                <div class="cc-role-row-top">
-                  <div class="cc-role-name">
-                    <span class="material-symbols-outlined cc-role-ic">{{ r.icon }}</span>
-                    <span>{{ r.label }}</span>
-                  </div>
-                  <div class="cc-role-count">{{ r.count }} ({{ r.percent }}%)</div>
-                </div>
-                <div class="cc-role-bar-bg">
-                  <div class="cc-role-bar-fill" [style.width]="r.percent + '%'"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Quick Governance & Admin Actions -->
-          <div class="cc-panel">
-            <div class="cc-panel-header">
-              <div class="cc-panel-label">
-                <span class="material-symbols-outlined">admin_panel_settings</span>
-                Governance Actions
-              </div>
-            </div>
-            <div class="cc-actions-body">
-              <button class="cc-gov-btn" (click)="openAdminModal()" *ngIf="activeRoleId === 'super_admin'">
-                <span class="material-symbols-outlined">add_moderator</span>
-                <span>Add Admin Account</span>
-              </button>
-              <button class="cc-gov-btn" (click)="goToSubTab('content')">
-                <span class="material-symbols-outlined">post_add</span>
-                <span>Manage Content</span>
-              </button>
-              <button class="cc-gov-btn" (click)="goToSubTab('tickets')">
-                <span class="material-symbols-outlined">vpn_key</span>
-                <span>Access Passes & Tokens</span>
-              </button>
-            </div>
-          </div>
-
-        </div>
-
       </div>
 
     </div>
