@@ -1659,10 +1659,6 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     if (user.token) {
       setAuthValue('activeUserToken', user.token, this.rememberDevice);
     }
-    this.contentService.saveAuditLogs([
-      { action: `${role} login: ${email}`, user: email, time: new Date().toISOString(), type: 'auth' },
-      ...this.contentService.auditLogs
-    ]);
 
     const roleRoutes: Record<string, string> = {
       instructor: '/instructor',
