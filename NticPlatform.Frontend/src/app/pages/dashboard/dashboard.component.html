@@ -487,19 +487,6 @@
   <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
        SUPER ADMIN COMMAND CENTER
   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
-  <ng-container *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager' || activeRoleId === 'reviewer' || activeRoleId === 'competition_manager'">
-
-    <!-- Maximized Content Mode Header -->
-    <div *ngIf="maximizedContentTab" style="display:flex;align-items:center;gap:12px;padding:16px 24px;background:#001529;border-bottom:1px solid rgba(0,86,179,0.25);border-radius:12px;margin-bottom:16px;">
-      <button class="btn btn-subtle btn-sm" (click)="exitMaximize()">
-        <span class="material-symbols-outlined">arrow_back</span>Back to Dashboard
-      </button>
-      <div style="flex:1;"></div>
-      <span style="font-size:14px;font-weight:600;color:#acc7ff;text-transform:capitalize;">{{ maximizedContentTab }} Editor</span>
-      <div style="flex:1;"></div>
-      <span style="font-size:12px;color:rgba(172,199,255,0.6);">Full-page editing mode</span>
-    </div>
-
     <!-- ══ COMMAND CENTER MASTHEAD ══ -->
     <div class="cc-masthead" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
       <div class="cc-scanline"></div>
@@ -508,14 +495,14 @@
           <span class="material-symbols-outlined">shield_person</span>
         </div>
         <div class="cc-title-block">
-          <div class="cc-eyebrow">NTIC Platform · Super Admin</div>
-          <h1 class="cc-title">COMMAND CENTER</h1>
+          <div class="cc-eyebrow">NTIC Platform · System Administration</div>
+          <h1 class="cc-title">Command Center</h1>
         </div>
       </div>
       <div class="cc-masthead-right">
         <div class="cc-status-pill">
           <span class="cc-live-dot"></span>
-          <span class="cc-status-text">ALL SYSTEMS OPERATIONAL</span>
+          <span class="cc-status-text">All Systems Operational</span>
           <span class="cc-time-divider">|</span>
           <span class="cc-time">{{ liveTime }}</span>
         </div>
@@ -539,6 +526,7 @@
             <span class="material-symbols-outlined">{{ stat.icon }}</span>
           </div>
           <div class="cc-kpi-action">
+            <span>View</span>
             <span class="material-symbols-outlined">arrow_forward</span>
           </div>
         </div>
@@ -557,7 +545,7 @@
             <span class="material-symbols-outlined">settings_suggest</span>
           </div>
           <div>
-            <h2 class="cc-control-title">ADMINISTRATION CENTER</h2>
+            <h2 class="cc-control-title">Administration Center</h2>
             <p class="cc-control-sub">Manage platform users, registrations, content, and access tokens from one place.</p>
           </div>
         </div>
@@ -568,7 +556,7 @@
               <span class="material-symbols-outlined">confirmation_number</span>
             </div>
             <div class="cc-control-card-body">
-              <div class="cc-control-card-label">ACCESS TOKENS</div>
+              <div class="cc-control-card-label">Access Tokens</div>
               <div class="cc-control-card-desc">Registered users, judge tokens, sponsor passes, and active sessions.</div>
               <div class="cc-control-card-count">{{ registeredUsers.length }} registered</div>
             </div>
@@ -580,7 +568,7 @@
               <span class="material-symbols-outlined">verified_user</span>
             </div>
             <div class="cc-control-card-body">
-              <div class="cc-control-card-label">PENDING APPROVALS</div>
+              <div class="cc-control-card-label">Pending Approvals</div>
               <div class="cc-control-card-desc">Review and approve registrations from schools, teams, students, and instructors.</div>
               <div class="cc-control-card-count" *ngIf="pendingApprovals.length > 0">{{ pendingApprovals.length }} pending action</div>
               <div class="cc-control-card-count cc-count-clear" *ngIf="pendingApprovals.length === 0">All clear</div>
@@ -593,7 +581,7 @@
               <span class="material-symbols-outlined">edit_note</span>
             </div>
             <div class="cc-control-card-body">
-              <div class="cc-control-card-label">CONTENT MANAGER</div>
+              <div class="cc-control-card-label">Content Manager</div>
               <div class="cc-control-card-desc">Stories, hall of fame, leaderboard, events, news feed, and stats.</div>
               <div class="cc-control-card-count">{{ contentService.championshipStories.length + contentService.hallOfFameEntries.length + contentService.upcomingEvents.length }} items managed</div>
             </div>
@@ -605,7 +593,7 @@
               <span class="material-symbols-outlined">group</span>
             </div>
             <div class="cc-control-card-body">
-              <div class="cc-control-card-label">USERS BY ROLE</div>
+              <div class="cc-control-card-label">Users by Role</div>
               <div class="cc-control-card-desc">Browse and manage all platform users categorized by role and status.</div>
               <div class="cc-control-card-count">{{ registeredUsers.length }} users on platform</div>
             </div>
@@ -617,7 +605,7 @@
               <span class="material-symbols-outlined">admin_panel_settings</span>
             </div>
             <div class="cc-control-card-body">
-              <div class="cc-control-card-label">MANAGE ADMINS</div>
+              <div class="cc-control-card-label">Manage Admins</div>
               <div class="cc-control-card-desc">Create, edit, and manage administrator accounts and their permissions.</div>
               <div class="cc-control-card-count">{{ adminUsers.length }} admins active</div>
             </div>
@@ -635,11 +623,11 @@
           <div class="cc-panel-header">
             <div class="cc-panel-label">
               <span class="material-symbols-outlined">dns</span>
-              INFRASTRUCTURE NODES
+              System Infrastructure Nodes
             </div>
             <div class="cc-panel-status">
               <span class="cc-live-dot cc-dot-green"></span>
-              <span>ALL HEALTHY</span>
+              <span>All Healthy</span>
             </div>
           </div>
           <div class="cc-node-grid">
@@ -658,11 +646,11 @@
               </div>
               <div class="cc-node-metrics">
                 <div class="cc-metric">
-                  <span class="cc-metric-label">LATENCY</span>
+                  <span class="cc-metric-label">Latency</span>
                   <span class="cc-metric-value">{{ getNodeLatency(i) }}<em>ms</em></span>
                 </div>
                 <div class="cc-metric">
-                  <span class="cc-metric-label">LOAD</span>
+                  <span class="cc-metric-label">Load</span>
                   <span class="cc-metric-value">{{ getNodeLoad(i) }}<em>%</em></span>
                 </div>
                 <div class="cc-sparkline-wrap">
@@ -693,7 +681,7 @@
           <div class="cc-panel-header">
             <div class="cc-panel-label">
               <span class="material-symbols-outlined">receipt_long</span>
-              LIVE AUDIT TRAIL
+              Live Audit Trail
             </div>
             <div class="cc-panel-status cc-blink-badge">
               <span class="cc-live-dot"></span>
