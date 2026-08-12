@@ -544,16 +544,6 @@
       </div>
     </div>
 
-    <!-- Tab Navigation (hidden when maximized) -->
-    <div class="admin-tabs" *ngIf="!maximizedContentTab">
-      <button class="admin-tab" [class.active]="adminTab === 'overview'" (click)="goToTab('overview')">
-        <span class="material-symbols-outlined">dashboard</span>Overview
-      </button>
-
-      <button class="admin-tab" [class.active]="adminTab === 'control'" (click)="goToTab('control')">
-        <span class="material-symbols-outlined">admin_panel_settings</span>Admin Control
-      </button>
-    </div>
 
     <!-- ── ADMIN CONTROL LANDING PAGE ── -->
     <div *ngIf="adminTab === 'control' && !adminSubTab" class="admin-tab-body">
