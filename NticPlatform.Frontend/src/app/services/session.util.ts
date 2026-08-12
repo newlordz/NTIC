@@ -27,6 +27,8 @@ export function clearAllAuthValues(): void {
   AUTH_KEYS.forEach(clearAuthValue);
 }
 
+export const clearAuthSession = clearAllAuthValues;
+
 export function hasRememberedDevice(): boolean {
   return getAuthValue('activeRoleId') !== null && window.localStorage.getItem('activeRoleId') !== null;
 }
