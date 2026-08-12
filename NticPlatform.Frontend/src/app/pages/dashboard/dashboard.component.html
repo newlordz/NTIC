@@ -2239,7 +2239,7 @@
                 <input type="file" accept="video/*" (change)="onSlideVideoSelected($event)" style="display:none;">
               </label>
               <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant);">OR</span>
-              <input type="text" [(ngModel)]="slideForm.videoUrl" placeholder="assets/ntic_slideshow.mp4" style="flex:1;">
+              <input type="text" [(ngModel)]="slideForm.videoUrl" placeholder="assets/ntic_slideshow.bin" style="flex:1;">
             </div>
             <div *ngIf="slideForm.videoFileId" style="margin-top:8px; display:flex; align-items:center; gap:8px;">
               <img *ngIf="slideForm.videoThumbnail" [src]="slideForm.videoThumbnail" style="width:80px; height:45px; object-fit:cover; border-radius:6px; border:1px solid var(--outline-variant);">

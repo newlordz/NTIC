@@ -978,7 +978,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
           title: 'Where Ghana\'s Brightest Minds Compete & Innovate',
           description: 'Bringing together high school teams from all 16 regions to solve real-world problems through Coding, Robotics, AI, Networking & Cybersecurity, and Open Innovation.',
           image: 'assets/ntic_image_8.jpeg',
-          videoUrl: 'assets/ntic_slideshow.mp4',
+          videoUrl: 'assets/ntic_slideshow.bin',
           ctaText: 'Enter Portal',
           ctaLink: '#portal'
         }];
@@ -1144,6 +1144,10 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     });
     this.cardListeners = [];
     if (this.storyTimer) clearInterval(this.storyTimer);
+    if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
+      this.videoBlobCache.forEach(url => URL.revokeObjectURL(url));
+      this.videoBlobCache.clear();
+    }
   }
 
   timeAgo(date: string): string {
@@ -1269,6 +1273,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
   stopSlideShow(): void {
     if (this.slideInterval) {
       clearInterval(this.slideInterval);
+      this.slideInterval = null;
     }
   }
 
@@ -1329,6 +1334,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
   stopVideoEditLoop(): void {
     if (this.videoEditInterval) {
       clearInterval(this.videoEditInterval);
+      this.videoEditInterval = null;
     }
   }
 
@@ -1338,6 +1344,15 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
   }
 
   private videoBlobCache = new Map<string, string>();
+  private readonly videoXorKey = 'NTIC-GH-2026-slideshow';
+
+  private xorDecodeBytes(bytes: Uint8Array): Uint8Array {
+    const key = this.videoXorKey;
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] ^= key.charCodeAt(i % key.length);
+    }
+    return bytes;
+  }
 
   private async getBlobUrlForVideo(videoUrl: string): Promise<string> {
     if (!videoUrl) return '';
@@ -1350,8 +1365,13 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     try {
       const resp = await fetch(videoUrl);
       if (!resp.ok) return videoUrl;
-      const blob = await resp.blob();
-      const blobUrl = URL.createObjectURL(blob);
+      const buffer = await resp.arrayBuffer();
+      let bytes = new Uint8Array(buffer);
+      if (videoUrl.toLowerCase().endsWith('.bin')) {
+        bytes = this.xorDecodeBytes(bytes);
+      }
+      const videoBlob = new Blob([bytes], { type: 'video/mp4' });
+      const blobUrl = URL.createObjectURL(videoBlob);
       this.videoBlobCache.set(videoUrl, blobUrl);
       return blobUrl;
     } catch {
@@ -1374,10 +1394,10 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         if (url) { this.slides[i].image = url; }
       }
       if (!rawVideoUrl && hs?.image === 'assets/ntic_image_8.jpeg') {
-        rawVideoUrl = 'assets/ntic_slideshow.mp4';
+        rawVideoUrl = 'assets/ntic_slideshow.bin';
       }
       if (!rawVideoUrl && !this.slides[i].isVideoEdit) {
-        rawVideoUrl = 'assets/ntic_slideshow.mp4';
+        rawVideoUrl = 'assets/ntic_slideshow.bin';
       }
 
       if (rawVideoUrl) {
@@ -1397,10 +1417,14 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         video.muted = true;
         video.defaultMuted = true;
         video.play().then(() => {}).catch((err) => {
+          console.warn('Slide video play failed, retrying', err);
           // Retry once after a tick in case the element wasn't ready
           setTimeout(() => {
             video.muted = true;
-            video.play().catch(() => {});
+            video.play().catch(() => {
+              // Fallback: pause and let static image show
+              video.pause();
+            });
           }, 100);
         });
       } else {
@@ -1415,11 +1439,13 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
   }
 
   nextSlide(): void {
+    if (!this.slides.length) return;
     this.activeSlideIndex = (this.activeSlideIndex + 1) % this.slides.length;
     this.startSlideShow();
   }
 
   prevSlide(): void {
+    if (!this.slides.length) return;
     this.activeSlideIndex = (this.activeSlideIndex - 1 + this.slides.length) % this.slides.length;
     this.startSlideShow();
   }
