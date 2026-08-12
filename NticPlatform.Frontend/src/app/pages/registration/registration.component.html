@@ -2073,6 +2073,11 @@
             <!-- Active State (Group Squad Badge) -->
             <ng-container *ngIf="competitorMode === 'group' && teamForm.name">
               <div class="team-preview-card" [class]="(teamForm.track || 'coding').toLowerCase()">
+                <!-- Group / Squad Photo Banner -->
+                <div class="team-preview-banner" *ngIf="groupPhotoUrl || groupLogoUrl">
+                  <img [src]="groupPhotoUrl || groupLogoUrl" alt="Group Banner" class="team-banner-img" />
+                </div>
+
                 <div class="team-card-header-bar">
                   <span class="team-track-pill">{{ teamForm.track || 'General' }} Squad</span>
                   <span class="team-status-badge">SQUAD ARENA</span>
@@ -2091,20 +2096,25 @@
                       <span class="roster-label">Squad Roster (3--5 Members)</span>
                       <div class="roster-avatars">
                         <div class="avatar-bubble lead" [title]="teamForm.leadName || 'Captain'">
-                          <span *ngIf="teamForm.leadName">{{ getInitials(teamForm.leadName, '') }}</span>
-                          <span class="material-symbols-outlined" *ngIf="!teamForm.leadName">person</span>
+                          <img *ngIf="memberPhotoUrls['lead']" [src]="memberPhotoUrls['lead']" class="avatar-img" />
+                          <span *ngIf="!memberPhotoUrls['lead'] && teamForm.leadName">{{ getInitials(teamForm.leadName, '') }}</span>
+                          <span class="material-symbols-outlined" *ngIf="!memberPhotoUrls['lead'] && !teamForm.leadName">person</span>
                         </div>
                         <div class="avatar-bubble" *ngIf="teamForm.member2Name" [title]="teamForm.member2Name">
-                          <span>{{ getInitials(teamForm.member2Name, '') }}</span>
+                          <img *ngIf="memberPhotoUrls['m2']" [src]="memberPhotoUrls['m2']" class="avatar-img" />
+                          <span *ngIf="!memberPhotoUrls['m2']">{{ getInitials(teamForm.member2Name, '') }}</span>
                         </div>
                         <div class="avatar-bubble" *ngIf="teamForm.member3Name" [title]="teamForm.member3Name">
-                          <span>{{ getInitials(teamForm.member3Name, '') }}</span>
+                          <img *ngIf="memberPhotoUrls['m3']" [src]="memberPhotoUrls['m3']" class="avatar-img" />
+                          <span *ngIf="!memberPhotoUrls['m3']">{{ getInitials(teamForm.member3Name, '') }}</span>
                         </div>
                         <div class="avatar-bubble" *ngIf="teamForm.member4Name" [title]="teamForm.member4Name">
-                          <span>{{ getInitials(teamForm.member4Name, '') }}</span>
+                          <img *ngIf="memberPhotoUrls['m4']" [src]="memberPhotoUrls['m4']" class="avatar-img" />
+                          <span *ngIf="!memberPhotoUrls['m4']">{{ getInitials(teamForm.member4Name, '') }}</span>
                         </div>
                         <div class="avatar-bubble" *ngIf="teamForm.member5Name" [title]="teamForm.member5Name">
-                          <span>{{ getInitials(teamForm.member5Name, '') }}</span>
+                          <img *ngIf="memberPhotoUrls['m5']" [src]="memberPhotoUrls['m5']" class="avatar-img" />
+                          <span *ngIf="!memberPhotoUrls['m5']">{{ getInitials(teamForm.member5Name, '') }}</span>
                         </div>
                       </div>
                     </div>
