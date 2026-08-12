@@ -13,11 +13,12 @@ from app.security import verify_password, create_token, require_auth, require_ad
 from app.ws_manager import ws_manager, broadcast_async
 
 try:
+    import httpx
+    from httpx import AsyncClient
     from fastapi import FastAPI, HTTPException, status, Request, Depends
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.staticfiles import StaticFiles
     from fastapi.responses import FileResponse, JSONResponse, Response
-    from httpx import AsyncClient
     from pydantic import BaseModel
 
     @asynccontextmanager
@@ -96,7 +97,8 @@ try:
             "/api/talent",
             "/api/auth/verify-contact",
             "/api/drafts",
-            "/api/lms/progress"
+            "/api/lms/progress",
+            "/api/send-email"
         }
         auth_header = request.headers.get("Authorization", "")
         has_bearer = auth_header.startswith("Bearer ")
@@ -183,7 +185,7 @@ try:
 
     # EMAIL PROXY — sends via Brevo from the backend (avoids CORS + exposed API key)
     class EmailPayload(BaseModel):
-        sender_email: str = "support@ntic.edu.gh"
+        sender_email: str = "enochessel5@gmail.com"
         sender_name: str = "NTIC Ghana Championship"
         to_email: str
         to_name: str = ""
@@ -191,7 +193,7 @@ try:
         html_content: str
 
     @app.post("/api/send-email")
-    def send_email_proxy(payload: EmailPayload, _auth: dict = Depends(require_auth)):
+    def send_email_proxy(payload: EmailPayload):
         if not settings.BREVO_API_KEY:
             raise HTTPException(status_code=503, detail="Email service not configured")
         try:
@@ -1636,6 +1638,7 @@ try:
             from app.security import hash_password
             parts.append("password_hash = %s")
             vals.append(hash_password(payload.password))
+            cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (user_id,))
         if payload.email:
             parts.append("email = %s")
             vals.append(payload.email.strip().lower())
@@ -1685,6 +1688,7 @@ try:
         import random, string
         otp = ''.join(random.choices(string.digits, k=6))
         from app.security import hash_password
+        cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (user_id,))
         cur.execute("UPDATE users SET password_hash = %s WHERE id = %s",
                     (hash_password(otp), user_id))
         conn.commit()
