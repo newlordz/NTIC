@@ -534,8 +534,212 @@
         <div class="cc-kpi-glow"></div>
       </div>
     </div> 
-    
-    <!-- ── COMMAND CENTER CONTROL LANDING ── -->
+
+    <!-- ══ COMMAND CENTER MAIN MONITORING & OPERATIONS DECK ══ -->
+    <div class="cc-dashboard-deck" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
+
+      <!-- ── 1. QUICK COMMAND NAVIGATION HUB ── -->
+      <div class="cc-quick-hub">
+        <div class="cc-hub-card" (click)="goToSubTab('tickets')">
+          <div class="cc-hub-icon cc-icon-tokens">
+            <span class="material-symbols-outlined">confirmation_number</span>
+          </div>
+          <div class="cc-hub-info">
+            <div class="cc-hub-title">Access Tokens</div>
+            <div class="cc-hub-sub">{{ registeredUsers.length }} registered passes</div>
+          </div>
+          <span class="material-symbols-outlined cc-hub-arrow">chevron_right</span>
+        </div>
+
+        <div class="cc-hub-card" (click)="goToSubTab('approvals')">
+          <div class="cc-hub-icon cc-icon-approvals">
+            <span class="material-symbols-outlined">verified_user</span>
+          </div>
+          <div class="cc-hub-info">
+            <div class="cc-hub-title">Pending Approvals</div>
+            <div class="cc-hub-sub" *ngIf="pendingApprovals && pendingApprovals.length > 0">{{ pendingApprovals.length }} awaiting review</div>
+            <div class="cc-hub-sub cc-sub-clear" *ngIf="!pendingApprovals || pendingApprovals.length === 0">All clear</div>
+          </div>
+          <span class="material-symbols-outlined cc-hub-arrow">chevron_right</span>
+        </div>
+
+        <div class="cc-hub-card" (click)="goToSubTab('content')">
+          <div class="cc-hub-icon cc-icon-content">
+            <span class="material-symbols-outlined">edit_note</span>
+          </div>
+          <div class="cc-hub-info">
+            <div class="cc-hub-title">Content Manager</div>
+            <div class="cc-hub-sub">{{ (contentService?.championshipStories?.length || 0) + (contentService?.upcomingEvents?.length || 0) }} stories & events</div>
+          </div>
+          <span class="material-symbols-outlined cc-hub-arrow">chevron_right</span>
+        </div>
+
+        <div class="cc-hub-card" (click)="goToSubTab('users')">
+          <div class="cc-hub-icon cc-icon-users">
+            <span class="material-symbols-outlined">group</span>
+          </div>
+          <div class="cc-hub-info">
+            <div class="cc-hub-title">Users Directory</div>
+            <div class="cc-hub-sub">{{ registeredUsers.length }} active accounts</div>
+          </div>
+          <span class="material-symbols-outlined cc-hub-arrow">chevron_right</span>
+        </div>
+      </div>
+
+      <!-- ── 2. TWO-COLUMN COMMAND CENTER LAYOUT ── -->
+      <div class="cc-ops-grid">
+
+        <!-- LEFT COLUMN: SYSTEM INFRASTRUCTURE & LIVE AUDIT TRAIL -->
+        <div class="cc-ops-left">
+
+          <!-- System Infrastructure Nodes -->
+          <div class="cc-panel cc-mb-20">
+            <div class="cc-panel-header">
+              <div class="cc-panel-label">
+                <span class="material-symbols-outlined">dns</span>
+                System Infrastructure Nodes
+              </div>
+              <div class="cc-panel-status">
+                <span class="cc-live-dot cc-dot-green"></span>
+                <span>All Healthy</span>
+              </div>
+            </div>
+            <div class="cc-node-grid">
+              <div *ngFor="let node of systemNodes; let i = index" class="cc-node-card">
+                <div class="cc-node-top">
+                  <div class="cc-node-icon">
+                    <span class="material-symbols-outlined">settings_ethernet</span>
+                  </div>
+                  <div class="cc-node-info">
+                    <div class="cc-node-name">{{ node.name }}</div>
+                    <div class="cc-node-status">
+                      <span class="cc-live-dot cc-dot-green"></span>
+                      <span>{{ node.status }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="cc-node-metrics">
+                  <div class="cc-metric">
+                    <span class="cc-metric-label">Latency</span>
+                    <span class="cc-metric-value">{{ getNodeLatency(i) }}<em>ms</em></span>
+                  </div>
+                  <div class="cc-metric">
+                    <span class="cc-metric-label">Load</span>
+                    <span class="cc-metric-value">{{ getNodeLoad(i) }}<em>%</em></span>
+                  </div>
+                  <div class="cc-sparkline-wrap">
+                    <svg viewBox="0 0 80 28" width="80" height="28" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient [id]="'sg_dash_'+i" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stop-color="#0056b3" stop-opacity="0.35"/>
+                          <stop offset="100%" stop-color="#0056b3" stop-opacity="0"/>
+                        </linearGradient>
+                      </defs>
+                      <path [attr.d]="sparklinePath(nodeHistory[i]) + ' L 80,28 L 0,28 Z'"
+                            [attr.fill]="'url(#sg_dash_'+i+')'" />
+                      <path [attr.d]="sparklinePath(nodeHistory[i])"
+                            fill="none" stroke="#0056b3" stroke-width="1.5"
+                            stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="cc-node-bar-wrap">
+                  <div class="cc-node-bar" [style.width]="getNodeLoad(i) + '%'"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Audit Trail Feed -->
+          <div class="cc-panel">
+            <div class="cc-panel-header">
+              <div class="cc-panel-label">
+                <span class="material-symbols-outlined">receipt_long</span>
+                Live Audit Trail
+              </div>
+              <div class="cc-panel-status cc-blink-badge">
+                <span class="cc-live-dot"></span>
+                <span>LIVE</span>
+              </div>
+            </div>
+            <div class="cc-audit-list">
+              <div *ngFor="let log of auditLogs" class="cc-audit-item" [class]="'cc-audit-' + log.type">
+                <div class="cc-audit-icon">
+                  <span class="material-symbols-outlined">
+                    {{ log.type === 'auth' ? 'login' : log.type === 'ticket' ? 'confirmation_number' : log.type === 'approval' ? 'check_circle' : 'settings' }}
+                  </span>
+                </div>
+                <div class="cc-audit-body">
+                  <div class="cc-audit-action">{{ log.action }}</div>
+                  <div class="cc-audit-meta">{{ log.user }} &middot; {{ log.time | timeAgo }}</div>
+                </div>
+              </div>
+              <div *ngIf="!auditLogs || auditLogs.length === 0" class="cc-audit-empty">
+                <span class="material-symbols-outlined">history</span>
+                <span>No recent audit logs available</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: PLATFORM USERS ROLE DISTRIBUTION & QUICK GOVERNANCE -->
+        <div class="cc-ops-right">
+
+          <!-- Users & Role Distribution Panel -->
+          <div class="cc-panel cc-mb-20">
+            <div class="cc-panel-header">
+              <div class="cc-panel-label">
+                <span class="material-symbols-outlined">pie_chart</span>
+                Platform Users & Role Distribution
+              </div>
+              <button class="cc-btn-link" (click)="goToSubTab('users')">View All</button>
+            </div>
+            <div class="cc-role-list">
+              <div *ngFor="let r of roleDistribution" class="cc-role-row" (click)="goToSubTab('users')">
+                <div class="cc-role-row-top">
+                  <div class="cc-role-name">
+                    <span class="material-symbols-outlined cc-role-ic">{{ r.icon }}</span>
+                    <span>{{ r.label }}</span>
+                  </div>
+                  <div class="cc-role-count">{{ r.count }} ({{ r.percent }}%)</div>
+                </div>
+                <div class="cc-role-bar-bg">
+                  <div class="cc-role-bar-fill" [style.width]="r.percent + '%'"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Governance & Admin Actions -->
+          <div class="cc-panel">
+            <div class="cc-panel-header">
+              <div class="cc-panel-label">
+                <span class="material-symbols-outlined">admin_panel_settings</span>
+                Governance Actions
+              </div>
+            </div>
+            <div class="cc-actions-body">
+              <button class="cc-gov-btn" (click)="openAdminModal()" *ngIf="activeRoleId === 'super_admin'">
+                <span class="material-symbols-outlined">add_moderator</span>
+                <span>Add Admin Account</span>
+              </button>
+              <button class="cc-gov-btn" (click)="goToSubTab('content')">
+                <span class="material-symbols-outlined">post_add</span>
+                <span>Manage Content</span>
+              </button>
+              <button class="cc-gov-btn" (click)="goToSubTab('tickets')">
+                <span class="material-symbols-outlined">vpn_key</span>
+                <span>Access Passes & Tokens</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
     <div *ngIf="adminTab === 'control' && !adminSubTab" class="admin-tab-body">
       <div class="cc-control-landing">
         <div class="cc-control-header">
