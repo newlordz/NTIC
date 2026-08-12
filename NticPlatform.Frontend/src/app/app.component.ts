@@ -262,12 +262,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
   checkFirstTimePasswordRequirement(user: any): void {
     if (!user) return;
-    const role = user.role || getAuthValue('activeRoleId');
-    if (role === 'judge' || role === 'sponsor' || role === 'instructor') {
-      const needsPassword = user.mustSetPassword || user.isFirstLogin || user.passwordChanged === false || (user.otp && user.password === user.otp);
-      if (needsPassword) {
-        this.showPasswordSetupModal = true;
-      }
+    const needsPassword = user.mustSetPassword || user.isFirstLogin || user.passwordChanged === false || (user.otp && user.password === user.otp);
+    if (needsPassword) {
+      this.showPasswordSetupModal = true;
     }
   }
 

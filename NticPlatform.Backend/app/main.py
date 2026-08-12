@@ -1638,6 +1638,7 @@ try:
             from app.security import hash_password
             parts.append("password_hash = %s")
             vals.append(hash_password(payload.password))
+            cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (user_id,))
         if payload.email:
             parts.append("email = %s")
             vals.append(payload.email.strip().lower())
@@ -1687,6 +1688,7 @@ try:
         import random, string
         otp = ''.join(random.choices(string.digits, k=6))
         from app.security import hash_password
+        cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (user_id,))
         cur.execute("UPDATE users SET password_hash = %s WHERE id = %s",
                     (hash_password(otp), user_id))
         conn.commit()

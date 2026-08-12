@@ -147,19 +147,29 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.isSyncing = true;
     this.http.get<any[]>(`${environment.apiUrl}/users`).subscribe({
       next: (backendUsers) => {
-        const mapped: User[] = backendUsers.map((u: any) => ({
-          id: u.id,
-          email: u.email,
-          fullName: u.full_name || 'Unknown',
-          phone: u.phone || '',
-          otp: '',
-          organization: u.organization || '',
-          role: u.role || 'student',
-          ticket: u.ticket || '',
-          status: u.status || 'Active',
-          registeredAt: u.created_at || '',
-          lastLogin: ''
-        }));
+        const existingLookup: Record<string, any> = {};
+        for (const u of this.contentService.users) {
+          existingLookup[u.id] = u;
+        }
+        const mapped: User[] = backendUsers.map((u: any) => {
+          const existing = existingLookup[u.id];
+          return {
+            id: u.id,
+            email: u.email,
+            fullName: u.full_name || 'Unknown',
+            phone: u.phone || '',
+            otp: existing?.otp || '',
+            password: existing?.password || '',
+            mustSetPassword: existing?.mustSetPassword || false,
+            passwordChanged: existing?.passwordChanged,
+            organization: u.organization || '',
+            role: u.role || 'student',
+            ticket: u.ticket || '',
+            status: u.status || 'Active',
+            registeredAt: u.created_at || '',
+            lastLogin: existing?.lastLogin || ''
+          };
+        });
         this.contentService.users = mapped;
         this.contentService.saveUsers(mapped);
         this.users = [...mapped];

@@ -1219,14 +1219,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
   resetUserPassword(user: any): void {
     this.apiService.resetUserPassword(user.id).subscribe({
       next: (res) => {
+        const newOtp = res.otp;
+        const users = this.contentService.users.map(u => {
+          if (u.id === user.id) {
+            return { ...u, otp: newOtp, password: newOtp, mustSetPassword: true, passwordChanged: false };
+          }
+          return u;
+        });
+        this.contentService.saveUsers(users);
         this.openCredentialsModal(
           'Password Reset',
           `New credentials for ${user.fullName || user.email}:`,
           res.ticket || user.ticket,
           res.otp,
-          'Share these credentials securely with the user.',
+          'Share these credentials securely with the user. They will be prompted to set a permanent password on next login.',
           ''
         );
+        this.loadDashboardData();
       },
       error: () => this.dialogService.toast('Failed to reset password.', 'error')
     });
