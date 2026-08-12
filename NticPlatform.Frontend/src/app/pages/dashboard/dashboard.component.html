@@ -578,10 +578,10 @@
 
       </div>
 
-      <!-- ── BOTTOM PRIORITY SERVICES VISUAL GRID ── -->
+      <!-- ── BOTTOM PLATFORM OVERVIEW & SITE ANALYTICS VISUAL GRID ── -->
       <div class="cc-bottom-services-section">
         <div class="cc-services-header">
-          <h3 class="cc-services-title">Priority Platform Services</h3>
+          <h3 class="cc-services-title">Platform Overview & Site Analytics</h3>
           <div class="cc-services-dots">
             <span class="cc-dot active"></span>
             <span class="cc-dot"></span>
@@ -591,87 +591,87 @@
 
         <div class="cc-services-grid">
 
-          <!-- SERVICE CARD 1: FRONTEND GATEWAY -->
-          <div class="cc-service-card">
+          <!-- SITE CARD 1: USER ACCOUNTS & ROLES -->
+          <div class="cc-service-card" (click)="goToSubTab('users')" role="button" tabindex="0">
             <div class="cc-scard-header">
-              <span class="cc-scard-name">Frontend Edge Gateway</span>
+              <span class="cc-scard-name">Users & Role Distribution</span>
               <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>Active</span>
             </div>
             <div class="cc-scard-body">
               <div class="cc-scard-ring-wrap">
                 <svg viewBox="0 0 36 36" class="cc-mini-ring-svg">
                   <path class="cc-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/>
-                  <path class="cc-ring-fill" stroke="#10b981" stroke-dasharray="96, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
+                  <path class="cc-ring-fill" stroke="#10b981" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
                 </svg>
                 <div class="cc-mini-ring-center">
-                  <span class="cc-mring-sub">Health</span>
-                  <span class="cc-mring-val" style="color: #10b981;">96%</span>
+                  <span class="cc-mring-sub">Status</span>
+                  <span class="cc-mring-val" style="color: #10b981;">100%</span>
                 </div>
               </div>
               <div class="cc-scard-details">
                 <div class="cc-sdetail-row">
-                  <span class="material-symbols-outlined cc-ic-dot">speed</span>
-                  <span class="cc-sdetail-text">Latency: <strong>42ms</strong></span>
+                  <span class="material-symbols-outlined cc-ic-dot">admin_panel_settings</span>
+                  <span class="cc-sdetail-text">Super Admins: <strong>4 active</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
-                  <span class="material-symbols-outlined cc-ic-dot">memory</span>
-                  <span class="cc-sdetail-text">CPU Load: <strong>12%</strong></span>
+                  <span class="material-symbols-outlined cc-ic-dot">domain</span>
+                  <span class="cc-sdetail-text">School Admins: <strong>180 registered</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
-                  <span class="material-symbols-outlined cc-ic-dot">check_circle</span>
-                  <span class="cc-sdetail-text">Status: <strong>Operational</strong></span>
+                  <span class="material-symbols-outlined cc-ic-dot">gavel</span>
+                  <span class="cc-sdetail-text">Judges & Sponsors: <strong>6 active</strong></span>
                 </div>
               </div>
             </div>
             <div class="cc-scard-footer">
-              <span>View Log</span>
+              <span>Manage User Directory</span>
               <span class="material-symbols-outlined">arrow_forward</span>
             </div>
           </div>
 
-          <!-- SERVICE CARD 2: CORE API & COMPILER SANDBOX -->
-          <div class="cc-service-card">
+          <!-- SITE CARD 2: COMPETITION TRACKS & PROJECTS -->
+          <div class="cc-service-card" (click)="goToSubTab('content')" role="button" tabindex="0">
             <div class="cc-scard-header">
-              <span class="cc-scard-name">Core API & Sandbox Engine</span>
-              <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>Active</span>
+              <span class="cc-scard-name">Competition Tracks & Projects</span>
+              <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>5 Tracks</span>
             </div>
             <div class="cc-scard-body">
               <div class="cc-scard-ring-wrap">
                 <svg viewBox="0 0 36 36" class="cc-mini-ring-svg">
                   <path class="cc-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/>
-                  <path class="cc-ring-fill" stroke="#3b82f6" stroke-dasharray="94, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
+                  <path class="cc-ring-fill" stroke="#3b82f6" stroke-dasharray="88, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
                 </svg>
                 <div class="cc-mini-ring-center">
-                  <span class="cc-mring-sub">Health</span>
-                  <span class="cc-mring-val" style="color: #3b82f6;">94%</span>
+                  <span class="cc-mring-sub">Projects</span>
+                  <span class="cc-mring-val" style="color: #3b82f6;">128</span>
                 </div>
               </div>
               <div class="cc-scard-details">
                 <div class="cc-sdetail-row">
-                  <span class="material-symbols-outlined cc-ic-dot">speed</span>
-                  <span class="cc-sdetail-text">Latency: <strong>85ms</strong></span>
+                  <span class="material-symbols-outlined cc-ic-dot">code</span>
+                  <span class="cc-sdetail-text">Coding: <strong>48 projects</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
-                  <span class="material-symbols-outlined cc-ic-dot">memory</span>
-                  <span class="cc-sdetail-text">CPU Load: <strong>38%</strong></span>
+                  <span class="material-symbols-outlined cc-ic-dot">smart_toy</span>
+                  <span class="cc-sdetail-text">Robotics: <strong>34 projects</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
-                  <span class="material-symbols-outlined cc-ic-dot">terminal</span>
-                  <span class="cc-sdetail-text">Compiler VM: <strong>Ready</strong></span>
+                  <span class="material-symbols-outlined cc-ic-dot">psychology</span>
+                  <span class="cc-sdetail-text">AI & Cyber: <strong>46 projects</strong></span>
                 </div>
               </div>
             </div>
             <div class="cc-scard-footer">
-              <span>View Log</span>
+              <span>View Competition Content</span>
               <span class="material-symbols-outlined">arrow_forward</span>
             </div>
           </div>
 
-          <!-- SERVICE CARD 3: REALTIME DB & ANALYTICS SYNC -->
-          <div class="cc-service-card">
+          <!-- SITE CARD 3: SCHOOL & REGIONAL NETWORK -->
+          <div class="cc-service-card" (click)="goToSubTab('approvals')" role="button" tabindex="0">
             <div class="cc-scard-header">
-              <span class="cc-scard-name">Realtime Sync & Storage</span>
-              <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>Active</span>
+              <span class="cc-scard-name">School & Regional Network</span>
+              <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>16 Regions</span>
             </div>
             <div class="cc-scard-body">
               <div class="cc-scard-ring-wrap">
@@ -680,27 +680,27 @@
                   <path class="cc-ring-fill" stroke="#6366f1" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
                 </svg>
                 <div class="cc-mini-ring-center">
-                  <span class="cc-mring-sub">Health</span>
-                  <span class="cc-mring-val" style="color: #6366f1;">100%</span>
+                  <span class="cc-mring-sub">Schools</span>
+                  <span class="cc-mring-val" style="color: #6366f1;">180</span>
                 </div>
               </div>
               <div class="cc-scard-details">
                 <div class="cc-sdetail-row">
-                  <span class="material-symbols-outlined cc-ic-dot">sync</span>
-                  <span class="cc-sdetail-text">Sync Delay: <strong>15ms</strong></span>
+                  <span class="material-symbols-outlined cc-ic-dot">domain</span>
+                  <span class="cc-sdetail-text">Partner Schools: <strong>180</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
-                  <span class="material-symbols-outlined cc-ic-dot">storage</span>
-                  <span class="cc-sdetail-text">DB Health: <strong>Optimal</strong></span>
+                  <span class="material-symbols-outlined cc-ic-dot">supervisor_account</span>
+                  <span class="cc-sdetail-text">Mentors & Leads: <strong>800</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
-                  <span class="material-symbols-outlined cc-ic-dot">history</span>
-                  <span class="cc-sdetail-text">Audit Trail: <strong>Live</strong></span>
+                  <span class="material-symbols-outlined cc-ic-dot">school</span>
+                  <span class="cc-sdetail-text">Students: <strong>12,000+</strong></span>
                 </div>
               </div>
             </div>
             <div class="cc-scard-footer">
-              <span>View Log</span>
+              <span>View Registration Requests</span>
               <span class="material-symbols-outlined">arrow_forward</span>
             </div>
           </div>
