@@ -5414,6 +5414,24 @@ select.form-control {
   flex-direction: column;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 
+  .team-preview-banner {
+    width: 100%;
+    height: 120px;
+    max-height: 120px;
+    overflow: hidden;
+    position: relative;
+    background: #0f172a;
+    flex-shrink: 0;
+
+    img.team-banner-img {
+      width: 100%;
+      height: 100%;
+      max-height: 120px;
+      object-fit: cover;
+      display: block;
+    }
+  }
+
   // Track color themes
   &.coding   { border-top: 5px solid #6366f1; .team-track-pill { background: rgba(99,102,241,0.1); color: #6366f1; } .team-status-badge { background: #6366f1; } .avatar-bubble { background: linear-gradient(135deg, #818cf8, #6366f1); } .skill-bar-fill { background: linear-gradient(90deg, #818cf8, #6366f1); } }
   &.robotics { border-top: 5px solid #f97316; .team-track-pill { background: rgba(249,115,22,0.1); color: #f97316; } .team-status-badge { background: #f97316; } .avatar-bubble { background: linear-gradient(135deg, #fb923c, #f97316); } .skill-bar-fill { background: linear-gradient(90deg, #fb923c, #f97316); } }
@@ -5427,6 +5445,21 @@ select.form-control {
     align-items: center;
     padding: 10px 16px;
     border-bottom: 1px solid #f1f5f9;
+
+    .squad-logo-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1.5px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      margin-right: 6px;
+    }
+
+    .team-header-left {
+      display: flex;
+      align-items: center;
+    }
 
     .team-track-pill {
       font-size: 10px;
@@ -5535,37 +5568,6 @@ select.form-control {
         }
       }
     }
-
-    .team-preview-banner {
-      width: 100%;
-      height: 120px;
-      overflow: hidden;
-      position: relative;
-      background: #0f172a;
-      flex-shrink: 0;
-      img.team-banner-img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-      }
-    }
-
-    .squad-logo-avatar {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 1.5px solid #ffffff;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-      margin-right: 6px;
-    }
-
-    .team-header-left {
-      display: flex;
-      align-items: center;
-    }
-
     // Reuse student-card-skills layout for team card
     .student-card-skills {
       display: flex;
