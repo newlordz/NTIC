@@ -1001,6 +1001,16 @@
             <span class="material-symbols-outlined">vpn_key</span>Active Sessions{{ authSessionCount >= 0 ? ' (' + authSessionCount + ')' : '' }}
           </button>
         </div>
+        <div class="admin-access-search-wrap">
+          <span class="material-symbols-outlined search-icon">search</span>
+          <input type="text"
+                 class="admin-access-search-input"
+                 [(ngModel)]="accessPassSearchQuery"
+                 placeholder="Search by name, email, role, or access token..." />
+          <button *ngIf="accessPassSearchQuery" class="clear-search-btn" (click)="accessPassSearchQuery = ''">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
         <button *ngIf="tokenViewMode === 'tickets'" class="btn btn-primary btn-sm" (click)="openRegisterModal()">
           <span class="material-symbols-outlined">add</span>New Registration
         </button>
@@ -1078,7 +1088,7 @@
             <span>Status</span>
             <span>Actions</span>
           </div>
-          <div *ngFor="let session of (authSessionsError ? [] : authSessions)" class="admin-table-row">
+          <div *ngFor="let session of (authSessionsError ? [] : filteredAuthSessions)" class="admin-table-row">
             <div class="admin-user-cell">
               <div class="admin-user-avatar" [class]="session.role">
                 {{ getInitials(session.full_name) }}

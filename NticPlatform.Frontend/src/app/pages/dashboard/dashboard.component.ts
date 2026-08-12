@@ -235,6 +235,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   userSearch = '';
   userRoleFilter = 'all';
   userStatusFilter = 'all';
+  accessPassSearchQuery = '';
   editingUserId: string | null = null;
   deleteUserConfirm: any = null;
 
@@ -1152,8 +1153,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   get filteredRegisteredUsers(): any[] {
-    if (this.ticketFilter === 'all') return this.registeredUsers;
-    return this.registeredUsers.filter(u => u.role === this.ticketFilter);
+    let list = this.registeredUsers;
+    if (this.ticketFilter !== 'all') {
+      list = list.filter(u => u.role === this.ticketFilter);
+    }
+    if (this.accessPassSearchQuery.trim()) {
+      const q = this.accessPassSearchQuery.toLowerCase().trim();
+      list = list.filter(u =>
+        u.fullName?.toLowerCase().includes(q) ||
+        u.email?.toLowerCase().includes(q) ||
+        u.ticket?.toLowerCase().includes(q) ||
+        u.role?.toLowerCase().includes(q) ||
+        u.status?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }
+
+  get filteredAuthSessions(): any[] {
+    let list = this.authSessions || [];
+    if (this.accessPassSearchQuery.trim()) {
+      const q = this.accessPassSearchQuery.toLowerCase().trim();
+      list = list.filter(s =>
+        s.full_name?.toLowerCase().includes(q) ||
+        s.email?.toLowerCase().includes(q) ||
+        s.role?.toLowerCase().includes(q) ||
+        s.token?.toLowerCase().includes(q)
+      );
+    }
+    return list;
   }
 
   get managedUsers(): any[] {
