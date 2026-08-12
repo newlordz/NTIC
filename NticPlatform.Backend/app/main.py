@@ -98,9 +98,13 @@ try:
             "/api/drafts",
             "/api/lms/progress"
         }
-        if request.method in ("POST", "PUT", "PATCH", "DELETE") and request.url.path not in PUBLIC_UNSAFE:
-            auth_header = request.headers.get("Authorization", "")
-            if not auth_header.startswith("Bearer "):
+        auth_header = request.headers.get("Authorization", "")
+        has_bearer = auth_header.startswith("Bearer ")
+        is_write_protected = request.method in ("POST", "PUT", "PATCH", "DELETE") and request.url.path not in PUBLIC_UNSAFE
+        is_verify_check = request.url.path == "/api/auth/verify"
+
+        if has_bearer or is_write_protected or is_verify_check:
+            if not has_bearer:
                 return JSONResponse(status_code=401, content={"detail": "Authentication required"})
             token = auth_header[7:]
             conn = get_db_connection()
@@ -117,7 +121,7 @@ try:
                 cur.close()
                 conn.close()
             if not valid:
-                return JSONResponse(status_code=401, content={"detail": "Invalid or expired token"})
+                return JSONResponse(status_code=401, content={"detail": "Invalid or revoked session token"})
         return await call_next(request)
 
     class StudentCreate(BaseModel):
