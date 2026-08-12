@@ -1435,9 +1435,11 @@ private readonly defaultTeams: Team[] = [];
 
   saveUsers(usersList: User[]): void {
     this.users = usersList;
+    this.userCount = usersList.length;
     // Strip passwords and OTPs before persisting to browser storage
     const safe = usersList.map(({ password, otp, ...rest }: any) => ({ ...rest }));
     this.saveState('users', safe);
+    this.saveState('userCount', usersList.length);
     this.syncToBackend('users', usersList.map(u => ({
       id: u.id, email: u.email, fullName: u.fullName, role: u.role,
       ticket: u.ticket, status: u.status, phone: u.phone || ''

@@ -1215,12 +1215,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   confirmDeleteUser(): void {
     if (!this.deleteUserConfirm) return;
-    this.apiService.deleteUser(this.deleteUserConfirm.id).subscribe({
+    const deletedId = this.deleteUserConfirm.id;
+    this.apiService.deleteUser(deletedId).subscribe({
       next: () => {}, error: () => {}
     });
-    const users = this.contentService.users.filter(u => u.id !== this.deleteUserConfirm.id);
+    const users = this.contentService.users.filter(u => u.id !== deletedId);
     this.contentService.saveUsers(users);
     this.deleteUserConfirm = null;
+    this.loadDashboardData();
   }
 
   cancelDeleteUser(): void {
