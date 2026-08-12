@@ -387,6 +387,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   resumeDraftFromField(contact: string): void {
     if (!contact || !contact.trim()) return;
+    this.verificationMethod = contact.includes('@') ? 'email' : 'mobile';
     this.verificationInput = contact.trim();
     this.sendOTP();
   }
@@ -1334,10 +1335,12 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const inputKey = this.verificationInput.trim().toLowerCase();
+    const rawInput = this.verificationInput.trim();
+    const inputKey = rawInput.toLowerCase();
     const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
+    const draftKey = this.resolveDraftKey(drafts, rawInput, inputKey);
 
-    if (!drafts[inputKey]) {
+    if (!draftKey) {
       this.otpError = 'No saved draft found for this ' + this.verificationMethod + '. Please check and try again, or start a new registration.';
       return;
     }
@@ -1345,7 +1348,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpStore = {
       code: otp,
-      contact: inputKey,
+      contact: draftKey,
       expiresAt: Date.now() + 5 * 60 * 1000
     };
     localStorage.setItem('ntic_otp', JSON.stringify(otpStore));
@@ -1355,7 +1358,31 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.regState = 'otp_verification';
     this.startResendTimer();
 
-    this.showCustomAlert(`A 6-digit verification code has been sent to ${this.verificationInput}.`, 'Verification Code Sent', 'info');
+    // Deliver the code: the email channel sends to the typed email; the mobile
+    // channel (no SMS service) sends to the draft owner's email. The code is
+    // also shown as a fallback so resuming is never blocked by email delivery.
+    const targetEmail = this.verificationMethod === 'email' && rawInput.includes('@') ? rawInput : draftKey;
+    try {
+      this.emailService.sendOtpEmail(targetEmail, otp);
+    } catch { /* ignore */ }
+
+    this.showCustomAlert(
+      `A 6-digit verification code has been sent to ${targetEmail}. If you don't receive it, use the demo code: ${otp}`,
+      'Verification Code Sent', 'info'
+    );
+  }
+
+  private resolveDraftKey(drafts: Record<string, any>, rawInput: string, inputKey: string): string | null {
+    if (drafts[inputKey]) return inputKey;
+    const needle = rawInput.replace(/\s+/g, '').toLowerCase();
+    if (!needle) return null;
+    for (const key of Object.keys(drafts)) {
+      const data = drafts[key]?.data;
+      if (data && typeof data === 'object' && JSON.stringify(data).replace(/\s+/g, '').toLowerCase().includes(needle)) {
+        return key;
+      }
+    }
+    return null;
   }
 
   startResendTimer(): void {
@@ -1377,7 +1404,10 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       stored.code = otp;
       stored.expiresAt = Date.now() + 5 * 60 * 1000;
       localStorage.setItem('ntic_otp', JSON.stringify(stored));
-      this.showCustomAlert(`New verification code sent.`, 'Code Resent', 'info');
+      try {
+        this.emailService.sendOtpEmail(stored.contact || this.verificationInput, otp);
+      } catch { /* ignore */ }
+      this.showCustomAlert(`New verification code sent. If you don't receive it, use the demo code: ${otp}`, 'Code Resent', 'info');
     }
     this.otpCode = '';
     this.otpError = '';
@@ -2362,6 +2392,9 @@ export class RegistrationComponent implements OnInit, OnDestroy {
         break;
       case 'team':
         this.teamForm = { ...this.teamForm, ...draft.data };
+        break;
+      case 'open':
+        this.openRegForm = { ...this.openRegForm, ...draft.data };
         break;
     }
   }
