@@ -1,8 +1,8 @@
 <div class="page-canvas route-animate">
 
-  <!-- ══════════════════════════════════════════════════════
+  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
        NON-ADMIN DASHBOARDS (Student / Instructor / etc.)
-  ══════════════════════════════════════════════════════ -->
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
   <ng-container *ngIf="activeRoleId !== 'super_admin'">
     <!-- Page Header -->
     <div class="page-header with-action">
@@ -179,7 +179,7 @@
           </div>
         </div>
 
-        <!-- ── Judge Arena Dashboard Panel ── -->
+        <!-- â”€â”€ Judge Arena Dashboard Panel â”€â”€ -->
         <div *ngIf="activeRoleId === 'judge'">
 
           <!-- Hero entry card -->
@@ -200,7 +200,7 @@
             <div style="position:relative;z-index:1;">
               <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 14px;background:rgba(37,99,235,0.16);border:1px solid rgba(99,161,255,0.35);border-radius:999px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#93c5fd;margin-bottom:16px;">
                 <span style="width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 8px #34d399;"></span>
-                Judging Arena · Live
+                Judging Arena Â· Live
               </div>
               <h2 style="margin:0 0 8px;font-size:22px;font-weight:900;letter-spacing:-0.03em;color:#fff;">Competition Scoring Chamber</h2>
               <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.55);line-height:1.6;max-width:360px;">Evaluate NTIC championship submissions with precision rubrics and publish official rankings.</p>
@@ -290,50 +290,7 @@
                   <div><strong>Members:</strong> {{ team.members }} active students</div>
                   <div *ngIf="team.mentor"><strong>Mentor:</strong> {{ team.mentor }}</div>
                   <div *ngIf="team.motto" style="font-style:italic;color:var(--primary);margin-top:4px;border-top:1px dashed var(--outline-variant);padding-top:4px;">"{{ team.motto }}"</div>
-    <!-- Dashboard View (hidden when maximized) -->
-    <div class="admin-header" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
-      <div class="admin-header-left">
-        <div class="admin-header-icon">
-          <span class="material-symbols-outlined">shield_person</span>
-        </div>
-        <div>
-          <h1 class="admin-title">Command Center</h1>
-          <p class="admin-subtitle">National NTIC Platform · System Administration & Access Control</p>
-        </div>
-      </div>
-      <div class="admin-header-right">
-        <div class="admin-time-badge">
-          <span class="pulse-dot"></span>
-          <span>All Systems Operational &nbsp;&middot;&nbsp; {{ liveTime }}</span>
-        </div>
-        <button class="btn btn-primary btn-sm" (click)="openRegisterModal()">
-          <span class="material-symbols-outlined">person_add</span>Register User
-        </button>
-      </div>
-    </div>
-
-    <!-- Stat Cards (hidden when maximized) -->
-    <div class="admin-stat-grid" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
-      <div *ngFor="let stat of stats; let i = index" 
-           class="admin-stat-card interactive-stat-btn" 
-           [attr.data-index]="i"
-           role="button" tabindex="0"
-           (click)="onStatCardClick(stat)"
-           [title]="'Click to view ' + stat.label">
-        <div class="admin-stat-header-row">
-          <div class="admin-stat-icon"><span class="material-symbols-outlined">{{ stat.icon }}</span></div>
-          <div class="stat-btn-pill">
-            <span>View</span>
-            <span class="material-symbols-outlined">arrow_forward</span>
-          </div>
-        </div>
-        <div class="admin-stat-value">{{ stat.value }}</div>
-        <div class="admin-stat-label">{{ stat.label }}</div>
-        <div class="admin-stat-meta">{{ stat.meta }}</div>
-        <div class="admin-stat-glow"></div>
-      </div>
-    </div>
-
+                  
                   <!-- Display Roster Chips if available -->
                   <div *ngIf="team.rosterList && team.rosterList.length > 0" class="roster-chips-container" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--outline-variant);">
                     <span *ngFor="let student of team.rosterList; let i = index" class="roster-student-chip" [style.background]="i === 0 ? '#fef3c7' : 'var(--surface-container)'" [style.color]="i === 0 ? '#d97706' : 'var(--on-surface)'" style="padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;border:1px solid var(--outline-variant);">
@@ -450,7 +407,7 @@
             </div>
           </div>
         </div>
-        <!-- ── Judge Sidebar Panel ── -->
+        <!-- â”€â”€ Judge Sidebar Panel â”€â”€ -->
         <div *ngIf="activeRoleId === 'judge'" style="display:flex;flex-direction:column;gap:16px;">
           <!-- Quick Stats -->
           <div class="card">
@@ -527,9 +484,9 @@
 
   </ng-container>
 
-  <!-- ══════════════════════════════════════════════════════
+  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
        SUPER ADMIN COMMAND CENTER
-  ══════════════════════════════════════════════════════ -->
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
   <ng-container *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager' || activeRoleId === 'reviewer' || activeRoleId === 'competition_manager'">
 
     <!-- Maximized Content Mode Header -->
@@ -543,10 +500,51 @@
       <span style="font-size:12px;color:var(--on-surface-variant);">Full-page editing mode</span>
     </div>
 
+    <!-- Admin Header (hidden when maximized) -->
+    <div class="admin-header" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
+      <div class="admin-header-left">
+        <div class="admin-header-icon">
+          <span class="material-symbols-outlined">shield_person</span>
+        </div>
+        <div>
+          <h1 class="admin-title">Command Center</h1>
+          <p class="admin-subtitle">National NTIC Platform Â· System Administration & Access Control</p>
+        </div>
+      </div>
+      <div class="admin-header-right">
+        <div class="admin-time-badge">
+          <span class="pulse-dot"></span>
+          <span>All Systems Operational &nbsp;&middot;&nbsp; {{ liveTime }}</span>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="openRegisterModal()">
+          <span class="material-symbols-outlined">person_add</span>Register User
+        </button>
+      </div>
+    </div>
 
+    <!-- Stat Cards (hidden when maximized) -->
+    <div class="admin-stat-grid" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
+      <div *ngFor="let stat of stats; let i = index" 
+           class="admin-stat-card interactive-stat-btn" 
+           [attr.data-index]="i"
+           role="button" tabindex="0"
+           (click)="onStatCardClick(stat)"
+           [title]="'Click to view ' + stat.label">
+        <div class="admin-stat-header-row">
+          <div class="admin-stat-icon"><span class="material-symbols-outlined">{{ stat.icon }}</span></div>
+          <div class="stat-btn-pill">
+            <span>View</span>
+            <span class="material-symbols-outlined">arrow_forward</span>
+          </div>
+        </div>
+        <div class="admin-stat-value">{{ stat.value }}</div>
+        <div class="admin-stat-label">{{ stat.label }}</div>
+        <div class="admin-stat-meta">{{ stat.meta }}</div>
+        <div class="admin-stat-glow"></div>
+      </div>
+    </div>
 
-
-    <!-- ── ADMIN CONTROL LANDING PAGE ── -->
+    <!-- â”€â”€ ADMIN CONTROL LANDING PAGE â”€â”€ -->
     <div *ngIf="adminTab === 'control' && !adminSubTab" class="admin-tab-body">
       <div class="ac-landing">
         <div class="ac-landing-header">
@@ -618,7 +616,7 @@
       </div>
     </div>
 
-    <!-- ── TAB: OVERVIEW ── -->
+    <!-- â”€â”€ TAB: OVERVIEW â”€â”€ -->
       <div *ngIf="adminTab === 'overview'" class="admin-tab-body">
       <div class="admin-two-col">
 
@@ -701,7 +699,7 @@
 
     </div>
 
-    <!-- ── TAB: USERS BY ROLE ── -->
+    <!-- â”€â”€ TAB: USERS BY ROLE â”€â”€ -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'users'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
       <div class="ac-top-bar">
         <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
@@ -833,7 +831,7 @@
       </div>
     </div>
 
-    <!-- ── TAB: MANAGE ADMINS ── -->
+    <!-- â”€â”€ TAB: MANAGE ADMINS â”€â”€ -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'admins'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
       <div class="ac-top-bar">
         <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
@@ -966,12 +964,12 @@
       </div>
     </div>
 
-    <!-- ── TAB: LMS MANAGER ── -->
+    <!-- â”€â”€ TAB: LMS MANAGER â”€â”€ -->
     <div *ngIf="adminTab === 'lms'" class="admin-tab-body" style="padding:0;">
       <app-lms-manager></app-lms-manager>
     </div>
 
-    <!-- ── TAB: TICKETS ── -->
+    <!-- â”€â”€ TAB: TICKETS â”€â”€ -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'tickets'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
       <div class="ac-top-bar">
         <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
@@ -1063,7 +1061,7 @@
                     {{ session.full_name }}
                     <span class="live-role-badge" [class]="session.role">{{ session.role }}</span>
                   </div>
-                  <div class="live-user-email">{{ session.email }} · <small>Started {{ session.created_at | slice:0:16 }}</small></div>
+                  <div class="live-user-email">{{ session.email }} Â· <small>Started {{ session.created_at | slice:0:16 }}</small></div>
                 </div>
                 <div class="live-item-right">
                   <code class="live-ticket-code">{{ session.display || (session.token | slice:0:12) }}...</code>
@@ -1205,7 +1203,7 @@
       </ng-container>
     </div>
 
-    <!-- ── TAB: PENDING APPROVALS ── -->
+    <!-- â”€â”€ TAB: PENDING APPROVALS â”€â”€ -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'approvals'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
       <div class="ac-top-bar">
         <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
@@ -1247,7 +1245,7 @@
       </div>
     </div>
 
-  <!-- ── TAB: CONTENT MANAGER ── -->
+  <!-- â”€â”€ TAB: CONTENT MANAGER â”€â”€ -->
   <div *ngIf="(adminTab === 'control' && adminSubTab === 'content') || maximizedContentTab" class="admin-tab-body" [class.ac-expanded]="expandedSection" [style.padding]="maximizedContentTab ? '0' : ''">
       <div class="ac-top-bar" *ngIf="!maximizedContentTab">
         <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
@@ -1301,7 +1299,7 @@
       </button>
     </div>
 
-    <!-- ── STORIES PANEL ── -->
+    <!-- â”€â”€ STORIES PANEL â”€â”€ -->
     <div *ngIf="contentTab === 'stories'" class="cms-panel">
       <div class="cms-panel-header">
         <div>
@@ -1389,7 +1387,7 @@
             <span class="story-tag-mini" [class]="story.tagColor">{{ story.tag }}</span>
           </div>
           <div class="cms-story-info">
-            <div class="cms-story-meta">{{ story.date }} · {{ story.readTime }}</div>
+            <div class="cms-story-meta">{{ story.date }} Â· {{ story.readTime }}</div>
             <div class="cms-story-title">{{ story.title }}</div>
             <div class="cms-story-body">{{ story.body }}</div>
             <div style="display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11px;color:var(--on-surface-variant);">
@@ -1413,7 +1411,7 @@
       </div>
     </div>
 
-    <!-- ── HALL OF FAME PANEL ── -->
+    <!-- â”€â”€ HALL OF FAME PANEL â”€â”€ -->
     <div *ngIf="contentTab === 'hof'" class="cms-panel">
       <div class="cms-panel-header">
         <div>
@@ -1443,11 +1441,11 @@
             <div style="display:flex; gap:16px; margin-top:4px;">
               <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; font-size:13px;">
                 <input type="radio" [(ngModel)]="hofForm.type" (ngModelChange)="onHofTypeChange($event)" value="group" name="hofType">
-                👥 Group / Squad Champions
+                ðŸ‘¥ Group / Squad Champions
               </label>
               <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; font-size:13px;">
                 <input type="radio" [(ngModel)]="hofForm.type" (ngModelChange)="onHofTypeChange($event)" value="individual" name="hofType">
-                👤 Individual Champion
+                ðŸ‘¤ Individual Champion
               </label>
             </div>
           </div>
@@ -1495,7 +1493,7 @@
           </div>
           <div class="cms-field">
             <label>Award / Badge <span class="req">*</span></label>
-            <input type="text" [(ngModel)]="hofForm.badge" placeholder="🏆 Cybersecurity Grand Champions">
+            <input type="text" [(ngModel)]="hofForm.badge" placeholder="ðŸ† Cybersecurity Grand Champions">
           </div>
           <div class="cms-field">
             <label>Track</label>
@@ -1529,10 +1527,10 @@
               <strong>{{ entry.name }}</strong>
               <span *ngIf="entry.type === 'group'" style="background:var(--primary-bg-light); color:var(--primary); font-size:10px; font-weight:800; padding:1px 6px; border-radius:10px;">GROUP</span>
             </div>
-            <span>{{ entry.school }} · {{ entry.year }}</span>
+            <span>{{ entry.school }} Â· {{ entry.year }}</span>
             <span class="cms-hof-badge">{{ entry.badge }}</span>
             <div *ngIf="entry.members && entry.members.length > 0" style="font-size:11px; color:var(--primary); font-weight:700; margin-top:2px;">
-              👥 {{ entry.members.length }} Members: {{ entry.members.join(', ') }}
+              ðŸ‘¥ {{ entry.members.length }} Members: {{ entry.members.join(', ') }}
             </div>
             
             <!-- Expiry info and status badge -->
@@ -1566,7 +1564,7 @@
       </div>
     </div>
 
-    <!-- ── LEADERBOARD PANEL ── -->
+    <!-- â”€â”€ LEADERBOARD PANEL â”€â”€ -->
     <div *ngIf="contentTab === 'leaderboard'" class="cms-panel">
       <div class="cms-panel-header">
         <div>
@@ -1604,23 +1602,23 @@
             <label style="margin-bottom:8px;display:block;">Track Points (total auto-calculated)</label>
             <div class="cms-lb-points-row">
               <div class="cms-lb-point-field">
-                <span>💻 Coding</span>
+                <span>ðŸ’» Coding</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.coding" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field">
-                <span>🤖 Robotics</span>
+                <span>ðŸ¤– Robotics</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.robotics" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field">
-                <span>🧠 AI</span>
+                <span>ðŸ§  AI</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.ai" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field">
-                <span>🔐 Cyber</span>
+                <span>ðŸ” Cyber</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.cyber" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field total">
-                <span>🏆 Total</span>
+                <span>ðŸ† Total</span>
                 <input type="number" [ngModel]="lbForm.trackPoints.all" readonly>
               </div>
             </div>
@@ -1666,7 +1664,7 @@
       </div>
     </div>
 
-    <!-- ── TALENT DISCOVERY PANEL ── -->
+    <!-- â”€â”€ TALENT DISCOVERY PANEL â”€â”€ -->
     <div *ngIf="contentTab === 'talent'" class="cms-panel">
       <div class="cms-panel-header">
         <div>
@@ -1750,7 +1748,7 @@
       </div>
     </div>
 
-    <!-- ── NEWS FEED PANEL ── -->
+    <!-- â”€â”€ NEWS FEED PANEL â”€â”€ -->
     <div *ngIf="contentTab === 'news'" class="cms-panel">
       <div class="cms-panel-header">
         <div>
@@ -1828,7 +1826,7 @@
       </div>
     </div>
 
-    <!-- ── PLATFORM STATS PANEL ── -->
+    <!-- â”€â”€ PLATFORM STATS PANEL â”€â”€ -->
     <div *ngIf="contentTab === 'stats'" class="cms-panel">
       <div class="cms-panel-header">
         <div>
@@ -1848,45 +1846,45 @@
       <!-- Stats Grid Display / Edit -->
       <div class="cms-stats-grid">
         <div class="cms-stat-card">
-          <div class="cms-stat-icon">🗺️</div>
+          <div class="cms-stat-icon">ðŸ—ºï¸</div>
           <div class="cms-stat-label">Regions</div>
           <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.regions }}</div>
           <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.regions" class="cms-stat-input">
         </div>
         <div class="cms-stat-card">
-          <div class="cms-stat-icon">👨‍🏫</div>
+          <div class="cms-stat-icon">ðŸ‘¨â€ðŸ«</div>
           <div class="cms-stat-label">Mentors</div>
           <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.mentors }}+</div>
           <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.mentors" class="cms-stat-input">
         </div>
         <div class="cms-stat-card">
-          <div class="cms-stat-icon">🏫</div>
+          <div class="cms-stat-icon">ðŸ«</div>
           <div class="cms-stat-label">Schools</div>
           <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.schools }}+</div>
           <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.schools" class="cms-stat-input">
         </div>
         <div class="cms-stat-card">
-          <div class="cms-stat-icon">🎓</div>
+          <div class="cms-stat-icon">ðŸŽ“</div>
           <div class="cms-stat-label">Students (K)</div>
           <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.students }}K+</div>
           <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.students" class="cms-stat-input">
         </div>
         <div class="cms-stat-card">
-          <div class="cms-stat-icon">📁</div>
+          <div class="cms-stat-icon">ðŸ“</div>
           <div class="cms-stat-label">Projects (K)</div>
           <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.projects }}K+</div>
           <input *ngIf="statsEditMode" type="number" step="0.1" [(ngModel)]="statsForm.projects" class="cms-stat-input">
         </div>
         <div class="cms-stat-card">
-          <div class="cms-stat-icon">💰</div>
-          <div class="cms-stat-label">Grants (₵M)</div>
-          <div class="cms-stat-value" *ngIf="!statsEditMode">₵{{ contentService.platformStats.grants }}M+</div>
+          <div class="cms-stat-icon">ðŸ’°</div>
+          <div class="cms-stat-label">Grants (â‚µM)</div>
+          <div class="cms-stat-value" *ngIf="!statsEditMode">â‚µ{{ contentService.platformStats.grants }}M+</div>
           <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.grants" class="cms-stat-input">
         </div>
       </div>
     </div>
 
-    <!-- ── COUNTDOWN TIMER PANEL ── -->
+    <!-- â”€â”€ COUNTDOWN TIMER PANEL â”€â”€ -->
     <div *ngIf="contentTab === 'countdown'" class="cms-panel">
       <div class="cms-panel-header">
         <div>
@@ -1950,7 +1948,7 @@
       </div>
     </div>
 
-    <!-- ── SLIDESHOW PANEL ── -->
+    <!-- â”€â”€ SLIDESHOW PANEL â”€â”€ -->
     <div *ngIf="contentTab === 'slideshow'" class="cms-panel">
       <div class="cms-panel-header">
         <div>
@@ -2110,7 +2108,7 @@
       </div>
     </div>
 
-    <!-- ── PHILOSOPHY CARDS PANEL ── -->
+    <!-- â”€â”€ PHILOSOPHY CARDS PANEL â”€â”€ -->
     <div *ngIf="contentTab === 'philosophy'" class="cms-panel">
       <div class="cms-panel-header">
         <div>
@@ -2205,7 +2203,7 @@
       </div>
     </div>
 
-    <!-- ── UPCOMING EVENTS PANEL ── -->
+    <!-- â”€â”€ UPCOMING EVENTS PANEL â”€â”€ -->
     <div *ngIf="contentTab === 'events'" class="cms-panel">
       <div class="cms-panel-header">
         <div>
@@ -2340,7 +2338,7 @@
 
       <div class="preview-modal-body">
 
-        <!-- ═══ School Registration ═══ -->
+        <!-- â•â•â• School Registration â•â•â• -->
         <ng-container *ngIf="activePreviewRequest.type === 'School Registration'">
           <div class="preview-section">
             <div class="preview-section-header">
@@ -2461,7 +2459,7 @@
                   <div style="font-weight:600;font-size:14px;color:var(--on-surface);">{{ team.name }}</div>
                   <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">
                     Track: <strong>{{ team.track || 'Coding' }}</strong>
-                    <span *ngIf="team.leadName"> · Lead: <strong>{{ team.leadName }}</strong></span>
+                    <span *ngIf="team.leadName"> Â· Lead: <strong>{{ team.leadName }}</strong></span>
                   </div>
                   <div *ngIf="team.rosterList?.length > 1" style="font-size:11px;color:var(--on-surface-variant);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
                     Members: {{ team.rosterList.join(', ') }}
@@ -2491,7 +2489,7 @@
           </div>
         </ng-container>
 
-        <!-- ═══ Team Addition ═══ -->
+        <!-- â•â•â• Team Addition â•â•â• -->
         <ng-container *ngIf="activePreviewRequest.type === 'Team Addition'">
           <div class="preview-section">
             <div class="preview-section-header">
@@ -2557,7 +2555,7 @@
           </div>
         </ng-container>
 
-        <!-- ═══ Instructor Access ═══ -->
+        <!-- â•â•â• Instructor Access â•â•â• -->
         <ng-container *ngIf="activePreviewRequest.type === 'Instructor Access'">
           <div class="preview-section">
             <div class="preview-section-header">
@@ -2643,7 +2641,7 @@
           </div>
         </ng-container>
 
-        <!-- ═══ Student Registration ═══ -->
+        <!-- â•â•â• Student Registration â•â•â• -->
         <ng-container *ngIf="activePreviewRequest.type === 'Student Registration'">
           <div class="preview-section">
             <div class="preview-section-header">
@@ -2745,7 +2743,7 @@
     </div>
   </div>
 
-  <!-- ── REVIEW / REJECTION DIALOG ── -->
+  <!-- â”€â”€ REVIEW / REJECTION DIALOG â”€â”€ -->
   <div class="review-dialog-backdrop" *ngIf="activeReviewRequest" (click)="closeReview()">
     <div class="review-dialog" (click)="$event.stopPropagation()">
       <div class="review-dialog-header">
@@ -2812,7 +2810,7 @@
 
 </div> <!-- End page-canvas -->
 
-<!-- ── REGISTRATION POPUP MODAL ── -->
+<!-- â”€â”€ REGISTRATION POPUP MODAL â”€â”€ -->
   <div class="ticket-modal-backdrop" *ngIf="isRegModalOpen" (click)="closeRegisterModal()">
     <div class="ticket-modal reg-popup-modal" (click)="$event.stopPropagation()">
       <div class="ticket-modal-header">
@@ -3026,7 +3024,7 @@
               <div>
                 <div class="preview-ticket-platform">National NTIC Platform</div>
                 <div class="preview-ticket-type">
-                  {{ registerRole === 'judge' ? '⚖ Competition Judge' : '🤝 Platform Sponsor' }}
+                  {{ registerRole === 'judge' ? 'âš– Competition Judge' : 'ðŸ¤ Platform Sponsor' }}
                 </div>
               </div>
               <div class="preview-ticket-year">2026</div>
@@ -3080,7 +3078,7 @@
                   <span *ngIf="regSuccess && viewTicketUser">{{ viewTicketUser.ticket }}</span>
                 </div>
                 <div class="preview-code-hint" [class.success]="regSuccess">
-                  {{ regSuccess ? '✓ Token generated and active' : 'Will be generated upon registration' }}
+                  {{ regSuccess ? 'âœ“ Token generated and active' : 'Will be generated upon registration' }}
                 </div>
               </div>
             </div>
@@ -3111,7 +3109,7 @@
   </div>
 </div>
 
-<!-- ── SPONSORSHIP PAYMENT CENTER ── -->
+<!-- â”€â”€ SPONSORSHIP PAYMENT CENTER â”€â”€ -->
 <div class="ticket-modal-backdrop" *ngIf="settleModalOpen" (click)="closeSettleModal()">
   <div class="ticket-modal reg-popup-modal" (click)="$event.stopPropagation()" style="max-width:580px;">
     <div class="ticket-modal-header">
@@ -3156,7 +3154,7 @@
             <span style="font-size:11px;color:var(--on-surface-variant);">GHS</span>
           </div>
           <div style="position:relative;">
-            <span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:700;color:var(--on-surface-variant);">GH₵</span>
+            <span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:700;color:var(--on-surface-variant);">GHâ‚µ</span>
             <input type="number" [(ngModel)]="settleAmount" placeholder="0.00" min="1"
                    style="width:100%;padding:18px 18px 18px 72px;font-size:28px;font-weight:800;text-align:left;border:2px solid var(--outline-variant);border-radius:14px;background:var(--surface-container-lowest);color:var(--on-surface);outline:none;transition:border-color 0.2s;box-sizing:border-box;"
                    (focus)="$any($event.target).style.borderColor='var(--primary)'"
@@ -3246,14 +3244,14 @@
                    [style.border-color]="settleBillingSchedule === 'monthly' ? 'var(--primary)' : 'var(--outline-variant)'"
                    [style.background]="settleBillingSchedule === 'monthly' ? 'var(--primary-container)' : 'var(--surface-container-lowest)'">
               <input type="radio" value="monthly" [(ngModel)]="settleBillingSchedule" name="settleBilling" style="display:none;">
-              <div style="font-size:18px;font-weight:800;color:var(--primary);margin-bottom:2px;">12×</div>
+              <div style="font-size:18px;font-weight:800;color:var(--primary);margin-bottom:2px;">12Ã—</div>
               <div style="font-size:11px;font-weight:600;color:var(--on-surface);">Monthly</div>
             </label>
             <label style="flex:1;padding:14px 12px;border:2px solid var(--outline-variant);border-radius:12px;cursor:pointer;text-align:center;transition:all 0.2s;background:var(--surface-container-lowest);"
                    [style.border-color]="settleBillingSchedule === 'quarterly' ? 'var(--primary)' : 'var(--outline-variant)'"
                    [style.background]="settleBillingSchedule === 'quarterly' ? 'var(--primary-container)' : 'var(--surface-container-lowest)'">
               <input type="radio" value="quarterly" [(ngModel)]="settleBillingSchedule" name="settleBilling" style="display:none;">
-              <div style="font-size:18px;font-weight:800;color:var(--primary);margin-bottom:2px;">4×</div>
+              <div style="font-size:18px;font-weight:800;color:var(--primary);margin-bottom:2px;">4Ã—</div>
               <div style="font-size:11px;font-weight:600;color:var(--on-surface);">Quarterly</div>
             </label>
           </div>
@@ -3278,7 +3276,7 @@
   </div>
 </div>
 
-  <!-- ── TICKET MODAL ── -->
+  <!-- â”€â”€ TICKET MODAL â”€â”€ -->
   <div class="ticket-modal-backdrop" *ngIf="viewTicketUser" (click)="closeTicketModal()">
     <div class="ticket-modal" (click)="$event.stopPropagation()">
       <div class="ticket-modal-header">
@@ -3584,7 +3582,7 @@
     </div>
   </div>
 
-  <!-- ── ROLE USERS MODAL ── -->
+  <!-- â”€â”€ ROLE USERS MODAL â”€â”€ -->
   <div class="ticket-modal-backdrop" *ngIf="roleModalRole" (click)="closeRoleModal()">
     <div class="ticket-modal role-users-modal" (click)="$event.stopPropagation()">
       <div class="ticket-modal-header">
@@ -3626,9 +3624,9 @@
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════════
+  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
        CUSTOM CREDENTIALS & APPROVAL SUCCESS MODAL (WITH ONE-CLICK COPY)
-       ══════════════════════════════════════════════════════════════ -->
+       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
   <div class="custom-modal-backdrop" *ngIf="credentialsModal?.isOpen" (click)="proceedFromCredentialsModal()">
     <div class="custom-credentials-modal" (click)="$event.stopPropagation()">
       <div class="cred-modal-header">
@@ -3690,9 +3688,9 @@
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════════
+  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
        CUSTOM SLEEK ALERT NOTIFICATION MODAL
-       ══════════════════════════════════════════════════════════════ -->
+       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
   <div class="custom-modal-backdrop" *ngIf="customAlertModal?.isOpen" (click)="closeCustomAlert()">
     <div class="custom-alert-card" [ngClass]="customAlertModal?.type || 'info'" (click)="$event.stopPropagation()">
       <div class="custom-alert-icon-wrap">
