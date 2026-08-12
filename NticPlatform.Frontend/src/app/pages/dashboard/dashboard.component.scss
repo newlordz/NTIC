@@ -343,6 +343,113 @@
   gap: 16px;
 }
 
+/* ── Telemetry Radial Gauge Rings ── */
+.cc-gauges-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+.cc-gauge-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.cc-gauge-ring-wrap {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.cc-gauge-svg {
+  width: 56px;
+  height: 56px;
+  transform: rotate(-90deg);
+}
+
+.cc-gauge-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+
+  em {
+    font-style: normal;
+    font-size: 9px;
+    margin-left: 1px;
+  }
+}
+
+.cc-gauge-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+  white-space: nowrap;
+}
+
+/* ── Regional School Track List ── */
+.cc-track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px;
+}
+
+.cc-track-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cc-track-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cc-track-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0f172a;
+
+  .cc-track-ic { font-size: 16px; }
+}
+
+.cc-track-count {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.cc-role-bar-bg {
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.cc-role-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+
 .cc-top-visual-row {
   display: grid;
   grid-template-columns: 220px repeat(3, 1fr);
