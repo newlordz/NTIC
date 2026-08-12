@@ -1629,10 +1629,12 @@ private readonly defaultTeams: Team[] = [];
   saveAuditLogs(auditLogsList: any[]): void {
     this.auditLogs = auditLogsList;
     this.saveState('auditLogs', this.auditLogs);
-    const latest = auditLogsList.slice(0, 5);
-    this.syncToBackend('audit_logs', latest.map((l: any) => ({
-      action: l.action || '', user: l.user || '', time: l.time || '', type: l.type || ''
-    })));
+    if (auditLogsList.length > 0) {
+      const top = auditLogsList[0];
+      if (top && top.action) {
+        this.apiService.createAuditLog({ action: top.action, usr: top.user || '', time: top.time || new Date().toISOString(), type: top.type || 'info' }).subscribe({ error: () => {} });
+      }
+    }
   }
 
   // ── CSR Updates Helpers ──────────────────────────────────────────
