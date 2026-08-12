@@ -82,6 +82,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { name: 'Open Innovation', count: 10, pct: 7, color: '#ec4899', icon: 'lightbulb' }
   ];
 
+  regionalBreakdown = [
+    { region: 'Greater Accra Zone', schools: 45, pct: 35, color: '#3b82f6' },
+    { region: 'Ashanti Regional Zone', schools: 38, pct: 28, color: '#10b981' },
+    { region: 'Western & Central Zone', schools: 32, pct: 22, color: '#6366f1' },
+    { region: 'Northern & Volta Zone', schools: 25, pct: 15, color: '#f59e0b' }
+  ];
+
   getChartPath(key: 'submissions' | 'registrations' | 'logins'): string {
     const data = this.weeklyActivityTrend;
     const max = 300;
