@@ -538,18 +538,20 @@
     <!-- ══ SINGLE-SCREEN COMMAND CENTER DASHBOARD ══ -->
     <div class="cc-viewport-container" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
 
-      <!-- ── VISUAL ANALYTICS: SYSTEM TELEMETRY & REGIONAL REACH GRID ── -->
+      <!-- ── VISUAL ANALYTICS: SYSTEM TELEMETRY & INFRASTRUCTURE NODES GRID ── -->
       <div class="cc-middle-visual-grid cc-mb-16">
 
-        <!-- LEFT: RESOURCE TELEMETRY METERS -->
-        <div class="cc-panel">
+        <!-- LEFT: RESOURCE TELEMETRY METERS & LIVE THROUGHPUT -->
+        <div class="cc-panel cc-telemetry-panel">
           <div class="cc-panel-header">
-            <div class="cc-panel-label">
-              <span class="material-symbols-outlined">speed</span>
-              System Telemetry & Performance
+            <div class="cc-panel-label cc-panel-title-bold">
+              <span class="material-symbols-outlined cc-title-ic">speed</span>
+              SYSTEM TELEMETRY & PERFORMANCE
             </div>
             <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>Optimal</span>
           </div>
+
+          <!-- Top Gauges Grid -->
           <div class="cc-gauges-grid">
             <div *ngFor="let g of systemGauges" class="cc-gauge-card">
               <div class="cc-gauge-ring-wrap">
@@ -562,28 +564,131 @@
               <div class="cc-gauge-label">{{ g.label }}</div>
             </div>
           </div>
+
+          <!-- Live Network & Server Throughput Chart Block -->
+          <div class="cc-telemetry-chart-block">
+
+            <!-- Header: title + legend properly spaced -->
+            <div class="cc-tchart-header">
+              <div class="cc-tchart-title">
+                <span class="material-symbols-outlined">show_chart</span>
+                <span>Live Traffic &amp; System Throughput</span>
+              </div>
+              <div class="cc-tchart-legend">
+                <span class="cc-legend-item">
+                  <span class="cc-leg-line" style="background:#2563eb;"></span>
+                  API Load
+                </span>
+                <span class="cc-legend-item">
+                  <span class="cc-leg-line cc-leg-line--dashed" style="border-color:#10b981;"></span>
+                  Req Traffic
+                </span>
+              </div>
+            </div>
+
+            <!-- SVG Chart with realistic wave, grid lines, and day labels -->
+            <div class="cc-tchart-svg-wrap">
+              <svg viewBox="0 0 500 90" class="cc-throughput-svg" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="telemetryGrad2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.22"/>
+                    <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0"/>
+                  </linearGradient>
+                </defs>
+                <!-- Horizontal grid lines -->
+                <line x1="0" y1="22" x2="500" y2="22" stroke="#f1f5f9" stroke-width="1"/>
+                <line x1="0" y1="45" x2="500" y2="45" stroke="#f1f5f9" stroke-width="1"/>
+                <line x1="0" y1="68" x2="500" y2="68" stroke="#f1f5f9" stroke-width="1"/>
+                <!-- Realistic wavy API Load area fill -->
+                <path d="M 0,75 C 35,70 55,55 83,58 C 115,60 130,48 166,42 C 200,36 215,52 250,44 C 285,36 305,28 333,22 C 365,16 380,30 416,20 C 445,12 470,8 500,5 L 500,90 L 0,90 Z" fill="url(#telemetryGrad2)"/>
+                <!-- Realistic wavy API Load line -->
+                <path d="M 0,75 C 35,70 55,55 83,58 C 115,60 130,48 166,42 C 200,36 215,52 250,44 C 285,36 305,28 333,22 C 365,16 380,30 416,20 C 445,12 470,8 500,5" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <!-- Realistic wavy Req Traffic dashed line -->
+                <path d="M 0,80 C 40,76 60,68 83,70 C 115,72 135,65 166,62 C 200,58 218,66 250,60 C 285,54 308,50 333,48 C 365,45 383,52 416,46 C 448,40 470,36 500,34" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,4"/>
+              </svg>
+            </div>
+
+            <!-- X-axis day labels -->
+            <div class="cc-tchart-days">
+              <span>Mon</span><span>Tue</span><span>Wed</span>
+              <span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+            </div>
+
+            <!-- Footer metrics: label stacked above value, properly separated -->
+            <div class="cc-tchart-footer-metrics">
+              <div class="cc-tf-stat">
+                <span class="cc-tf-lbl">PEAK</span>
+                <span class="cc-tf-val">450 <small>req/s</small></span>
+              </div>
+              <div class="cc-tf-stat">
+                <span class="cc-tf-lbl">AVG LATENCY</span>
+                <span class="cc-tf-val">14 <small>ms</small></span>
+              </div>
+              <div class="cc-tf-stat">
+                <span class="cc-tf-lbl">SUCCESS RATE</span>
+                <span class="cc-tf-val cc-green">99.98 <small>%</small></span>
+              </div>
+              <div class="cc-tf-stat">
+                <span class="cc-tf-lbl">ERROR RATE</span>
+                <span class="cc-tf-val cc-muted">0.00 <small>%</small></span>
+              </div>
+            </div>
+
+          </div>
         </div>
 
-        <!-- RIGHT: REGIONAL COVERAGE & SCHOOL PARTICIPATION -->
-        <div class="cc-panel">
+        <!-- RIGHT: SYSTEM INFRASTRUCTURE NODES -->
+        <div class="cc-panel cc-nodes-panel">
           <div class="cc-panel-header">
-            <div class="cc-panel-label">
-              <span class="material-symbols-outlined">map</span>
-              Regional School Participation
+            <div class="cc-panel-label cc-panel-title-bold">
+              <span class="material-symbols-outlined cc-title-ic">dns</span>
+              SYSTEM INFRASTRUCTURE NODES
             </div>
-            <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>16 Regions</span>
+            <span class="cc-all-healthy-badge">
+              <span class="cc-live-dot cc-dot-green"></span>
+              All Healthy
+            </span>
           </div>
-          <div class="cc-track-list">
-            <div *ngFor="let reg of regionalBreakdown" class="cc-track-row">
-              <div class="cc-track-top">
-                <div class="cc-track-name">
-                  <span class="material-symbols-outlined cc-track-ic" [style.color]="reg.color">location_on</span>
-                  <span>{{ reg.region }}</span>
+          <div class="cc-nodes-grid-2x2">
+            <div *ngFor="let node of infrastructureNodes" class="cc-node-card-v2">
+              <div class="cc-ncard-top">
+                <div class="cc-ncard-ic-box">
+                  <span class="material-symbols-outlined">swap_horiz</span>
                 </div>
-                <div class="cc-track-count">{{ reg.schools }} schools</div>
+                <div class="cc-ncard-title-block">
+                  <div class="cc-ncard-name">{{ node.name }}</div>
+                  <div class="cc-ncard-status">
+                    <span class="cc-live-dot cc-dot-green"></span>
+                    <span>{{ node.status }}</span>
+                  </div>
+                </div>
               </div>
-              <div class="cc-role-bar-bg">
-                <div class="cc-role-bar-fill" [style.background]="reg.color" [style.width]="reg.pct + '%'"></div>
+              <div class="cc-ncard-body-row">
+                <div class="cc-ncard-metrics">
+                  <div class="cc-metric-col">
+                    <span class="cc-metric-lbl">LATENCY</span>
+                    <span class="cc-metric-val">{{ node.latency }}<small>ms</small></span>
+                  </div>
+                  <div class="cc-metric-col">
+                    <span class="cc-metric-lbl">LOAD</span>
+                    <span class="cc-metric-val">{{ node.loadPct }}<small>%</small></span>
+                  </div>
+                </div>
+                <div class="cc-ncard-sparkline">
+                  <svg viewBox="0 0 120 36" class="cc-sparkline-svg" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient [id]="'grad-' + node.id" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.35"/>
+                        <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0"/>
+                      </linearGradient>
+                    </defs>
+                    <path [attr.d]="node.sparklineArea" [attr.fill]="'url(#grad-' + node.id + ')'" />
+                    <path [attr.d]="node.sparklineLine" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" />
+                  </svg>
+                </div>
+              </div>
+              <div class="cc-ncard-progress-track">
+                <div class="cc-ncard-progress-fill" [style.width]="node.loadPct + '%'"></div>
               </div>
             </div>
           </div>
@@ -591,10 +696,13 @@
 
       </div>
 
-      <!-- ── BOTTOM PLATFORM OVERVIEW & SITE ANALYTICS VISUAL GRID ── -->
+      <!-- ── PLATFORM OVERVIEW & SITE SECTIONS MONITORING GRID ── -->
       <div class="cc-bottom-services-section">
         <div class="cc-services-header">
-          <h3 class="cc-services-title">Platform Overview & Site Analytics</h3>
+          <div>
+            <h3 class="cc-services-title">Platform Overview & Site Section Monitoring</h3>
+            <p class="cc-services-sub">Real-time telemetry and operational metrics across all platform domains.</p>
+          </div>
           <div class="cc-services-dots">
             <span class="cc-dot active"></span>
             <span class="cc-dot"></span>
@@ -604,10 +712,10 @@
 
         <div class="cc-services-grid">
 
-          <!-- SITE CARD 1: USER ACCOUNTS & ROLES -->
+          <!-- SITE CARD 1: USER ACCOUNTS & SECURITY ACCESS -->
           <div class="cc-service-card" (click)="goToSubTab('users')" role="button" tabindex="0">
             <div class="cc-scard-header">
-              <span class="cc-scard-name">Users & Role Distribution</span>
+              <span class="cc-scard-name">Users & Security Audit</span>
               <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>Active</span>
             </div>
             <div class="cc-scard-body">
@@ -631,8 +739,8 @@
                   <span class="cc-sdetail-text">School Admins: <strong>180 registered</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
-                  <span class="material-symbols-outlined cc-ic-dot">gavel</span>
-                  <span class="cc-sdetail-text">Judges & Sponsors: <strong>6 active</strong></span>
+                  <span class="material-symbols-outlined cc-ic-dot">shield</span>
+                  <span class="cc-sdetail-text">Active Sessions: <strong>{{ authSessionCount > 0 ? authSessionCount : registeredUsers.length }} tokens</strong></span>
                 </div>
               </div>
             </div>
@@ -642,10 +750,10 @@
             </div>
           </div>
 
-          <!-- SITE CARD 2: COMPETITION TRACKS & PROJECTS -->
+          <!-- SITE CARD 2: COMPETITION PIPELINE & JUDGING -->
           <div class="cc-service-card" (click)="goToSubTab('content')" role="button" tabindex="0">
             <div class="cc-scard-header">
-              <span class="cc-scard-name">Competition Tracks & Projects</span>
+              <span class="cc-scard-name">Live Competition Pipeline</span>
               <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>5 Tracks</span>
             </div>
             <div class="cc-scard-body">
@@ -662,15 +770,15 @@
               <div class="cc-scard-details">
                 <div class="cc-sdetail-row">
                   <span class="material-symbols-outlined cc-ic-dot">code</span>
-                  <span class="cc-sdetail-text">Coding: <strong>48 projects</strong></span>
+                  <span class="cc-sdetail-text">Coding: <strong>48 submissions</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
                   <span class="material-symbols-outlined cc-ic-dot">smart_toy</span>
-                  <span class="cc-sdetail-text">Robotics: <strong>34 projects</strong></span>
+                  <span class="cc-sdetail-text">Robotics & AI: <strong>80 projects</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
-                  <span class="material-symbols-outlined cc-ic-dot">psychology</span>
-                  <span class="cc-sdetail-text">AI & Cyber: <strong>46 projects</strong></span>
+                  <span class="material-symbols-outlined cc-ic-dot">gavel</span>
+                  <span class="cc-sdetail-text">Evaluation Queue: <strong>All scored</strong></span>
                 </div>
               </div>
             </div>
@@ -680,44 +788,97 @@
             </div>
           </div>
 
-          <!-- SITE CARD 3: SCHOOL & REGIONAL NETWORK -->
-          <div class="cc-service-card" (click)="goToSubTab('approvals')" role="button" tabindex="0">
+          <!-- SITE CARD 3: LMS & LEARNING PLATFORM -->
+          <div class="cc-service-card" (click)="goToSubTab('tickets')" role="button" tabindex="0">
             <div class="cc-scard-header">
-              <span class="cc-scard-name">School & Regional Network</span>
-              <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>16 Regions</span>
+              <span class="cc-scard-name">LMS & Learning Activity</span>
+              <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>Online</span>
             </div>
             <div class="cc-scard-body">
               <div class="cc-scard-ring-wrap">
                 <svg viewBox="0 0 36 36" class="cc-mini-ring-svg">
                   <path class="cc-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/>
-                  <path class="cc-ring-fill" stroke="#6366f1" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
+                  <path class="cc-ring-fill" stroke="#f59e0b" stroke-dasharray="94, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
                 </svg>
                 <div class="cc-mini-ring-center">
-                  <span class="cc-mring-sub">Schools</span>
-                  <span class="cc-mring-val" style="color: #6366f1;">180</span>
+                  <span class="cc-mring-sub">Active</span>
+                  <span class="cc-mring-val" style="color: #f59e0b;">94%</span>
                 </div>
               </div>
               <div class="cc-scard-details">
                 <div class="cc-sdetail-row">
-                  <span class="material-symbols-outlined cc-ic-dot">domain</span>
-                  <span class="cc-sdetail-text">Partner Schools: <strong>180</strong></span>
+                  <span class="material-symbols-outlined cc-ic-dot">menu_book</span>
+                  <span class="cc-sdetail-text">Modules: <strong>24 published</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
-                  <span class="material-symbols-outlined cc-ic-dot">supervisor_account</span>
-                  <span class="cc-sdetail-text">Mentors & Leads: <strong>800</strong></span>
+                  <span class="material-symbols-outlined cc-ic-dot">assignment_turned_in</span>
+                  <span class="cc-sdetail-text">Quizzes Taken: <strong>3,420</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
-                  <span class="material-symbols-outlined cc-ic-dot">school</span>
-                  <span class="cc-sdetail-text">Students: <strong>12,000+</strong></span>
+                  <span class="material-symbols-outlined cc-ic-dot">workspace_premium</span>
+                  <span class="cc-sdetail-text">Certificates Issued: <strong>1,120</strong></span>
                 </div>
               </div>
             </div>
             <div class="cc-scard-footer">
-              <span>View Registration Requests</span>
+              <span>Monitor LMS Workspace</span>
               <span class="material-symbols-outlined">arrow_forward</span>
             </div>
           </div>
 
+        </div>
+      </div>
+
+      <!-- ── MOVED SECTION: SCHOOL & REGIONAL NETWORK (WITH REGIONAL SCHOOL PARTICIPATION BREAKDOWN) ── -->
+      <div class="cc-panel cc-mt-16">
+        <div class="cc-panel-header">
+          <div class="cc-panel-label">
+            <span class="material-symbols-outlined">map</span>
+            School & Regional Network Monitoring
+          </div>
+          <div class="cc-header-actions">
+            <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>16 Regions · 180 Schools</span>
+          </div>
+        </div>
+        <div class="cc-panel-body">
+          <div class="cc-regional-summary-bar cc-mb-16">
+            <div class="cc-reg-stat">
+              <span class="cc-rstat-label">Total Participating Schools</span>
+              <span class="cc-rstat-val">180</span>
+            </div>
+            <div class="cc-reg-stat">
+              <span class="cc-rstat-label">Regional Leads & Mentors</span>
+              <span class="cc-rstat-val">800</span>
+            </div>
+            <div class="cc-reg-stat">
+              <span class="cc-rstat-label">Total Student Enrolments</span>
+              <span class="cc-rstat-val">12,450</span>
+            </div>
+            <div class="cc-reg-stat">
+              <span class="cc-rstat-label">National Reach</span>
+              <span class="cc-rstat-val">100% (16/16 Regions)</span>
+            </div>
+          </div>
+
+          <div class="cc-regional-extended-grid">
+            <div *ngFor="let reg of regionalBreakdown" class="cc-regional-card">
+              <div class="cc-reg-card-top">
+                <div class="cc-reg-name">
+                  <span class="material-symbols-outlined" [style.color]="reg.color">location_on</span>
+                  <strong>{{ reg.region }}</strong>
+                </div>
+                <span class="cc-reg-count-chip">{{ reg.schools }} Schools</span>
+              </div>
+              <div class="cc-role-bar-bg cc-mt-8">
+                <div class="cc-role-bar-fill" [style.background]="reg.color" [style.width]="reg.pct + '%'"></div>
+              </div>
+              <div class="cc-reg-meta cc-mt-8">
+                <span>Participation: <strong>{{ reg.pct }}%</strong></span>
+                <span>Instructors: <strong>{{ reg.leads }}</strong></span>
+                <span>Students: <strong>{{ reg.students.toLocaleString() }}</strong></span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -792,6 +953,18 @@
               <div class="cc-control-card-label">Manage Admins</div>
               <div class="cc-control-card-desc">Create, edit, and manage administrator accounts and their permissions.</div>
               <div class="cc-control-card-count">{{ adminUsers.length }} admins active</div>
+            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+          </div>
+
+          <div class="cc-control-card" (click)="goToSubTab('audit')">
+            <div class="cc-control-card-icon cc-icon-audit">
+              <span class="material-symbols-outlined">receipt_long</span>
+            </div>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">Live Audit Trail</div>
+              <div class="cc-control-card-desc">Real-time log of logins, tokens, approvals, and system changes.</div>
+              <div class="cc-control-card-count">{{ auditLogs.length }} events logged</div>
             </div>
             <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
@@ -1134,6 +1307,47 @@
             <span class="material-symbols-outlined">save</span>
             {{ editingAdmin ? 'Update' : 'Create' }} Admin
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: LIVE AUDIT TRAIL ── -->
+    <div *ngIf="adminTab === 'control' && adminSubTab === 'audit'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
+      <div class="ac-top-bar">
+        <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
+          <span class="material-symbols-outlined">arrow_back</span>Admin Control
+        </button>
+        <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
+          <span class="material-symbols-outlined">{{ expandedSection ? 'collapse_content' : 'expand_content' }}</span>
+          {{ expandedSection ? 'Collapse' : 'Expand' }}
+        </button>
+      </div>
+
+      <div class="admin-header-actions">
+        <div class="section-title">Live Audit Trail <span class="total-users-badge">{{ auditLogs.length }} events</span></div>
+        <div class="cc-panel-status cc-blink-badge">
+          <span class="cc-live-dot"></span>
+          <span>LIVE</span>
+        </div>
+      </div>
+
+      <div class="cc-panel" style="margin-top:12px;">
+        <div class="cc-audit-list" style="max-height:none;">
+          <div *ngFor="let log of auditLogs" class="cc-audit-item" [class]="'cc-audit-' + log.type">
+            <div class="cc-audit-icon">
+              <span class="material-symbols-outlined">
+                {{ log.type === 'auth' ? 'login' : log.type === 'ticket' ? 'confirmation_number' : log.type === 'approval' ? 'check_circle' : 'settings' }}
+              </span>
+            </div>
+            <div class="cc-audit-body">
+              <div class="cc-audit-action">{{ log.action }}</div>
+              <div class="cc-audit-meta">{{ log.user }} &middot; {{ log.time | timeAgo }}</div>
+            </div>
+          </div>
+          <div *ngIf="!auditLogs || auditLogs.length === 0" class="cc-audit-empty">
+            <span class="material-symbols-outlined">history</span>
+            <span>No recent activity</span>
+          </div>
         </div>
       </div>
     </div>

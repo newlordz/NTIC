@@ -353,6 +353,14 @@ export class ApiService {
     return this.http.post(this.apiUrl + '/lms-courses', payload);
   }
 
+  getSystemNodesHealth(): Observable<any> {
+    return this.http.get<any>(this.apiUrl + '/system/nodes-health');
+  }
+
+  getSystemTelemetry(): Observable<any> {
+    return this.http.get<any>(this.apiUrl + '/system/telemetry');
+  }
+
   bulkSync(collection: string, items: any[]): Observable<any> {
     return this.http.post(this.apiUrl + '/bulk-sync', { collection, items });
   }

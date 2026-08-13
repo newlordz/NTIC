@@ -83,10 +83,51 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ];
 
   regionalBreakdown = [
-    { region: 'Greater Accra Zone', schools: 45, pct: 35, color: '#3b82f6' },
-    { region: 'Ashanti Regional Zone', schools: 38, pct: 28, color: '#10b981' },
-    { region: 'Western & Central Zone', schools: 32, pct: 22, color: '#6366f1' },
-    { region: 'Northern & Volta Zone', schools: 25, pct: 15, color: '#f59e0b' }
+    { region: 'Greater Accra Zone', schools: 45, pct: 35, color: '#3b82f6', leads: 90, students: 3200 },
+    { region: 'Ashanti Regional Zone', schools: 38, pct: 28, color: '#10b981', leads: 76, students: 2800 },
+    { region: 'Western & Central Zone', schools: 32, pct: 22, color: '#6366f1', leads: 64, students: 2300 },
+    { region: 'Northern & Volta Zone', schools: 25, pct: 15, color: '#f59e0b', leads: 50, students: 1800 },
+    { region: 'Eastern & Oti Zone', schools: 22, pct: 14, color: '#ec4899', leads: 44, students: 1400 },
+    { region: 'Bono & Ahafo Zone', schools: 18, pct: 12, color: '#8b5cf6', leads: 36, students: 1100 }
+  ];
+
+  infrastructureNodes = [
+    {
+      id: 'node-auth',
+      name: 'Main Auth Service',
+      status: 'Healthy',
+      latency: 31,
+      loadPct: 4,
+      sparklineLine: 'M 0,22 Q 20,8 40,18 T 80,10 T 120,24',
+      sparklineArea: 'M 0,22 Q 20,8 40,18 T 80,10 T 120,24 L 120,36 L 0,36 Z'
+    },
+    {
+      id: 'node-lms',
+      name: 'LMS Storage Bucket',
+      status: 'Healthy',
+      latency: 93,
+      loadPct: 40,
+      sparklineLine: 'M 0,14 Q 25,12 50,18 T 90,14 T 120,10',
+      sparklineArea: 'M 0,14 Q 25,12 50,18 T 90,14 T 120,10 L 120,36 L 0,36 Z'
+    },
+    {
+      id: 'node-compiler',
+      name: 'Compiler & Sandbox VM',
+      status: 'Healthy',
+      latency: 88,
+      loadPct: 2,
+      sparklineLine: 'M 0,24 Q 20,28 40,15 T 80,22 T 120,18',
+      sparklineArea: 'M 0,24 Q 20,28 40,15 T 80,22 T 120,18 L 120,36 L 0,36 Z'
+    },
+    {
+      id: 'node-analytics',
+      name: 'Analytics Engine DB',
+      status: 'Healthy',
+      latency: 24,
+      loadPct: 23,
+      sparklineLine: 'M 0,18 Q 20,15 40,10 T 80,16 T 120,12',
+      sparklineArea: 'M 0,18 Q 20,15 40,10 T 80,16 T 120,12 L 120,36 L 0,36 Z'
+    }
   ];
 
   getChartPath(key: 'submissions' | 'registrations' | 'logins'): string {
@@ -108,7 +149,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ─── SUPER ADMIN STATE ─────────────────────────
   adminTab: 'overview' | 'control' | 'dashboard' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'dashboard';
-  adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | '' = '';
+  adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'audit' | '' = '';
 
   goToTab(tab: string): void {
     this.adminTab = tab as any;
@@ -835,7 +876,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (params['tab'] && ['dashboard', 'overview', 'control', 'register', 'tickets', 'approvals', 'content', 'users', 'admins'].includes(params['tab'])) {
         this.adminTab = params['tab'] as any;
         if (this.adminTab === 'control') {
-          this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
+          this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins','audit'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
         }
         if (params['tab'] === 'approvals' || params['subtab'] === 'approvals') {
           this.loadApprovalsFromBackend();
@@ -852,10 +893,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.loadAuthSessions();
       this.loadAuthSessionCount();
       this.loadAuditLogsFromBackend();
+      this.loadSystemNodesHealth();
+      this.loadSystemTelemetry();
       this.liveIntervals.push(setInterval(() => {
         this.loadAuthSessions();
         this.loadAuthSessionCount();
         this.loadAuditLogsFromBackend();
+        this.loadSystemNodesHealth();
+        this.loadSystemTelemetry();
       }, 12000));
       this.liveIntervals.push(setInterval(() => this.cdr.detectChanges(), 30000));
       
@@ -864,6 +909,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.loadAuthSessions();
         this.loadAuthSessionCount();
         this.loadAuditLogsFromBackend();
+        this.loadSystemNodesHealth();
+        this.loadSystemTelemetry();
       });
       this.liveIntervals.push({ unsubscribe: () => wsSub.unsubscribe() });
 
@@ -987,7 +1034,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.dashboardSubtitle = 'National NTIC Platform · System Administration & Access Control';
         this.stats = [
           { label: 'Total Registered Users', value: String(this.contentService.userCount || this.registeredUsers.length), icon: 'manage_accounts', meta: '6 distinct portals', color: 'primary' },
-          { label: 'System Health', value: '100%', icon: 'cloud_done', meta: 'All 4 nodes green', color: 'secondary' },
+          { label: 'Live Audit Trail', value: '1,240 Events', icon: 'history', meta: 'Real-time security stream', color: 'secondary' },
           { label: 'Pending Approvals', value: String(this.pendingApprovals.length), icon: 'verified_user', meta: this.pendingApprovals.length > 0 ? 'Action required' : 'All clear', color: 'error' },
           { label: 'Active Sessions', value: String(this.authSessionCount >= 0 ? this.authSessionCount : this.registeredUsers.filter(u => u.status === 'Active').length), icon: 'groups', meta: this.activeSessionsMeta, color: 'tertiary' }
         ];
@@ -1044,6 +1091,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   loadAuditLogsFromBackend(): void {
     this.contentService.fetchAuditLogsFromBackend();
+    const auditIdx = this.stats.findIndex(s => s.label === 'Live Audit Trail');
+    if (auditIdx >= 0 && this.contentService.auditLogs && this.contentService.auditLogs.length > 0) {
+      this.stats[auditIdx] = { ...this.stats[auditIdx], value: `${this.contentService.auditLogs.length.toLocaleString()} Events` };
+    }
+  }
+
+  loadSystemNodesHealth(): void {
+    if (this.activeRoleId !== 'super_admin') return;
+    this.apiService.getSystemNodesHealth().subscribe({
+      next: (res: any) => {
+        if (res && res.nodes && res.nodes.length > 0) {
+          this.infrastructureNodes = res.nodes;
+        }
+      },
+      error: () => {}
+    });
+  }
+
+  loadSystemTelemetry(): void {
+    if (this.activeRoleId !== 'super_admin') return;
+    this.apiService.getSystemTelemetry().subscribe({
+      next: (res: any) => {
+        if (res && res.gauges) {
+          this.systemGauges = res.gauges;
+        }
+      },
+      error: () => {}
+    });
   }
 
   loadAuthSessions(): void {
@@ -1187,13 +1262,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     if (this.activeRoleId === 'super_admin') {
       if (label.includes('registered users') || label.includes('users')) {
-        this.goToTab('control'); this.goToSubTab('users');
+        this.goToSubTab('users');
       } else if (label.includes('pending approvals') || label.includes('approvals')) {
-        this.goToTab('control'); this.goToSubTab('approvals');
+        this.goToSubTab('approvals');
       } else if (label.includes('active tokens') || label.includes('tokens') || label.includes('sessions')) {
-        this.goToTab('control'); this.goToSubTab('tickets');
-      } else if (label.includes('system health') || label.includes('health')) {
-        this.goToTab('overview');
+        this.goToSubTab('tickets');
+      } else if (label.includes('audit') || label.includes('logs') || label.includes('trail')) {
+        this.goToSubTab('audit');
+      } else if (label.includes('infrastructure') || label.includes('nodes')) {
+        this.goToTab('dashboard');
       }
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 260, behavior: 'smooth' });
