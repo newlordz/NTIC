@@ -938,8 +938,20 @@
               <span class="material-symbols-outlined">group</span>
             </div>
             <div class="cc-control-card-body">
-              <div class="cc-control-card-label">Users by Role</div>
+              <div class="cc-control-card-label">Access Right</div>
               <div class="cc-control-card-desc">Browse and manage all platform users categorized by role and status.</div>
+              <div class="cc-control-card-count">{{ registeredUsers.length }} users on platform</div>
+            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+          </div>
+
+          <div class="cc-control-card" (click)="goToSubTab('users_full')" *ngIf="canManageUsers">
+            <div class="cc-control-card-icon cc-icon-users">
+              <span class="material-symbols-outlined">manage_accounts</span>
+            </div>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">Users</div>
+              <div class="cc-control-card-desc">Manage all platform users, roles, and support tickets.</div>
               <div class="cc-control-card-count">{{ registeredUsers.length }} users on platform</div>
             </div>
             <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
@@ -971,6 +983,20 @@
         </div>
       </div>
     </div>
+    <!-- ── TAB: USERS FULL (User Management) ── -->
+    <div *ngIf="adminTab === 'control' && adminSubTab === 'users_full'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
+      <div class="ac-top-bar">
+        <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
+          <span class="material-symbols-outlined">arrow_back</span>Admin Control
+        </button>
+        <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
+          <span class="material-symbols-outlined">{{ expandedSection ? 'collapse_content' : 'expand_content' }}</span>
+          {{ expandedSection ? 'Collapse' : 'Expand' }}
+        </button>
+      </div>
+      <app-user-management></app-user-management>
+    </div>
+
     <!-- ── TAB: OVERVIEW (COMMAND CENTER) ── -->
     <div *ngIf="adminTab === 'overview'" class="admin-tab-body">
       <div class="cc-overview-grid">
@@ -1035,27 +1061,45 @@
 
         <!-- ── LIVE AUDIT TRAIL ── -->
         <div class="cc-panel">
-          <div class="cc-panel-header">
+          <div class="cc-panel-header" style="cursor:pointer;" (click)="goToSubTab('audit')">
             <div class="cc-panel-label">
               <span class="material-symbols-outlined">receipt_long</span>
-              Live Audit Trail
+              Live Audit Trail <span class="total-users-badge" style="font-size:10.5px;padding:2px 7px;">{{ auditTotalCount }} events</span>
             </div>
-            <div class="cc-panel-status cc-blink-badge">
-              <span class="cc-live-dot"></span>
-              <span>LIVE</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button class="lat-btn lat-btn-outline lat-btn-sm" (click)="$event.stopPropagation(); goToSubTab('audit')" title="Open full Live Audit Trail panel">
+                <span>View All</span>
+                <span class="material-symbols-outlined" style="font-size:13px;">arrow_forward</span>
+              </button>
+              <div class="cc-panel-status cc-blink-badge">
+                <span class="cc-live-dot"></span>
+                <span>LIVE</span>
+              </div>
             </div>
           </div>
           <div class="cc-audit-list">
-            <div *ngFor="let log of auditLogs" class="cc-audit-item" [class]="'cc-audit-' + log.type">
+            <div
+              *ngFor="let log of enrichedAuditLogs.slice(0, 8)"
+              class="cc-audit-item"
+              [class]="'cc-audit-' + log.category"
+              (click)="inspectAuditLog(log)"
+              [title]="'Click to inspect: ' + log.action"
+            >
               <div class="cc-audit-icon">
-                <span class="material-symbols-outlined">
-                  {{ log.type === 'auth' ? 'login' : log.type === 'ticket' ? 'confirmation_number' : log.type === 'approval' ? 'check_circle' : 'settings' }}
-                </span>
+                <span class="material-symbols-outlined">{{ log.icon }}</span>
               </div>
               <div class="cc-audit-body">
                 <div class="cc-audit-action">{{ log.action }}</div>
-                <div class="cc-audit-meta">{{ log.user }} &middot; {{ log.time | timeAgo }}</div>
+                <div class="cc-audit-meta">
+                  <span>{{ log.user }}</span>
+                  <span>&middot;</span>
+                  <span>{{ log.time | timeAgo }}</span>
+                  <span *ngIf="log.ip" style="opacity:0.75;">({{ log.ip }})</span>
+                </div>
               </div>
+              <span class="lat-badge lat-badge-cat" [class]="'badge-' + log.category" style="font-size:8.5px;padding:1px 5px;align-self:center;">
+                {{ log.category | uppercase }}
+              </span>
             </div>
             <div *ngIf="!auditLogs || auditLogs.length === 0" class="cc-audit-empty">
               <span class="material-symbols-outlined">history</span>
@@ -1088,7 +1132,7 @@
 
       <!-- Role distribution cards -->
       <div class="admin-role-grid" style="margin-bottom:20px;">
-        <div *ngFor="let r of roleDistribution" class="admin-role-card" [class]="'role-' + r.role"
+        <div *ngFor="let r of roleDistribution" class="admin-role-card" [ngClass]="'role-' + r.role"
              (click)="userRoleFilter = r.role" title="Filter by {{ r.label }}">
           <div class="admin-role-icon"><span class="material-symbols-outlined">{{ r.icon }}</span></div>
           <div class="admin-role-info">
@@ -1312,45 +1356,629 @@
     </div>
 
     <!-- ── TAB: LIVE AUDIT TRAIL ── -->
-    <div *ngIf="adminTab === 'control' && adminSubTab === 'audit'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
-      <div class="ac-top-bar">
-        <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
-          <span class="material-symbols-outlined">arrow_back</span>Admin Control
-        </button>
-        <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
-          <span class="material-symbols-outlined">{{ expandedSection ? 'collapse_content' : 'expand_content' }}</span>
-          {{ expandedSection ? 'Collapse' : 'Expand' }}
-        </button>
-      </div>
+    <div *ngIf="adminTab === 'control' && adminSubTab === 'audit'" class="admin-tab-body lat-page-container" [class.ac-expanded]="expandedSection">
+      <!-- Top Navigation & Controls Bar -->
+      <div class="ac-top-bar lat-top-bar">
+        <div class="lat-top-left">
+          <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
+            <span class="material-symbols-outlined">arrow_back</span>
+            <span>Admin Control</span>
+          </button>
+          <div class="lat-breadcrumb-separator">/</div>
+          <div class="lat-breadcrumb-current">
+            <span class="material-symbols-outlined lat-bread-icon">shield_lock</span>
+            <span>Security & Live Audit Trail</span>
+          </div>
+        </div>
 
-      <div class="admin-header-actions">
-        <div class="section-title">Live Audit Trail <span class="total-users-badge">{{ auditLogs.length }} events</span></div>
-        <div class="cc-panel-status cc-blink-badge">
-          <span class="cc-live-dot"></span>
-          <span>LIVE</span>
+        <div class="lat-top-right">
+          <div class="lat-sync-status" [title]="'Last synchronized at ' + (lastAuditSyncTime | date:'mediumTime')">
+            <span class="lat-pulse-dot" [class.paused]="!auditAutoRefresh"></span>
+            <span class="lat-sync-text">{{ auditAutoRefresh ? 'Live Stream Active' : 'Stream Paused' }}</span>
+          </div>
+          <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
+            <span class="material-symbols-outlined">{{ expandedSection ? 'collapse_content' : 'expand_content' }}</span>
+            <span>{{ expandedSection ? 'Collapse' : 'Expand' }}</span>
+          </button>
         </div>
       </div>
 
-      <div class="cc-panel" style="margin-top:12px;">
-        <div class="cc-audit-list" style="max-height:none;">
-          <div *ngFor="let log of auditLogs" class="cc-audit-item" [class]="'cc-audit-' + log.type">
-            <div class="cc-audit-icon">
-              <span class="material-symbols-outlined">
-                {{ log.type === 'auth' ? 'login' : log.type === 'ticket' ? 'confirmation_number' : log.type === 'approval' ? 'check_circle' : 'settings' }}
-              </span>
+      <!-- Main Header with Live Stream Controls -->
+      <div class="lat-header-card">
+        <div class="lat-header-info">
+          <div class="lat-title-row">
+            <div class="lat-icon-badge">
+              <span class="material-symbols-outlined">receipt_long</span>
             </div>
-            <div class="cc-audit-body">
-              <div class="cc-audit-action">{{ log.action }}</div>
-              <div class="cc-audit-meta">{{ log.user }} &middot; {{ log.time | timeAgo }}</div>
+            <div>
+              <div class="lat-main-title">
+                Live Audit Trail & Security Stream
+                <span class="lat-total-pill">{{ auditTotalCount }} events</span>
+              </div>
+              <div class="lat-subtitle">Real-time immutable security logs, administrative actions, and user session telemetry</div>
             </div>
           </div>
-          <div *ngIf="!auditLogs || auditLogs.length === 0" class="cc-audit-empty">
-            <span class="material-symbols-outlined">history</span>
-            <span>No recent activity</span>
+        </div>
+
+        <div class="lat-header-actions">
+          <button class="lat-btn lat-btn-ghost" (click)="toggleAuditAutoRefresh()" [title]="auditAutoRefresh ? 'Pause Live Stream' : 'Resume Live Stream'">
+            <span class="material-symbols-outlined">{{ auditAutoRefresh ? 'pause_circle' : 'play_circle' }}</span>
+            <span>{{ auditAutoRefresh ? 'Auto-Stream ON' : 'Stream Paused' }}</span>
+          </button>
+
+          <button class="lat-btn lat-btn-secondary" (click)="refreshAuditStream()" [disabled]="auditIsRefreshing" title="Force sync with backend log storage">
+            <span class="material-symbols-outlined" [class.lat-spin]="auditIsRefreshing">sync</span>
+            <span>Sync Stream</span>
+          </button>
+
+          <button class="lat-btn lat-btn-outline" (click)="generateSimulatedAuditEvent()" title="Simulate a test security event into the live stream">
+            <span class="material-symbols-outlined">add_moderator</span>
+            <span>+ Test Event</span>
+          </button>
+
+          <!-- Export Dropdown -->
+          <div class="lat-export-dropdown-wrapper">
+            <button class="lat-btn lat-btn-primary" (click)="auditExportDropdownOpen = !auditExportDropdownOpen">
+              <span class="material-symbols-outlined">download</span>
+              <span>Export</span>
+              <span class="material-symbols-outlined lat-dropdown-arrow">arrow_drop_down</span>
+            </button>
+            <div class="lat-export-menu" *ngIf="auditExportDropdownOpen" (click)="$event.stopPropagation()">
+              <button class="lat-export-item" (click)="exportAuditLogs('csv')">
+                <span class="material-symbols-outlined">table_view</span>
+                <div>
+                  <div class="lat-export-item-title">Export as CSV</div>
+                  <div class="lat-export-item-desc">Tabular spreadsheet for Excel/Sheets</div>
+                </div>
+              </button>
+              <button class="lat-export-item" (click)="exportAuditLogs('json')">
+                <span class="material-symbols-outlined">data_object</span>
+                <div>
+                  <div class="lat-export-item-title">Export as JSON</div>
+                  <div class="lat-export-item-desc">Structured raw security data payload</div>
+                </div>
+              </button>
+              <button class="lat-export-item" (click)="exportAuditLogs('txt')">
+                <span class="material-symbols-outlined">description</span>
+                <div>
+                  <div class="lat-export-item-title">Official Security Report (.txt)</div>
+                  <div class="lat-export-item-desc">Formatted compliance & audit summary</div>
+                </div>
+              </button>
+            </div>
           </div>
+        </div>
+      </div>
+
+      <!-- KPI Summary Analytics Cards -->
+      <div class="lat-kpi-grid">
+        <div class="lat-kpi-card" [class.active]="auditCategoryFilter === 'all'" (click)="setAuditCategory('all')">
+          <div class="lat-kpi-icon-wrap icon-all">
+            <span class="material-symbols-outlined">analytics</span>
+          </div>
+          <div class="lat-kpi-content">
+            <div class="lat-kpi-val">{{ auditTotalCount }}</div>
+            <div class="lat-kpi-lbl">Total Events Recorded</div>
+            <div class="lat-kpi-meta">All platform streams</div>
+          </div>
+        </div>
+
+        <div class="lat-kpi-card" [class.active]="auditCategoryFilter === 'auth'" (click)="setAuditCategory('auth')">
+          <div class="lat-kpi-icon-wrap icon-auth">
+            <span class="material-symbols-outlined">vpn_key</span>
+          </div>
+          <div class="lat-kpi-content">
+            <div class="lat-kpi-val">{{ auditAuthCount }}</div>
+            <div class="lat-kpi-lbl">Auth & Access Logins</div>
+            <div class="lat-kpi-meta">OIDC & sessions</div>
+          </div>
+        </div>
+
+        <div class="lat-kpi-card" [class.active]="auditCategoryFilter === 'approval'" (click)="setAuditCategory('approval')">
+          <div class="lat-kpi-icon-wrap icon-approval">
+            <span class="material-symbols-outlined">verified</span>
+          </div>
+          <div class="lat-kpi-content">
+            <div class="lat-kpi-val">{{ auditApprovalCount }}</div>
+            <div class="lat-kpi-lbl">Approvals & Verification</div>
+            <div class="lat-kpi-meta">Squads, tiers & reviews</div>
+          </div>
+        </div>
+
+        <div class="lat-kpi-card" [class.active]="auditCategoryFilter === 'content'" (click)="setAuditCategory('content')">
+          <div class="lat-kpi-icon-wrap icon-content">
+            <span class="material-symbols-outlined">auto_stories</span>
+          </div>
+          <div class="lat-kpi-content">
+            <div class="lat-kpi-val">{{ auditContentCount }}</div>
+            <div class="lat-kpi-lbl">Content & LMS Updates</div>
+            <div class="lat-kpi-meta">Courses, news & stories</div>
+          </div>
+        </div>
+
+        <div class="lat-kpi-card" [class.active]="auditCategoryFilter === 'revoked'" (click)="setAuditCategory('revoked')">
+          <div class="lat-kpi-icon-wrap icon-security">
+            <span class="material-symbols-outlined">shield</span>
+          </div>
+          <div class="lat-kpi-content">
+            <div class="lat-kpi-val">{{ auditSecurityCount }}</div>
+            <div class="lat-kpi-lbl">Security & Deletions</div>
+            <div class="lat-kpi-meta">Revocations & removals</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced Filter & Search Toolbar -->
+      <div class="lat-filters-card">
+        <!-- Search Input Bar -->
+        <div class="lat-search-row">
+          <div class="lat-search-box">
+            <span class="material-symbols-outlined lat-search-icon">search</span>
+            <input
+              type="text"
+              class="lat-search-input"
+              placeholder="Search audit trail by actor, action description, ID, IP address, or location..."
+              [(ngModel)]="auditSearchQuery"
+              (ngModelChange)="auditPage = 1; recomputeAuditFilter()"
+            />
+            <button class="lat-search-clear" *ngIf="auditSearchQuery" (click)="auditSearchQuery = ''; auditPage = 1; recomputeAuditFilter()">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div class="lat-view-mode-toggle">
+            <button
+              class="lat-view-btn"
+              [class.active]="auditViewMode === 'stream'"
+              (click)="auditViewMode = 'stream'"
+              title="Stream / Timeline View"
+            >
+              <span class="material-symbols-outlined">view_agenda</span>
+              <span>Cards</span>
+            </button>
+            <button
+              class="lat-view-btn"
+              [class.active]="auditViewMode === 'table'"
+              (click)="auditViewMode = 'table'"
+              title="Dense Data Table View"
+            >
+              <span class="material-symbols-outlined">table_rows</span>
+              <span>Table</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Pills & Selectors Row -->
+        <div class="lat-filter-pills-row">
+          <!-- Category Pills -->
+          <div class="lat-category-pills">
+            <button class="lat-pill" [class.active]="auditCategoryFilter === 'all'" (click)="setAuditCategory('all')">
+              <span>All Events</span>
+            </button>
+            <button class="lat-pill pill-auth" [class.active]="auditCategoryFilter === 'auth'" (click)="setAuditCategory('auth')">
+              <span class="material-symbols-outlined pill-icon">login</span>
+              <span>Auth ({{ auditAuthCount }})</span>
+            </button>
+            <button class="lat-pill pill-approval" [class.active]="auditCategoryFilter === 'approval'" (click)="setAuditCategory('approval')">
+              <span class="material-symbols-outlined pill-icon">verified</span>
+              <span>Approvals ({{ auditApprovalCount }})</span>
+            </button>
+            <button class="lat-pill pill-content" [class.active]="auditCategoryFilter === 'content'" (click)="setAuditCategory('content')">
+              <span class="material-symbols-outlined pill-icon">article</span>
+              <span>Content ({{ auditContentCount }})</span>
+            </button>
+            <button class="lat-pill pill-system" [class.active]="auditCategoryFilter === 'system'" (click)="setAuditCategory('system')">
+              <span class="material-symbols-outlined pill-icon">settings</span>
+              <span>System</span>
+            </button>
+            <button class="lat-pill pill-revoked" [class.active]="auditCategoryFilter === 'revoked'" (click)="setAuditCategory('revoked')">
+              <span class="material-symbols-outlined pill-icon">delete_forever</span>
+              <span>Revocations</span>
+            </button>
+          </div>
+
+          <!-- Dropdown Selectors -->
+          <div class="lat-filter-selects">
+            <!-- Time Range -->
+            <div class="lat-select-group">
+              <span class="lat-select-label">Time:</span>
+              <select class="lat-select" [(ngModel)]="auditTimeFilter" (ngModelChange)="setAuditTime($event)">
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="24h">Past 24 Hours</option>
+                <option value="7d">Past 7 Days</option>
+                <option value="30d">Past 30 Days</option>
+              </select>
+            </div>
+
+            <!-- Severity -->
+            <div class="lat-select-group">
+              <span class="lat-select-label">Severity:</span>
+              <select class="lat-select" [(ngModel)]="auditSeverityFilter" (ngModelChange)="setAuditSeverity($event)">
+                <option value="all">All Severities</option>
+                <option value="info">Info</option>
+                <option value="success">Success</option>
+                <option value="warning">Warning</option>
+                <option value="danger">Critical / Danger</option>
+              </select>
+            </div>
+
+            <!-- User/Actor -->
+            <div class="lat-select-group" *ngIf="auditUniqueActors.length > 0">
+              <span class="lat-select-label">Actor:</span>
+              <select class="lat-select lat-select-actor" [(ngModel)]="auditUserFilter" (ngModelChange)="setAuditUser($event)">
+                <option value="all">All Users</option>
+                <option *ngFor="let usr of auditUniqueActors" [value]="usr">{{ usr }}</option>
+              </select>
+            </div>
+
+            <!-- Reset Filters -->
+            <button
+              class="lat-btn-reset"
+              *ngIf="auditSearchQuery || auditCategoryFilter !== 'all' || auditSeverityFilter !== 'all' || auditTimeFilter !== 'all' || auditUserFilter !== 'all'"
+              (click)="resetAuditFilters()"
+              title="Clear all search & filter criteria"
+            >
+              <span class="material-symbols-outlined">restart_alt</span>
+              <span>Reset</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STREAM / TIMELINE VIEW -->
+      <div class="lat-stream-container" *ngIf="auditViewMode === 'stream'">
+        <div class="lat-results-bar">
+          <div class="lat-results-count">
+            Showing <strong>{{ (auditPage - 1) * auditPageSize + 1 }}</strong> -
+            <strong>{{ Math.min(auditPage * auditPageSize, filteredAuditLogs.length) }}</strong> of
+            <strong>{{ filteredAuditLogs.length }}</strong> events
+            <span *ngIf="filteredAuditLogs.length !== auditTotalCount" class="lat-filtered-tag">(filtered from {{ auditTotalCount }} total)</span>
+          </div>
+          <div class="lat-page-size-selector">
+            <span>Show:</span>
+            <select class="lat-select-sm" [(ngModel)]="auditPageSize" (ngModelChange)="auditPage = 1; recomputeAuditFilter()">
+              <option [ngValue]="12">12 / page</option>
+              <option [ngValue]="24">24 / page</option>
+              <option [ngValue]="50">50 / page</option>
+              <option [ngValue]="100">100 / page</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="lat-stream-list" *ngIf="paginatedAuditLogs.length > 0">
+          <div
+            *ngFor="let log of paginatedAuditLogs; trackBy: trackByAuditLog"
+            class="lat-event-card"
+            [class]="'lat-card-' + log.category"
+            [class.card-danger]="log.severity === 'danger'"
+          >
+            <!-- Left Category Icon Avatar -->
+            <div class="lat-event-icon-avatar" [title]="log.category | uppercase">
+              <span class="material-symbols-outlined">{{ log.icon }}</span>
+            </div>
+
+            <!-- Main Event Body -->
+            <div class="lat-event-body">
+              <!-- Top Row: Badges & Timestamp -->
+              <div class="lat-event-top-row">
+                <div class="lat-event-badges">
+                  <span class="lat-badge lat-badge-cat" [class]="'badge-' + log.category">
+                    {{ log.category | uppercase }}
+                  </span>
+                  <span class="lat-badge lat-badge-sev" [class]="'sev-' + log.severity">
+                    {{ log.severity | uppercase }}
+                  </span>
+                  <button class="lat-event-id-pill" (click)="copyAuditText(log.id, 'Event ID')" title="Click to copy Event ID">
+                    <span>#{{ log.id }}</span>
+                    <span class="material-symbols-outlined id-copy-icon">content_copy</span>
+                  </button>
+                </div>
+                <div class="lat-event-time" [title]="log.time | date:'full'">
+                  <span class="material-symbols-outlined time-icon">schedule</span>
+                  <span>{{ log.time | timeAgo }}</span>
+                  <span class="lat-time-iso">({{ log.time | date:'HH:mm:ss' }})</span>
+                </div>
+              </div>
+
+              <!-- Event Action / Description -->
+              <div class="lat-event-action-title">
+                {{ log.action }}
+              </div>
+
+              <!-- Bottom Metadata Row: Actor, IP, Geolocation, Client -->
+              <div class="lat-event-meta-row">
+                <div class="lat-meta-actor" [title]="log.user">
+                  <div class="lat-actor-avatar">{{ log.actorInitials }}</div>
+                  <span class="lat-actor-email">{{ log.user }}</span>
+                </div>
+                <span class="lat-meta-divider">&middot;</span>
+                <div class="lat-meta-item" [title]="'Origin IP & Location: ' + log.ip + ' (' + log.location + ')'">
+                  <span class="material-symbols-outlined meta-icon">public</span>
+                  <span>{{ log.ip }}</span>
+                  <span class="lat-location-tag">({{ log.location }})</span>
+                </div>
+                <span class="lat-meta-divider">&middot;</span>
+                <div class="lat-meta-item" [title]="'Client Platform: ' + log.client">
+                  <span class="material-symbols-outlined meta-icon">devices</span>
+                  <span>{{ log.client }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Action Buttons -->
+            <div class="lat-event-actions">
+              <button class="lat-card-action-btn" (click)="inspectAuditLog(log)" title="Inspect event payload">
+                <span class="material-symbols-outlined">search</span>
+                <span>Inspect</span>
+              </button>
+              <button class="lat-card-action-btn-icon" (click)="copyAuditText(log.action, 'Event Description')" title="Copy action text">
+                <span class="material-symbols-outlined">content_copy</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="lat-empty-state" *ngIf="paginatedAuditLogs.length === 0">
+          <div class="lat-empty-icon-wrap">
+            <span class="material-symbols-outlined">history_toggle_off</span>
+          </div>
+          <div class="lat-empty-title">No Audit Events Found</div>
+          <div class="lat-empty-desc">No security or activity records match your current search and filter criteria.</div>
+          <button class="lat-btn lat-btn-outline" style="margin-top:12px;" (click)="resetAuditFilters()">
+            <span class="material-symbols-outlined">restart_alt</span>
+            <span>Reset All Filters</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- TABLE VIEW -->
+      <div class="lat-table-container cc-panel" *ngIf="auditViewMode === 'table'">
+        <div class="lat-table-scroll">
+          <table class="lat-table">
+            <thead>
+              <tr>
+                <th>Event ID</th>
+                <th>Timestamp</th>
+                <th>Category</th>
+                <th>Severity</th>
+                <th>Actor / Identity</th>
+                <th>Action Details</th>
+                <th>IP Address & Location</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let log of paginatedAuditLogs; trackBy: trackByAuditLog" [class.tr-danger]="log.severity === 'danger'" (click)="inspectAuditLog(log)">
+                <td class="td-id">
+                  <span class="lat-id-mono">#{{ log.id }}</span>
+                </td>
+                <td class="td-time">
+                  <div class="lat-td-time-rel">{{ log.time | timeAgo }}</div>
+                  <div class="lat-td-time-exact">{{ log.time | date:'short' }}</div>
+                </td>
+                <td>
+                  <span class="lat-badge lat-badge-cat" [class]="'badge-' + log.category">
+                    {{ log.category | uppercase }}
+                  </span>
+                </td>
+                <td>
+                  <span class="lat-badge lat-badge-sev" [class]="'sev-' + log.severity">
+                    {{ log.severity | uppercase }}
+                  </span>
+                </td>
+                <td class="td-actor">
+                  <div class="lat-table-actor">
+                    <div class="lat-actor-avatar sm">{{ log.actorInitials }}</div>
+                    <span class="lat-table-actor-email" [title]="log.user">{{ log.user }}</span>
+                  </div>
+                </td>
+                <td class="td-action">
+                  <div class="lat-table-action-text" [title]="log.action">{{ log.action }}</div>
+                </td>
+                <td class="td-ip">
+                  <div class="lat-table-ip">{{ log.ip }}</div>
+                  <div class="lat-table-loc">{{ log.location }}</div>
+                </td>
+                <td style="text-align:right;" (click)="$event.stopPropagation()">
+                  <button class="lat-tbl-btn" (click)="inspectAuditLog(log)" title="Inspect event">
+                    <span class="material-symbols-outlined">visibility</span>
+                  </button>
+                  <button class="lat-tbl-btn" (click)="copyAuditText(log.id, 'Event ID')" title="Copy ID">
+                    <span class="material-symbols-outlined">content_copy</span>
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="paginatedAuditLogs.length === 0">
+                <td colspan="8" class="lat-table-empty">
+                  <span class="material-symbols-outlined">search_off</span>
+                  <span>No audit records matching criteria</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PAGINATION CONTROLS BAR -->
+      <div class="lat-pagination-bar" *ngIf="filteredAuditLogs.length > 0">
+        <div class="lat-pagination-info">
+          Page <strong>{{ auditPage }}</strong> of <strong>{{ auditTotalPages }}</strong>
+          ({{ filteredAuditLogs.length }} items)
+        </div>
+        <div class="lat-pagination-controls">
+          <button class="lat-page-btn" (click)="prevAuditPage()" [disabled]="auditPage === 1" title="Previous page">
+            <span class="material-symbols-outlined">chevron_left</span>
+            <span>Prev</span>
+          </button>
+
+          <ng-container *ngFor="let p of auditPaginationRange">
+            <button
+              class="lat-page-num-btn"
+              [class.active]="auditPage === p"
+              (click)="setAuditPage(p)"
+            >
+              {{ p }}
+            </button>
+          </ng-container>
+
+          <button class="lat-page-btn" (click)="nextAuditPage()" [disabled]="auditPage === auditTotalPages" title="Next page">
+            <span>Next</span>
+            <span class="material-symbols-outlined">chevron_right</span>
+          </button>
         </div>
       </div>
     </div>
+
+    <!-- ── AUDIT EVENT INSPECTOR MODAL / DRAWER ── -->
+    <div class="lat-modal-overlay" *ngIf="auditSelectedLog" (click)="closeAuditInspector()">
+      <div class="lat-inspector-modal" (click)="$event.stopPropagation()">
+        <!-- Modal Header -->
+        <div class="lat-modal-header">
+          <div class="lat-modal-title-wrap">
+            <div class="lat-modal-icon-badge" [class]="'badge-' + auditSelectedLog.category">
+              <span class="material-symbols-outlined">{{ auditSelectedLog.icon }}</span>
+            </div>
+            <div>
+              <div class="lat-modal-title">Audit Event Inspector</div>
+              <div class="lat-modal-subtitle">Security Log Record &middot; #{{ auditSelectedLog.id }}</div>
+            </div>
+          </div>
+          <button class="lat-modal-close-btn" (click)="closeAuditInspector()" title="Close inspector">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="lat-modal-body">
+          <!-- Banner -->
+          <div class="lat-inspector-banner" [class]="'banner-' + auditSelectedLog.severity">
+            <div class="lat-banner-left">
+              <span class="material-symbols-outlined banner-icon">verified_user</span>
+              <div>
+                <div class="lat-banner-heading">{{ auditSelectedLog.action }}</div>
+                <div class="lat-banner-sub">{{ auditSelectedLog.time | date:'full' }} ({{ auditSelectedLog.time | timeAgo }})</div>
+              </div>
+            </div>
+            <span class="lat-badge lat-badge-sev" [class]="'sev-' + auditSelectedLog.severity">
+              {{ auditSelectedLog.severity | uppercase }}
+            </span>
+          </div>
+
+          <!-- Key Details Grid -->
+          <div class="lat-detail-grid">
+            <div class="lat-detail-item">
+              <div class="lat-detail-label">Event ID</div>
+              <div class="lat-detail-value font-mono">
+                {{ auditSelectedLog.id }}
+                <button class="lat-copy-sm" (click)="copyAuditText(auditSelectedLog.id, 'Event ID')" title="Copy Event ID">
+                  <span class="material-symbols-outlined">content_copy</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="lat-detail-item">
+              <div class="lat-detail-label">Event Category</div>
+              <div class="lat-detail-value">
+                <span class="lat-badge lat-badge-cat" [class]="'badge-' + auditSelectedLog.category">
+                  {{ auditSelectedLog.category | uppercase }}
+                </span>
+              </div>
+            </div>
+
+            <div class="lat-detail-item">
+              <div class="lat-detail-label">Actor Email / Identity</div>
+              <div class="lat-detail-value font-mono">
+                {{ auditSelectedLog.user }}
+                <button class="lat-copy-sm" (click)="copyAuditText(auditSelectedLog.user, 'Actor Email')" title="Copy Actor Email">
+                  <span class="material-symbols-outlined">content_copy</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="lat-detail-item">
+              <div class="lat-detail-label">Actor Name / Role</div>
+              <div class="lat-detail-value">
+                {{ auditSelectedLog.actorName }}
+              </div>
+            </div>
+
+            <div class="lat-detail-item">
+              <div class="lat-detail-label">Origin IP Address</div>
+              <div class="lat-detail-value font-mono">
+                {{ auditSelectedLog.ip }}
+              </div>
+            </div>
+
+            <div class="lat-detail-item">
+              <div class="lat-detail-label">Geolocation / Regional Zone</div>
+              <div class="lat-detail-value">
+                {{ auditSelectedLog.location }}
+              </div>
+            </div>
+
+            <div class="lat-detail-item" style="grid-column: 1 / -1;">
+              <div class="lat-detail-label">Client & User-Agent</div>
+              <div class="lat-detail-value">
+                {{ auditSelectedLog.client }}
+              </div>
+            </div>
+
+            <div class="lat-detail-item" style="grid-column: 1 / -1;">
+              <div class="lat-detail-label">Compliance & Security Classification</div>
+              <div class="lat-compliance-tags-wrap">
+                <span class="lat-tag-compliance">Ghana Data Protection Act (Act 843)</span>
+                <span class="lat-tag-compliance">ISO/IEC 27001 Certified Stream</span>
+                <span class="lat-tag-compliance">Immutable Audit Hash Verified</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Raw JSON Payload Viewer (Collapsible) -->
+          <div class="lat-json-section" [class.expanded]="auditShowJsonInInspector">
+            <div class="lat-json-header" (click)="auditShowJsonInInspector = !auditShowJsonInInspector" style="cursor:pointer;" title="Click to expand/collapse raw JSON payload">
+              <div class="lat-json-title">
+                <span class="material-symbols-outlined">data_object</span>
+                <span>Raw Security Event JSON Payload</span>
+                <span class="lat-json-toggle-pill">{{ auditShowJsonInInspector ? 'Expanded' : 'Click to View' }}</span>
+              </div>
+              <div class="lat-json-actions" (click)="$event.stopPropagation()">
+                <button class="lat-btn lat-btn-outline lat-btn-sm" (click)="copyAuditJson(auditSelectedLog, 'Raw JSON Payload')">
+                  <span class="material-symbols-outlined">content_copy</span>
+                  <span>Copy JSON</span>
+                </button>
+                <button class="lat-json-toggle-arrow-btn" (click)="auditShowJsonInInspector = !auditShowJsonInInspector" [title]="auditShowJsonInInspector ? 'Collapse JSON' : 'Expand JSON'">
+                  <span class="material-symbols-outlined">{{ auditShowJsonInInspector ? 'expand_less' : 'expand_more' }}</span>
+                </button>
+              </div>
+            </div>
+            <div class="lat-json-body" *ngIf="auditShowJsonInInspector">
+              <pre class="lat-json-block"><code>{{ auditSelectedLog | json }}</code></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="lat-modal-footer">
+          <button class="lat-btn lat-btn-outline" (click)="copyAuditJson(auditSelectedLog, 'Audit Event JSON')">
+            <span class="material-symbols-outlined">content_copy</span>
+            <span>Copy JSON Payload</span>
+          </button>
+          <button class="lat-btn lat-btn-primary" (click)="closeAuditInspector()">
+            <span>Done</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Toast Notification -->
+    <div class="lat-toast" *ngIf="auditToastMessage">
+      <span class="material-symbols-outlined">check_circle</span>
+      <span>{{ auditToastMessage }}</span>
+    </div>
+
+    <!-- Admin Delete Confirmation -->
 
     <!-- Admin Delete Confirmation -->
     <div class="admin-modal-overlay" *ngIf="deleteConfirmAdmin" (click)="cancelDeleteAdmin()">

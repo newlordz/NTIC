@@ -1370,7 +1370,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       if (videoUrl.toLowerCase().endsWith('.bin')) {
         bytes = this.xorDecodeBytes(bytes);
       }
-      const videoBlob = new Blob([bytes], { type: 'video/mp4' });
+      const videoBlob = new Blob([bytes as unknown as BlobPart], { type: 'video/mp4' });
       const blobUrl = URL.createObjectURL(videoBlob);
       this.videoBlobCache.set(videoUrl, blobUrl);
       return blobUrl;

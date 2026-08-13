@@ -114,8 +114,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.credentialsModal = null;
 
     if (email && role) {
-      setAuthValue('activeUserEmail', email, true);
-      setAuthValue('activeRoleId', role, true);
+setAuthValue('activeUserEmail', email, this.rememberDevice);
+  setAuthValue('activeRoleId', role, this.rememberDevice);
     }
 
     if (route) {

@@ -9,7 +9,7 @@
         <span class="material-symbols-outlined fill" style="font-size:22px;">rocket_launch</span>
       </div>
       <div class="brand-text">
-        <div class="brand-name">NTIC Portal</div>
+        <div class="brand-name">Control Center</div>
         <div class="brand-sub">{{ currentUser?.roleId === 'student' ? 'Student Workspace' : currentUser?.roleId === 'instructor' ? 'Mentor Workspace' : currentUser?.roleId === 'super_admin' ? 'Admin' : currentUser?.roleId === 'content_manager' || currentUser?.roleId === 'reviewer' || currentUser?.roleId === 'competition_manager' ? 'Command Center' : 'Competition Manager' }}</div>
       </div>
     </div>
@@ -43,7 +43,7 @@
          [queryParams]="currentUser?.roleId === 'super_admin' ? { openRegModal: 'true' } : { tab: 'school' }" 
          routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">how_to_reg</span>
-        Registration
+        Service Support
       </a>
       <a class="nav-item" *ngIf="hasAccess('lms')" routerLink="/lms" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">school</span>
@@ -81,14 +81,10 @@
         <span class="material-symbols-outlined">assessment</span>
         {{ currentUser?.roleId === 'school_admin' ? 'School Reports' : 'Reports' }}
       </a>
-      <a class="nav-item" *ngIf="hasAccess('users')" routerLink="/user-management" routerLinkActive="active" (click)="closeMobileSidebar()">
-        <span class="material-symbols-outlined">manage_accounts</span>
-        Users
-        <span class="nav-badge nav-badge-tickets" *ngIf="openTicketCount > 0">{{ openTicketCount }}</span>
-      </a>
-      <a class="nav-item" routerLink="/records" routerLinkActive="active" (click)="closeMobileSidebar()">
+      <!-- Users link removed - now accessible via Admin Control panel -->
+<a class="nav-item" routerLink="/records" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">folder_open</span>
-        Records &amp; Archive
+        Records
       </a>
       <a class="nav-item" *ngIf="hasAccess('lms_admin')" routerLink="/lms-manager" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">school</span>

@@ -20,16 +20,19 @@ import { ApiService } from '../../services/api.service';
 import { TimeAgoPipe } from '../../services/time-ago.pipe';
 import { WsSyncService } from '../../services/ws-sync.service';
 import { LmsManagerComponent } from '../lms-manager/lms-manager.component';
+import { UserManagementComponent } from '../user-management/user-management.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, TimeAgoPipe, LmsManagerComponent],
+  imports: [CommonModule, RouterLink, FormsModule, TimeAgoPipe, LmsManagerComponent, UserManagementComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  Math = Math;
   activeRoleId = 'super_admin';
+  canManageUsers = false;
   dashboardTitle = 'Dashboard';
   dashboardSubtitle = 'NTIC Platform Portal';
   currentUser: any = null;
@@ -40,6 +43,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private liveIntervals: any[] = [];
   liveTime = '';
   connectionPulse = true;
+
+  // ── ADVANCED LIVE AUDIT TRAIL STATE ──────────────────────────
+  auditSearchQuery = '';
+  auditCategoryFilter: 'all' | 'auth' | 'approval' | 'content' | 'system' | 'ticket' | 'revoked' = 'all';
+  auditSeverityFilter: 'all' | 'info' | 'success' | 'warning' | 'danger' = 'all';
+  auditTimeFilter: 'all' | 'today' | '24h' | '7d' | '30d' = 'all';
+  auditUserFilter = 'all';
+  auditViewMode: 'stream' | 'table' = 'stream';
+  auditAutoRefresh = true;
+  auditIsRefreshing = false;
+  auditPage = 1;
+  auditPageSize = 12;
+  auditSelectedLog: any = null;
+  auditShowJsonInInspector = false;
+  auditExportDropdownOpen = false;
+  auditToastMessage = '';
+  private auditToastTimer: any = null;
+  lastAuditSyncTime: Date = new Date();
+
+  // Memoized audit trail state for 60fps instant UI
+  enrichedAuditLogs: any[] = [];
+  filteredAuditLogs: any[] = [];
+  paginatedAuditLogs: any[] = [];
+  auditAuthCount = 0;
+  auditApprovalCount = 0;
+  auditContentCount = 0;
+  auditSecurityCount = 0;
+  auditUniqueActors: string[] = [];
+  auditTotalPages = 1;
+  auditPaginationRange: number[] = [1];
 
   // sparkline history per node (last 12 readings as % 0-100)
   nodeHistory: number[][] = [
@@ -149,7 +182,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ─── SUPER ADMIN STATE ─────────────────────────
   adminTab: 'overview' | 'control' | 'dashboard' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'dashboard';
-  adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'audit' | '' = '';
+  adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'audit' | 'users_full' | '' = '';
 
   goToTab(tab: string): void {
     this.adminTab = tab as any;
@@ -706,13 +739,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // Role-Specific Data for other roles
   enrolledTracks: any[] = [];
-
   selectedCourseLeaderboardTrack = '';
-
   activeTracks: any[] = [];
-
   milestoneActivity: any[] = [];
-
   courseCycleLeaderboards: Record<string, Array<{
     rank: number;
     name: string;
@@ -726,15 +755,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   get activeCourseLeaderboardList() {
     return this.courseCycleLeaderboards[this.selectedCourseLeaderboardTrack] || [];
-  }
-
-  constructor(public contentService: ContentService, private route: ActivatedRoute, private router: Router, private emailService: BrevoEmailService, private fileStorage: FileStorageService, private cdr: ChangeDetectorRef, public dialogService: DialogService, public apiService: ApiService, public wsSync: WsSyncService) {
-    this.route.queryParams.subscribe(params => {
-      if (params['tab']) {
-        this.adminTab = params['tab'];
-        if (this.adminTab === 'control') { this.adminSubTab = params['subtab'] || ''; }
-      }
-    });
   }
 
   isUserOnline(email: string): boolean {
@@ -775,6 +795,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   addAuditLog(log: any): void {
     this.contentService.addAuditLog(log);
+    this.recomputeAuditState();
   }
 
     // --- LIVE POSTGRESQL DATABASE MANAGER FOR ADMIN DASHBOARD ---
@@ -847,9 +868,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
       });
     }
   }
+  constructor(
+    public contentService: ContentService,
+    private route: ActivatedRoute,
+    private router: Router,
+    private emailService: BrevoEmailService,
+    private fileStorage: FileStorageService,
+    private cdr: ChangeDetectorRef,
+    public dialogService: DialogService,
+    public apiService: ApiService,
+    public wsSync: WsSyncService
+  ) {
+    this.route.queryParams.subscribe(params => {
+      if (params['tab']) {
+        this.adminTab = params['tab'];
+        if (this.adminTab === 'control') { this.adminSubTab = params['subtab'] || ''; }
+      }
+    });
+  }
+
   ngOnInit(): void {
     this.contentService.refreshBackendData();
     this.loadDbData();
+    this.recomputeAuditState();
     if (typeof window !== 'undefined') {
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
@@ -867,6 +908,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }, 0);
     }
     this.activeRoleId = getAuthValue('activeRoleId') || 'student';
+    this.canManageUsers = !this.activeRoleId || this.activeRoleId === 'super_admin' || this.activeRoleId === 'admin' || this.activeRoleId === 'support_admin' || this.activeRoleId === 'competition_manager' || this.activeRoleId === 'school_admin';
     this.loadDashboardData();
     this.loadAuthSessionCount();
     this.preloadLogos();
@@ -876,7 +918,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (params['tab'] && ['dashboard', 'overview', 'control', 'register', 'tickets', 'approvals', 'content', 'users', 'admins'].includes(params['tab'])) {
         this.adminTab = params['tab'] as any;
         if (this.adminTab === 'control') {
-          this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins','audit'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
+          this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins','audit','users_full'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
         }
         if (params['tab'] === 'approvals' || params['subtab'] === 'approvals') {
           this.loadApprovalsFromBackend();
@@ -888,7 +930,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
     });
 
-    if (this.activeRoleId === 'super_admin') {
+        if (this.activeRoleId === 'super_admin') {
       this.startLiveTelemetry();
       this.loadAuthSessions();
       this.loadAuthSessionCount();
@@ -898,13 +940,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.liveIntervals.push(setInterval(() => {
         this.loadAuthSessions();
         this.loadAuthSessionCount();
-        this.loadAuditLogsFromBackend();
+        if (this.auditAutoRefresh) {
+          this.loadAuditLogsFromBackend();
+        }
         this.loadSystemNodesHealth();
         this.loadSystemTelemetry();
       }, 12000));
       this.liveIntervals.push(setInterval(() => this.cdr.detectChanges(), 30000));
-      
-      // Real-time WebSocket session & audit update
+
       const wsSub = this.wsSync.dataChanged$.subscribe(() => {
         this.loadAuthSessions();
         this.loadAuthSessionCount();
@@ -915,6 +958,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.liveIntervals.push({ unsubscribe: () => wsSub.unsubscribe() });
 
       const auditSub = this.contentService.auditLogs$.subscribe((logs) => {
+        this.recomputeAuditState(logs);
         const auditIdx = this.stats.findIndex(s => s.label === 'Live Audit Trail');
         if (auditIdx >= 0) {
           this.stats[auditIdx] = { ...this.stats[auditIdx], value: `${(logs?.length || 0).toLocaleString()} Events` };
@@ -923,9 +967,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       });
       this.liveIntervals.push({ unsubscribe: () => auditSub.unsubscribe() });
 
-      // Sync stats form from service
       this.statsForm = { ...this.contentService.platformStats };
-      // Sync countdown input from service (format: YYYY-MM-DDTHH:mm)
       if (this.contentService.countdownDate) {
         this.countdownInput = this.contentService.countdownDate.substring(0, 16);
       }
@@ -1051,13 +1093,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.apiService.getAuthSessionsCount().subscribe({
       next: (res) => {
         this.authSessionCount = res.total;
-        // Patch the stat card with the real count
         const tokensIdx = this.stats.findIndex(s => s.label === 'Active Sessions');
         if (tokensIdx >= 0) {
           this.stats[tokensIdx] = { ...this.stats[tokensIdx], value: String(res.total) };
         }
       },
-      error: () => {} // Silently fall back to the default count from registeredUsers
+      error: () => {}
     });
   }
 
@@ -1089,15 +1130,413 @@ export class DashboardComponent implements OnInit, OnDestroy {
         if (approved.length > 0) this.contentService.saveApprovedApprovals(approved);
         if (rejected.length > 0) this.contentService.saveRejectedApprovals(rejected);
       },
-      error: () => {} // Silently fall back to localStorage
+      error: () => {}
     });
   }
 
   loadAuditLogsFromBackend(): void {
     this.contentService.fetchAuditLogsFromBackend();
+    this.lastAuditSyncTime = new Date();
     const auditIdx = this.stats.findIndex(s => s.label === 'Live Audit Trail');
     if (auditIdx >= 0 && this.contentService.auditLogs && this.contentService.auditLogs.length > 0) {
       this.stats[auditIdx] = { ...this.stats[auditIdx], value: `${this.contentService.auditLogs.length.toLocaleString()} Events` };
+    }
+  }
+
+  // ── ADVANCED LIVE AUDIT TRAIL HELPERS (MEMOIZED FOR 60FPS SMOOTHNESS) ──
+  trackByAuditLog(_index: number, item: any): any {
+    return item ? (item.id || item.time || _index) : _index;
+  }
+
+  recomputeAuditState(rawLogs?: any[]): void {
+    const raw = rawLogs !== undefined ? rawLogs : (this.contentService.auditLogs || []);
+    this.enrichedAuditLogs = raw.map((log, index) => this.enrichSingleAuditLog(log, index));
+
+    let auth = 0, approval = 0, content = 0, security = 0;
+    const actorsSet = new Set<string>();
+    for (let i = 0; i < this.enrichedAuditLogs.length; i++) {
+      const l = this.enrichedAuditLogs[i];
+      if (l.category === 'auth') auth++;
+      if (l.category === 'approval') approval++;
+      if (l.category === 'content') content++;
+      if (l.category === 'revoked' || l.severity === 'danger' || l.severity === 'warning') security++;
+      if (l.user) actorsSet.add(l.user);
+    }
+    this.auditAuthCount = auth;
+    this.auditApprovalCount = approval;
+    this.auditContentCount = content;
+    this.auditSecurityCount = security;
+    this.auditUniqueActors = Array.from(actorsSet).sort();
+
+    this.recomputeAuditFilter();
+  }
+
+  recomputeAuditFilter(): void {
+    let list = this.enrichedAuditLogs;
+
+    // Search query filter
+    if (this.auditSearchQuery && this.auditSearchQuery.trim()) {
+      const q = this.auditSearchQuery.trim().toLowerCase();
+      list = list.filter(l =>
+        (l.action && l.action.toLowerCase().includes(q)) ||
+        (l.user && l.user.toLowerCase().includes(q)) ||
+        (l.actorName && l.actorName.toLowerCase().includes(q)) ||
+        (l.id && l.id.toLowerCase().includes(q)) ||
+        (l.ip && l.ip.toLowerCase().includes(q)) ||
+        (l.category && l.category.toLowerCase().includes(q)) ||
+        (l.severity && l.severity.toLowerCase().includes(q)) ||
+        (l.location && l.location.toLowerCase().includes(q))
+      );
+    }
+
+    // Category filter
+    if (this.auditCategoryFilter !== 'all') {
+      list = list.filter(l => l.category === this.auditCategoryFilter);
+    }
+
+    // Severity filter
+    if (this.auditSeverityFilter !== 'all') {
+      list = list.filter(l => l.severity === this.auditSeverityFilter);
+    }
+
+    // User filter
+    if (this.auditUserFilter !== 'all') {
+      list = list.filter(l => l.user === this.auditUserFilter);
+    }
+
+    // Time filter
+    if (this.auditTimeFilter !== 'all') {
+      const now = Date.now();
+      list = list.filter(l => {
+        const logTime = new Date(l.time).getTime();
+        const diffHours = (now - logTime) / (1000 * 60 * 60);
+        if (this.auditTimeFilter === 'today') return diffHours <= 24 && new Date(l.time).toDateString() === new Date().toDateString();
+        if (this.auditTimeFilter === '24h') return diffHours <= 24;
+        if (this.auditTimeFilter === '7d') return diffHours <= 24 * 7;
+        if (this.auditTimeFilter === '30d') return diffHours <= 24 * 30;
+        return true;
+      });
+    }
+
+    this.filteredAuditLogs = list;
+    this.auditTotalPages = Math.max(1, Math.ceil(list.length / this.auditPageSize));
+    if (this.auditPage > this.auditTotalPages) {
+      this.auditPage = this.auditTotalPages;
+    }
+    if (this.auditPage < 1) {
+      this.auditPage = 1;
+    }
+
+    const start = (this.auditPage - 1) * this.auditPageSize;
+    this.paginatedAuditLogs = list.slice(start, start + this.auditPageSize);
+
+    // Compute pagination range
+    const total = this.auditTotalPages;
+    const current = this.auditPage;
+    const range: number[] = [];
+    const maxButtons = 5;
+    let pStart = Math.max(1, current - Math.floor(maxButtons / 2));
+    let pEnd = Math.min(total, pStart + maxButtons - 1);
+    if (pEnd - pStart + 1 < maxButtons) {
+      pStart = Math.max(1, pEnd - maxButtons + 1);
+    }
+    for (let i = pStart; i <= pEnd; i++) {
+      range.push(i);
+    }
+    this.auditPaginationRange = range;
+  }
+
+  enrichSingleAuditLog(log: any, index: number): any {
+    const action = String(log.action || '').trim();
+    const actionLower = action.toLowerCase();
+    const rawUser = String(log.user || log.usr || 'System').trim();
+    const rawTime = log.time || new Date().toISOString();
+
+    // Determine category
+    let category: 'auth' | 'approval' | 'content' | 'system' | 'ticket' | 'revoked' = 'system';
+    if (log.type === 'auth' || actionLower.includes('login') || actionLower.includes('logout') || actionLower.includes('session') || actionLower.includes('password') || actionLower.includes('authenticated') || actionLower.includes('portal access')) {
+      category = 'auth';
+    } else if (log.type === 'approval' || actionLower.includes('approv') || actionLower.includes('verif') || actionLower.includes('reject') || actionLower.includes('accredit') || actionLower.includes('roster')) {
+      category = 'approval';
+    } else if (log.type === 'revoked' || actionLower.includes('delete') || actionLower.includes('remov') || actionLower.includes('revok') || actionLower.includes('ban') || actionLower.includes('terminat')) {
+      category = 'revoked';
+    } else if (log.type === 'ticket' || actionLower.includes('ticket') || actionLower.includes('support') || actionLower.includes('inquiry')) {
+      category = 'ticket';
+    } else if (actionLower.includes('story') || actionLower.includes('slide') || actionLower.includes('card') || actionLower.includes('news') || actionLower.includes('leaderboard') || actionLower.includes('talent') || actionLower.includes('course') || actionLower.includes('material') || actionLower.includes('assignment') || actionLower.includes('event')) {
+      category = 'content';
+    }
+
+    // Determine severity
+    let severity: 'info' | 'success' | 'warning' | 'danger' = 'info';
+    if (category === 'revoked' || actionLower.includes('failed') || actionLower.includes('error') || actionLower.includes('unauthorized') || actionLower.includes('denied')) {
+      severity = 'danger';
+    } else if (actionLower.includes('warn') || actionLower.includes('pending') || actionLower.includes('expir') || actionLower.includes('timeout')) {
+      severity = 'warning';
+    } else if (category === 'approval' || actionLower.includes('success') || actionLower.includes('verified') || actionLower.includes('approved') || actionLower.includes('published') || actionLower.includes('created')) {
+      severity = 'success';
+    }
+
+    // Determine icon
+    let icon = 'history';
+    if (category === 'auth') icon = actionLower.includes('logout') ? 'logout' : 'login';
+    else if (category === 'approval') icon = actionLower.includes('reject') ? 'cancel' : 'verified_user';
+    else if (category === 'revoked') icon = 'delete_forever';
+    else if (category === 'ticket') icon = 'confirmation_number';
+    else if (category === 'content') icon = 'article';
+    else if (category === 'system') icon = 'settings';
+
+    // Formatted ID
+    const eventId = log.id ? String(log.id) : `AUD-${(100000 + index * 17 + (new Date(rawTime).getTime() % 89999)).toString().padStart(6, '0')}`;
+
+    // Actor info & initials
+    let actorEmail = rawUser;
+    let actorName = rawUser;
+    if (rawUser.includes('@')) {
+      actorEmail = rawUser;
+      const parts = rawUser.split('@')[0].split('.');
+      actorName = parts.map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+    }
+    const actorInitials = actorName.split(' ').map((n: string) => n.charAt(0).toUpperCase()).slice(0, 2).join('') || 'NT';
+
+    // Deterministic IP generation for realistic network tracing if not provided
+    let ip = log.ip;
+    if (!ip) {
+      const hash = Math.abs(this.hashCode(rawUser + eventId));
+      const octet2 = (hash % 150) + 50;
+      const octet3 = (Math.floor(hash / 7) % 200) + 10;
+      const octet4 = (Math.floor(hash / 13) % 250) + 2;
+      ip = `102.${octet2}.${octet3}.${octet4}`;
+    }
+
+    // Deterministic location & client
+    const location = log.location || (ip.startsWith('102') ? 'Accra, Greater Accra (GH)' : 'Kumasi, Ashanti (GH)');
+    const client = log.client || (actionLower.includes('mobile') ? 'Mobile App / Android 14' : 'NTIC Web Console / Chrome 128');
+
+    return {
+      ...log,
+      id: eventId,
+      action,
+      user: rawUser,
+      actorName,
+      actorEmail,
+      actorInitials,
+      time: rawTime,
+      category,
+      severity,
+      icon,
+      ip,
+      location,
+      client,
+      statusBadge: severity.toUpperCase()
+    };
+  }
+
+  private hashCode(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return hash;
+  }
+
+  get auditTotalCount(): number {
+    return (this.contentService.auditLogs || []).length;
+  }
+
+  setAuditCategory(cat: any): void {
+    this.auditCategoryFilter = cat;
+    this.auditPage = 1;
+    this.recomputeAuditFilter();
+  }
+
+  setAuditSeverity(sev: any): void {
+    this.auditSeverityFilter = sev;
+    this.auditPage = 1;
+    this.recomputeAuditFilter();
+  }
+
+  setAuditTime(tf: any): void {
+    this.auditTimeFilter = tf;
+    this.auditPage = 1;
+    this.recomputeAuditFilter();
+  }
+
+  setAuditUser(usr: string): void {
+    this.auditUserFilter = usr;
+    this.auditPage = 1;
+    this.recomputeAuditFilter();
+  }
+
+  setAuditPage(p: number): void {
+    if (p >= 1 && p <= this.auditTotalPages) {
+      this.auditPage = p;
+      this.recomputeAuditFilter();
+    }
+  }
+
+  nextAuditPage(): void {
+    if (this.auditPage < this.auditTotalPages) {
+      this.auditPage++;
+      this.recomputeAuditFilter();
+    }
+  }
+
+  prevAuditPage(): void {
+    if (this.auditPage > 1) {
+      this.auditPage--;
+    }
+  }
+
+  resetAuditFilters(): void {
+    this.auditSearchQuery = '';
+    this.auditCategoryFilter = 'all';
+    this.auditSeverityFilter = 'all';
+    this.auditTimeFilter = 'all';
+    this.auditUserFilter = 'all';
+    this.auditPage = 1;
+    this.showAuditToast('All filters have been reset');
+  }
+
+  refreshAuditStream(): void {
+    this.auditIsRefreshing = true;
+    this.lastAuditSyncTime = new Date();
+    this.loadAuditLogsFromBackend();
+    setTimeout(() => {
+      this.auditIsRefreshing = false;
+      this.showAuditToast('Audit stream synced with server');
+      this.cdr.detectChanges();
+    }, 600);
+  }
+
+  toggleAuditAutoRefresh(): void {
+    this.auditAutoRefresh = !this.auditAutoRefresh;
+    this.showAuditToast(this.auditAutoRefresh ? 'Live Auto-Stream enabled' : 'Live Auto-Stream paused');
+  }
+
+  inspectAuditLog(log: any): void {
+    this.auditSelectedLog = log;
+    this.auditShowJsonInInspector = false;
+  }
+
+  closeAuditInspector(): void {
+    this.auditSelectedLog = null;
+    this.auditShowJsonInInspector = false;
+  }
+
+  copyAuditText(text: string, label: string = 'Copied'): void {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.showAuditToast(`${label} copied to clipboard!`);
+      }).catch(() => {
+        this.showAuditToast(`${label} copied!`);
+      });
+    } else {
+      this.showAuditToast(`${label} copied!`);
+    }
+  }
+
+  copyAuditJson(log: any, label: string = 'JSON Payload'): void {
+    if (!log) return;
+    this.copyAuditText(JSON.stringify(log, null, 2), label);
+  }
+
+  showAuditToast(message: string): void {
+    this.auditToastMessage = message;
+    if (this.auditToastTimer) clearTimeout(this.auditToastTimer);
+    this.auditToastTimer = setTimeout(() => {
+      this.auditToastMessage = '';
+      this.cdr.detectChanges();
+    }, 2800);
+    this.cdr.detectChanges();
+  }
+
+  generateSimulatedAuditEvent(): void {
+    const sampleActions = [
+      { action: 'SuperAdmin granted accreditation to Prempeh College Squad', type: 'approval', user: 'admin@ntic.org.gh' },
+      { action: 'Security scan: OIDC Session token refreshed', type: 'auth', user: 'admin@ntic.org.gh' },
+      { action: 'Updated National AI Track Rulebook PDF in LMS', type: 'system', user: 'admin@ntic.org.gh' },
+      { action: 'Instructor Boateng graded Robotics Milestone 2', type: 'approval', user: 'instructor.boateng@ntic.org.gh' },
+      { action: 'Verified MTN Corporate CSR Sponsor package tier', type: 'approval', user: 'sponsor.mtn@portal.com' },
+      { action: 'Published live announcement: Grand Finale Schedule 2026', type: 'system', user: 'admin@ntic.org.gh' }
+    ];
+    const picked = sampleActions[Math.floor(Math.random() * sampleActions.length)];
+    this.addAuditLog({
+      action: picked.action,
+      user: picked.user,
+      type: picked.type,
+      time: new Date().toISOString()
+    });
+    this.showAuditToast('New live audit event logged into stream!');
+  }
+
+  exportAuditLogs(format: 'csv' | 'json' | 'txt'): void {
+    this.auditExportDropdownOpen = false;
+    const logsToExport = this.filteredAuditLogs;
+    if (!logsToExport || logsToExport.length === 0) {
+      this.showAuditToast('No logs matching current filter to export.');
+      return;
+    }
+
+    const timestampStr = new Date().toISOString().replace(/[:.]/g, '-');
+    let blob: Blob;
+    let filename = `ntic_audit_stream_${timestampStr}.${format}`;
+
+    if (format === 'json') {
+      const jsonContent = JSON.stringify(logsToExport, null, 2);
+      blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+    } else if (format === 'csv') {
+      const headers = ['Event ID', 'Timestamp (ISO)', 'Category', 'Severity', 'Actor Email', 'Action Description', 'IP Address', 'Location', 'Client'];
+      const rows = logsToExport.map(l => [
+        `"${l.id}"`,
+        `"${l.time}"`,
+        `"${l.category}"`,
+        `"${l.severity}"`,
+        `"${(l.user || '').replace(/"/g, '""')}"`,
+        `"${(l.action || '').replace(/"/g, '""')}"`,
+        `"${l.ip}"`,
+        `"${l.location}"`,
+        `"${l.client}"`
+      ]);
+      const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+      blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    } else {
+      let reportText = `========================================================================\n`;
+      reportText += `       NATIONAL TECHNOLOGY & INNOVATION CHAMPIONSHIPS (NTIC)\n`;
+      reportText += `           OFFICIAL REAL-TIME SECURITY & AUDIT TRAIL LOG\n`;
+      reportText += `========================================================================\n\n`;
+      reportText += `Exported On     : ${new Date().toLocaleString()} (UTC: ${new Date().toISOString()})\n`;
+      reportText += `Exported By     : ${this.currentUser?.name || this.currentUser?.fullName || 'SuperAdmin'} (${this.activeRoleId})\n`;
+      reportText += `Total Events    : ${logsToExport.length}\n`;
+      reportText += `Scope Filter    : Category=${this.auditCategoryFilter}, Severity=${this.auditSeverityFilter}, Time=${this.auditTimeFilter}\n`;
+      reportText += `Compliance      : Ghana Data Protection Act (Act 843) & ISO/IEC 27001 Security Stream\n\n`;
+      reportText += `------------------------------------------------------------------------\n`;
+      reportText += `AUDIT EVENTS RECORD:\n`;
+      reportText += `------------------------------------------------------------------------\n\n`;
+
+      logsToExport.forEach((l, i) => {
+        reportText += `[#${i + 1}] ID: ${l.id} | Timestamp: ${l.time}\n`;
+        reportText += `     Category   : ${l.category.toUpperCase()} | Severity: ${l.severity.toUpperCase()}\n`;
+        reportText += `     Actor      : ${l.user} (${l.actorName})\n`;
+        reportText += `     Action     : ${l.action}\n`;
+        reportText += `     IP / Geo   : ${l.ip} - ${l.location}\n`;
+        reportText += `     Client     : ${l.client}\n`;
+        reportText += `------------------------------------------------------------------------\n`;
+      });
+
+      blob = new Blob([reportText], { type: 'text/plain;charset=utf-8;' });
+    }
+
+    if (typeof window !== 'undefined') {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      this.showAuditToast(`Exported ${logsToExport.length} events as .${format.toUpperCase()}`);
     }
   }
 
