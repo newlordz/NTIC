@@ -914,7 +914,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
       });
       this.liveIntervals.push({ unsubscribe: () => wsSub.unsubscribe() });
 
-      const auditSub = this.contentService.auditLogs$.subscribe(() => {
+      const auditSub = this.contentService.auditLogs$.subscribe((logs) => {
+        const auditIdx = this.stats.findIndex(s => s.label === 'Live Audit Trail');
+        if (auditIdx >= 0) {
+          this.stats[auditIdx] = { ...this.stats[auditIdx], value: `${(logs?.length || 0).toLocaleString()} Events` };
+        }
         this.cdr.markForCheck();
       });
       this.liveIntervals.push({ unsubscribe: () => auditSub.unsubscribe() });
@@ -1034,7 +1038,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.dashboardSubtitle = 'National NTIC Platform · System Administration & Access Control';
         this.stats = [
           { label: 'Total Registered Users', value: String(this.contentService.userCount || this.registeredUsers.length), icon: 'manage_accounts', meta: '6 distinct portals', color: 'primary' },
-          { label: 'Live Audit Trail', value: '1,240 Events', icon: 'history', meta: 'Real-time security stream', color: 'secondary' },
+          { label: 'Live Audit Trail', value: `${(this.contentService.auditLogs?.length || 0).toLocaleString()} Events`, icon: 'history', meta: 'Real-time security stream', color: 'secondary' },
           { label: 'Pending Approvals', value: String(this.pendingApprovals.length), icon: 'verified_user', meta: this.pendingApprovals.length > 0 ? 'Action required' : 'All clear', color: 'error' },
           { label: 'Active Sessions', value: String(this.authSessionCount >= 0 ? this.authSessionCount : this.registeredUsers.filter(u => u.status === 'Active').length), icon: 'groups', meta: this.activeSessionsMeta, color: 'tertiary' }
         ];
