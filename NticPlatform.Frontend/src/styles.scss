@@ -137,6 +137,9 @@ body {
   overflow-x: clip;
   overscroll-behavior-y: none;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background-color: #eef5ff;
   background-image: 
     radial-gradient(ellipse 85% 65% at 12% -8%, rgba(0, 86, 179, 0.14) 0%, transparent 60%),
