@@ -1,0 +1,55 @@
+<div class="cmd-palette-backdrop" *ngIf="isOpen" (click)="closePalette()">
+  <div class="cmd-palette-modal" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Quick Command Palette">
+    <!-- Top Search Input -->
+    <div class="cmd-search-wrap">
+      <span class="material-symbols-outlined cmd-search-icon">search</span>
+      <input
+        type="text"
+        class="cmd-search-input"
+        placeholder="Type a command, page, or search query... (Esc to close)"
+        [(ngModel)]="searchQuery"
+        autofocus
+      />
+      <div class="cmd-shortcut-badge">ESC</div>
+    </div>
+
+    <!-- Commands List -->
+    <div class="cmd-list" *ngIf="filteredCommands.length > 0">
+      <div
+        *ngFor="let item of filteredCommands; let i = index"
+        class="cmd-item"
+        [class.selected]="i === selectedIndex"
+        (click)="executeCommand(item)"
+        (mouseenter)="selectedIndex = i"
+      >
+        <div class="cmd-item-icon-wrap">
+          <span class="material-symbols-outlined">{{ item.icon }}</span>
+        </div>
+        <div class="cmd-item-info">
+          <div class="cmd-item-title">{{ item.title }}</div>
+          <div class="cmd-item-category">{{ item.category }}</div>
+        </div>
+        <span class="material-symbols-outlined cmd-item-arrow">arrow_forward</span>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="cmd-empty" *ngIf="filteredCommands.length === 0">
+      <span class="material-symbols-outlined">search_off</span>
+      <div>No matching destinations or commands found</div>
+    </div>
+
+    <!-- Footer Quick Hints -->
+    <div class="cmd-footer">
+      <div class="cmd-hint">
+        <kbd>&uarr;</kbd><kbd>&darr;</kbd> Navigate
+      </div>
+      <div class="cmd-hint">
+        <kbd>&crarr;</kbd> Select
+      </div>
+      <div class="cmd-hint">
+        <kbd>Esc</kbd> Close
+      </div>
+    </div>
+  </div>
+</div>

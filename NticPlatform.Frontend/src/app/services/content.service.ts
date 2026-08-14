@@ -1651,7 +1651,8 @@ private readonly defaultTeams: Team[] = [];
       }
     }
     return result
-      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+      .slice(0, 250);
   }
 
   saveAuditLogs(auditLogsList: any[]): void {

@@ -1,0 +1,19 @@
+<div class="toast-viewport" *ngIf="notificationService.toasts$ | async as toasts" aria-live="polite">
+  <div
+    *ngFor="let t of toasts; trackBy: trackById"
+    class="toast-card"
+    [class]="'toast-' + t.type"
+    role="alert"
+  >
+    <div class="toast-icon-wrap">
+      <span class="material-symbols-outlined">{{ getIcon(t.type) }}</span>
+    </div>
+    <div class="toast-body">
+      <div class="toast-title" *ngIf="t.title">{{ t.title }}</div>
+      <div class="toast-msg">{{ t.message }}</div>
+    </div>
+    <button class="toast-close" (click)="dismiss(t.id)" aria-label="Close alert">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+  </div>
+</div>

@@ -10,13 +10,25 @@ import { DialogService } from './services/dialog.service';
 import { ChatbotComponent } from './chatbot/chatbot.component';
 import { ChatbotService } from './services/chatbot.service';
 import { ApiService } from './services/api.service';
+import { ToastContainerComponent } from './components/toast-container/toast-container.component';
+import { CommandPaletteComponent } from './components/command-palette/command-palette.component';
 
 import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterOutlet, RouterLink, RouterLinkActive, TimeAgoPipe, ChatbotComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    TimeAgoPipe,
+    ChatbotComponent,
+    ToastContainerComponent,
+    CommandPaletteComponent
+  ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
