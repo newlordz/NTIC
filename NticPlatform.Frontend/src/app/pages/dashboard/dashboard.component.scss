@@ -8399,12 +8399,14 @@
 /* ── 4 Executive KPI Cards (Matching User's Screenshot) ── */
 .cc-rec-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
   margin-bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
 
   @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   @media (max-width: 600px) {
@@ -8415,11 +8417,14 @@
 .cc-rec-kpi-card {
   background: var(--surface-container-lowest, #ffffff);
   border: 1.5px solid var(--outline-variant, #e2e8f0);
-  border-radius: 14px;
-  padding: 14px 18px;
+  border-radius: 12px;
+  padding: 12px 14px;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   position: relative;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -9073,16 +9078,18 @@
 /* ── 5 Executive LMS KPI Cards (Matching User's Screenshot) ── */
 .cc-lms-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
   margin-bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
 
-  @media (max-width: 1280px) {
-    grid-template-columns: repeat(3, 1fr);
+  @media (max-width: 1350px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   @media (max-width: 900px) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   @media (max-width: 600px) {
@@ -9093,11 +9100,14 @@
 .cc-lms-kpi-card {
   background: var(--surface-container-lowest, #ffffff);
   border: 1.5px solid var(--outline-variant, #e2e8f0);
-  border-radius: 14px;
-  padding: 14px 16px;
+  border-radius: 12px;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
   position: relative;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -9110,16 +9120,16 @@
   }
 
   .cc-lms-kpi-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 
     .material-symbols-outlined {
-      font-size: 22px;
+      font-size: 20px;
     }
   }
 
@@ -9153,9 +9163,10 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
+    flex: 1;
 
     .cc-lms-kpi-val {
-      font-size: 24px;
+      font-size: 19px;
       font-weight: 800;
       line-height: 1.1;
       color: var(--on-surface, #0f172a);
@@ -9163,10 +9174,10 @@
     }
 
     .cc-lms-kpi-lbl {
-      font-size: 11.5px;
-      font-weight: 600;
+      font-size: 10px;
+      font-weight: 700;
       color: var(--on-surface-variant, #64748b);
-      margin-top: 4px;
+      margin-top: 3px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
