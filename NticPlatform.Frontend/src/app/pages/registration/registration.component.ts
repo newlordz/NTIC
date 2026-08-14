@@ -157,8 +157,19 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     repTel: '',
     students: [] as any[],
     teams: [] as any[],
-    acceptedTerms: false
+    acceptedTerms: false,
+    gdpaConsent: false,
+    gdpaConsentTimestamp: ''
   };
+
+  onConsentChanged(): void {
+    if (this.schoolForm.gdpaConsent) {
+      this.schoolForm.gdpaConsentTimestamp = new Date().toISOString();
+    } else {
+      this.schoolForm.gdpaConsentTimestamp = '';
+    }
+    this.tryAutoSave();
+  }
 
   gpsLoading = false;
   gpsAddress = '';
@@ -1488,7 +1499,9 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
         repTel: d.repTel || '',
         students: d.students || [],
         teams: d.teamsList || [],
-        acceptedTerms: true
+        acceptedTerms: true,
+        gdpaConsent: d.gdpaConsent ?? true,
+        gdpaConsentTimestamp: d.gdpaConsentTimestamp || ''
       };
       this.gpsAddress = d.gpsAddress || '';
       this.schoolStep = 1;
@@ -1731,6 +1744,10 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
   }
 
   nextStep(step: number): void {
+    if (this.schoolStep === 3 && step === 4 && !this.schoolForm.gdpaConsent) {
+      this.notificationService.warning('Please check the Ghana Data Protection Act (Act 843) consent box to proceed.', 'Consent Required');
+      return;
+    }
     if (step === this.schoolStep + 1) {
       this.schoolStep = step;
       if (step > this.maxSchoolStepReached) {
@@ -2518,7 +2535,9 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
       repTel: '',
       students: [],
       teams: [],
-      acceptedTerms: false
+      acceptedTerms: false,
+      gdpaConsent: false,
+      gdpaConsentTimestamp: ''
     };
 
     this.instructorForm = {
