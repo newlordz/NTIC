@@ -473,13 +473,16 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
       if (!value || !value.trim()) {
         this.fieldValidation[fieldName] = { status: 'idle', message: '' };
         delete this.fieldVerified[fieldName];
-        this.revalidateOtherSquadEmails(fieldName);
+        this.revalidateSiblingFields(fieldName, 'email');
         return;
       }
       if (!this.contentService.isValidEmail(value)) {
         this.fieldValidation[fieldName] = { status: 'invalid', message: 'Invalid email format' };
       } else if (this.isDuplicateInForm(fieldName, value)) {
-        this.fieldValidation[fieldName] = { status: 'taken', message: 'Duplicate email used by another squad member' };
+        const msg = this.activeTab === 'school'
+          ? 'School email and representative email cannot be the same'
+          : 'Duplicate email used by another squad member';
+        this.fieldValidation[fieldName] = { status: 'taken', message: msg };
       } else if (this.contentService.isEmailTaken(value, this.editingApprovalId || undefined)) {
         this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered' };
       } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
@@ -489,7 +492,7 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
       } else {
         this.fieldValidation[fieldName] = { status: 'valid', message: 'Email available' };
       }
-      this.revalidateOtherSquadEmails(fieldName);
+      this.revalidateSiblingFields(fieldName, 'email');
     }, 400);
   }
 
@@ -497,8 +500,8 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     const v = value.trim().toLowerCase();
     if (!v) return false;
     if (this.activeTab === 'school') {
-      if (fieldName === 'schoolEmail') return this.schoolForm.repEmail?.trim().toLowerCase() === v;
-      if (fieldName === 'schoolRepEmail') return this.schoolForm.email?.trim().toLowerCase() === v;
+      if (fieldName === 'schoolEmail') return (this.schoolForm.repEmail || '').trim().toLowerCase() === v;
+      if (fieldName === 'schoolRepEmail') return (this.schoolForm.email || '').trim().toLowerCase() === v;
     }
     if (this.activeTab === 'team' || (this.activeTab === 'student' && this.competitorMode === 'group')) {
       const emails: { name: string; value: string }[] = [
@@ -511,6 +514,64 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
       return emails.some(e => e.name !== fieldName && e.value?.trim().toLowerCase() === v);
     }
     return false;
+  }
+
+  private normalizePhone(phone: string): string {
+    if (!phone) return '';
+    const digits = phone.replace(/\D/g, '');
+    if (digits.startsWith('233') && digits.length >= 12) {
+      return digits.substring(3);
+    }
+    if (digits.startsWith('0') && digits.length >= 10) {
+      return digits.substring(1);
+    }
+    return digits;
+  }
+
+  private isDuplicatePhoneInForm(fieldName: string, value: string): boolean {
+    const v = this.normalizePhone(value);
+    if (!v) return false;
+    if (this.activeTab === 'school') {
+      if (fieldName === 'schoolTel') return this.normalizePhone(this.schoolForm.repTel) === v;
+      if (fieldName === 'schoolRepTel') return this.normalizePhone(this.schoolForm.tel) === v;
+    }
+    return false;
+  }
+
+  private revalidateSiblingFields(currentFieldName: string, type: 'email' | 'phone'): void {
+    if (this.activeTab === 'school') {
+      if (type === 'email') {
+        const sibling = currentFieldName === 'schoolEmail' ? 'schoolRepEmail' : currentFieldName === 'schoolRepEmail' ? 'schoolEmail' : null;
+        if (sibling && this.fieldValidation[sibling] && this.fieldValidation[sibling].status !== 'idle') {
+          const val = sibling === 'schoolEmail' ? this.schoolForm.email : this.schoolForm.repEmail;
+          if (val && val.trim()) {
+            if (!this.contentService.isValidEmail(val)) {
+              this.fieldValidation[sibling] = { status: 'invalid', message: 'Invalid email format' };
+            } else if (this.isDuplicateInForm(sibling, val)) {
+              this.fieldValidation[sibling] = { status: 'taken', message: 'School email and representative email cannot be the same' };
+            } else if (!this.contentService.isEmailTaken(val, this.editingApprovalId || undefined)) {
+              this.fieldValidation[sibling] = { status: 'valid', message: 'Email available' };
+            }
+          }
+        }
+      } else if (type === 'phone') {
+        const sibling = currentFieldName === 'schoolTel' ? 'schoolRepTel' : currentFieldName === 'schoolRepTel' ? 'schoolTel' : null;
+        if (sibling && this.fieldValidation[sibling] && this.fieldValidation[sibling].status !== 'idle') {
+          const val = sibling === 'schoolTel' ? this.schoolForm.tel : this.schoolForm.repTel;
+          if (val && val.trim()) {
+            if (!this.contentService.isValidGhanaPhone(val)) {
+              this.fieldValidation[sibling] = { status: 'invalid', message: 'Enter a valid Ghana number (0XX XXX XXXX or +233...)' };
+            } else if (this.isDuplicatePhoneInForm(sibling, val)) {
+              this.fieldValidation[sibling] = { status: 'taken', message: 'School telephone and representative telephone cannot be the same' };
+            } else if (!this.contentService.isPhoneTaken(val, this.editingApprovalId || undefined)) {
+              this.fieldValidation[sibling] = { status: 'valid', message: 'Number available' };
+            }
+          }
+        }
+      }
+    } else if (type === 'email') {
+      this.revalidateOtherSquadEmails(currentFieldName);
+    }
   }
 
   private revalidateOtherSquadEmails(currentFieldName: string): void {
@@ -543,6 +604,7 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     if (!value || !value.trim()) {
       this.fieldValidation[fieldName] = { status: 'idle', message: '' };
       delete this.fieldVerified[fieldName];
+      this.revalidateSiblingFields(fieldName, 'phone');
       return;
     }
     this.fieldValidation[fieldName] = { status: 'checking', message: 'Checking...' };
@@ -550,10 +612,13 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
       if (!value || !value.trim()) {
         this.fieldValidation[fieldName] = { status: 'idle', message: '' };
         delete this.fieldVerified[fieldName];
+        this.revalidateSiblingFields(fieldName, 'phone');
         return;
       }
       if (!this.contentService.isValidGhanaPhone(value)) {
         this.fieldValidation[fieldName] = { status: 'invalid', message: 'Enter a valid Ghana number (0XX XXX XXXX or +233...)' };
+      } else if (this.isDuplicatePhoneInForm(fieldName, value)) {
+        this.fieldValidation[fieldName] = { status: 'taken', message: 'School telephone and representative telephone cannot be the same' };
       } else if (this.contentService.isPhoneTaken(value, this.editingApprovalId || undefined)) {
         this.fieldValidation[fieldName] = { status: 'taken', message: 'This number is already registered' };
       } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
@@ -563,6 +628,7 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
       } else {
         this.fieldValidation[fieldName] = { status: 'valid', message: 'Number available' };
       }
+      this.revalidateSiblingFields(fieldName, 'phone');
     }, 400);
   }
 
