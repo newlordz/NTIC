@@ -6744,6 +6744,264 @@
     background: var(--surface-container, #1a2332);
     color: var(--on-surface-variant, #94a3b8);
   }
+
+  /* ══════════════════════════════════════════════════════════
+     COMMAND CENTER & EXECUTIVE PANELS (DARK MODE)
+     ══════════════════════════════════════════════════════════ */
+  .cc-panel {
+    background: #0e2530 !important;
+    border-color: #21404c !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  .cc-panel-label.cc-panel-title-bold {
+    color: #e1f3fc !important;
+  }
+
+  .cc-panel-sub {
+    color: #899296 !important;
+  }
+
+  /* Top Dashboard KPI Cards */
+  .cc-kpi-card {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+
+    &:hover {
+      background: #183440 !important;
+      border-color: #3f484c !important;
+    }
+
+    .cc-kpi-value {
+      color: #e1f3fc !important;
+    }
+
+    .cc-kpi-label {
+      color: #bfc8cc !important;
+    }
+
+    .cc-kpi-meta {
+      color: #899296 !important;
+    }
+  }
+
+  /* Gauges & Telemetry */
+  .cc-gauge-card {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+
+    .cc-gauge-label {
+      color: #bfc8cc !important;
+    }
+
+    .cc-gauge-val {
+      color: #e1f3fc !important;
+    }
+
+    .cc-gauge-bg {
+      stroke: #21404c !important;
+    }
+  }
+
+  /* Infrastructure Nodes */
+  .cc-node-card-v2 {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+
+    &:hover {
+      background: #183440 !important;
+      border-color: #3f484c !important;
+    }
+
+    .cc-ncard-ic-box {
+      background: rgba(59, 130, 246, 0.15) !important;
+      border-color: rgba(59, 130, 246, 0.3) !important;
+    }
+
+    .cc-ncard-name {
+      color: #e1f3fc !important;
+    }
+
+    .cc-metric-val {
+      color: #e1f3fc !important;
+    }
+
+    .cc-metric-lbl {
+      color: #899296 !important;
+    }
+
+    .cc-ncard-progress-track {
+      background: #21404c !important;
+    }
+  }
+
+  /* Live Traffic & Regional System Throughput */
+  .cc-tchart-title {
+    color: #e1f3fc !important;
+  }
+
+  .cc-tchart-legend .cc-legend-item {
+    color: #bfc8cc !important;
+  }
+
+  .cc-tchart-days {
+    color: #899296 !important;
+  }
+
+  .cc-throughput-svg line {
+    stroke: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .cc-edge-relays-row {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+  }
+
+  .cc-edge-relay-item {
+    &:hover {
+      background: #183440 !important;
+    }
+
+    .cc-er-name {
+      color: #bfc8cc !important;
+    }
+
+    .cc-er-val {
+      color: #93c5fd !important;
+    }
+  }
+
+  .cc-tf-stat {
+    .cc-tf-lbl {
+      color: #899296 !important;
+    }
+    .cc-tf-val {
+      color: #e1f3fc !important;
+    }
+  }
+
+  /* Executive KPI Cards (Championship, LMS, Records) */
+  .cc-comp-kpi-card,
+  .cc-lms-kpi-card,
+  .cc-rec-kpi-card {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+
+    &:hover {
+      background: #183440 !important;
+      border-color: #3f484c !important;
+    }
+
+    .cc-comp-kpi-val,
+    .cc-lms-kpi-val,
+    .cc-rec-kpi-val {
+      color: #e1f3fc !important;
+    }
+
+    .cc-comp-kpi-lbl,
+    .cc-lms-kpi-lbl,
+    .cc-rec-kpi-lbl {
+      color: #bfc8cc !important;
+    }
+
+    /* Card theme icon containers in dark mode */
+    &.tracks-theme .cc-comp-kpi-icon { background: rgba(245, 158, 11, 0.18) !important; color: #fbbf24 !important; }
+    &.teams-theme .cc-comp-kpi-icon { background: rgba(2, 132, 199, 0.18) !important; color: #38bdf8 !important; }
+    &.submissions-theme .cc-comp-kpi-icon { background: rgba(99, 102, 241, 0.18) !important; color: #a5b4fc !important; }
+    &.scored-theme .cc-comp-kpi-icon { background: rgba(16, 185, 129, 0.18) !important; color: #34d399 !important; }
+    &.pending-theme .cc-comp-kpi-icon { background: rgba(239, 68, 68, 0.18) !important; color: #f87171 !important; }
+
+    &.approval-theme .cc-lms-kpi-icon { background: rgba(245, 158, 11, 0.18) !important; color: #fbbf24 !important; }
+    &.courses-theme .cc-lms-kpi-icon { background: rgba(99, 102, 241, 0.18) !important; color: #a5b4fc !important; }
+    &.modules-theme .cc-lms-kpi-icon { background: rgba(16, 185, 129, 0.18) !important; color: #34d399 !important; }
+    &.materials-theme .cc-lms-kpi-icon { background: rgba(234, 88, 12, 0.18) !important; color: #fb923c !important; }
+    &.grading-theme .cc-lms-kpi-icon { background: rgba(219, 39, 119, 0.18) !important; color: #f472b6 !important; }
+
+    &.active-filter {
+      border-color: #38bdf8 !important;
+      background: rgba(56, 189, 248, 0.08) !important;
+    }
+  }
+
+  /* Dual Layout Sub-panels */
+  .cc-comp-tracks-card,
+  .cc-comp-leaderboard-card,
+  .cc-regional-bars-card,
+  .cc-geo-card {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+
+    .cc-comp-card-head h5 {
+      color: #e1f3fc !important;
+    }
+
+    .cc-comp-track-label strong,
+    .cc-podium-name,
+    .cc-reg-name {
+      color: #e1f3fc !important;
+    }
+
+    .cc-comp-bar-bg,
+    .cc-role-bar-bg {
+      background: #21404c !important;
+    }
+
+    .cc-podium-item {
+      background: #0e2530 !important;
+      border-color: #21404c !important;
+    }
+  }
+
+  /* Platform Overview & Bottom Services Cards */
+  .cc-services-title {
+    color: #e1f3fc !important;
+  }
+
+  .cc-services-sub {
+    color: #899296 !important;
+  }
+
+  .cc-service-card {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+
+    &:hover {
+      background: #183440 !important;
+      border-color: #3f484c !important;
+    }
+
+    .cc-scard-name {
+      color: #e1f3fc !important;
+    }
+
+    .cc-scard-metric-val {
+      color: #e1f3fc !important;
+    }
+
+    .cc-scard-metric-lbl {
+      color: #899296 !important;
+    }
+
+    .cc-ring-bg {
+      stroke: #21404c !important;
+    }
+  }
+
+  /* Action Buttons & Badges */
+  .cc-comp-btn-open,
+  .cc-lms-btn-open,
+  .cc-rec-btn-open {
+    background: #183440 !important;
+    border-color: #21404c !important;
+    color: #e1f3fc !important;
+
+    &:hover {
+      background: #21404c !important;
+      border-color: #3f484c !important;
+    }
+  }
 }
 
 // ╔══════════════════════════════════════════════════════════╗
