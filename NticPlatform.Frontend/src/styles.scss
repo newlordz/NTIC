@@ -2905,6 +2905,55 @@ body.dark-theme {
   .login-modal-backdrop .login-modal-card .lm-form .lm-submit:disabled {
     opacity: 0.5 !important;
   }
+
+  /* Universal Dark Theme Overrides for App Shell, Panels, Cards & Tables */
+  .app-shell,
+  .main-content,
+  .dashboard-container,
+  .page-container,
+  .admin-layout,
+  .portal-layout,
+  .content-area,
+  .view-container {
+    background: #071e27 !important;
+    color: #e1f3fc !important;
+  }
+
+  .card,
+  .panel,
+  .box,
+  .container-card,
+  .glass-card,
+  .section-card,
+  .widget-card,
+  .overview-card,
+  .kpi-card,
+  .content-card,
+  .admin-card,
+  .modal-content,
+  .modal-card,
+  .dialog-card {
+    background: #0e2530 !important;
+    border-color: #21404c !important;
+    color: #e1f3fc !important;
+  }
+
+  .sidebar,
+  .app-sidebar,
+  .nav-sidebar,
+  .admin-sidebar {
+    background: #091a22 !important;
+    border-color: #21404c !important;
+  }
+
+  .topbar,
+  .app-header,
+  .navbar,
+  .admin-header,
+  .masthead {
+    background: #091a22 !important;
+    border-color: #21404c !important;
+  }
 }
 
 /* ═══════════════════════════════════════════════

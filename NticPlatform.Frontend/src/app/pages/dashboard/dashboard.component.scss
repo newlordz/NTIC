@@ -6748,10 +6748,43 @@
   /* ══════════════════════════════════════════════════════════
      COMMAND CENTER & EXECUTIVE PANELS (DARK MODE)
      ══════════════════════════════════════════════════════════ */
-  .cc-panel {
+  .cc-masthead {
     background: #0e2530 !important;
     border-color: #21404c !important;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+
+    .cc-title { color: #e1f3fc !important; }
+    .cc-status-pill { background: #132c37 !important; border-color: #21404c !important; }
+    .cc-time { color: #bfc8cc !important; }
+    .cc-shield-wrap { background: rgba(172, 199, 255, 0.12) !important; border-color: rgba(172, 199, 255, 0.25) !important; }
+  }
+
+  .cc-panel,
+  .cc-control-card,
+  .cc-overview-card,
+  .cc-admin-grid-card,
+  .cc-card,
+  .stat-card,
+  .portal-card,
+  .sponsor-card,
+  .mentor-card,
+  .role-hub-card,
+  .admin-portal-card,
+  .analytics-card,
+  .chart-card,
+  .table-card,
+  .metric-box,
+  .cc-bottom-services-section,
+  .db-card,
+  .report-card {
+    background: #0e2530 !important;
+    border-color: #21404c !important;
+    color: #e1f3fc !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+
+    h1, h2, h3, h4, h5, h6, strong, .card-title, .title {
+      color: #e1f3fc !important;
+    }
   }
 
   .cc-panel-label.cc-panel-title-bold {
