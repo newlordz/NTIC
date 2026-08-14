@@ -5,6 +5,8 @@ import { catchError, retry, throwError, timer } from 'rxjs';
 import { clearAllAuthValues, getAuthValue } from '../services/session.util';
 import { NotificationService } from '../services/notification.service';
 
+let lastSessionExpiredToastTime = 0;
+
 export const httpResilienceInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const notificationService = inject(NotificationService);
@@ -29,9 +31,19 @@ export const httpResilienceInterceptor: HttpInterceptorFn = (req, next) => {
     }),
     catchError((err: HttpErrorResponse) => {
       if (err.status === 401 && !req.url.includes('/api/login')) {
-        notificationService.warning('Session expired. Please sign in to continue.');
-        clearAllAuthValues();
-        router.navigate(['/']);
+        // Only trigger session expiration if there was an active token sent
+        if (token) {
+          clearAllAuthValues();
+          const now = Date.now();
+          if (now - lastSessionExpiredToastTime > 15000) {
+            lastSessionExpiredToastTime = now;
+            notificationService.warning('Session expired. Please sign in to continue.');
+          }
+          const currentPath = (router.url || '').split('?')[0].split('#')[0];
+          if (currentPath !== '/' && currentPath !== '/landing' && currentPath !== '') {
+            router.navigate(['/']);
+          }
+        }
       }
       return throwError(() => err);
     })
