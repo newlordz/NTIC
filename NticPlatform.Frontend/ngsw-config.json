@@ -17,7 +17,7 @@
     },
     {
       "name": "assets",
-      "installMode": "lazy",
+      "installMode": "prefetch",
       "updateMode": "prefetch",
       "resources": {
         "files": [
@@ -28,6 +28,23 @@
           "https://fonts.googleapis.com/**",
           "https://fonts.gstatic.com/**"
         ]
+      }
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "platform-api",
+      "urls": [
+        "/api/stats",
+        "/api/competitions",
+        "/api/stories",
+        "/api/hall-of-fame"
+      ],
+      "cacheConfig": {
+        "maxSize": 50,
+        "maxAge": "1h",
+        "timeout": "3s",
+        "strategy": "freshness"
       }
     }
   ]
