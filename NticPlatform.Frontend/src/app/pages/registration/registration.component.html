@@ -1285,7 +1285,7 @@
                 </div>
                 <span>I agree to the <a (click)="openTermsModal('school')" class="terms-link">Terms & Conditions</a> and <a (click)="openPrivacyModal()" class="terms-link">Privacy Policy</a></span>
               </label>
-              <button class="btn btn-primary btn-full submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting || !schoolForm.acceptedTerms || !hasRequiredDocs">
+              <button class="btn btn-primary btn-full submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting || !schoolForm.acceptedTerms || !schoolForm.gdpaConsent || !hasRequiredDocs">
                 <span *ngIf="!isSubmitting" style="display:flex; align-items:center; gap:8px;">
                   Submit Registry <span class="material-symbols-outlined">check_circle</span>
                 </span>
@@ -2717,15 +2717,15 @@
           <div class="modal-info-grid">
             <div class="modal-info-item">
               <span class="item-lbl">Consent Status</span>
-              <span class="item-val" style="color: #10b981; display:flex; align-items:center; gap:4px;">
-                <span class="material-symbols-outlined" style="font-size:16px;">verified</span>
-                Lawfully Consented
+              <span class="item-val" [style.color]="schoolForm.gdpaConsent ? '#10b981' : '#f59e0b'" style="display:flex; align-items:center; gap:4px;">
+                <span class="material-symbols-outlined" style="font-size:16px;">{{ schoolForm.gdpaConsent ? 'verified' : 'pending' }}</span>
+                {{ schoolForm.gdpaConsent ? 'Lawfully Consented' : 'Pending Acknowledgment' }}
               </span>
             </div>
             <div class="modal-info-item">
               <span class="item-lbl">Consent Timestamp</span>
-              <span class="item-val" style="font-family:monospace; font-size:12px;">
-                {{ (schoolForm.gdpaConsentTimestamp || today) | date:'medium' }}
+              <span class="item-val" style="font-family:monospace; font-size:12px;" [style.color]="schoolForm.gdpaConsent ? 'inherit' : 'var(--on-surface-variant)'">
+                {{ schoolForm.gdpaConsent ? (schoolForm.gdpaConsentTimestamp | date:'medium') : 'Required in Step 3' }}
               </span>
             </div>
           </div>
@@ -2738,7 +2738,7 @@
           <input type="checkbox" [(ngModel)]="schoolForm.acceptedTerms" name="schoolTermsPreview" style="accent-color:var(--primary);">
           <span>I agree to the <a (click)="openTermsModal('school')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
         </label>
-        <button class="btn btn-primary submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting || !schoolForm.acceptedTerms || !hasRequiredDocs">
+        <button class="btn btn-primary submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting || !schoolForm.acceptedTerms || !schoolForm.gdpaConsent || !hasRequiredDocs">
           <span *ngIf="!isSubmitting" style="display:flex; align-items:center; gap:8px;">
             Confirm & Submit <span class="material-symbols-outlined">check_circle</span>
           </span>
