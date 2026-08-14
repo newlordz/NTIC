@@ -7168,6 +7168,231 @@
     background: #21404c !important;
     color: #e1f3fc !important;
   }
+
+  /* ══════════════════════════════════════════════════════════
+     ADMINISTRATION CENTER & CONTROL LANDING (DARK THEME)
+     ══════════════════════════════════════════════════════════ */
+  .cc-control-header {
+    background: #0e2530 !important;
+    border: 1px solid #21404c !important;
+    border-left: 4px solid #38bdf8 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+
+    .cc-control-title {
+      color: #ffffff !important;
+    }
+
+    .cc-control-sub {
+      color: #bfc8cc !important;
+    }
+
+    .cc-control-header-icon {
+      background: rgba(56, 189, 248, 0.15) !important;
+      border-color: rgba(56, 189, 248, 0.3) !important;
+      color: #38bdf8 !important;
+    }
+  }
+
+  .cc-control-card {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+
+    &:hover {
+      background: #183440 !important;
+      border-color: #3f484c !important;
+    }
+
+    .cc-control-card-label {
+      color: #ffffff !important;
+    }
+
+    .cc-control-card-desc {
+      color: #bfc8cc !important;
+    }
+
+    .cc-control-card-count {
+      color: #38bdf8 !important;
+    }
+
+    .cc-control-arrow {
+      color: #899296 !important;
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     LIVE AUDIT TRAIL & SECURITY STREAM (DARK THEME)
+     ══════════════════════════════════════════════════════════ */
+  .lat-header-card {
+    background: #0e2530 !important;
+    border-color: #21404c !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+
+    .lat-main-title {
+      color: #ffffff !important;
+    }
+
+    .lat-subtitle {
+      color: #bfc8cc !important;
+    }
+
+    .lat-total-pill {
+      background: rgba(2, 132, 199, 0.2) !important;
+      border-color: rgba(2, 132, 199, 0.4) !important;
+      color: #38bdf8 !important;
+    }
+  }
+
+  .lat-kpi-grid .lat-kpi-card {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+
+    &:hover {
+      background: #183440 !important;
+      border-color: #3f484c !important;
+    }
+
+    &.active {
+      background: #183440 !important;
+      border-color: #38bdf8 !important;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25) !important;
+    }
+
+    .lat-kpi-val {
+      color: #ffffff !important;
+    }
+
+    .lat-kpi-lbl {
+      color: #bfc8cc !important;
+    }
+
+    .lat-kpi-meta {
+      color: #899296 !important;
+    }
+  }
+
+  .lat-filters-card {
+    background: #0e2530 !important;
+    border-color: #21404c !important;
+
+    .lat-search-input {
+      background: #132c37 !important;
+      border-color: #21404c !important;
+      color: #ffffff !important;
+
+      &::placeholder {
+        color: #899296 !important;
+      }
+    }
+
+    .lat-view-mode-toggle {
+      background: #132c37 !important;
+      border-color: #21404c !important;
+
+      .lat-view-btn {
+        color: #bfc8cc !important;
+
+        &.active {
+          background: #21404c !important;
+          color: #ffffff !important;
+        }
+      }
+    }
+
+    .lat-filter-chip {
+      background: #132c37 !important;
+      border-color: #21404c !important;
+      color: #bfc8cc !important;
+
+      &:hover {
+        background: #183440 !important;
+        color: #ffffff !important;
+      }
+
+      &.active {
+        background: #003f87 !important;
+        border-color: #38bdf8 !important;
+        color: #ffffff !important;
+      }
+    }
+
+    .lat-select {
+      background: #132c37 !important;
+      border-color: #21404c !important;
+      color: #ffffff !important;
+    }
+  }
+
+  .lat-timeline-panel {
+    background: #091a22 !important;
+    border-color: #21404c !important;
+
+    .lat-timeline-title {
+      color: #e1f3fc !important;
+    }
+
+    .lat-timeline-btn {
+      background: #132c37 !important;
+      border-color: #21404c !important;
+      color: #bfc8cc !important;
+
+      &.active {
+        background: #21404c !important;
+        color: #ffffff !important;
+      }
+    }
+  }
+
+  .lat-stream-item,
+  .lat-table-card {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+    color: #e1f3fc !important;
+
+    &:hover {
+      background: #183440 !important;
+    }
+
+    .lat-item-title {
+      color: #ffffff !important;
+    }
+
+    .lat-item-meta {
+      color: #bfc8cc !important;
+    }
+  }
+
+  .lat-btn-secondary,
+  .lat-btn-ghost {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+    color: #e1f3fc !important;
+
+    &:hover {
+      background: #183440 !important;
+      border-color: #3f484c !important;
+    }
+  }
+
+  .lat-export-menu {
+    background: #0e2530 !important;
+    border-color: #21404c !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6) !important;
+
+    .lat-export-item {
+      &:hover {
+        background: #132c37 !important;
+      }
+
+      .lat-export-item-title {
+        color: #ffffff !important;
+      }
+
+      .lat-export-item-desc {
+        color: #bfc8cc !important;
+      }
+    }
+  }
 }
 
 // ╔══════════════════════════════════════════════════════════╗
