@@ -121,6 +121,44 @@ try:
             conn.close()
         return deleted
 
+    def prune_expired_sessions_internal() -> int:
+        conn = get_db_connection()
+        if not conn:
+            return 0
+        has_lock = False
+        deleted = 0
+        try:
+            cur = conn.cursor()
+            try:
+                cur.execute("SELECT pg_try_advisory_lock(843002)")
+                lock_row = cur.fetchone()
+                if lock_row and lock_row[0] is False:
+                    cur.close()
+                    release_db_connection(conn)
+                    return 0
+                has_lock = True
+            except Exception:
+                pass
+
+            cur.execute("DELETE FROM auth_sessions WHERE expires_at < CURRENT_TIMESTAMP")
+            deleted = cur.rowcount if cur.rowcount is not None and cur.rowcount >= 0 else 0
+            conn.commit()
+            cur.close()
+        except Exception as e:
+            conn.rollback()
+            logger.warning(f"Session prune query error: {e}")
+            deleted = 0
+        finally:
+            if has_lock:
+                try:
+                    cur = conn.cursor()
+                    cur.execute("SELECT pg_advisory_unlock(843002)")
+                    cur.close()
+                except Exception:
+                    pass
+            release_db_connection(conn)
+        return deleted
+
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         import time, asyncio
@@ -146,9 +184,24 @@ try:
                     logger.warning(f"[Maintenance] Automated audit maintenance error: {e}")
                     await asyncio.sleep(3600)
 
+        async def periodic_session_maintenance():
+            while True:
+                try:
+                    await asyncio.sleep(43200)  # Every 12 hours
+                    pruned = prune_expired_sessions_internal()
+                    if pruned > 0:
+                        logger.info(f"[Maintenance] Automated maintenance pruned {pruned} expired auth sessions.")
+                except asyncio.CancelledError:
+                    break
+                except Exception as e:
+                    logger.warning(f"[Maintenance] Automated session maintenance error: {e}")
+                    await asyncio.sleep(3600)
+
         maint_task = asyncio.create_task(daily_audit_maintenance())
+        session_task = asyncio.create_task(periodic_session_maintenance())
         yield
         maint_task.cancel()
+        session_task.cancel()
 
     app = FastAPI(
         title="NTIC Platform Python API",
