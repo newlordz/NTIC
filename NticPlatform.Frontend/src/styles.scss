@@ -123,6 +123,7 @@ html {
   margin: 0;
   padding: 0;
   scroll-behavior: smooth;
+  scroll-padding-top: 80px;
   scrollbar-gutter: stable;
   overflow-x: hidden;
 }
@@ -134,6 +135,7 @@ body {
   padding: 0;
   overflow-x: hidden;
   overflow-x: clip;
+  overscroll-behavior-y: none;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: #eef5ff;
   background-image: 
@@ -3750,5 +3752,25 @@ body.dark-theme {
     border-color: rgba(109, 165, 224, 0.25) !important;
     &:hover { background: rgba(109, 165, 224, 0.18) !important; }
   }
+}
+
+/* ── Modal, Sidebar & Scroll Containment (Beyond-the-Box) ── */
+.modal-overlay,
+.modal-backdrop,
+.login-modal-backdrop,
+.pass-modal-overlay,
+.global-dialog-overlay,
+.modal-card,
+.login-modal-card,
+.pass-modal-card,
+.global-dialog-card,
+.sidebar,
+.header-dropdown,
+.notifications-dropdown,
+.tracks-grid,
+.slide-item,
+.scoreboard-table-wrap {
+  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
 }
 

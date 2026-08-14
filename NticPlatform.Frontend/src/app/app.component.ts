@@ -64,12 +64,18 @@ export class AppComponent implements OnInit, OnDestroy {
     'reporting':    'Reports & Analytics',
   };
 
+  private lastNavigatedPath = '';
+
   constructor(private router: Router, public themeService: ThemeService, public contentService: ContentService, public dialogService: DialogService, private renderer: Renderer2, private chatbot: ChatbotService, private apiService: ApiService) {
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
       const url = event.urlAfterRedirects || event.url;
       const parsedUrl = url.split('?')[0].split('#')[0];
+      const hasFragment = (event.url && event.url.includes('#')) || (event.urlAfterRedirects && event.urlAfterRedirects.includes('#'));
+      const isDifferentRoute = this.lastNavigatedPath !== '' && this.lastNavigatedPath !== parsedUrl;
+      this.lastNavigatedPath = parsedUrl;
+
       this.loadUserProfile();
 
       this.isLandingPage =
@@ -99,18 +105,17 @@ export class AppComponent implements OnInit, OnDestroy {
         this.chatbot.resetSession();
       }
 
-      if (typeof window !== 'undefined') {
+      // ONLY scroll to top when genuinely transitioning to a DIFFERENT page,
+      // NOT during in-page events, same-page scroll, or section anchor navigation.
+      if (isDifferentRoute && !hasFragment && typeof window !== 'undefined') {
         document.body.style.overflow = '';
         window.scrollTo(0, 0);
         document.documentElement.scrollTop = 0;
         document.body.scrollTop = 0;
-        setTimeout(() => {
-          window.scrollTo(0, 0);
-          const mainContent = document.querySelector('.main-content');
-          if (mainContent) {
-            mainContent.scrollTop = 0;
-          }
-        }, 0);
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+          mainContent.scrollTop = 0;
+        }
       }
     });
   }

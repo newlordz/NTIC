@@ -1,4 +1,4 @@
-import { getAuthValue, setAuthValue, clearAuthValue } from '../../services/session.util';
+import { getAuthValue, setAuthValue, clearAuthValue, getRememberedCredentials, saveRememberedCredentials, hasRememberedDevice, forgetRememberedCredentials } from '../../services/session.util';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -1021,13 +1021,16 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
 
   openLoginModal(): void {
     this.isLoginModalOpen = true;
-    this.loginEmail = '';
-    this.loginPassword = '';
     this.loginError = '';
-    this.rememberDevice = false;
-    const rememberedEmail = getAuthValue('activeUserEmail');
-    if (rememberedEmail && typeof window !== 'undefined' && window.localStorage.getItem('activeUserEmail') !== null) {
-      this.loginEmail = rememberedEmail;
+    const creds = getRememberedCredentials();
+    if (creds.remembered) {
+      this.rememberDevice = true;
+      this.loginEmail = creds.username;
+      this.loginPassword = creds.password;
+    } else {
+      this.loginEmail = '';
+      this.loginPassword = '';
+      this.rememberDevice = false;
     }
   }
 
@@ -1036,6 +1039,22 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     this.loginEmail = '';
     this.loginPassword = '';
     this.loginError = '';
+  }
+
+  get hasSavedCredentials(): boolean {
+    return hasRememberedDevice();
+  }
+
+  clearSavedCredentials(event?: Event): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    forgetRememberedCredentials();
+    this.loginEmail = '';
+    this.loginPassword = '';
+    this.rememberDevice = false;
+    this.dialogService.toast('Saved credentials cleared from this device.', 'info');
   }
 
   performLogin(): void {
@@ -1080,6 +1099,9 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     if (user.token) {
       setAuthValue('activeUserToken', user.token, this.rememberDevice);
     }
+
+    // Save or clear remembered credentials without auto-logging in
+    saveRememberedCredentials(credential, this.loginPassword.trim(), this.rememberDevice);
     this.contentService.saveAuditLogs([
       { action: `${role} login: ${email}`, user: email, time: new Date().toISOString(), type: 'auth' },
       ...this.contentService.auditLogs

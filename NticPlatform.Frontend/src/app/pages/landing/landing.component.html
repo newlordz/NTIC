@@ -1673,10 +1673,15 @@
                 </ng-container>
               </button>
 
-              <label class="gf-remember">
-                <input type="checkbox" name="rememberDevice" [(ngModel)]="rememberDevice">
-                <span>Remember this device</span>
-              </label>
+              <div class="gf-remember-row" style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+                <label class="gf-remember" style="margin:0;">
+                  <input type="checkbox" name="rememberDevice" [(ngModel)]="rememberDevice">
+                  <span>Remember this device</span>
+                </label>
+                <button type="button" *ngIf="hasSavedCredentials" (click)="clearSavedCredentials($event)" class="gf-forget-btn" style="background:none;border:none;color:#ef4444;font-size:11px;cursor:pointer;text-decoration:underline;">
+                  Forget saved credentials
+                </button>
+              </div>
             </form>
 
             <!-- Telemetry Console -->
@@ -2050,10 +2055,15 @@
             </ng-container>
           </button>
 
-          <label class="lm-remember">
-            <input type="checkbox" name="rememberDevice" [(ngModel)]="rememberDevice">
-            <span>Remember this device</span>
-          </label>
+          <div class="lm-remember-row" style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+            <label class="lm-remember" style="margin:0;">
+              <input type="checkbox" name="rememberDevice" [(ngModel)]="rememberDevice">
+              <span>Remember this device</span>
+            </label>
+            <button type="button" *ngIf="hasSavedCredentials" (click)="clearSavedCredentials($event)" class="lm-forget-btn" style="background:none;border:none;color:#ef4444;font-size:11px;cursor:pointer;text-decoration:underline;">
+              Forget saved credentials
+            </button>
+          </div>
         </form>
 
         <!-- Telemetry Console -->

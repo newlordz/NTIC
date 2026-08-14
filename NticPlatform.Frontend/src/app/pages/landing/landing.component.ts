@@ -1,4 +1,4 @@
-import { getAuthValue, setAuthValue, hasRememberedDevice } from '../../services/session.util';
+import { getAuthValue, setAuthValue, hasRememberedDevice, getRememberedCredentials, saveRememberedCredentials, forgetRememberedCredentials } from '../../services/session.util';
 import { Component, OnInit, AfterViewInit, OnDestroy, NgZone, ElementRef, ViewChild, Renderer2, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
@@ -352,13 +352,16 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       event.stopPropagation();
     }
     this.isLoginModalOpen = true;
-    this.email = '';
-    this.password = '';
     this.loginError = '';
-    this.rememberDevice = false;
-    const rememberedEmail = getAuthValue('activeUserEmail');
-    if (rememberedEmail && typeof window !== 'undefined' && window.localStorage.getItem('activeUserEmail') !== null) {
-      this.email = rememberedEmail;
+    const creds = getRememberedCredentials();
+    if (creds.remembered) {
+      this.rememberDevice = true;
+      this.email = creds.username;
+      this.password = creds.password;
+    } else {
+      this.email = '';
+      this.password = '';
+      this.rememberDevice = false;
     }
     this.detectedRoleName = '';
     if (typeof document !== 'undefined') {
@@ -369,6 +372,22 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
         `AWAITING OPERATOR INPUT...`
       ];
     }
+  }
+
+  get hasSavedCredentials(): boolean {
+    return hasRememberedDevice();
+  }
+
+  clearSavedCredentials(event?: Event): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    forgetRememberedCredentials();
+    this.email = '';
+    this.password = '';
+    this.rememberDevice = false;
+    this.dialogService.toast('Saved credentials cleared from this device.', 'info');
   }
 
   closeLoginModal(event?: Event): void {
@@ -1044,16 +1063,14 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       document.body.style.overflow = '';
     }
 
-    // If user chose "Remember this device", skip the login page entirely
-    if (typeof window !== 'undefined' && hasRememberedDevice()) {
-      const role = getAuthValue('activeRoleId') || '';
-      const routes: Record<string, string> = {
-        super_admin: '/dashboard', content_manager: '/dashboard', reviewer: '/dashboard',
-        competition_manager: '/dashboard', school_admin: '/dashboard',
-        instructor: '/instructor', judge: '/dashboard', student: '/lms', sponsor: '/sponsors'
-      };
-      this.router.navigate([routes[role] || '/dashboard']);
-      return;
+    // Pre-populate remembered credentials for Gatekeeper login if saved
+    if (typeof window !== 'undefined') {
+      const creds = getRememberedCredentials();
+      if (creds.remembered) {
+        this.rememberDevice = true;
+        this.email = creds.username;
+        this.password = creds.password;
+      }
     }
 
     // Pre-populate track preview with coding snippet (no modal popup on load)
@@ -1710,6 +1727,9 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     if (user.token) {
       setAuthValue('activeUserToken', user.token, this.rememberDevice);
     }
+
+    // Save or clear remembered username & password based on checkbox
+    saveRememberedCredentials(credential, this.password.trim(), this.rememberDevice);
 
     const roleRoutes: Record<string, string> = {
       instructor: '/instructor',

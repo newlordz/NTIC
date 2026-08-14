@@ -3019,10 +3019,15 @@
           <span>{{ loginError }}</span>
         </div>
 
-        <label class="lm-remember" style="display:flex;align-items:center;gap:8px;margin:2px 0 14px;cursor:pointer;font-size:13px;color:var(--on-surface-variant);">
-          <input type="checkbox" [(ngModel)]="rememberDevice" name="rememberDevice" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer;">
-          <span>Remember this device</span>
-        </label>
+        <div class="lm-remember-row" style="display:flex;align-items:center;justify-content:space-between;margin:2px 0 14px;">
+          <label class="lm-remember" style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;font-size:13px;color:var(--on-surface-variant);">
+            <input type="checkbox" [(ngModel)]="rememberDevice" name="rememberDevice" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer;">
+            <span>Remember this device</span>
+          </label>
+          <button type="button" *ngIf="hasSavedCredentials" (click)="clearSavedCredentials($event)" class="lm-forget-btn" style="background:none;border:none;color:#ef4444;font-size:11px;cursor:pointer;text-decoration:underline;">
+            Forget saved credentials
+          </button>
+        </div>
 
         <button type="submit" class="lm-submit" [disabled]="isLoggingIn || !loginEmail.trim()">
           <ng-container *ngIf="!isLoggingIn">
