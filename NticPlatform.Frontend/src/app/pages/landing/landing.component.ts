@@ -411,6 +411,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   // ── STRIPE HERO CANVAS (RADIAL BEAMS & PARTICLE STARBURST) ───
   private matrixAnimFrame: number | null = null;
   private matrixObserver: IntersectionObserver | null = null;
+  private isMatrixVisible = true;
   private matrixResizeListener: any;
   private matrixMouseListener: any;
   private matrixTouchListener: any;
@@ -1099,13 +1100,15 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     this.setupSupportObserver();
     this.applyRegionColors();
     this.setupScrollAnimations();
-    this.storyTimer = setInterval(() => {
-      const stories = this.filteredStories;
-      if (stories.length > 5) {
-        this.currentStoryOffset = (this.currentStoryOffset + 1) % stories.length;
-        this.cdr.detectChanges();
-      }
-    }, 6_000);
+    this.ngZone.runOutsideAngular(() => {
+      this.storyTimer = setInterval(() => {
+        const stories = this.filteredStories;
+        if (stories.length > 5) {
+          this.currentStoryOffset = (this.currentStoryOffset + 1) % stories.length;
+          this.cdr.markForCheck();
+        }
+      }, 6_000);
+    });
 
     // Pause matrix rain when off-screen to save CPU
     this.setupMatrixRainObserver();
@@ -1947,6 +1950,11 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         const isLoginCard = card.classList.contains('academic-login-card') || card.classList.contains('gateway-card-inner');
         let rAFId: number | null = null;
         let lastX = 0, lastY = 0;
+        let cachedRect: DOMRect | null = null;
+
+        const mouseEnterHandler = () => {
+          cachedRect = card.getBoundingClientRect();
+        };
 
         const mouseMoveHandler = (event: MouseEvent) => {
           lastX = event.clientX;
@@ -1955,7 +1963,8 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
 
           rAFId = requestAnimationFrame(() => {
             rAFId = null;
-            const rect = card.getBoundingClientRect();
+            if (!cachedRect) cachedRect = card.getBoundingClientRect();
+            const rect = cachedRect;
             const x = lastX - rect.left;
             const y = lastY - rect.top;
             const cx = rect.width / 2;
@@ -1977,11 +1986,13 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         };
 
         const mouseLeaveHandler = () => {
+          cachedRect = null;
           if (rAFId) { cancelAnimationFrame(rAFId); rAFId = null; }
           card.style.transition = 'transform 0.6s cubic-bezier(0.34, 1.4, 0.64, 1)';
           card.style.transform = '';
         };
 
+        card.addEventListener('mouseenter', mouseEnterHandler, { passive: true });
         card.addEventListener('mousemove', mouseMoveHandler, { passive: true });
         card.addEventListener('mouseleave', mouseLeaveHandler);
 
@@ -2001,13 +2012,13 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       const target = this.competitionDate.getTime();
       if (isNaN(target)) {
         this.countdownDays = this.countdownHours = this.countdownMins = this.countdownSecs = 0;
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
         return;
       }
       const dist = target - now;
       if (dist <= 0) {
         this.countdownDays = this.countdownHours = this.countdownMins = this.countdownSecs = 0;
-        this.cdr.detectChanges();
+        this.cdr.markForCheck();
         return;
       }
       this.countdownDays  = Math.floor(dist / (1000 * 60 * 60 * 24));
@@ -2015,13 +2026,15 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       this.countdownMins  = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
       this.countdownSecs  = Math.floor((dist % (1000 * 60)) / 1000);
       this.countdownTick  = !this.countdownTick;
-      this.cdr.detectChanges();
+      this.cdr.markForCheck();
     };
     update();
     if (this.countdownInterval) clearInterval(this.countdownInterval);
-    this.countdownInterval = setInterval(() => {
-      update();
-    }, 1000);
+    this.ngZone.runOutsideAngular(() => {
+      this.countdownInterval = setInterval(() => {
+        update();
+      }, 1000);
+    });
   }
 
   // ── STRIPE DATA-VIZ CANVAS (Lightweight Underwater Sea Leaves & Fishes) ───
@@ -2430,6 +2443,10 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       let lastFrameTime = 0;
 
       const draw = (timestamp: number) => {
+        if (!this.isMatrixVisible) {
+          this.matrixAnimFrame = null;
+          return;
+        }
         // dt: time-scale normalised to 60fps so physics run at identical speed at any FPS.
         const rawDelta = lastFrameTime === 0 ? 16.667 : timestamp - lastFrameTime;
         lastFrameTime = timestamp;
@@ -3160,6 +3177,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
 
     this.matrixObserver = new IntersectionObserver((entries) => {
       for (const entry of entries) {
+        this.isMatrixVisible = entry.isIntersecting;
         if (entry.isIntersecting) {
           this.restartMatrixRain();
         } else {
@@ -3169,7 +3187,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
           }
         }
       }
-    }, { rootMargin: '100px', threshold: 0 });
+    }, { rootMargin: '80px', threshold: 0 });
 
     this.matrixObserver.observe(section);
   }
@@ -3247,40 +3265,39 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     let i = 0;
     this.ngZone.runOutsideAngular(() => {
       this.codeTypeInterval = setInterval(() => {
-        i += 2;
+        i += 3;
         if (i >= raw.length) {
           clearInterval(this.codeTypeInterval);
-          this.ngZone.run(() => { this.typedCodePreview = this.syntaxHighlight(raw); });
+          this.typedCodePreview = this.syntaxHighlight(raw);
+          this.cdr.markForCheck();
         } else {
           const partial = raw.substring(0, i);
-          this.ngZone.run(() => {
-            this.typedCodePreview = this.syntaxHighlight(partial) + '<span class="cursor-blink">▋</span>';
-          });
+          this.typedCodePreview = this.syntaxHighlight(partial) + '<span class="cursor-blink">▋</span>';
+          this.cdr.markForCheck();
         }
-      }, 12);
+      }, 28);
 
       this.arenaInterval = setInterval(() => {
-        this.ngZone.run(() => {
-          if (track === 'robotics' && this.arenaState.robotics.mode === 'Autonomous') {
-            this.arenaState.robotics.radarSweep = (this.arenaState.robotics.radarSweep + 30) % 360;
-            const dist = Math.floor(Math.random() * 18) + 18; // 18-35cm
-            this.arenaState.robotics.distance = dist;
-            if (dist > 20) {
-              this.arenaState.robotics.status = '🟢 RADAR SCANNING * PATH CLEAR';
-              this.arenaState.robotics.statusColor = '#00e676';
-            }
-          } else if (track === 'coding') {
-            const ops = (Math.random() * 0.4 + 2.2).toFixed(1);
-            this.arenaState.coding.opsSec = `${ops}M ops/s`;
-          } else if (track === 'cyber') {
-            const pkts = Math.floor(Math.random() * 400) + 4000;
-            this.arenaState.cyber.packetsSec = pkts;
-          } else if (track === 'innovation') {
-            const kw = (Math.random() * 1.5 + 46.0).toFixed(1);
-            this.arenaState.innovation.solarKw = kw;
+        if (track === 'robotics' && this.arenaState.robotics.mode === 'Autonomous') {
+          this.arenaState.robotics.radarSweep = (this.arenaState.robotics.radarSweep + 30) % 360;
+          const dist = Math.floor(Math.random() * 18) + 18; // 18-35cm
+          this.arenaState.robotics.distance = dist;
+          if (dist > 20) {
+            this.arenaState.robotics.status = '🟢 RADAR SCANNING * PATH CLEAR';
+            this.arenaState.robotics.statusColor = '#00e676';
           }
-        });
-      }, 1500);
+        } else if (track === 'coding') {
+          const ops = (Math.random() * 0.4 + 2.2).toFixed(1);
+          this.arenaState.coding.opsSec = `${ops}M ops/s`;
+        } else if (track === 'cyber') {
+          const pkts = Math.floor(Math.random() * 400) + 4000;
+          this.arenaState.cyber.packetsSec = pkts;
+        } else if (track === 'innovation') {
+          const kw = (Math.random() * 1.5 + 46.0).toFixed(1);
+          this.arenaState.innovation.solarKw = kw;
+        }
+        this.cdr.markForCheck();
+      }, 2000);
     });
   }
 
@@ -3851,14 +3868,16 @@ for (let i = people.length - 1; i > 0; i--) {
     let i = 0;
     this.ngZone.runOutsideAngular(() => {
       this.problemTypeInterval = setInterval(() => {
-        i += 2;
+        i += 3;
         if (i >= full.length) {
           clearInterval(this.problemTypeInterval);
-          this.ngZone.run(() => { this.typedProblem = full; });
+          this.typedProblem = full;
+          this.cdr.markForCheck();
         } else {
-          this.ngZone.run(() => { this.typedProblem = full.substring(0, i); });
+          this.typedProblem = full.substring(0, i);
+          this.cdr.markForCheck();
         }
-      }, 18);
+      }, 30);
     });
   }
 

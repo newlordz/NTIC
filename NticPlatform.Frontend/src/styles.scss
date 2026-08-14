@@ -3801,5 +3801,21 @@ body.dark-theme {
   contain-intrinsic-size: 0 600px;
 }
 
+/* ── Low-End Device & Glassmorphism GPU Layer Optimization (Beyond-the-Box) ── */
+.why-exist-card,
+.gateway-card-inner,
+.academic-login-card,
+.hero-text-card,
+.scoreboard-table-card,
+.news-hero-card,
+.feature-card {
+  contain: layout paint;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+
 
 
