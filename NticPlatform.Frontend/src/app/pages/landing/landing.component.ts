@@ -1193,6 +1193,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         for (let i = 1; i <= count; i++) {
           const nextIdx = (currentIndex + i) % total;
           const img = new Image();
+          img.decoding = 'async';
           img.src = images[nextIdx];
         }
       });
