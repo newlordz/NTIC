@@ -9075,6 +9075,12 @@
   }
 }
 
+.cc-lms-desk-panel,
+.cc-comp-desk-panel,
+.cc-rec-desk-panel {
+  container-type: inline-size;
+}
+
 /* ── 5 Executive LMS KPI Cards (Matching User's Screenshot) ── */
 .cc-lms-kpi-grid {
   display: grid;
@@ -9093,6 +9099,29 @@
   }
 
   @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container (max-width: 1200px) {
+  .cc-lms-kpi-grid,
+  .cc-comp-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 780px) {
+  .cc-lms-kpi-grid,
+  .cc-comp-kpi-grid,
+  .cc-rec-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 520px) {
+  .cc-lms-kpi-grid,
+  .cc-comp-kpi-grid,
+  .cc-rec-kpi-grid {
     grid-template-columns: 1fr;
   }
 }
