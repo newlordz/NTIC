@@ -244,7 +244,19 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     // Bono & Ahafo Regions
     { name: 'Sunyani Senior High School (SUSEC)', address: 'Sunyani, Bono Region', lat: '7.342100', lng: '-2.324500', aliases: ['susec'] },
     { name: 'St. James Seminary and Senior High School', address: 'Abesim, Sunyani, Bono Region', lat: '7.301200', lng: '-2.284500', aliases: ['st james sunyani', 'seminary'] },
-    { name: 'University of Energy and Natural Resources (UENR)', address: 'Sunyani, Bono Region', lat: '7.354100', lng: '-2.341200', aliases: ['uenr'] }
+    { name: 'University of Energy and Natural Resources (UENR)', address: 'Sunyani, Bono Region', lat: '7.354100', lng: '-2.341200', aliases: ['uenr'] },
+
+    // Private & International Academies
+    { name: 'Ghana International School (GIS)', address: 'Cantonments, Accra, Greater Accra Region', lat: '5.581200', lng: '-0.174500', aliases: ['gis', 'ghana international'] },
+    { name: 'SOS-Hermann Gmeiner International College (SOS-HGIC)', address: 'Tema Community 6, Greater Accra Region', lat: '5.681200', lng: '-0.008900', aliases: ['sos', 'sos-hgic', 'hgic'] },
+    { name: 'Tema International School (TIS)', address: 'Tema Community 22, Greater Accra Region', lat: '5.714500', lng: '0.012400', aliases: ['tis'] },
+    { name: 'Lincoln Community School', address: 'Abelemkpe, Accra, Greater Accra Region', lat: '5.608900', lng: '-0.208400', aliases: ['lincoln'] },
+    { name: 'Galaxy International School', address: 'Ashaley Botwe, Accra, Greater Accra Region', lat: '5.678900', lng: '-0.141200', aliases: ['galaxy'] },
+    { name: 'Morning Star School', address: 'Cantonments, Accra, Greater Accra Region', lat: '5.574500', lng: '-0.178900', aliases: ['morning star'] },
+    { name: 'Faith Montessori School', address: 'Airport West, Accra, Greater Accra Region', lat: '5.602100', lng: '-0.188400', aliases: ['faith montessori'] },
+    { name: 'The Roman Ridge School', address: 'Roman Ridge, Accra, Greater Accra Region', lat: '5.594500', lng: '-0.191200', aliases: ['roman ridge'] },
+    { name: 'Alpha Beta Education Centres', address: 'Dansoman, Accra, Greater Accra Region', lat: '5.548900', lng: '-0.271200', aliases: ['alpha beta'] },
+    { name: 'British International School (BIS)', address: 'East Legon, Accra, Greater Accra Region', lat: '5.641200', lng: '-0.148900', aliases: ['bis', 'british international'] }
   ];
 
   openSchoolGpsModal(): void {
