@@ -660,6 +660,7 @@
           [class.is-group]="isGroupEntry(entry)">
           <div class="alumni-avatar">
             <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" [alt]="entry.school + ' Logo'"
+              loading="lazy" decoding="async"
               style="width:100%; height:100%; object-fit:cover; border-radius:50%; background: #fff;">
             <span *ngIf="!getSchoolLogo(entry) && !isGroupEntry(entry)">{{ entry.initials }}</span>
             <span *ngIf="!getSchoolLogo(entry) && isGroupEntry(entry)" class="material-symbols-outlined"
@@ -683,7 +684,7 @@
               <div class="alumni-members-popover">
                 <div class="popover-header">
                   <div class="popover-header-icon">
-                    <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" [alt]="entry.school + ' Logo'">
+                    <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" [alt]="entry.school + ' Logo'" loading="lazy" decoding="async">
                     <span *ngIf="!getSchoolLogo(entry)" class="material-symbols-outlined" style="font-size:20px;">groups</span>
                   </div>
                   <div>
@@ -714,6 +715,7 @@
             [class]="entry.trackClass" [class.is-group]="isGroupEntry(entry)">
             <div class="alumni-avatar">
               <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" [alt]="entry.school + ' Logo'"
+                loading="lazy" decoding="async"
                 style="width:100%; height:100%; object-fit:cover; border-radius:50%; background: #fff;">
               <span *ngIf="!getSchoolLogo(entry) && !isGroupEntry(entry)">{{ entry.initials }}</span>
               <span *ngIf="!getSchoolLogo(entry) && isGroupEntry(entry)" class="material-symbols-outlined"
@@ -737,7 +739,7 @@
                 <div class="alumni-members-popover">
                   <div class="popover-header">
                     <div class="popover-header-icon">
-                      <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" [alt]="entry.school + ' Logo'">
+                      <img *ngIf="getSchoolLogo(entry)" [src]="getSchoolLogo(entry)" [alt]="entry.school + ' Logo'" loading="lazy" decoding="async">
                       <span *ngIf="!getSchoolLogo(entry)" class="material-symbols-outlined" style="font-size:20px;">groups</span>
                     </div>
                     <div>
