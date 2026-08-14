@@ -359,7 +359,6 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     const rememberedEmail = getAuthValue('activeUserEmail');
     if (rememberedEmail && typeof window !== 'undefined' && window.localStorage.getItem('activeUserEmail') !== null) {
       this.email = rememberedEmail;
-      this.rememberDevice = true;
     }
     this.detectedRoleName = '';
     if (typeof document !== 'undefined') {
@@ -1346,7 +1345,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
   private videoBlobCache = new Map<string, string>();
   private readonly videoXorKey = 'NTIC-GH-2026-slideshow';
 
-  private xorDecodeBytes(bytes: Uint8Array): Uint8Array {
+  private xorDecodeBytes(bytes: any): Uint8Array {
     const key = this.videoXorKey;
     for (let i = 0; i < bytes.length; i++) {
       bytes[i] ^= key.charCodeAt(i % key.length);
@@ -1366,11 +1365,11 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       const resp = await fetch(videoUrl);
       if (!resp.ok) return videoUrl;
       const buffer = await resp.arrayBuffer();
-      let bytes = new Uint8Array(buffer);
+      let bytes: any = new Uint8Array(buffer);
       if (videoUrl.toLowerCase().endsWith('.bin')) {
         bytes = this.xorDecodeBytes(bytes);
       }
-      const videoBlob = new Blob([bytes as unknown as BlobPart], { type: 'video/mp4' });
+      const videoBlob = new Blob([bytes], { type: 'video/mp4' });
       const blobUrl = URL.createObjectURL(videoBlob);
       this.videoBlobCache.set(videoUrl, blobUrl);
       return blobUrl;

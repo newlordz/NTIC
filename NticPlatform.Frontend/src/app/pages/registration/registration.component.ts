@@ -1024,6 +1024,7 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     this.loginEmail = '';
     this.loginPassword = '';
     this.loginError = '';
+    this.rememberDevice = false;
     const rememberedEmail = getAuthValue('activeUserEmail');
     if (rememberedEmail && typeof window !== 'undefined' && window.localStorage.getItem('activeUserEmail') !== null) {
       this.loginEmail = rememberedEmail;
