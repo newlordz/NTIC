@@ -3774,3 +3774,16 @@ body.dark-theme {
   overscroll-behavior-y: contain;
 }
 
+/* ── Hardware Acceleration for Sticky Navigation & Shells ── */
+.topbar,
+.landing-header,
+.public-nav,
+.header-container,
+.utility-bar {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform, backdrop-filter;
+  -webkit-overflow-scrolling: touch;
+}
+
+
