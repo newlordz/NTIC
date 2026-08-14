@@ -882,6 +882,336 @@
         </div>
       </div>
 
+      <!-- ── EXECUTIVE SECTION: CHAMPIONSHIP ARENA & COMPETITION DESK ── -->
+      <div class="cc-panel cc-comp-desk-panel cc-mt-16">
+        <div class="cc-panel-header">
+          <div class="cc-panel-label cc-panel-title-bold">
+            <span class="material-symbols-outlined cc-title-ic" style="color:#f59e0b;">emoji_events</span>
+            CHAMPIONSHIP TOURNAMENT &amp; COMPETITION ARENA
+          </div>
+          <div class="cc-header-actions">
+            <span class="cc-live-badge">
+              <span class="cc-live-dot cc-dot-green"></span>
+              {{ competitionTracksCount }} Active Arenas &middot; {{ totalCompetitionTeamsCount }} Teams
+            </span>
+            <button type="button" class="cc-comp-btn-open" (click)="openCompetitionCenter()" title="Open Competition Portal">
+              <span>Competition Arena</span>
+              <span class="material-symbols-outlined">launch</span>
+            </button>
+            <button type="button" class="cc-comp-btn-judge" (click)="openJudgePortal()" title="Open Judge Evaluation Scoring Desk">
+              <span class="material-symbols-outlined">gavel</span>
+              <span>Judge Desk</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="cc-panel-body">
+          <!-- 5 Executive Competition KPI Cards -->
+          <div class="cc-comp-kpi-grid">
+            <!-- 1. Active Tracks & Arenas -->
+            <div class="cc-comp-kpi-card tracks-theme"
+                 (click)="openCompetitionCenter()"
+                 role="button" tabindex="0"
+                 title="Explore active competition categories">
+              <div class="cc-comp-kpi-icon">
+                <span class="material-symbols-outlined">emoji_events</span>
+              </div>
+              <div class="cc-comp-kpi-info">
+                <span class="cc-comp-kpi-val">{{ competitionTracksCount }}</span>
+                <span class="cc-comp-kpi-lbl">Active Competition Tracks</span>
+              </div>
+            </div>
+
+            <!-- 2. Registered Teams -->
+            <div class="cc-comp-kpi-card teams-theme"
+                 (click)="openCompetitionCenter()"
+                 role="button" tabindex="0"
+                 title="View registered high school competition teams">
+              <div class="cc-comp-kpi-icon">
+                <span class="material-symbols-outlined">groups</span>
+              </div>
+              <div class="cc-comp-kpi-info">
+                <span class="cc-comp-kpi-val">{{ totalCompetitionTeamsCount }}</span>
+                <span class="cc-comp-kpi-lbl">Registered Student Teams</span>
+              </div>
+            </div>
+
+            <!-- 3. Project Submissions -->
+            <div class="cc-comp-kpi-card submissions-theme"
+                 (click)="openCompetitionCenter()"
+                 role="button" tabindex="0"
+                 title="Monitor project submissions queue">
+              <div class="cc-comp-kpi-icon">
+                <span class="material-symbols-outlined">code_blocks</span>
+              </div>
+              <div class="cc-comp-kpi-info">
+                <span class="cc-comp-kpi-val">{{ totalCompetitionSubmissionsCount }}</span>
+                <span class="cc-comp-kpi-lbl">Total Project Submissions</span>
+              </div>
+            </div>
+
+            <!-- 4. Scored & Evaluated -->
+            <div class="cc-comp-kpi-card scored-theme"
+                 (click)="openJudgePortal()"
+                 role="button" tabindex="0"
+                 title="View evaluated and certified submissions">
+              <div class="cc-comp-kpi-icon">
+                <span class="material-symbols-outlined">verified</span>
+              </div>
+              <div class="cc-comp-kpi-info">
+                <span class="cc-comp-kpi-val">{{ scoredCompetitionSubmissionsCount }}</span>
+                <span class="cc-comp-kpi-lbl">Scored &amp; Evaluated (89%)</span>
+              </div>
+            </div>
+
+            <!-- 5. Pending Jury Scoring -->
+            <div class="cc-comp-kpi-card pending-theme"
+                 (click)="openJudgePortal()"
+                 role="button" tabindex="0"
+                 title="Review submissions awaiting judge evaluation">
+              <div class="cc-comp-kpi-icon">
+                <span class="material-symbols-outlined">gavel</span>
+              </div>
+              <div class="cc-comp-kpi-info">
+                <span class="cc-comp-kpi-val">{{ pendingCompetitionScoringCount }}</span>
+                <span class="cc-comp-kpi-lbl">Pending Jury Scoring</span>
+              </div>
+              <span class="cc-comp-kpi-badge warn-badge" *ngIf="pendingCompetitionScoringCount > 0">{{ pendingCompetitionScoringCount }} in queue</span>
+            </div>
+          </div>
+
+          <!-- Dual Layout: Track Distribution & Live Podium Leaderboard -->
+          <div class="cc-comp-dual-grid">
+            <!-- Left: Active Track Submissions Distribution -->
+            <div class="cc-comp-tracks-card">
+              <div class="cc-comp-card-head">
+                <span class="material-symbols-outlined">category</span>
+                <h5>Competition Tracks &amp; Participation Flow</h5>
+              </div>
+              <div class="cc-comp-tracks-list">
+                <div *ngFor="let track of trackDistribution" class="cc-comp-track-item">
+                  <div class="cc-comp-track-top">
+                    <div class="cc-comp-track-label">
+                      <span class="material-symbols-outlined" [style.color]="track.color">{{ track.icon }}</span>
+                      <strong>{{ track.name }}</strong>
+                    </div>
+                    <span class="cc-comp-track-count">{{ track.count }} projects ({{ track.pct }}%)</span>
+                  </div>
+                  <div class="cc-comp-bar-bg">
+                    <div class="cc-comp-bar-fill" [style.background]="track.color" [style.width]="track.pct + '%'"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: National Tournament Leaderboard Podium -->
+            <div class="cc-comp-podium-card" [class.scoring-pulse]="isScoringUpdated">
+              <div class="cc-comp-card-head">
+                <span class="material-symbols-outlined" style="color:#f59e0b;">military_tech</span>
+                <h5>National Championship Leaderboard Podium</h5>
+                <span class="cc-live-tag" [class.pulse-active]="isScoringUpdated">
+                  <span class="cc-live-dot cc-dot-green"></span>
+                  Live Standings &middot; {{ lastScoringUpdate | date:'HH:mm:ss' }}
+                </span>
+              </div>
+              <div class="cc-comp-leader-list">
+                <div *ngFor="let leader of competitionLeaderboardTop" class="cc-comp-leader-row" [class.leader-top3]="leader.rank <= 3">
+                  <div class="cc-comp-rank-badge" [class]="'rank-' + leader.rank">
+                    {{ leader.rank }}
+                  </div>
+                  <div class="cc-comp-team-info">
+                    <div class="cc-comp-team-name">{{ leader.team }}</div>
+                    <div class="cc-comp-school-name">{{ leader.school }} &middot; <span class="cc-track-tag">{{ leader.track }}</span></div>
+                  </div>
+                  <div class="cc-comp-score-wrap">
+                    <span class="cc-comp-score-val">{{ leader.score }}</span>
+                    <span class="cc-comp-score-lbl">pts</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── EXECUTIVE SECTION: LMS LEARNING PLATFORM & CURRICULUM DESK ── -->
+      <div class="cc-panel cc-lms-desk-panel cc-mt-16">
+        <div class="cc-panel-header">
+          <div class="cc-panel-label cc-panel-title-bold">
+            <span class="material-symbols-outlined cc-title-ic" style="color:#6366f1;">school</span>
+            LMS LEARNING PLATFORM &amp; CURRICULUM DESK
+          </div>
+          <div class="cc-header-actions">
+            <span class="cc-live-badge">
+              <span class="cc-live-dot cc-dot-green"></span>
+              {{ lmsTotalCourses }} Published Courses &middot; {{ lmsActiveCoursesCount }} Active
+            </span>
+            <button type="button" class="cc-lms-btn-open" (click)="openLmsManager('courses')" title="Open LMS Workspace">
+              <span>Open LMS Workspace</span>
+              <span class="material-symbols-outlined">launch</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="cc-panel-body">
+          <!-- 5 Executive LMS KPI Cards (Matching and elevating user's screenshot) -->
+          <div class="cc-lms-kpi-grid">
+            <!-- 1. Pending Instructor Approvals -->
+            <div class="cc-lms-kpi-card approval-theme"
+                 (click)="openLmsManager('approvals')"
+                 role="button" tabindex="0"
+                 title="Review pending instructor course & module approvals">
+              <div class="cc-lms-kpi-icon">
+                <span class="material-symbols-outlined">rule</span>
+              </div>
+              <div class="cc-lms-kpi-info">
+                <span class="cc-lms-kpi-val">{{ lmsPendingApprovalsCount }}</span>
+                <span class="cc-lms-kpi-lbl">Pending Instructor Approvals</span>
+              </div>
+              <span class="cc-lms-kpi-badge warn-badge" *ngIf="lmsPendingApprovalsCount > 0">{{ lmsPendingApprovalsCount }} action</span>
+            </div>
+
+            <!-- 2. Total Courses (Active) -->
+            <div class="cc-lms-kpi-card courses-theme"
+                 (click)="openLmsManager('courses')"
+                 role="button" tabindex="0"
+                 title="Manage LMS courses and curriculum">
+              <div class="cc-lms-kpi-icon">
+                <span class="material-symbols-outlined">menu_book</span>
+              </div>
+              <div class="cc-lms-kpi-info">
+                <span class="cc-lms-kpi-val">{{ lmsTotalCourses }}</span>
+                <span class="cc-lms-kpi-lbl">Total Courses ({{ lmsActiveCoursesCount }} Active)</span>
+              </div>
+            </div>
+
+            <!-- 3. Curriculum Modules -->
+            <div class="cc-lms-kpi-card modules-theme"
+                 (click)="openLmsManager('modules')"
+                 role="button" tabindex="0"
+                 title="View curriculum modules and lessons">
+              <div class="cc-lms-kpi-icon">
+                <span class="material-symbols-outlined">view_module</span>
+              </div>
+              <div class="cc-lms-kpi-info">
+                <span class="cc-lms-kpi-val">{{ lmsTotalModules }}</span>
+                <span class="cc-lms-kpi-lbl">Curriculum Modules</span>
+              </div>
+            </div>
+
+            <!-- 4. Learning Assets & Files -->
+            <div class="cc-lms-kpi-card materials-theme"
+                 (click)="openLmsManager('materials')"
+                 role="button" tabindex="0"
+                 title="Browse learning resources, PDFs, and slide decks">
+              <div class="cc-lms-kpi-icon">
+                <span class="material-symbols-outlined">folder_open</span>
+              </div>
+              <div class="cc-lms-kpi-info">
+                <span class="cc-lms-kpi-val">{{ lmsTotalMaterials }}</span>
+                <span class="cc-lms-kpi-lbl">Learning Assets &amp; Files</span>
+              </div>
+            </div>
+
+            <!-- 5. Submissions Pending Review -->
+            <div class="cc-lms-kpi-card grading-theme"
+                 (click)="openLmsManager('assignments')"
+                 role="button" tabindex="0"
+                 title="Grade and review student project submissions">
+              <div class="cc-lms-kpi-icon">
+                <span class="material-symbols-outlined">fact_check</span>
+              </div>
+              <div class="cc-lms-kpi-info">
+                <span class="cc-lms-kpi-val">{{ lmsPendingGradingCount }}</span>
+                <span class="cc-lms-kpi-lbl">Submissions Pending Review</span>
+              </div>
+              <span class="cc-lms-kpi-badge pink-badge" *ngIf="lmsPendingGradingCount > 0">{{ lmsPendingGradingCount }} new</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── EXECUTIVE SECTION: DOCUMENT & ENTITY RECORDS ARCHIVE ── -->
+      <div class="cc-panel cc-records-panel cc-mt-16">
+        <div class="cc-panel-header">
+          <div class="cc-panel-label cc-panel-title-bold">
+            <span class="material-symbols-outlined cc-title-ic" style="color:#0284c7;">folder_open</span>
+            DOCUMENT &amp; ENTITY RECORDS ARCHIVE
+          </div>
+          <div class="cc-header-actions">
+            <span class="cc-live-badge">
+              <span class="cc-live-dot cc-dot-green"></span>
+              {{ dashboardTotalRecordsCount }} Verified Entities &amp; Docs
+            </span>
+            <button class="cc-rec-btn-open" (click)="openFullRecordsArchive()" title="Open Full Records Repository">
+              <span>Open Full Archive</span>
+              <span class="material-symbols-outlined">launch</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="cc-panel-body">
+          <!-- 4 Executive KPI Cards (Matching user's clean screenshot) -->
+          <div class="cc-rec-kpi-grid">
+            <!-- 1. Total Archived Records -->
+            <div class="cc-rec-kpi-card total-theme"
+                 (click)="openFullRecordsArchive('all')"
+                 role="button" tabindex="0"
+                 title="Open all archived records">
+              <div class="cc-rec-kpi-icon">
+                <span class="material-symbols-outlined">folder</span>
+              </div>
+              <div class="cc-rec-kpi-info">
+                <span class="cc-rec-kpi-val">{{ dashboardTotalRecordsCount }}</span>
+                <span class="cc-rec-kpi-lbl">Total Archived Records</span>
+              </div>
+            </div>
+
+            <!-- 2. Approved Credentials -->
+            <div class="cc-rec-kpi-card approved-theme"
+                 (click)="openFullRecordsArchive('approved')"
+                 role="button" tabindex="0"
+                 title="Open approved credentials">
+              <div class="cc-rec-kpi-icon">
+                <span class="material-symbols-outlined">verified</span>
+              </div>
+              <div class="cc-rec-kpi-info">
+                <span class="cc-rec-kpi-val">{{ dashboardApprovedRecordsCount }}</span>
+                <span class="cc-rec-kpi-lbl">Approved Credentials</span>
+              </div>
+            </div>
+
+            <!-- 3. Pending Audit Review -->
+            <div class="cc-rec-kpi-card pending-theme"
+                 (click)="openFullRecordsArchive('pending')"
+                 role="button" tabindex="0"
+                 title="Open pending audit review">
+              <div class="cc-rec-kpi-icon">
+                <span class="material-symbols-outlined">pending_actions</span>
+              </div>
+              <div class="cc-rec-kpi-info">
+                <span class="cc-rec-kpi-val">{{ dashboardPendingRecordsCount }}</span>
+                <span class="cc-rec-kpi-lbl">Pending Audit Review</span>
+              </div>
+            </div>
+
+            <!-- 4. Flagged / Rejected -->
+            <div class="cc-rec-kpi-card rejected-theme"
+                 (click)="openFullRecordsArchive('rejected')"
+                 role="button" tabindex="0"
+                 title="Open flagged or rejected records">
+              <div class="cc-rec-kpi-icon">
+                <span class="material-symbols-outlined">cancel</span>
+              </div>
+              <div class="cc-rec-kpi-info">
+                <span class="cc-rec-kpi-val">{{ dashboardRejectedRecordsCount }}</span>
+                <span class="cc-rec-kpi-lbl">Flagged / Rejected</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
     <div *ngIf="adminTab === 'control' && !adminSubTab" class="admin-tab-body">
       <div class="cc-control-landing">
@@ -977,6 +1307,18 @@
               <div class="cc-control-card-label">Live Audit Trail</div>
               <div class="cc-control-card-desc">Real-time log of logins, tokens, approvals, and system changes.</div>
               <div class="cc-control-card-count">{{ auditLogs.length }} events logged</div>
+            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+          </div>
+
+          <div class="cc-control-card" (click)="openFullRecordsArchive()">
+            <div class="cc-control-card-icon cc-icon-records" style="background:rgba(2,132,199,0.12);border-color:rgba(2,132,199,0.25);color:#0284c7;">
+              <span class="material-symbols-outlined">folder_open</span>
+            </div>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">Document &amp; Entity Archive</div>
+              <div class="cc-control-card-desc">Centralized repository for schools, instructors, judges, sponsors, and credentials.</div>
+              <div class="cc-control-card-count">{{ dashboardTotalRecordsCount }} archived records</div>
             </div>
             <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
@@ -4841,6 +5183,74 @@
       </div>
       <div class="admin-modal-footer" style="padding:12px 20px;border-top:1px solid var(--outline-variant);display:flex;justify-content:flex-end;">
         <button class="btn btn-primary btn-sm" (click)="closeMemberProfileModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECORD INSPECTOR MODAL -->
+  <div class="cc-rec-modal-backdrop" *ngIf="dashboardRecordModalOpen && dashboardSelectedRecord" (click)="closeDashboardRecordModal()">
+    <div class="cc-rec-modal" (click)="$event.stopPropagation()">
+      <div class="cc-rec-modal-header">
+        <div class="cc-rec-modal-title-group">
+          <div class="cc-rec-modal-avatar" [class]="'avatar-' + dashboardSelectedRecord.type">
+            {{ dashboardSelectedRecord.initials }}
+          </div>
+          <div>
+            <h3>{{ dashboardSelectedRecord.entityName }}</h3>
+            <p>{{ dashboardSelectedRecord.title }} &middot; <span class="cc-rec-id">#{{ dashboardSelectedRecord.id }}</span></p>
+          </div>
+        </div>
+        <button class="cc-rec-modal-close" (click)="closeDashboardRecordModal()" type="button">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="cc-rec-modal-body">
+        <div class="cc-rec-modal-grid">
+          <div class="cc-rec-field">
+            <span class="cc-field-lbl">Entity Type</span>
+            <span class="cc-field-val">{{ dashboardSelectedRecord.entityType }}</span>
+          </div>
+          <div class="cc-rec-field">
+            <span class="cc-field-lbl">Verification Status</span>
+            <span class="cc-rec-status-badge" [class]="'status-' + dashboardSelectedRecord.status">
+              <span class="cc-status-dot"></span>
+              {{ dashboardSelectedRecord.statusLabel }}
+            </span>
+          </div>
+          <div class="cc-rec-field">
+            <span class="cc-field-lbl">Region &amp; District</span>
+            <span class="cc-field-val">{{ dashboardSelectedRecord.region }} {{ dashboardSelectedRecord.district ? '(' + dashboardSelectedRecord.district + ')' : '' }}</span>
+          </div>
+          <div class="cc-rec-field">
+            <span class="cc-field-lbl">Contact Information</span>
+            <span class="cc-field-val">{{ dashboardSelectedRecord.contactEmail }} &middot; {{ dashboardSelectedRecord.contactPhone }}</span>
+          </div>
+        </div>
+
+        <div class="cc-rec-files-section" *ngIf="dashboardSelectedRecord.files && dashboardSelectedRecord.files.length > 0">
+          <h4 style="font-size:13px;font-weight:700;margin:16px 0 8px;color:var(--on-surface);">Attached Documentation &amp; Credentials ({{ dashboardSelectedRecord.files.length }})</h4>
+          <div class="cc-rec-files-list">
+            <div *ngFor="let file of dashboardSelectedRecord.files" class="cc-rec-file-card">
+              <span class="material-symbols-outlined" style="color:#0284c7;">description</span>
+              <div class="cc-rec-file-info">
+                <div class="cc-rec-file-name">{{ file.name }}</div>
+                <div class="cc-rec-file-meta">Verified Archive Document</div>
+              </div>
+              <button class="cc-rec-file-dl" (click)="openFullRecordsArchive()" title="View in Archive" type="button">
+                <span class="material-symbols-outlined">open_in_new</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cc-rec-modal-footer">
+        <button class="btn btn-outline btn-sm" (click)="closeDashboardRecordModal()" type="button">Close</button>
+        <button class="btn btn-primary btn-sm" (click)="openFullRecordsArchive()" type="button">
+          <span class="material-symbols-outlined">folder</span>
+          <span>Open Full Archive</span>
+        </button>
       </div>
     </div>
   </div>

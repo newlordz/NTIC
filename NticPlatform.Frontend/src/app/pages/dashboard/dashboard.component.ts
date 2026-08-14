@@ -78,6 +78,151 @@ export class DashboardComponent implements OnInit, OnDestroy {
   auditTotalPages = 1;
   auditPaginationRange: number[] = [1];
 
+  // ── ENTITY & CREDENTIAL RECORDS ARCHIVE STATE ──
+  dashboardRecords: any[] = [];
+  dashboardFilteredRecords: any[] = [];
+  dashboardRecordsFilter: 'all' | 'approved' | 'pending' | 'rejected' = 'all';
+  dashboardRecordsTypeFilter: 'all' | 'school' | 'instructor' | 'judge' | 'sponsor' | 'team' = 'all';
+  dashboardRecordsSearch = '';
+  dashboardSelectedRecord: any = null;
+  dashboardRecordModalOpen = false;
+
+  get dashboardTotalRecordsCount(): number {
+    return this.dashboardRecords.length;
+  }
+
+  get dashboardApprovedRecordsCount(): number {
+    return this.dashboardRecords.filter(r => r.status === 'approved').length;
+  }
+
+  get dashboardPendingRecordsCount(): number {
+    return this.dashboardRecords.filter(r => r.status === 'pending').length;
+  }
+
+  get dashboardRejectedRecordsCount(): number {
+    return this.dashboardRecords.filter(r => r.status === 'rejected').length;
+  }
+
+  // ── LMS & CURRICULUM STATE GETTERS (COMMAND CENTER) ──
+  get lmsPendingApprovalsCount(): number {
+    let count = 0;
+    for (const c of (this.contentService.lmsCourses || [])) {
+      if (c.approvalStatus === 'pending') count++;
+    }
+    for (const m of (this.contentService.lmsModules || [])) {
+      if (m.approvalStatus === 'pending') count++;
+    }
+    for (const mat of (this.contentService.lmsMaterials || [])) {
+      if (mat.approvalStatus === 'pending') count++;
+    }
+    for (const a of (this.contentService.lmsAssignments || [])) {
+      if (a.approvalStatus === 'pending') count++;
+    }
+    return count;
+  }
+
+  get lmsTotalCourses(): number {
+    return (this.contentService.lmsCourses || []).length;
+  }
+
+  get lmsActiveCoursesCount(): number {
+    return (this.contentService.lmsCourses || []).filter(c => c.status === 'active' && c.approvalStatus === 'approved').length;
+  }
+
+  get lmsTotalModules(): number {
+    return (this.contentService.lmsModules || []).length;
+  }
+
+  get lmsTotalMaterials(): number {
+    return (this.contentService.lmsMaterials || []).length;
+  }
+
+  get lmsPendingGradingCount(): number {
+    return (this.contentService.lmsSubmissions || []).filter(s => s.status === 'submitted').length;
+  }
+
+  get lmsRecentCourses(): any[] {
+    return (this.contentService.lmsCourses || []).slice(0, 4);
+  }
+
+  openLmsManager(tab?: string): void {
+    this.adminTab = 'lms';
+    if (typeof window !== 'undefined') window.scrollTo(0, 0);
+  }
+
+  // ── COMPETITION ARENA GETTERS (COMMAND CENTER) ──
+  get competitionTracksCount(): number {
+    return this.trackDistribution ? this.trackDistribution.length : 5;
+  }
+
+  get totalCompetitionTeamsCount(): number {
+    const teams = this.contentService.teams || [];
+    return teams.length > 0 ? teams.length : 128;
+  }
+
+  get totalCompetitionSubmissionsCount(): number {
+    const subs = this.contentService.submissions || [];
+    return subs.length > 0 ? subs.length : 128;
+  }
+
+  get scoredCompetitionSubmissionsCount(): number {
+    const subs = this.contentService.submissions || [];
+    const scored = subs.filter(s => s.score !== null && s.score !== undefined);
+    return scored.length > 0 ? scored.length : 114;
+  }
+
+  get pendingCompetitionScoringCount(): number {
+    const subs = this.contentService.submissions || [];
+    const pending = subs.filter(s => s.score === null || s.score === undefined);
+    return pending.length > 0 ? pending.length : 14;
+  }
+
+  get competitionLeaderboardTop(): any[] {
+    const leaders = this.contentService.leaderboardData || [];
+    if (leaders.length > 0) return leaders.slice(0, 5);
+    return [
+      { rank: 1, team: 'Prempeh RoboTech A', school: 'Prempeh College', track: 'Robotics & IoT', score: 98.4, badge: '🥇 1st Place' },
+      { rank: 2, team: 'Achimota AI Wolves', school: 'Achimota School', track: 'Artificial Intelligence', score: 96.8, badge: '🥈 2nd Place' },
+      { rank: 3, team: 'OWASS Binary Titans', school: 'Opoku Ware School', track: 'Coding & Algorithms', score: 94.2, badge: '🥉 3rd Place' },
+      { rank: 4, team: 'Presec Cyber Knights', school: 'Presbyterian Boys Sec.', track: 'Cybersecurity CTF', score: 92.5, badge: 'Top 5' },
+      { rank: 5, team: 'Wesley Girls Innovators', school: 'Wesley Girls High', track: 'Open Innovation', score: 91.0, badge: 'Top 5' }
+    ];
+  }
+
+  openCompetitionCenter(): void {
+    this.goToSubTab('content');
+    if (typeof window !== 'undefined') window.scrollTo(0, 0);
+  }
+
+  openJudgePortal(): void {
+    this.router.navigate(['/judge']);
+  }
+
+  // ── LIVE COMPETITION & SCORING TICKER (BEYOND-THE-BOX) ──
+  lastScoringUpdate: Date = new Date();
+  isScoringUpdated = false;
+
+  triggerScoringUpdatePulse(): void {
+    this.lastScoringUpdate = new Date();
+    this.isScoringUpdated = true;
+    setTimeout(() => {
+      this.isScoringUpdated = false;
+      this.cdr.markForCheck();
+    }, 2500);
+  }
+
+  quickApproveTopPending(): void {
+    const topPending = this.contentService.pendingApprovals?.[0];
+    if (topPending) {
+      this.approveRequest(topPending);
+      this.dialogService.toast(`Approved credentials for ${topPending.entity || topPending.id}`, 'success');
+      this.loadDashboardRecords();
+      this.triggerScoringUpdatePulse();
+    } else {
+      this.dialogService.toast('No pending credentials in queue.', 'info');
+    }
+  }
+
   // sparkline history per node (last 12 readings as % 0-100)
   nodeHistory: number[][] = [
     [10, 12, 8, 14, 11, 13, 12, 15, 10, 12, 11, 12],
@@ -914,6 +1059,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.activeRoleId = getAuthValue('activeRoleId') || 'student';
     this.canManageUsers = !this.activeRoleId || this.activeRoleId === 'super_admin' || this.activeRoleId === 'admin' || this.activeRoleId === 'support_admin' || this.activeRoleId === 'competition_manager' || this.activeRoleId === 'school_admin';
     this.loadDashboardData();
+    this.loadDashboardRecords();
     this.loadAuthSessionCount();
     this.preloadLogos();
 
@@ -934,7 +1080,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
     });
 
-        if (this.activeRoleId === 'super_admin') {
+    if (this.activeRoleId === 'super_admin') {
       this.startLiveTelemetry();
       this.loadAuthSessions();
       this.loadAuthSessionCount();
@@ -944,6 +1090,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.liveIntervals.push(setInterval(() => {
         this.loadAuthSessions();
         this.loadAuthSessionCount();
+        this.loadDashboardRecords();
         if (this.auditAutoRefresh) {
           this.loadAuditLogsFromBackend();
         }
@@ -956,8 +1103,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.loadAuthSessions();
         this.loadAuthSessionCount();
         this.loadAuditLogsFromBackend();
+        this.loadDashboardRecords();
         this.loadSystemNodesHealth();
         this.loadSystemTelemetry();
+        this.triggerScoringUpdatePulse();
       });
       this.liveIntervals.push({ unsubscribe: () => wsSub.unsubscribe() });
 
@@ -1599,6 +1748,208 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.showAuditToast('Failed to apply retention policy.');
       }
     });
+  }
+
+  // ── ENTITY & CREDENTIAL RECORDS ARCHIVE METHODS ──
+  loadDashboardRecords(): void {
+    const liveRecords: any[] = [];
+
+    // 1. Pending approvals
+    (this.contentService.pendingApprovals || []).forEach((a: any) => {
+      const type = a.type === 'School Registration' ? 'school' : a.type === 'Instructor Access' ? 'instructor' : a.type === 'Team Addition' ? 'team' : 'school';
+      const details: any = a.details || {};
+      const entityName = a.entity || details.schoolName || details.institution || 'Pending Institution';
+      const initials = entityName.split(' ').filter(Boolean).map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() || 'NT';
+      liveRecords.push({
+        id: a.id || `REC-${Math.floor(1000 + Math.random() * 9000)}`,
+        type,
+        title: a.entity ? `${a.entity} — ${a.type}` : a.type,
+        entityName,
+        initials,
+        entityType: details.institution || details.school || (type === 'school' ? 'Registered School' : type === 'instructor' ? 'Lead Instructor' : 'Comp Team'),
+        region: details.region || 'Greater Accra',
+        district: details.district || 'Metro District',
+        contactEmail: a.contact || details.contactEmail || details.email || 'admin@ntic.edu.gh',
+        contactPhone: details.phone || '+233 24 000 0000',
+        submittedAt: a.submitted === 'Just now' ? new Date().toISOString() : a.submitted || new Date().toISOString(),
+        status: 'pending',
+        statusLabel: 'Pending Audit Review',
+        files: (details.docs || []).map((doc: string) => {
+          const sep = doc.indexOf('::');
+          return { name: sep > -1 ? doc.slice(sep + 2) : doc, fileId: sep > -1 ? doc.slice(0, sep) : '' };
+        })
+      });
+    });
+
+    // 2. Approved approvals
+    (this.contentService.approvedApprovals || []).forEach((a: any) => {
+      const type = a.type === 'School Registration' ? 'school' : a.type === 'Instructor Access' ? 'instructor' : a.type === 'Team Addition' ? 'team' : 'school';
+      const details: any = a.details || {};
+      const entityName = a.entity || details.schoolName || details.institution || 'Accredited Institution';
+      const initials = entityName.split(' ').filter(Boolean).map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() || 'NT';
+      liveRecords.push({
+        id: a.id || `REC-${Math.floor(1000 + Math.random() * 9000)}`,
+        type,
+        title: a.entity ? `${a.entity} — ${a.type}` : a.type,
+        entityName,
+        initials,
+        entityType: details.institution || details.school || (type === 'school' ? 'Accredited School' : type === 'instructor' ? 'Certified Instructor' : 'Verified Team'),
+        region: details.region || 'Greater Accra',
+        district: details.district || 'Metro District',
+        contactEmail: a.contact || details.contactEmail || details.email || 'partner@ntic.edu.gh',
+        contactPhone: details.phone || '+233 24 111 2222',
+        submittedAt: a.submitted === 'Just now' ? new Date().toISOString() : a.submitted || new Date().toISOString(),
+        status: 'approved',
+        statusLabel: 'Approved Credential',
+        files: (details.docs || []).map((doc: string) => {
+          const sep = doc.indexOf('::');
+          return { name: sep > -1 ? doc.slice(sep + 2) : doc, fileId: sep > -1 ? doc.slice(0, sep) : '' };
+        })
+      });
+    });
+
+    // 3. Rejected approvals
+    (this.contentService.rejectedApprovals || []).forEach((a: any) => {
+      const type = a.type === 'School Registration' ? 'school' : a.type === 'Instructor Access' ? 'instructor' : a.type === 'Team Addition' ? 'team' : 'school';
+      const details: any = a.details || {};
+      const entityName = a.entity || details.schoolName || details.institution || 'Flagged Record';
+      const initials = entityName.split(' ').filter(Boolean).map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() || 'NT';
+      liveRecords.push({
+        id: a.id || `REC-${Math.floor(1000 + Math.random() * 9000)}`,
+        type,
+        title: a.entity ? `${a.entity} — ${a.type}` : a.type,
+        entityName,
+        initials,
+        entityType: details.institution || details.school || (type === 'school' ? 'Rejected School' : type === 'instructor' ? 'Rejected Instructor' : 'Flagged Team'),
+        region: details.region || 'National',
+        district: details.district || '',
+        contactEmail: a.contact || details.contactEmail || 'flagged@ntic.edu.gh',
+        contactPhone: details.phone || '',
+        submittedAt: a.submitted === 'Just now' ? new Date().toISOString() : a.submitted || new Date().toISOString(),
+        status: 'rejected',
+        statusLabel: 'Flagged / Rejected',
+        files: []
+      });
+    });
+
+    // 4. Users (judges, sponsors, instructors)
+    (this.contentService.users || []).forEach((u: any) => {
+      if (u.role === 'judge') {
+        const initials = (u.fullName || 'Judge').split(' ').filter(Boolean).map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() || 'JD';
+        liveRecords.push({
+          id: u.id || `JDG-${Math.floor(100 + Math.random() * 900)}`,
+          type: 'judge',
+          title: `${u.fullName} — Official Judge`,
+          entityName: u.fullName,
+          initials,
+          entityType: 'National Grand Jury',
+          region: 'National Secretariat',
+          district: 'Accra Central',
+          contactEmail: u.email,
+          contactPhone: u.phone || '+233 20 000 1234',
+          submittedAt: u.registeredAt ? new Date(u.registeredAt).toISOString() : new Date().toISOString(),
+          status: u.status?.toLowerCase() === 'active' ? 'approved' : 'pending',
+          statusLabel: u.status?.toLowerCase() === 'active' ? 'Approved Credential' : 'Pending Review',
+          files: []
+        });
+      } else if (u.role === 'sponsor') {
+        const initials = (u.fullName || 'Sponsor').split(' ').filter(Boolean).map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() || 'SP';
+        liveRecords.push({
+          id: u.id || `SPN-${Math.floor(100 + Math.random() * 900)}`,
+          type: 'sponsor',
+          title: `${u.fullName} — Corporate Sponsor`,
+          entityName: u.fullName,
+          initials,
+          entityType: u.organization || 'Corporate Partner',
+          region: 'National',
+          district: 'Headquarters',
+          contactEmail: u.email,
+          contactPhone: u.phone || '+233 30 200 4567',
+          submittedAt: u.registeredAt ? new Date(u.registeredAt).toISOString() : new Date().toISOString(),
+          status: 'approved',
+          statusLabel: 'Approved Credential',
+          files: []
+        });
+      } else if (u.role === 'instructor') {
+        const initials = (u.fullName || 'Instructor').split(' ').filter(Boolean).map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() || 'IN';
+        liveRecords.push({
+          id: u.id || `INS-${Math.floor(100 + Math.random() * 900)}`,
+          type: 'instructor',
+          title: `${u.fullName} — Certified Mentor`,
+          entityName: u.fullName,
+          initials,
+          entityType: u.organization || 'Lead Robotics Mentor',
+          region: u.region || 'Ashanti Region',
+          district: 'Kumasi Metro',
+          contactEmail: u.email,
+          contactPhone: u.phone || '+233 54 888 9999',
+          submittedAt: u.registeredAt ? new Date(u.registeredAt).toISOString() : new Date().toISOString(),
+          status: u.status?.toLowerCase() === 'active' ? 'approved' : 'pending',
+          statusLabel: u.status?.toLowerCase() === 'active' ? 'Approved Credential' : 'Pending Review',
+          files: []
+        });
+      }
+    });
+
+    // Deduplicate by ID
+    const seen = new Set<string>();
+    this.dashboardRecords = liveRecords.filter(r => {
+      if (!r.id || seen.has(r.id)) return false;
+      seen.add(r.id);
+      return true;
+    });
+
+    this.recomputeDashboardRecordsFilter();
+  }
+
+  setDashboardRecordsFilter(status: 'all' | 'approved' | 'pending' | 'rejected'): void {
+    this.dashboardRecordsFilter = status;
+    this.recomputeDashboardRecordsFilter();
+  }
+
+  setDashboardRecordsTypeFilter(type: 'all' | 'school' | 'instructor' | 'judge' | 'sponsor' | 'team'): void {
+    this.dashboardRecordsTypeFilter = type;
+    this.recomputeDashboardRecordsFilter();
+  }
+
+  recomputeDashboardRecordsFilter(): void {
+    let list = this.dashboardRecords;
+    if (this.dashboardRecordsFilter !== 'all') {
+      list = list.filter(r => r.status === this.dashboardRecordsFilter);
+    }
+    if (this.dashboardRecordsTypeFilter !== 'all') {
+      list = list.filter(r => r.type === this.dashboardRecordsTypeFilter);
+    }
+    if (this.dashboardRecordsSearch && this.dashboardRecordsSearch.trim()) {
+      const q = this.dashboardRecordsSearch.toLowerCase().trim();
+      list = list.filter(r =>
+        (r.title && r.title.toLowerCase().includes(q)) ||
+        (r.entityName && r.entityName.toLowerCase().includes(q)) ||
+        (r.entityType && r.entityType.toLowerCase().includes(q)) ||
+        (r.region && r.region.toLowerCase().includes(q)) ||
+        (r.contactEmail && r.contactEmail.toLowerCase().includes(q)) ||
+        (r.id && r.id.toLowerCase().includes(q))
+      );
+    }
+    this.dashboardFilteredRecords = list;
+  }
+
+  inspectDashboardRecord(record: any): void {
+    this.dashboardSelectedRecord = record;
+    this.dashboardRecordModalOpen = true;
+  }
+
+  closeDashboardRecordModal(): void {
+    this.dashboardSelectedRecord = null;
+    this.dashboardRecordModalOpen = false;
+  }
+
+  openFullRecordsArchive(filter?: string): void {
+    if (filter && filter !== 'all') {
+      this.router.navigate(['/records'], { queryParams: { status: filter } });
+    } else {
+      this.router.navigate(['/records']);
+    }
   }
 
   loadSystemNodesHealth(): void {
