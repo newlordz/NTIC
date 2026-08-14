@@ -1279,25 +1279,13 @@
             <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
 
-          <div class="cc-control-card" (click)="goToSubTab('users')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
-            <div class="cc-control-card-icon cc-icon-users">
-              <span class="material-symbols-outlined">group</span>
-            </div>
-            <div class="cc-control-card-body">
-              <div class="cc-control-card-label">Access Right</div>
-              <div class="cc-control-card-desc">Browse and manage all platform users categorized by role and status.</div>
-              <div class="cc-control-card-count">{{ registeredUsers.length }} users on platform</div>
-            </div>
-            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
-          </div>
-
-          <div class="cc-control-card" (click)="goToSubTab('users_full')" *ngIf="canManageUsers">
+          <div class="cc-control-card" (click)="goToSubTab(canManageUsers ? 'users_full' : 'users')" *ngIf="canManageUsers || activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
             <div class="cc-control-card-icon cc-icon-users">
               <span class="material-symbols-outlined">manage_accounts</span>
             </div>
             <div class="cc-control-card-body">
-              <div class="cc-control-card-label">Users</div>
-              <div class="cc-control-card-desc">Manage all platform users, roles, and support tickets.</div>
+              <div class="cc-control-card-label">User Management</div>
+              <div class="cc-control-card-desc">Manage all platform users, roles, permissions, and support tickets.</div>
               <div class="cc-control-card-count">{{ registeredUsers.length }} users on platform</div>
             </div>
             <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
@@ -1328,7 +1316,7 @@
           </div>
 
           <div class="cc-control-card" (click)="openFullRecordsArchive()">
-            <div class="cc-control-card-icon cc-icon-records" style="background:rgba(2,132,199,0.12);border-color:rgba(2,132,199,0.25);color:#0284c7;">
+            <div class="cc-control-card-icon cc-icon-records">
               <span class="material-symbols-outlined">folder_open</span>
             </div>
             <div class="cc-control-card-body">
