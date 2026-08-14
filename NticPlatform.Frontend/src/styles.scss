@@ -2954,6 +2954,24 @@ body.dark-theme {
     background: #091a22 !important;
     border-color: #21404c !important;
   }
+
+  /* Universal High-Contrast Typography for Dark Mode */
+  h1, h2, h3, h4, h5, h6,
+  .title, .heading, .card-title, .panel-title,
+  .stat-value, .kpi-value, .metric-value, .value,
+  .user-name, .table-title, strong, b, th,
+  .ac-card-name, .node-name, .er-name {
+    color: #ffffff !important;
+  }
+
+  p, label, .label, .desc, .description, .subtitle, .subtext, .caption,
+  .stat-label, .kpi-label, .metric-label, .meta, .date, .time, td {
+    color: #bfc8cc !important;
+  }
+
+  .text-muted, .muted, .subtle, .text-secondary {
+    color: #899296 !important;
+  }
 }
 
 /* ═══════════════════════════════════════════════

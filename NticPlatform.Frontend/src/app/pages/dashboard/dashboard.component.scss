@@ -7102,6 +7102,72 @@
       border-color: #3f484c !important;
     }
   }
+
+  /* ══════════════════════════════════════════════════════════
+     HIGH-CONTRAST TYPOGRAPHY & DATA TEXT (DARK THEME)
+     ══════════════════════════════════════════════════════════ */
+  .cc-title,
+  .cc-eyebrow,
+  .cc-kpi-value,
+  .cc-gauge-val,
+  .cc-metric-val,
+  .cc-tf-val,
+  .cc-rstat-val,
+  .cc-comp-kpi-val,
+  .cc-lms-kpi-val,
+  .cc-rec-kpi-val,
+  .cc-scard-metric-val,
+  .cc-node-name,
+  .cc-ncard-name,
+  .cc-reg-name,
+  .cc-podium-name,
+  .cc-track-name,
+  .cc-services-title,
+  .cc-panel-label,
+  .lat-kpi-val,
+  .lat-card-title,
+  .lat-td-name,
+  .lat-td-val,
+  .title,
+  .stat-val,
+  strong,
+  b,
+  h1, h2, h3, h4, h5, h6 {
+    color: #ffffff !important;
+  }
+
+  .cc-kpi-label,
+  .cc-kpi-meta,
+  .cc-gauge-label,
+  .cc-metric-lbl,
+  .cc-tf-lbl,
+  .cc-rstat-label,
+  .cc-reg-meta,
+  .cc-comp-kpi-lbl,
+  .cc-lms-kpi-lbl,
+  .cc-rec-kpi-lbl,
+  .cc-scard-metric-lbl,
+  .cc-tchart-legend .cc-legend-item,
+  .cc-tchart-days,
+  .cc-services-sub,
+  .cc-panel-sub,
+  .lat-kpi-lbl,
+  .lat-kpi-sub,
+  .lat-sub,
+  .lat-td-sub,
+  .lat-td-time,
+  .lat-td-time-rel,
+  .text-muted,
+  .muted,
+  p,
+  label {
+    color: #bfc8cc !important;
+  }
+
+  .cc-reg-count-chip {
+    background: #21404c !important;
+    color: #e1f3fc !important;
+  }
 }
 
 // ╔══════════════════════════════════════════════════════════╗
