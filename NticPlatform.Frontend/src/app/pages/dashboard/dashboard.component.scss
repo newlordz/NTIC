@@ -7355,6 +7355,89 @@
     }
   }
 
+  /* Event Stream Cards (Dark Mode) */
+  .lat-event-card {
+    background: #0e2530 !important;
+    border: 1px solid #21404c !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+
+    &:hover {
+      background: #132c37 !important;
+      border-color: #3f484c !important;
+    }
+
+    .lat-event-action-title {
+      color: #ffffff !important;
+      font-weight: 700 !important;
+    }
+
+    .lat-actor-email {
+      color: #e1f3fc !important;
+    }
+
+    .lat-meta-item,
+    .lat-event-time,
+    .lat-location-tag,
+    .time-icon,
+    .lat-time-iso {
+      color: #bfc8cc !important;
+    }
+
+    .lat-card-action-btn {
+      background: #132c37 !important;
+      border-color: #21404c !important;
+      color: #e1f3fc !important;
+
+      &:hover {
+        background: #183440 !important;
+        border-color: #3f484c !important;
+        color: #ffffff !important;
+      }
+    }
+
+    .lat-card-action-btn-icon {
+      background: #132c37 !important;
+      border-color: #21404c !important;
+      color: #bfc8cc !important;
+
+      &:hover {
+        background: #183440 !important;
+        color: #ffffff !important;
+      }
+    }
+
+    .lat-event-id-pill {
+      background: #132c37 !important;
+      border-color: #21404c !important;
+      color: #bfc8cc !important;
+    }
+
+    .lat-badge {
+      &.lat-badge-sev.sev-info {
+        background: #132c37 !important;
+        border-color: #21404c !important;
+        color: #bfc8cc !important;
+      }
+    }
+  }
+
+  .lat-pill {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+    color: #bfc8cc !important;
+
+    &:hover {
+      background: #183440 !important;
+      color: #ffffff !important;
+    }
+
+    &.active {
+      background: #003f87 !important;
+      border-color: #38bdf8 !important;
+      color: #ffffff !important;
+    }
+  }
+
   .lat-stream-item,
   .lat-table-card {
     background: #132c37 !important;
