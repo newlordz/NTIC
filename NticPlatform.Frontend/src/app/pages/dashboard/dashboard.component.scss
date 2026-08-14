@@ -1805,7 +1805,7 @@
 .cc-control-card-label {
   font-size: 15px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--on-surface, #0f172a);
   letter-spacing: -0.2px;
   text-transform: none;
   margin-bottom: 4px;
@@ -1813,7 +1813,7 @@
 
 .cc-control-card-desc {
   font-size: 13.5px;
-  color: #475569;
+  color: var(--on-surface-variant, #475569);
   line-height: 1.45;
   margin-bottom: 8px;
 }
@@ -1821,8 +1821,8 @@
 .cc-control-card-count {
   font-size: 12px;
   font-weight: 700;
-  color: var(--cc-primary);
-  background: rgba(0, 63, 135, 0.08);
+  color: var(--primary, #003f87);
+  background: var(--primary-container, rgba(0, 63, 135, 0.08));
   display: inline-block;
   padding: 3px 12px;
   border-radius: 20px;
@@ -7195,7 +7195,7 @@
 
   .cc-control-card {
     background: #132c37 !important;
-    border-color: #21404c !important;
+    border: 1px solid #21404c !important;
 
     &:hover {
       background: #183440 !important;
@@ -7204,18 +7204,30 @@
 
     .cc-control-card-label {
       color: #ffffff !important;
+      font-size: 15px !important;
+      font-weight: 700 !important;
     }
 
     .cc-control-card-desc {
-      color: #bfc8cc !important;
+      color: #cbd5e1 !important;
+      font-size: 13.5px !important;
     }
 
     .cc-control-card-count {
       color: #38bdf8 !important;
+      background: rgba(56, 189, 248, 0.15) !important;
+      border: 1px solid rgba(56, 189, 248, 0.3) !important;
+      font-weight: 700 !important;
+
+      &.cc-count-clear {
+        color: #34d399 !important;
+        background: rgba(52, 211, 153, 0.15) !important;
+        border-color: rgba(52, 211, 153, 0.3) !important;
+      }
     }
 
     .cc-control-arrow {
-      color: #899296 !important;
+      color: #cbd5e1 !important;
     }
   }
 
