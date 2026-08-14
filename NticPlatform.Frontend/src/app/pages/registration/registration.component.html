@@ -576,10 +576,14 @@
             </div>
             <div class="form-group">
               <label class="form-label">GPS Address</label>
-              <div style="display:flex; gap:8px; flex-wrap: wrap;">
+              <div style="display:flex; gap:8px; flex-wrap: wrap; align-items: center;">
                 <button type="button" class="btn btn-subtle btn-sm" (click)="openSchoolGpsModal()">
                   <span class="material-symbols-outlined">search</span>
                   Lookup School GPS
+                </button>
+                <button type="button" *ngIf="schoolForm.gps || gpsAddress" class="btn btn-subtle btn-sm" (click)="clearSchoolGps()" title="Clear GPS coordinates">
+                  <span class="material-symbols-outlined">close</span>
+                  Clear GPS
                 </button>
                 <input class="form-control" type="text" placeholder="e.g. 5.6037, -0.1870" style="flex:1; min-width:200px;" [(ngModel)]="schoolForm.gps" name="schoolGps" (ngModelChange)="onGpsManualEdit()">
               </div>

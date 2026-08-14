@@ -2109,8 +2109,20 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     );
   }
 
+  clearSchoolGps(): void {
+    this.schoolForm.gps = '';
+    this.gpsAddress = '';
+    this.gpsAccuracyWarning = '';
+    this.notificationService.info('GPS coordinates cleared');
+    this.tryAutoSave();
+  }
+
   onGpsManualEdit(): void {
     this.gpsAccuracyWarning = '';
+    if (!this.schoolForm.gps || !this.schoolForm.gps.trim()) {
+      this.gpsAddress = '';
+      return;
+    }
     const match = this.schoolForm.gps.match(/([-\d.]+)\s*,\s*([-\d.]+)/);
     if (match) {
       const lat = parseFloat(match[1]);
