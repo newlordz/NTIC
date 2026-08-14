@@ -41,6 +41,9 @@ export class CommandPaletteComponent implements OnInit {
   }
 
   private initCommands(): void {
+    const adminRoles = ['super_admin', 'content_manager', 'reviewer', 'competition_manager'];
+    const allRoles = ['student', 'instructor', 'school_admin', 'judge', 'sponsor', ...adminRoles, 'support_admin'];
+
     this.commands = [
       {
         id: 'nav-dashboard',
@@ -48,6 +51,7 @@ export class CommandPaletteComponent implements OnInit {
         category: 'Navigation',
         icon: 'dashboard',
         route: '/dashboard',
+        roleRequired: allRoles,
         keywords: ['overview', 'metrics', 'kpi', 'home', 'stats']
       },
       {
@@ -57,6 +61,7 @@ export class CommandPaletteComponent implements OnInit {
         icon: 'admin_panel_settings',
         route: '/dashboard',
         queryParams: { tab: 'control' },
+        roleRequired: adminRoles,
         keywords: ['users', 'tokens', 'approvals', 'roles', 'settings']
       },
       {
@@ -66,6 +71,7 @@ export class CommandPaletteComponent implements OnInit {
         icon: 'receipt_long',
         route: '/dashboard',
         queryParams: { tab: 'control', subTab: 'audit' },
+        roleRequired: adminRoles,
         keywords: ['logs', 'security', 'events', 'compliance', 'stream', 'telemetry']
       },
       {
@@ -74,6 +80,7 @@ export class CommandPaletteComponent implements OnInit {
         category: 'Admin & Audit',
         icon: 'folder_open',
         route: '/records',
+        roleRequired: ['super_admin', 'instructor', 'school_admin', 'judge', 'reviewer', 'content_manager', 'competition_manager'],
         keywords: ['documents', 'archive', 'records', 'schools', 'submissions', 'certificates']
       },
       {
@@ -82,6 +89,7 @@ export class CommandPaletteComponent implements OnInit {
         category: 'Navigation',
         icon: 'emoji_events',
         route: '/competitions',
+        roleRequired: ['student', 'instructor', 'school_admin', 'judge', 'super_admin', 'content_manager', 'competition_manager'],
         keywords: ['tournaments', 'matches', 'tracks', 'teams', 'contests']
       },
       {
@@ -90,6 +98,7 @@ export class CommandPaletteComponent implements OnInit {
         category: 'Navigation',
         icon: 'gavel',
         route: '/judge',
+        roleRequired: ['judge', 'super_admin'],
         keywords: ['grading', 'rubric', 'evaluation', 'submissions']
       },
       {
@@ -98,6 +107,7 @@ export class CommandPaletteComponent implements OnInit {
         category: 'Navigation',
         icon: 'patient_list',
         route: '/instructor',
+        roleRequired: ['instructor', 'super_admin'],
         keywords: ['teacher', 'students', 'teams', 'class']
       },
       {
@@ -106,6 +116,7 @@ export class CommandPaletteComponent implements OnInit {
         category: 'Navigation',
         icon: 'school',
         route: '/lms',
+        roleRequired: ['student', 'instructor', 'super_admin'],
         keywords: ['courses', 'curriculum', 'lessons', 'materials', 'study']
       },
       {
@@ -114,6 +125,7 @@ export class CommandPaletteComponent implements OnInit {
         category: 'Admin & Audit',
         icon: 'menu_book',
         route: '/lms-manager',
+        roleRequired: ['super_admin', 'content_manager'],
         keywords: ['create course', 'manage lessons', 'curriculum admin']
       },
       {
@@ -122,6 +134,7 @@ export class CommandPaletteComponent implements OnInit {
         category: 'Navigation',
         icon: 'leaderboard',
         route: '/leaderboard',
+        roleRequired: ['student', 'instructor', 'school_admin', 'judge', 'sponsor', ...adminRoles],
         keywords: ['rankings', 'scores', 'podium', 'standings']
       },
       {
@@ -130,6 +143,7 @@ export class CommandPaletteComponent implements OnInit {
         category: 'Navigation',
         icon: 'stars',
         route: '/talent',
+        roleRequired: ['instructor', 'sponsor', 'super_admin'],
         keywords: ['scouts', 'top performers', 'recruitment', 'awards']
       },
       {
@@ -138,6 +152,7 @@ export class CommandPaletteComponent implements OnInit {
         category: 'Navigation',
         icon: 'handshake',
         route: '/sponsors',
+        roleRequired: ['sponsor', 'super_admin'],
         keywords: ['partners', 'donations', 'corporate', 'packages']
       },
       {
@@ -146,6 +161,7 @@ export class CommandPaletteComponent implements OnInit {
         category: 'Navigation',
         icon: 'assessment',
         route: '/reporting',
+        roleRequired: ['instructor', 'school_admin', 'super_admin', 'reviewer'],
         keywords: ['charts', 'export', 'regional statistics', 'summary']
       },
       {
@@ -163,21 +179,31 @@ export class CommandPaletteComponent implements OnInit {
   }
 
   public get filteredCommands(): CommandItem[] {
-    const q = (this.searchQuery || '').trim().toLowerCase();
-    if (!q) {
-      return this.commands;
+    const activeRole = getAuthValue('activeRoleId') || '';
+    if (!activeRole) {
+      return [];
     }
-    return this.commands.filter(cmd => {
-      const matchTitle = cmd.title.toLowerCase().includes(q);
-      const matchCategory = cmd.category.toLowerCase().includes(q);
-      const matchKeywords = cmd.keywords.some(k => k.toLowerCase().includes(q));
-      return matchTitle || matchCategory || matchKeywords;
-    });
+
+    const q = (this.searchQuery || '').trim().toLowerCase();
+    return this.commands
+      .filter(cmd => !cmd.roleRequired || cmd.roleRequired.includes(activeRole))
+      .filter(cmd => {
+        if (!q) return true;
+        const matchTitle = cmd.title.toLowerCase().includes(q);
+        const matchCategory = cmd.category.toLowerCase().includes(q);
+        const matchKeywords = cmd.keywords.some(k => k.toLowerCase().includes(q));
+        return matchTitle || matchCategory || matchKeywords;
+      });
   }
 
   @HostListener('window:keydown', ['$event'])
   public handleKeyboardShortcut(event: KeyboardEvent): void {
     if ((event.ctrlKey || event.metaKey) && (event.key === 'k' || event.key === 'K')) {
+      const activeRole = getAuthValue('activeRoleId');
+      // Only permit logged-in users to open the palette
+      if (!activeRole) {
+        return;
+      }
       event.preventDefault();
       this.togglePalette();
     } else if (event.key === 'Escape' && this.isOpen) {
