@@ -3786,4 +3786,17 @@ body.dark-theme {
   -webkit-overflow-scrolling: touch;
 }
 
+/* ── Render Optimization: content-visibility for Off-Screen Sections (Beyond-the-Box) ── */
+.hall-of-fame-section,
+.news-editorial-section,
+.championship-stories-section,
+.academic-stats-tree-section,
+.concept-section,
+.unified-gateway-section,
+.academic-footer-editorial {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 600px;
+}
+
+
 
