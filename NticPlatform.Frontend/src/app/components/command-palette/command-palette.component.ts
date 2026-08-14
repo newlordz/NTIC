@@ -138,24 +138,6 @@ export class CommandPaletteComponent implements OnInit {
         keywords: ['rankings', 'scores', 'podium', 'standings']
       },
       {
-        id: 'nav-talent',
-        title: 'Talent Discovery & Scouting Matrix',
-        category: 'Navigation',
-        icon: 'stars',
-        route: '/talent',
-        roleRequired: ['instructor', 'sponsor', 'super_admin'],
-        keywords: ['scouts', 'top performers', 'recruitment', 'awards']
-      },
-      {
-        id: 'nav-sponsors',
-        title: 'Sponsors & Partnership Arena',
-        category: 'Navigation',
-        icon: 'handshake',
-        route: '/sponsors',
-        roleRequired: ['sponsor', 'super_admin'],
-        keywords: ['partners', 'donations', 'corporate', 'packages']
-      },
-      {
         id: 'nav-reports',
         title: 'Platform Analytics & Regional Reports',
         category: 'Navigation',

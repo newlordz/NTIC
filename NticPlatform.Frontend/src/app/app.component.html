@@ -59,19 +59,11 @@
       </a>
     </div>
 
-    <div class="sidebar-section" *ngIf="hasAccess('leaderboard') || hasAccess('talent') || hasAccess('sponsors') || hasAccess('reporting') || hasAccess('lms_admin')">
+    <div class="sidebar-section" *ngIf="hasAccess('leaderboard') || hasAccess('reporting') || hasAccess('lms_admin')">
       <div class="sidebar-section-label">Analytics</div>
       <a class="nav-item" *ngIf="hasAccess('leaderboard')" routerLink="/leaderboard" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">leaderboard</span>
         Leaderboard
-      </a>
-      <a class="nav-item" *ngIf="hasAccess('talent')" routerLink="/talent" routerLinkActive="active" (click)="closeMobileSidebar()">
-        <span class="material-symbols-outlined">stars</span>
-        Talent Discovery
-      </a>
-      <a class="nav-item" *ngIf="hasAccess('sponsors')" routerLink="/sponsors" routerLinkActive="active" (click)="closeMobileSidebar()">
-        <span class="material-symbols-outlined">handshake</span>
-        Sponsors
       </a>
       <a class="nav-item" *ngIf="hasAccess('reporting')" routerLink="/reporting" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">assessment</span>
