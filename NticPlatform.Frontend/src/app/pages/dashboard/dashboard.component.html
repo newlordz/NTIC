@@ -542,16 +542,20 @@
       <div class="cc-middle-visual-grid cc-mb-16">
 
         <!-- LEFT: RESOURCE TELEMETRY METERS & LIVE THROUGHPUT -->
+        <!-- LEFT: SYSTEM INFRASTRUCTURE NODES & TELEMETRY GAUGES -->
         <div class="cc-panel cc-telemetry-panel">
           <div class="cc-panel-header">
             <div class="cc-panel-label cc-panel-title-bold">
-              <span class="material-symbols-outlined cc-title-ic">speed</span>
-              SYSTEM TELEMETRY & PERFORMANCE
+              <span class="material-symbols-outlined cc-title-ic">dns</span>
+              SYSTEM INFRASTRUCTURE NODES
             </div>
-            <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>Optimal</span>
+            <span class="cc-all-healthy-badge">
+              <span class="cc-live-dot cc-dot-green"></span>
+              All Healthy (4/4 Nodes)
+            </span>
           </div>
 
-          <!-- Top Gauges Grid -->
+          <!-- Top Resource Gauges Grid -->
           <div class="cc-gauges-grid">
             <div *ngFor="let g of systemGauges" class="cc-gauge-card">
               <div class="cc-gauge-ring-wrap">
@@ -565,46 +569,93 @@
             </div>
           </div>
 
-          <!-- Live Network & Server Throughput Chart Block -->
-          <div class="cc-telemetry-chart-block">
-
-            <!-- Header: title + legend properly spaced -->
-            <div class="cc-tchart-header">
-              <div class="cc-tchart-title">
-                <span class="material-symbols-outlined">show_chart</span>
-                <span>Live Traffic &amp; System Throughput</span>
-              </div>
-              <div class="cc-tchart-legend">
-                <span class="cc-legend-item">
-                  <span class="cc-leg-line" style="background:#2563eb;"></span>
-                  API Load
-                </span>
-                <span class="cc-legend-item">
-                  <span class="cc-leg-line cc-leg-line--dashed" style="border-color:#10b981;"></span>
-                  Req Traffic
-                </span>
+          <!-- Embedded Infrastructure Nodes (2x2 Grid) -->
+          <div class="cc-nodes-block-embedded">
+            <div class="cc-nodes-grid-embedded">
+              <div *ngFor="let node of infrastructureNodes" class="cc-node-card-v2">
+                <div class="cc-ncard-top">
+                  <div class="cc-ncard-ic-box">
+                    <span class="material-symbols-outlined">swap_horiz</span>
+                  </div>
+                  <div class="cc-ncard-title-block">
+                    <div class="cc-ncard-name">{{ node.name }}</div>
+                    <div class="cc-ncard-status">
+                      <span class="cc-live-dot cc-dot-green"></span>
+                      <span>{{ node.status }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="cc-ncard-body-row">
+                  <div class="cc-ncard-metrics">
+                    <div class="cc-metric-col">
+                      <span class="cc-metric-lbl">LATENCY</span>
+                      <span class="cc-metric-val">{{ node.latency }}<small>ms</small></span>
+                    </div>
+                    <div class="cc-metric-col">
+                      <span class="cc-metric-lbl">LOAD</span>
+                      <span class="cc-metric-val">{{ node.loadPct }}<small>%</small></span>
+                    </div>
+                  </div>
+                  <div class="cc-ncard-sparkline">
+                    <svg viewBox="0 0 120 36" class="cc-sparkline-svg" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient [id]="'grad-left-' + node.id" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.35"/>
+                          <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0"/>
+                        </linearGradient>
+                      </defs>
+                      <path [attr.d]="node.sparklineArea" [attr.fill]="'url(#grad-left-' + node.id + ')'" />
+                      <path [attr.d]="node.sparklineLine" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" />
+                    </svg>
+                  </div>
+                </div>
+                <div class="cc-ncard-progress-track">
+                  <div class="cc-ncard-progress-fill" [style.width]="node.loadPct + '%'"></div>
+                </div>
               </div>
             </div>
+          </div>
+        </div>
 
+        <!-- RIGHT: LIVE TRAFFIC & SYSTEM THROUGHPUT -->
+        <div class="cc-panel cc-nodes-panel cc-traffic-panel">
+          <div class="cc-panel-header">
+            <div class="cc-panel-label cc-panel-title-bold">
+              <span class="material-symbols-outlined cc-title-ic">show_chart</span>
+              LIVE TRAFFIC &amp; SYSTEM THROUGHPUT
+            </div>
+            <div class="cc-tchart-legend">
+              <span class="cc-legend-item">
+                <span class="cc-leg-line" style="background:#2563eb;"></span>
+                API Load
+              </span>
+              <span class="cc-legend-item">
+                <span class="cc-leg-line cc-leg-line--dashed" style="border-color:#10b981;"></span>
+                Req Traffic
+              </span>
+            </div>
+          </div>
+
+          <div class="cc-traffic-right-content">
             <!-- SVG Chart with realistic wave, grid lines, and day labels -->
-            <div class="cc-tchart-svg-wrap">
-              <svg viewBox="0 0 500 90" class="cc-throughput-svg" preserveAspectRatio="none">
+            <div class="cc-tchart-svg-wrap cc-tchart-svg-wrap-lg">
+              <svg viewBox="0 0 500 120" class="cc-throughput-svg" preserveAspectRatio="none">
                 <defs>
-                  <linearGradient id="telemetryGrad2" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.22"/>
+                  <linearGradient id="telemetryGradRight" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.25"/>
                     <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0"/>
                   </linearGradient>
                 </defs>
                 <!-- Horizontal grid lines -->
-                <line x1="0" y1="22" x2="500" y2="22" stroke="#f1f5f9" stroke-width="1"/>
-                <line x1="0" y1="45" x2="500" y2="45" stroke="#f1f5f9" stroke-width="1"/>
-                <line x1="0" y1="68" x2="500" y2="68" stroke="#f1f5f9" stroke-width="1"/>
+                <line x1="0" y1="30" x2="500" y2="30" stroke="#f1f5f9" stroke-width="1"/>
+                <line x1="0" y1="60" x2="500" y2="60" stroke="#f1f5f9" stroke-width="1"/>
+                <line x1="0" y1="90" x2="500" y2="90" stroke="#f1f5f9" stroke-width="1"/>
                 <!-- Realistic wavy API Load area fill -->
-                <path d="M 0,75 C 35,70 55,55 83,58 C 115,60 130,48 166,42 C 200,36 215,52 250,44 C 285,36 305,28 333,22 C 365,16 380,30 416,20 C 445,12 470,8 500,5 L 500,90 L 0,90 Z" fill="url(#telemetryGrad2)"/>
+                <path d="M 0,95 C 35,90 55,72 83,76 C 115,80 130,62 166,54 C 200,46 215,68 250,58 C 285,46 305,36 333,28 C 365,22 380,38 416,26 C 445,16 470,12 500,8 L 500,120 L 0,120 Z" fill="url(#telemetryGradRight)"/>
                 <!-- Realistic wavy API Load line -->
-                <path d="M 0,75 C 35,70 55,55 83,58 C 115,60 130,48 166,42 C 200,36 215,52 250,44 C 285,36 305,28 333,22 C 365,16 380,30 416,20 C 445,12 470,8 500,5" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M 0,95 C 35,90 55,72 83,76 C 115,80 130,62 166,54 C 200,46 215,68 250,58 C 285,46 305,36 333,28 C 365,22 380,38 416,26 C 445,16 470,12 500,8" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                 <!-- Realistic wavy Req Traffic dashed line -->
-                <path d="M 0,80 C 40,76 60,68 83,70 C 115,72 135,65 166,62 C 200,58 218,66 250,60 C 285,54 308,50 333,48 C 365,45 383,52 416,46 C 448,40 470,36 500,34" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,4"/>
+                <path d="M 0,102 C 40,98 60,88 83,90 C 115,92 135,82 166,78 C 200,74 218,84 250,76 C 285,68 308,64 333,62 C 365,58 383,66 416,58 C 448,52 470,46 500,42" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,4"/>
               </svg>
             </div>
 
@@ -612,6 +663,30 @@
             <div class="cc-tchart-days">
               <span>Mon</span><span>Tue</span><span>Wed</span>
               <span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+            </div>
+
+            <!-- Regional Relays & Edge Nodes Mini Distribution Strip -->
+            <div class="cc-edge-relays-row">
+              <div class="cc-edge-relay-item">
+                <span class="cc-er-dot"></span>
+                <span class="cc-er-name">Accra Edge</span>
+                <span class="cc-er-val">12ms</span>
+              </div>
+              <div class="cc-edge-relay-item">
+                <span class="cc-er-dot"></span>
+                <span class="cc-er-name">Kumasi Node</span>
+                <span class="cc-er-val">18ms</span>
+              </div>
+              <div class="cc-edge-relay-item">
+                <span class="cc-er-dot"></span>
+                <span class="cc-er-name">Takoradi Relay</span>
+                <span class="cc-er-val">22ms</span>
+              </div>
+              <div class="cc-edge-relay-item">
+                <span class="cc-er-dot"></span>
+                <span class="cc-er-name">Tamale CDN</span>
+                <span class="cc-er-val">29ms</span>
+              </div>
             </div>
 
             <!-- Footer metrics: label stacked above value, properly separated -->
@@ -631,64 +706,6 @@
               <div class="cc-tf-stat">
                 <span class="cc-tf-lbl">ERROR RATE</span>
                 <span class="cc-tf-val cc-muted">0.00 <small>%</small></span>
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        <!-- RIGHT: SYSTEM INFRASTRUCTURE NODES -->
-        <div class="cc-panel cc-nodes-panel">
-          <div class="cc-panel-header">
-            <div class="cc-panel-label cc-panel-title-bold">
-              <span class="material-symbols-outlined cc-title-ic">dns</span>
-              SYSTEM INFRASTRUCTURE NODES
-            </div>
-            <span class="cc-all-healthy-badge">
-              <span class="cc-live-dot cc-dot-green"></span>
-              All Healthy
-            </span>
-          </div>
-          <div class="cc-nodes-grid-2x2">
-            <div *ngFor="let node of infrastructureNodes" class="cc-node-card-v2">
-              <div class="cc-ncard-top">
-                <div class="cc-ncard-ic-box">
-                  <span class="material-symbols-outlined">swap_horiz</span>
-                </div>
-                <div class="cc-ncard-title-block">
-                  <div class="cc-ncard-name">{{ node.name }}</div>
-                  <div class="cc-ncard-status">
-                    <span class="cc-live-dot cc-dot-green"></span>
-                    <span>{{ node.status }}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="cc-ncard-body-row">
-                <div class="cc-ncard-metrics">
-                  <div class="cc-metric-col">
-                    <span class="cc-metric-lbl">LATENCY</span>
-                    <span class="cc-metric-val">{{ node.latency }}<small>ms</small></span>
-                  </div>
-                  <div class="cc-metric-col">
-                    <span class="cc-metric-lbl">LOAD</span>
-                    <span class="cc-metric-val">{{ node.loadPct }}<small>%</small></span>
-                  </div>
-                </div>
-                <div class="cc-ncard-sparkline">
-                  <svg viewBox="0 0 120 36" class="cc-sparkline-svg" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient [id]="'grad-' + node.id" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.35"/>
-                        <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0"/>
-                      </linearGradient>
-                    </defs>
-                    <path [attr.d]="node.sparklineArea" [attr.fill]="'url(#grad-' + node.id + ')'" />
-                    <path [attr.d]="node.sparklineLine" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" />
-                  </svg>
-                </div>
-              </div>
-              <div class="cc-ncard-progress-track">
-                <div class="cc-ncard-progress-fill" [style.width]="node.loadPct + '%'"></div>
               </div>
             </div>
           </div>

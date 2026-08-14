@@ -538,6 +538,73 @@
 }
 
 /* ── System Infrastructure Nodes v2 (Matching User Screenshot) ── */
+.cc-nodes-block-embedded {
+  margin: 6px 14px 14px 14px;
+}
+
+.cc-nodes-grid-embedded {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cc-traffic-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.cc-traffic-right-content {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
+}
+
+.cc-tchart-svg-wrap-lg {
+  height: 120px;
+}
+
+.cc-edge-relays-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 12px 0 10px 0;
+  padding: 8px 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.cc-edge-relay-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cc-er-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+  flex-shrink: 0;
+}
+
+.cc-er-name {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.cc-er-val {
+  font-size: 10px;
+  font-weight: 700;
+  color: #2563eb;
+  margin-left: auto;
+}
+
 .cc-panel-title-bold {
   font-weight: 800 !important;
   letter-spacing: 0.5px;
