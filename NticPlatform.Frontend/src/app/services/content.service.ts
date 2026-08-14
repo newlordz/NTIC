@@ -1644,7 +1644,9 @@ private readonly defaultTeams: Team[] = [];
           action: item.action,
           user: item.user || item.usr || 'System',
           time: itemTimeStr,
-          type: item.type || 'info'
+          type: item.type || 'info',
+          ip: item.ip || '',
+          client: item.client || ''
         });
       }
     }
@@ -1663,19 +1665,23 @@ private readonly defaultTeams: Team[] = [];
           action: top.action,
           usr: top.user || top.usr || '',
           time: top.time || new Date().toISOString(),
-          type: top.type || 'info'
+          type: top.type || 'info',
+          ip: top.ip || '',
+          client: top.client || ''
         }).subscribe({ error: () => {} });
       }
     }
   }
 
-  addAuditLog(log: { action: string; user?: string; usr?: string; time?: string; type?: string }): void {
+  addAuditLog(log: { action: string; user?: string; usr?: string; time?: string; type?: string; ip?: string; client?: string }): void {
     const entry = {
       id: 'local-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
       action: log.action,
       user: log.user || log.usr || getAuthValue('activeUserEmail') || 'System',
       time: log.time || new Date().toISOString(),
-      type: log.type || 'info'
+      type: log.type || 'info',
+      ip: log.ip || '',
+      client: log.client || ''
     };
     this.auditLogs = this.mergeAndSortAuditLogs([entry, ...this.auditLogs]);
     this.saveState('auditLogs', this.auditLogs);
@@ -1684,22 +1690,26 @@ private readonly defaultTeams: Team[] = [];
       action: entry.action,
       usr: entry.user,
       time: entry.time,
-      type: entry.type
+      type: entry.type,
+      ip: entry.ip,
+      client: entry.client
     }).subscribe({ error: () => {} });
   }
 
   fetchAuditLogsFromBackend(): void {
     this.apiService.getAuditLogs().subscribe({
       next: (logs: any[]) => {
-        if (logs && logs.length > 0) {
+        if (Array.isArray(logs)) {
           const mapped = logs.map(l => ({
             id: l.id,
             action: l.action,
             user: l.user || l.usr || 'System',
             time: l.time || new Date().toISOString(),
-            type: l.type || 'info'
+            type: l.type || 'info',
+            ip: l.ip || '',
+            client: l.client || ''
           }));
-          this.auditLogs = this.mergeAndSortAuditLogs([...mapped, ...this.auditLogs]);
+          this.auditLogs = this.mergeAndSortAuditLogs(mapped);
           this.saveState('auditLogs', this.auditLogs);
           this.auditLogs$.next(this.auditLogs);
         }

@@ -70,6 +70,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   auditApprovalCount = 0;
   auditContentCount = 0;
   auditSecurityCount = 0;
+  auditTimelineTodayCount = 0;
+  auditTimeline24hCount = 0;
+  auditTimeline7dCount = 0;
+  auditTimeline30dCount = 0;
   auditUniqueActors: string[] = [];
   auditTotalPages = 1;
   auditPaginationRange: number[] = [1];
@@ -1154,6 +1158,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     let auth = 0, approval = 0, content = 0, security = 0;
     const actorsSet = new Set<string>();
+    const now = Date.now();
+    let todayC = 0, past24hC = 0, past7dC = 0, past30dC = 0;
+    const todayStr = new Date().toDateString();
+
     for (let i = 0; i < this.enrichedAuditLogs.length; i++) {
       const l = this.enrichedAuditLogs[i];
       if (l.category === 'auth') auth++;
@@ -1161,11 +1169,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (l.category === 'content') content++;
       if (l.category === 'revoked' || l.severity === 'danger' || l.severity === 'warning') security++;
       if (l.user) actorsSet.add(l.user);
+
+      const logTime = new Date(l.time).getTime();
+      const diffHours = (now - logTime) / (1000 * 60 * 60);
+      if (diffHours <= 24 && new Date(l.time).toDateString() === todayStr) todayC++;
+      if (diffHours <= 24) past24hC++;
+      if (diffHours <= 24 * 7) past7dC++;
+      if (diffHours <= 24 * 30) past30dC++;
     }
     this.auditAuthCount = auth;
     this.auditApprovalCount = approval;
     this.auditContentCount = content;
     this.auditSecurityCount = security;
+    this.auditTimelineTodayCount = todayC;
+    this.auditTimeline24hCount = past24hC;
+    this.auditTimeline7dCount = past7dC;
+    this.auditTimeline30dCount = past30dC;
     this.auditUniqueActors = Array.from(actorsSet).sort();
 
     this.recomputeAuditFilter();
@@ -1312,6 +1331,41 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const location = log.location || (ip.startsWith('102') ? 'Accra, Greater Accra (GH)' : 'Kumasi, Ashanti (GH)');
     const client = log.client || (actionLower.includes('mobile') ? 'Mobile App / Android 14' : 'NTIC Web Console / Chrome 128');
 
+    // Geo-Location flag & country code
+    let flag = '🇬🇭';
+    let countryCode = 'GH';
+    if (ip.startsWith('102') || ip.startsWith('154') || ip.startsWith('41.')) {
+      flag = '🇬🇭';
+      countryCode = 'GH';
+    } else if (ip.startsWith('192.') || ip.startsWith('127.') || ip.startsWith('10.') || ip.includes('localhost') || ip === '::1') {
+      flag = '🏢';
+      countryCode = 'Local';
+    } else if (ip.startsWith('104.') || ip.startsWith('172.') || ip.startsWith('34.') || ip.startsWith('35.')) {
+      flag = '🇺🇸';
+      countryCode = 'US';
+    } else if (ip.startsWith('185.') || ip.startsWith('194.') || ip.startsWith('51.')) {
+      flag = '🇬🇧';
+      countryCode = 'UK';
+    }
+
+    // Device category badge
+    let deviceIcon = 'computer';
+    let deviceLabel = 'Web Desktop';
+    const cLower = (client || '').toLowerCase();
+    if (cLower.includes('android')) {
+      deviceIcon = 'android';
+      deviceLabel = 'Android App';
+    } else if (cLower.includes('iphone') || cLower.includes('ios')) {
+      deviceIcon = 'phone_iphone';
+      deviceLabel = 'iOS Device';
+    } else if (cLower.includes('mobile')) {
+      deviceIcon = 'smartphone';
+      deviceLabel = 'Mobile Web';
+    } else if (cLower.includes('bot') || cLower.includes('python') || cLower.includes('curl') || cLower.includes('agent')) {
+      deviceIcon = 'smart_toy';
+      deviceLabel = 'API / Agent';
+    }
+
     return {
       ...log,
       id: eventId,
@@ -1327,6 +1381,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ip,
       location,
       client,
+      flag,
+      countryCode,
+      deviceIcon,
+      deviceLabel,
       statusBadge: severity.toUpperCase()
     };
   }
@@ -1451,25 +1509,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  generateSimulatedAuditEvent(): void {
-    const sampleActions = [
-      { action: 'SuperAdmin granted accreditation to Prempeh College Squad', type: 'approval', user: 'admin@ntic.org.gh' },
-      { action: 'Security scan: OIDC Session token refreshed', type: 'auth', user: 'admin@ntic.org.gh' },
-      { action: 'Updated National AI Track Rulebook PDF in LMS', type: 'system', user: 'admin@ntic.org.gh' },
-      { action: 'Instructor Boateng graded Robotics Milestone 2', type: 'approval', user: 'instructor.boateng@ntic.org.gh' },
-      { action: 'Verified MTN Corporate CSR Sponsor package tier', type: 'approval', user: 'sponsor.mtn@portal.com' },
-      { action: 'Published live announcement: Grand Finale Schedule 2026', type: 'system', user: 'admin@ntic.org.gh' }
-    ];
-    const picked = sampleActions[Math.floor(Math.random() * sampleActions.length)];
-    this.addAuditLog({
-      action: picked.action,
-      user: picked.user,
-      type: picked.type,
-      time: new Date().toISOString()
-    });
-    this.showAuditToast('New live audit event logged into stream!');
-  }
-
   exportAuditLogs(format: 'csv' | 'json' | 'txt'): void {
     this.auditExportDropdownOpen = false;
     const logsToExport = this.filteredAuditLogs;
@@ -1538,6 +1577,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
       window.URL.revokeObjectURL(url);
       this.showAuditToast(`Exported ${logsToExport.length} events as .${format.toUpperCase()}`);
     }
+  }
+
+  pruneOldAuditLogs(days: number = 90, preserveCritical: boolean = true): void {
+    this.auditExportDropdownOpen = false;
+    const promptMsg = preserveCritical
+      ? `Purge routine audit records older than ${days} days from the database? (Critical security, revoked & approval logs will remain preserved).`
+      : `Purge ALL audit records older than ${days} days from the database?`;
+    if (typeof window !== 'undefined' && !window.confirm(promptMsg)) {
+      return;
+    }
+    this.apiService.pruneAuditLogs(days, preserveCritical).subscribe({
+      next: (res) => {
+        const msg = res.preserved_critical
+          ? `Retention applied: ${res.pruned_count} routine records purged (> ${res.retained_days}d). Critical logs preserved.`
+          : `Retention applied: ${res.pruned_count} records purged.`;
+        this.showAuditToast(msg);
+        this.loadAuditLogsFromBackend();
+      },
+      error: () => {
+        this.showAuditToast('Failed to apply retention policy.');
+      }
+    });
   }
 
   loadSystemNodesHealth(): void {

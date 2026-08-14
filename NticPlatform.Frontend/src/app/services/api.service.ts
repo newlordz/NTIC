@@ -337,12 +337,26 @@ export class ApiService {
     return this.http.delete(this.apiUrl + '/news/' + id);
   }
 
-  getAuditLogs(): Observable<any[]> {
-    return this.http.get<any[]>(this.apiUrl + '/audit-logs');
+  getAuditLogs(params?: { limit?: number; category?: string; usr?: string; q?: string }): Observable<any[]> {
+    let url = this.apiUrl + '/audit-logs';
+    if (params) {
+      const q = new URLSearchParams();
+      if (params.limit) q.set('limit', String(params.limit));
+      if (params.category && params.category !== 'all') q.set('category', params.category);
+      if (params.usr && params.usr !== 'all') q.set('usr', params.usr);
+      if (params.q && params.q.trim()) q.set('q', params.q.trim());
+      const str = q.toString();
+      if (str) url += '?' + str;
+    }
+    return this.http.get<any[]>(url);
   }
 
-  createAuditLog(payload: { action: string; usr?: string; time?: string; type?: string }): Observable<any> {
+  createAuditLog(payload: { action: string; usr?: string; time?: string; type?: string; ip?: string; client?: string }): Observable<any> {
     return this.http.post(this.apiUrl + '/audit-logs', payload);
+  }
+
+  pruneAuditLogs(days: number = 90, preserveCritical: boolean = true): Observable<{ pruned_count: number; retained_days: number; preserved_critical: boolean }> {
+    return this.http.delete<{ pruned_count: number; retained_days: number; preserved_critical: boolean }>(`${this.apiUrl}/audit-logs/prune?days=${days}&preserve_critical=${preserveCritical}`);
   }
 
   getLmsCourses(): Observable<any[]> {

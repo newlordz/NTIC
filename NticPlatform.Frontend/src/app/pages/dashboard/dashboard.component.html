@@ -1411,11 +1411,6 @@
             <span>Sync Stream</span>
           </button>
 
-          <button class="lat-btn lat-btn-outline" (click)="generateSimulatedAuditEvent()" title="Simulate a test security event into the live stream">
-            <span class="material-symbols-outlined">add_moderator</span>
-            <span>+ Test Event</span>
-          </button>
-
           <!-- Export Dropdown -->
           <div class="lat-export-dropdown-wrapper">
             <button class="lat-btn lat-btn-primary" (click)="auditExportDropdownOpen = !auditExportDropdownOpen">
@@ -1443,6 +1438,14 @@
                 <div>
                   <div class="lat-export-item-title">Official Security Report (.txt)</div>
                   <div class="lat-export-item-desc">Formatted compliance & audit summary</div>
+                </div>
+              </button>
+              <div style="border-top: 1px solid var(--outline-variant, rgba(255,255,255,0.08)); margin: 4px 0;"></div>
+              <button class="lat-export-item" (click)="pruneOldAuditLogs(90)">
+                <span class="material-symbols-outlined" style="color: var(--error, #ef4444);">auto_delete</span>
+                <div>
+                  <div class="lat-export-item-title" style="color: var(--error, #ef4444);">Retention Policy (Prune &gt;90d)</div>
+                  <div class="lat-export-item-desc">Clean database records older than 90 days</div>
                 </div>
               </button>
             </div>
@@ -1626,6 +1629,36 @@
         </div>
       </div>
 
+      <!-- Interactive Timeline Scrubber -->
+      <div class="lat-timeline-scrubber cc-panel" style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;margin-bottom:14px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid var(--outline-variant, rgba(255,255,255,0.08));flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary, #3b82f6);">timeline</span>
+          <span style="font-size:12.5px;font-weight:600;color:var(--on-surface);">Timeline Activity:</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <button class="lat-pill" [class.active]="auditTimeFilter === 'all'" (click)="setAuditTime('all')" style="font-size:11.5px;padding:4px 10px;">
+            <span>All Time</span>
+            <span style="opacity:0.7;margin-left:4px;">({{ enrichedAuditLogs.length }})</span>
+          </button>
+          <button class="lat-pill" [class.active]="auditTimeFilter === 'today'" (click)="setAuditTime('today')" style="font-size:11.5px;padding:4px 10px;">
+            <span>Today</span>
+            <span style="opacity:0.7;margin-left:4px;">({{ auditTimelineTodayCount }})</span>
+          </button>
+          <button class="lat-pill" [class.active]="auditTimeFilter === '24h'" (click)="setAuditTime('24h')" style="font-size:11.5px;padding:4px 10px;">
+            <span>Past 24h</span>
+            <span style="opacity:0.7;margin-left:4px;">({{ auditTimeline24hCount }})</span>
+          </button>
+          <button class="lat-pill" [class.active]="auditTimeFilter === '7d'" (click)="setAuditTime('7d')" style="font-size:11.5px;padding:4px 10px;">
+            <span>Past 7d</span>
+            <span style="opacity:0.7;margin-left:4px;">({{ auditTimeline7dCount }})</span>
+          </button>
+          <button class="lat-pill" [class.active]="auditTimeFilter === '30d'" (click)="setAuditTime('30d')" style="font-size:11.5px;padding:4px 10px;">
+            <span>Past 30d</span>
+            <span style="opacity:0.7;margin-left:4px;">({{ auditTimeline30dCount }})</span>
+          </button>
+        </div>
+      </div>
+
       <!-- STREAM / TIMELINE VIEW -->
       <div class="lat-stream-container" *ngIf="auditViewMode === 'stream'">
         <div class="lat-results-bar">
@@ -1694,14 +1727,14 @@
                 </div>
                 <span class="lat-meta-divider">&middot;</span>
                 <div class="lat-meta-item" [title]="'Origin IP & Location: ' + log.ip + ' (' + log.location + ')'">
-                  <span class="material-symbols-outlined meta-icon">public</span>
+                  <span style="margin-right:2px;font-size:13px;">{{ log.flag }}</span>
                   <span>{{ log.ip }}</span>
                   <span class="lat-location-tag">({{ log.location }})</span>
                 </div>
                 <span class="lat-meta-divider">&middot;</span>
                 <div class="lat-meta-item" [title]="'Client Platform: ' + log.client">
-                  <span class="material-symbols-outlined meta-icon">devices</span>
-                  <span>{{ log.client }}</span>
+                  <span class="material-symbols-outlined meta-icon">{{ log.deviceIcon }}</span>
+                  <span>{{ log.deviceLabel }}</span>
                 </div>
               </div>
             </div>
@@ -1778,8 +1811,8 @@
                   <div class="lat-table-action-text" [title]="log.action">{{ log.action }}</div>
                 </td>
                 <td class="td-ip">
-                  <div class="lat-table-ip">{{ log.ip }}</div>
-                  <div class="lat-table-loc">{{ log.location }}</div>
+                  <div class="lat-table-ip"><span style="margin-right:3px;">{{ log.flag }}</span>{{ log.ip }}</div>
+                  <div class="lat-table-loc">{{ log.location }} &middot; <span style="opacity:0.8;">{{ log.deviceLabel }}</span></div>
                 </td>
                 <td style="text-align:right;" (click)="$event.stopPropagation()">
                   <button class="lat-tbl-btn" (click)="inspectAuditLog(log)" title="Inspect event">

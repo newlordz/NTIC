@@ -326,6 +326,14 @@ class TestAuditLogs:
         data = resp.json()
         assert data["status"] == "created"
 
+    def test_prune_audit_logs(self, client, admin_token):
+        resp = client.delete("/api/audit-logs/prune?days=90&preserve_critical=true", headers={"Authorization": f"Bearer {admin_token}"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "pruned_count" in data
+        assert data["retained_days"] == 90
+        assert data["preserved_critical"] is True
+
 
 class TestUsers:
     def test_list_users(self, client, admin_token):

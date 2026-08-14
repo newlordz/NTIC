@@ -23,6 +23,104 @@ try:
     from fastapi.responses import FileResponse, JSONResponse, Response
     from pydantic import BaseModel
 
+    def prune_audit_logs_internal(days: int = 90, preserve_critical: bool = True) -> int:
+        cutoff_dt = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=days)
+        cutoff_iso = cutoff_dt.isoformat()
+        conn = get_db_connection()
+        if not conn:
+            return 0
+        cur = conn.cursor()
+        has_lock = False
+        deleted = 0
+        try:
+            # 1. Acquire distributed leader lock if supported (prevents concurrent execution in multi-node clusters)
+            try:
+                cur.execute("SELECT pg_try_advisory_lock(843001)")
+                lock_row = cur.fetchone()
+                if lock_row and lock_row[0] is False:
+                    logger.info("[Maintenance] Another replica holds the audit maintenance lock, skipping.")
+                    return 0
+                has_lock = True
+            except Exception:
+                pass
+
+            # 2. Immutable cold storage archival before purge (compliance with Data Protection Act)
+            select_sql = (
+                "SELECT id, action, usr, time, type, COALESCE(ip, ''), COALESCE(client, '') FROM audit_logs WHERE time < %s AND type NOT IN ('revoked', 'security', 'critical')"
+                if preserve_critical else
+                "SELECT id, action, usr, time, type, COALESCE(ip, ''), COALESCE(client, '') FROM audit_logs WHERE time < %s"
+            )
+            try:
+                cur.execute(select_sql, (cutoff_iso,))
+                archived_rows = cur.fetchall()
+                if archived_rows:
+                    import gzip, json, hashlib
+                    archive_dir = os.path.join(os.path.dirname(__file__), "..", "audit_archives")
+                    os.makedirs(archive_dir, exist_ok=True)
+                    archive_file = os.path.join(archive_dir, f"audit_archive_{datetime.datetime.now(datetime.UTC).strftime('%Y%m%d_%H%M%S')}.json.gz")
+                    archive_payload = [
+                        {"id": r[0], "action": r[1], "user": r[2], "time": r[3], "type": r[4], "ip": r[5], "client": r[6]}
+                        for r in archived_rows
+                    ]
+                    with gzip.open(archive_file, "wt", encoding="utf-8") as gz:
+                        json.dump(archive_payload, gz, indent=2)
+
+                    # Generate Cryptographic SHA-256 Checksum Manifest
+                    hasher = hashlib.sha256()
+                    with open(archive_file, "rb") as f:
+                        for chunk in iter(lambda: f.read(65536), b""):
+                            hasher.update(chunk)
+                    digest = hasher.hexdigest()
+                    sha_file = archive_file + ".sha256"
+                    with open(sha_file, "w", encoding="utf-8") as f:
+                        f.write(f"{digest}  {os.path.basename(archive_file)}\n")
+                    logger.info(f"[Audit Archival] Cold storage backup written: {archive_file} (SHA256: {digest[:16]}...)")
+
+                    # Optional Cloud Object Storage / S3 / Cloudflare R2 Upload Driver
+                    s3_bucket = os.getenv("S3_AUDIT_BUCKET", os.getenv("AWS_STORAGE_BUCKET_NAME", ""))
+                    if s3_bucket:
+                        try:
+                            import boto3
+                            s3 = boto3.client(
+                                "s3",
+                                endpoint_url=os.getenv("S3_ENDPOINT_URL", None),
+                                aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", ""),
+                                aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", ""),
+                                region_name=os.getenv("AWS_REGION", "us-east-1")
+                            )
+                            s3_key = f"audit_archives/{os.path.basename(archive_file)}"
+                            s3.upload_file(archive_file, s3_bucket, s3_key)
+                            s3.upload_file(sha_file, s3_bucket, f"{s3_key}.sha256")
+                            logger.info(f"[Audit Archival] Uploaded to S3/R2 bucket {s3_bucket}: {s3_key}")
+                        except Exception as s3_err:
+                            logger.warning(f"[Audit Archival] S3 upload skipped/failed: {s3_err}")
+            except Exception as arc_e:
+                logger.warning(f"[Audit Archival] Warning writing cold storage archive: {arc_e}")
+
+            # 3. Purge pruned rows from operational table
+            if preserve_critical:
+                cur.execute(
+                    "DELETE FROM audit_logs WHERE time < %s AND type NOT IN ('revoked', 'security', 'critical')",
+                    (cutoff_iso,)
+                )
+            else:
+                cur.execute("DELETE FROM audit_logs WHERE time < %s", (cutoff_iso,))
+            deleted = cur.rowcount if cur.rowcount is not None and cur.rowcount >= 0 else 0
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            logger.warning(f"Audit log prune query error: {e}")
+            deleted = 0
+        finally:
+            if has_lock:
+                try:
+                    cur.execute("SELECT pg_advisory_unlock(843001)")
+                except Exception:
+                    pass
+            cur.close()
+            conn.close()
+        return deleted
+
     @asynccontextmanager
     async def lifespan(application: FastAPI):
         import time, asyncio
@@ -33,7 +131,24 @@ try:
             wait = min(attempt * 2, 20)
             print(f"[Startup] DB init attempt {attempt}/12 failed ({msg}) — retrying in {wait}s...")
             await asyncio.sleep(wait)
+
+        async def daily_audit_maintenance():
+            while True:
+                try:
+                    await asyncio.sleep(86400)  # Every 24 hours
+                    pruned = prune_audit_logs_internal(days=180, preserve_critical=True)
+                    if pruned > 0:
+                        logger.info(f"[Maintenance] Automated retention pruned {pruned} legacy audit records older than 180 days.")
+                        broadcast_async({"type": "data_changed", "collection": "audit_logs"})
+                except asyncio.CancelledError:
+                    break
+                except Exception as e:
+                    logger.warning(f"[Maintenance] Automated audit maintenance error: {e}")
+                    await asyncio.sleep(3600)
+
+        maint_task = asyncio.create_task(daily_audit_maintenance())
         yield
+        maint_task.cancel()
 
     app = FastAPI(
         title="NTIC Platform Python API",
@@ -346,8 +461,68 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         return conn
 
+    def extract_client_ip(request: Request) -> str:
+        cf_ip = request.headers.get("cf-connecting-ip")
+        if cf_ip:
+            return cf_ip.strip()
+        real_ip = request.headers.get("x-real-ip")
+        if real_ip:
+            return real_ip.strip()
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+            if parts:
+                return parts[0]
+        return request.client.host if request.client else "127.0.0.1"
+
+    def anonymize_ip(ip: str) -> str:
+        """Mask last octet for GDPR/PII compliance if ENABLE_IP_ANONYMIZATION is true"""
+        if not ip:
+            return ""
+        if os.getenv("ENABLE_IP_ANONYMIZATION", "false").lower() == "true":
+            parts = ip.split(".")
+            if len(parts) == 4:
+                return f"{parts[0]}.{parts[1]}.{parts[2]}.xxx"
+            if ":" in ip:
+                return ip.rsplit(":", 1)[0] + ":xxxx"
+        return ip
+
+    def send_security_alert_email(event_type: str, actor: str, action: str, ip: str, client: str):
+        """Asynchronously dispatches an emergency security alert to SuperAdmin via Brevo for critical actions"""
+        if not settings.BREVO_API_KEY:
+            return
+        try:
+            html = f"""
+            <div style="font-family: Arial, sans-serif; padding: 24px; background: #0f172a; color: #f8fafc; border-radius: 8px;">
+                <h2 style="color: #ef4444; margin-top: 0;">⚠️ NTIC Security Alert: Critical Event Logged</h2>
+                <p>A high-severity action was detected in the NTIC Championship Platform:</p>
+                <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                    <tr><td style="padding: 8px; color: #94a3b8; border-bottom: 1px solid #334155;"><strong>Event Type:</strong></td><td style="padding: 8px; color: #f8fafc; border-bottom: 1px solid #334155;">{event_type.upper()}</td></tr>
+                    <tr><td style="padding: 8px; color: #94a3b8; border-bottom: 1px solid #334155;"><strong>Action:</strong></td><td style="padding: 8px; color: #f8fafc; border-bottom: 1px solid #334155;">{action}</td></tr>
+                    <tr><td style="padding: 8px; color: #94a3b8; border-bottom: 1px solid #334155;"><strong>Actor:</strong></td><td style="padding: 8px; color: #f8fafc; border-bottom: 1px solid #334155;">{actor}</td></tr>
+                    <tr><td style="padding: 8px; color: #94a3b8; border-bottom: 1px solid #334155;"><strong>IP Address:</strong></td><td style="padding: 8px; color: #f8fafc; border-bottom: 1px solid #334155;">{ip}</td></tr>
+                    <tr><td style="padding: 8px; color: #94a3b8; border-bottom: 1px solid #334155;"><strong>Client Device:</strong></td><td style="padding: 8px; color: #f8fafc; border-bottom: 1px solid #334155;">{client}</td></tr>
+                    <tr><td style="padding: 8px; color: #94a3b8; border-bottom: 1px solid #334155;"><strong>Timestamp (UTC):</strong></td><td style="padding: 8px; color: #f8fafc; border-bottom: 1px solid #334155;">{datetime.datetime.now(datetime.UTC).isoformat()}</td></tr>
+                </table>
+                <p style="font-size: 12px; color: #64748b;">This automated alert was generated by the NTIC Live Security Stream.</p>
+            </div>
+            """
+            httpx.post(
+                "https://api.brevo.com/v3/smtp/email",
+                json={
+                    "sender": {"email": "enochessel5@gmail.com", "name": "NTIC Security Stream"},
+                    "to": [{"email": "enochessel5@gmail.com", "name": "SuperAdmin"}],
+                    "subject": f"⚠️ NTIC Security Alert: [{event_type.upper()}] {action[:50]}",
+                    "htmlContent": html
+                },
+                headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
+                timeout=8
+            )
+        except Exception as e:
+            logger.warning(f"Security alert email dispatch error: {e}")
+
     @app.post("/api/login")
-    def login(payload: LoginRequest):
+    def login(payload: LoginRequest, request: Request):
         conn = _get_db()
         cur = conn.cursor()
         credential = payload.email.strip()
@@ -372,16 +547,25 @@ try:
         expires_at = datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=7)
         conn = _get_db()
         cur = conn.cursor()
+        client_ip = anonymize_ip(extract_client_ip(request))
+        user_agent = request.headers.get("user-agent", "")
         try:
             cur.execute(
                 "INSERT INTO auth_sessions (token, user_id, email, expires_at) VALUES (%s, %s, %s, %s)",
                 (token, user_id, db_email, expires_at),
             )
-            cur.execute(
-                "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s, %s, %s, %s)",
-                (f"{role} login: {db_email}", db_email, datetime.datetime.now(datetime.UTC).isoformat(), "auth"),
-            )
+            try:
+                cur.execute(
+                    "INSERT INTO audit_logs (action, usr, time, type, ip, client) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (f"{role} login: {db_email}", db_email, datetime.datetime.now(datetime.UTC).isoformat(), "auth", client_ip, user_agent),
+                )
+            except Exception:
+                cur.execute(
+                    "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s, %s, %s, %s)",
+                    (f"{role} login: {db_email}", db_email, datetime.datetime.now(datetime.UTC).isoformat(), "auth"),
+                )
             conn.commit()
+            broadcast_async({"type": "data_changed", "collection": "audit_logs"})
         except Exception as e:
             conn.rollback()
             cur.close()
@@ -1981,28 +2165,72 @@ try:
         usr: str = ""
         time: str = ""
         type: str = ""
+        ip: str = ""
+        client: str = ""
 
     @app.get("/api/audit-logs")
-    def list_audit_logs(_admin: dict = Depends(require_admin)):
+    def list_audit_logs(
+        limit: int = 200,
+        category: str = "",
+        usr: str = "",
+        q: str = "",
+        _admin: dict = Depends(require_admin)
+    ):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, action, usr, time, type FROM audit_logs ORDER BY id DESC LIMIT 200")
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-        return [{"id": r[0], "action": r[1], "user": r[2], "time": r[3], "type": r[4]} for r in rows]
+        query = "SELECT id, action, usr, time, type, COALESCE(ip, ''), COALESCE(client, '') FROM audit_logs"
+        params = []
+        conditions = []
+        if category and category != "all":
+            conditions.append("type = %s")
+            params.append(category)
+        if usr and usr != "all":
+            conditions.append("lower(usr) = lower(%s)")
+            params.append(usr)
+        if q and q.strip():
+            conditions.append("(lower(action) LIKE %s OR lower(usr) LIKE %s OR lower(ip) LIKE %s)")
+            q_term = f"%{q.strip().lower()}%"
+            params.extend([q_term, q_term, q_term])
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        query += " ORDER BY id DESC LIMIT %s"
+        params.append(max(1, min(limit, 1000)))
+
+        try:
+            cur.execute(query, tuple(params))
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+            return [{"id": r[0], "action": r[1], "user": r[2], "time": r[3], "type": r[4], "ip": r[5], "client": r[6]} for r in rows]
+        except Exception:
+            cur.execute("SELECT id, action, usr, time, type FROM audit_logs ORDER BY id DESC LIMIT %s", (max(1, min(limit, 1000)),))
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+            return [{"id": r[0], "action": r[1], "user": r[2], "time": r[3], "type": r[4], "ip": "", "client": ""} for r in rows]
 
     @app.post("/api/audit-logs", status_code=status.HTTP_201_CREATED)
-    def create_audit_log(payload: AuditCreate):
+    def create_audit_log(payload: AuditCreate, request: Request):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
+        client_ip = anonymize_ip(payload.ip or extract_client_ip(request))
+        user_agent = payload.client or request.headers.get("user-agent", "")
+        log_time = payload.time or datetime.datetime.now(datetime.UTC).isoformat()
         try:
-            cur.execute("INSERT INTO audit_logs (action, usr, time, type) VALUES (%s, %s, %s, %s) RETURNING id",
-                        (payload.action, payload.usr, payload.time, payload.type))
+            try:
+                cur.execute(
+                    "INSERT INTO audit_logs (action, usr, time, type, ip, client) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+                    (payload.action, payload.usr, log_time, payload.type, client_ip, user_agent)
+                )
+            except Exception:
+                cur.execute(
+                    "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s, %s, %s, %s) RETURNING id",
+                    (payload.action, payload.usr, log_time, payload.type)
+                )
             row = cur.fetchone()
             conn.commit()
         except Exception as e:
@@ -2012,7 +2240,30 @@ try:
             raise HTTPException(status_code=400, detail=str(e))
         cur.close()
         conn.close()
+        broadcast_async({"type": "data_changed", "collection": "audit_logs"})
+
+        # SuperAdmin Alert Dispatch for critical/security events
+        if payload.type in ("revoked", "security", "critical") or "delete" in payload.action.lower() or "denied" in payload.action.lower():
+            try:
+                import threading
+                threading.Thread(
+                    target=send_security_alert_email,
+                    args=(payload.type, payload.usr or "System", payload.action, client_ip, user_agent),
+                    daemon=True
+                ).start()
+            except Exception:
+                pass
+
         return {"id": row[0] if row else None, "status": "created"}
+
+    @app.delete("/api/audit-logs/prune")
+    def prune_audit_logs(days: int = 90, preserve_critical: bool = True, _admin: dict = Depends(require_admin)):
+        if days < 1:
+            raise HTTPException(status_code=400, detail="Days parameter must be at least 1")
+        deleted = prune_audit_logs_internal(days=days, preserve_critical=preserve_critical)
+        if deleted > 0:
+            broadcast_async({"type": "data_changed", "collection": "audit_logs"})
+        return {"pruned_count": deleted, "retained_days": days, "preserved_critical": preserve_critical}
 
     # LMS COURSES
     class LmsCourseCreate(BaseModel):

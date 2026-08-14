@@ -173,8 +173,13 @@ def _create_tables(conn):
             action TEXT NOT NULL,
             usr VARCHAR(150),
             time VARCHAR(50),
-            type VARCHAR(50)
+            type VARCHAR(50),
+            ip VARCHAR(100) DEFAULT '',
+            client TEXT DEFAULT ''
         );
+        ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS ip VARCHAR(100) DEFAULT '';
+        ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS client TEXT DEFAULT '';
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_id_desc ON audit_logs (id DESC);
 
         CREATE TABLE IF NOT EXISTS support_tickets (
             id VARCHAR(64) PRIMARY KEY,
