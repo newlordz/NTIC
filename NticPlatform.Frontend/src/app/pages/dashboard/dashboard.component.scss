@@ -6787,12 +6787,79 @@
     }
   }
 
+  .cc-panel {
+    background: #0e2530 !important;
+    border-color: #21404c !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  .cc-panel-header {
+    background: #091a22 !important;
+    border-bottom: 1px solid #21404c !important;
+  }
+
+  .cc-panel-label {
+    color: #e1f3fc !important;
+  }
+
   .cc-panel-label.cc-panel-title-bold {
     color: #e1f3fc !important;
   }
 
   .cc-panel-sub {
     color: #899296 !important;
+  }
+
+  /* Regional Network Monitoring (Dark Mode) */
+  .cc-regional-summary-bar {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+
+    .cc-rstat-label {
+      color: #bfc8cc !important;
+    }
+
+    .cc-rstat-val {
+      color: #e1f3fc !important;
+    }
+  }
+
+  .cc-regional-card {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+
+    &:hover {
+      background: #183440 !important;
+      border-color: #3f484c !important;
+    }
+
+    .cc-reg-name {
+      color: #e1f3fc !important;
+    }
+
+    .cc-reg-count-chip {
+      background: #21404c !important;
+      color: #e1f3fc !important;
+    }
+
+    .cc-reg-meta {
+      color: #bfc8cc !important;
+
+      strong {
+        color: #e1f3fc !important;
+      }
+    }
+  }
+
+  /* System Nodes */
+  .cc-node-card {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+
+    &:hover {
+      background: #183440 !important;
+      border-color: #3f484c !important;
+    }
   }
 
   /* Top Dashboard KPI Cards */
