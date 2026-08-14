@@ -448,26 +448,79 @@ def _create_tables(conn):
     seed_initial_data(conn)
 
 
+# ── Connection Pool & Helpers ──
+_pool = None
+
+def init_connection_pool():
+    """Initialize a ThreadedConnectionPool for high-concurrency scaling."""
+    global _pool
+    if _pool is not None:
+        return _pool
+    import os
+    try:
+        from psycopg2.pool import ThreadedConnectionPool
+    except ImportError:
+        logger.warning("psycopg2.pool not available")
+        return None
+
+    # Try URL connections first
+    for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
+        db_url = os.environ.get(url_key, "").strip()
+        if db_url:
+            try:
+                _pool = ThreadedConnectionPool(minconn=2, maxconn=35, dsn=db_url, connect_timeout=10)
+                logger.info(f"Initialized PostgreSQL ThreadedConnectionPool via {url_key} (max 35 connections)")
+                return _pool
+            except Exception as e:
+                logger.warning(f"Failed initializing connection pool via {url_key}: {e}")
+
+    # Fallback to individual vars
+    db_host = settings.POSTGRES_HOST
+    if db_host in ("localhost", ""):
+        db_host = "127.0.0.1"
+    try:
+        _pool = ThreadedConnectionPool(
+            minconn=2,
+            maxconn=35,
+            host=db_host,
+            port=settings.POSTGRES_PORT,
+            user=settings.POSTGRES_USER,
+            password=settings.POSTGRES_PASSWORD,
+            dbname=settings.POSTGRES_DB,
+            connect_timeout=10
+        )
+        logger.info(f"Initialized PostgreSQL ThreadedConnectionPool via host vars ({db_host}:{settings.POSTGRES_PORT})")
+        return _pool
+    except Exception as e:
+        logger.warning(f"Could not initialize connection pool via host vars: {e}")
+        return None
+
+
 def get_db_connection():
-    """Return a fresh psycopg2 connection to NticPlatformDb."""
+    """Return a connection from the ThreadedConnectionPool, or a fresh connection if pool is unavailable."""
+    global _pool
+    if _pool is None:
+        init_connection_pool()
+    if _pool is not None:
+        try:
+            return _pool.getconn()
+        except Exception as e:
+            logger.warning(f"Pool getconn failed, falling back to direct connect: {e}")
+
+    # Fallback direct connect
     import os, psycopg2
     for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
         db_url = os.environ.get(url_key, "").strip()
         if db_url:
             try:
-                conn = psycopg2.connect(db_url, connect_timeout=10)
-                logger.info(f"Connected to PostgreSQL via {url_key}")
-                return conn
-            except Exception as e:
-                logger.warning(f"PostgreSQL connection via {url_key} failed: {e}")
-        else:
-            logger.info(f"{url_key} is not set or empty")
-    # Fallback to individual POSTGRES_ vars (local dev only)
+                return psycopg2.connect(db_url, connect_timeout=10)
+            except Exception:
+                pass
     db_host = settings.POSTGRES_HOST
     if db_host in ("localhost", ""):
         db_host = "127.0.0.1"
     try:
-        conn = psycopg2.connect(
+        return psycopg2.connect(
             host=db_host,
             port=settings.POSTGRES_PORT,
             user=settings.POSTGRES_USER,
@@ -475,8 +528,23 @@ def get_db_connection():
             dbname=settings.POSTGRES_DB,
             connect_timeout=10,
         )
-        logger.info(f"Connected to PostgreSQL via individual vars: {db_host}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}")
-        return conn
     except Exception as e:
         logger.error(f"PostgreSQL connection failed: {e}")
         return None
+
+
+def release_db_connection(conn):
+    """Safely return a connection to the pool or close it."""
+    global _pool
+    if conn is None:
+        return
+    if _pool is not None:
+        try:
+            _pool.putconn(conn)
+            return
+        except Exception:
+            pass
+    try:
+        conn.close()
+    except Exception:
+        pass

@@ -10,8 +10,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelna
 logger = logging.getLogger("ntic.main")
 from contextlib import asynccontextmanager
 from app.config import settings
-from app.database import init_postgres_db, get_db_connection
-from app.security import verify_password, create_token, require_auth, require_admin
+from app.database import init_postgres_db, get_db_connection, release_db_connection
+from app.security import verify_password, create_token, require_auth, require_admin, check_rate_limit, reset_rate_limit
 from app.ws_manager import ws_manager, broadcast_async
 
 try:
@@ -523,19 +523,24 @@ try:
 
     @app.post("/api/login")
     def login(payload: LoginRequest, request: Request):
+        client_ip = extract_client_ip(request)
+        # Rate limit: max 5 login attempts per 60 seconds per IP
+        check_rate_limit(f"login:{client_ip}", max_attempts=5, window_seconds=60)
+
         conn = _get_db()
-        cur = conn.cursor()
         credential = payload.email.strip()
+        row = None
         try:
+            cur = conn.cursor()
             # Try email first, then ticket (access pass)
             cur.execute(
                 "SELECT id, email, full_name, role, ticket, password_hash, status, organization FROM users WHERE lower(email) = %s OR upper(ticket) = %s",
                 (credential.lower(), credential.upper()),
             )
             row = cur.fetchone()
-        finally:
             cur.close()
-            conn.close()
+        finally:
+            release_db_connection(conn)
 
         if not row:
             raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -543,13 +548,16 @@ try:
         if not verify_password(payload.password, password_hash):
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
+        # Password verified -> clear rate limit counter
+        reset_rate_limit(f"login:{client_ip}")
+
         token = create_token()
         expires_at = datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=7)
         conn = _get_db()
-        cur = conn.cursor()
-        client_ip = anonymize_ip(extract_client_ip(request))
+        client_ip_anon = anonymize_ip(client_ip)
         user_agent = request.headers.get("user-agent", "")
         try:
+            cur = conn.cursor()
             cur.execute(
                 "INSERT INTO auth_sessions (token, user_id, email, expires_at) VALUES (%s, %s, %s, %s)",
                 (token, user_id, db_email, expires_at),
@@ -557,7 +565,7 @@ try:
             try:
                 cur.execute(
                     "INSERT INTO audit_logs (action, usr, time, type, ip, client) VALUES (%s, %s, %s, %s, %s, %s)",
-                    (f"{role} login: {db_email}", db_email, datetime.datetime.now(datetime.UTC).isoformat(), "auth", client_ip, user_agent),
+                    (f"{role} login: {db_email}", db_email, datetime.datetime.now(datetime.UTC).isoformat(), "auth", client_ip_anon, user_agent),
                 )
             except Exception:
                 cur.execute(
@@ -565,14 +573,13 @@ try:
                     (f"{role} login: {db_email}", db_email, datetime.datetime.now(datetime.UTC).isoformat(), "auth"),
                 )
             conn.commit()
+            cur.close()
             broadcast_async({"type": "data_changed", "collection": "audit_logs"})
         except Exception as e:
             conn.rollback()
-            cur.close()
-            conn.close()
             raise HTTPException(status_code=500, detail=str(e))
-        cur.close()
-        conn.close()
+        finally:
+            release_db_connection(conn)
 
         return {
             "token": token,
@@ -599,14 +606,15 @@ try:
                 token = auth_header[7:]
         if token:
             conn = _get_db()
-            cur = conn.cursor()
             try:
+                cur = conn.cursor()
                 cur.execute("DELETE FROM auth_sessions WHERE token = %s", (token,))
                 conn.commit()
+                cur.close()
             except Exception:
                 conn.rollback()
-            cur.close()
-            conn.close()
+            finally:
+                release_db_connection(conn)
         return {"status": "ok"}
 
     # ─── AUTH SESSION MANAGEMENT ─────────────────────────────────────
