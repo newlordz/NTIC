@@ -2044,8 +2044,9 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Skip complex animation on mobile -- poor UX, high battery cost
-    const isMobile = window.innerWidth < 768;
+    // Skip complex animation on mobile or when user prefers reduced motion (battery saver)
+    const isReducedMotion = typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = window.innerWidth < 768 || isReducedMotion;
     if (isMobile) {
       // Draw a simple static gradient and return
       const drawStatic = () => {

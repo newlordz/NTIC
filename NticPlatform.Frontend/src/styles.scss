@@ -3619,9 +3619,13 @@ body.dark-theme .custom-credentials-modal {
   }
 
   .fade-in,
-  .route-animate {
-    animation: none;
-    opacity: 1;
+  .route-animate,
+  .pulse-ring,
+  .radar-sweep,
+  .cursor-blink,
+  .hero-beam,
+  .glow-orb {
+    animation: none !important;
   }
 }
 
