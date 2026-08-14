@@ -165,32 +165,99 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
   gpsAccuracyWarning = '';
   gpsLookupLoading = false;
 
-  async lookupSchoolGps(): Promise<void> {
-    const schoolName = this.schoolForm.name?.trim();
-    if (!schoolName) {
-      this.showCustomAlert('Please enter the school name first.', 'Missing School Name', 'warning');
-      return;
-    }
-    this.gpsLookupLoading = true;
-    this.gpsAddress = '';
-    this.gpsAccuracyWarning = '';
-    try {
-      const query = encodeURIComponent(`${schoolName}, Ghana`);
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${query}&limit=1`);
-      const data = await res.json();
-      if (data?.length > 0) {
-        const lat = parseFloat(data[0].lat);
-        const lng = parseFloat(data[0].lon);
-        this.schoolForm.gps = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-        this.gpsAddress = data[0].display_name || '';
-        this.gpsAccuracyWarning = 'GPS address sourced from OpenStreetMap. Please verify accuracy.';
-      } else {
-        this.showCustomAlert(`Could not find GPS coordinates for "${schoolName}". Try the "Detect GPS" button or enter coordinates manually.`, 'Not Found', 'warning');
+  isGpsSearchModalOpen = false;
+  gpsSearchQuery = '';
+  gpsSearchResults: Array<{ name: string; address: string; lat: string; lng: string }> = [];
+  gpsSearching = false;
+  gpsSearchError = '';
+
+  private ghanaSchoolsGpsDb: Array<{ name: string; address: string; lat: string; lng: string }> = [
+    { name: 'Achimota School', address: 'Achimota, Accra, Greater Accra Region', lat: '5.623450', lng: '-0.218900' },
+    { name: 'Prempeh College', address: 'Sofoline, Kumasi, Ashanti Region', lat: '6.697200', lng: '-1.646800' },
+    { name: 'Presbyterian Boys\' Secondary School (PRESEC Legon)', address: 'Legon, Accra, Greater Accra Region', lat: '5.659600', lng: '-0.177200' },
+    { name: 'Mfantsipim School', address: 'Cape Coast, Central Region', lat: '5.114700', lng: '-1.252300' },
+    { name: 'Adisadel College', address: 'Cape Coast, Central Region', lat: '5.123900', lng: '-1.272100' },
+    { name: 'Holy Child School', address: 'Cape Coast, Central Region', lat: '5.118900', lng: '-1.261200' },
+    { name: 'Wesley Girls\' High School', address: 'Cape Coast, Central Region', lat: '5.132800', lng: '-1.276400' },
+    { name: 'St. Augustine\'s College', address: 'Cape Coast, Central Region', lat: '5.105400', lng: '-1.289100' },
+    { name: 'Opoku Ware School', address: 'Santasi, Kumasi, Ashanti Region', lat: '6.671900', lng: '-1.637500' },
+    { name: 'St. Peter\'s Senior High School', address: 'Nkwatia Kwahu, Eastern Region', lat: '6.621400', lng: '-0.738900' },
+    { name: 'Aburi Girls\' Senior High School', address: 'Aburi, Eastern Region', lat: '5.854100', lng: '-0.174600' },
+    { name: 'Tamale Senior High School (TAMASCO)', address: 'Tamale, Northern Region', lat: '9.407500', lng: '-0.839300' },
+    { name: 'Ghana National College', address: 'Cape Coast, Central Region', lat: '5.139200', lng: '-1.258900' },
+    { name: 'Accra Academy', address: 'Bubuashie, Accra, Greater Accra Region', lat: '5.572100', lng: '-0.244800' },
+    { name: 'Koforidua Senior High Technical School (SECTECH)', address: 'Koforidua, Eastern Region', lat: '6.094500', lng: '-0.261200' },
+    { name: 'Mawuli School', address: 'Ho, Volta Region', lat: '6.611200', lng: '0.472300' },
+    { name: 'Kumasi Academy', address: 'Asokore Mampong, Kumasi, Ashanti Region', lat: '6.702300', lng: '-1.584100' },
+    { name: 'Yaa Asantewaa Girls\' Senior High School', address: 'Tanoso, Kumasi, Ashanti Region', lat: '6.709200', lng: '-1.691400' },
+    { name: 'Bishop Herman College', address: 'Kpando, Volta Region', lat: '6.993400', lng: '0.291200' },
+    { name: 'St. Thomas Aquinas Senior High School', address: 'Cantonments, Accra, Greater Accra Region', lat: '5.578900', lng: '-0.171400' },
+    { name: 'University of Ghana', address: 'Legon Boundary, Accra, Greater Accra Region', lat: '5.650800', lng: '-0.187000' },
+    { name: 'Kwame Nkrumah University of Science and Technology (KNUST)', address: 'Kumasi, Ashanti Region', lat: '6.674500', lng: '-1.571600' },
+    { name: 'University of Cape Coast (UCC)', address: 'Cape Coast, Central Region', lat: '5.115500', lng: '-1.282500' }
+  ];
+
+  openSchoolGpsModal(): void {
+    this.isGpsSearchModalOpen = true;
+    this.gpsSearchQuery = this.schoolForm.name?.trim() || '';
+    this.gpsSearchError = '';
+    this.searchSchoolGps();
+  }
+
+  closeSchoolGpsModal(): void {
+    this.isGpsSearchModalOpen = false;
+  }
+
+  async searchSchoolGps(): Promise<void> {
+    const q = (this.gpsSearchQuery || '').trim().toLowerCase();
+    this.gpsSearching = true;
+    this.gpsSearchError = '';
+    this.gpsSearchResults = [];
+
+    // 1. First check local preset Ghanaian schools database
+    const localMatches = this.ghanaSchoolsGpsDb.filter(s =>
+      !q || s.name.toLowerCase().includes(q) || s.address.toLowerCase().includes(q)
+    );
+    this.gpsSearchResults = [...localMatches];
+
+    // 2. Also perform live OpenStreetMap search if query provided
+    if (q) {
+      try {
+        const queryEncoded = encodeURIComponent(`${this.gpsSearchQuery}, Ghana`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${queryEncoded}&countrycodes=gh&limit=8`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            for (const item of data) {
+              const lat = parseFloat(item.lat).toFixed(6);
+              const lng = parseFloat(item.lon).toFixed(6);
+              const name = item.name || (item.display_name ? item.display_name.split(',')[0] : 'Location in Ghana');
+              const address = item.display_name || '';
+              if (!this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - parseFloat(lat)) < 0.0001 && Math.abs(parseFloat(r.lng) - parseFloat(lng)) < 0.0001)) {
+                this.gpsSearchResults.push({ name, address, lat, lng });
+              }
+            }
+          }
+        }
+      } catch {
+        // Continue with local DB matches if network search fails
       }
-    } catch {
-      this.showCustomAlert('Failed to look up school GPS. Check your internet connection or try manual entry.', 'Lookup Failed', 'warning');
     }
-    this.gpsLookupLoading = false;
+
+    if (this.gpsSearchResults.length === 0) {
+      this.gpsSearchError = 'No matching schools or landmarks found in Ghana. Try searching by town or entering coordinates manually.';
+    }
+
+    this.gpsSearching = false;
+  }
+
+  selectSchoolGps(result: { name: string; address: string; lat: string; lng: string }): void {
+    this.schoolForm.gps = `${result.lat}, ${result.lng}`;
+    this.gpsAddress = result.address || result.name;
+    this.gpsAccuracyWarning = '';
+    this.isGpsSearchModalOpen = false;
+    this.notificationService.success(`Applied GPS coordinates for ${result.name}`, 'GPS Coordinates Set');
+    this.tryAutoSave();
   }
 
   studentForm = {
