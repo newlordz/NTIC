@@ -917,8 +917,9 @@
   position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
   background: var(--surface); border-radius: 18px;
   padding: 32px; text-align: center;
-  z-index: 1001; max-width: 420px; width: 90%;
-  box-shadow: 0 32px 64px rgba(0,0,0,0.2);
+  z-index: 3500; max-width: 420px; width: 90%;
+  pointer-events: auto;
+  box-shadow: 0 32px 64px rgba(0,0,0,0.3);
   animation: modalSlideIn 0.3s cubic-bezier(0.16,1,0.3,1);
 
   .destroy-icon {
@@ -929,7 +930,24 @@
   }
   h3 { margin: 0 0 10px; font-size: 18px; font-weight: 700; color: var(--on-surface); }
   p { margin: 0 0 24px; font-size: 14px; color: var(--on-surface-variant); line-height: 1.5; }
-  .destroy-actions { display: flex; gap: 12px; justify-content: center; }
+  .destroy-actions {
+    display: flex; gap: 12px; justify-content: center;
+    .btn {
+      min-width: 120px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .btn-danger {
+      background: #dc2626 !important;
+      border-color: #dc2626 !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+      &:hover {
+        background: #b91c1c !important;
+        border-color: #b91c1c !important;
+      }
+    }
+  }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -937,7 +955,7 @@
 ════════════════════════════════════════════════════════════ */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-  backdrop-filter: blur(6px); z-index: 1000;
+  z-index: 2500;
   animation: fadeIn 0.2s ease-out;
 }
 
