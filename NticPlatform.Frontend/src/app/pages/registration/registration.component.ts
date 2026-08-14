@@ -140,6 +140,8 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     };
   }
 
+  today = new Date();
+
   closeCustomAlert() {
     this.customAlertModal = null;
   }
