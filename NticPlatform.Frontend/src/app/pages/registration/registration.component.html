@@ -992,6 +992,7 @@
                   </label>
                   <p style="font-size: 12px; line-height: 1.5; color: var(--on-surface-variant); margin: 0;">
                     I confirm that I have obtained necessary authorizations and consent to the collection, processing, and verification of student & institution personal data strictly for NTIC Ghana Championship competition and training purposes.
+                    <a (click)="openPrivacyModal(); $event.stopPropagation()" style="color:var(--primary); text-decoration:underline; font-size:11.5px; margin-left:6px; cursor:pointer;">Read Act 843 Privacy Policy</a>
                   </p>
                   <div *ngIf="schoolForm.gdpaConsent && schoolForm.gdpaConsentTimestamp" style="margin-top: 6px; font-size: 11px; color: #10b981; display: flex; align-items: center; gap: 4px;">
                     <span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
@@ -2705,6 +2706,26 @@
               <span class="item-val" [style.color]="(selectedFileIds['accredDocs'] || []).length ? '#f59e0b' : '#ef4444'" style="display:flex; align-items:center; gap:4px;">
                 <span class="material-symbols-outlined" style="font-size:16px;">{{ (selectedFileIds['accredDocs'] || []).length ? 'hourglass_empty' : 'warning' }}</span>
                 {{ (selectedFileIds['accredDocs'] || []).length ? 'Pending Review' : 'Required -- Please upload' }}
+              </span>
+            </div>
+        <!-- Section 5: Data Protection Compliance (Act 843) -->
+        <div class="preview-section-box">
+          <div class="section-title-row">
+            <span class="material-symbols-outlined" style="color: #10b981;">shield</span>
+            <span>Ghana Data Protection Act (Act 843) Compliance</span>
+          </div>
+          <div class="modal-info-grid">
+            <div class="modal-info-item">
+              <span class="item-lbl">Consent Status</span>
+              <span class="item-val" style="color: #10b981; display:flex; align-items:center; gap:4px;">
+                <span class="material-symbols-outlined" style="font-size:16px;">verified</span>
+                Lawfully Consented
+              </span>
+            </div>
+            <div class="modal-info-item">
+              <span class="item-lbl">Consent Timestamp</span>
+              <span class="item-val" style="font-family:monospace; font-size:12px;">
+                {{ (schoolForm.gdpaConsentTimestamp || today) | date:'medium' }}
               </span>
             </div>
           </div>

@@ -2775,7 +2775,13 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
           students: this.schoolForm.students.map((s: any) => ({ id: s.id, name: s.name, track: s.track, class: s.class, dob: s.dob, gender: s.gender, guardianName: s.guardianName, guardianPhone: s.guardianPhone, skills: s.skills })),
           docs: this.selectedFileIds['accredDocs']?.length
             ? this.selectedFileIds['accredDocs'].map((id, i) => `${id}::${this.selectedFileNames['accredDocs']?.[i] || 'document.pdf'}`)
-            : []
+            : [],
+          dataProtectionConsent: {
+            act: 'Ghana Data Protection Act (Act 843)',
+            consented: true,
+            timestamp: this.schoolForm.gdpaConsentTimestamp || new Date().toISOString(),
+            legalBasis: 'Explicit consent (Act 843 §20) & competition participation agreement'
+          }
         };
         if (logoFileId) details.logoFileId = logoFileId;
 
