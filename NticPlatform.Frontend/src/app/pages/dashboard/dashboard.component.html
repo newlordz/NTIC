@@ -1013,6 +1013,9 @@
                   <span class="cc-live-dot cc-dot-green"></span>
                   Live Standings &middot; {{ lastScoringUpdate | date:'HH:mm:ss' }}
                 </span>
+                <button type="button" class="cc-comp-sound-btn" (click)="toggleTournamentAudio()" [title]="tournamentAudioEnabled ? 'Mute podium audio chimes' : 'Enable podium audio chimes'">
+                  <span class="material-symbols-outlined">{{ tournamentAudioEnabled ? 'volume_up' : 'volume_off' }}</span>
+                </button>
               </div>
               <div class="cc-comp-leader-list">
                 <div *ngFor="let leader of competitionLeaderboardTop" class="cc-comp-leader-row" [class.leader-top3]="leader.rank <= 3">

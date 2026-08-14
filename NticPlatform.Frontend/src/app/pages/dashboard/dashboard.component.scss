@@ -9472,8 +9472,35 @@
 }
 
 /* ── Live Scoring Pulse Ticker ── */
-.cc-comp-podium-card.scoring-pulse {
-  animation: cardScoringPulse 1.8s ease-in-out;
+.cc-comp-podium-card {
+  transform: translateZ(0);
+  will-change: transform, box-shadow;
+
+  &.scoring-pulse {
+    animation: cardScoringPulse 1.8s ease-in-out;
+  }
+}
+
+.cc-comp-sound-btn {
+  background: none;
+  border: none;
+  color: var(--on-surface-variant, #64748b);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+
+  .material-symbols-outlined {
+    font-size: 16px;
+  }
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #f59e0b;
+  }
 }
 
 @keyframes cardScoringPulse {

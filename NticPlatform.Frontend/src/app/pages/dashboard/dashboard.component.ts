@@ -201,14 +201,68 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // ── LIVE COMPETITION & SCORING TICKER (BEYOND-THE-BOX) ──
   lastScoringUpdate: Date = new Date();
   isScoringUpdated = false;
+  tournamentAudioEnabled = true;
+  private scoringPulseDebounceTimer: any = null;
+
+  toggleTournamentAudio(): void {
+    this.tournamentAudioEnabled = !this.tournamentAudioEnabled;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ntic_tournament_audio', this.tournamentAudioEnabled ? 'enabled' : 'disabled');
+    }
+    this.dialogService.toast(`Podium sound chimes ${this.tournamentAudioEnabled ? 'enabled' : 'muted'}.`, 'info');
+  }
+
+  playTournamentChime(): void {
+    if (!this.tournamentAudioEnabled || typeof window === 'undefined') return;
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      const now = ctx.currentTime;
+
+      // Gentle two-tone harmonic chime (587.33Hz D5 -> 880Hz A5)
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(587.33, now);
+      osc1.frequency.exponentialRampToValueAtTime(880.00, now + 0.15);
+
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(880.00, now);
+      osc2.frequency.exponentialRampToValueAtTime(1174.66, now + 0.15);
+
+      gainNode.gain.setValueAtTime(0.04, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+
+      osc1.connect(gainNode);
+      osc2.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.6);
+      osc2.stop(now + 0.6);
+    } catch (e) {
+      // AudioContext blocked or not permitted by browser autoplay policy
+    }
+  }
 
   triggerScoringUpdatePulse(): void {
-    this.lastScoringUpdate = new Date();
-    this.isScoringUpdated = true;
-    setTimeout(() => {
-      this.isScoringUpdated = false;
+    if (this.scoringPulseDebounceTimer) {
+      clearTimeout(this.scoringPulseDebounceTimer);
+    }
+    this.scoringPulseDebounceTimer = setTimeout(() => {
+      this.lastScoringUpdate = new Date();
+      this.isScoringUpdated = true;
+      this.playTournamentChime();
       this.cdr.markForCheck();
-    }, 2500);
+      setTimeout(() => {
+        this.isScoringUpdated = false;
+        this.cdr.markForCheck();
+      }, 2500);
+    }, 500);
   }
 
   quickApproveTopPending(): void {
