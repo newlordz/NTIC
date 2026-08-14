@@ -7,6 +7,8 @@ import { ThemeService } from '../../services/theme.service';
 import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { BrevoEmailService } from '../../services/brevo-email.service';
+import { SmsService } from '../../services/sms.service';
+import { NotificationService } from '../../services/notification.service';
 import { DialogService } from '../../services/dialog.service';
 import { ApiService } from '../../services/api.service';
 
@@ -615,7 +617,6 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     this.verifyOtpInput = '';
     this.verifyOtpError = '';
     this.verifyOtpSent = false;
-    this.verifyOtpModalOpen = true;
 
     this.verifyStoredOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -623,14 +624,19 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
       try {
         this.emailService.sendOtpEmail(value, this.verifyStoredOtp);
       } catch { /* ignore */ }
+    } else if (type === 'phone') {
+      try {
+        this.smsService.sendOtpSms(value, this.verifyStoredOtp).subscribe();
+      } catch { /* ignore */ }
     }
 
     this.verifyOtpSent = true;
-    this.showCustomAlert(
-      type === 'email'
-        ? `OTP sent to ${value}`
-        : `OTP sent to ${value}`,
-      'Verification Code Sent', 'info'
+    this.verifyOtpModalOpen = true;
+
+    // Trigger non-blocking toast alert instead of a modal popup overlay
+    this.notificationService.info(
+      `A 6-digit verification code was dispatched to ${value}`,
+      'Verification Code Sent'
     );
   }
 
@@ -645,9 +651,9 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     }
     this.fieldVerified[this.verifyTargetField] = true;
     this.verifyOtpModalOpen = false;
-    this.showCustomAlert(
+    this.notificationService.success(
       `${this.verifyTargetType === 'email' ? 'Email' : 'Phone number'} verified successfully!`,
-      'Verified', 'success'
+      'Verified'
     );
     this.tryAutoSave();
   }
@@ -1000,7 +1006,18 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     this.showPrivacyModal = false;
   }
 
-  constructor(private route: ActivatedRoute, private router: Router, public themeService: ThemeService, public contentService: ContentService, public fileStorage: FileStorageService, private emailService: BrevoEmailService, public dialogService: DialogService, private apiService: ApiService) {}
+  constructor(
+    private route: ActivatedRoute,
+    private router: Router,
+    public themeService: ThemeService,
+    public contentService: ContentService,
+    public fileStorage: FileStorageService,
+    private emailService: BrevoEmailService,
+    private smsService: SmsService,
+    private notificationService: NotificationService,
+    public dialogService: DialogService,
+    private apiService: ApiService
+  ) {}
 
   logoUrls: Record<string, string> = {};
 
