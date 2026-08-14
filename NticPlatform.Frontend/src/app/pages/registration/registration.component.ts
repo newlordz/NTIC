@@ -171,30 +171,80 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
   gpsSearching = false;
   gpsSearchError = '';
 
-  private ghanaSchoolsGpsDb: Array<{ name: string; address: string; lat: string; lng: string }> = [
-    { name: 'Achimota School', address: 'Achimota, Accra, Greater Accra Region', lat: '5.623450', lng: '-0.218900' },
-    { name: 'Prempeh College', address: 'Sofoline, Kumasi, Ashanti Region', lat: '6.697200', lng: '-1.646800' },
-    { name: 'Presbyterian Boys\' Secondary School (PRESEC Legon)', address: 'Legon, Accra, Greater Accra Region', lat: '5.659600', lng: '-0.177200' },
-    { name: 'Mfantsipim School', address: 'Cape Coast, Central Region', lat: '5.114700', lng: '-1.252300' },
-    { name: 'Adisadel College', address: 'Cape Coast, Central Region', lat: '5.123900', lng: '-1.272100' },
-    { name: 'Holy Child School', address: 'Cape Coast, Central Region', lat: '5.118900', lng: '-1.261200' },
-    { name: 'Wesley Girls\' High School', address: 'Cape Coast, Central Region', lat: '5.132800', lng: '-1.276400' },
-    { name: 'St. Augustine\'s College', address: 'Cape Coast, Central Region', lat: '5.105400', lng: '-1.289100' },
-    { name: 'Opoku Ware School', address: 'Santasi, Kumasi, Ashanti Region', lat: '6.671900', lng: '-1.637500' },
-    { name: 'St. Peter\'s Senior High School', address: 'Nkwatia Kwahu, Eastern Region', lat: '6.621400', lng: '-0.738900' },
-    { name: 'Aburi Girls\' Senior High School', address: 'Aburi, Eastern Region', lat: '5.854100', lng: '-0.174600' },
-    { name: 'Tamale Senior High School (TAMASCO)', address: 'Tamale, Northern Region', lat: '9.407500', lng: '-0.839300' },
-    { name: 'Ghana National College', address: 'Cape Coast, Central Region', lat: '5.139200', lng: '-1.258900' },
-    { name: 'Accra Academy', address: 'Bubuashie, Accra, Greater Accra Region', lat: '5.572100', lng: '-0.244800' },
-    { name: 'Koforidua Senior High Technical School (SECTECH)', address: 'Koforidua, Eastern Region', lat: '6.094500', lng: '-0.261200' },
-    { name: 'Mawuli School', address: 'Ho, Volta Region', lat: '6.611200', lng: '0.472300' },
-    { name: 'Kumasi Academy', address: 'Asokore Mampong, Kumasi, Ashanti Region', lat: '6.702300', lng: '-1.584100' },
-    { name: 'Yaa Asantewaa Girls\' Senior High School', address: 'Tanoso, Kumasi, Ashanti Region', lat: '6.709200', lng: '-1.691400' },
-    { name: 'Bishop Herman College', address: 'Kpando, Volta Region', lat: '6.993400', lng: '0.291200' },
-    { name: 'St. Thomas Aquinas Senior High School', address: 'Cantonments, Accra, Greater Accra Region', lat: '5.578900', lng: '-0.171400' },
-    { name: 'University of Ghana', address: 'Legon Boundary, Accra, Greater Accra Region', lat: '5.650800', lng: '-0.187000' },
-    { name: 'Kwame Nkrumah University of Science and Technology (KNUST)', address: 'Kumasi, Ashanti Region', lat: '6.674500', lng: '-1.571600' },
-    { name: 'University of Cape Coast (UCC)', address: 'Cape Coast, Central Region', lat: '5.115500', lng: '-1.282500' }
+  private ghanaSchoolsGpsDb: Array<{ name: string; address: string; lat: string; lng: string; aliases?: string[] }> = [
+    // Western Region
+    { name: 'Ghana Secondary Technical School (GSTS)', address: 'Takoradi, Western Region', lat: '4.908300', lng: '-1.758300', aliases: ['gsts', 'ghana secondary technical', 'takoradi tech'] },
+    { name: 'Archbishop Porter Girls\' Senior High School', address: 'Fijai, Takoradi, Western Region', lat: '4.922100', lng: '-1.761200', aliases: ['porter girls', 'apgss'] },
+    { name: 'Sekondi College (SEKCO)', address: 'Sekondi, Western Region', lat: '4.938500', lng: '-1.712400', aliases: ['sekco'] },
+    { name: 'Takoradi Senior High School (TADISCO)', address: 'Takoradi, Western Region', lat: '4.912400', lng: '-1.774500', aliases: ['tadisco'] },
+    { name: 'Fijai Senior High School', address: 'Fijai, Sekondi-Takoradi, Western Region', lat: '4.931200', lng: '-1.754300', aliases: ['fijai'] },
+    { name: 'Tarkwa Senior High School', address: 'Tarkwa, Western Region', lat: '5.302100', lng: '-1.984500', aliases: ['tarcisco'] },
+    { name: 'University of Mines and Technology (UMaT)', address: 'Tarkwa, Western Region', lat: '5.298200', lng: '-1.996100', aliases: ['umat'] },
+    { name: 'Takoradi Technical University (TTU)', address: 'Takoradi, Western Region', lat: '4.901500', lng: '-1.762000', aliases: ['ttu'] },
+
+    // Greater Accra Region
+    { name: 'Achimota School', address: 'Achimota, Accra, Greater Accra Region', lat: '5.623450', lng: '-0.218900', aliases: ['motown', 'achimota'] },
+    { name: 'Presbyterian Boys\' Secondary School (PRESEC Legon)', address: 'Legon, Accra, Greater Accra Region', lat: '5.659600', lng: '-0.177200', aliases: ['presec', 'odade3'] },
+    { name: 'Accra Academy', address: 'Bubuashie, Accra, Greater Accra Region', lat: '5.572100', lng: '-0.244800', aliases: ['bleoo', 'accra academy'] },
+    { name: 'St. Thomas Aquinas Senior High School', address: 'Cantonments, Accra, Greater Accra Region', lat: '5.578900', lng: '-0.171400', aliases: ['aquinas', 'old tombs'] },
+    { name: 'Accra High School', address: 'Asylum Down, Accra, Greater Accra Region', lat: '5.568400', lng: '-0.201200', aliases: ['ahisco'] },
+    { name: 'Wesley Grammar School', address: 'Dansoman, Accra, Greater Accra Region', lat: '5.554200', lng: '-0.263100', aliases: ['wesg'] },
+    { name: 'Labone Senior High School', address: 'Labone, Accra, Greater Accra Region', lat: '5.571400', lng: '-0.162300', aliases: ['labone'] },
+    { name: 'Odorgonno Senior High School', address: 'Awoshie, Accra, Greater Accra Region', lat: '5.592100', lng: '-0.284500', aliases: ['odorgonno'] },
+    { name: 'Tema Senior High School (TEMASCO)', address: 'Community 5, Tema, Greater Accra Region', lat: '5.674100', lng: '-0.012300', aliases: ['temasco'] },
+    { name: 'Ghanata Senior High School', address: 'Dodowa, Greater Accra Region', lat: '5.881200', lng: '-0.093400', aliases: ['ghanata'] },
+    { name: 'University of Ghana (UG Legon)', address: 'Legon Boundary, Accra, Greater Accra Region', lat: '5.650800', lng: '-0.187000', aliases: ['ug', 'legon'] },
+    { name: 'University of Professional Studies, Accra (UPSA)', address: 'Madina-Legon, Accra, Greater Accra Region', lat: '5.661200', lng: '-0.168400', aliases: ['upsa'] },
+    { name: 'Accra Technical University (ATU)', address: 'Barnes Road, Accra, Greater Accra Region', lat: '5.551200', lng: '-0.203400', aliases: ['atu', 'accra poly'] },
+
+    // Ashanti Region
+    { name: 'Prempeh College', address: 'Sofoline, Kumasi, Ashanti Region', lat: '6.697200', lng: '-1.646800', aliases: ['amanfoo', 'prempeh'] },
+    { name: 'Opoku Ware School (OWASS)', address: 'Santasi, Kumasi, Ashanti Region', lat: '6.671900', lng: '-1.637500', aliases: ['owass', 'akatasuo'] },
+    { name: 'Kumasi Academy', address: 'Asokore Mampong, Kumasi, Ashanti Region', lat: '6.702300', lng: '-1.584100', aliases: ['kumaca'] },
+    { name: 'Yaa Asantewaa Girls\' Senior High School', address: 'Tanoso, Kumasi, Ashanti Region', lat: '6.709200', lng: '-1.691400', aliases: ['yagshs', 'adehyee'] },
+    { name: 'St. Louis Senior High School', address: 'Oduom, Kumasi, Ashanti Region', lat: '6.692300', lng: '-1.564500', aliases: ['st louis'] },
+    { name: 'Kumasi High School', address: 'Gyinyase, Kumasi, Ashanti Region', lat: '6.663400', lng: '-1.591200', aliases: ['kuhis', 'mmerante3'] },
+    { name: 'T.I. Ahmadiyya Senior High School (AMASS Kumasi)', address: 'Kumasi, Ashanti Region', lat: '6.687200', lng: '-1.614500', aliases: ['amass', 'real amass'] },
+    { name: 'Kwame Nkrumah University of Science and Technology (KNUST)', address: 'Kumasi, Ashanti Region', lat: '6.674500', lng: '-1.571600', aliases: ['knust', 'tech'] },
+    { name: 'Kumasi Technical University (KsTU)', address: 'Kumasi, Ashanti Region', lat: '6.698400', lng: '-1.621200', aliases: ['kstu'] },
+
+    // Central Region
+    { name: 'Mfantsipim School', address: 'Cape Coast, Central Region', lat: '5.114700', lng: '-1.252300', aliases: ['kwabotwe', 'mfantsipim'] },
+    { name: 'Adisadel College', address: 'Cape Coast, Central Region', lat: '5.123900', lng: '-1.272100', aliases: ['adisco', 'santaclausians'] },
+    { name: 'Holy Child School', address: 'Cape Coast, Central Region', lat: '5.118900', lng: '-1.261200', aliases: ['holico'] },
+    { name: 'Wesley Girls\' High School', address: 'Cape Coast, Central Region', lat: '5.132800', lng: '-1.276400', aliases: ['wey gey hey', 'wesley girls'] },
+    { name: 'St. Augustine\'s College', address: 'Cape Coast, Central Region', lat: '5.105400', lng: '-1.289100', aliases: ['augusco', 'st augustines'] },
+    { name: 'Ghana National College', address: 'Cape Coast, Central Region', lat: '5.139200', lng: '-1.258900', aliases: ['national', 'ghana national'] },
+    { name: 'Aggrey Memorial A.M.E. Zion Senior High School', address: 'Cape Coast, Central Region', lat: '5.148200', lng: '-1.231400', aliases: ['aggrey memorial'] },
+    { name: 'University of Cape Coast (UCC)', address: 'Cape Coast, Central Region', lat: '5.115500', lng: '-1.282500', aliases: ['ucc'] },
+
+    // Eastern Region
+    { name: 'St. Peter\'s Senior High School', address: 'Nkwatia Kwahu, Eastern Region', lat: '6.621400', lng: '-0.738900', aliases: ['persco', 'st peters'] },
+    { name: 'Pope John Senior High School and Minor Seminary', address: 'Effiduase, Koforidua, Eastern Region', lat: '6.112400', lng: '-0.247800', aliases: ['pojoss', 'pope john'] },
+    { name: 'Aburi Girls\' Senior High School', address: 'Aburi, Eastern Region', lat: '5.854100', lng: '-0.174600', aliases: ['abugiss', 'aburi girls'] },
+    { name: 'Koforidua Senior High Technical School (SECTECH)', address: 'Koforidua, Eastern Region', lat: '6.094500', lng: '-0.261200', aliases: ['sectech', 'koforidua sec tech'] },
+    { name: 'Krobo Girls\' Senior High School', address: 'Odumase Krobo, Eastern Region', lat: '6.128400', lng: '0.003400', aliases: ['krogiss'] },
+    { name: 'Ghana Senior High School (GHANASS)', address: 'Koforidua, Eastern Region', lat: '6.101200', lng: '-0.256700', aliases: ['ghanass'] },
+
+    // Volta Region
+    { name: 'Mawuli School', address: 'Ho, Volta Region', lat: '6.611200', lng: '0.472300', aliases: ['mawuli'] },
+    { name: 'Bishop Herman College', address: 'Kpando, Volta Region', lat: '6.993400', lng: '0.291200', aliases: ['biheco', 'bishop herman'] },
+    { name: 'Keta Senior High Technical School (KETASCO)', address: 'Dzelukope, Keta, Volta Region', lat: '5.923400', lng: '0.978100', aliases: ['ketasco'] },
+    { name: 'OLA Girls\' Senior High School', address: 'Ho, Volta Region', lat: '6.602100', lng: '0.463400', aliases: ['ola girls ho'] },
+    { name: 'University of Health and Allied Sciences (UHAS)', address: 'Ho, Volta Region', lat: '6.643200', lng: '0.491200', aliases: ['uhas'] },
+
+    // Northern, Upper East & Upper West
+    { name: 'Tamale Senior High School (TAMASCO)', address: 'Tamale, Northern Region', lat: '9.407500', lng: '-0.839300', aliases: ['tamasco'] },
+    { name: 'Ghana Senior High School (GHANASCO Tamale)', address: 'Tamale, Northern Region', lat: '9.389200', lng: '-0.824500', aliases: ['ghanasco'] },
+    { name: 'Bolgatanga Senior High School (BIG BOSS)', address: 'Winkogo, Bolgatanga, Upper East Region', lat: '10.743200', lng: '-0.884500', aliases: ['big boss', 'bolga shs'] },
+    { name: 'Navrongo Senior High School (NAVASCO)', address: 'Navrongo, Upper East Region', lat: '10.892100', lng: '-1.084500', aliases: ['navasco'] },
+    { name: 'Wa Senior High School', address: 'Wa, Upper West Region', lat: '10.061200', lng: '-2.512400', aliases: ['wa shs'] },
+    { name: 'University for Development Studies (UDS)', address: 'Dungu, Tamale, Northern Region', lat: '9.358200', lng: '-0.852100', aliases: ['uds'] },
+
+    // Bono & Ahafo Regions
+    { name: 'Sunyani Senior High School (SUSEC)', address: 'Sunyani, Bono Region', lat: '7.342100', lng: '-2.324500', aliases: ['susec'] },
+    { name: 'St. James Seminary and Senior High School', address: 'Abesim, Sunyani, Bono Region', lat: '7.301200', lng: '-2.284500', aliases: ['st james sunyani', 'seminary'] },
+    { name: 'University of Energy and Natural Resources (UENR)', address: 'Sunyani, Bono Region', lat: '7.354100', lng: '-2.341200', aliases: ['uenr'] }
   ];
 
   openSchoolGpsModal(): void {
@@ -209,43 +259,70 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
   }
 
   async searchSchoolGps(): Promise<void> {
-    const q = (this.gpsSearchQuery || '').trim().toLowerCase();
+    const rawQuery = (this.gpsSearchQuery || '').trim();
+    const q = rawQuery.toLowerCase();
     this.gpsSearching = true;
     this.gpsSearchError = '';
     this.gpsSearchResults = [];
 
-    // 1. First check local preset Ghanaian schools database
-    const localMatches = this.ghanaSchoolsGpsDb.filter(s =>
-      !q || s.name.toLowerCase().includes(q) || s.address.toLowerCase().includes(q)
-    );
+    // 1. First search local Ghanaian schools database using token matching & aliases
+    const searchTokens = q.split(/[\s,.-]+/).filter(t => t.length > 1 && t !== 'school' && t !== 'shs' && t !== 'senior' && t !== 'high');
+    const localMatches = this.ghanaSchoolsGpsDb.filter(s => {
+      if (!q) return true;
+      const sName = s.name.toLowerCase();
+      const sAddr = s.address.toLowerCase();
+      const sAliases = (s.aliases || []).map(a => a.toLowerCase());
+
+      // Direct match or alias match
+      if (sName.includes(q) || sAddr.includes(q) || sAliases.some(a => a.includes(q) || q.includes(a))) {
+        return true;
+      }
+
+      // Token intersection match (e.g. "ghana secondary technical" matches "Ghana Secondary Technical School (GSTS)")
+      if (searchTokens.length > 0) {
+        const matchesAllTokens = searchTokens.every(t => sName.includes(t) || sAddr.includes(t) || sAliases.some(a => a.includes(t)));
+        if (matchesAllTokens) return true;
+      }
+
+      return false;
+    });
+
     this.gpsSearchResults = [...localMatches];
 
     // 2. Also perform live OpenStreetMap search if query provided
     if (q) {
-      try {
-        const queryEncoded = encodeURIComponent(`${this.gpsSearchQuery}, Ghana`);
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${queryEncoded}&countrycodes=gh&limit=8`);
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            for (const item of data) {
-              const lat = parseFloat(item.lat).toFixed(6);
-              const lng = parseFloat(item.lon).toFixed(6);
-              const name = item.name || (item.display_name ? item.display_name.split(',')[0] : 'Location in Ghana');
-              const address = item.display_name || '';
-              if (!this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - parseFloat(lat)) < 0.0001 && Math.abs(parseFloat(r.lng) - parseFloat(lng)) < 0.0001)) {
-                this.gpsSearchResults.push({ name, address, lat, lng });
+      const queryVariants = [
+        rawQuery,
+        `${rawQuery}, Ghana`
+      ];
+
+      for (const queryVariant of queryVariants) {
+        try {
+          const queryEncoded = encodeURIComponent(queryVariant);
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${queryEncoded}&countrycodes=gh&limit=8`);
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data) && data.length > 0) {
+              for (const item of data) {
+                const lat = parseFloat(item.lat).toFixed(6);
+                const lng = parseFloat(item.lon).toFixed(6);
+                const name = item.name || (item.display_name ? item.display_name.split(',')[0] : 'Location in Ghana');
+                const address = item.display_name || '';
+                if (!this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - parseFloat(lat)) < 0.0001 && Math.abs(parseFloat(r.lng) - parseFloat(lng)) < 0.0001)) {
+                  this.gpsSearchResults.push({ name, address, lat, lng });
+                }
               }
+              break; // Got results
             }
           }
+        } catch {
+          // Network issues handled gracefully
         }
-      } catch {
-        // Continue with local DB matches if network search fails
       }
     }
 
     if (this.gpsSearchResults.length === 0) {
-      this.gpsSearchError = 'No matching schools or landmarks found in Ghana. Try searching by town or entering coordinates manually.';
+      this.gpsSearchError = 'No matching schools or landmarks found in Ghana. Try searching by short name (e.g. GSTS, Prempeh) or city.';
     }
 
     this.gpsSearching = false;
