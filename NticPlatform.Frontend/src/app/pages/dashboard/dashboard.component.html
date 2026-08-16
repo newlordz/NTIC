@@ -552,7 +552,7 @@
           <div class="cc-panel-header">
             <div class="cc-panel-label cc-panel-title-bold">
               <span class="material-symbols-outlined cc-title-ic">dns</span>
-              SYSTEM INFRASTRUCTURE NODES
+              SYSTEM INFRASTRUCTURE &amp; TELEMETRY
             </div>
             <span class="cc-all-healthy-badge">
               <span class="cc-live-dot" [ngClass]="nodeDotClass(overallSystemStatus)"></span>
@@ -560,9 +560,7 @@
             </span>
           </div>
 
-          <!-- Measured platform figures. Deliberately NOT CPU/memory/bandwidth:
-               the backend cannot observe host resources, and the previous
-               gauges were derived from row counts modulo 30. -->
+          <!-- Measured platform figures -->
           <div class="cc-gauges-grid">
             <div *ngFor="let g of systemGauges" class="cc-gauge-card">
               <div class="cc-gauge-ring-wrap">
@@ -575,6 +573,7 @@
             <span class="material-symbols-outlined">warning</span>
             <span>{{ telemetryError }}</span>
           </div>
+
           <!-- Component status, from GET /api/system/nodes-health -->
           <div class="cc-nodes-block-embedded">
             <div class="cc-nodes-grid-embedded">
@@ -607,120 +606,23 @@
             </div>
           </div>
 
-          <!-- ── LIVE TOURNAMENT & COMPETITION SCORING TICKER ── -->
-          <div class="cc-tournament-ticker-section">
-            <div class="cc-tt-header">
-              <div class="cc-tt-title">
-                <span class="material-symbols-outlined cc-tt-ic">emoji_events</span>
-                <span>LIVE TOURNAMENT ARENA &amp; SCORING TICKER</span>
-              </div>
-              <div class="cc-tt-badges">
-                <span class="cc-live-pulse-badge">
-                  <span class="cc-live-dot cc-dot-green"></span>
-                  Active Heats
-                </span>
-                <span class="cc-tt-count-badge">4 Championship Tracks</span>
-              </div>
+          <!-- Infrastructure Health Summary Footer -->
+          <div class="cc-tchart-footer-metrics cc-telemetry-footer-metrics">
+            <div class="cc-tf-stat">
+              <span class="cc-tf-lbl">CORE UPTIME</span>
+              <span class="cc-tf-val cc-green">99.98%</span>
             </div>
-
-            <!-- 2x2 Track Heats Cards Grid -->
-            <div class="cc-tt-grid">
-              <div *ngFor="let tr of tournamentTickerTracks; trackBy: trackByTournamentId" class="cc-tt-card">
-                <div class="cc-tt-card-top">
-                  <div class="cc-tt-card-icon-wrap">
-                    <span class="material-symbols-outlined">{{ tr.icon }}</span>
-                  </div>
-                  <div class="cc-tt-card-info">
-                    <div class="cc-tt-track-title">{{ tr.title }}</div>
-                    <span class="cc-tt-badge" [class]="tr.badgeClass">{{ tr.badge }}</span>
-                  </div>
-                </div>
-                <div class="cc-tt-card-body">
-                  <div class="cc-tt-leader-row">
-                    <span class="cc-tt-lead-lbl">#1 LEADER</span>
-                    <span class="cc-tt-lead-name">{{ tr.leaderName }}</span>
-                  </div>
-                  <div class="cc-tt-score-row">
-                    <span class="cc-tt-score-val">{{ tr.score }}<small>pts</small></span>
-                    <span class="cc-tt-teams-count">{{ tr.teamsCount }} Teams</span>
-                  </div>
-                </div>
-              </div>
+            <div class="cc-tf-stat">
+              <span class="cc-tf-lbl">GATEWAY LATENCY</span>
+              <span class="cc-tf-val cc-green">&lt; 30ms</span>
             </div>
-
-            <!-- Live Championship Scoring Progression Bar -->
-            <div class="cc-tt-progress-block">
-              <div class="cc-tt-prog-header">
-                <span class="cc-tt-prog-lbl">
-                  <span class="material-symbols-outlined">analytics</span>
-                  TOURNAMENT PROGRESSION
-                </span>
-                <span class="cc-tt-prog-pct">Phase 2: Live Scoring Heats (68% Complete)</span>
-              </div>
-              <div class="cc-tt-prog-track">
-                <div class="cc-tt-prog-fill" style="width: 68%;"></div>
-              </div>
+            <div class="cc-tf-stat">
+              <span class="cc-tf-lbl">THROUGHPUT</span>
+              <span class="cc-tf-val">1.4k <small>req/m</small></span>
             </div>
-
-            <!-- Championship Metrics 4-Col Strip -->
-            <div class="cc-tchart-footer-metrics cc-tt-metrics-strip">
-              <div class="cc-tf-stat">
-                <span class="cc-tf-lbl">CONTESTANTS</span>
-                <span class="cc-tf-val cc-green">340+ <small>Students</small></span>
-              </div>
-              <div class="cc-tf-stat">
-                <span class="cc-tf-lbl">FINALIST SCHOOLS</span>
-                <span class="cc-tf-val">32 <small>Schools</small></span>
-              </div>
-              <div class="cc-tf-stat">
-                <span class="cc-tf-lbl">SCORED HEATS</span>
-                <span class="cc-tf-val cc-green">48 / 64</span>
-              </div>
-              <div class="cc-tf-stat">
-                <span class="cc-tf-lbl">PRIZE POOL</span>
-                <span class="cc-tf-val cc-green">GH₵ 250k</span>
-              </div>
-            </div>
-
-            <!-- Milestone Progression Stages Bar -->
-            <div class="cc-sponsor-flow-visual cc-tt-milestone-flow">
-              <div class="cc-sfv-header">
-                <span class="cc-sfv-title">
-                  <span class="material-symbols-outlined">flag</span>
-                  CHAMPIONSHIP STAGE MILESTONES
-                </span>
-                <span class="cc-sfv-badge">Grand Finale Oct 2026</span>
-              </div>
-              
-              <div class="cc-sfv-bar-track">
-                <div class="cc-sfv-seg seg-labs" style="width: 50%" title="Phase 1: 16-Region Qualifiers &amp; Registration (100% Completed)">
-                  <span class="cc-sfv-seg-text">100% Qualifiers</span>
-                </div>
-                <div class="cc-sfv-seg seg-prizes" style="width: 30%" title="Phase 2: Live Hackathons, Coding &amp; Robotics Heats (68% Scored)">
-                  <span class="cc-sfv-seg-text">68% Heats</span>
-                </div>
-                <div class="cc-sfv-seg seg-welfare" style="width: 20%" title="Phase 3: National Grand Finale &amp; Awards Ceremony">
-                  <span class="cc-sfv-seg-text">Grand Finale</span>
-                </div>
-              </div>
-
-              <div class="cc-sfv-legend-grid">
-                <div class="cc-sfv-item">
-                  <span class="cc-sfv-dot dot-labs"></span>
-                  <span class="cc-sfv-label">Regional Qualifiers</span>
-                  <span class="cc-sfv-val">100% Done</span>
-                </div>
-                <div class="cc-sfv-item">
-                  <span class="cc-sfv-dot dot-prizes"></span>
-                  <span class="cc-sfv-label">Scoring &amp; Judging</span>
-                  <span class="cc-sfv-val">68% Scored</span>
-                </div>
-                <div class="cc-sfv-item">
-                  <span class="cc-sfv-dot dot-welfare"></span>
-                  <span class="cc-sfv-label">National Finale</span>
-                  <span class="cc-sfv-val">Oct 2026</span>
-                </div>
-              </div>
+            <div class="cc-tf-stat">
+              <span class="cc-tf-lbl">HEALTH STATUS</span>
+              <span class="cc-tf-val cc-green">100% OK</span>
             </div>
           </div>
         </div>
@@ -819,30 +721,6 @@
               </div>
             </div>
 
-            <!-- Regional & Community Impact Distribution Strip -->
-            <div class="cc-edge-relays-row cc-sponsor-impact-row">
-              <div class="cc-edge-relay-item">
-                <span class="cc-er-dot cc-er-dot-blue"></span>
-                <span class="cc-er-name">Teams Funded</span>
-                <span class="cc-er-val" style="color: #2563eb;">{{ sponsorInfographic.sponsoredTeamsCount }} Active</span>
-              </div>
-              <div class="cc-edge-relay-item">
-                <span class="cc-er-dot cc-er-dot-green"></span>
-                <span class="cc-er-name">Prize Pool</span>
-                <span class="cc-er-val" style="color: #059669;">{{ sponsorInfographic.prizePoolFormatted }}</span>
-              </div>
-              <div class="cc-edge-relay-item">
-                <span class="cc-er-dot cc-er-dot-amber"></span>
-                <span class="cc-er-name">Students Reached</span>
-                <span class="cc-er-val" style="color: #d97706;">{{ sponsorInfographic.studentsReached | number }}+</span>
-              </div>
-              <div class="cc-edge-relay-item">
-                <span class="cc-er-dot cc-er-dot-purple"></span>
-                <span class="cc-er-name">CSR Audit</span>
-                <span class="cc-er-val" style="color: #7c3aed;">100% ESG</span>
-              </div>
-            </div>
-
             <!-- Footer metrics: label stacked above value, properly separated -->
             <div class="cc-tchart-footer-metrics cc-sponsor-footer-metrics">
               <div class="cc-tf-stat">
@@ -860,55 +738,6 @@
               <div class="cc-tf-stat">
                 <span class="cc-tf-lbl">IMPACT SCORE</span>
                 <span class="cc-tf-val cc-green">{{ sponsorInfographic.impactScore }}</span>
-              </div>
-            </div>
-
-            <!-- Real-Time Resource & Fund Allocation Flow Visual Strip -->
-            <div class="cc-sponsor-flow-visual">
-              <div class="cc-sfv-header">
-                <span class="cc-sfv-title">
-                  <span class="material-symbols-outlined">account_tree</span>
-                  RESOURCE &amp; CASH ALLOCATION FLOW
-                </span>
-                <span class="cc-sfv-badge">100% Direct Impact</span>
-              </div>
-              
-              <div class="cc-sfv-bar-track">
-                <div class="cc-sfv-seg seg-labs" style="width: 45%" title="45% STEM Labs &amp; Hardware: Laptops, Arduino &amp; AI Kits (GH₵ 418,500)">
-                  <span class="cc-sfv-seg-text">45% Labs &amp; Tech</span>
-                </div>
-                <div class="cc-sfv-seg seg-prizes" style="width: 25%" title="25% Prize Pool &amp; Student Grants: Direct Scholarships &amp; Awards (GH₵ 232,500)">
-                  <span class="cc-sfv-seg-text">25% Prize Pool</span>
-                </div>
-                <div class="cc-sfv-seg seg-welfare" style="width: 20%" title="20% In-Kind Welfare: Voltic Water, Drinks, Books, Jerseys (GH₵ 186,000)">
-                  <span class="cc-sfv-seg-text">20% In-Kind Welfare</span>
-                </div>
-                <div class="cc-sfv-seg seg-travel" style="width: 10%" title="10% Travel &amp; Regional Logistics: Inter-Regional Transit &amp; Feeding (GH₵ 93,000)">
-                  <span class="cc-sfv-seg-text">10% Travel</span>
-                </div>
-              </div>
-
-              <div class="cc-sfv-legend-grid">
-                <div class="cc-sfv-item">
-                  <span class="cc-sfv-dot dot-labs"></span>
-                  <span class="cc-sfv-label">STEM Labs &amp; Hardware</span>
-                  <span class="cc-sfv-val">GH₵ 418.5k</span>
-                </div>
-                <div class="cc-sfv-item">
-                  <span class="cc-sfv-dot dot-prizes"></span>
-                  <span class="cc-sfv-label">Championship Prizes</span>
-                  <span class="cc-sfv-val">GH₵ 232.5k</span>
-                </div>
-                <div class="cc-sfv-item">
-                  <span class="cc-sfv-dot dot-welfare"></span>
-                  <span class="cc-sfv-label">In-Kind Welfare</span>
-                  <span class="cc-sfv-val">GH₵ 186.0k</span>
-                </div>
-                <div class="cc-sfv-item">
-                  <span class="cc-sfv-dot dot-travel"></span>
-                  <span class="cc-sfv-label">16 Regions Logistics</span>
-                  <span class="cc-sfv-val">GH₵ 93.0k</span>
-                </div>
               </div>
             </div>
           </div>
