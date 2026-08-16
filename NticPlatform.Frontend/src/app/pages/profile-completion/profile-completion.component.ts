@@ -290,7 +290,7 @@ export class ProfileCompletionComponent implements OnInit {
       }
 
       this.isSubmitting = false;
-      const targetRoute = this.isJudge ? '/judge' : '/sponsors';
+      const targetRoute = this.isJudge ? '/dashboard' : '/sponsors';
       this.router.navigate([targetRoute]);
     }, 1500);
   }

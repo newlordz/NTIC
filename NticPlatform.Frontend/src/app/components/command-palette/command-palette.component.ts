@@ -93,24 +93,6 @@ export class CommandPaletteComponent implements OnInit {
         keywords: ['tournaments', 'matches', 'tracks', 'teams', 'contests']
       },
       {
-        id: 'nav-judge',
-        title: 'Judging Arena & Scoring Desk',
-        category: 'Navigation',
-        icon: 'gavel',
-        route: '/judge',
-        roleRequired: ['judge', 'super_admin'],
-        keywords: ['grading', 'rubric', 'evaluation', 'submissions']
-      },
-      {
-        id: 'nav-instructor',
-        title: 'Instructor Portal & Squad Roster',
-        category: 'Navigation',
-        icon: 'patient_list',
-        route: '/instructor',
-        roleRequired: ['instructor', 'super_admin'],
-        keywords: ['teacher', 'students', 'teams', 'class']
-      },
-      {
         id: 'nav-lms',
         title: 'LMS Learning Platform & Modules',
         category: 'Navigation',

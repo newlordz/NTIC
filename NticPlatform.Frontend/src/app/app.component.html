@@ -76,14 +76,6 @@
         <span class="material-symbols-outlined">school</span>
         LMS
       </a>
-      <a class="nav-item" *ngIf="hasAccess('instructor')" routerLink="/instructor" routerLinkActive="active" (click)="closeMobileSidebar()">
-        <span class="material-symbols-outlined">patient_list</span>
-        Instructor Portal
-      </a>
-      <a class="nav-item" *ngIf="hasAccess('judge')" routerLink="/judge" routerLinkActive="active" (click)="closeMobileSidebar()">
-        <span class="material-symbols-outlined">gavel</span>
-        Judging Arena
-      </a>
       <a class="nav-item" *ngIf="hasAccess('competitions')" [routerLink]="currentUser?.roleId === 'student' || currentUser?.roleId === 'judge' ? '/competitions' : '/admin/competitions'" [routerLinkActiveOptions]="{exact: true}" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">emoji_events</span>
         Competitions
@@ -200,17 +192,9 @@
                 <div class="app-icon tertiary"><span class="material-symbols-outlined">school</span></div>
                 <span>LMS</span>
               </a>
-              <a *ngIf="hasAccess('instructor')" routerLink="/instructor" class="app-item" (click)="showAppsDropdown = false">
-                <div class="app-icon primary"><span class="material-symbols-outlined">patient_list</span></div>
-                <span>Instructor</span>
-              </a>
               <a *ngIf="hasAccess('competitions')" [routerLink]="currentUser?.roleId === 'student' || currentUser?.roleId === 'judge' ? '/competitions' : '/admin/competitions'" class="app-item" (click)="showAppsDropdown = false">
                 <div class="app-icon warn"><span class="material-symbols-outlined">emoji_events</span></div>
-                <span>Arena</span>
-              </a>
-              <a *ngIf="hasAccess('judge')" routerLink="/judge" class="app-item" (click)="showAppsDropdown = false">
-                <div class="app-icon error"><span class="material-symbols-outlined">gavel</span></div>
-                <span>Judging</span>
+                <span>Competitions</span>
               </a>
               <a *ngIf="hasAccess('leaderboard')" routerLink="/leaderboard" class="app-item" (click)="showAppsDropdown = false">
                 <div class="app-icon success"><span class="material-symbols-outlined">leaderboard</span></div>

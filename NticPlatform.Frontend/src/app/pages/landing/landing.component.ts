@@ -1738,7 +1738,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     saveRememberedCredentials(credential, this.password.trim(), this.rememberDevice);
 
     const roleRoutes: Record<string, string> = {
-      instructor: '/instructor',
+      instructor: '/dashboard',
       judge: '/dashboard',
       student: '/lms',
       school_admin: '/dashboard',

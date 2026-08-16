@@ -69,8 +69,6 @@ export class AppComponent implements OnInit, OnDestroy {
     'dashboard':    'Dashboard',
     'registration': 'Registration',
     'lms':          'Learning Management',
-    'instructor':   'Instructor Portal',
-    'judge':        'Judging Arena',
     'competitions': 'Competitions',
     'admin':        'Competition Cycle Manager',
     'leaderboard':  'Leaderboard',
@@ -398,8 +396,6 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'roster':       return ['school_admin'].includes(role);
       case 'registration': return ['instructor', 'super_admin', 'admin'].includes(role);
       case 'lms':          return ['student', 'instructor', 'super_admin', 'admin'].includes(role);
-      case 'instructor':   return ['instructor', 'super_admin', 'admin'].includes(role);
-      case 'judge':        return ['judge', 'super_admin', 'admin'].includes(role);
       case 'competitions': return ['student', 'instructor', 'school_admin', 'judge', 'super_admin', 'admin', 'content_manager', 'competition_manager'].includes(role);
       case 'leaderboard':  return ['student', 'instructor', 'school_admin', 'judge', 'sponsor', ...adminRoles].includes(role);
       case 'talent':       return ['instructor', 'sponsor'].includes(role);

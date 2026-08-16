@@ -18,8 +18,6 @@ const ROLE_ACCESS: Record<string, string[]> = {
   'admin/competitions': ['super_admin', 'admin', 'competition_manager', 'content_manager', 'support_admin', 'school_admin', 'instructor'],
   'lms':              ['student', 'instructor', 'super_admin', 'admin'],
   'lms-manager':      ['super_admin', 'admin', 'content_manager', 'instructor'],
-  'instructor':       ['instructor', 'super_admin', 'admin'],
-  'judge':            ['judge', 'super_admin', 'admin'],
   'sponsors':         ['sponsor', 'super_admin', 'admin'],
   'reporting':        ['super_admin', 'admin', 'reviewer', 'instructor', 'school_admin'],
   'records':          ['super_admin', 'admin', 'content_manager'],

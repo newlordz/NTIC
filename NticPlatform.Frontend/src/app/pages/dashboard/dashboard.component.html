@@ -677,6 +677,31 @@
               </div>
             </div>
 
+            <!-- Interactive Corporate & In-Kind Brand Logo Cloud Ticker -->
+            <div class="cc-sponsor-brand-ticker-wrap">
+              <div class="cc-sbt-label-row">
+                <span class="cc-sbt-title">
+                  <span class="material-symbols-outlined">verified_user</span>
+                  PARTNER BRAND SHOWCASE
+                </span>
+                <span class="cc-sbt-sub">Click logo for contract &amp; item delivery breakdown</span>
+              </div>
+              <div class="cc-sponsor-brand-ticker">
+                <div class="cc-sbt-track">
+                  <button type="button"
+                          *ngFor="let brand of featuredBrandLogos"
+                          class="cc-brand-badge-pill"
+                          [ngClass]="'brand-tier-' + brand.tierKey"
+                          (click)="openSponsorPartner(brand.tierKey, brand.name)"
+                          [title]="brand.name + ' (' + brand.badge + '): ' + brand.role">
+                    <span class="material-symbols-outlined cc-bb-icon">{{ brand.icon }}</span>
+                    <span class="cc-bb-name">{{ brand.short }}</span>
+                    <span class="cc-bb-tier-tag">{{ brand.badge }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <!-- Regional & Community Impact Distribution Strip -->
             <div class="cc-edge-relays-row cc-sponsor-impact-row">
               <div class="cc-edge-relay-item">
@@ -718,6 +743,55 @@
               <div class="cc-tf-stat">
                 <span class="cc-tf-lbl">IMPACT SCORE</span>
                 <span class="cc-tf-val cc-green">{{ sponsorInfographic.impactScore }}</span>
+              </div>
+            </div>
+
+            <!-- Real-Time Resource & Fund Allocation Flow Visual Strip -->
+            <div class="cc-sponsor-flow-visual">
+              <div class="cc-sfv-header">
+                <span class="cc-sfv-title">
+                  <span class="material-symbols-outlined">account_tree</span>
+                  RESOURCE &amp; CASH ALLOCATION FLOW
+                </span>
+                <span class="cc-sfv-badge">100% Direct Impact</span>
+              </div>
+              
+              <div class="cc-sfv-bar-track">
+                <div class="cc-sfv-seg seg-labs" style="width: 45%" title="45% STEM Labs &amp; Hardware: Laptops, Arduino &amp; AI Kits (GH₵ 418,500)">
+                  <span class="cc-sfv-seg-text">45% Labs &amp; Tech</span>
+                </div>
+                <div class="cc-sfv-seg seg-prizes" style="width: 25%" title="25% Prize Pool &amp; Student Grants: Direct Scholarships &amp; Awards (GH₵ 232,500)">
+                  <span class="cc-sfv-seg-text">25% Prize Pool</span>
+                </div>
+                <div class="cc-sfv-seg seg-welfare" style="width: 20%" title="20% In-Kind Welfare: Voltic Water, Drinks, Books, Jerseys (GH₵ 186,000)">
+                  <span class="cc-sfv-seg-text">20% In-Kind Welfare</span>
+                </div>
+                <div class="cc-sfv-seg seg-travel" style="width: 10%" title="10% Travel &amp; Regional Logistics: Inter-Regional Transit &amp; Feeding (GH₵ 93,000)">
+                  <span class="cc-sfv-seg-text">10% Travel</span>
+                </div>
+              </div>
+
+              <div class="cc-sfv-legend-grid">
+                <div class="cc-sfv-item">
+                  <span class="cc-sfv-dot dot-labs"></span>
+                  <span class="cc-sfv-label">STEM Labs &amp; Hardware</span>
+                  <span class="cc-sfv-val">GH₵ 418.5k</span>
+                </div>
+                <div class="cc-sfv-item">
+                  <span class="cc-sfv-dot dot-prizes"></span>
+                  <span class="cc-sfv-label">Championship Prizes</span>
+                  <span class="cc-sfv-val">GH₵ 232.5k</span>
+                </div>
+                <div class="cc-sfv-item">
+                  <span class="cc-sfv-dot dot-welfare"></span>
+                  <span class="cc-sfv-label">In-Kind Welfare</span>
+                  <span class="cc-sfv-val">GH₵ 186.0k</span>
+                </div>
+                <div class="cc-sfv-item">
+                  <span class="cc-sfv-dot dot-travel"></span>
+                  <span class="cc-sfv-label">16 Regions Logistics</span>
+                  <span class="cc-sfv-val">GH₵ 93.0k</span>
+                </div>
               </div>
             </div>
           </div>

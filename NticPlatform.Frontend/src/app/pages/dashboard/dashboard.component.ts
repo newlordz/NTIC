@@ -997,10 +997,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.sponsorTierModalOpen = true;
   }
 
+  openSponsorPartner(tierKey: string, partnerName: string): void {
+    const tier = this.sponsorInfographic.tiers.find((t: any) => t.key === tierKey);
+    if (tier) {
+      this.selectedSponsorTier = tier;
+      this.sponsorTierSearch = partnerName || '';
+      this.sponsorTierModalOpen = true;
+    }
+  }
+
   closeSponsorTierModal(): void {
     this.sponsorTierModalOpen = false;
     this.selectedSponsorTier = null;
     this.sponsorTierSearch = '';
+  }
+
+  get featuredBrandLogos(): any[] {
+    return [
+      { name: 'MTN Ghana Foundation', short: 'MTN Ghana', tierKey: 'platinum', badge: 'PLATINUM', color: '#ffcc00', textColor: '#000', icon: 'signal_cellular_alt', role: '5G Connectivity & Innovation' },
+      { name: 'Tullow Oil Ghana STEM Fund', short: 'Tullow Oil', tierKey: 'platinum', badge: 'PLATINUM', color: '#008080', textColor: '#fff', icon: 'precision_manufacturing', role: 'Robotics Arena Hardware' },
+      { name: 'GCB Bank PLC', short: 'GCB Bank', tierKey: 'gold', badge: 'GOLD', color: '#d97706', textColor: '#fff', icon: 'account_balance', role: 'FinTech Track Grants' },
+      { name: 'Fidelity Bank Ghana', short: 'Fidelity', tierKey: 'gold', badge: 'GOLD', color: '#ea580c', textColor: '#fff', icon: 'payments', role: 'STEM Incubation Fund' },
+      { name: 'Stanbic Bank Ghana', short: 'Stanbic', tierKey: 'gold', badge: 'GOLD', color: '#0284c7', textColor: '#fff', icon: 'savings', role: 'Travel & Arena Grants' },
+      { name: 'Voltic (GH) Ltd', short: 'Voltic Water', tierKey: 'inkind', badge: 'IN-KIND', color: '#06b6d4', textColor: '#fff', icon: 'water_drop', role: '1,500 Packs Mineral Water' },
+      { name: 'Coca-Cola Bottling', short: 'Coca-Cola', tierKey: 'inkind', badge: 'IN-KIND', color: '#e11d48', textColor: '#fff', icon: 'local_drink', role: '1,200 Crates Soft Drinks' },
+      { name: 'HP & Lenovo Ghana', short: 'HP / Lenovo', tierKey: 'inkind', badge: 'IN-KIND', color: '#334155', textColor: '#fff', icon: 'laptop_chromebook', role: '60 Core-i7 Laptops' },
+      { name: 'EPP Books Services', short: 'EPP Books', tierKey: 'inkind', badge: 'IN-KIND', color: '#b45309', textColor: '#fff', icon: 'menu_book', role: '800 STEM Books' },
+      { name: 'Printex Ghana', short: 'Printex', tierKey: 'inkind', badge: 'IN-KIND', color: '#7c3aed', textColor: '#fff', icon: 'checkroom', role: '1,200 Official Championship Jerseys' },
+      { name: 'Google Developers Group', short: 'GDG Accra', tierKey: 'silver', badge: 'SILVER', color: '#2563eb', textColor: '#fff', icon: 'terminal', role: 'Cloud & AI Credits' },
+      { name: 'Kosmos Innovation Center', short: 'KIC Ghana', tierKey: 'silver', badge: 'SILVER', color: '#059669', textColor: '#fff', icon: 'eco', role: 'AgriTech Mentorship' }
+    ];
   }
 
   get filteredTierPartners(): any[] {
@@ -1566,6 +1592,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.isRegModalOpen = params['openRegModal'] === 'true';
       if (params['action'] === 'add_team') {
         this.openAddTeamModal();
+      }
+      if (params['sponsor']) {
+        const sponsorQuery = params['sponsor'].toString().toLowerCase().trim();
+        const brandMatch = this.featuredBrandLogos.find(b => 
+          b.name.toLowerCase().includes(sponsorQuery) || 
+          b.short.toLowerCase().includes(sponsorQuery)
+        );
+        if (brandMatch) {
+          this.openSponsorPartner(brandMatch.tierKey, brandMatch.name);
+        }
       }
     });
 

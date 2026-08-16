@@ -834,6 +834,137 @@
   }
 }
 
+/* ── Corporate & In-Kind Brand Logo Cloud Ticker ── */
+.cc-sponsor-brand-ticker-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cc-sbt-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cc-sbt-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #475569;
+  text-transform: uppercase;
+
+  .material-symbols-outlined {
+    font-size: 13px;
+    color: var(--primary, #003f87);
+  }
+}
+
+.cc-sbt-sub {
+  font-size: 9px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.cc-sponsor-brand-ticker {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+
+  &::-webkit-scrollbar {
+    height: 3px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+  }
+}
+
+.cc-sbt-track {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: max-content;
+}
+
+.cc-brand-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-family: inherit;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+
+  &:hover {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+
+    .cc-bb-name {
+      color: var(--primary, #003f87);
+    }
+  }
+
+  .cc-bb-icon {
+    font-size: 13px;
+  }
+
+  .cc-bb-name {
+    font-size: 10px;
+    font-weight: 700;
+    color: #1e293b;
+    transition: color 0.15s ease;
+  }
+
+  .cc-bb-tier-tag {
+    font-size: 7.5px;
+    font-weight: 800;
+    padding: 1px 4px;
+    border-radius: 4px;
+    letter-spacing: 0.3px;
+  }
+
+  &.brand-tier-platinum {
+    border-left: 2.5px solid #2563eb;
+    .cc-bb-icon { color: #2563eb; }
+    .cc-bb-tier-tag { background: rgba(37, 99, 235, 0.1); color: #1d4ed8; }
+  }
+  &.brand-tier-gold {
+    border-left: 2.5px solid #d97706;
+    .cc-bb-icon { color: #d97706; }
+    .cc-bb-tier-tag { background: rgba(217, 119, 6, 0.1); color: #b45309; }
+  }
+  &.brand-tier-silver {
+    border-left: 2.5px solid #0d9488;
+    .cc-bb-icon { color: #0d9488; }
+    .cc-bb-tier-tag { background: rgba(13, 148, 136, 0.1); color: #0f766e; }
+  }
+  &.brand-tier-inkind {
+    border-left: 2.5px solid #7c3aed;
+    .cc-bb-icon { color: #7c3aed; }
+    .cc-bb-tier-tag { background: rgba(124, 58, 237, 0.1); color: #6d28d9; }
+  }
+}
+
 /* ── Regional & Community Impact Distribution Strip ── */
 .cc-sponsor-impact-row {
   display: grid;
@@ -883,6 +1014,142 @@
       font-weight: 600;
       color: #64748b;
     }
+  }
+}
+
+/* ── Real-Time Resource & Fund Allocation Flow Visual ── */
+.cc-sponsor-flow-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.cc-sfv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cc-sfv-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #475569;
+  text-transform: uppercase;
+
+  .material-symbols-outlined {
+    font-size: 13px;
+    color: var(--primary, #003f87);
+  }
+}
+
+.cc-sfv-badge {
+  font-size: 9px;
+  font-weight: 800;
+  color: #059669;
+  background: rgba(16, 185, 129, 0.1);
+  padding: 1.5px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  letter-spacing: 0.2px;
+}
+
+.cc-sfv-bar-track {
+  display: flex;
+  height: 14px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #e2e8f0;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.cc-sfv-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  transition: opacity 0.15s ease;
+  position: relative;
+  min-width: 0;
+
+  &:hover {
+    opacity: 0.9;
+  }
+
+  &.seg-labs {
+    background: linear-gradient(90deg, #2563eb, #3b82f6);
+  }
+  &.seg-prizes {
+    background: linear-gradient(90deg, #d97706, #f59e0b);
+  }
+  &.seg-welfare {
+    background: linear-gradient(90deg, #7c3aed, #8b5cf6);
+  }
+  &.seg-travel {
+    background: linear-gradient(90deg, #0d9488, #14b8a6);
+  }
+
+  .cc-sfv-seg-text {
+    font-size: 8px;
+    font-weight: 800;
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 4px;
+  }
+}
+
+.cc-sfv-legend-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.cc-sfv-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 6px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+
+  .cc-sfv-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    margin-bottom: 2px;
+
+    &.dot-labs { background: #2563eb; }
+    &.dot-prizes { background: #d97706; }
+    &.dot-welfare { background: #7c3aed; }
+    &.dot-travel { background: #0d9488; }
+  }
+
+  .cc-sfv-label {
+    font-size: 8px;
+    font-weight: 700;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cc-sfv-val {
+    font-size: 10.5px;
+    font-weight: 800;
+    color: #0f172a;
   }
 }
 
@@ -12234,6 +12501,43 @@
     .cc-stier-amount { color: #f1f5f9; }
     .cc-stier-brand { color: #cbd5e1; }
     .cc-stier-meta { color: #94a3b8; }
+  }
+
+  .cc-sponsor-brand-ticker-wrap {
+    background: #131d35;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .cc-sbt-title { color: #cbd5e1; }
+  .cc-sbt-sub { color: #64748b; }
+
+  .cc-brand-badge-pill {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+
+    &:hover {
+      background: #27354f;
+      border-color: rgba(56, 189, 248, 0.4);
+      .cc-bb-name { color: #f8fafc; }
+    }
+
+    .cc-bb-name { color: #cbd5e1; }
+  }
+
+  .cc-sponsor-flow-visual {
+    background: #131d35;
+    border-color: rgba(255, 255, 255, 0.08);
+
+    .cc-sfv-title { color: #cbd5e1; }
+    .cc-sfv-bar-track { background: #1e293b; }
+    
+    .cc-sfv-item {
+      background: #1e293b;
+      border-color: rgba(255, 255, 255, 0.08);
+      .cc-sfv-label { color: #94a3b8; }
+      .cc-sfv-val { color: #f1f5f9; }
+    }
   }
 }
 
