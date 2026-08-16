@@ -36,7 +36,7 @@
 
     <!-- Stat Cards -->
     <div class="stat-grid stagger">
-      <div *ngFor="let stat of (activeRoleId === 'school_admin' ? schoolAdminStats : stats)" 
+      <div *ngFor="let stat of (activeRoleId === 'school_admin' ? schoolAdminStats : stats); trackBy: trackByStatLabel" 
            class="stat-card" [class]="stat.color"
            role="button" tabindex="0" style="cursor: pointer"
            (click)="onStatCardClick(stat)">
@@ -502,6 +502,10 @@
         </div>
       </div>
       <div class="cc-masthead-right">
+        <button class="cc-masthead-refresh-btn" type="button" (click)="refreshAllData()" [title]="isSyncingData ? 'Synchronizing live telemetry...' : 'Force sync live telemetry & security stream'">
+          <span class="material-symbols-outlined cc-refresh-spin-ic" [class.spin-refresh]="isSyncingData">sync</span>
+          <span class="cc-m-refresh-label">{{ isSyncingData ? 'Syncing...' : 'Sync Data' }}</span>
+        </button>
         <div class="cc-status-pill">
           <span class="cc-live-dot"></span>
           <span class="cc-status-text">All Systems Operational</span>
@@ -513,7 +517,7 @@
 
     <!-- ══ COMMAND CENTER KPI CARDS ══ -->
     <div class="cc-kpi-grid" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
-      <div *ngFor="let stat of stats; let i = index"
+      <div *ngFor="let stat of stats; trackBy: trackByStatLabel; let i = index"
            class="cc-kpi-card"
            [attr.data-index]="i"
            role="button" tabindex="0"
@@ -521,11 +525,12 @@
            [title]="'Click to view ' + stat.label">
         <div class="cc-kpi-top">
           <div class="cc-kpi-icon">
-            <span class="material-symbols-outlined">{{ stat.icon }}</span>
+            <span class="material-symbols-outlined" [class.spin-refresh]="isSyncingData && (stat.label === 'Live Audit Trail' || stat.label === 'Active Sessions')">{{ stat.icon }}</span>
           </div>
           <div class="cc-kpi-action">
-            <span>View</span>
-            <span class="material-symbols-outlined">arrow_forward</span>
+            <span *ngIf="!isSyncingData">View</span>
+            <span *ngIf="isSyncingData" class="cc-kpi-syncing-text">Syncing</span>
+            <span class="material-symbols-outlined" [class.spin-refresh]="isSyncingData">{{ isSyncingData ? 'sync' : 'arrow_forward' }}</span>
           </div>
         </div>
         <div class="cc-kpi-value">{{ stat.value }}</div>

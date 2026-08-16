@@ -243,6 +243,36 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return node.id;
   }
 
+  trackByStatLabel(_index: number, stat: { label: string }): string {
+    return stat.label;
+  }
+
+  isSyncingData = false;
+  private syncTimer: any = null;
+
+  triggerSyncSpin(): void {
+    this.isSyncingData = true;
+    if (this.syncTimer) clearTimeout(this.syncTimer);
+    this.syncTimer = setTimeout(() => {
+      this.isSyncingData = false;
+      this.cdr.markForCheck();
+    }, 1200);
+    this.cdr.markForCheck();
+  }
+
+  refreshAllData(): void {
+    this.triggerSyncSpin();
+    this.loadAuthSessions();
+    this.loadAuthSessionCount();
+    this.loadDashboardRecords();
+    this.loadAuditLogsFromBackend();
+    this.loadSystemNodesHealth();
+    this.loadSystemTelemetry();
+    this.contentService.refreshBackendData();
+    this.recomputeAuditState();
+    this.dialogService.toast('Live platform telemetry & audit stream synced.', 'success');
+  }
+
   /** Worst status across the reported components, so the header cannot claim
    *  "All Healthy" while a component is down. */
   get overallSystemStatus(): string {
@@ -1576,6 +1606,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.loadSystemNodesHealth();
       this.loadSystemTelemetry();
       this.liveIntervals.push(setInterval(() => {
+        this.triggerSyncSpin();
         this.loadAuthSessions();
         this.loadAuthSessionCount();
         this.loadDashboardRecords();
@@ -1588,6 +1619,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.liveIntervals.push(setInterval(() => this.cdr.detectChanges(), 30000));
 
       const wsSub = this.wsSync.dataChanged$.subscribe(() => {
+        this.triggerSyncSpin();
         this.loadAuthSessions();
         this.loadAuthSessionCount();
         this.loadAuditLogsFromBackend();
@@ -1599,6 +1631,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.liveIntervals.push({ unsubscribe: () => wsSub.unsubscribe() });
 
       const auditSub = this.contentService.auditLogs$.subscribe((logs) => {
+        this.triggerSyncSpin();
         this.recomputeAuditState(logs);
         const auditIdx = this.stats.findIndex(s => s.label === 'Live Audit Trail');
         if (auditIdx >= 0) {
