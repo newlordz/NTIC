@@ -1438,6 +1438,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         // Muted autoplay is allowed by browsers -- set muted via JS property to guarantee it
         video.muted = true;
         video.defaultMuted = true;
+        video.volume = 0;
         video.play().then(() => {}).catch((err) => {
           console.warn('Slide video play failed, retrying', err);
           // Retry once after a tick in case the element wasn't ready
