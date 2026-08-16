@@ -204,7 +204,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   tournamentAudioEnabled = false;
   private scoringPulseDebounceTimer: any = null;
 
-  tournamentTickerTracks: any[] = [];
+  tournamentTickerTracks: any[] = [
+    { id: 1, title: 'AI & Machine Learning', track: 'Artificial Intelligence', teamsCount: 18, leaderName: 'Prempeh College Alpha', score: '96.8', icon: 'psychology', badge: 'Scoring Open', badgeClass: 'cc-tbadge-live' },
+    { id: 2, title: 'Robotics & IoT Systems', track: 'Hardware & Embedded', teamsCount: 14, leaderName: 'St. Peter\'s CyberBots', score: '95.2', icon: 'precision_manufacturing', badge: 'Live Heats', badgeClass: 'cc-tbadge-live' },
+    { id: 3, title: 'Cybersecurity Defense', track: 'SecOps & Cryptography', teamsCount: 12, leaderName: 'Achimota SecOps', score: '93.6', icon: 'security', badge: 'Active Lab', badgeClass: 'cc-tbadge-live' },
+    { id: 4, title: 'Software & Web Innovation', track: 'Full Stack Engineering', teamsCount: 16, leaderName: 'Wesley Girls Tech', score: '94.4', icon: 'code', badge: 'Judging Phase', badgeClass: 'cc-tbadge-live' }
+  ];
 
   recomputeTournamentTracks(): void {
     const list = this.contentService.competitions?.filter(c => c.status !== 'archived' && c.status !== 'draft') || [];
