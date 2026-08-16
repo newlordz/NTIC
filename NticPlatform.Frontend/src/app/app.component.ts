@@ -1,7 +1,7 @@
 import { getAuthValue, clearAllAuthValues, hasRememberedDevice, purgeLegacyStoredPassword } from './services/session.util';
 import { resetVerifiedRoleCache } from './guards/auth.guard';
 import { AppUpdateService } from './services/app-update.service';
-import { Component, OnInit, OnDestroy, HostListener, Renderer2, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, Renderer2, NgZone, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -43,6 +43,8 @@ export class AppComponent implements OnInit, OnDestroy {
   isMobileSidebarOpen = false;
   private ticketPollTimer: any = null;
   private scrollRafPending = false;
+  // Cached so the scroll handler does not run a document query every frame.
+  private mainContentEl: HTMLElement | null = null;
   private scrollListener = () => {
     if (this.scrollRafPending) return;
     this.scrollRafPending = true;
@@ -79,7 +81,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private lastNavigatedPath = '';
 
-  constructor(private router: Router, public themeService: ThemeService, public contentService: ContentService, public dialogService: DialogService, private renderer: Renderer2, private chatbot: ChatbotService, private apiService: ApiService) {
+  constructor(private router: Router, public themeService: ThemeService, public contentService: ContentService, public dialogService: DialogService, private renderer: Renderer2, private chatbot: ChatbotService, private apiService: ApiService, private zone: NgZone) {
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
@@ -122,7 +124,10 @@ export class AppComponent implements OnInit, OnDestroy {
       // NOT during in-page events, same-page scroll, or section anchor navigation.
       if (isDifferentRoute && !hasFragment && typeof window !== 'undefined') {
         document.body.style.overflow = '';
-        window.scrollTo(0, 0);
+        // 'instant' deliberately overrides the global `scroll-behavior: smooth`.
+        // Without it this reset ANIMATES on every navigation, so each page change
+        // spends a few hundred ms visibly scrolling before the new page settles.
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         document.documentElement.scrollTop = 0;
         document.body.scrollTop = 0;
         const mainContent = document.querySelector('.main-content');
@@ -143,7 +148,16 @@ export class AppComponent implements OnInit, OnDestroy {
     this.appUpdate.init();
     this.loadUserProfile();
     if (typeof window !== 'undefined') {
-      window.addEventListener('scroll', this.scrollListener, true);
+      // Registered OUTSIDE the Angular zone. Zone.js patches both
+      // addEventListener and requestAnimationFrame, so the previous version ran
+      // a full application-wide change detection pass on every scroll frame
+      // (~60/s) even though showScrollToTop only flips when crossing 300px.
+      // With ~20 components on default change detection and templates of
+      // 3,000-5,400 lines, that was the main source of app-wide scroll lag.
+      // passive:true additionally lets the browser scroll without waiting on us.
+      this.zone.runOutsideAngular(() => {
+        window.addEventListener('scroll', this.scrollListener, { passive: true, capture: true });
+      });
       window.addEventListener('beforeinstallprompt', (e: Event) => {
         e.preventDefault();
       });
@@ -195,14 +209,20 @@ export class AppComponent implements OnInit, OnDestroy {
 
   checkScroll(): void {
     const winScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-    let containerScroll = 0;
-    const mainContent = document.querySelector('.main-content');
-    if (mainContent) {
-      containerScroll = mainContent.scrollTop || 0;
+    // Re-query only when the cached node is gone (a route change swaps it out),
+    // instead of running a document query on every scroll frame.
+    if (!this.mainContentEl || !this.mainContentEl.isConnected) {
+      this.mainContentEl = document.querySelector('.main-content');
     }
+    const containerScroll = this.mainContentEl?.scrollTop || 0;
     const anyScroll = winScroll > 300 || containerScroll > 300 || (document.scrollingElement && document.scrollingElement.scrollTop > 300);
-    if (this.showScrollToTop !== Boolean(anyScroll)) {
-      this.showScrollToTop = Boolean(anyScroll);
+    const next = Boolean(anyScroll);
+    if (this.showScrollToTop !== next) {
+      // Re-enter Angular only when the value genuinely changes, so scrolling
+      // that does not cross the threshold costs no change detection at all.
+      this.zone.run(() => {
+        this.showScrollToTop = next;
+      });
     }
   }
 
