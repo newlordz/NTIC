@@ -662,12 +662,12 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
   &:hover {
-    transform: translateY(-1px);
     border-color: #cbd5e1;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
   }
 }
 
@@ -823,53 +823,6 @@
   height: 100%;
   background: linear-gradient(90deg, var(--primary, #003f87), #3b82f6);
   border-radius: 999px;
-}
-
-.cc-tt-footer-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  padding-top: 4px;
-}
-
-.cc-tt-action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  font-size: 10.5px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
-
-  .material-symbols-outlined {
-    font-size: 13px;
-  }
-
-  &.primary {
-    background: var(--primary, #003f87);
-    color: #ffffff;
-    border-color: var(--primary, #003f87);
-
-    &:hover {
-      background: #002f6b;
-      box-shadow: 0 2px 8px rgba(0, 63, 135, 0.25);
-    }
-  }
-
-  &.subtle {
-    background: #ffffff;
-    color: #475569;
-    border-color: #cbd5e1;
-
-    &:hover {
-      background: #f1f5f9;
-      color: #0f172a;
-    }
-  }
 }
 
 .cc-traffic-panel,
@@ -9136,7 +9089,6 @@
     .cc-tt-prog-lbl { color: #bfc8cc !important; }
     .cc-tt-prog-track { background: #21404c !important; }
     .cc-tt-card-body { border-top-color: #21404c !important; }
-    .cc-tt-action-btn.subtle { background: #0e2530 !important; border-color: #21404c !important; color: #bfc8cc !important; }
   }
 
   /* Live Traffic & Regional System Throughput */

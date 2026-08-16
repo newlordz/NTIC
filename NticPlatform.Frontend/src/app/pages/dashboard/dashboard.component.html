@@ -625,7 +625,7 @@
 
             <!-- 2x2 Track Heats Cards Grid -->
             <div class="cc-tt-grid">
-              <div *ngFor="let tr of tournamentTickerTracks" class="cc-tt-card">
+              <div *ngFor="let tr of tournamentTickerTracks; trackBy: trackByTournamentId" class="cc-tt-card">
                 <div class="cc-tt-card-top">
                   <div class="cc-tt-card-icon-wrap">
                     <span class="material-symbols-outlined">{{ tr.icon }}</span>
@@ -660,18 +660,6 @@
               <div class="cc-tt-prog-track">
                 <div class="cc-tt-prog-fill" style="width: 68%;"></div>
               </div>
-            </div>
-
-            <!-- Quick Action Links -->
-            <div class="cc-tt-footer-actions">
-              <button type="button" class="cc-tt-action-btn primary" routerLink="/judge" title="Enter live scoring arena">
-                <span class="material-symbols-outlined">gavel</span>
-                <span>Scoring Arena</span>
-              </button>
-              <button type="button" class="cc-tt-action-btn subtle" (click)="goToSubTab('content')" title="Open competition management">
-                <span class="material-symbols-outlined">leaderboard</span>
-                <span>Leaderboard</span>
-              </button>
             </div>
           </div>
         </div>

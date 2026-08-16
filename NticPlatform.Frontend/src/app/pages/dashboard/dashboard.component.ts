@@ -204,10 +204,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   tournamentAudioEnabled = false;
   private scoringPulseDebounceTimer: any = null;
 
-  get tournamentTickerTracks(): any[] {
-    const list = this.contentService.competitions.filter(c => c.status !== 'archived' && c.status !== 'draft');
+  tournamentTickerTracks: any[] = [];
+
+  recomputeTournamentTracks(): void {
+    const list = this.contentService.competitions?.filter(c => c.status !== 'archived' && c.status !== 'draft') || [];
     if (list.length > 0) {
-      return list.slice(0, 4).map((c, idx) => ({
+      this.tournamentTickerTracks = list.slice(0, 4).map((c, idx) => ({
         id: c.id || idx + 1,
         title: c.title || 'Championship Track',
         track: c.track || 'AI & Robotics',
@@ -219,13 +221,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
         badge: c.status === 'active' ? 'Scoring Open' : 'Active Heats',
         badgeClass: 'cc-tbadge-live'
       }));
+      return;
     }
-    return [
+    this.tournamentTickerTracks = [
       { id: 1, title: 'AI & Machine Learning', track: 'Artificial Intelligence', teamsCount: 18, leaderName: 'Prempeh College Alpha', score: '96.8', icon: 'psychology', badge: 'Scoring Open', badgeClass: 'cc-tbadge-live' },
       { id: 2, title: 'Robotics & IoT Systems', track: 'Hardware & Embedded', teamsCount: 14, leaderName: 'St. Peter\'s CyberBots', score: '95.2', icon: 'precision_manufacturing', badge: 'Live Heats', badgeClass: 'cc-tbadge-live' },
       { id: 3, title: 'Cybersecurity Defense', track: 'SecOps & Cryptography', teamsCount: 12, leaderName: 'Achimota SecOps', score: '93.6', icon: 'security', badge: 'Active Lab', badgeClass: 'cc-tbadge-live' },
       { id: 4, title: 'Software & Web Innovation', track: 'Full Stack Engineering', teamsCount: 16, leaderName: 'Wesley Girls Tech', score: '94.4', icon: 'code', badge: 'Judging Phase', badgeClass: 'cc-tbadge-live' }
     ];
+  }
+
+  trackByTournamentId(_index: number, item: any): any {
+    return item.id || item.title;
   }
 
   toggleTournamentAudio(): void {
@@ -1593,6 +1600,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadDashboardData();
     this.loadDashboardRecords();
     this.loadAuthSessionCount();
+    this.recomputeTournamentTracks();
     this.preloadLogos();
 
     // Read query params to set active tab & modal state reactively

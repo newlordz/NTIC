@@ -500,10 +500,10 @@ try:
             },
             {
                 "id": "node-database",
-                "name": "PostgreSQL",
+                "name": "Database",
                 "status": db_state,
                 "latencyMs": db["latency_ms"],
-                "detail": db["error"] or count_error or "Query round-trip succeeded",
+                "detail": db["error"] or "",
                 "measured": True,
             },
             {
@@ -511,19 +511,15 @@ try:
                 "name": "Realtime WebSocket",
                 "status": "Healthy",
                 "latencyMs": None,
-                "detail": f"{ws_manager.connection_count()} client(s) connected",
+                "detail": "",
                 "measured": True,
             },
             {
                 "id": "node-email",
-                "name": "Email (Brevo)",
+                "name": "Email",
                 "status": "Configured" if settings.BREVO_API_KEY else "Not configured",
                 "latencyMs": None,
-                "detail": (
-                    f"Sender {settings.MAIL_FROM_EMAIL}"
-                    if settings.BREVO_API_KEY
-                    else "BREVO_API_KEY is not set - outbound email is disabled"
-                ),
+                "detail": "",
                 # We do not call Brevo here; this reflects configuration only.
                 "measured": False,
             },
@@ -532,11 +528,7 @@ try:
                 "name": "AI Assistant (Gemini)",
                 "status": "Configured" if settings.GEMINI_API_KEY else "Not configured",
                 "latencyMs": None,
-                "detail": (
-                    "GEMINI_API_KEY is set"
-                    if settings.GEMINI_API_KEY
-                    else "GEMINI_API_KEY is not set - the chatbot is disabled"
-                ),
+                "detail": "",
                 "measured": False,
             },
             {
@@ -544,11 +536,7 @@ try:
                 "name": "SMS / WhatsApp Gateway",
                 "status": "Configured" if os.getenv("SMS_GATEWAY_URL", "").strip() else "Not configured",
                 "latencyMs": None,
-                "detail": (
-                    "SMS_GATEWAY_URL is set"
-                    if os.getenv("SMS_GATEWAY_URL", "").strip()
-                    else "SMS_GATEWAY_URL is not set - phone verification is unavailable"
-                ),
+                "detail": "",
                 "measured": False,
             },
         ]
