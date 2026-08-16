@@ -584,6 +584,294 @@
   gap: 12px;
 }
 
+/* ── Live Tournament Arena & Scoring Ticker ── */
+.cc-tournament-ticker-section {
+  margin: 0 14px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.cc-tt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cc-tt-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #1e293b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+
+  .cc-tt-ic {
+    font-size: 15px;
+    color: #f59e0b;
+  }
+}
+
+.cc-tt-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cc-live-pulse-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #059669;
+}
+
+.cc-tt-count-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #64748b;
+  background: #ffffff;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+}
+
+.cc-tt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.cc-tt-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  }
+}
+
+.cc-tt-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cc-tt-card-icon-wrap {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: rgba(0, 63, 135, 0.07);
+  border: 1px solid rgba(0, 63, 135, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  .material-symbols-outlined {
+    font-size: 14px;
+    color: var(--primary, #003f87);
+  }
+}
+
+.cc-tt-card-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.cc-tt-track-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cc-tt-badge {
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #2563eb;
+  letter-spacing: 0.02em;
+}
+
+.cc-tt-card-body {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.cc-tt-leader-row {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.cc-tt-lead-lbl {
+  font-size: 8px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+.cc-tt-lead-name {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cc-tt-score-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.cc-tt-score-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary, #003f87);
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1;
+
+  small {
+    font-size: 8.5px;
+    margin-left: 1px;
+    color: #64748b;
+  }
+}
+
+.cc-tt-teams-count {
+  font-size: 8.5px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.cc-tt-progress-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.cc-tt-prog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.cc-tt-prog-lbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  .material-symbols-outlined {
+    font-size: 12px;
+    color: var(--primary, #003f87);
+  }
+}
+
+.cc-tt-prog-pct {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #059669;
+}
+
+.cc-tt-prog-track {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.cc-tt-prog-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary, #003f87), #3b82f6);
+  border-radius: 999px;
+}
+
+.cc-tt-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.cc-tt-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+
+  .material-symbols-outlined {
+    font-size: 13px;
+  }
+
+  &.primary {
+    background: var(--primary, #003f87);
+    color: #ffffff;
+    border-color: var(--primary, #003f87);
+
+    &:hover {
+      background: #002f6b;
+      box-shadow: 0 2px 8px rgba(0, 63, 135, 0.25);
+    }
+  }
+
+  &.subtle {
+    background: #ffffff;
+    color: #475569;
+    border-color: #cbd5e1;
+
+    &:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+  }
+}
+
 .cc-traffic-panel,
 .cc-sponsor-infographic-panel {
   display: flex;
@@ -8828,6 +9116,27 @@
     .cc-ncard-progress-track {
       background: #21404c !important;
     }
+  }
+
+  /* Live Tournament Arena & Scoring Ticker (Dark Theme) */
+  .cc-tournament-ticker-section {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+
+    .cc-tt-title { color: #e1f3fc !important; }
+    .cc-tt-count-badge { background: #0e2530 !important; border-color: #21404c !important; color: #bfc8cc !important; }
+    .cc-tt-card {
+      background: #0e2530 !important;
+      border-color: #21404c !important;
+      &:hover { background: #183440 !important; border-color: #3f484c !important; }
+    }
+    .cc-tt-track-title { color: #e1f3fc !important; }
+    .cc-tt-lead-name { color: #bfc8cc !important; }
+    .cc-tt-score-val { color: #7dd3fc !important; }
+    .cc-tt-prog-lbl { color: #bfc8cc !important; }
+    .cc-tt-prog-track { background: #21404c !important; }
+    .cc-tt-card-body { border-top-color: #21404c !important; }
+    .cc-tt-action-btn.subtle { background: #0e2530 !important; border-color: #21404c !important; color: #bfc8cc !important; }
   }
 
   /* Live Traffic & Regional System Throughput */

@@ -622,19 +622,7 @@ try:
                 ),
             },
             # Kept explicit so the UI does not silently render a fake number.
-            "unavailable": [
-                "cpuUtilization",
-                "memoryUtilization",
-                "diskUtilization",
-                "requestThroughput",
-                "errorRate",
-            ],
-            "unavailableReason": (
-                "Not measured. Host CPU/memory/disk and request-rate metrics need "
-                "a metrics exporter (e.g. Prometheus) or the platform's own "
-                "monitoring; this process cannot observe them."
-            ),
-        }
+            }
 
     @app.middleware("http")
     async def enforce_auth_middleware(request: Request, call_next):
