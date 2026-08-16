@@ -584,18 +584,6 @@
   gap: 12px;
 }
 
-.cc-telemetry-panel {
-  display: flex;
-  flex-direction: column;
-
-  .cc-telemetry-relays-wrap,
-  .cc-telemetry-security-row,
-  .cc-telemetry-footer-metrics,
-  .cc-telemetry-flow-visual {
-    margin: 0 14px 12px 14px;
-  }
-}
-
 .cc-traffic-panel,
 .cc-sponsor-infographic-panel {
   display: flex;

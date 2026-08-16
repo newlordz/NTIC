@@ -500,10 +500,10 @@ try:
             },
             {
                 "id": "node-database",
-                "name": "Database",
+                "name": "PostgreSQL",
                 "status": db_state,
                 "latencyMs": db["latency_ms"],
-                "detail": db["error"] or "",
+                "detail": db["error"] or count_error or "Query round-trip succeeded",
                 "measured": True,
             },
             {
@@ -511,15 +511,19 @@ try:
                 "name": "Realtime WebSocket",
                 "status": "Healthy",
                 "latencyMs": None,
-                "detail": "",
+                "detail": f"{ws_manager.connection_count()} client(s) connected",
                 "measured": True,
             },
             {
                 "id": "node-email",
-                "name": "Email",
+                "name": "Email (Brevo)",
                 "status": "Configured" if settings.BREVO_API_KEY else "Not configured",
                 "latencyMs": None,
-                "detail": "",
+                "detail": (
+                    f"Sender {settings.MAIL_FROM_EMAIL}"
+                    if settings.BREVO_API_KEY
+                    else "BREVO_API_KEY is not set - outbound email is disabled"
+                ),
                 # We do not call Brevo here; this reflects configuration only.
                 "measured": False,
             },
@@ -528,7 +532,11 @@ try:
                 "name": "AI Assistant (Gemini)",
                 "status": "Configured" if settings.GEMINI_API_KEY else "Not configured",
                 "latencyMs": None,
-                "detail": "",
+                "detail": (
+                    "GEMINI_API_KEY is set"
+                    if settings.GEMINI_API_KEY
+                    else "GEMINI_API_KEY is not set - the chatbot is disabled"
+                ),
                 "measured": False,
             },
             {
@@ -536,7 +544,11 @@ try:
                 "name": "SMS / WhatsApp Gateway",
                 "status": "Configured" if os.getenv("SMS_GATEWAY_URL", "").strip() else "Not configured",
                 "latencyMs": None,
-                "detail": "",
+                "detail": (
+                    "SMS_GATEWAY_URL is set"
+                    if os.getenv("SMS_GATEWAY_URL", "").strip()
+                    else "SMS_GATEWAY_URL is not set - phone verification is unavailable"
+                ),
                 "measured": False,
             },
         ]
@@ -609,7 +621,20 @@ try:
                     os.getenv("S3_AUDIT_BUCKET") or os.getenv("AWS_STORAGE_BUCKET_NAME")
                 ),
             },
-            }
+            # Kept explicit so the UI does not silently render a fake number.
+            "unavailable": [
+                "cpuUtilization",
+                "memoryUtilization",
+                "diskUtilization",
+                "requestThroughput",
+                "errorRate",
+            ],
+            "unavailableReason": (
+                "Not measured. Host CPU/memory/disk and request-rate metrics need "
+                "a metrics exporter (e.g. Prometheus) or the platform's own "
+                "monitoring; this process cannot observe them."
+            ),
+        }
 
     @app.middleware("http")
     async def enforce_auth_middleware(request: Request, call_next):

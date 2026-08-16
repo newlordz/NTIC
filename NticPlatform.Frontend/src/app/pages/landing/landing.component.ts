@@ -3229,13 +3229,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         }
       });
     };
-    // Registered outside the Angular zone: Zone.js patches addEventListener and
-    // requestAnimationFrame, so registering inside the zone ran a change
-    // detection pass on every scroll frame even though fabVisible only flips
-    // once at 150px. The ngZone.run above re-enters only for that real change.
-    this.ngZone.runOutsideAngular(() => {
-      window.addEventListener('scroll', this.fabScrollListener, { passive: true });
-    });
+    window.addEventListener('scroll', this.fabScrollListener, { passive: true });
   }
 
   // ── TRACK CODE PREVIEW & ARENA SIMULATION ─────────────────────
