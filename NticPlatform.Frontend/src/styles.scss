@@ -147,25 +147,41 @@ body {
   padding: 0;
   overflow-x: hidden;
   overflow-x: clip;
-  overscroll-behavior-y: none;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #eef5ff;
-  background-image: 
-    radial-gradient(ellipse 85% 65% at 12% -8%, rgba(0, 86, 179, 0.14) 0%, transparent 60%),
-    radial-gradient(ellipse 75% 60% at 88% 12%, rgba(0, 168, 150, 0.10) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 70% at 50% 95%, rgba(99, 102, 241, 0.07) 0%, transparent 65%),
-    radial-gradient(circle at 2px 2px, rgba(0, 63, 135, 0.05) 1.5px, transparent 0),
-    linear-gradient(180deg, #f4f8fe 0%, #e6effb 45%, #dce9f8 100%);
-  background-size: 100% 100%, 100% 100%, 100% 100%, 24px 24px, 100% 100%;
-  background-attachment: fixed;
+  background-color: #f8fafc;
   color: var(--on-surface);
-  -webkit-font-smoothing: antialiased;
   font-size: 16px;
   line-height: 1.5;
-  text-rendering: optimizeLegibility;
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background-image: 
+      radial-gradient(circle at 1px 1px, rgba(0, 63, 135, 0.035) 1px, transparent 0),
+      linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    background-size: 24px 24px, 100% 100%;
+    background-attachment: fixed;
+    opacity: 1;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Coordinated Theme Switching Animation - Eliminates flicker/tearing */
+body.is-theme-transitioning,
+body.is-theme-transitioning *,
+body.is-theme-transitioning *::before,
+body.is-theme-transitioning *::after {
+  transition:
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important,
+    border-color     0.3s cubic-bezier(0.4, 0, 0.2, 1) !important,
+    color            0.25s cubic-bezier(0.4, 0, 0.2, 1) !important,
+    box-shadow       0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition-delay: 0s !important;
 }
 
 /* ═══════════════════════════════════════════════
@@ -195,6 +211,244 @@ body {
 @keyframes scaleIn {
   from { opacity: 0; transform: scale(0.93); }
   to   { opacity: 1; transform: none; }
+}
+
+/* ═══════════════════════════════════════════════
+   DYNAMIC COSMIC SKY SYSTEM (DARK THEME)
+   - Gentle Twinkling Starfield
+   - Slow, Graceful Shooting Comets
+   ═══════════════════════════════════════════════ */
+.atmospheric-sky-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  overflow: hidden;
+  will-change: transform, opacity;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+body.dark-theme .atmospheric-sky-layer {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ── Twinkling Starfield ── */
+.cosmic-starfield {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  .star-layer {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+  }
+
+  /* Micro Stars Layer 1 */
+  .star-layer-1 {
+    width: 2px;
+    height: 2px;
+    background: transparent;
+    box-shadow:
+      10vw 6vh #fff, 22vw 14vh rgba(255,255,255,0.9), 35vw 8vh #38bdf8,
+      48vw 18vh #fff, 64vw 12vh rgba(255,255,255,0.85), 78vw 6vh #a78bfa,
+      90vw 16vh #fff, 6vw 32vh rgba(255,255,255,0.95), 18vw 42vh #38bdf8,
+      32vw 36vh #fff, 46vw 48vh rgba(255,255,255,0.85), 60vw 38vh #fde047,
+      74vw 44vh #fff, 86vw 38vh rgba(255,255,255,0.9), 12vw 64vh #38bdf8,
+      24vw 72vh #fff, 40vw 68vh rgba(255,255,255,0.8), 54vw 76vh #fff,
+      68vw 70vh #a78bfa, 82vw 80vh #fff, 92vw 66vh rgba(255,255,255,0.9),
+      16vw 86vh #fff, 44vw 88vh rgba(255,255,255,0.85), 72vw 86vh #38bdf8;
+    animation: starTwinkleSoft 8s ease-in-out infinite alternate;
+  }
+
+  /* Medium Stars Layer 2 */
+  .star-layer-2 {
+    width: 2.5px;
+    height: 2.5px;
+    background: transparent;
+    box-shadow:
+      16vw 10vh #fff, 30vw 20vh #fde047, 44vw 14vh #38bdf8,
+      58vw 24vh #fff, 72vw 14vh #fff, 84vw 26vh #a78bfa,
+      12vw 48vh #38bdf8, 28vw 54vh #fff, 42vw 44vh #fde047,
+      56vw 60vh #fff, 70vw 52vh #38bdf8, 84vw 62vh #fff,
+      18vw 78vh #a78bfa, 50vw 82vh #fff, 78vw 74vh #38bdf8;
+    animation: starTwinkleSoft 10s ease-in-out 3s infinite alternate;
+  }
+
+  /* Radiant Diamond Stars Layer 3 */
+  .star-layer-3 {
+    width: 3px;
+    height: 3px;
+    background: transparent;
+    box-shadow:
+      25vw 12vh #fff, 52vw 28vh #38bdf8, 80vw 18vh #fde047,
+      20vw 58vh #fff, 62vw 66vh #a78bfa, 76vw 82vh #fff;
+    animation: starTwinklePulse 12s ease-in-out 4s infinite alternate;
+  }
+
+  /* 4-Point Sparkling Diamond Stars */
+  .sparkle-stars {
+    position: absolute;
+    inset: 0;
+
+    .star-sparkle {
+      position: absolute;
+      font-size: 14px;
+      line-height: 1;
+      color: #38bdf8;
+      text-shadow: 0 0 8px #38bdf8, 0 0 16px rgba(56, 189, 248, 0.8);
+      animation: sparkleGlow 8s ease-in-out infinite alternate;
+    }
+
+    .s-1  { top: 12%; left: 8%;  color: #38bdf8; animation-delay: 0s; font-size: 16px; }
+    .s-2  { top: 22%; left: 82%; color: #fde047; animation-delay: 2.5s; font-size: 14px; }
+    .s-3  { top: 40%; left: 16%; color: #ffffff; animation-delay: 4.8s; font-size: 18px; }
+    .s-4  { top: 58%; left: 88%; color: #a78bfa; animation-delay: 1.6s; font-size: 15px; }
+    .s-5  { top: 75%; left: 26%; color: #38bdf8; animation-delay: 3.6s; font-size: 13px; }
+    .s-6  { top: 86%; left: 72%; color: #fde047; animation-delay: 5.5s; font-size: 16px; }
+    .s-7  { top: 18%; left: 48%; color: #ffffff; animation-delay: 3.0s; font-size: 17px; }
+    .s-8  { top: 32%; left: 68%; color: #38bdf8; animation-delay: 5.8s; font-size: 14px; }
+    .s-9  { top: 68%; left: 52%; color: #fde047; animation-delay: 0.8s; font-size: 15px; }
+    .s-10 { top: 82%; left: 10%; color: #a78bfa; animation-delay: 4.2s; font-size: 16px; }
+    .s-11 { top: 92%; left: 42%; color: #38bdf8; animation-delay: 6.5s; font-size: 14px; }
+    .s-12 { top: 6%;  left: 92%; color: #ffffff; animation-delay: 1.8s; font-size: 18px; }
+  }
+}
+
+@keyframes starTwinkleSoft {
+  0%   { opacity: 0.4; transform: scale(0.92); }
+  50%  { opacity: 0.95; transform: scale(1.12); }
+  100% { opacity: 0.45; transform: scale(0.96); }
+}
+
+@keyframes starTwinklePulse {
+  0%   { opacity: 0.35; transform: scale(0.88); }
+  50%  { opacity: 0.95; transform: scale(1.35); filter: drop-shadow(0 0 4px #38bdf8); }
+  100% { opacity: 0.35; transform: scale(0.88); }
+}
+
+@keyframes sparkleGlow {
+  0%   { opacity: 0.3; transform: scale(0.85) rotate(0deg); }
+  50%  { opacity: 1.0; transform: scale(1.3) rotate(12deg); }
+  100% { opacity: 0.3; transform: scale(0.85) rotate(0deg); }
+}
+
+/* ── Slow Graceful Celestial Shooting Comets ── */
+.comet-space {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  .celestial-comet {
+    position: absolute;
+    width: 220px;
+    height: 3px;
+    border-radius: 50% 0 0 50%;
+    background: linear-gradient(90deg, #ffffff 0%, #38bdf8 35%, rgba(167, 139, 250, 0.55) 70%, transparent 100%);
+    opacity: 0;
+    transform-origin: left center;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: -3px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 0 12px 3px #38bdf8, 0 0 24px 6px rgba(56, 189, 248, 0.8), 0 0 32px 8px rgba(167, 139, 250, 0.5);
+    }
+  }
+
+  .comet-alpha {
+    top: 6vh;
+    right: 4vw;
+    animation: cometFlySlowAlpha 22s cubic-bezier(0.2, 0.05, 0.3, 1) infinite;
+  }
+
+  .comet-beta {
+    top: 24vh;
+    right: 12vw;
+    width: 180px;
+    animation: cometFlySlowBeta 32s cubic-bezier(0.2, 0.05, 0.3, 1) 11s infinite;
+  }
+
+  .comet-gamma {
+    top: 48vh;
+    right: 8vw;
+    width: 160px;
+    animation: cometFlySlowGamma 42s cubic-bezier(0.2, 0.05, 0.3, 1) 22s infinite;
+  }
+}
+
+@keyframes cometFlySlowAlpha {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(145deg);
+    opacity: 0;
+  }
+  2% {
+    opacity: 1;
+  }
+  16% {
+    transform: translate3d(-100vw, 75vh, 0) rotate(145deg);
+    opacity: 0.95;
+  }
+  20% {
+    transform: translate3d(-125vw, 95vh, 0) rotate(145deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(-125vw, 95vh, 0) rotate(145deg);
+    opacity: 0;
+  }
+}
+
+@keyframes cometFlySlowBeta {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(138deg);
+    opacity: 0;
+  }
+  2% {
+    opacity: 1;
+  }
+  16% {
+    transform: translate3d(-90vw, 65vh, 0) rotate(138deg);
+    opacity: 0.9;
+  }
+  20% {
+    transform: translate3d(-115vw, 85vh, 0) rotate(138deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(-115vw, 85vh, 0) rotate(138deg);
+    opacity: 0;
+  }
+}
+
+@keyframes cometFlySlowGamma {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(150deg);
+    opacity: 0;
+  }
+  2% {
+    opacity: 1;
+  }
+  16% {
+    transform: translate3d(-85vw, 60vh, 0) rotate(150deg);
+    opacity: 0.85;
+  }
+  20% {
+    transform: translate3d(-110vw, 78vh, 0) rotate(150deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(-110vw, 78vh, 0) rotate(150deg);
+    opacity: 0;
+  }
 }
 
 @keyframes shimmer {
@@ -1551,7 +1805,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 
     .footer-crest-text {
       h3 {
-        font-family: 'Playfair Display', Georgia, serif;
+        font-family: 'Inter', sans-serif;
         font-size: 24px;
         font-weight: 800;
         color: var(--footer-title);
@@ -1598,7 +1852,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 
   .footer-nav-col {
     h4 {
-      font-family: 'Playfair Display', Georgia, serif;
+      font-family: 'Inter', sans-serif;
       font-size: 14px;
       font-weight: 700;
       color: var(--footer-title);
@@ -2718,6 +2972,12 @@ textarea.form-control { resize: vertical; min-height: 100px; }
    DARK THEME OVERRIDES
    ========================================================= */
 body.dark-theme {
+  background-color: #06111d !important;
+  color: #e1f3fc !important;
+
+  &::before {
+    opacity: 0;
+  }
   --primary:                 #acc7ff;
   --primary-container:       #004792;
   --primary-fixed-dim:       #83abf3;
@@ -3883,33 +4143,6 @@ body.dark-theme {
   -webkit-transform: translateZ(0);
   will-change: transform, backdrop-filter;
   -webkit-overflow-scrolling: touch;
-}
-
-/* ── Render Optimization: content-visibility for Off-Screen Sections (Beyond-the-Box) ── */
-.hall-of-fame-section,
-.news-editorial-section,
-.championship-stories-section,
-.academic-stats-tree-section,
-.concept-section,
-.unified-gateway-section,
-.academic-footer-editorial {
-  content-visibility: auto;
-  contain-intrinsic-size: 0 600px;
-}
-
-/* ── Low-End Device & Glassmorphism GPU Layer Optimization (Beyond-the-Box) ── */
-.why-exist-card,
-.gateway-card-inner,
-.academic-login-card,
-.hero-text-card,
-.scoreboard-table-card,
-.news-hero-card,
-.feature-card {
-  contain: layout paint;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
 }
 
 

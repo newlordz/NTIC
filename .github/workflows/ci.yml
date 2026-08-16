@@ -1,0 +1,190 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        # The test suite creates and drops its own database, so wait until the
+        # server genuinely accepts connections before starting.
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: '5432'
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      # conftest.py overrides POSTGRES_DB and refuses to run if DATABASE_URL
+      # points anywhere other than the test database.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: NticPlatform.Backend/requirements.txt
+
+      - name: Install dependencies
+        working-directory: NticPlatform.Backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Check every module compiles
+        working-directory: NticPlatform.Backend
+        run: python -m compileall -q app run.py
+
+      - name: Fail if the app object is None
+        working-directory: NticPlatform.Backend
+        # main.py wraps the whole application in `try/except ImportError` and
+        # falls back to `app = None`. Without this check a missing dependency
+        # surfaces as an opaque uvicorn error at deploy time instead of here.
+        run: |
+          python -c "
+          import app.main as m
+          assert m.app is not None, 'app is None - an import failed inside main.py'
+          print('app object OK')
+          "
+
+      - name: Run tests
+        working-directory: NticPlatform.Backend
+        run: python -m pytest tests -v --tb=short
+
+  frontend:
+    name: Frontend (typecheck, tests, build)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: NticPlatform.Frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: NticPlatform.Frontend
+        # `npm ci` honours the lockfile; `npm install` may silently resolve new
+        # versions and rewrite it.
+        run: npm ci
+
+      - name: Provide the gitignored dev environment file
+        working-directory: NticPlatform.Frontend
+        # angular.json points the `development` configuration (used by `ng serve`
+        # and `ng test`) at environment.local.ts, which is gitignored. Without
+        # this, a fresh clone cannot build.
+        run: |
+          if [ ! -f src/environments/environment.local.ts ]; then
+            cp src/environments/environment.prod.ts src/environments/environment.local.ts
+          fi
+
+      - name: Typecheck (app)
+        working-directory: NticPlatform.Frontend
+        run: npx tsc --noEmit -p tsconfig.app.json
+
+      - name: Typecheck (specs)
+        working-directory: NticPlatform.Frontend
+        run: npx tsc --noEmit -p tsconfig.spec.json
+
+      - name: Unit tests
+        working-directory: NticPlatform.Frontend
+        run: npx ng test --no-watch --browsers=ChromeHeadless
+
+      - name: Production build
+        working-directory: NticPlatform.Frontend
+        run: npx ng build --configuration production
+
+  gateway:
+    name: WhatsApp gateway (syntax)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax check
+        working-directory: whatsapp-gateway
+        # No tests exist yet; at minimum make sure the file parses.
+        run: node --check server.js
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fail on committed credentials
+        # Catches the specific classes of secret that have leaked in this repo
+        # before: Brevo keys, Google API keys, and hardcoded admin passwords.
+        run: |
+          set +e
+          FAIL=0
+
+          check() {
+            local label="$1" pattern="$2"
+            matches=$(grep -rInE "$pattern" \
+              --include='*.py' --include='*.ts' --include='*.js' \
+              --include='*.json' --include='*.yml' --include='*.yaml' \
+              --include='*.env' --include='*.bat' --include='*.ps1' \
+              --exclude-dir=node_modules --exclude-dir=dist \
+              --exclude-dir=.git --exclude-dir=.angular \
+              --exclude='package-lock.json' \
+              . 2>/dev/null \
+              | grep -v 'pragma: allowlist secret')
+            if [ -n "$matches" ]; then
+              echo "::error::Possible committed secret ($label):"
+              echo "$matches"
+              echo "If this is a deliberate non-secret (for example a denylist"
+              echo "entry), append '# pragma: allowlist secret' on the line above."
+              FAIL=1
+            fi
+          }
+
+          check "Brevo API key"      'xkeysib-[A-Za-z0-9]{20,}'
+          check "Google API key"     'AIza[0-9A-Za-z_-]{30,}'
+          check "AWS access key"     'AKIA[0-9A-Z]{16}'
+          check "Private key block"  'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY'
+          check "Hardcoded admin pw" 'Admin@Ntic[0-9]{4}'
+          check "Old Postgres pw"    'botsio212nyc'
+
+          if [ -f .env ]; then
+            echo "::error::.env is committed. It must stay git-ignored."
+            FAIL=1
+          fi
+
+          exit $FAIL
+
+      - name: Warn about placeholder API keys in the bundled environment
+        run: |
+          if grep -q "REPLACE_BREVO_API_KEY\|YOUR_BREVO_API_KEY_HERE" \
+             NticPlatform.Frontend/src/environments/environment.prod.ts; then
+            echo "::warning::environment.prod.ts still contains placeholder keys. \
+          This is expected: third-party keys must stay server-side. If you ever \
+          need one in the browser, revisit inject-env.js - its placeholder names \
+          do not currently match this file."
+          fi

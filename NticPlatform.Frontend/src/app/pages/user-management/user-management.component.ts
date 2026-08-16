@@ -86,7 +86,10 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   get canManageUsers(): boolean {
     const role = (getAuthValue('activeRoleId') || '').toLowerCase();
-    return !role || role === 'super_admin' || role === 'admin' || role === 'support_admin' || role === 'competition_manager' || role === 'school_admin';
+    // An absent role grants nothing, and only real admins may manage users --
+    // the backend requires super_admin/admin, so showing controls to anyone
+    // else just produced 403s.
+    return role === 'super_admin' || role === 'admin';
   }
 
   isCurrentUser(user: User): boolean {
@@ -244,12 +247,22 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       admin: 'NTIC-ADM-'
     };
     const prefix = prefixMap[role] || 'NTIC-USR-';
-    const randomTicket = prefix + Math.random().toString(36).substring(2, 6).toUpperCase();
-    const currentOtp = this.newUserForm.password || Math.floor(100000 + Math.random() * 900000).toString();
-
+    // Display code only. The account password is minted by the server.
     this.newUserForm.role = role;
-    this.newUserForm.ticket = randomTicket;
-    this.newUserForm.password = currentOtp;
+    this.newUserForm.ticket = prefix + this.randomSuffix();
+    this.newUserForm.password = '';
+  }
+
+  /**
+   * Short random code for display tickets and local ids, using
+   * crypto.getRandomValues. This is NOT a password - passwords are generated
+   * server-side and returned in `temporary_password`.
+   */
+  private randomSuffix(length = 6): string {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const bytes = new Uint8Array(length);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => alphabet[b % alphabet.length]).join('');
   }
 
   openAddUserModal(defaultRole = 'judge'): void {
@@ -325,7 +338,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       this.setNewUserRole(this.newUserForm.role || 'judge');
     }
 
-    const newId = 'USR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+    const newId = 'USR-' + Date.now() + '-' + this.randomSuffix(4).toLowerCase();
     const newUser: User = {
       id: newId,
       role: this.newUserForm.role,
@@ -334,7 +347,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       phone: this.newUserForm.phone || '',
       organization: this.newUserForm.organization || '',
       ticket: this.newUserForm.ticket,
-      otp: this.newUserForm.password,
+      otp: '',
       mustSetPassword: true,
       passwordChanged: false,
       status: this.newUserForm.status || 'Active',
@@ -349,36 +362,41 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       role: newUser.role,
       status: newUser.status,
       ticket: newUser.ticket,
-      password: newUser.otp || '123456',
+      // Deliberately no `password`. The server generates a strong one with a
+      // CSPRNG and returns it once as `temporary_password`. The old code sent a
+      // Math.random() 6-digit value, falling back to the literal '123456'.
       phone: newUser.phone || ''
     };
 
-    // Dispatch SMS (WhatsApp) and Email notifications to recipient
-    if (newUser.phone) {
-      this.smsService.sendCredentialsSms(newUser.phone, newUser.fullName, newUser.ticket || '', newUser.otp || '').subscribe();
-    }
-    this.emailService.sendApprovalEmail(
-      newUser.email,
-      newUser.fullName,
-      newUser.organization || 'NTIC Platform',
-      newUser.role,
-      newUser.ticket || '',
-      newUser.otp || ''
-    );
-
-    const currentUsers = [...this.contentService.users];
-    currentUsers.unshift(newUser);
-    this.contentService.saveUsers(currentUsers);
-    this.closeAddUserModal();
-    this.openCreatedUserModal(newUser);
-    this.loadUsers();
-
+    // Create the account FIRST, then use the server-issued password. Notifying
+    // the user before the write succeeded meant sending credentials for an
+    // account that might not exist.
     this.http.post(`${environment.apiUrl}/users`, userPayload).subscribe({
-      next: () => {
-        console.log('User account synced to backend database.');
+      next: (created: any) => {
+        newUser.otp = created?.temporary_password || '';
+
+        if (newUser.phone) {
+          this.smsService.sendCredentialsSms(newUser.phone, newUser.fullName, newUser.ticket || '', newUser.otp || '').subscribe();
+        }
+        this.emailService.sendApprovalEmail(
+          newUser.email,
+          newUser.fullName,
+          newUser.organization || 'NTIC Platform',
+          newUser.role,
+          newUser.ticket || '',
+          newUser.otp || ''
+        );
+
+        const currentUsers = [...this.contentService.users];
+        currentUsers.unshift(newUser);
+        this.contentService.saveUsers(currentUsers);
+        this.closeAddUserModal();
+        this.openCreatedUserModal(newUser);
+        this.loadUsers();
       },
       error: (err) => {
-        console.warn('Backend user sync notice:', err);
+        this.formError = err?.error?.detail || 'Could not create the account. Please try again.';
+        this.showToast('Error', this.formError, 5000);
       }
     });
   }
@@ -508,31 +526,27 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   regenerateOTP(user: User): void {
-    const newOTP = Math.floor(100000 + Math.random() * 900000).toString();
-    this.http.patch(`${environment.apiUrl}/users/${user.id}`, {
-      email: user.email,
-      full_name: user.fullName,
-      role: user.role,
-      status: user.status,
-      ticket: user.ticket,
-      password: newOTP
-    }).subscribe({
-      next: () => {
+    // Delegate to the dedicated endpoint: it mints the password with a CSPRNG
+    // and revokes the user's existing sessions at the same time.
+    this.http.post<{ temporary_password?: string; otp?: string }>(
+      `${environment.apiUrl}/users/${user.id}/reset-password`, {}
+    ).subscribe({
+      next: (res) => {
+        const newOTP = res?.temporary_password || res?.otp || '';
         const users = [...this.contentService.users];
         const idx = users.findIndex(u => u.id === user.id);
         if (idx > -1) {
           users[idx].otp = newOTP;
-          users[idx].password = newOTP;
           users[idx].mustSetPassword = true;
           users[idx].passwordChanged = false;
           this.contentService.saveUsers(users);
         }
-        this.showToast('OTP Regenerated', `New OTP generated for ${user.fullName}.`, 6000);
+        this.showToast('Password Reset', `A new one-time password was generated for ${user.fullName}.`, 6000);
         this.loadUsers();
       },
       error: (err) => {
-        console.error('Failed to regenerate OTP in backend:', err);
-        this.showToast('Error', 'Failed to regenerate OTP in backend database.', 4000);
+        console.error('Failed to reset the password in the backend:', err);
+        this.showToast('Error', 'Failed to reset the password in the backend database.', 4000);
       }
     });
   }

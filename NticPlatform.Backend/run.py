@@ -158,8 +158,32 @@ if __name__ == "__main__":
     try:
         import uvicorn
         import fastapi
-        print(f"[FastAPI] Starting NTIC Platform Backend on http://0.0.0.0:{port}...")
-        uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)
+
+        # Auto-reload is a DEVELOPMENT feature. Enabling it unconditionally meant
+        # production also ran a file-watching reloader: double the memory, and
+        # SIGTERM is not forwarded cleanly to the worker, so in-flight requests
+        # and the lifespan shutdown hooks get killed. It is now opt-in.
+        reload_enabled = os.getenv("NTIC_DEV_RELOAD", "").strip().lower() in ("1", "true", "yes")
+
+        # Warn loudly if a WebSocket implementation is missing: /api/ws returns
+        # 404 without one, and real-time sync silently stops working.
+        try:
+            import websockets  # noqa: F401
+        except ImportError:
+            try:
+                import wsproto  # noqa: F401
+            except ImportError:
+                print(
+                    "[Warning] No WebSocket library installed, so /api/ws will return 404 "
+                    "and real-time sync will not work.\n"
+                    "          Fix with:  pip install 'uvicorn[standard]'"
+                )
+
+        mode = "development (auto-reload ON)" if reload_enabled else "production (auto-reload off)"
+        print(f"[FastAPI] Starting NTIC Platform Backend on http://0.0.0.0:{port} - {mode}...")
+        if not reload_enabled:
+            print("          Set NTIC_DEV_RELOAD=true for auto-reload while developing.")
+        uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=reload_enabled)
     except ImportError:
         print("[Notice] uvicorn/fastapi not installed in current env. Starting standalone Python PostgreSQL HTTP server...")
         run_standalone_server(port)

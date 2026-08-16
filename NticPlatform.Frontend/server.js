@@ -114,11 +114,29 @@ const server = http.createServer((req, res) => {
         'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
       };
 
-      // Cache static assets (hashed JS/CSS/fonts/images) for 1 year; index.html no-cache
-      if (ext !== '.html') {
-        headers['Cache-Control'] = 'public, max-age=31536000, immutable';
-      } else {
+      // Cache-Control policy.
+      //
+      // Angular emits ngsw-worker.js and ngsw.json WITHOUT a content hash, so
+      // the blanket `ext !== '.html'` rule pinned them for a year. Returning
+      // visitors could then never receive a new service worker or manifest and
+      // stayed on a stale build indefinitely. These control files must always be
+      // revalidated; only content-hashed output is safe to cache forever.
+      const baseName = path.basename(filePath);
+      const neverCache = new Set([
+        'ngsw-worker.js',
+        'ngsw.json',
+        'safety-worker.js',
+        'worker-basic.min.js',
+        'manifest.json',
+        'index.html',
+      ]);
+
+      if (neverCache.has(baseName) || ext === '.html') {
         headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+        headers['Pragma'] = 'no-cache';
+        headers['Expires'] = '0';
+      } else {
+        headers['Cache-Control'] = 'public, max-age=31536000, immutable';
       }
 
       res.writeHead(200, headers);

@@ -4,6 +4,29 @@ from app.seed import seed_initial_data
 
 logger = logging.getLogger("ntic.db")
 
+
+def _redact_db_url(url: str) -> str:
+    """Return a connection URL safe to log — password replaced with ***.
+
+    Falls back to a fully opaque marker if the URL cannot be parsed, so a
+    malformed value can never leak its contents into the logs.
+    """
+    try:
+        from urllib.parse import urlsplit
+
+        parts = urlsplit(url)
+        if not parts.hostname:
+            return "<unparseable url redacted>"
+        userinfo = ""
+        if parts.username:
+            userinfo = parts.username + (":***" if parts.password else "") + "@"
+        port = f":{parts.port}" if parts.port else ""
+        database = parts.path or ""
+        return f"{parts.scheme}://{userinfo}{parts.hostname}{port}{database}"
+    except Exception:
+        return "<unparseable url redacted>"
+
+
 def init_postgres_db():
     """Ensure NticPlatformDb database and schema exist."""
     try:
@@ -16,13 +39,18 @@ def init_postgres_db():
     import os
 
     # ── Diagnose available connection vars ──────────────────────────
+    # Never log raw values: DATABASE_URL contains the password in the
+    # "postgresql://user:PASSWORD@host/db" userinfo section.
+    url_keys = {"DATABASE_PRIVATE_URL", "DATABASE_URL"}
     db_keys = ["DATABASE_PRIVATE_URL", "DATABASE_URL", "PGHOST", "PGPORT", "PGUSER", "PGDATABASE", "POSTGRES_HOST", "POSTGRES_PORT"]
     for k in db_keys:
         v = os.environ.get(k, "")
-        if v:
-            logger.info(f"  env {k} = {v[:80]}...")
-        else:
+        if not v:
             logger.info(f"  env {k} = (not set)")
+        elif k in url_keys:
+            logger.info(f"  env {k} = (set) {_redact_db_url(v)}")
+        else:
+            logger.info(f"  env {k} = {v}")
 
     # ── URL-based connection (works when env var is a real URL) ─────
     conn = get_db_connection()
@@ -216,6 +244,32 @@ def _create_tables(conn):
             expires_at TIMESTAMP NOT NULL
         );
 
+        -- One-time verification codes. The code itself is NEVER stored, only a
+        -- PBKDF2 hash, so a database leak does not expose in-flight codes.
+        -- Verification happens server-side; the browser only ever holds the
+        -- opaque challenge id.
+        CREATE TABLE IF NOT EXISTS otp_challenges (
+            id VARCHAR(64) PRIMARY KEY,
+            purpose VARCHAR(40) NOT NULL,
+            channel VARCHAR(16) NOT NULL,
+            target VARCHAR(254) NOT NULL,
+            code_hash TEXT NOT NULL,
+            attempts INTEGER DEFAULT 0,
+            max_attempts INTEGER DEFAULT 5,
+            consumed_at TIMESTAMP NULL,
+            expires_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Shared rate-limit state. Previously this lived in a process-local
+        -- dict, so with N replicas the effective login limit was 5*N and every
+        -- deploy reset the counters. Postgres is already a shared dependency, so
+        -- no extra infrastructure is needed.
+        CREATE TABLE IF NOT EXISTS rate_limit_hits (
+            bucket VARCHAR(200) NOT NULL,
+            hit_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS hof_entries (
             id VARCHAR(64) PRIMARY KEY,
             type VARCHAR(20) DEFAULT 'individual',
@@ -377,6 +431,10 @@ def _create_tables(conn):
     cur.execute("ALTER TABLE schools ADD COLUMN IF NOT EXISTS robotics_score INTEGER DEFAULT 0;")
     cur.execute("ALTER TABLE schools ADD COLUMN IF NOT EXISTS ai_score INTEGER DEFAULT 0;")
     cur.execute("ALTER TABLE schools ADD COLUMN IF NOT EXISTS cyber_score INTEGER DEFAULT 0;")
+    # Set when the server issues a temporary password, so the user is forced to
+    # choose their own on next sign-in.
+    cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE;")
+    cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMP NULL;")
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS pending_approvals (
@@ -442,10 +500,80 @@ def _create_tables(conn):
         );
     """)
     conn.commit()
+
+    _create_indexes(cur)
+    conn.commit()
     cur.close()
 
     # Run seeder
     seed_initial_data(conn)
+
+
+def _create_indexes(cur):
+    """Create the indexes the query patterns in main.py actually need.
+
+    PostgreSQL does NOT automatically index foreign-key columns, so before this
+    every cascade delete and every child lookup was a sequential scan. Each
+    statement is IF NOT EXISTS so this is safe to re-run on every boot.
+    """
+    statements = [
+        # ── Authentication: hit on literally every request ──
+        # login/lookup filter on lower(email); a plain index cannot serve that,
+        # so the expression must match the query.
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users (lower(email));",
+        "CREATE INDEX IF NOT EXISTS idx_users_ticket_upper ON users (upper(ticket));",
+        "CREATE INDEX IF NOT EXISTS idx_users_role ON users (role);",
+        # auth_sessions.token is the PK, but these two are not indexed:
+        # user_id -> revoke-all-sessions-for-user; expires_at -> the pruning job.
+        "CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions (user_id);",
+        "CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions (expires_at);",
+        "CREATE INDEX IF NOT EXISTS idx_otp_expires_at ON otp_challenges (expires_at);",
+        "CREATE INDEX IF NOT EXISTS idx_otp_target_purpose ON otp_challenges (target, purpose);",
+        # Every rate-limit check filters on (bucket, hit_at); without this the
+        # check degrades into a full scan of a hot, high-churn table.
+        "CREATE INDEX IF NOT EXISTS idx_rate_limit_bucket_time ON rate_limit_hits (bucket, hit_at);",
+
+        # ── Foreign keys (unindexed FKs make DELETE parents O(n) per row) ──
+        "CREATE INDEX IF NOT EXISTS idx_submissions_student_id ON assignment_submissions (student_id);",
+        "CREATE INDEX IF NOT EXISTS idx_submissions_status ON assignment_submissions (status);",
+        "CREATE INDEX IF NOT EXISTS idx_lms_modules_course_id ON lms_modules (course_id);",
+        "CREATE INDEX IF NOT EXISTS idx_lms_materials_course_id ON lms_materials (course_id);",
+        "CREATE INDEX IF NOT EXISTS idx_lms_materials_module_id ON lms_materials (module_id);",
+        "CREATE INDEX IF NOT EXISTS idx_lms_assignments_course_id ON lms_assignments (course_id);",
+        "CREATE INDEX IF NOT EXISTS idx_lms_submissions_assignment_id ON lms_submissions (assignment_id);",
+        "CREATE INDEX IF NOT EXISTS idx_lms_submissions_course_id ON lms_submissions (course_id);",
+        "CREATE INDEX IF NOT EXISTS idx_lms_submissions_student_id ON lms_submissions (student_id);",
+        "CREATE INDEX IF NOT EXISTS idx_lms_enrollments_course_id ON lms_enrollments (course_id);",
+        "CREATE INDEX IF NOT EXISTS idx_lms_enrollments_student_id ON lms_enrollments (student_id);",
+
+        # ── Frequently filtered / ordered columns ──
+        "CREATE INDEX IF NOT EXISTS idx_students_email_lower ON students (lower(email));",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_user_id ON support_tickets (user_id);",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_last_updated ON support_tickets (last_updated DESC);",
+        "CREATE INDEX IF NOT EXISTS idx_tickets_is_deleted ON support_tickets (is_deleted);",
+        "CREATE INDEX IF NOT EXISTS idx_approvals_status ON pending_approvals (status);",
+        "CREATE INDEX IF NOT EXISTS idx_drafts_updated_at ON registration_drafts (updated_at);",
+        "CREATE INDEX IF NOT EXISTS idx_lms_progress_student_id ON lms_progress (student_id);",
+        # audit_logs already has idx_audit_logs_id_desc; retention prunes on
+        # `time` and filters on `type`, neither of which was indexed.
+        "CREATE INDEX IF NOT EXISTS idx_audit_logs_type ON audit_logs (type);",
+        "CREATE INDEX IF NOT EXISTS idx_audit_logs_time ON audit_logs (time);",
+    ]
+    created = 0
+    for stmt in statements:
+        try:
+            cur.execute(stmt)
+            created += 1
+        except Exception as exc:
+            # A single unsupported index must not stop the app from booting.
+            # Most likely cause: pre-existing duplicate rows blocking a UNIQUE
+            # index, which is worth seeing in the logs.
+            logger.warning(f"Index skipped ({stmt.split(' ')[5]}): {exc}")
+            try:
+                cur.connection.rollback()
+            except Exception:
+                pass
+    logger.info(f"Index check complete: {created}/{len(statements)} verified.")
 
 
 # ── Connection Pool & Helpers ──

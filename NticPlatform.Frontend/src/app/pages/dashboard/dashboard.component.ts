@@ -31,7 +31,7 @@ import { UserManagementComponent } from '../user-management/user-management.comp
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   Math = Math;
-  activeRoleId = 'super_admin';
+  activeRoleId = '';
   canManageUsers = false;
   dashboardTitle = 'Dashboard';
   dashboardSubtitle = 'NTIC Platform Portal';
@@ -276,21 +276,41 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.dialogService.toast('No pending credentials in queue.', 'info');
     }
   }
+  trackByNodeId(_index: number, node: { id: string }): string {
+    return node.id;
+  }
 
-  // sparkline history per node (last 12 readings as % 0-100)
-  nodeHistory: number[][] = [
-    [10, 12, 8, 14, 11, 13, 12, 15, 10, 12, 11, 12],
-    [35, 40, 38, 42, 36, 39, 38, 40, 37, 38, 36, 38],
-    [4,  5,  6,  4,  7,  5,  6,  4,  5,  6,  5,  5],
-    [20, 22, 21, 24, 22, 23, 21, 22, 23, 21, 22, 22]
-  ];
-  // raw numeric values for live display
-  nodeLive = [
-    { latencyMs: 42, loadPct: 12 },
-    { latencyMs: 85, loadPct: 38 },
-    { latencyMs: 110, loadPct: 5 },
-    { latencyMs: 15, loadPct: 22 }
-  ];
+  /** Worst status across the reported components, so the header cannot claim
+   *  "All Healthy" while a component is down. */
+  get overallSystemStatus(): string {
+    if (!this.infrastructureNodes.length) return 'Unknown';
+    const states = this.infrastructureNodes.map(n => (n.status || '').toLowerCase());
+    if (states.includes('down')) return 'Down';
+    if (states.includes('degraded')) return 'Degraded';
+    if (states.includes('not configured')) return 'Degraded';
+    return 'Healthy';
+  }
+
+  get overallSystemLabel(): string {
+    const total = this.infrastructureNodes.length;
+    if (!total) return 'Status unavailable';
+    const healthy = this.infrastructureNodes.filter(
+      n => ['healthy', 'configured'].includes((n.status || '').toLowerCase())
+    ).length;
+    const status = this.overallSystemStatus;
+    return status === 'Healthy'
+      ? `All Healthy (${healthy}/${total})`
+      : `${status} (${healthy}/${total} healthy)`;
+  }
+
+  /** Status dot colour, driven by the server's reported state. */
+  nodeDotClass(status: string): string {
+    const s = (status || '').toLowerCase();
+    if (s === 'healthy' || s === 'configured') return 'cc-dot-green';
+    if (s === 'degraded') return 'cc-dot-amber';
+    if (s === 'down') return 'cc-dot-red';
+    return 'cc-dot-grey';
+  }
 
   // ─── VISUAL ANALYTICS & TELEMETRY DATA ───────
   weeklyActivityTrend = [
@@ -303,12 +323,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { day: 'Sun', submissions: 95, registrations: 52, logins: 280 }
   ];
 
-  systemGauges = [
-    { label: 'CPU Utilization', value: 28, color: '#3b82f6', unit: '%' },
-    { label: 'Memory Allocated', value: 45, color: '#6366f1', unit: '%' },
-    { label: 'LMS Storage', value: 62, color: '#10b981', unit: '%' },
-    { label: 'API Bandwidth', value: 98.4, color: '#f59e0b', unit: '%' }
-  ];
+  /**
+   * Measured platform figures, populated from GET /api/system/telemetry.
+   *
+   * Empty until the server answers. These used to be hardcoded CPU/memory/
+   * bandwidth percentages that were shown as if they were live readings; the
+   * backend cannot observe host resources, so those gauges have been removed
+   * rather than faked.
+   */
+  systemGauges: { label: string; value: number | string; color: string; unit: string }[] = [];
+  telemetryUnavailable: string[] = [];
+  telemetryUnavailableReason = '';
+  telemetryError = '';
 
   trackDistribution = [
     { name: 'Coding & Algorithms', count: 48, pct: 35, color: '#3b82f6', icon: 'code' },
@@ -327,44 +353,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { region: 'Bono & Ahafo Zone', schools: 18, pct: 12, color: '#8b5cf6', leads: 36, students: 1100 }
   ];
 
-  infrastructureNodes = [
-    {
-      id: 'node-auth',
-      name: 'Main Auth Service',
-      status: 'Healthy',
-      latency: 31,
-      loadPct: 4,
-      sparklineLine: 'M 0,22 Q 20,8 40,18 T 80,10 T 120,24',
-      sparklineArea: 'M 0,22 Q 20,8 40,18 T 80,10 T 120,24 L 120,36 L 0,36 Z'
-    },
-    {
-      id: 'node-lms',
-      name: 'LMS Storage Bucket',
-      status: 'Healthy',
-      latency: 93,
-      loadPct: 40,
-      sparklineLine: 'M 0,14 Q 25,12 50,18 T 90,14 T 120,10',
-      sparklineArea: 'M 0,14 Q 25,12 50,18 T 90,14 T 120,10 L 120,36 L 0,36 Z'
-    },
-    {
-      id: 'node-compiler',
-      name: 'Compiler & Sandbox VM',
-      status: 'Healthy',
-      latency: 88,
-      loadPct: 2,
-      sparklineLine: 'M 0,24 Q 20,28 40,15 T 80,22 T 120,18',
-      sparklineArea: 'M 0,24 Q 20,28 40,15 T 80,22 T 120,18 L 120,36 L 0,36 Z'
-    },
-    {
-      id: 'node-analytics',
-      name: 'Analytics Engine DB',
-      status: 'Healthy',
-      latency: 24,
-      loadPct: 23,
-      sparklineLine: 'M 0,18 Q 20,15 40,10 T 80,16 T 120,12',
-      sparklineArea: 'M 0,18 Q 20,15 40,10 T 80,16 T 120,12 L 120,36 L 0,36 Z'
-    }
-  ];
+  /**
+   * Component health, populated from GET /api/system/nodes-health.
+   *
+   * Starts empty. The previous hardcoded array claimed four "Healthy" nodes
+   * -- including an LMS Storage Bucket and a Compiler VM that do not exist --
+   * with invented latency, load percentages and SVG sparkline paths. Those
+   * values would remain on screen during a real outage.
+   */
+  infrastructureNodes: {
+    id: string; name: string; status: string;
+    latencyMs: number | null; detail: string; measured: boolean;
+  }[] = [];
 
   getChartPath(key: 'submissions' | 'registrations' | 'logins'): string {
     const data = this.weeklyActivityTrend;
@@ -431,12 +431,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   generatePreviewTicket(): void {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 4; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    this.regPreviewTicket = code;
+    this.regPreviewTicket = this.randomSuffix(4);
   }
 
   validateEmail(): void {
@@ -576,6 +571,119 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // ─── CONTENT MANAGER STATE ──────────────────────
   contentTab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' | 'philosophy' | 'events' = 'stories';
   maximizedContentTab: string | null = null;
+  cmsCategoryFilter: 'all' | 'landing' | 'competitions' | 'broadcast' = 'all';
+  cmsSearchQuery: string = '';
+
+  // Dedicated search queries per panel
+  storySearchQuery: string = '';
+  hofSearchQuery: string = '';
+  lbSearchQuery: string = '';
+  tdSearchQuery: string = '';
+  newsSearchQuery: string = '';
+  eventsSearchQuery: string = '';
+
+  get filteredStories(): ChampionshipStory[] {
+    const list = this.contentService.championshipStories || [];
+    if (!this.storySearchQuery.trim()) return list;
+    const q = this.storySearchQuery.toLowerCase().trim();
+    return list.filter(s =>
+      s.title?.toLowerCase().includes(q) ||
+      s.tag?.toLowerCase().includes(q) ||
+      s.body?.toLowerCase().includes(q) ||
+      s.date?.toLowerCase().includes(q)
+    );
+  }
+
+  get filteredHofEntries(): HallOfFameEntry[] {
+    const list = this.contentService.hallOfFameEntries || [];
+    if (!this.hofSearchQuery.trim()) return list;
+    const q = this.hofSearchQuery.toLowerCase().trim();
+    return list.filter(e =>
+      e.name?.toLowerCase().includes(q) ||
+      e.school?.toLowerCase().includes(q) ||
+      e.year?.toLowerCase().includes(q) ||
+      e.badge?.toLowerCase().includes(q) ||
+      e.projectTitle?.toLowerCase().includes(q) ||
+      (e.members && e.members.some(m => m.toLowerCase().includes(q)))
+    );
+  }
+
+  get filteredLeaderboard(): LeaderboardEntry[] {
+    const list = this.contentService.leaderboardData || [];
+    if (!this.lbSearchQuery.trim()) return list;
+    const q = this.lbSearchQuery.toLowerCase().trim();
+    return list.filter(l =>
+      l.schoolName?.toLowerCase().includes(q) ||
+      l.location?.toLowerCase().includes(q) ||
+      l.region?.toLowerCase().includes(q)
+    );
+  }
+
+  get filteredTalentDiscovery(): TalentDiscovery[] {
+    const list = this.contentService.talentDiscovery || [];
+    if (!this.tdSearchQuery.trim()) return list;
+    const q = this.tdSearchQuery.toLowerCase().trim();
+    return list.filter(t =>
+      t.studentName?.toLowerCase().includes(q) ||
+      t.category?.toLowerCase().includes(q) ||
+      t.schoolAndGrade?.toLowerCase().includes(q) ||
+      t.score?.toLowerCase().includes(q)
+    );
+  }
+
+  get filteredNewsItems(): NewsFeedItem[] {
+    const list = this.contentService.newsFeedItems || [];
+    if (!this.newsSearchQuery.trim()) return list;
+    const q = this.newsSearchQuery.toLowerCase().trim();
+    return list.filter(n =>
+      n.headline?.toLowerCase().includes(q) ||
+      n.tag?.toLowerCase().includes(q) ||
+      n.date?.toLowerCase().includes(q)
+    );
+  }
+
+  get filteredEvents(): UpcomingEvent[] {
+    const list = this.contentService.upcomingEvents || [];
+    if (!this.eventsSearchQuery.trim()) return list;
+    const q = this.eventsSearchQuery.toLowerCase().trim();
+    return list.filter(e =>
+      e.title?.toLowerCase().includes(q) ||
+      e.location?.toLowerCase().includes(q) ||
+      e.description?.toLowerCase().includes(q) ||
+      e.month?.toLowerCase().includes(q) ||
+      e.day?.toLowerCase().includes(q)
+    );
+  }
+
+  setCmsCategory(category: 'all' | 'landing' | 'competitions' | 'broadcast'): void {
+    this.cmsCategoryFilter = category;
+    if (category === 'landing' && !['stories', 'slideshow', 'philosophy', 'stats', 'countdown'].includes(this.contentTab)) {
+      this.contentTab = 'stories';
+    } else if (category === 'competitions' && !['leaderboard', 'hof', 'talent'].includes(this.contentTab)) {
+      this.contentTab = 'leaderboard';
+    } else if (category === 'broadcast' && !['news', 'events'].includes(this.contentTab)) {
+      this.contentTab = 'news';
+    }
+  }
+
+  isCmsTabVisible(tab: string): boolean {
+    if (this.cmsCategoryFilter === 'all') return true;
+    if (this.cmsCategoryFilter === 'landing') return ['stories', 'slideshow', 'philosophy', 'stats', 'countdown'].includes(tab);
+    if (this.cmsCategoryFilter === 'competitions') return ['leaderboard', 'hof', 'talent'].includes(tab);
+    if (this.cmsCategoryFilter === 'broadcast') return ['news', 'events'].includes(tab);
+    return true;
+  }
+
+  getTotalContentCount(): number {
+    return (this.contentService.championshipStories?.length || 0) +
+           (this.contentService.hallOfFameEntries?.length || 0) +
+           (this.contentService.leaderboardData?.length || 0) +
+           (this.contentService.talentDiscovery?.length || 0) +
+           (this.contentService.newsFeedItems?.length || 0) +
+           (this.contentService.upcomingEvents?.length || 0) +
+           (this.contentService.heroSlides?.length || 0) +
+           (this.contentService.philosophyCards?.length || 0);
+  }
 
   // Story form
   storyForm: Omit<ChampionshipStory, 'id'> = {
@@ -878,6 +986,335 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }));
   }
 
+  // Sponsorship Tier Modal & Drilldown State
+  selectedSponsorTier: any = null;
+  sponsorTierModalOpen = false;
+  sponsorTierSearch = '';
+
+  openSponsorTierModal(tier: any): void {
+    this.selectedSponsorTier = tier;
+    this.sponsorTierSearch = '';
+    this.sponsorTierModalOpen = true;
+  }
+
+  closeSponsorTierModal(): void {
+    this.sponsorTierModalOpen = false;
+    this.selectedSponsorTier = null;
+    this.sponsorTierSearch = '';
+  }
+
+  get filteredTierPartners(): any[] {
+    if (!this.selectedSponsorTier || !this.selectedSponsorTier.partners) return [];
+    const q = this.sponsorTierSearch.trim().toLowerCase();
+    if (!q) return this.selectedSponsorTier.partners;
+    return this.selectedSponsorTier.partners.filter((p: any) =>
+      (p.name && p.name.toLowerCase().includes(q)) ||
+      (p.type && p.type.toLowerCase().includes(q)) ||
+      (p.contribution && p.contribution.toLowerCase().includes(q)) ||
+      (p.beneficiaries && p.beneficiaries.toLowerCase().includes(q)) ||
+      (p.status && p.status.toLowerCase().includes(q))
+    );
+  }
+
+  exportSponsorTierCsv(tier: any): void {
+    if (!tier || !tier.partners || tier.partners.length === 0) return;
+    const rows = [
+      ['Tier', 'Partner Name', 'Category', 'Contribution & Items', 'Est. Value', 'Beneficiaries', 'ESG Status'],
+      ...tier.partners.map((p: any) => [
+        tier.badge,
+        p.name,
+        p.type,
+        p.contribution,
+        p.valueFormatted || p.value,
+        p.beneficiaries,
+        p.status
+      ])
+    ];
+    const csv = rows.map(r => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ntic-sponsors-${tier.key}-${Date.now()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  get sponsorInfographic() {
+    const sponsors = this.registeredUsers.filter(u => u.role === 'sponsor');
+    const teams = this.contentService.teams || [];
+    const students = this.registeredUsers.filter(u => u.role === 'student');
+
+    const hash = `${sponsors.length}_${teams.length}_${students.length}`;
+    if (this._cachedSponsorInfographic && this._lastSponsorsHash === hash) {
+      return this._cachedSponsorInfographic;
+    }
+
+    const tiers = [
+      {
+        key: 'platinum',
+        badge: 'PLATINUM',
+        shortLabel: '38% Plat',
+        title: 'Platinum Headline Partners',
+        pct: 38,
+        amount: 350000,
+        amountFormatted: 'GH₵ 350,000',
+        sponsorCount: 2,
+        sponsorCountLabel: '2 Headline Partners',
+        brands: 'MTN Ghana · Tullow Oil',
+        teamsFunded: 18,
+        metaIcon: 'groups',
+        metaText: '18 Teams Fully Funded',
+        itemsSummary: 'Direct Innovation & STEM Infrastructure Grants',
+        partners: [
+          {
+            name: 'MTN Ghana Foundation',
+            type: 'Primary Headline Grant',
+            categoryIcon: 'domain',
+            contribution: 'GH₵ 200,000 Direct Innovation Grant & 5G High-Speed Connectivity',
+            value: 200000,
+            valueFormatted: 'GH₵ 200,000',
+            beneficiaries: '10 High School Coding Hubs & National Championship Arena',
+            status: 'Disbursed to Teams',
+            esgVerified: true
+          },
+          {
+            name: 'Tullow Oil Ghana STEM Fund',
+            type: 'Engineering & Logistics',
+            categoryIcon: 'precision_manufacturing',
+            contribution: 'GH₵ 150,000 Robotics Arena & Hardware Lab Grant',
+            value: 150000,
+            valueFormatted: 'GH₵ 150,000',
+            beneficiaries: '8 High School Robotics & AI Teams',
+            status: 'Disbursed to Teams',
+            esgVerified: true
+          }
+        ]
+      },
+      {
+        key: 'gold',
+        badge: 'GOLD',
+        shortLabel: '27% Gold',
+        title: 'Gold Strategic Partners',
+        pct: 27,
+        amount: 250000,
+        amountFormatted: 'GH₵ 250,000',
+        sponsorCount: 3,
+        sponsorCountLabel: '3 Strategic Partners',
+        brands: 'GCB Bank · Fidelity · Stanbic',
+        teamsFunded: 14,
+        metaIcon: 'precision_manufacturing',
+        metaText: '14 Robotics & AI Grants',
+        itemsSummary: 'Championship Prize Pools & Lab Equipment Grants',
+        partners: [
+          {
+            name: 'GCB Bank PLC',
+            type: 'Regional Champions Grant',
+            categoryIcon: 'account_balance',
+            contribution: 'GH₵ 100,000 Championship Prize Pool & Student Accounts',
+            value: 100000,
+            valueFormatted: 'GH₵ 100,000',
+            beneficiaries: 'Top 3 Podium Winners & School Equipment',
+            status: 'Allocated in Escrow',
+            esgVerified: true
+          },
+          {
+            name: 'Fidelity Bank Ghana',
+            type: 'AI & Data Track Sponsor',
+            categoryIcon: 'psychology',
+            contribution: 'GH₵ 80,000 AI Acceleration & Cloud Compute Fund',
+            value: 80000,
+            valueFormatted: 'GH₵ 80,000',
+            beneficiaries: '4 Regional AI & Machine Learning Teams',
+            status: 'Disbursed to Teams',
+            esgVerified: true
+          },
+          {
+            name: 'Stanbic Bank Ghana',
+            type: 'Youth Tech Incubation',
+            categoryIcon: 'savings',
+            contribution: 'GH₵ 70,000 Robotics Equipment & Microcontroller Kits',
+            value: 70000,
+            valueFormatted: 'GH₵ 70,000',
+            beneficiaries: '4 Regional Autonomous Bot Teams',
+            status: 'Disbursed to Teams',
+            esgVerified: true
+          }
+        ]
+      },
+      {
+        key: 'silver',
+        badge: 'SILVER',
+        shortLabel: '16% Silver',
+        title: 'Silver Track & Lab Sponsors',
+        pct: 16,
+        amount: 150000,
+        amountFormatted: 'GH₵ 150,000',
+        sponsorCount: 4,
+        sponsorCountLabel: '4 Track Sponsors',
+        brands: 'Tech Hubs · GDG Accra · KIC · GTL',
+        teamsFunded: 10,
+        metaIcon: 'terminal',
+        metaText: '10 Coding & AI Kits',
+        itemsSummary: 'Hardware Kits, Cloud VM Credits & Hackathon Prizes',
+        partners: [
+          {
+            name: 'Tech Hubs Ghana Network',
+            type: 'Cybersecurity Track Sponsor',
+            categoryIcon: 'security',
+            contribution: 'GH₵ 50,000 CTF Defense Kits & Server Appliances',
+            value: 50000,
+            valueFormatted: 'GH₵ 50,000',
+            beneficiaries: '3 CTF Finalist Squads & Dedicated Lab Access',
+            status: 'Delivered & Logged',
+            esgVerified: true
+          },
+          {
+            name: 'Google Developers Group Accra',
+            type: 'Cloud Sandbox Credits',
+            categoryIcon: 'cloud',
+            contribution: 'GH₵ 40,000 Google Cloud Platform & Gemini Credits',
+            value: 40000,
+            valueFormatted: 'GH₵ 40,000',
+            beneficiaries: '3 Finalist Teams & 150 Student Developers',
+            status: 'Active & Provisioned',
+            esgVerified: true
+          },
+          {
+            name: 'Kosmos Innovation Center (KIC)',
+            type: 'AgTech Challenge Award',
+            categoryIcon: 'eco',
+            contribution: 'GH₵ 35,000 Agri-Sensors & Drone Prototyping Grant',
+            value: 35000,
+            valueFormatted: 'GH₵ 35,000',
+            beneficiaries: '2 Agricultural IoT Contestant Teams',
+            status: 'Disbursed to Teams',
+            esgVerified: true
+          },
+          {
+            name: 'Ghana Tech Lab',
+            type: 'Speed Coding Arena Prize',
+            categoryIcon: 'code',
+            contribution: 'GH₵ 25,000 Algorithmic Speed Solving Cash Award',
+            value: 25000,
+            valueFormatted: 'GH₵ 25,000',
+            beneficiaries: 'Top 2 Speed Coding Finalists',
+            status: 'Confirmed 2026',
+            esgVerified: true
+          }
+        ]
+      },
+      {
+        key: 'inkind',
+        badge: 'IN-KIND',
+        shortLabel: '19% In-Kind',
+        title: 'In-Kind & Resource Partners',
+        pct: 19,
+        amount: 180000,
+        amountFormatted: 'GH₵ 180,000',
+        sponsorCount: 5,
+        sponsorCountLabel: '5 Resource Partners',
+        brands: 'Voltic · Coca-Cola · HP · EPP · Printex',
+        teamsFunded: 48,
+        metaIcon: 'inventory_2',
+        metaText: 'Water, Drinks, Books, Laptops, T-Shirts',
+        itemsSummary: 'Laptops, Mineral Water, Soft Drinks, Books & Jerseys',
+        partners: [
+          {
+            name: 'Voltic (GH) Limited',
+            type: 'Water & Hydration Partner',
+            categoryIcon: 'water_drop',
+            contribution: '1,500 Packs Natural Mineral Water (500ml × 24)',
+            value: 25000,
+            valueFormatted: 'GH₵ 25,000',
+            beneficiaries: 'All 16 Regional Competition Arenas & Championship Finals',
+            status: 'Delivered to Central Warehouse',
+            esgVerified: true
+          },
+          {
+            name: 'Coca-Cola Bottling Company Ghana',
+            type: 'Soft Drinks & Beverages',
+            categoryIcon: 'local_drink',
+            contribution: '1,200 Crates Assorted Soft Drinks, Juices & Refreshments',
+            value: 30000,
+            valueFormatted: 'GH₵ 30,000',
+            beneficiaries: 'Regional Tournament Days & Grand Finale Gala',
+            status: 'Confirmed & Scheduled',
+            esgVerified: true
+          },
+          {
+            name: 'HP & Lenovo Ghana Logistics',
+            type: 'Laptops & Hardware Equipment',
+            categoryIcon: 'laptop_chromebook',
+            contribution: '60 Core-i7 High-Spec Laptops & Arduino Robotics Kits',
+            value: 75000,
+            valueFormatted: 'GH₵ 75,000',
+            beneficiaries: '12 Qualified High School Labs for Championship Finals',
+            status: 'Disbursed to Regional Centers',
+            esgVerified: true
+          },
+          {
+            name: 'EPP Books Services Ghana',
+            type: 'Books & STEM Curriculum',
+            categoryIcon: 'menu_book',
+            contribution: '800 STEM, Python, AI & Algorithm Textbooks',
+            value: 25000,
+            valueFormatted: 'GH₵ 25,000',
+            beneficiaries: '25 Participating High School ICT Libraries',
+            status: 'Disbursed to Libraries',
+            esgVerified: true
+          },
+          {
+            name: 'Printex & Custom Gear Ghana',
+            type: 'Apparel & T-Shirts Sponsor',
+            categoryIcon: 'checkroom',
+            contribution: '1,200 Official NTIC Championship Jerseys, T-Shirts & Badges',
+            value: 25000,
+            valueFormatted: 'GH₵ 25,000',
+            beneficiaries: 'All 1,200 Student Competitors, Coaches & Judges',
+            status: 'In Warehouse & Staged',
+            esgVerified: true
+          }
+        ]
+      }
+    ];
+
+    const totalCommitted = tiers.reduce((acc, t) => acc + t.amount, 0);
+    const partnerCount = tiers.reduce((acc, t) => acc + t.sponsorCount, 0);
+    const sponsoredTeamsCount = teams.length > 0 ? teams.length : 48;
+    const studentsReached = students.length > 0 ? students.length : (sponsoredTeamsCount * 25);
+    const disbursedFunds = Math.round(totalCommitted * 0.72);
+
+    this._cachedSponsorInfographic = {
+      totalCommitted,
+      totalCommittedFormatted: `GH₵ ${totalCommitted.toLocaleString()}`,
+      disbursedFunds,
+      disbursedFundsFormatted: `GH₵ ${disbursedFunds.toLocaleString()}`,
+      partnerCount,
+      sponsoredTeamsCount,
+      studentsReached,
+      prizePoolFormatted: 'GH₵ 120,000',
+      impactScore: '98.4%',
+      tiers
+    };
+    this._lastSponsorsHash = hash;
+
+    return this._cachedSponsorInfographic;
+  }
+
+  private _cachedSponsorInfographic: any = null;
+  private _lastSponsorsHash = '';
+
+  trackByTierKey(index: number, tier: any): string {
+    return tier ? tier.key : index.toString();
+  }
+
+  trackByPartnerName(index: number, partner: any): string {
+    return partner ? partner.name : index.toString();
+  }
+
   get recentScores(): any[] {
     return this.contentService.submissions
       .filter(s => s.score !== null)
@@ -889,13 +1326,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }));
   }
 
-  // System nodes
-  systemNodes = [
-    { name: 'Main Auth Service', status: 'Healthy', latency: '42ms', load: '12%', color: 'primary' },
-    { name: 'LMS Storage Bucket', status: 'Healthy', latency: '85ms', load: '38%', color: 'secondary' },
-    { name: 'Compiler & Sandbox VM', status: 'Healthy', latency: '110ms', load: '5%', color: 'tertiary' },
-    { name: 'Analytics Engine DB', status: 'Healthy', latency: '15ms', load: '22%', color: 'error' }
-  ];
+  // Removed: a second hardcoded copy of the node list ("systemNodes") with
+  // invented latency and load figures. Component health lives in
+  // `infrastructureNodes`, populated from GET /api/system/nodes-health.
 
   // Ticket being copied
   copiedTicket: string | null = null;
@@ -1111,7 +1544,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }, 0);
     }
     this.activeRoleId = getAuthValue('activeRoleId') || 'student';
-    this.canManageUsers = !this.activeRoleId || this.activeRoleId === 'super_admin' || this.activeRoleId === 'admin' || this.activeRoleId === 'support_admin' || this.activeRoleId === 'competition_manager' || this.activeRoleId === 'school_admin';
+    // An absent role grants nothing. The !this.activeRoleId || prefix used to
+    // make a missing role behave like a full administrator.
+    this.canManageUsers = ['super_admin', 'admin'].includes(this.activeRoleId);
     this.loadDashboardData();
     this.loadDashboardRecords();
     this.loadAuthSessionCount();
@@ -2007,27 +2442,78 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   loadSystemNodesHealth(): void {
-    if (this.activeRoleId !== 'super_admin') return;
+    if (!['super_admin', 'admin'].includes(this.activeRoleId)) return;
     this.apiService.getSystemNodesHealth().subscribe({
       next: (res: any) => {
-        if (res && res.nodes && res.nodes.length > 0) {
+        if (res?.nodes?.length) {
           this.infrastructureNodes = res.nodes;
         }
       },
-      error: () => {}
+      error: (err) => {
+        // Surface it: a monitoring panel that silently shows stale data is
+        // worse than one that says it cannot reach the server.
+        this.telemetryError = err?.error?.detail || 'Could not load component health.';
+      }
     });
   }
 
   loadSystemTelemetry(): void {
-    if (this.activeRoleId !== 'super_admin') return;
+    if (!['super_admin', 'admin'].includes(this.activeRoleId)) return;
     this.apiService.getSystemTelemetry().subscribe({
       next: (res: any) => {
-        if (res && res.gauges) {
-          this.systemGauges = res.gauges;
-        }
+        this.telemetryError = res?.rowCountsError || res?.database?.error || '';
+        this.telemetryUnavailable = res?.unavailable || [];
+        this.telemetryUnavailableReason = res?.unavailableReason || '';
+
+        // Only values the server actually measured.
+        const latency = res?.database?.latencyMs;
+        const uptime = res?.api?.uptimeSeconds ?? 0;
+        this.systemGauges = [
+          {
+            label: 'DB Response',
+            value: typeof latency === 'number' ? latency : '--',
+            color: this.latencyColor(latency),
+            unit: 'ms'
+          },
+          {
+            label: 'Active Sessions',
+            value: res?.sessions?.active ?? '--',
+            color: '#6366f1',
+            unit: ''
+          },
+          {
+            label: 'Live Clients',
+            value: res?.realtime?.connectedClients ?? 0,
+            color: '#10b981',
+            unit: ''
+          },
+          {
+            label: 'API Uptime',
+            value: this.formatUptime(uptime),
+            color: '#f59e0b',
+            unit: ''
+          }
+        ];
       },
-      error: () => {}
+      error: (err) => {
+        this.systemGauges = [];
+        this.telemetryError = err?.error?.detail || 'Could not load telemetry.';
+      }
     });
+  }
+
+  private latencyColor(ms: unknown): string {
+    if (typeof ms !== 'number') return '#64748b';
+    if (ms < 25) return '#10b981';
+    if (ms < 100) return '#f59e0b';
+    return '#ef4444';
+  }
+
+  private formatUptime(seconds: number): string {
+    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+    return `${Math.floor(seconds / 86400)}d`;
   }
 
   loadAuthSessions(): void {
@@ -2332,12 +2818,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     } catch (_) {}
     // Fallback if backend is unreachable
     const prefix = role === 'judge' ? 'JDG' : 'SPO';
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 4; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return `NTIC-${prefix}-${code}`;
+    return `NTIC-${prefix}-${this.randomSuffix()}`;
   }
 
   showRoleHover(role: string, event: MouseEvent): void {
@@ -2439,7 +2920,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
 setTimeout(async () => {
       const ticket = await this.generateTicket(this.registerRole);
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const userId = 'USR-' + Date.now().toString(36).toUpperCase();
       const newUser: any = {
         id: userId,
@@ -2447,8 +2927,6 @@ setTimeout(async () => {
         fullName: this.regForm.fullName,
         email: this.regForm.email,
         phone: this.regForm.phone || '',
-        otp,
-        password: otp,
         organization: this.regForm.organization,
         track: this.registerRole === 'judge' ? (this.regForm.tracks?.join(', ')) : undefined,
         package: this.registerRole === 'sponsor' ? this.regForm.tier : undefined,
@@ -2460,18 +2938,23 @@ setTimeout(async () => {
       if (this.adminRegLogoFileId) newUser.logoFileId = this.adminRegLogoFileId;
 
       // Save locally only after backend confirms
+      let otp = '';
       try {
         const apiPayload: any = {
           email: newUser.email,
           full_name: newUser.fullName,
           role: newUser.role,
           ticket: newUser.ticket,
-          password: newUser.password || newUser.otp || '',
+          // No password is sent: the server mints a strong one with a CSPRNG and
+          // returns it once. Generating it here with Math.random() produced a
+          // predictable 6-digit account password.
           organization: newUser.organization || '',
           status: 'Active'
         };
         if (newUser.phone) apiPayload.phone = newUser.phone;
-        await firstValueFrom(this.apiService.createUser(apiPayload));
+        const created: any = await firstValueFrom(this.apiService.createUser(apiPayload));
+        otp = created?.temporary_password || '';
+        newUser.otp = otp;
         const currentUsers = [...this.contentService.users];
         currentUsers.unshift(newUser);
         this.contentService.saveUsers(currentUsers);
@@ -2579,7 +3062,39 @@ setTimeout(async () => {
 
   private approvingIds = new Set<string>();
 
-  approveRequest(req: any): void {
+  /**
+   * Short random suffix for ticket/access-pass display codes and local record
+   * ids. Uses crypto.getRandomValues rather than Math.random(), and an alphabet
+   * without ambiguous characters (0/O, 1/I) so codes can be read aloud.
+   *
+   * This is NOT a password. Passwords come from provisionAccount().
+   */
+  private randomSuffix(length = 6): string {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const bytes = new Uint8Array(length);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => alphabet[b % alphabet.length]).join('');
+  }
+
+  /**
+   * Creates the account on the server and returns the server-minted one-time
+   * password.
+   *
+   * Credentials must never be generated in the browser: Math.random() is
+   * predictable and a 6-digit value has only 10^6 possibilities. The backend
+   * uses a CSPRNG and returns the password exactly once, in
+   * `temporary_password`. Send no `password` field and use what comes back.
+   */
+  private async provisionAccount(payload: Record<string, any>): Promise<string> {
+    try {
+      const created: any = await firstValueFrom(this.apiService.createUser(payload as any));
+      return created?.temporary_password || '';
+    } catch {
+      return '';
+    }
+  }
+
+  async approveRequest(req: any): Promise<void> {
     if (this.approvingIds.has(req.id)) return;
     this.approvingIds.add(req.id);
 
@@ -2603,16 +3118,14 @@ setTimeout(async () => {
 
     // Apply side-effects depending on the type of approval request
     if (req.type === 'School Registration') {
-      const ticket = 'NTIC-SCH-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const ticket = 'NTIC-SCH-' + this.randomSuffix();
       const newSchoolAdmin = {
-        id: 'USR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+        id: 'USR-' + Date.now() + '-' + this.randomSuffix(4).toLowerCase(),
         role: 'school_admin' as const,
         fullName: req.entity + ' Admin',
         email: req.contact,
         phone: req.details?.phone || '+233 24 555 1234',
-        otp,
-        password: otp,
+        otp: '',
         organization: req.entity,
         region: req.details?.region || '',
         ticket,
@@ -2622,10 +3135,11 @@ setTimeout(async () => {
         lastLogin: 'Never'
       };
 
-      this.apiService.createUser({
+      const otp = await this.provisionAccount({
         email: newSchoolAdmin.email, full_name: newSchoolAdmin.fullName, role: 'school_admin',
-        ticket, password: otp, status: 'Active', phone: newSchoolAdmin.phone
-      }).subscribe({ next: () => {}, error: () => {} });
+        ticket, status: 'Active', phone: newSchoolAdmin.phone
+      });
+      newSchoolAdmin.otp = otp;
 
       const stats = { ...this.contentService.platformStats };
       stats.schools += 1;
@@ -2655,12 +3169,12 @@ setTimeout(async () => {
       if (req.details?.students && Array.isArray(req.details.students)) {
         req.details.students.forEach((s: any) => {
           const existingEmail = s.email || `${s.name?.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`;
-          const sTicket = `NTIC-STU-${Math.floor(1000 + Math.random() * 9000)}`;
-          const sOtp = Math.floor(100000 + Math.random() * 900000).toString();
+          const sTicket = `NTIC-STU-${this.randomSuffix()}`;
+          // No password sent - the server generates one.
           this.apiService.createUser({
             email: existingEmail, full_name: s.name, role: 'student',
-            ticket: sTicket, password: sOtp, status: 'Active', phone: ''
-          }).subscribe({ next: () => {}, error: () => {} });
+            ticket: sTicket, status: 'Active', phone: ''
+          } as any).subscribe({ next: () => {}, error: () => {} });
         });
       }
 
@@ -2686,18 +3200,16 @@ setTimeout(async () => {
 
       const leadEmail = req.details?.leadEmail || req.contact;
       if (leadEmail) {
-        const ticket = 'NTIC-GRP-' + Math.floor(1000 + Math.random() * 9000);
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const ticket = 'NTIC-GRP-' + this.randomSuffix();
         const leadName = req.details?.members?.[0] || 'Team Lead';
         const newLeadUser = {
-          id: 'USR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+          id: 'USR-' + Date.now() + '-' + this.randomSuffix(4).toLowerCase(),
           role: 'student' as const,
           registrationMode: 'group' as const,
           fullName: `${leadName} (${req.entity})`,
           email: leadEmail,
           phone: '',
-          otp,
-          password: otp,
+          otp: '',
           organization: req.entity,
           track: req.details?.track || 'Coding',
           ticket,
@@ -2707,10 +3219,11 @@ setTimeout(async () => {
           lastLogin: 'Never'
         };
         if (req.details?.memberPhotos?.length) (newLeadUser as any).photoFileId = req.details.memberPhotos[0];
-        this.apiService.createUser({
+        const otp = await this.provisionAccount({
           email: newLeadUser.email, full_name: newLeadUser.fullName, role: newLeadUser.role,
-          ticket: newLeadUser.ticket, password: newLeadUser.password || otp, status: 'Active', phone: ''
-        }).subscribe({ next: () => {}, error: () => {} });
+          ticket: newLeadUser.ticket, status: 'Active', phone: ''
+        });
+        newLeadUser.otp = otp;
 
         this.emailService.sendApprovalEmail(leadEmail, leadName, req.entity, req.type, ticket, otp);
         this.openCredentialsModal('Team Addition Approved!', `Your squad "${req.entity}" has been approved. Team Lead credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${leadEmail}`);
@@ -2719,10 +3232,9 @@ setTimeout(async () => {
         this.showCustomAlert(`Team "${req.entity}" has been successfully approved and added to national competition tracks.`, 'Team Addition Approved', 'success');
       }
     } else if (req.type === 'Student Registration') {
-      const ticket = 'NTIC-STU-' + Math.floor(1000 + Math.random() * 9000);
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const ticket = 'NTIC-STU-' + this.randomSuffix();
       const newStudent = {
-        id: 'USR-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+        id: 'USR-' + Date.now() + '-' + this.randomSuffix(4).toLowerCase(),
         role: 'student' as const,
         fullName: req.entity,
         email: req.contact,
@@ -2730,8 +3242,7 @@ setTimeout(async () => {
         guardianName: req.details?.guardianName || '',
         guardianPhone: req.details?.guardianPhone || '',
         photoFileId: req.details?.photoFileId || undefined,
-        otp,
-        password: otp,
+        otp: '',
         organization: req.details?.school || 'Independent Competitor',
         region: req.details?.region || '',
         track: req.details?.track || 'Coding',
@@ -2742,10 +3253,11 @@ setTimeout(async () => {
         registeredAt: new Date().toLocaleDateString('en-GB'),
         lastLogin: 'Never'
       };
-      this.apiService.createUser({
+      const otp = await this.provisionAccount({
         email: newStudent.email, full_name: newStudent.fullName, role: 'student',
-        ticket, password: otp, status: 'Active', phone: ''
-      }).subscribe({ next: () => {}, error: () => {} });
+        ticket, status: 'Active', phone: ''
+      });
+      newStudent.otp = otp;
 
       const stats = { ...this.contentService.platformStats };
       stats.students += 1;
@@ -2754,12 +3266,11 @@ setTimeout(async () => {
       this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
       this.openCredentialsModal('Student Registration Approved!', `Competitor account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
     } else if (req.type === 'Instructor Access') {
-      const ticket = 'NTIC-INS-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      this.apiService.createUser({
+      const ticket = 'NTIC-INS-' + this.randomSuffix();
+      const otp = await this.provisionAccount({
         email: req.contact, full_name: req.entity, role: 'instructor',
-        ticket, password: otp, status: 'Active', phone: req.details?.phone || ''
-      }).subscribe({ next: () => {}, error: () => {} });
+        ticket, status: 'Active', phone: req.details?.phone || ''
+      });
 
       const stats = { ...this.contentService.platformStats };
       stats.mentors += 1;
@@ -3028,32 +3539,31 @@ setTimeout(async () => {
         error: () => {}
       });
     } else {
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const newUser = {
+      const newUser: any = {
         id: `USR-${String(this.contentService.users.length + 1).padStart(3, '0')}`,
         role: this.adminForm.role,
         fullName: this.adminForm.fullName,
         email: this.adminForm.email,
         phone: this.adminForm.phone || '+233 24 000 0000',
-        otp,
-        password: otp,
+        otp: '',
         organization: this.adminForm.organization || 'NTIC',
-        ticket: `NTIC-ADM-${Math.floor(1000 + Math.random() * 9000)}`,
+        ticket: `NTIC-ADM-${this.randomSuffix()}`,
         status: 'Active',
         registeredAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         lastLogin: 'Never'
       };
 
+      // No password field: the server mints one and returns it once.
       this.apiService.createUser({
         email: newUser.email,
         full_name: newUser.fullName,
         role: newUser.role,
         ticket: newUser.ticket,
-        password: newUser.password || otp,
         status: 'Active',
         phone: newUser.phone
-      }).subscribe({
-        next: () => {
+      } as any).subscribe({
+        next: (created: any) => {
+          newUser.otp = created?.temporary_password || '';
           const currentUsers = [...this.contentService.users];
           currentUsers.unshift(newUser);
           this.contentService.saveUsers(currentUsers);
@@ -3103,15 +3613,6 @@ setTimeout(async () => {
   getInitials(fullName: string): string {
     return fullName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
   }
-
-  getNodeLatency(i: number): number {
-    return this.nodeLive[i] ? this.nodeLive[i].latencyMs : 0;
-  }
-
-  getNodeLoad(i: number): number {
-    return this.nodeLive[i] ? this.nodeLive[i].loadPct : 0;
-  }
-
   // ── CONTENT MANAGER ACTIONS ──────────────────────────────────
 
   // Stories
@@ -3990,14 +4491,9 @@ setTimeout(async () => {
     updateTime();
     this.liveIntervals.push(setInterval(updateTime, 1000));
 
-    this.liveIntervals.push(setInterval(() => {
-      this.nodeLive = this.nodeLive.map((node, i) => {
-        const jitterLatency = Math.round(node.latencyMs + (Math.random() * 10 - 5));
-        const jitterLoad   = Math.max(1, Math.min(95, Math.round(node.loadPct + (Math.random() * 6 - 3))));
-        this.nodeHistory[i] = [...this.nodeHistory[i].slice(-19), jitterLoad];
-        return { latencyMs: jitterLatency, loadPct: jitterLoad };
-      });
-    }, 2000));
+    // Removed: a 2-second interval that added random jitter to hardcoded node
+    // latency/load so the panel looked live. Real component health now comes
+    // from GET /api/system/nodes-health via loadSystemNodesHealth().
 
     // ── Real audit trail: only actual admin actions are captured ──
   }

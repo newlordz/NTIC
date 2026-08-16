@@ -17,35 +17,29 @@
     },
     {
       "name": "assets",
-      "installMode": "prefetch",
-      "updateMode": "prefetch",
+      "installMode": "lazy",
+      "updateMode": "lazy",
       "resources": {
         "files": [
-          "/assets/**",
-          "/assets/icons/**"
+          "/assets/icons/**",
+          "/assets/logos/**"
         ],
         "urls": [
           "https://fonts.googleapis.com/**",
           "https://fonts.gstatic.com/**"
         ]
       }
-    }
-  ],
-  "dataGroups": [
+    },
     {
-      "name": "platform-api",
-      "urls": [
-        "/api/stats",
-        "/api/competitions",
-        "/api/stories",
-        "/api/hall-of-fame"
-      ],
-      "cacheConfig": {
-        "maxSize": 50,
-        "maxAge": "1h",
-        "timeout": "3s",
-        "strategy": "freshness"
+      "name": "media",
+      "installMode": "lazy",
+      "updateMode": "lazy",
+      "resources": {
+        "files": [
+          "/assets/**"
+        ]
       }
     }
-  ]
+  ],
+  "dataGroups": []
 }

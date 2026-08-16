@@ -1,36 +1,95 @@
 import os
 import logging
+import secrets
 from app.security import hash_password
 
 logger = logging.getLogger("ntic.seed")
 
+ADMIN_EMAIL = "admin@ntic.org.gh"
+ADMIN_ID = "USR-000"
+
+
+def _resolve_admin_password() -> tuple[str, bool]:
+    """Return (password, was_generated).
+
+    The password is NEVER hardcoded. If NTIC_ADMIN_PASSWORD is unset we mint a
+    strong random one and log it once so the operator can retrieve it from the
+    deploy logs and change it immediately.
+    """
+    env_password = os.getenv("NTIC_ADMIN_PASSWORD", "").strip()
+    if env_password:
+        if len(env_password) < 12:
+            logger.warning(
+                "NTIC_ADMIN_PASSWORD is shorter than 12 characters. "
+                "Use a longer, unique value."
+            )
+        return env_password, False
+    return secrets.token_urlsafe(24), True
+
+
 def seed_initial_data(conn):
     cur = conn.cursor()
 
-    # Admin password — must be set via env var; generate a random one with a warning if not
-    admin_password = os.getenv("NTIC_ADMIN_PASSWORD")
-    if not admin_password:
-        admin_password = "Admin@Ntic2026!"
-        logger.warning(
-            "NTIC_ADMIN_PASSWORD not set — using hardcoded default. "
-            "Set NTIC_ADMIN_PASSWORD in your environment to a strong, unique value and restart."
-        )
-    cur.execute("SELECT id FROM users WHERE email = 'admin@ntic.org.gh' OR id = 'USR-000'")
+    # ── Bootstrap super-admin ─────────────────────────────────────────
+    # Rule: create the account if it is missing. NEVER touch the password or
+    # status of an account that already exists — that would silently undo a
+    # password rotation or re-enable a deliberately disabled admin on every
+    # restart. An intentional reset requires NTIC_ADMIN_PASSWORD_RESET=true.
+    cur.execute(
+        "SELECT id FROM users WHERE email = %s OR id = %s",
+        (ADMIN_EMAIL, ADMIN_ID),
+    )
     admin_row = cur.fetchone()
+
     if not admin_row:
+        admin_password, was_generated = _resolve_admin_password()
         cur.execute(
             "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status) VALUES (%s, %s, %s, %s, %s, %s, 'Active')",
             (
-                "USR-000",
-                "admin@ntic.org.gh",
+                ADMIN_ID,
+                ADMIN_EMAIL,
                 "Admin",
                 "super_admin",
                 "NTIC-ADM-0000",
                 hash_password(admin_password),
             ),
         )
+        if was_generated:
+            logger.warning(
+                "=" * 72
+                + f"\nNTIC_ADMIN_PASSWORD was not set. A super-admin account was created:"
+                + f"\n  email:    {ADMIN_EMAIL}"
+                + f"\n  password: {admin_password}"
+                + "\nThis password is shown ONCE. Change it immediately and set"
+                + "\nNTIC_ADMIN_PASSWORD in your environment.\n"
+                + "=" * 72
+            )
+        else:
+            logger.info("Super-admin account created using NTIC_ADMIN_PASSWORD.")
+    elif os.getenv("NTIC_ADMIN_PASSWORD_RESET", "").strip().lower() == "true":
+        admin_password, was_generated = _resolve_admin_password()
+        cur.execute(
+            "UPDATE users SET password_hash = %s, status = 'Active' WHERE id = %s",
+            (hash_password(admin_password), admin_row[0]),
+        )
+        # Force re-authentication everywhere after a deliberate reset.
+        cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (admin_row[0],))
+        if was_generated:
+            logger.warning(
+                "=" * 72
+                + "\nNTIC_ADMIN_PASSWORD_RESET=true and no NTIC_ADMIN_PASSWORD was set."
+                + f"\nThe super-admin password was reset to: {admin_password}"
+                + "\nShown ONCE. Change it and unset NTIC_ADMIN_PASSWORD_RESET.\n"
+                + "=" * 72
+            )
+        else:
+            logger.warning(
+                "NTIC_ADMIN_PASSWORD_RESET=true — super-admin password reset from "
+                "NTIC_ADMIN_PASSWORD and all its sessions revoked. "
+                "Unset NTIC_ADMIN_PASSWORD_RESET to avoid resetting on every restart."
+            )
     else:
-        cur.execute("UPDATE users SET password_hash = %s, status = 'Active' WHERE id = %s", (hash_password(admin_password), admin_row[0]))
+        logger.info("Super-admin account already exists — leaving password and status untouched.")
     # Philosophy Cards
     cur.execute("SELECT count(*) FROM philosophy_cards")
     if cur.fetchone()[0] == 0:

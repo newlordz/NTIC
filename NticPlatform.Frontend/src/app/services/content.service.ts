@@ -1,6 +1,7 @@
 import { getAuthValue } from './session.util';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
+import { debounceTime } from 'rxjs/operators';
 import { DataStorageService } from './data-storage.service';
 import { ApiService } from './api.service';
 import { WsSyncService } from './ws-sync.service';
@@ -390,7 +391,14 @@ export class ContentService {
   ];
   private needsIdbPurge = false;
   private _syncInterval: any = null;
+  private _visibilityHandler: (() => void) | null = null;
+  private _dataChangedSub: any = null;
 
+  /**
+   * Full-refresh sweep interval. The WebSocket is the primary real-time channel;
+   * this is only a slow safety net for when the socket silently drops.
+   */
+  private readonly SYNC_INTERVAL_MS = 5 * 60 * 1000;
   // ── Championship Stories ─────────────────────────────────────
   championshipStories: ChampionshipStory[] = [];
   
@@ -539,8 +547,17 @@ private readonly defaultTeams: Team[] = [];
     this.migrateToIndexedDB();
 
     // ── Real-time sync across machines/tabs ──────────────────────────
-    // Push from backend → instant refresh when another admin changes data
-    this.wsSync.dataChanged$.subscribe(() => this.loadFromBackend());
+    // A change on any machine triggers a reload of just that collection. The
+    // debounce collapses a burst of writes into a single refresh instead of one
+    // 18-request reload per event.
+    //
+    // This is a root singleton that lives for the app's whole lifetime, so the
+    // subscription is never unsubscribed on purpose: sync must resume after a
+    // logout/login cycle in the same tab. Every handler below guards on the
+    // presence of a session token, so nothing runs while signed out.
+    this._dataChangedSub = this.wsSync.dataChanged$
+      .pipe(debounceTime(400))
+      .subscribe(collection => this.loadFromBackend(collection));
 
     // Connect WebSocket + trigger initial load immediately
     if (getAuthValue('activeUserToken')) {
@@ -554,14 +571,18 @@ private readonly defaultTeams: Team[] = [];
       }
     };
 
-    // Poll every 15s + reconnect WebSocket (belt-and-suspenders)
-    this._syncInterval = setInterval(tick, 15000);
+    // The WebSocket is the primary real-time channel. This sweep is only a slow
+    // safety net for when the socket silently drops, so it runs every 5 minutes
+    // instead of every 15 seconds. The old 15s cadence issued 18 requests four
+    // times a minute per open admin tab.
+    this._syncInterval = setInterval(tick, this.SYNC_INTERVAL_MS);
 
     // Refresh when the user switches back to this tab
     if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', () => {
+      this._visibilityHandler = () => {
         if (document.visibilityState === 'visible') tick();
-      });
+      };
+      document.addEventListener('visibilitychange', this._visibilityHandler);
     }
   }
 
@@ -585,6 +606,27 @@ private readonly defaultTeams: Team[] = [];
     this.loadFromBackend();
   }
 
+  /**
+   * Stop the background sync channels. Intended for tests and any future teardown
+   * of the root service; not called on logout because a later login in the same
+   * tab must resume syncing.
+   */
+  disposeSync(): void {
+    if (this._syncInterval) {
+      clearInterval(this._syncInterval);
+      this._syncInterval = null;
+    }
+    if (this._visibilityHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this._visibilityHandler);
+      this._visibilityHandler = null;
+    }
+    if (this._dataChangedSub) {
+      this._dataChangedSub.unsubscribe();
+      this._dataChangedSub = null;
+    }
+    this.wsSync.disconnect();
+  }
+
   syncToBackend(collection: string, items: any[]): void {
     this.apiService.bulkSync(collection, items).subscribe({
       next: () => {},
@@ -592,7 +634,19 @@ private readonly defaultTeams: Team[] = [];
     });
   }
 
-  private loadFromBackend(): void {
+  /**
+   * Reload collections from the backend.
+   *
+   * With no argument, reloads everything (used on startup and by the slow safety
+   * net). With a collection name, reloads only that one - this is what the
+   * WebSocket path uses, so a change to one entity no longer costs 18 requests.
+   */
+  private loadFromBackend(collection?: string): void {
+    if (collection) {
+      this.reloadCollection(collection);
+      return;
+    }
+
     // Users -- replace entirely from backend (source of truth)
     this.apiService.getUsers().subscribe({
       next: (backendUsers: any[]) => {
@@ -685,14 +739,6 @@ private readonly defaultTeams: Team[] = [];
         }
       },
       error: () => {}
-    });
-
-    this.apiService.getStudents().subscribe({
-      next: (students: any[]) => {
-        // Students are for leaderboard/competitions, NOT for the admin Users list.
-        // Users now sync from GET /api/users above.
-      },
-      error: (e: any) => console.log('Backend students fallback to local cache')
     });
 
     this.apiService.getCompetitions().subscribe({
@@ -818,32 +864,133 @@ private readonly defaultTeams: Team[] = [];
       error: () => {}
     });
 
-    this.apiService.getUsers().subscribe({
-      next: (backendUsers: any[]) => {
-        if (backendUsers && backendUsers.length > 0) {
-          const current = [...this.users];
-          backendUsers.forEach(bu => {
-            if (!current.some(u => u.id === bu.id)) {
-              current.push({
-                id: bu.id,
-                fullName: bu.full_name || 'User',
-                email: bu.email || '',
-                phone: '',
+    // NOTE: a second getUsers() call lived here. It re-fetched the full user
+    // list and appended any ids missing from `this.users` - but the first
+    // getUsers() above already REPLACES `this.users` with the complete backend
+    // list, so this second request was both redundant and had conflicting merge
+    // semantics. Removed.
+  }
+
+  /**
+   * Reload a single collection, used by the WebSocket-driven refresh path.
+   *
+   * Maps the `collection` names the backend broadcasts (see broadcast_async in
+   * app/main.py) to the corresponding fetch. Any unknown collection triggers a
+   * full reload so a future backend addition cannot leave the UI stale.
+   */
+  private reloadCollection(collection: string): void {
+    switch (collection) {
+      case 'users': {
+        this.apiService.getUsers().subscribe({
+          next: (backendUsers: any[]) => {
+            const total = backendUsers ? backendUsers.length : 0;
+            if (total > 0) {
+              const mapped: User[] = backendUsers.map((u: any) => ({
+                id: u.id,
+                email: u.email,
+                fullName: u.full_name || 'Unknown',
+                phone: u.phone || '',
                 otp: '',
-                organization: '',
-                ticket: bu.ticket || '',
-                role: bu.role || 'student',
-                status: bu.status || 'Active',
-                registeredAt: bu.created_at || new Date().toISOString(),
-                lastLogin: new Date().toISOString()
-              });
+                organization: u.organization || '',
+                role: u.role || 'student',
+                ticket: u.ticket || '',
+                status: u.status || 'Active',
+                registeredAt: u.created_at || '',
+                lastLogin: ''
+              }));
+              this.users = mapped;
+              this.saveState('users', mapped);
             }
-          });
-          if (current.length > this.users.length) this.saveUsers(current);
-        }
-      },
-      error: (e: any) => console.log('Backend users fallback to local cache')
-    });
+            this.userCount = total;
+            this.saveState('userCount', total);
+          },
+          error: () => console.log('Backend users fallback to local cache')
+        });
+        return;
+      }
+      case 'audit_logs':
+        this.fetchAuditLogsFromBackend();
+        return;
+      case 'competitions':
+        this.apiService.getCompetitions().subscribe({
+          next: (comps: any[]) => {
+            if (comps && comps.length > 0) {
+              const merged = this.mergeCompetitions(comps);
+              this.competitions = merged;
+              this.saveState('competitions', merged);
+            }
+          },
+          error: () => console.log('Backend competitions fallback to local cache')
+        });
+        return;
+      case 'teams':
+        this.apiService.getTeams().subscribe({
+          next: (teams: any[]) => {
+            if (teams && teams.length > 0) {
+              const merged = this.mergeTeams(teams);
+              this.teams = merged;
+              this.saveState('teams', merged);
+            }
+          },
+          error: () => console.log('Backend teams fallback to local cache')
+        });
+        return;
+      case 'submissions':
+        this.apiService.getSubmissions().subscribe({
+          next: (subs: any[]) => {
+            if (subs && subs.length > 0) {
+              const merged = this.mergeSubmissions(subs);
+              this.submissions = merged;
+              this.saveState('submissions', merged);
+            }
+          },
+          error: () => console.log('Backend submissions fallback to local cache')
+        });
+        return;
+      case 'schools':
+        this.apiService.getSchools().subscribe({
+          next: (schools: any[]) => {
+            if (schools && schools.length > 0) {
+              const merged = this.mergeLeaderboardFromSchools(schools);
+              if (merged.length > 0) {
+                this.leaderboardData = merged;
+                this.saveState('leaderboardData', merged);
+              }
+            }
+          },
+          error: () => console.log('Backend schools->leaderboard fallback to local cache')
+        });
+        return;
+      case 'approvals':
+        this.apiService.getApprovals().subscribe({
+          next: (backendApprovals: any[]) => {
+            if (!backendApprovals || backendApprovals.length === 0) return;
+            const pending: any[] = [];
+            const approved: any[] = [];
+            const rejected: any[] = [];
+            backendApprovals.forEach((a: any) => {
+              const mapped = {
+                id: a.id, type: a.type, entity: a.entity, contact: a.contact,
+                submitted: a.submitted, details: a.details || {},
+                reviewedAt: a.reviewedAt, reviewer: a.reviewer,
+                rejectionReasons: a.rejectionReasons, rejectionNotes: a.rejectionNotes
+              };
+              if (a.status === 'pending') pending.push(mapped);
+              else if (a.status === 'approved') approved.push(mapped);
+              else if (a.status === 'rejected') rejected.push(mapped);
+            });
+            if (pending.length > 0) this.saveApprovals(pending);
+            if (approved.length > 0) this.saveApprovedApprovals(approved);
+            if (rejected.length > 0) this.saveRejectedApprovals(rejected);
+          },
+          error: () => {}
+        });
+        return;
+      default:
+        // Unknown or unlabelled broadcast: be safe and refresh everything.
+        this.loadFromBackend();
+        return;
+    }
   }
 
   private mergeSubmissions(backendSubs: any[]): Submission[] {

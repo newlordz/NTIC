@@ -14,7 +14,7 @@ import { TimeAgoPipe } from '../../services/time-ago.pipe';
 })
 export class ReportingComponent implements OnInit {
   activeTab = 'overview';
-  activeRoleId = 'super_admin';
+  activeRoleId = '';
   userName = 'Administrator';
   schoolName = 'My School';
 
@@ -32,7 +32,7 @@ export class ReportingComponent implements OnInit {
 
   ngOnInit(): void {
     if (typeof window !== 'undefined') {
-      this.activeRoleId = getAuthValue('activeRoleId') || 'super_admin';
+      this.activeRoleId = getAuthValue('activeRoleId') || '';
       const activeUserStr = localStorage.getItem('activeUser');
       if (activeUserStr) {
         try {
@@ -163,14 +163,14 @@ export class ReportingComponent implements OnInit {
       'National Platform Overview': 'National',
       'School Performance Report': 'School',
       'Student Progress Report': 'Student',
-      'Student Progress Report — Q2': 'Student',
+      'Student Progress Report - Q2': 'Student',
       'Instructor Effectiveness': 'Instructor',
       'Instructor Course Progress': 'Instructor',
       'Instructor Effectiveness Report': 'Instructor',
       'Sponsor Impact Report': 'Sponsor',
-      'Sponsor Impact Report — MTN': 'Sponsor',
+      'Sponsor Impact Report - MTN': 'Sponsor',
       'Competition Results': 'Competition',
-      'Competition Results — Round 2': 'Competition',
+      'Competition Results - Round 2': 'Competition',
       'Executive Summary': 'National',
       'Student Squad Roster Export': 'School',
       'Mentor Assignment Report': 'School',
@@ -261,7 +261,7 @@ export class ReportingComponent implements OnInit {
     }
 
     content += `==========================================================\n`;
-    content += `End of Official Report — Ghana Data Protection Act Compliant\n`;
+    content += `End of Official Report - Ghana Data Protection Act Compliant\n`;
 
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);

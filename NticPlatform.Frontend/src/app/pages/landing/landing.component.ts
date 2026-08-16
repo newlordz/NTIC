@@ -351,15 +351,16 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       event.preventDefault();
       event.stopPropagation();
     }
-    this.isLoginModalOpen = true;
-    this.loginError = '';
-    const creds = getRememberedCredentials();
-    if (creds.remembered) {
-      this.rememberDevice = true;
-      this.email = creds.username;
-      this.password = creds.password;
-    } else {
-      this.email = '';
+        this.isLoginModalOpen = true;
+        this.loginError = '';
+        const creds = getRememberedCredentials();
+        if (creds.remembered) {
+          this.rememberDevice = true;
+          this.email = creds.username;
+          // Passwords are never persisted - the user always retypes it.
+          this.password = '';
+        } else {
+          this.email = '';
       this.password = '';
       this.rememberDevice = false;
     }
@@ -1064,15 +1065,16 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       document.body.style.overflow = '';
     }
 
-    // Pre-populate remembered credentials for Gatekeeper login if saved
-    if (typeof window !== 'undefined') {
-      const creds = getRememberedCredentials();
-      if (creds.remembered) {
-        this.rememberDevice = true;
-        this.email = creds.username;
-        this.password = creds.password;
-      }
-    }
+        // Pre-populate the remembered username for Gatekeeper login if saved.
+        if (typeof window !== 'undefined') {
+          const creds = getRememberedCredentials();
+          if (creds.remembered) {
+            this.rememberDevice = true;
+            this.email = creds.username;
+            // Passwords are never persisted - the user always retypes it.
+            this.password = '';
+          }
+        }
 
     // Pre-populate track preview with coding snippet (no modal popup on load)
     this.setTrackPreview('coding', false);
@@ -1722,14 +1724,14 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     const email = user.email || credential;
     const ticket = user.ticket || credential;
 
-    setAuthValue('activeRoleId', role, this.rememberDevice);
-    setAuthValue('activeUserEmail', email, this.rememberDevice);
-    setAuthValue('activeUserTicket', ticket, this.rememberDevice);
+    setAuthValue('activeRoleId', role);
+    setAuthValue('activeUserEmail', email);
+    setAuthValue('activeUserTicket', ticket);
     if (user.fullName) {
-      setAuthValue('activeUserName', user.fullName, this.rememberDevice);
+      setAuthValue('activeUserName', user.fullName);
     }
     if (user.token) {
-      setAuthValue('activeUserToken', user.token, this.rememberDevice);
+      setAuthValue('activeUserToken', user.token);
     }
 
     // Save or clear remembered username & password based on checkbox

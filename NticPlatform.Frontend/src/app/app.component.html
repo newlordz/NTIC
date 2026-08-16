@@ -1,3 +1,34 @@
+<!-- ══ DYNAMIC COSMIC SKY LAYER (Twinkling Stars + Slow Shooting Comets) ══ -->
+<div class="atmospheric-sky-layer" aria-hidden="true">
+  <!-- Twinkling Starfield -->
+  <div class="cosmic-starfield">
+    <div class="star-layer star-layer-1"></div>
+    <div class="star-layer star-layer-2"></div>
+    <div class="star-layer star-layer-3"></div>
+    <div class="sparkle-stars">
+      <span class="star-sparkle s-1">✦</span>
+      <span class="star-sparkle s-2">✦</span>
+      <span class="star-sparkle s-3">✦</span>
+      <span class="star-sparkle s-4">✦</span>
+      <span class="star-sparkle s-5">✦</span>
+      <span class="star-sparkle s-6">✦</span>
+      <span class="star-sparkle s-7">✦</span>
+      <span class="star-sparkle s-8">✦</span>
+      <span class="star-sparkle s-9">✦</span>
+      <span class="star-sparkle s-10">✦</span>
+      <span class="star-sparkle s-11">✦</span>
+      <span class="star-sparkle s-12">✦</span>
+    </div>
+  </div>
+
+  <!-- Slow Graceful Shooting Comets -->
+  <div class="comet-space">
+    <div class="celestial-comet comet-alpha"></div>
+    <div class="celestial-comet comet-beta"></div>
+    <div class="celestial-comet comet-gamma"></div>
+  </div>
+</div>
+
 <div [class.app-shell]="!isLandingPage">
   <!-- ══ MOBILE SIDEBAR OVERLAY ══ -->
   <div class="sidebar-overlay" *ngIf="!isLandingPage && isMobileSidebarOpen" (click)="closeMobileSidebar()"></div>
@@ -210,6 +241,10 @@
               <span class="material-symbols-outlined">admin_panel_settings</span>
               <span>Command Center</span>
             </a>
+            <a class="profile-action-row" (click)="showProfileDropdown = false; openChangePasswordModal()">
+              <span class="material-symbols-outlined">lock_reset</span>
+              <span>Change Password</span>
+            </a>
             <a (click)="showProfileDropdown = false; logout()" class="profile-action-row logout">
               <span class="material-symbols-outlined">logout</span>
               <span>Sign Out to Landing</span>
@@ -232,8 +267,9 @@
         <span class="material-symbols-outlined">lock_reset</span>
       </div>
       <div>
-        <h2>Security Setup: Set Permanent Password</h2>
-        <p>You logged in using a temporary access pass/OTP. Create your private permanent password below to activate your account and void the temporary OTP.</p>
+        <h2>{{ isForcedPasswordChange ? 'Set Your Own Password' : 'Change Password' }}</h2>
+        <p *ngIf="isForcedPasswordChange">You signed in with a temporary password. Choose your own password below to finish activating your account.</p>
+        <p *ngIf="!isForcedPasswordChange">Enter your current password, then choose a new one.</p>
       </div>
     </div>
 
@@ -243,44 +279,68 @@
         <span>{{ passwordSetupError }}</span>
       </div>
 
-      <div class="form-group">
-        <label>New Permanent Password *</label>
+      <div class="form-group" *ngIf="!isForcedPasswordChange">
+        <label for="pwCurrent">Current Password *</label>
+        <div class="input-with-icon">
+          <span class="material-symbols-outlined icon">password</span>
+          <input id="pwCurrent"
+                 type="password"
+                 autocomplete="current-password"
+                 [(ngModel)]="currentPasswordInput"
+                 placeholder="Enter your current password"
+                 class="form-control" />
+        </div>
+      </div>
+
+      <div class="form-group" [style.margin-top]="isForcedPasswordChange ? '0' : '14px'">
+        <label for="pwNew">New Password *</label>
         <div class="input-with-icon">
           <span class="material-symbols-outlined icon">key</span>
-          <input [type]="isNewPasswordVisible ? 'text' : 'password'" 
-                 [(ngModel)]="newPasswordInput" 
-                 placeholder="Enter new password (min 6 characters)" 
+          <input id="pwNew"
+                 [type]="isNewPasswordVisible ? 'text' : 'password'"
+                 autocomplete="new-password"
+                 [(ngModel)]="newPasswordInput"
+                 [placeholder]="'Enter new password (min ' + passwordMinLength + ' characters)'"
                  class="form-control" />
-          <button type="button" class="eye-btn" (click)="isNewPasswordVisible = !isNewPasswordVisible">
+          <button type="button" class="eye-btn"
+                  [attr.aria-label]="isNewPasswordVisible ? 'Hide password' : 'Show password'"
+                  (click)="isNewPasswordVisible = !isNewPasswordVisible">
             <span class="material-symbols-outlined">{{ isNewPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
           </button>
         </div>
       </div>
 
       <div class="form-group" style="margin-top:14px;">
-        <label>Confirm Permanent Password *</label>
+        <label for="pwConfirm">Confirm New Password *</label>
         <div class="input-with-icon">
           <span class="material-symbols-outlined icon">lock</span>
-          <input [type]="isNewPasswordVisible ? 'text' : 'password'" 
-                 [(ngModel)]="confirmPasswordInput" 
-                 placeholder="Re-enter new password" 
+          <input id="pwConfirm"
+                 [type]="isNewPasswordVisible ? 'text' : 'password'"
+                 autocomplete="new-password"
+                 [(ngModel)]="confirmPasswordInput"
+                 placeholder="Re-enter new password"
                  class="form-control" />
         </div>
       </div>
 
       <div class="pass-notice">
         <span class="material-symbols-outlined">verified_user</span>
-        <span>Once saved, your temporary OTP will be permanently voided. You will use this new password for future logins.</span>
+        <span>Your temporary access pass will stop working, and any other device signed in to this account will be signed out.</span>
       </div>
     </div>
 
     <div class="pass-modal-footer">
+      <button *ngIf="!isForcedPasswordChange" class="btn-cancel-pass" type="button"
+              (click)="closePasswordSetupModal()" [disabled]="isSavingPassword">
+        Cancel
+      </button>
       <button class="btn-save-pass" (click)="submitNewPassword()" [disabled]="isSavingPassword">
         <span *ngIf="!isSavingPassword" class="material-symbols-outlined">check_circle</span>
         <span *ngIf="isSavingPassword" class="material-symbols-outlined spinning">sync</span>
-        {{ isSavingPassword ? 'Saving Password...' : 'Save Password & Activate Account' }}
+        {{ isSavingPassword ? 'Saving Password...' : 'Save Password' }}
       </button>
     </div>
+
   </div>
 </div>
 

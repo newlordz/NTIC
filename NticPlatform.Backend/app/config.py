@@ -35,6 +35,14 @@ class Config:
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     BREVO_API_KEY: str = os.getenv("BREVO_API_KEY", "")
 
+    # Outbound email identity is controlled by the server ONLY. Clients may
+    # never choose the From address, otherwise /api/send-email becomes an
+    # open, spoofable relay on our paid Brevo account.
+    MAIL_FROM_EMAIL: str = _get_nonempty_env("MAIL_FROM_EMAIL", "no-reply@ntic.org.gh")
+    MAIL_FROM_NAME: str = _get_nonempty_env("MAIL_FROM_NAME", "NTIC Ghana Championship")
+    # Where security alerts are delivered. Falls back to the sender.
+    SECURITY_ALERT_EMAIL: str = _get_nonempty_env("SECURITY_ALERT_EMAIL", "")
+
     PORT: int = int(os.getenv("PORT", 5000))
 
     ALLOWED_ORIGINS: list = os.getenv(
@@ -62,6 +70,27 @@ class Config:
                     f"DATABASE_PRIVATE_URL={'set' if os.getenv('DATABASE_PRIVATE_URL') else 'not set'}, "
                     f"DATABASE_URL={'set' if os.getenv('DATABASE_URL') else 'not set'}")
 
+    @classmethod
+    def log_mail_config(cls) -> None:
+        """Outbound mail identity is now server-controlled. If the operator has
+        not chosen one, say so loudly: Brevo rejects unverified senders, so an
+        unset value means email silently stops working."""
+        if not _get_nonempty_env("MAIL_FROM_EMAIL"):
+            logger.warning(
+                "MAIL_FROM_EMAIL is not set - falling back to '%s'. "
+                "Outbound email will FAIL unless this address is a verified "
+                "sender in Brevo. Set MAIL_FROM_EMAIL to your verified sender.",
+                cls.MAIL_FROM_EMAIL,
+            )
+        else:
+            logger.info(f"Mail sender: {cls.MAIL_FROM_NAME} <{cls.MAIL_FROM_EMAIL}>")
+        if not cls.SECURITY_ALERT_EMAIL:
+            logger.info(
+                "SECURITY_ALERT_EMAIL not set - security alerts will go to "
+                f"{cls.MAIL_FROM_EMAIL}"
+            )
+
 settings = Config()
 settings.validate()
 settings.log_db_config()
+settings.log_mail_config()

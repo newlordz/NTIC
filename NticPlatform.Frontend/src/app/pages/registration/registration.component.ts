@@ -1,5 +1,5 @@
 import { getAuthValue, setAuthValue, clearAuthValue, getRememberedCredentials, saveRememberedCredentials, hasRememberedDevice, forgetRememberedCredentials } from '../../services/session.util';
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -11,6 +11,7 @@ import { SmsService } from '../../services/sms.service';
 import { NotificationService } from '../../services/notification.service';
 import { DialogService } from '../../services/dialog.service';
 import { ApiService } from '../../services/api.service';
+import { OtpService } from '../../services/otp.service';
 
 @Component({
   selector: 'app-registration',
@@ -33,6 +34,13 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   verificationInput = '';
   otpCode = '';
   otpError = '';
+  otpBusy = false;
+  /** Opaque server handle for the draft-resume challenge. */
+  private otpChallengeId = '';
+  /** Short-lived proof that the resume code was received; unlocks the draft. */
+  private resumeToken = '';
+  /** Contact the resume code was actually sent to (the draft owner). */
+  private resumeDraftKey = '';
   resendTimer = 0;
   resendInterval: any;
   isDraftResumed = false;
@@ -116,8 +124,8 @@ export class RegistrationComponent implements OnInit, OnDestroy {
     this.credentialsModal = null;
 
     if (email && role) {
-setAuthValue('activeUserEmail', email, this.rememberDevice);
-  setAuthValue('activeRoleId', role, this.rememberDevice);
+setAuthValue('activeUserEmail', email);
+  setAuthValue('activeRoleId', role);
     }
 
     if (route) {
@@ -824,7 +832,9 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
   verifyOtpInput = '';
   verifyOtpError = '';
   verifyOtpSent = false;
-  private verifyStoredOtp = '';
+  verifyOtpBusy = false;
+  /** Opaque handle from the server. The actual code is never held client-side. */
+  private verifyChallengeId = '';
 
   get currentTabVerified(): boolean {
     if (this.activeTab === 'school') {
@@ -852,27 +862,30 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     this.verifyOtpInput = '';
     this.verifyOtpError = '';
     this.verifyOtpSent = false;
+    this.verifyChallengeId = '';
+    this.verifyOtpBusy = true;
 
-    this.verifyStoredOtp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    if (type === 'email') {
-      try {
-        this.emailService.sendOtpEmail(value, this.verifyStoredOtp);
-      } catch { /* ignore */ }
-    } else if (type === 'phone') {
-      try {
-        this.smsService.sendOtpSms(value, this.verifyStoredOtp).subscribe();
-      } catch { /* ignore */ }
-    }
-
-    this.verifyOtpSent = true;
-    this.verifyOtpModalOpen = true;
-
-    // Trigger non-blocking toast alert instead of a modal popup overlay
-    this.notificationService.info(
-      `A 6-digit verification code was dispatched to ${value}`,
-      'Verification Code Sent'
-    );
+    // The server generates, stores (hashed) and later checks the code. The
+    // browser only receives an opaque challenge id.
+    this.otpService.request('contact_verification', type, value).subscribe({
+      next: challenge => {
+        this.verifyChallengeId = challenge.challengeId;
+        this.verifyOtpSent = true;
+        this.verifyOtpModalOpen = true;
+        this.verifyOtpBusy = false;
+        this.notificationService.info(
+          `A 6-digit verification code was sent to ${challenge.targetMasked}`,
+          'Verification Code Sent'
+        );
+        this.cdr?.markForCheck?.();
+      },
+      error: (err: Error) => {
+        this.verifyOtpBusy = false;
+        this.verifyOtpError = err.message;
+        this.notificationService.error(err.message, 'Could Not Send Code');
+        this.cdr?.markForCheck?.();
+      }
+    });
   }
 
   confirmVerifyOtp(): void {
@@ -880,23 +893,42 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
       this.verifyOtpError = 'Enter the complete 6-digit code.';
       return;
     }
-    if (this.verifyOtpInput !== this.verifyStoredOtp) {
-      this.verifyOtpError = 'Invalid code. Please try again.';
+    if (!this.verifyChallengeId) {
+      this.verifyOtpError = 'No verification in progress. Please request a new code.';
       return;
     }
-    this.fieldVerified[this.verifyTargetField] = true;
-    this.verifyOtpModalOpen = false;
-    this.notificationService.success(
-      `${this.verifyTargetType === 'email' ? 'Email' : 'Phone number'} verified successfully!`,
-      'Verified'
-    );
-    this.tryAutoSave();
+
+    this.verifyOtpError = '';
+    this.verifyOtpBusy = true;
+
+    // Only the server can decide whether the code was correct.
+    this.otpService.verify(this.verifyChallengeId, this.verifyOtpInput).subscribe({
+      next: () => {
+        this.verifyOtpBusy = false;
+        this.fieldVerified[this.verifyTargetField] = true;
+        this.verifyOtpModalOpen = false;
+        this.verifyChallengeId = '';
+        this.notificationService.success(
+          `${this.verifyTargetType === 'email' ? 'Email' : 'Phone number'} verified successfully!`,
+          'Verified'
+        );
+        this.tryAutoSave();
+        this.cdr?.markForCheck?.();
+      },
+      error: (err: Error) => {
+        this.verifyOtpBusy = false;
+        this.verifyOtpError = err.message;
+        this.cdr?.markForCheck?.();
+      }
+    });
   }
 
   closeVerifyModal(): void {
     this.verifyOtpModalOpen = false;
     this.verifyOtpInput = '';
     this.verifyOtpError = '';
+    this.verifyChallengeId = '';
+    this.verifyOtpBusy = false;
   }
 
   private tryAutoSave(): void {
@@ -1251,7 +1283,9 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     private smsService: SmsService,
     private notificationService: NotificationService,
     public dialogService: DialogService,
-    private apiService: ApiService
+    private apiService: ApiService,
+    private otpService: OtpService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   logoUrls: Record<string, string> = {};
@@ -1274,13 +1308,14 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
   openLoginModal(): void {
     this.isLoginModalOpen = true;
     this.loginError = '';
-    const creds = getRememberedCredentials();
-    if (creds.remembered) {
-      this.rememberDevice = true;
-      this.loginEmail = creds.username;
-      this.loginPassword = creds.password;
-    } else {
-      this.loginEmail = '';
+        const creds = getRememberedCredentials();
+        if (creds.remembered) {
+          this.rememberDevice = true;
+          this.loginEmail = creds.username;
+          // Passwords are never persisted - the user always retypes it.
+          this.loginPassword = '';
+        } else {
+          this.loginEmail = '';
       this.loginPassword = '';
       this.rememberDevice = false;
     }
@@ -1342,14 +1377,14 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     const email = user.email || credential;
     const ticket = user.ticket || credential;
 
-    setAuthValue('activeRoleId', role, this.rememberDevice);
-    setAuthValue('activeUserEmail', email, this.rememberDevice);
-    setAuthValue('activeUserTicket', ticket, this.rememberDevice);
+    setAuthValue('activeRoleId', role);
+    setAuthValue('activeUserEmail', email);
+    setAuthValue('activeUserTicket', ticket);
     if (user.fullName) {
-      setAuthValue('activeUserName', user.fullName, this.rememberDevice);
+      setAuthValue('activeUserName', user.fullName);
     }
     if (user.token) {
-      setAuthValue('activeUserToken', user.token, this.rememberDevice);
+      setAuthValue('activeUserToken', user.token);
     }
 
     // Save or clear remembered credentials without auto-logging in
@@ -1435,8 +1470,21 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
   generateApplicationCode(type: 'school' | 'team' | 'instructor' | 'student'): string {
     const prefix = type === 'school' ? 'SCH' : type === 'team' ? 'TM' : type === 'student' ? 'STU' : 'INS';
     const year = new Date().getFullYear();
-    const block = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return `NTIC-${prefix}-${year}-${block}`;
+    return `NTIC-${prefix}-${year}-${this.randomSuffix(4)}`;
+  }
+
+  /**
+   * Short random code for display tickets and application codes, using
+   * crypto.getRandomValues rather than Math.random().
+   *
+   * This is NOT a password. Account passwords are generated server-side and
+   * returned once as `temporary_password` from POST /api/users.
+   */
+  private randomSuffix(length = 6): string {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const bytes = new Uint8Array(length);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => alphabet[b % alphabet.length]).join('');
   }
 
   copyApplicationCode(): void {
@@ -1630,31 +1678,32 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
       return;
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpStore = {
-      code: otp,
-      contact: draftKey,
-      expiresAt: Date.now() + 5 * 60 * 1000
-    };
-    localStorage.setItem('ntic_otp', JSON.stringify(otpStore));
-
+    // Codes are minted and checked by the server. The draft owner's email is
+    // always the delivery target, so someone who guesses another person's email
+    // still cannot read the code.
     this.otpError = '';
     this.otpCode = '';
-    this.regState = 'otp_verification';
-    this.startResendTimer();
+    this.otpBusy = true;
+    this.resumeDraftKey = draftKey;
 
-    // Deliver the code: the email channel sends to the typed email; the mobile
-    // channel (no SMS service) sends to the draft owner's email. The code is
-    // also shown as a fallback so resuming is never blocked by email delivery.
-    const targetEmail = this.verificationMethod === 'email' && rawInput.includes('@') ? rawInput : draftKey;
-    try {
-      this.emailService.sendOtpEmail(targetEmail, otp);
-    } catch { /* ignore */ }
-
-    this.showCustomAlert(
-      `A 6-digit verification code has been sent to ${targetEmail}.`,
-      'Verification Code Sent', 'info'
-    );
+    this.otpService.request('draft_resume', 'email', draftKey).subscribe({
+      next: challenge => {
+        this.otpChallengeId = challenge.challengeId;
+        this.otpBusy = false;
+        this.regState = 'otp_verification';
+        this.startResendTimer();
+        this.showCustomAlert(
+          `A 6-digit verification code has been sent to ${challenge.targetMasked}.`,
+          'Verification Code Sent', 'info'
+        );
+        this.cdr?.markForCheck?.();
+      },
+      error: (err: Error) => {
+        this.otpBusy = false;
+        this.otpError = err.message;
+        this.cdr?.markForCheck?.();
+      }
+    });
   }
 
   private resolveDraftKey(drafts: Record<string, any>, rawInput: string, inputKey: string): string | null {
@@ -1683,20 +1732,29 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
   }
 
   resendOTPCode(): void {
-    const stored = JSON.parse(localStorage.getItem('ntic_otp') || 'null');
-    if (stored) {
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      stored.code = otp;
-      stored.expiresAt = Date.now() + 5 * 60 * 1000;
-      localStorage.setItem('ntic_otp', JSON.stringify(stored));
-      try {
-        this.emailService.sendOtpEmail(stored.contact || this.verificationInput, otp);
-      } catch { /* ignore */ }
-      this.showCustomAlert(`New verification code sent.`, 'Code Resent', 'info');
+    if (!this.resumeDraftKey) {
+      this.otpError = 'No verification in progress. Please start again.';
+      return;
     }
     this.otpCode = '';
     this.otpError = '';
-    this.startResendTimer();
+    this.otpBusy = true;
+
+    // Requesting a new code retires the previous challenge server-side.
+    this.otpService.request('draft_resume', 'email', this.resumeDraftKey).subscribe({
+      next: challenge => {
+        this.otpChallengeId = challenge.challengeId;
+        this.otpBusy = false;
+        this.showCustomAlert('New verification code sent.', 'Code Resent', 'info');
+        this.startResendTimer();
+        this.cdr?.markForCheck?.();
+      },
+      error: (err: Error) => {
+        this.otpBusy = false;
+        this.otpError = err.message;
+        this.cdr?.markForCheck?.();
+      }
+    });
   }
 
   verifyOTP(): void {
@@ -1704,35 +1762,38 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
       this.otpError = 'Please enter the complete 6-digit code.';
       return;
     }
-
-    const stored = JSON.parse(localStorage.getItem('ntic_otp') || 'null');
-
-    if (!stored) {
+    if (!this.otpChallengeId) {
       this.otpError = 'No verification code found. Please request a new one.';
       return;
     }
 
-    if (Date.now() > stored.expiresAt) {
-      localStorage.removeItem('ntic_otp');
-      this.otpError = 'Verification code has expired. Please request a new one.';
-      return;
-    }
-
-    if (this.otpCode !== stored.code) {
-      this.otpError = 'Invalid verification code. Please try again.';
-      return;
-    }
-
-    localStorage.removeItem('ntic_otp');
     this.otpError = '';
-    this.regState = 'resume_success';
-    this.clearTimer();
+    this.otpBusy = true;
 
-    setTimeout(() => {
-      this.applyDraftPrefills(stored.contact);
-      this.regState = 'new';
-      this.saveRegState();
-    }, 2200);
+    this.otpService.verify(this.otpChallengeId, this.otpCode).subscribe({
+      next: result => {
+        this.otpBusy = false;
+        this.otpChallengeId = '';
+        this.regState = 'resume_success';
+        this.clearTimer();
+        // Trust the server's notion of which contact was verified rather than
+        // anything held in the browser.
+        const verifiedContact = result.target || this.resumeDraftKey;
+        // Required to read the draft: proves we received the emailed code.
+        this.resumeToken = result.resume_token || '';
+        setTimeout(() => {
+          this.applyDraftPrefills(verifiedContact);
+          this.regState = 'new';
+          this.saveRegState();
+        }, 2200);
+        this.cdr?.markForCheck?.();
+      },
+      error: (err: Error) => {
+        this.otpBusy = false;
+        this.otpError = err.message;
+        this.cdr?.markForCheck?.();
+      }
+    });
   }
 
   cardSubTab = 'profile'; // 'profile' | 'roster' | 'docs'
@@ -1883,7 +1944,7 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
           return;
         }
       }
-      const ticket = `NTIC-GRP-${Math.floor(1000 + Math.random() * 9000)}`;
+      const ticket = `NTIC-GRP-${this.randomSuffix()}`;
       const leadEmail = this.teamForm.leadEmail?.trim() || `${ticket.toLowerCase()}@squad.ntic.gh`;
       if (this.teamForm.leadEmail?.trim() && this.contentService.isEmailTaken(leadEmail, this.editingApprovalId || undefined)) {
         this.showCustomAlert('An account with this Team Lead email already exists. Please log in instead.', 'Account Exists', 'warning');
@@ -2017,7 +2078,7 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
       this.showCustomAlert('Please enter your full name to register.', 'Validation Error', 'warning');
       return;
     }
-    const ticket = `NTIC-STU-${Math.floor(1000 + Math.random() * 9000)}`;
+    const ticket = `NTIC-STU-${this.randomSuffix()}`;
     const studentEmail = this.studentForm.email?.trim() || `${ticket.toLowerCase()}@stu.ntic.gh`;
     if (this.contentService.isEmailTaken(studentEmail, this.editingApprovalId || undefined)) {
       this.showCustomAlert('An account with this email already exists. Please log in instead.', 'Account Exists', 'warning');
@@ -2359,9 +2420,9 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
 
   generateJudgeTicket(): void {
     if (!this.judgeForm.ticketCode && this.judgeForm.name) {
-      const rand = Math.floor(1000 + Math.random() * 9000);
-      this.judgeForm.ticketCode = `TKN-${rand}-NTIC`;
-      this.judgeForm.otp = Math.floor(100000 + Math.random() * 900000).toString();
+      this.judgeForm.ticketCode = `TKN-${this.randomSuffix(4)}-NTIC`;
+      // No OTP is invented here; the server issues the password on submit.
+      this.judgeForm.otp = '';
     }
   }
 
@@ -2643,9 +2704,18 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
     let draft = drafts[key] || drafts[contact];
 
     if (!draft) {
-      this.apiService.loadDraft(key).subscribe({
+      this.apiService.loadDraft(key, this.resumeToken).subscribe({
         next: (res) => { if (res?.data) { this.restoreDraftData(res.data); } },
-        error: () => {}
+        error: (err) => {
+          // 403 means the draft exists but this client has not proven it owns
+          // the address. Tell the user instead of failing silently.
+          if (err?.status === 403) {
+            this.showCustomAlert(
+              err?.error?.detail || 'Verify this email address to load its saved registration.',
+              'Verification Required', 'info'
+            );
+          }
+        }
       });
       return;
     }
@@ -2877,17 +2947,17 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
             : undefined
         };
       } else if (this.activeTab === 'judge') {
-        const ticket = 'NTIC-JDG-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const ticket = 'NTIC-JDG-' + this.randomSuffix();
+        // Assigned from the server's response below - never generated here.
+        let otp = '';
         const judgeLogoId = this.selectedFileIds['judgeLogo']?.[0] || null;
-        const newJudge = {
+        const newJudge: any = {
           id: 'USR-' + Date.now(),
           role: 'judge' as const,
           fullName: this.judgeForm.name,
           email: this.judgeForm.email,
           phone: this.judgeForm.tel,
-          otp,
-          password: otp,
+          otp: '',
           organization: this.judgeForm.organization,
           region: this.judgeForm.region || '',
           track: this.judgeForm.expertise || 'Coding & Algorithms',
@@ -2899,17 +2969,18 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
           lastLogin: 'Never'
         };
         if (judgeLogoId) (newJudge as any).logoFileId = judgeLogoId;
-        // Save to backend FIRST so the password hash is correct
+        // Create server-side FIRST; the server issues the one-time password.
         this.apiService.createUser({
           email: newJudge.email,
           full_name: newJudge.fullName,
           role: newJudge.role,
           ticket: newJudge.ticket,
-          password: newJudge.password || newJudge.otp || '',
           status: 'Active',
           phone: newJudge.phone || ''
-        }).subscribe({
-          next: () => {
+        } as any).subscribe({
+          next: (created: any) => {
+            otp = created?.temporary_password || '';
+            newJudge.otp = otp;
             const currentUsers = [...this.contentService.users];
             currentUsers.unshift(newJudge);
             this.contentService.saveUsers(currentUsers);
@@ -2939,17 +3010,17 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
           }
         });
       } else if (this.activeTab === 'sponsor') {
-        const ticket = 'NTIC-SPO-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const ticket = 'NTIC-SPO-' + this.randomSuffix();
+        // Assigned from the server's response below - never generated here.
+        let otp = '';
         const logoFileId = this.selectedFileIds['sponsorLogo']?.[0] || null;
-        const newSponsor = {
+        const newSponsor: any = {
           id: 'USR-' + Date.now(),
           role: 'sponsor' as const,
           fullName: this.sponsorForm.name,
           email: this.sponsorForm.email,
           phone: this.sponsorForm.repContact,
-          otp,
-          password: otp,
+          otp: '',
           organization: this.sponsorForm.name,
           package: this.sponsorForm.package || '',
           sector: this.sponsorForm.sector || '',
@@ -2961,17 +3032,18 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
           lastLogin: 'Never'
         };
         if (logoFileId) (newSponsor as any).logoFileId = logoFileId;
-        // Save to backend FIRST so the password hash is correct
+        // Create server-side FIRST; the server issues the one-time password.
         this.apiService.createUser({
           email: newSponsor.email,
           full_name: newSponsor.fullName,
           role: newSponsor.role,
           ticket: newSponsor.ticket,
-          password: newSponsor.password || newSponsor.otp || '',
           status: 'Active',
           phone: newSponsor.phone || ''
-        }).subscribe({
-          next: () => {
+        } as any).subscribe({
+          next: (created: any) => {
+            otp = created?.temporary_password || '';
+            newSponsor.otp = otp;
             const currentUsers = [...this.contentService.users];
             currentUsers.unshift(newSponsor);
             this.contentService.saveUsers(currentUsers);
@@ -3007,16 +3079,16 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
           this.dialogService.toast('Please select a competition cycle.', 'error');
           return;
         }
-        const ticket = 'NTIC-OPN-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const newUser = {
+        const ticket = 'NTIC-OPN-' + this.randomSuffix();
+        // Assigned from the server's response below - never generated here.
+        let otp = '';
+        const newUser: any = {
           id: 'USR-' + Date.now(),
           role: 'student' as const,
           fullName: this.openRegForm.fullName,
           email: this.openRegForm.email,
           phone: this.openRegForm.phone || '',
-          otp,
-          password: otp,
+          otp: '',
           organization: this.openRegForm.organization || 'Open Registration',
           ageGroup: this.openRegForm.ageGroup,
           experienceLevel: this.openRegForm.experienceLevel,
@@ -3036,7 +3108,6 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
           full_name: newUser.fullName,
           role: 'student',
           ticket: newUser.ticket,
-          password: otp,
           phone: newUser.phone || '',
           organization: newUser.organization || '',
           age_group: newUser.ageGroup || '',
@@ -3045,8 +3116,10 @@ setAuthValue('activeUserEmail', email, this.rememberDevice);
           photo_file_id: this.openRegPhotoFileId || '',
           doc_file_id: this.openRegDocFileId || '',
           status: 'Active'
-        }).subscribe({
-          next: () => {
+        } as any).subscribe({
+          next: (created: any) => {
+            otp = created?.temporary_password || '';
+            newUser.otp = otp;
             const currentUsers = [...this.contentService.users];
             currentUsers.unshift(newUser);
             this.contentService.saveUsers(currentUsers);

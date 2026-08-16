@@ -24,6 +24,20 @@ export interface BackendSubmission {
   created_at: string;
 }
 
+export interface MyProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  ticket: string;
+  status: string;
+  phone: string | null;
+  organization: string | null;
+  must_change_password: boolean;
+  password_changed_at: string | null;
+  password_min_length: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -31,6 +45,25 @@ export class ApiService {
   private apiUrl = environment.apiUrl || 'http://localhost:5000/api';
 
   constructor(private http: HttpClient) {}
+
+  /** The signed-in user's own profile, including whether a password change is required. */
+  getMyProfile(): Observable<MyProfile> {
+    return this.http.get<MyProfile>(this.apiUrl + '/users/me');
+  }
+
+  /**
+   * Changes the signed-in user's own password.
+   *
+   * The server verifies the current password, applies the strength policy,
+   * stores only a hash, and signs out the user's other devices. Pass an empty
+   * `currentPassword` only when the server has flagged a forced rotation.
+   */
+  changeMyPassword(currentPassword: string, newPassword: string): Observable<{ status: string; other_sessions_revoked: number }> {
+    return this.http.post<{ status: string; other_sessions_revoked: number }>(
+      this.apiUrl + '/users/me/change-password',
+      { current_password: currentPassword || '', new_password: newPassword }
+    );
+  }
 
   getStudents(): Observable<BackendStudent[]> {
     return this.http.get<BackendStudent[]>(this.apiUrl + '/students');
@@ -195,8 +228,17 @@ export class ApiService {
     return this.http.post(this.apiUrl + '/drafts', payload);
   }
 
-  loadDraft(email: string): Observable<{ data: any }> {
-    return this.http.get<{ data: any }>(this.apiUrl + '/drafts/' + encodeURIComponent(email));
+  /**
+   * Loads a saved registration draft.
+   *
+   * A draft holds the full registration form (names, phones, GPS, guardian
+   * contacts), so the server requires proof of ownership: either a staff session
+   * or `resumeToken` — the id of an OTP challenge that was just verified for
+   * this exact email address (returned by OtpService.verify).
+   */
+  loadDraft(email: string, resumeToken = ''): Observable<{ data: any }> {
+    const query = resumeToken ? `?resume_token=${encodeURIComponent(resumeToken)}` : '';
+    return this.http.get<{ data: any }>(this.apiUrl + '/drafts/' + encodeURIComponent(email) + query);
   }
 
   deleteDraft(email: string): Observable<any> {

@@ -1,0 +1,66 @@
+# Keep build contexts small and, more importantly, keep secrets out of image
+# layers. Without this file, `COPY . .` pulls in .env and the gitignored
+# environment.local.ts, both of which hold live API keys.
+
+# Secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+**/.env-backup/
+NticPlatform.Frontend/src/environments/environment.local.ts
+
+# Dependencies (reinstalled inside the image)
+node_modules/
+**/node_modules/
+.venv/
+venv/
+
+# Build output
+dist/
+**/dist/
+.angular/
+**/.angular/
+
+# Python caches
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+**/.pytest_cache/
+
+# Version control and CI
+.git/
+.gitignore
+.github/
+
+# WhatsApp session state (contains account credentials)
+whatsapp-gateway/whatsapp_session/
+whatsapp-gateway/.wwebjs_cache/
+whatsapp-gateway/.wwebjs_auth/
+
+# Audit archives written at runtime
+NticPlatform.Backend/audit_archives/
+
+# Database dumps - contain password hashes and session tokens
+backups/
+*.dump
+*.dump.sha256
+
+# Design mockups: reference material, never deployed (~6.7 MB)
+stitch_national_ntic_competition_platform/
+
+# Windows-only artefacts and helper scripts
+*.dll
+run_*.bat
+run_*.ps1
+Start-AgentRouter.bat
+
+# Editor and docs
+.vscode/
+.idea/
+*.md
+!README.md
+*.log

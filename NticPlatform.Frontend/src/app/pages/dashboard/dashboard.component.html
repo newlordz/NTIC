@@ -550,29 +550,35 @@
               SYSTEM INFRASTRUCTURE NODES
             </div>
             <span class="cc-all-healthy-badge">
-              <span class="cc-live-dot cc-dot-green"></span>
-              All Healthy (4/4 Nodes)
+              <span class="cc-live-dot" [ngClass]="nodeDotClass(overallSystemStatus)"></span>
+              {{ overallSystemLabel }}
             </span>
           </div>
 
-          <!-- Top Resource Gauges Grid -->
+          <!-- Measured platform figures. Deliberately NOT CPU/memory/bandwidth:
+               the backend cannot observe host resources, and the previous
+               gauges were derived from row counts modulo 30. -->
           <div class="cc-gauges-grid">
             <div *ngFor="let g of systemGauges" class="cc-gauge-card">
               <div class="cc-gauge-ring-wrap">
-                <svg viewBox="0 0 36 36" class="cc-gauge-svg">
-                  <path class="cc-gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/>
-                  <path class="cc-gauge-fill" [attr.stroke]="g.color" [attr.stroke-dasharray]="g.value + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
-                </svg>
                 <span class="cc-gauge-num" [style.color]="g.color">{{ g.value }}<em>{{ g.unit }}</em></span>
               </div>
               <div class="cc-gauge-label">{{ g.label }}</div>
             </div>
           </div>
+          <div *ngIf="telemetryError" class="cc-telemetry-warn">
+            <span class="material-symbols-outlined">warning</span>
+            <span>{{ telemetryError }}</span>
+          </div>
+          <div *ngIf="telemetryUnavailableReason" class="cc-telemetry-note">
+            <span class="material-symbols-outlined">info</span>
+            <span>Not shown: {{ telemetryUnavailable.join(', ') }}. {{ telemetryUnavailableReason }}</span>
+          </div>
 
-          <!-- Embedded Infrastructure Nodes (2x2 Grid) -->
+          <!-- Component status, from GET /api/system/nodes-health -->
           <div class="cc-nodes-block-embedded">
             <div class="cc-nodes-grid-embedded">
-              <div *ngFor="let node of infrastructureNodes" class="cc-node-card-v2">
+              <div *ngFor="let node of infrastructureNodes; trackBy: trackByNodeId" class="cc-node-card-v2">
                 <div class="cc-ncard-top">
                   <div class="cc-ncard-ic-box">
                     <span class="material-symbols-outlined">swap_horiz</span>
@@ -580,7 +586,7 @@
                   <div class="cc-ncard-title-block">
                     <div class="cc-ncard-name">{{ node.name }}</div>
                     <div class="cc-ncard-status">
-                      <span class="cc-live-dot cc-dot-green"></span>
+                      <span class="cc-live-dot" [ngClass]="nodeDotClass(node.status)"></span>
                       <span>{{ node.status }}</span>
                     </div>
                   </div>
@@ -589,123 +595,129 @@
                   <div class="cc-ncard-metrics">
                     <div class="cc-metric-col">
                       <span class="cc-metric-lbl">LATENCY</span>
-                      <span class="cc-metric-val">{{ node.latency }}<small>ms</small></span>
-                    </div>
-                    <div class="cc-metric-col">
-                      <span class="cc-metric-lbl">LOAD</span>
-                      <span class="cc-metric-val">{{ node.loadPct }}<small>%</small></span>
+                      <span class="cc-metric-val">
+                        <ng-container *ngIf="node.latencyMs !== null; else naLatency">{{ node.latencyMs }}<small>ms</small></ng-container>
+                        <ng-template #naLatency><small>n/a</small></ng-template>
+                      </span>
                     </div>
                   </div>
-                  <div class="cc-ncard-sparkline">
-                    <svg viewBox="0 0 120 36" class="cc-sparkline-svg" preserveAspectRatio="none">
-                      <defs>
-                        <linearGradient [id]="'grad-left-' + node.id" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.35"/>
-                          <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0"/>
-                        </linearGradient>
-                      </defs>
-                      <path [attr.d]="node.sparklineArea" [attr.fill]="'url(#grad-left-' + node.id + ')'" />
-                      <path [attr.d]="node.sparklineLine" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" />
-                    </svg>
-                  </div>
                 </div>
-                <div class="cc-ncard-progress-track">
-                  <div class="cc-ncard-progress-fill" [style.width]="node.loadPct + '%'"></div>
-                </div>
+                <div class="cc-ncard-detail">{{ node.detail }}</div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- RIGHT: LIVE TRAFFIC & SYSTEM THROUGHPUT -->
-        <div class="cc-panel cc-nodes-panel cc-traffic-panel">
+        <!-- RIGHT: SPONSORSHIP & CORPORATE PARTNERS INFOGRAPHIC -->
+        <div class="cc-panel cc-nodes-panel cc-sponsor-infographic-panel">
           <div class="cc-panel-header">
             <div class="cc-panel-label cc-panel-title-bold">
-              <span class="material-symbols-outlined cc-title-ic">show_chart</span>
-              LIVE TRAFFIC &amp; SYSTEM THROUGHPUT
+              <span class="material-symbols-outlined cc-title-ic">handshake</span>
+              SPONSORSHIP &amp; PARTNER ECOSYSTEM
             </div>
-            <div class="cc-tchart-legend">
-              <span class="cc-legend-item">
-                <span class="cc-leg-line" style="background:#2563eb;"></span>
-                API Load
+            <div class="cc-sponsor-header-badges">
+              <span class="cc-sponsor-live-pill">
+                <span class="cc-pill-dot"></span>
+                Active 2026 Cycle
               </span>
-              <span class="cc-legend-item">
-                <span class="cc-leg-line cc-leg-line--dashed" style="border-color:#10b981;"></span>
-                Req Traffic
+              <span class="cc-sponsor-meta-pill">
+                {{ sponsorInfographic.partnerCount }} Corporate Partners
               </span>
             </div>
           </div>
 
-          <div class="cc-traffic-right-content">
-            <!-- SVG Chart with realistic wave, grid lines, and day labels -->
-            <div class="cc-tchart-svg-wrap cc-tchart-svg-wrap-lg">
-              <svg viewBox="0 0 500 120" class="cc-throughput-svg" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="telemetryGradRight" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.25"/>
-                    <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0"/>
-                  </linearGradient>
-                </defs>
-                <!-- Horizontal grid lines -->
-                <line x1="0" y1="30" x2="500" y2="30" stroke="#f1f5f9" stroke-width="1"/>
-                <line x1="0" y1="60" x2="500" y2="60" stroke="#f1f5f9" stroke-width="1"/>
-                <line x1="0" y1="90" x2="500" y2="90" stroke="#f1f5f9" stroke-width="1"/>
-                <!-- Realistic wavy API Load area fill -->
-                <path d="M 0,95 C 35,90 55,72 83,76 C 115,80 130,62 166,54 C 200,46 215,68 250,58 C 285,46 305,36 333,28 C 365,22 380,38 416,26 C 445,16 470,12 500,8 L 500,120 L 0,120 Z" fill="url(#telemetryGradRight)"/>
-                <!-- Realistic wavy API Load line -->
-                <path d="M 0,95 C 35,90 55,72 83,76 C 115,80 130,62 166,54 C 200,46 215,68 250,58 C 285,46 305,36 333,28 C 365,22 380,38 416,26 C 445,16 470,12 500,8" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <!-- Realistic wavy Req Traffic dashed line -->
-                <path d="M 0,102 C 40,98 60,88 83,90 C 115,92 135,82 166,78 C 200,74 218,84 250,76 C 285,68 308,64 333,62 C 365,58 383,66 416,58 C 448,52 470,46 500,42" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6,4"/>
-              </svg>
+          <div class="cc-sponsor-right-content">
+            <!-- Top Infographic: Multi-Tier Distribution Visual Bar -->
+            <div class="cc-sponsor-bar-section">
+              <div class="cc-sbar-header">
+                <div class="cc-sbar-title">
+                  <span class="material-symbols-outlined">pie_chart</span>
+                  <span>TIER BREAKDOWN &amp; FUNDING ALLOCATION</span>
+                </div>
+                <div class="cc-sbar-total">
+                  <span class="cc-sbar-total-label">Committed:</span>
+                  <span class="cc-sbar-total-val">{{ sponsorInfographic.totalCommittedFormatted }}</span>
+                </div>
+              </div>
+
+              <!-- Proportional Stacked Progress Bar (Clickable for drilldown) -->
+              <div class="cc-sponsor-stacked-bar" title="Click any tier to view full partner breakdown">
+                <div *ngFor="let tier of sponsorInfographic.tiers; trackBy: trackByTierKey"
+                     class="cc-sbar-segment clickable-segment"
+                     [ngClass]="'sbar-' + tier.key"
+                     [style.width.%]="tier.pct"
+                     (click)="openSponsorTierModal(tier)"
+                     [title]="tier.badge + ' (' + tier.sponsorCount + ' Sponsors): ' + tier.amountFormatted + ' (' + tier.pct + '%) — Click to inspect breakdown'">
+                  <span class="sbar-seg-label">{{ tier.shortLabel }}</span>
+                </div>
+              </div>
             </div>
 
-            <!-- X-axis day labels -->
-            <div class="cc-tchart-days">
-              <span>Mon</span><span>Tue</span><span>Wed</span>
-              <span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+            <!-- Tier Cards 2x2 Grid (Clickable Drilldown) -->
+            <div class="cc-sponsor-tier-grid">
+              <div *ngFor="let tier of sponsorInfographic.tiers; trackBy: trackByTierKey"
+                   class="cc-stier-card cc-stier-clickable"
+                   [ngClass]="'stier-' + tier.key"
+                   (click)="openSponsorTierModal(tier)"
+                   role="button"
+                   tabindex="0">
+                <div class="cc-stier-top">
+                  <div class="cc-stier-left-badges">
+                    <span class="cc-stier-badge">{{ tier.badge }}</span>
+                    <span class="cc-stier-count-pill">{{ tier.sponsorCount }} {{ tier.sponsorCount === 1 ? 'Sponsor' : 'Sponsors' }}</span>
+                  </div>
+                  <span class="cc-stier-amount">{{ tier.amountFormatted }}</span>
+                </div>
+                <div class="cc-stier-brand">{{ tier.brands }}</div>
+                <div class="cc-stier-meta">
+                  <span class="material-symbols-outlined">{{ tier.metaIcon }}</span>
+                  <span>{{ tier.metaText }}</span>
+                  <span class="cc-stier-inspect-arrow">View &rarr;</span>
+                </div>
+              </div>
             </div>
 
-            <!-- Regional Relays & Edge Nodes Mini Distribution Strip -->
-            <div class="cc-edge-relays-row">
+            <!-- Regional & Community Impact Distribution Strip -->
+            <div class="cc-edge-relays-row cc-sponsor-impact-row">
               <div class="cc-edge-relay-item">
-                <span class="cc-er-dot"></span>
-                <span class="cc-er-name">Accra Edge</span>
-                <span class="cc-er-val">12ms</span>
+                <span class="cc-er-dot cc-er-dot-blue"></span>
+                <span class="cc-er-name">Teams Funded</span>
+                <span class="cc-er-val" style="color: #2563eb;">{{ sponsorInfographic.sponsoredTeamsCount }} Active</span>
               </div>
               <div class="cc-edge-relay-item">
-                <span class="cc-er-dot"></span>
-                <span class="cc-er-name">Kumasi Node</span>
-                <span class="cc-er-val">18ms</span>
+                <span class="cc-er-dot cc-er-dot-green"></span>
+                <span class="cc-er-name">Prize Pool</span>
+                <span class="cc-er-val" style="color: #059669;">{{ sponsorInfographic.prizePoolFormatted }}</span>
               </div>
               <div class="cc-edge-relay-item">
-                <span class="cc-er-dot"></span>
-                <span class="cc-er-name">Takoradi Relay</span>
-                <span class="cc-er-val">22ms</span>
+                <span class="cc-er-dot cc-er-dot-amber"></span>
+                <span class="cc-er-name">Students Reached</span>
+                <span class="cc-er-val" style="color: #d97706;">{{ sponsorInfographic.studentsReached | number }}+</span>
               </div>
               <div class="cc-edge-relay-item">
-                <span class="cc-er-dot"></span>
-                <span class="cc-er-name">Tamale CDN</span>
-                <span class="cc-er-val">29ms</span>
+                <span class="cc-er-dot cc-er-dot-purple"></span>
+                <span class="cc-er-name">CSR Audit</span>
+                <span class="cc-er-val" style="color: #7c3aed;">100% ESG</span>
               </div>
             </div>
 
             <!-- Footer metrics: label stacked above value, properly separated -->
-            <div class="cc-tchart-footer-metrics">
+            <div class="cc-tchart-footer-metrics cc-sponsor-footer-metrics">
               <div class="cc-tf-stat">
-                <span class="cc-tf-lbl">PEAK</span>
-                <span class="cc-tf-val">450 <small>req/s</small></span>
+                <span class="cc-tf-lbl">TOTAL COMMITTED</span>
+                <span class="cc-tf-val">{{ sponsorInfographic.totalCommittedFormatted }}</span>
               </div>
               <div class="cc-tf-stat">
-                <span class="cc-tf-lbl">AVG LATENCY</span>
-                <span class="cc-tf-val">14 <small>ms</small></span>
+                <span class="cc-tf-lbl">DISBURSED FUNDS</span>
+                <span class="cc-tf-val">{{ sponsorInfographic.disbursedFundsFormatted }}</span>
               </div>
               <div class="cc-tf-stat">
-                <span class="cc-tf-lbl">SUCCESS RATE</span>
-                <span class="cc-tf-val cc-green">99.98 <small>%</small></span>
+                <span class="cc-tf-lbl">SPONSORED TEAMS</span>
+                <span class="cc-tf-val cc-green">{{ sponsorInfographic.sponsoredTeamsCount }} <small>Teams</small></span>
               </div>
               <div class="cc-tf-stat">
-                <span class="cc-tf-lbl">ERROR RATE</span>
-                <span class="cc-tf-val cc-muted">0.00 <small>%</small></span>
+                <span class="cc-tf-lbl">IMPACT SCORE</span>
+                <span class="cc-tf-val cc-green">{{ sponsorInfographic.impactScore }}</span>
               </div>
             </div>
           </div>
@@ -1360,7 +1372,15 @@
             </div>
           </div>
           <div class="cc-node-grid">
-            <div *ngFor="let node of systemNodes; let i = index" class="cc-node-card">
+            <!-- Real component status from GET /api/system/nodes-health.
+                 The previous version rendered four hardcoded "Healthy" nodes
+                 with random-jitter latency and animated sparklines, which stayed
+                 green during a real outage. -->
+            <div *ngIf="!infrastructureNodes.length" class="cc-node-empty">
+              <span class="material-symbols-outlined">cloud_off</span>
+              <span>{{ telemetryError || 'Loading component status...' }}</span>
+            </div>
+            <div *ngFor="let node of infrastructureNodes; trackBy: trackByNodeId" class="cc-node-card">
               <div class="cc-node-top">
                 <div class="cc-node-icon">
                   <span class="material-symbols-outlined">settings_ethernet</span>
@@ -1368,39 +1388,22 @@
                 <div class="cc-node-info">
                   <div class="cc-node-name">{{ node.name }}</div>
                   <div class="cc-node-status">
-                    <span class="cc-live-dot cc-dot-green"></span>
+                    <span class="cc-live-dot" [ngClass]="nodeDotClass(node.status)"></span>
                     <span>{{ node.status }}</span>
+                    <span *ngIf="!node.measured" class="cc-node-badge" title="Reflects configuration, not a live probe">config</span>
                   </div>
                 </div>
               </div>
               <div class="cc-node-metrics">
                 <div class="cc-metric">
                   <span class="cc-metric-label">Latency</span>
-                  <span class="cc-metric-value">{{ getNodeLatency(i) }}<em>ms</em></span>
-                </div>
-                <div class="cc-metric">
-                  <span class="cc-metric-label">Load</span>
-                  <span class="cc-metric-value">{{ getNodeLoad(i) }}<em>%</em></span>
-                </div>
-                <div class="cc-sparkline-wrap">
-                  <svg viewBox="0 0 80 28" width="80" height="28" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient [id]="'sg'+i" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#1a7fe6" stop-opacity="0.5"/>
-                        <stop offset="100%" stop-color="#1a7fe6" stop-opacity="0"/>
-                      </linearGradient>
-                    </defs>
-                    <path [attr.d]="sparklinePath(nodeHistory[i]) + ' L 80,28 L 0,28 Z'"
-                          [attr.fill]="'url(#sg'+i+')'" />
-                    <path [attr.d]="sparklinePath(nodeHistory[i])"
-                          fill="none" stroke="#1a7fe6" stroke-width="1.5"
-                          stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
+                  <span class="cc-metric-value">
+                    <ng-container *ngIf="node.latencyMs !== null; else noLatency">{{ node.latencyMs }}<em>ms</em></ng-container>
+                    <ng-template #noLatency><em>n/a</em></ng-template>
+                  </span>
                 </div>
               </div>
-              <div class="cc-node-bar-wrap">
-                <div class="cc-node-bar" [style.width]="getNodeLoad(i) + '%'"></div>
-              </div>
+              <div class="cc-node-detail">{{ node.detail }}</div>
             </div>
           </div>
         </div>
@@ -2661,75 +2664,136 @@
       </div>
     </div>
 
-  <!-- â”€â”€ TAB: CONTENT MANAGER â”€â”€ -->
-  <div *ngIf="(adminTab === 'control' && adminSubTab === 'content') || maximizedContentTab" class="admin-tab-body" [class.ac-expanded]="expandedSection" [style.padding]="maximizedContentTab ? '0' : ''">
-      <div class="ac-top-bar" *ngIf="!maximizedContentTab">
-        <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
-          <span class="material-symbols-outlined">arrow_back</span>Admin Control
-        </button>
+  <!-- ── TAB: CONTENT MANAGER ── -->
+  <div *ngIf="(adminTab === 'control' && adminSubTab === 'content') || maximizedContentTab" class="admin-tab-body cms-studio-container" [class.ac-expanded]="expandedSection" [style.padding]="maximizedContentTab ? '0' : ''">
+    
+    <!-- Top Action Bar -->
+    <div class="ac-top-bar" *ngIf="!maximizedContentTab">
+      <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
+        <span class="material-symbols-outlined">arrow_back</span>Admin Control
+      </button>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <a href="/" target="_blank" class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; text-decoration:none;">
+          <span class="material-symbols-outlined" style="font-size:16px;">open_in_new</span>Live Landing Preview
+        </a>
         <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
           <span class="material-symbols-outlined">{{ expandedSection ? 'collapse_content' : 'expand_content' }}</span>
           {{ expandedSection ? 'Collapse' : 'Expand' }}
         </button>
       </div>
+    </div>
 
-    <!-- Sub-Tab Nav -->
-    <div class="cms-sub-tabs" [style.border-bottom]="maximizedContentTab ? '2px solid var(--outline-variant)' : ''" [style.margin-bottom]="maximizedContentTab ? '24px' : ''" [style.padding-bottom]="maximizedContentTab ? '0' : ''">
-      <button class="cms-sub-tab" [class.active]="contentTab === 'stories'" (click)="contentTab = 'stories'">
+    <!-- CMS Hub Header Banner -->
+    <div class="cms-hub-banner">
+      <div class="cms-hub-header-top">
+        <div class="cms-hub-title-group">
+          <h2 class="cms-hub-title">
+            <span class="material-symbols-outlined">auto_stories</span>
+            Content Studio &amp; Portal CMS
+          </h2>
+          <p class="cms-hub-subtitle">
+            Orchestrate public hero banners, championship stories, real-time leaderboard scores, hall of fame champions, and live announcements.
+          </p>
+        </div>
+        <div class="cms-hub-badge-row">
+          <span class="cms-hub-sync-chip">
+            <span class="pulse-dot"></span> Live Landing Page Sync
+          </span>
+          <span class="cms-hub-stat-chip">
+            <span class="material-symbols-outlined">inventory_2</span>
+            {{ getTotalContentCount() }} Items Active
+          </span>
+        </div>
+      </div>
+
+      <!-- Quick Search & Category Filters -->
+      <div class="cms-hub-controls">
+        <div class="cms-category-segmented">
+          <button class="cms-cat-btn" [class.active]="cmsCategoryFilter === 'all'" (click)="setCmsCategory('all')">
+            <span class="material-symbols-outlined">apps</span> All Modules
+          </button>
+          <button class="cms-cat-btn" [class.active]="cmsCategoryFilter === 'landing'" (click)="setCmsCategory('landing')">
+            <span class="material-symbols-outlined">web</span> Landing &amp; Hero
+          </button>
+          <button class="cms-cat-btn" [class.active]="cmsCategoryFilter === 'competitions'" (click)="setCmsCategory('competitions')">
+            <span class="material-symbols-outlined">emoji_events</span> Competitions &amp; Records
+          </button>
+          <button class="cms-cat-btn" [class.active]="cmsCategoryFilter === 'broadcast'" (click)="setCmsCategory('broadcast')">
+            <span class="material-symbols-outlined">campaign</span> Broadcast &amp; Events
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sub-Tab Navigation Bar -->
+    <div class="cms-sub-tabs" [style.border-bottom]="maximizedContentTab ? '2px solid var(--outline-variant)' : ''" [style.margin-bottom]="maximizedContentTab ? '24px' : ''">
+      <button *ngIf="isCmsTabVisible('stories')" class="cms-sub-tab" [class.active]="contentTab === 'stories'" (click)="contentTab = 'stories'">
         <span class="material-symbols-outlined">newspaper</span>Championship Stories
         <span class="cms-count-badge">{{ contentService.championshipStories.length }}</span>
       </button>
-      <button class="cms-sub-tab" [class.active]="contentTab === 'hof'" (click)="contentTab = 'hof'">
-        <span class="material-symbols-outlined">workspace_premium</span>Hall of Fame
-        <span class="cms-count-badge">{{ contentService.hallOfFameEntries.length }}</span>
-      </button>
-      <button class="cms-sub-tab" [class.active]="contentTab === 'leaderboard'" (click)="contentTab = 'leaderboard'">
-        <span class="material-symbols-outlined">leaderboard</span>Leaderboard
-        <span class="cms-count-badge">{{ contentService.leaderboardData.length }}</span>
-      </button>
-      <button class="cms-sub-tab" [class.active]="contentTab === 'talent'" (click)="contentTab = 'talent'">
-        <span class="material-symbols-outlined">stars</span>Talent Discovery
-        <span class="cms-count-badge">{{ contentService.talentDiscovery.length }}</span>
-      </button>
-      <button class="cms-sub-tab" [class.active]="contentTab === 'news'" (click)="contentTab = 'news'">
-        <span class="material-symbols-outlined">campaign</span>News Feed
-        <span class="cms-count-badge">{{ contentService.newsFeedItems.length }}</span>
-      </button>
-      <button class="cms-sub-tab" [class.active]="contentTab === 'stats'" (click)="contentTab = 'stats'">
-        <span class="material-symbols-outlined">analytics</span>Platform Stats
-      </button>
-      <button class="cms-sub-tab" [class.active]="contentTab === 'countdown'" (click)="contentTab = 'countdown'">
-        <span class="material-symbols-outlined">alarm</span>Countdown Timer
-      </button>
-      <button class="cms-sub-tab" [class.active]="contentTab === 'slideshow'" (click)="contentTab = 'slideshow'">
-        <span class="material-symbols-outlined">slideshow</span>Slideshow
+      <button *ngIf="isCmsTabVisible('slideshow')" class="cms-sub-tab" [class.active]="contentTab === 'slideshow'" (click)="contentTab = 'slideshow'">
+        <span class="material-symbols-outlined">slideshow</span>Hero Slideshow
         <span class="cms-count-badge">{{ contentService.heroSlides.length }}</span>
       </button>
-      <button class="cms-sub-tab" [class.active]="contentTab === 'events'" (click)="contentTab = 'events'">
-        <span class="material-symbols-outlined">event</span>Upcoming Events
-        <span class="cms-count-badge">{{ contentService.upcomingEvents.length }}</span>
-      </button>
-      <button class="cms-sub-tab" [class.active]="contentTab === 'philosophy'" (click)="contentTab = 'philosophy'">
+      <button *ngIf="isCmsTabVisible('philosophy')" class="cms-sub-tab" [class.active]="contentTab === 'philosophy'" (click)="contentTab = 'philosophy'">
         <span class="material-symbols-outlined">lightbulb</span>Philosophy Cards
         <span class="cms-count-badge">{{ contentService.philosophyCards.length }}</span>
       </button>
+      <button *ngIf="isCmsTabVisible('stats')" class="cms-sub-tab" [class.active]="contentTab === 'stats'" (click)="contentTab = 'stats'">
+        <span class="material-symbols-outlined">analytics</span>Platform Stats
+      </button>
+      <button *ngIf="isCmsTabVisible('countdown')" class="cms-sub-tab" [class.active]="contentTab === 'countdown'" (click)="contentTab = 'countdown'">
+        <span class="material-symbols-outlined">alarm</span>Countdown Timer
+      </button>
+      <button *ngIf="isCmsTabVisible('leaderboard')" class="cms-sub-tab" [class.active]="contentTab === 'leaderboard'" (click)="contentTab = 'leaderboard'">
+        <span class="material-symbols-outlined">leaderboard</span>Leaderboard
+        <span class="cms-count-badge">{{ contentService.leaderboardData.length }}</span>
+      </button>
+      <button *ngIf="isCmsTabVisible('hof')" class="cms-sub-tab" [class.active]="contentTab === 'hof'" (click)="contentTab = 'hof'">
+        <span class="material-symbols-outlined">workspace_premium</span>Hall of Fame
+        <span class="cms-count-badge">{{ contentService.hallOfFameEntries.length }}</span>
+      </button>
+      <button *ngIf="isCmsTabVisible('talent')" class="cms-sub-tab" [class.active]="contentTab === 'talent'" (click)="contentTab = 'talent'">
+        <span class="material-symbols-outlined">stars</span>Talent Discovery
+        <span class="cms-count-badge">{{ contentService.talentDiscovery.length }}</span>
+      </button>
+      <button *ngIf="isCmsTabVisible('news')" class="cms-sub-tab" [class.active]="contentTab === 'news'" (click)="contentTab = 'news'">
+        <span class="material-symbols-outlined">campaign</span>News Feed
+        <span class="cms-count-badge">{{ contentService.newsFeedItems.length }}</span>
+      </button>
+      <button *ngIf="isCmsTabVisible('events')" class="cms-sub-tab" [class.active]="contentTab === 'events'" (click)="contentTab = 'events'">
+        <span class="material-symbols-outlined">event</span>Upcoming Events
+        <span class="cms-count-badge">{{ contentService.upcomingEvents.length }}</span>
+      </button>
     </div>
 
-    <!-- â”€â”€ STORIES PANEL â”€â”€ -->
+    <!-- ── 1. STORIES PANEL ── -->
     <div *ngIf="contentTab === 'stories'" class="cms-panel">
       <div class="cms-panel-header">
-        <div>
-          <h3 class="cms-panel-title"><span class="material-symbols-outlined">newspaper</span>Championship Stories</h3>
-          <p class="cms-panel-desc">Stories appear as an auto-sliding carousel on the landing page.</p>
+        <div class="cms-panel-info">
+          <div class="cms-panel-icon-wrap" style="background: rgba(0, 89, 178, 0.12); color: var(--primary);">
+            <span class="material-symbols-outlined">newspaper</span>
+          </div>
+          <div>
+            <h3 class="cms-panel-title">Championship Stories</h3>
+            <p class="cms-panel-desc">Interactive stories displayed on the landing page carousel with tags, read times, and like counters.</p>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div class="cms-panel-actions">
+          <div class="cms-search-box">
+            <span class="material-symbols-outlined cms-search-icon">search</span>
+            <input type="text" [(ngModel)]="storySearchQuery" placeholder="Search stories by title, tag, or body...">
+            <button *ngIf="storySearchQuery" class="cms-search-clear" (click)="storySearchQuery = ''" title="Clear search">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
           <button class="btn btn-primary btn-sm" (click)="openStoryForm()">
             <span class="material-symbols-outlined">add</span>Add Story
           </button>
         </div>
       </div>
 
-      <!-- Add Story Form -->
+      <!-- Add / Edit Story Form -->
       <div class="cms-form-card" *ngIf="storyFormOpen">
         <div class="cms-form-card-header">
           <h4>
@@ -2740,50 +2804,54 @@
         </div>
         <div class="cms-form-error" *ngIf="storyFormError">{{ storyFormError }}</div>
         <div class="cms-form-grid">
-          <div class="cms-field">
+          <div class="cms-field cms-field-full">
             <label>Story Title <span class="req">*</span></label>
             <input type="text" [(ngModel)]="storyForm.title" placeholder="e.g. PRESEC Unveils Autonomous Harvester Bot">
           </div>
           <div class="cms-field">
-            <label>Tag</label>
+            <label>Tag Category</label>
             <select [(ngModel)]="storyForm.tag">
-              <option>Robotics</option><option>Coding</option><option>Networking & Cybersecurity</option>
-              <option>AI</option><option>Innovation</option><option>General</option>
+              <option>Robotics</option>
+              <option>Coding</option>
+              <option>Networking &amp; Cybersecurity</option>
+              <option>AI</option>
+              <option>Innovation</option>
+              <option>General</option>
             </select>
           </div>
           <div class="cms-field">
-            <label>Tag Color</label>
+            <label>Tag Color Theme</label>
             <select [(ngModel)]="storyForm.tagColor">
               <option *ngFor="let tc of tag_colors" [value]="tc.value">{{ tc.label }}</option>
             </select>
           </div>
           <div class="cms-field">
-            <label>Read Time</label>
+            <label>Read Time Estimate</label>
             <input type="text" [(ngModel)]="storyForm.readTime" placeholder="5 min read">
           </div>
+          <div class="cms-field">
+            <label>Published Date</label>
+            <input type="text" [(ngModel)]="storyForm.date" placeholder="June 28, 2026">
+          </div>
           <div class="cms-field cms-field-full">
-            <label>Story Image</label>
+            <label>Cover Image</label>
             <div style="display:flex; gap:10px; align-items:center;">
               <input type="text" [(ngModel)]="storyForm.image" placeholder="Image URL, e.g. assets/ntic_image_1.jpeg" style="flex:1;">
               <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant);">OR</span>
-              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropStoryImage($event)">
-                <span class="material-symbols-outlined" style="font-size:16px;">upload</span>Import
+              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0;" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropStoryImage($event)">
+                <span class="material-symbols-outlined" style="font-size:16px;">upload</span>Import File
                 <input type="file" (change)="onStoryImageSelected($event)" accept="image/*" style="display:none;">
               </label>
             </div>
             <!-- Image preview if present -->
-            <div *ngIf="storyForm.image" style="margin-top:8px; display:flex; align-items:center; gap:8px;">
-              <img [src]="storyForm.image" style="width:50px; height:35px; object-fit:cover; border-radius:6px; border:1px solid var(--outline-variant);" onerror="this.style.display='none'">
-              <span style="font-size:11px; color:var(--on-surface-variant); word-break:break-all; max-width:400px; max-height:35px; overflow:hidden;">{{ storyForm.image.startsWith('data:') ? '[Imported Device Image]' : storyForm.image }}</span>
+            <div *ngIf="storyForm.image" style="margin-top:8px; display:flex; align-items:center; gap:10px; padding:6px 10px; background:var(--surface-container); border-radius:8px;">
+              <img [src]="storyForm.image" style="width:60px; height:40px; object-fit:cover; border-radius:6px; border:1px solid var(--outline-variant);" onerror="this.style.display='none'">
+              <span style="font-size:11.5px; color:var(--on-surface-variant); word-break:break-all; max-width:400px; overflow:hidden;">{{ storyForm.image.startsWith('data:') ? '[Imported Device Image]' : storyForm.image }}</span>
             </div>
           </div>
-          <div class="cms-field">
-            <label>Date</label>
-            <input type="text" [(ngModel)]="storyForm.date" placeholder="June 28, 2026">
-          </div>
           <div class="cms-field cms-field-full">
-            <label>Story Body <span class="req">*</span></label>
-            <textarea rows="3" [(ngModel)]="storyForm.body" placeholder="Brief description of the story..."></textarea>
+            <label>Story Body / Summary <span class="req">*</span></label>
+            <textarea rows="3" [(ngModel)]="storyForm.body" placeholder="Provide a summary of the achievements, project highlights, or student story..."></textarea>
           </div>
         </div>
         <div class="cms-form-actions">
@@ -2797,51 +2865,71 @@
 
       <!-- Stories List -->
       <div class="cms-item-list">
-        <div *ngFor="let story of contentService.championshipStories" class="cms-story-item">
+        <div *ngFor="let story of filteredStories" class="cms-story-item">
           <div class="cms-story-thumb">
             <img [src]="story.image" [alt]="story.title" onerror="this.src='assets/ntic_image_1.jpeg'">
             <span class="story-tag-mini" [class]="story.tagColor">{{ story.tag }}</span>
           </div>
           <div class="cms-story-info">
-            <div class="cms-story-meta">{{ story.date }} Â· {{ story.readTime }}</div>
+            <div class="cms-story-meta">
+              <span>{{ story.date }}</span>
+              <span class="meta-dot">&bull;</span>
+              <span>{{ story.readTime }}</span>
+            </div>
             <div class="cms-story-title">{{ story.title }}</div>
             <div class="cms-story-body">{{ story.body }}</div>
-            <div style="display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11px;color:var(--on-surface-variant);">
-              <span class="material-symbols-outlined" style="font-size:13px;">favorite</span>
+            <div class="cms-story-engagement">
+              <span class="material-symbols-outlined" style="font-size:14px; color:#ef4444;">favorite</span>
               <span>{{ story.likes || 0 }} likes</span>
             </div>
           </div>
           <div class="cms-item-actions">
-            <button class="cms-edit-btn" (click)="openEditStoryForm(story)" title="Edit">
+            <button class="cms-edit-btn" (click)="openEditStoryForm(story)" title="Edit Story">
               <span class="material-symbols-outlined">edit</span>
             </button>
-            <button class="cms-delete-btn" (click)="removeStory(story.id)" title="Remove">
+            <button class="cms-delete-btn" (click)="removeStory(story.id)" title="Remove Story">
               <span class="material-symbols-outlined">delete</span>
             </button>
           </div>
         </div>
         <div *ngIf="contentService.championshipStories.length === 0" class="cms-empty">
           <span class="material-symbols-outlined">newspaper</span>
-          <p>No stories yet. Add the first one!</p>
+          <p>No championship stories published yet.</p>
+        </div>
+        <div *ngIf="contentService.championshipStories.length > 0 && filteredStories.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">search_off</span>
+          <p>No stories found matching "{{ storySearchQuery }}".</p>
         </div>
       </div>
     </div>
 
-    <!-- â”€â”€ HALL OF FAME PANEL â”€â”€ -->
+    <!-- ── 2. HALL OF FAME PANEL ── -->
     <div *ngIf="contentTab === 'hof'" class="cms-panel">
       <div class="cms-panel-header">
-        <div>
-          <h3 class="cms-panel-title"><span class="material-symbols-outlined">workspace_premium</span>Hall of Fame</h3>
-          <p class="cms-panel-desc">Champions scroll as an infinite marquee on the landing page.</p>
+        <div class="cms-panel-info">
+          <div class="cms-panel-icon-wrap" style="background: rgba(245, 158, 11, 0.12); color: #d97706;">
+            <span class="material-symbols-outlined">workspace_premium</span>
+          </div>
+          <div>
+            <h3 class="cms-panel-title">Hall of Fame Champions</h3>
+            <p class="cms-panel-desc">National champions displayed in the landing page continuous marquee and honours roll.</p>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div class="cms-panel-actions">
+          <div class="cms-search-box">
+            <span class="material-symbols-outlined cms-search-icon">search</span>
+            <input type="text" [(ngModel)]="hofSearchQuery" placeholder="Search champions, schools, badges...">
+            <button *ngIf="hofSearchQuery" class="cms-search-clear" (click)="hofSearchQuery = ''" title="Clear search">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
           <button class="btn btn-primary btn-sm" (click)="openHofForm()">
             <span class="material-symbols-outlined">add</span>Add Champion
           </button>
         </div>
       </div>
 
-      <!-- Add HoF Form -->
+      <!-- Add / Edit HoF Form -->
       <div class="cms-form-card" *ngIf="hofFormOpen">
         <div class="cms-form-card-header">
           <h4>
@@ -2852,29 +2940,29 @@
         </div>
         <div class="cms-form-error" *ngIf="hofFormError">{{ hofFormError }}</div>
         <div class="cms-form-grid">
-          <div class="cms-field" style="grid-column: span 2;">
+          <div class="cms-field cms-field-full">
             <label>Entry Type <span class="req">*</span></label>
             <div style="display:flex; gap:16px; margin-top:4px;">
-              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; font-size:13px;">
+              <label class="cms-radio-label">
                 <input type="radio" [(ngModel)]="hofForm.type" (ngModelChange)="onHofTypeChange($event)" value="group" name="hofType">
-                ðŸ‘¥ Group / Squad Champions
+                <span class="material-symbols-outlined" style="font-size:16px;">groups</span> Squad / Group Champions
               </label>
-              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; font-size:13px;">
+              <label class="cms-radio-label">
                 <input type="radio" [(ngModel)]="hofForm.type" (ngModelChange)="onHofTypeChange($event)" value="individual" name="hofType">
-                ðŸ‘¤ Individual Champion
+                <span class="material-symbols-outlined" style="font-size:16px;">person</span> Individual Champion
               </label>
             </div>
           </div>
 
           <!-- Squad Auto-Fill Selector -->
-          <div class="cms-field" *ngIf="hofForm.type === 'group'" style="grid-column: span 2; background: var(--primary-bg-light); padding: 10px 14px; border-radius: 10px; border: 1px solid var(--header-highlight-border);">
+          <div class="cms-field cms-field-full" *ngIf="hofForm.type === 'group'" style="background: rgba(0, 89, 178, 0.06); padding: 12px 16px; border-radius: 10px; border: 1px dashed var(--primary);">
             <label style="color: var(--primary); font-weight: 700; display: flex; align-items: center; gap: 6px;">
               <span class="material-symbols-outlined" style="font-size: 18px;">auto_awesome</span>
               Auto-Fill from Registered System Squads
             </label>
-            <select [(ngModel)]="hofForm.selectedTeamId" (ngModelChange)="onHofTeamSelect($event)" style="margin-top: 4px; border-color: var(--primary);">
-              <option value="">-- Select a registered team to auto-fill roster & school --</option>
-              <option *ngFor="let t of contentService.teams" [value]="t.id || t.name">{{ t.name }} -- {{ t.schoolName || 'Partner School' }} ({{ t.track || 'General' }})</option>
+            <select [(ngModel)]="hofForm.selectedTeamId" (ngModelChange)="onHofTeamSelect($event)" style="margin-top: 6px; border-color: var(--primary);">
+              <option value="">-- Select a registered team to auto-fill roster &amp; school --</option>
+              <option *ngFor="let t of contentService.teams" [value]="t.id || t.name">{{ t.name }} &mdash; {{ t.schoolName || 'Partner School' }} ({{ t.track || 'General' }})</option>
             </select>
           </div>
 
@@ -2888,13 +2976,13 @@
             <input type="text" [(ngModel)]="hofForm.initials" placeholder="CR" maxlength="3">
           </div>
 
-          <div class="cms-field" *ngIf="hofForm.type === 'group'" style="grid-column: span 2;">
+          <div class="cms-field cms-field-full" *ngIf="hofForm.type === 'group'">
             <label>Team Members (comma-separated)</label>
             <input type="text" [(ngModel)]="hofForm.membersInput" placeholder="e.g. Kofi Nyarko, Abena Mensah, Emmanuel Osei, Selorm Adjei">
-            <span style="font-size:11px; color:var(--on-surface-variant); margin-top:2px;">Members will appear in a popup card when users hover over this group card.</span>
+            <span style="font-size:11px; color:var(--on-surface-variant); margin-top:2px;">Members will appear in a popup tooltip when users hover over this group card.</span>
           </div>
 
-          <div class="cms-field" *ngIf="hofForm.type === 'group'" style="grid-column: span 2;">
+          <div class="cms-field cms-field-full" *ngIf="hofForm.type === 'group'">
             <label>Project / Innovation Title</label>
             <input type="text" [(ngModel)]="hofForm.projectTitle" placeholder="e.g. Zero-Trust Autonomous Firewall System">
           </div>
@@ -2904,21 +2992,21 @@
             <input type="text" [(ngModel)]="hofForm.school" placeholder="e.g. PRESEC Legon">
           </div>
           <div class="cms-field">
-            <label>Year</label>
+            <label>Competition Year</label>
             <input type="text" [(ngModel)]="hofForm.year" placeholder="2026">
           </div>
           <div class="cms-field">
-            <label>Award / Badge <span class="req">*</span></label>
-            <input type="text" [(ngModel)]="hofForm.badge" placeholder="ðŸ† Cybersecurity Grand Champions">
+            <label>Award / Honour Badge <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="hofForm.badge" placeholder="🏆 Cybersecurity Grand Champions">
           </div>
           <div class="cms-field">
-            <label>Track</label>
+            <label>Track Category</label>
             <select [(ngModel)]="hofForm.trackClass">
               <option *ngFor="let tc of trackClass_options" [value]="tc.value">{{ tc.label }}</option>
             </select>
           </div>
           <div class="cms-field">
-            <label>Expiry Date</label>
+            <label>Expiry Date (optional)</label>
             <input type="date" [(ngModel)]="hofForm.expiryDate">
           </div>
         </div>
@@ -2933,7 +3021,7 @@
 
       <!-- HoF List -->
       <div class="cms-hof-grid">
-        <div *ngFor="let entry of contentService.hallOfFameEntries" class="cms-hof-card" [class]="entry.trackClass">
+        <div *ngFor="let entry of filteredHofEntries" class="cms-hof-card" [class]="entry.trackClass">
           <div class="cms-hof-avatar">
             <span *ngIf="entry.type !== 'group'">{{ entry.initials }}</span>
             <span *ngIf="entry.type === 'group'" class="material-symbols-outlined" style="font-size:24px;">groups</span>
@@ -2941,55 +3029,72 @@
           <div class="cms-hof-info">
             <div style="display:flex; align-items:center; gap:6px;">
               <strong>{{ entry.name }}</strong>
-              <span *ngIf="entry.type === 'group'" style="background:var(--primary-bg-light); color:var(--primary); font-size:10px; font-weight:800; padding:1px 6px; border-radius:10px;">GROUP</span>
+              <span *ngIf="entry.type === 'group'" class="cms-type-chip">GROUP</span>
             </div>
-            <span>{{ entry.school }} Â· {{ entry.year }}</span>
+            <span class="cms-hof-school-year">{{ entry.school }} &bull; {{ entry.year }}</span>
             <span class="cms-hof-badge">{{ entry.badge }}</span>
-            <div *ngIf="entry.members && entry.members.length > 0" style="font-size:11px; color:var(--primary); font-weight:700; margin-top:2px;">
-              ðŸ‘¥ {{ entry.members.length }} Members: {{ entry.members.join(', ') }}
+            <div *ngIf="entry.members && entry.members.length > 0" class="cms-hof-members-summary">
+              <span class="material-symbols-outlined" style="font-size:13px;">groups</span>
+              <span>{{ entry.members.length }} Members: {{ entry.members.join(', ') }}</span>
             </div>
             
             <!-- Expiry info and status badge -->
-            <div style="font-size:10.5px; margin-top:6px; display:flex; align-items:center; gap:6px; font-weight:700;">
+            <div class="cms-hof-status-row">
               <span class="material-symbols-outlined" style="font-size:13px; color:var(--on-surface-variant);">calendar_today</span>
               <span *ngIf="entry.expiryDate">Expires: {{ entry.expiryDate }}</span>
-              <span *ngIf="!entry.expiryDate">No Expiry</span>
+              <span *ngIf="!entry.expiryDate">Permanent Honor</span>
               
-              <span *ngIf="entry.expiryDate && isEntryExpired(entry)" style="background:#fee2e2; color:#ef4444; padding:1px 4px; border-radius:4px; font-size:9.5px;">Expired</span>
-              <span *ngIf="!entry.expiryDate || !isEntryExpired(entry)" style="background:#dcfce7; color:#22c55e; padding:1px 4px; border-radius:4px; font-size:9.5px;">Active</span>
+              <span *ngIf="entry.expiryDate && isEntryExpired(entry)" class="cms-status-expired">Expired</span>
+              <span *ngIf="!entry.expiryDate || !isEntryExpired(entry)" class="cms-status-active">Active</span>
             </div>
           </div>
           
           <div class="cms-hof-medal">
-            <img src="assets/hall_of_fame_medal.png" alt="NTIC Medal">
+            <img src="assets/hall_of_fame_medal.png" alt="NTIC Medal" onerror="this.style.display='none'">
           </div>
 
-          <div class="cms-item-actions" style="position:absolute; top:12px; right:12px; display:flex; gap:4px;">
-            <button class="cms-edit-btn" (click)="openEditHofForm(entry)" title="Edit">
+          <div class="cms-item-actions cms-hof-floating-actions">
+            <button class="cms-edit-btn" (click)="openEditHofForm(entry)" title="Edit Champion">
               <span class="material-symbols-outlined">edit</span>
             </button>
-            <button class="cms-delete-btn" (click)="removeHofEntry(entry.id)" title="Remove">
+            <button class="cms-delete-btn" (click)="removeHofEntry(entry.id)" title="Remove Champion">
               <span class="material-symbols-outlined">delete</span>
             </button>
           </div>
         </div>
         <div *ngIf="contentService.hallOfFameEntries.length === 0" class="cms-empty">
           <span class="material-symbols-outlined">workspace_premium</span>
-          <p>No Hall of Fame entries yet.</p>
+          <p>No Hall of Fame champions published yet.</p>
+        </div>
+        <div *ngIf="contentService.hallOfFameEntries.length > 0 && filteredHofEntries.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">search_off</span>
+          <p>No champions found matching "{{ hofSearchQuery }}".</p>
         </div>
       </div>
     </div>
 
-    <!-- â”€â”€ LEADERBOARD PANEL â”€â”€ -->
+    <!-- ── 3. LEADERBOARD PANEL ── -->
     <div *ngIf="contentTab === 'leaderboard'" class="cms-panel">
       <div class="cms-panel-header">
-        <div>
-          <h3 class="cms-panel-title"><span class="material-symbols-outlined">leaderboard</span>Leaderboard</h3>
-          <p class="cms-panel-desc">Rankings are auto-sorted by total points and reflected on the landing page.</p>
+        <div class="cms-panel-info">
+          <div class="cms-panel-icon-wrap" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
+            <span class="material-symbols-outlined">leaderboard</span>
+          </div>
+          <div>
+            <h3 class="cms-panel-title">School Leaderboard &amp; Rankings</h3>
+            <p class="cms-panel-desc">Rankings auto-sort by cumulative points across Coding, Robotics, AI, and Cybersecurity tracks.</p>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div class="cms-panel-actions">
+          <div class="cms-search-box">
+            <span class="material-symbols-outlined cms-search-icon">search</span>
+            <input type="text" [(ngModel)]="lbSearchQuery" placeholder="Search school, city, region...">
+            <button *ngIf="lbSearchQuery" class="cms-search-clear" (click)="lbSearchQuery = ''" title="Clear search">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
           <button class="btn btn-primary btn-sm" (click)="openLbForm()">
-            <span class="material-symbols-outlined">add</span>Add School
+            <span class="material-symbols-outlined">add</span>Add School Entry
           </button>
         </div>
       </div>
@@ -2997,7 +3102,7 @@
       <!-- Add / Edit Leaderboard Form -->
       <div class="cms-form-card" *ngIf="lbFormOpen">
         <div class="cms-form-card-header">
-          <h4><span class="material-symbols-outlined">leaderboard</span>{{ lbEditId ? 'Edit School' : 'New School Entry' }}</h4>
+          <h4><span class="material-symbols-outlined">leaderboard</span>{{ lbEditId ? 'Edit School Entry' : 'New Leaderboard School' }}</h4>
           <button class="cms-form-close" (click)="closeLbForm()"><span class="material-symbols-outlined">close</span></button>
         </div>
         <div class="cms-form-error" *ngIf="lbFormError">{{ lbFormError }}</div>
@@ -3007,34 +3112,34 @@
             <input type="text" [(ngModel)]="lbForm.schoolName" placeholder="e.g. PRESEC Legon">
           </div>
           <div class="cms-field">
-            <label>Location <span class="req">*</span></label>
+            <label>City / Campus Location <span class="req">*</span></label>
             <input type="text" [(ngModel)]="lbForm.location" placeholder="Legon, Greater Accra">
           </div>
           <div class="cms-field">
             <label>Region</label>
             <input type="text" [(ngModel)]="lbForm.region" placeholder="Accra">
           </div>
-          <div class="cms-field lb-points-group" style="grid-column:1/-1;">
-            <label style="margin-bottom:8px;display:block;">Track Points (total auto-calculated)</label>
+          <div class="cms-field cms-field-full lb-points-group">
+            <label style="margin-bottom:8px;display:block;">Track Points (Total auto-sums in real-time)</label>
             <div class="cms-lb-points-row">
               <div class="cms-lb-point-field">
-                <span>ðŸ’» Coding</span>
+                <span>💻 Coding</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.coding" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field">
-                <span>ðŸ¤– Robotics</span>
+                <span>🤖 Robotics</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.robotics" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field">
-                <span>ðŸ§  AI</span>
+                <span>🧠 AI</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.ai" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field">
-                <span>ðŸ” Cyber</span>
+                <span>🔒 Cyber</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.cyber" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field total">
-                <span>ðŸ† Total</span>
+                <span>🏆 Total</span>
                 <input type="number" [ngModel]="lbForm.trackPoints.all" readonly>
               </div>
             </div>
@@ -3049,47 +3154,86 @@
       </div>
 
       <!-- Leaderboard Table -->
-      <div class="cms-lb-table">
-        <div class="cms-lb-head">
-          <span>Rank</span><span>School</span><span>Location</span>
-          <span>Coding</span><span>Robotics</span><span>AI</span><span>Cyber</span>
-          <span>Total</span><span>Actions</span>
-        </div>
-        <div *ngFor="let entry of contentService.leaderboardData" class="cms-lb-row">
-          <span class="cms-lb-rank">{{ entry.rank }}</span>
-          <span class="cms-lb-school">{{ entry.schoolName }}</span>
-          <span class="cms-lb-loc">{{ entry.location }}</span>
-          <span>{{ entry.trackPoints.coding }}</span>
-          <span>{{ entry.trackPoints.robotics }}</span>
-          <span>{{ entry.trackPoints.ai }}</span>
-          <span>{{ entry.trackPoints.cyber }}</span>
-          <span class="cms-lb-total">{{ entry.trackPoints.all }}</span>
-          <span class="cms-lb-actions">
-            <button class="admin-action-btn" title="Edit" (click)="openLbForm(entry)">
-              <span class="material-symbols-outlined">edit</span>
-            </button>
-            <button class="cms-delete-btn" title="Remove" (click)="removeLbEntry(entry.id)">
-              <span class="material-symbols-outlined">delete</span>
-            </button>
-          </span>
-        </div>
+      <div class="cms-lb-table-wrap">
+        <table class="cms-modern-table">
+          <thead>
+            <tr>
+              <th style="width:70px;">Rank</th>
+              <th>School Name</th>
+              <th>Location</th>
+              <th style="text-align:center;">Coding</th>
+              <th style="text-align:center;">Robotics</th>
+              <th style="text-align:center;">AI</th>
+              <th style="text-align:center;">Cyber</th>
+              <th style="text-align:center;">Total Points</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let entry of filteredLeaderboard">
+              <td>
+                <span class="cms-rank-badge" [class.rank-gold]="entry.rank === '1'" [class.rank-silver]="entry.rank === '2'" [class.rank-bronze]="entry.rank === '3'">
+                  #{{ entry.rank }}
+                </span>
+              </td>
+              <td>
+                <strong class="cms-school-name">{{ entry.schoolName }}</strong>
+                <span class="cms-region-tag" *ngIf="entry.region">{{ entry.region }}</span>
+              </td>
+              <td class="cms-loc-cell">{{ entry.location }}</td>
+              <td class="cms-pt-cell">{{ entry.trackPoints.coding || 0 }}</td>
+              <td class="cms-pt-cell">{{ entry.trackPoints.robotics || 0 }}</td>
+              <td class="cms-pt-cell">{{ entry.trackPoints.ai || 0 }}</td>
+              <td class="cms-pt-cell">{{ entry.trackPoints.cyber || 0 }}</td>
+              <td class="cms-total-cell">
+                <span class="cms-total-pill">{{ entry.trackPoints.all || 0 }} pts</span>
+              </td>
+              <td style="text-align:right;">
+                <div class="cms-table-actions">
+                  <button class="cms-edit-btn" title="Edit Points" (click)="openLbForm(entry)">
+                    <span class="material-symbols-outlined">edit</span>
+                  </button>
+                  <button class="cms-delete-btn" title="Remove School" (click)="removeLbEntry(entry.id)">
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
         <div *ngIf="contentService.leaderboardData.length === 0" class="cms-empty">
           <span class="material-symbols-outlined">leaderboard</span>
-          <p>No leaderboard entries yet.</p>
+          <p>No leaderboard rankings recorded yet.</p>
+        </div>
+        <div *ngIf="contentService.leaderboardData.length > 0 && filteredLeaderboard.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">search_off</span>
+          <p>No schools found matching "{{ lbSearchQuery }}".</p>
         </div>
       </div>
     </div>
 
-    <!-- â”€â”€ TALENT DISCOVERY PANEL â”€â”€ -->
+    <!-- ── 4. TALENT DISCOVERY PANEL ── -->
     <div *ngIf="contentTab === 'talent'" class="cms-panel">
       <div class="cms-panel-header">
-        <div>
-          <h3 class="cms-panel-title"><span class="material-symbols-outlined">stars</span>Talent Discovery Highlights</h3>
-          <p class="cms-panel-desc">Manage the individual high-talent cards that appear on the Leaderboard sidebar.</p>
+        <div class="cms-panel-info">
+          <div class="cms-panel-icon-wrap" style="background: rgba(139, 92, 246, 0.12); color: #8b5cf6;">
+            <span class="material-symbols-outlined">stars</span>
+          </div>
+          <div>
+            <h3 class="cms-panel-title">Talent Discovery Spotlights</h3>
+            <p class="cms-panel-desc">Showcase high-performing student prodigies on the leaderboard spotlight rail.</p>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div class="cms-panel-actions">
+          <div class="cms-search-box">
+            <span class="material-symbols-outlined cms-search-icon">search</span>
+            <input type="text" [(ngModel)]="tdSearchQuery" placeholder="Search prodigies, tracks, schools...">
+            <button *ngIf="tdSearchQuery" class="cms-search-clear" (click)="tdSearchQuery = ''" title="Clear search">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
           <button class="btn btn-primary btn-sm" (click)="openTdForm()">
-            <span class="material-symbols-outlined">add</span>Add Talent Highlight
+            <span class="material-symbols-outlined">add</span>Add Talent Spotlight
           </button>
         </div>
       </div>
@@ -3103,77 +3247,96 @@
         <div class="cms-form-error" *ngIf="tdFormError">{{ tdFormError }}</div>
         <div class="cms-form-grid">
           <div class="cms-field">
-            <label>Student Name <span class="req">*</span></label>
-            <input type="text" [(ngModel)]="tdForm.studentName" placeholder="e.g. Sarah J.">
+            <label>Student Full Name <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="tdForm.studentName" placeholder="e.g. Sarah Mensah">
           </div>
           <div class="cms-field">
-            <label>Category / Specialization <span class="req">*</span></label>
-            <input type="text" [(ngModel)]="tdForm.category" placeholder="e.g. Algorithm Design">
+            <label>Specialization / Track <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="tdForm.category" placeholder="e.g. Algorithm Design &amp; AI">
           </div>
           <div class="cms-field">
             <label>School &amp; Grade <span class="req">*</span></label>
-            <input type="text" [(ngModel)]="tdForm.schoolAndGrade" placeholder="e.g. Newton Academy * Grade 11">
+            <input type="text" [(ngModel)]="tdForm.schoolAndGrade" placeholder="e.g. PRESEC Legon &bull; Grade 11">
           </div>
           <div class="cms-field">
-            <label>Score / Achievement <span class="req">*</span></label>
+            <label>Achievement Score / Percentile <span class="req">*</span></label>
             <input type="text" [(ngModel)]="tdForm.score" placeholder="e.g. 99.8%">
           </div>
           <div class="cms-field">
-            <label>Badge Theme Color</label>
+            <label>Badge Color Accent</label>
             <select [(ngModel)]="tdForm.badgeColor">
-              <option value="primary">Primary (Blue)</option>
-              <option value="secondary">Secondary (Green)</option>
-              <option value="tertiary">Tertiary (Yellow)</option>
-              <option value="error">Error/Alert (Red)</option>
-              <option value="ai">AI (Purple)</option>
+              <option value="primary">Primary Blue</option>
+              <option value="secondary">Secondary Green</option>
+              <option value="tertiary">Gold / Amber</option>
+              <option value="error">Cyber Red</option>
+              <option value="ai">AI Purple</option>
             </select>
           </div>
         </div>
         <div class="cms-form-actions">
           <button class="btn btn-subtle btn-sm" (click)="closeTdForm()">Cancel</button>
           <button class="btn btn-primary btn-sm" (click)="submitTdForm()">
-            <span class="material-symbols-outlined">save</span>{{ tdEditId ? 'Save Changes' : 'Publish Highlight' }}
+            <span class="material-symbols-outlined">save</span>{{ tdEditId ? 'Save Changes' : 'Publish Spotlight' }}
           </button>
         </div>
       </div>
 
       <!-- Talent Grid List -->
       <div class="cms-item-list">
-        <div *ngFor="let item of contentService.talentDiscovery" class="cms-story-item" style="align-items: center; padding: 16px;">
-          <div style="flex:1;">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-              <span class="badge" [class]="item.badgeColor || 'primary'" style="font-size:10px;">{{ item.category }}</span>
-              <span style="font-size:11px; color:var(--on-surface-variant);">Score: <strong>{{ item.score }}</strong></span>
-            </div>
-            <div style="font-weight:700; font-size:15px; margin-bottom:2px; color:var(--on-surface);">{{ item.studentName }}</div>
-            <div style="font-size:12px; color:var(--on-surface-variant);">{{ item.schoolAndGrade }}</div>
+        <div *ngFor="let item of filteredTalentDiscovery" class="cms-talent-card">
+          <div class="cms-talent-avatar">
+            <span class="material-symbols-outlined">person</span>
           </div>
-          <div class="cms-item-actions" style="margin-left: auto;">
-            <button class="cms-edit-btn" (click)="openTdForm(item)" title="Edit">
+          <div class="cms-talent-body">
+            <div class="cms-talent-badge-row">
+              <span class="badge" [class]="item.badgeColor || 'primary'">{{ item.category }}</span>
+              <span class="cms-score-pill">Score: <strong>{{ item.score }}</strong></span>
+            </div>
+            <div class="cms-talent-name">{{ item.studentName }}</div>
+            <div class="cms-talent-school">{{ item.schoolAndGrade }}</div>
+          </div>
+          <div class="cms-item-actions">
+            <button class="cms-edit-btn" (click)="openTdForm(item)" title="Edit Spotlight">
               <span class="material-symbols-outlined">edit</span>
             </button>
-            <button class="cms-delete-btn" (click)="removeTdEntry(item.id)" title="Remove">
+            <button class="cms-delete-btn" (click)="removeTdEntry(item.id)" title="Remove Spotlight">
               <span class="material-symbols-outlined">delete</span>
             </button>
           </div>
         </div>
         <div *ngIf="contentService.talentDiscovery.length === 0" class="cms-empty">
           <span class="material-symbols-outlined">stars</span>
-          <p>No high-talent highlights registered yet.</p>
+          <p>No talent discovery spotlights registered yet.</p>
+        </div>
+        <div *ngIf="contentService.talentDiscovery.length > 0 && filteredTalentDiscovery.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">search_off</span>
+          <p>No spotlights found matching "{{ tdSearchQuery }}".</p>
         </div>
       </div>
     </div>
 
-    <!-- â”€â”€ NEWS FEED PANEL â”€â”€ -->
+    <!-- ── 5. NEWS FEED PANEL ── -->
     <div *ngIf="contentTab === 'news'" class="cms-panel">
       <div class="cms-panel-header">
-        <div>
-          <h3 class="cms-panel-title"><span class="material-symbols-outlined">campaign</span>News Feed</h3>
-          <p class="cms-panel-desc">Platform-wide announcements shown in the landing page news ticker.</p>
+        <div class="cms-panel-info">
+          <div class="cms-panel-icon-wrap" style="background: rgba(239, 68, 68, 0.12); color: #ef4444;">
+            <span class="material-symbols-outlined">campaign</span>
+          </div>
+          <div>
+            <h3 class="cms-panel-title">Broadcast News Feed</h3>
+            <p class="cms-panel-desc">Announcements broadcasted across the portal ticker and live news feed.</p>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div class="cms-panel-actions">
+          <div class="cms-search-box">
+            <span class="material-symbols-outlined cms-search-icon">search</span>
+            <input type="text" [(ngModel)]="newsSearchQuery" placeholder="Search announcements by headline or tag...">
+            <button *ngIf="newsSearchQuery" class="cms-search-clear" (click)="newsSearchQuery = ''" title="Clear search">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
           <button class="btn btn-primary btn-sm" (click)="openNewsForm()">
-            <span class="material-symbols-outlined">add</span>Add News Item
+            <span class="material-symbols-outlined">add</span>Add Announcement
           </button>
         </div>
       </div>
@@ -3183,78 +3346,94 @@
         <div class="cms-form-card-header">
           <h4>
             <span class="material-symbols-outlined">campaign</span>
-            {{ editingNewsId ? 'Edit Announcement' : 'New Announcement' }}
+            {{ editingNewsId ? 'Edit Announcement' : 'New Portal Announcement' }}
           </h4>
           <button class="cms-form-close" (click)="closeNewsForm()"><span class="material-symbols-outlined">close</span></button>
         </div>
         <div class="cms-form-error" *ngIf="newsFormError">{{ newsFormError }}</div>
         <div class="cms-form-grid">
           <div class="cms-field cms-field-full">
-            <label>Headline <span class="req">*</span></label>
-            <input type="text" [(ngModel)]="newsForm.headline" placeholder="Phase 2 Competition Now Open...">
+            <label>Headline Title <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="newsForm.headline" placeholder="Phase 2 Competition Registrations Now Open...">
           </div>
           <div class="cms-field">
             <label>Tag</label>
             <select [(ngModel)]="newsForm.tag">
-              <option>Announcement</option><option>Results</option><option>Sponsorship</option>
-              <option>Update</option><option>Reminder</option>
+              <option>Announcement</option>
+              <option>Results</option>
+              <option>Sponsorship</option>
+              <option>Update</option>
+              <option>Reminder</option>
             </select>
           </div>
           <div class="cms-field">
-            <label>Date</label>
+            <label>Publication Date</label>
             <input type="text" [(ngModel)]="newsForm.date" placeholder="Jun 28, 2026">
           </div>
-          <div class="cms-field">
-            <label>Link URL</label>
-            <input type="text" [(ngModel)]="newsForm.link" placeholder="#">
+          <div class="cms-field cms-field-full">
+            <label>Action Link URL (optional)</label>
+            <input type="text" [(ngModel)]="newsForm.link" placeholder="/competitions or https://ntic.org.gh">
           </div>
         </div>
         <div class="cms-form-actions">
           <button class="btn btn-subtle btn-sm" (click)="closeNewsForm()">Cancel</button>
           <button class="btn btn-primary btn-sm" (click)="submitNewsForm()">
             <span class="material-symbols-outlined">{{ editingNewsId ? 'save' : 'publish' }}</span>
-            {{ editingNewsId ? 'Save Changes' : 'Publish' }}
+            {{ editingNewsId ? 'Save Changes' : 'Broadcast Now' }}
           </button>
         </div>
       </div>
 
       <!-- News List -->
       <div class="cms-news-list">
-        <div *ngFor="let item of contentService.newsFeedItems" class="cms-news-item">
+        <div *ngFor="let item of filteredNewsItems" class="cms-news-item">
           <div class="cms-news-tag">{{ item.tag }}</div>
           <div class="cms-news-body">
             <div class="cms-news-headline">{{ item.headline }}</div>
-            <div class="cms-news-date">{{ item.date }}</div>
+            <div class="cms-news-date">
+              <span class="material-symbols-outlined" style="font-size:12px;">schedule</span>
+              {{ item.date }}
+              <span *ngIf="item.link && item.link !== '#'" style="color:var(--primary); margin-left:6px;">&bull; {{ item.link }}</span>
+            </div>
           </div>
-          <div class="cms-item-actions" style="display:flex; gap:6px; flex-shrink:0;">
-            <button class="cms-edit-btn" (click)="openEditNewsForm(item)" title="Edit">
+          <div class="cms-item-actions">
+            <button class="cms-edit-btn" (click)="openEditNewsForm(item)" title="Edit News">
               <span class="material-symbols-outlined">edit</span>
             </button>
-            <button class="cms-delete-btn" (click)="removeNewsItem(item.id)" title="Remove">
+            <button class="cms-delete-btn" (click)="removeNewsItem(item.id)" title="Remove News">
               <span class="material-symbols-outlined">delete</span>
             </button>
           </div>
         </div>
         <div *ngIf="contentService.newsFeedItems.length === 0" class="cms-empty">
           <span class="material-symbols-outlined">campaign</span>
-          <p>No news items yet.</p>
+          <p>No broadcast announcements registered yet.</p>
+        </div>
+        <div *ngIf="contentService.newsFeedItems.length > 0 && filteredNewsItems.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">search_off</span>
+          <p>No announcements found matching "{{ newsSearchQuery }}".</p>
         </div>
       </div>
     </div>
 
-    <!-- â”€â”€ PLATFORM STATS PANEL â”€â”€ -->
+    <!-- ── 6. PLATFORM STATS PANEL ── -->
     <div *ngIf="contentTab === 'stats'" class="cms-panel">
       <div class="cms-panel-header">
-        <div>
-          <h3 class="cms-panel-title"><span class="material-symbols-outlined">analytics</span>Platform Impact Stats</h3>
-          <p class="cms-panel-desc">These numbers animate on the landing page stats tree section.</p>
+        <div class="cms-panel-info">
+          <div class="cms-panel-icon-wrap" style="background: rgba(59, 130, 246, 0.12); color: #3b82f6;">
+            <span class="material-symbols-outlined">analytics</span>
+          </div>
+          <div>
+            <h3 class="cms-panel-title">Platform Impact Metrics</h3>
+            <p class="cms-panel-desc">Real-time statistics rendered with count-up animations across the landing page impact section.</p>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div class="cms-panel-actions">
           <button class="btn btn-primary btn-sm" *ngIf="!statsEditMode" (click)="openStatsEdit()">
-            <span class="material-symbols-outlined">edit</span>Edit Stats
+            <span class="material-symbols-outlined">edit</span>Edit Numbers
           </button>
           <button class="btn btn-primary btn-sm" *ngIf="statsEditMode" (click)="saveStats()">
-            <span class="material-symbols-outlined">save</span>Save Changes
+            <span class="material-symbols-outlined">save</span>Save &amp; Publish Stats
           </button>
         </div>
       </div>
@@ -3262,122 +3441,130 @@
       <!-- Stats Grid Display / Edit -->
       <div class="cms-stats-grid">
         <div class="cms-stat-card">
-          <div class="cms-stat-icon">ðŸ—ºï¸</div>
-          <div class="cms-stat-label">Regions</div>
+          <div class="cms-stat-icon-wrap"><span class="material-symbols-outlined">map</span></div>
+          <div class="cms-stat-label">Regions Represented</div>
           <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.regions }}</div>
           <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.regions" class="cms-stat-input">
         </div>
         <div class="cms-stat-card">
-          <div class="cms-stat-icon">ðŸ‘¨â€ðŸ«</div>
-          <div class="cms-stat-label">Mentors</div>
+          <div class="cms-stat-icon-wrap"><span class="material-symbols-outlined">co_present</span></div>
+          <div class="cms-stat-label">Certified Mentors</div>
           <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.mentors }}+</div>
           <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.mentors" class="cms-stat-input">
         </div>
         <div class="cms-stat-card">
-          <div class="cms-stat-icon">ðŸ«</div>
-          <div class="cms-stat-label">Schools</div>
+          <div class="cms-stat-icon-wrap"><span class="material-symbols-outlined">school</span></div>
+          <div class="cms-stat-label">Participating Schools</div>
           <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.schools }}+</div>
           <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.schools" class="cms-stat-input">
         </div>
         <div class="cms-stat-card">
-          <div class="cms-stat-icon">ðŸŽ“</div>
-          <div class="cms-stat-label">Students (K)</div>
+          <div class="cms-stat-icon-wrap"><span class="material-symbols-outlined">groups</span></div>
+          <div class="cms-stat-label">Students Reached (K)</div>
           <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.students }}K+</div>
           <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.students" class="cms-stat-input">
         </div>
         <div class="cms-stat-card">
-          <div class="cms-stat-icon">ðŸ“</div>
-          <div class="cms-stat-label">Projects (K)</div>
+          <div class="cms-stat-icon-wrap"><span class="material-symbols-outlined">terminal</span></div>
+          <div class="cms-stat-label">Projects Submitted (K)</div>
           <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.projects }}K+</div>
           <input *ngIf="statsEditMode" type="number" step="0.1" [(ngModel)]="statsForm.projects" class="cms-stat-input">
         </div>
         <div class="cms-stat-card">
-          <div class="cms-stat-icon">ðŸ’°</div>
-          <div class="cms-stat-label">Grants (â‚µM)</div>
-          <div class="cms-stat-value" *ngIf="!statsEditMode">â‚µ{{ contentService.platformStats.grants }}M+</div>
+          <div class="cms-stat-icon-wrap"><span class="material-symbols-outlined">monetization_on</span></div>
+          <div class="cms-stat-label">Grants Awarded (₵M)</div>
+          <div class="cms-stat-value" *ngIf="!statsEditMode">₵{{ contentService.platformStats.grants }}M+</div>
           <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.grants" class="cms-stat-input">
         </div>
       </div>
     </div>
 
-    <!-- â”€â”€ COUNTDOWN TIMER PANEL â”€â”€ -->
+    <!-- ── 7. COUNTDOWN TIMER PANEL ── -->
     <div *ngIf="contentTab === 'countdown'" class="cms-panel">
       <div class="cms-panel-header">
-        <div>
-          <h3 class="cms-panel-title"><span class="material-symbols-outlined">alarm</span>Countdown Timer</h3>
-          <p class="cms-panel-desc">Configure the date and time when the next national heat begins. Updates reflect on the landing page in real-time.</p>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div class="cms-panel-info">
+          <div class="cms-panel-icon-wrap" style="background: rgba(244, 63, 94, 0.12); color: #f43f5e;">
+            <span class="material-symbols-outlined">alarm</span>
+          </div>
+          <div>
+            <h3 class="cms-panel-title">Championship Countdown Clock</h3>
+            <p class="cms-panel-desc">Configure the target date and time when the next national heat begins. Updates sync live across all visitors.</p>
+          </div>
         </div>
       </div>
 
-      <div class="cms-form-card" style="max-width: 600px; margin-bottom: 24px;">
-        <div class="cms-form-card-header">
-          <h4><span class="material-symbols-outlined">calendar_today</span>Set Target Date & Time</h4>
-        </div>
-        <div class="cms-form-grid" style="margin-top: 16px;">
-          <div class="cms-field cms-field-full">
-            <label>Target Date and Time <span class="req">*</span></label>
-            <input type="datetime-local" [(ngModel)]="countdownInput" class="cms-stat-input" style="width: 100%; max-width: 400px; padding: 10px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-container-highest); color: var(--on-surface);">
-            <p class="cms-panel-desc" style="margin-top: 8px; font-size: 12px;">Format: YYYY-MM-DDThh:mm (Local Time)</p>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; align-items:start;">
+        <!-- Settings Form Card -->
+        <div class="cms-form-card">
+          <div class="cms-form-card-header">
+            <h4><span class="material-symbols-outlined">event</span>Set Target Date &amp; Time</h4>
+          </div>
+          <div class="cms-form-grid">
+            <div class="cms-field cms-field-full">
+              <label>Target Date and Time (Local Time) <span class="req">*</span></label>
+              <input type="datetime-local" [(ngModel)]="countdownInput" class="cms-stat-input" style="width: 100%; padding: 12px; border-radius: 8px; font-size:14px; font-weight:600;">
+            </div>
+          </div>
+          <div class="cms-form-actions" style="margin-top: 20px; justify-content: flex-start;">
+            <button class="btn btn-primary btn-sm" (click)="saveCountdown()">
+              <span class="material-symbols-outlined">save</span>Save &amp; Broadcast Countdown
+            </button>
           </div>
         </div>
-        <div class="cms-form-actions" style="margin-top: 20px; justify-content: flex-start; gap: 12px; border-top: 1px solid var(--outline-variant); padding-top: 16px;">
-          <button class="btn btn-primary btn-sm" (click)="saveCountdown()">
-            <span class="material-symbols-outlined">save</span>Save Target Date
-          </button>
-        </div>
-      </div>
 
-      <!-- Live Preview of the countdown based on selected date -->
-      <div class="cms-form-card" style="max-width: 600px; background: var(--surface-container-low); border: 1px dashed var(--outline);">
-        <div class="cms-form-card-header">
-          <h4><span class="material-symbols-outlined">preview</span>Live Countdown Preview</h4>
-        </div>
-        <div style="padding: 16px 0;">
-          <div style="font-size: 13px; font-weight: 600; color: var(--on-surface-variant); margin-bottom: 12px;">
-            Target Date: {{ countdownInput ? (countdownInput | date:'medium') : 'None Set' }}
+        <!-- Live Preview Card -->
+        <div class="cms-countdown-preview-card">
+          <div class="cms-countdown-preview-header">
+            <span class="material-symbols-outlined">visibility</span>
+            <span>Live Visitor Ticker Preview</span>
           </div>
-          
-          <div style="display: flex; gap: 16px; align-items: center; justify-content: flex-start;">
-            <div style="text-align: center; background: var(--surface-container); padding: 12px 16px; border-radius: 10px; min-width: 70px; border: 1px solid var(--outline-variant);">
-              <div style="font-size: 24px; font-weight: 800; color: var(--primary); font-family: 'JetBrains Mono', monospace;">{{ previewDays | number:'2.0-0' }}</div>
-              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-surface-variant); margin-top: 4px; font-weight: 700;">Days</div>
+          <div class="cms-countdown-target-text">
+            Target: {{ countdownInput ? (countdownInput | date:'medium') : 'None Configured' }}
+          </div>
+          <div class="cms-countdown-digits">
+            <div class="cms-digit-box">
+              <div class="cms-digit-val">{{ previewDays | number:'2.0-0' }}</div>
+              <div class="cms-digit-lbl">Days</div>
             </div>
-            <div style="font-size: 24px; font-weight: 800; color: var(--on-surface-variant);">:</div>
-            <div style="text-align: center; background: var(--surface-container); padding: 12px 16px; border-radius: 10px; min-width: 70px; border: 1px solid var(--outline-variant);">
-              <div style="font-size: 24px; font-weight: 800; color: var(--primary); font-family: 'JetBrains Mono', monospace;">{{ previewHours | number:'2.0-0' }}</div>
-              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-surface-variant); margin-top: 4px; font-weight: 700;">Hours</div>
+            <div class="cms-digit-sep">:</div>
+            <div class="cms-digit-box">
+              <div class="cms-digit-val">{{ previewHours | number:'2.0-0' }}</div>
+              <div class="cms-digit-lbl">Hours</div>
             </div>
-            <div style="font-size: 24px; font-weight: 800; color: var(--on-surface-variant);">:</div>
-            <div style="text-align: center; background: var(--surface-container); padding: 12px 16px; border-radius: 10px; min-width: 70px; border: 1px solid var(--outline-variant);">
-              <div style="font-size: 24px; font-weight: 800; color: var(--primary); font-family: 'JetBrains Mono', monospace;">{{ previewMins | number:'2.0-0' }}</div>
-              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-surface-variant); margin-top: 4px; font-weight: 700;">Mins</div>
+            <div class="cms-digit-sep">:</div>
+            <div class="cms-digit-box">
+              <div class="cms-digit-val">{{ previewMins | number:'2.0-0' }}</div>
+              <div class="cms-digit-lbl">Mins</div>
             </div>
-            <div style="font-size: 24px; font-weight: 800; color: var(--on-surface-variant);">:</div>
-            <div style="text-align: center; background: var(--surface-container); padding: 12px 16px; border-radius: 10px; min-width: 70px; border: 1px solid var(--outline-variant);">
-              <div style="font-size: 24px; font-weight: 800; color: var(--primary); font-family: 'JetBrains Mono', monospace;">{{ previewSecs | number:'2.0-0' }}</div>
-              <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--on-surface-variant); margin-top: 4px; font-weight: 700;">Secs</div>
+            <div class="cms-digit-sep">:</div>
+            <div class="cms-digit-box">
+              <div class="cms-digit-val">{{ previewSecs | number:'2.0-0' }}</div>
+              <div class="cms-digit-lbl">Secs</div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- â”€â”€ SLIDESHOW PANEL â”€â”€ -->
+    <!-- ── 8. SLIDESHOW PANEL ── -->
     <div *ngIf="contentTab === 'slideshow'" class="cms-panel">
       <div class="cms-panel-header">
-        <div>
-          <h3 class="cms-panel-title"><span class="material-symbols-outlined">slideshow</span>Landing Page Slideshow</h3>
-          <p class="cms-panel-desc">Manage the hero video/image slideshow on the landing page. Reorder slides with the arrows.</p>
+        <div class="cms-panel-info">
+          <div class="cms-panel-icon-wrap" style="background: rgba(14, 165, 233, 0.12); color: #0ea5e9;">
+            <span class="material-symbols-outlined">slideshow</span>
+          </div>
+          <div>
+            <h3 class="cms-panel-title">Hero Slideshow Experience</h3>
+            <p class="cms-panel-desc">Manage landing hero background videos and image slides. Adjust sequence order with arrows.</p>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div class="cms-panel-actions">
           <button class="btn btn-subtle btn-sm" [title]="isVideoMuted ? 'Unmute hero video' : 'Mute hero video'" (click)="toggleVideoMute()" style="display:inline-flex;align-items:center;gap:4px;">
             <span class="material-symbols-outlined">{{ isVideoMuted ? 'volume_off' : 'volume_up' }}</span>
-            <span style="font-size:12px;">{{ isVideoMuted ? 'Muted' : 'Mute' }}</span>
+            <span>{{ isVideoMuted ? 'Muted' : 'Sound On' }}</span>
           </button>
           <button class="btn btn-primary btn-sm" (click)="addSlide()">
-            <span class="material-symbols-outlined">add</span>Add Slide
+            <span class="material-symbols-outlined">add</span>Add New Slide
           </button>
         </div>
       </div>
@@ -3387,34 +3574,34 @@
         <div class="cms-form-card-header">
           <h4>
             <span class="material-symbols-outlined">edit_note</span>
-            {{ editingSlideId ? 'Edit Slide' : 'New Slide' }}
+            {{ editingSlideId ? 'Edit Slide Details' : 'New Slide' }}
           </h4>
           <button class="cms-form-close" (click)="closeSlideForm()"><span class="material-symbols-outlined">close</span></button>
         </div>
         <div class="cms-form-grid">
           <div class="cms-field cms-field-full">
-            <label>Title</label>
+            <label>Headline Title</label>
             <div style="display:flex;gap:8px;align-items:flex-start;">
-              <input type="text" [(ngModel)]="slideForm.title" placeholder="Main headline on the slide" style="flex:1;">
-              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['title'] ? '#16a34a' : ''" [style.border-color]="slideSavedFields['title'] ? '#16a34a' : ''" title="Save title" (click)="saveSlideField('title')">
+              <input type="text" [(ngModel)]="slideForm.title" placeholder="Main headline on the hero slide" style="flex:1;">
+              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['title'] ? '#16a34a' : ''" title="Save title" (click)="saveSlideField('title')">
                 <span class="material-symbols-outlined" style="font-size:16px;">{{ slideSavedFields['title'] ? 'check' : 'save' }}</span>
               </button>
             </div>
           </div>
           <div class="cms-field cms-field-full">
-            <label>Description</label>
+            <label>Description Subtitle</label>
             <div style="display:flex;gap:8px;align-items:flex-start;">
               <textarea rows="2" [(ngModel)]="slideForm.description" placeholder="Subtitle text below the headline" style="flex:1;"></textarea>
-              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['description'] ? '#16a34a' : ''" [style.border-color]="slideSavedFields['description'] ? '#16a34a' : ''" title="Save description" (click)="saveSlideField('description')">
+              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['description'] ? '#16a34a' : ''" title="Save description" (click)="saveSlideField('description')">
                 <span class="material-symbols-outlined" style="font-size:16px;">{{ slideSavedFields['description'] ? 'check' : 'save' }}</span>
               </button>
             </div>
           </div>
           <div class="cms-field">
-            <label>Tag</label>
+            <label>Category Tag</label>
             <div style="display:flex;gap:8px;align-items:flex-start;">
               <input type="text" [(ngModel)]="slideForm.tag" placeholder="e.g. National Championship" style="flex:1;">
-              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['tag'] ? '#16a34a' : ''" [style.border-color]="slideSavedFields['tag'] ? '#16a34a' : ''" title="Save tag" (click)="saveSlideField('tag')">
+              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['tag'] ? '#16a34a' : ''" title="Save tag" (click)="saveSlideField('tag')">
                 <span class="material-symbols-outlined" style="font-size:16px;">{{ slideSavedFields['tag'] ? 'check' : 'save' }}</span>
               </button>
             </div>
@@ -3423,7 +3610,7 @@
             <label>CTA Button Text</label>
             <div style="display:flex;gap:8px;align-items:flex-start;">
               <input type="text" [(ngModel)]="slideForm.ctaText" placeholder="Enter Portal" style="flex:1;">
-              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['ctaText'] ? '#16a34a' : ''" [style.border-color]="slideSavedFields['ctaText'] ? '#16a34a' : ''" title="Save CTA text" (click)="saveSlideField('ctaText')">
+              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['ctaText'] ? '#16a34a' : ''" title="Save CTA text" (click)="saveSlideField('ctaText')">
                 <span class="material-symbols-outlined" style="font-size:16px;">{{ slideSavedFields['ctaText'] ? 'check' : 'save' }}</span>
               </button>
             </div>
@@ -3432,7 +3619,7 @@
             <label>CTA Button Link</label>
             <div style="display:flex;gap:8px;align-items:flex-start;">
               <input type="text" [(ngModel)]="slideForm.ctaLink" placeholder="#portal or /registration" style="flex:1;">
-              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['ctaLink'] ? '#16a34a' : ''" [style.border-color]="slideSavedFields['ctaLink'] ? '#16a34a' : ''" title="Save CTA link" (click)="saveSlideField('ctaLink')">
+              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['ctaLink'] ? '#16a34a' : ''" title="Save CTA link" (click)="saveSlideField('ctaLink')">
                 <span class="material-symbols-outlined" style="font-size:16px;">{{ slideSavedFields['ctaLink'] ? 'check' : 'save' }}</span>
               </button>
             </div>
@@ -3442,30 +3629,30 @@
             <div style="display:flex; gap:10px; align-items:center;">
               <input type="text" [(ngModel)]="slideForm.image" placeholder="assets/ntic_image_1.jpeg" style="flex:1;">
               <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant);">OR</span>
-              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropSlideImage($event)">
-                <span class="material-symbols-outlined" style="font-size:16px;">upload</span>Import
+              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0;" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropSlideImage($event)">
+                <span class="material-symbols-outlined" style="font-size:16px;">upload</span>Import Image
                 <input type="file" accept="image/*" (change)="onSlideImageSelected($event)" style="display:none;">
               </label>
             </div>
-            <div *ngIf="slideForm.image" style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+            <div *ngIf="slideForm.image" style="margin-top:8px; display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--surface-container); border-radius:8px;">
               <img [src]="slideForm.image" style="width:80px; height:45px; object-fit:cover; border-radius:6px; border:1px solid var(--outline-variant);" onerror="this.style.display='none'">
-              <span style="font-size:11px; color:var(--on-surface-variant); word-break:break-all; max-width:400px; max-height:35px; overflow:hidden;">{{ slideForm.image.startsWith('data:') ? '[Imported Image]' : slideForm.image }}</span>
+              <span style="font-size:11px; color:var(--on-surface-variant); word-break:break-all; max-width:400px; overflow:hidden;">{{ slideForm.image.startsWith('data:') ? '[Imported Image]' : slideForm.image }}</span>
             </div>
           </div>
           <div class="cms-field cms-field-full">
-            <label>Video</label>
+            <label>Background Video (Optional)</label>
             <div style="display:flex; gap:10px; align-items:center;">
-              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropSlideVideo($event)">
+              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0;" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropSlideVideo($event)">
                 <span class="material-symbols-outlined" style="font-size:16px;">videocam</span>{{ slideForm.videoFileId ? 'Replace Video' : 'Upload Video' }}
                 <input type="file" accept="video/*" (change)="onSlideVideoSelected($event)" style="display:none;">
               </label>
               <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant);">OR</span>
               <input type="text" [(ngModel)]="slideForm.videoUrl" placeholder="assets/ntic_slideshow.bin" style="flex:1;">
             </div>
-            <div *ngIf="slideForm.videoFileId" style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+            <div *ngIf="slideForm.videoFileId" style="margin-top:8px; display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--surface-container); border-radius:8px;">
               <img *ngIf="slideForm.videoThumbnail" [src]="slideForm.videoThumbnail" style="width:80px; height:45px; object-fit:cover; border-radius:6px; border:1px solid var(--outline-variant);">
               <span class="material-symbols-outlined" style="font-size:16px; color:var(--primary);">check_circle</span>
-              <span style="font-size:12px; color:var(--primary); font-weight:600;">Video uploaded</span>
+              <span style="font-size:12px; color:var(--primary); font-weight:600;">Video attached</span>
             </div>
           </div>
         </div>
@@ -3476,12 +3663,6 @@
             {{ editingSlideId ? 'Save Changes' : 'Add Slide' }}
           </button>
         </div>
-      </div>
-
-      <!-- Empty State -->
-      <div *ngIf="!slideFormOpen && contentService.heroSlides.length === 0" style="text-align:center;padding:48px;color:var(--on-surface-variant);">
-        <span class="material-symbols-outlined" style="font-size:48px;opacity:0.3;">slideshow</span>
-        <p>No slides yet. Click "Add Slide" to create the first one.</p>
       </div>
 
       <!-- Slides List -->
@@ -3496,49 +3677,57 @@
             <div *ngIf="slide.videoFileId && !slide.videoThumbnail" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:var(--surface-container);">
               <span class="material-symbols-outlined" style="font-size:28px;color:var(--primary);">play_circle</span>
             </div>
-            <span class="story-tag-mini" style="font-size:9px;">{{ i + 1 }}</span>
+            <span class="story-tag-mini" style="font-size:9px;">#{{ i + 1 }}</span>
           </div>
           <div class="cms-story-info">
             <div class="cms-story-meta">
-              <span *ngIf="slide.videoFileId || slide.videoUrl" style="display:inline-flex;align-items:center;gap:4px;"><span class="material-symbols-outlined" style="font-size:14px;">videocam</span>Video</span>
-              <span *ngIf="!slide.videoFileId && !slide.videoUrl && slide.image" style="display:inline-flex;align-items:center;gap:4px;"><span class="material-symbols-outlined" style="font-size:14px;">image</span>Image</span>
+              <span *ngIf="slide.videoFileId || slide.videoUrl" style="display:inline-flex;align-items:center;gap:4px;color:var(--primary);font-weight:700;"><span class="material-symbols-outlined" style="font-size:14px;">videocam</span>Video Hero</span>
+              <span *ngIf="!slide.videoFileId && !slide.videoUrl && slide.image" style="display:inline-flex;align-items:center;gap:4px;"><span class="material-symbols-outlined" style="font-size:14px;">image</span>Static Image</span>
+              <span class="meta-dot">&bull;</span>
+              <span>{{ slide.tag || 'Hero Slide' }}</span>
             </div>
             <div class="cms-story-title">{{ slide.title }}</div>
+            <div class="cms-story-body">{{ slide.description }}</div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
-            <button *ngIf="i > 0" class="cms-edit-btn" style="padding:4px;" title="Move Up" (click)="moveSlideUp(i)">
-              <span class="material-symbols-outlined" style="font-size:16px;">arrow_upward</span>
+          <div class="cms-item-actions" style="flex-direction:row; align-items:center; gap:6px;">
+            <button *ngIf="i > 0" class="cms-edit-btn" title="Move Up" (click)="moveSlideUp(i)">
+              <span class="material-symbols-outlined">arrow_upward</span>
             </button>
-            <button *ngIf="!last" class="cms-edit-btn" style="padding:4px;" title="Move Down" (click)="moveSlideDown(i)">
-              <span class="material-symbols-outlined" style="font-size:16px;">arrow_downward</span>
+            <button *ngIf="!last" class="cms-edit-btn" title="Move Down" (click)="moveSlideDown(i)">
+              <span class="material-symbols-outlined">arrow_downward</span>
             </button>
-            <div style="height:4px;"></div>
-            <button class="cms-edit-btn" title="Edit" (click)="editSlide(slide)">
+            <button class="cms-edit-btn" title="Edit Slide" (click)="editSlide(slide)">
               <span class="material-symbols-outlined">edit</span>
             </button>
-            <button class="cms-delete-btn" title="Delete" (click)="deleteSlide(slide)">
+            <button class="cms-delete-btn" title="Delete Slide" (click)="deleteSlide(slide)">
               <span class="material-symbols-outlined">delete</span>
             </button>
           </div>
         </div>
+        <div *ngIf="contentService.heroSlides.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">slideshow</span>
+          <p>No slideshow hero slides created yet.</p>
+        </div>
       </div>
     </div>
 
-    <!-- â”€â”€ PHILOSOPHY CARDS PANEL â”€â”€ -->
+    <!-- ── 9. PHILOSOPHY CARDS PANEL ── -->
     <div *ngIf="contentTab === 'philosophy'" class="cms-panel">
       <div class="cms-panel-header">
-        <div>
-          <h3 class="cms-panel-title"><span class="material-symbols-outlined">lightbulb</span>Philosophy Cards (Learn. Innovate. Build.)</h3>
-          <p class="cms-panel-desc">Manage the three philosophy cards on the landing page. Upload a new image or edit the title/description.</p>
+        <div class="cms-panel-info">
+          <div class="cms-panel-icon-wrap" style="background: rgba(234, 179, 8, 0.12); color: #eab308;">
+            <span class="material-symbols-outlined">lightbulb</span>
+          </div>
+          <div>
+            <h3 class="cms-panel-title">Philosophy Pillars (Learn. Innovate. Build.)</h3>
+            <p class="cms-panel-desc">Manage the foundational pillars and guiding values displayed on the landing page.</p>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div class="cms-panel-actions">
+          <button class="btn btn-primary btn-sm" (click)="openPhilCardForm(null)">
+            <span class="material-symbols-outlined">add</span>Add Philosophy Card
+          </button>
         </div>
-      </div>
-
-      <div *ngIf="!philCardFormOpen" style="padding:16px;">
-        <button class="btn btn-primary" (click)="openPhilCardForm(null)">
-          <span class="material-symbols-outlined">add</span> Add Philosophy Card
-        </button>
       </div>
 
       <!-- Edit Form -->
@@ -3552,11 +3741,11 @@
         </div>
         <div class="cms-form-grid">
           <div class="cms-field cms-field-full">
-            <label>Title</label>
+            <label>Pillar Title</label>
             <input type="text" [(ngModel)]="editingPhilCard.title" placeholder="Learn">
           </div>
           <div class="cms-field cms-field-full">
-            <label>Description</label>
+            <label>Philosophy Description</label>
             <textarea rows="2" [(ngModel)]="editingPhilCard.description" placeholder="Pushing the boundaries of what is known..."></textarea>
           </div>
           <div class="cms-field cms-field-full">
@@ -3564,76 +3753,83 @@
             <div style="display:flex; gap:10px; align-items:center;">
               <input type="text" [(ngModel)]="editingPhilCard.image" placeholder="assets/ntic_image_14.jpeg" style="flex:1;">
               <span style="font-size:12px; font-weight:700; color:var(--on-surface-variant);">OR</span>
-              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0; font-family:sans-serif; text-transform:none; font-size:12px;" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropPhilCardImage($event)">
-                <span class="material-symbols-outlined" style="font-size:16px;">upload</span>Import
+              <label class="btn btn-subtle btn-sm" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; margin:0;" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropPhilCardImage($event)">
+                <span class="material-symbols-outlined" style="font-size:16px;">upload</span>Import Image
                 <input type="file" accept="image/*" (change)="onPhilCardImageUpload($event)" style="display:none;">
               </label>
             </div>
-            <div *ngIf="editingPhilCard.image" style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+            <div *ngIf="editingPhilCard.image" style="margin-top:8px; display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--surface-container); border-radius:8px;">
               <img [src]="editingPhilCard.image" style="width:80px; height:56px; object-fit:cover; border-radius:6px; border:1px solid var(--outline-variant);" onerror="this.style.display='none'">
-              <span style="font-size:11px; color:var(--on-surface-variant); word-break:break-all; max-width:400px; max-height:35px; overflow:hidden;">{{ editingPhilCard.image.startsWith('data:') ? '[Imported Image]' : editingPhilCard.image }}</span>
+              <span style="font-size:11px; color:var(--on-surface-variant); word-break:break-all; max-width:400px; overflow:hidden;">{{ editingPhilCard.image.startsWith('data:') ? '[Imported Image]' : editingPhilCard.image }}</span>
             </div>
           </div>
         </div>
-        <div style="padding:16px 20px; display:flex; gap:8px;">
-          <button class="btn btn-primary" (click)="savePhilCard()">
-            <span class="material-symbols-outlined">save</span> Save Card
+        <div class="cms-form-actions">
+          <button class="btn btn-subtle btn-sm" (click)="philCardFormOpen = false">Cancel</button>
+          <button class="btn btn-primary btn-sm" (click)="savePhilCard()">
+            <span class="material-symbols-outlined">save</span>Save Card
           </button>
-          <button class="btn btn-subtle" (click)="philCardFormOpen = false">Cancel</button>
         </div>
       </div>
 
       <!-- Card List -->
-      <div *ngIf="!philCardFormOpen" class="cms-item-list" style="padding:0 16px 16px;">
-        <div *ngIf="contentService.philosophyCards.length === 0" style="text-align:center;padding:48px;color:var(--on-surface-variant);">
-          <span class="material-symbols-outlined" style="font-size:48px;opacity:0.3;">lightbulb</span>
-          <p>No philosophy cards yet. Add the first one above.</p>
-        </div>
-
+      <div *ngIf="!philCardFormOpen" class="cms-item-list">
         <div *ngFor="let card of contentService.philosophyCards; let i = index; let last = last" class="cms-story-item">
           <div class="cms-story-thumb">
             <img *ngIf="card.image" [src]="card.image" [alt]="card.title" onerror="this.style.display='none'">
             <span *ngIf="!card.image" class="material-symbols-outlined" style="font-size:28px;opacity:0.4;">lightbulb</span>
-            <span class="story-tag-mini" style="font-size:9px;">{{ i + 1 }}</span>
+            <span class="story-tag-mini" style="font-size:9px;">#{{ i + 1 }}</span>
           </div>
           <div class="cms-story-info">
             <div class="cms-story-title">{{ card.title }}</div>
-            <div class="cms-story-meta">{{ card.description }}</div>
+            <div class="cms-story-body">{{ card.description }}</div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
-            <button *ngIf="i > 0" class="cms-edit-btn" style="padding:4px;" title="Move Up" (click)="movePhilCard(i, -1)">
-              <span class="material-symbols-outlined" style="font-size:16px;">arrow_upward</span>
+          <div class="cms-item-actions" style="flex-direction:row; align-items:center; gap:6px;">
+            <button *ngIf="i > 0" class="cms-edit-btn" title="Move Up" (click)="movePhilCard(i, -1)">
+              <span class="material-symbols-outlined">arrow_upward</span>
             </button>
-            <button *ngIf="!last" class="cms-edit-btn" style="padding:4px;" title="Move Down" (click)="movePhilCard(i, 1)">
-              <span class="material-symbols-outlined" style="font-size:16px;">arrow_downward</span>
+            <button *ngIf="!last" class="cms-edit-btn" title="Move Down" (click)="movePhilCard(i, 1)">
+              <span class="material-symbols-outlined">arrow_downward</span>
             </button>
-            <div style="height:4px;"></div>
-            <button class="cms-edit-btn" title="Edit" (click)="openPhilCardForm(card)">
+            <button class="cms-edit-btn" title="Edit Pillar" (click)="openPhilCardForm(card)">
               <span class="material-symbols-outlined">edit</span>
             </button>
-            <button class="cms-delete-btn" title="Delete" (click)="deletePhilCard(card)">
+            <button class="cms-delete-btn" title="Delete Pillar" (click)="deletePhilCard(card)">
               <span class="material-symbols-outlined">delete</span>
             </button>
           </div>
         </div>
+        <div *ngIf="contentService.philosophyCards.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">lightbulb</span>
+          <p>No philosophy cards configured yet.</p>
+        </div>
       </div>
     </div>
 
-    <!-- â”€â”€ UPCOMING EVENTS PANEL â”€â”€ -->
+    <!-- ── 10. UPCOMING EVENTS PANEL ── -->
     <div *ngIf="contentTab === 'events'" class="cms-panel">
       <div class="cms-panel-header">
-        <div>
-          <h3 class="cms-panel-title"><span class="material-symbols-outlined">event</span>Upcoming Events</h3>
-          <p class="cms-panel-desc">Events shown on the News page. Add, edit, or remove upcoming championship events.</p>
+        <div class="cms-panel-info">
+          <div class="cms-panel-icon-wrap" style="background: rgba(168, 85, 247, 0.12); color: #a855f7;">
+            <span class="material-symbols-outlined">event</span>
+          </div>
+          <div>
+            <h3 class="cms-panel-title">Championship Schedule &amp; Events</h3>
+            <p class="cms-panel-desc">Official championship calendar events displayed on the News &amp; Events portal.</p>
+          </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div class="cms-panel-actions">
+          <div class="cms-search-box">
+            <span class="material-symbols-outlined cms-search-icon">search</span>
+            <input type="text" [(ngModel)]="eventsSearchQuery" placeholder="Search events by title or venue...">
+            <button *ngIf="eventsSearchQuery" class="cms-search-clear" (click)="eventsSearchQuery = ''" title="Clear search">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <button class="btn btn-primary btn-sm" (click)="openEventForm(null)">
+            <span class="material-symbols-outlined">add</span>Add Event
+          </button>
         </div>
-      </div>
-
-      <div *ngIf="!eventFormOpen" style="padding:16px;">
-        <button class="btn btn-primary" (click)="openEventForm(null)">
-          <span class="material-symbols-outlined">add</span> Add Event
-        </button>
       </div>
 
       <!-- Edit Form -->
@@ -3647,16 +3843,16 @@
         </div>
 
         <!-- Live Preview -->
-        <div style="padding:16px 20px 0;display:flex;justify-content:center;">
-          <div style="display:flex;gap:16px;align-items:stretch;background:var(--surface-container-low);border-radius:12px;border:1px solid var(--outline-variant);padding:16px;max-width:420px;width:100%;">
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--primary);color:#fff;border-radius:10px;min-width:60px;padding:8px 12px;">
-              <span style="font-size:11px;font-weight:700;line-height:1;">{{ editingEvent.month || 'MON' }}</span>
-              <span style="font-size:24px;font-weight:800;line-height:1.2;">{{ editingEvent.day || '--' }}</span>
+        <div style="padding:0 0 16px; display:flex; justify-content:center;">
+          <div class="cms-event-preview-card">
+            <div class="cms-event-date-badge">
+              <span class="cms-event-month">{{ editingEvent.month || 'MON' }}</span>
+              <span class="cms-event-day">{{ editingEvent.day || '--' }}</span>
             </div>
-            <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:2px;">
-              <div style="font-size:14px;font-weight:700;color:var(--on-surface);">{{ editingEvent.title || 'Event Title' }}</div>
-              <div style="font-size:12px;color:var(--on-surface-variant);">{{ editingEvent.description || 'Event description preview' }}</div>
-              <div style="font-size:12px;color:var(--on-surface-variant);display:flex;align-items:center;gap:4px;margin-top:4px;">
+            <div class="cms-event-preview-info">
+              <div class="cms-event-preview-title">{{ editingEvent.title || 'Event Title Preview' }}</div>
+              <div class="cms-event-preview-desc">{{ editingEvent.description || 'Event description preview...' }}</div>
+              <div class="cms-event-preview-loc">
                 <span class="material-symbols-outlined" style="font-size:14px;">location_on</span>
                 {{ editingEvent.location || 'Location' }}
               </div>
@@ -3664,56 +3860,66 @@
           </div>
         </div>
 
-        <div class="cms-form-grid" style="margin-top:16px;">
+        <div class="cms-form-grid">
           <div class="cms-field">
             <label>Event Date</label>
             <input type="date" [value]="eventDate" (input)="onEventDateInput($event)" style="text-transform:uppercase;">
           </div>
-          <div class="cms-field cms-field-full">
-            <label>Title</label>
-            <input type="text" [(ngModel)]="editingEvent.title" placeholder="Regional Qualifier -- Greater Accra">
+          <div class="cms-field">
+            <label>Event Title</label>
+            <input type="text" [(ngModel)]="editingEvent.title" placeholder="Regional Qualifier - Greater Accra">
           </div>
           <div class="cms-field cms-field-full">
-            <label>Description</label>
+            <label>Event Description</label>
             <textarea rows="2" [(ngModel)]="editingEvent.description" placeholder="NTI teams compete for national qualification spots..."></textarea>
           </div>
           <div class="cms-field cms-field-full">
-            <label>Location</label>
+            <label>Location &amp; Venue</label>
             <input type="text" [(ngModel)]="editingEvent.location" placeholder="Accra International Conference Centre">
           </div>
         </div>
-        <div style="padding:16px 20px; display:flex; gap:8px;">
-          <button class="btn btn-primary" (click)="saveEvent()">
-            <span class="material-symbols-outlined">save</span> Save Event
+        <div class="cms-form-actions">
+          <button class="btn btn-subtle btn-sm" (click)="eventFormOpen = false">Cancel</button>
+          <button class="btn btn-primary btn-sm" (click)="saveEvent()">
+            <span class="material-symbols-outlined">save</span>Save Event
           </button>
-          <button class="btn btn-subtle" (click)="eventFormOpen = false">Cancel</button>
         </div>
       </div>
 
       <!-- Event List -->
-      <div *ngIf="!eventFormOpen" class="cms-item-list" style="padding:0 16px 16px;">
-        <div *ngIf="contentService.upcomingEvents.length === 0" style="text-align:center;padding:48px;color:var(--on-surface-variant);">
-          <span class="material-symbols-outlined" style="font-size:48px;opacity:0.3;">event</span>
-          <p>No upcoming events yet. Add the first one above.</p>
-        </div>
-
-        <div *ngFor="let event of contentService.upcomingEvents" class="cms-story-item">
-          <div class="cms-story-thumb" style="flex-direction:column;gap:0;background:var(--primary);color:#fff;border-radius:10px;">
-            <span style="font-size:10px;font-weight:700;line-height:1;">{{ event.month }}</span>
-            <span style="font-size:18px;font-weight:800;line-height:1.2;">{{ event.day }}</span>
+      <div *ngIf="!eventFormOpen" class="cms-item-list">
+        <div *ngFor="let event of filteredEvents" class="cms-event-row-card">
+          <div class="cms-event-date-badge">
+            <span class="cms-event-month">{{ event.month }}</span>
+            <span class="cms-event-day">{{ event.day }}</span>
           </div>
-          <div class="cms-story-info">
-            <div class="cms-story-title">{{ event.title }}</div>
-            <div class="cms-story-meta">{{ event.location }} &middot; {{ event.description }}</div>
+          <div class="cms-event-row-info">
+            <div class="cms-event-row-title">{{ event.title }}</div>
+            <div class="cms-event-row-meta">
+              <span class="cms-loc-chip">
+                <span class="material-symbols-outlined" style="font-size:13px;">location_on</span>
+                {{ event.location }}
+              </span>
+              <span class="meta-dot">&bull;</span>
+              <span>{{ event.description }}</span>
+            </div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
-            <button class="cms-edit-btn" title="Edit" (click)="openEventForm(event)">
+          <div class="cms-item-actions">
+            <button class="cms-edit-btn" title="Edit Event" (click)="openEventForm(event)">
               <span class="material-symbols-outlined">edit</span>
             </button>
-            <button class="cms-delete-btn" title="Delete" (click)="deleteEvent(event)">
+            <button class="cms-delete-btn" title="Delete Event" (click)="deleteEvent(event)">
               <span class="material-symbols-outlined">delete</span>
             </button>
           </div>
+        </div>
+        <div *ngIf="contentService.upcomingEvents.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">event</span>
+          <p>No upcoming events registered yet.</p>
+        </div>
+        <div *ngIf="contentService.upcomingEvents.length > 0 && filteredEvents.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">search_off</span>
+          <p>No events found matching "{{ eventsSearchQuery }}".</p>
         </div>
       </div>
     </div>
@@ -5256,5 +5462,119 @@
           <span>Open Full Archive</span>
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       SPONSORSHIP TIER BREAKDOWN POPUP MODAL (ROOT VIEWPORT OVERLAY)
+  ══════════════════════════════════════════════════════════════════ -->
+  <div class="sponsor-tier-modal-backdrop" *ngIf="sponsorTierModalOpen && selectedSponsorTier" (click)="closeSponsorTierModal()">
+    <div class="sponsor-tier-modal-card" [ngClass]="'modal-tier-' + selectedSponsorTier.key" (click)="$event.stopPropagation()">
+
+      <!-- Modal Header -->
+      <div class="stm-header">
+        <div class="stm-header-left">
+          <div class="stm-tier-badge" [ngClass]="'stier-badge-' + selectedSponsorTier.key">
+            <span class="material-symbols-outlined">{{ selectedSponsorTier.metaIcon }}</span>
+            <span>{{ selectedSponsorTier.badge }}</span>
+          </div>
+          <div class="stm-title-group">
+            <h3 class="stm-title">{{ selectedSponsorTier.title }}</h3>
+            <p class="stm-subtitle">{{ selectedSponsorTier.sponsorCount }} Corporate &amp; Resource Partners · Total Allocation: <strong>{{ selectedSponsorTier.amountFormatted }}</strong></p>
+          </div>
+        </div>
+        <div class="stm-header-actions">
+          <button class="stm-btn-export" (click)="exportSponsorTierCsv(selectedSponsorTier)" title="Export to CSV">
+            <span class="material-symbols-outlined">download</span>
+            <span>Export CSV</span>
+          </button>
+          <button class="stm-close-btn" (click)="closeSponsorTierModal()" title="Close dialog">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Search & Filter Toolbar -->
+      <div class="stm-toolbar">
+        <div class="stm-search-box">
+          <span class="material-symbols-outlined stm-search-ic">search</span>
+          <input type="text"
+                 class="stm-search-input"
+                 [(ngModel)]="sponsorTierSearch"
+                 placeholder="Search sponsors, items (e.g. water, laptops, books, t-shirts), or schools...">
+          <button *ngIf="sponsorTierSearch" class="stm-clear-search" (click)="sponsorTierSearch = ''">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="stm-partner-count-tag">
+          Showing {{ filteredTierPartners.length }} of {{ selectedSponsorTier.partners.length }} Sponsors
+        </div>
+      </div>
+
+      <!-- Partners Detailed Breakdown List -->
+      <div class="stm-body">
+        <div class="stm-partners-grid">
+          <div *ngFor="let partner of filteredTierPartners; trackBy: trackByPartnerName" class="stm-partner-card">
+            <div class="stm-pcard-header">
+              <div class="stm-pcard-brand">
+                <div class="stm-pcard-icon-box" [ngClass]="'pcard-icon-' + selectedSponsorTier.key">
+                  <span class="material-symbols-outlined">{{ partner.categoryIcon }}</span>
+                </div>
+                <div>
+                  <h4 class="stm-pname">{{ partner.name }}</h4>
+                  <span class="stm-ptype-pill">{{ partner.type }}</span>
+                </div>
+              </div>
+              <div class="stm-pcard-value">
+                <span class="stm-pval-label">Committed Value</span>
+                <span class="stm-pval-num">{{ partner.valueFormatted }}</span>
+              </div>
+            </div>
+
+            <div class="stm-pcard-details">
+              <div class="stm-pdetail-row">
+                <span class="stm-pdetail-lbl">
+                  <span class="material-symbols-outlined">inventory</span>
+                  Allocated Contribution / Items:
+                </span>
+                <span class="stm-pdetail-val highlight">{{ partner.contribution }}</span>
+              </div>
+
+              <div class="stm-pdetail-row">
+                <span class="stm-pdetail-lbl">
+                  <span class="material-symbols-outlined">school</span>
+                  Target Beneficiaries:
+                </span>
+                <span class="stm-pdetail-val">{{ partner.beneficiaries }}</span>
+              </div>
+            </div>
+
+            <div class="stm-pcard-footer">
+              <span class="stm-status-pill" [class.esg-verified]="partner.esgVerified">
+                <span class="material-symbols-outlined">{{ partner.esgVerified ? 'verified' : 'hourglass_top' }}</span>
+                {{ partner.status }}
+              </span>
+              <span class="stm-esg-tag" *ngIf="partner.esgVerified">
+                <span class="stm-esg-dot"></span> 100% ESG Audited
+              </span>
+            </div>
+          </div>
+
+          <div *ngIf="filteredTierPartners.length === 0" class="stm-empty-search">
+            <span class="material-symbols-outlined">search_off</span>
+            <p>No sponsors found matching "<strong>{{ sponsorTierSearch }}</strong>" in this tier.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="stm-footer">
+        <div class="stm-footer-info">
+          <span class="material-symbols-outlined">info</span>
+          <span>All corporate commitments &amp; in-kind deliveries are verified by the NTIC Sponsorship Committee.</span>
+        </div>
+        <button class="btn btn-subtle" (click)="closeSponsorTierModal()">Close</button>
+      </div>
+
     </div>
   </div>

@@ -9,7 +9,7 @@ export class WsSyncService {
   private pingHandle: any = null;
   private connected = false;
 
-  private readonly _dataChanged = new Subject<void>();
+  private readonly _dataChanged = new Subject<string | undefined>();
   readonly dataChanged$ = this._dataChanged.asObservable();
 
   connect(): void {
@@ -45,7 +45,9 @@ export class WsSyncService {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === 'data_changed') {
-          this._dataChanged.next();
+          // Pass the collection through so consumers can do a targeted reload
+          // instead of refetching everything.
+          this._dataChanged.next(typeof msg.collection === 'string' ? msg.collection : undefined);
         }
       } catch { /* ignore */ }
     };

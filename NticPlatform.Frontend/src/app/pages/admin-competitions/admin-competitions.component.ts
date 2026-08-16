@@ -92,7 +92,9 @@ export class AdminCompetitionsComponent implements OnInit {
   ];
 
   get activeRoleId(): string {
-    return (typeof localStorage !== 'undefined' && getAuthValue('activeRoleId')) || 'super_admin';
+    // Default to no role. Defaulting to 'super_admin' meant a visitor with
+    // empty storage was treated as an administrator by the UI.
+    return (typeof localStorage !== 'undefined' && getAuthValue('activeRoleId')) || '';
   }
 
   get canManageCompetitions(): boolean {

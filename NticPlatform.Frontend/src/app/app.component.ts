@@ -1,5 +1,7 @@
-import { getAuthValue, clearAllAuthValues, hasRememberedDevice } from './services/session.util';
-import { Component, OnInit, OnDestroy, HostListener, Renderer2 } from '@angular/core';
+import { getAuthValue, clearAllAuthValues, hasRememberedDevice, purgeLegacyStoredPassword } from './services/session.util';
+import { resetVerifiedRoleCache } from './guards/auth.guard';
+import { AppUpdateService } from './services/app-update.service';
+import { Component, OnInit, OnDestroy, HostListener, Renderer2, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
@@ -33,6 +35,7 @@ import { FormsModule } from '@angular/forms';
   styleUrl: './app.component.scss',
 })
 export class AppComponent implements OnInit, OnDestroy {
+  private readonly appUpdate = inject(AppUpdateService);
   title = 'ntic-frontend';
   isLandingPage = true;
   currentUser: { name: string; avatar: string; roleName: string; roleId: string } | null = null;
@@ -133,6 +136,13 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Migration: earlier builds base64-encoded the user's real password into
+    // localStorage for "remember this device". Remove it on first load so
+    // existing users are cleaned up without having to do anything.
+    purgeLegacyStoredPassword();
+    // Watch for new deployments and offer a reload. Without this, an installed
+    // PWA can stay on a stale bundle indefinitely.
+    this.appUpdate.init();
     this.loadUserProfile();
     if (typeof window !== 'undefined') {
       window.addEventListener('scroll', this.scrollListener, true);
@@ -221,7 +231,12 @@ export class AppComponent implements OnInit, OnDestroy {
       this.apiService.logout(token).subscribe({ next: () => {}, error: () => {} });
     }
     clearAllAuthValues();
+    // Drop the guard's server-verified role. Without this, signing back in as a
+    // different user in the same tab reused the previous user's role.
+    resetVerifiedRoleCache();
     this.currentUser = null;
+    this.showPasswordSetupModal = false;
+    this.isForcedPasswordChange = false;
     this.chatbot.resetSession();
     this.closeMobileSidebar();
     this.router.navigate(['/']);
@@ -273,111 +288,127 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ── First-Time Login Password Setup Flow ──
+  // ── Password Setup / Change Flow ──
   showPasswordSetupModal = false;
+  currentPasswordInput = '';
   newPasswordInput = '';
   confirmPasswordInput = '';
   isNewPasswordVisible = false;
+  /** True for a forced rotation, where the current password may be skipped. */
+  isForcedPasswordChange = false;
+  passwordMinLength = 10;
   passwordSetupError = '';
   isSavingPassword = false;
   passwordSetupToast = '';
 
   checkFirstTimePasswordRequirement(user: any): void {
     if (!user) return;
-    const needsPassword = user.mustSetPassword || user.isFirstLogin || user.passwordChanged === false || (user.otp && user.password === user.otp);
-    if (needsPassword) {
-      this.showPasswordSetupModal = true;
-    }
+    // Ask the SERVER whether a change is required. The old version guessed from
+    // cached fields (including `user.password === user.otp`, which meant the
+    // plaintext password had to be sitting in local storage to work at all).
+    this.apiService.getMyProfile().subscribe({
+      next: (me) => {
+        this.passwordMinLength = me?.password_min_length || 10;
+        if (me?.must_change_password) {
+          this.isForcedPasswordChange = true;
+          this.showPasswordSetupModal = true;
+        }
+      },
+      error: () => { /* not signed in, or offline - nothing to prompt for */ }
+    });
+  }
+
+  /** Opens the modal for a voluntary change (current password required). */
+  openChangePasswordModal(): void {
+    this.isForcedPasswordChange = false;
+    this.passwordSetupError = '';
+    this.currentPasswordInput = '';
+    this.newPasswordInput = '';
+    this.confirmPasswordInput = '';
+    this.showPasswordSetupModal = true;
+  }
+
+  closePasswordSetupModal(): void {
+    // A forced change may not be dismissed.
+    if (this.isForcedPasswordChange) return;
+    this.showPasswordSetupModal = false;
+    this.currentPasswordInput = '';
+    this.newPasswordInput = '';
+    this.confirmPasswordInput = '';
+    this.passwordSetupError = '';
   }
 
   submitNewPassword(): void {
-    if (!this.newPasswordInput || this.newPasswordInput.length < 6) {
-      this.passwordSetupError = 'Password must be at least 6 characters long.';
+    const newPass = this.newPasswordInput.trim();
+
+    if (newPass.length < this.passwordMinLength) {
+      this.passwordSetupError = `Password must be at least ${this.passwordMinLength} characters long.`;
       return;
     }
-    if (this.newPasswordInput !== this.confirmPasswordInput) {
+    if (newPass !== this.confirmPasswordInput.trim()) {
       this.passwordSetupError = 'Passwords do not match. Please check and try again.';
+      return;
+    }
+    if (!this.isForcedPasswordChange && !this.currentPasswordInput) {
+      this.passwordSetupError = 'Please enter your current password.';
       return;
     }
 
     this.isSavingPassword = true;
     this.passwordSetupError = '';
 
-    const userEmail = getAuthValue('activeUserEmail') || '';
-    const userTicket = getAuthValue('activeUserTicket') || '';
-    const targetUser = this.contentService.users.find(u => 
-      (userEmail && u.email?.trim().toLowerCase() === userEmail.trim().toLowerCase()) ||
-      (userTicket && u.ticket?.trim().toLowerCase() === userTicket.trim().toLowerCase())
-    );
-
-    const newPass = this.newPasswordInput.trim();
-
-    if (targetUser) {
-      const updatedUsers = this.contentService.users.map(u => {
-        if (u.id === targetUser.id) {
-          return {
-            ...u,
-            password: newPass,
-            otp: '', // void temporary OTP
-            mustSetPassword: false,
-            passwordChanged: true
-          };
-        }
-        return u;
-      });
-      this.contentService.saveUsers(updatedUsers);
-
-      this.apiService.updateUser(targetUser.id, {
-        email: targetUser.email,
-        full_name: targetUser.fullName,
-        role: targetUser.role,
-        status: targetUser.status || 'Active',
-        ticket: targetUser.ticket,
-        password: newPass
-      }).subscribe({
-        next: () => console.log('Password updated in backend DB'),
-        error: (err) => console.warn('Backend password sync notice:', err)
-      });
-
-      this.contentService.saveAuditLogs([
-        { action: `First-time password setup completed: ${userEmail}`, user: userEmail, time: new Date().toISOString(), type: 'security' },
-        ...this.contentService.auditLogs
-      ]);
-    }
-
-    setTimeout(() => {
-      this.isSavingPassword = false;
-      this.showPasswordSetupModal = false;
-      this.newPasswordInput = '';
-      this.confirmPasswordInput = '';
-      this.passwordSetupToast = '✅ Permanent password saved! Your temporary OTP access pass has been voided.';
-      setTimeout(() => (this.passwordSetupToast = ''), 5000);
-    }, 800);
+    // The server verifies, applies the policy, stores the hash and signs out
+    // other devices. Nothing about the password is kept client-side.
+    this.apiService.changeMyPassword(this.currentPasswordInput, newPass).subscribe({
+      next: (res) => {
+        this.isSavingPassword = false;
+        this.isForcedPasswordChange = false;
+        this.showPasswordSetupModal = false;
+        this.currentPasswordInput = '';
+        this.newPasswordInput = '';
+        this.confirmPasswordInput = '';
+        const revoked = res?.other_sessions_revoked || 0;
+        this.passwordSetupToast = revoked
+          ? `Password updated. ${revoked} other device(s) were signed out.`
+          : 'Password updated successfully.';
+        setTimeout(() => (this.passwordSetupToast = ''), 6000);
+      },
+      error: (err) => {
+        this.isSavingPassword = false;
+        this.passwordSetupError =
+          err?.error?.detail || 'Could not update your password. Please try again.';
+      }
+    });
   }
 
   hasAccess(menuItem: string): boolean {
     if (!this.currentUser) return false;
     const role = this.currentUser.roleId;
-    const adminRoles = ['super_admin', 'content_manager', 'reviewer', 'competition_manager'];
+    const adminRoles = ['super_admin', 'admin', 'content_manager', 'reviewer', 'competition_manager'];
 
+    // These must agree with ROLE_ACCESS in guards/auth.guard.ts, otherwise the
+    // user sees a menu item and is then bounced by the guard. Previously
+    // `reporting` was shown to instructors the guard rejected, `lms` was hidden
+    // from instructors the guard allowed, and `users` was shown to
+    // support_admin/competition_manager whose API calls all return 403.
     switch (menuItem) {
       case 'dashboard':    return true;
       case 'overview':     return adminRoles.includes(role);
       case 'admin_control': return adminRoles.includes(role);
       case 'roster':       return ['school_admin'].includes(role);
-      case 'registration': return ['instructor', 'super_admin'].includes(role);
-      case 'lms':          return ['student'].includes(role);
-      case 'instructor':   return ['instructor'].includes(role);
-      case 'judge':        return ['judge'].includes(role);
-      case 'competitions': return ['student', 'instructor', 'school_admin', 'judge', 'super_admin', 'content_manager', 'competition_manager'].includes(role);
+      case 'registration': return ['instructor', 'super_admin', 'admin'].includes(role);
+      case 'lms':          return ['student', 'instructor', 'super_admin', 'admin'].includes(role);
+      case 'instructor':   return ['instructor', 'super_admin', 'admin'].includes(role);
+      case 'judge':        return ['judge', 'super_admin', 'admin'].includes(role);
+      case 'competitions': return ['student', 'instructor', 'school_admin', 'judge', 'super_admin', 'admin', 'content_manager', 'competition_manager'].includes(role);
       case 'leaderboard':  return ['student', 'instructor', 'school_admin', 'judge', 'sponsor', ...adminRoles].includes(role);
       case 'talent':       return ['instructor', 'sponsor'].includes(role);
-      case 'sponsors':     return ['sponsor'].includes(role);
-      case 'reporting':    return ['instructor', 'school_admin', 'super_admin', 'reviewer'].includes(role);
-      case 'records':      return true;
-      case 'users':        return ['super_admin', 'admin', 'support_admin', 'competition_manager'].includes(role);
-      case 'lms_admin':    return ['super_admin', 'content_manager'].includes(role);
-      case 'support':      return ['super_admin', 'support_admin'].includes(role);
+      case 'sponsors':     return ['sponsor', 'super_admin', 'admin'].includes(role);
+      case 'reporting':    return ['super_admin', 'admin', 'reviewer', 'instructor', 'school_admin'].includes(role);
+      case 'records':      return ['super_admin', 'admin', 'content_manager'].includes(role);
+      case 'users':        return ['super_admin', 'admin'].includes(role);
+      case 'lms_admin':    return ['super_admin', 'admin', 'content_manager', 'instructor'].includes(role);
+      case 'support':      return ['super_admin', 'admin', 'support_admin'].includes(role);
       default:             return false;
     }
   }

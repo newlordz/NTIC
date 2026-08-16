@@ -26,9 +26,33 @@ openh264-*.dll
 # Environment variables
 .env
 *.env
+# ...but the template must be tracked so a fresh clone knows what to configure.
+!.env.example
+.env-backup/
 
 # Python cache
 __pycache__/
 *.pyc
+*.pyo
+.pytest_cache/
+
+# Logs
+*.log
+
+# Runtime audit archives (gzipped logs containing emails and IP addresses)
+NticPlatform.Backend/audit_archives/
+
+# Database dumps produced by scripts/db_backup.py - these contain the ENTIRE
+# database including password hashes and session tokens. Never commit them.
+backups/
+*.dump
+*.dump.sha256
+*.sql.gz
+
+# WhatsApp session state - these files are login credentials for the paired
+# WhatsApp account.
+whatsapp_session/
+.wwebjs_cache/
+.wwebjs_auth/
 
 
