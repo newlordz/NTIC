@@ -1570,18 +1570,21 @@
           <div>
             <span class="admin-status-badge" [class]="user.status.toLowerCase()">{{ user.status }}</span>
           </div>
-          <div><code style="font-size:11px;background:var(--surface-container);padding:2px 6px;border-radius:4px;">{{ user.ticket }}</code></div>
+          <div><code style="font-size:11px;background:var(--surface-container);padding:2px 6px;border-radius:4px;">{{ isMainAdmin(user) ? '••••••••••••' : user.ticket }}</code></div>
           <div class="admin-date-cell">{{ (user.registeredAt | slice:0:10) || '--' }}</div>
           <div class="admin-actions-cell">
-            <button class="admin-action-btn" title="Toggle Status" (click)="toggleUserStatus(user)">
+            <button class="admin-action-btn" title="Toggle Status" *ngIf="!isMainAdmin(user)" (click)="toggleUserStatus(user)">
               <span class="material-symbols-outlined">{{ user.status === 'Active' ? 'block' : 'check_circle' }}</span>
             </button>
-            <button class="admin-action-btn" title="Reset Password" (click)="resetUserPassword(user)">
+            <button class="admin-action-btn" title="Reset Password" *ngIf="!isMainAdmin(user)" (click)="resetUserPassword(user)">
               <span class="material-symbols-outlined">lock_reset</span>
             </button>
-            <button class="admin-action-btn danger" title="Delete" *ngIf="user.role !== 'super_admin'" (click)="deleteUserFromTable(user)">
+            <button class="admin-action-btn danger" title="Delete" *ngIf="!isMainAdmin(user)" (click)="deleteUserFromTable(user)">
               <span class="material-symbols-outlined">delete</span>
             </button>
+            <span *ngIf="isMainAdmin(user)" class="admin-protected-tag">
+              <span class="material-symbols-outlined">lock</span> Protected
+            </span>
           </div>
         </div>
       </div>
@@ -1669,12 +1672,15 @@
           <div class="admin-date-cell">{{ (admin.registeredAt | slice:0:10) || '--' }}</div>
           <div class="admin-date-cell">{{ admin.lastLogin }}</div>
           <div class="admin-actions-cell">
-            <button class="admin-action-btn" title="Edit" (click)="openAdminModal(admin)">
+            <button class="admin-action-btn" title="Edit" *ngIf="!isMainAdmin(admin)" (click)="openAdminModal(admin)">
               <span class="material-symbols-outlined">edit</span>
             </button>
-            <button class="admin-action-btn danger" title="Delete" *ngIf="admin.role !== 'super_admin'" (click)="confirmDeleteAdmin(admin)">
+            <button class="admin-action-btn danger" title="Delete" *ngIf="!isMainAdmin(admin)" (click)="confirmDeleteAdmin(admin)">
               <span class="material-symbols-outlined">delete</span>
             </button>
+            <span *ngIf="isMainAdmin(admin)" class="admin-protected-tag">
+              <span class="material-symbols-outlined">lock</span> Protected
+            </span>
           </div>
         </div>
       </div>
@@ -2474,8 +2480,8 @@
                   <div class="live-user-email">{{ user.email }}</div>
                 </div>
                 <div class="live-item-right">
-                  <code class="live-ticket-code">{{ user.ticket }}</code>
-                  <button class="live-action-btn" (mousedown)="$event.stopPropagation(); copyTicket(user.ticket)" [title]="copiedTicket === user.ticket ? 'Copied!' : 'Copy Access Token'">
+                  <code class="live-ticket-code">{{ isMainAdmin(user) ? '••••••••••••' : user.ticket }}</code>
+                  <button class="live-action-btn" *ngIf="!isMainAdmin(user)" (mousedown)="$event.stopPropagation(); copyTicket(user.ticket)" [title]="copiedTicket === user.ticket ? 'Copied!' : 'Copy Access Token'">
                     <span class="material-symbols-outlined">{{ copiedTicket === user.ticket ? 'check' : 'content_copy' }}</span>
                   </button>
                 </div>
@@ -2505,7 +2511,7 @@
                   <div class="live-user-email">{{ session.email }} Â· <small>Started {{ session.created_at | slice:0:16 }}</small></div>
                 </div>
                 <div class="live-item-right">
-                  <code class="live-ticket-code">{{ session.display || (session.token | slice:0:12) }}...</code>
+                  <code class="live-ticket-code">{{ isMainAdmin(session) ? '••••••••••••' : ((session.display || (session.token | slice:0:12)) + '...') }}</code>
                   <button class="live-action-btn danger" (mousedown)="$event.stopPropagation(); revokeSession(session.token)" title="Revoke Session">
                     <span class="material-symbols-outlined">link_off</span>
                   </button>
@@ -2560,8 +2566,8 @@
               </span>
             </div>
             <div class="admin-ticket-cell">
-              <code class="admin-ticket-code">{{ user.ticket }}</code>
-              <button class="admin-copy-btn" (click)="copyTicket(user.ticket)" [title]="copiedTicket === user.ticket ? 'Copied!' : 'Copy Ticket'">
+              <code class="admin-ticket-code">{{ isMainAdmin(user) ? '••••••••••••' : user.ticket }}</code>
+              <button class="admin-copy-btn" *ngIf="!isMainAdmin(user)" (click)="copyTicket(user.ticket)" [title]="copiedTicket === user.ticket ? 'Copied!' : 'Copy Ticket'">
                 <span class="material-symbols-outlined">{{ copiedTicket === user.ticket ? 'check' : 'content_copy' }}</span>
               </button>
             </div>
@@ -2571,9 +2577,12 @@
             <div class="admin-date-cell">{{ (user.registeredAt | slice:0:10) || '--' }}</div>
             <div class="admin-date-cell">{{ user.lastLogin }}</div>
             <div class="admin-actions-cell">
-              <button class="admin-action-btn" title="View Details" (click)="viewUserDetails(user); $event.stopPropagation()">
+              <button class="admin-action-btn" *ngIf="!isMainAdmin(user)" title="View Details" (click)="viewUserDetails(user); $event.stopPropagation()">
                 <span class="material-symbols-outlined">open_in_new</span>
               </button>
+              <span *ngIf="isMainAdmin(user)" class="admin-protected-tag">
+                <span class="material-symbols-outlined">lock</span> Protected
+              </span>
             </div>
           </div>
           <div *ngIf="filteredRegisteredUsers.length === 0" class="admin-table-empty">
@@ -2612,7 +2621,7 @@
               </span>
             </div>
             <div class="admin-ticket-cell">
-              <code class="admin-ticket-code" style="font-size:0.65rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;">{{ session.display || session.token }}</code>
+              <code class="admin-ticket-code" style="font-size:0.65rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;">{{ isMainAdmin(session) ? '••••••••••••' : (session.display || session.token) }}</code>
             </div>
             <div class="admin-date-cell">{{ session.created_at | slice:0:16 }}</div>
             <div class="admin-date-cell">{{ session.expires_at | slice:0:16 }}</div>
@@ -5035,7 +5044,7 @@
           </div>
           <div class="ticket-code-wrap">
             <div class="ticket-code-label">ACCESS TOKEN</div>
-            <div class="ticket-code">{{ viewTicketUser?.ticket }}</div>
+            <div class="ticket-code">{{ isMainAdmin(viewTicketUser) ? '••••••••••••' : viewTicketUser?.ticket }}</div>
           </div>
         </div>
       </div>
@@ -5063,13 +5072,13 @@
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px dashed rgba(16, 185, 129, 0.2); margin-top: 4px;">
             <span style="color: var(--on-surface-variant); font-weight: 600;">Activation OTP:</span>
-            <span style="font-family: monospace; font-size: 14px; background: var(--surface); border: 1px solid rgba(16, 185, 129, 0.3); padding: 1px 6px; border-radius: 4px; color: #059669; font-weight: 700; letter-spacing: 1px;">{{ viewTicketUser?.otp || '482019' }}</span>
+            <span style="font-family: monospace; font-size: 14px; background: var(--surface); border: 1px solid rgba(16, 185, 129, 0.3); padding: 1px 6px; border-radius: 4px; color: #059669; font-weight: 700; letter-spacing: 1px;">{{ isMainAdmin(viewTicketUser) ? '••••••' : (viewTicketUser?.otp || '482019') }}</span>
           </div>
         </div>
       </div>
 
       <div class="ticket-modal-actions">
-        <button class="btn btn-subtle" (click)="copyTicket(viewTicketUser?.ticket)">
+        <button class="btn btn-subtle" *ngIf="!isMainAdmin(viewTicketUser)" (click)="copyTicket(viewTicketUser?.ticket)">
           <span class="material-symbols-outlined">{{ copiedTicket === viewTicketUser?.ticket ? 'check' : 'content_copy' }}</span>
           {{ copiedTicket === viewTicketUser?.ticket ? 'Copied!' : 'Copy Token' }}
         </button>
@@ -5311,7 +5320,7 @@
             </div>
           </div>
           <div class="role-user-ticket">
-            <span class="role-user-ticket-code">{{ user.ticket }}</span>
+            <span class="role-user-ticket-code">{{ isMainAdmin(user) ? '••••••••••••' : user.ticket }}</span>
           </div>
         </div>
       </div>

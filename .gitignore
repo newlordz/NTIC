@@ -55,4 +55,7 @@ whatsapp_session/
 .wwebjs_cache/
 .wwebjs_auth/
 
+# Logs
+*.log
+
 

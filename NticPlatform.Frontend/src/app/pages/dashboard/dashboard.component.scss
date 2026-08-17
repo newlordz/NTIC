@@ -4274,8 +4274,8 @@
 
 .admin-table-head {
   display: grid;
-  grid-template-columns: 2.2fr 1fr 1.8fr 0.9fr 1.3fr 1.2fr 0.6fr;
-  min-width: 780px;
+  grid-template-columns: 2.2fr 1.8fr 1.8fr 0.9fr 1.3fr 1.2fr 1.2fr;
+  min-width: 980px;
   width: 100%;
   padding: 12px 20px;
   background: var(--surface-container-low);
@@ -4304,8 +4304,8 @@
 
 .admin-table-row {
   display: grid;
-  grid-template-columns: 2.2fr 1fr 1.8fr 0.9fr 1.3fr 1fr 0.6fr;
-  min-width: 780px;
+  grid-template-columns: 2.2fr 1.8fr 1.8fr 0.9fr 1.3fr 1fr 1.2fr;
+  min-width: 980px;
   width: 100%;
   padding: 12px 20px;
   border-bottom: 1px solid var(--outline-variant);
@@ -4532,6 +4532,26 @@
   line-height: 1;
 }
 .admin-actions-cell { display: flex; gap: 6px; }
+.admin-table-row > .admin-actions-cell {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+.admin-protected-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary, #1e3a8a);
+  background: rgba(0, 63, 135, 0.08);
+  border: 1px solid rgba(0, 63, 135, 0.18);
+  border-radius: 6px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+.admin-protected-tag .material-symbols-outlined { font-size: 14px; }
 
 .admin-action-btn {
   width: 30px;
@@ -4653,8 +4673,8 @@
   overflow-x: auto;
   width: 100%;
   .admin-table-head {
-    grid-template-columns: 2.2fr 1fr 1.8fr 0.9fr 1.3fr 1.2fr 0.6fr;
-    min-width: 780px;
+    grid-template-columns: 2.2fr 1.8fr 1.8fr 0.9fr 1.3fr 1.2fr 1.2fr;
+    min-width: 980px;
     width: 100%;
     > span:first-child {
       position: sticky;
@@ -4664,8 +4684,8 @@
     }
   }
   .admin-table-row {
-    grid-template-columns: 2.2fr 1fr 1.8fr 0.9fr 1.3fr 1.2fr 0.6fr;
-    min-width: 780px;
+    grid-template-columns: 2.2fr 1.8fr 1.8fr 0.9fr 1.3fr 1.2fr 1.2fr;
+    min-width: 980px;
     width: 100%;
     .admin-user-cell {
       position: sticky;

@@ -3070,7 +3070,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return list;
   }
 
+  isMainAdmin(user: any): boolean {
+    if (!user) return false;
+    const currentEmail = (getAuthValue('activeUserEmail') || '').trim().toLowerCase();
+    return user.role === 'super_admin' ||
+           user.role === 'admin' ||
+           (user.email && user.email.toLowerCase() === 'admin@ntic.edu.gh') ||
+           (user.email && user.email.toLowerCase() === 'admin@ntic.org.gh') ||
+           (user.email && user.email.toLowerCase().startsWith('admin@')) ||
+           (user.email && user.email.toLowerCase() === currentEmail);
+  }
+
   toggleUserStatus(user: any): void {
+    if (this.isMainAdmin(user)) {
+      this.dialogService.toast('Protected Account: Main Super Admin accounts cannot be modified.', 'warning');
+      return;
+    }
     const users = [...this.contentService.users];
     const idx = users.findIndex(u => u.id === user.id);
     if (idx > -1) {
@@ -3084,6 +3099,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   resetUserPassword(user: any): void {
+    if (this.isMainAdmin(user)) {
+      this.dialogService.toast('Protected Account: Main Super Admin accounts cannot be modified.', 'warning');
+      return;
+    }
     this.apiService.resetUserPassword(user.id).subscribe({
       next: (res) => {
         const newOtp = res.otp;
@@ -3109,10 +3128,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   editUserFromTable(user: any): void {
+    if (this.isMainAdmin(user)) {
+      this.dialogService.toast('Protected Account: Main Super Admin accounts cannot be edited.', 'warning');
+      return;
+    }
     this.router.navigate(['/user-management'], { queryParams: { edit: user.id || user.email } });
   }
 
   deleteUserFromTable(user: any): void {
+    if (this.isMainAdmin(user)) {
+      this.dialogService.toast('Protected Account: Main Super Admin accounts cannot be deleted.', 'warning');
+      return;
+    }
     this.deleteUserConfirm = user;
   }
 
@@ -3402,6 +3429,10 @@ setTimeout(async () => {
   }
 
   viewUserDetails(user: any): void {
+    if (this.isMainAdmin(user)) {
+      this.dialogService.toast('Protected Account: Main Super Admin access details cannot be viewed.', 'warning');
+      return;
+    }
     this.showTicketModal(user);
   }
 
@@ -3844,6 +3875,10 @@ setTimeout(async () => {
 
   /* ── Admin Management ────────────────────────────────── */
   openAdminModal(admin?: any): void {
+    if (admin && this.isMainAdmin(admin)) {
+      this.dialogService.toast('Protected Account: Main Super Admin accounts cannot be edited.', 'warning');
+      return;
+    }
     this.editingAdmin = admin || null;
     this.adminError = '';
     this.adminSuccess = '';
@@ -3928,6 +3963,10 @@ setTimeout(async () => {
   }
 
   confirmDeleteAdmin(admin: any): void {
+    if (this.isMainAdmin(admin)) {
+      this.dialogService.toast('Protected Account: Main Super Admin accounts cannot be deleted.', 'warning');
+      return;
+    }
     this.deleteConfirmAdmin = admin;
   }
 

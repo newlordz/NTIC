@@ -156,6 +156,17 @@ def run_standalone_server(port):
 if __name__ == "__main__":
     port = settings.PORT
     try:
+        import socket
+        _probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        _probe.settimeout(1)
+        if _probe.connect_ex(("127.0.0.1", port)) == 0:
+            print(f"[Notice] A backend is already running on port {port}. Not starting a duplicate instance.")
+            _probe.close()
+            sys.exit(0)
+        _probe.close()
+    except Exception:
+        pass
+    try:
         import uvicorn
         import fastapi
 
