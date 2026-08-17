@@ -364,8 +364,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
    * rather than faked.
    */
   systemGauges: { label: string; value: number | string; color: string; unit: string }[] = [];
-  telemetryUnavailable: string[] = [];
-  telemetryUnavailableReason = '';
   telemetryError = '';
 
   trackDistribution = [
@@ -2807,8 +2805,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.apiService.getSystemTelemetry().subscribe({
       next: (res: any) => {
         this.telemetryError = res?.rowCountsError || res?.database?.error || '';
-        this.telemetryUnavailable = res?.unavailable || [];
-        this.telemetryUnavailableReason = res?.unavailableReason || '';
 
         // Only values the server actually measured.
         const latency = res?.database?.latencyMs;

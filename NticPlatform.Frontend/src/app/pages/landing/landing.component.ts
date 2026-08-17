@@ -8,6 +8,7 @@ import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
 import { ApiService } from '../../services/api.service';
+import { IdleTimeoutService } from '../../services/idle-timeout.service';
 import { ChatbotComponent } from '../../chatbot/chatbot.component';
 
 interface UserRole {
@@ -987,7 +988,8 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     private fileStorage: FileStorageService,
     private cdr: ChangeDetectorRef,
     public dialogService: DialogService,
-    private apiService: ApiService
+    private apiService: ApiService,
+    private idleTimeout: IdleTimeoutService
   ) {
     this.activeRoleId = '';
     const heroSlides = this.contentService.heroSlides.length > 0
@@ -1734,6 +1736,11 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     if (user.token) {
       setAuthValue('activeUserToken', user.token);
     }
+
+    // Start the inactivity clock for this session and adopt the server's real
+    // idle policy, so the client warning cannot drift from server enforcement.
+    this.idleTimeout.setIdleLimitSeconds(user.session_idle_seconds ?? user.sessionIdleSeconds);
+    this.idleTimeout.reset();
 
     // Save or clear remembered username & password based on checkbox
     saveRememberedCredentials(credential, this.password.trim(), this.rememberDevice);

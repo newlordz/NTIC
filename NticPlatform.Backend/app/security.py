@@ -1,11 +1,25 @@
 import hashlib
 import logging
+import os
 import secrets
 import time
 from collections import defaultdict
 from fastapi import HTTPException, status, Request
 
 _ITERATIONS = 600_000
+
+# ── Session lifetime ────────────────────────────────────────────────────
+# Sessions expire on INACTIVITY, not on a fixed schedule. `expires_at` is
+# always "last activity + SESSION_IDLE_MINUTES", pushed forward by
+# touch_session() whenever the user actually does something, and hard-capped
+# at "created_at + SESSION_ABSOLUTE_DAYS" so a session can never live forever.
+#
+# Important: the extension is driven by an explicit heartbeat from the client,
+# NOT by every authenticated request. The frontend polls in the background
+# (ContentService runs a 5-minute safety-net sync), and sliding the expiry on
+# those requests would keep an abandoned tab signed in indefinitely.
+SESSION_IDLE_MINUTES = max(1, int(os.getenv("SESSION_IDLE_MINUTES", "30") or "30"))
+SESSION_ABSOLUTE_DAYS = max(1, int(os.getenv("SESSION_ABSOLUTE_DAYS", "7") or "7"))
 
 # ── Role model: single source of truth ─────────────────────────────
 # Every role string used anywhere in the backend must appear in ALL_ROLES.
@@ -382,6 +396,50 @@ def invalidate_session_token(token: str) -> bool:
         return True
     except Exception:
         return False
+    finally:
+        release_db_connection(conn)
+
+
+def touch_session(token: str) -> int | None:
+    """Slide a live session's idle deadline forward.
+
+    Returns the number of seconds the session has left, or None if the token is
+    unknown or already expired (the caller should treat that as a 401).
+
+    The new deadline is `min(now + idle window, created_at + absolute cap)`, so
+    an active user is never signed out mid-work but a session still cannot
+    outlive the absolute cap. Sessions issued before this behaviour existed had
+    a flat 7-day `expires_at`; the LEAST() pulls those back onto the idle
+    schedule the first time they are touched.
+    """
+    from app.database import get_db_connection, release_db_connection
+
+    conn = get_db_connection()
+    if not conn:
+        return None
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE auth_sessions "
+            "   SET expires_at = LEAST("
+            "         CURRENT_TIMESTAMP + (%s * INTERVAL '1 minute'),"
+            "         COALESCE(created_at, CURRENT_TIMESTAMP) + (%s * INTERVAL '1 day')"
+            "       )"
+            " WHERE token = %s"
+            "   AND expires_at > CURRENT_TIMESTAMP"
+            " RETURNING GREATEST(0, EXTRACT(EPOCH FROM (expires_at - CURRENT_TIMESTAMP)))",
+            (SESSION_IDLE_MINUTES, SESSION_ABSOLUTE_DAYS, token),
+        )
+        row = cur.fetchone()
+        conn.commit()
+        cur.close()
+        return int(row[0]) if row else None
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return None
     finally:
         release_db_connection(conn)
 

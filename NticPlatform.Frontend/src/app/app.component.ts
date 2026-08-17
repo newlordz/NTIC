@@ -1,4 +1,4 @@
-import { getAuthValue, clearAllAuthValues, hasRememberedDevice, purgeLegacyStoredPassword } from './services/session.util';
+import { getAuthValue, clearAllAuthValues, hasRememberedDevice, purgeLegacyStoredPassword, purgeLegacyAuthStorage } from './services/session.util';
 import { resetVerifiedRoleCache } from './guards/auth.guard';
 import { AppUpdateService } from './services/app-update.service';
 import { Component, OnInit, OnDestroy, HostListener, Renderer2, inject } from '@angular/core';
@@ -12,6 +12,7 @@ import { DialogService } from './services/dialog.service';
 import { ChatbotComponent } from './chatbot/chatbot.component';
 import { ChatbotService } from './services/chatbot.service';
 import { ApiService } from './services/api.service';
+import { IdleTimeoutService } from './services/idle-timeout.service';
 import { ToastContainerComponent } from './components/toast-container/toast-container.component';
 import { CommandPaletteComponent } from './components/command-palette/command-palette.component';
 
@@ -36,12 +37,15 @@ import { FormsModule } from '@angular/forms';
 })
 export class AppComponent implements OnInit, OnDestroy {
   private readonly appUpdate = inject(AppUpdateService);
+  private readonly idleTimeout = inject(IdleTimeoutService);
   title = 'ntic-frontend';
   isLandingPage = true;
   currentUser: { name: string; avatar: string; roleName: string; roleId: string } | null = null;
   showScrollToTop = false;
   isMobileSidebarOpen = false;
   private ticketPollTimer: any = null;
+  private idleSubs: { unsubscribe(): void }[] = [];
+  private idleWarningOpen = false;
   private scrollRafPending = false;
   private scrollListener = () => {
     if (this.scrollRafPending) return;
@@ -110,8 +114,12 @@ export class AppComponent implements OnInit, OnDestroy {
       }
 
       // Visiting the public homepage ends a NON-remembered session, so
-      // credentials don't linger on shared/public machines. Sessions where
-      // "Remember this device" was ticked are kept (persisted in localStorage).
+      // credentials don't linger on shared/public machines.
+      //
+      // "Remember this device" does NOT persist the session -- it only stores
+      // the username so the login form can prefill it (see
+      // saveRememberedCredentials). The token itself is always sessionStorage
+      // only. All the flag does here is opt out of this homepage sign-out.
       if ((parsedUrl === '/' || parsedUrl === '/landing' || parsedUrl === '') && getAuthValue('activeRoleId') && !hasRememberedDevice()) {
         clearAllAuthValues();
         this.currentUser = null;
@@ -138,6 +146,10 @@ export class AppComponent implements OnInit, OnDestroy {
     // localStorage for "remember this device". Remove it on first load so
     // existing users are cleaned up without having to do anything.
     purgeLegacyStoredPassword();
+    // Migration: earlier builds also fell back to reading session values from
+    // localStorage. Delete any token/role left there, otherwise it would
+    // outlive both the tab-close sign-out and the inactivity timeout.
+    purgeLegacyAuthStorage();
     // Watch for new deployments and offer a reload. Without this, an installed
     // PWA can stay on a stale bundle indefinitely.
     this.appUpdate.init();
@@ -153,6 +165,62 @@ export class AppComponent implements OnInit, OnDestroy {
       this.chatbot.loadAllTickets();
       this.ticketPollTimer = setInterval(() => this.chatbot.loadAllTickets(), 15000);
     }
+
+    // ── Inactivity sign-out ──────────────────────────────────────────
+    // Runs for the whole app lifetime and no-ops while signed out, so it
+    // covers reloads and logging in from any route.
+    this.idleSubs.push(
+      this.idleTimeout.expired$.subscribe(() => this.onSessionIdleExpired()),
+      this.idleTimeout.warning$.subscribe(seconds => this.onSessionIdleWarning(seconds)),
+      this.idleTimeout.warningCleared$.subscribe(() => {
+        if (this.idleWarningOpen) {
+          this.idleWarningOpen = false;
+          this.dialogService.closeConfirm(true);
+        }
+      })
+    );
+    this.idleTimeout.start();
+  }
+
+  /**
+   * Shows the "still there?" prompt. If the user does not answer before the
+   * deadline the dialog is dismissed for them and the session ends -- otherwise
+   * an unattended prompt would hold the session open indefinitely, which is the
+   * exact thing the timeout exists to prevent.
+   */
+  private async onSessionIdleWarning(secondsLeft: number): Promise<void> {
+    if (this.idleWarningOpen) return;
+    this.idleWarningOpen = true;
+
+    const stay = await this.dialogService.confirm({
+      title: 'Are you still there?',
+      message:
+        `You have been inactive for a while. For your security you will be signed out in about ` +
+        `${Math.max(1, secondsLeft)} seconds.`,
+      confirmText: 'Stay signed in',
+      cancelText: 'Sign out now',
+      type: 'warning'
+    });
+
+    // Already handled by the expiry path (dialog was force-closed).
+    if (!this.idleWarningOpen) return;
+    this.idleWarningOpen = false;
+
+    if (stay) {
+      this.idleTimeout.continueSession();
+    } else {
+      this.performLogout('You have been signed out.');
+    }
+  }
+
+  private onSessionIdleExpired(): void {
+    if (this.idleWarningOpen) {
+      this.idleWarningOpen = false;
+      // Dismiss the unanswered prompt before signing out.
+      this.dialogService.closeConfirm(false);
+    }
+    if (!getAuthValue('activeUserToken')) return;
+    this.performLogout(`You were signed out after ${this.idleTimeout.idleLimitMinutes} minutes of inactivity.`);
   }
 
   get openTicketCount(): number {
@@ -190,6 +258,9 @@ export class AppComponent implements OnInit, OnDestroy {
       window.removeEventListener('scroll', this.scrollListener, true);
     }
     if (this.ticketPollTimer) clearInterval(this.ticketPollTimer);
+    this.idleSubs.forEach(s => s.unsubscribe());
+    this.idleSubs = [];
+    this.idleTimeout.stop();
     this.closeMobileSidebar();
   }
 
@@ -224,6 +295,14 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   logout(): void {
+    this.performLogout();
+  }
+
+  /**
+   * Single sign-out path, shared by the menu action and the inactivity timeout,
+   * so both always clear exactly the same state.
+   */
+  private performLogout(notice?: string): void {
     const token = getAuthValue('activeUserToken');
     if (token) {
       this.apiService.logout(token).subscribe({ next: () => {}, error: () => {} });
@@ -232,12 +311,16 @@ export class AppComponent implements OnInit, OnDestroy {
     // Drop the guard's server-verified role. Without this, signing back in as a
     // different user in the same tab reused the previous user's role.
     resetVerifiedRoleCache();
+    this.idleTimeout.clearStoredActivity();
     this.currentUser = null;
     this.showPasswordSetupModal = false;
     this.isForcedPasswordChange = false;
     this.chatbot.resetSession();
     this.closeMobileSidebar();
     this.router.navigate(['/']);
+    if (notice) {
+      this.dialogService.toast(notice, 'info', 6000);
+    }
   }
 
   getInitials(name: string): string {

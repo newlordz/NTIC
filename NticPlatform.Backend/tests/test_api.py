@@ -1110,12 +1110,17 @@ class TestHonestMonitoring:
     def test_telemetry_has_no_fabricated_gauges(self, client, admin_token):
         body = client.get("/api/system/telemetry", headers=self._auth(admin_token)).json()
         # The old shape claimed CPU/memory/bandwidth gauges and a literal 99.98%
-        # success rate. Those must be declared unavailable, not invented.
+        # success rate. Those must never be invented.
         assert "gauges" not in body
         assert "throughput" not in body
-        assert "cpuUtilization" in body["unavailable"]
-        assert "errorRate" in body["unavailable"]
-        assert body["unavailableReason"]
+        # Host metrics are not observable from inside this process, so they are
+        # simply absent. The response must also NOT carry an "unavailable" /
+        # "unavailableReason" notice: that is operator diagnostics, and the
+        # dashboard previously rendered it verbatim to end users.
+        assert "cpuUtilization" not in body
+        assert "memoryUtilization" not in body
+        assert "unavailable" not in body
+        assert "unavailableReason" not in body
 
     def test_telemetry_reports_real_row_counts(self, client, admin_token):
         body = client.get("/api/system/telemetry", headers=self._auth(admin_token)).json()
@@ -1768,3 +1773,130 @@ class TestServerSideOtp:
             "/api/otp/verify", json={"challenge_id": first, "code": first_code}
         )
         assert stale.status_code == 410
+
+
+class TestIdleSessionExpiry:
+    """Sessions must end after a period of INACTIVITY, not merely on a fixed
+    schedule and not only when the tab is closed.
+
+    The regression these guard against: a user walks away leaving the tab open,
+    comes back hours later and is still signed in. Two ways that happens --
+    (1) the session has a long absolute lifetime and nothing tracks idleness,
+    (2) the app's own background polling keeps renewing the session for a user
+    who is not there. Both are covered below.
+    """
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _read_session(self, token):
+        from app.database import get_db_connection, release_db_connection
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT expires_at, created_at, "
+            "EXTRACT(EPOCH FROM (expires_at - CURRENT_TIMESTAMP)) "
+            "FROM auth_sessions WHERE token = %s",
+            (token,),
+        )
+        row = cur.fetchone()
+        cur.close()
+        release_db_connection(conn)
+        return row
+
+    def _set_session_times(self, token, expires_sql, created_sql=None):
+        from app.database import get_db_connection, release_db_connection
+        conn = get_db_connection()
+        cur = conn.cursor()
+        if created_sql:
+            cur.execute(
+                f"UPDATE auth_sessions SET expires_at = {expires_sql}, "
+                f"created_at = {created_sql} WHERE token = %s",
+                (token,),
+            )
+        else:
+            cur.execute(
+                f"UPDATE auth_sessions SET expires_at = {expires_sql} WHERE token = %s",
+                (token,),
+            )
+        conn.commit()
+        cur.close()
+        release_db_connection(conn)
+
+    def test_login_issues_idle_window_not_a_long_lived_session(self, client, disposable_admin_token):
+        """A fresh token must expire in ~the idle window, not days later."""
+        from app.security import SESSION_IDLE_MINUTES
+        _expires, _created, seconds_left = self._read_session(disposable_admin_token)
+        # Comfortably inside the idle window, and nowhere near a multi-day TTL.
+        assert seconds_left <= SESSION_IDLE_MINUTES * 60 + 5
+        assert seconds_left > 0
+
+    def test_login_reports_idle_policy_to_client(self, client):
+        from app.security import clear_all_rate_limits, SESSION_IDLE_MINUTES
+        clear_all_rate_limits()
+        resp = client.post("/api/login", json={
+            "email": "admin@ntic.org.gh", "password": ADMIN_PASSWORD,
+        })
+        assert resp.status_code == 200
+        # The client runs its countdown off this instead of a hardcoded copy.
+        assert resp.json()["session_idle_seconds"] == SESSION_IDLE_MINUTES * 60
+
+    def test_idle_session_is_rejected(self, client, disposable_admin_token):
+        """Once the idle deadline passes the token must stop working."""
+        token = disposable_admin_token
+        assert client.get("/api/users/me", headers=self._auth(token)).status_code == 200
+        self._set_session_times(token, "CURRENT_TIMESTAMP - INTERVAL '1 minute'")
+        assert client.get("/api/users/me", headers=self._auth(token)).status_code == 401
+
+    def test_heartbeat_extends_an_active_session(self, client, disposable_admin_token):
+        token = disposable_admin_token
+        # Nearly expired, but still alive.
+        self._set_session_times(token, "CURRENT_TIMESTAMP + INTERVAL '30 seconds'")
+        before = self._read_session(token)[2]
+        resp = client.post("/api/auth/heartbeat", headers=self._auth(token))
+        assert resp.status_code == 200
+        after = self._read_session(token)[2]
+        assert after > before
+        assert resp.json()["expires_in_seconds"] > before
+
+    def test_ordinary_requests_do_NOT_extend_the_session(self, client, disposable_admin_token):
+        """The critical one.
+
+        The frontend polls in the background (ContentService runs a 5-minute
+        sweep, plus a WebSocket). If any authenticated request slid the deadline
+        forward, an abandoned-but-open tab would stay signed in forever and the
+        idle timeout would be decorative. Only an explicit heartbeat may extend.
+        """
+        token = disposable_admin_token
+        self._set_session_times(token, "CURRENT_TIMESTAMP + INTERVAL '10 minutes'")
+        expires_before = self._read_session(token)[0]
+
+        for path in ("/api/users/me", "/api/competitions", "/api/auth/verify"):
+            assert client.get(path, headers=self._auth(token)).status_code == 200
+
+        expires_after = self._read_session(token)[0]
+        assert expires_after == expires_before, (
+            "A background/polling request extended the session deadline; an "
+            "abandoned tab would never be signed out."
+        )
+
+    def test_heartbeat_requires_authentication(self, client):
+        assert client.post("/api/auth/heartbeat").status_code == 401
+
+    def test_heartbeat_on_expired_session_is_rejected(self, client, disposable_admin_token):
+        token = disposable_admin_token
+        self._set_session_times(token, "CURRENT_TIMESTAMP - INTERVAL '1 second'")
+        assert client.post("/api/auth/heartbeat", headers=self._auth(token)).status_code == 401
+
+    def test_session_cannot_outlive_the_absolute_cap(self, client, disposable_admin_token):
+        """Continuous activity must not let one session live indefinitely."""
+        from app.security import SESSION_ABSOLUTE_DAYS
+        token = disposable_admin_token
+        self._set_session_times(
+            token,
+            "CURRENT_TIMESTAMP + INTERVAL '5 minutes'",
+            created_sql=f"CURRENT_TIMESTAMP - INTERVAL '{SESSION_ABSOLUTE_DAYS + 1} days'",
+        )
+        # Still active, but past the absolute cap -> the slide cannot help.
+        assert client.post("/api/auth/heartbeat", headers=self._auth(token)).status_code == 401
+        assert client.get("/api/users/me", headers=self._auth(token)).status_code == 401

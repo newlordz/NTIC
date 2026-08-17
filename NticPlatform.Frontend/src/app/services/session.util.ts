@@ -7,11 +7,18 @@ const REMEMBERED_USERNAME_KEY = 'ntic_remembered_username';
 /** Legacy key that used to hold a base64-encoded password. Only ever removed. */
 const LEGACY_PASSWORD_KEY = 'ntic_remembered_password';
 
+/**
+ * Reads a session value.
+ *
+ * sessionStorage ONLY. There is deliberately no localStorage fallback: a bearer
+ * token in localStorage survives browser restarts, which defeats both the
+ * close-the-tab sign-out and the inactivity timeout, and it stays readable by
+ * any XSS payload for as long as it sits there. Older builds did fall back to
+ * localStorage, so `purgeLegacyAuthStorage()` deletes anything left behind.
+ */
 export function getAuthValue(key: AuthKey): string | null {
   if (typeof window === 'undefined') return null;
-  const session = window.sessionStorage.getItem(key);
-  if (session !== null) return session;
-  return window.localStorage.getItem(key);
+  return window.sessionStorage.getItem(key);
 }
 
 /**
@@ -36,6 +43,25 @@ export function clearAllAuthValues(): void {
   AUTH_KEYS.forEach(clearAuthValue);
   // Defence in depth: make sure no legacy credential survives a logout.
   purgeLegacyStoredPassword();
+}
+
+/**
+ * Deletes session values left in localStorage by builds that used to persist
+ * them there.
+ *
+ * Dropping the read-fallback in getAuthValue() stops those values being *used*,
+ * but on its own it would leave a real bearer token sitting in localStorage
+ * indefinitely. This removes them. Safe to call on every load: current code
+ * never writes AUTH_KEYS to localStorage, so for an up-to-date client this is a
+ * no-op.
+ */
+export function purgeLegacyAuthStorage(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    AUTH_KEYS.forEach(key => window.localStorage.removeItem(key));
+  } catch {
+    /* storage unavailable - nothing to clean */
+  }
 }
 
 export const clearAuthSession = clearAllAuthValues;
