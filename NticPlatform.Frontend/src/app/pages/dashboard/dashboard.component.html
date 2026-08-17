@@ -560,69 +560,71 @@
             </span>
           </div>
 
-          <!-- Measured platform figures -->
-          <div class="cc-gauges-grid">
-            <div *ngFor="let g of systemGauges" class="cc-gauge-card">
-              <div class="cc-gauge-ring-wrap">
-                <span class="cc-gauge-num" [style.color]="g.color">{{ g.value }}<em>{{ g.unit }}</em></span>
-              </div>
-              <div class="cc-gauge-label">{{ g.label }}</div>
-            </div>
-          </div>
-          <div *ngIf="telemetryError" class="cc-telemetry-warn">
-            <span class="material-symbols-outlined">warning</span>
-            <span>{{ telemetryError }}</span>
-          </div>
-
-          <!-- Component status, from GET /api/system/nodes-health -->
-          <div class="cc-nodes-block-embedded">
-            <div class="cc-nodes-grid-embedded">
-              <div *ngFor="let node of infrastructureNodes; trackBy: trackByNodeId" class="cc-node-card-v2">
-                <div class="cc-ncard-top">
-                  <div class="cc-ncard-ic-box">
-                    <span class="material-symbols-outlined">swap_horiz</span>
-                  </div>
-                  <div class="cc-ncard-title-block">
-                    <div class="cc-ncard-name">{{ node.name }}</div>
-                    <div class="cc-ncard-status">
-                      <span class="cc-live-dot" [ngClass]="nodeDotClass(node.status)"></span>
-                      <span>{{ node.status }}</span>
-                    </div>
-                  </div>
+          <div class="cc-telemetry-body-content">
+            <!-- Measured platform figures -->
+            <div class="cc-gauges-grid">
+              <div *ngFor="let g of systemGauges" class="cc-gauge-card">
+                <div class="cc-gauge-ring-wrap">
+                  <span class="cc-gauge-num" [style.color]="g.color">{{ g.value }}<em>{{ g.unit }}</em></span>
                 </div>
-                <div class="cc-ncard-body-row">
-                  <div class="cc-ncard-metrics">
-                    <div class="cc-metric-col">
-                      <span class="cc-metric-lbl">LATENCY</span>
-                      <span class="cc-metric-val">
-                        <ng-container *ngIf="node.latencyMs !== null; else naLatency">{{ node.latencyMs }}<small>ms</small></ng-container>
-                        <ng-template #naLatency><small>n/a</small></ng-template>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div class="cc-ncard-detail">{{ node.detail }}</div>
+                <div class="cc-gauge-label">{{ g.label }}</div>
               </div>
             </div>
-          </div>
+            <div *ngIf="telemetryError" class="cc-telemetry-warn">
+              <span class="material-symbols-outlined">warning</span>
+              <span>{{ telemetryError }}</span>
+            </div>
 
-          <!-- Infrastructure Health Summary Footer -->
-          <div class="cc-tchart-footer-metrics cc-telemetry-footer-metrics">
-            <div class="cc-tf-stat">
-              <span class="cc-tf-lbl">CORE UPTIME</span>
-              <span class="cc-tf-val cc-green">99.98%</span>
+            <!-- Component status, from GET /api/system/nodes-health -->
+            <div class="cc-nodes-block-embedded">
+              <div class="cc-nodes-grid-embedded">
+                <div *ngFor="let node of infrastructureNodes; trackBy: trackByNodeId" class="cc-node-card-v2">
+                  <div class="cc-ncard-top">
+                    <div class="cc-ncard-ic-box">
+                      <span class="material-symbols-outlined">swap_horiz</span>
+                    </div>
+                    <div class="cc-ncard-title-block">
+                      <div class="cc-ncard-name">{{ node.name }}</div>
+                      <div class="cc-ncard-status">
+                        <span class="cc-live-dot" [ngClass]="nodeDotClass(node.status)"></span>
+                        <span>{{ node.status }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cc-ncard-body-row">
+                    <div class="cc-ncard-metrics">
+                      <div class="cc-metric-col">
+                        <span class="cc-metric-lbl">LATENCY</span>
+                        <span class="cc-metric-val">
+                          <ng-container *ngIf="node.latencyMs !== null; else naLatency">{{ node.latencyMs }}<small>ms</small></ng-container>
+                          <ng-template #naLatency><small>n/a</small></ng-template>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cc-ncard-detail">{{ node.detail }}</div>
+                </div>
+              </div>
             </div>
-            <div class="cc-tf-stat">
-              <span class="cc-tf-lbl">GATEWAY LATENCY</span>
-              <span class="cc-tf-val cc-green">&lt; 30ms</span>
-            </div>
-            <div class="cc-tf-stat">
-              <span class="cc-tf-lbl">THROUGHPUT</span>
-              <span class="cc-tf-val">1.4k <small>req/m</small></span>
-            </div>
-            <div class="cc-tf-stat">
-              <span class="cc-tf-lbl">HEALTH STATUS</span>
-              <span class="cc-tf-val cc-green">100% OK</span>
+
+            <!-- Infrastructure Health Summary Footer -->
+            <div class="cc-tchart-footer-metrics cc-telemetry-footer-metrics">
+              <div class="cc-tf-stat">
+                <span class="cc-tf-lbl">CORE UPTIME</span>
+                <span class="cc-tf-val cc-green">99.98%</span>
+              </div>
+              <div class="cc-tf-stat">
+                <span class="cc-tf-lbl">GATEWAY LATENCY</span>
+                <span class="cc-tf-val cc-green">&lt; 30ms</span>
+              </div>
+              <div class="cc-tf-stat">
+                <span class="cc-tf-lbl">THROUGHPUT</span>
+                <span class="cc-tf-val">1.4k <small>req/m</small></span>
+              </div>
+              <div class="cc-tf-stat">
+                <span class="cc-tf-lbl">HEALTH STATUS</span>
+                <span class="cc-tf-val cc-green">100% OK</span>
+              </div>
             </div>
           </div>
         </div>
