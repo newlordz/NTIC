@@ -2787,6 +2787,66 @@
         <span class="material-symbols-outlined">event</span>Upcoming Events
         <span class="cms-count-badge">{{ contentService.upcomingEvents.length }}</span>
       </button>
+      <button *ngIf="isCmsTabVisible('pagecopy')" class="cms-sub-tab" [class.active]="contentTab === 'pagecopy'" (click)="showPageCopy()">
+        <span class="material-symbols-outlined">edit_note</span>Page Copy
+      </button>
+    </div>
+
+    <!-- ── PAGE COPY PANEL ── -->
+    <div *ngIf="contentTab === 'pagecopy'" class="cms-panel">
+      <div class="cms-panel-header">
+        <div class="cms-panel-info">
+          <div class="cms-panel-icon-wrap" style="background: rgba(0, 89, 178, 0.12); color: var(--primary);">
+            <span class="material-symbols-outlined">edit_note</span>
+          </div>
+          <div>
+            <h3 class="cms-panel-title">Landing Page Copy</h3>
+            <p class="cms-panel-desc">Edit the text on the public landing page — headings, descriptions, buttons, and footer — without touching code. Changes go live immediately.</p>
+          </div>
+        </div>
+        <div class="cms-panel-actions">
+          <span class="cms-hub-stat-chip" *ngIf="landingCopyLastSaved">
+            <span class="material-symbols-outlined" style="font-size:15px;">check_circle</span>
+            Saved {{ landingCopyLastSaved }}
+          </span>
+          <button class="btn btn-subtle btn-sm" (click)="loadLandingCopyForm()">
+            <span class="material-symbols-outlined" style="font-size:16px;">restart_alt</span>Reload
+          </button>
+          <button class="btn btn-primary btn-sm" (click)="saveLandingCopy()" [disabled]="landingCopySaveState === 'saving'">
+            <span class="material-symbols-outlined">{{ landingCopySaveState === 'saving' ? 'hourglass_top' : 'publish' }}</span>
+            {{ landingCopySaveState === 'saving' ? 'Publishing...' : 'Publish Changes' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="cms-form-error" *ngIf="landingCopySaveState === 'error'">Failed to publish. Please try again.</div>
+
+      <div *ngFor="let section of landingCopySections" class="cms-pagecopy-section">
+        <div class="cms-pagecopy-section-header">
+          <span class="material-symbols-outlined">{{ section.icon }}</span>
+          <span class="cms-pagecopy-section-title">{{ section.title }}</span>
+          <button class="cms-pagecopy-save-btn" type="button" (click)="saveLandingCopySection(section)"
+            [disabled]="landingCopySavingSection === section.title"
+            [title]="'Save ' + section.title">
+            <span class="material-symbols-outlined">{{ landingCopySavingSection === section.title ? 'hourglass_top' : 'save' }}</span>
+          </button>
+        </div>
+        <div class="cms-form-grid">
+          <div class="cms-field" *ngFor="let field of section.fields" [ngClass]="{ 'cms-field-full': field.multiline }">
+            <label>{{ field.label }}</label>
+            <textarea *ngIf="field.multiline" rows="2" [(ngModel)]="landingCopyForm[field.key]" [placeholder]="'Enter ' + field.label.toLowerCase() + '...'"></textarea>
+            <input *ngIf="!field.multiline" type="text" [(ngModel)]="landingCopyForm[field.key]" [placeholder]="'Enter ' + field.label.toLowerCase() + '...'">
+          </div>
+        </div>
+      </div>
+
+      <div class="cms-form-actions" style="margin-top:16px;">
+        <button class="btn btn-subtle btn-sm" (click)="loadLandingCopyForm()">Discard Changes</button>
+        <button class="btn btn-primary btn-sm" (click)="saveLandingCopy()" [disabled]="landingCopySaveState === 'saving'">
+          <span class="material-symbols-outlined">save</span>
+          {{ landingCopySaveState === 'saving' ? 'Publishing...' : 'Publish All Changes' }}
+        </button>
+      </div>
     </div>
 
     <!-- ── 1. STORIES PANEL ── -->

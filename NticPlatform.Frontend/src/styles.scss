@@ -177,9 +177,9 @@ body.is-theme-transitioning *,
 body.is-theme-transitioning *::before,
 body.is-theme-transitioning *::after {
   transition:
-    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important,
-    border-color     0.3s cubic-bezier(0.4, 0, 0.2, 1) !important,
-    color            0.25s cubic-bezier(0.4, 0, 0.2, 1) !important,
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color     0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    color            0.25s cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow       0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   transition-delay: 0s !important;
 }

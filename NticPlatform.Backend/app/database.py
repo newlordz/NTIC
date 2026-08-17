@@ -498,6 +498,13 @@ def _create_tables(conn):
             icon VARCHAR(100),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS landing_copy (
+            key VARCHAR(120) PRIMARY KEY,
+            value TEXT,
+            section VARCHAR(80),
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
     """)
     conn.commit()
 

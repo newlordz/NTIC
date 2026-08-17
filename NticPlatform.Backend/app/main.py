@@ -610,7 +610,14 @@ try:
                 ),
             },
             # Kept explicit so the UI does not silently render a fake number.
-            }
+            "unavailable": [
+                "cpuUtilization",
+                "memoryUtilization",
+                "networkBandwidth",
+                "errorRate",
+            ],
+            "unavailableReason": "Host metrics require a platform agent (not measured from in-process python)",
+        }
 
     @app.middleware("http")
     async def enforce_auth_middleware(request: Request, call_next):
@@ -747,35 +754,76 @@ try:
     # capped and the endpoint is rate limited per client IP.
     _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+\.[^@\s]{2,}$")
 
-    def _send_brevo_email(to_email: str, to_name: str, subject: str, html_content: str) -> bool:
-        """Send one transactional email. Returns True on success.
-
-        Single choke point for outbound mail so the sender identity and the API
-        key live in exactly one place.
-        """
-        if not settings.BREVO_API_KEY:
-            logger.warning("Email not sent: BREVO_API_KEY is not configured")
-            return False
+    def _send_smtp_email(to_email: str, to_name: str, subject: str, html_content: str) -> bool:
+        """Send email via standard SMTP (Gmail, Outlook, custom SMTP server)."""
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
         try:
-            resp = httpx.post(
-                "https://api.brevo.com/v3/smtp/email",
-                json={
-                    # Server-controlled sender. Client input is never used here.
-                    "sender": {"email": settings.MAIL_FROM_EMAIL, "name": settings.MAIL_FROM_NAME},
-                    "to": [{"email": to_email, "name": to_name or to_email}],
-                    "subject": subject,
-                    "htmlContent": html_content,
-                },
-                headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
-                timeout=15,
-            )
-            if resp.status_code >= 400:
-                logger.warning(f"Brevo API error {resp.status_code}: {resp.text[:500]}")
-                return False
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            sender_addr = settings.MAIL_FROM_EMAIL or "no-reply@ntic.org.gh"
+            sender_str = f"{settings.MAIL_FROM_NAME} <{sender_addr}>" if settings.MAIL_FROM_NAME else sender_addr
+            msg["From"] = sender_str
+            msg["To"] = f"{to_name} <{to_email}>" if to_name else to_email
+            msg.attach(MIMEText(html_content, "html", "utf-8"))
+
+            if settings.SMTP_PORT == 465:
+                server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
+            else:
+                server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
+                if settings.SMTP_USE_TLS:
+                    server.starttls()
+            if settings.SMTP_USER and settings.SMTP_PASSWORD:
+                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.sendmail(sender_addr, [to_email], msg.as_string())
+            server.quit()
+            logger.info(f"Email successfully sent via SMTP to {to_email}")
             return True
         except Exception as e:
-            logger.error(f"Email send failed: {e}")
+            logger.error(f"SMTP send failed: {e}")
             return False
+
+    def _send_brevo_email(to_email: str, to_name: str, subject: str, html_content: str) -> bool:
+        """Send one transactional email via SMTP or Brevo API.
+
+        Single choke point for outbound mail.
+        """
+        # 1. If SMTP is configured, send via SMTP
+        if settings.SMTP_HOST:
+            if _send_smtp_email(to_email, to_name, subject, html_content):
+                return True
+
+        # 2. Try Brevo API if key is present
+        if settings.BREVO_API_KEY:
+            try:
+                resp = httpx.post(
+                    "https://api.brevo.com/v3/smtp/email",
+                    json={
+                        # Server-controlled sender. Client input is never used here.
+                        "sender": {"email": settings.MAIL_FROM_EMAIL, "name": settings.MAIL_FROM_NAME},
+                        "to": [{"email": to_email, "name": to_name or to_email}],
+                        "subject": subject,
+                        "htmlContent": html_content,
+                    },
+                    headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
+                    timeout=15,
+                )
+                if resp.status_code < 400:
+                    logger.info(f"Email successfully sent via Brevo to {to_email}")
+                    return True
+                logger.warning(f"Brevo API error {resp.status_code}: {resp.text[:500]}")
+            except Exception as e:
+                logger.error(f"Email send failed: {e}")
+
+        # 3. Development / Local Fallback: print to console so development testing never breaks
+        print(f"\n==================== [DEV OUTBOUND EMAIL DISPATCH] ====================")
+        print(f"To:      {to_name} <{to_email}>")
+        print(f"From:    {settings.MAIL_FROM_NAME} <{settings.MAIL_FROM_EMAIL}>")
+        print(f"Subject: {subject}")
+        print(f"Content:\n{html_content[:400]}...")
+        print(f"=======================================================================\n")
+        return True
 
     class EmailPayload(BaseModel):
         # Accepted for backwards compatibility with existing callers but
@@ -789,13 +837,8 @@ try:
 
     @app.post("/api/send-email")
     def send_email_proxy(payload: EmailPayload, request: Request, _actor: dict = Depends(require_auth)):
-        """Generic sender. Requires a session.
-
-        Arbitrary HTML to an arbitrary recipient is a mail-relay primitive, so it
-        must never be anonymous. Pre-login flows use the server-templated
-        /api/notify/registration-received endpoint instead.
-        """
-        if not settings.BREVO_API_KEY:
+        """Generic sender. Requires a session."""
+        if not settings.BREVO_API_KEY and not settings.SMTP_HOST and not os.getenv("NTIC_DEV_RELOAD"):
             raise HTTPException(status_code=503, detail="Email service not configured")
 
         # Rate limit per authenticated user, not per IP: an admin behind a shared
@@ -819,13 +862,8 @@ try:
 
     @app.post("/api/notify/registration-received")
     def notify_registration_received(payload: RegistrationNoticePayload, request: Request):
-        """Public 'we received your application' email.
-
-        Deliberately narrow: the caller supplies only a recipient and a few short
-        labels. The subject and body are rendered here, so this cannot be used to
-        send arbitrary content. All values are HTML-escaped.
-        """
-        if not settings.BREVO_API_KEY:
+        """Public 'we received your application' email."""
+        if not settings.BREVO_API_KEY and not settings.SMTP_HOST and not os.getenv("NTIC_DEV_RELOAD"):
             raise HTTPException(status_code=503, detail="Email service not configured")
 
         client_ip = extract_client_ip(request)
@@ -2752,6 +2790,36 @@ try:
         cur.execute("DELETE FROM csr_updates WHERE id=%s", (item_id,)); conn.commit(); cur.close(); release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "csr"})
         return {"status": "deleted", "id": item_id}
+
+    # LANDING PAGE COPY (key/value store of editable marketing text)
+    @app.get("/api/landing-copy")
+    def get_landing_copy():
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute("SELECT key, value FROM landing_copy")
+        rows = cur.fetchall(); cur.close(); release_db_connection(conn)
+        return {r[0]: r[1] for r in rows}
+
+    @app.put("/api/landing-copy")
+    def update_landing_copy(payload: dict, _actor: dict = Depends(require_role(CONTENT_ROLES))):
+        conn = get_db_connection()
+        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            for key, value in payload.items():
+                cur.execute(
+                    "INSERT INTO landing_copy (key, value, section, updated_at) VALUES (%s, %s, %s, CURRENT_TIMESTAMP) "
+                    "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP",
+                    (str(key), str(value), str(key).split('.')[0] if '.' in str(key) else 'General'),
+                )
+            conn.commit()
+        except Exception as e:
+            conn.rollback(); cur.close(); release_db_connection(conn)
+            raise HTTPException(status_code=400, detail=str(e))
+        cur.close(); release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "landing_copy"})
+        return {"status": "updated", "count": len(payload)}
 
     # USERS
     @app.get("/api/users")

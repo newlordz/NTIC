@@ -2,6 +2,7 @@ import os
 import logging
 import secrets
 from app.security import hash_password
+from app.landing_copy import LANDING_COPY_DEFAULTS
 
 logger = logging.getLogger("ntic.seed")
 
@@ -198,6 +199,20 @@ def seed_initial_data(conn):
     if cur.fetchone()[0] == 0:
         cur.execute("INSERT INTO csr_updates (id, title, description, date, icon) VALUES ('csr-1', 'Solar Lab Launched in Tamale', 'NTIC installed a solar-powered computer lab at Tamale Senior High, serving 1,200 students with sustainable tech education.', '2026-07-15', 'solar_power')")
         cur.execute("INSERT INTO csr_updates (id, title, description, date, icon) VALUES ('csr-2', 'Girls in Tech Bootcamp', '200 female students across 8 regions attended a 3-day coding and robotics bootcamp sponsored by NTIC partners.', '2026-06-20', 'diversity_3')")
+
+    # Landing page copy — seed only the keys that are missing so an admin's
+    # edits are never clobbered on restart. New defaults added in code are
+    # back-filled automatically.
+    cur.execute("SELECT count(*) FROM landing_copy")
+    if cur.fetchone()[0] == 0:
+        for _section, key, value in LANDING_COPY_DEFAULTS:
+            cur.execute("INSERT INTO landing_copy (key, value, section) VALUES (%s, %s, %s)", (key, value, _section))
+    else:
+        cur.execute("SELECT key FROM landing_copy")
+        existing_keys = {row[0] for row in cur.fetchall()}
+        for _section, key, value in LANDING_COPY_DEFAULTS:
+            if key not in existing_keys:
+                cur.execute("INSERT INTO landing_copy (key, value, section) VALUES (%s, %s, %s)", (key, value, _section))
 
     conn.commit()
     cur.close()

@@ -448,6 +448,9 @@ export class ContentService {
   // ── Philosophy Cards (Learn. Innovate. Build.) ─────────────
   philosophyCards: PhilosophyCard[] = [];
 
+  // ── Landing Page Copy (key/value editable marketing text) ──
+  landingCopy: Record<string, string> = {};
+
   // ── LMS Data ──────────────────────────────────────────────
   lmsCourses: LmsCourse[] = [];
   lmsModules: LmsModule[] = [];
@@ -607,6 +610,18 @@ private readonly defaultTeams: Team[] = [];
   }
 
   /**
+   * Resolve an editable landing-page text value by key, falling back to the
+   * provided default when the admin has not overridden it (or it is blank).
+   */
+  copy(key: string, fallback: string): string {
+    const value = this.landingCopy && this.landingCopy[key];
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      return String(value);
+    }
+    return fallback;
+  }
+
+  /**
    * Stop the background sync channels. Intended for tests and any future teardown
    * of the root service; not called on logout because a later login in the same
    * tab must resume syncing.
@@ -736,6 +751,15 @@ private readonly defaultTeams: Team[] = [];
         if (items && items.length > 0) {
           this.csrUpdates = items;
           this.saveState('csrUpdates', this.csrUpdates);
+        }
+      },
+      error: () => {}
+    });
+
+    this.apiService.getLandingCopy().subscribe({
+      next: (copy: Record<string, string>) => {
+        if (copy && Object.keys(copy).length > 0) {
+          this.landingCopy = copy;
         }
       },
       error: () => {}
@@ -982,6 +1006,14 @@ private readonly defaultTeams: Team[] = [];
             if (pending.length > 0) this.saveApprovals(pending);
             if (approved.length > 0) this.saveApprovedApprovals(approved);
             if (rejected.length > 0) this.saveRejectedApprovals(rejected);
+          },
+          error: () => {}
+        });
+        return;
+      case 'landing_copy':
+        this.apiService.getLandingCopy().subscribe({
+          next: (copy: Record<string, string>) => {
+            if (copy && Object.keys(copy).length > 0) this.landingCopy = copy;
           },
           error: () => {}
         });

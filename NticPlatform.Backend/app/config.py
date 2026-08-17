@@ -43,6 +43,13 @@ class Config:
     # Where security alerts are delivered. Falls back to the sender.
     SECURITY_ALERT_EMAIL: str = _get_nonempty_env("SECURITY_ALERT_EMAIL", "")
 
+    # Optional SMTP configuration (Gmail, Outlook, custom SMTP)
+    SMTP_HOST: str = _get_nonempty_env("SMTP_HOST", "")
+    SMTP_PORT: int = int(_get_nonempty_env("SMTP_PORT", "587") or "587")
+    SMTP_USER: str = _get_nonempty_env("SMTP_USER", "")
+    SMTP_PASSWORD: str = _get_nonempty_env("SMTP_PASSWORD", "")
+    SMTP_USE_TLS: bool = _get_nonempty_env("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
+
     PORT: int = int(os.getenv("PORT", 5000))
 
     ALLOWED_ORIGINS: list = os.getenv(

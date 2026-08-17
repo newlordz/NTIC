@@ -33,8 +33,8 @@
           </div>
         </div>
         <div class="brand-text">
-          <span class="brand-name">NTI Championship</span>
-          <span class="brand-sub">GHANA NATIONAL COMPETITION</span>
+          <span class="brand-name">{{ contentService.copy('header.brandName', 'NTI Championship') }}</span>
+          <span class="brand-sub">{{ contentService.copy('header.brandSub', 'GHANA NATIONAL COMPETITION') }}</span>
         </div>
       </a>
 
@@ -43,18 +43,17 @@
         <div class="nav-item-dropdown" (click)="$event.stopPropagation()">
           <button class="nav-link dropdown-toggle" [class.active]="activeMegaMenu === 'tracks'"
             (click)="toggleMegaMenu('tracks')">
-            <span>Competition</span>
+            <span>{{ contentService.copy('header.navCompetition', 'Competition') }}</span>
             <span class="material-symbols-outlined arrow-icon">keyboard_arrow_down</span>
           </button>
 
           <div class="mega-menu" [class.open]="activeMegaMenu === 'tracks'">
             <div class="mega-menu-grid">
               <div class="mega-col intro-col">
-                <h3>The 5 Core Arenas</h3>
-                <p>High school squads specialize in a track, preparing projects and competing under strict national
-                  rules.</p>
+                <h3>{{ contentService.copy('menu.title', 'The 5 Core Arenas') }}</h3>
+                <p>{{ contentService.copy('menu.intro', 'High school squads specialize in a track, preparing projects and competing under strict national rules.') }}</p>
                 <a class="mega-cta-link" (click)="closeMegaMenu(); scrollToSection('tracks')">
-                  <span>All Tracks Guide</span>
+                  <span>{{ contentService.copy('menu.allTracks', 'All Tracks Guide') }}</span>
                   <span class="material-symbols-outlined">arrow_right_alt</span>
                 </a>
               </div>
@@ -62,22 +61,22 @@
                 <a class="mega-link-item" (click)="closeMegaMenu(); scrollToSection('tracks')">
                   <span class="material-symbols-outlined mc-icon coding">data_object</span>
                   <div>
-                    <strong>Coding & Algorithms</strong>
-                    <span>Timed code sprints & optimizations.</span>
+                    <strong>{{ contentService.copy('menu.coding.name', 'Coding & Algorithms') }}</strong>
+                    <span>{{ contentService.copy('menu.coding.desc', 'Timed code sprints & optimizations.') }}</span>
                   </div>
                 </a>
                 <a class="mega-link-item" (click)="closeMegaMenu(); scrollToSection('tracks')">
                   <span class="material-symbols-outlined mc-icon robotics">memory</span>
                   <div>
-                    <strong>Robotics & IoT</strong>
-                    <span>Autonomous bot navigational engineering.</span>
+                    <strong>{{ contentService.copy('menu.robotics.name', 'Robotics & IoT') }}</strong>
+                    <span>{{ contentService.copy('menu.robotics.desc', 'Autonomous bot navigational engineering.') }}</span>
                   </div>
                 </a>
                 <a class="mega-link-item" (click)="closeMegaMenu(); scrollToSection('tracks')">
                   <span class="material-symbols-outlined mc-icon ai">model_training</span>
                   <div>
-                    <strong>Artificial Intelligence</strong>
-                    <span>Crop diagnostics and transport logistics ML.</span>
+                    <strong>{{ contentService.copy('menu.ai.name', 'Artificial Intelligence') }}</strong>
+                    <span>{{ contentService.copy('menu.ai.desc', 'Crop diagnostics and transport logistics ML.') }}</span>
                   </div>
                 </a>
               </div>
@@ -85,15 +84,15 @@
                 <a class="mega-link-item" (click)="closeMegaMenu(); scrollToSection('tracks')">
                   <span class="material-symbols-outlined mc-icon cyber">security</span>
                   <div>
-                    <strong>Networking & Cybersecurity CTF</strong>
-                    <span>Defensive systems and cipher challenges.</span>
+                    <strong>{{ contentService.copy('menu.cyber.name', 'Networking & Cybersecurity CTF') }}</strong>
+                    <span>{{ contentService.copy('menu.cyber.desc', 'Defensive systems and cipher challenges.') }}</span>
                   </div>
                 </a>
                 <a class="mega-link-item" (click)="closeMegaMenu(); scrollToSection('tracks')">
                   <span class="material-symbols-outlined mc-icon innovation">tips_and_updates</span>
                   <div>
-                    <strong>Open Innovation</strong>
-                    <span>Pitching clean energy & healthcare tech.</span>
+                    <strong>{{ contentService.copy('menu.innovation.name', 'Open Innovation') }}</strong>
+                    <span>{{ contentService.copy('menu.innovation.desc', 'Pitching clean energy & healthcare tech.') }}</span>
                   </div>
                 </a>
               </div>
@@ -101,13 +100,13 @@
           </div>
         </div>
 
-        <a class="nav-link" (click)="scrollToSection('about')">Concept</a>
-        <a class="nav-link" (click)="scrollToSection('tracks')">Competition Track Arenas</a>
-        <button type="button" (click)="openLoginModal($event)" class="nav-link portal-highlight">Login</button>
+        <a class="nav-link" (click)="scrollToSection('about')">{{ contentService.copy('header.navConcept', 'Concept') }}</a>
+        <a class="nav-link" (click)="scrollToSection('tracks')">{{ contentService.copy('header.navTracks', 'Competition Track Arenas') }}</a>
+        <button type="button" (click)="openLoginModal($event)" class="nav-link portal-highlight">{{ contentService.copy('header.navLogin', 'Login') }}</button>
       </nav>
 
       <div class="header-cta">
-        <a routerLink="/registration" class="btn btn-crimson btn-sm">Apply now</a>
+        <a routerLink="/registration" class="btn btn-crimson btn-sm">{{ contentService.copy('header.applyNow', 'Apply now') }}</a>
       </div>
 
       <button class="mobile-hamburger" (click)="toggleMobileMenu()" [class.active]="isMobileMenuOpen"
@@ -130,38 +129,38 @@
       <!-- Competition Dropdown -->
       <div class="mobile-nav-section">
         <button class="mobile-nav-link dropdown-toggle" (click)="toggleMegaMenu('tracks')">
-          <span>Competition</span>
+          <span>{{ contentService.copy('header.navCompetition', 'Competition') }}</span>
           <span class="material-symbols-outlined arrow-icon"
             [class.rotated]="activeMegaMenu === 'tracks'">keyboard_arrow_down</span>
         </button>
         <div class="mobile-sub-nav" [class.open]="activeMegaMenu === 'tracks'">
           <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
             <span class="material-symbols-outlined" style="color:#38bdf8">data_object</span>
-            Coding & Algorithms
+            {{ contentService.copy('menu.coding.name', 'Coding & Algorithms') }}
           </a>
           <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
             <span class="material-symbols-outlined" style="color:#00e676">memory</span>
-            Robotics & IoT
+            {{ contentService.copy('menu.robotics.name', 'Robotics & IoT') }}
           </a>
           <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
             <span class="material-symbols-outlined" style="color:#ab47bc">model_training</span>
-            Artificial Intelligence
+            {{ contentService.copy('menu.ai.name', 'Artificial Intelligence') }}
           </a>
           <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
             <span class="material-symbols-outlined" style="color:#ff1744">security</span>
-            Networking & Cybersecurity CTF
+            {{ contentService.copy('menu.cyber.name', 'Networking & Cybersecurity CTF') }}
           </a>
           <a class="mobile-sub-link" (click)="closeMobileMenu(); scrollToSection('tracks')">
             <span class="material-symbols-outlined" style="color:#ffab00">tips_and_updates</span>
-            Open Innovation
+            {{ contentService.copy('menu.innovation.name', 'Open Innovation') }}
           </a>
         </div>
       </div>
 
-      <a class="mobile-nav-link" (click)="closeMobileMenu(); scrollToSection('about')">Concept</a>
-      <a class="mobile-nav-link" (click)="closeMobileMenu(); scrollToSection('tracks')">Competition Track Arenas</a>
+      <a class="mobile-nav-link" (click)="closeMobileMenu(); scrollToSection('about')">{{ contentService.copy('header.navConcept', 'Concept') }}</a>
+      <a class="mobile-nav-link" (click)="closeMobileMenu(); scrollToSection('tracks')">{{ contentService.copy('header.navTracks', 'Competition Track Arenas') }}</a>
       <button type="button" class="mobile-nav-link portal-highlight"
-        (click)="openLoginModal($event); closeMobileMenu()">Login</button>
+        (click)="openLoginModal($event); closeMobileMenu()">{{ contentService.copy('header.navLogin', 'Login') }}</button>
 
       <div class="mobile-nav-divider"></div>
 
@@ -634,11 +633,10 @@
     <div class="container">
       <div class="section-header-academic">
         <div class="academic-title-wrap">
-          <span class="academic-sub">Our Purpose</span>
-          <h2><span class="word">Why</span> <span class="word">We</span> <span class="word">Exist</span></h2>
+          <span class="academic-sub">{{ contentService.copy('about.sub', 'Our Purpose') }}</span>
+          <h2><span class="word">{{ contentService.copy('about.heading1', 'Why') }}</span> <span class="word">{{ contentService.copy('about.heading2', 'We') }}</span> <span class="word">{{ contentService.copy('about.heading3', 'Exist') }}</span></h2>
         </div>
-        <p class="academic-desc-lead">Our Statement of Operation defines what we do, why you should support, and who
-          reaps the rewards of young National Championship of Technology and Innovation Ecosystem.</p>
+        <p class="academic-desc-lead">{{ contentService.copy('about.lead', 'Our Statement of Operation defines what we do, why you should support, and who reaps the rewards of young National Championship of Technology and Innovation Ecosystem.') }}</p>
       </div>
 
       <div class="concept-grid">
@@ -648,12 +646,10 @@
             <span class="material-symbols-outlined">menu_book</span>
           </div>
           <div class="card-content">
-            <h3>Statement of Operation</h3>
-            <p>We build and run Ghana's premier National Technology and Innovation (NTI) Championship, integrating
-              high-school teams from all 16 regions. Through rigorous coursework, sandbox tasks, and competitive arenas,
-              we turn classrooms into innovation labs.</p>
+            <h3>{{ contentService.copy('about.card1.title', 'Statement of Operation') }}</h3>
+            <p>{{ contentService.copy('about.card1.body', "We build and run Ghana's premier National Technology and Innovation (NTI) Championship, integrating high-school teams from all 16 regions. Through rigorous coursework, sandbox tasks, and competitive arenas, we turn classrooms into innovation labs.") }}</p>
             <a (click)="scrollToSection('tracks')" class="read-more-link" style="cursor:pointer">
-              <span>Experience the Tracks</span>
+              <span>{{ contentService.copy('about.card1.link', 'Experience the Tracks') }}</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
             </a>
           </div>
@@ -661,16 +657,15 @@
 
         <!-- Why Support -->
         <div class="why-exist-card featured">
-          <div class="featured-badge">Key Focus</div>
+          <div class="featured-badge">{{ contentService.copy('about.card2.badge', 'Key Focus') }}</div>
           <div class="card-icon-wrap bg-crimson">
             <span class="material-symbols-outlined">volunteer_activism</span>
           </div>
           <div class="card-content">
-            <h3>Why Support Champions?</h3>
-            <p>A thriving nation depends on scientific literacy and technical Innovations. Your support supplies physical
-              robotics kits, funds regional travels, provides scholarships, and empowers students to build Technology careers and local solutions.</p>
+            <h3>{{ contentService.copy('about.card2.title', 'Why Support Champions?') }}</h3>
+            <p>{{ contentService.copy('about.card2.body', 'A thriving nation depends on scientific literacy and technical Innovations. Your support supplies physical robotics kits, funds regional travels, provides scholarships, and empowers students to build Technology careers and local solutions.') }}</p>
             <a (click)="openSupportModal('team')" class="read-more-link" style="cursor: pointer;">
-              <span>Sponsor Now</span>
+              <span>{{ contentService.copy('about.card2.link', 'Sponsor Now') }}</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
             </a>
           </div>
@@ -682,12 +677,10 @@
             <span class="material-symbols-outlined">groups_3</span>
           </div>
           <div class="card-content">
-            <h3>Who Reaps the Rewards?</h3>
-            <p>The benefits ripple from the classroom to the nation. Students gain elite computational skills, educators
-              receive certified modern training, local industries discover top-tier engineering talent, and Ghana
-              accelerates its technological independence.</p>
+            <h3>{{ contentService.copy('about.card3.title', 'Who Reaps the Rewards?') }}</h3>
+            <p>{{ contentService.copy('about.card3.body', 'The benefits ripple from the classroom to the nation. Students gain elite computational skills, educators receive certified modern training, local industries discover top-tier engineering talent, and Ghana accelerates its technological independence.') }}</p>
             <a href="#stats" class="read-more-link">
-              <span>View Impact Metrics</span>
+              <span>{{ contentService.copy('about.card3.link', 'View Impact Metrics') }}</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
             </a>
           </div>
@@ -707,24 +700,23 @@
         <div class="editorial-header-top">
           <span class="editorial-badge">
             <span class="badge-dot"></span>
-            Latest
+            {{ contentService.copy('news.badge', 'Latest') }}
           </span>
           <a routerLink="/news" class="editorial-view-all">
-            View All Stories
+            {{ contentService.copy('news.viewAll', 'View All Stories') }}
             <span class="material-symbols-outlined">arrow_forward</span>
           </a>
         </div>
         <div class="editorial-header-body">
           <div class="editorial-title-wrap">
             <h2>
-              <span class="word">News</span>
-              <span class="word">&amp;</span>
-              <span class="word">Events</span>
+              <span class="word">{{ contentService.copy('news.heading1', 'News') }}</span>
+              <span class="word">{{ contentService.copy('news.heading2', '&') }}</span>
+              <span class="word">{{ contentService.copy('news.heading3', 'Events') }}</span>
             </h2>
           </div>
           <p class="editorial-desc">
-            Championship stories &amp; updates -- how Ghana's next generation of scientists,
-            developers, engineers, and innovators are building the future.
+            {{ contentService.copy('news.desc', "Championship stories & updates -- how Ghana's next generation of scientists, developers, engineers, and innovators are building the future.") }}
           </p>
         </div>
         <div class="editorial-divider"></div>
@@ -812,14 +804,13 @@
   <section class="story-section scroll-animate fade-up">
     <div class="container">
       <div class="story-header">
-        <span class="academic-sub scroll-animate fade-up">Our Core Philosophy</span>
+        <span class="academic-sub scroll-animate fade-up">{{ contentService.copy('philosophy.sub', 'Our Core Philosophy') }}</span>
         <h2>
           <span class="animated-word w1">Learn.</span>
           <span class="animated-word w2">Innovate.</span>
           <span class="animated-word w3">Build.</span>
         </h2>
-        <p class="scroll-animate fade-up" style="transition-delay: 0.3s">A glimpse into the real faces and moments that
-          define our pursuit of excellence.</p>
+        <p class="scroll-animate fade-up" style="transition-delay: 0.3s">{{ contentService.copy('philosophy.desc', 'A glimpse into the real faces and moments that define our pursuit of excellence.') }}</p>
       </div>
       <div class="philosophy-grid">
         <div *ngFor="let card of contentService.philosophyCards" class="philosophy-card">
@@ -841,8 +832,8 @@
     <div class="container">
       <div class="alumni-header">
         <img src="assets/hall_of_fame_medal.png" loading="lazy" decoding="async" class="alumni-medal-img" alt="NTIC Hall of Fame Medal">
-        <span class="academic-sub">Hall of Fame</span>
-        <h2>National Technology and Innovation Champions</h2>
+        <span class="academic-sub">{{ contentService.copy('hof.sub', 'Hall of Fame') }}</span>
+        <h2>{{ contentService.copy('hof.heading', 'National Technology and Innovation Champions') }}</h2>
       </div>
     </div>
 
@@ -967,10 +958,9 @@
   <section id="tracks" class="departments-section">
     <div class="container">
       <div class="section-header-academic text-center">
-        <span class="academic-sub font-crimson">The Technical Pillars</span>
-        <h2>Competition Track Arenas</h2>
-        <p class="academic-desc-lead center">Click any track to see a live code preview. Each arena tests specific
-          disciplines and demands deep practical application.</p>
+        <span class="academic-sub font-crimson">{{ contentService.copy('tracks.sub', 'The Technical Pillars') }}</span>
+        <h2>{{ contentService.copy('tracks.heading', 'Competition Track Arenas') }}</h2>
+        <p class="academic-desc-lead center">{{ contentService.copy('tracks.lead', 'Click any track to see a live code preview. Each arena tests specific disciplines and demands deep practical application.') }}</p>
       </div>
 
       <div class="tracks-with-preview">
@@ -980,19 +970,18 @@
             (click)="setTrackPreview('coding')">
             <div class="dept-header-wrap">
               <span class="material-symbols-outlined dept-icon">data_object</span>
-              <h3>Coding &amp; Algorithms</h3>
+              <h3>{{ contentService.copy('tracks.coding.title', 'Coding & Algorithms') }}</h3>
             </div>
-            <p>Sprints in Python, C++, and Java. Tests data structures, algorithm optimization, and competitive
-              speed-solving.</p>
+            <p>{{ contentService.copy('tracks.coding.body', 'Sprints in Python, C++, and Java. Tests data structures, algorithm optimization, and competitive speed-solving.') }}</p>
             <ul class="dept-bullet-list">
-              <li>Speed &amp; Accuracy challenge</li>
-              <li>Computational Complexity limits</li>
-              <li>Dynamic programming tests</li>
+              <li>{{ contentService.copy('tracks.coding.b1', 'Speed & Accuracy challenge') }}</li>
+              <li>{{ contentService.copy('tracks.coding.b2', 'Computational Complexity limits') }}</li>
+              <li>{{ contentService.copy('tracks.coding.b3', 'Dynamic programming tests') }}</li>
             </ul>
             <div class="dept-actions-row">
               <span class="dept-preview-btn">Preview Solution &rarr;</span>
               <a [routerLink]="['/registration']" [queryParams]="{ track: 'coding' }" class="dept-cta"
-                (click)="$event.stopPropagation()">Experience the Tracks</a>
+                (click)="$event.stopPropagation()">{{ contentService.copy('tracks.previewCta', 'Experience the Tracks') }}</a>
             </div>
           </div>
 
@@ -1001,19 +990,18 @@
             (click)="setTrackPreview('robotics')">
             <div class="dept-header-wrap">
               <span class="material-symbols-outlined dept-icon">memory</span>
-              <h3>Robotics &amp; IoT</h3>
+              <h3>{{ contentService.copy('tracks.robotics.title', 'Robotics & IoT') }}</h3>
             </div>
-            <p>Navigating autonomous bots through agricultural and logistics tasks with sensors, actuators, and embedded
-              boards.</p>
+            <p>{{ contentService.copy('tracks.robotics.body', 'Navigating autonomous bots through agricultural and logistics tasks with sensors, actuators, and embedded boards.') }}</p>
             <ul class="dept-bullet-list">
-              <li>Lego EV3 &amp; Arduino integrations</li>
-              <li>Real-world mapping algorithms</li>
-              <li>Sensor-actuator optimization</li>
+              <li>{{ contentService.copy('tracks.robotics.b1', 'Lego EV3 & Arduino integrations') }}</li>
+              <li>{{ contentService.copy('tracks.robotics.b2', 'Real-world mapping algorithms') }}</li>
+              <li>{{ contentService.copy('tracks.robotics.b3', 'Sensor-actuator optimization') }}</li>
             </ul>
             <div class="dept-actions-row">
               <span class="dept-preview-btn">Preview Solution &rarr;</span>
               <a [routerLink]="['/registration']" [queryParams]="{ track: 'robotics' }" class="dept-cta"
-                (click)="$event.stopPropagation()">Experience the Tracks</a>
+                (click)="$event.stopPropagation()">{{ contentService.copy('tracks.previewCta', 'Experience the Tracks') }}</a>
             </div>
           </div>
 
@@ -1021,19 +1009,18 @@
           <div class="dept-card ai" [class.active-track]="activeTrackPreview === 'ai'" (click)="setTrackPreview('ai')">
             <div class="dept-header-wrap">
               <span class="material-symbols-outlined dept-icon">model_training</span>
-              <h3>Artificial Intelligence</h3>
+              <h3>{{ contentService.copy('tracks.ai.title', 'Artificial Intelligence') }}</h3>
             </div>
-            <p>Train models to solve local agricultural, diagnostic, and climate problems using modern Machine Learning
-              pipelines.</p>
+            <p>{{ contentService.copy('tracks.ai.body', 'Train models to solve local agricultural, diagnostic, and climate problems using modern Machine Learning pipelines.') }}</p>
             <ul class="dept-bullet-list">
-              <li>Crop disease computer vision</li>
-              <li>Weather pattern neural networks</li>
-              <li>Logistic routing prediction</li>
+              <li>{{ contentService.copy('tracks.ai.b1', 'Crop disease computer vision') }}</li>
+              <li>{{ contentService.copy('tracks.ai.b2', 'Weather pattern neural networks') }}</li>
+              <li>{{ contentService.copy('tracks.ai.b3', 'Logistic routing prediction') }}</li>
             </ul>
             <div class="dept-actions-row">
               <span class="dept-preview-btn">Preview Solution &rarr;</span>
               <a [routerLink]="['/registration']" [queryParams]="{ track: 'ai' }" class="dept-cta"
-                (click)="$event.stopPropagation()">Experience the Tracks</a>
+                (click)="$event.stopPropagation()">{{ contentService.copy('tracks.previewCta', 'Experience the Tracks') }}</a>
             </div>
           </div>
 
@@ -1042,19 +1029,18 @@
             (click)="setTrackPreview('cyber')">
             <div class="dept-header-wrap">
               <span class="material-symbols-outlined dept-icon">security</span>
-              <h3>Networking & Cybersecurity CTF</h3>
+              <h3>{{ contentService.copy('tracks.cyber.title', 'Networking & Cybersecurity CTF') }}</h3>
             </div>
-            <p>Capture the Flag sprints testing cryptographic decryption, network intrusion logs audit, and secure
-              server builds.</p>
+            <p>{{ contentService.copy('tracks.cyber.body', 'Capture the Flag sprints testing cryptographic decryption, network intrusion logs audit, and secure server builds.') }}</p>
             <ul class="dept-bullet-list">
-              <li>SQL Injection defense</li>
-              <li>Cipher decryption cycles</li>
-              <li>Sandboxed firewall setups</li>
+              <li>{{ contentService.copy('tracks.cyber.b1', 'SQL Injection defense') }}</li>
+              <li>{{ contentService.copy('tracks.cyber.b2', 'Cipher decryption cycles') }}</li>
+              <li>{{ contentService.copy('tracks.cyber.b3', 'Sandboxed firewall setups') }}</li>
             </ul>
             <div class="dept-actions-row">
               <span class="dept-preview-btn">Preview Solution &rarr;</span>
               <a [routerLink]="['/registration']" [queryParams]="{ track: 'cyber' }" class="dept-cta"
-                (click)="$event.stopPropagation()">Experience the Tracks</a>
+                (click)="$event.stopPropagation()">{{ contentService.copy('tracks.previewCta', 'Experience the Tracks') }}</a>
             </div>
           </div>
 
@@ -1063,19 +1049,19 @@
             (click)="setTrackPreview('innovation')">
             <div class="dept-header-wrap">
               <span class="material-symbols-outlined dept-icon">tips_and_updates</span>
-              <h3>Open Innovation</h3>
+              <h3>{{ contentService.copy('tracks.innovation.title', 'Open Innovation') }}</h3>
             </div>
-            <p>Research, prototype, and pitch creative systems addressing healthcare, green power, and waste in Ghana.
+            <p>{{ contentService.copy('tracks.innovation.body', 'Research, prototype, and pitch creative systems addressing healthcare, green power, and waste in Ghana.') }}
             </p>
             <ul class="dept-bullet-list">
-              <li>Renewable power generation</li>
-              <li>Public health data dashboards</li>
-              <li>Alumni &amp; Sponsor pitches</li>
+              <li>{{ contentService.copy('tracks.innovation.b1', 'Renewable power generation') }}</li>
+              <li>{{ contentService.copy('tracks.innovation.b2', 'Public health data dashboards') }}</li>
+              <li>{{ contentService.copy('tracks.innovation.b3', 'Alumni & Sponsor pitches') }}</li>
             </ul>
             <div class="dept-actions-row">
               <span class="dept-preview-btn">Preview Solution &rarr;</span>
               <a [routerLink]="['/registration']" [queryParams]="{ track: 'innovation' }" class="dept-cta"
-                (click)="$event.stopPropagation()">Experience the Tracks</a>
+                (click)="$event.stopPropagation()">{{ contentService.copy('tracks.previewCta', 'Experience the Tracks') }}</a>
             </div>
           </div>
         </div>
@@ -1095,10 +1081,9 @@
           <div class="coding-icon-top">
             <span class="material-symbols-outlined">code_blocks</span>
           </div>
-          <span class="academic-sub">Daily Problem</span>
-          <h2>Try Coding now</h2>
-          <p>Pick a language, solve bite-sized challenges, and level up your skills. Hints included -- solutions revealed
-            when you're stuck.</p>
+          <span class="academic-sub">{{ contentService.copy('challenge.sub', 'Daily Problem') }}</span>
+          <h2>{{ contentService.copy('challenge.heading', 'Try Coding now') }}</h2>
+          <p>{{ contentService.copy('challenge.desc', "Pick a language, solve bite-sized challenges, and level up your skills. Hints included -- solutions revealed when you're stuck.") }}</p>
           <div class="challenge-meta">
             <span class="difficulty-badge" [class]="'diff-' + currentChallenge.difficulty.replace(' ', '-')">
               <span class="material-symbols-outlined" *ngIf="currentChallenge.difficulty === 'Very Easy'">eco</span>
@@ -1235,43 +1220,42 @@
     <div class="container">
       <div class="scoreboard-card-container">
         <div class="scoreboard-info">
-          <span class="academic-sub">Real-time Standing</span>
-          <h2>The Leaderboard</h2>
-          <p>Points aggregate dynamically as student squads complete courses, submit assignments, and compete in the
-            track heats.</p>
+          <span class="academic-sub">{{ contentService.copy('leaderboard.sub', 'Real-time Standing') }}</span>
+          <h2>{{ contentService.copy('leaderboard.heading', 'The Leaderboard') }}</h2>
+          <p>{{ contentService.copy('leaderboard.desc', 'Points aggregate dynamically as student squads complete courses, submit assignments, and compete in the track heats.') }}</p>
 
           <!-- Track Filters Tabs -->
           <div class="leaderboard-tabs">
             <button class="tab-btn" [class.active]="activeLeaderboardFilter === 'all'"
               (click)="changeLeaderboardFilter('all')">
               <span class="material-symbols-outlined tab-icon">emoji_events</span>
-              <span>All Heats</span>
+              <span>{{ contentService.copy('leaderboard.tabAll', 'All Heats') }}</span>
             </button>
             <button class="tab-btn" [class.active]="activeLeaderboardFilter === 'coding'"
               (click)="changeLeaderboardFilter('coding')">
               <span class="material-symbols-outlined tab-icon">data_object</span>
-              <span>Coding</span>
+              <span>{{ contentService.copy('leaderboard.tabCoding', 'Coding') }}</span>
             </button>
             <button class="tab-btn" [class.active]="activeLeaderboardFilter === 'robotics'"
               (click)="changeLeaderboardFilter('robotics')">
               <span class="material-symbols-outlined tab-icon">memory</span>
-              <span>Robotics</span>
+              <span>{{ contentService.copy('leaderboard.tabRobotics', 'Robotics') }}</span>
             </button>
             <button class="tab-btn" [class.active]="activeLeaderboardFilter === 'ai'"
               (click)="changeLeaderboardFilter('ai')">
               <span class="material-symbols-outlined tab-icon">model_training</span>
-              <span>AI</span>
+              <span>{{ contentService.copy('leaderboard.tabAi', 'AI') }}</span>
             </button>
             <button class="tab-btn" [class.active]="activeLeaderboardFilter === 'cyber'"
               (click)="changeLeaderboardFilter('cyber')">
               <span class="material-symbols-outlined tab-icon">security</span>
-              <span>Cyber</span>
+              <span>{{ contentService.copy('leaderboard.tabCyber', 'Cyber') }}</span>
             </button>
           </div>
 
           <div class="scoreboard-status">
             <span class="live-dot pulse"></span>
-            <span>Live standings · Accredited by MoE &amp; GES</span>
+            <span>{{ contentService.copy('leaderboard.status', 'Live standings · Accredited by MoE & GES') }}</span>
           </div>
         </div>
 
@@ -1315,7 +1299,7 @@
           </div>
 
           <a routerLink="/leaderboard" class="full-leaderboard-btn">
-            <span>View Full Leaderboard (180+ Schools)</span>
+            <span>{{ contentService.copy('leaderboard.viewFull', 'View Full Leaderboard (180+ Schools)') }}</span>
             <span class="material-symbols-outlined">arrow_right_alt</span>
           </a>
         </div>
@@ -1368,8 +1352,8 @@
           <div class="hub-pulse-ring-2"></div>
           <div class="hub-inner">
             <span class="material-symbols-outlined hub-icon">hub</span>
-            <span class="hub-label">NTI Championship</span>
-            <span class="hub-sublabel">2026 Impact</span>
+            <span class="hub-label">{{ contentService.copy('stats.hub', 'NTI Championship') }}</span>
+            <span class="hub-sublabel">{{ contentService.copy('stats.hubSub', '2026 Impact') }}</span>
           </div>
         </div>
 
@@ -1381,7 +1365,7 @@
               <span class="material-symbols-outlined">map</span>
             </div>
             <div class="node-number">{{ regionsCount }}</div>
-            <div class="node-title">Regions Represented</div>
+            <div class="node-title">{{ contentService.copy('stats.regions', 'Regions Represented') }}</div>
           </div>
           <div class="node-tooltip">
             <div class="tooltip-arrow"></div>
@@ -1399,7 +1383,7 @@
               <span class="material-symbols-outlined">psychology</span>
             </div>
             <div class="node-number">{{ mentorsCount }}+</div>
-            <div class="node-title">Certified Mentors</div>
+            <div class="node-title">{{ contentService.copy('stats.mentors', 'Certified Mentors') }}</div>
           </div>
           <div class="node-tooltip">
             <div class="tooltip-arrow"></div>
@@ -1417,7 +1401,7 @@
               <span class="material-symbols-outlined">school</span>
             </div>
             <div class="node-number">{{ schoolsCount }}+</div>
-            <div class="node-title">Schools Enrolled</div>
+            <div class="node-title">{{ contentService.copy('stats.schools', 'Schools Enrolled') }}</div>
           </div>
           <div class="node-tooltip">
             <div class="tooltip-arrow"></div>
@@ -1435,7 +1419,7 @@
               <span class="material-symbols-outlined">groups</span>
             </div>
             <div class="node-number">{{ studentsCount }}+</div>
-            <div class="node-title">Active Students</div>
+            <div class="node-title">{{ contentService.copy('stats.students', 'Active Students') }}</div>
           </div>
           <div class="node-tooltip">
             <div class="tooltip-arrow"></div>
@@ -1453,7 +1437,7 @@
               <span class="material-symbols-outlined">rocket_launch</span>
             </div>
             <div class="node-number">{{ projectsCount }}+</div>
-            <div class="node-title">NTI Championship Innovations</div>
+            <div class="node-title">{{ contentService.copy('stats.projects', 'NTI Championship Innovations') }}</div>
           </div>
           <div class="node-tooltip">
             <div class="tooltip-arrow"></div>
@@ -1471,7 +1455,7 @@
               <span class="material-symbols-outlined">payments</span>
             </div>
             <div class="node-number">₵{{ grantsCount }}+</div>
-            <div class="node-title">Scholarships &amp; Grants</div>
+            <div class="node-title">{{ contentService.copy('stats.grants', 'Scholarships & Grants') }}</div>
           </div>
           <div class="node-tooltip">
             <div class="tooltip-arrow"></div>
@@ -1524,9 +1508,9 @@
     </div>
     <div class="container" style="position: relative; z-index: 2;">
       <div class="section-header-academic text-center">
-        <span class="academic-sub">National Reach</span>
-        <h2>All 16 Regions Competing</h2>
-        <p class="academic-desc-lead center">Hover over a region to see participating schools and top performers.</p>
+        <span class="academic-sub">{{ contentService.copy('map.sub', 'National Reach') }}</span>
+        <h2>{{ contentService.copy('map.heading', 'All 16 Regions Competing') }}</h2>
+        <p class="academic-desc-lead center">{{ contentService.copy('map.lead', 'Hover over a region to see participating schools and top performers.') }}</p>
       </div>
       <!-- Interactive Tech Track Filter Pills -->
       <div class="map-filter-pills text-center">
@@ -1710,10 +1694,9 @@
   <section class="support-section scroll-animate fade-up">
     <div class="container">
       <div class="section-header-academic text-center">
-        <span class="academic-sub">Make an Impact</span>
-        <h2>Support a Champion</h2>
-        <p class="academic-desc-lead center">Empower school squads, fund technical arenas, or share programmatic
-          suggestions to help shape Ghana's technological frontier.</p>
+        <span class="academic-sub">{{ contentService.copy('support.sub', 'Make an Impact') }}</span>
+        <h2>{{ contentService.copy('support.heading', 'Support a Champion') }}</h2>
+        <p class="academic-desc-lead center">{{ contentService.copy('support.lead', "Empower school squads, fund technical arenas, or share programmatic suggestions to help shape Ghana's technological frontier.") }}</p>
       </div>
 
       <div class="support-grid">
@@ -1723,11 +1706,10 @@
             <span class="material-symbols-outlined">mail</span>
           </div>
           <div class="card-content">
-            <h3>Inquire via Mail</h3>
-            <p>Send institutional correspondence, coordinate equipment deliveries, or mail donation checks directly to
-              our central coordination registry.</p>
+            <h3>{{ contentService.copy('support.card1.title', 'Inquire via Mail') }}</h3>
+            <p>{{ contentService.copy('support.card1.body', 'Send institutional correspondence, coordinate equipment deliveries, or mail donation checks directly to our central coordination registry.') }}</p>
             <span class="read-more-link">
-              <span>Get Mail Details</span>
+              <span>{{ contentService.copy('support.card1.link', 'Get Mail Details') }}</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
             </span>
           </div>
@@ -1739,11 +1721,10 @@
             <span class="material-symbols-outlined">diversity_1</span>
           </div>
           <div class="card-content">
-            <h3>Sponsor a Team</h3>
-            <p>Directly fund microcontrollers, sensor kits, and laptop devices for high-need school squads preparing for
-              active tracks.</p>
+            <h3>{{ contentService.copy('support.card2.title', 'Sponsor a Team') }}</h3>
+            <p>{{ contentService.copy('support.card2.body', 'Directly fund microcontrollers, sensor kits, and laptop devices for high-need school squads preparing for active tracks.') }}</p>
             <span class="read-more-link">
-              <span>Sponsor a Squad</span>
+              <span>{{ contentService.copy('support.card2.link', 'Sponsor a Squad') }}</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
             </span>
           </div>
@@ -1755,11 +1736,10 @@
             <span class="material-symbols-outlined">emoji_events</span>
           </div>
           <div class="card-content">
-            <h3>Sponsor Competition</h3>
-            <p>Partner with us as a corporate or individual underwriter for regional qualifier events and the national
-              grand final arena.</p>
+            <h3>{{ contentService.copy('support.card3.title', 'Sponsor Competition') }}</h3>
+            <p>{{ contentService.copy('support.card3.body', 'Partner with us as a corporate or individual underwriter for regional qualifier events and the national grand final arena.') }}</p>
             <span class="read-more-link">
-              <span>Sponsor Events</span>
+              <span>{{ contentService.copy('support.card3.link', 'Sponsor Events') }}</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
             </span>
           </div>
@@ -1771,11 +1751,10 @@
             <span class="material-symbols-outlined">reviews</span>
           </div>
           <div class="card-content">
-            <h3>Submit Suggestions</h3>
-            <p>Share syllabus advice, volunteer offers, or platform feedback with our academic committee to guide our
-              roadmap.</p>
+            <h3>{{ contentService.copy('support.card4.title', 'Submit Suggestions') }}</h3>
+            <p>{{ contentService.copy('support.card4.body', 'Share syllabus advice, volunteer offers, or platform feedback with our academic committee to guide our roadmap.') }}</p>
             <span class="read-more-link">
-              <span>Submit Ideas</span>
+              <span>{{ contentService.copy('support.card4.link', 'Submit Ideas') }}</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
             </span>
           </div>
@@ -1801,10 +1780,9 @@
               <span class="material-symbols-outlined">menu_book</span>
             </div>
           </div>
-          <span class="gateway-badge">Accredited Portal v2.0</span>
-          <h2>NTI Championship Gateway</h2>
-          <p class="gateway-desc">Enter your institutional credentials below. The system will automatically identify
-            your role and route you to the appropriate workspace.</p>
+          <span class="gateway-badge">{{ contentService.copy('gateway.badge', 'Accredited Portal v2.0') }}</span>
+          <h2>{{ contentService.copy('gateway.heading', 'NTI Championship Gateway') }}</h2>
+          <p class="gateway-desc">{{ contentService.copy('gateway.desc', 'Enter your institutional credentials below. The system will automatically identify your role and route you to the appropriate workspace.') }}</p>
         </div>
 
         <div class="gateway-card">
@@ -1924,23 +1902,22 @@
           </div>
         </div>
         <div class="footer-crest-text">
-          <h3>National Technology and Innovation Championship</h3>
-          <p>Accredited School Competition Platform of the Republic of Ghana</p>
+          <h3>{{ contentService.copy('footer.heading', 'National Technology and Innovation Championship') }}</h3>
+          <p>{{ contentService.copy('footer.sub', 'Accredited School Competition Platform of the Republic of Ghana') }}</p>
         </div>
       </div>
 
       <div class="footer-cols-grid">
         <div class="footer-brief">
-          <p>Designed to replicate the scholastic integrity of top-tier academic systems, enabling students to construct
-            pathways from local innovation to global engineering programs.</p>
+          <p>{{ contentService.copy('footer.brief', 'Designed to replicate the scholastic integrity of top-tier academic systems, enabling students to construct pathways from local innovation to global engineering programs.') }}</p>
           <div class="contact-info-ac">
-            <p><strong>Contact:</strong> info&#64;ntic.gov.gh</p>
-            <p><strong>Hotline:</strong> +233 (0) 302 999 888</p>
+            <p>{{ contentService.copy('footer.contact', 'Contact: info@ntic.gov.gh') }}</p>
+            <p>{{ contentService.copy('footer.hotline', 'Hotline: +233 (0) 302 999 888') }}</p>
           </div>
         </div>
 
         <div class="footer-nav-col">
-          <h4>Competition Info</h4>
+          <h4>{{ contentService.copy('footer.col1.title', 'Competition Info') }}</h4>
           <ul>
             <li><a href="#about">About The Heats</a></li>
             <li><a href="#tracks">Tracks &amp; Syllabus</a></li>
@@ -1950,7 +1927,7 @@
         </div>
 
         <div class="footer-nav-col">
-          <h4>Portals</h4>
+          <h4>{{ contentService.copy('footer.col2.title', 'Portals') }}</h4>
           <ul>
             <li><a href="#" (click)="openInfoModal($event, 'courses')">Student Courses</a></li>
             <li><a href="#" (click)="openInfoModal($event, 'instructor')">Instructor Mentoring</a></li>
@@ -1960,7 +1937,7 @@
         </div>
 
         <div class="footer-nav-col">
-          <h4>Legal &amp; Admin</h4>
+          <h4>{{ contentService.copy('footer.col3.title', 'Legal & Admin') }}</h4>
           <ul>
             <li><a style="cursor:default;text-decoration:none;pointer-events:none;">&#64;Qliq_Integrations</a></li>
             <li><a style="cursor:default;text-decoration:none;pointer-events:none;">Ghana Education Service</a></li>
@@ -1971,7 +1948,7 @@
       </div>
 
       <div class="footer-bottom-bar" style="flex-direction: column; gap: 16px; align-items: center;">
-        <p>&copy; 2026 &#64;Qliq_Integrations. All rights reserved.</p>
+        <p>{{ contentService.copy('footer.copyright', '© 2026 @Qliq_Integrations. All rights reserved.') }}</p>
 
         <div class="data-shield-badge">
           <span class="ds-icon">🛡️</span>

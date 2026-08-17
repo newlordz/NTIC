@@ -167,17 +167,14 @@ if __name__ == "__main__":
 
         # Warn loudly if a WebSocket implementation is missing: /api/ws returns
         # 404 without one, and real-time sync silently stops working.
-        try:
-            import websockets  # noqa: F401
-        except ImportError:
-            try:
-                import wsproto  # noqa: F401
-            except ImportError:
-                print(
-                    "[Warning] No WebSocket library installed, so /api/ws will return 404 "
-                    "and real-time sync will not work.\n"
-                    "          Fix with:  pip install 'uvicorn[standard]'"
-                )
+        import importlib.util
+        has_ws = bool(importlib.util.find_spec("websockets") or importlib.util.find_spec("wsproto"))
+        if not has_ws:
+            print(
+                "[Warning] No WebSocket library installed, so /api/ws will return 404 "
+                "and real-time sync will not work.\n"
+                "          Fix with:  pip install 'uvicorn[standard]'"
+            )
 
         mode = "development (auto-reload ON)" if reload_enabled else "production (auto-reload off)"
         print(f"[FastAPI] Starting NTIC Platform Backend on http://0.0.0.0:{port} - {mode}...")

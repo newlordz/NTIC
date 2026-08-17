@@ -6095,6 +6095,56 @@
 
 .cms-field-full { grid-column: 1 / -1; }
 
+.cms-pagecopy-section {
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 14px;
+
+  .cms-pagecopy-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 14px;
+
+    .material-symbols-outlined { font-size: 18px; }
+
+    .cms-pagecopy-section-title { flex: 1; }
+  }
+
+  .cms-pagecopy-save-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--outline-variant);
+    border-radius: 8px;
+    background: var(--surface-container);
+    color: var(--primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    .material-symbols-outlined { font-size: 17px; }
+
+    &:hover:not(:disabled) {
+      border-color: var(--primary);
+      background: rgba(0, 89, 178, 0.1);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
 .cms-radio-label {
   display: inline-flex;
   align-items: center;

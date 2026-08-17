@@ -22,6 +22,9 @@ import { WsSyncService } from '../../services/ws-sync.service';
 import { LmsManagerComponent } from '../lms-manager/lms-manager.component';
 import { UserManagementComponent } from '../user-management/user-management.component';
 
+interface LandingCopyField { key: string; label: string; multiline?: boolean; }
+interface LandingCopySection { title: string; icon: string; fields: LandingCopyField[]; }
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -598,7 +601,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   // ─── CONTENT MANAGER STATE ──────────────────────
-  contentTab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' | 'philosophy' | 'events' = 'stories';
+  contentTab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' | 'philosophy' | 'events' | 'pagecopy' = 'stories';
   maximizedContentTab: string | null = null;
   cmsCategoryFilter: 'all' | 'landing' | 'competitions' | 'broadcast' = 'all';
   cmsSearchQuery: string = '';
@@ -610,6 +613,279 @@ export class DashboardComponent implements OnInit, OnDestroy {
   tdSearchQuery: string = '';
   newsSearchQuery: string = '';
   eventsSearchQuery: string = '';
+
+  // ── Landing Page Copy editor ──────────────────────────────────
+  landingCopySections: LandingCopySection[] = [
+    {
+      title: 'Header & Navigation', icon: 'view_headline',
+      fields: [
+        { key: 'header.brandName', label: 'Brand Name' },
+        { key: 'header.brandSub', label: 'Brand Subtitle' },
+        { key: 'header.navCompetition', label: 'Nav — Competition' },
+        { key: 'header.navConcept', label: 'Nav — Concept' },
+        { key: 'header.navTracks', label: 'Nav — Track Arenas' },
+        { key: 'header.navLogin', label: 'Nav — Login' },
+        { key: 'header.applyNow', label: 'Apply Now Button' },
+      ],
+    },
+    {
+      title: 'Mega Menu', icon: 'menu',
+      fields: [
+        { key: 'menu.title', label: 'Menu Heading' },
+        { key: 'menu.intro', label: 'Menu Intro', multiline: true },
+        { key: 'menu.allTracks', label: 'All Tracks Link' },
+        { key: 'menu.coding.name', label: 'Coding — Name' },
+        { key: 'menu.coding.desc', label: 'Coding — Description' },
+        { key: 'menu.robotics.name', label: 'Robotics — Name' },
+        { key: 'menu.robotics.desc', label: 'Robotics — Description' },
+        { key: 'menu.ai.name', label: 'AI — Name' },
+        { key: 'menu.ai.desc', label: 'AI — Description' },
+        { key: 'menu.cyber.name', label: 'Cyber — Name' },
+        { key: 'menu.cyber.desc', label: 'Cyber — Description' },
+        { key: 'menu.innovation.name', label: 'Innovation — Name' },
+        { key: 'menu.innovation.desc', label: 'Innovation — Description' },
+      ],
+    },
+    {
+      title: 'Why We Exist', icon: 'menu_book',
+      fields: [
+        { key: 'about.sub', label: 'Section Eyebrow' },
+        { key: 'about.heading1', label: 'Heading Word 1' },
+        { key: 'about.heading2', label: 'Heading Word 2' },
+        { key: 'about.heading3', label: 'Heading Word 3' },
+        { key: 'about.lead', label: 'Intro Paragraph', multiline: true },
+        { key: 'about.card1.title', label: 'Card 1 — Title' },
+        { key: 'about.card1.body', label: 'Card 1 — Body', multiline: true },
+        { key: 'about.card1.link', label: 'Card 1 — Link' },
+        { key: 'about.card2.badge', label: 'Card 2 — Badge' },
+        { key: 'about.card2.title', label: 'Card 2 — Title' },
+        { key: 'about.card2.body', label: 'Card 2 — Body', multiline: true },
+        { key: 'about.card2.link', label: 'Card 2 — Link' },
+        { key: 'about.card3.title', label: 'Card 3 — Title' },
+        { key: 'about.card3.body', label: 'Card 3 — Body', multiline: true },
+        { key: 'about.card3.link', label: 'Card 3 — Link' },
+      ],
+    },
+    {
+      title: 'News & Events', icon: 'newspaper',
+      fields: [
+        { key: 'news.badge', label: 'Badge' },
+        { key: 'news.viewAll', label: 'View All Link' },
+        { key: 'news.heading1', label: 'Heading Word 1' },
+        { key: 'news.heading2', label: 'Heading Word 2' },
+        { key: 'news.heading3', label: 'Heading Word 3' },
+        { key: 'news.desc', label: 'Description', multiline: true },
+      ],
+    },
+    {
+      title: 'Core Philosophy', icon: 'lightbulb',
+      fields: [
+        { key: 'philosophy.sub', label: 'Section Eyebrow' },
+        { key: 'philosophy.desc', label: 'Description', multiline: true },
+      ],
+    },
+    {
+      title: 'Hall of Fame', icon: 'workspace_premium',
+      fields: [
+        { key: 'hof.sub', label: 'Section Eyebrow' },
+        { key: 'hof.heading', label: 'Heading' },
+      ],
+    },
+    {
+      title: 'Competition Tracks', icon: 'category',
+      fields: [
+        { key: 'tracks.sub', label: 'Section Eyebrow' },
+        { key: 'tracks.heading', label: 'Heading' },
+        { key: 'tracks.lead', label: 'Intro Paragraph', multiline: true },
+        { key: 'tracks.coding.title', label: 'Coding — Title' },
+        { key: 'tracks.coding.body', label: 'Coding — Body', multiline: true },
+        { key: 'tracks.coding.b1', label: 'Coding — Bullet 1' },
+        { key: 'tracks.coding.b2', label: 'Coding — Bullet 2' },
+        { key: 'tracks.coding.b3', label: 'Coding — Bullet 3' },
+        { key: 'tracks.robotics.title', label: 'Robotics — Title' },
+        { key: 'tracks.robotics.body', label: 'Robotics — Body', multiline: true },
+        { key: 'tracks.robotics.b1', label: 'Robotics — Bullet 1' },
+        { key: 'tracks.robotics.b2', label: 'Robotics — Bullet 2' },
+        { key: 'tracks.robotics.b3', label: 'Robotics — Bullet 3' },
+        { key: 'tracks.ai.title', label: 'AI — Title' },
+        { key: 'tracks.ai.body', label: 'AI — Body', multiline: true },
+        { key: 'tracks.ai.b1', label: 'AI — Bullet 1' },
+        { key: 'tracks.ai.b2', label: 'AI — Bullet 2' },
+        { key: 'tracks.ai.b3', label: 'AI — Bullet 3' },
+        { key: 'tracks.cyber.title', label: 'Cyber — Title' },
+        { key: 'tracks.cyber.body', label: 'Cyber — Body', multiline: true },
+        { key: 'tracks.cyber.b1', label: 'Cyber — Bullet 1' },
+        { key: 'tracks.cyber.b2', label: 'Cyber — Bullet 2' },
+        { key: 'tracks.cyber.b3', label: 'Cyber — Bullet 3' },
+        { key: 'tracks.innovation.title', label: 'Innovation — Title' },
+        { key: 'tracks.innovation.body', label: 'Innovation — Body', multiline: true },
+        { key: 'tracks.innovation.b1', label: 'Innovation — Bullet 1' },
+        { key: 'tracks.innovation.b2', label: 'Innovation — Bullet 2' },
+        { key: 'tracks.innovation.b3', label: 'Innovation — Bullet 3' },
+        { key: 'tracks.previewCta', label: 'Card CTA Label' },
+      ],
+    },
+    {
+      title: 'Coding Challenge', icon: 'code_blocks',
+      fields: [
+        { key: 'challenge.sub', label: 'Section Eyebrow' },
+        { key: 'challenge.heading', label: 'Heading' },
+        { key: 'challenge.desc', label: 'Description', multiline: true },
+      ],
+    },
+    {
+      title: 'Leaderboard', icon: 'leaderboard',
+      fields: [
+        { key: 'leaderboard.sub', label: 'Section Eyebrow' },
+        { key: 'leaderboard.heading', label: 'Heading' },
+        { key: 'leaderboard.desc', label: 'Description', multiline: true },
+        { key: 'leaderboard.tabAll', label: 'Tab — All Heats' },
+        { key: 'leaderboard.tabCoding', label: 'Tab — Coding' },
+        { key: 'leaderboard.tabRobotics', label: 'Tab — Robotics' },
+        { key: 'leaderboard.tabAi', label: 'Tab — AI' },
+        { key: 'leaderboard.tabCyber', label: 'Tab — Cyber' },
+        { key: 'leaderboard.status', label: 'Status Line' },
+        { key: 'leaderboard.viewFull', label: 'View Full Button' },
+      ],
+    },
+    {
+      title: 'Impact Stats', icon: 'analytics',
+      fields: [
+        { key: 'stats.hub', label: 'Center Hub Label' },
+        { key: 'stats.hubSub', label: 'Center Hub Sublabel' },
+        { key: 'stats.regions', label: 'Regions Node Title' },
+        { key: 'stats.mentors', label: 'Mentors Node Title' },
+        { key: 'stats.schools', label: 'Schools Node Title' },
+        { key: 'stats.students', label: 'Students Node Title' },
+        { key: 'stats.projects', label: 'Projects Node Title' },
+        { key: 'stats.grants', label: 'Grants Node Title' },
+      ],
+    },
+    {
+      title: 'Region Map', icon: 'map',
+      fields: [
+        { key: 'map.sub', label: 'Section Eyebrow' },
+        { key: 'map.heading', label: 'Heading' },
+        { key: 'map.lead', label: 'Intro Paragraph', multiline: true },
+      ],
+    },
+    {
+      title: 'Support a Champion', icon: 'volunteer_activism',
+      fields: [
+        { key: 'support.sub', label: 'Section Eyebrow' },
+        { key: 'support.heading', label: 'Heading' },
+        { key: 'support.lead', label: 'Intro Paragraph', multiline: true },
+        { key: 'support.card1.title', label: 'Card 1 — Title' },
+        { key: 'support.card1.body', label: 'Card 1 — Body', multiline: true },
+        { key: 'support.card1.link', label: 'Card 1 — Link' },
+        { key: 'support.card2.title', label: 'Card 2 — Title' },
+        { key: 'support.card2.body', label: 'Card 2 — Body', multiline: true },
+        { key: 'support.card2.link', label: 'Card 2 — Link' },
+        { key: 'support.card3.title', label: 'Card 3 — Title' },
+        { key: 'support.card3.body', label: 'Card 3 — Body', multiline: true },
+        { key: 'support.card3.link', label: 'Card 3 — Link' },
+        { key: 'support.card4.title', label: 'Card 4 — Title' },
+        { key: 'support.card4.body', label: 'Card 4 — Body', multiline: true },
+        { key: 'support.card4.link', label: 'Card 4 — Link' },
+      ],
+    },
+    {
+      title: 'Login Gateway', icon: 'vpn_key',
+      fields: [
+        { key: 'gateway.badge', label: 'Badge' },
+        { key: 'gateway.heading', label: 'Heading' },
+        { key: 'gateway.desc', label: 'Description', multiline: true },
+      ],
+    },
+    {
+      title: 'Footer', icon: 'copyright',
+      fields: [
+        { key: 'footer.heading', label: 'Heading' },
+        { key: 'footer.sub', label: 'Subtitle' },
+        { key: 'footer.brief', label: 'Brief Paragraph', multiline: true },
+        { key: 'footer.contact', label: 'Contact Line' },
+        { key: 'footer.hotline', label: 'Hotline Line' },
+        { key: 'footer.col1.title', label: 'Column 1 Title' },
+        { key: 'footer.col2.title', label: 'Column 2 Title' },
+        { key: 'footer.col3.title', label: 'Column 3 Title' },
+        { key: 'footer.copyright', label: 'Copyright Line' },
+      ],
+    },
+  ];
+
+  landingCopyForm: Record<string, string> = {};
+  landingCopySaveState: 'idle' | 'saving' | 'saved' | 'error' = 'idle';
+  landingCopyLastSaved: string = '';
+  landingCopySavingSection: string | null = null;
+
+  showPageCopy(): void {
+    this.contentTab = 'pagecopy';
+    this.loadLandingCopyForm();
+  }
+
+  loadLandingCopyForm(): void {
+    const form: Record<string, string> = {};
+    for (const section of this.landingCopySections) {
+      for (const field of section.fields) {
+        const current = this.contentService.landingCopy?.[field.key];
+        form[field.key] = current !== undefined && current !== null ? current : '';
+      }
+    }
+    this.landingCopyForm = form;
+    this.landingCopySaveState = 'idle';
+  }
+
+  resetLandingCopyForm(): void {
+    const form: Record<string, string> = {};
+    for (const section of this.landingCopySections) {
+      for (const field of section.fields) {
+        form[field.key] = '';
+      }
+    }
+    this.landingCopyForm = form;
+    this.landingCopySaveState = 'idle';
+  }
+
+  saveLandingCopy(): void {
+    this.landingCopySaveState = 'saving';
+    this.apiService.saveLandingCopy(this.landingCopyForm).subscribe({
+      next: () => {
+        this.contentService.landingCopy = { ...this.contentService.landingCopy, ...this.landingCopyForm };
+        this.landingCopySaveState = 'saved';
+        this.landingCopyLastSaved = new Date().toLocaleTimeString();
+        this.dialogService.toast('Landing page copy published successfully!', 'success');
+        this.addAuditLog({ action: 'Landing page copy updated', user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'content' });
+        setTimeout(() => { if (this.landingCopySaveState === 'saved') this.landingCopySaveState = 'idle'; }, 3000);
+      },
+      error: (err) => {
+        console.error('Failed to save landing copy:', err);
+        this.landingCopySaveState = 'error';
+        this.dialogService.toast('Failed to publish landing copy.', 'error');
+      }
+    });
+  }
+
+  saveLandingCopySection(section: LandingCopySection): void {
+    const payload: Record<string, string> = {};
+    for (const field of section.fields) {
+      payload[field.key] = this.landingCopyForm[field.key] ?? '';
+    }
+    this.landingCopySavingSection = section.title;
+    this.apiService.saveLandingCopy(payload).subscribe({
+      next: () => {
+        this.contentService.landingCopy = { ...this.contentService.landingCopy, ...payload };
+        this.landingCopySavingSection = null;
+        this.landingCopyLastSaved = new Date().toLocaleTimeString();
+        this.dialogService.toast(`"${section.title}" saved successfully!`, 'success');
+        this.addAuditLog({ action: `Landing page copy section updated: ${section.title}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'content' });
+      },
+      error: (err) => {
+        console.error(`Failed to save landing copy section ${section.title}:`, err);
+        this.landingCopySavingSection = null;
+        this.dialogService.toast(`Failed to save "${section.title}".`, 'error');
+      }
+    });
+  }
 
   get filteredStories(): ChampionshipStory[] {
     const list = this.contentService.championshipStories || [];
@@ -686,7 +962,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   setCmsCategory(category: 'all' | 'landing' | 'competitions' | 'broadcast'): void {
     this.cmsCategoryFilter = category;
-    if (category === 'landing' && !['stories', 'slideshow', 'philosophy', 'stats', 'countdown'].includes(this.contentTab)) {
+    if (category === 'landing' && !['stories', 'slideshow', 'philosophy', 'stats', 'countdown', 'pagecopy'].includes(this.contentTab)) {
       this.contentTab = 'stories';
     } else if (category === 'competitions' && !['leaderboard', 'hof', 'talent'].includes(this.contentTab)) {
       this.contentTab = 'leaderboard';
@@ -697,7 +973,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   isCmsTabVisible(tab: string): boolean {
     if (this.cmsCategoryFilter === 'all') return true;
-    if (this.cmsCategoryFilter === 'landing') return ['stories', 'slideshow', 'philosophy', 'stats', 'countdown'].includes(tab);
+    if (this.cmsCategoryFilter === 'landing') return ['stories', 'slideshow', 'philosophy', 'stats', 'countdown', 'pagecopy'].includes(tab);
     if (this.cmsCategoryFilter === 'competitions') return ['leaderboard', 'hof', 'talent'].includes(tab);
     if (this.cmsCategoryFilter === 'broadcast') return ['news', 'events'].includes(tab);
     return true;

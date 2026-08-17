@@ -173,6 +173,14 @@ export class ApiService {
     return this.http.post(this.apiUrl + '/csr', payload);
   }
 
+  getLandingCopy(): Observable<Record<string, string>> {
+    return this.http.get<Record<string, string>>(this.apiUrl + '/landing-copy');
+  }
+
+  saveLandingCopy(payload: Record<string, string>): Observable<any> {
+    return this.http.put(this.apiUrl + '/landing-copy', payload);
+  }
+
   deleteCsrUpdate(id: string): Observable<any> {
     return this.http.delete(this.apiUrl + '/csr/' + id);
   }
