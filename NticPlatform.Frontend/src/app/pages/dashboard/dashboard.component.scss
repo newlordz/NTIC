@@ -578,7 +578,6 @@
 .cc-sponsor-infographic-panel {
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 
 .cc-telemetry-body-content,
@@ -587,8 +586,8 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: flex-start;
+  gap: 12px;
   box-sizing: border-box;
 }
 
@@ -598,7 +597,7 @@
 
 .cc-nodes-grid-embedded {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 
