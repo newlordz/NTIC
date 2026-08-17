@@ -8,6 +8,7 @@ import {
   saveRememberedCredentials,
   forgetRememberedCredentials,
   purgeLegacyStoredPassword,
+  purgeLegacyAuthStorage,
 } from './session.util';
 
 describe('SessionUtil', () => {
@@ -26,15 +27,47 @@ describe('SessionUtil', () => {
       expect(getAuthValue('activeRoleId')).toBe('student');
     });
 
-    it('should fall back to localStorage when sessionStorage is empty', () => {
+    // A bearer token in localStorage survives a browser restart, which would
+    // defeat both the close-the-tab sign-out and the inactivity timeout. There
+    // is deliberately no fallback, so a value stranded there by an old build
+    // must be ignored rather than honoured.
+    it('should NOT fall back to localStorage', () => {
       localStorage.setItem('activeRoleId', 'instructor');
-      expect(getAuthValue('activeRoleId')).toBe('instructor');
+      expect(getAuthValue('activeRoleId')).toBeNull();
     });
 
-    it('should prefer sessionStorage over localStorage', () => {
+    it('should ignore localStorage even when sessionStorage has a value', () => {
       sessionStorage.setItem('activeRoleId', 'judge');
       localStorage.setItem('activeRoleId', 'student');
       expect(getAuthValue('activeRoleId')).toBe('judge');
+    });
+  });
+
+  describe('purgeLegacyAuthStorage', () => {
+    // Ignoring the stale value is not enough on its own: a real token would sit
+    // in localStorage indefinitely. It must actually be deleted.
+    it('should delete session keys stranded in localStorage', () => {
+      localStorage.setItem('activeUserToken', 'legacy-token');
+      localStorage.setItem('activeRoleId', 'super_admin');
+      localStorage.setItem('activeUserEmail', 'old@ntic.test');
+      purgeLegacyAuthStorage();
+      expect(localStorage.getItem('activeUserToken')).toBeNull();
+      expect(localStorage.getItem('activeRoleId')).toBeNull();
+      expect(localStorage.getItem('activeUserEmail')).toBeNull();
+    });
+
+    it('should leave the current sessionStorage session untouched', () => {
+      setAuthValue('activeUserToken', 'live-token');
+      purgeLegacyAuthStorage();
+      expect(getAuthValue('activeUserToken')).toBe('live-token');
+    });
+
+    it('should not disturb the remembered username', () => {
+      localStorage.setItem('ntic_remember_device', 'true');
+      localStorage.setItem('ntic_remembered_username', 'kofi@example.com');
+      purgeLegacyAuthStorage();
+      expect(localStorage.getItem('ntic_remembered_username')).toBe('kofi@example.com');
+      expect(hasRememberedDevice()).toBeTrue();
     });
   });
 

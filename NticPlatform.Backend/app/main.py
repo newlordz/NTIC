@@ -21,6 +21,7 @@ from app.security import (
     validate_password_strength, MIN_PASSWORD_LENGTH,
     ADMIN_ROLES, CONTENT_ROLES, COMPETITION_ROLES, GRADING_ROLES,
     APPROVAL_ROLES, STUDENT_ADMIN_ROLES, SUPPORT_ROLES, LMS_ROLES,
+    touch_session, SESSION_IDLE_MINUTES, SESSION_ABSOLUTE_DAYS,
 )
 from app.ws_manager import ws_manager, broadcast_async
 
@@ -609,14 +610,6 @@ try:
                     os.getenv("S3_AUDIT_BUCKET") or os.getenv("AWS_STORAGE_BUCKET_NAME")
                 ),
             },
-            # Kept explicit so the UI does not silently render a fake number.
-            "unavailable": [
-                "cpuUtilization",
-                "memoryUtilization",
-                "networkBandwidth",
-                "errorRate",
-            ],
-            "unavailableReason": "Host metrics require a platform agent (not measured from in-process python)",
         }
 
     @app.middleware("http")
@@ -1250,7 +1243,9 @@ try:
         reset_rate_limit(f"login:{client_ip}")
 
         token = create_token()
-        expires_at = datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=7)
+        # Sessions are idle-based: this is "last activity + idle window", pushed
+        # forward by POST /api/auth/heartbeat while the user is actually active.
+        expires_at = datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=SESSION_IDLE_MINUTES)
         conn = _get_db()
         client_ip_anon = anonymize_ip(client_ip)
         user_agent = request.headers.get("user-agent", "")
@@ -1290,11 +1285,36 @@ try:
             "organization": organization or "",
             # The client uses this to force the change-password prompt.
             "must_change_password": bool(must_change_password),
+            # Lets the client run its inactivity countdown off the server's real
+            # policy instead of a hardcoded copy that can silently drift.
+            "session_idle_seconds": SESSION_IDLE_MINUTES * 60,
         }
 
     @app.get("/api/auth/verify")
     def auth_verify(user: dict = Depends(require_auth)):
         return {"role": user["role"], "email": user["email"]}
+
+    @app.post("/api/auth/heartbeat")
+    def auth_heartbeat(request: Request, _user: dict = Depends(require_auth)):
+        """Extend the session because the user is genuinely still active.
+
+        Deliberately NOT done inside require_auth/the auth middleware: the app
+        polls in the background (a 5-minute ContentService sweep plus a
+        WebSocket), so extending on every authenticated request would keep an
+        abandoned-but-open tab signed in forever. The client only calls this
+        after real input events, which is what makes the idle timeout real.
+        """
+        token = request.headers.get("Authorization", "")[7:]
+        remaining = touch_session(token)
+        # remaining == 0 means the absolute cap has been reached, so the slide
+        # could not move the deadline into the future. Treat that as expired
+        # rather than handing back a session with no time left on it.
+        if remaining is None or remaining <= 0:
+            raise HTTPException(status_code=401, detail="Session expired")
+        return {
+            "expires_in_seconds": remaining,
+            "session_idle_seconds": SESSION_IDLE_MINUTES * 60,
+        }
 
     # ─── SELF-SERVICE ACCOUNT ────────────────────────────────────────
     # Before this existed there was no way for a user to change their own
