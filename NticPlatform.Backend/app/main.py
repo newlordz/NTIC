@@ -22,7 +22,7 @@ from app.security import (
     ADMIN_ROLES, CONTENT_ROLES, COMPETITION_ROLES, GRADING_ROLES,
     APPROVAL_ROLES, STUDENT_ADMIN_ROLES, SUPPORT_ROLES, LMS_ROLES,
     touch_session, SESSION_IDLE_MINUTES, SESSION_ABSOLUTE_DAYS,
-    ROLE_SPONSOR, ROLE_JUDGE, ROLE_INSTRUCTOR,
+    ROLE_SPONSOR, ROLE_JUDGE, ROLE_INSTRUCTOR, ROLE_STUDENT,
 )
 from app.ws_manager import ws_manager, broadcast_async
 
@@ -1137,6 +1137,75 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         return conn
 
+    DEFAULT_TENANT_ID = "11111111-1111-1111-1111-111111111111"
+
+    def _ensure_student_record(cur, actor: dict) -> str:
+        """Return the `students.id` for the signed-in user, creating it if needed.
+
+        Why this exists: `assignment_submissions.student_id` is a foreign key to
+        `students(id)`, but nothing ever created a `students` row for a user who
+        registered through the normal flow. The frontend compensated by inventing
+        an id -- `'NTIC-STU-' + Math.random()` inside a getter, so it produced a
+        DIFFERENT value on every read -- and every insert failed the FK with a 400.
+        Progress rows (no FK) were written under those throwaway ids and could
+        never be read back.
+
+        The row is keyed by `users.id`, so from here on one id identifies one
+        person in `students`, `assignment_submissions`, `lms_enrollments`,
+        `lms_submissions` and `lms_progress` alike.
+
+        Callers must already hold a cursor on an open transaction; this does not
+        commit, so it composes with the caller's own insert.
+        """
+        user_id = actor["id"]
+
+        # Already provisioned, either keyed by user id or linked by back-reference.
+        cur.execute(
+            "SELECT id FROM students WHERE id = %s OR user_id = %s LIMIT 1",
+            (user_id, user_id),
+        )
+        row = cur.fetchone()
+        if row:
+            return row[0]
+
+        # A seeded/imported row may exist for this email without the link set.
+        email = (actor.get("email") or "").strip()
+        if email:
+            cur.execute(
+                "SELECT id FROM students WHERE LOWER(email) = LOWER(%s) LIMIT 1",
+                (email,),
+            )
+            row = cur.fetchone()
+            if row:
+                cur.execute(
+                    "UPDATE students SET user_id = %s WHERE id = %s",
+                    (user_id, row[0]),
+                )
+                return row[0]
+
+        # Split the single `full_name` we hold into the first/last columns this
+        # table requires (both are NOT NULL).
+        full_name = (actor.get("full_name") or actor.get("email") or "Student").strip()
+        parts = [p for p in full_name.split() if p]
+        first_name = parts[0] if parts else "Student"
+        last_name = " ".join(parts[1:]) if len(parts) > 1 else "-"
+
+        cur.execute(
+            "INSERT INTO students (id, tenant_id, first_name, last_name, email, track, "
+            "consent_granted, user_id) VALUES (%s, %s, %s, %s, %s, %s, TRUE, %s) "
+            "ON CONFLICT (id) DO NOTHING",
+            (
+                user_id,
+                DEFAULT_TENANT_ID,
+                first_name[:100],
+                last_name[:100],
+                email or f"{user_id}@placeholder.invalid",
+                (actor.get("track") or "")[:50] or None,
+                user_id,
+            ),
+        )
+        return user_id
+
     def extract_client_ip(request: Request) -> str:
         cf_ip = request.headers.get("cf-connecting-ip")
         if cf_ip:
@@ -1325,22 +1394,47 @@ try:
 
     @app.get("/api/users/me")
     def get_my_profile(actor: dict = Depends(require_auth)):
+        """Everything the app shell needs about the signed-in user.
+
+        This is the ONLY identity endpoint a non-admin can call. `GET /api/users`
+        is admin-only, yet the sidebar name, the dashboard greeting, the LMS
+        student profile and the profile-completion prefill were all searching that
+        admin-only list for themselves -- so for a student, judge, sponsor or
+        instructor every one of them silently fell back to a hardcoded fixture
+        ("Welcome back, Administrator", a sidebar reading "Kwame Asante"). They now
+        read this instead.
+
+        For a student this also provisions and returns `student_id`, so their
+        submissions, enrolments and progress all key off one stable identifier
+        instead of the random one the client used to invent per render.
+        """
         conn = _get_db()
         try:
             cur = conn.cursor()
             cur.execute(
                 "SELECT id, email, full_name, role, ticket, status, phone, organization, "
                 "COALESCE(must_change_password, FALSE), password_changed_at, "
-                "bio, expertise, sector, rep_name, tier, experience_level "
+                "bio, expertise, sector, rep_name, tier, experience_level, track "
                 "FROM users WHERE id = %s",
                 (actor["id"],),
             )
             row = cur.fetchone()
+            if not row:
+                cur.close()
+                raise HTTPException(status_code=404, detail="User not found")
+
+            # Lazily give a student their `students` row. This is a write inside a
+            # GET, which is normally worth avoiding, but it is idempotent, costs
+            # one indexed lookup once provisioned, and this is the first call the
+            # client makes -- so the student pass has a real id to show before the
+            # student submits anything.
+            student_id = None
+            if row[3] == ROLE_STUDENT:
+                student_id = _ensure_student_record(cur, actor)
+                conn.commit()
             cur.close()
         finally:
             release_db_connection(conn)
-        if not row:
-            raise HTTPException(status_code=404, detail="User not found")
         return {
             "id": row[0], "email": row[1], "full_name": row[2], "role": row[3],
             "ticket": row[4], "status": row[5], "phone": row[6], "organization": row[7],
@@ -1353,6 +1447,8 @@ try:
             "rep_name": row[13] or "",
             "tier": row[14] or "",
             "experience_level": row[15] or "",
+            "track": row[16] or "",
+            "student_id": student_id,
         }
 
     class UpdateMyProfilePayload(BaseModel):
@@ -1379,6 +1475,7 @@ try:
         rep_name: str = Field(default=None, max_length=200)
         tier: str = Field(default=None, max_length=50)
         experience_level: str = Field(default=None, max_length=50)
+        track: str = Field(default=None, max_length=100)
 
     @app.patch("/api/users/me")
     def update_my_profile(payload: UpdateMyProfilePayload, actor: dict = Depends(require_auth)):
@@ -1402,6 +1499,7 @@ try:
             "rep_name": payload.rep_name,
             "tier": payload.tier,
             "experience_level": payload.experience_level,
+            "track": payload.track,
         }
         # Only touch what was actually sent. Absent (None) means "leave alone";
         # an explicit "" means "clear it".
@@ -3835,9 +3933,9 @@ try:
         cur = conn.cursor()
         import json as _json
         if status:
-            cur.execute("SELECT id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes, created_at FROM pending_approvals WHERE status = %s ORDER BY created_at DESC", (status,))
+            cur.execute("SELECT id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes, created_at FROM pending_approvals WHERE status = %s ORDER BY created_at DESC, id ASC", (status,))
         else:
-            cur.execute("SELECT id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes, created_at FROM pending_approvals ORDER BY created_at DESC")
+            cur.execute("SELECT id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes, created_at FROM pending_approvals ORDER BY created_at DESC, id ASC")
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)

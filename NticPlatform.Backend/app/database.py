@@ -466,6 +466,36 @@ def _create_tables(conn):
     cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS rep_name VARCHAR(200);")
     cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS tier VARCHAR(50);")
 
+    # `track` is read by the student LMS profile, the judge dashboard's
+    # "assigned submissions" filter and the sponsor profile, but it had no column
+    # -- every one of those surfaces was reading `undefined` and falling back to
+    # a hardcoded literal.
+    cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS track VARCHAR(100);")
+
+    # Link a student user to their `students` row.
+    #
+    # assignment_submissions.student_id is FK -> students(id), but the frontend
+    # sent a ticket string / random 'NTIC-STU-1234', so POST /api/submissions
+    # ALWAYS failed with a 400 and no student could ever submit work. Meanwhile
+    # lms_progress and lms_enrollments have no FK, so they were being written with
+    # yet another id. Three different identifiers for one person.
+    #
+    # The fix is to make students.id equal users.id for self-provisioned rows, so
+    # one id means one person in every table and the existing FK holds without a
+    # mapping layer. user_id is kept as an explicit, indexed back-reference for
+    # rows that predate this (seeded students keep their original ids).
+    cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS user_id VARCHAR(64);")
+    cur.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_students_user_id "
+        "ON students (user_id) WHERE user_id IS NOT NULL;"
+    )
+    # Back-fill the link for any student row whose email already matches a user.
+    cur.execute("""
+        UPDATE students s SET user_id = u.id
+        FROM users u
+        WHERE s.user_id IS NULL AND LOWER(s.email) = LOWER(u.email)
+    """)
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS pending_approvals (
             id VARCHAR(64) PRIMARY KEY,

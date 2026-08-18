@@ -244,6 +244,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return item.id || item.title;
   }
 
+  trackByApprovalId(_index: number, item: any): any {
+    return item?.id || _index;
+  }
+
   toggleTournamentAudio(): void {
     this.tournamentAudioEnabled = false;
   }

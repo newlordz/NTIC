@@ -880,9 +880,18 @@ private readonly defaultTeams: Team[] = [];
             else if (a.status === 'approved') approved.push(mapped);
             else if (a.status === 'rejected') rejected.push(mapped);
           });
-          if (pending.length > 0) this.saveApprovals(pending);
-          if (approved.length > 0) this.saveApprovedApprovals(approved);
-          if (rejected.length > 0) this.saveRejectedApprovals(rejected);
+          if (pending.length > 0) {
+            this.pendingApprovals = pending;
+            this.saveState('pendingApprovals', pending);
+          }
+          if (approved.length > 0) {
+            this.approvedApprovals = approved;
+            this.saveState('approvedApprovals', approved);
+          }
+          if (rejected.length > 0) {
+            this.rejectedApprovals = rejected;
+            this.saveState('rejectedApprovals', rejected);
+          }
         }
       },
       error: () => {}
@@ -1003,9 +1012,18 @@ private readonly defaultTeams: Team[] = [];
               else if (a.status === 'approved') approved.push(mapped);
               else if (a.status === 'rejected') rejected.push(mapped);
             });
-            if (pending.length > 0) this.saveApprovals(pending);
-            if (approved.length > 0) this.saveApprovedApprovals(approved);
-            if (rejected.length > 0) this.saveRejectedApprovals(rejected);
+            if (pending.length > 0) {
+              this.pendingApprovals = pending;
+              this.saveState('pendingApprovals', pending);
+            }
+            if (approved.length > 0) {
+              this.approvedApprovals = approved;
+              this.saveState('approvedApprovals', approved);
+            }
+            if (rejected.length > 0) {
+              this.rejectedApprovals = rejected;
+              this.saveState('rejectedApprovals', rejected);
+            }
           },
           error: () => {}
         });
