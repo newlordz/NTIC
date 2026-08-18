@@ -3554,6 +3554,67 @@ try:
             ],
         }
 
+    @app.get("/api/partners")
+    def list_public_partners():
+        """Confirmed partners, for the public landing page.
+
+        PUBLIC on purpose -- this feeds the homepage, which anonymous visitors see.
+        That makes what it exposes a deliberate decision:
+
+        * Only sponsorships an administrator has moved to 'active' or 'completed'
+          appear. A self-declared 'pending' pledge must never reach the homepage, or
+          anyone with a sponsor account could publish themselves as an official
+          partner.
+        * Organisation, tier and sector only. No amounts, no contact details, no
+          payment state -- those are commercial data and stay behind
+          GET /api/sponsorships (admin-only).
+        * Replaces a hardcoded wall of 9 brand cards in landing.component.html
+          (MTN, Tullow, GCB, Fidelity, Stanbic, Voltic, Coca-Cola, HP, EPP,
+          Printex) with tier pills like "In-Kind - 1,500 Packs Water". None of it
+          had a source, so the homepage could name partners the platform had no
+          record of.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            # Group by organisation: a partner with several commitments is one
+            # logo on the wall, not several.
+            cur.execute(
+                "SELECT COALESCE(NULLIF(TRIM(s.organization), ''), u.full_name, 'Partner') AS org, "
+                "MIN(COALESCE(NULLIF(s.tier, ''), 'Partner')) AS tier, "
+                "MIN(COALESCE(NULLIF(s.sector, ''), '')) AS sector, "
+                "MAX(s.created_at) AS since "
+                "FROM sponsorships s LEFT JOIN users u ON u.id = s.sponsor_id "
+                "WHERE s.status IN ('active', 'completed') "
+                "GROUP BY COALESCE(NULLIF(TRIM(s.organization), ''), u.full_name, 'Partner') "
+                "ORDER BY MIN(COALESCE(NULLIF(s.tier, ''), 'Partner')), 1"
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+
+        def _tier_rank(tier: str) -> int:
+            t = (tier or "").lower()
+            if "platinum" in t: return 0
+            if "gold" in t:     return 1
+            if "silver" in t:   return 2
+            if "bronze" in t:   return 3
+            if "kind" in t:     return 4
+            return 5
+
+        partners = [
+            {
+                "organization": r[0],
+                "tier": r[1],
+                "sector": r[2] or "",
+                "since": str(r[3]) if r[3] else None,
+            }
+            for r in rows
+        ]
+        partners.sort(key=lambda p: (_tier_rank(p["tier"]), p["organization"].lower()))
+        return {"total": len(partners), "partners": partners}
+
     @app.post("/api/auth/token/generate")
     def generate_access_token(payload: dict = None, _admin: dict = Depends(require_admin)):
         payload = payload or {}
@@ -4029,8 +4090,12 @@ try:
         return {"status": "deleted", "id": item_id}
 
     # SUBMISSION GRADING
+    MAX_SUBMISSION_SCORE = 100
+
     class GradeSubmissionRequest(BaseModel):
-        score: int = None
+        # Bounded deliberately: this was an unbounded `int`, so a judge could file a
+        # score of 9999 (or a negative one) and skew every average on the platform.
+        score: int = Field(default=None, ge=0, le=MAX_SUBMISSION_SCORE)
         feedback: str = ""
         status: str = None
 
@@ -4041,6 +4106,11 @@ try:
         Attribution is taken from the authenticated session, never from the
         request body -- a judge must not be able to file a score under someone
         else's name.
+
+        A judge may score unscored work, or REVISE THEIR OWN mark. Overwriting a
+        different judge's score requires an administrator: previously any judge
+        could silently replace another's mark with no trace of the original beyond
+        the audit log, which makes scoring disputes unresolvable.
         """
         conn = get_db_connection()
         if not conn:
@@ -4053,6 +4123,30 @@ try:
         if new_status is None and payload.score is not None:
             new_status = "Graded"
         try:
+            cur.execute(
+                "SELECT score, graded_by, graded_by_name FROM assignment_submissions "
+                "WHERE id = %s",
+                (item_id,),
+            )
+            existing = cur.fetchone()
+            if not existing:
+                conn.rollback(); cur.close(); release_db_connection(conn)
+                raise HTTPException(status_code=404, detail="Submission not found")
+
+            already_scored = existing[0] is not None
+            scored_by_someone_else = bool(existing[1]) and existing[1] != actor["id"]
+            is_admin = actor.get("role") in set(ADMIN_ROLES)
+            if already_scored and scored_by_someone_else and not is_admin:
+                conn.rollback(); cur.close(); release_db_connection(conn)
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Already scored by {existing[2] or 'another judge'}. "
+                        "Ask an administrator if it needs changing."
+                    ),
+                )
+            is_revision = already_scored
+
             cur.execute(
                 "UPDATE assignment_submissions SET score = COALESCE(%s, score), "
                 "feedback = COALESCE(%s, feedback), status = COALESCE(%s, status), "
@@ -4070,18 +4164,23 @@ try:
             row = cur.fetchone()
             if row:
                 # Same transaction as the score itself: an attributed grade and
-                # its audit entry must not be able to disagree.
+                # its audit entry must not be able to disagree. A revision records
+                # the previous score so the change is reconstructable.
                 cur.execute(
                     "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s, %s, %s, %s)",
                     (
-                        f"{actor['role']} graded submission {item_id}"
-                        + (f" (score {payload.score})" if payload.score is not None else ""),
+                        f"{actor['role']} {'revised' if is_revision else 'graded'} submission {item_id}"
+                        + (f" (score {payload.score}" if payload.score is not None else "")
+                        + (f", was {existing[0]}" if is_revision and payload.score is not None else "")
+                        + (")" if payload.score is not None else ""),
                         actor.get("email", ""),
                         datetime.datetime.now(datetime.UTC).isoformat(),
                         "grading",
                     ),
                 )
             conn.commit()
+        except HTTPException:
+            raise
         except Exception as e:
             conn.rollback()
             cur.close()
@@ -4120,16 +4219,23 @@ try:
 
     def _shape_submission(r):
         first, last = (r[6] or ""), (r[7] or "")
+        source = r[2] or ""
         return {
             "id": r[0],
             "student_id": r[1] or "",
             "student_name": (first + " " + last).strip(),
             "student_email": r[8] or "",
             "track": r[9] or "",
-            "source_code_path": r[2] or "",
+            "source_code_path": source,
+            # Whether the artifact can actually be opened. There is no file-serving
+            # endpoint, so a bare filename is unreachable -- the judge UI rendered it
+            # as plain text with no explanation, which looks like a broken link. This
+            # lets the client say so honestly, and link it when it IS a URL.
+            "source_is_url": source.lower().startswith(("http://", "https://")),
             "video_url": r[3] or "",
             "status": r[4] or "Pending",
             "submitted_at": str(r[5]) if r[5] else None,
+            "max_score": MAX_SUBMISSION_SCORE,
         }
 
     @app.get("/api/judge/queue")
@@ -4865,49 +4971,47 @@ try:
 
     @app.get("/api/admin/personnel")
     def list_personnel(_admin: dict = Depends(require_admin)):
-        """Operational roster for sponsors, judges and instructors.
+        """Operational roster for every managed role: student, sponsor, judge,
+        instructor.
 
-        Every field returned here is derived from data the backend actually
-        stores. The role detail the old UI showed for these people -- judge
-        `expertise`, sponsor `tier` / `sector` / `payments`, instructor
-        `portfolio` -- has no column in `users` and only ever lived in browser
-        localStorage, so it is deliberately absent rather than invented. If a
-        number cannot be sourced it is omitted, not zero-filled.
+        Every field is derived from data the backend actually stores. Where a figure
+        cannot be sourced the field is null, never zero-filled, so the UI can hide a
+        column instead of showing a false zero.
 
-        Two deliberate sourcing choices:
+        Sourcing choices worth knowing:
 
-        * `last_login_at` comes from `audit_logs`, NOT `auth_sessions`. Logging
-          out deletes the session row (and expired rows get purged), so
-          `auth_sessions` would report "never logged in" for anyone who signed
-          out properly -- exactly backwards.
-        * `is_online` comes from a live, unexpired `auth_sessions` row. Since
-          sessions now expire after SESSION_IDLE_MINUTES of inactivity, this
-          genuinely means "active recently" rather than "logged in this week".
+        * `last_login_at` comes from `audit_logs`, NOT `auth_sessions`. Logging out
+          deletes the session row, so `auth_sessions` would report "never logged in"
+          for anyone who signed out properly -- exactly backwards.
+        * `is_online` comes from a live, unexpired `auth_sessions` row. Because
+          sessions expire after SESSION_IDLE_MINUTES, this means "active recently".
+        * Instructor course counts now key on `lms_courses.owner_id`, not a name
+          match on the free-text `submitted_by`. The old name match silently failed
+          for every course created through the LMS Manager, which hardcoded
+          submitted_by to the literal 'Admin'.
         """
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
 
-        roles = (ROLE_SPONSOR, ROLE_JUDGE, ROLE_INSTRUCTOR)
+        roles = (ROLE_STUDENT, ROLE_SPONSOR, ROLE_JUDGE, ROLE_INSTRUCTOR)
         cur.execute(
             "SELECT id, email, full_name, role, ticket, status, phone, organization, "
             "created_at, photo_file_id, doc_file_id, "
-            "COALESCE(must_change_password, FALSE), experience_level, competition_id "
+            "COALESCE(must_change_password, FALSE), experience_level, competition_id, "
+            "track, tier, sector, expertise "
             "FROM users WHERE role = ANY(%s) ORDER BY role, lower(COALESCE(full_name, email))",
             (list(roles),),
         )
         people_rows = cur.fetchall()
 
-        # Live sessions => "online now" (idle timeout makes this meaningful).
         cur.execute(
             "SELECT user_id, COUNT(*) FROM auth_sessions "
             "WHERE expires_at > CURRENT_TIMESTAMP AND user_id IS NOT NULL GROUP BY user_id"
         )
         live_sessions = {r[0]: r[1] for r in cur.fetchall()}
 
-        # Durable login history. `time` is an ISO-8601 string, so MAX() orders
-        # chronologically because that format sorts lexicographically.
         cur.execute(
             "SELECT lower(usr), MAX(time), COUNT(*) FROM audit_logs "
             "WHERE type = 'auth' AND action LIKE '% login: %' AND usr IS NOT NULL "
@@ -4915,20 +5019,27 @@ try:
         )
         logins = {r[0]: {"last": r[1], "count": r[2]} for r in cur.fetchall()}
 
-        # Instructor authorship. `lms_courses.submitted_by` is free text with no
-        # FK to users, so this is a name match -- imperfect by schema, not by
-        # choice. Flagged to the client via `courses_matched_by_name`.
+        # Instructor authorship, keyed on owner_id -- a real foreign-key-style link
+        # rather than the previous free-text name match.
         cur.execute(
-            "SELECT lower(trim(submitted_by)), COUNT(*), "
+            "SELECT owner_id, COUNT(*), "
             "COUNT(CASE WHEN approval_status = 'pending' THEN 1 END), "
+            "COUNT(CASE WHEN approval_status = 'rejected' THEN 1 END), "
             "COALESCE(SUM(COALESCE(enrolled, 0)), 0) "
-            "FROM lms_courses WHERE submitted_by IS NOT NULL AND trim(submitted_by) <> '' "
-            "GROUP BY lower(trim(submitted_by))"
+            "FROM lms_courses WHERE owner_id IS NOT NULL GROUP BY owner_id"
         )
         courses = {
-            r[0]: {"total": r[1], "pending": r[2], "enrolled": r[3]}
+            r[0]: {"total": r[1], "pending": r[2], "rejected": r[3], "enrolled": r[4]}
             for r in cur.fetchall()
         }
+
+        # Work an instructor still owes their students.
+        cur.execute(
+            "SELECT c.owner_id, COUNT(*) FROM lms_submissions s "
+            "JOIN lms_courses c ON c.id = s.course_id "
+            "WHERE s.score IS NULL AND c.owner_id IS NOT NULL GROUP BY c.owner_id"
+        )
+        awaiting_grading = {r[0]: r[1] for r in cur.fetchall()}
 
         cur.execute(
             "SELECT lower(user_email), COUNT(*) FROM support_tickets "
@@ -4937,13 +5048,57 @@ try:
         )
         open_tickets = {r[0]: r[1] for r in cur.fetchall()}
 
-        # Judging output, now that grades carry attribution. Keyed on user id
-        # (not name) because graded_by stores the id.
         cur.execute(
             "SELECT graded_by, COUNT(*), MAX(graded_at) FROM assignment_submissions "
             "WHERE graded_by IS NOT NULL AND score IS NOT NULL GROUP BY graded_by"
         )
         grading = {r[0]: {"count": r[1], "last": r[2]} for r in cur.fetchall()}
+
+        # Student learning activity, from the tables added for self-service.
+        cur.execute(
+            "SELECT student_id, COUNT(*), COALESCE(ROUND(AVG(progress_pct)), 0) "
+            "FROM lms_enrollments WHERE status = 'active' GROUP BY student_id"
+        )
+        enrolments = {r[0]: {"courses": r[1], "avg_progress": int(r[2] or 0)}
+                      for r in cur.fetchall()}
+
+        cur.execute(
+            "SELECT student_id, COUNT(*), "
+            "COUNT(CASE WHEN score IS NOT NULL THEN 1 END), "
+            "ROUND(AVG(score)) FROM lms_submissions GROUP BY student_id"
+        )
+        student_work = {
+            r[0]: {"submitted": r[1], "graded": r[2],
+                   "avg_score": int(r[3]) if r[3] is not None else None}
+            for r in cur.fetchall()
+        }
+
+        cur.execute(
+            "SELECT student_id, COUNT(*) FROM competition_registrations "
+            "WHERE status = 'registered' GROUP BY student_id"
+        )
+        comp_registrations = {r[0]: r[1] for r in cur.fetchall()}
+
+        # Sponsor money. Only VERIFIED payments count as received.
+        cur.execute(
+            "SELECT sponsor_id, COUNT(*), COALESCE(SUM(amount_pledged), 0), "
+            "COUNT(CASE WHEN status = 'active' THEN 1 END) "
+            "FROM sponsorships GROUP BY sponsor_id"
+        )
+        pledges = {r[0]: {"count": r[1], "pledged": r[2], "active": r[3]}
+                   for r in cur.fetchall()}
+
+        cur.execute(
+            "SELECT sponsor_id, "
+            "COALESCE(SUM(CASE WHEN status = 'verified' THEN amount END), 0), "
+            "COALESCE(SUM(CASE WHEN status = 'pending_verification' THEN amount END), 0), "
+            "COUNT(CASE WHEN status = 'pending_verification' THEN 1 END) "
+            "FROM sponsorship_payments GROUP BY sponsor_id"
+        )
+        sponsor_payments = {
+            r[0]: {"received": r[1], "awaiting": r[2], "awaiting_count": r[3]}
+            for r in cur.fetchall()
+        }
 
         cur.close()
         release_db_connection(conn)
@@ -4952,7 +5107,6 @@ try:
         for r in people_rows:
             uid, email, full_name, role, ticket, status_val = r[0], r[1], r[2], r[3], r[4], r[5]
             email_key = (email or "").strip().lower()
-            name_key = (full_name or "").strip().lower()
             login = logins.get(email_key)
             sessions = live_sessions.get(uid, 0)
 
@@ -4971,6 +5125,11 @@ try:
                 "must_change_password": bool(r[11]),
                 "experience_level": r[12] or "",
                 "competition_id": r[13] or "",
+                # These have real columns now, so they are no longer withheld.
+                "track": r[14] or "",
+                "tier": r[15] or "",
+                "sector": r[16] or "",
+                "expertise": r[17] or "",
                 "is_online": sessions > 0,
                 "active_sessions": sessions,
                 "last_login_at": login["last"] if login else None,
@@ -4978,20 +5137,20 @@ try:
                 "open_tickets": open_tickets.get(email_key, 0),
             }
 
-            # Course stats are instructor-only. Null (not 0) for the other roles
-            # so the UI can hide the column instead of showing a false zero.
             if role == ROLE_INSTRUCTOR:
-                c = courses.get(name_key)
+                c = courses.get(uid)
                 person["courses_authored"] = c["total"] if c else 0
                 person["courses_pending"] = c["pending"] if c else 0
+                person["courses_rejected"] = c["rejected"] if c else 0
                 person["students_reached"] = c["enrolled"] if c else 0
+                person["awaiting_grading"] = awaiting_grading.get(uid, 0)
             else:
                 person["courses_authored"] = None
                 person["courses_pending"] = None
+                person["courses_rejected"] = None
                 person["students_reached"] = None
+                person["awaiting_grading"] = None
 
-            # Judging output is meaningful for anyone who can grade. Null for
-            # sponsors, who cannot.
             if role in (ROLE_JUDGE, ROLE_INSTRUCTOR):
                 g = grading.get(uid)
                 person["submissions_graded"] = g["count"] if g else 0
@@ -4999,6 +5158,40 @@ try:
             else:
                 person["submissions_graded"] = None
                 person["last_graded_at"] = None
+
+            if role == ROLE_STUDENT:
+                e = enrolments.get(uid)
+                w = student_work.get(uid)
+                person["courses_enrolled"] = e["courses"] if e else 0
+                person["average_progress"] = e["avg_progress"] if e else 0
+                person["work_submitted"] = w["submitted"] if w else 0
+                person["work_graded"] = w["graded"] if w else 0
+                person["average_score"] = w["avg_score"] if w else None
+                person["competitions_registered"] = comp_registrations.get(uid, 0)
+            else:
+                person["courses_enrolled"] = None
+                person["average_progress"] = None
+                person["work_submitted"] = None
+                person["work_graded"] = None
+                person["average_score"] = None
+                person["competitions_registered"] = None
+
+            if role == ROLE_SPONSOR:
+                p = pledges.get(uid)
+                pay = sponsor_payments.get(uid)
+                person["pledge_count"] = p["count"] if p else 0
+                person["active_pledges"] = p["active"] if p else 0
+                person["amount_pledged"] = _money(p["pledged"] if p else 0)
+                person["amount_received"] = _money(pay["received"] if pay else 0)
+                person["amount_awaiting"] = _money(pay["awaiting"] if pay else 0)
+                person["payments_awaiting_count"] = pay["awaiting_count"] if pay else 0
+            else:
+                person["pledge_count"] = None
+                person["active_pledges"] = None
+                person["amount_pledged"] = None
+                person["amount_received"] = None
+                person["amount_awaiting"] = None
+                person["payments_awaiting_count"] = None
 
             people.append(person)
 
@@ -5018,14 +5211,241 @@ try:
         return {
             "generated_at": datetime.datetime.now(datetime.UTC).isoformat(),
             "online_window_minutes": SESSION_IDLE_MINUTES,
-            "courses_matched_by_name": True,
+            # Course ownership is now a real id link, not a name guess.
+            "courses_matched_by_name": False,
             "people": people,
             "summary": {
+                "student": _summarise(ROLE_STUDENT),
                 "sponsor": _summarise(ROLE_SPONSOR),
                 "judge": _summarise(ROLE_JUDGE),
                 "instructor": _summarise(ROLE_INSTRUCTOR),
             },
         }
+
+    # ── Personnel management actions ──────────────────────────────────
+    # The monitor was read-only: an administrator could see that somebody needed
+    # attention but had to leave for User Management to do anything about it.
+
+    class PersonnelStatusPayload(BaseModel):
+        status: str = Field(pattern="^(Active|Suspended|Inactive)$")
+        reason: str = Field(default="", max_length=500)
+
+    @app.patch("/api/admin/personnel/{user_id}/status")
+    def set_personnel_status(
+        user_id: str,
+        payload: PersonnelStatusPayload,
+        actor: dict = Depends(require_admin),
+    ):
+        """Activate, suspend or deactivate an account.
+
+        Suspending also revokes live sessions. Without that the person keeps working
+        until their idle timeout expires, which defeats the point of suspending them.
+        """
+        if user_id == actor["id"]:
+            raise HTTPException(
+                status_code=409,
+                detail="You cannot change your own account status",
+            )
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT email, role FROM users WHERE id = %s", (user_id,))
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="User not found")
+            cur.execute("UPDATE users SET status = %s WHERE id = %s", (payload.status, user_id))
+            revoked = 0
+            if payload.status != "Active":
+                cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (user_id,))
+                revoked = cur.rowcount or 0
+            cur.execute(
+                "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s,%s,%s,%s)",
+                (f"Set {row[1]} {row[0]} to {payload.status}"
+                 + (f" ({payload.reason})" if payload.reason else "")
+                 + (f"; revoked {revoked} session(s)" if revoked else ""),
+                 actor.get("email") or actor["id"],
+                 datetime.datetime.now(datetime.UTC).isoformat(), "security"),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "users"})
+        return {"id": user_id, "status": payload.status, "sessions_revoked": revoked}
+
+    @app.post("/api/admin/personnel/{user_id}/require-password-change")
+    def require_password_change(user_id: str, actor: dict = Depends(require_admin)):
+        """Force a password rotation at next sign-in, and end current sessions."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT email FROM users WHERE id = %s", (user_id,))
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="User not found")
+            cur.execute(
+                "UPDATE users SET must_change_password = TRUE WHERE id = %s", (user_id,)
+            )
+            # Existing sessions must end, otherwise the requirement only takes
+            # effect whenever they happen to sign in again.
+            cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (user_id,))
+            revoked = cur.rowcount or 0
+            cur.execute(
+                "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s,%s,%s,%s)",
+                (f"Required password change for {row[0]}; revoked {revoked} session(s)",
+                 actor.get("email") or actor["id"],
+                 datetime.datetime.now(datetime.UTC).isoformat(), "security"),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return {"id": user_id, "must_change_password": True, "sessions_revoked": revoked}
+
+    @app.post("/api/admin/personnel/{user_id}/revoke-sessions")
+    def revoke_personnel_sessions(user_id: str, actor: dict = Depends(require_admin)):
+        """Sign a person out of every device."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT email FROM users WHERE id = %s", (user_id,))
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="User not found")
+            cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (user_id,))
+            revoked = cur.rowcount or 0
+            cur.execute(
+                "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s,%s,%s,%s)",
+                (f"Revoked {revoked} session(s) for {row[0]}",
+                 actor.get("email") or actor["id"],
+                 datetime.datetime.now(datetime.UTC).isoformat(), "security"),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return {"id": user_id, "sessions_revoked": revoked}
+
+    @app.get("/api/admin/personnel/{user_id}")
+    def personnel_detail(user_id: str, _admin: dict = Depends(require_admin)):
+        """Everything the platform knows about one person, for the detail drawer.
+
+        Pulls the role-specific records rather than the summary counts: the courses
+        an instructor owns, the pledges and payments of a sponsor, a student's
+        enrolments and marks, a judge's recent scoring.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id, email, full_name, role, ticket, status, phone, organization, "
+                "created_at, bio, expertise, sector, rep_name, tier, experience_level, track "
+                "FROM users WHERE id = %s",
+                (user_id,),
+            )
+            u = cur.fetchone()
+            if not u:
+                cur.close()
+                raise HTTPException(status_code=404, detail="User not found")
+
+            detail = {
+                "id": u[0], "email": u[1], "full_name": u[2] or "", "role": u[3],
+                "ticket": u[4] or "", "status": u[5] or "Active", "phone": u[6] or "",
+                "organization": u[7] or "",
+                "created_at": str(u[8]) if u[8] else None,
+                "bio": u[9] or "", "expertise": u[10] or "", "sector": u[11] or "",
+                "rep_name": u[12] or "", "tier": u[13] or "",
+                "experience_level": u[14] or "", "track": u[15] or "",
+                "courses": [], "enrolments": [], "submissions": [],
+                "pledges": [], "payments": [], "recent_grading": [],
+            }
+            role = u[3]
+
+            if role == ROLE_INSTRUCTOR:
+                cur.execute(
+                    "SELECT id, title, approval_status, enrolled, "
+                    "(SELECT COUNT(*) FROM lms_submissions s "
+                    "  WHERE s.course_id = c.id AND s.score IS NULL) "
+                    "FROM lms_courses c WHERE owner_id = %s ORDER BY created_at DESC",
+                    (user_id,),
+                )
+                detail["courses"] = [
+                    {"id": r[0], "title": r[1], "approval_status": r[2] or "approved",
+                     "enrolled": r[3] or 0, "awaiting_grading": r[4] or 0}
+                    for r in cur.fetchall()
+                ]
+
+            if role == ROLE_STUDENT:
+                cur.execute(
+                    "SELECT c.title, e.progress_pct, e.status, e.enrolled_at "
+                    "FROM lms_enrollments e JOIN lms_courses c ON c.id = e.course_id "
+                    "WHERE e.student_id = %s ORDER BY e.enrolled_at DESC",
+                    (user_id,),
+                )
+                detail["enrolments"] = [
+                    {"course_title": r[0], "progress_pct": r[1] or 0,
+                     "status": r[2] or "active", "enrolled_at": r[3] or ""}
+                    for r in cur.fetchall()
+                ]
+                cur.execute(
+                    "SELECT a.title, s.score, s.status, s.submitted_at, a.max_score "
+                    "FROM lms_submissions s LEFT JOIN lms_assignments a ON a.id = s.assignment_id "
+                    "WHERE s.student_id = %s ORDER BY s.submitted_at DESC LIMIT 50",
+                    (user_id,),
+                )
+                detail["submissions"] = [
+                    {"assignment_title": r[0] or "Assignment", "score": r[1],
+                     "status": r[2] or "submitted", "submitted_at": r[3] or "",
+                     "max_score": r[4] if r[4] is not None else 100}
+                    for r in cur.fetchall()
+                ]
+
+            if role == ROLE_SPONSOR:
+                cur.execute(
+                    "SELECT id, tier, amount_pledged, status, created_at FROM sponsorships "
+                    "WHERE sponsor_id = %s ORDER BY created_at DESC",
+                    (user_id,),
+                )
+                detail["pledges"] = [
+                    {"id": r[0], "tier": r[1] or "", "amount_pledged": _money(r[2]),
+                     "status": r[3] or "pending",
+                     "created_at": str(r[4]) if r[4] else None}
+                    for r in cur.fetchall()
+                ]
+                cur.execute(
+                    "SELECT id, amount, method, reference, status, created_at, "
+                    "verified_by_name, rejection_reason FROM sponsorship_payments "
+                    "WHERE sponsor_id = %s ORDER BY created_at DESC",
+                    (user_id,),
+                )
+                detail["payments"] = [
+                    {"id": r[0], "amount": _money(r[1]), "method": r[2] or "",
+                     "reference": r[3] or "", "status": r[4] or "pending_verification",
+                     "created_at": str(r[5]) if r[5] else None,
+                     "verified_by_name": r[6] or "", "rejection_reason": r[7] or ""}
+                    for r in cur.fetchall()
+                ]
+
+            if role in (ROLE_JUDGE, ROLE_INSTRUCTOR):
+                cur.execute(
+                    "SELECT id, score, graded_at FROM assignment_submissions "
+                    "WHERE graded_by = %s AND score IS NOT NULL "
+                    "ORDER BY graded_at DESC LIMIT 25",
+                    (user_id,),
+                )
+                detail["recent_grading"] = [
+                    {"submission_id": r[0], "score": r[1],
+                     "graded_at": str(r[2]) if r[2] else None}
+                    for r in cur.fetchall()
+                ]
+
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return detail
 
     @app.get("/api/users/lookup")
     def lookup_user(email: str = ""):

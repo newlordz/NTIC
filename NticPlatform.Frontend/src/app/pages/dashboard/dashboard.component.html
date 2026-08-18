@@ -173,26 +173,54 @@
         </div>
 
         <!-- Instructor Portal Panel -->
+        <!-- Was bound to `activeTracks`, which was declared as [] and never assigned
+             anywhere in the codebase, so this grid was permanently empty for every
+             instructor. It now reads the courses they actually own, and the header
+             button navigates instead of being inert. -->
         <div *ngIf="activeRoleId === 'instructor'">
-          <div class="section-title">Active LMS Tracks<button class="btn btn-ghost btn-sm">View All Curriculum</button></div>
+          <div class="section-title">
+            My Courses
+            <button class="btn btn-ghost btn-sm" routerLink="/lms-manager">Open LMS Manager</button>
+          </div>
+
+          <div class="card" *ngIf="!instructorCourses.length">
+            <div class="card-body" style="text-align:center;padding:24px 18px;">
+              <span class="material-symbols-outlined" style="font-size:36px;color:var(--outline);">library_books</span>
+              <h3 style="font-size:14px;font-weight:700;margin:8px 0 4px;">No courses yet</h3>
+              <p style="font-size:12px;color:var(--on-surface-variant);margin:0 0 12px;">
+                Create a course in the LMS Manager. It goes to an administrator for review before students can enrol.
+              </p>
+              <button class="btn btn-primary btn-sm" routerLink="/lms-manager">Create a course</button>
+            </div>
+          </div>
+
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-            <div *ngFor="let track of activeTracks.slice(0, 4)" class="card" style="cursor:pointer;">
+            <div *ngFor="let track of instructorCourses.slice(0, 4)" class="card">
               <div class="card-body">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
                   <div style="width:44px;height:44px;border-radius:10px;background:var(--surface-container);display:flex;align-items:center;justify-content:center;">
-                    <span class="material-symbols-outlined" [style.color]="'var(--'+track.color+')'">{{track.icon}}</span>
+                    <span class="material-symbols-outlined" style="color:var(--primary);">{{ track.icon || 'school' }}</span>
                   </div>
-                  <span class="badge" [class]="track.status === 'Planning' ? 'primary' : 'secondary'">{{track.status}}</span>
+                  <span class="badge" [class]="track.approval_status === 'approved' ? 'secondary' : 'primary'">
+                    {{ track.approval_status | titlecase }}
+                  </span>
                 </div>
-                <h3 style="font-size:14px;font-weight:700;margin-bottom:4px;">{{track.name}}</h3>
-                <p style="font-size:12px;color:var(--on-surface-variant);margin-bottom:14px;">{{track.module}} &bull; {{track.enrolled}} enrolled</p>
+                <h3 style="font-size:14px;font-weight:700;margin-bottom:4px;">{{ track.title }}</h3>
+                <p style="font-size:12px;color:var(--on-surface-variant);margin-bottom:14px;">
+                  {{ track.track }} &bull; {{ track.enrolled_count }} enrolled
+                </p>
                 <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--on-surface-variant);margin-bottom:4px;">
-                  <span>Cohort Completion</span>
-                  <span style="font-weight:700;" [style.color]="'var(--'+track.color+')'">{{track.completion}}%</span>
+                  <span>Average progress</span>
+                  <span style="font-weight:700;color:var(--primary);">{{ track.average_progress }}%</span>
                 </div>
-                <div class="progress-bar" [class]="track.color"><div class="progress-fill" [style.width.%]="track.completion"></div></div>
-                <div style="display:flex;justify-content:flex-end;margin-top:12px;padding-top:10px;border-top:1px solid var(--outline-variant);">
-                  <button class="btn btn-ghost btn-sm">Manage</button>
+                <div class="progress-bar primary"><div class="progress-fill" [style.width.%]="track.average_progress"></div></div>
+                <p style="font-size:11.5px;color:#ef4444;margin:10px 0 0;" *ngIf="track.rejection_reason">
+                  Returned for changes: {{ track.rejection_reason }}
+                </p>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--outline-variant);">
+                  <span class="badge warning" *ngIf="track.awaiting_grading">{{ track.awaiting_grading }} to grade</span>
+                  <span *ngIf="!track.awaiting_grading" style="font-size:11.5px;color:var(--on-surface-variant);">Nothing awaiting a grade</span>
+                  <button class="btn btn-ghost btn-sm" routerLink="/lms-manager">Manage</button>
                 </div>
               </div>
             </div>
@@ -1592,11 +1620,15 @@
                 <th>Contact</th>
                 <th>Organization</th>
                 <th>Last seen</th>
-                <th>Sign-ins</th>
-                <th *ngIf="personnelTab === 'instructor'">Courses</th>
-                <th *ngIf="personnelTab === 'judge' || personnelTab === 'instructor'">Graded</th>
-                <th>Status</th>
-                <th></th>
+                  <th>Sign-ins</th>
+                  <th *ngIf="personnelTab === 'instructor'">Courses</th>
+                  <th *ngIf="personnelTab === 'judge' || personnelTab === 'instructor'">Graded</th>
+                  <!-- Real per-role columns, now that the tables behind them exist. -->
+                  <th *ngIf="personnelTab === 'student'">Learning</th>
+                  <th *ngIf="personnelTab === 'sponsor'">Pledged</th>
+                  <th *ngIf="personnelTab === 'sponsor'">Received</th>
+                  <th>Status</th>
+                  <th></th>
               </tr>
             </thead>
             <tbody>
@@ -1623,9 +1655,32 @@
                 </td>
                 <td><span class="pm-sub">{{ p.login_count || '—' }}</span></td>
                 <td *ngIf="personnelTab === 'instructor'"><span class="pm-sub">{{ personCourseLabel(p) }}</span></td>
-                <td *ngIf="personnelTab === 'judge' || personnelTab === 'instructor'">
-                  <span class="pm-sub">{{ p.submissions_graded === null ? 'n/a' : (p.submissions_graded || 'None yet') }}</span>
-                </td>
+                  <td *ngIf="personnelTab === 'judge' || personnelTab === 'instructor'">
+                    <span class="pm-sub">{{ p.submissions_graded === null ? 'n/a' : (p.submissions_graded || 'None yet') }}</span>
+                  </td>
+                  <td *ngIf="personnelTab === 'student'">
+                    <span class="pm-sub">
+                      {{ p.courses_enrolled || 0 }} course{{ p.courses_enrolled === 1 ? '' : 's' }}
+                      <ng-container *ngIf="p.courses_enrolled"> · {{ p.average_progress }}%</ng-container>
+                    </span>
+                    <div class="pm-sub" *ngIf="p.work_submitted">
+                      {{ p.work_graded }}/{{ p.work_submitted }} graded<ng-container
+                        *ngIf="p.average_score !== null"> · avg {{ p.average_score }}</ng-container>
+                    </div>
+                  </td>
+                  <td *ngIf="personnelTab === 'sponsor'">
+                    <span class="pm-sub">{{ formatCedis(p.amount_pledged) }}</span>
+                    <div class="pm-sub" *ngIf="p.active_pledges">{{ p.active_pledges }} active</div>
+                  </td>
+                  <td *ngIf="personnelTab === 'sponsor'">
+                    <span class="pm-sub">{{ formatCedis(p.amount_received) }}</span>
+                    <!-- Unverified money is a claim, so it is shown separately and
+                         never folded into "received". -->
+                    <div class="pm-chip pm-chip-warn" *ngIf="p.payments_awaiting_count"
+                         style="margin-top:2px;">
+                      {{ formatCedis(p.amount_awaiting) }} to verify
+                    </div>
+                  </td>
                 <td>
                   <span class="pm-chip" [class.pm-chip-ok]="!personNeedsAttention(p)"
                                         [class.pm-chip-warn]="personNeedsAttention(p)">
@@ -1711,11 +1766,100 @@
           </div>
         </div>
 
-        <div class="pm-drawer-actions">
-          <button class="btn btn-primary btn-sm" (click)="managePersonInUserAdmin()">
-            <span class="material-symbols-outlined">manage_accounts</span>Manage in User Management
-          </button>
-        </div>
+          <!-- Role-specific records, loaded from GET /api/admin/personnel/{id}. -->
+          <div class="pm-drawer-section" *ngIf="personDetailLoading">
+            <span class="pm-sub">Loading full record…</span>
+          </div>
+
+          <div class="pm-drawer-section" *ngIf="personDetail?.courses?.length">
+            <div class="pm-drawer-section-title">Courses authored</div>
+            <div class="pm-kv" *ngFor="let c of personDetail?.courses">
+              <span>{{ c.title }}</span>
+              <span>
+                <span class="pm-chip" [class.pm-chip-ok]="c.approval_status === 'approved'"
+                                      [class.pm-chip-warn]="c.approval_status !== 'approved'">
+                  {{ c.approval_status | titlecase }}
+                </span>
+                {{ c.enrolled }} enrolled<ng-container *ngIf="c.awaiting_grading"> · {{ c.awaiting_grading }} to grade</ng-container>
+              </span>
+            </div>
+          </div>
+
+          <div class="pm-drawer-section" *ngIf="personDetail?.enrolments?.length">
+            <div class="pm-drawer-section-title">Enrolled courses</div>
+            <div class="pm-kv" *ngFor="let e of personDetail?.enrolments">
+              <span>{{ e.course_title }}</span>
+              <span>{{ e.progress_pct }}%</span>
+            </div>
+          </div>
+
+          <div class="pm-drawer-section" *ngIf="personDetail?.submissions?.length">
+            <div class="pm-drawer-section-title">Submitted work</div>
+            <div class="pm-kv" *ngFor="let s of personDetail?.submissions">
+              <span>{{ s.assignment_title }}</span>
+              <span>{{ s.score === null ? 'Awaiting grade' : s.score + '/' + s.max_score }}</span>
+            </div>
+          </div>
+
+          <div class="pm-drawer-section" *ngIf="personDetail?.pledges?.length">
+            <div class="pm-drawer-section-title">Commitments</div>
+            <div class="pm-kv" *ngFor="let pl of personDetail?.pledges">
+              <span>{{ pl.tier || 'Unspecified tier' }}</span>
+              <span>
+                {{ formatCedis(pl.amount_pledged) }}
+                <span class="pm-chip" [class.pm-chip-ok]="pl.status === 'active'"
+                                      [class.pm-chip-warn]="pl.status !== 'active'">{{ pl.status | titlecase }}</span>
+              </span>
+            </div>
+          </div>
+
+          <div class="pm-drawer-section" *ngIf="personDetail?.payments?.length">
+            <div class="pm-drawer-section-title">Payments</div>
+            <div class="pm-kv" *ngFor="let pay of personDetail?.payments">
+              <span>{{ pay.reference }}<br><small class="pm-sub">{{ pay.method }}</small></span>
+              <span>
+                {{ formatCedis(pay.amount) }}
+                <span class="pm-chip" [class.pm-chip-ok]="pay.status === 'verified'"
+                                      [class.pm-chip-warn]="pay.status !== 'verified'">
+                  {{ pay.status === 'pending_verification' ? 'To verify' : (pay.status | titlecase) }}
+                </span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Management actions. This panel was read-only, so an administrator
+               could see that somebody needed attention but had to leave for User
+               Management to act -- and could not end a session at all. -->
+          <div class="pm-drawer-section">
+            <div class="pm-drawer-section-title">Actions</div>
+            <p class="pm-drawer-note" *ngIf="personActionError"
+               style="color:#ef4444;">{{ personActionError }}</p>
+            <p class="pm-drawer-note" *ngIf="personActionNotice"
+               style="color:#10b981;">{{ personActionNotice }}</p>
+          </div>
+
+          <div class="pm-drawer-actions" style="flex-wrap:wrap;gap:8px;">
+            <button class="btn btn-subtle btn-sm" (click)="revokeSessions(p)"
+                    [disabled]="personActionBusy[p.id]" *ngIf="p.is_online">
+              <span class="material-symbols-outlined">logout</span>Sign out everywhere
+            </button>
+            <button class="btn btn-subtle btn-sm" (click)="forcePasswordChange(p)"
+                    [disabled]="personActionBusy[p.id] || p.must_change_password">
+              <span class="material-symbols-outlined">key</span>Require new password
+            </button>
+            <button class="btn btn-subtle btn-sm" (click)="setPersonStatus(p, 'Suspended')"
+                    [disabled]="personActionBusy[p.id]" *ngIf="p.status === 'Active'"
+                    style="color:#ef4444;">
+              <span class="material-symbols-outlined">block</span>Suspend
+            </button>
+            <button class="btn btn-primary btn-sm" (click)="setPersonStatus(p, 'Active')"
+                    [disabled]="personActionBusy[p.id]" *ngIf="p.status !== 'Active'">
+              <span class="material-symbols-outlined">check_circle</span>Reactivate
+            </button>
+            <button class="btn btn-subtle btn-sm" (click)="managePersonInUserAdmin()">
+              <span class="material-symbols-outlined">manage_accounts</span>Edit in User Management
+            </button>
+          </div>
       </aside>
     </div>
 
@@ -5974,6 +6118,7 @@
               </div>
 
               <div class="stm-pdetail-row">
+              <div class="stm-pdetail-row" *ngIf="partner.beneficiaries">
                 <span class="stm-pdetail-lbl">
                   <span class="material-symbols-outlined">school</span>
                   Target Beneficiaries:
@@ -5983,12 +6128,20 @@
             </div>
 
             <div class="stm-pcard-footer">
-              <span class="stm-status-pill" [class.esg-verified]="partner.esgVerified">
-                <span class="material-symbols-outlined">{{ partner.esgVerified ? 'verified' : 'hourglass_top' }}</span>
-                {{ partner.status }}
+              <!-- Was an "ESG verified" pill plus a "100% ESG Audited" tag, driven by
+                   an `esgVerified: true` literal on every hardcoded partner. There is
+                   no ESG verification model in this system, so asserting an audit
+                   status was fabrication. Replaced with the real money position. -->
+              <span class="stm-status-pill">
+                <span class="material-symbols-outlined">account_balance</span>
+                {{ partner.status | titlecase }}
               </span>
-              <span class="stm-esg-tag" *ngIf="partner.esgVerified">
-                <span class="stm-esg-dot"></span> 100% ESG Audited
+              <span class="stm-esg-tag">
+                <span class="stm-esg-dot"></span>
+                {{ partner.receivedFormatted }} received
+                <ng-container *ngIf="partner.pendingFormatted && partner.pendingFormatted !== 'GH₵ 0'">
+                  · {{ partner.pendingFormatted }} awaiting verification
+                </ng-container>
               </span>
             </div>
           </div>

@@ -257,6 +257,19 @@ export interface SponsorPayment {
   sponsor_email: string;
 }
 
+/**
+ * One confirmed partner on the public wall.
+ *
+ * Deliberately carries no money or contact data: this comes from a PUBLIC endpoint,
+ * and the wall only needs a name, a tier and a sector.
+ */
+export interface PublicPartner {
+  organization: string;
+  tier: string;
+  sector: string;
+  since: string | null;
+}
+
 /** Real ecosystem aggregates, replacing the hardcoded infographic. */
 export interface SponsorshipSummary {
   partner_count: number;
@@ -272,18 +285,23 @@ export interface SponsorshipSummary {
 }
 
 /**
- * One sponsor / judge / instructor on the personnel roster.
+ * One managed person on the personnel roster.
  *
- * Mirrors GET /api/admin/personnel. Every field is something the backend can
- * prove from its own tables. There is deliberately no `tier`, `sector`,
- * `expertise`, `payments` or `track` here -- those have no column in `users`
- * and only ever existed in browser localStorage.
+ * Every field is something the backend can prove from its own tables. `tier`,
+ * `sector`, `expertise` and `track` used to be excluded here because they had no
+ * column and existed only in browser localStorage -- they are real `users` columns
+ * now, so they are reported. Still absent, because nothing stores them: a
+ * sponsor `package` / `total`, an embedded `payments` array, an instructor
+ * `portfolio`, and `region`.
+ *
+ * Role-specific figures are NULL rather than 0 for roles they do not apply to, so
+ * the UI can hide a column instead of showing a false measurement.
  */
 export interface PersonnelPerson {
   id: string;
   email: string;
   full_name: string;
-  role: 'sponsor' | 'judge' | 'instructor';
+  role: 'student' | 'sponsor' | 'judge' | 'instructor';
   ticket: string;
   status: string;
   phone: string;
@@ -294,21 +312,69 @@ export interface PersonnelPerson {
   must_change_password: boolean;
   experience_level: string;
   competition_id: string;
+  /** Real columns as of the profile-persistence work. */
+  track: string;
+  tier: string;
+  sector: string;
+  expertise: string;
   /** A live, unexpired session exists. Means "active recently" because
-   *  sessions now expire after the idle window. */
+   *  sessions expire after the idle window. */
   is_online: boolean;
   active_sessions: number;
   /** From the audit log, so it survives signing out. Null = never logged in. */
   last_login_at: string | null;
   login_count: number;
   open_tickets: number;
-  /** Instructor-only. Null for sponsors and judges -- render "n/a", not 0. */
+  /** Instructor-only. Null for other roles -- render "n/a", not 0. */
   courses_authored: number | null;
   courses_pending: number | null;
+  courses_rejected: number | null;
   students_reached: number | null;
-  /** Graders only (judge / instructor). Null for sponsors, who cannot grade. */
+  awaiting_grading: number | null;
+  /** Graders only (judge / instructor). Null for sponsors and students. */
   submissions_graded: number | null;
   last_graded_at: string | null;
+  /** Student-only learning activity. */
+  courses_enrolled: number | null;
+  average_progress: number | null;
+  work_submitted: number | null;
+  work_graded: number | null;
+  average_score: number | null;
+  competitions_registered: number | null;
+  /** Sponsor-only money. Strings: the columns are NUMERIC and parsing to a JS
+   *  number would reintroduce float rounding. Received = VERIFIED only. */
+  pledge_count: number | null;
+  active_pledges: number | null;
+  amount_pledged: string | null;
+  amount_received: string | null;
+  amount_awaiting: string | null;
+  payments_awaiting_count: number | null;
+}
+
+/** Full record for the personnel detail drawer. */
+export interface PersonnelDetail {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  ticket: string;
+  status: string;
+  phone: string;
+  organization: string;
+  created_at: string | null;
+  bio: string;
+  expertise: string;
+  sector: string;
+  rep_name: string;
+  tier: string;
+  experience_level: string;
+  track: string;
+  courses: Array<{ id: string; title: string; approval_status: string; enrolled: number; awaiting_grading: number }>;
+  enrolments: Array<{ course_title: string; progress_pct: number; status: string; enrolled_at: string }>;
+  submissions: Array<{ assignment_title: string; score: number | null; status: string; submitted_at: string; max_score: number }>;
+  pledges: Array<{ id: string; tier: string; amount_pledged: string; status: string; created_at: string | null }>;
+  payments: Array<{ id: string; amount: string; method: string; reference: string; status: string; created_at: string | null; verified_by_name: string; rejection_reason: string }>;
+  recent_grading: Array<{ submission_id: string; score: number; graded_at: string | null }>;
 }
 
 export interface PersonnelSummary {
@@ -322,11 +388,12 @@ export interface PersonnelSummary {
 export interface PersonnelRoster {
   generated_at: string;  /** Minutes of inactivity before a session drops, i.e. what "online" means. */
   online_window_minutes: number;
-  /** Instructor course counts are matched on the free-text `submitted_by`
-   *  name because lms_courses has no FK to users. */
+  /** Now false: instructor course counts key on `lms_courses.owner_id`, a real id
+   *  link. The old free-text `submitted_by` name match silently failed for every
+   *  course created in the LMS Manager, which hardcoded it to the literal 'Admin'. */
   courses_matched_by_name: boolean;
   people: PersonnelPerson[];
-  summary: Record<'sponsor' | 'judge' | 'instructor', PersonnelSummary>;
+  summary: Record<'student' | 'sponsor' | 'judge' | 'instructor', PersonnelSummary>;
 }
 
 /** One competition submission as seen from the judging workspace. */
@@ -340,6 +407,11 @@ export interface JudgeSubmission {
   video_url: string;
   status: string;
   submitted_at: string | null;
+  /** Whether `source_code_path` can actually be opened. There is no file-serving
+   *  endpoint, so a bare filename is unreachable -- the judge UI rendered it as
+   *  inert text, which reads as a broken link. */
+  source_is_url: boolean;
+  max_score: number;
   /** Present on history entries only. */
   score?: number | null;
   feedback?: string;
@@ -678,6 +750,54 @@ export class ApiService {
   /** Real aggregates for the sponsorship ecosystem panel. */
   getSponsorshipSummary(): Observable<SponsorshipSummary> {
     return this.http.get<SponsorshipSummary>(this.apiUrl + '/sponsorships/summary');
+  }
+
+  /**
+   * Confirmed partners for the public landing page.
+   *
+   * Public endpoint. Returns organisation, tier and sector only -- no amounts or
+   * contact details -- and only for sponsorships an administrator has confirmed, so
+   * a self-declared pledge cannot publish itself onto the homepage.
+   */
+  getPublicPartners(): Observable<{ total: number; partners: PublicPartner[] }> {
+    return this.http.get<{ total: number; partners: PublicPartner[] }>(
+      this.apiUrl + '/partners'
+    );
+  }
+
+  // ── Personnel management ──────────────────────────────────────────────
+  // The monitor was read-only: an admin could see somebody needed attention but had
+  // to leave for User Management to act, and could not end a session at all.
+
+  /** Everything the platform knows about one person, for the detail drawer. */
+  getPersonnelDetail(userId: string): Observable<PersonnelDetail> {
+    return this.http.get<PersonnelDetail>(
+      `${this.apiUrl}/admin/personnel/${encodeURIComponent(userId)}`
+    );
+  }
+
+  /** Activate / suspend / deactivate. Suspending also revokes live sessions. */
+  setPersonnelStatus(userId: string, status: 'Active' | 'Suspended' | 'Inactive', reason = ''):
+      Observable<{ id: string; status: string; sessions_revoked: number }> {
+    return this.http.patch<{ id: string; status: string; sessions_revoked: number }>(
+      `${this.apiUrl}/admin/personnel/${encodeURIComponent(userId)}/status`,
+      { status, reason }
+    );
+  }
+
+  /** Force a password rotation at next sign-in, ending current sessions. */
+  requirePasswordChange(userId: string):
+      Observable<{ id: string; must_change_password: boolean; sessions_revoked: number }> {
+    return this.http.post<{ id: string; must_change_password: boolean; sessions_revoked: number }>(
+      `${this.apiUrl}/admin/personnel/${encodeURIComponent(userId)}/require-password-change`, {}
+    );
+  }
+
+  /** Sign a person out of every device without disabling the account. */
+  revokePersonnelSessions(userId: string): Observable<{ id: string; sessions_revoked: number }> {
+    return this.http.post<{ id: string; sessions_revoked: number }>(
+      `${this.apiUrl}/admin/personnel/${encodeURIComponent(userId)}/revoke-sessions`, {}
+    );
   }
 
   /**

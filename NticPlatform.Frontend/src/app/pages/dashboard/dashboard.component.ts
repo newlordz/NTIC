@@ -16,7 +16,7 @@ import {
 import { BrevoEmailService } from '../../services/brevo-email.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
-import { ApiService, MyEnrolledCourse, MySubmission, SponsorshipSummary, Sponsorship } from '../../services/api.service';
+import { ApiService, MyEnrolledCourse, MySubmission, SponsorshipSummary, Sponsorship, PersonnelDetail, AuthoredCourse } from '../../services/api.service';
 import { CurrentUserService } from '../../services/current-user.service';
 import type { PersonnelRoster, PersonnelPerson, PersonnelSummary } from '../../services/api.service';
 import { TimeAgoPipe } from '../../services/time-ago.pipe';
@@ -26,6 +26,11 @@ import { UserManagementComponent } from '../user-management/user-management.comp
 
 interface LandingCopyField { key: string; label: string; multiline?: boolean; }
 interface LandingCopySection { title: string; icon: string; fields: LandingCopyField[]; }
+
+/** Roles the Personnel Monitor manages. Privileged roles are excluded: those are
+ *  administered in User Management, and listing them here would conflate
+ *  operational monitoring with privilege administration. */
+type PersonnelRole = 'student' | 'sponsor' | 'judge' | 'instructor';
 
 @Component({
   selector: 'app-dashboard',
@@ -440,15 +445,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // the database can prove. Role detail the old UI implied for these people
   // (judge expertise, sponsor tier/payments, instructor portfolio) has no
   // column in `users` and is intentionally not shown.
-  personnelTab: 'sponsor' | 'judge' | 'instructor' = 'sponsor';
+  personnelTab: PersonnelRole = 'student';
   personnelRoster: PersonnelRoster | null = null;
   personnelLoading = false;
   personnelError = '';
   personnelSearch = '';
   personnelFilter: 'all' | 'online' | 'attention' | 'dormant' = 'all';
   selectedPerson: PersonnelPerson | null = null;
+  /** Full record for the open drawer, from GET /api/admin/personnel/{id}. */
+  personDetail: PersonnelDetail | null = null;
+  personDetailLoading = false;
+  /** In-flight management action, keyed by user id, so buttons can disable. */
+  personActionBusy: Record<string, boolean> = {};
+  personActionError = '';
+  personActionNotice = '';
 
-  readonly personnelTabs: { id: 'sponsor' | 'judge' | 'instructor'; label: string; icon: string }[] = [
+  readonly personnelTabs: { id: PersonnelRole; label: string; icon: string }[] = [
+    // Students were added so an administrator can manage every role from one place.
+    { id: 'student', label: 'Students', icon: 'school' },
     { id: 'sponsor', label: 'Sponsors', icon: 'handshake' },
     { id: 'judge', label: 'Judges', icon: 'gavel' },
     { id: 'instructor', label: 'Instructors', icon: 'badge' },
@@ -467,7 +481,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       error: err => {
         this.personnelLoading = false;
         // Say which failure this is. A 403 is a permissions problem, not an
-        // outage, and telling the user "could not load" for both wastes time.
+        // outage, and reporting "could not load" for both wastes time.
         this.personnelError = err?.status === 403
           ? 'Your role cannot view the personnel roster. Administrator access is required.'
           : err?.status === 401
@@ -478,11 +492,140 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  setPersonnelTab(tab: 'sponsor' | 'judge' | 'instructor'): void {
+  setPersonnelTab(tab: PersonnelRole): void {
     this.personnelTab = tab;
     this.selectedPerson = null;
+    this.personDetail = null;
     this.personnelSearch = '';
     this.personnelFilter = 'all';
+  }
+
+  /** Opens the drawer and loads the person's full record. */
+  openPerson(person: PersonnelPerson): void {
+    this.selectedPerson = person;
+    this.personDetail = null;
+    this.personActionError = '';
+    this.personActionNotice = '';
+    this.personDetailLoading = true;
+    this.apiService.getPersonnelDetail(person.id).subscribe({
+      next: detail => {
+        this.personDetail = detail;
+        this.personDetailLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.personDetailLoading = false;
+        this.personActionError = 'Could not load the full record for this person.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  closePerson(): void {
+    this.selectedPerson = null;
+    this.personDetail = null;
+    this.personActionError = '';
+    this.personActionNotice = '';
+  }
+
+  // ── Management actions ─────────────────────────────────────────────
+  // The monitor was read-only: an administrator could see that somebody needed
+  // attention but had to leave for User Management to do anything, and had no way
+  // at all to end a session or force a password rotation.
+
+  async setPersonStatus(person: PersonnelPerson, status: 'Active' | 'Suspended' | 'Inactive'): Promise<void> {
+    if (this.personActionBusy[person.id]) return;
+
+    if (status !== 'Active') {
+      const ok = await this.dialogService.confirm({
+        title: status === 'Suspended' ? 'Suspend this account?' : 'Deactivate this account?',
+        message: `${person.full_name || person.email} will be signed out of every device `
+          + `immediately and will not be able to sign in again until reactivated.`,
+        confirmText: status === 'Suspended' ? 'Suspend' : 'Deactivate',
+        type: 'danger',
+      });
+      if (!ok) return;
+    }
+
+    this.personActionBusy[person.id] = true;
+    this.personActionError = '';
+    this.personActionNotice = '';
+    this.apiService.setPersonnelStatus(person.id, status).subscribe({
+      next: res => {
+        this.personActionBusy[person.id] = false;
+        this.personActionNotice = status === 'Active'
+          ? `${person.full_name || person.email} reactivated.`
+          : `${person.full_name || person.email} set to ${status}`
+            + (res.sessions_revoked ? `; ${res.sessions_revoked} session(s) ended.` : '.');
+        this.loadPersonnel();
+      },
+      error: err => {
+        this.personActionBusy[person.id] = false;
+        this.personActionError = err?.status === 409
+          ? (err?.error?.detail || 'You cannot change your own account status.')
+          : err?.status === 403
+            ? 'Administrator access is required for this action.'
+            : 'Could not apply the change. Nothing was altered.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  async forcePasswordChange(person: PersonnelPerson): Promise<void> {
+    if (this.personActionBusy[person.id]) return;
+    const ok = await this.dialogService.confirm({
+      title: 'Require a new password?',
+      message: `${person.full_name || person.email} will be signed out now and must set a `
+        + `new password the next time they sign in.`,
+      confirmText: 'Require change',
+      type: 'warning',
+    });
+    if (!ok) return;
+
+    this.personActionBusy[person.id] = true;
+    this.personActionError = '';
+    this.apiService.requirePasswordChange(person.id).subscribe({
+      next: res => {
+        this.personActionBusy[person.id] = false;
+        this.personActionNotice = `${person.full_name || person.email} must change their password`
+          + (res.sessions_revoked ? `; ${res.sessions_revoked} session(s) ended.` : '.');
+        this.loadPersonnel();
+      },
+      error: () => {
+        this.personActionBusy[person.id] = false;
+        this.personActionError = 'Could not require a password change.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  async revokeSessions(person: PersonnelPerson): Promise<void> {
+    if (this.personActionBusy[person.id]) return;
+    const ok = await this.dialogService.confirm({
+      title: 'Sign out everywhere?',
+      message: `${person.full_name || person.email} will be signed out of every device. `
+        + `Their account stays active and they can sign back in.`,
+      confirmText: 'Sign out',
+      type: 'warning',
+    });
+    if (!ok) return;
+
+    this.personActionBusy[person.id] = true;
+    this.personActionError = '';
+    this.apiService.revokePersonnelSessions(person.id).subscribe({
+      next: res => {
+        this.personActionBusy[person.id] = false;
+        this.personActionNotice = res.sessions_revoked
+          ? `${res.sessions_revoked} session(s) ended.`
+          : 'That person had no active sessions.';
+        this.loadPersonnel();
+      },
+      error: () => {
+        this.personActionBusy[person.id] = false;
+        this.personActionError = 'Could not end their sessions.';
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   /** Everyone in the active role tab, before search/filter. */
@@ -510,7 +653,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.personnelRoster?.summary?.[this.personnelTab] || null;
   }
 
-  personnelTabCount(role: 'sponsor' | 'judge' | 'instructor'): number {
+  personnelTabCount(role: PersonnelRole): number {
     return this.personnelRoster?.summary?.[role]?.total ?? 0;
   }
 
@@ -518,7 +661,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
    *  before the roster endpoint has been called. */
   get personnelCount(): number {
     return this.contentService.users.filter(u =>
-      ['sponsor', 'judge', 'instructor'].includes((u as any).role)
+      ['student', 'sponsor', 'judge', 'instructor'].includes((u as any).role)
     ).length;
   }
 
@@ -551,16 +694,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return `${p.courses_authored}${pending}`;
   }
 
+  /** Template entry points. These now load the person's full record rather than
+   *  just stashing the roster row, so the drawer can show their courses, pledges,
+   *  enrolments or grading history. */
   openPersonDetail(p: PersonnelPerson): void {
-    this.selectedPerson = p;
+    this.openPerson(p);
   }
 
   closePersonDetail(): void {
-    this.selectedPerson = null;
+    this.closePerson();
   }
 
-  /** Hand off to User Management to actually change an account. This panel is
-   *  read-only on purpose: two places that both edit users would drift. */
+  /** Jump to User Management for the things this panel deliberately does not do --
+   *  changing a role, editing identity fields, or deleting an account. Status,
+   *  password rotation and session revocation are handled here directly. */
   managePersonInUserAdmin(): void {
     this.selectedPerson = null;
     this.goToSubTab('users_full');
@@ -923,6 +1070,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
         { key: 'support.card4.title', label: 'Card 4 — Title' },
         { key: 'support.card4.body', label: 'Card 4 — Body', multiline: true },
         { key: 'support.card4.link', label: 'Card 4 — Link' },
+      ],
+    },
+    {
+      // The partner WALL itself is data, not copy: it comes from GET /api/partners
+      // and lists only sponsorships an administrator has confirmed. Only the
+      // surrounding wording is editable, and until now even these headings were
+      // hardcoded in landing.component.html with no way to change them.
+      title: 'Partner Ecosystem', icon: 'handshake',
+      fields: [
+        { key: 'partners.eyebrow', label: 'Section Eyebrow' },
+        { key: 'partners.heading', label: 'Heading', multiline: true },
+        { key: 'partners.cta', label: 'Call-to-action Button' },
+        { key: 'partners.empty', label: 'Text shown when no partners are confirmed', multiline: true },
       ],
     },
     {
@@ -1720,8 +1880,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
           pendingFormatted: this.formatCedis(sp.amount_pending),
           beneficiaries: '',
           status: sp.status,
-          // There is no ESG verification model, so this is no longer asserted.
-          esgVerified: false,
         })),
       brands: this.allSponsorships
         .filter(sp => (sp.tier || 'Unspecified') === t.tier)
@@ -1859,17 +2017,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // Role-Specific Data for other roles
   //
   // Deleted from here: `enrolledTracks`, `selectedCourseLeaderboardTrack`,
-  // `courseCycleLeaderboards` and the `activeCourseLeaderboardList` getter. All
-  // four were declared and then never assigned anywhere in the codebase, so the
-  // panels bound to them ("My Enrolled Courses & Tracks", "My Selected Course
-  // Leaderboard") were permanently empty for every student, complete with a
-  // heading advertising a scoring formula nothing computed. Replaced by
-  // `studentEnrolments` / `studentRecentSubmissions`, which hold real server data.
+  // `courseCycleLeaderboards`, the `activeCourseLeaderboardList` getter, plus
+  // `activeTracks` and `milestoneActivity`. Every one was declared and then never
+  // assigned anywhere in the codebase, so the panels bound to them ("My Enrolled
+  // Courses & Tracks", "My Selected Course Leaderboard", "Active LMS Tracks") were
+  // permanently empty for every user, one of them under a heading advertising a
+  // scoring formula nothing computed.
   //
-  // `activeTracks` and `milestoneActivity` are the instructor-side equivalents and
-  // are still unassigned -- they are addressed in the instructor phase.
-  activeTracks: any[] = [];
-  milestoneActivity: any[] = [];
+  // Replaced by real server state: `studentEnrolments`,
+  // `studentRecentSubmissions` and `instructorCourses`.
+
+  /** Courses the signed-in instructor owns, from GET /api/lms/my-courses. */
+  instructorCourses: AuthoredCourse[] = [];
+
+  loadInstructorCourses(): void {
+    if (this.activeRoleId !== 'instructor') return;
+    this.apiService.getMyAuthoredCourses().subscribe({
+      next: rows => { this.instructorCourses = rows || []; this.cdr.markForCheck(); },
+      // Leave the list empty rather than showing placeholder cards.
+      error: () => (this.instructorCourses = []),
+    });
+  }
 
   isUserOnline(email: string): boolean {
     if (!email || !this.authSessions || this.authSessions.length === 0) return false;
@@ -2038,6 +2206,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.loadDashboardData();
         this.loadStudentSummary();
         this.loadSponsorSummary();
+        this.loadInstructorCourses();
         this.cdr.markForCheck();
       }
     });

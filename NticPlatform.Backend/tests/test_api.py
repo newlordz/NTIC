@@ -1954,11 +1954,45 @@ class TestPersonnelRoster:
         resp = client.get("/api/admin/personnel", headers=self._auth(judge_token))
         assert resp.status_code == 403, "a judge could read the full personnel roster"
 
-    def test_returns_only_the_three_monitored_roles(self, client, admin_token):
+    def test_returns_only_the_managed_roles(self, client, admin_token):
         data = self._fetch(client, admin_token)
         roles = {p["role"] for p in data["people"]}
-        assert roles <= {"sponsor", "judge", "instructor"}
-        assert set(data["summary"]) == {"sponsor", "judge", "instructor"}
+        # Students were added so an administrator can manage every role from one
+        # place. Internal/privileged roles stay out: those belong in User
+        # Management, and listing them here would mix operational monitoring with
+        # privilege administration.
+        assert roles <= {"student", "sponsor", "judge", "instructor"}
+        assert set(data["summary"]) == {"student", "sponsor", "judge", "instructor"}
+
+    def test_excludes_privileged_roles(self, client, admin_token):
+        data = self._fetch(client, admin_token)
+        roles = {p["role"] for p in data["people"]}
+        assert not roles & {"super_admin", "admin", "support_admin", "content_manager"}
+
+    def test_includes_a_newly_created_student(self, client, admin_token):
+        email = self._make_user(client, admin_token, "student", "Roster Student")
+        person = self._find(self._fetch(client, admin_token), email)
+        assert person is not None
+        assert person["role"] == "student"
+        # Learning figures start at a real zero, not null: a student genuinely has
+        # zero enrolments, whereas a sponsor has no concept of one.
+        assert person["courses_enrolled"] == 0
+        assert person["work_submitted"] == 0
+        assert person["competitions_registered"] == 0
+
+    def test_student_learning_fields_are_null_for_others(self, client, admin_token):
+        data = self._fetch(client, admin_token)
+        for person in data["people"]:
+            if person["role"] != "student":
+                assert person["courses_enrolled"] is None
+                assert person["average_score"] is None
+
+    def test_sponsor_money_fields_are_null_for_others(self, client, admin_token):
+        data = self._fetch(client, admin_token)
+        for person in data["people"]:
+            if person["role"] != "sponsor":
+                assert person["amount_pledged"] is None
+                assert person["amount_received"] is None
 
     def test_includes_a_newly_created_instructor(self, client, admin_token):
         email = self._make_user(client, admin_token, "instructor", "Roster Instructor")
@@ -2018,15 +2052,46 @@ class TestPersonnelRoster:
                 assert all(person[f] is None for f in self.ROLE_FIELDS), person["role"]
 
     def test_does_not_fabricate_absent_role_detail(self, client, admin_token):
-        """judge expertise / sponsor tier, sector, payments have no column in
-        `users` -- they only ever existed in localStorage. They must not be
-        served as if the backend knew them."""
+        """The roster must only report what the schema can prove.
+
+        This originally forbade `tier`, `sector`, `expertise` and `track` too, because
+        at the time they had no column and existed only in browser localStorage. They
+        are real `users` columns now, so serving them is a measurement rather than an
+        invention.
+
+        Still forbidden are the fields the old UI displayed that have no column
+        anywhere: a sponsor's `package` / `total`, an embedded `payments` array, an
+        instructor `portfolio`, and `region`.
+        """
         data = self._fetch(client, admin_token)
-        forbidden = {"tier", "sector", "package", "payments", "total",
-                     "expertise", "bio", "track", "portfolio", "region"}
+        forbidden = {"package", "payments", "total", "portfolio", "region"}
         for person in data["people"]:
             leaked = forbidden & set(person)
             assert not leaked, f"roster invented fields with no column: {leaked}"
+
+    def test_reports_role_detail_that_now_has_a_column(self, client, admin_token):
+        """Counterpart to the test above: these became real columns, so withholding
+        them would hide data the backend genuinely holds."""
+        data = self._fetch(client, admin_token)
+        for person in data["people"]:
+            for field in ("tier", "sector", "expertise", "track"):
+                assert field in person
+
+    def test_money_figures_are_strings_not_floats(self, client, admin_token):
+        """Sponsor amounts come from NUMERIC columns. Emitting them as JSON floats
+        would reintroduce the binary rounding the column type exists to avoid."""
+        data = self._fetch(client, admin_token)
+        for person in data["people"]:
+            if person["role"] == "sponsor":
+                assert isinstance(person["amount_pledged"], str)
+                assert isinstance(person["amount_received"], str)
+
+    def test_course_ownership_is_no_longer_a_name_guess(self, client, admin_token):
+        """Instructor course counts used to match on the free-text `submitted_by`,
+        which the LMS Manager hardcoded to 'Admin' -- so a real instructor's courses
+        never counted. They now key on owner_id."""
+        data = self._fetch(client, admin_token)
+        assert data["courses_matched_by_name"] is False
 
     def test_online_window_is_the_real_idle_policy(self, client, admin_token):
         from app.security import SESSION_IDLE_MINUTES
@@ -3939,3 +4004,517 @@ class TestSponsorshipsAndPayments:
 
     def test_summary_needs_authentication(self, client):
         assert client.get("/api/sponsorships/summary").status_code == 401
+
+class TestJudgeScoreRevision:
+    """Revising a score, and protecting another judge's mark.
+
+    Two defects: the queue was `score IS NULL` only and history was read-only, so a
+    judge who mistyped a score had no way to correct it. Meanwhile the grade endpoint
+    let ANY judge overwrite ANY existing score with no protection at all, which makes
+    a scoring dispute impossible to resolve. `score` was also an unbounded int.
+    """
+
+    PASSWORD = "Bq2*lanternKeep"
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _user(self, client, admin_token, role, name):
+        email = f"{role}-{uuid.uuid4().hex[:8]}@rev.test"
+        resp = client.post("/api/users", headers=self._auth(admin_token), json={
+            "email": email, "full_name": name, "role": role, "password": self.PASSWORD,
+        })
+        assert resp.status_code in (200, 201), resp.text
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": self.PASSWORD})
+        assert login.status_code == 200, login.text
+        return login.json()["token"], email
+
+    def _submission(self, client, admin_token, source="entry.py"):
+        student = client.post("/api/students", headers=self._auth(admin_token), json={
+            "first_name": "Kofi", "last_name": "Test",
+            "email": f"sub-{uuid.uuid4().hex[:8]}@rev.test", "track": "Coding",
+        })
+        assert student.status_code in (200, 201), student.text
+        resp = client.post("/api/submissions", headers=self._auth(admin_token), json={
+            "student_id": student.json()["id"], "source_code_path": source, "video_url": "",
+        })
+        assert resp.status_code in (200, 201), resp.text
+        return resp.json()["id"]
+
+    def test_judge_can_score(self, client, admin_token):
+        token, _e = self._user(client, admin_token, "judge", "Judge One")
+        sub = self._submission(client, admin_token)
+        assert client.patch(f"/api/submissions/{sub}/grade", headers=self._auth(token),
+                            json={"score": 70}).status_code == 200
+
+    def test_judge_can_revise_their_own_score(self, client, admin_token):
+        """A mistyped score had no correction path: the queue excludes scored work
+        and history was read-only."""
+        token, _e = self._user(client, admin_token, "judge", "Judge One")
+        sub = self._submission(client, admin_token)
+        client.patch(f"/api/submissions/{sub}/grade", headers=self._auth(token),
+                     json={"score": 40})
+        resp = client.patch(f"/api/submissions/{sub}/grade", headers=self._auth(token),
+                            json={"score": 85, "feedback": "Re-checked the edge cases."})
+        assert resp.status_code == 200, resp.text
+        history = client.get("/api/judge/history", headers=self._auth(token)).json()
+        mine = next(g for g in history["graded"] if g["id"] == sub)
+        assert mine["score"] == 85
+        assert mine["feedback"] == "Re-checked the edge cases."
+
+    def test_judge_cannot_overwrite_another_judges_score(self, client, admin_token):
+        """The integrity hole: any judge could silently replace another's mark."""
+        a_token, _a = self._user(client, admin_token, "judge", "Judge A")
+        b_token, _b = self._user(client, admin_token, "judge", "Judge B")
+        sub = self._submission(client, admin_token)
+        assert client.patch(f"/api/submissions/{sub}/grade", headers=self._auth(a_token),
+                            json={"score": 60}).status_code == 200
+        resp = client.patch(f"/api/submissions/{sub}/grade", headers=self._auth(b_token),
+                            json={"score": 95})
+        assert resp.status_code == 409
+        assert "Judge A" in resp.json()["detail"]
+
+    def test_the_original_score_survives_a_blocked_overwrite(self, client, admin_token):
+        a_token, _a = self._user(client, admin_token, "judge", "Judge A")
+        b_token, _b = self._user(client, admin_token, "judge", "Judge B")
+        sub = self._submission(client, admin_token)
+        client.patch(f"/api/submissions/{sub}/grade", headers=self._auth(a_token),
+                     json={"score": 60})
+        client.patch(f"/api/submissions/{sub}/grade", headers=self._auth(b_token),
+                     json={"score": 95})
+        history = client.get("/api/judge/history", headers=self._auth(a_token)).json()
+        assert next(g for g in history["graded"] if g["id"] == sub)["score"] == 60
+
+    def test_admin_can_override_a_judges_score(self, client, admin_token):
+        """Someone must be able to settle a dispute."""
+        token, _e = self._user(client, admin_token, "judge", "Judge A")
+        sub = self._submission(client, admin_token)
+        client.patch(f"/api/submissions/{sub}/grade", headers=self._auth(token),
+                     json={"score": 60})
+        assert client.patch(f"/api/submissions/{sub}/grade", headers=self._auth(admin_token),
+                            json={"score": 75}).status_code == 200
+
+    def test_revision_is_audited_with_the_previous_score(self, client, admin_token):
+        """Without the old value in the record, a change cannot be reconstructed."""
+        token, email = self._user(client, admin_token, "judge", "Judge One")
+        sub = self._submission(client, admin_token)
+        client.patch(f"/api/submissions/{sub}/grade", headers=self._auth(token),
+                     json={"score": 30})
+        client.patch(f"/api/submissions/{sub}/grade", headers=self._auth(token),
+                     json={"score": 90})
+        logs = client.get("/api/audit-logs", headers=self._auth(admin_token)).json()
+        revisions = [l for l in logs
+                     if "revised" in (l.get("action") or "") and sub in (l.get("action") or "")]
+        assert revisions
+        assert "was 30" in revisions[0]["action"]
+
+    def test_score_above_the_maximum_is_rejected(self, client, admin_token):
+        """`score` was an unbounded int, so 9999 would skew every average."""
+        token, _e = self._user(client, admin_token, "judge", "Judge One")
+        sub = self._submission(client, admin_token)
+        assert client.patch(f"/api/submissions/{sub}/grade", headers=self._auth(token),
+                            json={"score": 9999}).status_code == 422
+
+    def test_negative_score_is_rejected(self, client, admin_token):
+        token, _e = self._user(client, admin_token, "judge", "Judge One")
+        sub = self._submission(client, admin_token)
+        assert client.patch(f"/api/submissions/{sub}/grade", headers=self._auth(token),
+                            json={"score": -5}).status_code == 422
+
+    def test_queue_reports_whether_the_artifact_is_reachable(self, client, admin_token):
+        """A bare filename cannot be opened -- there is no file-serving endpoint. The
+        judge UI rendered it as inert text, which reads as a broken link."""
+        token, _e = self._user(client, admin_token, "judge", "Judge One")
+        self._submission(client, admin_token, source="entry.py")
+        queue = client.get("/api/judge/queue", headers=self._auth(token)).json()
+        filenames = [s for s in queue["submissions"] if s["source_code_path"] == "entry.py"]
+        assert filenames
+        assert filenames[0]["source_is_url"] is False
+
+    def test_queue_flags_a_real_url_as_linkable(self, client, admin_token):
+        token, _e = self._user(client, admin_token, "judge", "Judge One")
+        self._submission(client, admin_token, source="https://github.test/entry")
+        queue = client.get("/api/judge/queue", headers=self._auth(token)).json()
+        urls = [s for s in queue["submissions"]
+                if s["source_code_path"] == "https://github.test/entry"]
+        assert urls
+        assert urls[0]["source_is_url"] is True
+
+    def test_queue_exposes_the_score_maximum(self, client, admin_token):
+        token, _e = self._user(client, admin_token, "judge", "Judge One")
+        self._submission(client, admin_token)
+        queue = client.get("/api/judge/queue", headers=self._auth(token)).json()
+        assert queue["submissions"][0]["max_score"] == 100
+
+
+class TestPersonnelManagement:
+    """Managing people from the Personnel Monitor.
+
+    The monitor was read-only: an administrator could see that somebody needed
+    attention but had to leave for User Management to act, and there was no way at
+    all to end a session or force a password rotation.
+    """
+
+    PASSWORD = "Nf6@templeGrove"
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _user(self, client, admin_token, role="judge", name="Managed Person"):
+        email = f"mng-{uuid.uuid4().hex[:8]}@pm.test"
+        resp = client.post("/api/users", headers=self._auth(admin_token), json={
+            "email": email, "full_name": name, "role": role, "password": self.PASSWORD,
+        })
+        assert resp.status_code in (200, 201), resp.text
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": self.PASSWORD})
+        assert login.status_code == 200, login.text
+        return login.json()["token"], email, resp.json().get("id")
+
+    def _person(self, client, admin_token, email):
+        data = client.get("/api/admin/personnel", headers=self._auth(admin_token)).json()
+        return next((p for p in data["people"]
+                     if (p["email"] or "").lower() == email.lower()), None)
+
+    # ── suspend / reactivate ────────────────────────────────────────────
+
+    def test_admin_can_suspend_an_account(self, client, admin_token):
+        token, email, uid = self._user(client, admin_token)
+        resp = client.patch(f"/api/admin/personnel/{uid}/status",
+                            headers=self._auth(admin_token),
+                            json={"status": "Suspended", "reason": "Policy breach"})
+        assert resp.status_code == 200, resp.text
+        assert self._person(client, admin_token, email)["status"] == "Suspended"
+
+    def test_suspending_revokes_live_sessions(self, client, admin_token):
+        """Without this the person keeps working until their idle timeout expires,
+        which defeats the point of suspending them."""
+        token, email, uid = self._user(client, admin_token)
+        # Session is live right now.
+        assert client.get("/api/users/me", headers=self._auth(token)).status_code == 200
+        resp = client.patch(f"/api/admin/personnel/{uid}/status",
+                            headers=self._auth(admin_token), json={"status": "Suspended"})
+        assert resp.json()["sessions_revoked"] >= 1
+        assert client.get("/api/users/me", headers=self._auth(token)).status_code == 401
+
+    def test_suspended_account_cannot_log_back_in(self, client, admin_token):
+        token, email, uid = self._user(client, admin_token)
+        client.patch(f"/api/admin/personnel/{uid}/status",
+                     headers=self._auth(admin_token), json={"status": "Suspended"})
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        assert client.post("/api/login", json={
+            "email": email, "password": self.PASSWORD}).status_code in (401, 403)
+
+    def test_admin_can_reactivate(self, client, admin_token):
+        token, email, uid = self._user(client, admin_token)
+        client.patch(f"/api/admin/personnel/{uid}/status",
+                     headers=self._auth(admin_token), json={"status": "Suspended"})
+        client.patch(f"/api/admin/personnel/{uid}/status",
+                     headers=self._auth(admin_token), json={"status": "Active"})
+        assert self._person(client, admin_token, email)["status"] == "Active"
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        assert client.post("/api/login", json={
+            "email": email, "password": self.PASSWORD}).status_code == 200
+
+    def test_admin_cannot_suspend_themselves(self, client, admin_token):
+        """A self-lockout would need database access to undo."""
+        me = client.get("/api/users/me", headers=self._auth(admin_token)).json()
+        resp = client.patch(f"/api/admin/personnel/{me['id']}/status",
+                            headers=self._auth(admin_token), json={"status": "Suspended"})
+        assert resp.status_code == 409
+
+    def test_invalid_status_is_rejected(self, client, admin_token):
+        _t, _e, uid = self._user(client, admin_token)
+        assert client.patch(f"/api/admin/personnel/{uid}/status",
+                            headers=self._auth(admin_token),
+                            json={"status": "Deleted"}).status_code == 422
+
+    def test_status_change_is_audited(self, client, admin_token):
+        _t, email, uid = self._user(client, admin_token)
+        client.patch(f"/api/admin/personnel/{uid}/status",
+                     headers=self._auth(admin_token),
+                     json={"status": "Suspended", "reason": "Spam"})
+        logs = client.get("/api/audit-logs", headers=self._auth(admin_token)).json()
+        assert any(email in (l.get("action") or "") and "Suspended" in (l.get("action") or "")
+                   for l in logs)
+
+    def test_non_admin_cannot_change_status(self, client, admin_token):
+        victim_token, _ve, victim_id = self._user(client, admin_token, "judge")
+        attacker_token, _ae, _aid = self._user(client, admin_token, "instructor")
+        assert client.patch(f"/api/admin/personnel/{victim_id}/status",
+                            headers=self._auth(attacker_token),
+                            json={"status": "Suspended"}).status_code == 403
+
+    def test_unknown_user_is_404(self, client, admin_token):
+        assert client.patch("/api/admin/personnel/nope/status",
+                            headers=self._auth(admin_token),
+                            json={"status": "Active"}).status_code == 404
+
+    # ── force password change ───────────────────────────────────────────
+
+    def test_admin_can_require_a_password_change(self, client, admin_token):
+        token, email, uid = self._user(client, admin_token)
+        resp = client.post(f"/api/admin/personnel/{uid}/require-password-change",
+                           headers=self._auth(admin_token))
+        assert resp.status_code == 200, resp.text
+        assert self._person(client, admin_token, email)["must_change_password"] is True
+
+    def test_requiring_a_password_change_ends_sessions(self, client, admin_token):
+        """Otherwise the requirement only bites whenever they next happen to sign in."""
+        token, _e, uid = self._user(client, admin_token)
+        assert client.get("/api/users/me", headers=self._auth(token)).status_code == 200
+        resp = client.post(f"/api/admin/personnel/{uid}/require-password-change",
+                           headers=self._auth(admin_token))
+        assert resp.json()["sessions_revoked"] >= 1
+        assert client.get("/api/users/me", headers=self._auth(token)).status_code == 401
+
+    def test_non_admin_cannot_force_a_password_change(self, client, admin_token):
+        _vt, _ve, victim_id = self._user(client, admin_token, "judge")
+        attacker_token, _ae, _aid = self._user(client, admin_token, "sponsor")
+        assert client.post(f"/api/admin/personnel/{victim_id}/require-password-change",
+                           headers=self._auth(attacker_token)).status_code == 403
+
+    # ── revoke sessions ─────────────────────────────────────────────────
+
+    def test_admin_can_sign_someone_out_everywhere(self, client, admin_token):
+        token, _e, uid = self._user(client, admin_token)
+        assert client.get("/api/users/me", headers=self._auth(token)).status_code == 200
+        resp = client.post(f"/api/admin/personnel/{uid}/revoke-sessions",
+                           headers=self._auth(admin_token))
+        assert resp.json()["sessions_revoked"] >= 1
+        assert client.get("/api/users/me", headers=self._auth(token)).status_code == 401
+
+    def test_revoking_does_not_disable_the_account(self, client, admin_token):
+        """Signing someone out is not the same as suspending them."""
+        token, email, uid = self._user(client, admin_token)
+        client.post(f"/api/admin/personnel/{uid}/revoke-sessions",
+                    headers=self._auth(admin_token))
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        assert client.post("/api/login", json={
+            "email": email, "password": self.PASSWORD}).status_code == 200
+
+    # ── detail drawer ───────────────────────────────────────────────────
+
+    def test_detail_returns_the_person(self, client, admin_token):
+        _t, email, uid = self._user(client, admin_token, "judge", "Detail Judge")
+        detail = client.get(f"/api/admin/personnel/{uid}",
+                            headers=self._auth(admin_token)).json()
+        assert detail["email"] == email
+        assert detail["full_name"] == "Detail Judge"
+
+    def test_detail_lists_an_instructors_courses(self, client, admin_token):
+        token, _e, uid = self._user(client, admin_token, "instructor", "Detail Instructor")
+        client.post("/api/lms/courses", headers=self._auth(token),
+                    json={"title": "Detail Course", "modules": 2})
+        detail = client.get(f"/api/admin/personnel/{uid}",
+                            headers=self._auth(admin_token)).json()
+        assert [c["title"] for c in detail["courses"]] == ["Detail Course"]
+        assert detail["courses"][0]["approval_status"] == "pending"
+
+    def test_detail_lists_a_sponsors_pledges_and_payments(self, client, admin_token):
+        token, _e, uid = self._user(client, admin_token, "sponsor", "Detail Sponsor")
+        pledge = client.post("/api/sponsorships", headers=self._auth(token),
+                             json={"amount_pledged": "4200.50", "tier": "Silver"}).json()["id"]
+        client.post(f"/api/sponsorships/{pledge}/payments", headers=self._auth(token),
+                    json={"amount": "1200.25", "reference": "TXN-DETAIL"})
+        detail = client.get(f"/api/admin/personnel/{uid}",
+                            headers=self._auth(admin_token)).json()
+        assert detail["pledges"][0]["amount_pledged"] == "4200.50"
+        assert detail["payments"][0]["reference"] == "TXN-DETAIL"
+        # Still a claim, not money received.
+        assert detail["payments"][0]["status"] == "pending_verification"
+
+    def test_detail_lists_a_students_enrolments(self, client, admin_token):
+        # An instructor publishes a course for the student to join.
+        inst_token, _ie, _iid = self._user(client, admin_token, "instructor", "Course Owner")
+        course = client.post("/api/lms/courses", headers=self._auth(inst_token),
+                             json={"title": "Detail Track", "modules": 1}).json()["id"]
+        client.patch(f"/api/lms/courses/{course}/moderate",
+                     headers=self._auth(admin_token), json={"approve": True})
+
+        stu_token, _se, stu_id = self._user(client, admin_token, "student", "Detail Student")
+        client.post("/api/lms/enrollments", headers=self._auth(stu_token),
+                    json={"course_id": course})
+        detail = client.get(f"/api/admin/personnel/{stu_id}",
+                            headers=self._auth(admin_token)).json()
+        assert [e["course_title"] for e in detail["enrolments"]] == ["Detail Track"]
+
+    def test_detail_requires_admin(self, client, admin_token):
+        _vt, _ve, victim_id = self._user(client, admin_token, "judge")
+        attacker_token, _ae, _aid = self._user(client, admin_token, "student")
+        assert client.get(f"/api/admin/personnel/{victim_id}",
+                          headers=self._auth(attacker_token)).status_code == 403
+
+    def test_detail_unknown_user_is_404(self, client, admin_token):
+        assert client.get("/api/admin/personnel/nope",
+                          headers=self._auth(admin_token)).status_code == 404
+
+class TestPublicPartnerWall:
+    """GET /api/partners -- the public landing-page partner wall.
+
+    Replaces a hardcoded wall of brand cards in landing.component.html (MTN, Tullow,
+    GCB, Fidelity, Stanbic, Voltic, Coca-Cola, HP, EPP, Printex) with tier pills like
+    "In-Kind - 1,500 Packs Water". None of it had a source, so the homepage named
+    partners the platform had no record of.
+
+    This endpoint is PUBLIC, so what it withholds matters as much as what it returns.
+    """
+
+    PASSWORD = "Cx4!beaconRise"
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _sponsor(self, client, admin_token, org):
+        email = f"pw-{uuid.uuid4().hex[:8]}@partner.test"
+        resp = client.post("/api/users", headers=self._auth(admin_token), json={
+            "email": email, "full_name": org, "role": "sponsor", "password": self.PASSWORD,
+        })
+        assert resp.status_code in (200, 201), resp.text
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        token = client.post("/api/login", json={
+            "email": email, "password": self.PASSWORD}).json()["token"]
+        client.patch("/api/users/me", headers=self._auth(token), json={"organization": org})
+        return token, email
+
+    def _pledge(self, client, token, tier="Gold", sector="Technology", amount="10000.00"):
+        resp = client.post("/api/sponsorships", headers=self._auth(token), json={
+            "tier": tier, "sector": sector, "amount_pledged": amount,
+        })
+        assert resp.status_code == 201, resp.text
+        return resp.json()["id"]
+
+    def _names(self, client):
+        resp = client.get("/api/partners")
+        assert resp.status_code == 200, resp.text
+        return [p["organization"] for p in resp.json()["partners"]]
+
+    def test_endpoint_is_public(self, client):
+        """It feeds the homepage, which anonymous visitors see."""
+        assert client.get("/api/partners").status_code == 200
+
+    def test_unconfirmed_pledge_is_not_published(self, client, admin_token):
+        """The core protection: anyone with a sponsor account could otherwise
+        publish themselves onto the homepage as an official partner."""
+        org = f"Unconfirmed Co {uuid.uuid4().hex[:4]}"
+        token, _e = self._sponsor(client, admin_token, org)
+        self._pledge(client, token)
+        assert org not in self._names(client)
+
+    def test_confirmed_pledge_is_published(self, client, admin_token):
+        org = f"Confirmed Co {uuid.uuid4().hex[:4]}"
+        token, _e = self._sponsor(client, admin_token, org)
+        pledge = self._pledge(client, token)
+        client.patch(f"/api/sponsorships/{pledge}/status",
+                     headers=self._auth(admin_token), json={"status": "active"})
+        assert org in self._names(client)
+
+    def test_cancelled_partner_is_removed(self, client, admin_token):
+        org = f"Cancelled Co {uuid.uuid4().hex[:4]}"
+        token, _e = self._sponsor(client, admin_token, org)
+        pledge = self._pledge(client, token)
+        client.patch(f"/api/sponsorships/{pledge}/status",
+                     headers=self._auth(admin_token), json={"status": "active"})
+        assert org in self._names(client)
+        client.patch(f"/api/sponsorships/{pledge}/status",
+                     headers=self._auth(admin_token), json={"status": "cancelled"})
+        assert org not in self._names(client)
+
+    def test_completed_partner_stays_credited(self, client, admin_token):
+        """A finished sponsorship was still real; removing them would erase history."""
+        org = f"Completed Co {uuid.uuid4().hex[:4]}"
+        token, _e = self._sponsor(client, admin_token, org)
+        pledge = self._pledge(client, token)
+        client.patch(f"/api/sponsorships/{pledge}/status",
+                     headers=self._auth(admin_token), json={"status": "completed"})
+        assert org in self._names(client)
+
+    def test_no_money_or_contact_data_is_exposed(self, client, admin_token):
+        """Amounts, emails and payment state are commercial data. This is a public
+        endpoint, so leaking them would publish every sponsor's finances."""
+        org = f"Private Co {uuid.uuid4().hex[:4]}"
+        token, email = self._sponsor(client, admin_token, org)
+        pledge = self._pledge(client, token, amount="987654.00")
+        client.patch(f"/api/sponsorships/{pledge}/status",
+                     headers=self._auth(admin_token), json={"status": "active"})
+
+        payload = client.get("/api/partners").json()
+        import json as _json
+        blob = _json.dumps(payload)
+        assert "987654" not in blob
+        assert email not in blob
+        for p in payload["partners"]:
+            assert set(p) == {"organization", "tier", "sector", "since"}
+
+    def test_one_logo_per_organisation(self, client, admin_token):
+        """A partner with several commitments is one logo on the wall, not three."""
+        org = f"Multi Co {uuid.uuid4().hex[:4]}"
+        token, _e = self._sponsor(client, admin_token, org)
+        for _ in range(3):
+            pledge = self._pledge(client, token)
+            client.patch(f"/api/sponsorships/{pledge}/status",
+                         headers=self._auth(admin_token), json={"status": "active"})
+        assert self._names(client).count(org) == 1
+
+    def test_platinum_is_ordered_before_gold(self, client, admin_token):
+        plat_org = f"AAA Platinum {uuid.uuid4().hex[:4]}"
+        gold_org = f"ZZZ Gold {uuid.uuid4().hex[:4]}"
+        # Deliberately alphabetically inverted, so ordering cannot pass by accident.
+        for org, tier in ((gold_org, "Gold"), (plat_org, "Platinum")):
+            token, _e = self._sponsor(client, admin_token, org)
+            pledge = self._pledge(client, token, tier=tier)
+            client.patch(f"/api/sponsorships/{pledge}/status",
+                         headers=self._auth(admin_token), json={"status": "active"})
+        names = self._names(client)
+        assert names.index(plat_org) < names.index(gold_org)
+
+    def test_total_matches_the_list(self, client):
+        payload = client.get("/api/partners").json()
+        assert payload["total"] == len(payload["partners"])
+
+    def test_missing_tier_falls_back_rather_than_blank(self, client, admin_token):
+        org = f"NoTier Co {uuid.uuid4().hex[:4]}"
+        token, _e = self._sponsor(client, admin_token, org)
+        pledge = client.post("/api/sponsorships", headers=self._auth(token), json={
+            "amount_pledged": "500.00",
+        }).json()["id"]
+        client.patch(f"/api/sponsorships/{pledge}/status",
+                     headers=self._auth(admin_token), json={"status": "active"})
+        row = next(p for p in client.get("/api/partners").json()["partners"]
+                   if p["organization"] == org)
+        assert row["tier"]
+
+
+class TestPartnerCopyIsEditable:
+    """The two partner-wall headings were hardcoded in the template, so a page
+    manager had no way to change them."""
+
+    def test_partner_copy_keys_are_seeded(self, client):
+        copy = client.get("/api/landing-copy").json()
+        for key in ("partners.eyebrow", "partners.heading", "partners.cta", "partners.empty"):
+            assert key in copy, f"{key} missing -- page manager cannot edit it"
+
+    def test_defaults_match_the_original_wording(self, client):
+        """Seeding must not silently change the live page."""
+        copy = client.get("/api/landing-copy").json()
+        assert copy["partners.eyebrow"] == "Official Corporate & Resource Ecosystem"
+        assert copy["partners.heading"] == \
+            "Powered by Ghana's Foremost Technology & Industry Leaders"
+
+    def test_a_content_manager_can_edit_partner_copy(self, client, admin_token):
+        resp = client.put("/api/landing-copy",
+                          headers={"Authorization": f"Bearer {admin_token}"},
+                          json={"partners.heading": "Backed by Industry"})
+        assert resp.status_code == 200, resp.text
+        assert client.get("/api/landing-copy").json()["partners.heading"] == "Backed by Industry"
+
+    def test_partner_copy_edit_requires_permission(self, client):
+        assert client.put("/api/landing-copy",
+                          json={"partners.heading": "Hijacked"}).status_code in (401, 403)
