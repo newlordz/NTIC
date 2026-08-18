@@ -161,8 +161,11 @@ body {
   color: var(--on-surface);
   font-size: 16px;
   line-height: 1.5;
-  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* No background-color/color transition here on purpose. Both only ever change
+     with the theme, and the View Transition cross-fade (see THEME SWITCHING below)
+     already covers that. Keeping a transition as well would double-animate: the
+     "new" snapshot gets captured while this one is still mid-flight, so the fade
+     appears to stall. */
 
   &::before {
     content: '';
@@ -176,21 +179,62 @@ body {
     background-size: 24px 24px, 100% 100%;
     background-attachment: fixed;
     opacity: 1;
-    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Same reasoning: this overlay only changes with the theme. */
   }
 }
 
-/* Coordinated Theme Switching Animation - Eliminates flicker/tearing */
-body.is-theme-transitioning,
-body.is-theme-transitioning *,
-body.is-theme-transitioning *::before,
-body.is-theme-transitioning *::after {
-  transition:
-    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color     0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    color            0.25s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow       0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  transition-delay: 0s !important;
+/* ═══════════════════════════════════════════════
+   THEME SWITCHING
+   ═══════════════════════════════════════════════
+
+   This used to be:
+
+     body.is-theme-transitioning,
+     body.is-theme-transitioning *,
+     body.is-theme-transitioning *::before,
+     body.is-theme-transitioning *::after {
+       transition: background-color, border-color, color, box-shadow !important;
+     }
+
+   which is why switching theme was janky. On a page like the dashboard that
+   selector matches thousands of elements, and `*::before` / `*::after` multiply it
+   again. Every one of them then animated FOUR properties for 300ms -- including
+   `box-shadow`, which cannot be composited and forces a blur repaint each frame.
+   Adding the class also invalidated style for the entire tree, and removing it did
+   so a second time. The result was tens of thousands of simultaneous property
+   animations for a change that is visually just a cross-fade.
+
+   The replacement animates ONE thing instead of N: the View Transitions API takes a
+   GPU snapshot of the old and new states and cross-fades them as two composited
+   layers, so cost is independent of how many elements are on screen. Browsers
+   without it get an instant swap, which is a single fast repaint -- still smooth,
+   just not animated. See ThemeService.setTheme().
+*/
+
+/* Cross-fade the page snapshot. Kept short: a theme flip should feel instant, and
+   long cross-fades read as sluggish. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  /* The two snapshots sit on top of each other, so mix-blend-mode: normal avoids
+     the washed-out double-exposure the default plus-lighter blend produces. */
+  mix-blend-mode: normal;
+}
+
+/* The outgoing snapshot fades out while the incoming one fades in. */
+::view-transition-old(root) { animation-name: theme-fade-out; }
+::view-transition-new(root) { animation-name: theme-fade-in; }
+
+@keyframes theme-fade-out { to   { opacity: 0; } }
+@keyframes theme-fade-in  { from { opacity: 0; } }
+
+/* Someone who has asked for less motion gets an instant swap. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
 }
 
 /* ═══════════════════════════════════════════════
