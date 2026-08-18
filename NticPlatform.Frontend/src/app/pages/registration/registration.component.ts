@@ -947,11 +947,11 @@ setAuthValue('activeUserEmail', email);
 
   recentStudents: any[] = [];
 
-  sponsors = [
-    { name: 'Tullow Ghana', package: 'Full Championship', tier: 'Platinum', support: 'Coding & AI', items: 'Team ×3, Equipment ×5', amount: '₵ 120,000', total: '₵ 120,000', status: 'Confirmed' },
-    { name: 'MTN Ghana Foundation', package: 'Track Sponsorship', tier: 'Platinum', support: 'Robotics & Cyber', items: 'Track ×2, Prizes ×3', amount: '₵ 80,000', total: '₵ 80,000', status: 'Confirmed' },
-    { name: 'GCB Bank PLC', package: 'Student Sponsorship', tier: 'Gold', support: 'Innovation Arena', items: 'Student ×40', amount: '₵ 40,000', total: '₵ 40,000', status: 'Confirmed' },
-  ];
+  // A hardcoded `sponsors` array of three fabricated partners (Tullow, MTN, GCB)
+  // with invented amounts and status 'Confirmed' was here. Nothing in any template
+  // rendered it -- verified by grep across the component and its HTML -- so it was
+  // dead fixture data. Real sponsorship figures now come from
+  // GET /api/sponsorships/summary.
 
   isAuthorizedUser = false;
   isPreviewModalOpen = false;

@@ -150,6 +150,19 @@ LANDING_COPY_DEFAULTS = [
     ("Support a Champion", "support.card4.body", "Share syllabus advice, volunteer offers, or platform feedback with our academic committee to guide our roadmap."),
     ("Support a Champion", "support.card4.link", "Submit Ideas"),
 
+    # ── Partner Ecosystem ───────────────────────────────────────────
+    # The partner wall itself is DATA, not copy: it is driven by
+    # GET /api/partners, which lists only sponsorships an administrator has
+    # confirmed. Only the surrounding wording is editable here -- previously even
+    # these two headings were hardcoded in landing.component.html with no way for a
+    # page manager to change them.
+    ("Partner Ecosystem", "partners.eyebrow", "Official Corporate & Resource Ecosystem"),
+    ("Partner Ecosystem", "partners.heading", "Powered by Ghana's Foremost Technology & Industry Leaders"),
+    ("Partner Ecosystem", "partners.cta", "Partner With Us"),
+    # Shown instead of the wall when no partner has been confirmed yet. Saying
+    # nothing is better than showing invented logos.
+    ("Partner Ecosystem", "partners.empty", "Partner organisations will be announced here as commitments are confirmed."),
+
     # ── Login Gateway ───────────────────────────────────────────────
     ("Login Gateway", "gateway.badge", "Accredited Portal v2.0"),
     ("Login Gateway", "gateway.heading", "NTI Championship Gateway"),

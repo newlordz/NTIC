@@ -7,7 +7,7 @@ import { ThemeService } from '../../services/theme.service';
 import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
-import { ApiService } from '../../services/api.service';
+import { ApiService, PublicPartner } from '../../services/api.service';
 import { IdleTimeoutService } from '../../services/idle-timeout.service';
 import { ChatbotComponent } from '../../chatbot/chatbot.component';
 
@@ -1062,7 +1062,72 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     this.dialogService.toast(featureName + ' is coming soon!', 'info');
   }
 
+  // ── Public partner wall ───────────────────────────────────────────────
+  // The wall used to be ~190 lines of hardcoded brand cards in the template (MTN,
+  // Tullow, GCB, Fidelity, Stanbic, Voltic, Coca-Cola, HP, EPP, Printex) with tier
+  // pills like "In-Kind · 1,500 Packs Water". None of it had a source, so the
+  // homepage credited partners the platform had no record of, and nobody could
+  // update it without editing the template.
+  //
+  // It now comes from GET /api/partners, which returns ONLY sponsorships an
+  // administrator has confirmed.
+  partners: PublicPartner[] = [];
+  partnersLoaded = false;
+
+  private loadPartners(): void {
+    this.apiService.getPublicPartners().subscribe({
+      next: res => {
+        this.partners = res?.partners || [];
+        this.partnersLoaded = true;
+      },
+      error: () => {
+        // Show the empty state rather than stale or invented logos.
+        this.partners = [];
+        this.partnersLoaded = true;
+      },
+    });
+  }
+
+  /** Groups the wall by tier so it reads as a hierarchy, not a flat logo dump. */
+  get partnerTiers(): { tier: string; partners: PublicPartner[] }[] {
+    const order = ['platinum', 'gold', 'silver', 'bronze', 'kind'];
+    const rank = (t: string) => {
+      const k = (t || '').toLowerCase();
+      const i = order.findIndex(o => k.includes(o));
+      return i === -1 ? order.length : i;
+    };
+    const groups = new Map<string, PublicPartner[]>();
+    for (const p of this.partners) {
+      const key = p.tier || 'Partner';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(p);
+    }
+    return [...groups.entries()]
+      .map(([tier, partners]) => ({ tier, partners }))
+      .sort((a, b) => rank(a.tier) - rank(b.tier));
+  }
+
+  /** Tier accent class, matched on the tier name a sponsor actually entered. */
+  partnerTierClass(tier: string): string {
+    const k = (tier || '').toLowerCase();
+    if (k.includes('platinum')) return 'pt-platinum';
+    if (k.includes('gold')) return 'pt-gold';
+    if (k.includes('silver')) return 'pt-silver';
+    if (k.includes('bronze')) return 'pt-bronze';
+    if (k.includes('kind')) return 'pt-inkind';
+    return 'pt-default';
+  }
+
+  /** Initials for the logo chip. Real logo images would need an upload service. */
+  partnerInitials(name: string): string {
+    const words = (name || '').split(/\s+/).filter(Boolean);
+    if (!words.length) return '?';
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+
   ngOnInit(): void {
+    this.loadPartners();
     if (typeof document !== 'undefined') {
       document.body.style.overflow = '';
     }

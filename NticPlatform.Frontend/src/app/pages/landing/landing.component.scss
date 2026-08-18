@@ -737,219 +737,223 @@
 /* ══════════════════════════════════════════
    PREMIER PARTNER & CORPORATE MARQUEE SECTION
 ══════════════════════════════════════════ */
-.partners-marquee-section {
-  padding: 56px 0 48px;
-  background: linear-gradient(160deg, #0a1628 0%, #0f1f3d 40%, #0d1a30 100%);
-  border-top: 1px solid rgba(212, 175, 55, 0.15);
-  border-bottom: 1px solid rgba(212, 175, 55, 0.1);
-  position: relative;
-  overflow: hidden;
+/* ── PARTNER ECOSYSTEM STRIP ─────────────────────────────────────────────
+   Replaces .partners-marquee-section (209 lines) and its marquee-scroll
+   keyframes. The old design was a full-bleed, infinitely scrolling wall of
+   large brand cards that dominated the page. This is a compact, static,
+   tier-grouped strip: roughly a third of the height, no animation, and it reads
+   as a credential rather than an advertisement.
 
-  // Subtle dot grid background
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-    background-size: 28px 28px;
-    pointer-events: none;
-  }
+   Static on purpose -- a moving logo wall is hard to read, defeats
+   prefers-reduced-motion, and forced the markup to be duplicated to fake a
+   seamless loop.
+   ───────────────────────────────────────────────────────────────────── */
+.partners-strip {
+  padding: 30px 0 34px;
+  border-top: 1px solid var(--border-color, #e2e8f0);
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-ivory, #f8fafc);
 
-  // Ambient glow
-  &::after {
-    content: '';
-    position: absolute;
-    top: -60px; left: 50%;
-    transform: translateX(-50%);
-    width: 600px; height: 200px;
-    background: radial-gradient(ellipse, rgba(0, 63, 135, 0.3) 0%, transparent 70%);
-    pointer-events: none;
-    filter: blur(40px);
-  }
-
-  .container { position: relative; z-index: 1; }
-
-  .partners-marquee-header {
+  .ps-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 36px;
+    gap: 20px;
     flex-wrap: wrap;
+    margin-bottom: 18px;
   }
 
-  .pm-eyebrow {
+  .ps-lead { min-width: 0; }
+
+  .ps-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary, #003f87);
+
+    .material-symbols-outlined { font-size: 15px; }
+  }
+
+  .ps-heading {
+    margin: 4px 0 0;
+    font-size: 17px;
+    font-weight: 750;
+    line-height: 1.3;
+    color: var(--on-surface, #0f172a);
+  }
+
+  .ps-cta {
     display: inline-flex;
     align-items: center;
     gap: 7px;
-    font-size: 10.5px;
-    font-weight: 800;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #d4af37;
-    margin-bottom: 8px;
+    padding: 8px 16px;
+    border-radius: 9px;
+    font-size: 12.5px;
+    font-weight: 650;
+    cursor: pointer;
+    white-space: nowrap;
+    color: var(--primary, #003f87);
+    background: rgba(0, 63, 135, 0.06);
+    border: 1px solid rgba(0, 63, 135, 0.16);
+    transition: background .18s, border-color .18s, transform .18s;
 
-    .material-symbols-outlined {
-      font-size: 15px;
-      color: #d4af37;
+    .material-symbols-outlined { font-size: 17px; }
+
+    &:hover {
+      background: rgba(0, 63, 135, 0.11);
+      border-color: rgba(0, 63, 135, 0.3);
+      transform: translateY(-1px);
     }
   }
 
-  .pm-heading {
-    font-size: 20px;
-    font-weight: 700;
-    color: #ffffff;
+  .ps-empty {
     margin: 0;
-    letter-spacing: -0.02em;
+    font-size: 12.5px;
+    color: var(--on-surface-variant, #64748b);
   }
 
-  .pm-become-btn {
+  /* One row per tier, so the wall reads as a hierarchy rather than a flat dump. */
+  .ps-tiers {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .ps-tier-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .ps-tier-label {
+    flex: 0 0 auto;
+    min-width: 74px;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 5px;
+    color: #fff;
+    text-align: center;
+  }
+
+  .ps-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    min-width: 0;
+  }
+
+  .ps-chip {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 10px 22px;
-    background: rgba(212, 175, 55, 0.1);
-    border: 1px solid rgba(212, 175, 55, 0.45);
+    gap: 7px;
+    padding: 5px 11px 5px 5px;
     border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #d4af37;
-    box-shadow: 0 0 20px rgba(212, 175, 55, 0.1);
-    transition: all 0.25s ease;
-    text-decoration: none;
-    white-space: nowrap;
+    background: var(--bg-white, #fff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--on-surface, #1e293b);
+    transition: border-color .18s, box-shadow .18s;
 
     &:hover {
-      background: rgba(212, 175, 55, 0.22);
-      border-color: rgba(212, 175, 55, 0.8);
-      box-shadow: 0 0 30px rgba(212, 175, 55, 0.25), 0 4px 16px rgba(0,0,0,0.3);
-      transform: translateY(-2px);
-      color: #fde047;
-
-      .material-symbols-outlined { color: #fde047; }
-    }
-
-    .material-symbols-outlined {
-      font-size: 16px;
-      color: #d4af37;
-      transition: color 0.25s ease;
+      border-color: rgba(0, 63, 135, 0.32);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.07);
     }
   }
 
-  /* ── Infinite Marquee Track ── */
-  .partners-marquee-track-container {
-    position: relative;
-    overflow: hidden;
-    padding: 8px 0;
-    width: 100%;
-    mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
-    -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
-
-    &:hover .partners-marquee-group {
-      animation-play-state: paused;
-    }
-  }
-
-  .partners-marquee-track {
-    display: flex;
-    width: max-content;
-    gap: 16px;
-  }
-
-  .partners-marquee-group {
-    display: flex;
+  /* Initials stand in for a logo. Real images would need an upload service. */
+  .ps-mark {
+    display: inline-flex;
     align-items: center;
-    gap: 16px;
-    flex-shrink: 0;
-    animation: marquee-scroll 38s linear infinite;
-    will-change: transform;
-  }
-
-  .pm-brand-card {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 12px 20px;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    white-space: nowrap;
-    cursor: default;
-
-    &:hover {
-      border-color: rgba(212, 175, 55, 0.4);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(212, 175, 55, 0.3), inset 0 1px 0 rgba(255,255,255,0.12);
-      transform: translateY(-3px) scale(1.02);
-      background: rgba(255, 255, 255, 0.09);
-    }
-  }
-
-  .pm-brand-logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-
-    .material-symbols-outlined {
-      font-size: 22px;
-      transition: transform 0.2s ease;
-    }
-
-    .pm-brand-text {
-      font-size: 13.5px;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.92);
-      letter-spacing: -0.01em;
-    }
-
-    &.mtn .material-symbols-outlined    { color: #f59e0b; }
-    &.tullow .material-symbols-outlined  { color: #2dd4bf; }
-    &.gcb .material-symbols-outlined     { color: #fbbf24; }
-    &.fidelity .material-symbols-outlined { color: #fb923c; }
-    &.stanbic .material-symbols-outlined  { color: #38bdf8; }
-    &.voltic .material-symbols-outlined   { color: #22d3ee; }
-    &.cocacola .material-symbols-outlined { color: #f43f5e; }
-    &.hp .material-symbols-outlined       { color: #94a3b8; }
-    &.epp .material-symbols-outlined      { color: #a78bfa; }
-    &.printex .material-symbols-outlined  { color: #c084fc; }
-  }
-
-  .pm-tier-pill {
-    font-size: 9px;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 10px;
     font-weight: 800;
-    padding: 4px 10px;
-    border-radius: 999px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    white-space: nowrap;
+    letter-spacing: 0.02em;
+    color: #fff;
+    flex: 0 0 auto;
+  }
 
-    &.plat {
-      background: linear-gradient(135deg, rgba(37, 99, 235, 0.25), rgba(96, 165, 250, 0.2));
-      color: #93c5fd;
-      border: 1px solid rgba(96, 165, 250, 0.4);
-      box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
-    }
-    &.gold {
-      background: linear-gradient(135deg, rgba(217, 119, 6, 0.25), rgba(245, 158, 11, 0.2));
-      color: #fcd34d;
-      border: 1px solid rgba(245, 158, 11, 0.4);
-      box-shadow: 0 0 12px rgba(245, 158, 11, 0.2);
-    }
-    &.inkind {
-      background: linear-gradient(135deg, rgba(124, 58, 237, 0.25), rgba(196, 132, 252, 0.2));
-      color: #d8b4fe;
-      border: 1px solid rgba(196, 132, 252, 0.4);
-      box-shadow: 0 0 12px rgba(168, 85, 247, 0.2);
-    }
+  .ps-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+
+  /* Tier accents. Applied to both the row label and each chip mark. */
+  .pt-platinum { background: #475569; }
+  .pt-gold     { background: #b45309; }
+  .pt-silver   { background: #64748b; }
+  .pt-bronze   { background: #92400e; }
+  .pt-inkind   { background: #7c3aed; }
+  .pt-default  { background: #0f766e; }
+
+  .ps-chip.pt-platinum .ps-mark { background: #475569; }
+  .ps-chip.pt-gold     .ps-mark { background: #b45309; }
+  .ps-chip.pt-silver   .ps-mark { background: #64748b; }
+  .ps-chip.pt-bronze   .ps-mark { background: #92400e; }
+  .ps-chip.pt-inkind   .ps-mark { background: #7c3aed; }
+  .ps-chip.pt-default  .ps-mark { background: #0f766e; }
+  /* The chip itself must not take the tier background -- only its mark does. */
+  .ps-chip.pt-platinum, .ps-chip.pt-gold, .ps-chip.pt-silver,
+  .ps-chip.pt-bronze, .ps-chip.pt-inkind, .ps-chip.pt-default {
+    background: var(--bg-white, #fff);
+  }
+
+  @media (max-width: 640px) {
+    padding: 22px 0 26px;
+
+    .ps-bar { margin-bottom: 14px; }
+    .ps-heading { font-size: 15px; }
+    .ps-cta { width: 100%; justify-content: center; }
+    .ps-tier-row { align-items: flex-start; }
+    .ps-name { max-width: 130px; }
   }
 }
 
-@keyframes marquee-scroll {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-100%); }
+body.dark-theme .partners-strip {
+  background: #0b1329;
+  border-top-color: rgba(255, 255, 255, 0.08);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+
+  .ps-eyebrow { color: #38bdf8; }
+  .ps-heading { color: #f8fafc; }
+  .ps-empty { color: #94a3b8; }
+
+  .ps-cta {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+    border-color: rgba(56, 189, 248, 0.24);
+
+    &:hover {
+      background: rgba(56, 189, 248, 0.16);
+      border-color: rgba(56, 189, 248, 0.42);
+    }
+  }
+
+  .ps-chip,
+  .ps-chip.pt-platinum, .ps-chip.pt-gold, .ps-chip.pt-silver,
+  .ps-chip.pt-bronze, .ps-chip.pt-inkind, .ps-chip.pt-default {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+  }
+
+  .ps-chip:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  }
 }
 
 
