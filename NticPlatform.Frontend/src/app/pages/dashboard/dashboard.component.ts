@@ -1,5 +1,5 @@
 import { getAuthValue } from '../../services/session.util';
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -1270,9 +1270,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
   set registeredTeams(val: any[]) {
     this.contentService.saveTeams(val);
+    this.recomputeSchoolAdminData();
   }
 
-  get roleDistribution(): { role: string; label: string; count: number; percent: number; icon: string }[] {
+  private _cachedRoleDistribution: { role: string; label: string; count: number; percent: number; icon: string }[] = [];
+
+  recomputeRoleDistribution(): void {
     const roleMeta: Record<string, { label: string; icon: string }> = {
       super_admin:     { label: 'Super Admin',     icon: 'admin_panel_settings' },
       content_manager: { label: 'Content Manager', icon: 'edit_note' },
@@ -1290,13 +1293,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const role = u.role || 'student';
       counts[role] = (counts[role] || 0) + 1;
     });
-    return Object.keys(roleMeta).map(role => ({
+    this._cachedRoleDistribution = Object.keys(roleMeta).map(role => ({
       role,
       label: roleMeta[role].label,
       icon: roleMeta[role].icon,
       count: counts[role] || 0,
       percent: Math.round(((counts[role] || 0) / total) * 100),
     }));
+  }
+
+  get roleDistribution(): { role: string; label: string; count: number; percent: number; icon: string }[] {
+    if (!this._cachedRoleDistribution.length) {
+      this.recomputeRoleDistribution();
+    }
+    return this._cachedRoleDistribution;
   }
 
   get auditLogs(): any[] {
@@ -2006,7 +2016,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     public dialogService: DialogService,
     public apiService: ApiService,
-    public wsSync: WsSyncService
+    public wsSync: WsSyncService,
+    private ngZone: NgZone
   ) {
     this.route.queryParams.subscribe(params => {
       if (params['tab']) {
@@ -2020,6 +2031,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.contentService.refreshBackendData();
     this.loadDbData();
     this.recomputeAuditState();
+    this.recomputeRoleDistribution();
+    this.recomputeSchoolAdminData();
     if (typeof window !== 'undefined') {
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
@@ -2083,18 +2096,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.loadAuditLogsFromBackend();
       this.loadSystemNodesHealth();
       this.loadSystemTelemetry();
-      this.liveIntervals.push(setInterval(() => {
-        this.triggerSyncSpin();
-        this.loadAuthSessions();
-        this.loadAuthSessionCount();
-        this.loadDashboardRecords();
-        if (this.auditAutoRefresh) {
-          this.loadAuditLogsFromBackend();
-        }
-        this.loadSystemNodesHealth();
-        this.loadSystemTelemetry();
-      }, 12000));
-      this.liveIntervals.push(setInterval(() => this.cdr.detectChanges(), 30000));
+
+      this.ngZone.runOutsideAngular(() => {
+        const pollTimer = setInterval(() => {
+          this.triggerSyncSpin();
+          this.loadAuthSessions();
+          this.loadAuthSessionCount();
+          this.loadDashboardRecords();
+          if (this.auditAutoRefresh) {
+            this.loadAuditLogsFromBackend();
+          }
+          this.loadSystemNodesHealth();
+          this.loadSystemTelemetry();
+          this.cdr.markForCheck();
+        }, 12000);
+        this.liveIntervals.push(pollTimer);
+      });
 
       const wsSub = this.wsSync.dataChanged$.subscribe(() => {
         this.triggerSyncSpin();
@@ -5034,15 +5051,13 @@ setTimeout(async () => {
       const now = new Date();
       this.liveTime = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       this.updatePreviewCountdown();
+      this.cdr.markForCheck();
     };
     updateTime();
-    this.liveIntervals.push(setInterval(updateTime, 1000));
-
-    // Removed: a 2-second interval that added random jitter to hardcoded node
-    // latency/load so the panel looked live. Real component health now comes
-    // from GET /api/system/nodes-health via loadSystemNodesHealth().
-
-    // ── Real audit trail: only actual admin actions are captured ──
+    this.ngZone.runOutsideAngular(() => {
+      const timer = setInterval(updateTime, 1000);
+      this.liveIntervals.push(timer);
+    });
   }
 
   // ── SPARKLINE SVG PATH GENERATOR ────────────────────────
@@ -5060,21 +5075,41 @@ setTimeout(async () => {
 
   // ── SCHOOL ADMIN PORTAL GETTERS & CRUD ───────────────────
   editingTeamOriginalName: string | null = null;
+  private _cachedSchoolTeams: any[] = [];
+  private _cachedSchoolAdminStats: any[] = [];
 
-  get schoolAdminStats(): any[] {
-    if (this.activeRoleId !== 'school_admin') return this.stats;
-    const myTeams = this.schoolTeams;
+  recomputeSchoolAdminData(): void {
+    const activeEmail = (getAuthValue('activeUserEmail') || '').trim().toLowerCase();
+    const cleanSchoolName = (this.schoolName || this.currentUser?.organization || '').trim().toLowerCase();
+
+    this._cachedSchoolTeams = this.contentService.teams.filter(t => {
+      const cleanTeamSchool = (t.schoolName || '').trim().toLowerCase();
+      const cleanLeadEmail = ((t as any).leadEmail || '').trim().toLowerCase();
+      const cleanLeadName = (t.lead || '').trim().toLowerCase();
+      return (cleanSchoolName && (cleanTeamSchool === cleanSchoolName || cleanTeamSchool.includes(cleanSchoolName) || cleanSchoolName.includes(cleanTeamSchool))) ||
+             (activeEmail && (cleanLeadEmail === activeEmail || cleanLeadName === activeEmail));
+    });
+
+    const myTeams = this._cachedSchoolTeams;
     const teamsCount = myTeams.length;
     const studentsCount = myTeams.reduce((acc, t) => acc + (t.rosterList?.length || Number(t.members) || 0), 0);
     const uniqueMentors = new Set(myTeams.map(t => t.mentor || t.coach).filter(Boolean)).size;
     const mentorsCount = uniqueMentors > 0 ? uniqueMentors : (teamsCount > 0 ? 1 : 0);
-    
-    return [
+
+    this._cachedSchoolAdminStats = [
       { label: 'Registered Students', value: studentsCount.toString(), icon: 'group', meta: `Across ${teamsCount} team${teamsCount === 1 ? '' : 's'}`, color: 'primary' },
       { label: 'Active Mentors', value: mentorsCount.toString(), icon: 'co_present', meta: mentorsCount > 0 ? 'Fully assigned' : 'No mentors assigned', color: 'secondary' },
       { label: 'Average Score', value: teamsCount > 0 ? '84.5%' : '-', icon: 'percent', meta: teamsCount > 0 ? 'Active Tournament Average' : 'No scores yet', color: 'tertiary' },
       { label: 'Regional Rank', value: teamsCount > 0 ? '#3' : 'Unranked', icon: 'workspace_premium', meta: teamsCount > 0 ? 'National Qualifier Bracket' : 'Pending participation', color: 'error' }
     ];
+  }
+
+  get schoolAdminStats(): any[] {
+    if (this.activeRoleId !== 'school_admin') return this.stats;
+    if (!this._cachedSchoolAdminStats.length) {
+      this.recomputeSchoolAdminData();
+    }
+    return this._cachedSchoolAdminStats;
   }
 
   selectedMemberProfile: any | null = null;

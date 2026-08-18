@@ -1,5 +1,8 @@
-export const environment = {
+import { Environment } from './environment.interface';
+
+export const environment: Environment = {
   production: false,
+  apiUrl: '/api',
   brevo: {
     apiKey: 'REPLACE_BREVO_API_KEY',
     senderEmail: 'enochessel5@gmail.com',
@@ -12,3 +15,4 @@ export const environment = {
     apiKey: 'REPLACE_GEMINI_API_KEY'
   }
 };
+

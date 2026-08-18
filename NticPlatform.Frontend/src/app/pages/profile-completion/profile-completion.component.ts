@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ContentService, User } from '../../services/content.service';
 import { ThemeService } from '../../services/theme.service';
+import { ApiService } from '../../services/api.service';
 
 @Component({
   selector: 'app-profile-completion',
@@ -19,6 +20,7 @@ export class ProfileCompletionComponent implements OnInit {
   isSubmitting = false;
   isSaved = false;
   isDraftResumed = false;
+  saveError = '';
 
   fieldValidation: Record<string, { status: 'idle' | 'checking' | 'valid' | 'taken' | 'invalid'; message: string }> = {};
   private validationTimers: Record<string, any> = {};
@@ -26,7 +28,8 @@ export class ProfileCompletionComponent implements OnInit {
   constructor(
     private router: Router,
     public contentService: ContentService,
-    public themeService: ThemeService
+    public themeService: ThemeService,
+    private apiService: ApiService
   ) {}
 
   ngOnInit(): void {
@@ -227,75 +230,109 @@ export class ProfileCompletionComponent implements OnInit {
     }
 
     this.isSubmitting = true;
+    this.saveError = '';
 
-    setTimeout(() => {
-      if (this.currentUser) {
-        const updatedUsers = this.contentService.users.map(u => {
-          if (u.id === this.currentUser!.id) {
-            return {
-              ...u,
-              fullName: this.profileForm.fullName.trim() || u.fullName,
-              organization: this.profileForm.organization.trim() || u.organization,
-              phone: this.profileForm.phone?.trim() || u.phone,
-              track: this.profileForm.expertise || u.track || '',
-              tier: this.profileForm.tier || u.tier || ''
-            };
-          }
-          return u;
-        });
-        this.contentService.saveUsers(updatedUsers);
-
-        // Create pending approval for the completed profile
-        if (this.isJudge) {
-          this.contentService.pendingApprovals = [...this.contentService.pendingApprovals, {
-            id: 'APR-' + Date.now(),
-            type: 'Instructor Access' as const,
-            entity: this.profileForm.organization,
-            contact: this.currentUser.email,
-            submitted: new Date().toISOString(),
-            details: {
-              name: this.profileForm.fullName,
-              email: this.currentUser.email,
-              phone: this.profileForm.phone,
-              region: '',
-              category: 'Judge',
-              expertise: this.profileForm.expertise,
-              experience: this.profileForm.experience,
-              bio: this.profileForm.bio
-            }
-          }];
-          this.contentService.saveApprovals(this.contentService.pendingApprovals);
-        } else if (this.isSponsor) {
-          this.contentService.pendingApprovals = [...this.contentService.pendingApprovals, {
-            id: 'APR-' + Date.now(),
-            type: 'Team Addition' as const,
-            entity: this.profileForm.organization,
-            contact: this.currentUser.email,
-            submitted: new Date().toISOString(),
-            details: {
-              name: this.profileForm.fullName,
-              email: this.currentUser.email,
-              phone: this.profileForm.phone,
-              region: '',
-              category: 'Sponsor',
-              sector: this.profileForm.sector,
-              repName: this.profileForm.repName,
-              amount: this.profileForm.amount,
-              tier: this.profileForm.tier
-            }
-          }];
-          this.contentService.saveApprovals(this.contentService.pendingApprovals);
+    // Previously this was a setTimeout(1500) that wrote to localStorage and
+    // navigated away. Nothing ever reached the server, so a judge or sponsor
+    // completed their profile, saw a success screen, and lost everything the
+    // next time they signed in on another device. There was also no endpoint to
+    // call -- PATCH /api/users/me was added for this.
+    this.apiService.updateMyProfile({
+      full_name: this.profileForm.fullName?.trim() || undefined,
+      phone: this.profileForm.phone?.trim() ?? undefined,
+      organization: this.profileForm.organization?.trim() || undefined,
+      bio: this.profileForm.bio?.trim() ?? undefined,
+      expertise: this.isJudge ? (this.profileForm.expertise || undefined) : undefined,
+      experience_level: this.isJudge ? (this.profileForm.experience || undefined) : undefined,
+      sector: this.isSponsor ? (this.profileForm.sector || undefined) : undefined,
+      rep_name: this.isSponsor ? (this.profileForm.repName?.trim() || undefined) : undefined,
+      tier: this.isSponsor ? (this.profileForm.tier || undefined) : undefined,
+    }).subscribe({
+      next: () => {
+        // Mirror into the local cache so the UI is consistent immediately,
+        // but the server is now the source of truth.
+        if (this.currentUser) {
+          const updatedUsers = this.contentService.users.map(u => u.id === this.currentUser!.id
+            ? {
+                ...u,
+                fullName: this.profileForm.fullName?.trim() || u.fullName,
+                organization: this.profileForm.organization?.trim() || u.organization,
+                phone: this.profileForm.phone?.trim() || u.phone,
+              }
+            : u);
+          this.contentService.saveUsers(updatedUsers);
+          this.queueApprovalForReview();
+          this.clearDraft();
         }
+        this.isSubmitting = false;
+        this.router.navigate([this.isJudge ? '/judge' : '/sponsors']);
+      },
+      error: (err: any) => {
+        this.isSubmitting = false;
+        // Say what went wrong and do NOT navigate away or clear the draft --
+        // the previous version could not fail, so it always claimed success.
+        this.saveError = err?.status === 409
+          ? (err?.error?.detail || 'That phone number is already registered to another account.')
+          : err?.status === 422
+            ? (err?.error?.detail || 'Please check the details you entered.')
+            : err?.status === 401
+              ? 'Your session expired. Please sign in again.'
+              : 'Could not save your profile. Nothing was changed -- please try again.';
+      },
+    });
+  }
 
-        // Delete draft
-        const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
-        delete drafts[this.currentUser.email];
-        localStorage.setItem('ntic_drafts', JSON.stringify(drafts));
-      }
+  /** Files the completed profile for admin review. */
+  private queueApprovalForReview(): void {
+    if (!this.currentUser) return;
+    if (this.isJudge) {
+      this.contentService.pendingApprovals = [...this.contentService.pendingApprovals, {
+        id: 'APR-' + Date.now(),
+        // Was 'Instructor Access', which put judges in the instructor queue.
+        type: 'Judge Access' as any,
+        entity: this.profileForm.organization,
+        contact: this.currentUser.email,
+        submitted: new Date().toISOString(),
+        details: {
+          name: this.profileForm.fullName,
+          email: this.currentUser.email,
+          phone: this.profileForm.phone,
+          region: '',
+          category: 'Judge',
+          expertise: this.profileForm.expertise,
+          experience: this.profileForm.experience,
+          bio: this.profileForm.bio,
+        },
+      }];
+      this.contentService.saveApprovals(this.contentService.pendingApprovals);
+    } else if (this.isSponsor) {
+      this.contentService.pendingApprovals = [...this.contentService.pendingApprovals, {
+        id: 'APR-' + Date.now(),
+        // Was 'Team Addition', so sponsor onboarding showed up in the admin
+        // queue as a request to add a competition team.
+        type: 'Sponsor Access' as any,
+        entity: this.profileForm.organization,
+        contact: this.currentUser.email,
+        submitted: new Date().toISOString(),
+        details: {
+          name: this.profileForm.fullName,
+          email: this.currentUser.email,
+          phone: this.profileForm.phone,
+          region: '',
+          category: 'Sponsor',
+          sector: this.profileForm.sector,
+          repName: this.profileForm.repName,
+          tier: this.profileForm.tier,
+        },
+      }];
+      this.contentService.saveApprovals(this.contentService.pendingApprovals);
+    }
+  }
 
-      this.isSubmitting = false;
-      const targetRoute = this.isJudge ? '/dashboard' : '/sponsors';
-      this.router.navigate([targetRoute]);
-    }, 1500);
+  private clearDraft(): void {
+    if (!this.currentUser) return;
+    const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
+    delete drafts[this.currentUser.email];
+    localStorage.setItem('ntic_drafts', JSON.stringify(drafts));
   }
 }

@@ -120,6 +120,11 @@
              this application at all. -->
       </ng-container>
 
+      <div class="pc-save-error" *ngIf="saveError">
+        <span class="material-symbols-outlined">error</span>
+        <span>{{ saveError }}</span>
+      </div>
+
       <div class="pc-actions">
         <button class="btn btn-subtle" (click)="saveDraft()">
           <span class="material-symbols-outlined">bookmark</span> Save Draft

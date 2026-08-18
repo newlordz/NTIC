@@ -36,6 +36,14 @@ export interface MyProfile {
   must_change_password: boolean;
   password_changed_at: string | null;
   password_min_length: number;
+  /** Judge/sponsor profile detail. Persisted server-side since the addition of
+   *  PATCH /api/users/me -- previously these lived only in localStorage. */
+  bio: string;
+  expertise: string;
+  sector: string;
+  rep_name: string;
+  experience_level: string;
+  tier: string;
 }
 
 /**
@@ -136,6 +144,30 @@ export class ApiService {
   /** The signed-in user's own profile, including whether a password change is required. */
   getMyProfile(): Observable<MyProfile> {
     return this.http.get<MyProfile>(this.apiUrl + '/users/me');
+  }
+
+  /**
+   * Save the signed-in user's own profile.
+   *
+   * Only the fields listed here can be changed. The server enforces the same
+   * allow-list, so role, status, email and ticket cannot be altered through
+   * this call even if they are added to the payload.
+   */
+  updateMyProfile(payload: {
+    full_name?: string;
+    phone?: string;
+    organization?: string;
+    bio?: string;
+    expertise?: string;
+    sector?: string;
+    rep_name?: string;
+    tier?: string;
+    experience_level?: string;
+  }): Observable<{ status: string; updated: string[] }> {
+    return this.http.patch<{ status: string; updated: string[] }>(
+      this.apiUrl + '/users/me',
+      payload
+    );
   }
 
   /**

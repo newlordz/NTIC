@@ -2236,3 +2236,168 @@ class TestJudgingWorkspace:
             if p["role"] == "sponsor":
                 assert p["submissions_graded"] is None
                 assert p["last_graded_at"] is None
+
+
+class TestSelfServiceProfile:
+    """PATCH /api/users/me -- letting users save their own profile.
+
+    Before this endpoint existed the profile-completion page had nowhere to
+    save: submitProfile() wrote to localStorage behind a fake 1.5s delay, so a
+    judge's expertise/bio and a sponsor's sector/tier were lost as soon as they
+    signed in anywhere else.
+
+    A self-service write endpoint is a classic privilege-escalation surface, so
+    most of these tests are about what it must REFUSE to change.
+    """
+
+    PASSWORD = "Tz6#meadowGlint"
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _make_user(self, client, admin_token, role="judge", name="Nii Armah"):
+        email = f"self-{uuid.uuid4().hex[:8]}@profile.test"
+        resp = client.post("/api/users", headers=self._auth(admin_token), json={
+            "email": email, "full_name": name, "role": role, "password": self.PASSWORD,
+        })
+        assert resp.status_code in (200, 201), resp.text
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": self.PASSWORD})
+        assert login.status_code == 200, login.text
+        return login.json()["token"], email
+
+    def _me(self, client, token):
+        resp = client.get("/api/users/me", headers=self._auth(token))
+        assert resp.status_code == 200, resp.text
+        return resp.json()
+
+    # ── it must work at all ─────────────────────────────────────
+    def test_requires_authentication(self, client):
+        assert client.patch("/api/users/me", json={"full_name": "Nobody"}).status_code == 401
+
+    def test_saves_a_judges_profile(self, client, admin_token):
+        token, _email = self._make_user(client, admin_token, "judge")
+        resp = client.patch("/api/users/me", headers=self._auth(token), json={
+            "full_name": "Nii Armah Quaye",
+            "phone": "0244" + uuid.uuid4().hex[:6],
+            "organization": "University of Ghana",
+            "bio": "Fifteen years in embedded systems.",
+            "expertise": "Robotics",
+            "experience_level": "8-12",
+        })
+        assert resp.status_code == 200, resp.text
+        me = self._me(client, token)
+        assert me["full_name"] == "Nii Armah Quaye"
+        assert me["organization"] == "University of Ghana"
+        assert me["bio"] == "Fifteen years in embedded systems."
+        assert me["expertise"] == "Robotics"
+        assert me["experience_level"] == "8-12"
+
+    def test_saves_a_sponsors_profile(self, client, admin_token):
+        token, _email = self._make_user(client, admin_token, "sponsor", "Efua Danso")
+        resp = client.patch("/api/users/me", headers=self._auth(token), json={
+            "organization": "Kasapreko Ltd", "sector": "Manufacturing",
+            "rep_name": "Efua Danso", "tier": "Gold Partner",
+        })
+        assert resp.status_code == 200, resp.text
+        me = self._me(client, token)
+        assert me["sector"] == "Manufacturing"
+        assert me["rep_name"] == "Efua Danso"
+        assert me["tier"] == "Gold Partner"
+
+    def test_survives_a_reload(self, client, admin_token):
+        """The actual bug being fixed: the value must come back from the server."""
+        token, _email = self._make_user(client, admin_token)
+        client.patch("/api/users/me", headers=self._auth(token),
+                     json={"bio": "Persisted server-side."})
+        assert self._me(client, token)["bio"] == "Persisted server-side."
+
+    def test_only_touches_supplied_fields(self, client, admin_token):
+        token, _email = self._make_user(client, admin_token)
+        client.patch("/api/users/me", headers=self._auth(token),
+                     json={"bio": "First", "expertise": "AI"})
+        client.patch("/api/users/me", headers=self._auth(token), json={"bio": "Second"})
+        me = self._me(client, token)
+        assert me["bio"] == "Second"
+        assert me["expertise"] == "AI", "an unsent field was wiped"
+
+    # ── what it must REFUSE ─────────────────────────────────────
+    def test_cannot_escalate_own_role(self, client, admin_token):
+        """The one that matters most."""
+        token, _email = self._make_user(client, admin_token, "judge")
+        before = self._me(client, token)["role"]
+        assert before == "judge"
+        client.patch("/api/users/me", headers=self._auth(token), json={
+            "full_name": "Still A Judge", "role": "super_admin",
+        })
+        assert self._me(client, token)["role"] == "judge", (
+            "a user promoted themselves through the self-service profile endpoint"
+        )
+
+    def test_cannot_change_own_status(self, client, admin_token):
+        token, _email = self._make_user(client, admin_token)
+        client.patch("/api/users/me", headers=self._auth(token),
+                     json={"bio": "x", "status": "Suspended"})
+        assert self._me(client, token)["status"].lower() == "active"
+
+    def test_cannot_change_own_email(self, client, admin_token):
+        """Email is a login identifier; changing it here would bypass the
+        uniqueness and verification handling in the admin path."""
+        token, email = self._make_user(client, admin_token)
+        client.patch("/api/users/me", headers=self._auth(token),
+                     json={"bio": "x", "email": "hijack@evil.test"})
+        assert self._me(client, token)["email"] == email
+
+    def test_cannot_change_own_access_token(self, client, admin_token):
+        token, _email = self._make_user(client, admin_token)
+        original = self._me(client, token)["ticket"]
+        client.patch("/api/users/me", headers=self._auth(token),
+                     json={"bio": "x", "ticket": "NTIC-SUPER-0001"})
+        assert self._me(client, token)["ticket"] == original
+
+    def test_cannot_edit_another_account_by_passing_an_id(self, client, admin_token):
+        """The row updated is always the session's user, never an id from the body."""
+        victim_token, victim_email = self._make_user(client, admin_token, "judge", "Kojo Baah")
+        victim_id = self._me(client, victim_token)["id"]
+        attacker_token, _ae = self._make_user(client, admin_token, "judge", "Yaa Asantewaa")
+        client.patch("/api/users/me", headers=self._auth(attacker_token), json={
+            "id": victim_id, "full_name": "Overwritten By Attacker",
+        })
+        assert self._me(client, victim_token)["full_name"] == "Kojo Baah"
+
+    # ── validation ──────────────────────────────────────────────
+    def test_rejects_an_empty_request(self, client, admin_token):
+        token, _email = self._make_user(client, admin_token)
+        assert client.patch("/api/users/me", headers=self._auth(token), json={}).status_code == 400
+
+    def test_rejects_a_blank_name(self, client, admin_token):
+        token, _email = self._make_user(client, admin_token)
+        resp = client.patch("/api/users/me", headers=self._auth(token), json={"full_name": "   "})
+        assert resp.status_code == 422
+
+    def test_blank_phone_is_stored_as_null_not_empty_string(self, client, admin_token):
+        """`users.phone` is UNIQUE, so two accounts saving a blank phone would
+        collide if '' were stored instead of NULL."""
+        a_token, _a = self._make_user(client, admin_token, "judge", "First Person")
+        b_token, _b = self._make_user(client, admin_token, "judge", "Second Person")
+        assert client.patch("/api/users/me", headers=self._auth(a_token),
+                            json={"phone": ""}).status_code == 200
+        assert client.patch("/api/users/me", headers=self._auth(b_token),
+                            json={"phone": ""}).status_code == 200
+
+    def test_duplicate_phone_is_reported_clearly(self, client, admin_token):
+        shared = "0209" + uuid.uuid4().hex[:6]
+        a_token, _a = self._make_user(client, admin_token, "judge", "Phone Owner")
+        b_token, _b = self._make_user(client, admin_token, "judge", "Phone Taker")
+        assert client.patch("/api/users/me", headers=self._auth(a_token),
+                            json={"phone": shared}).status_code == 200
+        resp = client.patch("/api/users/me", headers=self._auth(b_token), json={"phone": shared})
+        assert resp.status_code == 409
+        assert "phone" in resp.json()["detail"].lower()
+
+    def test_reports_which_fields_were_saved(self, client, admin_token):
+        token, _email = self._make_user(client, admin_token)
+        resp = client.patch("/api/users/me", headers=self._auth(token),
+                            json={"bio": "b", "sector": "Technology"})
+        assert resp.json()["updated"] == ["bio", "sector"]

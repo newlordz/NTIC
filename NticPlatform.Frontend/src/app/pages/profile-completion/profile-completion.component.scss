@@ -260,3 +260,28 @@ textarea.form-control {
     flex-direction: column;
   }
 }
+
+/* Save failure. The old submitProfile() could not fail -- it was a setTimeout --
+   so there was no way to tell the user anything went wrong. */
+.pc-save-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px 15px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 4px solid #dc2626;
+  color: #991b1b;
+  font-size: 13.5px;
+  font-weight: 500;
+
+  .material-symbols-outlined { font-size: 20px; color: #dc2626; flex-shrink: 0; }
+}
+
+:host-context(body.dark-theme) .pc-save-error {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.35);
+  color: #fca5a5;
+}
