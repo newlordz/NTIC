@@ -1330,7 +1330,8 @@ try:
             cur = conn.cursor()
             cur.execute(
                 "SELECT id, email, full_name, role, ticket, status, phone, organization, "
-                "COALESCE(must_change_password, FALSE), password_changed_at "
+                "COALESCE(must_change_password, FALSE), password_changed_at, "
+                "bio, expertise, sector, rep_name, tier, experience_level "
                 "FROM users WHERE id = %s",
                 (actor["id"],),
             )
@@ -1346,7 +1347,105 @@ try:
             "must_change_password": bool(row[8]),
             "password_changed_at": str(row[9]) if row[9] else None,
             "password_min_length": MIN_PASSWORD_LENGTH,
+            "bio": row[10] or "",
+            "expertise": row[11] or "",
+            "sector": row[12] or "",
+            "rep_name": row[13] or "",
+            "tier": row[14] or "",
+            "experience_level": row[15] or "",
         }
+
+    class UpdateMyProfilePayload(BaseModel):
+        """Fields a user may change about THEMSELVES.
+
+        This allow-list is the security boundary of the endpoint. It deliberately
+        does NOT include role, status, ticket, email, id or password:
+
+        * role/status -> a user patching their own role is privilege escalation.
+        * email/ticket -> these are login identifiers; changing them here would
+          bypass the uniqueness and verification handling in the admin path.
+        * password -> has its own endpoint with a current-password check and
+          rate limiting.
+
+        Because it is a Pydantic model with these fields only, anything else in
+        the request body is ignored rather than silently applied.
+        """
+        full_name: str = Field(default=None, max_length=200)
+        phone: str = Field(default=None, max_length=50)
+        organization: str = Field(default=None, max_length=200)
+        bio: str = Field(default=None, max_length=2000)
+        expertise: str = Field(default=None, max_length=100)
+        sector: str = Field(default=None, max_length=100)
+        rep_name: str = Field(default=None, max_length=200)
+        tier: str = Field(default=None, max_length=50)
+        experience_level: str = Field(default=None, max_length=50)
+
+    @app.patch("/api/users/me")
+    def update_my_profile(payload: UpdateMyProfilePayload, actor: dict = Depends(require_auth)):
+        """Let a signed-in user save their own profile.
+
+        Until this existed the profile-completion page had nowhere to save to --
+        it wrote to localStorage behind a fake 1.5s delay, so a judge's or
+        sponsor's details were lost on the next device. The only self-service
+        write endpoint was change-password.
+
+        The target row is always `actor["id"]` from the verified session, never
+        an id from the request, so this cannot be used to edit another account.
+        """
+        fields = {
+            "full_name": payload.full_name,
+            "phone": payload.phone,
+            "organization": payload.organization,
+            "bio": payload.bio,
+            "expertise": payload.expertise,
+            "sector": payload.sector,
+            "rep_name": payload.rep_name,
+            "tier": payload.tier,
+            "experience_level": payload.experience_level,
+        }
+        # Only touch what was actually sent. Absent (None) means "leave alone";
+        # an explicit "" means "clear it".
+        provided = {k: v for k, v in fields.items() if v is not None}
+        if not provided:
+            raise HTTPException(status_code=400, detail="No profile fields were supplied")
+
+        if "full_name" in provided and not provided["full_name"].strip():
+            raise HTTPException(status_code=422, detail="Your name cannot be empty")
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            # A blank phone must be stored as NULL, not '': the column has a
+            # UNIQUE constraint, and a second empty string would collide.
+            if "phone" in provided and not provided["phone"].strip():
+                provided["phone"] = None
+            assignments = ", ".join(f"{col} = %s" for col in provided)
+            values = list(provided.values()) + [actor["id"]]
+            try:
+                cur.execute(
+                    f"UPDATE users SET {assignments} WHERE id = %s RETURNING id",
+                    values,
+                )
+                row = cur.fetchone()
+                conn.commit()
+            except Exception as exc:
+                conn.rollback()
+                cur.close()
+                # Most likely cause is the phone UNIQUE constraint.
+                if "phone" in provided and "unique" in str(exc).lower():
+                    raise HTTPException(
+                        status_code=409,
+                        detail="That phone number is already registered to another account",
+                    )
+                raise HTTPException(status_code=400, detail="Could not save your profile")
+            cur.close()
+        finally:
+            release_db_connection(conn)
+
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+        broadcast_async({"type": "data_changed", "collection": "users"})
+        return {"status": "saved", "updated": sorted(provided.keys())}
 
     class ChangePasswordPayload(BaseModel):
         # Not required when the account is flagged must_change_password: holding a
