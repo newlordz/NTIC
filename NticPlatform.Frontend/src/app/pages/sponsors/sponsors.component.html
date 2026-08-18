@@ -312,6 +312,9 @@
 
         <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
           <button class="btn btn-subtle" (click)="closePaymentModal()">Cancel</button>
+          <div *ngIf="paymentError" style="background:rgba(239,68,68,0.1);border:1px solid #ef4444;color:#ef4444;padding:10px 12px;border-radius:8px;font-size:12.5px;margin-bottom:12px;">
+            {{ paymentError }}
+          </div>
           <button class="btn btn-primary" (click)="submitPayment()" [disabled]="isSubmittingPayment">
             <span *ngIf="!isSubmittingPayment">Confirm Payment</span>
             <span *ngIf="isSubmittingPayment">Processing...</span>

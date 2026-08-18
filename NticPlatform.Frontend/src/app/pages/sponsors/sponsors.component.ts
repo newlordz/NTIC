@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService, SponsorPayment, User } from '../../services/content.service';
 import { DialogService } from '../../services/dialog.service';
+import { ApiService, Sponsorship, SponsorPayment as ApiSponsorPayment } from '../../services/api.service';
 
 @Component({
   selector: 'app-sponsors',
@@ -13,7 +14,11 @@ import { DialogService } from '../../services/dialog.service';
   styleUrl: './sponsors.component.scss'
 })
 export class SponsorsComponent implements OnInit {
-  constructor(public contentService: ContentService, public dialogService: DialogService) {}
+  constructor(
+    public contentService: ContentService,
+    public dialogService: DialogService,
+    public apiService: ApiService,
+  ) {}
   isEditProfileModalOpen = false;
   profileEditForm = {
     organization: '',
@@ -48,7 +53,9 @@ export class SponsorsComponent implements OnInit {
   isSubmittingPayment = false;
   paymentSuccessMessage = '';
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.loadSponsorData();
+  }
 
   openEditProfileModal(): void {
     const sponsor = this.loggedInSponsor;
@@ -167,64 +174,140 @@ export class SponsorsComponent implements OnInit {
     this.isPaymentModalOpen = false;
   }
 
+  /**
+   * Records a payment reference against the sponsor's commitment.
+   *
+   * The previous version was a `setTimeout(600)` that built a payment object, ran
+   * `parseInt(amount.replace(/[^0-9]/g,''))` to total it, and saved via
+   * `contentService.saveUsers()` -> POST /api/bulk-sync. bulk-sync is admin-only, so
+   * for the sponsor actually using this page it 403'd and the error was discarded:
+   * the payment existed only in that browser, and no administrator ever saw it.
+   *
+   * Two further problems that fix themselves by moving server-side:
+   *   * The running total was computed with parseInt on a formatted string, so
+   *     "GH 1,500" became 1 and decimals were silently truncated. Amounts are now
+   *     NUMERIC in the database.
+   *   * Money was stored on the users row, with no verification state and no audit
+   *     trail. It now has both.
+   */
   submitPayment(): void {
-    if (!this.paymentForm.amount.trim() || !this.paymentForm.refNo.trim()) {
+    const amount = (this.paymentForm.amount || '').trim();
+    const reference = (this.paymentForm.refNo || '').trim();
+    if (!amount || !reference) {
       this.dialogService.toast('Please enter both the payment amount and reference number.', 'warning');
+      return;
+    }
+    // Strip thousands separators but keep the decimal point -- the server parses a
+    // decimal, and silently dropping the fractional part would misstate the sum.
+    const normalised = amount.replace(/[^0-9.]/g, '');
+    if (!normalised || Number(normalised) <= 0) {
+      this.dialogService.toast('Enter a payment amount greater than zero.', 'warning');
+      return;
+    }
+    if (!this.activeSponsorshipId) {
+      this.dialogService.toast(
+        'Record your sponsorship commitment before adding a payment.', 'warning');
       return;
     }
 
     this.isSubmittingPayment = true;
+    this.paymentSuccessMessage = '';
+    this.paymentError = '';
 
-    setTimeout(() => {
-      this.isSubmittingPayment = false;
-      const sponsor = this.loggedInSponsor;
-      if (sponsor) {
-        const newPayment: SponsorPayment = {
-          id: 'pay-' + Date.now(),
-          refNo: this.paymentForm.refNo.trim(),
-          amount: 'GH₵ ' + this.paymentForm.amount.trim(),
-          method: this.selectedPaymentMethod,
-          // NOT 'Confirmed'. Nothing here talks to a bank, a MoMo API or a card
-          // processor -- this only records the reference the sponsor says they
-          // paid against. Marking it Confirmed told sponsors their money had
-          // cleared when no verification of any kind had happened. An admin has
-          // to check it against the real statement.
-          status: 'Pending Verification',
-          date: new Date().toISOString().split('T')[0],
-          notes: this.paymentForm.notes.trim() || undefined
-        };
+    this.apiService.recordSponsorPayment(this.activeSponsorshipId, {
+      amount: normalised,
+      method: this.selectedPaymentMethod || 'bank_transfer',
+      reference,
+      notes: (this.paymentForm.notes || '').trim(),
+    }).subscribe({
+      next: () => {
+        this.isSubmittingPayment = false;
+        this.paymentSuccessMessage =
+          'Payment reference recorded. Our team will verify it against the bank statement and confirm.';
+        this.loadSponsorData();
+        setTimeout(() => this.closePaymentModal(), 1400);
+      },
+      error: (err: any) => {
+        this.isSubmittingPayment = false;
+        this.paymentError = err?.status === 409
+          ? 'A payment with that reference is already recorded.'
+          : err?.status === 403
+            ? 'You can only record payments against your own sponsorship.'
+            : err?.status === 422
+              ? (err?.error?.detail || 'Check the amount and reference and try again.')
+              : 'Could not record the payment. Nothing was saved -- please try again.';
+      },
+    });
+  }
 
-        const existingPayments = sponsor.payments || [];
-        const updatedPayments = [newPayment, ...existingPayments];
+  // ── Server-backed sponsorship state ───────────────────────────────────
+  mySponsorships: Sponsorship[] = [];
+  myPayments: ApiSponsorPayment[] = [];
+  paymentError = '';
+  isLoadingSponsorship = false;
+  pledgeAmountInput = '';
+  isSavingPledge = false;
 
-        // Calculate new total
-        const totalNum = updatedPayments.reduce((acc, p) => {
-          return acc + (parseInt(p.amount.replace(/[^0-9]/g, ''), 10) || 0);
-        }, 0);
+  /** The commitment payments are recorded against. */
+  get activeSponsorshipId(): string {
+    const active = this.mySponsorships.find(s => s.status === 'active')
+      || this.mySponsorships[0];
+    return active ? active.id : '';
+  }
 
-        const updatedUsers = this.contentService.users.map(u => {
-          if (u.id === sponsor.id) {
-            return {
-              ...u,
-              total: `GH₵ ${totalNum.toLocaleString()}`,
-              payments: updatedPayments
-            };
-          }
-          return u;
-        });
+  get totalPledged(): string {
+    return this.mySponsorships.reduce((sum, s) => sum + (Number(s.amount_pledged) || 0), 0)
+      .toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
 
-        this.contentService.saveUsers(updatedUsers);
-        this.contentService.saveAuditLogs([
-          { action: `Payment of ${newPayment.amount} recorded (${newPayment.method} Ref: ${newPayment.refNo})`, user: sponsor.email, time: new Date().toISOString(), type: 'system' },
-          ...this.contentService.auditLogs
-        ]);
+  /** Verified money only. A recorded reference is a claim, not a receipt. */
+  get totalVerified(): string {
+    return this.mySponsorships.reduce((sum, s) => sum + (Number(s.amount_received) || 0), 0)
+      .toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
 
-        this.paymentSuccessMessage = 'Payment reference recorded. Our team will verify it against the bank statement and confirm.';
-        setTimeout(() => {
-          this.closePaymentModal();
-        }, 1200);
-      }
-    }, 600);
+  get totalAwaitingVerification(): string {
+    return this.mySponsorships.reduce((sum, s) => sum + (Number(s.amount_pending) || 0), 0)
+      .toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+
+  loadSponsorData(): void {
+    if (!this.loggedInSponsor) return;
+    this.isLoadingSponsorship = true;
+    this.apiService.getMySponsorships().subscribe({
+      next: rows => { this.mySponsorships = rows || []; this.isLoadingSponsorship = false; },
+      error: () => { this.isLoadingSponsorship = false; this.mySponsorships = []; },
+    });
+    this.apiService.getMySponsorPayments().subscribe({
+      next: rows => (this.myPayments = rows || []),
+      error: () => (this.myPayments = []),
+    });
+  }
+
+  /** Records the sponsor's commitment. Starts pending until an admin confirms it. */
+  savePledge(): void {
+    const normalised = (this.pledgeAmountInput || '').replace(/[^0-9.]/g, '');
+    if (!normalised || Number(normalised) <= 0) {
+      this.paymentError = 'Enter the amount you are committing.';
+      return;
+    }
+    this.isSavingPledge = true;
+    this.paymentError = '';
+    this.apiService.createMySponsorship({
+      amount_pledged: normalised,
+      tier: this.loggedInSponsor?.tier || '',
+      sector: (this.loggedInSponsor as any)?.sector || '',
+    }).subscribe({
+      next: () => {
+        this.isSavingPledge = false;
+        this.pledgeAmountInput = '';
+        this.loadSponsorData();
+      },
+      error: () => {
+        this.isSavingPledge = false;
+        this.paymentError = 'Could not record your commitment. Please try again.';
+      },
+    });
   }
 
   downloadCertificate(): void {

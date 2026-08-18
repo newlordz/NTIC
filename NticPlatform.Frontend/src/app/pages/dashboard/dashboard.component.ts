@@ -16,7 +16,7 @@ import {
 import { BrevoEmailService } from '../../services/brevo-email.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
-import { ApiService, MyEnrolledCourse, MySubmission, SponsorshipSummary } from '../../services/api.service';
+import { ApiService, MyEnrolledCourse, MySubmission, SponsorshipSummary, Sponsorship } from '../../services/api.service';
 import { CurrentUserService } from '../../services/current-user.service';
 import type { PersonnelRoster, PersonnelPerson, PersonnelSummary } from '../../services/api.service';
 import { TimeAgoPipe } from '../../services/time-ago.pipe';
@@ -1642,6 +1642,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
    * actually verified against a bank record.
    */
   sponsorSummary: SponsorshipSummary | null = null;
+  /** Individual commitments, used for the per-tier drilldown. Admin-only endpoint. */
+  allSponsorships: Sponsorship[] = [];
   isLoadingSponsorSummary = false;
   sponsorSummaryError = '';
 
@@ -1660,6 +1662,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.sponsorSummary = null;
         this.sponsorSummaryError = 'Could not load sponsorship figures.';
       },
+    });
+
+    // The drilldown list. Only administrators may read this, so a 403 simply means
+    // the panel shows totals without the per-partner breakdown.
+    this.apiService.getAllSponsorships().subscribe({
+      next: rows => { this.allSponsorships = rows || []; this.cdr.markForCheck(); },
+      error: () => (this.allSponsorships = []),
     });
   }
 
@@ -1694,10 +1703,32 @@ export class DashboardComponent implements OnInit, OnDestroy {
       amountFormatted: this.formatCedis(t.amount),
       sponsorCount: t.sponsor_count,
       colour: this.tierColour(t.tier),
-      // Deliberately absent: the invented brand lists, per-partner contribution
-      // breakdowns, beneficiary descriptions and ESG flags. There is no column for
-      // any of them, so presenting them would be fabrication.
-      brands: '',
+      // Real commitments in this tier, for the drilldown. Previously this was a
+      // literal array of invented partners with fabricated contribution text,
+      // beneficiary lists and "ESG verified" flags.
+      partners: this.allSponsorships
+        .filter(sp => (sp.tier || 'Unspecified') === t.tier)
+        .map(sp => ({
+          name: sp.organization || 'Corporate Partner',
+          type: sp.sector || 'Sponsor',
+          categoryIcon: 'domain',
+          // Only what the database can prove.
+          contribution: `Pledged ${this.formatCedis(sp.amount_pledged)}`,
+          value: Number(sp.amount_pledged) || 0,
+          valueFormatted: this.formatCedis(sp.amount_pledged),
+          receivedFormatted: this.formatCedis(sp.amount_received),
+          pendingFormatted: this.formatCedis(sp.amount_pending),
+          beneficiaries: '',
+          status: sp.status,
+          // There is no ESG verification model, so this is no longer asserted.
+          esgVerified: false,
+        })),
+      brands: this.allSponsorships
+        .filter(sp => (sp.tier || 'Unspecified') === t.tier)
+        .map(sp => sp.organization)
+        .filter(Boolean)
+        .slice(0, 4)
+        .join(' · '),
       metaIcon: 'groups',
       metaText: `${t.sponsor_count} sponsor${t.sponsor_count === 1 ? '' : 's'}`,
     }));
