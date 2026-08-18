@@ -58,16 +58,26 @@ export class AppComponent implements OnInit, OnDestroy {
     });
   };
 
+  // One entry per real route in app.routes.ts. While currentTitle was reading the
+  // (always-empty) URL hash, every page rendered as "Dashboard" and the gaps here
+  // were invisible; now that the lookup works, a missing key would show the generic
+  // "NTIC Portal" instead of the page name.
   pageTitles: Record<string, string> = {
     'dashboard':    'Dashboard',
     'registration': 'Registration',
     'lms':          'Learning Management',
+    'lms-manager':  'LMS Manager',
     'competitions': 'Competitions',
     'admin':        'Competition Cycle Manager',
     'leaderboard':  'Leaderboard',
     'talent':       'Talent Discovery',
     'sponsors':     'Sponsors',
     'reporting':    'Reports & Analytics',
+    'judge':        'Judging Workspace',
+    'records':      'Records',
+    'user-management': 'User Management',
+    'profile-completion': 'Profile & Account Settings',
+    'news':         'News',
   };
 
   private lastNavigatedPath = '';
@@ -119,10 +129,23 @@ export class AppComponent implements OnInit, OnDestroy {
       // the username so the login form can prefill it (see
       // saveRememberedCredentials). The token itself is always sessionStorage
       // only. All the flag does here is opt out of this homepage sign-out.
+      //
+      // This used to happen SILENTLY, which made it a trap: /competitions and
+      // /leaderboard render the public nav for non-admin roles, and its only route
+      // back was "Home" -> "/". A student or judge clicking Home mid-task was
+      // signed out with no explanation. The nav now offers "Back to my dashboard"
+      // instead, and if this path is still taken the user is told why.
       if ((parsedUrl === '/' || parsedUrl === '/landing' || parsedUrl === '') && getAuthValue('activeRoleId') && !hasRememberedDevice()) {
         clearAllAuthValues();
+        resetVerifiedRoleCache();
+        this.currentUserService.clear();
         this.currentUser = null;
         this.chatbot.resetSession();
+        this.dialogService.toast(
+          'You were signed out because you returned to the public homepage. Tick "Remember this device" at sign-in to stay signed in here.',
+          'info',
+          8000,
+        );
       }
 
       // ONLY scroll to top when genuinely transitioning to a DIFFERENT page,
@@ -319,16 +342,40 @@ export class AppComponent implements OnInit, OnDestroy {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  /**
+   * The sidebar's primary call-to-action ("Score Challenge" / "Grade Work" / ...).
+   *
+   * Every branch used to set `window.location.hash`. The app uses PATH routing --
+   * there is no `withHashLocation()` anywhere in the project -- so assigning a
+   * fragment only changed the URL bar and navigated nowhere. The button was inert
+   * for every role.
+   *
+   * Two of the old targets were wrong even as fragments: `#/instructor` redirects
+   * straight back to `/dashboard`, and `#/dashboard?action=add_team` relied on a
+   * query parameter nothing reads.
+   */
   navigateSidebarCTA(): void {
     const roleId = this.currentUser?.roleId;
-    if (roleId === 'judge') {
-      window.location.hash = '#/judge';
-    } else if (roleId === 'instructor') {
-      window.location.hash = '#/instructor';
-    } else if (roleId === 'school_admin') {
-      window.location.hash = '#/dashboard?action=add_team';
-    } else {
-      window.location.hash = '#/admin/competitions';
+    switch (roleId) {
+      case 'judge':
+        this.router.navigate(['/judge']);
+        break;
+      case 'instructor':
+        // '/instructor' is only a redirect to the dashboard; the instructor's real
+        // workspace is the LMS manager.
+        this.router.navigate(['/lms-manager']);
+        break;
+      case 'school_admin':
+        this.router.navigate(['/dashboard'], { queryParams: { tab: 'roster' } });
+        break;
+      case 'student':
+        this.router.navigate(['/lms']);
+        break;
+      case 'sponsor':
+        this.router.navigate(['/sponsors']);
+        break;
+      default:
+        this.router.navigate(['/admin/competitions']);
     }
   }
 
@@ -547,9 +594,16 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * The header title for the current page.
+   *
+   * This read `window.location.hash`, but the app uses PATH routing, so the hash is
+   * always empty and `seg` always fell back to 'dashboard' -- every page in the app
+   * was titled "Dashboard". Reads the router URL instead.
+   */
   get currentTitle(): string {
-    const hash = window.location.hash;
-    const seg = hash.replace('#/', '').split('?')[0].split('/')[0] || 'dashboard';
+    const path = (this.router.url || '/').split('?')[0].split('#')[0];
+    const seg = path.split('/').filter(Boolean)[0] || 'dashboard';
     return this.pageTitles[seg] ?? 'NTIC Portal';
   }
 

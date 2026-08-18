@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ThemeService } from '../../services/theme.service';
 import { Subscription } from 'rxjs';
+import { getAuthValue } from '../../services/session.util';
 
 @Component({
   selector: 'app-public-nav',
@@ -22,7 +23,17 @@ import { Subscription } from 'rxjs';
           <a routerLink="/leaderboard" [class.active]="activePage === 'leaderboard'">Leaderboard</a>
         </div>
         <div class="pub-nav-actions">
-          <a routerLink="/" class="pub-home-btn">
+          <!-- Signed-in users get an explicit route back into the app.
+               Without this the only obvious way out of /competitions and
+               /leaderboard (which render this public nav for non-admins) was
+               "Home" -> "/", and visiting "/" deliberately ends a
+               non-remembered session. So a student or judge who clicked Home to
+               get back was silently signed out. -->
+          <a *ngIf="signedInHome" [routerLink]="signedInHome" class="pub-home-btn">
+            <span class="material-symbols-outlined">arrow_back</span>
+            <span>Back to my dashboard</span>
+          </a>
+          <a *ngIf="!signedInHome" routerLink="/" class="pub-home-btn">
             <span class="material-symbols-outlined">home</span>
             <span>Homepage</span>
           </a>
@@ -212,6 +223,15 @@ import { Subscription } from 'rxjs';
 export class PublicNavComponent implements OnInit, OnDestroy {
   @Input() activePage = '';
   isDark = false;
+  /**
+   * Where a signed-in visitor's own workspace is, or '' when nobody is signed in.
+   *
+   * This nav is rendered on /competitions and /leaderboard, which non-admin roles
+   * can reach while signed in. Previously the only route out was "Home" -> "/",
+   * and app.component deliberately ends a non-remembered session on "/" -- so
+   * clicking Home silently signed people out mid-task.
+   */
+  signedInHome = '';
   private sub?: Subscription;
 
   constructor(public themeService: ThemeService) {}
@@ -221,6 +241,25 @@ export class PublicNavComponent implements OnInit, OnDestroy {
     this.sub = this.themeService.isDarkMode$.subscribe(isDark => {
       this.isDark = isDark;
     });
+    this.signedInHome = this.resolveSignedInHome();
+  }
+
+  private resolveSignedInHome(): string {
+    if (!getAuthValue('activeUserToken')) return '';
+    switch (getAuthValue('activeRoleId')) {
+      case 'student':      return '/lms';
+      case 'judge':        return '/judge';
+      case 'sponsor':      return '/sponsors';
+      case 'instructor':   return '/lms-manager';
+      case 'reviewer':
+      case 'school_admin':
+      case 'content_manager':
+      case 'competition_manager':
+      case 'support_admin':
+      case 'admin':
+      case 'super_admin':  return '/dashboard';
+      default:             return '';
+    }
   }
 
   ngOnDestroy(): void {
