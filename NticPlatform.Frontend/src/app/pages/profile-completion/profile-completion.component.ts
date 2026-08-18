@@ -99,21 +99,25 @@ export class ProfileCompletionComponent implements OnInit {
       // Sponsor-specific
       sector: resolvedSector,
       repName: user.fullName || '',
-      amount: (user as any).total || '50,000',
       tier: resolvedTier,
-      paymentMethod: 'Bank Transfer',
-      bankName: 'Ecobank Ghana',
-      momoNetwork: 'MTN Mobile Money',
       billingDept: '',
       billingRef: (user as any).billingRef || '',
-      accountHolderName: user.fullName || '',
-      cardName: user.fullName || '',
-      cardNumber: '',
-      cardExpiry: '',
-      cardCvv: '',
-      chequeNo: '',
-      issuingBank: 'Stanbic Bank Ghana',
       billingEmail: user.email || '',
+      // NOTE: cardName / cardNumber / cardExpiry / cardCvv, and the
+      // paymentMethod / bankName / momoNetwork / accountHolderName / chequeNo /
+      // issuingBank / amount fields, used to live here.
+      //
+      // They were removed deliberately. `saveDraft()` spreads this whole object
+      // into localStorage['ntic_drafts'], so a full card number and CVV were
+      // being written to disk in cleartext, readable by any XSS and never
+      // cleared on logout. Storing a CVV is prohibited outright, and none of it
+      // was ever sent anywhere -- no processor, no API -- so the form carried
+      // real cardholder-data risk for zero function.
+      //
+      // If sponsorship payments are needed later, they must go through a
+      // payment provider's hosted fields/redirect so card data never touches
+      // this app, and the amount belongs on a sponsorship record, not on the
+      // user row.
       arenas: {
         'Coding Arena': true,
         'Robotics Arena': true,

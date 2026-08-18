@@ -66,6 +66,59 @@ export function purgeLegacyAuthStorage(): void {
 
 export const clearAuthSession = clearAllAuthValues;
 
+/**
+ * Strips cardholder data out of any saved form draft.
+ *
+ * The profile-completion page used to `{ ...profileForm }` into
+ * localStorage['ntic_drafts'], and profileForm held cardNumber, cardExpiry,
+ * cardCvv and cardName. So existing users have a full card number and CVV
+ * sitting in their browser in cleartext right now. Removing the fields from the
+ * form stops NEW writes but does nothing about what is already stored --
+ * localStorage persists until something deletes it, and drafts are keyed by
+ * email so they survive logout.
+ *
+ * This scrubs the sensitive keys while preserving the rest of the draft, so a
+ * user part-way through onboarding does not lose their work. Idempotent and
+ * safe to run on every startup.
+ */
+const CARDHOLDER_DRAFT_KEYS = [
+  'cardNumber', 'cardCvv', 'cardExpiry', 'cardName',
+  'accountHolderName', 'chequeNo',
+];
+
+export function purgeCardDataFromDrafts(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = window.localStorage.getItem('ntic_drafts');
+    if (!raw) return;
+    const drafts = JSON.parse(raw);
+    if (!drafts || typeof drafts !== 'object') {
+      // Unparseable or unexpected shape: delete rather than leave a blob that
+      // might still contain a card number.
+      window.localStorage.removeItem('ntic_drafts');
+      return;
+    }
+    let changed = false;
+    for (const key of Object.keys(drafts)) {
+      const data = drafts[key]?.data;
+      if (!data || typeof data !== 'object') continue;
+      for (const field of CARDHOLDER_DRAFT_KEYS) {
+        if (field in data) {
+          delete data[field];
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      window.localStorage.setItem('ntic_drafts', JSON.stringify(drafts));
+    }
+  } catch {
+    // If anything about the blob is unreadable, err on the side of deleting it:
+    // a lost draft is recoverable, a stored CVV is not acceptable.
+    try { window.localStorage.removeItem('ntic_drafts'); } catch { /* ignore */ }
+  }
+}
+
 export function hasRememberedDevice(): boolean {
   if (typeof window === 'undefined') return false;
   return window.localStorage.getItem(REMEMBER_DEVICE_KEY) === 'true';

@@ -449,6 +449,23 @@ def _create_tables(conn):
     cur.execute("ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS graded_by_name VARCHAR(200);")
     cur.execute("ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS graded_at TIMESTAMP NULL;")
 
+    # Self-service profile fields. The profile-completion page collected all of
+    # these and then dropped them: submitProfile() only wrote to localStorage,
+    # so a judge's expertise/bio and a sponsor's sector/tier vanished the moment
+    # they signed in from another device. There was nowhere to put them.
+    #
+    # `experience_level` already exists above and is reused for judge experience
+    # rather than adding a near-duplicate column.
+    #
+    # Deliberately NOT added: the sponsorship `amount`. A money figure belongs on
+    # a sponsorship/payment record with its own audit trail and verification
+    # state, not as loose text on the user row.
+    cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;")
+    cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS expertise VARCHAR(100);")
+    cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS sector VARCHAR(100);")
+    cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS rep_name VARCHAR(200);")
+    cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS tier VARCHAR(50);")
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS pending_approvals (
             id VARCHAR(64) PRIMARY KEY,

@@ -1,4 +1,4 @@
-import { getAuthValue, clearAllAuthValues, hasRememberedDevice, purgeLegacyStoredPassword, purgeLegacyAuthStorage } from './services/session.util';
+import { getAuthValue, clearAllAuthValues, hasRememberedDevice, purgeLegacyStoredPassword, purgeLegacyAuthStorage, purgeCardDataFromDrafts } from './services/session.util';
 import { resetVerifiedRoleCache } from './guards/auth.guard';
 import { AppUpdateService } from './services/app-update.service';
 import { Component, OnInit, OnDestroy, HostListener, Renderer2, inject } from '@angular/core';
@@ -150,6 +150,10 @@ export class AppComponent implements OnInit, OnDestroy {
     // localStorage. Delete any token/role left there, otherwise it would
     // outlive both the tab-close sign-out and the inactivity timeout.
     purgeLegacyAuthStorage();
+    // Migration: the profile-completion form used to save card number and CVV
+    // into localStorage['ntic_drafts']. Existing users still have that on disk,
+    // so scrub it on first load after this update.
+    purgeCardDataFromDrafts();
     // Watch for new deployments and offer a reload. Without this, an installed
     // PWA can stay on a stale bundle indefinitely.
     this.appUpdate.init();

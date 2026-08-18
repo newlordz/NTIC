@@ -32,13 +32,15 @@ export class SponsorsComponent implements OnInit {
     amount: '',
     refNo: '',
     notes: '',
+    // Card fields (cardName / cardNumber / cardExpiry / cardCvv) were removed.
+    // Nothing in this app processes a card: submitPayment() only records a
+    // reference number for an admin to verify against the real bank/MoMo
+    // statement. Collecting a PAN and CVV to then discard them added genuine
+    // cardholder-data risk for no function. Real card capture must go through a
+    // payment provider's hosted fields so the data never enters this app.
     bankName: 'Ecobank Ghana',
     momoNetwork: 'MTN Mobile Money',
     momoNumber: '',
-    cardName: '',
-    cardNumber: '',
-    cardExpiry: '',
-    cardCvv: '',
     chequeNo: '',
     issuingBank: 'Stanbic Bank Ghana'
   };
@@ -156,10 +158,6 @@ export class SponsorsComponent implements OnInit {
       bankName: 'Ecobank Ghana',
       momoNetwork: 'MTN Mobile Money',
       momoNumber: sponsor?.phone || '',
-      cardName: sponsor?.fullName || '',
-      cardNumber: '',
-      cardExpiry: '',
-      cardCvv: '',
       chequeNo: '',
       issuingBank: 'Stanbic Bank Ghana'
     };
@@ -186,7 +184,12 @@ export class SponsorsComponent implements OnInit {
           refNo: this.paymentForm.refNo.trim(),
           amount: 'GH₵ ' + this.paymentForm.amount.trim(),
           method: this.selectedPaymentMethod,
-          status: 'Confirmed',
+          // NOT 'Confirmed'. Nothing here talks to a bank, a MoMo API or a card
+          // processor -- this only records the reference the sponsor says they
+          // paid against. Marking it Confirmed told sponsors their money had
+          // cleared when no verification of any kind had happened. An admin has
+          // to check it against the real statement.
+          status: 'Pending Verification',
           date: new Date().toISOString().split('T')[0],
           notes: this.paymentForm.notes.trim() || undefined
         };
@@ -216,7 +219,7 @@ export class SponsorsComponent implements OnInit {
           ...this.contentService.auditLogs
         ]);
 
-        this.paymentSuccessMessage = 'Payment submitted and verified successfully!';
+        this.paymentSuccessMessage = 'Payment reference recorded. Our team will verify it against the bank statement and confirm.';
         setTimeout(() => {
           this.closePaymentModal();
         }, 1200);

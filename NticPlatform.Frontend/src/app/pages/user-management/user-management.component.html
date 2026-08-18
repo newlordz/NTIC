@@ -183,8 +183,7 @@
         <table class="um-table">
           <thead>
             <tr>
-              <th class="th-avatar"></th>
-              <th>User Info</th>
+              <th class="th-user">User Info</th>
               <th>Role Privilege</th>
               <th>Organization / School</th>
               <th>Access Ticket</th>
@@ -194,14 +193,16 @@
           </thead>
           <tbody>
             <tr *ngFor="let u of filteredUsers" class="um-row" (click)="viewUser(u)">
-              <td>
-                <div class="um-avatar" [class]="'av-' + u.role">
-                  {{ getInitials(u.fullName || u.email) }}
+              <td class="td-user">
+                <div class="um-user-cell">
+                  <div class="um-avatar" [class]="'av-' + u.role">
+                    {{ getInitials(u.fullName || u.email) }}
+                  </div>
+                  <div class="um-user-info">
+                    <div class="um-name">{{ u.fullName }} <span *ngIf="isCurrentUser(u)" class="you-badge">You</span></div>
+                    <div class="um-email">{{ u.email }}</div>
+                  </div>
                 </div>
-              </td>
-              <td>
-                <div class="um-name">{{ u.fullName }} <span *ngIf="isCurrentUser(u)" class="you-badge">You</span></div>
-                <div class="um-email">{{ u.email }}</div>
               </td>
               <td>
                 <span class="role-pill" [class]="'rp-' + u.role">{{ getUserRoleLabel(u) }}</span>

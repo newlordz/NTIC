@@ -9,6 +9,7 @@ import {
   forgetRememberedCredentials,
   purgeLegacyStoredPassword,
   purgeLegacyAuthStorage,
+  purgeCardDataFromDrafts,
 } from './session.util';
 
 describe('SessionUtil', () => {
@@ -116,6 +117,72 @@ describe('SessionUtil', () => {
       localStorage.setItem('ntic_remembered_password', 'YWJjMTIz');
       clearAllAuthValues();
       expect(localStorage.getItem('ntic_remembered_password')).toBeNull();
+    });
+  });
+
+  describe('purgeCardDataFromDrafts', () => {
+    // The profile-completion form spread the whole profileForm into
+    // localStorage['ntic_drafts'], so real users have a card number and CVV on
+    // disk in cleartext. Removing the form fields stops new writes but cannot
+    // clean what is already there.
+    const writeDraft = (data: any) => {
+      localStorage.setItem('ntic_drafts', JSON.stringify({
+        'sponsor@example.com': { tab: 'sponsor', data, savedAt: '2026-01-01T00:00:00Z' },
+      }));
+    };
+    const readDraft = () =>
+      JSON.parse(localStorage.getItem('ntic_drafts') || '{}')['sponsor@example.com']?.data;
+
+    it('removes the card number and CVV from an existing draft', () => {
+      writeDraft({
+        fullName: 'Ama Boateng',
+        cardNumber: '4532111122223333',
+        cardCvv: '123',
+        cardExpiry: '11/28',
+        cardName: 'Ama Boateng',
+      });
+      purgeCardDataFromDrafts();
+      const data = readDraft();
+      expect(data.cardNumber).toBeUndefined();
+      expect(data.cardCvv).toBeUndefined();
+      expect(data.cardExpiry).toBeUndefined();
+      expect(data.cardName).toBeUndefined();
+    });
+
+    it('leaves the rest of the draft intact so onboarding work is not lost', () => {
+      writeDraft({ fullName: 'Ama Boateng', sector: 'Technology', cardCvv: '999' });
+      purgeCardDataFromDrafts();
+      const data = readDraft();
+      expect(data.fullName).toBe('Ama Boateng');
+      expect(data.sector).toBe('Technology');
+      expect(data.cardCvv).toBeUndefined();
+    });
+
+    it('does not leave the card number anywhere in localStorage', () => {
+      writeDraft({ cardNumber: '4532111122223333', cardCvv: '123' });
+      purgeCardDataFromDrafts();
+      const dump = JSON.stringify(localStorage);
+      expect(dump).not.toContain('4532111122223333');
+      expect(dump).not.toContain('cardCvv');
+    });
+
+    it('is a no-op when there is no draft', () => {
+      purgeCardDataFromDrafts();
+      expect(localStorage.getItem('ntic_drafts')).toBeNull();
+    });
+
+    it('discards an unparseable drafts blob rather than trusting it', () => {
+      localStorage.setItem('ntic_drafts', 'not-json{{{');
+      purgeCardDataFromDrafts();
+      expect(localStorage.getItem('ntic_drafts')).toBeNull();
+    });
+
+    it('is safe to run repeatedly', () => {
+      writeDraft({ fullName: 'Ama Boateng', cardCvv: '123' });
+      purgeCardDataFromDrafts();
+      purgeCardDataFromDrafts();
+      expect(readDraft().fullName).toBe('Ama Boateng');
+      expect(readDraft().cardCvv).toBeUndefined();
     });
   });
 

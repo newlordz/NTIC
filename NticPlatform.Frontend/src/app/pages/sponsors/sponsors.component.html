@@ -277,40 +277,18 @@
               </div>
             </ng-container>
 
-            <!-- 4. CREDIT / DEBIT CARD ONLINE -->
-            <ng-container *ngIf="selectedPaymentMethod === 'Card Online'">
-              <div style="font-weight:700;color:var(--primary);font-size:13px;display:flex;align-items:center;justify-content:space-between;">
-                <span style="display:flex;align-items:center;gap:6px;">
-                  <span class="material-symbols-outlined" style="font-size:18px;">credit_card</span>
-                  Enter Card Details to Pay Online
-                </span>
-                <span style="font-size:10px;color:var(--on-surface-variant);font-weight:600;">Paystack Secured</span>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Cardholder Name</label>
-                <input class="form-control" type="text" [(ngModel)]="paymentForm.cardName" placeholder="Name on card">
-              </div>
-              <div class="form-group">
-                <label class="form-label">16-Digit Card Number</label>
-                <div style="position:relative;">
-                  <input class="form-control" type="text" [(ngModel)]="paymentForm.cardNumber" placeholder="4532 **** **** 8910" style="padding-right:75px;">
-                  <div style="position:absolute;right:8px;top:50%;transform:translateY(-50%);display:flex;gap:4px;">
-                    <span class="badge primary" style="font-size:8px;padding:2px 4px;">VISA</span>
-                    <span class="badge secondary" style="font-size:8px;padding:2px 4px;">MC</span>
-                  </div>
-                </div>
-              </div>
-              <div class="grid-2">
-                <div class="form-group">
-                  <label class="form-label">Expiry (MM/YY)</label>
-                  <input class="form-control" type="text" [(ngModel)]="paymentForm.cardExpiry" placeholder="MM/YY">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">CVV (3 digits)</label>
-                  <input class="form-control" type="password" maxlength="4" [(ngModel)]="paymentForm.cardCvv" placeholder="***">
-                </div>
-              </div>
-            </ng-container>
+            <!-- The "Card Online" block (cardholder name, 16-digit card number,
+                 expiry, CVV) was removed deliberately.
+
+                 Nothing in this application processes a card. submitPayment()
+                 only records a reference number for an admin to check against
+                 the real bank/MoMo statement, so the card fields were collected
+                 and then discarded -- pure cardholder-data risk for no function.
+                 The block also displayed a "Paystack Secured" badge while no
+                 Paystack integration exists, which is a false trust signal.
+
+                 Real card payment must use a provider's hosted fields or
+                 redirect so the PAN and CVV never enter this app. -->
           </div>
 
           <!-- Common Amount & Ref -->
