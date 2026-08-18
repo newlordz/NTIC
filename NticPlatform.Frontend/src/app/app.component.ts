@@ -164,10 +164,14 @@ export class AppComponent implements OnInit, OnDestroy {
         e.preventDefault();
       });
     }
-    // Load support tickets for admin badge
-    if (this.currentUser?.roleId === 'super_admin' || this.currentUser?.roleId === 'support_admin') {
+    // Load support tickets for admin badge only when properly authenticated
+    if ((this.currentUser?.roleId === 'super_admin' || this.currentUser?.roleId === 'support_admin') && getAuthValue('activeUserToken')) {
       this.chatbot.loadAllTickets();
-      this.ticketPollTimer = setInterval(() => this.chatbot.loadAllTickets(), 15000);
+      this.ticketPollTimer = setInterval(() => {
+        if (getAuthValue('activeUserToken')) {
+          this.chatbot.loadAllTickets();
+        }
+      }, 15000);
     }
 
     // ── Inactivity sign-out ──────────────────────────────────────────

@@ -1305,17 +1305,21 @@ setAuthValue('activeUserEmail', email);
   isPasswordVisible = false;
   rememberDevice = false;
 
-  openLoginModal(): void {
+  openLoginModal(event?: Event): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     this.isLoginModalOpen = true;
     this.loginError = '';
-        const creds = getRememberedCredentials();
-        if (creds.remembered) {
-          this.rememberDevice = true;
-          this.loginEmail = creds.username;
-          // Passwords are never persisted - the user always retypes it.
-          this.loginPassword = '';
-        } else {
-          this.loginEmail = '';
+    const creds = getRememberedCredentials();
+    if (creds.remembered) {
+      this.rememberDevice = true;
+      this.loginEmail = creds.username;
+      // Passwords are never persisted - the user always retypes it.
+      this.loginPassword = '';
+    } else {
+      this.loginEmail = '';
       this.loginPassword = '';
       this.rememberDevice = false;
     }

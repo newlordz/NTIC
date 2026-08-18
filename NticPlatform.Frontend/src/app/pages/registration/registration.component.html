@@ -16,7 +16,7 @@
       <span class="material-symbols-outlined">arrow_back</span> Return to Homepage
     </button>
     <div class="gateway-top-actions" style="position: absolute; top: 20px; right: 28px; z-index: 10; display: flex; align-items: center; gap: 10px;">
-      <button type="button" (click)="openLoginModal()" class="gateway-login-btn" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; border-radius: 8px; background: linear-gradient(135deg, var(--primary, #003f87) 0%, #1d4ed8 100%); color: #ffffff; box-shadow: 0 4px 14px rgba(0, 63, 135, 0.35); transition: all 0.2s ease;">
+      <button type="button" (click)="openLoginModal($event)" class="gateway-login-btn" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; border-radius: 8px; background: linear-gradient(135deg, var(--primary, #003f87) 0%, #1d4ed8 100%); color: #ffffff; box-shadow: 0 4px 14px rgba(0, 63, 135, 0.35); transition: all 0.2s ease;">
         <span class="material-symbols-outlined" style="font-size: 18px;">login</span>
         <span>Account Login</span>
       </button>
@@ -448,7 +448,7 @@
         <p class="page-subtitle" *ngIf="editingApprovalId">You are correcting details on a pending application. Changes will be synced to your submitted application, which remains under review.</p>
       </div>
       <div style="display:flex; gap:10px; align-items:center;">
-        <button type="button" class="btn btn-subtle" (click)="openLoginModal()" style="display: flex; align-items: center; gap: 6px;">
+        <button type="button" class="btn btn-subtle" (click)="openLoginModal($event)" style="display: flex; align-items: center; gap: 6px;">
           <span class="material-symbols-outlined" style="font-size: 18px;">login</span>
           <span>Login</span>
         </button>
@@ -1511,7 +1511,7 @@
                 <div class="instructor-card-subtitle">ACCREDITED NTIC INSTRUCTOR</div>
                 <h2 class="instructor-card-name">{{ instructorForm.name }}</h2>
                 <div class="instructor-card-qual">
-                  {{ instructorForm.qualification }}<span *ngIf="!instructorForm.isIndependent && instructorForm.institution"> Â· {{ instructorForm.institution }}</span><span *ngIf="instructorForm.isIndependent"> Â· Independent</span>
+                  {{ instructorForm.qualification }}<span *ngIf="!instructorForm.isIndependent && instructorForm.institution"> · {{ instructorForm.institution }}</span><span *ngIf="instructorForm.isIndependent"> · Independent</span>
                 </div>
                 
                 <div class="instructor-card-details">
@@ -1577,7 +1577,7 @@
         </div>
 
         <div class="card-body">
-          <!-- â"€â"€ INDIVIDUAL COMPETITOR FORM â"€â"€ -->
+          <!-- ── INDIVIDUAL COMPETITOR FORM ── -->
           <div *ngIf="competitorMode === 'individual'" class="fade-in">
             <p style="color: var(--on-surface-variant); margin-bottom: 24px;">Register as an independent student competitor. Pick a track and start competing.</p>
 
@@ -1732,7 +1732,7 @@
             </div>
           </div>
 
-          <!-- â"€â"€ GROUP / SQUAD COMPETITOR FORM â"€â"€ -->
+          <!-- ── GROUP / SQUAD COMPETITOR FORM ── -->
           <div *ngIf="competitorMode === 'group'" class="fade-in">
             <p style="color: var(--on-surface-variant); margin-bottom: 24px;">Register a 3--5 member competition squad. Team leads receive the group token and represent the squad in arena heats.</p>
 
@@ -2587,7 +2587,7 @@
                 
                 <div class="ticket-footer">
                   <span class="material-symbols-outlined sec-icon">verified_user</span>
-                  <span>MINISTRY OF EDUCATION Â· ACT 843 SECURE PASS</span>
+                  <span>MINISTRY OF EDUCATION · ACT 843 SECURE PASS</span>
                 </div>
               </div>
             </ng-container>
@@ -3078,10 +3078,7 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════
-     PHENOMENAL GATEWAY ACCOUNT LOGIN MODAL
-     ══════════════════════════════════════════════════════════════ -->
-<div class="login-modal-backdrop" *ngIf="isLoginModalOpen" [class.open]="isLoginModalOpen" (click)="closeLoginModal()">
+<div class="login-modal-backdrop" [class.open]="isLoginModalOpen" (click)="closeLoginModal()">
   <div class="login-modal-card" (click)="$event.stopPropagation()">
     
     <button type="button" class="close-modal-btn" (click)="closeLoginModal()" title="Close Login">

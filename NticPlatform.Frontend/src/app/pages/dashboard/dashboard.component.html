@@ -1,8 +1,8 @@
 <div class="page-canvas route-animate">
 
-  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  <!-- ======================================================
        NON-ADMIN DASHBOARDS (Student / Instructor / etc.)
-  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+  ====================================================== -->
   <ng-container *ngIf="activeRoleId !== 'super_admin'">
     <!-- Page Header -->
     <div class="page-header with-action">
@@ -179,7 +179,7 @@
           </div>
         </div>
 
-        <!-- â”€â”€ Judge Arena Dashboard Panel â”€â”€ -->
+        <!-- -- Judge Arena Dashboard Panel -- -->
         <div *ngIf="activeRoleId === 'judge'">
 
           <!-- Hero entry card -->
@@ -200,7 +200,7 @@
             <div style="position:relative;z-index:1;">
               <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 14px;background:rgba(37,99,235,0.16);border:1px solid rgba(99,161,255,0.35);border-radius:999px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#93c5fd;margin-bottom:16px;">
                 <span style="width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 8px #34d399;"></span>
-                Judging Arena Â· Live
+                Judging Arena · Live
               </div>
               <h2 style="margin:0 0 8px;font-size:22px;font-weight:900;letter-spacing:-0.03em;color:#fff;">Competition Scoring Chamber</h2>
               <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.55);line-height:1.6;max-width:360px;">Evaluate NTIC championship submissions with precision rubrics and publish official rankings.</p>
@@ -407,7 +407,7 @@
             </div>
           </div>
         </div>
-        <!-- â”€â”€ Judge Sidebar Panel â”€â”€ -->
+        <!-- -- Judge Sidebar Panel -- -->
         <div *ngIf="activeRoleId === 'judge'" style="display:flex;flex-direction:column;gap:16px;">
           <!-- Quick Stats -->
           <div class="card">
@@ -484,9 +484,9 @@
 
   </ng-container>
 
-  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  <!-- ======================================================
        SUPER ADMIN COMMAND CENTER
-  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+  ====================================================== -->
   <ng-container *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager' || activeRoleId === 'reviewer' || activeRoleId === 'competition_manager'">
 
     <!-- ══ DYNAMIC COSMIC SKY LAYER (Twinkling Stars + Slow Shooting Comets - Admin Only) ══ -->
@@ -1801,7 +1801,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ TAB: USERS BY ROLE â”€â”€ -->
+    <!-- -- TAB: USERS BY ROLE -- -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'users'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
       <div class="ac-top-bar">
         <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
@@ -1936,7 +1936,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ TAB: MANAGE ADMINS â”€â”€ -->
+    <!-- -- TAB: MANAGE ADMINS -- -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'admins'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
       <div class="ac-top-bar">
         <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
@@ -2730,12 +2730,12 @@
       </div>
     </div>
 
-    <!-- â”€â”€ TAB: LMS MANAGER â”€â”€ -->
+    <!-- -- TAB: LMS MANAGER -- -->
     <div *ngIf="adminTab === 'lms'" class="admin-tab-body" style="padding:0;">
       <app-lms-manager></app-lms-manager>
     </div>
 
-    <!-- â”€â”€ TAB: TICKETS â”€â”€ -->
+    <!-- -- TAB: TICKETS -- -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'tickets'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
       <div class="ac-top-bar">
         <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
@@ -2827,7 +2827,7 @@
                     {{ session.full_name }}
                     <span class="live-role-badge" [class]="session.role">{{ session.role }}</span>
                   </div>
-                  <div class="live-user-email">{{ session.email }} Â· <small>Started {{ session.created_at | slice:0:16 }}</small></div>
+                  <div class="live-user-email">{{ session.email }} · <small>Started {{ session.created_at | slice:0:16 }}</small></div>
                 </div>
                 <div class="live-item-right">
                   <code class="live-ticket-code">{{ isMainAdmin(session) ? '••••••••••••' : ((session.display || (session.token | slice:0:12)) + '...') }}</code>
@@ -2972,7 +2972,7 @@
       </ng-container>
     </div>
 
-    <!-- â”€â”€ TAB: PENDING APPROVALS â”€â”€ -->
+    <!-- -- TAB: PENDING APPROVALS -- -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'approvals'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
       <div class="ac-top-bar">
         <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
@@ -4370,7 +4370,7 @@
 
       <div class="preview-modal-body">
 
-        <!-- â•â•â• School Registration â•â•â• -->
+        <!-- === School Registration === -->
         <ng-container *ngIf="activePreviewRequest.type === 'School Registration'">
           <div class="preview-section">
             <div class="preview-section-header">
@@ -4491,7 +4491,7 @@
                   <div style="font-weight:600;font-size:14px;color:var(--on-surface);">{{ team.name }}</div>
                   <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">
                     Track: <strong>{{ team.track || 'Coding' }}</strong>
-                    <span *ngIf="team.leadName"> Â· Lead: <strong>{{ team.leadName }}</strong></span>
+                    <span *ngIf="team.leadName"> · Lead: <strong>{{ team.leadName }}</strong></span>
                   </div>
                   <div *ngIf="team.rosterList?.length > 1" style="font-size:11px;color:var(--on-surface-variant);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
                     Members: {{ team.rosterList.join(', ') }}
@@ -4521,7 +4521,7 @@
           </div>
         </ng-container>
 
-        <!-- â•â•â• Team Addition â•â•â• -->
+        <!-- === Team Addition === -->
         <ng-container *ngIf="activePreviewRequest.type === 'Team Addition'">
           <div class="preview-section">
             <div class="preview-section-header">
@@ -4587,7 +4587,7 @@
           </div>
         </ng-container>
 
-        <!-- â•â•â• Instructor Access â•â•â• -->
+        <!-- === Instructor Access === -->
         <ng-container *ngIf="activePreviewRequest.type === 'Instructor Access'">
           <div class="preview-section">
             <div class="preview-section-header">
@@ -4673,7 +4673,7 @@
           </div>
         </ng-container>
 
-        <!-- â•â•â• Student Registration â•â•â• -->
+        <!-- === Student Registration === -->
         <ng-container *ngIf="activePreviewRequest.type === 'Student Registration'">
           <div class="preview-section">
             <div class="preview-section-header">
@@ -4775,7 +4775,7 @@
     </div>
   </div>
 
-  <!-- â”€â”€ REVIEW / REJECTION DIALOG â”€â”€ -->
+  <!-- -- REVIEW / REJECTION DIALOG -- -->
   <div class="review-dialog-backdrop" *ngIf="activeReviewRequest" (click)="closeReview()">
     <div class="review-dialog" (click)="$event.stopPropagation()">
       <div class="review-dialog-header">
@@ -4842,7 +4842,7 @@
 
 </div> <!-- End page-canvas -->
 
-<!-- â”€â”€ REGISTRATION POPUP MODAL â”€â”€ -->
+<!-- -- REGISTRATION POPUP MODAL -- -->
   <div class="ticket-modal-backdrop" *ngIf="isRegModalOpen" (click)="closeRegisterModal()">
     <div class="ticket-modal reg-popup-modal" (click)="$event.stopPropagation()">
       <div class="ticket-modal-header">
@@ -5056,7 +5056,7 @@
               <div>
                 <div class="preview-ticket-platform">National NTIC Platform</div>
                 <div class="preview-ticket-type">
-                  {{ registerRole === 'judge' ? 'âš– Competition Judge' : 'ðŸ¤ Platform Sponsor' }}
+                  {{ registerRole === 'judge' ? '⚖ Competition Judge' : '🤝¤ Platform Sponsor' }}
                 </div>
               </div>
               <div class="preview-ticket-year">2026</div>
@@ -5110,7 +5110,7 @@
                   <span *ngIf="regSuccess && viewTicketUser">{{ viewTicketUser.ticket }}</span>
                 </div>
                 <div class="preview-code-hint" [class.success]="regSuccess">
-                  {{ regSuccess ? 'âœ“ Token generated and active' : 'Will be generated upon registration' }}
+                  {{ regSuccess ? '✓ Token generated and active' : 'Will be generated upon registration' }}
                 </div>
               </div>
             </div>
@@ -5141,7 +5141,7 @@
   </div>
 </div>
 
-<!-- â”€â”€ SPONSORSHIP PAYMENT CENTER â”€â”€ -->
+<!-- -- SPONSORSHIP PAYMENT CENTER -- -->
 <div class="ticket-modal-backdrop" *ngIf="settleModalOpen" (click)="closeSettleModal()">
   <div class="ticket-modal reg-popup-modal" (click)="$event.stopPropagation()" style="max-width:580px;">
     <div class="ticket-modal-header">
@@ -5186,7 +5186,7 @@
             <span style="font-size:11px;color:var(--on-surface-variant);">GHS</span>
           </div>
           <div style="position:relative;">
-            <span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:700;color:var(--on-surface-variant);">GHâ‚µ</span>
+            <span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:700;color:var(--on-surface-variant);">GH₵</span>
             <input type="number" [(ngModel)]="settleAmount" placeholder="0.00" min="1"
                    style="width:100%;padding:18px 18px 18px 72px;font-size:28px;font-weight:800;text-align:left;border:2px solid var(--outline-variant);border-radius:14px;background:var(--surface-container-lowest);color:var(--on-surface);outline:none;transition:border-color 0.2s;box-sizing:border-box;"
                    (focus)="$any($event.target).style.borderColor='var(--primary)'"
@@ -5308,7 +5308,7 @@
   </div>
 </div>
 
-  <!-- â”€â”€ TICKET MODAL â”€â”€ -->
+  <!-- -- TICKET MODAL -- -->
   <div class="ticket-modal-backdrop" *ngIf="viewTicketUser" (click)="closeTicketModal()">
     <div class="ticket-modal" (click)="$event.stopPropagation()">
       <div class="ticket-modal-header">
@@ -5614,7 +5614,7 @@
     </div>
   </div>
 
-  <!-- â”€â”€ ROLE USERS MODAL â”€â”€ -->
+  <!-- -- ROLE USERS MODAL -- -->
   <div class="ticket-modal-backdrop" *ngIf="roleModalRole" (click)="closeRoleModal()">
     <div class="ticket-modal role-users-modal" (click)="$event.stopPropagation()">
       <div class="ticket-modal-header">
@@ -5656,9 +5656,9 @@
     </div>
   </div>
 
-  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  <!-- ==============================================================
        CUSTOM CREDENTIALS & APPROVAL SUCCESS MODAL (WITH ONE-CLICK COPY)
-       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+       ============================================================== -->
   <div class="custom-modal-backdrop" *ngIf="credentialsModal?.isOpen" (click)="proceedFromCredentialsModal()">
     <div class="custom-credentials-modal" (click)="$event.stopPropagation()">
       <div class="cred-modal-header">
@@ -5720,9 +5720,9 @@
     </div>
   </div>
 
-  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  <!-- ==============================================================
        CUSTOM SLEEK ALERT NOTIFICATION MODAL
-       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+       ============================================================== -->
   <div class="custom-modal-backdrop" *ngIf="customAlertModal?.isOpen" (click)="closeCustomAlert()">
     <div class="custom-alert-card" [ngClass]="customAlertModal?.type || 'info'" (click)="$event.stopPropagation()">
       <div class="custom-alert-icon-wrap">

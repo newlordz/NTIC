@@ -469,6 +469,8 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
 
   /** Admin: load all tickets from backend */
   async loadAllTickets(): Promise<void> {
+    const token = getAuthValue('activeUserToken');
+    if (!token) return;
     try {
       const tickets: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/tickets`));
       this.supportTickets.set(tickets.map((t: any) => this.parseTicket(t)));
@@ -477,6 +479,8 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
 
   /** User: fetch own ticket from backend and merge into local state */
   async fetchMyTicket(userId: string): Promise<SupportTicket | null> {
+    const token = getAuthValue('activeUserToken');
+    if (!token || !userId) return null;
     try {
       const tickets: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/tickets?user_id=${encodeURIComponent(userId)}`));
       if (tickets && tickets.length > 0) {
