@@ -38,6 +38,93 @@ export interface MyProfile {
   password_min_length: number;
 }
 
+/**
+ * One sponsor / judge / instructor on the personnel roster.
+ *
+ * Mirrors GET /api/admin/personnel. Every field is something the backend can
+ * prove from its own tables. There is deliberately no `tier`, `sector`,
+ * `expertise`, `payments` or `track` here -- those have no column in `users`
+ * and only ever existed in browser localStorage.
+ */
+export interface PersonnelPerson {
+  id: string;
+  email: string;
+  full_name: string;
+  role: 'sponsor' | 'judge' | 'instructor';
+  ticket: string;
+  status: string;
+  phone: string;
+  organization: string;
+  created_at: string | null;
+  has_photo: boolean;
+  has_document: boolean;
+  must_change_password: boolean;
+  experience_level: string;
+  competition_id: string;
+  /** A live, unexpired session exists. Means "active recently" because
+   *  sessions now expire after the idle window. */
+  is_online: boolean;
+  active_sessions: number;
+  /** From the audit log, so it survives signing out. Null = never logged in. */
+  last_login_at: string | null;
+  login_count: number;
+  open_tickets: number;
+  /** Instructor-only. Null for sponsors and judges -- render "n/a", not 0. */
+  courses_authored: number | null;
+  courses_pending: number | null;
+  students_reached: number | null;
+  /** Graders only (judge / instructor). Null for sponsors, who cannot grade. */
+  submissions_graded: number | null;
+  last_graded_at: string | null;
+}
+
+export interface PersonnelSummary {
+  total: number;
+  active: number;
+  online: number;
+  never_logged_in: number;
+  needs_attention: number;
+}
+
+export interface PersonnelRoster {
+  generated_at: string;  /** Minutes of inactivity before a session drops, i.e. what "online" means. */
+  online_window_minutes: number;
+  /** Instructor course counts are matched on the free-text `submitted_by`
+   *  name because lms_courses has no FK to users. */
+  courses_matched_by_name: boolean;
+  people: PersonnelPerson[];
+  summary: Record<'sponsor' | 'judge' | 'instructor', PersonnelSummary>;
+}
+
+/** One competition submission as seen from the judging workspace. */
+export interface JudgeSubmission {
+  id: string;
+  student_id: string;
+  student_name: string;
+  student_email: string;
+  track: string;
+  source_code_path: string;
+  video_url: string;
+  status: string;
+  submitted_at: string | null;
+  /** Present on history entries only. */
+  score?: number | null;
+  feedback?: string;
+  graded_at?: string | null;
+}
+
+export interface JudgeQueue {
+  pending_total: number;
+  by_track: { track: string; pending: number }[];
+  submissions: JudgeSubmission[];
+}
+
+export interface JudgeHistory {
+  graded_total: number;
+  average_score: number | null;
+  graded: JudgeSubmission[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -323,6 +410,28 @@ export class ApiService {
 
   getUsersCount(): Observable<{ total: number }> {
     return this.http.get<{ total: number }>(this.apiUrl + '/users/count');
+  }
+
+  /**
+   * Operational roster for sponsors, judges and instructors.
+   *
+   * Only returns facts the database can prove. Note `courses*` /
+   * `studentsReached` are null for sponsors and judges (they have no course
+   * workload) -- render them as "n/a", never as 0.
+   */
+  getPersonnel(): Observable<PersonnelRoster> {
+    return this.http.get<PersonnelRoster>(this.apiUrl + '/admin/personnel');
+  }
+
+  /** Submissions still awaiting a score. Shared pool, oldest first. */
+  getJudgeQueue(track = ''): Observable<JudgeQueue> {
+    const q = track ? '?track=' + encodeURIComponent(track) : '';
+    return this.http.get<JudgeQueue>(this.apiUrl + '/judge/queue' + q);
+  }
+
+  /** What the signed-in grader has scored. Private to that grader. */
+  getJudgeHistory(limit = 50): Observable<JudgeHistory> {
+    return this.http.get<JudgeHistory>(this.apiUrl + '/judge/history?limit=' + limit);
   }
 
   createUser(payload: { email: string; full_name?: string; role?: string; ticket?: string; password?: string; status?: string; phone?: string; organization?: string; age_group?: string; experience_level?: string; competition_id?: string; photo_file_id?: string; doc_file_id?: string }): Observable<any> {

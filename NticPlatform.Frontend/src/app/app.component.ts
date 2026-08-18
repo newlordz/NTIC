@@ -478,11 +478,14 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'admin_control': return adminRoles.includes(role);
       case 'roster':       return ['school_admin'].includes(role);
       case 'registration': return ['instructor', 'super_admin', 'admin'].includes(role);
-      case 'lms':          return ['student', 'instructor', 'super_admin', 'admin'].includes(role);
+      case 'lms':          return ['student'].includes(role);
       case 'competitions': return ['student', 'instructor', 'school_admin', 'judge', 'super_admin', 'admin', 'content_manager', 'competition_manager'].includes(role);
       case 'leaderboard':  return ['student', 'instructor', 'school_admin', 'judge', 'sponsor', ...adminRoles].includes(role);
       case 'talent':       return ['instructor', 'sponsor'].includes(role);
       case 'sponsors':     return ['sponsor', 'super_admin', 'admin'].includes(role);
+      // Judging workspace. Mirrors the backend's GRADING_ROLES and the
+      // 'judge' entry in the auth guard's ROLE_ACCESS map.
+      case 'judging':      return ['judge', 'reviewer', 'instructor', 'super_admin', 'admin'].includes(role);
       case 'reporting':    return ['super_admin', 'admin', 'reviewer', 'instructor', 'school_admin'].includes(role);
       case 'records':      return ['super_admin', 'admin', 'content_manager'].includes(role);
       case 'users':        return ['super_admin', 'admin'].includes(role);

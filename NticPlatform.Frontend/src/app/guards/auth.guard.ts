@@ -19,6 +19,10 @@ const ROLE_ACCESS: Record<string, string[]> = {
   'lms':              ['student', 'instructor', 'super_admin', 'admin'],
   'lms-manager':      ['super_admin', 'admin', 'content_manager', 'instructor'],
   'sponsors':         ['sponsor', 'super_admin', 'admin'],
+  // Mirrors the backend's GRADING_ROLES (security.py). Keep the two in step:
+  // allowing a role here that the API rejects produces a page that loads and
+  // then 403s on every action.
+  'judge':            ['judge', 'reviewer', 'instructor', 'super_admin', 'admin'],
   'reporting':        ['super_admin', 'admin', 'reviewer', 'instructor', 'school_admin'],
   'records':          ['super_admin', 'admin', 'content_manager'],
   'user-management':  ['super_admin', 'admin'],

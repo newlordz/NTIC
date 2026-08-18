@@ -14,7 +14,7 @@ export const routes: Routes = [
   { path: 'lms',          loadComponent: () => import('./pages/lms/lms.component').then(m => m.LmsComponent), canActivate: [authGuard] },
   { path: 'lms-manager',  loadComponent: () => import('./pages/lms-manager/lms-manager.component').then(m => m.LmsManagerComponent), canActivate: [authGuard] },
   { path: 'instructor',   redirectTo: 'dashboard' },
-  { path: 'judge',        redirectTo: 'dashboard' },
+  { path: 'judge',        loadComponent: () => import('./pages/judge/judge.component').then(m => m.JudgeComponent), canActivate: [authGuard] },
   { path: 'sponsors',     loadComponent: () => import('./pages/sponsors/sponsors.component').then(m => m.SponsorsComponent), canActivate: [authGuard] },
   { path: 'reporting',    loadComponent: () => import('./pages/reporting/reporting.component').then(m => m.ReportingComponent), canActivate: [authGuard] },
   { path: 'records',      loadComponent: () => import('./pages/records/records.component').then(m => m.RecordsComponent), canActivate: [authGuard] },

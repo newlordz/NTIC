@@ -489,6 +489,34 @@
   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
   <ng-container *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager' || activeRoleId === 'reviewer' || activeRoleId === 'competition_manager'">
 
+    <!-- ══ DYNAMIC COSMIC SKY LAYER (Twinkling Stars + Slow Shooting Comets - Admin Only) ══ -->
+    <div class="atmospheric-sky-layer" aria-hidden="true">
+      <div class="cosmic-starfield">
+        <div class="star-layer star-layer-1"></div>
+        <div class="star-layer star-layer-2"></div>
+        <div class="star-layer star-layer-3"></div>
+        <div class="sparkle-stars">
+          <span class="star-sparkle s-1">✦</span>
+          <span class="star-sparkle s-2">✦</span>
+          <span class="star-sparkle s-3">✦</span>
+          <span class="star-sparkle s-4">✦</span>
+          <span class="star-sparkle s-5">✦</span>
+          <span class="star-sparkle s-6">✦</span>
+          <span class="star-sparkle s-7">✦</span>
+          <span class="star-sparkle s-8">✦</span>
+          <span class="star-sparkle s-9">✦</span>
+          <span class="star-sparkle s-10">✦</span>
+          <span class="star-sparkle s-11">✦</span>
+          <span class="star-sparkle s-12">✦</span>
+        </div>
+      </div>
+      <div class="comet-space">
+        <div class="celestial-comet comet-alpha"></div>
+        <div class="celestial-comet comet-beta"></div>
+        <div class="celestial-comet comet-gamma"></div>
+      </div>
+    </div>
+
     <!-- ══ COMMAND CENTER MASTHEAD ══ -->
     <div class="cc-masthead" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
       <div class="cc-scanline"></div>
@@ -1060,9 +1088,6 @@
                   <span class="cc-live-dot cc-dot-green"></span>
                   Live Standings &middot; {{ lastScoringUpdate | date:'HH:mm:ss' }}
                 </span>
-                <button type="button" class="cc-comp-sound-btn" (click)="toggleTournamentAudio()" [title]="tournamentAudioEnabled ? 'Mute podium audio chimes' : 'Enable podium audio chimes'">
-                  <span class="material-symbols-outlined">{{ tournamentAudioEnabled ? 'volume_up' : 'volume_off' }}</span>
-                </button>
               </div>
               <div class="cc-comp-leader-list">
                 <div *ngFor="let leader of competitionLeaderboardTop" class="cc-comp-leader-row" [class.leader-top3]="leader.rank <= 3">
@@ -1349,6 +1374,18 @@
             <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
 
+          <div class="cc-control-card" (click)="goToSubTab('personnel')" *ngIf="canManageUsers">
+            <div class="cc-control-card-icon cc-icon-personnel">
+              <span class="material-symbols-outlined">groups</span>
+            </div>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">Personnel Monitor</div>
+              <div class="cc-control-card-desc">Track sponsors, judges, and instructors &mdash; activity, engagement, and account health.</div>
+              <div class="cc-control-card-count">{{ personnelCount }} being monitored</div>
+            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+          </div>
+
           <div class="cc-control-card" (click)="openFullRecordsArchive()">
             <div class="cc-control-card-icon cc-icon-records">
               <span class="material-symbols-outlined">folder_open</span>
@@ -1375,6 +1412,228 @@
         </button>
       </div>
       <app-user-management></app-user-management>
+    </div>
+
+    <!-- ── TAB: PERSONNEL MONITOR (sponsors / judges / instructors) ──
+         Read-only by design. Editing accounts stays in User Management so the
+         two panels cannot drift apart. Only fields the backend can prove are
+         shown -- no sponsor tier, judge expertise or instructor portfolio,
+         because none of those have a column in `users`. -->
+    <div *ngIf="adminTab === 'control' && adminSubTab === 'personnel'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
+      <div class="ac-top-bar">
+        <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
+          <span class="material-symbols-outlined">arrow_back</span>Admin Control
+        </button>
+        <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
+          <span class="material-symbols-outlined">{{ expandedSection ? 'collapse_content' : 'expand_content' }}</span>
+          {{ expandedSection ? 'Collapse' : 'Expand' }}
+        </button>
+      </div>
+
+      <div class="admin-header-actions">
+        <div class="section-title">Personnel Monitor</div>
+        <button class="btn btn-secondary btn-sm" (click)="loadPersonnel()" [disabled]="personnelLoading">
+          <span class="material-symbols-outlined">refresh</span>{{ personnelLoading ? 'Refreshing…' : 'Refresh' }}
+        </button>
+      </div>
+
+      <div class="pm-role-tabs">
+        <button *ngFor="let tab of personnelTabs"
+                class="pm-role-tab"
+                [class.active]="personnelTab === tab.id"
+                (click)="setPersonnelTab(tab.id)">
+          <span class="material-symbols-outlined">{{ tab.icon }}</span>
+          <span>{{ tab.label }}</span>
+          <span class="pm-tab-badge" *ngIf="personnelTabCount(tab.id) > 0">{{ personnelTabCount(tab.id) }}</span>
+        </button>
+      </div>
+
+      <div class="pm-error" *ngIf="personnelError">
+        <span class="material-symbols-outlined">error</span>
+        <span>{{ personnelError }}</span>
+        <button class="btn btn-secondary btn-sm" (click)="loadPersonnel()">Try again</button>
+      </div>
+
+      <div class="pm-loading" *ngIf="personnelLoading && !personnelRoster">
+        <span class="material-symbols-outlined pm-spin">progress_activity</span>
+        <span>Loading personnel roster…</span>
+      </div>
+
+      <ng-container *ngIf="personnelRoster && !personnelError">
+        <div class="pm-stat-row" *ngIf="personnelSummary as s">
+          <div class="pm-stat" [class.pm-stat-active]="personnelFilter === 'all'" (click)="personnelFilter = 'all'">
+            <div class="pm-stat-value">{{ s.total }}</div>
+            <div class="pm-stat-label">On roster</div>
+          </div>
+          <div class="pm-stat pm-stat-online" [class.pm-stat-active]="personnelFilter === 'online'" (click)="personnelFilter = 'online'">
+            <div class="pm-stat-value">{{ s.online }}</div>
+            <div class="pm-stat-label">Online now</div>
+          </div>
+          <div class="pm-stat pm-stat-warn" [class.pm-stat-active]="personnelFilter === 'attention'" (click)="personnelFilter = 'attention'">
+            <div class="pm-stat-value">{{ s.needs_attention }}</div>
+            <div class="pm-stat-label">Need attention</div>
+          </div>
+          <div class="pm-stat pm-stat-dormant" [class.pm-stat-active]="personnelFilter === 'dormant'" (click)="personnelFilter = 'dormant'">
+            <div class="pm-stat-value">{{ s.never_logged_in }}</div>
+            <div class="pm-stat-label">Never signed in</div>
+          </div>
+        </div>
+
+        <div class="pm-toolbar">
+          <div class="pm-search">
+            <span class="material-symbols-outlined">search</span>
+            <input type="text" [(ngModel)]="personnelSearch" placeholder="Search by name, email, organization, or token…" />
+            <button *ngIf="personnelSearch" class="pm-search-clear" (click)="personnelSearch = ''" title="Clear search">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="pm-online-note" *ngIf="personnelRoster.online_window_minutes">
+            <span class="material-symbols-outlined">info</span>
+            &ldquo;Online&rdquo; = active in the last {{ personnelRoster.online_window_minutes }} min
+          </div>
+        </div>
+
+        <div class="pm-empty" *ngIf="personnelList.length === 0">
+          <span class="material-symbols-outlined">person_search</span>
+          <p *ngIf="personnelInTab.length === 0">No {{ personnelTab }}s are registered on the platform yet.</p>
+          <p *ngIf="personnelInTab.length > 0">No {{ personnelTab }}s match your search or filter.</p>
+          <button class="btn btn-secondary btn-sm" *ngIf="personnelInTab.length > 0"
+                  (click)="personnelSearch = ''; personnelFilter = 'all'">Clear filters</button>
+        </div>
+
+        <div class="pm-table-wrap" *ngIf="personnelList.length > 0">
+          <table class="pm-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Contact</th>
+                <th>Organization</th>
+                <th>Last seen</th>
+                <th>Sign-ins</th>
+                <th *ngIf="personnelTab === 'instructor'">Courses</th>
+                <th *ngIf="personnelTab === 'judge' || personnelTab === 'instructor'">Graded</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of personnelList" (click)="openPersonDetail(p)" class="pm-row">
+                <td>
+                  <div class="pm-name-cell">
+                    <span class="pm-presence" [class.pm-presence-on]="p.is_online"
+                          [title]="p.is_online ? 'Online now' : 'Not currently signed in'"></span>
+                    <div>
+                      <div class="pm-name">{{ p.full_name || '—' }}</div>
+                      <div class="pm-sub" *ngIf="p.ticket">{{ p.ticket }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="pm-sub">{{ p.email }}</div>
+                  <div class="pm-sub" *ngIf="p.phone">{{ p.phone }}</div>
+                </td>
+                <td><span class="pm-sub">{{ p.organization || '—' }}</span></td>
+                <td>
+                  <span class="pm-lastseen"
+                        [class.pm-lastseen-on]="p.is_online"
+                        [class.pm-lastseen-never]="!p.last_login_at">{{ personLastSeen(p) }}</span>
+                </td>
+                <td><span class="pm-sub">{{ p.login_count || '—' }}</span></td>
+                <td *ngIf="personnelTab === 'instructor'"><span class="pm-sub">{{ personCourseLabel(p) }}</span></td>
+                <td *ngIf="personnelTab === 'judge' || personnelTab === 'instructor'">
+                  <span class="pm-sub">{{ p.submissions_graded === null ? 'n/a' : (p.submissions_graded || 'None yet') }}</span>
+                </td>
+                <td>
+                  <span class="pm-chip" [class.pm-chip-ok]="!personNeedsAttention(p)"
+                                        [class.pm-chip-warn]="personNeedsAttention(p)">
+                    {{ p.status }}<ng-container *ngIf="p.must_change_password"> · password reset due</ng-container>
+                  </span>
+                </td>
+                <td><span class="material-symbols-outlined pm-row-arrow">chevron_right</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-container>
+
+      <!-- Detail drawer -->
+      <div class="pm-drawer-backdrop" *ngIf="selectedPerson" (click)="closePersonDetail()"></div>
+      <aside class="pm-drawer" *ngIf="selectedPerson as p">
+        <div class="pm-drawer-head">
+          <div>
+            <div class="pm-drawer-name">{{ p.full_name || p.email }}</div>
+            <div class="pm-drawer-role">{{ p.role | titlecase }}</div>
+          </div>
+          <button class="pm-drawer-close" (click)="closePersonDetail()" title="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="pm-drawer-presence" [class.on]="p.is_online">
+          <span class="pm-presence" [class.pm-presence-on]="p.is_online"></span>
+          {{ personLastSeen(p) }}
+          <ng-container *ngIf="p.active_sessions > 1"> · {{ p.active_sessions }} active sessions</ng-container>
+        </div>
+
+        <div class="pm-drawer-section">
+          <div class="pm-drawer-section-title">Account</div>
+          <div class="pm-kv"><span>Email</span><span>{{ p.email }}</span></div>
+          <div class="pm-kv"><span>Phone</span><span>{{ p.phone || '—' }}</span></div>
+          <div class="pm-kv"><span>Organization</span><span>{{ p.organization || '—' }}</span></div>
+          <div class="pm-kv"><span>Access token</span><span>{{ p.ticket || '—' }}</span></div>
+          <div class="pm-kv"><span>Status</span><span>{{ p.status }}</span></div>
+          <div class="pm-kv" *ngIf="p.created_at"><span>Registered</span><span>{{ p.created_at | date:'mediumDate' }}</span></div>
+        </div>
+
+        <div class="pm-drawer-section">
+          <div class="pm-drawer-section-title">Engagement</div>
+          <div class="pm-kv"><span>Last sign-in</span><span>{{ p.last_login_at ? (p.last_login_at | date:'medium') : 'Never' }}</span></div>
+          <div class="pm-kv"><span>Total sign-ins</span><span>{{ p.login_count }}</span></div>
+          <div class="pm-kv"><span>Open support tickets</span><span>{{ p.open_tickets }}</span></div>
+        </div>
+
+        <div class="pm-drawer-section" *ngIf="p.submissions_graded !== null">
+          <div class="pm-drawer-section-title">Judging</div>
+          <div class="pm-kv"><span>Entries scored</span><span>{{ p.submissions_graded }}</span></div>
+          <div class="pm-kv">
+            <span>Last scored</span>
+            <span>{{ p.last_graded_at ? (p.last_graded_at | date:'medium') : 'Never' }}</span>
+          </div>
+        </div>
+
+        <div class="pm-drawer-section" *ngIf="p.role === 'instructor'">
+          <div class="pm-drawer-section-title">Teaching</div>
+          <div class="pm-kv"><span>Courses authored</span><span>{{ p.courses_authored }}</span></div>
+          <div class="pm-kv"><span>Awaiting approval</span><span>{{ p.courses_pending }}</span></div>
+          <div class="pm-kv"><span>Students reached</span><span>{{ p.students_reached }}</span></div>
+          <p class="pm-drawer-note" *ngIf="personnelRoster?.courses_matched_by_name">
+            Course figures are matched on the instructor's name, because course
+            records store the author as text rather than a linked account.
+          </p>
+        </div>
+
+        <div class="pm-drawer-section">
+          <div class="pm-drawer-section-title">Verification</div>
+          <div class="pm-kv">
+            <span>Photo on file</span>
+            <span [class.pm-yes]="p.has_photo" [class.pm-no]="!p.has_photo">{{ p.has_photo ? 'Yes' : 'No' }}</span>
+          </div>
+          <div class="pm-kv">
+            <span>Document on file</span>
+            <span [class.pm-yes]="p.has_document" [class.pm-no]="!p.has_document">{{ p.has_document ? 'Yes' : 'No' }}</span>
+          </div>
+          <div class="pm-kv">
+            <span>Password reset due</span>
+            <span [class.pm-no]="p.must_change_password">{{ p.must_change_password ? 'Yes' : 'No' }}</span>
+          </div>
+        </div>
+
+        <div class="pm-drawer-actions">
+          <button class="btn btn-primary btn-sm" (click)="managePersonInUserAdmin()">
+            <span class="material-symbols-outlined">manage_accounts</span>Manage in User Management
+          </button>
+        </div>
+      </aside>
     </div>
 
     <!-- ── TAB: OVERVIEW (COMMAND CENTER) ── -->

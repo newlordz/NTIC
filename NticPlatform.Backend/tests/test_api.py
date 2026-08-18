@@ -1,4 +1,4 @@
-import pytest
+﻿import pytest
 import uuid
 
 from tests.conftest import ADMIN_PASSWORD
@@ -1900,3 +1900,339 @@ class TestIdleSessionExpiry:
         # Still active, but past the absolute cap -> the slide cannot help.
         assert client.post("/api/auth/heartbeat", headers=self._auth(token)).status_code == 401
         assert client.get("/api/users/me", headers=self._auth(token)).status_code == 401
+
+
+class TestPersonnelRoster:
+    """GET /api/admin/personnel -- the sponsor/judge/instructor monitoring feed.
+
+    The point of these tests is that the roster reports only what the database
+    can actually prove. Two sourcing traps are pinned down explicitly:
+    signing out must not erase someone's login history, and role detail that
+    has no column must not reappear as invented data.
+    """
+
+    ROLE_FIELDS = ("courses_authored", "courses_pending", "students_reached")
+    # Must not contain any part of the test users' names -- the password policy
+    # rejects that, correctly.
+    PASSWORD = "Kp8$violetHarbor"
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _fetch(self, client, admin_token):
+        resp = client.get("/api/admin/personnel", headers=self._auth(admin_token))
+        assert resp.status_code == 200
+        return resp.json()
+
+    def _make_user(self, client, admin_token, role, name):
+        email = f"{role}-{uuid.uuid4().hex[:8]}@roster.test"
+        resp = client.post("/api/users", headers=self._auth(admin_token), json={
+            "email": email, "full_name": name, "role": role,
+            "password": self.PASSWORD,
+        })
+        assert resp.status_code in (200, 201), resp.text
+        return email
+
+    def _find(self, data, email):
+        return next((p for p in data["people"] if p["email"] == email), None)
+
+    def test_requires_admin(self, client):
+        assert client.get("/api/admin/personnel").status_code == 401
+
+    def test_rejects_a_non_admin_who_is_on_the_roster(self, client, admin_token):
+        """A judge appears in this roster; they must not be able to read it.
+
+        It exposes every sponsor's and instructor's email, phone and login
+        history, so being listed is not the same as being allowed to look.
+        """
+        from app.security import clear_all_rate_limits
+        email = self._make_user(client, admin_token, "judge", "Kofi Boateng")
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": self.PASSWORD})
+        assert login.status_code == 200
+        judge_token = login.json()["token"]
+        resp = client.get("/api/admin/personnel", headers=self._auth(judge_token))
+        assert resp.status_code == 403, "a judge could read the full personnel roster"
+
+    def test_returns_only_the_three_monitored_roles(self, client, admin_token):
+        data = self._fetch(client, admin_token)
+        roles = {p["role"] for p in data["people"]}
+        assert roles <= {"sponsor", "judge", "instructor"}
+        assert set(data["summary"]) == {"sponsor", "judge", "instructor"}
+
+    def test_includes_a_newly_created_instructor(self, client, admin_token):
+        email = self._make_user(client, admin_token, "instructor", "Roster Instructor")
+        person = self._find(self._fetch(client, admin_token), email)
+        assert person is not None
+        assert person["role"] == "instructor"
+        assert person["full_name"] == "Roster Instructor"
+
+    def test_never_logged_in_user_reports_no_login(self, client, admin_token):
+        email = self._make_user(client, admin_token, "sponsor", "Roster Sponsor")
+        person = self._find(self._fetch(client, admin_token), email)
+        assert person["last_login_at"] is None
+        assert person["login_count"] == 0
+        assert person["is_online"] is False
+
+    def test_login_history_survives_signing_out(self, client, admin_token):
+        """The trap.
+
+        `auth_sessions` rows are DELETEd on logout, so sourcing last_login_at
+        from that table would report a properly-signed-out user as having never
+        logged in. History must come from the durable audit log instead.
+        """
+        from app.security import clear_all_rate_limits
+        email = self._make_user(client, admin_token, "judge", "Roster Judge")
+
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": "Kp8$violetHarbor"})
+        assert login.status_code == 200
+        token = login.json()["token"]
+
+        person = self._find(self._fetch(client, admin_token), email)
+        assert person["is_online"] is True
+        assert person["last_login_at"] is not None
+        assert person["login_count"] >= 1
+
+        client.post("/api/logout", headers=self._auth(token))
+
+        after = self._find(self._fetch(client, admin_token), email)
+        assert after["is_online"] is False, "signed-out user should not read as online"
+        assert after["last_login_at"] is not None, (
+            "logging out erased the login history -- last_login_at is being "
+            "sourced from auth_sessions instead of audit_logs"
+        )
+        assert after["login_count"] >= 1
+
+    def test_course_stats_are_null_for_non_instructors(self, client, admin_token):
+        """Null, not 0.
+
+        A sponsor has no course workload at all; reporting 0 would render as a
+        real measurement of nothing. Null lets the UI hide the column.
+        """
+        data = self._fetch(client, admin_token)
+        for person in data["people"]:
+            if person["role"] == "instructor":
+                assert all(person[f] is not None for f in self.ROLE_FIELDS)
+            else:
+                assert all(person[f] is None for f in self.ROLE_FIELDS), person["role"]
+
+    def test_does_not_fabricate_absent_role_detail(self, client, admin_token):
+        """judge expertise / sponsor tier, sector, payments have no column in
+        `users` -- they only ever existed in localStorage. They must not be
+        served as if the backend knew them."""
+        data = self._fetch(client, admin_token)
+        forbidden = {"tier", "sector", "package", "payments", "total",
+                     "expertise", "bio", "track", "portfolio", "region"}
+        for person in data["people"]:
+            leaked = forbidden & set(person)
+            assert not leaked, f"roster invented fields with no column: {leaked}"
+
+    def test_online_window_is_the_real_idle_policy(self, client, admin_token):
+        from app.security import SESSION_IDLE_MINUTES
+        data = self._fetch(client, admin_token)
+        assert data["online_window_minutes"] == SESSION_IDLE_MINUTES
+
+    def test_summary_counts_match_the_people_list(self, client, admin_token):
+        data = self._fetch(client, admin_token)
+        for role, summary in data["summary"].items():
+            group = [p for p in data["people"] if p["role"] == role]
+            assert summary["total"] == len(group)
+            assert summary["online"] == sum(1 for p in group if p["is_online"])
+            assert summary["never_logged_in"] == sum(1 for p in group if not p["last_login_at"])
+
+
+
+class TestJudgingWorkspace:
+    """The judging pipeline: a shared queue, scoring, and grader attribution.
+
+    Before this existed the `judge` role was in GRADING_ROLES but had no way to
+    reach a submission, and a score landed in the database with nobody's name on
+    it. These tests pin down the parts that are easy to get quietly wrong.
+    """
+
+    PASSWORD = "Qw4$lanternRidge"
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _make_student(self, client, track="Coding"):
+        resp = client.post("/api/students", json={
+            "first_name": "Queue", "last_name": "Candidate",
+            "email": f"stu-{uuid.uuid4().hex[:8]}@judge.test",
+            "track": track, "consent_granted": True,
+        })
+        assert resp.status_code == 201, resp.text
+        return resp.json()["id"]
+
+    def _make_submission(self, client, admin_token, track="Coding"):
+        stu_id = self._make_student(client, track)
+        resp = client.post("/api/submissions", json={
+            "student_id": stu_id, "source_code_path": "entry.py", "video_url": "",
+        }, headers=self._auth(admin_token))
+        assert resp.status_code == 201, resp.text
+        return resp.json()["id"]
+
+    def _make_judge(self, client, admin_token, name="Adjoa Nkrumah"):
+        email = f"judge-{uuid.uuid4().hex[:8]}@judge.test"
+        resp = client.post("/api/users", headers=self._auth(admin_token), json={
+            "email": email, "full_name": name, "role": "judge",
+            "password": self.PASSWORD,
+        })
+        assert resp.status_code in (200, 201), resp.text
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": self.PASSWORD})
+        assert login.status_code == 200, login.text
+        return login.json()["token"], login.json().get("user", {}).get("id"), email
+
+    # ── access control ──────────────────────────────────────────
+    def test_queue_requires_authentication(self, client):
+        assert client.get("/api/judge/queue").status_code == 401
+
+    def test_history_requires_authentication(self, client):
+        assert client.get("/api/judge/history").status_code == 401
+
+    def test_a_judge_can_reach_the_queue(self, client, admin_token):
+        """The whole point: the judge role must actually be able to work."""
+        token, _uid, _email = self._make_judge(client, admin_token)
+        resp = client.get("/api/judge/queue", headers=self._auth(token))
+        assert resp.status_code == 200, resp.text
+        assert "submissions" in resp.json()
+
+    def test_a_student_cannot_reach_the_queue(self, client, student_token):
+        assert client.get("/api/judge/queue", headers=self._auth(student_token)).status_code == 403
+
+    def test_a_student_cannot_reach_judging_history(self, client, student_token):
+        assert client.get("/api/judge/history", headers=self._auth(student_token)).status_code == 403
+
+    # ── the queue ───────────────────────────────────────────────
+    def test_unscored_submission_appears_in_the_queue(self, client, admin_token):
+        sub_id = self._make_submission(client, admin_token)
+        data = client.get("/api/judge/queue", headers=self._auth(admin_token)).json()
+        assert sub_id in [s["id"] for s in data["submissions"]]
+
+    def test_scoring_removes_a_submission_from_the_queue(self, client, admin_token):
+        """Guards the status trap.
+
+        The grade endpoint used to leave status='Pending' when the caller did not
+        pass a status. A scored-but-Pending entry would sit in the queue forever
+        and be re-marked by the next judge who opened it.
+        """
+        sub_id = self._make_submission(client, admin_token)
+        client.patch(f"/api/submissions/{sub_id}/grade",
+                     json={"score": 74, "feedback": "Solid"},
+                     headers=self._auth(admin_token))
+        data = client.get("/api/judge/queue", headers=self._auth(admin_token)).json()
+        assert sub_id not in [s["id"] for s in data["submissions"]], (
+            "a scored submission is still in the judging queue"
+        )
+
+    def test_queue_carries_the_student_context_a_judge_needs(self, client, admin_token):
+        sub_id = self._make_submission(client, admin_token, track="Robotics")
+        data = client.get("/api/judge/queue", headers=self._auth(admin_token)).json()
+        item = next(s for s in data["submissions"] if s["id"] == sub_id)
+        assert item["student_name"] == "Queue Candidate"
+        assert item["track"].lower() == "robotics"
+        assert item["source_code_path"] == "entry.py"
+
+    def test_queue_can_be_filtered_by_track(self, client, admin_token):
+        coding = self._make_submission(client, admin_token, track="Coding")
+        robotics = self._make_submission(client, admin_token, track="Robotics")
+        data = client.get("/api/judge/queue?track=Robotics", headers=self._auth(admin_token)).json()
+        ids = [s["id"] for s in data["submissions"]]
+        assert robotics in ids
+        assert coding not in ids
+
+    # ── attribution ─────────────────────────────────────────────
+    def test_grading_records_who_graded_it(self, client, admin_token):
+        token, uid, _email = self._make_judge(client, admin_token)
+        sub_id = self._make_submission(client, admin_token)
+        resp = client.patch(f"/api/submissions/{sub_id}/grade",
+                            json={"score": 91, "feedback": "Excellent"},
+                            headers=self._auth(token))
+        assert resp.status_code == 200
+        history = client.get("/api/judge/history", headers=self._auth(token)).json()
+        mine = next((g for g in history["graded"] if g["id"] == sub_id), None)
+        assert mine is not None, "a judge's own grade is missing from their history"
+        assert mine["score"] == 91
+        assert mine["graded_at"] is not None
+
+    def test_attribution_cannot_be_forged_via_the_request_body(self, client, admin_token):
+        """A judge must not be able to file a score under someone else's name."""
+        token, uid, _email = self._make_judge(client, admin_token)
+        sub_id = self._make_submission(client, admin_token)
+        client.patch(f"/api/submissions/{sub_id}/grade",
+                     json={"score": 55, "feedback": "x",
+                           "graded_by": "USR-somebody-else",
+                           "graded_by_name": "Somebody Else"},
+                     headers=self._auth(token))
+        history = client.get("/api/judge/history", headers=self._auth(token)).json()
+        assert sub_id in [g["id"] for g in history["graded"]], (
+            "attribution was taken from the request body instead of the session"
+        )
+
+    def test_history_is_private_to_each_grader(self, client, admin_token):
+        """Judge A's history must not contain Judge B's work."""
+        token_a, _a, _ea = self._make_judge(client, admin_token, "Yaw Asante")
+        token_b, _b, _eb = self._make_judge(client, admin_token, "Esi Owusu")
+        sub_id = self._make_submission(client, admin_token)
+        client.patch(f"/api/submissions/{sub_id}/grade",
+                     json={"score": 60, "feedback": "ok"},
+                     headers=self._auth(token_a))
+        hist_b = client.get("/api/judge/history", headers=self._auth(token_b)).json()
+        assert sub_id not in [g["id"] for g in hist_b["graded"]]
+        hist_a = client.get("/api/judge/history", headers=self._auth(token_a)).json()
+        assert sub_id in [g["id"] for g in hist_a["graded"]]
+
+    def test_attribution_survives_the_graders_account_being_deleted(self, client, admin_token):
+        """Why graded_by has no FK to users(id).
+
+        A score can be disputed after a judge has left. If attribution were a FK
+        with ON DELETE SET NULL, deleting the account would erase exactly the
+        evidence needed to investigate.
+        """
+        from app.database import get_db_connection, release_db_connection
+        token, uid, _email = self._make_judge(client, admin_token, "Kwabena Mensah")
+        sub_id = self._make_submission(client, admin_token)
+        client.patch(f"/api/submissions/{sub_id}/grade",
+                     json={"score": 70, "feedback": "recorded"},
+                     headers=self._auth(token))
+
+        # Find and delete the grader's account.
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT graded_by, graded_by_name FROM assignment_submissions WHERE id = %s", (sub_id,))
+        grader_id, grader_name = cur.fetchone()
+        assert grader_id, "grade was not attributed at all"
+        assert grader_name == "Kwabena Mensah"
+        cur.execute("DELETE FROM users WHERE id = %s", (grader_id,))
+        conn.commit()
+        cur.execute("SELECT graded_by, graded_by_name, score FROM assignment_submissions WHERE id = %s", (sub_id,))
+        after = cur.fetchone()
+        cur.close()
+        release_db_connection(conn)
+
+        assert after[0] == grader_id, "deleting the grader erased the attribution"
+        assert after[1] == "Kwabena Mensah"
+        assert after[2] == 70
+
+    # ── roster integration ──────────────────────────────────────
+    def test_personnel_roster_reports_a_judges_output(self, client, admin_token):
+        token, _uid, email = self._make_judge(client, admin_token, "Akosua Frimpong")
+        sub_id = self._make_submission(client, admin_token)
+        client.patch(f"/api/submissions/{sub_id}/grade",
+                     json={"score": 83, "feedback": "counted"},
+                     headers=self._auth(token))
+        roster = client.get("/api/admin/personnel", headers=self._auth(admin_token)).json()
+        person = next(p for p in roster["people"] if p["email"] == email)
+        assert person["submissions_graded"] >= 1
+        assert person["last_graded_at"] is not None
+
+    def test_sponsors_have_no_grading_figure(self, client, admin_token):
+        """Sponsors cannot grade, so the number must be null rather than 0."""
+        roster = client.get("/api/admin/personnel", headers=self._auth(admin_token)).json()
+        for p in roster["people"]:
+            if p["role"] == "sponsor":
+                assert p["submissions_graded"] is None
+                assert p["last_graded_at"] is None

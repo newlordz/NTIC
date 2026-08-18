@@ -22,6 +22,7 @@ from app.security import (
     ADMIN_ROLES, CONTENT_ROLES, COMPETITION_ROLES, GRADING_ROLES,
     APPROVAL_ROLES, STUDENT_ADMIN_ROLES, SUPPORT_ROLES, LMS_ROLES,
     touch_session, SESSION_IDLE_MINUTES, SESSION_ABSOLUTE_DAYS,
+    ROLE_SPONSOR, ROLE_JUDGE, ROLE_INSTRUCTOR,
 )
 from app.ws_manager import ws_manager, broadcast_async
 
@@ -2181,17 +2182,52 @@ try:
         status: str = None
 
     @app.patch("/api/submissions/{item_id}/grade")
-    def grade_submission(item_id: str, payload: GradeSubmissionRequest, _actor: dict = Depends(require_role(GRADING_ROLES))):
+    def grade_submission(item_id: str, payload: GradeSubmissionRequest, actor: dict = Depends(require_role(GRADING_ROLES))):
+        """Score a competition submission and record WHO scored it.
+
+        Attribution is taken from the authenticated session, never from the
+        request body -- a judge must not be able to file a score under someone
+        else's name.
+        """
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
+        # A submission carrying a score but still marked 'Pending' would sit in
+        # the judging queue forever and be re-marked by the next judge. If the
+        # caller does not say otherwise, scoring it means it is graded.
+        new_status = payload.status
+        if new_status is None and payload.score is not None:
+            new_status = "Graded"
         try:
             cur.execute(
-                "UPDATE assignment_submissions SET score = COALESCE(%s, score), feedback = COALESCE(%s, feedback), status = COALESCE(%s, status) WHERE id = %s RETURNING id",
-                (payload.score, payload.feedback if payload.feedback != "" else None, payload.status, item_id)
+                "UPDATE assignment_submissions SET score = COALESCE(%s, score), "
+                "feedback = COALESCE(%s, feedback), status = COALESCE(%s, status), "
+                "graded_by = %s, graded_by_name = %s, graded_at = CURRENT_TIMESTAMP "
+                "WHERE id = %s RETURNING id",
+                (
+                    payload.score,
+                    payload.feedback if payload.feedback != "" else None,
+                    new_status,
+                    actor["id"],
+                    actor.get("full_name") or actor.get("email") or "",
+                    item_id,
+                )
             )
             row = cur.fetchone()
+            if row:
+                # Same transaction as the score itself: an attributed grade and
+                # its audit entry must not be able to disagree.
+                cur.execute(
+                    "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s, %s, %s, %s)",
+                    (
+                        f"{actor['role']} graded submission {item_id}"
+                        + (f" (score {payload.score})" if payload.score is not None else ""),
+                        actor.get("email", ""),
+                        datetime.datetime.now(datetime.UTC).isoformat(),
+                        "grading",
+                    ),
+                )
             conn.commit()
         except Exception as e:
             conn.rollback()
@@ -2203,7 +2239,115 @@ try:
         if not row:
             raise HTTPException(status_code=404, detail="Submission not found")
         broadcast_async({"type": "data_changed", "collection": "submissions"})
-        return {"id": item_id, "status": "graded"}
+        return {"id": item_id, "status": "graded", "graded_by": actor["id"]}
+
+    # ── JUDGING WORKSPACE ───────────────────────────────────────────
+    # The `judge` role has been in GRADING_ROLES all along, but nothing in the
+    # app ever let a judge reach a submission: /judge redirected to /dashboard
+    # and the LMS grading screens exclude the role. These two endpoints are the
+    # backend half of an actual judging surface.
+
+    def _judge_queue_rows(cur, track: str = "", limit: int = 200):
+        """Unscored competition submissions, oldest first (fairest order)."""
+        sql = (
+            "SELECT s.id, s.student_id, s.source_code_path, s.video_url, s.status, "
+            "s.created_at, st.first_name, st.last_name, st.email, st.track "
+            "FROM assignment_submissions s "
+            "LEFT JOIN students st ON st.id = s.student_id "
+            "WHERE s.score IS NULL "
+        )
+        params = []
+        if track:
+            sql += "AND lower(COALESCE(st.track, '')) = lower(%s) "
+            params.append(track)
+        sql += "ORDER BY s.created_at ASC NULLS LAST LIMIT %s"
+        params.append(limit)
+        cur.execute(sql, params)
+        return cur.fetchall()
+
+    def _shape_submission(r):
+        first, last = (r[6] or ""), (r[7] or "")
+        return {
+            "id": r[0],
+            "student_id": r[1] or "",
+            "student_name": (first + " " + last).strip(),
+            "student_email": r[8] or "",
+            "track": r[9] or "",
+            "source_code_path": r[2] or "",
+            "video_url": r[3] or "",
+            "status": r[4] or "Pending",
+            "submitted_at": str(r[5]) if r[5] else None,
+        }
+
+    @app.get("/api/judge/queue")
+    def judge_queue(track: str = "", _actor: dict = Depends(require_role(GRADING_ROLES))):
+        """Submissions still awaiting a score.
+
+        This is a shared pool, not a per-judge assignment list: the schema has a
+        single score per submission and no assignment table, so inventing an
+        owner here would be fiction. Ordered oldest-first so nothing starves.
+        """
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        rows = _judge_queue_rows(cur, track)
+        cur.execute("SELECT COUNT(*) FROM assignment_submissions WHERE score IS NULL")
+        pending_total = cur.fetchone()[0]
+        cur.execute(
+            "SELECT COALESCE(lower(st.track), '') , COUNT(*) "
+            "FROM assignment_submissions s LEFT JOIN students st ON st.id = s.student_id "
+            "WHERE s.score IS NULL GROUP BY lower(st.track) ORDER BY 2 DESC"
+        )
+        by_track = [{"track": r[0], "pending": r[1]} for r in cur.fetchall()]
+        cur.close()
+        release_db_connection(conn)
+        return {
+            "pending_total": pending_total,
+            "by_track": by_track,
+            "submissions": [_shape_submission(r) for r in rows],
+        }
+
+    @app.get("/api/judge/history")
+    def judge_history(limit: int = 50, actor: dict = Depends(require_role(GRADING_ROLES))):
+        """What THIS grader has scored, most recent first, plus their totals."""
+        limit = max(1, min(limit, 200))
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT s.id, s.student_id, s.source_code_path, s.video_url, s.status, "
+            "s.created_at, st.first_name, st.last_name, st.email, st.track, "
+            "s.score, s.feedback, s.graded_at "
+            "FROM assignment_submissions s "
+            "LEFT JOIN students st ON st.id = s.student_id "
+            "WHERE s.graded_by = %s "
+            "ORDER BY s.graded_at DESC NULLS LAST LIMIT %s",
+            (actor["id"], limit),
+        )
+        rows = cur.fetchall()
+        cur.execute(
+            "SELECT COUNT(*), AVG(score)::numeric(10,2) FROM assignment_submissions "
+            "WHERE graded_by = %s AND score IS NOT NULL",
+            (actor["id"],),
+        )
+        total_row = cur.fetchone()
+        cur.close()
+        release_db_connection(conn)
+        graded = []
+        for r in rows:
+            item = _shape_submission(r)
+            item["score"] = r[10]
+            item["feedback"] = r[11] or ""
+            item["graded_at"] = str(r[12]) if r[12] else None
+            graded.append(item)
+        return {
+            "graded_total": total_row[0] or 0,
+            "average_score": float(total_row[1]) if total_row[1] is not None else None,
+            "graded": graded,
+        }
+
 
     # COMPETITIONS
     class CompetitionCreate(BaseModel):
@@ -2865,6 +3009,170 @@ try:
         cur.close()
         release_db_connection(conn)
         return {"total": total}
+
+    @app.get("/api/admin/personnel")
+    def list_personnel(_admin: dict = Depends(require_admin)):
+        """Operational roster for sponsors, judges and instructors.
+
+        Every field returned here is derived from data the backend actually
+        stores. The role detail the old UI showed for these people -- judge
+        `expertise`, sponsor `tier` / `sector` / `payments`, instructor
+        `portfolio` -- has no column in `users` and only ever lived in browser
+        localStorage, so it is deliberately absent rather than invented. If a
+        number cannot be sourced it is omitted, not zero-filled.
+
+        Two deliberate sourcing choices:
+
+        * `last_login_at` comes from `audit_logs`, NOT `auth_sessions`. Logging
+          out deletes the session row (and expired rows get purged), so
+          `auth_sessions` would report "never logged in" for anyone who signed
+          out properly -- exactly backwards.
+        * `is_online` comes from a live, unexpired `auth_sessions` row. Since
+          sessions now expire after SESSION_IDLE_MINUTES of inactivity, this
+          genuinely means "active recently" rather than "logged in this week".
+        """
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+
+        roles = (ROLE_SPONSOR, ROLE_JUDGE, ROLE_INSTRUCTOR)
+        cur.execute(
+            "SELECT id, email, full_name, role, ticket, status, phone, organization, "
+            "created_at, photo_file_id, doc_file_id, "
+            "COALESCE(must_change_password, FALSE), experience_level, competition_id "
+            "FROM users WHERE role = ANY(%s) ORDER BY role, lower(COALESCE(full_name, email))",
+            (list(roles),),
+        )
+        people_rows = cur.fetchall()
+
+        # Live sessions => "online now" (idle timeout makes this meaningful).
+        cur.execute(
+            "SELECT user_id, COUNT(*) FROM auth_sessions "
+            "WHERE expires_at > CURRENT_TIMESTAMP AND user_id IS NOT NULL GROUP BY user_id"
+        )
+        live_sessions = {r[0]: r[1] for r in cur.fetchall()}
+
+        # Durable login history. `time` is an ISO-8601 string, so MAX() orders
+        # chronologically because that format sorts lexicographically.
+        cur.execute(
+            "SELECT lower(usr), MAX(time), COUNT(*) FROM audit_logs "
+            "WHERE type = 'auth' AND action LIKE '% login: %' AND usr IS NOT NULL "
+            "GROUP BY lower(usr)"
+        )
+        logins = {r[0]: {"last": r[1], "count": r[2]} for r in cur.fetchall()}
+
+        # Instructor authorship. `lms_courses.submitted_by` is free text with no
+        # FK to users, so this is a name match -- imperfect by schema, not by
+        # choice. Flagged to the client via `courses_matched_by_name`.
+        cur.execute(
+            "SELECT lower(trim(submitted_by)), COUNT(*), "
+            "COUNT(CASE WHEN approval_status = 'pending' THEN 1 END), "
+            "COALESCE(SUM(COALESCE(enrolled, 0)), 0) "
+            "FROM lms_courses WHERE submitted_by IS NOT NULL AND trim(submitted_by) <> '' "
+            "GROUP BY lower(trim(submitted_by))"
+        )
+        courses = {
+            r[0]: {"total": r[1], "pending": r[2], "enrolled": r[3]}
+            for r in cur.fetchall()
+        }
+
+        cur.execute(
+            "SELECT lower(user_email), COUNT(*) FROM support_tickets "
+            "WHERE status = 'open' AND COALESCE(is_deleted, FALSE) = FALSE "
+            "AND user_email IS NOT NULL GROUP BY lower(user_email)"
+        )
+        open_tickets = {r[0]: r[1] for r in cur.fetchall()}
+
+        # Judging output, now that grades carry attribution. Keyed on user id
+        # (not name) because graded_by stores the id.
+        cur.execute(
+            "SELECT graded_by, COUNT(*), MAX(graded_at) FROM assignment_submissions "
+            "WHERE graded_by IS NOT NULL AND score IS NOT NULL GROUP BY graded_by"
+        )
+        grading = {r[0]: {"count": r[1], "last": r[2]} for r in cur.fetchall()}
+
+        cur.close()
+        release_db_connection(conn)
+
+        people = []
+        for r in people_rows:
+            uid, email, full_name, role, ticket, status_val = r[0], r[1], r[2], r[3], r[4], r[5]
+            email_key = (email or "").strip().lower()
+            name_key = (full_name or "").strip().lower()
+            login = logins.get(email_key)
+            sessions = live_sessions.get(uid, 0)
+
+            person = {
+                "id": uid,
+                "email": email,
+                "full_name": full_name or "",
+                "role": role,
+                "ticket": ticket or "",
+                "status": status_val or "Active",
+                "phone": r[6] or "",
+                "organization": r[7] or "",
+                "created_at": str(r[8]) if r[8] else None,
+                "has_photo": bool(r[9]),
+                "has_document": bool(r[10]),
+                "must_change_password": bool(r[11]),
+                "experience_level": r[12] or "",
+                "competition_id": r[13] or "",
+                "is_online": sessions > 0,
+                "active_sessions": sessions,
+                "last_login_at": login["last"] if login else None,
+                "login_count": login["count"] if login else 0,
+                "open_tickets": open_tickets.get(email_key, 0),
+            }
+
+            # Course stats are instructor-only. Null (not 0) for the other roles
+            # so the UI can hide the column instead of showing a false zero.
+            if role == ROLE_INSTRUCTOR:
+                c = courses.get(name_key)
+                person["courses_authored"] = c["total"] if c else 0
+                person["courses_pending"] = c["pending"] if c else 0
+                person["students_reached"] = c["enrolled"] if c else 0
+            else:
+                person["courses_authored"] = None
+                person["courses_pending"] = None
+                person["students_reached"] = None
+
+            # Judging output is meaningful for anyone who can grade. Null for
+            # sponsors, who cannot.
+            if role in (ROLE_JUDGE, ROLE_INSTRUCTOR):
+                g = grading.get(uid)
+                person["submissions_graded"] = g["count"] if g else 0
+                person["last_graded_at"] = str(g["last"]) if g and g["last"] else None
+            else:
+                person["submissions_graded"] = None
+                person["last_graded_at"] = None
+
+            people.append(person)
+
+        def _summarise(role_name):
+            group = [p for p in people if p["role"] == role_name]
+            return {
+                "total": len(group),
+                "active": sum(1 for p in group if (p["status"] or "").lower() == "active"),
+                "online": sum(1 for p in group if p["is_online"]),
+                "never_logged_in": sum(1 for p in group if not p["last_login_at"]),
+                "needs_attention": sum(
+                    1 for p in group
+                    if (p["status"] or "").lower() != "active" or p["must_change_password"]
+                ),
+            }
+
+        return {
+            "generated_at": datetime.datetime.now(datetime.UTC).isoformat(),
+            "online_window_minutes": SESSION_IDLE_MINUTES,
+            "courses_matched_by_name": True,
+            "people": people,
+            "summary": {
+                "sponsor": _summarise(ROLE_SPONSOR),
+                "judge": _summarise(ROLE_JUDGE),
+                "instructor": _summarise(ROLE_INSTRUCTOR),
+            },
+        }
 
     @app.get("/api/users/lookup")
     def lookup_user(email: str = ""):

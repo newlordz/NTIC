@@ -436,6 +436,19 @@ def _create_tables(conn):
     cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE;")
     cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMP NULL;")
 
+    # Grader attribution. Without these, a score exists but nobody owns it --
+    # there is no way to answer "who marked this student", to show a judge their
+    # own history, or to spot a judge scoring their own school.
+    #
+    # `graded_by` deliberately has NO foreign key to users(id). Attribution is an
+    # audit record: it must survive the grader's account being deleted. A FK with
+    # ON DELETE SET NULL would erase exactly the evidence you need when a score
+    # is disputed after someone leaves. `graded_by_name` snapshots the display
+    # name at grading time for the same reason.
+    cur.execute("ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS graded_by VARCHAR(64);")
+    cur.execute("ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS graded_by_name VARCHAR(200);")
+    cur.execute("ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS graded_at TIMESTAMP NULL;")
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS pending_approvals (
             id VARCHAR(64) PRIMARY KEY,
@@ -530,6 +543,10 @@ def _create_indexes(cur):
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users (lower(email));",
         "CREATE INDEX IF NOT EXISTS idx_users_ticket_upper ON users (upper(ticket));",
         "CREATE INDEX IF NOT EXISTS idx_users_role ON users (role);",
+        # The judging queue filters on "not yet scored" and the judge's own
+        # history filters on graded_by, both on every page load.
+        "CREATE INDEX IF NOT EXISTS idx_asub_ungraded ON assignment_submissions (created_at) WHERE score IS NULL;",
+        "CREATE INDEX IF NOT EXISTS idx_asub_graded_by ON assignment_submissions (graded_by);",
         # auth_sessions.token is the PK, but these two are not indexed:
         # user_id -> revoke-all-sessions-for-user; expires_at -> the pruning job.
         "CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions (user_id);",

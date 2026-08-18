@@ -17,6 +17,7 @@ import { BrevoEmailService } from '../../services/brevo-email.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
 import { ApiService } from '../../services/api.service';
+import type { PersonnelRoster, PersonnelPerson, PersonnelSummary } from '../../services/api.service';
 import { TimeAgoPipe } from '../../services/time-ago.pipe';
 import { WsSyncService } from '../../services/ws-sync.service';
 import { LmsManagerComponent } from '../lms-manager/lms-manager.component';
@@ -415,7 +416,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ─── SUPER ADMIN STATE ─────────────────────────
   adminTab: 'overview' | 'control' | 'dashboard' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'dashboard';
-  adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'audit' | 'users_full' | '' = '';
+  adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'audit' | 'users_full' | 'personnel' | '' = '';
 
   goToTab(tab: string): void {
     this.adminTab = tab as any;
@@ -426,6 +427,138 @@ export class DashboardComponent implements OnInit, OnDestroy {
   goToSubTab(sub: string): void {
     this.adminSubTab = sub as any;
     this.router.navigate([], { relativeTo: this.route, queryParams: { tab: 'control', subtab: sub } });
+  }
+
+  // ─── PERSONNEL (SPONSORS / JUDGES / INSTRUCTORS) ─────────────
+  // Operational monitoring, distinct from User Management's CRUD. Everything
+  // rendered here comes from GET /api/admin/personnel, which only reports what
+  // the database can prove. Role detail the old UI implied for these people
+  // (judge expertise, sponsor tier/payments, instructor portfolio) has no
+  // column in `users` and is intentionally not shown.
+  personnelTab: 'sponsor' | 'judge' | 'instructor' = 'sponsor';
+  personnelRoster: PersonnelRoster | null = null;
+  personnelLoading = false;
+  personnelError = '';
+  personnelSearch = '';
+  personnelFilter: 'all' | 'online' | 'attention' | 'dormant' = 'all';
+  selectedPerson: PersonnelPerson | null = null;
+
+  readonly personnelTabs: { id: 'sponsor' | 'judge' | 'instructor'; label: string; icon: string }[] = [
+    { id: 'sponsor', label: 'Sponsors', icon: 'handshake' },
+    { id: 'judge', label: 'Judges', icon: 'gavel' },
+    { id: 'instructor', label: 'Instructors', icon: 'badge' },
+  ];
+
+  loadPersonnel(): void {
+    if (this.personnelLoading) return;
+    this.personnelLoading = true;
+    this.personnelError = '';
+    this.apiService.getPersonnel().subscribe({
+      next: roster => {
+        this.personnelRoster = roster;
+        this.personnelLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: err => {
+        this.personnelLoading = false;
+        // Say which failure this is. A 403 is a permissions problem, not an
+        // outage, and telling the user "could not load" for both wastes time.
+        this.personnelError = err?.status === 403
+          ? 'Your role cannot view the personnel roster. Administrator access is required.'
+          : err?.status === 401
+            ? 'Your session expired. Sign in again to view the roster.'
+            : 'Could not reach the server to load the personnel roster.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  setPersonnelTab(tab: 'sponsor' | 'judge' | 'instructor'): void {
+    this.personnelTab = tab;
+    this.selectedPerson = null;
+    this.personnelSearch = '';
+    this.personnelFilter = 'all';
+  }
+
+  /** Everyone in the active role tab, before search/filter. */
+  get personnelInTab(): PersonnelPerson[] {
+    return (this.personnelRoster?.people || []).filter(p => p.role === this.personnelTab);
+  }
+
+  get personnelList(): PersonnelPerson[] {
+    const term = this.personnelSearch.trim().toLowerCase();
+    return this.personnelInTab.filter(p => {
+      if (term) {
+        const haystack = `${p.full_name} ${p.email} ${p.organization} ${p.ticket}`.toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
+      switch (this.personnelFilter) {
+        case 'online':    return p.is_online;
+        case 'attention': return this.personNeedsAttention(p);
+        case 'dormant':   return !p.last_login_at;
+        default:          return true;
+      }
+    });
+  }
+
+  get personnelSummary(): PersonnelSummary | null {
+    return this.personnelRoster?.summary?.[this.personnelTab] || null;
+  }
+
+  personnelTabCount(role: 'sponsor' | 'judge' | 'instructor'): number {
+    return this.personnelRoster?.summary?.[role]?.total ?? 0;
+  }
+
+  /** Card badge. Read from the already-loaded user list so the count is real
+   *  before the roster endpoint has been called. */
+  get personnelCount(): number {
+    return this.contentService.users.filter(u =>
+      ['sponsor', 'judge', 'instructor'].includes((u as any).role)
+    ).length;
+  }
+
+  personNeedsAttention(p: PersonnelPerson): boolean {
+    return (p.status || '').toLowerCase() !== 'active' || p.must_change_password;
+  }
+
+  /** Human "last seen". Distinguishes never-logged-in from simply idle -- those
+   *  mean very different things when you are chasing an inactive sponsor. */
+  personLastSeen(p: PersonnelPerson): string {
+    if (p.is_online) return 'Online now';
+    if (!p.last_login_at) return 'Never signed in';
+    const then = new Date(p.last_login_at).getTime();
+    if (isNaN(then)) return 'Unknown';
+    const mins = Math.floor((Date.now() - then) / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 30) return `${days}d ago`;
+    return new Date(p.last_login_at).toLocaleDateString();
+  }
+
+  /** Instructor course figures are null for other roles by design. */
+  personCourseLabel(p: PersonnelPerson): string {
+    if (p.courses_authored === null) return 'n/a';
+    if (p.courses_authored === 0) return 'None yet';
+    const pending = p.courses_pending ? ` (${p.courses_pending} pending)` : '';
+    return `${p.courses_authored}${pending}`;
+  }
+
+  openPersonDetail(p: PersonnelPerson): void {
+    this.selectedPerson = p;
+  }
+
+  closePersonDetail(): void {
+    this.selectedPerson = null;
+  }
+
+  /** Hand off to User Management to actually change an account. This panel is
+   *  read-only on purpose: two places that both edit users would drift. */
+  managePersonInUserAdmin(): void {
+    this.selectedPerson = null;
+    this.goToSubTab('users_full');
   }
   private _expandedSection = false;
   get expandedSection(): boolean { return this._expandedSection; }
@@ -1887,7 +2020,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (params['tab'] && ['dashboard', 'overview', 'control', 'register', 'tickets', 'approvals', 'content', 'users', 'admins'].includes(params['tab'])) {
         this.adminTab = params['tab'] as any;
         if (this.adminTab === 'control') {
-          this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins','audit','users_full'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
+          this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins','audit','users_full','personnel'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
+        }
+        if (params['subtab'] === 'personnel') {
+          this.loadPersonnel();
         }
         if (params['tab'] === 'approvals' || params['subtab'] === 'approvals') {
           this.loadApprovalsFromBackend();

@@ -84,6 +84,38 @@ describe('authGuard', () => {
     expect(await result).toBeFalse();
   });
 
+  // The judging workspace. `/judge` used to redirect to /dashboard, so the route
+  // had no ROLE_ACCESS entry. Now that it loads a real component, an entry is
+  // mandatory -- the guard fails closed, so forgetting it would lock judges out
+  // of the one screen built for them.
+  it('lets a judge into the judging workspace', async () => {
+    signIn();
+    const result = run('/judge');
+    httpMock.expectOne(verifyUrl).flush({ role: 'judge', email: 'j@b.com' });
+    expect(await result).toBeTrue();
+  });
+
+  it('lets other graders into the judging workspace', async () => {
+    signIn();
+    const result = run('/judge');
+    httpMock.expectOne(verifyUrl).flush({ role: 'instructor', email: 'i@b.com' });
+    expect(await result).toBeTrue();
+  });
+
+  it('keeps students out of the judging workspace', async () => {
+    signIn();
+    const result = run('/judge');
+    httpMock.expectOne(verifyUrl).flush({ role: 'student', email: 's@b.com' });
+    expect(await result).toBeFalse();
+  });
+
+  it('keeps sponsors out of the judging workspace', async () => {
+    signIn();
+    const result = run('/judge');
+    httpMock.expectOne(verifyUrl).flush({ role: 'sponsor', email: 'sp@b.com' });
+    expect(await result).toBeFalse();
+  });
+
   // Regression: the role cache was keyed by nothing and never cleared, so
   // logging out of an admin account and back in as a student in the same tab
   // left the student holding the admin's verified role.

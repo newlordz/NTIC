@@ -98,7 +98,7 @@ export class CommandPaletteComponent implements OnInit {
         category: 'Navigation',
         icon: 'school',
         route: '/lms',
-        roleRequired: ['student', 'instructor', 'super_admin'],
+        roleRequired: ['student'],
         keywords: ['courses', 'curriculum', 'lessons', 'materials', 'study']
       },
       {
@@ -107,7 +107,7 @@ export class CommandPaletteComponent implements OnInit {
         category: 'Admin & Audit',
         icon: 'menu_book',
         route: '/lms-manager',
-        roleRequired: ['super_admin', 'content_manager'],
+        roleRequired: ['super_admin', 'admin', 'content_manager', 'instructor'],
         keywords: ['create course', 'manage lessons', 'curriculum admin']
       },
       {
