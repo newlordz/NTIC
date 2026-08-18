@@ -1766,6 +1766,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this._cachedSponsorInfographic;
   }
 
+  get sponsorTierDonut(): string {
+    const colors: Record<string, string> = {
+      platinum: '#3b82f6',
+      gold: '#f59e0b',
+      silver: '#14b8a6',
+      inkind: '#a855f7',
+      bronze: '#a855f7'
+    };
+    let cumulative = 0;
+    const segments: string[] = [];
+    for (const tier of this.sponsorInfographic.tiers) {
+      const start = cumulative;
+      const end = cumulative + (tier.pct || 0);
+      const color = colors[tier.key] || '#94a3b8';
+      segments.push(`${color} ${start}% ${end}%`);
+      cumulative = end;
+    }
+    return `conic-gradient(${segments.join(', ')})`;
+  }
+
+  get sponsorFundingBars() {
+    const info = this.sponsorInfographic;
+    const total = info.totalCommitted || 1;
+    return [
+      { label: 'Total Committed', value: info.totalCommittedFormatted, pct: 100, cls: 'cc-bar-blue' },
+      { label: 'Disbursed Funds', value: info.disbursedFundsFormatted, pct: Math.max(4, Math.round((info.disbursedFunds / total) * 100)), cls: 'cc-bar-teal' },
+      { label: 'Prize Pool', value: info.prizePoolFormatted, pct: 16, cls: 'cc-bar-amber' },
+      { label: 'Students Reached', value: `${info.studentsReached}`, pct: 100, cls: 'cc-bar-purple' }
+    ];
+  }
+
   private _cachedSponsorInfographic: any = null;
   private _lastSponsorsHash = '';
 

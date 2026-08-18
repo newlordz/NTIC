@@ -675,6 +675,66 @@
             </div>
           </div>
 
+          <!-- Ecosystem Description + Impact Infographic -->
+          <div class="cc-sponsor-ecosystem">
+            <div class="cc-eco-charts">
+              <div class="cc-eco-tier-bars">
+                <div class="cc-eco-section-title">
+                  <span class="material-symbols-outlined">layers</span>
+                  TIER DISTRIBUTION &amp; FUNDING
+                </div>
+                <div *ngFor="let tier of sponsorInfographic.tiers; trackBy: trackByTierKey" class="cc-eco-tier-row">
+                  <span class="cc-eco-tier-lbl">{{ tier.badge }}</span>
+                  <div class="cc-eco-tier-track">
+                    <div class="cc-eco-tier-fill" [ngClass]="'tier-' + tier.key" [style.width.%]="tier.pct"></div>
+                  </div>
+                  <span class="cc-eco-tier-val">{{ tier.amountFormatted }}</span>
+                  <span class="cc-eco-tier-pct">{{ tier.pct }}%</span>
+                </div>
+              </div>
+
+              <div class="cc-eco-bars">
+                <div class="cc-eco-section-title">
+                  <span class="material-symbols-outlined">payments</span>
+                  FUNDING ALLOCATION
+                </div>
+                <div *ngFor="let bar of sponsorFundingBars" class="cc-eco-bar-row">
+                  <span class="cc-eco-bar-lbl">{{ bar.label }}</span>
+                  <div class="cc-eco-bar-track">
+                    <div class="cc-eco-bar-fill" [ngClass]="bar.cls" [style.width.%]="bar.pct"></div>
+                  </div>
+                  <span class="cc-eco-bar-val">{{ bar.value }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="cc-eco-flow">
+              <div class="cc-eco-node">
+                <span class="material-symbols-outlined cc-eco-node-ic">handshake</span>
+                <span class="cc-eco-node-val">{{ sponsorInfographic.partnerCount }}</span>
+                <span class="cc-eco-node-lbl">Corporate Partners</span>
+              </div>
+              <span class="cc-eco-arrow">&rarr;</span>
+              <div class="cc-eco-node">
+                <span class="material-symbols-outlined cc-eco-node-ic">payments</span>
+                <span class="cc-eco-node-val">{{ sponsorInfographic.totalCommittedFormatted }}</span>
+                <span class="cc-eco-node-lbl">Committed</span>
+              </div>
+              <span class="cc-eco-arrow">&rarr;</span>
+              <div class="cc-eco-node">
+                <span class="material-symbols-outlined cc-eco-node-ic">savings</span>
+                <span class="cc-eco-node-val">{{ sponsorInfographic.disbursedFundsFormatted }}</span>
+                <span class="cc-eco-node-lbl">Disbursed</span>
+              </div>
+              <span class="cc-eco-arrow">&rarr;</span>
+              <div class="cc-eco-node">
+                <span class="material-symbols-outlined cc-eco-node-ic">school</span>
+                <span class="cc-eco-node-val">{{ sponsorInfographic.studentsReached }}</span>
+                <span class="cc-eco-node-lbl">Students Reached</span>
+              </div>
+            </div>
+          </div>
+
           <div class="cc-sponsor-right-content">
             <!-- Top Infographic: Multi-Tier Distribution Visual Bar -->
             <div class="cc-sponsor-bar-section">

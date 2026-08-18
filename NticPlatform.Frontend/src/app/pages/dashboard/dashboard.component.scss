@@ -375,8 +375,198 @@
 
 .cc-middle-visual-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 12px;
+}
+.cc-telemetry-panel { order: 2; }
+.cc-sponsor-infographic-panel { order: 1; }
+
+/* ── Sponsorship Ecosystem Description + Impact Infographic ── */
+.cc-sponsor-ecosystem {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--outline-variant, #e2e8f0);
+  background: linear-gradient(180deg, rgba(0, 63, 135, 0.03), rgba(0, 63, 135, 0.005));
+}
+
+.cc-eco-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+
+.cc-eco-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--on-surface-variant, #64748b);
+  margin-bottom: 6px;
+}
+.cc-eco-section-title .material-symbols-outlined { font-size: 14px; color: var(--primary, #1e3a8a); }
+
+.cc-eco-tier-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.cc-eco-tier-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cc-eco-tier-lbl {
+  flex-shrink: 0;
+  min-width: 84px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--on-surface, #0f172a);
+}
+
+.cc-eco-tier-track {
+  flex: 1;
+  height: 12px;
+  border-radius: 6px;
+  background: #eef2f7;
+  overflow: hidden;
+}
+
+.cc-eco-tier-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.4s ease;
+}
+.cc-eco-tier-fill.tier-platinum { background: linear-gradient(90deg, #1e40af, #3b82f6); }
+.cc-eco-tier-fill.tier-gold { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.cc-eco-tier-fill.tier-silver { background: linear-gradient(90deg, #0d9488, #14b8a6); }
+.cc-eco-tier-fill.tier-inkind, .cc-eco-tier-fill.tier-bronze { background: linear-gradient(90deg, #7c3aed, #a855f7); }
+
+.cc-eco-tier-val {
+  flex-shrink: 0;
+  min-width: 96px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--on-surface, #0f172a);
+}
+
+.cc-eco-tier-pct {
+  flex-shrink: 0;
+  min-width: 38px;
+  text-align: right;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-surface-variant, #64748b);
+}
+
+.cc-eco-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.cc-eco-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cc-eco-bar-lbl {
+  flex-shrink: 0;
+  min-width: 118px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--on-surface-variant, #64748b);
+}
+
+.cc-eco-bar-track {
+  flex: 1;
+  height: 12px;
+  border-radius: 6px;
+  background: #eef2f7;
+  overflow: hidden;
+}
+
+.cc-eco-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.4s ease;
+}
+.cc-eco-bar-fill.cc-bar-blue { background: linear-gradient(90deg, #1e40af, #3b82f6); }
+.cc-eco-bar-fill.cc-bar-teal { background: linear-gradient(90deg, #0d9488, #14b8a6); }
+.cc-eco-bar-fill.cc-bar-amber { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.cc-eco-bar-fill.cc-bar-purple { background: linear-gradient(90deg, #7c3aed, #a855f7); }
+
+.cc-eco-bar-val {
+  flex-shrink: 0;
+  min-width: 92px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--on-surface, #0f172a);
+}
+
+.cc-eco-flow {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cc-eco-node {
+  flex: 1 1 150px;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 12px;
+  background: #fff;
+  border: 1px solid var(--outline-variant, #e2e8f0);
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.cc-eco-node-ic {
+  font-size: 20px;
+  color: var(--primary, #1e3a8a);
+  background: rgba(0, 63, 135, 0.08);
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.cc-eco-node-val {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--on-surface, #0f172a);
+  letter-spacing: 0.01em;
+}
+
+.cc-eco-node-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--on-surface-variant, #64748b);
+}
+
+.cc-eco-arrow {
+  align-self: center;
+  font-size: 20px;
+  color: var(--primary, #1e3a8a);
+  opacity: 0.55;
+  padding: 0 2px;
 }
 
 /* ── Telemetry Radial Gauge Rings ── */
