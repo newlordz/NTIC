@@ -106,16 +106,40 @@ export class JudgeComponent implements OnInit {
     this.refresh();
   }
 
-  open(submission: JudgeSubmission): void {
+  /**
+   * Opens the scoring pane.
+   *
+   * Also used to REVISE a mark from the history list. The queue only contains
+   * unscored work and history was read-only, so a judge who mistyped a score had no
+   * way to correct it. Existing values are pre-filled so a revision starts from what
+   * was actually recorded rather than from blank.
+   */
+  open(submission: JudgeSubmission, isRevision = false): void {
     this.active = submission;
-    this.scoreInput = null;
-    this.feedbackInput = '';
+    this.revising = isRevision;
+    this.scoreInput = isRevision ? (submission.score ?? null) : null;
+    this.feedbackInput = isRevision ? (submission.feedback || '') : '';
     this.saveError = '';
     this.alreadyScoredWarning = '';
   }
 
+  /** True when the open pane is changing an existing mark rather than setting one. */
+  revising = false;
+
+  /**
+   * Whether the submitted artifact can actually be opened.
+   *
+   * `source_code_path` is often a bare filename and there is no file-serving
+   * endpoint, so it cannot be fetched. The template rendered it as inert text, which
+   * reads as a broken link; this lets it say so instead.
+   */
+  artifactIsReachable(s: JudgeSubmission): boolean {
+    return !!s.source_is_url || !!s.video_url;
+  }
+
   close(): void {
     this.active = null;
+    this.revising = false;
     this.saveError = '';
   }
 
@@ -169,7 +193,13 @@ export class JudgeComponent implements OnInit {
           ? 'That submission no longer exists.'
           : err?.status === 403
             ? 'Your role is not permitted to score submissions.'
-            : 'Could not save the score. Nothing was recorded — please try again.';
+            : err?.status === 409
+              // Another judge scored it first. Name them so the clash can be
+              // resolved, rather than one mark silently replacing the other.
+              ? (err?.error?.detail || 'Another judge has already scored this entry.')
+              : err?.status === 422
+                ? `Score must be between 0 and ${this.maxScore}.`
+                : 'Could not save the score. Nothing was recorded — please try again.';
         this.cdr.detectChanges();
       },
     });

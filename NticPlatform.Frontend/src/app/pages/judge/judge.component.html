@@ -105,13 +105,26 @@
             <span>Submitted {{ submittedAgo(s.submitted_at) }}</span>
           </div>
           <div class="jw-card-files">
-            <span class="jw-file" *ngIf="s.source_code_path">
-              <span class="material-symbols-outlined">code</span>{{ s.source_code_path }}
+            <!-- Link it when it is genuinely a URL. A bare filename cannot be
+                 opened (there is no file-serving endpoint), so say that plainly
+                 instead of rendering it as text that looks like a dead link. -->
+            <a class="jw-file jw-file-link" *ngIf="s.source_code_path && s.source_is_url"
+               [href]="s.source_code_path" target="_blank" rel="noopener noreferrer">
+              <span class="material-symbols-outlined">code</span>Open submitted code
+            </a>
+            <span class="jw-file" *ngIf="s.source_code_path && !s.source_is_url"
+                  title="This is a filename, not a link. The platform has no file store, so ask the entrant for a URL if you need to inspect it.">
+              <span class="material-symbols-outlined">description</span>{{ s.source_code_path }}
+              <em style="opacity:.7;font-style:normal;font-size:11px;">(not downloadable)</em>
             </span>
             <a class="jw-file jw-file-link" *ngIf="s.video_url" [href]="s.video_url"
                target="_blank" rel="noopener noreferrer">
               <span class="material-symbols-outlined">play_circle</span>Watch submission
             </a>
+            <span class="jw-file" *ngIf="!artifactIsReachable(s)"
+                  style="opacity:.75;">
+              <span class="material-symbols-outlined">info</span>Nothing attached that can be opened
+            </span>
           </div>
         </div>
         <button class="jw-btn jw-btn-primary jw-btn-sm" (click)="open(s)"
@@ -175,6 +188,39 @@
           </div>
           <p class="jw-feedback" *ngIf="g.feedback">{{ g.feedback }}</p>
           <p class="jw-feedback jw-feedback-none" *ngIf="!g.feedback">No written feedback given.</p>
+        </div>
+
+        <!-- Revision. The queue only holds unscored work and this list was entirely
+             read-only, so a mistyped score could never be corrected. -->
+        <button class="jw-btn jw-btn-sm" (click)="open(g, true)"
+                *ngIf="active?.id !== g.id">
+          <span class="material-symbols-outlined">edit</span>Revise score
+        </button>
+
+        <div class="jw-score-pane" *ngIf="active?.id === g.id">
+          <div class="jw-field">
+            <label [attr.for]="'rescore-' + g.id">
+              New score <span class="jw-req">*</span>
+              <small style="font-weight:400;opacity:.75;"> (currently {{ g.score }})</small>
+            </label>
+            <input [attr.id]="'rescore-' + g.id" type="number" min="0" [max]="maxScore"
+                   [(ngModel)]="scoreInput" class="jw-input" />
+          </div>
+          <div class="jw-field">
+            <label [attr.for]="'refeedback-' + g.id">Feedback</label>
+            <textarea [attr.id]="'refeedback-' + g.id" rows="3" [(ngModel)]="feedbackInput"
+                      class="jw-input" placeholder="Explain the change so the entrant understands it."></textarea>
+          </div>
+          <p class="jw-error" *ngIf="scoreOutOfRange">Score must be between 0 and {{ maxScore }}.</p>
+          <p class="jw-error" *ngIf="saveError">{{ saveError }}</p>
+          <div class="jw-pane-actions">
+            <button class="jw-btn jw-btn-ghost jw-btn-sm" (click)="close()">Cancel</button>
+            <button class="jw-btn jw-btn-primary jw-btn-sm" (click)="submitScore()"
+                    [disabled]="!canSubmit">
+              <span class="material-symbols-outlined">save</span>
+              {{ saving ? 'Saving…' : 'Save revision' }}
+            </button>
+          </div>
         </div>
       </article>
     </div>
