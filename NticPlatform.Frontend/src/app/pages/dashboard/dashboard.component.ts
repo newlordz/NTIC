@@ -1463,20 +1463,46 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   get featuredBrandLogos(): any[] {
-    return [
-      { name: 'MTN Ghana Foundation', short: 'MTN Ghana', tierKey: 'platinum', badge: 'PLATINUM', color: '#ffcc00', textColor: '#000', icon: 'signal_cellular_alt', role: '5G Connectivity & Innovation' },
-      { name: 'Tullow Oil Ghana STEM Fund', short: 'Tullow Oil', tierKey: 'platinum', badge: 'PLATINUM', color: '#008080', textColor: '#fff', icon: 'precision_manufacturing', role: 'Robotics Arena Hardware' },
-      { name: 'GCB Bank PLC', short: 'GCB Bank', tierKey: 'gold', badge: 'GOLD', color: '#d97706', textColor: '#fff', icon: 'account_balance', role: 'FinTech Track Grants' },
-      { name: 'Fidelity Bank Ghana', short: 'Fidelity', tierKey: 'gold', badge: 'GOLD', color: '#ea580c', textColor: '#fff', icon: 'payments', role: 'STEM Incubation Fund' },
-      { name: 'Stanbic Bank Ghana', short: 'Stanbic', tierKey: 'gold', badge: 'GOLD', color: '#0284c7', textColor: '#fff', icon: 'savings', role: 'Travel & Arena Grants' },
-      { name: 'Voltic (GH) Ltd', short: 'Voltic Water', tierKey: 'inkind', badge: 'IN-KIND', color: '#06b6d4', textColor: '#fff', icon: 'water_drop', role: '1,500 Packs Mineral Water' },
-      { name: 'Coca-Cola Bottling', short: 'Coca-Cola', tierKey: 'inkind', badge: 'IN-KIND', color: '#e11d48', textColor: '#fff', icon: 'local_drink', role: '1,200 Crates Soft Drinks' },
-      { name: 'HP & Lenovo Ghana', short: 'HP / Lenovo', tierKey: 'inkind', badge: 'IN-KIND', color: '#334155', textColor: '#fff', icon: 'laptop_chromebook', role: '60 Core-i7 Laptops' },
-      { name: 'EPP Books Services', short: 'EPP Books', tierKey: 'inkind', badge: 'IN-KIND', color: '#b45309', textColor: '#fff', icon: 'menu_book', role: '800 STEM Books' },
-      { name: 'Printex Ghana', short: 'Printex', tierKey: 'inkind', badge: 'IN-KIND', color: '#7c3aed', textColor: '#fff', icon: 'checkroom', role: '1,200 Official Championship Jerseys' },
-      { name: 'Google Developers Group', short: 'GDG Accra', tierKey: 'silver', badge: 'SILVER', color: '#2563eb', textColor: '#fff', icon: 'terminal', role: 'Cloud & AI Credits' },
-      { name: 'Kosmos Innovation Center', short: 'KIC Ghana', tierKey: 'silver', badge: 'SILVER', color: '#059669', textColor: '#fff', icon: 'eco', role: 'AgriTech Mentorship' }
-    ];
+    const sponsors = this.registeredUsers.filter(u => u.role === 'sponsor');
+    return sponsors.map(u => {
+      const name = u.organization || u.full_name || u.email || 'Corporate Partner';
+      const words = name.split(/\s+/).filter(Boolean);
+      const short = words.length > 2 ? words.slice(0, 2).join(' ') : name;
+      const tierKey = this.normalizeSponsorTierKey(u.tier);
+      const style = this.sponsorTierStyle(tierKey);
+      return {
+        name,
+        short,
+        tierKey,
+        badge: (u.tier || 'SPONSOR').toUpperCase(),
+        color: style.color,
+        textColor: tierKey === 'platinum' ? '#000' : '#fff',
+        icon: style.icon,
+        role: u.sector || 'Corporate Partner'
+      };
+    });
+  }
+
+  private normalizeSponsorTierKey(tier: string): string {
+    const s = (tier || '').toLowerCase();
+    if (s.includes('platinum')) return 'platinum';
+    if (s.includes('gold')) return 'gold';
+    if (s.includes('silver')) return 'silver';
+    if (s.includes('inkind') || s.includes('in-kind') || s.includes('in kind')) return 'inkind';
+    if (s.includes('bronze')) return 'bronze';
+    return 'other';
+  }
+
+  private sponsorTierStyle(key: string): { color: string; icon: string } {
+    const styles: Record<string, { color: string; icon: string }> = {
+      platinum: { color: '#ffcc00', icon: 'workspace_premium' },
+      gold: { color: '#d97706', icon: 'workspace_premium' },
+      silver: { color: '#2563eb', icon: 'terminal' },
+      inkind: { color: '#334155', icon: 'inventory_2' },
+      bronze: { color: '#b45309', icon: 'emoji_events' },
+      other: { color: '#0ea5e9', icon: 'business' }
+    };
+    return styles[key] || styles['other'];
   }
 
   get filteredTierPartners(): any[] {
@@ -1528,251 +1554,54 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return this._cachedSponsorInfographic;
     }
 
-    const tiers = [
-      {
-        key: 'platinum',
-        badge: 'PLATINUM',
-        shortLabel: '38% Plat',
-        title: 'Platinum Headline Partners',
-        pct: 38,
-        amount: 350000,
-        amountFormatted: 'GH₵ 350,000',
-        sponsorCount: 2,
-        sponsorCountLabel: '2 Headline Partners',
-        brands: 'MTN Ghana · Tullow Oil',
-        teamsFunded: 18,
-        metaIcon: 'groups',
-        metaText: '18 Teams Fully Funded',
-        itemsSummary: 'Direct Innovation & STEM Infrastructure Grants',
-        partners: [
-          {
-            name: 'MTN Ghana Foundation',
-            type: 'Primary Headline Grant',
-            categoryIcon: 'domain',
-            contribution: 'GH₵ 200,000 Direct Innovation Grant & 5G High-Speed Connectivity',
-            value: 200000,
-            valueFormatted: 'GH₵ 200,000',
-            beneficiaries: '10 High School Coding Hubs & National Championship Arena',
-            status: 'Disbursed to Teams',
-            esgVerified: true
-          },
-          {
-            name: 'Tullow Oil Ghana STEM Fund',
-            type: 'Engineering & Logistics',
-            categoryIcon: 'precision_manufacturing',
-            contribution: 'GH₵ 150,000 Robotics Arena & Hardware Lab Grant',
-            value: 150000,
-            valueFormatted: 'GH₵ 150,000',
-            beneficiaries: '8 High School Robotics & AI Teams',
-            status: 'Disbursed to Teams',
-            esgVerified: true
-          }
-        ]
-      },
-      {
-        key: 'gold',
-        badge: 'GOLD',
-        shortLabel: '27% Gold',
-        title: 'Gold Strategic Partners',
-        pct: 27,
-        amount: 250000,
-        amountFormatted: 'GH₵ 250,000',
-        sponsorCount: 3,
-        sponsorCountLabel: '3 Strategic Partners',
-        brands: 'GCB Bank · Fidelity · Stanbic',
-        teamsFunded: 14,
-        metaIcon: 'precision_manufacturing',
-        metaText: '14 Robotics & AI Grants',
-        itemsSummary: 'Championship Prize Pools & Lab Equipment Grants',
-        partners: [
-          {
-            name: 'GCB Bank PLC',
-            type: 'Regional Champions Grant',
-            categoryIcon: 'account_balance',
-            contribution: 'GH₵ 100,000 Championship Prize Pool & Student Accounts',
-            value: 100000,
-            valueFormatted: 'GH₵ 100,000',
-            beneficiaries: 'Top 3 Podium Winners & School Equipment',
-            status: 'Allocated in Escrow',
-            esgVerified: true
-          },
-          {
-            name: 'Fidelity Bank Ghana',
-            type: 'AI & Data Track Sponsor',
-            categoryIcon: 'psychology',
-            contribution: 'GH₵ 80,000 AI Acceleration & Cloud Compute Fund',
-            value: 80000,
-            valueFormatted: 'GH₵ 80,000',
-            beneficiaries: '4 Regional AI & Machine Learning Teams',
-            status: 'Disbursed to Teams',
-            esgVerified: true
-          },
-          {
-            name: 'Stanbic Bank Ghana',
-            type: 'Youth Tech Incubation',
-            categoryIcon: 'savings',
-            contribution: 'GH₵ 70,000 Robotics Equipment & Microcontroller Kits',
-            value: 70000,
-            valueFormatted: 'GH₵ 70,000',
-            beneficiaries: '4 Regional Autonomous Bot Teams',
-            status: 'Disbursed to Teams',
-            esgVerified: true
-          }
-        ]
-      },
-      {
-        key: 'silver',
-        badge: 'SILVER',
-        shortLabel: '16% Silver',
-        title: 'Silver Track & Lab Sponsors',
-        pct: 16,
-        amount: 150000,
-        amountFormatted: 'GH₵ 150,000',
-        sponsorCount: 4,
-        sponsorCountLabel: '4 Track Sponsors',
-        brands: 'Tech Hubs · GDG Accra · KIC · GTL',
-        teamsFunded: 10,
-        metaIcon: 'terminal',
-        metaText: '10 Coding & AI Kits',
-        itemsSummary: 'Hardware Kits, Cloud VM Credits & Hackathon Prizes',
-        partners: [
-          {
-            name: 'Tech Hubs Ghana Network',
-            type: 'Cybersecurity Track Sponsor',
-            categoryIcon: 'security',
-            contribution: 'GH₵ 50,000 CTF Defense Kits & Server Appliances',
-            value: 50000,
-            valueFormatted: 'GH₵ 50,000',
-            beneficiaries: '3 CTF Finalist Squads & Dedicated Lab Access',
-            status: 'Delivered & Logged',
-            esgVerified: true
-          },
-          {
-            name: 'Google Developers Group Accra',
-            type: 'Cloud Sandbox Credits',
-            categoryIcon: 'cloud',
-            contribution: 'GH₵ 40,000 Google Cloud Platform & Gemini Credits',
-            value: 40000,
-            valueFormatted: 'GH₵ 40,000',
-            beneficiaries: '3 Finalist Teams & 150 Student Developers',
-            status: 'Active & Provisioned',
-            esgVerified: true
-          },
-          {
-            name: 'Kosmos Innovation Center (KIC)',
-            type: 'AgTech Challenge Award',
-            categoryIcon: 'eco',
-            contribution: 'GH₵ 35,000 Agri-Sensors & Drone Prototyping Grant',
-            value: 35000,
-            valueFormatted: 'GH₵ 35,000',
-            beneficiaries: '2 Agricultural IoT Contestant Teams',
-            status: 'Disbursed to Teams',
-            esgVerified: true
-          },
-          {
-            name: 'Ghana Tech Lab',
-            type: 'Speed Coding Arena Prize',
-            categoryIcon: 'code',
-            contribution: 'GH₵ 25,000 Algorithmic Speed Solving Cash Award',
-            value: 25000,
-            valueFormatted: 'GH₵ 25,000',
-            beneficiaries: 'Top 2 Speed Coding Finalists',
-            status: 'Confirmed 2026',
-            esgVerified: true
-          }
-        ]
-      },
-      {
-        key: 'inkind',
-        badge: 'IN-KIND',
-        shortLabel: '19% In-Kind',
-        title: 'In-Kind & Resource Partners',
-        pct: 19,
-        amount: 180000,
-        amountFormatted: 'GH₵ 180,000',
-        sponsorCount: 5,
-        sponsorCountLabel: '5 Resource Partners',
-        brands: 'Voltic · Coca-Cola · HP · EPP · Printex',
-        teamsFunded: 48,
-        metaIcon: 'inventory_2',
-        metaText: 'Water, Drinks, Books, Laptops, T-Shirts',
-        itemsSummary: 'Laptops, Mineral Water, Soft Drinks, Books & Jerseys',
-        partners: [
-          {
-            name: 'Voltic (GH) Limited',
-            type: 'Water & Hydration Partner',
-            categoryIcon: 'water_drop',
-            contribution: '1,500 Packs Natural Mineral Water (500ml × 24)',
-            value: 25000,
-            valueFormatted: 'GH₵ 25,000',
-            beneficiaries: 'All 16 Regional Competition Arenas & Championship Finals',
-            status: 'Delivered to Central Warehouse',
-            esgVerified: true
-          },
-          {
-            name: 'Coca-Cola Bottling Company Ghana',
-            type: 'Soft Drinks & Beverages',
-            categoryIcon: 'local_drink',
-            contribution: '1,200 Crates Assorted Soft Drinks, Juices & Refreshments',
-            value: 30000,
-            valueFormatted: 'GH₵ 30,000',
-            beneficiaries: 'Regional Tournament Days & Grand Finale Gala',
-            status: 'Confirmed & Scheduled',
-            esgVerified: true
-          },
-          {
-            name: 'HP & Lenovo Ghana Logistics',
-            type: 'Laptops & Hardware Equipment',
-            categoryIcon: 'laptop_chromebook',
-            contribution: '60 Core-i7 High-Spec Laptops & Arduino Robotics Kits',
-            value: 75000,
-            valueFormatted: 'GH₵ 75,000',
-            beneficiaries: '12 Qualified High School Labs for Championship Finals',
-            status: 'Disbursed to Regional Centers',
-            esgVerified: true
-          },
-          {
-            name: 'EPP Books Services Ghana',
-            type: 'Books & STEM Curriculum',
-            categoryIcon: 'menu_book',
-            contribution: '800 STEM, Python, AI & Algorithm Textbooks',
-            value: 25000,
-            valueFormatted: 'GH₵ 25,000',
-            beneficiaries: '25 Participating High School ICT Libraries',
-            status: 'Disbursed to Libraries',
-            esgVerified: true
-          },
-          {
-            name: 'Printex & Custom Gear Ghana',
-            type: 'Apparel & T-Shirts Sponsor',
-            categoryIcon: 'checkroom',
-            contribution: '1,200 Official NTIC Championship Jerseys, T-Shirts & Badges',
-            value: 25000,
-            valueFormatted: 'GH₵ 25,000',
-            beneficiaries: 'All 1,200 Student Competitors, Coaches & Judges',
-            status: 'In Warehouse & Staged',
-            esgVerified: true
-          }
-        ]
+    // Compute tier distribution from actual sponsor user data
+    const tierMap: Map<string, { sponsorCount: number }> = new Map();
+    sponsors.forEach(u => {
+      const tierKey = this.normalizeSponsorTierKey(u.tier);
+      if (!tierMap.has(tierKey)) {
+        tierMap.set(tierKey, { sponsorCount: 0 });
       }
-    ];
+      tierMap.get(tierKey)!.sponsorCount++;
+    });
 
-    const totalCommitted = tiers.reduce((acc, t) => acc + t.amount, 0);
-    const partnerCount = tiers.reduce((acc, t) => acc + t.sponsorCount, 0);
-    const sponsoredTeamsCount = teams.length > 0 ? teams.length : 48;
-    const studentsReached = students.length > 0 ? students.length : (sponsoredTeamsCount * 25);
-    const disbursedFunds = Math.round(totalCommitted * 0.72);
+    // Compute total sponsor count before mapping tiers
+    const totalSponsorCount = Array.from(tierMap.entries()).reduce(
+      (sum, _tier) => sum + _tier[1].sponsorCount,
+      0
+    );
+
+    // Build tiers array with proportional percentages and zero amounts from DB
+    const tiers = Array.from(tierMap.entries()).map(([key, data]) => ({
+      key,
+      badge: key ? key.toUpperCase() : 'UNSPECIFIED',
+      title: key ? `${key.toUpperCase()} Partners` : 'Sponsors',
+      shortLabel: `${data.sponsorCount}${totalSponsorCount > 0 ? ` (${Math.round(data.sponsorCount / totalSponsorCount * 100)}%)` : ''}`,
+      pct: totalSponsorCount > 0 ? Math.round(data.sponsorCount / totalSponsorCount * 100) : 0,
+      amount: 0,
+      amountFormatted: 'GH₵ 0',
+      sponsorCount: data.sponsorCount,
+      sponsorCountLabel: data.sponsorCount === 1 ? '1 Sponsor' : `${data.sponsorCount} Sponsors`,
+      brands: '',
+      teamsFunded: 0,
+      metaIcon: 'info',
+      metaText: totalSponsorCount > 0 ? `(${totalSponsorCount} sponsors)` : 'No sponsor data',
+      itemsSummary: totalSponsorCount > 0 ? 'Sponsor data from platform database' : 'No sponsor data',
+      partners: []
+    }));
+
+    const sponsoredTeamsCount = teams.length;
+    const studentsReached = students.length;
 
     this._cachedSponsorInfographic = {
-      totalCommitted,
-      totalCommittedFormatted: `GH₵ ${totalCommitted.toLocaleString()}`,
-      disbursedFunds,
-      disbursedFundsFormatted: `GH₵ ${disbursedFunds.toLocaleString()}`,
-      partnerCount,
+      totalCommitted: 0,
+      totalCommittedFormatted: 'GH₵ 0',
+      disbursedFunds: 0,
+      disbursedFundsFormatted: 'GH₵ 0',
+      partnerCount: totalSponsorCount,
       sponsoredTeamsCount,
       studentsReached,
-      prizePoolFormatted: 'GH₵ 120,000',
-      impactScore: '98.4%',
+      prizePoolFormatted: 'GH₵ 0',
+      impactScore: '0%',
       tiers
     };
     this._lastSponsorsHash = hash;
@@ -1802,12 +1631,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   get sponsorFundingBars() {
     const info = this.sponsorInfographic;
-    const total = info.totalCommitted || 1;
+    const hasData = info.totalCommitted > 0;
     return [
-      { label: 'Total Committed', value: info.totalCommittedFormatted, pct: 100, cls: 'cc-bar-blue' },
-      { label: 'Disbursed Funds', value: info.disbursedFundsFormatted, pct: Math.max(4, Math.round((info.disbursedFunds / total) * 100)), cls: 'cc-bar-teal' },
-      { label: 'Prize Pool', value: info.prizePoolFormatted, pct: 16, cls: 'cc-bar-amber' },
-      { label: 'Students Reached', value: `${info.studentsReached}`, pct: 100, cls: 'cc-bar-purple' }
+      { label: 'Total Committed', value: info.totalCommittedFormatted, pct: hasData ? 100 : 0, cls: 'cc-bar-blue' },
+      { label: 'Disbursed Funds', value: info.disbursedFundsFormatted, pct: hasData ? Math.round((info.disbursedFunds / info.totalCommitted) * 100) : 0, cls: 'cc-bar-teal' },
+      { label: 'Prize Pool', value: info.prizePoolFormatted, pct: 0, cls: 'cc-bar-amber' },
+      { label: 'Students Reached', value: `${info.studentsReached}`, pct: 0, cls: 'cc-bar-purple' }
     ];
   }
 
