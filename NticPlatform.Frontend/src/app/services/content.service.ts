@@ -1,6 +1,6 @@
 import { getAuthValue } from './session.util';
 import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { DataStorageService } from './data-storage.service';
 import { ApiService } from './api.service';
@@ -642,10 +642,34 @@ private readonly defaultTeams: Team[] = [];
     this.wsSync.disconnect();
   }
 
+  /**
+   * Emits when a write to the backend fails.
+   *
+   * This exists because the previous implementation was
+   * `error: () => {}` -- every failure was discarded. `POST /api/bulk-sync`
+   * requires an admin, so for an instructor saving a course, a sponsor recording
+   * a payment or a student submitting work the request 403'd and the data lived
+   * only in that browser's localStorage. The UI showed success every time and
+   * nobody ever found out. Losing data quietly is worse than failing loudly.
+   */
+  readonly writeFailures$ = new Subject<{ collection: string; status: number; message: string }>();
+
   syncToBackend(collection: string, items: any[]): void {
     this.apiService.bulkSync(collection, items).subscribe({
       next: () => {},
-      error: () => {}
+      error: (err: any) => {
+        const status = err?.status ?? 0;
+        // 401 is already handled globally by the HTTP interceptor (it signs the
+        // user out), so re-reporting it here would double up the messaging.
+        if (status === 401) return;
+        const message = status === 403
+          ? `Your account is not permitted to save ${collection} to the server. The change is only on this device.`
+          : status === 0
+            ? `Could not reach the server to save ${collection}. The change is only on this device.`
+            : `Saving ${collection} failed (${status}). The change is only on this device.`;
+        console.error(`[sync] ${collection} write failed:`, status, err?.error?.detail || err?.message || err);
+        this.writeFailures$.next({ collection, status, message });
+      }
     });
   }
 

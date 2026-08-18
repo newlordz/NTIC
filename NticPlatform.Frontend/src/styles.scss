@@ -6,6 +6,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 
+#ntic-splash.out,
+#ntic-preboot-splash.ntic-splash-fadeout,
+.ntic-splash-container.ntic-splash-fadeout {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: scale(1.04) !important;
+  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
 /* ── Color Tokens ── */
 :root {
   --primary:                 #003f87;

@@ -1730,8 +1730,13 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     setAuthValue('activeRoleId', role);
     setAuthValue('activeUserEmail', email);
     setAuthValue('activeUserTicket', ticket);
-    if (user.fullName) {
-      setAuthValue('activeUserName', user.fullName);
+    // The login response is snake_case (`full_name`, see POST /api/login), so the
+    // old `user.fullName` check was always undefined and activeUserName was never
+    // written. Every surface that fell back to it then showed a hardcoded name.
+    // Both spellings are accepted so this keeps working whichever shape arrives.
+    const resolvedName = user.full_name || user.fullName;
+    if (resolvedName) {
+      setAuthValue('activeUserName', resolvedName);
     }
     if (user.token) {
       setAuthValue('activeUserToken', user.token);

@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ContentService, User } from '../../services/content.service';
 import { ThemeService } from '../../services/theme.service';
+import { CurrentUserService } from '../../services/current-user.service';
 import { ApiService } from '../../services/api.service';
 
 @Component({
@@ -29,41 +30,56 @@ export class ProfileCompletionComponent implements OnInit {
     private router: Router,
     public contentService: ContentService,
     public themeService: ThemeService,
-    private apiService: ApiService
+    private apiService: ApiService,
+    private currentUserService: CurrentUserService
   ) {}
 
   ngOnInit(): void {
-    const userEmail = getAuthValue('activeUserEmail');
-    const userTicket = getAuthValue('activeUserTicket');
-
-    if (userEmail || userTicket) {
-      this.currentUser = this.contentService.users.find(u => 
-        (userEmail && u.email?.trim().toLowerCase() === userEmail.trim().toLowerCase()) ||
-        (userEmail && u.ticket?.trim().toLowerCase() === userEmail.trim().toLowerCase()) ||
-        (userTicket && u.ticket?.trim().toLowerCase() === userTicket.trim().toLowerCase())
-      ) || null;
+    if (!getAuthValue('activeRoleId')) {
+      this.router.navigate(['/']);
+      return;
     }
-
-    if (!this.currentUser) {
-      const roleId = getAuthValue('activeRoleId');
-      const activeEmail = getAuthValue('activeUserEmail') || 'admin@ntic.org.gh';
-      if (roleId) {
-        this.currentUser = {
-          id: 'admin_session',
-          fullName: 'Super Admin',
-          email: activeEmail,
-          phone: '+233 24 000 0000',
-          role: roleId,
-          organization: 'NTIC Ghana Administration'
-        } as any;
+    // Prefill from GET /api/users/me.
+    //
+    // This used to search `contentService.users` and, on the guaranteed miss for
+    // any non-admin, substitute a fabricated user: fullName 'Super Admin', phone
+    // '+233 24 000 0000', organization 'NTIC Ghana Administration'. A judge or
+    // sponsor opening their own profile page saw those values pre-filled in the
+    // form, and saving would have written them to their real account.
+    this.currentUserService.ensureLoaded().subscribe(me => {
+      if (me) {
+        this.applyProfile({
+          id: me.id,
+          fullName: me.full_name,
+          email: me.email,
+          phone: me.phone || '',
+          role: me.role,
+          organization: me.organization || '',
+          tier: me.tier || '',
+          sector: me.sector || '',
+          track: me.track || '',
+          bio: me.bio || '',
+          expertise: me.expertise || '',
+          repName: me.rep_name || '',
+          experience: me.experience_level || '',
+        } as any);
       } else {
-        this.router.navigate(['/']);
-        return;
+        // Offline: fall back to the little we know for certain, leaving the rest
+        // blank for the user to fill in.
+        this.applyProfile({
+          id: '',
+          fullName: getAuthValue('activeUserName') || '',
+          email: getAuthValue('activeUserEmail') || '',
+          phone: '',
+          role: getAuthValue('activeRoleId') || '',
+          organization: '',
+        } as any);
       }
-    }
+    });
+  }
 
-    const user = this.currentUser;
-    if (!user) return;
+  private applyProfile(user: any): void {
+    this.currentUser = user;
 
     const userTier = user.tier || (user as any).package || '';
     let resolvedTier = 'Gold Partner (GH₵ 20,000 - 100,000)';
@@ -176,6 +192,42 @@ export class ProfileCompletionComponent implements OnInit {
     return this.currentUser?.role === 'sponsor';
   }
 
+  /** Heading text. The template hardcoded `isJudge ? 'Judge' : 'Sponsor'`, so a
+   *  student or instructor editing their own profile was told it was a "Sponsor
+   *  Profile". */
+  get profileHeading(): string {
+    const labels: Record<string, string> = {
+      judge: 'Judge', sponsor: 'Sponsor', student: 'Student',
+      instructor: 'Instructor', school_admin: 'School Admin',
+    };
+    return labels[this.currentUser?.role || ''] || 'Account';
+  }
+
+  get profileIcon(): string {
+    const icons: Record<string, string> = {
+      judge: 'gavel', sponsor: 'handshake', student: 'school',
+      instructor: 'co_present', school_admin: 'domain',
+    };
+    return icons[this.currentUser?.role || ''] || 'person';
+  }
+
+  /**
+   * Where to go after a successful save.
+   *
+   * This was `isJudge ? '/judge' : '/sponsors'`, so a student or instructor was
+   * sent to /sponsors -- a route their role guard denies, bouncing them to
+   * /dashboard with no explanation of whether the save worked.
+   */
+  private get postSaveRoute(): string {
+    switch (this.currentUser?.role) {
+      case 'judge': return '/judge';
+      case 'sponsor': return '/sponsors';
+      case 'student': return '/lms';
+      case 'instructor': return '/lms-manager';
+      default: return '/dashboard';
+    }
+  }
+
   validateEmailLive(fieldName: string, value: string): void {
     if (this.validationTimers[fieldName]) clearTimeout(this.validationTimers[fieldName]);
     if (!value?.trim()) {
@@ -249,23 +301,20 @@ export class ProfileCompletionComponent implements OnInit {
       tier: this.isSponsor ? (this.profileForm.tier || undefined) : undefined,
     }).subscribe({
       next: () => {
-        // Mirror into the local cache so the UI is consistent immediately,
-        // but the server is now the source of truth.
-        if (this.currentUser) {
-          const updatedUsers = this.contentService.users.map(u => u.id === this.currentUser!.id
-            ? {
-                ...u,
-                fullName: this.profileForm.fullName?.trim() || u.fullName,
-                organization: this.profileForm.organization?.trim() || u.organization,
-                phone: this.profileForm.phone?.trim() || u.phone,
-              }
-            : u);
-          this.contentService.saveUsers(updatedUsers);
-          this.queueApprovalForReview();
-          this.clearDraft();
-        }
+        // PATCH /api/users/me is the save. There used to be a
+        // contentService.saveUsers() call here too, which pushed the whole user
+        // list through POST /api/bulk-sync -- an admin-only endpoint. For the
+        // judges and sponsors who actually use this page it always 403'd, so it
+        // achieved nothing except (now that failures are surfaced) an error toast
+        // immediately after a successful save. Removed.
+        //
+        // Re-read the profile instead so the sidebar, greeting and avatar pick up
+        // the new name straight away.
+        this.currentUserService.refresh().subscribe();
+        this.queueApprovalForReview();
+        this.clearDraft();
         this.isSubmitting = false;
-        this.router.navigate([this.isJudge ? '/judge' : '/sponsors']);
+        this.router.navigate([this.postSaveRoute]);
       },
       error: (err: any) => {
         this.isSubmitting = false;
@@ -282,51 +331,33 @@ export class ProfileCompletionComponent implements OnInit {
     });
   }
 
-  /** Files the completed profile for admin review. */
+  /**
+   * Files the completed profile for admin review.
+   *
+   * Previously this pushed a row into `contentService.pendingApprovals` and called
+   * `saveApprovals()`, which syncs via POST /api/bulk-sync -- an admin-only
+   * endpoint. A judge or sponsor completing onboarding therefore 403'd silently:
+   * the request never reached the admin queue, so nobody knew they had applied.
+   *
+   * POST /api/approvals/mine builds the record server-side from the verified
+   * session, so the applicant's identity and role cannot be forged, and
+   * re-submitting updates the existing pending row instead of stacking
+   * duplicates.
+   */
   private queueApprovalForReview(): void {
-    if (!this.currentUser) return;
-    if (this.isJudge) {
-      this.contentService.pendingApprovals = [...this.contentService.pendingApprovals, {
-        id: 'APR-' + Date.now(),
-        // Was 'Instructor Access', which put judges in the instructor queue.
-        type: 'Judge Access' as any,
-        entity: this.profileForm.organization,
-        contact: this.currentUser.email,
-        submitted: new Date().toISOString(),
-        details: {
-          name: this.profileForm.fullName,
-          email: this.currentUser.email,
-          phone: this.profileForm.phone,
-          region: '',
-          category: 'Judge',
-          expertise: this.profileForm.expertise,
-          experience: this.profileForm.experience,
-          bio: this.profileForm.bio,
-        },
-      }];
-      this.contentService.saveApprovals(this.contentService.pendingApprovals);
-    } else if (this.isSponsor) {
-      this.contentService.pendingApprovals = [...this.contentService.pendingApprovals, {
-        id: 'APR-' + Date.now(),
-        // Was 'Team Addition', so sponsor onboarding showed up in the admin
-        // queue as a request to add a competition team.
-        type: 'Sponsor Access' as any,
-        entity: this.profileForm.organization,
-        contact: this.currentUser.email,
-        submitted: new Date().toISOString(),
-        details: {
-          name: this.profileForm.fullName,
-          email: this.currentUser.email,
-          phone: this.profileForm.phone,
-          region: '',
-          category: 'Sponsor',
-          sector: this.profileForm.sector,
-          repName: this.profileForm.repName,
-          tier: this.profileForm.tier,
-        },
-      }];
-      this.contentService.saveApprovals(this.contentService.pendingApprovals);
-    }
+    const role = this.currentUser?.role;
+    if (role !== 'judge' && role !== 'sponsor' && role !== 'instructor') return;
+
+    this.apiService.submitMyOnboarding().subscribe({
+      next: () => { /* queued for review */ },
+      error: (err: any) => {
+        // The profile itself saved fine; only the review request failed. Say so
+        // rather than implying the whole save was lost.
+        this.saveError = err?.status === 400
+          ? ''
+          : 'Your profile was saved, but we could not notify an administrator for review. Please contact support if your account is not activated.';
+      },
+    });
   }
 
   private clearDraft(): void {

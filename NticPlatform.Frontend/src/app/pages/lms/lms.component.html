@@ -312,6 +312,26 @@
   <div class="student-portal-grid">
     <div class="portal-main-panel">
       <div *ngIf="studentActiveTab === 'courses'" class="fade-in">
+        <!-- Error / loading state. Previously this page could not fail visibly:
+             it listed every course on the platform straight from a cache. -->
+        <div class="error-banner" *ngIf="studentDataError"
+             style="background:rgba(239,68,68,0.1); border:1px solid #ef4444; color:#ef4444; padding:12px; border-radius:8px; display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+          <span class="material-symbols-outlined">error</span>
+          <span>{{ studentDataError }}</span>
+        </div>
+
+        <!-- Genuinely empty: enrolment is now a real relationship, so a student who
+             has not joined anything sees this instead of the full catalogue. -->
+        <div class="card" *ngIf="!isLoadingStudentData && !studentCourses.length" style="margin-bottom:16px;">
+          <div class="card-body" style="text-align:center; padding:28px 20px;">
+            <span class="material-symbols-outlined" style="font-size:40px; color:var(--outline);">school</span>
+            <h3 style="font-size:15px; font-weight:700; margin:10px 0 4px;">You are not enrolled on any course yet</h3>
+            <p style="font-size:12.5px; color:var(--on-surface-variant); margin:0;">
+              Pick a track below to get started. Your progress and grades will appear here.
+            </p>
+          </div>
+        </div>
+
         <div class="grid-2">
           <div *ngFor="let course of studentCourses" class="card" style="margin-bottom: 16px;">
             <div class="card-body">
@@ -321,11 +341,12 @@
                 </div>
                 <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
                   <span class="badge" [class]="course.progress === 0 ? 'neutral' : 'success'">{{ course.badgeText }}</span>
-                  <span class="badge neutral" style="font-size: 10px;">Intermediate</span>
+                  <!-- Was a hardcoded "Intermediate" badge on every card. -->
+                  <span class="badge neutral" style="font-size: 10px;" *ngIf="course.level">{{ course.level }}</span>
                 </div>
               </div>
               <h3 style="font-size:15px; font-weight:700; margin-bottom:4px;">{{ course.title }}</h3>
-              <p style="font-size:12px; color:var(--on-surface-variant); margin-bottom:16px;">{{ course.module }} &bull; Last active {{ course.lastActive }}</p>
+              <p style="font-size:12px; color:var(--on-surface-variant); margin-bottom:16px;">{{ course.module }} &bull; {{ course.lastActive }}</p>
               <div>
                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
                   <span style="color:var(--on-surface-variant)">Course Progress</span>
@@ -337,13 +358,45 @@
               </div>
               <div style="display:flex; gap:6px; margin-top:16px; padding-top:12px; border-top:1px solid var(--outline-variant); align-items:center;">
                 <span class="track-chip" [class]="course.track">{{ course.track | titlecase }}</span>
-                <button class="btn btn-primary btn-sm" style="margin-left:auto; padding:6px 14px; font-size:12px; font-weight:650;" (click)="startCourseLesson(course)">{{ course.buttonText }}</button>
+                <span style="font-size:11px; color:var(--on-surface-variant);" *ngIf="course.assignmentCount">
+                  {{ course.assignmentCount }} assignment{{ course.assignmentCount === 1 ? '' : 's' }}
+                </span>
+                <button class="btn btn-subtle btn-sm" style="margin-left:auto; padding:6px 10px; font-size:11px;"
+                        [disabled]="isEnrolling[course.courseId]"
+                        (click)="withdraw(course.courseId)">Leave</button>
+                <button class="btn btn-primary btn-sm" style="padding:6px 14px; font-size:12px; font-weight:650;" (click)="startCourseLesson(course)">{{ course.buttonText }}</button>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="card" style="margin-top:16px;">
+        <!-- Enrolment. There was no way for a student to join a course at all:
+             lms_enrollments was writable only through admin-only bulk-sync and the
+             one function targeting it was never called. -->
+        <div class="card" *ngIf="availableCourses.length" style="margin-top:16px;">
+          <div class="card-header">
+            <h3>Available Courses</h3>
+          </div>
+          <div class="card-body">
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div *ngFor="let c of availableCourses"
+                   style="display:flex; align-items:center; gap:12px; background:var(--surface-container-low); padding:12px; border-radius:10px;">
+                <span class="material-symbols-outlined" style="font-size:20px; color:var(--primary);">{{ c.icon || 'school' }}</span>
+                <div style="flex:1; min-width:0;">
+                  <strong style="font-size:13px;">{{ c.title }}</strong>
+                  <p style="font-size:11.5px; color:var(--on-surface-variant); margin:2px 0 0;">{{ c.track }}{{ c.level ? ' · ' + c.level : '' }}</p>
+                </div>
+                <button class="btn btn-primary btn-sm" style="padding:6px 14px; font-size:12px;"
+                        [disabled]="isEnrolling[c.id]"
+                        (click)="enrol(c.id)">
+                  {{ isEnrolling[c.id] ? 'Enrolling...' : 'Enrol' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;" *ngIf="studentCourses.length">
           <div class="card-header">
             <h3>Syllabus Overview -- {{ primaryCourseTitle }}</h3>
           </div>
@@ -389,23 +442,38 @@
 
             <div class="grid-2" style="margin-bottom:16px;">
               <div class="form-group">
-                <label class="form-label">Select Course Track</label>
+                <label class="form-label">Course</label>
                 <select class="form-control form-select" [(ngModel)]="newSubmission.courseTitle">
-                  <option *ngFor="let c of studentCourses" [value]="c.title">{{ c.title }}</option>
+                  <option value="">Select a course...</option>
+                  <option *ngFor="let c of studentCourses" [value]="c.courseId">{{ c.title }}</option>
                 </select>
               </div>
               <div class="form-group">
-                <label class="form-label">Assignment Title *</label>
-                <input class="form-control" type="text" placeholder="e.g. Dijkstra's Pathfinder Sprints" [(ngModel)]="newSubmission.assignmentName">
+                <!-- Was a free-text "Assignment Title" that the component tried to
+                     fuzzy-match against a localStorage list. Submissions now attach
+                     to a real assignment id from GET /api/lms/assignments. -->
+                <label class="form-label">Assignment *</label>
+                <select class="form-control form-select" [(ngModel)]="newSubmission.assignmentId"
+                        [disabled]="!newSubmission.courseTitle">
+                  <option value="">
+                    {{ newSubmission.courseTitle ? 'Select an assignment...' : 'Choose a course first' }}
+                  </option>
+                  <option *ngFor="let a of assignmentsForCourse(newSubmission.courseTitle)" [value]="a.id">
+                    {{ a.title }}{{ a.due_date ? ' — due ' + a.due_date : '' }}{{ a.isSubmitted ? ' (resubmit)' : '' }}
+                  </option>
+                </select>
               </div>
             </div>
 
             <div class="form-group" style="margin-bottom:16px;">
-              <label class="form-label">Filename to Upload *</label>
+              <label class="form-label">Link to your work</label>
               <div class="academic-input-wrap" style="position:relative;">
-                <span class="material-symbols-outlined input-icon-ac" style="top:11px; left:12px; position:absolute; color:var(--on-surface-variant); font-size:18px;">code</span>
-                <input class="form-control" type="text" placeholder="e.g., pathfinder_submission.py" [(ngModel)]="newSubmission.fileName" style="padding-left:40px;">
+                <span class="material-symbols-outlined input-icon-ac" style="top:11px; left:12px; position:absolute; color:var(--on-surface-variant); font-size:18px;">link</span>
+                <input class="form-control" type="url" placeholder="e.g. https://github.com/you/your-project" [(ngModel)]="newSubmission.url" style="padding-left:40px;">
               </div>
+              <small style="color:var(--on-surface-variant); font-size:11px;">
+                Files chosen below stay on this device — there is no file upload service yet, so share a link for anything a grader must open.
+              </small>
             </div>
 
             <div class="form-group" style="margin-bottom:20px;">
@@ -427,9 +495,9 @@
             <input #lmsFileInput type="file" multiple (change)="onUploadFileSelected($event)" accept=".py,.ino,.cpp,.zip,.pdf" style="display:none">
 
             <div style="display:flex; justify-content:flex-end;">
-              <button class="btn btn-primary" (click)="submitAssignment()">
+              <button class="btn btn-primary" (click)="submitAssignment()" [disabled]="isSubmittingWork">
                 <span class="material-symbols-outlined">send</span>
-                Submit Code File
+                {{ isSubmittingWork ? 'Submitting...' : 'Submit Work' }}
               </button>
             </div>
           </div>
@@ -440,6 +508,9 @@
             <h3>Submission & Evaluation History</h3>
           </div>
           <div class="card-body">
+            <p *ngIf="!studentSubmissions.length" style="font-size:12.5px; color:var(--on-surface-variant); margin:0;">
+              You have not submitted any work yet. Your submissions and grades will appear here.
+            </p>
             <div style="display:flex; flex-direction:column; gap:14px;">
               <div *ngFor="let sub of studentSubmissions" style="background:var(--surface-container-low); border:1px solid var(--outline-variant); border-radius:12px; padding:16px;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
@@ -451,7 +522,7 @@
                     <span class="badge" [class]="sub.status === 'approved' ? 'success' : sub.status === 'pending' ? 'warning' : 'error'">
                       {{ sub.status | uppercase }}
                     </span>
-                    <strong *ngIf="sub.grade !== null" style="font-size:14px; color:var(--primary);">{{ sub.grade }}/100</strong>
+                    <strong *ngIf="sub.grade !== null" style="font-size:14px; color:var(--primary);">{{ sub.grade }}/{{ sub.maxScore }}</strong>
                   </div>
                 </div>
                 <div style="background:var(--surface-container-lowest); border:1px solid var(--outline-variant); border-radius:8px; padding:8px 12px; font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--on-surface-variant); margin-bottom:12px; display:flex; flex-direction:column; gap:4px;">
@@ -482,20 +553,19 @@
                 <span class="material-symbols-outlined" style="color:#10b981;">verified_user</span> MoE Accreditation Data
               </h4>
               <ul style="font-size:12px; color:var(--on-surface-variant); padding-left:20px; display:flex; flex-direction:column; gap:8px; margin:0;">
-                <li><strong>Verification Registry:</strong> MoE-GH-NTIC-2026-{{ studentProfile.id }}</li>
-                <li><strong>Status:</strong> Verified & Active (Active Competitor)</li>
-                <li><strong>Acquisition Channel:</strong> Registered via {{ studentProfile.school }} Portal</li>
+                <li><strong>Verification Registry:</strong> MoE-GH-NTIC-2026-{{ studentProfile.displayId }}</li>
+                <!-- Was the flat claim "Verified & Active (Active Competitor)" for
+                     everyone, including suspended accounts. Reads the real status. -->
+                <li><strong>Status:</strong> {{ studentProfile.status || 'Unknown' }}</li>
+                <li *ngIf="studentProfile.school"><strong>Institution:</strong> {{ studentProfile.school }}</li>
                 <li><strong>Privacy Shield:</strong> Compliant with Ghana Data Protection Act 2012 (Act 843).</li>
               </ul>
             </div>
-            <div style="display:flex; gap:12px;">
-              <button class="btn btn-primary">
-                <span class="material-symbols-outlined">download</span> Download PDF Badge
-              </button>
-              <button class="btn btn-subtle">
-                <span class="material-symbols-outlined">key</span> Regenerate Token Keys
-              </button>
-            </div>
+            <!-- "Download PDF Badge" and "Regenerate Token Keys" were here. Neither
+                 had a (click) handler, so both did nothing at all when pressed --
+                 worse than absent, because they imply the app is broken. There is no
+                 badge generator and no self-service ticket-rotation endpoint to wire
+                 them to, so they are removed until there is. -->
           </div>
         </div>
       </div>
@@ -515,7 +585,7 @@
             </div>
           </div>
           <h2 class="pass-name">{{ studentProfile.name }}</h2>
-          <div class="pass-id">{{ studentProfile.id }}</div>
+          <div class="pass-id">{{ studentProfile.displayId }}</div>
           <div class="pass-school-row">
             <span class="material-symbols-outlined">school</span>
             <span class="school-name">{{ studentProfile.school }}</span>
@@ -555,14 +625,18 @@
               <span class="line w2"></span><span class="line w1"></span><span class="line w3"></span>
             </div>
             <div class="ticket-code-display" style="font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:700; color:#1e293b; margin-top:2px;">
-              REG-ID-{{ studentProfile.id }}-NTIC
+              REG-ID-{{ studentProfile.displayId }}-NTIC
             </div>
             <span class="compliance-pill">GDPA COMPLIANT · ACT 843</span>
           </div>
         </div>
       </div>
 
-      <div class="sidebar-panel-card">
+      <!-- Hidden until a mentor-assignment model exists. The name, avatar and
+           email were hardcoded fixtures ("Efua Mensah", "e.mensah@ntic.gov.gh")
+           and the phone number below is still a literal, so showing this to a
+           real student presented invented contact details as fact. -->
+      <div class="sidebar-panel-card" *ngIf="studentProfile.mentor">
         <h3><span class="material-symbols-outlined">co_present</span> Assigned Mentor</h3>
         <div class="mentor-info-row">
           <div class="mentor-avatar">{{ studentProfile.mentorAvatar }}</div>

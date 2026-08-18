@@ -7,9 +7,9 @@
     
     <div class="pc-header">
       <div class="pc-icon">
-        <span class="material-symbols-outlined">{{ isJudge ? 'gavel' : 'handshake' }}</span>
+        <span class="material-symbols-outlined">{{ profileIcon }}</span>
       </div>
-      <h2>{{ isJudge ? 'Judge' : 'Sponsor' }} Profile & Account Settings</h2>
+      <h2>{{ profileHeading }} Profile & Account Settings</h2>
       <p>Welcome, {{ currentUser?.fullName }}. Manage your account information and preferences.</p>
       <span *ngIf="isDraftResumed" class="draft-badge">Draft Restored</span>
     </div>

@@ -16,7 +16,8 @@ import {
 import { BrevoEmailService } from '../../services/brevo-email.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
-import { ApiService } from '../../services/api.service';
+import { ApiService, MyEnrolledCourse, MySubmission, SponsorshipSummary } from '../../services/api.service';
+import { CurrentUserService } from '../../services/current-user.service';
 import type { PersonnelRoster, PersonnelPerson, PersonnelSummary } from '../../services/api.service';
 import { TimeAgoPipe } from '../../services/time-ago.pipe';
 import { WsSyncService } from '../../services/ws-sync.service';
@@ -1327,9 +1328,85 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.contentService.saveCsrUpdates(val);
   }
 
+  /**
+   * The signed-in student's own submissions.
+   *
+   * The filter used to be the literal `s.student === 'Kwame Asante'`, so this
+   * panel was empty for every real student and showed seeded demo rows for
+   * nobody. Matching is now against the actual account, by student id (what the
+   * backend stores) or email/name (what older cached rows carry).
+   */
+  /**
+   * Real figures for the student dashboard.
+   *
+   * Replaces four hardcoded stat cards and two panels that were declared and then
+   * never assigned anywhere in the codebase (`enrolledTracks`, and the course
+   * leaderboard), so they rendered as permanently empty grids.
+   */
+  studentSummary = {
+    courses: 0, avgProgress: 0, submissions: 0,
+    graded: 0, awaiting: 0, avgGrade: null as number | null,
+  };
+  /** The student's enrolled courses. `enrolledTracks` was never populated. */
+  studentEnrolments: MyEnrolledCourse[] = [];
+  studentRecentSubmissions: MySubmission[] = [];
+  isLoadingStudentSummary = false;
+
+  loadStudentSummary(): void {
+    if (this.activeRoleId !== 'student') return;
+    this.isLoadingStudentSummary = true;
+
+    this.apiService.getMyEnrolments().subscribe({
+      next: rows => {
+        this.studentEnrolments = rows || [];
+        const count = this.studentEnrolments.length;
+        const avg = count
+          ? Math.round(this.studentEnrolments.reduce((s, e) => s + (e.progress_pct || 0), 0) / count)
+          : 0;
+        this.studentSummary = { ...this.studentSummary, courses: count, avgProgress: avg };
+        this.isLoadingStudentSummary = false;
+        this.loadDashboardData();
+        this.cdr.markForCheck();
+      },
+      error: () => { this.isLoadingStudentSummary = false; },
+    });
+
+    this.apiService.getMySubmissions().subscribe({
+      next: rows => {
+        this.studentRecentSubmissions = rows || [];
+        const graded = this.studentRecentSubmissions.filter(s => s.score !== null);
+        const avgGrade = graded.length
+          ? Math.round(graded.reduce((s, r) => s + (r.score || 0), 0) / graded.length)
+          : null;
+        this.studentSummary = {
+          ...this.studentSummary,
+          submissions: this.studentRecentSubmissions.length,
+          graded: graded.length,
+          awaiting: this.studentRecentSubmissions.length - graded.length,
+          avgGrade,
+        };
+        this.loadDashboardData();
+        this.cdr.markForCheck();
+      },
+      error: () => { /* stats stay at zero rather than showing invented numbers */ },
+    });
+  }
+
   get mySubmissions(): any[] {
+    const me = this.currentUserService.profile();
+    if (!me) return [];
+    const myId = (me.student_id || me.id || '').toLowerCase();
+    const myEmail = (me.email || '').toLowerCase();
+    const myName = (me.full_name || '').toLowerCase();
+
     return this.contentService.submissions
-      .filter(s => s.student === 'Kwame Asante')
+      .filter(s => {
+        const owner = String(s.student || '').toLowerCase();
+        const ownerEmail = String((s as any).student_email || '').toLowerCase();
+        if (!owner && !ownerEmail) return false;
+        return owner === myId || owner === myEmail || owner === myName
+          || (!!ownerEmail && ownerEmail === myEmail);
+      })
       .map(s => ({
         track: s.track,
         file: this.formatSubmissionFiles(s.file),
@@ -1544,69 +1621,107 @@ export class DashboardComponent implements OnInit, OnDestroy {
     URL.revokeObjectURL(url);
   }
 
-  get sponsorInfographic() {
-    const sponsors = this.registeredUsers.filter(u => u.role === 'sponsor');
-    const teams = this.contentService.teams || [];
-    const students = this.registeredUsers.filter(u => u.role === 'student');
+  /**
+   * Real sponsorship figures from GET /api/sponsorships/summary.
+   *
+   * This getter used to be ~240 lines of hardcoded data presented as live
+   * analytics: four tier objects naming MTN Ghana, Tullow Oil, GCB Bank, Fidelity,
+   * Stanbic, Tech Hubs, GDG Accra, KIC, Ghana Tech Lab, Voltic, Coca-Cola, HP,
+   * EPP and Printex, each with invented contribution amounts, beneficiaries and
+   * statuses ("Disbursed to Teams", "Allocated in Escrow"). Alongside them:
+   *
+   *   totalCommitted   summed from those literals (GH 930,000)
+   *   disbursedFunds   totalCommitted * 0.72   <- a made-up ratio
+   *   impactScore      the string "98.4%"
+   *   prizePool        the string "GH 120,000"
+   *   studentsReached  teams.length * 25, or 48 * 25 when there were no teams
+   *
+   * None of it had a source, and there was no table it could have come from.
+   * Every figure below is now computed by the database from the sponsorships and
+   * sponsorship_payments tables, and `disbursed` means money an administrator has
+   * actually verified against a bank record.
+   */
+  sponsorSummary: SponsorshipSummary | null = null;
+  isLoadingSponsorSummary = false;
+  sponsorSummaryError = '';
 
-    const hash = `${sponsors.length}_${teams.length}_${students.length}`;
-    if (this._cachedSponsorInfographic && this._lastSponsorsHash === hash) {
-      return this._cachedSponsorInfographic;
-    }
-
-    // Compute tier distribution from actual sponsor user data
-    const tierMap: Map<string, { sponsorCount: number }> = new Map();
-    sponsors.forEach(u => {
-      const tierKey = this.normalizeSponsorTierKey(u.tier);
-      if (!tierMap.has(tierKey)) {
-        tierMap.set(tierKey, { sponsorCount: 0 });
-      }
-      tierMap.get(tierKey)!.sponsorCount++;
+  loadSponsorSummary(): void {
+    this.isLoadingSponsorSummary = true;
+    this.sponsorSummaryError = '';
+    this.apiService.getSponsorshipSummary().subscribe({
+      next: summary => {
+        this.sponsorSummary = summary;
+        this.isLoadingSponsorSummary = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.isLoadingSponsorSummary = false;
+        // Show nothing rather than falling back to invented figures.
+        this.sponsorSummary = null;
+        this.sponsorSummaryError = 'Could not load sponsorship figures.';
+      },
     });
+  }
 
-    // Compute total sponsor count before mapping tiers
-    const totalSponsorCount = Array.from(tierMap.entries()).reduce(
-      (sum, _tier) => sum + _tier[1].sponsorCount,
-      0
-    );
+  /** Tier colours, keyed by the tier name a sponsor actually entered. */
+  private tierColour(tier: string): string {
+    const key = (tier || '').toLowerCase();
+    if (key.includes('platinum')) return '#3b82f6';
+    if (key.includes('gold')) return '#f59e0b';
+    if (key.includes('silver')) return '#14b8a6';
+    if (key.includes('bronze')) return '#a855f7';
+    if (key.includes('kind')) return '#a855f7';
+    return '#94a3b8';
+  }
 
-    // Build tiers array with proportional percentages and zero amounts from DB
-    const tiers = Array.from(tierMap.entries()).map(([key, data]) => ({
-      key,
-      badge: key ? key.toUpperCase() : 'UNSPECIFIED',
-      title: key ? `${key.toUpperCase()} Partners` : 'Sponsors',
-      shortLabel: `${data.sponsorCount}${totalSponsorCount > 0 ? ` (${Math.round(data.sponsorCount / totalSponsorCount * 100)}%)` : ''}`,
-      pct: totalSponsorCount > 0 ? Math.round(data.sponsorCount / totalSponsorCount * 100) : 0,
-      amount: 0,
-      amountFormatted: 'GH₵ 0',
-      sponsorCount: data.sponsorCount,
-      sponsorCountLabel: data.sponsorCount === 1 ? '1 Sponsor' : `${data.sponsorCount} Sponsors`,
+  /** Formats a NUMERIC string for display without float arithmetic. */
+  formatCedis(amount: string | number | null | undefined): string {
+    if (amount === null || amount === undefined || amount === '') return 'GH\u20B5 0';
+    const n = Number(amount);
+    if (!isFinite(n)) return 'GH\u20B5 0';
+    return 'GH\u20B5 ' + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+
+  get sponsorInfographic() {
+    const s = this.sponsorSummary;
+    const tiers = (s?.tiers || []).map(t => ({
+      key: (t.tier || '').toLowerCase().replace(/[^a-z]/g, '') || 'other',
+      badge: (t.tier || 'Unspecified').toUpperCase(),
+      shortLabel: `${t.pct}% ${t.tier}`,
+      title: t.tier,
+      pct: t.pct,
+      amount: Number(t.amount) || 0,
+      amountFormatted: this.formatCedis(t.amount),
+      sponsorCount: t.sponsor_count,
+      colour: this.tierColour(t.tier),
+      // Deliberately absent: the invented brand lists, per-partner contribution
+      // breakdowns, beneficiary descriptions and ESG flags. There is no column for
+      // any of them, so presenting them would be fabrication.
       brands: '',
-      teamsFunded: 0,
-      metaIcon: 'info',
-      metaText: totalSponsorCount > 0 ? `(${totalSponsorCount} sponsors)` : 'No sponsor data',
-      itemsSummary: totalSponsorCount > 0 ? 'Sponsor data from platform database' : 'No sponsor data',
-      partners: []
+      metaIcon: 'groups',
+      metaText: `${t.sponsor_count} sponsor${t.sponsor_count === 1 ? '' : 's'}`,
     }));
 
-    const sponsoredTeamsCount = teams.length;
-    const studentsReached = students.length;
-
-    this._cachedSponsorInfographic = {
-      totalCommitted: 0,
-      totalCommittedFormatted: 'GH₵ 0',
-      disbursedFunds: 0,
-      disbursedFundsFormatted: 'GH₵ 0',
-      partnerCount: totalSponsorCount,
-      sponsoredTeamsCount,
-      studentsReached,
-      prizePoolFormatted: 'GH₵ 0',
-      impactScore: '0%',
-      tiers
+    return {
+      partnerCount: s?.partner_count ?? 0,
+      totalCommitted: Number(s?.total_committed) || 0,
+      totalCommittedFormatted: this.formatCedis(s?.total_committed),
+      // "Disbursed" now means verified receipts, not committed * 0.72.
+      disbursedFunds: Number(s?.total_received) || 0,
+      disbursedFundsFormatted: this.formatCedis(s?.total_received),
+      awaitingVerificationFormatted: this.formatCedis(s?.awaiting_verification),
+      awaitingVerificationCount: s?.awaiting_verification_count ?? 0,
+      pendingPledges: s?.pending_pledges ?? 0,
+      receivedPct: s?.received_pct ?? 0,
+      sponsoredTeamsCount: this.contentService.teams?.length ?? 0,
+      // studentsReached was teams.length * 25 (or 48 * 25). There is no
+      // sponsor-to-student link in the schema, so the real student count is used
+      // and the multiplier is gone.
+      studentsReached: this.registeredUsers.filter(u => u.role === 'student').length,
+      tiers,
+      sectors: s?.sectors || [],
+      hasData: !!s && (s.partner_count > 0 || Number(s.total_committed) > 0),
     };
-    this._lastSponsorsHash = hash;
-
-    return this._cachedSponsorInfographic;
   }
 
   get sponsorTierDonut(): string {
@@ -1631,17 +1746,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   get sponsorFundingBars() {
     const info = this.sponsorInfographic;
-    const hasData = info.totalCommitted > 0;
+    const total = info.totalCommitted || 1;
     return [
-      { label: 'Total Committed', value: info.totalCommittedFormatted, pct: hasData ? 100 : 0, cls: 'cc-bar-blue' },
-      { label: 'Disbursed Funds', value: info.disbursedFundsFormatted, pct: hasData ? Math.round((info.disbursedFunds / info.totalCommitted) * 100) : 0, cls: 'cc-bar-teal' },
-      { label: 'Prize Pool', value: info.prizePoolFormatted, pct: 0, cls: 'cc-bar-amber' },
-      { label: 'Students Reached', value: `${info.studentsReached}`, pct: 0, cls: 'cc-bar-purple' }
+      { label: 'Total Committed', value: info.totalCommittedFormatted, pct: 100, cls: 'cc-bar-blue' },
+      { label: 'Disbursed Funds', value: info.disbursedFundsFormatted, pct: Math.max(4, Math.round((info.disbursedFunds / total) * 100)), cls: 'cc-bar-teal' },
+      { label: 'Awaiting Verification', value: info.awaitingVerificationFormatted, pct: Math.max(4, Math.round((info.awaitingVerificationCount / Math.max(1, info.partnerCount)) * 100)), cls: 'cc-bar-amber' },
+      { label: 'Students Reached', value: `${info.studentsReached}`, pct: 100, cls: 'cc-bar-purple' }
     ];
   }
 
-  private _cachedSponsorInfographic: any = null;
-  private _lastSponsorsHash = '';
+  // `_cachedSponsorInfographic` / `_lastSponsorsHash` were here. They memoised the
+  // old hardcoded array against a hash of list lengths. The data now comes from the
+  // server and is held in `sponsorSummary`, so there is nothing to memoise.
 
   trackByTierKey(index: number, tier: any): string {
     return tier ? tier.key : index.toString();
@@ -1710,24 +1826,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
   activeDocumentSchool: string = '';
 
   // Role-Specific Data for other roles
-  enrolledTracks: any[] = [];
-  selectedCourseLeaderboardTrack = '';
+  //
+  // Deleted from here: `enrolledTracks`, `selectedCourseLeaderboardTrack`,
+  // `courseCycleLeaderboards` and the `activeCourseLeaderboardList` getter. All
+  // four were declared and then never assigned anywhere in the codebase, so the
+  // panels bound to them ("My Enrolled Courses & Tracks", "My Selected Course
+  // Leaderboard") were permanently empty for every student, complete with a
+  // heading advertising a scoring formula nothing computed. Replaced by
+  // `studentEnrolments` / `studentRecentSubmissions`, which hold real server data.
+  //
+  // `activeTracks` and `milestoneActivity` are the instructor-side equivalents and
+  // are still unassigned -- they are addressed in the instructor phase.
   activeTracks: any[] = [];
   milestoneActivity: any[] = [];
-  courseCycleLeaderboards: Record<string, Array<{
-    rank: number;
-    name: string;
-    school: string;
-    progressPct: number;
-    accuracyPct: number;
-    streakDays: number;
-    algoScore: number;
-    isCurrentUser: boolean;
-  }>> = {};
-
-  get activeCourseLeaderboardList() {
-    return this.courseCycleLeaderboards[this.selectedCourseLeaderboardTrack] || [];
-  }
 
   isUserOnline(email: string): boolean {
     if (!email || !this.authSessions || this.authSessions.length === 0) return false;
@@ -1850,7 +1961,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     public dialogService: DialogService,
     public apiService: ApiService,
     public wsSync: WsSyncService,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    public currentUserService: CurrentUserService
   ) {
     this.route.queryParams.subscribe(params => {
       if (params['tab']) {
@@ -1887,6 +1999,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // make a missing role behave like a full administrator.
     this.canManageUsers = ['super_admin', 'admin'].includes(this.activeRoleId);
     this.loadDashboardData();
+    // The greeting and role panels need the server profile. It may not have
+    // arrived yet on a cold load, so re-render once it does rather than leaving
+    // the user looking at a blank name.
+    this.currentUserService.ensureLoaded().subscribe(profile => {
+      if (profile) {
+        this.loadDashboardData();
+        this.loadStudentSummary();
+        this.loadSponsorSummary();
+        this.cdr.markForCheck();
+      }
+    });
     this.loadDashboardRecords();
     this.loadAuthSessionCount();
     this.recomputeTournamentTracks();
@@ -1986,29 +2109,86 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   loadDashboardData(): void {
+    // Identity comes from GET /api/users/me. It used to be looked up in
+    // `contentService.users`, which is filled from the admin-only GET /api/users
+    // -- so for a student, judge, sponsor or instructor `activeUser` was always
+    // undefined and the greeting below read "Welcome back, Administrator".
+    const me = this.currentUserService.profile();
     const activeEmail = getAuthValue('activeUserEmail') || '';
-    const activeUser = this.contentService.users.find(u => 
+    const cachedUser = this.contentService.users.find(u =>
       u.email?.trim().toLowerCase() === activeEmail.toLowerCase() ||
       u.ticket?.trim().toUpperCase() === activeEmail.toUpperCase()
     );
-    const userName = activeUser ? activeUser.fullName : (this.activeRoleId === 'super_admin' ? 'System Administrator' : 'Administrator');
-    this.currentUser = activeUser || null;
 
-    if (activeUser) {
-      this.schoolName = activeUser.organization || (activeUser.role === 'school_admin' ? activeUser.fullName : '');
+    const userName = me?.full_name
+      || cachedUser?.fullName
+      || getAuthValue('activeUserName')
+      || '';
+    // Prefer the server profile; keep the cached row (admins have it) because
+    // other panels still read extra fields off it.
+    this.currentUser = cachedUser || (me as any) || null;
+
+    if (me) {
+      this.schoolName = me.organization || (me.role === 'school_admin' ? me.full_name : '');
+    } else if (cachedUser) {
+      this.schoolName = cachedUser.organization || (cachedUser.role === 'school_admin' ? cachedUser.fullName : '');
     } else {
       this.schoolName = '';
     }
+
+    // Unified view of the signed-in user for the role branches below. me is the
+    // server profile (available to every role); cachedUser only exists for
+    // admins, who can read the full roster.
+    const activeUser: any = me
+      ? {
+          fullName: me.full_name,
+          organization: me.organization || '',
+          track: me.track || '',
+          role: me.role,
+          email: me.email,
+          ticket: me.ticket,
+          tier: me.tier || '',
+        }
+      : cachedUser;
 
     switch (this.activeRoleId) {
       case 'student':
         this.dashboardTitle = 'Student Dashboard';
         this.dashboardSubtitle = `Welcome back, ${userName}. Track your learning, submissions, and competition progress.`;
+        // These four cards were hardcoded literals -- "350 pts", "68%", "#12",
+        // "2" with meta text "Module 4 of 8" and "1 Approved, 1 Pending" -- shown
+        // identically to every student regardless of what they had actually done.
+        // They are now computed from the student's real enrolments and submissions
+        // (loaded by loadStudentSummary below).
         this.stats = [
-          { label: 'My Total Points', value: '350 pts', icon: 'military_tech', meta: '+50 pts this week', color: 'primary' },
-          { label: 'Course Progress', value: '68%', icon: 'school', meta: 'Module 4 of 8', color: 'secondary' },
-          { label: 'Leaderboard Rank', value: '#12', icon: 'leaderboard', meta: 'Out of 1,248 students', color: 'tertiary' },
-          { label: 'My Submissions', value: '2', icon: 'assignment_turned_in', meta: '1 Approved, 1 Pending', color: 'error' }
+          {
+            label: 'Enrolled Courses',
+            value: String(this.studentSummary.courses),
+            icon: 'school',
+            meta: this.studentSummary.courses ? 'Active enrolments' : 'Not enrolled yet',
+            color: 'primary',
+          },
+          {
+            label: 'Average Progress',
+            value: this.studentSummary.courses ? `${this.studentSummary.avgProgress}%` : '--',
+            icon: 'trending_up',
+            meta: this.studentSummary.courses ? 'Across your courses' : 'Enrol to begin',
+            color: 'secondary',
+          },
+          {
+            label: 'Submissions',
+            value: String(this.studentSummary.submissions),
+            icon: 'assignment_turned_in',
+            meta: `${this.studentSummary.graded} graded, ${this.studentSummary.awaiting} awaiting`,
+            color: 'tertiary',
+          },
+          {
+            label: 'Average Grade',
+            value: this.studentSummary.avgGrade === null ? '--' : String(this.studentSummary.avgGrade),
+            icon: 'grade',
+            meta: this.studentSummary.avgGrade === null ? 'No grades yet' : 'Across graded work',
+            color: 'error',
+          },
         ];
         break;
 

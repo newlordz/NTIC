@@ -114,7 +114,7 @@
       </select>
 
       <!-- Course Selector -->
-      <select [(ngModel)]="selectedCourseId" *ngIf="activeTab !== 'courses' && activeTab !== 'approvals'">
+      <select [(ngModel)]="selectedCourseId" (ngModelChange)="loadRoster($event)" *ngIf="activeTab !== 'courses' && activeTab !== 'approvals'">
         <option value="all">All Courses</option>
         <option *ngFor="let course of contentService.lmsCourses" [value]="course.id">{{ course.title }}</option>
       </select>

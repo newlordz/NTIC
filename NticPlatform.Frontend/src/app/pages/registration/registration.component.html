@@ -3078,7 +3078,7 @@
   </div>
 </div>
 
-<div class="login-modal-backdrop" [class.open]="isLoginModalOpen" (click)="closeLoginModal()">
+<div class="login-modal-backdrop" *ngIf="isLoginModalOpen" [class.open]="isLoginModalOpen" (click)="closeLoginModal()">
   <div class="login-modal-card" (click)="$event.stopPropagation()">
     
     <button type="button" class="close-modal-btn" (click)="closeLoginModal()" title="Close Login">

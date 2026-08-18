@@ -1384,8 +1384,12 @@ setAuthValue('activeUserEmail', email);
     setAuthValue('activeRoleId', role);
     setAuthValue('activeUserEmail', email);
     setAuthValue('activeUserTicket', ticket);
-    if (user.fullName) {
-      setAuthValue('activeUserName', user.fullName);
+    // POST /api/login returns snake_case `full_name`, so `user.fullName` was
+    // always undefined here and activeUserName was never set. See the matching
+    // fix in landing.component.ts.
+    const resolvedName = user.full_name || user.fullName;
+    if (resolvedName) {
+      setAuthValue('activeUserName', resolvedName);
     }
     if (user.token) {
       setAuthValue('activeUserToken', user.token);

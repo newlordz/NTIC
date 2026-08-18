@@ -1,3 +1,8 @@
+<!-- ══ GLOBAL ROUTE PROGRESS BAR (Smooth 60FPS Ambient Transition) ══ -->
+<div class="global-route-loader" *ngIf="isRouteLoading" aria-hidden="true">
+  <div class="route-progress-bar"></div>
+</div>
+
 <div [class.app-shell]="!isLandingPage">
   <!-- ══ MOBILE SIDEBAR OVERLAY ══ -->
   <div class="sidebar-overlay" *ngIf="!isLandingPage && isMobileSidebarOpen" (click)="closeMobileSidebar()"></div>

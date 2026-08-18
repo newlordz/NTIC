@@ -378,6 +378,24 @@ def _create_tables(conn):
             last_active VARCHAR(50),
             status VARCHAR(20) DEFAULT 'active'
         );
+
+        -- Student sign-ups for a competition cycle.
+        --
+        -- This had no table at all. registerStudentForCycle() in the frontend was a
+        -- single line -- `studentRegisteredMap[comp.id] = true` -- so a student who
+        -- clicked "Register Squad" saw a confirmed badge that vanished on refresh
+        -- and was never visible to any organiser.
+        CREATE TABLE IF NOT EXISTS competition_registrations (
+            id VARCHAR(64) PRIMARY KEY,
+            competition_id VARCHAR(64) NOT NULL,
+            student_id VARCHAR(64) NOT NULL,
+            student_name VARCHAR(200),
+            student_email VARCHAR(150),
+            track VARCHAR(100),
+            status VARCHAR(30) DEFAULT 'registered',
+            registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            withdrawn_at TIMESTAMP NULL
+        );
     """)
     cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);")
     # Resolve duplicate non-null phones before adding UNIQUE
@@ -485,15 +503,114 @@ def _create_tables(conn):
     # mapping layer. user_id is kept as an explicit, indexed back-reference for
     # rows that predate this (seeded students keep their original ids).
     cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS user_id VARCHAR(64);")
-    cur.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_students_user_id "
-        "ON students (user_id) WHERE user_id IS NOT NULL;"
-    )
+
+    # Real ownership for authored LMS content.
+    #
+    # `submitted_by` is a free-text VARCHAR(200) that the LMS Manager UI hardcoded
+    # to the literal 'Admin' on every create, while the instructor's own "My
+    # Courses" view matched ownership with `submittedBy.includes(userEmail)`. The
+    # result: content an instructor created could never appear in their own list,
+    # their dashboard counts, or the admin personnel roster's `courses_authored`.
+    # Worse, `submitted_by` and `approval_status` were both accepted from the
+    # request body, so authorship could be forged and content self-approved.
+    #
+    # owner_id is set from the verified session and is what every ownership check
+    # uses. `submitted_by` is kept for display and for existing rows.
+    for _tbl in ("lms_courses", "lms_modules", "lms_materials", "lms_assignments"):
+        cur.execute(f"ALTER TABLE {_tbl} ADD COLUMN IF NOT EXISTS owner_id VARCHAR(64);")
+        # Back-fill from submitted_by where it matches a real user's email or name.
+        cur.execute(f"""
+            UPDATE {_tbl} t SET owner_id = u.id
+            FROM users u
+            WHERE t.owner_id IS NULL
+              AND t.submitted_by IS NOT NULL
+              AND (LOWER(t.submitted_by) = LOWER(u.email)
+                   OR LOWER(t.submitted_by) = LOWER(u.full_name))
+        """)
+
+    # Sponsor commitments and the payments made against them.
+    cur.execute("""
+        --
+        -- Neither table existed. The consequences were:
+        --   * The entire "Sponsorship & Partner Ecosystem" infographic was a
+        --     hardcoded array in dashboard.component.ts -- MTN/Tullow/GCB/Voltic,
+        --     GH₵ 350,000 tiers, a 72% "disbursed" figure and a 98.4% "impact
+        --     score", none of which came from anywhere.
+        --   * A sponsor recording a payment went through saveUsers() ->
+        --     POST /api/bulk-sync (admin-only), so it 403'd and the reference
+        --     existed only in that browser.
+        --   * Money was stored as loose text on the users row, with no audit trail
+        --     and no verification state.
+        --
+        -- amount is NUMERIC, never a float: binary floating point cannot represent
+        -- decimal currency exactly and the errors accumulate when summed.
+        CREATE TABLE IF NOT EXISTS sponsorships (
+            id VARCHAR(64) PRIMARY KEY,
+            sponsor_id VARCHAR(64) NOT NULL,
+            organization VARCHAR(200),
+            tier VARCHAR(50),
+            sector VARCHAR(100),
+            amount_pledged NUMERIC(14,2) NOT NULL DEFAULT 0,
+            currency VARCHAR(8) DEFAULT 'GHS',
+            competition_id VARCHAR(64),
+            status VARCHAR(30) DEFAULT 'pending',
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- A payment a sponsor SAYS they have made. Nothing in this application
+        -- talks to a bank, MoMo API or card processor, so a payment starts as
+        -- 'pending_verification' and only an administrator who has checked the
+        -- statement may mark it verified. The old UI wrote status 'Confirmed'
+        -- immediately, telling sponsors their money had been received.
+        CREATE TABLE IF NOT EXISTS sponsorship_payments (
+            id VARCHAR(64) PRIMARY KEY,
+            sponsorship_id VARCHAR(64) REFERENCES sponsorships(id) ON DELETE CASCADE,
+            sponsor_id VARCHAR(64) NOT NULL,
+            amount NUMERIC(14,2) NOT NULL,
+            currency VARCHAR(8) DEFAULT 'GHS',
+            method VARCHAR(40),
+            reference VARCHAR(120),
+            notes TEXT,
+            status VARCHAR(30) DEFAULT 'pending_verification',
+            -- No FK: the verification record must survive the reviewer's account
+            -- being deleted, exactly as with assignment_submissions.graded_by.
+            verified_by VARCHAR(64),
+            verified_by_name VARCHAR(200),
+            verified_at TIMESTAMP NULL,
+            rejection_reason TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
     # Back-fill the link for any student row whose email already matches a user.
     cur.execute("""
         UPDATE students s SET user_id = u.id
         FROM users u
         WHERE s.user_id IS NULL AND LOWER(s.email) = LOWER(u.email)
+    """)
+
+    # Collapse duplicate enrolments / submissions before the UNIQUE indexes are
+    # created in _create_indexes(). Nothing previously stopped the same student
+    # being enrolled on a course twice, and index creation would simply be skipped
+    # if duplicates existed -- which would then break the ON CONFLICT upserts the
+    # self-service endpoints rely on. Keep the newest row of each group.
+    cur.execute("""
+        DELETE FROM lms_enrollments e
+        USING lms_enrollments keep
+        WHERE e.course_id = keep.course_id
+          AND e.student_id = keep.student_id
+          AND e.id <> keep.id
+          AND (e.enrolled_at, e.id) < (keep.enrolled_at, keep.id)
+    """)
+    cur.execute("""
+        DELETE FROM lms_submissions s
+        USING lms_submissions keep
+        WHERE s.assignment_id = keep.assignment_id
+          AND s.student_id = keep.student_id
+          AND s.id <> keep.id
+          AND (s.submitted_at, s.id) < (keep.submitted_at, keep.id)
     """)
 
     cur.execute("""
@@ -616,6 +733,50 @@ def _create_indexes(cur):
         "CREATE INDEX IF NOT EXISTS idx_lms_submissions_student_id ON lms_submissions (student_id);",
         "CREATE INDEX IF NOT EXISTS idx_lms_enrollments_course_id ON lms_enrollments (course_id);",
         "CREATE INDEX IF NOT EXISTS idx_lms_enrollments_student_id ON lms_enrollments (student_id);",
+
+        # One enrolment per student per course, and one live submission per student
+        # per assignment. Without these, "enrol" clicked twice produced two rows
+        # (double-counting the course roster) and a resubmission produced a second
+        # row, leaving the instructor two copies to grade with no way to tell which
+        # was current.
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_lms_enrollments_unique "
+        "ON lms_enrollments (course_id, student_id);",
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_lms_submissions_unique "
+        "ON lms_submissions (assignment_id, student_id);",
+
+        # One registration per student per competition cycle.
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_comp_reg_unique "
+        "ON competition_registrations (competition_id, student_id);",
+        "CREATE INDEX IF NOT EXISTS idx_comp_reg_student "
+        "ON competition_registrations (student_id);",
+        "CREATE INDEX IF NOT EXISTS idx_comp_reg_competition "
+        "ON competition_registrations (competition_id, status);",
+
+        # Unique link from a students row back to its user account.
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_students_user_id "
+        "ON students (user_id) WHERE user_id IS NOT NULL;",
+
+        # Ownership lookups: "my courses", and the moderation queue.
+        "CREATE INDEX IF NOT EXISTS idx_lms_courses_owner ON lms_courses (owner_id);",
+        "CREATE INDEX IF NOT EXISTS idx_lms_courses_approval ON lms_courses (approval_status);",
+        "CREATE INDEX IF NOT EXISTS idx_lms_modules_owner ON lms_modules (owner_id);",
+        "CREATE INDEX IF NOT EXISTS idx_lms_materials_owner ON lms_materials (owner_id);",
+        "CREATE INDEX IF NOT EXISTS idx_lms_assignments_owner ON lms_assignments (owner_id);",
+        # The instructor grading queue: ungraded submissions.
+        "CREATE INDEX IF NOT EXISTS idx_lms_submissions_ungraded "
+        "ON lms_submissions (course_id) WHERE score IS NULL;",
+
+        # Sponsorships: "my pledges", the admin roster, and the ecosystem aggregates.
+        "CREATE INDEX IF NOT EXISTS idx_sponsorships_sponsor ON sponsorships (sponsor_id);",
+        "CREATE INDEX IF NOT EXISTS idx_sponsorships_status ON sponsorships (status);",
+        "CREATE INDEX IF NOT EXISTS idx_sponsorships_tier ON sponsorships (tier);",
+        "CREATE INDEX IF NOT EXISTS idx_sponsor_payments_sponsorship "
+        "ON sponsorship_payments (sponsorship_id);",
+        "CREATE INDEX IF NOT EXISTS idx_sponsor_payments_sponsor "
+        "ON sponsorship_payments (sponsor_id);",
+        # The admin verification queue.
+        "CREATE INDEX IF NOT EXISTS idx_sponsor_payments_pending "
+        "ON sponsorship_payments (status) WHERE status = 'pending_verification';",
 
         # ── Frequently filtered / ordered columns ──
         "CREATE INDEX IF NOT EXISTS idx_students_email_lower ON students (lower(email));",

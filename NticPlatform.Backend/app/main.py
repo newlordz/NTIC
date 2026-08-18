@@ -2,6 +2,7 @@ import os
 import re
 import time
 import uuid
+from decimal import Decimal
 import random
 import secrets
 import datetime
@@ -1870,33 +1871,1688 @@ try:
         cur.close(); release_db_connection(conn)
         return {"status": "deleted"}
 
+    # ─── STUDENT SELF-SERVICE LMS ────────────────────────────────────
+    # Before this block a student could not actually use the LMS:
+    #
+    #   * Enrolment did not exist. `lms_enrollments` was writable only through
+    #     admin-only bulk-sync, and the one frontend function that targeted it
+    #     (saveLmsEnrollments) had zero call sites. The student course list simply
+    #     showed every course on the platform.
+    #   * Submissions could not persist. The client posted to /api/submissions,
+    #     whose student_id is FK -> students(id); it sent a ticket string, so every
+    #     insert 400'd. The fallback wrote through admin-only bulk-sync and 403'd.
+    #     A green "submitted successfully" banner was shown regardless.
+    #   * Grades could not reach the student. Nothing read lms_submissions back --
+    #     there was no GET endpoint for it at all.
+    #   * Progress was write-only. GET /api/lms/progress/{id} existed but was never
+    #     called, and reads came from localStorage under a randomly-generated key.
+
+    def _require_student_identity(cur, actor: dict) -> str:
+        """Resolve the caller's student id, or refuse if they are not a learner."""
+        if actor.get("role") != ROLE_STUDENT:
+            raise HTTPException(
+                status_code=403,
+                detail="Only a student account can perform this action",
+            )
+        return _ensure_student_record(cur, actor)
+
+    def _recount_course_enrolment(cur, course_id: str) -> int:
+        """Keep lms_courses.enrolled in step with reality.
+
+        The column is displayed to instructors and admins, so it must not drift
+        away from the actual number of enrolment rows.
+        """
+        cur.execute(
+            "SELECT COUNT(*) FROM lms_enrollments "
+            "WHERE course_id = %s AND status = 'active'",
+            (course_id,),
+        )
+        total = cur.fetchone()[0]
+        cur.execute("UPDATE lms_courses SET enrolled = %s WHERE id = %s", (total, course_id))
+        return total
+
+    class EnrolPayload(BaseModel):
+        course_id: str = Field(min_length=1, max_length=64)
+
+    @app.post("/api/lms/enrollments", status_code=status.HTTP_201_CREATED)
+    def enrol_me(payload: EnrolPayload, actor: dict = Depends(require_auth)):
+        """Enrol the signed-in student on a course.
+
+        The student is taken from the session, so this cannot be used to enrol
+        anybody else. Re-enrolling is idempotent (it reactivates a withdrawn row)
+        rather than creating a duplicate.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            student_id = _require_student_identity(cur, actor)
+
+            cur.execute(
+                "SELECT id, title, approval_status, status FROM lms_courses WHERE id = %s",
+                (payload.course_id,),
+            )
+            course = cur.fetchone()
+            if not course:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Course not found")
+            # Don't let students enrol on content still awaiting moderation.
+            if (course[2] or "approved") != "approved":
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=409, detail="This course is not open for enrolment yet")
+
+            cur.execute(
+                "INSERT INTO lms_enrollments (id, course_id, student_id, student_name, "
+                "student_email, progress_pct, enrolled_at, last_active, status) "
+                "VALUES (%s, %s, %s, %s, %s, 0, %s, %s, 'active') "
+                "ON CONFLICT (course_id, student_id) DO UPDATE SET "
+                "status = 'active', last_active = EXCLUDED.last_active, "
+                "student_name = EXCLUDED.student_name, student_email = EXCLUDED.student_email "
+                "RETURNING id",
+                (
+                    "enr-" + str(uuid.uuid4())[:8],
+                    payload.course_id,
+                    student_id,
+                    actor.get("full_name") or "",
+                    actor.get("email") or "",
+                    datetime.datetime.now(datetime.UTC).isoformat(),
+                    datetime.datetime.now(datetime.UTC).isoformat(),
+                ),
+            )
+            enrolment_id = cur.fetchone()[0]
+            total = _recount_course_enrolment(cur, payload.course_id)
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_enrollments"})
+        return {
+            "id": enrolment_id, "course_id": payload.course_id,
+            "course_title": course[1], "status": "active", "enrolled_total": total,
+        }
+
+    @app.delete("/api/lms/enrollments/{course_id}")
+    def withdraw_me(course_id: str, actor: dict = Depends(require_auth)):
+        """Withdraw the signed-in student from a course.
+
+        Marked withdrawn rather than deleted so submitted work and its grades keep
+        their context.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            student_id = _require_student_identity(cur, actor)
+            cur.execute(
+                "UPDATE lms_enrollments SET status = 'withdrawn', last_active = %s "
+                "WHERE course_id = %s AND student_id = %s RETURNING id",
+                (datetime.datetime.now(datetime.UTC).isoformat(), course_id, student_id),
+            )
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="You are not enrolled on that course")
+            _recount_course_enrolment(cur, course_id)
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_enrollments"})
+        return {"status": "withdrawn", "course_id": course_id}
+
+    @app.get("/api/lms/my-enrollments")
+    def list_my_enrolments(actor: dict = Depends(require_auth)):
+        """The signed-in student's courses, with live progress.
+
+        Replaces the student course list, which showed every course on the platform
+        because no enrolment relationship was ever recorded.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            student_id = _require_student_identity(cur, actor)
+            conn.commit()
+            cur.execute(
+                "SELECT c.id, c.title, c.track, c.icon, c.level, c.description, "
+                "c.modules, e.progress_pct, e.enrolled_at, e.last_active, e.status, "
+                "p.progress_pct, p.completed_modules, "
+                "(SELECT COUNT(*) FROM lms_assignments a "
+                "  WHERE a.course_id = c.id AND COALESCE(a.status,'active') = 'active') "
+                "FROM lms_enrollments e "
+                "JOIN lms_courses c ON c.id = e.course_id "
+                "LEFT JOIN lms_progress p ON p.student_id = e.student_id "
+                "  AND p.course_title = c.title "
+                "WHERE e.student_id = %s AND e.status = 'active' "
+                "ORDER BY e.enrolled_at DESC",
+                (student_id,),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {
+                "course_id": r[0], "title": r[1], "track": r[2] or "", "icon": r[3] or "school",
+                "level": r[4] or "", "description": r[5] or "", "modules": r[6] or 0,
+                # Prefer the per-module progress table; fall back to the enrolment row.
+                "progress_pct": r[11] if r[11] is not None else (r[7] or 0),
+                "completed_modules": r[12] or 0,
+                "enrolled_at": r[8], "last_active": r[9], "status": r[10],
+                "assignment_count": r[13] or 0,
+            }
+            for r in rows
+        ]
+
+    @app.get("/api/lms/assignments")
+    def list_lms_assignments(course_id: str = "", actor: dict = Depends(require_auth)):
+        """Assignments, optionally for one course.
+
+        Students had no way to see what they were meant to submit: the assignment
+        list existed only in localStorage and had no GET endpoint. The submission
+        box was therefore free text with no assignment attached.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            sql = (
+                "SELECT a.id, a.course_id, c.title, a.title, a.description, a.due_date, "
+                "a.max_score, a.track, a.status "
+                "FROM lms_assignments a LEFT JOIN lms_courses c ON c.id = a.course_id "
+                "WHERE COALESCE(a.approval_status, 'approved') = 'approved'"
+            )
+            params: list = []
+            if course_id:
+                sql += " AND a.course_id = %s"
+                params.append(course_id)
+            sql += " ORDER BY a.due_date NULLS LAST, a.title"
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {
+                "id": r[0], "course_id": r[1] or "", "course_title": r[2] or "",
+                "title": r[3], "description": r[4] or "", "due_date": r[5] or "",
+                "max_score": r[6] if r[6] is not None else 100,
+                "track": r[7] or "", "status": r[8] or "active",
+            }
+            for r in rows
+        ]
+
+    class LmsSubmitPayload(BaseModel):
+        assignment_id: str = Field(min_length=1, max_length=64)
+        content: str = Field(default="", max_length=20000)
+        url: str = Field(default="", max_length=2000)
+
+    @app.post("/api/lms/submissions", status_code=status.HTTP_201_CREATED)
+    def submit_my_work(payload: LmsSubmitPayload, actor: dict = Depends(require_auth)):
+        """Submit the signed-in student's work for an assignment.
+
+        Identity comes from the session. Resubmitting replaces the previous
+        attempt AND clears any existing score/feedback, so a student cannot
+        resubmit after grading and keep the old mark -- the work goes back into the
+        instructor's queue as ungraded.
+        """
+        if not payload.content.strip() and not payload.url.strip():
+            raise HTTPException(
+                status_code=422,
+                detail="Attach a link or describe your work before submitting",
+            )
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            student_id = _require_student_identity(cur, actor)
+
+            cur.execute(
+                "SELECT a.id, a.course_id, a.title FROM lms_assignments a WHERE a.id = %s",
+                (payload.assignment_id,),
+            )
+            assignment = cur.fetchone()
+            if not assignment:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Assignment not found")
+
+            # Must be enrolled on the course that owns the assignment.
+            cur.execute(
+                "SELECT 1 FROM lms_enrollments WHERE course_id = %s AND student_id = %s "
+                "AND status = 'active'",
+                (assignment[1], student_id),
+            )
+            if not cur.fetchone():
+                conn.rollback(); cur.close()
+                raise HTTPException(
+                    status_code=403,
+                    detail="Enrol on this course before submitting work for it",
+                )
+
+            cur.execute(
+                "INSERT INTO lms_submissions (id, assignment_id, course_id, student_id, "
+                "student_name, student_email, submitted_at, content, url, score, status, feedback) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NULL, 'submitted', NULL) "
+                "ON CONFLICT (assignment_id, student_id) DO UPDATE SET "
+                "submitted_at = EXCLUDED.submitted_at, content = EXCLUDED.content, "
+                "url = EXCLUDED.url, score = NULL, feedback = NULL, status = 'submitted' "
+                "RETURNING id",
+                (
+                    "sub-" + str(uuid.uuid4())[:8],
+                    payload.assignment_id,
+                    assignment[1],
+                    student_id,
+                    actor.get("full_name") or "",
+                    actor.get("email") or "",
+                    datetime.datetime.now(datetime.UTC).isoformat(),
+                    payload.content,
+                    payload.url,
+                ),
+            )
+            submission_id = cur.fetchone()[0]
+            cur.execute(
+                "UPDATE lms_enrollments SET last_active = %s "
+                "WHERE course_id = %s AND student_id = %s",
+                (datetime.datetime.now(datetime.UTC).isoformat(), assignment[1], student_id),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_submissions"})
+        return {
+            "id": submission_id, "assignment_id": payload.assignment_id,
+            "assignment_title": assignment[2], "status": "submitted",
+        }
+
+    @app.get("/api/lms/my-submissions")
+    def list_my_submissions(actor: dict = Depends(require_auth)):
+        """The signed-in student's submissions, including score and feedback.
+
+        This is how a grade finally reaches a student. Nothing read lms_submissions
+        back before -- there was no GET endpoint -- so an instructor's mark and
+        written feedback were invisible to the person they were written for.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            student_id = _require_student_identity(cur, actor)
+            conn.commit()
+            cur.execute(
+                "SELECT s.id, s.assignment_id, a.title, s.course_id, c.title, "
+                "s.submitted_at, s.content, s.url, s.score, s.status, s.feedback, "
+                "a.max_score, a.due_date "
+                "FROM lms_submissions s "
+                "LEFT JOIN lms_assignments a ON a.id = s.assignment_id "
+                "LEFT JOIN lms_courses c ON c.id = s.course_id "
+                "WHERE s.student_id = %s "
+                "ORDER BY s.submitted_at DESC",
+                (student_id,),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {
+                "id": r[0], "assignment_id": r[1] or "", "assignment_title": r[2] or "",
+                "course_id": r[3] or "", "course_title": r[4] or "",
+                "submitted_at": r[5] or "", "content": r[6] or "", "url": r[7] or "",
+                "score": r[8], "status": r[9] or "submitted", "feedback": r[10] or "",
+                "max_score": r[11] if r[11] is not None else 100,
+                "due_date": r[12] or "",
+            }
+            for r in rows
+        ]
+
     @app.post("/api/lms/progress")
-    def save_lms_progress(payload: dict = None, _actor: dict = Depends(require_auth)):
-        """Save student LMS course progress."""
-        if not payload or not payload.get("student_id") or not payload.get("course_title"):
-            raise HTTPException(status_code=400, detail="student_id and course_title required")
-        conn = get_db_connection()
-        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO lms_progress (student_id, course_title, progress_pct, completed_modules, last_accessed)
-            VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
-            ON CONFLICT (student_id, course_title) DO UPDATE SET progress_pct = EXCLUDED.progress_pct, completed_modules = EXCLUDED.completed_modules, last_accessed = CURRENT_TIMESTAMP
-        """, (payload["student_id"], payload["course_title"], payload.get("progress_pct", 0), payload.get("completed_modules", 0)))
-        conn.commit()
-        cur.close(); release_db_connection(conn)
-        return {"status": "saved"}
+    def save_lms_progress(payload: dict = None, actor: dict = Depends(require_auth)):
+        """Save the signed-in student's course progress.
+
+        `student_id` used to be read from the REQUEST BODY, so any authenticated
+        user could write progress rows for any other student (or invent ids). It is
+        now always the caller's own id, taken from the verified session; a
+        student_id in the body is ignored.
+        """
+        if not payload or not str(payload.get("course_title") or "").strip():
+            raise HTTPException(status_code=400, detail="course_title required")
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            student_id = _require_student_identity(cur, actor)
+            try:
+                pct = max(0, min(100, int(payload.get("progress_pct", 0) or 0)))
+                modules = max(0, int(payload.get("completed_modules", 0) or 0))
+            except (TypeError, ValueError):
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=422, detail="progress_pct and completed_modules must be numbers")
+
+            cur.execute("""
+                INSERT INTO lms_progress (student_id, course_title, progress_pct, completed_modules, last_accessed)
+                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (student_id, course_title) DO UPDATE SET
+                    progress_pct = EXCLUDED.progress_pct,
+                    completed_modules = EXCLUDED.completed_modules,
+                    last_accessed = CURRENT_TIMESTAMP
+            """, (student_id, payload["course_title"], pct, modules))
+            # Mirror onto the enrolment row so instructor/admin course views agree.
+            cur.execute(
+                "UPDATE lms_enrollments e SET progress_pct = %s, last_active = %s "
+                "FROM lms_courses c "
+                "WHERE c.id = e.course_id AND e.student_id = %s AND c.title = %s",
+                (pct, datetime.datetime.now(datetime.UTC).isoformat(), student_id, payload["course_title"]),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return {"status": "saved", "progress_pct": pct, "completed_modules": modules}
+
+    @app.get("/api/lms/my-progress")
+    def get_my_lms_progress(actor: dict = Depends(require_auth)):
+        """The signed-in student's own progress across all courses.
+
+        Progress was previously read from localStorage under a key built from a
+        client-generated random id, so it never survived a new device or even a
+        re-render. This is the read-back path.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            student_id = _require_student_identity(cur, actor)
+            conn.commit()
+            cur.execute(
+                "SELECT course_title, progress_pct, completed_modules, last_accessed "
+                "FROM lms_progress WHERE student_id = %s ORDER BY last_accessed DESC",
+                (student_id,),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {"course_title": r[0], "progress_pct": r[1], "completed_modules": r[2],
+             "last_accessed": str(r[3])}
+            for r in rows
+        ]
 
     @app.get("/api/lms/progress/{student_id}")
-    def get_lms_progress(student_id: str, _actor: dict = Depends(require_auth)):
-        """Get all LMS progress for a student."""
-        conn = get_db_connection()
-        if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
-        cur = conn.cursor()
-        cur.execute("SELECT course_title, progress_pct, completed_modules, last_accessed FROM lms_progress WHERE student_id = %s ORDER BY last_accessed DESC", (student_id,))
-        rows = cur.fetchall()
-        cur.close(); release_db_connection(conn)
-        return [{"course_title": r[0], "progress_pct": r[1], "completed_modules": r[2], "last_accessed": str(r[3])} for r in rows]
+    def get_lms_progress(student_id: str, actor: dict = Depends(require_auth)):
+        """Progress for one student.
+
+        Previously any signed-in user could read any student's progress by putting
+        their id in the path -- a plain IDOR. Now the caller must either be that
+        student or hold a staff role with a legitimate reason to see it.
+        """
+        is_self = student_id == actor["id"]
+        is_staff = actor.get("role") in set(STUDENT_ADMIN_ROLES) | set(LMS_ROLES)
+        if not is_self and not is_staff:
+            raise HTTPException(status_code=403, detail="You may only view your own progress")
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT course_title, progress_pct, completed_modules, last_accessed "
+                "FROM lms_progress WHERE student_id = %s ORDER BY last_accessed DESC",
+                (student_id,),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {"course_title": r[0], "progress_pct": r[1], "completed_modules": r[2],
+             "last_accessed": str(r[3])}
+            for r in rows
+        ]
+
+    # ─── COMPETITION REGISTRATION (student self-service) ─────────────
+    # registerStudentForCycle() in the frontend was one line --
+    # `this.studentRegisteredMap[comp.id] = true` -- with no HTTP call, no storage
+    # and no table behind it. A student pressed "Register Squad", saw a REGISTERED
+    # badge, and lost it on refresh; no organiser ever saw the sign-up.
+
+    class CompetitionRegisterPayload(BaseModel):
+        competition_id: str = Field(min_length=1, max_length=64)
+
+    @app.post("/api/competitions/register", status_code=status.HTTP_201_CREATED)
+    def register_for_competition(
+        payload: CompetitionRegisterPayload,
+        actor: dict = Depends(require_auth),
+    ):
+        """Register the signed-in student for a competition cycle."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            student_id = _require_student_identity(cur, actor)
+
+            cur.execute(
+                "SELECT id, title, status, track FROM competitions WHERE id = %s",
+                (payload.competition_id,),
+            )
+            comp = cur.fetchone()
+            if not comp:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Competition not found")
+            # A draft or finished cycle is not open for sign-up.
+            if (comp[2] or "").lower() in ("draft", "completed", "archived", "cancelled"):
+                conn.rollback(); cur.close()
+                raise HTTPException(
+                    status_code=409,
+                    detail="This cycle is not open for registration",
+                )
+
+            cur.execute(
+                "INSERT INTO competition_registrations (id, competition_id, student_id, "
+                "student_name, student_email, track, status, registered_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, 'registered', CURRENT_TIMESTAMP) "
+                "ON CONFLICT (competition_id, student_id) DO UPDATE SET "
+                "status = 'registered', withdrawn_at = NULL "
+                "RETURNING id",
+                (
+                    "creg-" + str(uuid.uuid4())[:8],
+                    payload.competition_id,
+                    student_id,
+                    actor.get("full_name") or "",
+                    actor.get("email") or "",
+                    comp[3] or "",
+                ),
+            )
+            registration_id = cur.fetchone()[0]
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "competition_registrations"})
+        return {
+            "id": registration_id, "competition_id": payload.competition_id,
+            "competition_title": comp[1], "status": "registered",
+        }
+
+    @app.delete("/api/competitions/register/{competition_id}")
+    def withdraw_from_competition(competition_id: str, actor: dict = Depends(require_auth)):
+        """Withdraw the signed-in student from a competition cycle."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            student_id = _require_student_identity(cur, actor)
+            cur.execute(
+                "UPDATE competition_registrations SET status = 'withdrawn', "
+                "withdrawn_at = CURRENT_TIMESTAMP "
+                "WHERE competition_id = %s AND student_id = %s AND status = 'registered' "
+                "RETURNING id",
+                (competition_id, student_id),
+            )
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="You are not registered for that cycle")
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "competition_registrations"})
+        return {"status": "withdrawn", "competition_id": competition_id}
+
+    @app.get("/api/competitions/my-registrations")
+    def list_my_competition_registrations(actor: dict = Depends(require_auth)):
+        """Competition cycles the signed-in student is registered for."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            student_id = _require_student_identity(cur, actor)
+            conn.commit()
+            cur.execute(
+                "SELECT r.competition_id, c.title, c.status, r.track, r.status, r.registered_at "
+                "FROM competition_registrations r "
+                "LEFT JOIN competitions c ON c.id = r.competition_id "
+                "WHERE r.student_id = %s AND r.status = 'registered' "
+                "ORDER BY r.registered_at DESC",
+                (student_id,),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {
+                "competition_id": r[0], "competition_title": r[1] or "",
+                "competition_status": r[2] or "", "track": r[3] or "",
+                "status": r[4], "registered_at": str(r[5]) if r[5] else None,
+            }
+            for r in rows
+        ]
+
+    @app.get("/api/competitions/{competition_id}/registrations")
+    def list_competition_registrations(
+        competition_id: str,
+        _actor: dict = Depends(require_role(COMPETITION_ROLES, STUDENT_ADMIN_ROLES)),
+    ):
+        """Everyone signed up for a cycle. For organisers, not students."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id, student_id, student_name, student_email, track, status, registered_at "
+                "FROM competition_registrations "
+                "WHERE competition_id = %s AND status = 'registered' "
+                "ORDER BY registered_at",
+                (competition_id,),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {"id": r[0], "student_id": r[1], "student_name": r[2] or "",
+             "student_email": r[3] or "", "track": r[4] or "", "status": r[5],
+             "registered_at": str(r[6]) if r[6] else None}
+            for r in rows
+        ]
+
+    # ─── INSTRUCTOR AUTHORING & GRADING ──────────────────────────────
+    # An instructor had a complete CRUD interface at /lms-manager in which NOTHING
+    # persisted. Every save funnelled through POST /api/bulk-sync, which is
+    # require_admin, so each write 403'd and ContentService discarded the error with
+    # `error: () => {}`. Courses, modules, materials, assignments and grades lived
+    # only in that one browser's localStorage, and the UI reported success.
+    #
+    # Three further defects this block fixes:
+    #   * `submitted_by` was hardcoded to the literal 'Admin' on create, so an
+    #     instructor's content never matched their own "My Courses" filter.
+    #   * `submitted_by` and `approval_status` were accepted from the request body,
+    #     so authorship could be forged and content self-approved on creation.
+    #   * Grading wrote to a local object; the student had no way to see the mark.
+
+    STAFF_REVIEW_ROLES = tuple(set(ADMIN_ROLES) | set(CONTENT_ROLES))
+
+    def _is_lms_staff(actor: dict) -> bool:
+        """True for roles that may moderate or edit anyone's LMS content."""
+        return actor.get("role") in set(ADMIN_ROLES) | set(CONTENT_ROLES)
+
+    def _load_owned_course(cur, course_id: str, actor: dict) -> tuple:
+        """Fetch a course, enforcing that the caller may modify it."""
+        cur.execute(
+            "SELECT id, title, owner_id, approval_status FROM lms_courses WHERE id = %s",
+            (course_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Course not found")
+        if not _is_lms_staff(actor) and row[2] != actor["id"]:
+            # Don't reveal whether someone else's course exists.
+            raise HTTPException(status_code=403, detail="This course belongs to another author")
+        return row
+
+    class LmsCoursePayload(BaseModel):
+        title: str = Field(min_length=1, max_length=200)
+        track: str = Field(default="", max_length=50)
+        icon: str = Field(default="school", max_length=50)
+        level: str = Field(default="", max_length=50)
+        description: str = Field(default="", max_length=5000)
+        modules: int = Field(default=0, ge=0, le=500)
+
+    @app.post("/api/lms/courses", status_code=status.HTTP_201_CREATED)
+    def create_my_course(payload: LmsCoursePayload, actor: dict = Depends(require_role(LMS_ROLES))):
+        """Create a course owned by the caller.
+
+        Authorship and moderation state are both decided here, not by the client:
+        an instructor's course starts 'pending' and must be reviewed by someone
+        else, while content staff publish directly.
+        """
+        approval = "approved" if _is_lms_staff(actor) else "pending"
+        course_id = "crs-" + str(uuid.uuid4())[:8]
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO lms_courses (id, title, track, icon, level, description, "
+                "modules, enrolled, completion, status, created_at, submitted_by, "
+                "approval_status, owner_id) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,0,0,'active',%s,%s,%s,%s)",
+                (
+                    course_id, payload.title, payload.track, payload.icon, payload.level,
+                    payload.description, payload.modules,
+                    datetime.datetime.now(datetime.UTC).isoformat(),
+                    actor.get("full_name") or actor.get("email") or "",
+                    approval, actor["id"],
+                ),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_courses"})
+        return {"id": course_id, "title": payload.title, "approval_status": approval}
+
+    @app.patch("/api/lms/courses/{course_id}")
+    def update_my_course(
+        course_id: str,
+        payload: LmsCoursePayload,
+        actor: dict = Depends(require_role(LMS_ROLES)),
+    ):
+        """Edit a course. Instructors may only edit their own."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            existing = _load_owned_course(cur, course_id, actor)
+            # An instructor editing already-published content sends it back for
+            # review; staff edits stay published.
+            approval = existing[3] if _is_lms_staff(actor) else "pending"
+            cur.execute(
+                "UPDATE lms_courses SET title=%s, track=%s, icon=%s, level=%s, "
+                "description=%s, modules=%s, approval_status=%s WHERE id=%s",
+                (payload.title, payload.track, payload.icon, payload.level,
+                 payload.description, payload.modules, approval, course_id),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_courses"})
+        return {"id": course_id, "status": "updated", "approval_status": approval}
+
+    @app.delete("/api/lms/courses/{course_id}")
+    def delete_my_course(course_id: str, actor: dict = Depends(require_role(LMS_ROLES))):
+        """Delete a course. Refuses if students are enrolled.
+
+        There was no DELETE endpoint at all before; the UI filtered a local array.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            _load_owned_course(cur, course_id, actor)
+            cur.execute(
+                "SELECT COUNT(*) FROM lms_enrollments WHERE course_id=%s AND status='active'",
+                (course_id,),
+            )
+            enrolled = cur.fetchone()[0]
+            if enrolled and not _is_lms_staff(actor):
+                conn.rollback(); cur.close()
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"{enrolled} student(s) are enrolled. Ask an administrator to remove this course.",
+                )
+            cur.execute("DELETE FROM lms_courses WHERE id=%s", (course_id,))
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_courses"})
+        return {"status": "deleted", "id": course_id}
+
+    @app.get("/api/lms/my-courses")
+    def list_my_courses(actor: dict = Depends(require_role(LMS_ROLES))):
+        """Courses the caller authored, with live roster and grading counts."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT c.id, c.title, c.track, c.icon, c.level, c.description, c.modules, "
+                "c.status, c.approval_status, c.rejection_reason, c.created_at, "
+                "(SELECT COUNT(*) FROM lms_enrollments e WHERE e.course_id=c.id AND e.status='active'), "
+                "(SELECT COUNT(*) FROM lms_assignments a WHERE a.course_id=c.id), "
+                "(SELECT COUNT(*) FROM lms_submissions s WHERE s.course_id=c.id AND s.score IS NULL), "
+                "(SELECT ROUND(AVG(e.progress_pct)) FROM lms_enrollments e WHERE e.course_id=c.id AND e.status='active') "
+                "FROM lms_courses c WHERE c.owner_id = %s ORDER BY c.created_at DESC NULLS LAST",
+                (actor["id"],),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {
+                "id": r[0], "title": r[1], "track": r[2] or "", "icon": r[3] or "school",
+                "level": r[4] or "", "description": r[5] or "", "modules": r[6] or 0,
+                "status": r[7] or "active", "approval_status": r[8] or "approved",
+                "rejection_reason": r[9] or "", "created_at": r[10] or "",
+                "enrolled_count": r[11] or 0, "assignment_count": r[12] or 0,
+                "awaiting_grading": r[13] or 0,
+                "average_progress": int(r[14]) if r[14] is not None else 0,
+            }
+            for r in rows
+        ]
+
+    @app.get("/api/lms/courses/{course_id}/students")
+    def list_course_students(course_id: str, actor: dict = Depends(require_role(LMS_ROLES))):
+        """The enrolled roster for one course, with progress and submission counts.
+
+        The LMS Manager "Students" tab read `lmsEnrollments`, which defaults to []
+        and had no backend GET -- so it was permanently empty unless an admin had
+        bulk-synced data into that same browser.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            _load_owned_course(cur, course_id, actor)
+            cur.execute(
+                "SELECT e.student_id, e.student_name, e.student_email, e.progress_pct, "
+                "e.enrolled_at, e.last_active, e.status, "
+                "(SELECT COUNT(*) FROM lms_submissions s WHERE s.course_id=e.course_id AND s.student_id=e.student_id), "
+                "(SELECT COUNT(*) FROM lms_submissions s WHERE s.course_id=e.course_id AND s.student_id=e.student_id AND s.score IS NOT NULL), "
+                "(SELECT ROUND(AVG(s.score)) FROM lms_submissions s WHERE s.course_id=e.course_id AND s.student_id=e.student_id AND s.score IS NOT NULL) "
+                "FROM lms_enrollments e WHERE e.course_id=%s AND e.status='active' "
+                "ORDER BY e.student_name",
+                (course_id,),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {
+                "student_id": r[0], "student_name": r[1] or "", "student_email": r[2] or "",
+                "progress_pct": r[3] or 0, "enrolled_at": r[4] or "", "last_active": r[5] or "",
+                "status": r[6] or "active", "submissions": r[7] or 0, "graded": r[8] or 0,
+                "average_score": int(r[9]) if r[9] is not None else None,
+            }
+            for r in rows
+        ]
+
+    # ── Modules / materials / assignments (owner-scoped) ──────────────
+    # None of these had ANY endpoint: the five tables existed and were indexed but
+    # were writable only through admin bulk-sync and readable through nothing.
+
+    class LmsModulePayload(BaseModel):
+        course_id: str = Field(min_length=1, max_length=64)
+        title: str = Field(min_length=1, max_length=200)
+        description: str = Field(default="", max_length=5000)
+        order_num: int = Field(default=1, ge=1, le=500)
+        icon: str = Field(default="menu_book", max_length=50)
+
+    @app.post("/api/lms/modules", status_code=status.HTTP_201_CREATED)
+    def create_module(payload: LmsModulePayload, actor: dict = Depends(require_role(LMS_ROLES))):
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            course = _load_owned_course(cur, payload.course_id, actor)
+            # The course is the unit of review, so child content inherits its state.
+            # On a pending course it stays pending and is published by the cascade in
+            # moderate_course(); on an already-approved course the author can add
+            # material without it being stranded, since there is no per-item review
+            # route to rescue it.
+            inherited = course[3] or "approved"
+            module_id = "mod-" + str(uuid.uuid4())[:8]
+            cur.execute(
+                "INSERT INTO lms_modules (id, course_id, title, description, order_num, "
+                "icon, status, submitted_by, approval_status, owner_id) "
+                "VALUES (%s,%s,%s,%s,%s,%s,'published',%s,%s,%s)",
+                (module_id, payload.course_id, payload.title, payload.description,
+                 payload.order_num, payload.icon,
+                 actor.get("full_name") or actor.get("email") or "",
+                 inherited, actor["id"]),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_modules"})
+        return {"id": module_id, "title": payload.title}
+
+    @app.get("/api/lms/modules")
+    def list_modules(course_id: str = "", _actor: dict = Depends(require_auth)):
+        """Modules for a course. Students need this for a real syllabus -- the
+        student view previously synthesised `Module 1..n` placeholders because there
+        was no way to read the real titles."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            sql = ("SELECT id, course_id, title, description, order_num, icon, status "
+                   "FROM lms_modules WHERE COALESCE(approval_status,'approved')='approved'")
+            params: list = []
+            if course_id:
+                sql += " AND course_id = %s"
+                params.append(course_id)
+            sql += " ORDER BY order_num, title"
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {"id": r[0], "course_id": r[1] or "", "title": r[2], "description": r[3] or "",
+             "order_num": r[4] or 1, "icon": r[5] or "menu_book", "status": r[6] or "published"}
+            for r in rows
+        ]
+
+    @app.delete("/api/lms/modules/{module_id}")
+    def delete_module(module_id: str, actor: dict = Depends(require_role(LMS_ROLES))):
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT course_id FROM lms_modules WHERE id=%s", (module_id,))
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Module not found")
+            _load_owned_course(cur, row[0], actor)
+            cur.execute("DELETE FROM lms_modules WHERE id=%s", (module_id,))
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_modules"})
+        return {"status": "deleted", "id": module_id}
+
+    class LmsMaterialPayload(BaseModel):
+        course_id: str = Field(min_length=1, max_length=64)
+        module_id: str = Field(default="", max_length=64)
+        title: str = Field(min_length=1, max_length=200)
+        type: str = Field(default="link", max_length=20)
+        url: str = Field(default="", max_length=2000)
+        description: str = Field(default="", max_length=5000)
+
+    @app.post("/api/lms/materials", status_code=status.HTTP_201_CREATED)
+    def create_material(payload: LmsMaterialPayload, actor: dict = Depends(require_role(LMS_ROLES))):
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            course = _load_owned_course(cur, payload.course_id, actor)
+            inherited = course[3] or "approved"
+            material_id = "mat-" + str(uuid.uuid4())[:8]
+            cur.execute(
+                "INSERT INTO lms_materials (id, course_id, module_id, title, type, url, "
+                "description, created_at, submitted_by, approval_status, owner_id) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                (material_id, payload.course_id, payload.module_id or None, payload.title,
+                 payload.type, payload.url, payload.description,
+                 datetime.datetime.now(datetime.UTC).isoformat(),
+                 actor.get("full_name") or actor.get("email") or "",
+                 inherited, actor["id"]),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_materials"})
+        return {"id": material_id, "title": payload.title}
+
+    @app.get("/api/lms/materials")
+    def list_materials(course_id: str = "", _actor: dict = Depends(require_auth)):
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            sql = ("SELECT id, course_id, module_id, title, type, url, description "
+                   "FROM lms_materials WHERE COALESCE(approval_status,'approved')='approved'")
+            params: list = []
+            if course_id:
+                sql += " AND course_id = %s"
+                params.append(course_id)
+            sql += " ORDER BY title"
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {"id": r[0], "course_id": r[1] or "", "module_id": r[2] or "", "title": r[3],
+             "type": r[4] or "link", "url": r[5] or "", "description": r[6] or ""}
+            for r in rows
+        ]
+
+    @app.delete("/api/lms/materials/{material_id}")
+    def delete_material(material_id: str, actor: dict = Depends(require_role(LMS_ROLES))):
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT course_id FROM lms_materials WHERE id=%s", (material_id,))
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Material not found")
+            _load_owned_course(cur, row[0], actor)
+            cur.execute("DELETE FROM lms_materials WHERE id=%s", (material_id,))
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_materials"})
+        return {"status": "deleted", "id": material_id}
+
+    class LmsAssignmentPayload(BaseModel):
+        course_id: str = Field(min_length=1, max_length=64)
+        title: str = Field(min_length=1, max_length=200)
+        description: str = Field(default="", max_length=5000)
+        due_date: str = Field(default="", max_length=50)
+        max_score: int = Field(default=100, ge=1, le=1000)
+        track: str = Field(default="", max_length=50)
+
+    @app.post("/api/lms/assignments", status_code=status.HTTP_201_CREATED)
+    def create_assignment(payload: LmsAssignmentPayload, actor: dict = Depends(require_role(LMS_ROLES))):
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            course = _load_owned_course(cur, payload.course_id, actor)
+            inherited = course[3] or "approved"
+            assignment_id = "asg-" + str(uuid.uuid4())[:8]
+            cur.execute(
+                "INSERT INTO lms_assignments (id, course_id, title, description, due_date, "
+                "max_score, track, status, created_at, submitted_by, approval_status, owner_id) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,'active',%s,%s,%s,%s)",
+                (assignment_id, payload.course_id, payload.title, payload.description,
+                 payload.due_date or None, payload.max_score, payload.track,
+                 datetime.datetime.now(datetime.UTC).isoformat(),
+                 actor.get("full_name") or actor.get("email") or "",
+                 inherited, actor["id"]),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_assignments"})
+        return {"id": assignment_id, "title": payload.title}
+
+    @app.delete("/api/lms/assignments/{assignment_id}")
+    def delete_assignment(assignment_id: str, actor: dict = Depends(require_role(LMS_ROLES))):
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT course_id FROM lms_assignments WHERE id=%s", (assignment_id,))
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Assignment not found")
+            _load_owned_course(cur, row[0], actor)
+            cur.execute(
+                "SELECT COUNT(*) FROM lms_submissions WHERE assignment_id=%s", (assignment_id,)
+            )
+            if cur.fetchone()[0] and not _is_lms_staff(actor):
+                conn.rollback(); cur.close()
+                raise HTTPException(
+                    status_code=409,
+                    detail="Students have already submitted work for this assignment.",
+                )
+            cur.execute("DELETE FROM lms_assignments WHERE id=%s", (assignment_id,))
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_assignments"})
+        return {"status": "deleted", "id": assignment_id}
+
+    # ── Grading ───────────────────────────────────────────────────────
+
+    @app.get("/api/lms/grading-queue")
+    def lms_grading_queue(course_id: str = "", actor: dict = Depends(require_role(LMS_ROLES))):
+        """Submissions awaiting a mark on the caller's own courses.
+
+        The LMS Manager review desk read `lmsSubmissions`, which defaults to [] and
+        had no backend GET -- so an instructor could never see real student work.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            sql = (
+                "SELECT s.id, s.assignment_id, a.title, s.course_id, c.title, s.student_id, "
+                "s.student_name, s.student_email, s.submitted_at, s.content, s.url, "
+                "s.score, s.status, s.feedback, a.max_score "
+                "FROM lms_submissions s "
+                "JOIN lms_courses c ON c.id = s.course_id "
+                "LEFT JOIN lms_assignments a ON a.id = s.assignment_id "
+                "WHERE s.score IS NULL"
+            )
+            params: list = []
+            # Staff see everything; an instructor sees only their own courses.
+            if not _is_lms_staff(actor):
+                sql += " AND c.owner_id = %s"
+                params.append(actor["id"])
+            if course_id:
+                sql += " AND s.course_id = %s"
+                params.append(course_id)
+            sql += " ORDER BY s.submitted_at"
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {
+                "id": r[0], "assignment_id": r[1] or "", "assignment_title": r[2] or "",
+                "course_id": r[3] or "", "course_title": r[4] or "",
+                "student_id": r[5] or "", "student_name": r[6] or "",
+                "student_email": r[7] or "", "submitted_at": r[8] or "",
+                "content": r[9] or "", "url": r[10] or "", "score": r[11],
+                "status": r[12] or "submitted", "feedback": r[13] or "",
+                "max_score": r[14] if r[14] is not None else 100,
+            }
+            for r in rows
+        ]
+
+    class GradeLmsSubmissionPayload(BaseModel):
+        score: int = Field(ge=0, le=1000)
+        feedback: str = Field(default="", max_length=5000)
+
+    @app.patch("/api/lms/submissions/{submission_id}/grade")
+    def grade_lms_submission(
+        submission_id: str,
+        payload: GradeLmsSubmissionPayload,
+        actor: dict = Depends(require_role(LMS_ROLES)),
+    ):
+        """Mark a student's work.
+
+        Replaces `gradeLmsSubmission()`, which mutated a local object
+        (`sub.score = score`) and then pushed it through admin-only bulk-sync. The
+        mark never left the browser, and no read path existed for the student even
+        if it had.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT s.course_id, c.owner_id, a.max_score, s.student_email "
+                "FROM lms_submissions s "
+                "LEFT JOIN lms_courses c ON c.id = s.course_id "
+                "LEFT JOIN lms_assignments a ON a.id = s.assignment_id "
+                "WHERE s.id = %s",
+                (submission_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Submission not found")
+            if not _is_lms_staff(actor) and row[1] != actor["id"]:
+                conn.rollback(); cur.close()
+                raise HTTPException(
+                    status_code=403,
+                    detail="You can only grade work submitted on your own courses",
+                )
+            max_score = row[2] if row[2] is not None else 100
+            if payload.score > max_score:
+                conn.rollback(); cur.close()
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Score cannot exceed the assignment maximum of {max_score}",
+                )
+
+            cur.execute(
+                "UPDATE lms_submissions SET score=%s, feedback=%s, status='graded' WHERE id=%s",
+                (payload.score, payload.feedback, submission_id),
+            )
+            # Audit in the same transaction, so a mark cannot exist unrecorded.
+            cur.execute(
+                "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s,%s,%s,%s)",
+                (
+                    f"Graded submission {submission_id} ({payload.score}/{max_score}) "
+                    f"for {row[3] or 'student'}",
+                    actor.get("email") or actor["id"],
+                    datetime.datetime.now(datetime.UTC).isoformat(),
+                    "grading",
+                ),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_submissions"})
+        return {"id": submission_id, "score": payload.score, "status": "graded"}
+
+    class ReturnSubmissionPayload(BaseModel):
+        feedback: str = Field(min_length=1, max_length=5000)
+
+    @app.patch("/api/lms/submissions/{submission_id}/return")
+    def return_lms_submission(
+        submission_id: str,
+        payload: ReturnSubmissionPayload,
+        actor: dict = Depends(require_role(LMS_ROLES)),
+    ):
+        """Send a submission back for revision instead of grading it.
+
+        Replaces `requestSubmissionRevision()` / `rejectLmsSubmission()`, which
+        mutated a local object and pushed it through admin-only bulk-sync -- so the
+        student was never told anything and the work sat in the queue looking
+        ungraded.
+
+        No score is recorded, so the work correctly stays in the grading queue as
+        outstanding; the student sees the feedback and can resubmit, which resets
+        the status to 'submitted'.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT s.course_id, c.owner_id FROM lms_submissions s "
+                "LEFT JOIN lms_courses c ON c.id = s.course_id WHERE s.id = %s",
+                (submission_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Submission not found")
+            if not _is_lms_staff(actor) and row[1] != actor["id"]:
+                conn.rollback(); cur.close()
+                raise HTTPException(
+                    status_code=403,
+                    detail="You can only review work submitted on your own courses",
+                )
+            cur.execute(
+                "UPDATE lms_submissions SET status='revision_requested', feedback=%s, "
+                "score=NULL WHERE id=%s",
+                (payload.feedback, submission_id),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_submissions"})
+        return {"id": submission_id, "status": "revision_requested"}
+
+    # ── Moderation ────────────────────────────────────────────────────
+
+    class ModerateContentPayload(BaseModel):
+        approve: bool
+        reason: str = Field(default="", max_length=2000)
+
+    @app.patch("/api/lms/courses/{course_id}/moderate")
+    def moderate_course(
+        course_id: str,
+        payload: ModerateContentPayload,
+        actor: dict = Depends(require_role(STAFF_REVIEW_ROLES)),
+    ):
+        """Approve or reject submitted course content.
+
+        Critically, the reviewer may not be the author. The old flow showed
+        instructors the shared admin approvals queue with no owner scoping, so an
+        instructor could approve their own submission -- and the record was stamped
+        with the hardcoded default 'admin@ntic.org.gh' rather than whoever acted.
+        """
+        if not payload.approve and not payload.reason.strip():
+            raise HTTPException(status_code=422, detail="Give a reason when rejecting content")
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT owner_id, title FROM lms_courses WHERE id = %s", (course_id,)
+            )
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Course not found")
+            if row[0] and row[0] == actor["id"]:
+                conn.rollback(); cur.close()
+                raise HTTPException(
+                    status_code=403,
+                    detail="You cannot review your own content. Ask another reviewer.",
+                )
+
+            new_status = "approved" if payload.approve else "rejected"
+            cur.execute(
+                "UPDATE lms_courses SET approval_status=%s, rejection_reason=%s WHERE id=%s",
+                (new_status, payload.reason if not payload.approve else None, course_id),
+            )
+            # Cascade to the course's contents. A reviewer approves a course
+            # *including* its modules, materials and assignments -- without this the
+            # instructor's assignments would stay 'pending' forever, invisible to
+            # students and with no separate route to publish them.
+            for _tbl in ("lms_modules", "lms_materials", "lms_assignments"):
+                cur.execute(
+                    f"UPDATE {_tbl} SET approval_status=%s WHERE course_id=%s",
+                    (new_status, course_id),
+                )
+            cur.execute(
+                "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s,%s,%s,%s)",
+                (
+                    f"{new_status.title()} course '{row[1]}'"
+                    + (f": {payload.reason}" if not payload.approve else ""),
+                    actor.get("email") or actor["id"],
+                    datetime.datetime.now(datetime.UTC).isoformat(),
+                    "approval",
+                ),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_courses"})
+        return {"id": course_id, "approval_status": new_status}
+
+    @app.get("/api/lms/moderation-queue")
+    def lms_moderation_queue(actor: dict = Depends(require_role(STAFF_REVIEW_ROLES))):
+        """Courses awaiting review, excluding the reviewer's own submissions."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id, title, track, level, description, modules, submitted_by, "
+                "created_at, owner_id FROM lms_courses "
+                "WHERE approval_status = 'pending' AND (owner_id IS NULL OR owner_id <> %s) "
+                "ORDER BY created_at NULLS LAST",
+                (actor["id"],),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {"id": r[0], "title": r[1], "track": r[2] or "", "level": r[3] or "",
+             "description": r[4] or "", "modules": r[5] or 0,
+             "submitted_by": r[6] or "", "created_at": r[7] or ""}
+            for r in rows
+        ]
+
+    # ─── SPONSORSHIPS & PAYMENTS ─────────────────────────────────────
+    # Neither table existed before this. The consequences:
+    #
+    #   * The whole "Sponsorship & Partner Ecosystem" panel was a hardcoded array in
+    #     dashboard.component.ts: MTN/Tullow/GCB/Voltic/Coca-Cola, GH 350,000 tier
+    #     totals, a 72% "disbursed" figure computed as `totalCommitted * 0.72`, and
+    #     an `impactScore: '98.4%'` literal. None of it came from anywhere.
+    #   * A sponsor recording a payment went through saveUsers() -> bulk-sync
+    #     (admin-only), so it 403'd and the reference stayed in that browser.
+    #   * The UI marked payments 'Confirmed' on submit, telling sponsors their money
+    #     had been received when nothing had checked a bank statement.
+    #
+    # Money is NUMERIC end to end and is returned as a string, so no float rounding
+    # is introduced anywhere between the database and the client.
+
+    def _money(value) -> str:
+        """Render a NUMERIC/None as a plain decimal string."""
+        return f"{(value or 0):.2f}"
+
+    def _require_sponsor(actor: dict) -> None:
+        if actor.get("role") != ROLE_SPONSOR:
+            raise HTTPException(status_code=403, detail="Only a sponsor account can do this")
+
+    def _is_sponsor_admin(actor: dict) -> bool:
+        return actor.get("role") in set(ADMIN_ROLES)
+
+    class SponsorshipPayload(BaseModel):
+        tier: str = Field(default="", max_length=50)
+        sector: str = Field(default="", max_length=100)
+        amount_pledged: Decimal = Field(default=Decimal("0"), ge=0, le=Decimal("100000000"))
+        competition_id: str = Field(default="", max_length=64)
+        notes: str = Field(default="", max_length=2000)
+
+    @app.post("/api/sponsorships", status_code=status.HTTP_201_CREATED)
+    def create_my_sponsorship(payload: SponsorshipPayload, actor: dict = Depends(require_auth)):
+        """Record the signed-in sponsor's commitment.
+
+        `status` starts 'pending': a pledge is not an active sponsorship until an
+        administrator confirms it. The sponsor cannot set it themselves.
+        """
+        _require_sponsor(actor)
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT organization, full_name, sector, tier FROM users WHERE id = %s",
+                (actor["id"],),
+            )
+            profile = cur.fetchone()
+            sponsorship_id = "spon-" + str(uuid.uuid4())[:8]
+            cur.execute(
+                "INSERT INTO sponsorships (id, sponsor_id, organization, tier, sector, "
+                "amount_pledged, currency, competition_id, status, notes) "
+                "VALUES (%s,%s,%s,%s,%s,%s,'GHS',%s,'pending',%s)",
+                (
+                    sponsorship_id, actor["id"],
+                    (profile[0] if profile else "") or (profile[1] if profile else "") or "",
+                    payload.tier or (profile[3] if profile else "") or "",
+                    payload.sector or (profile[2] if profile else "") or "",
+                    payload.amount_pledged,
+                    payload.competition_id or None,
+                    payload.notes,
+                ),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "sponsorships"})
+        return {
+            "id": sponsorship_id, "status": "pending",
+            "amount_pledged": _money(payload.amount_pledged),
+        }
+
+    def _shape_sponsorship(r) -> dict:
+        return {
+            "id": r[0], "sponsor_id": r[1], "organization": r[2] or "",
+            "tier": r[3] or "", "sector": r[4] or "",
+            "amount_pledged": _money(r[5]), "currency": r[6] or "GHS",
+            "competition_id": r[7] or "", "status": r[8] or "pending",
+            "notes": r[9] or "", "created_at": str(r[10]) if r[10] else None,
+            # Only VERIFIED payments count as received. A pending reference is a
+            # claim, not money.
+            "amount_received": _money(r[11]),
+            "amount_pending": _money(r[12]),
+            "payment_count": r[13] or 0,
+        }
+
+    _SPONSORSHIP_SELECT = (
+        "SELECT s.id, s.sponsor_id, s.organization, s.tier, s.sector, s.amount_pledged, "
+        "s.currency, s.competition_id, s.status, s.notes, s.created_at, "
+        "COALESCE((SELECT SUM(p.amount) FROM sponsorship_payments p "
+        "  WHERE p.sponsorship_id = s.id AND p.status = 'verified'), 0), "
+        "COALESCE((SELECT SUM(p.amount) FROM sponsorship_payments p "
+        "  WHERE p.sponsorship_id = s.id AND p.status = 'pending_verification'), 0), "
+        "(SELECT COUNT(*) FROM sponsorship_payments p WHERE p.sponsorship_id = s.id) "
+        "FROM sponsorships s "
+    )
+
+    @app.get("/api/sponsorships/mine")
+    def list_my_sponsorships(actor: dict = Depends(require_auth)):
+        """The signed-in sponsor's own commitments, with real received totals."""
+        _require_sponsor(actor)
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                _SPONSORSHIP_SELECT + "WHERE s.sponsor_id = %s ORDER BY s.created_at DESC",
+                (actor["id"],),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [_shape_sponsorship(r) for r in rows]
+
+    @app.get("/api/sponsorships")
+    def list_all_sponsorships(_admin: dict = Depends(require_admin)):
+        """Every commitment. Administrators only -- this is commercial data."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(_SPONSORSHIP_SELECT + "ORDER BY s.amount_pledged DESC")
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [_shape_sponsorship(r) for r in rows]
+
+    class SponsorshipStatusPayload(BaseModel):
+        status: str = Field(pattern="^(pending|active|completed|cancelled)$")
+
+    @app.patch("/api/sponsorships/{sponsorship_id}/status")
+    def set_sponsorship_status(
+        sponsorship_id: str,
+        payload: SponsorshipStatusPayload,
+        actor: dict = Depends(require_admin),
+    ):
+        """Confirm or close a commitment. Administrators only, deliberately: a
+        sponsor marking their own pledge 'active' would inflate the public totals."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE sponsorships SET status=%s, updated_at=CURRENT_TIMESTAMP "
+                "WHERE id=%s RETURNING organization",
+                (payload.status, sponsorship_id),
+            )
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Sponsorship not found")
+            cur.execute(
+                "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s,%s,%s,%s)",
+                (f"Sponsorship {sponsorship_id} ({row[0]}) set to {payload.status}",
+                 actor.get("email") or actor["id"],
+                 datetime.datetime.now(datetime.UTC).isoformat(), "system"),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "sponsorships"})
+        return {"id": sponsorship_id, "status": payload.status}
+
+    # ── Payments ──────────────────────────────────────────────────────
+
+    class SponsorPaymentPayload(BaseModel):
+        amount: Decimal = Field(gt=0, le=Decimal("100000000"))
+        method: str = Field(default="bank_transfer", max_length=40)
+        reference: str = Field(min_length=1, max_length=120)
+        notes: str = Field(default="", max_length=2000)
+
+    @app.post("/api/sponsorships/{sponsorship_id}/payments", status_code=status.HTTP_201_CREATED)
+    def record_my_payment(
+        sponsorship_id: str,
+        payload: SponsorPaymentPayload,
+        actor: dict = Depends(require_auth),
+    ):
+        """Record a payment the sponsor says they have made.
+
+        Deliberately NOT marked received. Nothing here contacts a bank, MoMo API or
+        card processor, so this is a claim to be checked: it lands as
+        'pending_verification' and only an administrator can verify it. The previous
+        UI set status 'Confirmed' on submit.
+        """
+        _require_sponsor(actor)
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT sponsor_id FROM sponsorships WHERE id = %s", (sponsorship_id,)
+            )
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Sponsorship not found")
+            if row[0] != actor["id"]:
+                conn.rollback(); cur.close()
+                raise HTTPException(
+                    status_code=403,
+                    detail="You can only record payments against your own sponsorship",
+                )
+            # A duplicate reference is almost always a double-submit.
+            cur.execute(
+                "SELECT id FROM sponsorship_payments "
+                "WHERE sponsorship_id=%s AND LOWER(reference)=LOWER(%s)",
+                (sponsorship_id, payload.reference.strip()),
+            )
+            if cur.fetchone():
+                conn.rollback(); cur.close()
+                raise HTTPException(
+                    status_code=409,
+                    detail="A payment with that reference is already recorded",
+                )
+
+            payment_id = "pay-" + str(uuid.uuid4())[:8]
+            cur.execute(
+                "INSERT INTO sponsorship_payments (id, sponsorship_id, sponsor_id, amount, "
+                "currency, method, reference, notes, status) "
+                "VALUES (%s,%s,%s,%s,'GHS',%s,%s,%s,'pending_verification')",
+                (payment_id, sponsorship_id, actor["id"], payload.amount,
+                 payload.method, payload.reference.strip(), payload.notes),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "sponsorship_payments"})
+        return {
+            "id": payment_id, "status": "pending_verification",
+            "amount": _money(payload.amount),
+        }
+
+    def _shape_payment(r) -> dict:
+        return {
+            "id": r[0], "sponsorship_id": r[1] or "", "sponsor_id": r[2],
+            "amount": _money(r[3]), "currency": r[4] or "GHS",
+            "method": r[5] or "", "reference": r[6] or "", "notes": r[7] or "",
+            "status": r[8] or "pending_verification",
+            "verified_by_name": r[9] or "", "verified_at": str(r[10]) if r[10] else None,
+            "rejection_reason": r[11] or "",
+            "created_at": str(r[12]) if r[12] else None,
+            "organization": r[13] or "", "sponsor_email": r[14] or "",
+        }
+
+    _PAYMENT_SELECT = (
+        "SELECT p.id, p.sponsorship_id, p.sponsor_id, p.amount, p.currency, p.method, "
+        "p.reference, p.notes, p.status, p.verified_by_name, p.verified_at, "
+        "p.rejection_reason, p.created_at, s.organization, u.email "
+        "FROM sponsorship_payments p "
+        "LEFT JOIN sponsorships s ON s.id = p.sponsorship_id "
+        "LEFT JOIN users u ON u.id = p.sponsor_id "
+    )
+
+    @app.get("/api/sponsorships/payments/mine")
+    def list_my_payments(actor: dict = Depends(require_auth)):
+        """The sponsor's own payment history, with its verification state."""
+        _require_sponsor(actor)
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                _PAYMENT_SELECT + "WHERE p.sponsor_id = %s ORDER BY p.created_at DESC",
+                (actor["id"],),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [_shape_payment(r) for r in rows]
+
+    @app.get("/api/sponsorships/payments/pending")
+    def list_pending_payments(_admin: dict = Depends(require_admin)):
+        """The verification queue: claims an administrator must check."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                _PAYMENT_SELECT + "WHERE p.status = 'pending_verification' "
+                "ORDER BY p.created_at"
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [_shape_payment(r) for r in rows]
+
+    class VerifyPaymentPayload(BaseModel):
+        verified: bool
+        reason: str = Field(default="", max_length=2000)
+
+    @app.patch("/api/sponsorships/payments/{payment_id}/verify")
+    def verify_payment(
+        payment_id: str,
+        payload: VerifyPaymentPayload,
+        actor: dict = Depends(require_admin),
+    ):
+        """Confirm or reject a claimed payment against the bank record.
+
+        Administrator-only by design. This is the step the old UI skipped entirely
+        by writing status 'Confirmed' the moment a sponsor typed a reference number.
+        """
+        if not payload.verified and not payload.reason.strip():
+            raise HTTPException(status_code=422, detail="Give a reason when rejecting a payment")
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT amount, reference, sponsor_id FROM sponsorship_payments WHERE id = %s",
+                (payment_id,),
+            )
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Payment not found")
+
+            new_status = "verified" if payload.verified else "rejected"
+            cur.execute(
+                "UPDATE sponsorship_payments SET status=%s, verified_by=%s, "
+                "verified_by_name=%s, verified_at=CURRENT_TIMESTAMP, rejection_reason=%s "
+                "WHERE id=%s",
+                (new_status, actor["id"], actor.get("full_name") or actor.get("email") or "",
+                 payload.reason if not payload.verified else None, payment_id),
+            )
+            # Audit in the same transaction: money state must not change unrecorded.
+            cur.execute(
+                "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s,%s,%s,%s)",
+                (f"Payment {payment_id} ref {row[1]} for GHS {_money(row[0])} {new_status}"
+                 + (f": {payload.reason}" if not payload.verified else ""),
+                 actor.get("email") or actor["id"],
+                 datetime.datetime.now(datetime.UTC).isoformat(), "system"),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "sponsorship_payments"})
+        return {"id": payment_id, "status": new_status}
+
+    # ── Ecosystem aggregates ──────────────────────────────────────────
+
+    @app.get("/api/sponsorships/summary")
+    def sponsorship_summary(_actor: dict = Depends(require_auth)):
+        """Real figures for the sponsorship ecosystem panel.
+
+        Everything here is derived from the sponsorships and payments tables. It
+        replaces a hardcoded array of partner names, tier totals, a
+        `totalCommitted * 0.72` "disbursed" figure and a literal 98.4% "impact
+        score" -- none of which had any source.
+
+        Where a genuine figure cannot be computed the field is omitted rather than
+        invented.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            # Only 'active' pledges count towards committed money; 'pending' ones
+            # have not been confirmed by anybody yet.
+            cur.execute(
+                "SELECT COUNT(DISTINCT sponsor_id), COALESCE(SUM(amount_pledged),0) "
+                "FROM sponsorships WHERE status IN ('active','completed')"
+            )
+            partners, committed = cur.fetchone()
+
+            cur.execute(
+                "SELECT COALESCE(SUM(amount),0) FROM sponsorship_payments WHERE status='verified'"
+            )
+            received = cur.fetchone()[0]
+            cur.execute(
+                "SELECT COALESCE(SUM(amount),0), COUNT(*) FROM sponsorship_payments "
+                "WHERE status='pending_verification'"
+            )
+            awaiting, awaiting_count = cur.fetchone()
+
+            cur.execute(
+                "SELECT COALESCE(NULLIF(tier,''),'Unspecified'), COUNT(DISTINCT sponsor_id), "
+                "COALESCE(SUM(amount_pledged),0) "
+                "FROM sponsorships WHERE status IN ('active','completed') "
+                "GROUP BY COALESCE(NULLIF(tier,''),'Unspecified') "
+                "ORDER BY SUM(amount_pledged) DESC"
+            )
+            tier_rows = cur.fetchall()
+
+            cur.execute(
+                "SELECT COALESCE(NULLIF(sector,''),'Unspecified'), COUNT(DISTINCT sponsor_id), "
+                "COALESCE(SUM(amount_pledged),0) "
+                "FROM sponsorships WHERE status IN ('active','completed') "
+                "GROUP BY COALESCE(NULLIF(sector,''),'Unspecified') "
+                "ORDER BY SUM(amount_pledged) DESC"
+            )
+            sector_rows = cur.fetchall()
+
+            cur.execute("SELECT COUNT(*) FROM sponsorships WHERE status='pending'")
+            pending_pledges = cur.fetchone()[0]
+            cur.close()
+        finally:
+            release_db_connection(conn)
+
+        total = committed or 0
+        return {
+            "partner_count": partners or 0,
+            "total_committed": _money(committed),
+            "total_received": _money(received),
+            "awaiting_verification": _money(awaiting),
+            "awaiting_verification_count": awaiting_count or 0,
+            "pending_pledges": pending_pledges or 0,
+            # Share of committed money actually banked. Genuinely computed, unlike
+            # the previous hardcoded 72%.
+            "received_pct": round(float(received or 0) / float(total) * 100, 1) if total else 0.0,
+            "tiers": [
+                {
+                    "tier": t[0], "sponsor_count": t[1] or 0,
+                    "amount": _money(t[2]),
+                    "pct": round(float(t[2] or 0) / float(total) * 100, 1) if total else 0.0,
+                }
+                for t in tier_rows
+            ],
+            "sectors": [
+                {"sector": s[0], "sponsor_count": s[1] or 0, "amount": _money(s[2])}
+                for s in sector_rows
+            ],
+        }
 
     @app.post("/api/auth/token/generate")
     def generate_access_token(payload: dict = None, _admin: dict = Depends(require_admin)):
@@ -3886,7 +5542,16 @@ try:
         return [{"id": r[0], "title": r[1], "track": r[2], "icon": r[3], "level": r[4], "description": r[5], "modules": r[6], "enrolled": r[7], "completion": r[8], "status": r[9], "created_at": r[10], "submitted_by": r[11], "approval_status": r[12], "rejection_reason": r[13]} for r in rows]
 
     @app.post("/api/lms-courses", status_code=status.HTTP_201_CREATED)
-    def create_lms_course(payload: LmsCourseCreate, _actor: dict = Depends(require_role(LMS_ROLES))):
+    def create_lms_course(payload: LmsCourseCreate, actor: dict = Depends(require_role(LMS_ROLES))):
+        """Legacy course-create endpoint, retained for existing callers.
+
+        SECURITY: `submitted_by` and `approval_status` used to be taken straight
+        from the request body. An instructor could therefore claim someone else's
+        authorship AND publish their own course by posting
+        `approval_status: "approved"`, bypassing review entirely. Both are now
+        derived from the verified session, exactly as in POST /api/lms/courses.
+        """
+        approval = "approved" if _is_lms_staff(actor) else "pending"
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
@@ -3894,8 +5559,8 @@ try:
         cur = conn.cursor()
         try:
             cur.execute(
-                "INSERT INTO lms_courses (id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status, rejection_reason) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                (course_id, payload.title, payload.track, payload.icon, payload.level, payload.description, payload.modules, payload.enrolled, payload.completion, payload.status, payload.created_at or None, payload.submitted_by, payload.approval_status, payload.rejection_reason)
+                "INSERT INTO lms_courses (id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status, rejection_reason, owner_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (course_id, payload.title, payload.track, payload.icon, payload.level, payload.description, payload.modules, payload.enrolled, payload.completion, payload.status, payload.created_at or None, actor.get("full_name") or actor.get("email") or "", approval, None, actor["id"])
             )
             conn.commit()
         except Exception as e:
@@ -3906,7 +5571,7 @@ try:
         cur.close()
         release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "lms_courses"})
-        return {"id": course_id, "title": payload.title}
+        return {"id": course_id, "title": payload.title, "approval_status": approval}
 
     # PENDING APPROVALS (cross-machine sync)
     class ApprovalCreate(BaseModel):
@@ -3963,6 +5628,103 @@ try:
         release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "approvals"})
         return {"id": payload.id, "status": "created"}
+
+    class SubmitMyOnboardingPayload(BaseModel):
+        """A user submitting their OWN completed profile for admin review."""
+        notes: str = Field(default="", max_length=2000)
+
+    @app.post("/api/approvals/mine", status_code=status.HTTP_201_CREATED)
+    def submit_my_onboarding(
+        payload: SubmitMyOnboardingPayload,
+        actor: dict = Depends(require_auth),
+    ):
+        """File the caller's own profile for admin review.
+
+        The profile-completion page already tried to do this, but it went through
+        `contentService.saveApprovals()` -> `POST /api/bulk-sync`, which requires
+        an admin. So for the judges and sponsors who actually complete that form
+        the request 403'd and the error was discarded: their onboarding never
+        reached the admin queue and no one was ever notified they had signed up.
+
+        Everything identifying the applicant is taken from the verified session,
+        not the request body, so this cannot be used to file an approval on
+        someone else's behalf or to forge the applicant's role.
+        """
+        role = actor.get("role") or ""
+        # Only the roles that actually have an onboarding form.
+        if role not in (ROLE_JUDGE, ROLE_SPONSOR, ROLE_INSTRUCTOR):
+            raise HTTPException(
+                status_code=400,
+                detail="Your account type does not require onboarding review",
+            )
+
+        type_by_role = {
+            ROLE_JUDGE: "Judge Access",
+            ROLE_SPONSOR: "Sponsor Access",
+            ROLE_INSTRUCTOR: "Instructor Access",
+        }
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT full_name, email, phone, organization, bio, expertise, "
+                "sector, rep_name, tier, experience_level, track "
+                "FROM users WHERE id = %s",
+                (actor["id"],),
+            )
+            row = cur.fetchone()
+            if not row:
+                cur.close()
+                raise HTTPException(status_code=404, detail="User not found")
+
+            # One open request per user: re-submitting must update the pending row
+            # rather than stacking duplicates in the reviewer's queue.
+            cur.execute(
+                "SELECT id FROM pending_approvals "
+                "WHERE contact = %s AND status = 'pending' LIMIT 1",
+                (row[1],),
+            )
+            existing = cur.fetchone()
+            approval_id = existing[0] if existing else "apr-" + str(uuid.uuid4())[:8]
+
+            details = {
+                "name": row[0] or "",
+                "email": row[1] or "",
+                "phone": row[2] or "",
+                "organization": row[3] or "",
+                "bio": row[4] or "",
+                "expertise": row[5] or "",
+                "sector": row[6] or "",
+                "repName": row[7] or "",
+                "tier": row[8] or "",
+                "experience": row[9] or "",
+                "track": row[10] or "",
+                "category": type_by_role[role].replace(" Access", ""),
+                "notes": payload.notes,
+            }
+            import json as _json
+            cur.execute(
+                "INSERT INTO pending_approvals (id, type, entity, contact, submitted, "
+                "details, status) VALUES (%s, %s, %s, %s, %s, %s, 'pending') "
+                "ON CONFLICT (id) DO UPDATE SET type = EXCLUDED.type, "
+                "entity = EXCLUDED.entity, submitted = EXCLUDED.submitted, "
+                "details = EXCLUDED.details, status = 'pending'",
+                (
+                    approval_id,
+                    type_by_role[role],
+                    row[3] or row[0] or row[1],
+                    row[1],
+                    datetime.datetime.now(datetime.UTC).isoformat(),
+                    _json.dumps(details),
+                ),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "approvals"})
+        return {"id": approval_id, "type": type_by_role[role], "status": "pending"}
 
     @app.patch("/api/approvals/{item_id}")
     def update_approval(item_id: str, payload: ApprovalUpdate, _actor: dict = Depends(require_role(APPROVAL_ROLES))):

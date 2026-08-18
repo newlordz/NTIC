@@ -3,15 +3,16 @@ import { resetVerifiedRoleCache } from './guards/auth.guard';
 import { AppUpdateService } from './services/app-update.service';
 import { Component, OnInit, OnDestroy, HostListener, Renderer2, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs/operators';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationStart, NavigationEnd, NavigationCancel, NavigationError } from '@angular/router';
+import { filter, throttleTime } from 'rxjs/operators';
 import { ThemeService } from './services/theme.service';
 import { ContentService } from './services/content.service';
 import { TimeAgoPipe } from './services/time-ago.pipe';
 import { DialogService } from './services/dialog.service';
 import { ChatbotComponent } from './chatbot/chatbot.component';
 import { ChatbotService } from './services/chatbot.service';
-import { ApiService } from './services/api.service';
+import { ApiService, MyProfile } from './services/api.service';
+import { CurrentUserService } from './services/current-user.service';
 import { IdleTimeoutService } from './services/idle-timeout.service';
 import { ToastContainerComponent } from './components/toast-container/toast-container.component';
 import { CommandPaletteComponent } from './components/command-palette/command-palette.component';
@@ -40,6 +41,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly idleTimeout = inject(IdleTimeoutService);
   title = 'ntic-frontend';
   isLandingPage = true;
+  isRouteLoading = false;
   currentUser: { name: string; avatar: string; roleName: string; roleId: string } | null = null;
   showScrollToTop = false;
   isMobileSidebarOpen = false;
@@ -56,19 +58,6 @@ export class AppComponent implements OnInit, OnDestroy {
     });
   };
 
-  userProfiles: Record<string, { name: string; avatar: string; roleName: string }> = {
-    student:        { name: 'Kwame Asante',       avatar: 'KA', roleName: 'Student' },
-    instructor:     { name: 'Efua Mensah',         avatar: 'EM', roleName: 'Instructor' },
-    school_admin:   { name: 'Dr. Emmanuel Osei',   avatar: 'EO', roleName: 'School Admin' },
-    judge:          { name: 'Prof. Yaw Osei',       avatar: 'YO', roleName: 'Competition Judge' },
-    sponsor:        { name: 'Sampson Cudjoe',       avatar: 'SC', roleName: 'Sponsor Partner' },
-    super_admin:    { name: 'Admin',                 avatar: 'AD', roleName: 'Super Admin' },
-    content_manager:{ name: 'Content Manager',      avatar: 'CM', roleName: 'Content Manager' },
-    reviewer:       { name: 'Reviewer',             avatar: 'RV', roleName: 'Reviewer' },
-    competition_manager:{ name: 'Competition Manager', avatar: 'CP', roleName: 'Competition Manager' },
-    support_admin:  { name: 'Support Agent',        avatar: 'SA', roleName: 'Support Admin' },
-  };
-
   pageTitles: Record<string, string> = {
     'dashboard':    'Dashboard',
     'registration': 'Registration',
@@ -83,7 +72,17 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private lastNavigatedPath = '';
 
-  constructor(private router: Router, public themeService: ThemeService, public contentService: ContentService, public dialogService: DialogService, private renderer: Renderer2, private chatbot: ChatbotService, private apiService: ApiService) {
+  constructor(private router: Router, public themeService: ThemeService, public contentService: ContentService, public dialogService: DialogService, private renderer: Renderer2, private chatbot: ChatbotService, private apiService: ApiService, public currentUserService: CurrentUserService) {
+    this.router.events.subscribe(event => {
+      if (event instanceof NavigationStart) {
+        this.isRouteLoading = true;
+      } else if (event instanceof NavigationEnd || event instanceof NavigationCancel || event instanceof NavigationError) {
+        setTimeout(() => {
+          this.isRouteLoading = false;
+        }, 220);
+      }
+    });
+
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
@@ -158,11 +157,42 @@ export class AppComponent implements OnInit, OnDestroy {
     // PWA can stay on a stale bundle indefinitely.
     this.appUpdate.init();
     this.loadUserProfile();
+    // Tell the user when a save did not reach the server. These writes go through
+    // POST /api/bulk-sync, which is admin-only, so an instructor's course or a
+    // sponsor's payment would 403 and survive only in this browser -- previously
+    // with no indication at all. Deduped per collection so one failed batch does
+    // not produce a stack of identical toasts.
+    this.contentService.writeFailures$
+      .pipe(throttleTime(8000))
+      .subscribe(failure => this.dialogService.toast(failure.message, 'error', 9000));
     if (typeof window !== 'undefined') {
       window.addEventListener('scroll', this.scrollListener, true);
       window.addEventListener('beforeinstallprompt', (e: Event) => {
         e.preventDefault();
       });
+
+      // ── Universal Dissolution of Splash Screen ──
+      const dismissSplash = () => {
+        if (typeof (window as any)?.__dismissNticSplash === 'function') {
+          (window as any).__dismissNticSplash();
+        }
+        const candidates = [
+          document.getElementById('ntic-splash'),
+          document.getElementById('ntic-preboot-splash'),
+          ...Array.from(document.querySelectorAll('.ntic-splash-container'))
+        ].filter(Boolean) as HTMLElement[];
+
+        candidates.forEach(el => {
+          el.classList.add('out', 'ntic-splash-fadeout');
+          el.style.opacity = '0';
+          el.style.pointerEvents = 'none';
+          setTimeout(() => {
+            try { el.remove(); } catch (_) {}
+          }, 750);
+        });
+      };
+
+      setTimeout(dismissSplash, 600);
     }
     // Load support tickets for admin badge only when properly authenticated
     if ((this.currentUser?.roleId === 'super_admin' || this.currentUser?.roleId === 'support_admin') && getAuthValue('activeUserToken')) {
@@ -319,6 +349,9 @@ export class AppComponent implements OnInit, OnDestroy {
     // Drop the guard's server-verified role. Without this, signing back in as a
     // different user in the same tab reused the previous user's role.
     resetVerifiedRoleCache();
+    // Drop the cached identity too, otherwise the next user to sign in on this
+    // tab briefly renders under the previous user's name.
+    this.currentUserService.clear();
     this.idleTimeout.clearStoredActivity();
     this.currentUser = null;
     this.showPasswordSetupModal = false;
@@ -336,45 +369,51 @@ export class AppComponent implements OnInit, OnDestroy {
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
   }
 
+  private readonly roleLabels: Record<string, string> = {
+    judge: 'Competition Judge', sponsor: 'Sponsor Partner', instructor: 'Instructor',
+    content_manager: 'Content Manager', reviewer: 'Reviewer', competition_manager: 'Competition Manager',
+    school_admin: 'School Admin', student: 'Student', super_admin: 'Super Admin',
+    admin: 'Administrator', support_admin: 'Support Admin',
+  };
+
   loadUserProfile(): void {
     const roleId = getAuthValue('activeRoleId');
     const activeEmail = getAuthValue('activeUserEmail') || '';
-    
+
     if (!roleId || !activeEmail) {
       this.currentUser = null;
       return;
     }
-    
-    // Look up real registered user in ContentService
-    const registeredUser = this.contentService.users.find(u => 
-      u.email?.trim().toLowerCase() === activeEmail.trim().toLowerCase() ||
-      u.ticket?.trim().toUpperCase() === activeEmail.trim().toUpperCase()
-    );
 
-    if (registeredUser) {
-      const roleLabels: Record<string, string> = {
-        judge: 'Competition Judge', sponsor: 'Sponsor Partner', instructor: 'Instructor',
-        content_manager: 'Content Manager', reviewer: 'Reviewer', competition_manager: 'Competition Manager',
-        school_admin: 'School Admin', student: 'Student', super_admin: 'Super Admin'
-      };
+    // Ask the server who this is. This used to search `contentService.users`,
+    // which is populated from the admin-only GET /api/users -- so for a student,
+    // judge, sponsor or instructor the lookup always failed and the code below
+    // fell back to `userProfiles[roleId]`, a hardcoded fixture. That is why a real
+    // judge saw "Prof. Yaw Osei" and a real student saw "Kwame Asante".
+    this.currentUserService.ensureLoaded().subscribe(profile => {
+      if (profile) {
+        this.currentUser = {
+          roleId: profile.role || roleId,
+          name: profile.full_name,
+          avatar: this.getInitials(profile.full_name),
+          roleName: this.roleLabels[profile.role] || 'User',
+        };
+        // The server is authoritative about whether a password rotation is due.
+        this.applyPasswordRequirement(profile);
+        return;
+      }
+
+      // Offline or the request failed. Use the name captured at login rather than
+      // a fixture, and only fall back to a generic label -- never to someone
+      // else's name.
+      const storedName = getAuthValue('activeUserName') || '';
       this.currentUser = {
         roleId,
-        name: registeredUser.fullName,
-        avatar: this.getInitials(registeredUser.fullName),
-        roleName: roleLabels[registeredUser.role] || 'User'
+        name: storedName,
+        avatar: this.getInitials(storedName),
+        roleName: this.roleLabels[roleId] || 'User',
       };
-      this.checkFirstTimePasswordRequirement(registeredUser);
-    } else {
-      const storedName = getAuthValue('activeUserName');
-      const profile = this.userProfiles[roleId] || this.userProfiles['super_admin'];
-      const displayName = storedName || profile.name;
-      this.currentUser = { 
-        roleId, 
-        name: displayName,
-        avatar: this.getInitials(displayName),
-        roleName: profile.roleName
-      };
-    }
+    });
   }
 
   // ── Password Setup / Change Flow ──
@@ -390,21 +429,22 @@ export class AppComponent implements OnInit, OnDestroy {
   isSavingPassword = false;
   passwordSetupToast = '';
 
-  checkFirstTimePasswordRequirement(user: any): void {
-    if (!user) return;
-    // Ask the SERVER whether a change is required. The old version guessed from
-    // cached fields (including `user.password === user.otp`, which meant the
-    // plaintext password had to be sitting in local storage to work at all).
-    this.apiService.getMyProfile().subscribe({
-      next: (me) => {
-        this.passwordMinLength = me?.password_min_length || 10;
-        if (me?.must_change_password) {
-          this.isForcedPasswordChange = true;
-          this.showPasswordSetupModal = true;
-        }
-      },
-      error: () => { /* not signed in, or offline - nothing to prompt for */ }
-    });
+  /**
+   * Applies the server's password-rotation requirement.
+   *
+   * Takes the already-fetched profile instead of issuing its own request. The
+   * previous version was only reachable from inside the `if (registeredUser)`
+   * branch of loadUserProfile(), and `registeredUser` was never found for a
+   * non-admin -- so a student or judge issued a temporary password was NEVER
+   * prompted to change it, and that password stayed valid indefinitely.
+   */
+  applyPasswordRequirement(me: MyProfile | null): void {
+    if (!me) return;
+    this.passwordMinLength = me.password_min_length || 10;
+    if (me.must_change_password) {
+      this.isForcedPasswordChange = true;
+      this.showPasswordSetupModal = true;
+    }
   }
 
   /** Opens the modal for a voluntary change (current password required). */
@@ -486,7 +526,11 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'admin_control': return adminRoles.includes(role);
       case 'roster':       return ['school_admin'].includes(role);
       case 'registration': return ['instructor', 'super_admin', 'admin'].includes(role);
-      case 'lms':          return ['student'].includes(role);
+      // `/lms` has a full instructor UI ("My Courses", "Submit for Review") and the
+      // route guard already allows instructors -- but this returned student-only, so
+      // no link was ever rendered and an instructor could only reach it by typing
+      // the URL. Kept in step with ROLE_ACCESS['lms'] in auth.guard.ts.
+      case 'lms':          return ['student', 'instructor'].includes(role);
       case 'competitions': return ['student', 'instructor', 'school_admin', 'judge', 'super_admin', 'admin', 'content_manager', 'competition_manager'].includes(role);
       case 'leaderboard':  return ['student', 'instructor', 'school_admin', 'judge', 'sponsor', ...adminRoles].includes(role);
       case 'talent':       return ['instructor', 'sponsor'].includes(role);

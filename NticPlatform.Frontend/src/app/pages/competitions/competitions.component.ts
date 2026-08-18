@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ContentService, Competition, CompetitionPhase } from '../../services/content.service';
 import { ThemeService } from '../../services/theme.service';
+import { ApiService } from '../../services/api.service';
 import { PublicNavComponent } from '../../components/public-nav/public-nav.component';
 
 @Component({
@@ -163,14 +164,80 @@ export class CompetitionsComponent implements OnInit {
     return !!comp.deadline && (comp.status === 'active' || comp.status === 'registration');
   }
 
+  /**
+   * Registers the signed-in student for a cycle.
+   *
+   * The entire previous implementation was
+   * `this.studentRegisteredMap[comp.id] = true;` -- no HTTP call, no storage, and
+   * no table behind it. The badge flipped to REGISTERED, vanished on refresh, and
+   * no organiser ever saw the sign-up.
+   */
   registerStudentForCycle(comp: Competition): void {
-    this.studentRegisteredMap[comp.id] = true;
+    if (this.registrationBusy[comp.id]) return;
+    this.registrationBusy[comp.id] = true;
+    this.registrationError = '';
+
+    this.apiService.registerForCompetition(comp.id).subscribe({
+      next: () => {
+        this.registrationBusy[comp.id] = false;
+        this.studentRegisteredMap[comp.id] = true;
+      },
+      error: (err: any) => {
+        this.registrationBusy[comp.id] = false;
+        this.registrationError = err?.status === 409
+          ? (err?.error?.detail || 'This cycle is not open for registration.')
+          : err?.status === 403
+            ? 'Only student accounts can register for a cycle.'
+            : err?.status === 401
+              ? 'Please sign in to register.'
+              : 'Could not register you. Please try again.';
+      },
+    });
   }
 
-  constructor(public contentService: ContentService, public themeService: ThemeService) {}
+  /** Withdraws the signed-in student from a cycle. */
+  withdrawStudentFromCycle(comp: Competition): void {
+    if (this.registrationBusy[comp.id]) return;
+    this.registrationBusy[comp.id] = true;
+    this.registrationError = '';
+
+    this.apiService.withdrawFromCompetition(comp.id).subscribe({
+      next: () => {
+        this.registrationBusy[comp.id] = false;
+        this.studentRegisteredMap[comp.id] = false;
+      },
+      error: () => {
+        this.registrationBusy[comp.id] = false;
+        this.registrationError = 'Could not withdraw you. Please try again.';
+      },
+    });
+  }
+
+  registrationBusy: Record<string, boolean> = {};
+  registrationError = '';
+
+  /** Loads which cycles this student is already registered for. */
+  private loadMyRegistrations(): void {
+    if (!this.isStudent) return;
+    this.apiService.getMyCompetitionRegistrations().subscribe({
+      next: rows => {
+        this.studentRegisteredMap = {};
+        for (const r of rows || []) this.studentRegisteredMap[r.competition_id] = true;
+      },
+      error: () => { /* leave the map empty rather than claiming registrations */ },
+    });
+  }
+
+  constructor(
+    public contentService: ContentService,
+    public themeService: ThemeService,
+    private apiService: ApiService
+  ) {}
 
   ngOnInit(): void {
     this.loadCompetitions();
+    // Registration state comes from the server now, so a refresh no longer wipes it.
+    this.loadMyRegistrations();
   }
 
   loadCompetitions(): void {

@@ -685,15 +685,37 @@
       </div>
 
       <div class="detail-actions" *ngIf="isStudent">
-        <button class="btn btn-sm action-btn primary" *ngIf="selectedCompetition.status === 'registration' && !studentRegisteredMap[selectedCompetition.id]" (click)="registerStudentForCycle(selectedCompetition)">
-          <span class="material-symbols-outlined">how_to_reg</span> Register Squad
+        <button class="btn btn-sm action-btn primary"
+                *ngIf="selectedCompetition.status === 'registration' && !studentRegisteredMap[selectedCompetition.id]"
+                [disabled]="registrationBusy[selectedCompetition.id]"
+                (click)="registerStudentForCycle(selectedCompetition)">
+          <span class="material-symbols-outlined">how_to_reg</span>
+          {{ registrationBusy[selectedCompetition.id] ? 'Registering...' : 'Register Squad' }}
         </button>
         <span class="registered-badge" *ngIf="studentRegisteredMap[selectedCompetition.id]">
           <span class="material-symbols-outlined">check_circle</span> Registered for Cycle
         </span>
-        <button class="btn btn-sm action-btn primary" *ngIf="selectedCompetition.status === 'active'">
+        <!-- Withdraw is now possible because registration is a real record rather
+             than an in-memory flag. -->
+        <button class="btn btn-sm action-btn"
+                *ngIf="studentRegisteredMap[selectedCompetition.id]"
+                [disabled]="registrationBusy[selectedCompetition.id]"
+                (click)="withdrawStudentFromCycle(selectedCompetition)">
+          <span class="material-symbols-outlined">cancel</span> Withdraw
+        </button>
+        <!-- "Submit Entry" was here with no (click) handler, so it did nothing.
+             Competition entries are submitted through the LMS assignment flow, so
+             this now goes there instead of pretending to act. -->
+        <button class="btn btn-sm action-btn primary"
+                *ngIf="selectedCompetition.status === 'active' && studentRegisteredMap[selectedCompetition.id]"
+                routerLink="/lms">
           <span class="material-symbols-outlined">upload_file</span> Submit Entry
         </button>
+      </div>
+
+      <div class="detail-actions" *ngIf="isStudent && registrationError"
+           style="background:rgba(239,68,68,0.1);border:1px solid #ef4444;color:#ef4444;padding:10px 12px;border-radius:8px;font-size:12.5px;">
+        {{ registrationError }}
       </div>
 
       <!-- Stat cards -->

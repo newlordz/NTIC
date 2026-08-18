@@ -4,7 +4,8 @@ import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService, LmsSubmission } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
-import { ApiService } from '../../services/api.service';
+import { ApiService, MyEnrolledCourse, LmsAssignment, MySubmission } from '../../services/api.service';
+import { CurrentUserService } from '../../services/current-user.service';
 
 @Component({
   selector: 'app-lms',
@@ -16,7 +17,7 @@ import { ApiService } from '../../services/api.service';
 export class LmsComponent implements OnInit {
   selectedUploadFiles: { id: string; name: string }[] = [];
 
-  constructor(public contentService: ContentService, public fileStorage: FileStorageService, private apiService: ApiService) {}
+  constructor(public contentService: ContentService, public fileStorage: FileStorageService, private apiService: ApiService, public currentUserService: CurrentUserService) {}
 
   activeRoleId = 'student';
 
@@ -206,98 +207,219 @@ export class LmsComponent implements OnInit {
   }
 
   // ── Student Portal ──────────────────────────────────────────
+  /**
+   * The signed-in student.
+   *
+   * Rewritten to read GET /api/users/me. The previous version searched
+   * `contentService.users` (admin-only, so always empty for a student) and then
+   * fell through to two fabricated identities -- the last of which was the
+   * literal "Kwame Asante / Achimota School".
+   *
+   * Critically, the middle branch built its id as
+   * `'NTIC-STU-' + Math.floor(1000 + Math.random() * 9000)`. Because this is a
+   * GETTER, that produced a NEW id on every property access: three different
+   * values inside a single completeActiveLesson() call. Progress was saved under
+   * keys nothing ever read back, and submissions failed their foreign key every
+   * time. `student_id` is now issued and kept by the server.
+   */
   get studentProfile() {
-    const activeEmail = this.currentUserEmail;
-    const activeUser = this.contentService.users.find(u => 
-      (u.email && u.email.trim().toLowerCase() === activeEmail) ||
-      (u.ticket && u.ticket.trim().toLowerCase() === activeEmail) ||
-      (u.id && u.id.trim().toLowerCase() === activeEmail) ||
-      (u.fullName && u.fullName.trim().toLowerCase() === activeEmail)
-    );
+    const me = this.currentUserService.profile();
 
-    if (activeUser) {
-      const tId = (activeUser.track || '').toLowerCase();
+    if (me) {
+      const tId = (me.track || '').toLowerCase();
       const resolvedTrackId = tId.includes('robot') ? 'robotics' :
                               tId.includes('ai') || tId.includes('data') ? 'ai' :
                               tId.includes('cyber') || tId.includes('security') ? 'cyber' :
                               tId.includes('innovat') ? 'innovation' : 'coding';
-
       return {
-        name: activeUser.fullName,
-        id: activeUser.ticket || activeUser.id || 'NTIC-STU-8263',
-        school: activeUser.organization || 'Independent Competitor',
-        track: activeUser.track || 'Coding & Algorithms',
+        name: me.full_name || me.email,
+        // Stable, server-issued, and the id every student-owned record keys on.
+        id: me.student_id || me.id,
+        displayId: me.ticket || me.student_id || me.id,
+        school: me.organization || 'Independent Competitor',
+        track: me.track || 'Unassigned',
         trackId: resolvedTrackId,
-        avatar: (activeUser.fullName || 'CS').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
-        email: activeUser.email || activeEmail,
+        avatar: this.currentUserService.initials() || 'ST',
+        email: me.email,
+        status: me.status || '',
+        // No mentor-assignment model exists yet, so these are left empty rather
+        // than showing the invented "Efua Mensah / e.mensah@ntic.gov.gh".
         mentor: '',
         mentorAvatar: '',
         mentorEmail: ''
       };
     }
 
-    if (activeEmail) {
-      const cleanName = activeEmail.includes('@')
-        ? activeEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-        : activeEmail.toUpperCase();
-      return {
-        name: cleanName || 'Registered Student',
-        id: activeEmail.startsWith('NTIC-') ? activeEmail.toUpperCase() : 'NTIC-STU-' + Math.floor(1000 + Math.random() * 9000),
-        school: 'Registered Competitor Institution',
-        track: 'Coding & Algorithms',
-        trackId: 'coding',
-        avatar: (cleanName || 'ST').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
-        email: activeEmail,
-        mentor: 'Efua Mensah',
-        mentorAvatar: 'EM',
-        mentorEmail: 'e.mensah@ntic.gov.gh'
-      };
-    }
-
+    // Not loaded yet (or offline). Show what is genuinely known and nothing more
+    // -- never another person's name.
+    const activeEmail = this.currentUserEmail;
     return {
-      name: 'Kwame Asante',
-      id: 'NTIC-STU-0012',
-      school: 'Achimota School',
-      track: 'Coding & Algorithms',
+      name: getAuthValue('activeUserName') || '',
+      id: '',
+      displayId: getAuthValue('activeUserTicket') || '',
+      school: '',
+      track: '',
       trackId: 'coding',
-      avatar: 'KA',
-      email: 'kwame.asante@student.ntic.gov.gh',
-      mentor: 'Efua Mensah',
-      mentorAvatar: 'EM',
-      mentorEmail: 'e.mensah@achimota.edu.gh'
+      avatar: '',
+      email: activeEmail || '',
+      status: '',
+      mentor: '',
+      mentorAvatar: '',
+      mentorEmail: ''
     };
   }
 
-  getCourseProgress(courseTitle: string): number {
-    const key = `ntic_progress_${this.studentProfile.id}_${courseTitle}`;
-    const saved = localStorage.getItem(key);
-    if (saved !== null) {
-      return parseInt(saved, 10) || 0;
+  // ── Server-backed student state ───────────────────────────────────────
+  // These replace derived-from-localStorage getters. Enrolment, progress, grades
+  // and the assignment catalogue are all server state now.
+  myEnrolments: MyEnrolledCourse[] = [];
+  myCourseAssignments: LmsAssignment[] = [];
+  mySubmissions: MySubmission[] = [];
+  availableCourses: any[] = [];
+  isLoadingStudentData = false;
+  studentDataError = '';
+  isEnrolling: Record<string, boolean> = {};
+
+  /** Loads everything the student portal needs. */
+  loadStudentData(): void {
+    if (this.activeRoleId !== 'student') return;
+    this.isLoadingStudentData = true;
+    this.studentDataError = '';
+
+    this.apiService.getMyEnrolments().subscribe({
+      next: rows => {
+        this.myEnrolments = rows || [];
+        this.isLoadingStudentData = false;
+        this.recomputeAvailableCourses();
+        this.loadAssignmentsForMyCourses();
+      },
+      error: err => {
+        this.isLoadingStudentData = false;
+        this.studentDataError = err?.status === 403
+          ? 'This area is for student accounts.'
+          : 'Could not load your courses. Check your connection and try again.';
+      },
+    });
+
+    this.apiService.getMySubmissions().subscribe({
+      next: rows => (this.mySubmissions = rows || []),
+      error: () => { /* surfaced by the enrolment call above */ },
+    });
+  }
+
+  /** Courses the student could still join. */
+  private recomputeAvailableCourses(): void {
+    const enrolled = new Set(this.myEnrolments.map(e => e.course_id));
+    this.availableCourses = (this.contentService.lmsCourses || [])
+      .filter((c: any) => !enrolled.has(c.id))
+      .filter((c: any) => (c.approvalStatus || c.approval_status || 'approved') === 'approved');
+  }
+
+  private loadAssignmentsForMyCourses(): void {
+    if (!this.myEnrolments.length) {
+      this.myCourseAssignments = [];
+      return;
     }
-    return 0;
+    // One request per enrolled course, merged. Small n, and it keeps the endpoint
+    // simple rather than adding a multi-id filter.
+    const collected: LmsAssignment[] = [];
+    let pending = this.myEnrolments.length;
+    for (const e of this.myEnrolments) {
+      this.apiService.getLmsAssignments(e.course_id).subscribe({
+        next: rows => {
+          collected.push(...(rows || []));
+          if (--pending === 0) this.myCourseAssignments = collected;
+        },
+        error: () => { if (--pending === 0) this.myCourseAssignments = collected; },
+      });
+    }
+  }
+
+  enrol(courseId: string): void {
+    if (this.isEnrolling[courseId]) return;
+    this.isEnrolling[courseId] = true;
+    this.apiService.enrolOnCourse(courseId).subscribe({
+      next: () => {
+        this.isEnrolling[courseId] = false;
+        this.loadStudentData();
+      },
+      error: err => {
+        this.isEnrolling[courseId] = false;
+        this.studentDataError = err?.error?.detail
+          || 'Could not enrol you on that course. Please try again.';
+      },
+    });
+  }
+
+  withdraw(courseId: string): void {
+    if (this.isEnrolling[courseId]) return;
+    this.isEnrolling[courseId] = true;
+    this.apiService.withdrawFromCourse(courseId).subscribe({
+      next: () => {
+        this.isEnrolling[courseId] = false;
+        this.loadStudentData();
+      },
+      error: err => {
+        this.isEnrolling[courseId] = false;
+        this.studentDataError = err?.error?.detail || 'Could not withdraw you from that course.';
+      },
+    });
+  }
+
+  /** Assignments for one enrolled course, with this student's submission attached. */
+  assignmentsForCourse(courseId: string): any[] {
+    return this.myCourseAssignments
+      .filter(a => a.course_id === courseId)
+      .map(a => {
+        const submission = this.mySubmissions.find(s => s.assignment_id === a.id);
+        return {
+          ...a,
+          submission,
+          isSubmitted: !!submission,
+          isGraded: !!submission && submission.score !== null,
+        };
+      });
+  }
+
+  /** True once an instructor has marked at least one piece of work. */
+  get hasAnyGrade(): boolean {
+    return this.mySubmissions.some(s => s.score !== null);
+  }
+
+  get averageGrade(): number | null {
+    const graded = this.mySubmissions.filter(s => s.score !== null);
+    if (!graded.length) return null;
+    const total = graded.reduce((sum, s) => sum + (s.score || 0), 0);
+    return Math.round(total / graded.length);
   }
 
   get studentCourses() {
-    return this.contentService.lmsCourses.map((c: any) => {
-      const progress = this.getCourseProgress(c.title);
-      return {
-        title: c.title,
-        track: c.track,
-        icon: c.icon,
-        totalModules: c.modules || 0,
-        color: 'primary',
-        progress,
-        module: c.description || '',
-        lastActive: 'Recently Active',
-        badgeText: progress >= 100 ? 'Completed' : 'In Progress',
-        buttonText: progress === 0 ? 'START COURSE →' : 'RESUME COURSE'
-      };
-    });
+    // Reads enrolments, not "every course on the platform" as it used to.
+    return this.myEnrolments.map(e => ({
+      courseId: e.course_id,
+      title: e.title,
+      track: e.track,
+      icon: e.icon,
+      totalModules: e.modules || 0,
+      color: 'primary',
+      progress: e.progress_pct || 0,
+      module: e.description || '',
+      level: e.level,
+      lastActive: e.last_active ? 'Last active ' + e.last_active.slice(0, 10) : 'Not started',
+      badgeText: (e.progress_pct || 0) >= 100 ? 'Completed' : 'In Progress',
+      buttonText: (e.progress_pct || 0) === 0 ? 'START COURSE →' : 'RESUME COURSE',
+      assignmentCount: e.assignment_count || 0,
+    }));
   }
 
   get primaryCourseTitle(): string {
     const courses = this.studentCourses;
-    return courses && courses.length > 0 ? courses[0].title : 'Enrolled Course Track';
+    return courses && courses.length > 0 ? courses[0].title : 'No course yet';
+  }
+
+  getCourseProgress(courseTitle: string): number {
+    const match = this.myEnrolments.find(e => e.title === courseTitle);
+    return match ? (match.progress_pct || 0) : 0;
   }
 
   getCourseModules(courseTitle: string) {
@@ -305,10 +427,13 @@ export class LmsComponent implements OnInit {
     if (!course) return [];
     const progress = this.getCourseProgress(courseTitle || '');
     const totalModules = course.modules || 0;
+    if (!totalModules) return [];
     return Array.from({ length: totalModules }, (_, i) => {
       const completedThreshold = (i + 1) * (100 / totalModules);
       return {
         id: String(i + 1),
+        // NOTE: real module titles live in `lms_modules`, which has no GET
+        // endpoint yet (Phase 2). Until then these are positional placeholders.
         title: `Module ${i + 1}`,
         desc: '',
         status: progress === 0 ? (i === 0 ? 'active' : 'pending') :
@@ -323,42 +448,86 @@ export class LmsComponent implements OnInit {
     this.lessonSuccessMessage = '';
   }
 
+  /**
+   * Marks a module complete and persists progress server-side.
+   *
+   * The old version wrote to localStorage under a key built from a randomly
+   * regenerated id, sent `student_id` from the client (which the server trusted),
+   * and showed its success message from a `setTimeout` that fired regardless of
+   * whether the request succeeded -- the `.subscribe()` had no error handler at
+   * all.
+   */
   completeActiveLesson(): void {
     if (!this.activeLessonCourse) return;
-    const current = this.getCourseProgress(this.activeLessonCourse.title);
-    const updated = Math.min(100, current + 25);
-    const key = `ntic_progress_${this.studentProfile.id}_${this.activeLessonCourse.title}`;
-    localStorage.setItem(key, updated.toString());
-    this.apiService.saveLmsProgress({ student_id: this.studentProfile.id, course_title: this.activeLessonCourse.title, progress_pct: updated, completed_modules: Math.floor(updated / 25) }).subscribe();
-    this.lessonSuccessMessage = `Module completed successfully! Course progress increased to ${updated}%.`;
-    setTimeout(() => {
-      this.activeLessonCourse = null;
-      this.lessonSuccessMessage = '';
-    }, 1800);
+    const title = this.activeLessonCourse.title;
+    const total = this.activeLessonCourse.totalModules || 4;
+    const step = total > 0 ? Math.floor(100 / total) : 25;
+    const current = this.getCourseProgress(title);
+    const updated = Math.min(100, current + step);
+    const completedModules = total > 0 ? Math.round((updated / 100) * total) : 0;
+
+    this.isSavingProgress = true;
+    this.lessonSuccessMessage = '';
+    this.lessonErrorMessage = '';
+
+    this.apiService.saveMyProgress(title, updated, completedModules).subscribe({
+      next: () => {
+        this.isSavingProgress = false;
+        this.lessonSuccessMessage = `Module completed. Course progress is now ${updated}%.`;
+        // Refresh so the card, the tile and any other view agree with the server.
+        this.apiService.getMyEnrolments().subscribe({
+          next: rows => (this.myEnrolments = rows || []),
+          error: () => { /* keep showing the optimistic figure */ },
+        });
+        setTimeout(() => {
+          this.activeLessonCourse = null;
+          this.lessonSuccessMessage = '';
+        }, 1600);
+      },
+      error: () => {
+        this.isSavingProgress = false;
+        // Say it failed instead of celebrating. Progress is not saved.
+        this.lessonErrorMessage = 'Could not save your progress. Please try again.';
+      },
+    });
   }
+
+  isSavingProgress = false;
+  lessonErrorMessage = '';
 
   closeLessonModal(): void {
     this.activeLessonCourse = null;
+    this.lessonErrorMessage = '';
   }
 
+  /**
+   * The student's submission history, with grades.
+   *
+   * Was `contentService.submissions.filter(s => s.student === studentProfile.name)`
+   * over a localStorage cache whose backend rows key on a student UUID -- so it
+   * could never match a name and was always empty.
+   */
   get studentSubmissions(): any[] {
-    return this.contentService.submissions
-      .filter(s => s.student === this.studentProfile.name)
-      .map(s => ({
-        assignment: s.assignment,
-        file: s.file,
-        date: s.time,
-        status: s.status,
-        feedback: s.feedback || (s.status === 'pending' ? 'Awaiting mentor evaluation' : ''),
-        grade: s.score
-      }));
+    return this.mySubmissions.map(s => ({
+      assignment: s.assignment_title || 'Assignment',
+      course: s.course_title,
+      file: s.url || s.content?.slice(0, 60) || '',
+      date: s.submitted_at,
+      status: s.score !== null ? 'graded' : 'pending',
+      feedback: s.feedback || (s.score === null ? 'Awaiting instructor evaluation' : ''),
+      grade: s.score,
+      maxScore: s.max_score,
+    }));
   }
 
-  newSubmission = {
+  // Was { courseTitle, assignmentName, fileName, notes } where assignmentName was
+  // free text fuzzy-matched against a localStorage list. Submissions now attach to
+  // a real assignment id.
+  newSubmission: { courseTitle: string; assignmentId: string; notes: string; url: string } = {
     courseTitle: '',
-    assignmentName: '',
-    fileName: '',
-    notes: ''
+    assignmentId: '',
+    notes: '',
+    url: ''
   };
 
   showUploadSuccess = false;
@@ -407,7 +576,6 @@ export class LmsComponent implements OnInit {
     const id = this.fileStorage.generateId();
     await this.fileStorage.store(id, file);
     this.selectedUploadFiles = [...this.selectedUploadFiles, { id, name: file.name }];
-    this.newSubmission.fileName = file.name;
   }
 
   removeUploadFile(index: number): void {
@@ -428,99 +596,79 @@ export class LmsComponent implements OnInit {
     } else {
       this.activeTab = 'courses';
     }
+    // studentProfile depends on this; without it the page would render blank
+    // identity fields on a cold load.
+    this.currentUserService.ensureLoaded().subscribe(() => this.loadStudentData());
   }
 
+  /**
+   * Submits work for a specific assignment.
+   *
+   * The previous version could not persist anything:
+   *   1. POST /api/submissions -- student_id is FK -> students(id) and the client
+   *      sent a ticket/random string, so this ALWAYS returned 400. The only
+   *      reaction was a console.error.
+   *   2. saveSubmissions() / saveLmsSubmissions() -- both route through
+   *      POST /api/bulk-sync, which is admin-only, so both 403'd for a student
+   *      and the error was swallowed.
+   *   3. `showUploadSuccess = true` ran unconditionally, so the green
+   *      "Assignment submitted successfully!" banner appeared every time even
+   *      though nothing had been stored anywhere but this browser.
+   *
+   * It also took a free-text assignment NAME and tried to fuzzy-match it against
+   * a localStorage list. Submissions are now tied to a real assignment id.
+   */
   submitAssignment(): void {
-    if (!this.newSubmission.assignmentName || !this.selectedUploadFiles.length) {
-      this.submissionError = 'Please enter assignment name and upload or select a file.';
+    if (!this.newSubmission.assignmentId) {
+      this.submissionError = 'Choose which assignment you are submitting for.';
       return;
     }
+    const notes = (this.newSubmission.notes || '').trim();
+    const link = (this.newSubmission.url || '').trim();
+    if (!notes && !link && !this.selectedUploadFiles.length) {
+      this.submissionError = 'Add a link to your work, or describe what you are submitting.';
+      return;
+    }
+
+    // Files are held in IndexedDB and are not uploaded anywhere -- there is no
+    // file-serving endpoint yet. Record their names in the submission text so a
+    // grader at least knows what was produced, rather than implying the bytes
+    // were delivered.
+    const fileNote = this.selectedUploadFiles.length
+      ? `Files prepared locally: ${this.selectedUploadFiles.map(f => f.name).join(', ')}`
+      : '';
+    const content = [notes, fileNote].filter(Boolean).join(' | ');
+
+    this.isSubmittingWork = true;
     this.submissionError = '';
+    this.showUploadSuccess = false;
 
-    const subId = 'sub-' + Date.now();
-
-      // --- INTEGRATION: POSTGRESQL BACKEND ---
-      try {
-        this.apiService.createSubmission({
-          student_id: this.studentProfile.id || 'stu-test',
-          source_code_path: this.newSubmission.fileName,
-          video_url: ''
-        }).subscribe({
-          next: (res) => {
-            console.log('Successfully saved submission to PostgreSQL DB:', res);
-            const currentSubs = [...this.contentService.submissions];
-            const idx = currentSubs.findIndex(s => s.id === subId);
-            if (idx !== -1 && res && res.id) {
-              currentSubs[idx] = { ...currentSubs[idx], backendId: res.id };
-              this.contentService.saveSubmissions(currentSubs);
-            }
-          },
-          error: (err) => console.error('Failed to save submission to PostgreSQL:', err)
+    this.apiService.submitAssignmentWork(this.newSubmission.assignmentId, content, link).subscribe({
+      next: () => {
+        this.isSubmittingWork = false;
+        this.showUploadSuccess = true;
+        this.selectedUploadFiles = [];
+        this.newSubmission = { courseTitle: '', assignmentId: '', notes: '', url: '' };
+        // Pull the submission back so the history list and any grade are real.
+        this.apiService.getMySubmissions().subscribe({
+          next: rows => (this.mySubmissions = rows || []),
+          error: () => { /* history refresh only */ },
         });
-      } catch(e) {}
-      // ---------------------------------------
-
-    const currentSubmissions = [...this.contentService.submissions];
-    const newSub = {
-      id: subId,
-      student: this.studentProfile.name,
-      school: this.studentProfile.school,
-      assignment: this.newSubmission.assignmentName,
-      track: this.studentProfile.track,
-      file: this.selectedUploadFiles.length
-        ? this.selectedUploadFiles.map(f => `${f.id}::${f.name}`).join('||')
-        : this.newSubmission.fileName,
-      score: null,
-      status: 'pending' as const,
-      time: new Date().toISOString(),
-      feedback: 'Submitted successfully. Awaiting mentor evaluation.',
-      backendId: ''
-    };
-    currentSubmissions.unshift(newSub);
-    this.contentService.saveSubmissions(currentSubmissions);
-
-    const matchedAssignment = this.contentService.lmsAssignments.find(a =>
-      a.title.toLowerCase().includes(this.newSubmission.assignmentName.toLowerCase()) ||
-      this.newSubmission.assignmentName.toLowerCase().includes(a.title.toLowerCase())
-    );
-    const matchedCourse = this.contentService.lmsCourses.find(c =>
-      c.title === this.newSubmission.courseTitle
-    );
-    const currentLms = [...this.contentService.lmsSubmissions];
-    currentLms.unshift({
-      id: 'lms-' + subId,
-      assignmentId: matchedAssignment?.id || 'asgn-unknown',
-      courseId: matchedCourse?.id || matchedAssignment?.courseId || 'crs-unknown',
-      studentId: this.studentProfile.id,
-      studentName: this.studentProfile.name,
-      studentEmail: this.studentProfile.email,
-      submittedAt: new Date().toISOString(),
-      content: this.newSubmission.notes || `Submitted assignment: ${this.newSubmission.assignmentName}`,
-      url: '',
-      status: 'submitted',
+        setTimeout(() => { this.showUploadSuccess = false; }, 4000);
+      },
+      error: (err: any) => {
+        this.isSubmittingWork = false;
+        // Report the real reason instead of always claiming success.
+        this.submissionError = err?.status === 403
+          ? 'Enrol on this course before submitting work for it.'
+          : err?.status === 404
+            ? 'That assignment no longer exists. Refresh and try again.'
+            : err?.status === 422
+              ? (err?.error?.detail || 'Add a link or describe your work before submitting.')
+              : 'Could not submit your work. Nothing was saved -- please try again.';
+      },
     });
-    this.contentService.saveLmsSubmissions(currentLms);
-
-    const currentAudit = [...this.contentService.auditLogs];
-    currentAudit.unshift({
-      action: `New submission by ${this.studentProfile.name}: "${this.newSubmission.assignmentName}" -- ${this.newSubmission.fileName}`,
-      user: this.studentProfile.email || this.studentProfile.name,
-      time: new Date().toISOString(),
-      type: 'approval'
-    });
-    this.contentService.saveAuditLogs(currentAudit);
-
-    this.showUploadSuccess = true;
-    this.selectedUploadFiles = [];
-    this.newSubmission = {
-      courseTitle: this.studentCourses[0]?.title || '',
-      assignmentName: '',
-      fileName: '',
-      notes: ''
-    };
-
-    setTimeout(() => {
-      this.showUploadSuccess = false;
-    }, 4000);
   }
+
+  isSubmittingWork = false;
 }

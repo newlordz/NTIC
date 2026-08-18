@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 import uuid
 
 from tests.conftest import ADMIN_PASSWORD
@@ -2401,3 +2401,1541 @@ class TestSelfServiceProfile:
         resp = client.patch("/api/users/me", headers=self._auth(token),
                             json={"bio": "b", "sector": "Technology"})
         assert resp.json()["updated"] == ["bio", "sector"]
+
+
+class TestIdentityFoundation:
+    """One identity, one id.
+
+    Two separate defects made every non-admin account effectively anonymous:
+
+    1. `GET /api/users` is admin-only, but the sidebar, the dashboard greeting,
+       the LMS profile and the profile prefill all looked for the signed-in user
+       in that list. For a student/judge/sponsor/instructor the lookup failed and
+       each surface fell back to a hardcoded fixture -- a real student was
+       greeted "Welcome back, Administrator".
+
+    2. `assignment_submissions.student_id` is FK -> `students(id)`, but no
+       `students` row was ever created for a normally-registered user, so every
+       student submission failed with a 400. The client papered over it with
+       `'NTIC-STU-' + Math.random()` *inside a getter*, yielding a different id
+       on every read.
+
+    GET /api/users/me is the fix for both: it is callable by every role and it
+    provisions a stable `students` row keyed by the user's own id.
+    """
+
+    PASSWORD = "Qv4$harbourLine"
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _make_user(self, client, admin_token, role="student", name="Adwoa Nyarko"):
+        email = f"ident-{uuid.uuid4().hex[:8]}@id.test"
+        resp = client.post("/api/users", headers=self._auth(admin_token), json={
+            "email": email, "full_name": name, "role": role, "password": self.PASSWORD,
+        })
+        assert resp.status_code in (200, 201), resp.text
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": self.PASSWORD})
+        assert login.status_code == 200, login.text
+        return login.json()["token"], email
+
+    def _me(self, client, token):
+        resp = client.get("/api/users/me", headers=self._auth(token))
+        assert resp.status_code == 200, resp.text
+        return resp.json()
+
+    # ── every role can identify itself ──────────────────────────────────
+
+    @pytest.mark.parametrize("role", ["student", "judge", "sponsor", "instructor"])
+    def test_every_role_can_read_its_own_identity(self, client, admin_token, role):
+        """The bug: these roles cannot call GET /api/users, so without this
+        endpoint they had no way to learn their own name."""
+        token, email = self._make_user(client, admin_token, role, "Kofi Mensah")
+        me = self._me(client, token)
+        assert me["email"] == email
+        assert me["full_name"] == "Kofi Mensah"
+        assert me["role"] == role
+        assert me["id"]
+
+    def test_non_admin_still_cannot_list_all_users(self, client, admin_token):
+        """/api/users/me must not become a way around the admin-only roster."""
+        token, _e = self._make_user(client, admin_token, "student")
+        assert client.get("/api/users", headers=self._auth(token)).status_code == 403
+
+    def test_me_exposes_track_for_dashboard_filters(self, client, admin_token):
+        """`track` is read by the student LMS profile and the judge dashboard but
+        had no column, so those surfaces always saw undefined."""
+        token, _e = self._make_user(client, admin_token, "judge", "Yaw Osei")
+        assert self._me(client, token)["track"] == ""
+        client.patch("/api/users/me", headers=self._auth(token), json={"track": "Robotics"})
+        assert self._me(client, token)["track"] == "Robotics"
+
+    # ── stable student id ───────────────────────────────────────────────
+
+    def test_student_gets_a_student_id(self, client, admin_token):
+        token, _e = self._make_user(client, admin_token, "student")
+        assert self._me(client, token)["student_id"]
+
+    def test_student_id_equals_user_id(self, client, admin_token):
+        """Keyed by users.id deliberately, so one id means one person in
+        students, assignment_submissions, enrolments, submissions and progress."""
+        token, _e = self._make_user(client, admin_token, "student")
+        me = self._me(client, token)
+        assert me["student_id"] == me["id"]
+
+    def test_student_id_is_stable_across_calls(self, client, admin_token):
+        """The regression this locks down: the old client-side id was random per
+        read, so progress was written under keys that were never read back."""
+        token, _e = self._make_user(client, admin_token, "student")
+        first = self._me(client, token)["student_id"]
+        for _ in range(3):
+            assert self._me(client, token)["student_id"] == first
+
+    def test_provisioning_is_idempotent(self, client, admin_token):
+        """Repeated calls must not pile up duplicate students rows."""
+        token, email = self._make_user(client, admin_token, "student")
+        for _ in range(3):
+            self._me(client, token)
+        listing = client.get("/api/students", headers=self._auth(token))
+        assert listing.status_code == 200
+        mine = [s for s in listing.json() if (s.get("email") or "").lower() == email.lower()]
+        assert len(mine) == 1
+
+    def test_student_record_carries_the_real_name(self, client, admin_token):
+        """students splits into first/last (both NOT NULL); a single full_name
+        must not blow up the insert."""
+        token, email = self._make_user(client, admin_token, "student", "Akosua Boateng Mensah")
+        self._me(client, token)
+        listing = client.get("/api/students", headers=self._auth(token)).json()
+        mine = next(s for s in listing if (s.get("email") or "").lower() == email.lower())
+        assert mine["first_name"] == "Akosua"
+        assert mine["last_name"] == "Boateng Mensah"
+
+    def test_single_word_name_still_provisions(self, client, admin_token):
+        """last_name is NOT NULL, so a mononym must not fail the insert."""
+        token, email = self._make_user(client, admin_token, "student", "Adjoa")
+        assert self._me(client, token)["student_id"]
+        listing = client.get("/api/students", headers=self._auth(token)).json()
+        mine = next(s for s in listing if (s.get("email") or "").lower() == email.lower())
+        assert mine["first_name"] == "Adjoa"
+        assert mine["last_name"]
+
+    def test_non_students_get_no_student_id(self, client, admin_token):
+        """A judge or sponsor is not a learner; provisioning them would pollute
+        the students table and inflate every student count."""
+        for role in ("judge", "sponsor", "instructor"):
+            token, _e = self._make_user(client, admin_token, role)
+            assert self._me(client, token)["student_id"] is None
+
+    def test_existing_student_row_is_linked_not_duplicated(self, client, admin_token):
+        """An imported/seeded students row for the same email must be adopted,
+        not shadowed by a second row."""
+        email = f"preexist-{uuid.uuid4().hex[:8]}@id.test"
+        created = client.post("/api/students", headers=self._auth(admin_token), json={
+            "first_name": "Esi", "last_name": "Owusu", "email": email, "track": "Coding",
+        })
+        assert created.status_code in (200, 201), created.text
+        existing_id = created.json()["id"]
+
+        resp = client.post("/api/users", headers=self._auth(admin_token), json={
+            "email": email, "full_name": "Esi Owusu", "role": "student",
+            "password": self.PASSWORD,
+        })
+        assert resp.status_code in (200, 201), resp.text
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        token = client.post("/api/login", json={
+            "email": email, "password": self.PASSWORD,
+        }).json()["token"]
+
+        assert self._me(client, token)["student_id"] == existing_id
+        listing = client.get("/api/students", headers=self._auth(token)).json()
+        assert len([s for s in listing if (s.get("email") or "").lower() == email.lower()]) == 1
+
+    def test_me_requires_authentication(self, client):
+        assert client.get("/api/users/me").status_code == 401
+
+class TestSelfServiceOnboarding:
+    """POST /api/approvals/mine -- a user filing their own profile for review.
+
+    The profile-completion page always tried to do this, but it went through
+    `contentService.saveApprovals()` -> `POST /api/bulk-sync`, which is
+    admin-only. So for the judges and sponsors who actually complete that form the
+    write 403'd, the error was discarded by `error: () => {}`, and their
+    application never reached the admin queue -- while the UI reported success.
+    """
+
+    PASSWORD = "Rk8@lanternWade"
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _make_user(self, client, admin_token, role="judge", name="Nana Adjei"):
+        email = f"onboard-{uuid.uuid4().hex[:8]}@apr.test"
+        resp = client.post("/api/users", headers=self._auth(admin_token), json={
+            "email": email, "full_name": name, "role": role, "password": self.PASSWORD,
+        })
+        assert resp.status_code in (200, 201), resp.text
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": self.PASSWORD})
+        assert login.status_code == 200, login.text
+        return login.json()["token"], email
+
+    def _pending_for(self, client, admin_token, email):
+        rows = client.get("/api/approvals", headers=self._auth(admin_token)).json()
+        return [r for r in rows if (r.get("contact") or "").lower() == email.lower()]
+
+    def test_judge_onboarding_reaches_the_admin_queue(self, client, admin_token):
+        token, email = self._make_user(client, admin_token, "judge")
+        assert client.post("/api/approvals/mine", headers=self._auth(token),
+                           json={}).status_code == 201
+        rows = self._pending_for(client, admin_token, email)
+        assert len(rows) == 1
+        assert rows[0]["status"] == "pending"
+
+    def test_judge_is_typed_as_judge_not_instructor(self, client, admin_token):
+        """The old client sent type 'Instructor Access' for a judge, filing them
+        in the wrong queue."""
+        token, email = self._make_user(client, admin_token, "judge")
+        client.post("/api/approvals/mine", headers=self._auth(token), json={})
+        assert self._pending_for(client, admin_token, email)[0]["type"] == "Judge Access"
+
+    def test_sponsor_is_typed_as_sponsor_not_team_addition(self, client, admin_token):
+        """The old client sent 'Team Addition' for a sponsor, so sponsor
+        onboarding appeared as a request to add a competition team."""
+        token, email = self._make_user(client, admin_token, "sponsor")
+        client.post("/api/approvals/mine", headers=self._auth(token), json={})
+        assert self._pending_for(client, admin_token, email)[0]["type"] == "Sponsor Access"
+
+    def test_instructor_is_typed_as_instructor(self, client, admin_token):
+        token, email = self._make_user(client, admin_token, "instructor")
+        client.post("/api/approvals/mine", headers=self._auth(token), json={})
+        assert self._pending_for(client, admin_token, email)[0]["type"] == "Instructor Access"
+
+    def test_details_come_from_the_saved_profile(self, client, admin_token):
+        """The reviewer must see what the applicant actually saved, not whatever
+        the client chose to send."""
+        token, email = self._make_user(client, admin_token, "sponsor", "Efua Danso")
+        client.patch("/api/users/me", headers=self._auth(token), json={
+            "organization": "Voltic Ghana", "sector": "Manufacturing",
+            "tier": "Gold Partner", "rep_name": "Efua Danso", "phone": "+233201234567",
+        })
+        client.post("/api/approvals/mine", headers=self._auth(token), json={})
+        row = self._pending_for(client, admin_token, email)[0]
+        assert row["entity"] == "Voltic Ghana"
+        assert row["details"]["sector"] == "Manufacturing"
+        assert row["details"]["tier"] == "Gold Partner"
+        assert row["details"]["phone"] == "+233201234567"
+
+    def test_identity_cannot_be_forged(self, client, admin_token):
+        """Nothing identifying the applicant is read from the body, so extra
+        fields cannot redirect the application to another account or role."""
+        token, email = self._make_user(client, admin_token, "judge", "Real Judge")
+        other = f"victim-{uuid.uuid4().hex[:6]}@apr.test"
+        client.post("/api/approvals/mine", headers=self._auth(token), json={
+            "notes": "x", "contact": other, "type": "Sponsor Access",
+            "entity": "Not Mine", "role": "super_admin",
+        })
+        row = self._pending_for(client, admin_token, email)[0]
+        assert row["type"] == "Judge Access"
+        assert row["contact"] == email
+        assert not self._pending_for(client, admin_token, other)
+
+    def test_resubmitting_updates_instead_of_duplicating(self, client, admin_token):
+        """A reviewer's queue must not fill with copies when someone edits and
+        saves their profile repeatedly."""
+        token, email = self._make_user(client, admin_token, "judge")
+        for _ in range(3):
+            assert client.post("/api/approvals/mine", headers=self._auth(token),
+                               json={}).status_code == 201
+        assert len(self._pending_for(client, admin_token, email)) == 1
+
+    def test_notes_are_stored(self, client, admin_token):
+        token, email = self._make_user(client, admin_token, "judge")
+        client.post("/api/approvals/mine", headers=self._auth(token),
+                    json={"notes": "Available weekends only"})
+        row = self._pending_for(client, admin_token, email)[0]
+        assert row["details"]["notes"] == "Available weekends only"
+
+    def test_roles_without_onboarding_are_rejected(self, client, admin_token):
+        """A student has no onboarding form; letting them file one would put
+        meaningless rows in the reviewer's queue."""
+        token, _e = self._make_user(client, admin_token, "student")
+        resp = client.post("/api/approvals/mine", headers=self._auth(token), json={})
+        assert resp.status_code == 400
+
+    def test_requires_authentication(self, client):
+        assert client.post("/api/approvals/mine", json={}).status_code == 401
+
+    def test_applicant_cannot_read_the_review_queue(self, client, admin_token):
+        """Filing an application must not grant sight of everyone else's."""
+        token, _e = self._make_user(client, admin_token, "judge")
+        client.post("/api/approvals/mine", headers=self._auth(token), json={})
+        assert client.get("/api/approvals", headers=self._auth(token)).status_code == 403
+
+class TestStudentSelfService:
+    """The student LMS flow: enrol, see assignments, submit, read the grade.
+
+    None of this worked before:
+
+      * Enrolment did not exist. `lms_enrollments` was writable only via
+        admin-only bulk-sync and the one function targeting it had zero call
+        sites, so the student course list showed every course on the platform.
+      * Submissions could not persist. The client posted to /api/submissions,
+        whose student_id is FK -> students(id), sending a ticket string -- so every
+        insert 400'd. The fallback went through admin-only bulk-sync and 403'd. A
+        success banner was shown either way.
+      * Grades could not reach the student: nothing ever read lms_submissions back.
+      * Progress took student_id from the request body (anyone could write anyone's
+        progress) and GET /api/lms/progress/{id} let any signed-in user read any
+        student's progress.
+    """
+
+    PASSWORD = "Wm5!pineRidgeCove"
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _student(self, client, admin_token, name="Yaa Asantewaa"):
+        email = f"stu-{uuid.uuid4().hex[:8]}@lms.test"
+        resp = client.post("/api/users", headers=self._auth(admin_token), json={
+            "email": email, "full_name": name, "role": "student", "password": self.PASSWORD,
+        })
+        assert resp.status_code in (200, 201), resp.text
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": self.PASSWORD})
+        assert login.status_code == 200, login.text
+        return login.json()["token"], email
+
+    def _course(self, client, admin_token, title=None):
+        title = title or f"Course {uuid.uuid4().hex[:6]}"
+        cid = "crs-" + uuid.uuid4().hex[:8]
+        resp = client.post("/api/bulk-sync", headers=self._auth(admin_token), json={
+            "collection": "lms_courses",
+            "items": [{"id": cid, "title": title, "track": "Coding", "icon": "code",
+                       "level": "Intermediate", "description": "d", "modules": 4,
+                       "status": "active", "approval_status": "approved"}],
+        })
+        assert resp.status_code in (200, 201), resp.text
+        return cid, title
+
+    def _assignment(self, client, admin_token, course_id, title="Build a parser"):
+        aid = "asg-" + uuid.uuid4().hex[:8]
+        resp = client.post("/api/bulk-sync", headers=self._auth(admin_token), json={
+            "collection": "lms_assignments",
+            "items": [{"id": aid, "courseId": course_id, "title": title,
+                       "description": "spec", "due_date": "2026-09-01",
+                       "maxScore": 100, "track": "Coding", "status": "active",
+                       "approval_status": "approved"}],
+        })
+        assert resp.status_code in (200, 201), resp.text
+        return aid
+
+    # ── enrolment ───────────────────────────────────────────────────────
+
+    def test_student_can_enrol(self, client, admin_token):
+        token, _e = self._student(client, admin_token)
+        cid, title = self._course(client, admin_token)
+        resp = client.post("/api/lms/enrollments", headers=self._auth(token),
+                           json={"course_id": cid})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["course_title"] == title
+
+    def test_my_enrollments_shows_only_my_courses(self, client, admin_token):
+        """The regression: the student list showed every course on the platform."""
+        token, _e = self._student(client, admin_token)
+        mine, _t = self._course(client, admin_token)
+        self._course(client, admin_token)  # someone else's course
+        client.post("/api/lms/enrollments", headers=self._auth(token), json={"course_id": mine})
+        rows = client.get("/api/lms/my-enrollments", headers=self._auth(token)).json()
+        assert [r["course_id"] for r in rows] == [mine]
+
+    def test_enrolling_twice_does_not_duplicate(self, client, admin_token):
+        token, _e = self._student(client, admin_token)
+        cid, _t = self._course(client, admin_token)
+        for _ in range(3):
+            client.post("/api/lms/enrollments", headers=self._auth(token), json={"course_id": cid})
+        rows = client.get("/api/lms/my-enrollments", headers=self._auth(token)).json()
+        assert len([r for r in rows if r["course_id"] == cid]) == 1
+
+    def test_enrolment_updates_the_course_count(self, client, admin_token):
+        """`enrolled` is shown to instructors, so it must not drift."""
+        token, _e = self._student(client, admin_token)
+        cid, _t = self._course(client, admin_token)
+        resp = client.post("/api/lms/enrollments", headers=self._auth(token),
+                           json={"course_id": cid})
+        assert resp.json()["enrolled_total"] == 1
+        courses = client.get("/api/lms-courses", headers=self._auth(token)).json()
+        assert next(c for c in courses if c["id"] == cid)["enrolled"] == 1
+
+    def test_withdrawing_removes_it_from_my_list(self, client, admin_token):
+        token, _e = self._student(client, admin_token)
+        cid, _t = self._course(client, admin_token)
+        client.post("/api/lms/enrollments", headers=self._auth(token), json={"course_id": cid})
+        assert client.delete(f"/api/lms/enrollments/{cid}",
+                             headers=self._auth(token)).status_code == 200
+        rows = client.get("/api/lms/my-enrollments", headers=self._auth(token)).json()
+        assert cid not in [r["course_id"] for r in rows]
+
+    def test_withdrawing_when_not_enrolled_is_404(self, client, admin_token):
+        token, _e = self._student(client, admin_token)
+        cid, _t = self._course(client, admin_token)
+        assert client.delete(f"/api/lms/enrollments/{cid}",
+                             headers=self._auth(token)).status_code == 404
+
+    def test_cannot_enrol_on_unknown_course(self, client, admin_token):
+        token, _e = self._student(client, admin_token)
+        assert client.post("/api/lms/enrollments", headers=self._auth(token),
+                           json={"course_id": "does-not-exist"}).status_code == 404
+
+    def test_non_student_cannot_enrol(self, client, admin_token):
+        """A judge or sponsor is not a learner; enrolling them would corrupt every
+        course roster and student count."""
+        cid, _t = self._course(client, admin_token)
+        for role in ("judge", "sponsor"):
+            email = f"nonstu-{uuid.uuid4().hex[:6]}@lms.test"
+            client.post("/api/users", headers=self._auth(admin_token), json={
+                "email": email, "full_name": "Not A Student", "role": role,
+                "password": self.PASSWORD,
+            })
+            from app.security import clear_all_rate_limits
+            clear_all_rate_limits()
+            tok = client.post("/api/login", json={
+                "email": email, "password": self.PASSWORD}).json()["token"]
+            assert client.post("/api/lms/enrollments", headers=self._auth(tok),
+                               json={"course_id": cid}).status_code == 403
+
+    def test_enrolment_requires_authentication(self, client):
+        assert client.post("/api/lms/enrollments", json={"course_id": "x"}).status_code == 401
+
+    # ── assignments ─────────────────────────────────────────────────────
+
+    def test_student_can_see_assignments_for_a_course(self, client, admin_token):
+        """Students previously had no way to know what to submit -- the assignment
+        list lived only in localStorage with no GET endpoint."""
+        token, _e = self._student(client, admin_token)
+        cid, _t = self._course(client, admin_token)
+        self._assignment(client, admin_token, cid, "Write a lexer")
+        rows = client.get(f"/api/lms/assignments?course_id={cid}",
+                          headers=self._auth(token)).json()
+        assert [r["title"] for r in rows] == ["Write a lexer"]
+        assert rows[0]["max_score"] == 100
+
+    def test_assignment_list_is_scoped_by_course(self, client, admin_token):
+        token, _e = self._student(client, admin_token)
+        a_course, _ = self._course(client, admin_token)
+        b_course, _ = self._course(client, admin_token)
+        self._assignment(client, admin_token, a_course, "A task")
+        self._assignment(client, admin_token, b_course, "B task")
+        rows = client.get(f"/api/lms/assignments?course_id={a_course}",
+                          headers=self._auth(token)).json()
+        assert [r["title"] for r in rows] == ["A task"]
+
+    # ── submitting ──────────────────────────────────────────────────────
+
+    def _enrolled_student_with_assignment(self, client, admin_token):
+        token, email = self._student(client, admin_token)
+        cid, _t = self._course(client, admin_token)
+        aid = self._assignment(client, admin_token, cid)
+        client.post("/api/lms/enrollments", headers=self._auth(token), json={"course_id": cid})
+        return token, email, cid, aid
+
+    def test_submission_persists(self, client, admin_token):
+        """The whole point: before this, every student submission was silently
+        discarded behind a success banner."""
+        token, _e, _c, aid = self._enrolled_student_with_assignment(client, admin_token)
+        resp = client.post("/api/lms/submissions", headers=self._auth(token), json={
+            "assignment_id": aid, "content": "my answer", "url": "https://git.test/x",
+        })
+        assert resp.status_code == 201, resp.text
+        rows = client.get("/api/lms/my-submissions", headers=self._auth(token)).json()
+        assert len(rows) == 1
+        assert rows[0]["content"] == "my answer"
+        assert rows[0]["status"] == "submitted"
+
+    def test_submission_requires_enrolment(self, client, admin_token):
+        token, _e = self._student(client, admin_token)
+        cid, _t = self._course(client, admin_token)
+        aid = self._assignment(client, admin_token, cid)
+        resp = client.post("/api/lms/submissions", headers=self._auth(token),
+                           json={"assignment_id": aid, "content": "x"})
+        assert resp.status_code == 403
+
+    def test_empty_submission_is_rejected(self, client, admin_token):
+        token, _e, _c, aid = self._enrolled_student_with_assignment(client, admin_token)
+        resp = client.post("/api/lms/submissions", headers=self._auth(token),
+                           json={"assignment_id": aid, "content": "   ", "url": ""})
+        assert resp.status_code == 422
+
+    def test_unknown_assignment_is_404(self, client, admin_token):
+        token, _e, _c, _a = self._enrolled_student_with_assignment(client, admin_token)
+        assert client.post("/api/lms/submissions", headers=self._auth(token),
+                           json={"assignment_id": "nope", "content": "x"}).status_code == 404
+
+    def test_resubmitting_replaces_rather_than_duplicating(self, client, admin_token):
+        token, _e, _c, aid = self._enrolled_student_with_assignment(client, admin_token)
+        client.post("/api/lms/submissions", headers=self._auth(token),
+                    json={"assignment_id": aid, "content": "first"})
+        client.post("/api/lms/submissions", headers=self._auth(token),
+                    json={"assignment_id": aid, "content": "second"})
+        rows = client.get("/api/lms/my-submissions", headers=self._auth(token)).json()
+        assert len(rows) == 1
+        assert rows[0]["content"] == "second"
+
+    def test_resubmitting_clears_a_previous_grade(self, client, admin_token):
+        """Otherwise a student could be marked, resubmit different work, and keep
+        the old score while the instructor never saw the change."""
+        token, _e, _c, aid = self._enrolled_student_with_assignment(client, admin_token)
+        client.post("/api/lms/submissions", headers=self._auth(token),
+                    json={"assignment_id": aid, "content": "first"})
+        sub_id = client.get("/api/lms/my-submissions", headers=self._auth(token)).json()[0]["id"]
+        client.post("/api/bulk-sync", headers=self._auth(admin_token), json={
+            "collection": "lms_submissions",
+            "items": [{"id": sub_id, "assignmentId": aid, "score": 88,
+                       "status": "graded", "feedback": "Good"}],
+        })
+        graded = client.get("/api/lms/my-submissions", headers=self._auth(token)).json()[0]
+        assert graded["score"] == 88
+
+        client.post("/api/lms/submissions", headers=self._auth(token),
+                    json={"assignment_id": aid, "content": "revised"})
+        after = client.get("/api/lms/my-submissions", headers=self._auth(token)).json()[0]
+        assert after["score"] is None
+        assert after["status"] == "submitted"
+        assert not after["feedback"]
+
+    # ── grades reaching the student ──────────────────────────────────────
+
+    def test_student_can_read_score_and_feedback(self, client, admin_token):
+        """This path did not exist: lms_submissions had no GET endpoint, so a mark
+        and written feedback were invisible to the student they were for."""
+        token, _e, _c, aid = self._enrolled_student_with_assignment(client, admin_token)
+        client.post("/api/lms/submissions", headers=self._auth(token),
+                    json={"assignment_id": aid, "content": "answer"})
+        sub_id = client.get("/api/lms/my-submissions", headers=self._auth(token)).json()[0]["id"]
+        client.post("/api/bulk-sync", headers=self._auth(admin_token), json={
+            "collection": "lms_submissions",
+            "items": [{"id": sub_id, "assignmentId": aid, "score": 74,
+                       "status": "graded", "feedback": "Solid, tighten the parser."}],
+        })
+        row = client.get("/api/lms/my-submissions", headers=self._auth(token)).json()[0]
+        assert row["score"] == 74
+        assert row["feedback"] == "Solid, tighten the parser."
+        assert row["assignment_title"]
+
+    def test_my_submissions_shows_only_mine(self, client, admin_token):
+        a_token, _ae, _ac, a_aid = self._enrolled_student_with_assignment(client, admin_token)
+        b_token, _be, _bc, b_aid = self._enrolled_student_with_assignment(client, admin_token)
+        client.post("/api/lms/submissions", headers=self._auth(a_token),
+                    json={"assignment_id": a_aid, "content": "A work"})
+        client.post("/api/lms/submissions", headers=self._auth(b_token),
+                    json={"assignment_id": b_aid, "content": "B work"})
+        rows = client.get("/api/lms/my-submissions", headers=self._auth(a_token)).json()
+        assert [r["content"] for r in rows] == ["A work"]
+
+    # ── progress ────────────────────────────────────────────────────────
+
+    def test_progress_round_trips(self, client, admin_token):
+        """Progress was write-only: reads came from localStorage under a random
+        client-generated key, so it never survived a new device."""
+        token, _e, _c, _a = self._enrolled_student_with_assignment(client, admin_token)
+        courses = client.get("/api/lms/my-enrollments", headers=self._auth(token)).json()
+        title = courses[0]["title"]
+        assert client.post("/api/lms/progress", headers=self._auth(token), json={
+            "course_title": title, "progress_pct": 60, "completed_modules": 3,
+        }).status_code == 200
+        rows = client.get("/api/lms/my-progress", headers=self._auth(token)).json()
+        assert rows[0]["progress_pct"] == 60
+        assert rows[0]["completed_modules"] == 3
+
+    def test_progress_shows_on_my_enrollments(self, client, admin_token):
+        token, _e, _c, _a = self._enrolled_student_with_assignment(client, admin_token)
+        title = client.get("/api/lms/my-enrollments", headers=self._auth(token)).json()[0]["title"]
+        client.post("/api/lms/progress", headers=self._auth(token), json={
+            "course_title": title, "progress_pct": 45, "completed_modules": 2,
+        })
+        row = client.get("/api/lms/my-enrollments", headers=self._auth(token)).json()[0]
+        assert row["progress_pct"] == 45
+        assert row["completed_modules"] == 2
+
+    def test_progress_ignores_a_student_id_in_the_body(self, client, admin_token):
+        """The hole: student_id came from the body, so anyone could write progress
+        onto another student's record."""
+        victim_token, _ve, _vc, _va = self._enrolled_student_with_assignment(client, admin_token)
+        victim_id = client.get("/api/users/me", headers=self._auth(victim_token)).json()["student_id"]
+        attacker_token, _ae, _ac, _aa = self._enrolled_student_with_assignment(client, admin_token)
+
+        client.post("/api/lms/progress", headers=self._auth(attacker_token), json={
+            "student_id": victim_id, "course_title": "Injected", "progress_pct": 99,
+        })
+        victim_rows = client.get("/api/lms/my-progress", headers=self._auth(victim_token)).json()
+        assert "Injected" not in [r["course_title"] for r in victim_rows]
+        attacker_rows = client.get("/api/lms/my-progress", headers=self._auth(attacker_token)).json()
+        assert "Injected" in [r["course_title"] for r in attacker_rows]
+
+    def test_progress_percentage_is_clamped(self, client, admin_token):
+        token, _e, _c, _a = self._enrolled_student_with_assignment(client, admin_token)
+        client.post("/api/lms/progress", headers=self._auth(token), json={
+            "course_title": "Clamp me", "progress_pct": 5000,
+        })
+        row = next(r for r in client.get("/api/lms/my-progress",
+                                        headers=self._auth(token)).json()
+                   if r["course_title"] == "Clamp me")
+        assert row["progress_pct"] == 100
+
+    def test_progress_rejects_non_numeric(self, client, admin_token):
+        token, _e, _c, _a = self._enrolled_student_with_assignment(client, admin_token)
+        assert client.post("/api/lms/progress", headers=self._auth(token), json={
+            "course_title": "x", "progress_pct": "lots",
+        }).status_code == 422
+
+    def test_cannot_read_another_students_progress(self, client, admin_token):
+        """Was a plain IDOR: any signed-in user could read any student's progress
+        by putting their id in the path."""
+        victim_token, _ve, _vc, _va = self._enrolled_student_with_assignment(client, admin_token)
+        victim_id = client.get("/api/users/me", headers=self._auth(victim_token)).json()["student_id"]
+        nosy_token, _ne = self._student(client, admin_token)
+        resp = client.get(f"/api/lms/progress/{victim_id}", headers=self._auth(nosy_token))
+        assert resp.status_code == 403
+
+    def test_student_can_read_their_own_progress_by_id(self, client, admin_token):
+        token, _e, _c, _a = self._enrolled_student_with_assignment(client, admin_token)
+        my_id = client.get("/api/users/me", headers=self._auth(token)).json()["student_id"]
+        assert client.get(f"/api/lms/progress/{my_id}",
+                          headers=self._auth(token)).status_code == 200
+
+    def test_staff_may_read_a_students_progress(self, client, admin_token):
+        """Instructors legitimately need this for their course roster."""
+        token, _e, _c, _a = self._enrolled_student_with_assignment(client, admin_token)
+        my_id = client.get("/api/users/me", headers=self._auth(token)).json()["student_id"]
+        assert client.get(f"/api/lms/progress/{my_id}",
+                          headers=self._auth(admin_token)).status_code == 200
+
+class TestCompetitionRegistration:
+    """Student sign-up for a competition cycle.
+
+    registerStudentForCycle() was one line in the frontend --
+    `this.studentRegisteredMap[comp.id] = true` -- with no HTTP call, no storage and
+    no table. A student pressed "Register Squad", got a REGISTERED badge, and lost
+    it on refresh. No organiser ever saw the sign-up.
+    """
+
+    PASSWORD = "Jd3^cobaltFerry"
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _student(self, client, admin_token, name="Kojo Antwi"):
+        email = f"creg-{uuid.uuid4().hex[:8]}@comp.test"
+        client.post("/api/users", headers=self._auth(admin_token), json={
+            "email": email, "full_name": name, "role": "student", "password": self.PASSWORD,
+        })
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": self.PASSWORD})
+        assert login.status_code == 200, login.text
+        return login.json()["token"], email
+
+    def _competition(self, client, admin_token, status_value="registration"):
+        # POST /api/competitions generates its own id and ignores one in the body,
+        # so use whatever it returns.
+        resp = client.post("/api/competitions", headers=self._auth(admin_token), json={
+            "title": f"Cycle {uuid.uuid4().hex[:4]}", "description": "d",
+            "track": "Coding", "status": status_value,
+        })
+        assert resp.status_code in (200, 201), resp.text
+        return resp.json()["id"]
+
+    def test_registration_persists(self, client, admin_token):
+        token, _e = self._student(client, admin_token)
+        cid = self._competition(client, admin_token)
+        assert client.post("/api/competitions/register", headers=self._auth(token),
+                           json={"competition_id": cid}).status_code == 201
+        rows = client.get("/api/competitions/my-registrations", headers=self._auth(token)).json()
+        assert [r["competition_id"] for r in rows] == [cid]
+
+    def test_registering_twice_does_not_duplicate(self, client, admin_token):
+        token, _e = self._student(client, admin_token)
+        cid = self._competition(client, admin_token)
+        for _ in range(3):
+            client.post("/api/competitions/register", headers=self._auth(token),
+                        json={"competition_id": cid})
+        rows = client.get("/api/competitions/my-registrations", headers=self._auth(token)).json()
+        assert len([r for r in rows if r["competition_id"] == cid]) == 1
+
+    def test_organiser_sees_the_registration(self, client, admin_token):
+        """The point of persisting it: somebody has to be able to run the event."""
+        token, email = self._student(client, admin_token, "Adjoa Mensimah")
+        cid = self._competition(client, admin_token)
+        client.post("/api/competitions/register", headers=self._auth(token),
+                    json={"competition_id": cid})
+        rows = client.get(f"/api/competitions/{cid}/registrations",
+                          headers=self._auth(admin_token)).json()
+        assert len(rows) == 1
+        assert rows[0]["student_email"] == email
+        assert rows[0]["student_name"] == "Adjoa Mensimah"
+
+    def test_withdrawing_removes_it(self, client, admin_token):
+        token, _e = self._student(client, admin_token)
+        cid = self._competition(client, admin_token)
+        client.post("/api/competitions/register", headers=self._auth(token),
+                    json={"competition_id": cid})
+        assert client.delete(f"/api/competitions/register/{cid}",
+                             headers=self._auth(token)).status_code == 200
+        rows = client.get("/api/competitions/my-registrations", headers=self._auth(token)).json()
+        assert cid not in [r["competition_id"] for r in rows]
+        organiser = client.get(f"/api/competitions/{cid}/registrations",
+                               headers=self._auth(admin_token)).json()
+        assert organiser == []
+
+    def test_can_re_register_after_withdrawing(self, client, admin_token):
+        token, _e = self._student(client, admin_token)
+        cid = self._competition(client, admin_token)
+        client.post("/api/competitions/register", headers=self._auth(token),
+                    json={"competition_id": cid})
+        client.delete(f"/api/competitions/register/{cid}", headers=self._auth(token))
+        assert client.post("/api/competitions/register", headers=self._auth(token),
+                           json={"competition_id": cid}).status_code == 201
+        rows = client.get("/api/competitions/my-registrations", headers=self._auth(token)).json()
+        assert cid in [r["competition_id"] for r in rows]
+
+    def test_withdrawing_when_not_registered_is_404(self, client, admin_token):
+        token, _e = self._student(client, admin_token)
+        cid = self._competition(client, admin_token)
+        assert client.delete(f"/api/competitions/register/{cid}",
+                             headers=self._auth(token)).status_code == 404
+
+    def test_unknown_competition_is_404(self, client, admin_token):
+        token, _e = self._student(client, admin_token)
+        assert client.post("/api/competitions/register", headers=self._auth(token),
+                           json={"competition_id": "nope"}).status_code == 404
+
+    def test_cannot_register_for_a_draft_cycle(self, client, admin_token):
+        """Draft cycles are not public; registering for one would leak unreleased
+        events into a student's schedule."""
+        token, _e = self._student(client, admin_token)
+        cid = self._competition(client, admin_token, status_value="draft")
+        assert client.post("/api/competitions/register", headers=self._auth(token),
+                           json={"competition_id": cid}).status_code == 409
+
+    def test_cannot_register_for_a_completed_cycle(self, client, admin_token):
+        token, _e = self._student(client, admin_token)
+        cid = self._competition(client, admin_token, status_value="completed")
+        assert client.post("/api/competitions/register", headers=self._auth(token),
+                           json={"competition_id": cid}).status_code == 409
+
+    def test_non_student_cannot_register(self, client, admin_token):
+        cid = self._competition(client, admin_token)
+        email = f"nonstu-{uuid.uuid4().hex[:6]}@comp.test"
+        client.post("/api/users", headers=self._auth(admin_token), json={
+            "email": email, "full_name": "A Judge", "role": "judge",
+            "password": self.PASSWORD,
+        })
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        tok = client.post("/api/login", json={
+            "email": email, "password": self.PASSWORD}).json()["token"]
+        assert client.post("/api/competitions/register", headers=self._auth(tok),
+                           json={"competition_id": cid}).status_code == 403
+
+    def test_my_registrations_shows_only_mine(self, client, admin_token):
+        a_token, _ae = self._student(client, admin_token)
+        b_token, _be = self._student(client, admin_token)
+        a_cycle = self._competition(client, admin_token)
+        b_cycle = self._competition(client, admin_token)
+        client.post("/api/competitions/register", headers=self._auth(a_token),
+                    json={"competition_id": a_cycle})
+        client.post("/api/competitions/register", headers=self._auth(b_token),
+                    json={"competition_id": b_cycle})
+        rows = client.get("/api/competitions/my-registrations", headers=self._auth(a_token)).json()
+        assert [r["competition_id"] for r in rows] == [a_cycle]
+
+    def test_students_cannot_read_the_full_roster(self, client, admin_token):
+        """A student must not be able to enumerate every other entrant's email."""
+        token, _e = self._student(client, admin_token)
+        cid = self._competition(client, admin_token)
+        client.post("/api/competitions/register", headers=self._auth(token),
+                    json={"competition_id": cid})
+        assert client.get(f"/api/competitions/{cid}/registrations",
+                          headers=self._auth(token)).status_code == 403
+
+    def test_registration_requires_authentication(self, client):
+        assert client.post("/api/competitions/register",
+                           json={"competition_id": "x"}).status_code == 401
+
+class TestInstructorAuthoring:
+    """Instructor authoring, rostering, grading and moderation.
+
+    The instructor had a full CRUD interface at /lms-manager in which NOTHING
+    persisted: every save went through POST /api/bulk-sync (require_admin), so each
+    write 403'd and ContentService swallowed the error with `error: () => {}`. The
+    UI reported success while the data lived only in that browser's localStorage.
+
+    Three further defects covered here:
+      * `submitted_by` was hardcoded to the literal 'Admin' on create, so content an
+        instructor made never matched their own "My Courses" filter.
+      * `submitted_by` AND `approval_status` were accepted from the request body, so
+        authorship could be forged and content self-published without review.
+      * Grading mutated a local object; the student had no way to see the mark.
+    """
+
+    PASSWORD = "Hy7&quarryBend"
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _user(self, client, admin_token, role, name):
+        email = f"{role}-{uuid.uuid4().hex[:8]}@auth.test"
+        resp = client.post("/api/users", headers=self._auth(admin_token), json={
+            "email": email, "full_name": name, "role": role, "password": self.PASSWORD,
+        })
+        assert resp.status_code in (200, 201), resp.text
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": self.PASSWORD})
+        assert login.status_code == 200, login.text
+        return login.json()["token"], email
+
+    def _instructor(self, client, admin_token, name="Efua Mensah"):
+        return self._user(client, admin_token, "instructor", name)
+
+    def _course(self, client, token, title=None):
+        resp = client.post("/api/lms/courses", headers=self._auth(token), json={
+            "title": title or f"Course {uuid.uuid4().hex[:6]}", "track": "Coding",
+            "level": "Intermediate", "description": "d", "modules": 4,
+        })
+        assert resp.status_code == 201, resp.text
+        return resp.json()["id"]
+
+    # ── authoring persists ──────────────────────────────────────────────
+
+    def test_instructor_can_create_a_course_that_persists(self, client, admin_token):
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token, "Graph Algorithms")
+        rows = client.get("/api/lms/my-courses", headers=self._auth(token)).json()
+        assert [c["id"] for c in rows] == [course_id]
+        assert rows[0]["title"] == "Graph Algorithms"
+
+    def test_authorship_is_the_real_instructor(self, client, admin_token):
+        """The bug: submitted_by was hardcoded to 'Admin', so an instructor's own
+        content never appeared in their own list."""
+        unique = f"Author {uuid.uuid4().hex[:8]}"
+        token, _e = self._instructor(client, admin_token, unique)
+        self._course(client, token)
+        courses = client.get("/api/lms-courses", headers=self._auth(token)).json()
+        mine = [c for c in courses if c["submitted_by"] == unique]
+        assert len(mine) == 1
+
+    def test_my_courses_shows_only_my_own(self, client, admin_token):
+        a_token, _a = self._instructor(client, admin_token, "Author A")
+        b_token, _b = self._instructor(client, admin_token, "Author B")
+        a_course = self._course(client, a_token)
+        self._course(client, b_token)
+        rows = client.get("/api/lms/my-courses", headers=self._auth(a_token)).json()
+        assert [c["id"] for c in rows] == [a_course]
+
+    def test_instructor_can_edit_their_own_course(self, client, admin_token):
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        resp = client.patch(f"/api/lms/courses/{course_id}", headers=self._auth(token), json={
+            "title": "Renamed", "track": "AI", "level": "Advanced",
+            "description": "new", "modules": 6,
+        })
+        assert resp.status_code == 200, resp.text
+        row = client.get("/api/lms/my-courses", headers=self._auth(token)).json()[0]
+        assert row["title"] == "Renamed"
+        assert row["modules"] == 6
+
+    def test_instructor_cannot_edit_someone_elses_course(self, client, admin_token):
+        a_token, _a = self._instructor(client, admin_token, "Author A")
+        b_token, _b = self._instructor(client, admin_token, "Author B")
+        a_course = self._course(client, a_token)
+        resp = client.patch(f"/api/lms/courses/{a_course}", headers=self._auth(b_token), json={
+            "title": "Hijacked", "modules": 1,
+        })
+        assert resp.status_code == 403
+
+    def test_instructor_cannot_delete_someone_elses_course(self, client, admin_token):
+        a_token, _a = self._instructor(client, admin_token, "Author A")
+        b_token, _b = self._instructor(client, admin_token, "Author B")
+        a_course = self._course(client, a_token)
+        assert client.delete(f"/api/lms/courses/{a_course}",
+                             headers=self._auth(b_token)).status_code == 403
+
+    def test_instructor_can_delete_their_own_empty_course(self, client, admin_token):
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        assert client.delete(f"/api/lms/courses/{course_id}",
+                             headers=self._auth(token)).status_code == 200
+        assert client.get("/api/lms/my-courses", headers=self._auth(token)).json() == []
+
+    def test_students_cannot_author_courses(self, client, admin_token):
+        token, _e = self._user(client, admin_token, "student", "A Student")
+        assert client.post("/api/lms/courses", headers=self._auth(token),
+                           json={"title": "Mine now"}).status_code == 403
+
+    # ── review is mandatory and cannot be self-served ───────────────────
+
+    def test_instructor_content_starts_pending(self, client, admin_token):
+        token, _e = self._instructor(client, admin_token)
+        resp = client.post("/api/lms/courses", headers=self._auth(token),
+                           json={"title": "Needs review"})
+        assert resp.json()["approval_status"] == "pending"
+
+    def test_staff_content_is_published_directly(self, client, admin_token):
+        resp = client.post("/api/lms/courses", headers=self._auth(admin_token),
+                           json={"title": "Staff course"})
+        assert resp.json()["approval_status"] == "approved"
+
+    def test_instructor_cannot_self_publish_via_the_body(self, client, admin_token):
+        """The hole: approval_status came from the request body, so an instructor
+        could publish their own course without review."""
+        token, _e = self._instructor(client, admin_token)
+        resp = client.post("/api/lms-courses", headers=self._auth(token), json={
+            "title": "Sneaky", "approval_status": "approved", "submitted_by": "Admin",
+        })
+        assert resp.status_code == 201
+        assert resp.json()["approval_status"] == "pending"
+
+    def test_authorship_cannot_be_forged_via_the_body(self, client, admin_token):
+        token, _e = self._instructor(client, admin_token, "Real Author")
+        client.post("/api/lms-courses", headers=self._auth(token), json={
+            "title": "Forged", "submitted_by": "Someone Else",
+        })
+        rows = client.get("/api/lms/my-courses", headers=self._auth(token)).json()
+        assert [c["title"] for c in rows] == ["Forged"]
+
+    def test_reviewer_cannot_approve_their_own_content(self, client, admin_token):
+        """An instructor was shown the shared admin approvals queue with no owner
+        scoping, so they could approve their own submission."""
+        # An admin authors a course, then tries to review it themselves.
+        resp = client.post("/api/lms/courses", headers=self._auth(admin_token),
+                           json={"title": "Self review"})
+        course_id = resp.json()["id"]
+        moderated = client.patch(f"/api/lms/courses/{course_id}/moderate",
+                                 headers=self._auth(admin_token),
+                                 json={"approve": True})
+        assert moderated.status_code == 403
+
+    def test_another_reviewer_can_approve(self, client, admin_token):
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        resp = client.patch(f"/api/lms/courses/{course_id}/moderate",
+                            headers=self._auth(admin_token), json={"approve": True})
+        assert resp.status_code == 200
+        assert resp.json()["approval_status"] == "approved"
+
+    def test_rejection_requires_a_reason(self, client, admin_token):
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        assert client.patch(f"/api/lms/courses/{course_id}/moderate",
+                            headers=self._auth(admin_token),
+                            json={"approve": False, "reason": "  "}).status_code == 422
+
+    def test_rejection_reason_reaches_the_author(self, client, admin_token):
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        client.patch(f"/api/lms/courses/{course_id}/moderate",
+                     headers=self._auth(admin_token),
+                     json={"approve": False, "reason": "Add worked examples"})
+        row = client.get("/api/lms/my-courses", headers=self._auth(token)).json()[0]
+        assert row["approval_status"] == "rejected"
+        assert row["rejection_reason"] == "Add worked examples"
+
+    def test_moderation_queue_excludes_own_submissions(self, client, admin_token):
+        own = client.post("/api/lms/courses", headers=self._auth(admin_token),
+                          json={"title": "My own"}).json()["id"]
+        client.patch(f"/api/lms/courses/{own}", headers=self._auth(admin_token),
+                     json={"title": "My own", "modules": 1})
+        token, _e = self._instructor(client, admin_token)
+        theirs = self._course(client, token)
+        queue = client.get("/api/lms/moderation-queue", headers=self._auth(admin_token)).json()
+        ids = [c["id"] for c in queue]
+        assert theirs in ids
+        assert own not in ids
+
+    def test_students_cannot_see_unapproved_courses(self, client, admin_token):
+        """Pending content must not leak to learners."""
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        student_token, _s = self._user(client, admin_token, "student", "A Learner")
+        resp = client.post("/api/lms/enrollments", headers=self._auth(student_token),
+                           json={"course_id": course_id})
+        assert resp.status_code == 409
+
+    # ── modules / materials / assignments ───────────────────────────────
+
+    def test_modules_persist_and_read_back(self, client, admin_token):
+        """These tables existed and were indexed but had no endpoint at all."""
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        resp = client.post("/api/lms/modules", headers=self._auth(token), json={
+            "course_id": course_id, "title": "Dijkstra", "order_num": 1,
+        })
+        assert resp.status_code == 201, resp.text
+        client.patch(f"/api/lms/courses/{course_id}/moderate",
+                     headers=self._auth(admin_token), json={"approve": True})
+        rows = client.get(f"/api/lms/modules?course_id={course_id}",
+                          headers=self._auth(admin_token)).json()
+        assert [m["title"] for m in rows] == ["Dijkstra"]
+
+    def test_cannot_add_a_module_to_another_authors_course(self, client, admin_token):
+        a_token, _a = self._instructor(client, admin_token, "Author A")
+        b_token, _b = self._instructor(client, admin_token, "Author B")
+        a_course = self._course(client, a_token)
+        assert client.post("/api/lms/modules", headers=self._auth(b_token), json={
+            "course_id": a_course, "title": "Intruder",
+        }).status_code == 403
+
+    def test_materials_persist(self, client, admin_token):
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        resp = client.post("/api/lms/materials", headers=self._auth(token), json={
+            "course_id": course_id, "title": "Slides", "type": "link",
+            "url": "https://x.test/s.pdf",
+        })
+        assert resp.status_code == 201, resp.text
+
+    def test_assignments_persist_and_students_can_see_them(self, client, admin_token):
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        resp = client.post("/api/lms/assignments", headers=self._auth(token), json={
+            "course_id": course_id, "title": "Implement BFS", "max_score": 50,
+        })
+        assert resp.status_code == 201, resp.text
+        client.patch(f"/api/lms/courses/{course_id}/moderate",
+                     headers=self._auth(admin_token), json={"approve": True})
+        rows = client.get(f"/api/lms/assignments?course_id={course_id}",
+                          headers=self._auth(admin_token)).json()
+        assert rows[0]["max_score"] == 50
+
+    def test_cannot_delete_an_assignment_with_submissions(self, client, admin_token):
+        """Deleting it would orphan work a student already handed in."""
+        token, email, course_id, assignment_id, student_token = \
+            self._course_with_submission(client, admin_token)
+        resp = client.delete(f"/api/lms/assignments/{assignment_id}", headers=self._auth(token))
+        assert resp.status_code == 409
+
+    # ── roster ──────────────────────────────────────────────────────────
+
+    def _course_with_submission(self, client, admin_token):
+        token, email = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        assignment = client.post("/api/lms/assignments", headers=self._auth(token), json={
+            "course_id": course_id, "title": "Task", "max_score": 100,
+        }).json()["id"]
+        client.patch(f"/api/lms/courses/{course_id}/moderate",
+                     headers=self._auth(admin_token), json={"approve": True})
+        student_token, _s = self._user(client, admin_token, "student", "Ama Serwaa")
+        client.post("/api/lms/enrollments", headers=self._auth(student_token),
+                    json={"course_id": course_id})
+        client.post("/api/lms/submissions", headers=self._auth(student_token),
+                    json={"assignment_id": assignment, "content": "my work"})
+        return token, email, course_id, assignment, student_token
+
+    def test_instructor_sees_the_enrolled_roster(self, client, admin_token):
+        """The "Students" tab read lmsEnrollments, which defaults to [] and had no
+        backend GET -- permanently empty."""
+        token, _e, course_id, _a, _st = self._course_with_submission(client, admin_token)
+        rows = client.get(f"/api/lms/courses/{course_id}/students",
+                          headers=self._auth(token)).json()
+        assert len(rows) == 1
+        assert rows[0]["student_name"] == "Ama Serwaa"
+        assert rows[0]["submissions"] == 1
+
+    def test_roster_is_owner_scoped(self, client, admin_token):
+        token, _e, course_id, _a, _st = self._course_with_submission(client, admin_token)
+        other_token, _o = self._instructor(client, admin_token, "Nosy Author")
+        assert client.get(f"/api/lms/courses/{course_id}/students",
+                          headers=self._auth(other_token)).status_code == 403
+
+    def test_my_courses_reports_real_counts(self, client, admin_token):
+        token, _e, course_id, _a, _st = self._course_with_submission(client, admin_token)
+        row = next(c for c in client.get("/api/lms/my-courses",
+                                        headers=self._auth(token)).json()
+                   if c["id"] == course_id)
+        assert row["enrolled_count"] == 1
+        assert row["assignment_count"] == 1
+        assert row["awaiting_grading"] == 1
+
+    # ── grading reaches the student ─────────────────────────────────────
+
+    def test_grading_queue_shows_real_student_work(self, client, admin_token):
+        token, _e, course_id, _a, _st = self._course_with_submission(client, admin_token)
+        queue = client.get("/api/lms/grading-queue", headers=self._auth(token)).json()
+        assert len(queue) == 1
+        assert queue[0]["content"] == "my work"
+        assert queue[0]["student_name"] == "Ama Serwaa"
+
+    def test_grading_queue_is_owner_scoped(self, client, admin_token):
+        self._course_with_submission(client, admin_token)
+        other_token, _o = self._instructor(client, admin_token, "Other Author")
+        assert client.get("/api/lms/grading-queue", headers=self._auth(other_token)).json() == []
+
+    def test_grade_reaches_the_student(self, client, admin_token):
+        """The whole point. gradeLmsSubmission() mutated a local object and pushed it
+        through admin-only bulk-sync, so the mark never left the browser -- and no
+        read path existed for the student anyway."""
+        token, _e, _c, _a, student_token = self._course_with_submission(client, admin_token)
+        submission_id = client.get("/api/lms/grading-queue",
+                                   headers=self._auth(token)).json()[0]["id"]
+        resp = client.patch(f"/api/lms/submissions/{submission_id}/grade",
+                            headers=self._auth(token),
+                            json={"score": 82, "feedback": "Clear and efficient."})
+        assert resp.status_code == 200, resp.text
+        student_view = client.get("/api/lms/my-submissions",
+                                  headers=self._auth(student_token)).json()[0]
+        assert student_view["score"] == 82
+        assert student_view["feedback"] == "Clear and efficient."
+
+    def test_graded_work_leaves_the_queue(self, client, admin_token):
+        token, _e, _c, _a, _st = self._course_with_submission(client, admin_token)
+        submission_id = client.get("/api/lms/grading-queue",
+                                   headers=self._auth(token)).json()[0]["id"]
+        client.patch(f"/api/lms/submissions/{submission_id}/grade",
+                     headers=self._auth(token), json={"score": 70})
+        assert client.get("/api/lms/grading-queue", headers=self._auth(token)).json() == []
+
+    def test_cannot_grade_work_on_another_authors_course(self, client, admin_token):
+        token, _e, _c, _a, _st = self._course_with_submission(client, admin_token)
+        submission_id = client.get("/api/lms/grading-queue",
+                                   headers=self._auth(token)).json()[0]["id"]
+        other_token, _o = self._instructor(client, admin_token, "Other Author")
+        assert client.patch(f"/api/lms/submissions/{submission_id}/grade",
+                            headers=self._auth(other_token),
+                            json={"score": 100}).status_code == 403
+
+    def test_score_cannot_exceed_the_assignment_maximum(self, client, admin_token):
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        assignment = client.post("/api/lms/assignments", headers=self._auth(token), json={
+            "course_id": course_id, "title": "Small task", "max_score": 20,
+        }).json()["id"]
+        client.patch(f"/api/lms/courses/{course_id}/moderate",
+                     headers=self._auth(admin_token), json={"approve": True})
+        student_token, _s = self._user(client, admin_token, "student", "Learner")
+        client.post("/api/lms/enrollments", headers=self._auth(student_token),
+                    json={"course_id": course_id})
+        client.post("/api/lms/submissions", headers=self._auth(student_token),
+                    json={"assignment_id": assignment, "content": "w"})
+        submission_id = client.get("/api/lms/grading-queue",
+                                   headers=self._auth(token)).json()[0]["id"]
+        resp = client.patch(f"/api/lms/submissions/{submission_id}/grade",
+                            headers=self._auth(token), json={"score": 95})
+        assert resp.status_code == 422
+        assert "20" in resp.json()["detail"]
+
+    def test_students_cannot_grade(self, client, admin_token):
+        token, _e, _c, _a, student_token = self._course_with_submission(client, admin_token)
+        submission_id = client.get("/api/lms/grading-queue",
+                                   headers=self._auth(token)).json()[0]["id"]
+        assert client.patch(f"/api/lms/submissions/{submission_id}/grade",
+                            headers=self._auth(student_token),
+                            json={"score": 100}).status_code == 403
+
+    def test_grading_is_audited(self, client, admin_token):
+        """A mark must not be able to exist without a record of who gave it."""
+        token, email, _c, _a, _st = self._course_with_submission(client, admin_token)
+        submission_id = client.get("/api/lms/grading-queue",
+                                   headers=self._auth(token)).json()[0]["id"]
+        client.patch(f"/api/lms/submissions/{submission_id}/grade",
+                     headers=self._auth(token), json={"score": 64})
+        logs = client.get("/api/audit-logs", headers=self._auth(admin_token)).json()
+        assert any(l.get("type") == "grading" and email in (l.get("user") or l.get("usr") or "")
+                   for l in logs)
+    # ── returning work for revision ─────────────────────────────────────
+
+    def test_returning_work_reaches_the_student(self, client, admin_token):
+        """Was requestSubmissionRevision()/rejectLmsSubmission(): a local mutation
+        pushed through admin-only bulk-sync, so the student was never told anything
+        and the work sat in the queue looking untouched."""
+        token, _e, _c, _a, student_token = self._course_with_submission(client, admin_token)
+        submission_id = client.get("/api/lms/grading-queue",
+                                   headers=self._auth(token)).json()[0]["id"]
+        resp = client.patch(f"/api/lms/submissions/{submission_id}/return",
+                            headers=self._auth(token),
+                            json={"feedback": "Handle the empty-input case."})
+        assert resp.status_code == 200, resp.text
+        student_view = client.get("/api/lms/my-submissions",
+                                  headers=self._auth(student_token)).json()[0]
+        assert student_view["feedback"] == "Handle the empty-input case."
+        assert student_view["score"] is None
+
+    def test_returned_work_stays_outstanding(self, client, admin_token):
+        """No score is recorded, so it must remain in the grading queue rather than
+        disappearing as if it were done."""
+        token, _e, _c, _a, _st = self._course_with_submission(client, admin_token)
+        submission_id = client.get("/api/lms/grading-queue",
+                                   headers=self._auth(token)).json()[0]["id"]
+        client.patch(f"/api/lms/submissions/{submission_id}/return",
+                     headers=self._auth(token), json={"feedback": "Redo section 2."})
+        queue = client.get("/api/lms/grading-queue", headers=self._auth(token)).json()
+        assert [s["id"] for s in queue] == [submission_id]
+
+    def test_returning_requires_feedback(self, client, admin_token):
+        """Sending work back with no explanation is useless to the student."""
+        token, _e, _c, _a, _st = self._course_with_submission(client, admin_token)
+        submission_id = client.get("/api/lms/grading-queue",
+                                   headers=self._auth(token)).json()[0]["id"]
+        assert client.patch(f"/api/lms/submissions/{submission_id}/return",
+                            headers=self._auth(token),
+                            json={"feedback": ""}).status_code == 422
+
+    def test_cannot_return_work_on_another_authors_course(self, client, admin_token):
+        token, _e, _c, _a, _st = self._course_with_submission(client, admin_token)
+        submission_id = client.get("/api/lms/grading-queue",
+                                   headers=self._auth(token)).json()[0]["id"]
+        other_token, _o = self._instructor(client, admin_token, "Other Author")
+        assert client.patch(f"/api/lms/submissions/{submission_id}/return",
+                            headers=self._auth(other_token),
+                            json={"feedback": "x"}).status_code == 403
+
+    def test_student_can_resubmit_after_a_revision_request(self, client, admin_token):
+        """Closes the loop: the student fixes the work and it returns as pending."""
+        token, _e, _c, assignment_id, student_token = \
+            self._course_with_submission(client, admin_token)
+        submission_id = client.get("/api/lms/grading-queue",
+                                   headers=self._auth(token)).json()[0]["id"]
+        client.patch(f"/api/lms/submissions/{submission_id}/return",
+                     headers=self._auth(token), json={"feedback": "Add tests."})
+        client.post("/api/lms/submissions", headers=self._auth(student_token),
+                    json={"assignment_id": assignment_id, "content": "now with tests"})
+        row = client.get("/api/lms/my-submissions", headers=self._auth(student_token)).json()[0]
+        assert row["status"] == "submitted"
+        assert row["content"] == "now with tests"
+        assert not row["feedback"]
+
+class TestSponsorshipsAndPayments:
+    """Sponsor commitments, payments and the ecosystem aggregates.
+
+    Neither table existed before. The consequences:
+      * The whole "Sponsorship & Partner Ecosystem" panel was a hardcoded array --
+        MTN/Tullow/GCB/Voltic, GH 350,000 tier totals, a "disbursed" figure computed
+        as `totalCommitted * 0.72`, and a literal `impactScore: '98.4%'`.
+      * A sponsor recording a payment went through saveUsers() -> bulk-sync
+        (admin-only), so it 403'd and the reference stayed in that browser.
+      * The UI wrote status 'Confirmed' on submit, telling sponsors their money had
+        been received when nothing had checked a bank statement.
+    """
+
+    PASSWORD = "Vt9%harbourMoss"
+
+    def _auth(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def _user(self, client, admin_token, role, name):
+        email = f"{role}-{uuid.uuid4().hex[:8]}@spon.test"
+        resp = client.post("/api/users", headers=self._auth(admin_token), json={
+            "email": email, "full_name": name, "role": role, "password": self.PASSWORD,
+        })
+        assert resp.status_code in (200, 201), resp.text
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": self.PASSWORD})
+        assert login.status_code == 200, login.text
+        return login.json()["token"], email
+
+    def _sponsor(self, client, admin_token, name="Voltic Ghana"):
+        token, email = self._user(client, admin_token, "sponsor", name)
+        client.patch("/api/users/me", headers=self._auth(token), json={
+            "organization": name, "sector": "Manufacturing", "tier": "Gold",
+        })
+        return token, email
+
+    def _pledge(self, client, token, amount="50000.00", tier="Gold"):
+        resp = client.post("/api/sponsorships", headers=self._auth(token), json={
+            "tier": tier, "sector": "Manufacturing", "amount_pledged": amount,
+        })
+        assert resp.status_code == 201, resp.text
+        return resp.json()["id"]
+
+    def _activate(self, client, admin_token, sponsorship_id):
+        resp = client.patch(f"/api/sponsorships/{sponsorship_id}/status",
+                            headers=self._auth(admin_token), json={"status": "active"})
+        assert resp.status_code == 200, resp.text
+
+    # ── pledges ─────────────────────────────────────────────────────────
+
+    def test_sponsor_can_record_a_pledge(self, client, admin_token):
+        token, _e = self._sponsor(client, admin_token)
+        self._pledge(client, token, "75000.00")
+        rows = client.get("/api/sponsorships/mine", headers=self._auth(token)).json()
+        assert len(rows) == 1
+        assert rows[0]["amount_pledged"] == "75000.00"
+
+    def test_amount_keeps_exact_decimal_value(self, client, admin_token):
+        """Money is NUMERIC, not float: 0.1+0.2 problems must not reach a ledger."""
+        token, _e = self._sponsor(client, admin_token)
+        self._pledge(client, token, "12345.67")
+        row = client.get("/api/sponsorships/mine", headers=self._auth(token)).json()[0]
+        assert row["amount_pledged"] == "12345.67"
+
+    def test_pledge_starts_pending_not_active(self, client, admin_token):
+        """A pledge nobody has confirmed must not count towards public totals."""
+        token, _e = self._sponsor(client, admin_token)
+        self._pledge(client, token)
+        assert client.get("/api/sponsorships/mine",
+                          headers=self._auth(token)).json()[0]["status"] == "pending"
+
+    def test_sponsor_cannot_activate_their_own_pledge(self, client, admin_token):
+        """Otherwise a sponsor could inflate the committed figure at will."""
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token)
+        assert client.patch(f"/api/sponsorships/{sponsorship_id}/status",
+                            headers=self._auth(token),
+                            json={"status": "active"}).status_code == 403
+
+    def test_negative_pledge_is_rejected(self, client, admin_token):
+        token, _e = self._sponsor(client, admin_token)
+        assert client.post("/api/sponsorships", headers=self._auth(token),
+                           json={"amount_pledged": "-500"}).status_code == 422
+
+    def test_non_sponsor_cannot_pledge(self, client, admin_token):
+        token, _e = self._user(client, admin_token, "student", "A Student")
+        assert client.post("/api/sponsorships", headers=self._auth(token),
+                           json={"amount_pledged": "100"}).status_code == 403
+
+    def test_sponsor_sees_only_their_own_pledges(self, client, admin_token):
+        a_token, _a = self._sponsor(client, admin_token, "Sponsor A")
+        b_token, _b = self._sponsor(client, admin_token, "Sponsor B")
+        a_pledge = self._pledge(client, a_token, "1000.00")
+        self._pledge(client, b_token, "2000.00")
+        rows = client.get("/api/sponsorships/mine", headers=self._auth(a_token)).json()
+        assert [r["id"] for r in rows] == [a_pledge]
+
+    def test_sponsors_cannot_read_the_full_sponsorship_list(self, client, admin_token):
+        """Commercial data: one sponsor must not see another's commitments."""
+        token, _e = self._sponsor(client, admin_token)
+        self._pledge(client, token)
+        assert client.get("/api/sponsorships", headers=self._auth(token)).status_code == 403
+
+    # ── payments are claims until verified ──────────────────────────────
+
+    def test_payment_persists(self, client, admin_token):
+        """Previously the reference never left the browser (bulk-sync 403)."""
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token)
+        resp = client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                           headers=self._auth(token),
+                           json={"amount": "25000.00", "reference": "TXN-1001"})
+        assert resp.status_code == 201, resp.text
+        rows = client.get("/api/sponsorships/payments/mine", headers=self._auth(token)).json()
+        assert len(rows) == 1
+        assert rows[0]["reference"] == "TXN-1001"
+
+    def test_payment_starts_pending_verification(self, client, admin_token):
+        """The core correction: nothing here contacts a bank, so a submitted
+        reference is a claim. The old UI marked it 'Confirmed' immediately."""
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token)
+        resp = client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                           headers=self._auth(token),
+                           json={"amount": "500.00", "reference": "TXN-2002"})
+        assert resp.json()["status"] == "pending_verification"
+
+    def test_unverified_payment_does_not_count_as_received(self, client, admin_token):
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token, "10000.00")
+        client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                    headers=self._auth(token),
+                    json={"amount": "4000.00", "reference": "TXN-3003"})
+        row = client.get("/api/sponsorships/mine", headers=self._auth(token)).json()[0]
+        assert row["amount_received"] == "0.00"
+        assert row["amount_pending"] == "4000.00"
+
+    def test_verified_payment_counts_as_received(self, client, admin_token):
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token, "10000.00")
+        payment = client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                              headers=self._auth(token),
+                              json={"amount": "4000.00", "reference": "TXN-4004"}).json()["id"]
+        assert client.patch(f"/api/sponsorships/payments/{payment}/verify",
+                            headers=self._auth(admin_token),
+                            json={"verified": True}).status_code == 200
+        row = client.get("/api/sponsorships/mine", headers=self._auth(token)).json()[0]
+        assert row["amount_received"] == "4000.00"
+        assert row["amount_pending"] == "0.00"
+
+    def test_sponsor_cannot_verify_their_own_payment(self, client, admin_token):
+        """This is the whole point of the verification step."""
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token)
+        payment = client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                              headers=self._auth(token),
+                              json={"amount": "100.00", "reference": "TXN-5005"}).json()["id"]
+        assert client.patch(f"/api/sponsorships/payments/{payment}/verify",
+                            headers=self._auth(token),
+                            json={"verified": True}).status_code == 403
+
+    def test_rejecting_a_payment_requires_a_reason(self, client, admin_token):
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token)
+        payment = client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                              headers=self._auth(token),
+                              json={"amount": "100.00", "reference": "TXN-6006"}).json()["id"]
+        assert client.patch(f"/api/sponsorships/payments/{payment}/verify",
+                            headers=self._auth(admin_token),
+                            json={"verified": False, "reason": " "}).status_code == 422
+
+    def test_rejection_reason_reaches_the_sponsor(self, client, admin_token):
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token)
+        payment = client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                              headers=self._auth(token),
+                              json={"amount": "100.00", "reference": "TXN-7007"}).json()["id"]
+        client.patch(f"/api/sponsorships/payments/{payment}/verify",
+                     headers=self._auth(admin_token),
+                     json={"verified": False, "reason": "No matching bank credit"})
+        row = client.get("/api/sponsorships/payments/mine", headers=self._auth(token)).json()[0]
+        assert row["status"] == "rejected"
+        assert row["rejection_reason"] == "No matching bank credit"
+
+    def test_verification_records_who_acted(self, client, admin_token):
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token)
+        payment = client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                              headers=self._auth(token),
+                              json={"amount": "100.00", "reference": "TXN-8008"}).json()["id"]
+        client.patch(f"/api/sponsorships/payments/{payment}/verify",
+                     headers=self._auth(admin_token), json={"verified": True})
+        row = client.get("/api/sponsorships/payments/mine", headers=self._auth(token)).json()[0]
+        assert row["verified_by_name"]
+        assert row["verified_at"]
+
+    def test_verification_is_audited(self, client, admin_token):
+        """A change to money state must not be able to happen unrecorded."""
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token)
+        payment = client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                              headers=self._auth(token),
+                              json={"amount": "321.00", "reference": "TXN-9009"}).json()["id"]
+        client.patch(f"/api/sponsorships/payments/{payment}/verify",
+                     headers=self._auth(admin_token), json={"verified": True})
+        logs = client.get("/api/audit-logs", headers=self._auth(admin_token)).json()
+        assert any("TXN-9009" in (l.get("action") or "") for l in logs)
+
+    def test_duplicate_reference_is_rejected(self, client, admin_token):
+        """Almost always a double-submit; two rows would double-count the money."""
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token)
+        body = {"amount": "100.00", "reference": "TXN-SAME"}
+        assert client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                           headers=self._auth(token), json=body).status_code == 201
+        assert client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                           headers=self._auth(token), json=body).status_code == 409
+
+    def test_cannot_pay_against_another_sponsors_pledge(self, client, admin_token):
+        a_token, _a = self._sponsor(client, admin_token, "Sponsor A")
+        b_token, _b = self._sponsor(client, admin_token, "Sponsor B")
+        a_pledge = self._pledge(client, a_token)
+        assert client.post(f"/api/sponsorships/{a_pledge}/payments",
+                           headers=self._auth(b_token),
+                           json={"amount": "1.00", "reference": "X"}).status_code == 403
+
+    def test_zero_payment_is_rejected(self, client, admin_token):
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token)
+        assert client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                           headers=self._auth(token),
+                           json={"amount": "0", "reference": "Z"}).status_code == 422
+
+    def test_reference_is_required(self, client, admin_token):
+        """Without a reference an administrator has nothing to check against."""
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token)
+        assert client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                           headers=self._auth(token),
+                           json={"amount": "10.00", "reference": ""}).status_code == 422
+
+    def test_admin_sees_the_verification_queue(self, client, admin_token):
+        token, email = self._sponsor(client, admin_token, "Queue Co")
+        sponsorship_id = self._pledge(client, token)
+        client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                    headers=self._auth(token),
+                    json={"amount": "999.00", "reference": "TXN-QUEUE"})
+        queue = client.get("/api/sponsorships/payments/pending",
+                           headers=self._auth(admin_token)).json()
+        mine = [p for p in queue if p["reference"] == "TXN-QUEUE"]
+        assert len(mine) == 1
+        assert mine[0]["sponsor_email"] == email
+
+    def test_verified_payment_leaves_the_queue(self, client, admin_token):
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token)
+        payment = client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                              headers=self._auth(token),
+                              json={"amount": "1.00", "reference": "TXN-LEAVE"}).json()["id"]
+        client.patch(f"/api/sponsorships/payments/{payment}/verify",
+                     headers=self._auth(admin_token), json={"verified": True})
+        queue = client.get("/api/sponsorships/payments/pending",
+                           headers=self._auth(admin_token)).json()
+        assert "TXN-LEAVE" not in [p["reference"] for p in queue]
+
+    def test_sponsors_cannot_read_the_verification_queue(self, client, admin_token):
+        token, _e = self._sponsor(client, admin_token)
+        assert client.get("/api/sponsorships/payments/pending",
+                          headers=self._auth(token)).status_code == 403
+
+    # ── ecosystem aggregates ────────────────────────────────────────────
+
+    def test_summary_counts_only_active_pledges(self, client, admin_token):
+        """A pending pledge is not a commitment anyone has confirmed."""
+        before = client.get("/api/sponsorships/summary",
+                            headers=self._auth(admin_token)).json()
+        token, _e = self._sponsor(client, admin_token)
+        self._pledge(client, token, "8000.00")
+        after = client.get("/api/sponsorships/summary",
+                           headers=self._auth(admin_token)).json()
+        assert after["total_committed"] == before["total_committed"]
+        assert after["pending_pledges"] == before["pending_pledges"] + 1
+
+    def test_summary_reflects_activated_pledges(self, client, admin_token):
+        before = client.get("/api/sponsorships/summary",
+                            headers=self._auth(admin_token)).json()
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token, "8000.00")
+        self._activate(client, admin_token, sponsorship_id)
+        after = client.get("/api/sponsorships/summary",
+                           headers=self._auth(admin_token)).json()
+        delta = float(after["total_committed"]) - float(before["total_committed"])
+        assert abs(delta - 8000.0) < 0.001
+        assert after["partner_count"] == before["partner_count"] + 1
+
+    def test_summary_received_reflects_only_verified_money(self, client, admin_token):
+        """Replaces the hardcoded `totalCommitted * 0.72` "disbursed" figure."""
+        before = client.get("/api/sponsorships/summary",
+                            headers=self._auth(admin_token)).json()
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token, "10000.00")
+        self._activate(client, admin_token, sponsorship_id)
+        payment = client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                              headers=self._auth(token),
+                              json={"amount": "2500.00", "reference": "TXN-SUM"}).json()["id"]
+        mid = client.get("/api/sponsorships/summary", headers=self._auth(admin_token)).json()
+        assert mid["total_received"] == before["total_received"]
+        assert float(mid["awaiting_verification"]) >= 2500.0
+
+        client.patch(f"/api/sponsorships/payments/{payment}/verify",
+                     headers=self._auth(admin_token), json={"verified": True})
+        after = client.get("/api/sponsorships/summary", headers=self._auth(admin_token)).json()
+        delta = float(after["total_received"]) - float(before["total_received"])
+        assert abs(delta - 2500.0) < 0.001
+
+    def test_summary_groups_by_tier(self, client, admin_token):
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token, "6000.00", tier="Platinum")
+        self._activate(client, admin_token, sponsorship_id)
+        summary = client.get("/api/sponsorships/summary",
+                             headers=self._auth(admin_token)).json()
+        platinum = [t for t in summary["tiers"] if t["tier"] == "Platinum"]
+        assert platinum
+        assert float(platinum[0]["amount"]) >= 6000.0
+        # Percentages must be derived, not asserted.
+        assert 0 <= platinum[0]["pct"] <= 100
+
+    def test_summary_needs_authentication(self, client):
+        assert client.get("/api/sponsorships/summary").status_code == 401

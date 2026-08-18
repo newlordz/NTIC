@@ -44,6 +44,231 @@ export interface MyProfile {
   rep_name: string;
   experience_level: string;
   tier: string;
+  /** Competition/learning track. Read by the student LMS profile and the judge
+   *  dashboard filter, both of which previously saw `undefined`. */
+  track: string;
+  /** The caller's `students` row id, provisioned on first read. Equal to `id`.
+   *  Null for every non-student role. This is the id to send with submissions,
+   *  enrolments and progress -- the client used to invent a random one per
+   *  render, which is why none of that data could be read back. */
+  student_id: string | null;
+}
+
+/** Result of enrolling on a course. */
+export interface StudentEnrolment {
+  id: string;
+  course_id: string;
+  course_title: string;
+  status: string;
+  enrolled_total: number;
+}
+
+/** One course the signed-in student is enrolled on. */
+export interface MyEnrolledCourse {
+  course_id: string;
+  title: string;
+  track: string;
+  icon: string;
+  level: string;
+  description: string;
+  modules: number;
+  progress_pct: number;
+  completed_modules: number;
+  enrolled_at: string;
+  last_active: string;
+  status: string;
+  assignment_count: number;
+}
+
+/** An assignment a student may submit against. */
+export interface LmsAssignment {
+  id: string;
+  course_id: string;
+  course_title: string;
+  title: string;
+  description: string;
+  due_date: string;
+  max_score: number;
+  track: string;
+  status: string;
+}
+
+/** A student's own submission, with the grade once one exists. */
+export interface MySubmission {
+  id: string;
+  assignment_id: string;
+  assignment_title: string;
+  course_id: string;
+  course_title: string;
+  submitted_at: string;
+  content: string;
+  url: string;
+  /** Null until an instructor grades it. */
+  score: number | null;
+  status: string;
+  feedback: string;
+  max_score: number;
+  due_date: string;
+}
+
+export interface MyProgressRow {
+  course_title: string;
+  progress_pct: number;
+  completed_modules: number;
+  last_accessed: string;
+}
+
+/** A competition cycle the signed-in student has registered for. */
+export interface MyCompetitionRegistration {
+  competition_id: string;
+  competition_title: string;
+  competition_status: string;
+  track: string;
+  status: string;
+  registered_at: string | null;
+}
+
+/** A course the caller authored, with live counts. */
+export interface AuthoredCourse {
+  id: string;
+  title: string;
+  track: string;
+  icon: string;
+  level: string;
+  description: string;
+  modules: number;
+  status: string;
+  /** 'pending' until another reviewer approves it. Authors cannot self-approve. */
+  approval_status: string;
+  rejection_reason: string;
+  created_at: string;
+  enrolled_count: number;
+  assignment_count: number;
+  awaiting_grading: number;
+  average_progress: number;
+}
+
+/** One enrolled student on a course the caller owns. */
+export interface CourseStudent {
+  student_id: string;
+  student_name: string;
+  student_email: string;
+  progress_pct: number;
+  enrolled_at: string;
+  last_active: string;
+  status: string;
+  submissions: number;
+  graded: number;
+  average_score: number | null;
+}
+
+export interface LmsModule {
+  id: string;
+  course_id: string;
+  title: string;
+  description: string;
+  order_num: number;
+  icon: string;
+  status: string;
+}
+
+export interface LmsMaterial {
+  id: string;
+  course_id: string;
+  module_id: string;
+  title: string;
+  type: string;
+  url: string;
+  description: string;
+}
+
+/** A student submission awaiting a mark. */
+export interface GradingQueueItem {
+  id: string;
+  assignment_id: string;
+  assignment_title: string;
+  course_id: string;
+  course_title: string;
+  student_id: string;
+  student_name: string;
+  student_email: string;
+  submitted_at: string;
+  content: string;
+  url: string;
+  score: number | null;
+  status: string;
+  feedback: string;
+  max_score: number;
+}
+
+export interface ModerationQueueItem {
+  id: string;
+  title: string;
+  track: string;
+  level: string;
+  description: string;
+  modules: number;
+  submitted_by: string;
+  created_at: string;
+}
+
+/**
+ * A sponsor's commitment.
+ *
+ * All money fields are STRINGS. The columns are NUMERIC(14,2) and parsing them into
+ * a JS number would reintroduce exactly the binary-float rounding the column type
+ * exists to prevent. Format for display; never accumulate as floats.
+ */
+export interface Sponsorship {
+  id: string;
+  sponsor_id: string;
+  organization: string;
+  tier: string;
+  sector: string;
+  amount_pledged: string;
+  currency: string;
+  competition_id: string;
+  /** 'pending' until an admin confirms it. Sponsors cannot self-activate. */
+  status: string;
+  notes: string;
+  created_at: string | null;
+  /** Verified money only. A pending reference is a claim, not a receipt. */
+  amount_received: string;
+  amount_pending: string;
+  payment_count: number;
+}
+
+export interface SponsorPayment {
+  id: string;
+  sponsorship_id: string;
+  sponsor_id: string;
+  amount: string;
+  currency: string;
+  method: string;
+  reference: string;
+  notes: string;
+  /** 'pending_verification' | 'verified' | 'rejected' */
+  status: string;
+  verified_by_name: string;
+  verified_at: string | null;
+  rejection_reason: string;
+  created_at: string | null;
+  organization: string;
+  sponsor_email: string;
+}
+
+/** Real ecosystem aggregates, replacing the hardcoded infographic. */
+export interface SponsorshipSummary {
+  partner_count: number;
+  total_committed: string;
+  total_received: string;
+  awaiting_verification: string;
+  awaiting_verification_count: number;
+  pending_pledges: number;
+  /** Genuinely computed, unlike the previous hardcoded 72%. */
+  received_pct: number;
+  tiers: Array<{ tier: string; sponsor_count: number; amount: string; pct: number }>;
+  sectors: Array<{ sector: string; sponsor_count: number; amount: string }>;
 }
 
 /**
@@ -163,11 +388,296 @@ export class ApiService {
     rep_name?: string;
     tier?: string;
     experience_level?: string;
+    track?: string;
   }): Observable<{ status: string; updated: string[] }> {
     return this.http.patch<{ status: string; updated: string[] }>(
       this.apiUrl + '/users/me',
       payload
     );
+  }
+
+  /**
+   * Files the caller's own completed profile for admin review.
+   *
+   * Replaces pushing a row through `saveApprovals()` -> POST /api/bulk-sync,
+   * which is admin-only and so silently 403'd for every judge and sponsor who
+   * finished onboarding -- their application never reached the review queue.
+   * The server builds the record from the verified session, so neither the
+   * applicant nor their role can be forged.
+   */
+  submitMyOnboarding(notes: string = ''): Observable<{ id: string; type: string; status: string }> {
+    return this.http.post<{ id: string; type: string; status: string }>(
+      this.apiUrl + '/approvals/mine',
+      { notes }
+    );
+  }
+
+  // ── Student self-service LMS ──────────────────────────────────────────
+  // Every call below replaces something that previously could not work: enrolment
+  // had no endpoint at all, submissions went to an endpoint whose foreign key they
+  // could never satisfy, and grades had no read path.
+
+  /** Enrol the signed-in student on a course. Idempotent. */
+  enrolOnCourse(courseId: string): Observable<StudentEnrolment> {
+    return this.http.post<StudentEnrolment>(
+      this.apiUrl + '/lms/enrollments', { course_id: courseId }
+    );
+  }
+
+  /** Withdraw the signed-in student from a course. */
+  withdrawFromCourse(courseId: string): Observable<{ status: string; course_id: string }> {
+    return this.http.delete<{ status: string; course_id: string }>(
+      `${this.apiUrl}/lms/enrollments/${encodeURIComponent(courseId)}`
+    );
+  }
+
+  /** The student's own courses. Replaces listing every course on the platform. */
+  getMyEnrolments(): Observable<MyEnrolledCourse[]> {
+    return this.http.get<MyEnrolledCourse[]>(this.apiUrl + '/lms/my-enrollments');
+  }
+
+  /** Assignments, optionally scoped to one course. */
+  getLmsAssignments(courseId: string = ''): Observable<LmsAssignment[]> {
+    const q = courseId ? `?course_id=${encodeURIComponent(courseId)}` : '';
+    return this.http.get<LmsAssignment[]>(this.apiUrl + '/lms/assignments' + q);
+  }
+
+  /** Submit work. Resubmitting replaces the attempt and clears any grade. */
+  submitAssignmentWork(assignmentId: string, content: string, url: string = ''): Observable<any> {
+    return this.http.post(this.apiUrl + '/lms/submissions', {
+      assignment_id: assignmentId, content, url,
+    });
+  }
+
+  /** The student's own submissions, including score and feedback. */
+  getMySubmissions(): Observable<MySubmission[]> {
+    return this.http.get<MySubmission[]>(this.apiUrl + '/lms/my-submissions');
+  }
+
+  /** Save progress. student_id is taken from the session, never sent. */
+  saveMyProgress(courseTitle: string, progressPct: number, completedModules: number): Observable<any> {
+    return this.http.post(this.apiUrl + '/lms/progress', {
+      course_title: courseTitle, progress_pct: progressPct, completed_modules: completedModules,
+    });
+  }
+
+  /** Read progress back -- the path that previously did not exist. */
+  getMyProgress(): Observable<MyProgressRow[]> {
+    return this.http.get<MyProgressRow[]>(this.apiUrl + '/lms/my-progress');
+  }
+
+  // ── Competition registration ──────────────────────────────────────────
+  // registerStudentForCycle() used to be `studentRegisteredMap[id] = true` with no
+  // HTTP call and no table, so a student's sign-up vanished on refresh and no
+  // organiser ever saw it.
+
+  registerForCompetition(competitionId: string): Observable<any> {
+    return this.http.post(this.apiUrl + '/competitions/register', {
+      competition_id: competitionId,
+    });
+  }
+
+  withdrawFromCompetition(competitionId: string): Observable<any> {
+    return this.http.delete(
+      `${this.apiUrl}/competitions/register/${encodeURIComponent(competitionId)}`
+    );
+  }
+
+  getMyCompetitionRegistrations(): Observable<MyCompetitionRegistration[]> {
+    return this.http.get<MyCompetitionRegistration[]>(
+      this.apiUrl + '/competitions/my-registrations'
+    );
+  }
+
+  // ── Instructor authoring / grading ────────────────────────────────────
+  // Every one of these replaces a write that went through POST /api/bulk-sync
+  // (admin-only), so for an instructor it 403'd and the error was discarded --
+  // courses, modules, materials, assignments and grades existed only in that one
+  // browser's localStorage while the UI reported success.
+
+  /** Courses the caller authored, with live roster and grading counts. */
+  getMyAuthoredCourses(): Observable<AuthoredCourse[]> {
+    return this.http.get<AuthoredCourse[]>(this.apiUrl + '/lms/my-courses');
+  }
+
+  createAuthoredCourse(payload: {
+    title: string; track?: string; icon?: string; level?: string;
+    description?: string; modules?: number;
+  }): Observable<{ id: string; title: string; approval_status: string }> {
+    return this.http.post<{ id: string; title: string; approval_status: string }>(
+      this.apiUrl + '/lms/courses', payload
+    );
+  }
+
+  updateAuthoredCourse(courseId: string, payload: {
+    title: string; track?: string; icon?: string; level?: string;
+    description?: string; modules?: number;
+  }): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/lms/courses/${encodeURIComponent(courseId)}`, payload);
+  }
+
+  deleteAuthoredCourse(courseId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/lms/courses/${encodeURIComponent(courseId)}`);
+  }
+
+  /** The enrolled roster for a course. The "Students" tab was always empty. */
+  getCourseStudents(courseId: string): Observable<CourseStudent[]> {
+    return this.http.get<CourseStudent[]>(
+      `${this.apiUrl}/lms/courses/${encodeURIComponent(courseId)}/students`
+    );
+  }
+
+  createModule(payload: {
+    course_id: string; title: string; description?: string;
+    order_num?: number; icon?: string;
+  }): Observable<any> {
+    return this.http.post(this.apiUrl + '/lms/modules', payload);
+  }
+
+  getModules(courseId: string = ''): Observable<LmsModule[]> {
+    const q = courseId ? `?course_id=${encodeURIComponent(courseId)}` : '';
+    return this.http.get<LmsModule[]>(this.apiUrl + '/lms/modules' + q);
+  }
+
+  deleteModule(moduleId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/lms/modules/${encodeURIComponent(moduleId)}`);
+  }
+
+  createMaterial(payload: {
+    course_id: string; module_id?: string; title: string;
+    type?: string; url?: string; description?: string;
+  }): Observable<any> {
+    return this.http.post(this.apiUrl + '/lms/materials', payload);
+  }
+
+  getMaterials(courseId: string = ''): Observable<LmsMaterial[]> {
+    const q = courseId ? `?course_id=${encodeURIComponent(courseId)}` : '';
+    return this.http.get<LmsMaterial[]>(this.apiUrl + '/lms/materials' + q);
+  }
+
+  deleteMaterial(materialId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/lms/materials/${encodeURIComponent(materialId)}`);
+  }
+
+  createAssignment(payload: {
+    course_id: string; title: string; description?: string;
+    due_date?: string; max_score?: number; track?: string;
+  }): Observable<any> {
+    return this.http.post(this.apiUrl + '/lms/assignments', payload);
+  }
+
+  deleteAssignment(assignmentId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/lms/assignments/${encodeURIComponent(assignmentId)}`);
+  }
+
+  /** Student work awaiting a mark on the caller's own courses. */
+  getGradingQueue(courseId: string = ''): Observable<GradingQueueItem[]> {
+    const q = courseId ? `?course_id=${encodeURIComponent(courseId)}` : '';
+    return this.http.get<GradingQueueItem[]>(this.apiUrl + '/lms/grading-queue' + q);
+  }
+
+  /** Mark a student's work. This is what finally makes a grade visible to them. */
+  gradeLmsSubmission(submissionId: string, score: number, feedback: string = ''): Observable<any> {
+    return this.http.patch(
+      `${this.apiUrl}/lms/submissions/${encodeURIComponent(submissionId)}/grade`,
+      { score, feedback }
+    );
+  }
+
+  /** Courses awaiting review, excluding the reviewer's own submissions. */
+  getModerationQueue(): Observable<ModerationQueueItem[]> {
+    return this.http.get<ModerationQueueItem[]>(this.apiUrl + '/lms/moderation-queue');
+  }
+
+  /**
+   * Sends a submission back for revision instead of grading it.
+   *
+   * Replaces requestSubmissionRevision()/rejectLmsSubmission(), which mutated a
+   * local object and pushed it through admin-only bulk-sync -- the student was
+   * never told anything.
+   */
+  returnLmsSubmission(submissionId: string, feedback: string): Observable<any> {
+    return this.http.patch(
+      `${this.apiUrl}/lms/submissions/${encodeURIComponent(submissionId)}/return`,
+      { feedback }
+    );
+  }
+
+  /** Approve or reject submitted content. The server refuses self-review. */
+  moderateCourse(courseId: string, approve: boolean, reason: string = ''): Observable<any> {
+    return this.http.patch(
+      `${this.apiUrl}/lms/courses/${encodeURIComponent(courseId)}/moderate`,
+      { approve, reason }
+    );
+  }
+
+  // ── Sponsorships & payments ───────────────────────────────────────────
+  // Replaces a hardcoded infographic and payments that never persisted. Amounts
+  // are strings end to end: the column is NUMERIC and parsing to a JS number would
+  // reintroduce the float rounding the column exists to avoid.
+
+  /** Record the signed-in sponsor's commitment. Starts 'pending'. */
+  createMySponsorship(payload: {
+    tier?: string; sector?: string; amount_pledged: string;
+    competition_id?: string; notes?: string;
+  }): Observable<{ id: string; status: string; amount_pledged: string }> {
+    return this.http.post<{ id: string; status: string; amount_pledged: string }>(
+      this.apiUrl + '/sponsorships', payload
+    );
+  }
+
+  /** The sponsor's own commitments, with real received/pending totals. */
+  getMySponsorships(): Observable<Sponsorship[]> {
+    return this.http.get<Sponsorship[]>(this.apiUrl + '/sponsorships/mine');
+  }
+
+  /** Every commitment. Admin only. */
+  getAllSponsorships(): Observable<Sponsorship[]> {
+    return this.http.get<Sponsorship[]>(this.apiUrl + '/sponsorships');
+  }
+
+  setSponsorshipStatus(sponsorshipId: string, status: string): Observable<any> {
+    return this.http.patch(
+      `${this.apiUrl}/sponsorships/${encodeURIComponent(sponsorshipId)}/status`,
+      { status }
+    );
+  }
+
+  /**
+   * Records a payment the sponsor says they have made.
+   *
+   * Lands as 'pending_verification' -- nothing in this application contacts a bank,
+   * MoMo API or card processor, so it is a claim for an administrator to check. The
+   * old UI wrote 'Confirmed' on submit.
+   */
+  recordSponsorPayment(sponsorshipId: string, payload: {
+    amount: string; method?: string; reference: string; notes?: string;
+  }): Observable<{ id: string; status: string; amount: string }> {
+    return this.http.post<{ id: string; status: string; amount: string }>(
+      `${this.apiUrl}/sponsorships/${encodeURIComponent(sponsorshipId)}/payments`,
+      payload
+    );
+  }
+
+  getMySponsorPayments(): Observable<SponsorPayment[]> {
+    return this.http.get<SponsorPayment[]>(this.apiUrl + '/sponsorships/payments/mine');
+  }
+
+  /** The admin verification queue. */
+  getPendingSponsorPayments(): Observable<SponsorPayment[]> {
+    return this.http.get<SponsorPayment[]>(this.apiUrl + '/sponsorships/payments/pending');
+  }
+
+  verifySponsorPayment(paymentId: string, verified: boolean, reason: string = ''): Observable<any> {
+    return this.http.patch(
+      `${this.apiUrl}/sponsorships/payments/${encodeURIComponent(paymentId)}/verify`,
+      { verified, reason }
+    );
+  }
+
+  /** Real aggregates for the sponsorship ecosystem panel. */
+  getSponsorshipSummary(): Observable<SponsorshipSummary> {
+    return this.http.get<SponsorshipSummary>(this.apiUrl + '/sponsorships/summary');
   }
 
   /**

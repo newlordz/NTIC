@@ -15,8 +15,10 @@
         <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">assignment_turned_in</span>Grade Submissions</button>
       </div>
       <div style="display:flex;gap:10px;" *ngIf="activeRoleId === 'student'">
-        <button class="btn btn-subtle btn-sm"><span class="material-symbols-outlined">school</span>Curriculum</button>
-        <button class="btn btn-primary btn-sm"><span class="material-symbols-outlined">upload_file</span>Submit Code</button>
+        <!-- Both of these had no (click) handler and did nothing when pressed.
+             They now navigate to the pages they name. -->
+        <button class="btn btn-subtle btn-sm" routerLink="/lms"><span class="material-symbols-outlined">school</span>My Courses</button>
+        <button class="btn btn-primary btn-sm" routerLink="/lms" [queryParams]="{ tab: 'assignments' }"><span class="material-symbols-outlined">upload_file</span>Submit Work</button>
       </div>
       <div style="display:flex;gap:10px;" *ngIf="activeRoleId === 'school_admin'">
         <button class="btn btn-primary btn-sm" (click)="openAddTeamModal()"><span class="material-symbols-outlined">group_add</span>Add Team</button>
@@ -59,91 +61,109 @@
       <div>
         <!-- Student Portal Coursework -->
         <div *ngIf="activeRoleId === 'student'">
-          <div class="section-title">My Enrolled Courses & Tracks<button class="btn btn-ghost btn-sm">View All</button></div>
+          <!-- Was bound to `enrolledTracks`, which was declared as [] and never
+               assigned anywhere in the codebase -- so this grid was permanently
+               empty for every student. It now reads real enrolments, and "View All"
+               actually navigates instead of being a dead button. -->
+          <div class="section-title">
+            My Enrolled Courses &amp; Tracks
+            <button class="btn btn-ghost btn-sm" routerLink="/lms">View All</button>
+          </div>
+
+          <div class="card" *ngIf="!isLoadingStudentSummary && !studentEnrolments.length">
+            <div class="card-body" style="text-align:center;padding:24px 18px;">
+              <span class="material-symbols-outlined" style="font-size:36px;color:var(--outline);">school</span>
+              <h3 style="font-size:14px;font-weight:700;margin:8px 0 4px;">No courses yet</h3>
+              <p style="font-size:12px;color:var(--on-surface-variant);margin:0 0 12px;">
+                Enrol on a track to start learning and submitting work.
+              </p>
+              <button class="btn btn-primary btn-sm" routerLink="/lms">Browse courses</button>
+            </div>
+          </div>
+
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-            <div *ngFor="let track of enrolledTracks" class="card" style="cursor:pointer;">
+            <div *ngFor="let track of studentEnrolments" class="card">
               <div class="card-body">
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
                   <div style="width:44px;height:44px;border-radius:10px;background:var(--surface-container);display:flex;align-items:center;justify-content:center;">
-                    <span class="material-symbols-outlined" [style.color]="'var(--'+track.color+')'">{{track.icon}}</span>
+                    <span class="material-symbols-outlined" style="color:var(--primary);">{{ track.icon || 'school' }}</span>
                   </div>
-                  <span class="badge secondary">Active</span>
+                  <span class="badge secondary">{{ track.status | titlecase }}</span>
                 </div>
-                <h3 style="font-size:14px;font-weight:700;color:var(--on-surface);margin-bottom:4px;">{{track.name}}</h3>
-                <p style="font-size:12px;color:var(--on-surface-variant);margin-bottom:14px;">{{track.module}} &bull; Last active {{track.lastActive}}</p>
+                <h3 style="font-size:14px;font-weight:700;color:var(--on-surface);margin-bottom:4px;">{{ track.title }}</h3>
+                <p style="font-size:12px;color:var(--on-surface-variant);margin-bottom:14px;">
+                  {{ track.track }}<span *ngIf="track.assignment_count"> &bull; {{ track.assignment_count }} assignment{{ track.assignment_count === 1 ? '' : 's' }}</span>
+                </p>
                 <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--on-surface-variant);margin-bottom:4px;">
                   <span>Course Progress</span>
-                  <span style="font-weight:700;" [style.color]="'var(--'+track.color+')'">{{track.progress}}%</span>
+                  <span style="font-weight:700;color:var(--primary);">{{ track.progress_pct }}%</span>
                 </div>
-                <div class="progress-bar" [class]="track.color"><div class="progress-fill" [style.width.%]="track.progress"></div></div>
+                <div class="progress-bar primary"><div class="progress-fill" [style.width.%]="track.progress_pct"></div></div>
                 <div style="display:flex;justify-content:flex-end;margin-top:12px;padding-top:10px;border-top:1px solid var(--outline-variant); gap:8px;">
-                  <button class="btn btn-ghost btn-sm">Assignments</button>
-                  <button class="btn btn-primary btn-sm" style="padding: 4px 10px; font-size:11px;">Resume</button>
+                  <button class="btn btn-primary btn-sm" style="padding: 4px 10px; font-size:11px;" routerLink="/lms">Open</button>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Selected Course & Cycle Algorithmic Leaderboard -->
+          <!-- Was "My Selected Course Leaderboard", bound to
+               `courseCycleLeaderboards` / `activeCourseLeaderboardList`. Both were
+               declared and never assigned anywhere in the codebase, and the track
+               filter buttons iterated `enrolledTracks`, also never assigned -- so
+               this rendered as an empty table with no buttons, under a heading
+               describing a scoring formula that was never computed.
+
+               Replaced with the student's actual graded work, which is real data
+               they could not see anywhere before: nothing ever read lms_submissions
+               back, so an instructor's mark and feedback were invisible. -->
           <div class="card" style="margin-top:20px;">
             <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
               <div>
                 <h3 style="display:flex;align-items:center;gap:8px;margin:0;">
-                  <span class="material-symbols-outlined" style="color:var(--primary);">leaderboard</span>
-                  My Selected Course Leaderboard
+                  <span class="material-symbols-outlined" style="color:var(--primary);">grading</span>
+                  My Grades &amp; Feedback
                 </h3>
                 <p style="font-size:12px;color:var(--on-surface-variant);margin:2px 0 0 0;">
-                  Algorithmic Score = (45% Course Progress) + (35% Assignment Accuracy) + (20% Streak & Lab Bonus)
+                  Marks and written feedback from your instructors.
                 </p>
               </div>
-              <div style="display:flex;gap:6px;">
-                <button *ngFor="let tr of enrolledTracks"
-                        class="btn btn-sm"
-                        [class.btn-primary]="selectedCourseLeaderboardTrack === tr.name"
-                        [class.btn-subtle]="selectedCourseLeaderboardTrack !== tr.name"
-                        (click)="selectedCourseLeaderboardTrack = tr.name">
-                  {{ tr.name }}
-                </button>
-              </div>
+              <span class="badge" [class]="studentSummary.avgGrade === null ? 'neutral' : 'success'"
+                    *ngIf="studentRecentSubmissions.length">
+                {{ studentSummary.avgGrade === null ? 'Not yet graded' : 'Average ' + studentSummary.avgGrade }}
+              </span>
             </div>
             <div class="card-body" style="padding:0;overflow-x:auto;">
-              <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <p *ngIf="!studentRecentSubmissions.length"
+                 style="padding:18px;font-size:12.5px;color:var(--on-surface-variant);margin:0;">
+                No submitted work yet. Once you submit an assignment it will appear here with its grade.
+              </p>
+              <table *ngIf="studentRecentSubmissions.length" style="width:100%;border-collapse:collapse;font-size:13px;">
                 <thead>
                   <tr style="border-bottom:1px solid var(--outline-variant);background:var(--surface-container-low);text-align:left;color:var(--on-surface-variant);font-size:11px;text-transform:uppercase;">
-                    <th style="padding:10px 14px;">Rank</th>
-                    <th style="padding:10px 14px;">Student & School</th>
-                    <th style="padding:10px 14px;text-align:center;">Progress</th>
-                    <th style="padding:10px 14px;text-align:center;">Accuracy</th>
-                    <th style="padding:10px 14px;text-align:center;">Streak</th>
-                    <th style="padding:10px 14px;text-align:right;">Algorithmic Score</th>
+                    <th style="padding:10px 14px;">Assignment</th>
+                    <th style="padding:10px 14px;">Course</th>
+                    <th style="padding:10px 14px;">Submitted</th>
+                    <th style="padding:10px 14px;text-align:center;">Status</th>
+                    <th style="padding:10px 14px;text-align:right;">Grade</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let item of activeCourseLeaderboardList"
-                      [style.background]="item.isCurrentUser ? 'var(--primary-container, rgba(0, 63, 135, 0.12))' : 'transparent'"
-                      [style.font-weight]="item.isCurrentUser ? '600' : 'normal'"
-                      style="border-bottom:1px solid var(--outline-variant);">
+                  <tr *ngFor="let s of studentRecentSubmissions" style="border-bottom:1px solid var(--outline-variant);">
                     <td style="padding:12px 14px;">
-                      <span [style.background]="item.rank === 1 ? '#f59e0b' : item.rank === 2 ? '#94a3b8' : item.rank === 3 ? '#b45309' : 'var(--surface-container-high)'"
-                            [style.color]="item.rank <= 3 ? '#fff' : 'var(--on-surface)'"
-                            style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-weight:700;font-size:12px;">
-                        {{ item.rank }}
-                      </span>
+                      <div>{{ s.assignment_title || 'Assignment' }}</div>
+                      <div *ngIf="s.feedback" style="font-size:11px;color:var(--on-surface-variant);font-weight:400;margin-top:2px;">
+                        {{ s.feedback }}
+                      </div>
                     </td>
-                    <td style="padding:12px 14px;">
-                      <div>{{ item.name }}</div>
-                      <div style="font-size:11px;color:var(--on-surface-variant);font-weight:400;">{{ item.school }}</div>
-                    </td>
-                    <td style="padding:12px 14px;text-align:center;">{{ item.progressPct }}%</td>
-                    <td style="padding:12px 14px;text-align:center;">{{ item.accuracyPct }}%</td>
+                    <td style="padding:12px 14px;color:var(--on-surface-variant);">{{ s.course_title }}</td>
+                    <td style="padding:12px 14px;color:var(--on-surface-variant);">{{ s.submitted_at | slice:0:10 }}</td>
                     <td style="padding:12px 14px;text-align:center;">
-                      <span style="display:inline-flex;align-items:center;gap:2px;color:#f59e0b;">
-                        <span class="material-symbols-outlined" style="font-size:14px;">local_fire_department</span>
-                        {{ item.streakDays }}d
+                      <span class="badge" [class]="s.score !== null ? 'success' : 'warning'">
+                        {{ s.score !== null ? 'Graded' : 'Awaiting' }}
                       </span>
                     </td>
                     <td style="padding:12px 14px;text-align:right;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;color:var(--primary);">
-                      {{ item.algoScore | number:'1.1-1' }}
+                      {{ s.score !== null ? s.score + '/' + s.max_score : '--' }}
                     </td>
                   </tr>
                 </tbody>
@@ -825,9 +845,12 @@
                 <span class="cc-tf-lbl">SPONSORED TEAMS</span>
                 <span class="cc-tf-val cc-green">{{ sponsorInfographic.sponsoredTeamsCount }} <small>Teams</small></span>
               </div>
+              <!-- Was "IMPACT SCORE" bound to the literal string "98.4%". Replaced
+                   with the share of committed money actually verified as received,
+                   which the database can prove. -->
               <div class="cc-tf-stat">
-                <span class="cc-tf-lbl">IMPACT SCORE</span>
-                <span class="cc-tf-val cc-green">{{ sponsorInfographic.impactScore }}</span>
+                <span class="cc-tf-lbl">RECEIVED</span>
+                <span class="cc-tf-val cc-green">{{ sponsorInfographic.receivedPct }}%</span>
               </div>
             </div>
           </div>
