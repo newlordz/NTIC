@@ -569,6 +569,24 @@
   padding: 0 2px;
 }
 
+/* ── Eco flow nodes ── dark mode ── */
+:host-context(body.dark-theme) {
+  .cc-eco-node {
+    background: var(--surface-container-lowest, #0e2530);
+    border-color: var(--outline-variant, #334155);
+    box-shadow: none;
+  }
+  .cc-eco-node-ic {
+    background: rgba(172, 199, 255, 0.12);
+    color: var(--primary, #acc7ff);
+  }
+  .cc-eco-node-val { color: var(--on-surface, #e1f3fc); }
+  .cc-eco-node-lbl { color: var(--on-surface-variant, #bfc8cc); }
+  .cc-eco-arrow { color: var(--primary, #acc7ff); }
+  .cc-eco-bar-track { background: var(--surface-container-high, #1a2332); }
+  .cc-eco-tier-track { background: var(--surface-container-high, #1a2332); }
+}
+
 /* ── Telemetry Radial Gauge Rings ── */
 .cc-gauges-grid {
   display: grid;
@@ -13475,4 +13493,41 @@
   }
   .pm-drawer-note { background: #0e2530; border-left-color: #21404c; color: #94a3b8; }
   .pm-drawer-actions { border-top-color: #21404c; }
+
+  /* Live Ticket Preview -- avoid light text on light boxes in dark mode */
+  .preview-ticket {
+    border-color: rgba(172, 199, 255, 0.2);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
+    &.preview-filled { border-color: rgba(172, 199, 255, 0.35); }
+  }
+
+  .preview-avatar {
+    background: linear-gradient(135deg, rgba(0, 63, 135, 0.45), rgba(0, 86, 179, 0.55));
+    border-color: rgba(172, 199, 255, 0.3);
+    color: #acc7ff;
+
+    &.sponsor {
+      background: linear-gradient(135deg, rgba(0, 106, 96, 0.45), rgba(0, 113, 102, 0.55));
+      border-color: rgba(133, 246, 229, 0.3);
+      color: #85f6e5;
+    }
+  }
+
+  .preview-code {
+    &.preview-code-pending {
+      color: #bfc8cc;
+      background: rgba(172, 199, 255, 0.08);
+      border-color: rgba(172, 199, 255, 0.25);
+    }
+
+    &.preview-code-live {
+      color: #acc7ff;
+      background: rgba(0, 63, 135, 0.4);
+      border-color: rgba(172, 199, 255, 0.35);
+    }
+  }
+
+  .preview-code-generating { color: #fbbf24; }
+
+  .preview-code-hint.success { color: #34d399; }
 }

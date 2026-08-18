@@ -3642,13 +3642,32 @@ select.form-control {
       .placeholder-icon { color: rgba(255,255,255,0.15) !important; }
     }
 
+    .crest-inner {
+      background: linear-gradient(135deg, rgba(172,199,255,0.22), var(--surface-container-low)) !important;
+      border-color: rgba(255,255,255,0.4) !important;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35) !important;
+    }
+
     .crest-status {
       border-color: var(--surface-container-lowest) !important;
+
+      &.ready {
+        background: linear-gradient(135deg, rgba(172,199,255,0.18), var(--surface-container-low)) !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.45) !important;
+      }
+    }
+
+    .card-meta-pills .pill-category {
+      color: var(--primary) !important;
+    }
+
+    .instructor-card-details {
+      background: var(--surface-container-low) !important;
     }
 
     .detail-item {
       color: var(--on-surface) !important;
-      .material-symbols-outlined { color: var(--on-surface-variant) !important; }
+      .material-symbols-outlined { color: var(--primary) !important; }
     }
     .instructor-card-expertise .title { color: var(--on-surface-variant) !important; }
     .exp-chip {

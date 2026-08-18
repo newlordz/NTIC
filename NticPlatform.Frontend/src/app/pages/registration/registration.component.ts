@@ -2423,7 +2423,7 @@ setAuthValue('activeUserEmail', email);
     };
     localStorage.setItem('ntic_drafts', JSON.stringify(drafts));
     this.apiService.saveDraft({ email: contactKey, data: { tab: this.activeTab, data: formData, savedAt: new Date().toISOString() } }).subscribe();
-    this.showCustomAlert(`Draft saved successfully! You can resume using ${contact}.`, 'Draft Saved', 'success');
+    this.dialogService.toast('Saved to draft', 'success');
   }
 
   generateJudgeTicket(): void {
