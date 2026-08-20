@@ -5,6 +5,9 @@ import { debounceTime } from 'rxjs/operators';
 import { DataStorageService } from './data-storage.service';
 import { ApiService } from './api.service';
 import { WsSyncService } from './ws-sync.service';
+import {
+  CYCLE_STATUSES, CycleStatus, parseCycleStatus, canTransition, nextCycleStatus
+} from './competition-lifecycle';
 
 export interface UpcomingEvent {
   id: string;
@@ -92,7 +95,9 @@ export interface Competition {
   startDate?: string;
   endDate?: string;
   prize: string;
-  status: 'draft' | 'active' | 'registration' | 'completed' | 'archived';
+  /** See services/competition-lifecycle.ts -- that module owns the legal set and
+   *  the transitions between them. Typed from there so the two cannot drift. */
+  status: CycleStatus;
   progress: number;
   type?: 'qualifier' | 'quarter-final' | 'semi-final' | 'final' | 'championship';
   phases?: CompetitionPhase[];
@@ -1157,6 +1162,17 @@ private readonly defaultTeams: Team[] = [];
     const localById = new Map<string, Competition>();
     this.competitions.forEach(c => localById.set(c.id, c));
     backendComps.forEach((b: any) => {
+      // An unrecognised status is a bug, not a cycle to hide. This used to fall
+      // through to 'archived', so a single bad value server-side made a live
+      // cycle disappear from every panel at once with nothing logged. Park it in
+      // 'draft' (the only status that cannot mislead an entrant) and say so.
+      const parsedStatus = parseCycleStatus(b.status);
+      if (parsedStatus === null) {
+        console.error(
+          `[ContentService] Competition ${b.id} has unrecognised status ${JSON.stringify(b.status)}. ` +
+          `Treating it as 'draft'. Expected one of: ${CYCLE_STATUSES.join(', ')}.`
+        );
+      }
       localById.set(b.id, {
         id: b.id,
         title: b.title || 'Untitled Competition',
@@ -1174,7 +1190,7 @@ private readonly defaultTeams: Team[] = [];
         phases: typeof b.phases === 'string' ? JSON.parse(b.phases || '[]') : (b.phases || []),
         rules: b.rules || '',
         criteria: b.criteria || '',
-        status: (b.status === 'active' ? 'active' : b.status === 'registration' ? 'registration' : b.status === 'completed' ? 'completed' : b.status === 'draft' ? 'draft' : 'archived'),
+        status: parsedStatus ?? 'draft',
         progress: b.progress || 0,
         createdAt: b.created_at || new Date().toISOString()
       });
@@ -1304,21 +1320,26 @@ private readonly defaultTeams: Team[] = [];
     }
 
     (this as any)[key] = JSON.parse(JSON.stringify(defaultValue));
-    await this.dataStorage.set(key, defaultValue).catch(() => {});
+    // Deliberately not written back to IndexedDB. Seeding the default costs a
+    // write transaction per missing key on every cold start (six of them, all
+    // during bootstrap) and buys nothing: if the key is absent next time we
+    // land on this same branch and rebuild the default just as cheaply.
+    // saveState() still persists the moment there is real data to store.
   }
 
   private async migrateToIndexedDB(): Promise<void> {
     // Users always come fresh from backend -- never from cache
     const largeKeys = ['pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs'];
+    // Issued in parallel rather than awaited one at a time. DataStorageService
+    // opens a separate transaction per call, so a sequential loop made six
+    // round-trip latencies add up instead of overlap -- the single most
+    // disk-bound thing this app does at startup, and the reason boot felt so
+    // much worse on a spinning disk than on an SSD.
     if (this.needsIdbPurge) {
       this.needsIdbPurge = false;
-      for (const key of largeKeys) {
-        await this.dataStorage.remove(key).catch(() => {});
-      }
+      await Promise.all(largeKeys.map(key => this.dataStorage.remove(key).catch(() => {})));
     }
-    for (const key of largeKeys) {
-      await this.loadKeyAsync(key, (this as any)[key]);
-    }
+    await Promise.all(largeKeys.map(key => this.loadKeyAsync(key, (this as any)[key])));
     this.storageReady = true;
   }
 
@@ -2026,44 +2047,97 @@ private readonly defaultTeams: Team[] = [];
 
   updateCompetition(comp: Competition): void {
     const idx = this.competitions.findIndex(c => c.id === comp.id);
-    if (idx > -1) {
-      this.competitions[idx] = comp;
-      this.saveCompetitions(this.competitions);
-
-      this.apiService.updateCompetition(comp.id, {
-        title: comp.title,
-        description: comp.description || '',
-        track: comp.track || 'Coding',
-        category: comp.category || '',
-        deadline: comp.deadline || '',
-        status: comp.status || 'active',
-        comp_type: (comp as any).type || 'qualifier',
-        max_teams: (comp as any).maxTeams || 50,
-        teams: comp.teams || 0,
-        prize: comp.prize || '',
-        start_date: (comp as any).startDate || '',
-        end_date: (comp as any).endDate || '',
-        phases: JSON.stringify(comp.phases || []),
-        rules: (comp as any).rules || '',
-        criteria: (comp as any).criteria || '',
-        progress: comp.progress || 0
-      }).subscribe({
-        next: (res: any) => console.log('Backend competition updated', res),
-        error: (e: any) => console.log('Backend update competition fallback to local cache')
-      });
-
-      const auditLogsList = [
-        {
-          id: `LOG-${Date.now()}`,
-          action: `Updated Competition: ${comp.title} (status: ${comp.status})`,
-          user: getAuthValue('activeUserEmail') || 'System',
-          time: new Date().toISOString(),
-          category: 'approval'
-        },
-        ...this.auditLogs
-      ];
-      this.saveAuditLogs(auditLogsList);
+    if (idx === -1) {
+      // Used to return silently, so a stale panel could "save" a cycle that no
+      // longer existed locally and get no feedback at all -- nothing persisted,
+      // nothing sent, nothing logged.
+      console.warn(`[ContentService] updateCompetition: no cycle with id ${comp.id}; nothing was saved.`);
+      return;
     }
+    this.competitions[idx] = comp;
+    this.saveCompetitions(this.competitions);
+
+    // The API validates this too, but coercing a bad value to 'active' here (as
+    // this used to) would silently publish a cycle to entrants.
+    const status = parseCycleStatus(comp.status);
+    if (status === null) {
+      console.error(
+        `[ContentService] Refusing to send unrecognised cycle status ${JSON.stringify(comp.status)} ` +
+        `for ${comp.id}. Expected one of: ${CYCLE_STATUSES.join(', ')}.`
+      );
+      return;
+    }
+
+    this.apiService.updateCompetition(comp.id, {
+      title: comp.title,
+      description: comp.description || '',
+      track: comp.track || 'Coding',
+      category: comp.category || '',
+      deadline: comp.deadline || '',
+      status,
+      comp_type: (comp as any).type || 'qualifier',
+      max_teams: (comp as any).maxTeams || 50,
+      teams: comp.teams || 0,
+      prize: comp.prize || '',
+      start_date: (comp as any).startDate || '',
+      end_date: (comp as any).endDate || '',
+      phases: JSON.stringify(comp.phases || []),
+      rules: (comp as any).rules || '',
+      criteria: (comp as any).criteria || '',
+      progress: comp.progress || 0
+    }).subscribe({
+      next: (res: any) => console.log('Backend competition updated', res),
+      error: (e: any) => console.log('Backend update competition fallback to local cache')
+    });
+
+    const auditLogsList = [
+      {
+        id: `LOG-${Date.now()}`,
+        action: `Updated Competition: ${comp.title} (status: ${comp.status})`,
+        user: getAuthValue('activeUserEmail') || 'System',
+        time: new Date().toISOString(),
+        category: 'approval'
+      },
+      ...this.auditLogs
+    ];
+    this.saveAuditLogs(auditLogsList);
+  }
+
+  /**
+   * Move a cycle to a new status, refusing illegal moves.
+   *
+   * The only place a cycle's status should change. Both competition panels used
+   * to own a private copy of the flow, which is how `archived` ended up
+   * unreachable from the UI and how a stale tab could walk a completed cycle
+   * back to registration. Returns the updated cycle, or null if the move was
+   * rejected.
+   */
+  setCompetitionStatus(comp: Competition, newStatus: CycleStatus): Competition | null {
+    const from = parseCycleStatus(comp.status);
+    if (from === null) {
+      console.error(`[ContentService] Cycle ${comp.id} has unrecognised status ${JSON.stringify(comp.status)}.`);
+      return null;
+    }
+    if (from === newStatus) return comp;
+    if (!canTransition(from, newStatus)) {
+      console.warn(`[ContentService] Illegal cycle transition ${from} -> ${newStatus} for ${comp.id}.`);
+      return null;
+    }
+    const updated: Competition = { ...comp, status: newStatus };
+    this.updateCompetition(updated);
+    return updated;
+  }
+
+  /**
+   * Advance a cycle one step along the lifecycle (draft -> registration ->
+   * active -> completed). Archiving is deliberately not part of this sequence;
+   * it must always be an explicit choice.
+   */
+  advanceCompetitionStatus(comp: Competition): Competition | null {
+    const from = parseCycleStatus(comp.status);
+    if (from === null) return null;
+    const next = nextCycleStatus(from);
+    return next ? this.setCompetitionStatus(comp, next) : null;
   }
 
   removeCompetition(id: string): void {

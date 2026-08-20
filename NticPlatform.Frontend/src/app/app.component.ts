@@ -4,7 +4,7 @@ import { AppUpdateService } from './services/app-update.service';
 import { Component, OnInit, OnDestroy, HostListener, Renderer2, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationStart, NavigationEnd, NavigationCancel, NavigationError } from '@angular/router';
-import { filter, throttleTime } from 'rxjs/operators';
+import { filter, take, throttleTime } from 'rxjs/operators';
 import { ThemeService } from './services/theme.service';
 import { ContentService } from './services/content.service';
 import { TimeAgoPipe } from './services/time-ago.pipe';
@@ -196,6 +196,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
       // ── Universal Dissolution of Splash Screen ──
       const dismissSplash = () => {
+        (window as any).__nticAppReady = true;
         if (typeof (window as any)?.__dismissNticSplash === 'function') {
           (window as any).__dismissNticSplash();
         }
@@ -215,7 +216,25 @@ export class AppComponent implements OnInit, OnDestroy {
         });
       };
 
-      setTimeout(dismissSplash, 600);
+      // Dismiss as soon as the first route has actually painted, rather than
+      // after a fixed delay. A fixed setTimeout cannot run until the main
+      // thread finishes its synchronous startup storage work, so on spinning
+      // disks the old 600ms timer landed seconds late and the splash outlived
+      // the app becoming usable. Two nested frames guarantee the router outlet
+      // has been painted, so there is no white flash either.
+      const dismissWhenPainted = () => {
+        requestAnimationFrame(() => requestAnimationFrame(dismissSplash));
+      };
+
+      if (this.router.navigated) {
+        dismissWhenPainted();
+      } else {
+        this.idleSubs.push(
+          this.router.events
+            .pipe(filter(e => e instanceof NavigationEnd), take(1))
+            .subscribe(() => dismissWhenPainted())
+        );
+      }
     }
     // Load support tickets for admin badge only when properly authenticated
     if ((this.currentUser?.roleId === 'super_admin' || this.currentUser?.roleId === 'support_admin') && getAuthValue('activeUserToken')) {

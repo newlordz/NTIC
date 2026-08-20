@@ -23,9 +23,14 @@ from app.security import (
     ADMIN_ROLES, CONTENT_ROLES, COMPETITION_ROLES, GRADING_ROLES,
     APPROVAL_ROLES, STUDENT_ADMIN_ROLES, SUPPORT_ROLES, LMS_ROLES,
     touch_session, SESSION_IDLE_MINUTES, SESSION_ABSOLUTE_DAYS,
-    ROLE_SPONSOR, ROLE_JUDGE, ROLE_INSTRUCTOR, ROLE_STUDENT,
+    ROLE_SPONSOR, ROLE_JUDGE, ROLE_INSTRUCTOR, ROLE_STUDENT, ROLE_SCHOOL_ADMIN,
 )
 from app.ws_manager import ws_manager, broadcast_async
+from app.lifecycle import (
+    CYCLE_STATUSES, DEFAULT_STATUS as DEFAULT_CYCLE_STATUS,
+    parse_status as parse_cycle_status, can_transition as can_cycle_transition,
+    is_registration_open,
+)
 
 try:
     import httpx
@@ -2332,8 +2337,11 @@ try:
             if not comp:
                 conn.rollback(); cur.close()
                 raise HTTPException(status_code=404, detail="Competition not found")
-            # A draft or finished cycle is not open for sign-up.
-            if (comp[2] or "").lower() in ("draft", "completed", "archived", "cancelled"):
+            # Whether a cycle accepts sign-ups is derived from the lifecycle
+            # contract in app/lifecycle.py, not from a deny-list maintained here.
+            # The old list named a 'cancelled' status that no longer exists, and
+            # any status added later would have defaulted to "open".
+            if not is_registration_open(comp[2]):
                 conn.rollback(); cur.close()
                 raise HTTPException(
                     status_code=409,
@@ -4321,7 +4329,9 @@ try:
         track: str = "Coding"
         category: str = ""
         deadline: str = ""
-        status: str = "active"
+        # Defaults to draft, never active. A create call that omitted this field
+        # used to publish the cycle to entrants immediately.
+        status: str = DEFAULT_CYCLE_STATUS
         comp_type: str = "qualifier"
         max_teams: int = 50
         teams: int = 0
@@ -4332,6 +4342,21 @@ try:
         rules: str = ""
         criteria: str = ""
         progress: int = 0
+
+    def _require_cycle_status(raw: str) -> str:
+        """Validate an incoming cycle status against the lifecycle contract.
+
+        The column is a bare VARCHAR, so without this any string reached the
+        database and the frontend then relabelled whatever it did not recognise
+        as `archived` -- silently hiding a live cycle from every panel.
+        """
+        parsed = parse_cycle_status(raw)
+        if parsed is None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid cycle status '{raw}'. Expected one of: {', '.join(CYCLE_STATUSES)}",
+            )
+        return parsed
 
     @app.get("/api/competitions")
     def list_competitions():
@@ -4347,6 +4372,7 @@ try:
 
     @app.post("/api/competitions", status_code=status.HTTP_201_CREATED)
     def create_competition(payload: CompetitionCreate, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
+        new_status = _require_cycle_status(payload.status)
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
@@ -4354,7 +4380,7 @@ try:
         cur = conn.cursor()
         try:
             cur.execute("INSERT INTO competitions (id, title, description, track, category, deadline, status, comp_type, max_teams, teams, prize, start_date, end_date, phases, rules, criteria, progress) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                        (comp_id, payload.title, payload.description, payload.track, payload.category, payload.deadline, payload.status, payload.comp_type, payload.max_teams, payload.teams, payload.prize, payload.start_date, payload.end_date, payload.phases, payload.rules, payload.criteria, payload.progress))
+                        (comp_id, payload.title, payload.description, payload.track, payload.category, payload.deadline, new_status, payload.comp_type, payload.max_teams, payload.teams, payload.prize, payload.start_date, payload.end_date, payload.phases, payload.rules, payload.criteria, payload.progress))
             conn.commit()
         except Exception as e:
             conn.rollback()
@@ -4364,18 +4390,38 @@ try:
         cur.close()
         release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "competitions"})
-        return {"id": comp_id, "title": payload.title, "status": payload.status}
+        return {"id": comp_id, "title": payload.title, "status": new_status}
 
     @app.patch("/api/competitions/{item_id}")
     def update_competition(item_id: str, payload: CompetitionCreate, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
+        new_status = _require_cycle_status(payload.status)
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
+        # Enforce the transition graph rather than trusting the client. The UI
+        # only offers legal moves, but a stale tab or a direct API call could
+        # otherwise walk a completed cycle back to registration and reopen it to
+        # entrants after results were published.
+        cur.execute("SELECT status FROM competitions WHERE id = %s", (item_id,))
+        current = cur.fetchone()
+        if not current:
+            cur.close()
+            release_db_connection(conn)
+            raise HTTPException(status_code=404, detail="Competition not found")
+        current_status = parse_cycle_status(current[0])
+        if current_status is not None and new_status != current_status \
+                and not can_cycle_transition(current_status, new_status):
+            cur.close()
+            release_db_connection(conn)
+            raise HTTPException(
+                status_code=409,
+                detail=f"Cannot move a cycle from '{current_status}' to '{new_status}'.",
+            )
         try:
             cur.execute(
                 "UPDATE competitions SET title = %s, description = %s, track = %s, category = %s, deadline = %s, status = %s, comp_type = %s, max_teams = %s, teams = %s, prize = %s, start_date = %s, end_date = %s, phases = %s, rules = %s, criteria = %s, progress = %s WHERE id = %s RETURNING id",
-                (payload.title, payload.description, payload.track, payload.category, payload.deadline, payload.status, payload.comp_type, payload.max_teams, payload.teams, payload.prize, payload.start_date, payload.end_date, payload.phases, payload.rules, payload.criteria, payload.progress, item_id)
+                (payload.title, payload.description, payload.track, payload.category, payload.deadline, new_status, payload.comp_type, payload.max_teams, payload.teams, payload.prize, payload.start_date, payload.end_date, payload.phases, payload.rules, payload.criteria, payload.progress, item_id)
             )
             row = cur.fetchone()
             conn.commit()
@@ -4397,8 +4443,22 @@ try:
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("DELETE FROM competitions WHERE id = %s", (item_id,))
-        conn.commit()
+        # There are no FK constraints pointing at competitions.id, so deleting a
+        # cycle used to leave its registrations, sponsorships and users pointing
+        # at an id that no longer existed. Detach them explicitly instead: the
+        # rows are records of what happened and must survive, but they must not
+        # keep referencing a dead cycle.
+        try:
+            cur.execute("DELETE FROM competition_registrations WHERE competition_id = %s", (item_id,))
+            cur.execute("UPDATE sponsorships SET competition_id = NULL WHERE competition_id = %s", (item_id,))
+            cur.execute("UPDATE users SET competition_id = NULL WHERE competition_id = %s", (item_id,))
+            cur.execute("DELETE FROM competitions WHERE id = %s", (item_id,))
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            release_db_connection(conn)
+            raise HTTPException(status_code=400, detail=str(e))
         cur.close()
         release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "competitions"})
@@ -5531,6 +5591,11 @@ try:
     def register_user_public(payload: UserCreate):
         if payload.role not in ["judge", "sponsor"]:
             raise HTTPException(status_code=403, detail="Role not allowed for public registration")
+        # Status is NOT taken from the request. This endpoint is unauthenticated,
+        # so honouring a client-supplied status let anyone self-register as
+        # 'active' and skip review entirely. Public sign-ups always start pending
+        # and are activated by a reviewer.
+        new_status = "pending"
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
@@ -5560,7 +5625,7 @@ try:
         try:
             cur.execute(
                 "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone, organization, age_group, experience_level, competition_id, photo_file_id, doc_file_id, must_change_password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, payload.status, phone, payload.organization or None, payload.age_group or None, payload.experience_level or None, payload.competition_id or None, payload.photo_file_id or None, payload.doc_file_id or None, bool(generated_password))
+                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, new_status, phone, payload.organization or None, payload.age_group or None, payload.experience_level or None, payload.competition_id or None, payload.photo_file_id or None, payload.doc_file_id or None, bool(generated_password))
             )
             conn.commit()
         except Exception as e:
@@ -6152,6 +6217,93 @@ try:
         broadcast_async({"type": "data_changed", "collection": "approvals"})
         return {"id": approval_id, "type": type_by_role[role], "status": "pending"}
 
+    # Which role an approved application results in.
+    #
+    # This is the mapping that makes "Approved" mean something. Until now
+    # approving an application only flipped a status column: no account was
+    # created and no role was assigned, so the applicant was approved and still
+    # could not sign in. Account creation happened separately, with the role
+    # chosen by whatever client happened to call the users endpoint.
+    #
+    # Keyed on a lowercased approval `type`. Judge and sponsor are absent on
+    # purpose: they self-register through POST /api/users/register, which has its
+    # own hard allow-list.
+    APPROVAL_TYPE_ROLES = {
+        "school registration": ROLE_SCHOOL_ADMIN,
+        "instructor access": ROLE_INSTRUCTOR,
+        "team addition": ROLE_STUDENT,
+    }
+
+    def _provision_approved_account(cur, approval_row) -> dict:
+        """Create the account an approved application entitles the applicant to.
+
+        Idempotent: if an account already exists for the contact address the
+        existing one is returned untouched, so re-approving (or a retried
+        request) never creates a duplicate or clobbers a password.
+
+        Returns a dict describing what happened. Never raises for
+        business-rule problems -- an approval must not fail because of them, or
+        the reviewer is left unable to record their decision.
+        """
+        approval_type = (approval_row["type"] or "").strip().lower()
+        role = APPROVAL_TYPE_ROLES.get(approval_type)
+        if not role:
+            return {"provisioned": False, "reason": f"No role mapping for approval type '{approval_row['type']}'"}
+
+        email = (approval_row["contact"] or "").strip().lower()
+        if not email or "@" not in email:
+            return {"provisioned": False, "reason": "Application has no usable contact email"}
+
+        details = approval_row["details"] or {}
+        if isinstance(details, str):
+            import json as _json_local
+            try:
+                details = _json_local.loads(details)
+            except Exception:
+                details = {}
+        if not isinstance(details, dict):
+            details = {}
+        full_name = (
+            details.get("repName")
+            or details.get("contactName")
+            or details.get("leadName")
+            or approval_row["entity"]
+            or email
+        )
+
+        cur.execute("SELECT id, role FROM users WHERE lower(email) = %s", (email,))
+        existing = cur.fetchone()
+        if existing:
+            return {
+                "provisioned": False,
+                "reason": "An account already exists for this email",
+                "user_id": existing[0],
+                "role": existing[1],
+            }
+
+        user_id = "USR-" + str(uuid.uuid4())[:8]
+        temp_password = _generate_temp_password()
+        ticket = f"NTIC-{role.upper()[:3]}-{_generate_access_code()}"
+        cur.execute(
+            "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, "
+            "organization, must_change_password) "
+            "VALUES (%s, %s, %s, %s, %s, %s, 'active', %s, true)",
+            (
+                user_id, email, full_name, role, ticket,
+                hash_password(temp_password),
+                details.get("schoolName") or approval_row["entity"] or None,
+            ),
+        )
+        return {
+            "provisioned": True,
+            "user_id": user_id,
+            "email": email,
+            "full_name": full_name,
+            "role": role,
+            "ticket": ticket,
+            "temporary_password": temp_password,
+        }
+
     @app.patch("/api/approvals/{item_id}")
     def update_approval(item_id: str, payload: ApprovalUpdate, _actor: dict = Depends(require_role(APPROVAL_ROLES))):
         conn = get_db_connection()
@@ -6159,12 +6311,44 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         try:
+            # Read the application first: approving it has to provision an
+            # account, and that needs the type/contact/details in the same
+            # transaction so a failure rolls the whole decision back.
+            cur.execute(
+                "SELECT type, entity, contact, details, status FROM pending_approvals WHERE id = %s",
+                (item_id,),
+            )
+            before = cur.fetchone()
+            if not before:
+                conn.rollback(); cur.close()
+                release_db_connection(conn)
+                raise HTTPException(status_code=404, detail="Approval not found")
+
+            was_approved = (before[4] or "").strip().lower() == "approved"
+            now_approved = (payload.status or "").strip().lower() == "approved"
+
             cur.execute(
                 "UPDATE pending_approvals SET status = %s, reviewed_at = %s, reviewer = %s, rejection_reasons = %s, rejection_notes = %s WHERE id = %s RETURNING id",
                 (payload.status, payload.reviewed_at, payload.reviewer, payload.rejection_reasons, payload.rejection_notes, item_id)
             )
             row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                release_db_connection(conn)
+                raise HTTPException(status_code=404, detail="Approval not found")
+
+            account: dict = {"provisioned": False, "reason": "Not an approval transition"}
+            if now_approved and not was_approved:
+                account = _provision_approved_account(cur, {
+                    "type": before[0],
+                    "entity": before[1],
+                    "contact": before[2],
+                    "details": before[3],
+                })
+
             conn.commit()
+        except HTTPException:
+            raise
         except Exception as e:
             conn.rollback()
             cur.close()
@@ -6172,10 +6356,10 @@ try:
             raise HTTPException(status_code=400, detail=str(e))
         cur.close()
         release_db_connection(conn)
-        if not row:
-            raise HTTPException(status_code=404, detail="Approval not found")
         broadcast_async({"type": "data_changed", "collection": "approvals"})
-        return {"id": item_id, "status": "updated"}
+        if account.get("provisioned"):
+            broadcast_async({"type": "data_changed", "collection": "users"})
+        return {"id": item_id, "status": "updated", "account": account}
 
     @app.delete("/api/approvals/{item_id}")
     def delete_approval(item_id: str, _actor: dict = Depends(require_role(APPROVAL_ROLES))):

@@ -424,6 +424,38 @@ def _create_tables(conn):
     cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS rules TEXT DEFAULT '';")
     cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS criteria TEXT DEFAULT '';")
     cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0;")
+
+    # ── Cycle linkage ────────────────────────────────────────────────────────
+    # A "cycle" is a competitions row. Nothing except competition_registrations
+    # used to point at one, so no panel could show "the teams in this cycle" or
+    # "the submissions for this cycle" -- each panel showed every record it could
+    # find, which is why the admin view and the role views never agreed.
+    #
+    # Nullable on purpose: rows that predate this, and records that genuinely are
+    # not cycle-scoped, keep working. NULL means "not attached to a cycle".
+    cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS competition_id VARCHAR(64);")
+    cur.execute("ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS competition_id VARCHAR(64);")
+
+    # users.competition_id was declared VARCHAR(100) while competitions.id is
+    # VARCHAR(64), so a legitimate id could be stored here and never match on a
+    # join. Narrow it to match; existing ids are all shorter than 64 chars.
+    cur.execute("ALTER TABLE users ALTER COLUMN competition_id TYPE VARCHAR(64);")
+
+    # A new cycle must not be visible to entrants the moment it is created. The
+    # default used to be 'active', so any insert that omitted status published
+    # the cycle immediately.
+    cur.execute("ALTER TABLE competitions ALTER COLUMN status SET DEFAULT 'draft';")
+
+    # The status column has no CHECK constraint and until now nothing validated
+    # writes, so arbitrary strings could be stored. Fold case/whitespace first,
+    # then park anything still unrecognised in 'draft' -- the only status that
+    # cannot mislead an entrant. See app/lifecycle.py for the legal set.
+    cur.execute("UPDATE competitions SET status = lower(trim(status)) WHERE status <> lower(trim(status));")
+    cur.execute("""
+        UPDATE competitions SET status = 'draft'
+        WHERE status IS NULL
+           OR status NOT IN ('draft', 'registration', 'active', 'completed', 'archived')
+    """)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS registration_drafts (
             email VARCHAR(150) PRIMARY KEY,
@@ -777,6 +809,19 @@ def _create_indexes(cur):
         # The admin verification queue.
         "CREATE INDEX IF NOT EXISTS idx_sponsor_payments_pending "
         "ON sponsorship_payments (status) WHERE status = 'pending_verification';",
+
+        # ── Cycle linkage ──
+        # Every panel filters its records by cycle, so each of these columns is
+        # on the hot path for "show me this cycle's teams / submissions /
+        # sponsors / entrants". Declared here rather than beside the ALTERs
+        # because sponsorships is created further down this same function.
+        "CREATE INDEX IF NOT EXISTS idx_teams_competition ON teams (competition_id);",
+        "CREATE INDEX IF NOT EXISTS idx_submissions_competition "
+        "ON assignment_submissions (competition_id);",
+        "CREATE INDEX IF NOT EXISTS idx_sponsorships_competition "
+        "ON sponsorships (competition_id);",
+        "CREATE INDEX IF NOT EXISTS idx_users_competition ON users (competition_id);",
+        "CREATE INDEX IF NOT EXISTS idx_competitions_status ON competitions (status);",
 
         # ── Frequently filtered / ordered columns ──
         "CREATE INDEX IF NOT EXISTS idx_students_email_lower ON students (lower(email));",
