@@ -1935,12 +1935,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   get sponsorFundingBars() {
     const info = this.sponsorInfographic;
-    const total = info.totalCommitted || 1;
+    const total = info.totalCommitted || 0;
+    const disbursed = info.disbursedFunds || 0;
+    const awaiting = info.awaitingVerificationCount || 0;
+    const partners = info.partnerCount || 0;
+    const students = info.studentsReached || 0;
+    // Reference scale for the Students Reached bar. There is no target field in
+    // the schema, so this uses the historical program baseline this panel
+    // predates (48 teams x 25 students). The bar fills proportionally: empty at
+    // 0, and full only at the capacity figure.
+    const studentsTarget = 1200;
+    const studentsPct = students > 0 ? Math.max(4, Math.min(100, Math.round((students / studentsTarget) * 100))) : 0;
     return [
-      { label: 'Total Committed', value: info.totalCommittedFormatted, pct: 100, cls: 'cc-bar-blue' },
-      { label: 'Disbursed Funds', value: info.disbursedFundsFormatted, pct: Math.max(4, Math.round((info.disbursedFunds / total) * 100)), cls: 'cc-bar-teal' },
-      { label: 'Awaiting Verification', value: info.awaitingVerificationFormatted, pct: Math.max(4, Math.round((info.awaitingVerificationCount / Math.max(1, info.partnerCount)) * 100)), cls: 'cc-bar-amber' },
-      { label: 'Students Reached', value: `${info.studentsReached}`, pct: 100, cls: 'cc-bar-purple' }
+      { label: 'Total Committed', value: info.totalCommittedFormatted, pct: total > 0 ? 100 : 0, cls: 'cc-bar-blue' },
+      { label: 'Disbursed Funds', value: info.disbursedFundsFormatted, pct: disbursed > 0 ? Math.max(4, Math.round((disbursed / (total || 1)) * 100)) : 0, cls: 'cc-bar-teal' },
+      { label: 'Awaiting Verification', value: info.awaitingVerificationFormatted, pct: awaiting > 0 ? Math.max(4, Math.round((awaiting / Math.max(1, partners)) * 100)) : 0, cls: 'cc-bar-amber' },
+      { label: 'Students Reached', value: `${info.studentsReached}`, pct: studentsPct, cls: 'cc-bar-purple' }
     ];
   }
 

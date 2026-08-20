@@ -3495,6 +3495,12 @@ try:
             )
             partners, committed = cur.fetchone()
 
+            # Corporate partners are the sponsor accounts themselves. A sponsor
+            # who has not yet created a pledge record is still a partner; the
+            # sponsorships table only counts those with confirmed pledges.
+            cur.execute("SELECT COUNT(*) FROM users WHERE role = 'sponsor'")
+            sponsor_accounts = cur.fetchone()[0]
+
             cur.execute(
                 "SELECT COALESCE(SUM(amount),0) FROM sponsorship_payments WHERE status='verified'"
             )
@@ -3531,7 +3537,7 @@ try:
 
         total = committed or 0
         return {
-            "partner_count": partners or 0,
+            "partner_count": sponsor_accounts or partners or 0,
             "total_committed": _money(committed),
             "total_received": _money(received),
             "awaiting_verification": _money(awaiting),
