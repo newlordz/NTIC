@@ -3,8 +3,12 @@
    Clinical Clarity Design System
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+/* Fonts are requested once from index.html (Inter, Playfair Display, JetBrains
+   Mono, Material Symbols Outlined). They are deliberately NOT @imported here:
+   a CSS @import at the top of the main stylesheet blocks serially -- the
+   browser must fetch and parse styles.css before it even discovers the font
+   request -- and these two were byte-for-byte subsets of the <link> tags in
+   index.html, so they cost two extra render-blocking round trips for nothing. */
 
 #ntic-splash.out,
 #ntic-preboot-splash.ntic-splash-fadeout,

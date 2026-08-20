@@ -352,14 +352,22 @@
         }
       }
       window.__dismissNticSplash = dismissAll;
-      if (document.readyState === 'complete') {
-        setTimeout(dismissAll, 600);
-      } else {
-        window.addEventListener('load', function () {
-          setTimeout(dismissAll, 600);
-        });
+
+      // AppComponent performs the real dismissal the moment the first route has
+      // painted (see dismissSplash() in app.component.ts) and sets
+      // __nticAppReady. The timers below are failure-mode nets only, for when
+      // Angular never boots at all (broken chunk, uncaught error) -- otherwise
+      // the user would stare at the splash forever. They are deliberately
+      // generous: the previous 600ms/1200ms timers fired before the app had
+      // painted on slow machines, which both flashed an empty page and made the
+      // splash look like it was the thing being slow.
+      function dismissIfAppNeverBooted() {
+        if (!window.__nticAppReady) { dismissAll(); }
       }
-      setTimeout(dismissAll, 1200);
+      window.addEventListener('load', function () {
+        setTimeout(dismissIfAppNeverBooted, 4000);
+      });
+      setTimeout(dismissIfAppNeverBooted, 10000);
     })();
   </script>
 </body>

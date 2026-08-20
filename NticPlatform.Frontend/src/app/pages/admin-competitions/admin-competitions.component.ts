@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { ContentService, Competition, CompetitionPhase } from '../../services/content.service';
 import { ThemeService } from '../../services/theme.service';
+import { CYCLE_STATUSES, advanceLabel, advanceIcon } from '../../services/competition-lifecycle';
 
 @Component({
   selector: 'app-admin-competitions',
@@ -46,7 +47,7 @@ export class AdminCompetitionsComponent implements OnInit {
 
   cycleTypes = ['qualifier', 'quarter-finals', 'finals'];
   tracks = ['all', 'coding', 'robotics', 'ai', 'cyber', 'innovation'];
-  statuses: Competition['status'][] = ['draft', 'registration', 'active', 'completed', 'archived'];
+  statuses: readonly Competition['status'][] = CYCLE_STATUSES;
   phaseTypes: CompetitionPhase['type'][] = ['registration', 'submission', 'judging', 'results', 'break'];
 
   boardColumns = [
@@ -362,39 +363,34 @@ export class AdminCompetitionsComponent implements OnInit {
   }
 
   updateStatus(comp: Competition, newStatus: Competition['status']): void {
-    this.contentService.updateCompetition({ ...comp, status: newStatus });
+    // ContentService owns the transition rules; it refuses illegal moves and
+    // returns null so the detail panel does not show a state the API rejected.
+    const updated = this.contentService.setCompetitionStatus(comp, newStatus);
+    if (!updated) return;
     if (this.selectedCompetition?.id === comp.id) {
-      this.selectedCompetition = { ...comp, status: newStatus };
+      this.selectedCompetition = updated;
     }
     this.loadCompetitions();
   }
 
   quickAdvanceStatus(comp: Competition, event: Event): void {
     event.stopPropagation();
-    const flow: Competition['status'][] = ['draft', 'registration', 'active', 'completed'];
-    const idx = flow.indexOf(comp.status);
-    if (idx > -1 && idx < flow.length - 1) {
-      this.updateStatus(comp, flow[idx + 1]);
+    const updated = this.contentService.advanceCompetitionStatus(comp);
+    if (!updated) return;
+    if (this.selectedCompetition?.id === comp.id) {
+      this.selectedCompetition = updated;
     }
+    this.loadCompetitions();
   }
 
   quickLabel(status: Competition['status']): string {
-    const map: Record<string, string> = {
-      draft: 'Open Registration',
-      registration: 'Activate',
-      active: 'Mark Complete'
-    };
-    return map[status] || '';
+    return advanceLabel(status);
   }
 
   quickIcon(status: Competition['status']): string {
-    const map: Record<string, string> = {
-      draft: 'how_to_reg',
-      registration: 'play_circle',
-      active: 'check_circle'
-    };
-    return map[status] || '';
+    return advanceIcon(status);
   }
+
 
   openPhaseModal(phase?: CompetitionPhase, index?: number): void {
     if (phase && index !== undefined) {

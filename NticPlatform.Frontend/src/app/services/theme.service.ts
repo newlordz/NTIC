@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
-/** Minimal shape of the View Transitions API, which TS DOM libs may not declare. */
-interface ViewTransitionCapableDocument extends Document {
-  startViewTransition?: (callback: () => void) => { finished: Promise<void> };
+/** Minimal shape of the View Transitions API, safe across TypeScript DOM lib versions. */
+interface ViewTransitionCapableDocument {
+  startViewTransition?: (callback: () => void | Promise<void>) => { finished?: Promise<void> } | unknown;
 }
+
 
 @Injectable({
   providedIn: 'root'
@@ -57,7 +58,7 @@ export class ThemeService {
       return;
     }
 
-    const doc = document as ViewTransitionCapableDocument;
+    const doc = document as unknown as ViewTransitionCapableDocument;
     if (typeof doc.startViewTransition === 'function') {
       try {
         // The callback runs between the two snapshots.

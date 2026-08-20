@@ -4,6 +4,11 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { clearAllAuthValues, getAuthValue } from '../services/session.util';
 import { environment } from '../../environments/environment';
+import {
+  ALL_ROLES, ADMIN_ROLES, COMPETITION_ROLES, GRADING_ROLES, LMS_ROLES,
+  STUDENT_ADMIN_ROLES, CONTENT_ROLES, unionRoles,
+  ROLE_SPONSOR, ROLE_STUDENT, ROLE_REVIEWER, ROLE_INSTRUCTOR, ROLE_SCHOOL_ADMIN
+} from '../services/roles';
 
 /**
  * Which roles may open which route.
@@ -12,21 +17,40 @@ import { environment } from '../../environments/environment';
  * gap here is not a security hole on its own -- but a route missing from this
  * map used to be treated as PUBLIC, which meant a newly added guarded route was
  * silently unprotected. The guard now fails CLOSED instead.
+ *
+ * Entries are expressed with the shared role sets from services/roles.ts, which
+ * mirror security.py. Listing raw role strings here is what let this map drift
+ * away from the API: routes admitted roles the API rejects, so the page loaded
+ * and then every action on it returned 403.
  */
-const ROLE_ACCESS: Record<string, string[]> = {
-  'dashboard':        ['super_admin', 'admin', 'content_manager', 'reviewer', 'competition_manager', 'school_admin', 'instructor', 'student', 'judge', 'sponsor', 'support_admin'],
-  'admin/competitions': ['super_admin', 'admin', 'competition_manager', 'content_manager', 'support_admin', 'school_admin', 'instructor'],
-  'lms':              ['student', 'instructor', 'super_admin', 'admin'],
-  'lms-manager':      ['super_admin', 'admin', 'content_manager', 'instructor'],
-  'sponsors':         ['sponsor', 'super_admin', 'admin'],
-  // Mirrors the backend's GRADING_ROLES (security.py). Keep the two in step:
-  // allowing a role here that the API rejects produces a page that loads and
-  // then 403s on every action.
-  'judge':            ['judge', 'reviewer', 'instructor', 'super_admin', 'admin'],
-  'reporting':        ['super_admin', 'admin', 'reviewer', 'instructor', 'school_admin'],
-  'records':          ['super_admin', 'admin', 'content_manager'],
-  'user-management':  ['super_admin', 'admin'],
-  'profile-completion': ['super_admin', 'admin', 'content_manager', 'reviewer', 'competition_manager', 'judge', 'sponsor', 'instructor', 'student', 'school_admin'],
+const ROLE_ACCESS: Record<string, readonly string[]> = {
+  // The shared shell every signed-in role lands on.
+  'dashboard':          ALL_ROLES,
+  'profile-completion': ALL_ROLES,
+
+  // Cycle management. Must match COMPETITION_ROLES: the competitions API rejects
+  // everyone else, so admitting more roles here only produces 403 walls.
+  'admin/competitions': COMPETITION_ROLES,
+
+  // Students consume the LMS; LMS_ROLES author it.
+  'lms':                unionRoles(LMS_ROLES, [ROLE_STUDENT]),
+  'lms-manager':        LMS_ROLES,
+
+  'sponsors':           unionRoles(ADMIN_ROLES, [ROLE_SPONSOR]),
+
+  // Mirrors the backend's GRADING_ROLES.
+  'judge':              GRADING_ROLES,
+
+  'reporting':          unionRoles(ADMIN_ROLES, [ROLE_REVIEWER, ROLE_INSTRUCTOR, ROLE_SCHOOL_ADMIN]),
+
+  // Student and school records. STUDENT_ADMIN_ROLES governs student writes and
+  // COMPETITION_ROLES governs school writes; CONTENT_ROLES is included because
+  // content managers had read access here before and listing endpoints only
+  // require authentication. Roles outside the write sets get a read-only view,
+  // so the panel must keep hiding mutation controls from them.
+  'records':            unionRoles(STUDENT_ADMIN_ROLES, COMPETITION_ROLES, CONTENT_ROLES),
+
+  'user-management':    ADMIN_ROLES,
 };
 
 /**
