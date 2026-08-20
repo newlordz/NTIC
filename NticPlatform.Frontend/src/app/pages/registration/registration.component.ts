@@ -2241,8 +2241,9 @@ setAuthValue('activeUserEmail', email);
   }
 
   loadOpenCompetitions(): void {
-    this.availableOpenCompetitions = this.contentService.competitions
-      .filter(c => c.status === 'registration' || c.status === 'active')
+    // Uses the shared lifecycle predicate rather than its own status list, so
+    // this picker can never offer a cycle the API will refuse to register into.
+    this.availableOpenCompetitions = this.contentService.getOpenCompetitions()
       .map(c => ({
         id: c.id,
         title: c.title,

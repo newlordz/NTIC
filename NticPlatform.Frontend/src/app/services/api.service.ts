@@ -826,11 +826,12 @@ export class ApiService {
     return this.http.delete(this.apiUrl + '/students/' + id);
   }
 
-  getSubmissions(): Observable<BackendSubmission[]> {
-    return this.http.get<BackendSubmission[]>(this.apiUrl + '/submissions');
+  getSubmissions(competitionId = ''): Observable<BackendSubmission[]> {
+    const q = competitionId ? '?competition_id=' + encodeURIComponent(competitionId) : '';
+    return this.http.get<BackendSubmission[]>(this.apiUrl + '/submissions' + q);
   }
 
-  createSubmission(payload: { student_id: string; source_code_path: string; video_url: string }): Observable<any> {
+  createSubmission(payload: { student_id: string; source_code_path: string; video_url: string; competition_id?: string | null }): Observable<any> {
     return this.http.post(this.apiUrl + '/submissions', payload);
   }
 
@@ -1030,15 +1031,16 @@ export class ApiService {
     return this.http.delete(this.apiUrl + '/competitions/' + id);
   }
 
-  getTeams(): Observable<any[]> {
-    return this.http.get<any[]>(this.apiUrl + '/teams');
+  getTeams(competitionId = ''): Observable<any[]> {
+    const q = competitionId ? '?competition_id=' + encodeURIComponent(competitionId) : '';
+    return this.http.get<any[]>(this.apiUrl + '/teams' + q);
   }
 
-  createTeam(payload: { name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string }): Observable<any> {
+  createTeam(payload: { name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string; competition_id?: string | null }): Observable<any> {
     return this.http.post(this.apiUrl + '/teams', payload);
   }
 
-  updateTeam(id: string, payload: { name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string }): Observable<any> {
+  updateTeam(id: string, payload: { name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string; competition_id?: string | null }): Observable<any> {
     return this.http.patch(this.apiUrl + '/teams/' + id, payload);
   }
 
@@ -1086,8 +1088,13 @@ export class ApiService {
   }
 
   /** Submissions still awaiting a score. Shared pool, oldest first. */
-  getJudgeQueue(track = ''): Observable<JudgeQueue> {
-    const q = track ? '?track=' + encodeURIComponent(track) : '';
+  getJudgeQueue(track = '', competitionId = ''): Observable<JudgeQueue> {
+    const params: string[] = [];
+    if (track) params.push('track=' + encodeURIComponent(track));
+    // Scopes the queue to one cycle so a judge working a cycle is not shown
+    // every unscored submission on the platform.
+    if (competitionId) params.push('competition_id=' + encodeURIComponent(competitionId));
+    const q = params.length ? '?' + params.join('&') : '';
     return this.http.get<JudgeQueue>(this.apiUrl + '/judge/queue' + q);
   }
 

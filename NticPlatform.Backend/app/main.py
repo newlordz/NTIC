@@ -704,6 +704,10 @@ try:
         source_code_path: str
         video_url: str = ""
         tenant_id: str = "11111111-1111-1111-1111-111111111111"
+        # Which cycle this submission belongs to. Optional so pre-existing rows
+        # and non-cycle coursework keep working; set it and the judge queue and
+        # every cycle-scoped view can filter on it.
+        competition_id: Optional[str] = None
 
     class EventCreate(BaseModel):
         title: str
@@ -4058,16 +4062,22 @@ try:
 
     # SUBMISSIONS
     @app.get("/api/submissions")
-    def list_submissions(_auth: dict = Depends(require_auth)):
+    def list_submissions(competition_id: str = "", _auth: dict = Depends(require_auth)):
+        """List submissions, optionally scoped to one cycle."""
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, tenant_id, student_id, source_code_path, video_url, status, score, feedback, created_at FROM assignment_submissions ORDER BY created_at DESC")
+        base = ("SELECT id, tenant_id, student_id, source_code_path, video_url, status, "
+                "score, feedback, created_at, competition_id FROM assignment_submissions")
+        if competition_id:
+            cur.execute(base + " WHERE competition_id = %s ORDER BY created_at DESC", (competition_id,))
+        else:
+            cur.execute(base + " ORDER BY created_at DESC")
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)
-        return [{"id": r[0], "tenant_id": r[1], "student_id": r[2], "source_code_path": r[3], "video_url": r[4], "status": r[5], "score": r[6], "feedback": r[7], "created_at": str(r[8])} for r in rows]
+        return [{"id": r[0], "tenant_id": r[1], "student_id": r[2], "source_code_path": r[3], "video_url": r[4], "status": r[5], "score": r[6], "feedback": r[7], "created_at": str(r[8]), "competition_id": r[9]} for r in rows]
 
     @app.post("/api/submissions", status_code=status.HTTP_201_CREATED)
     def create_submission(payload: SubmissionCreate, _actor: dict = Depends(require_auth)):
@@ -4077,9 +4087,15 @@ try:
         sub_id = str(uuid.uuid4())
         cur = conn.cursor()
         try:
-            cur.execute("INSERT INTO assignment_submissions (id, tenant_id, student_id, source_code_path, video_url, status) VALUES (%s, %s, %s, %s, %s, 'Pending')",
-                        (sub_id, payload.tenant_id, payload.student_id, payload.source_code_path, payload.video_url))
+            comp_ref = _validate_competition_ref(cur, payload.competition_id)
+            cur.execute("INSERT INTO assignment_submissions (id, tenant_id, student_id, source_code_path, video_url, status, competition_id) VALUES (%s, %s, %s, %s, %s, 'Pending', %s)",
+                        (sub_id, payload.tenant_id, payload.student_id, payload.source_code_path, payload.video_url, comp_ref))
             conn.commit()
+        except HTTPException:
+            conn.rollback()
+            cur.close()
+            release_db_connection(conn)
+            raise
         except Exception as e:
             conn.rollback()
             cur.close()
@@ -4213,7 +4229,7 @@ try:
     # and the LMS grading screens exclude the role. These two endpoints are the
     # backend half of an actual judging surface.
 
-    def _judge_queue_rows(cur, track: str = "", limit: int = 200):
+    def _judge_queue_rows(cur, track: str = "", limit: int = 200, competition_id: str = ""):
         """Unscored competition submissions, oldest first (fairest order)."""
         sql = (
             "SELECT s.id, s.student_id, s.source_code_path, s.video_url, s.status, "
@@ -4226,6 +4242,9 @@ try:
         if track:
             sql += "AND lower(COALESCE(st.track, '')) = lower(%s) "
             params.append(track)
+        if competition_id:
+            sql += "AND s.competition_id = %s "
+            params.append(competition_id)
         sql += "ORDER BY s.created_at ASC NULLS LAST LIMIT %s"
         params.append(limit)
         cur.execute(sql, params)
@@ -4253,25 +4272,43 @@ try:
         }
 
     @app.get("/api/judge/queue")
-    def judge_queue(track: str = "", _actor: dict = Depends(require_role(GRADING_ROLES))):
+    def judge_queue(track: str = "", competition_id: str = "", _actor: dict = Depends(require_role(GRADING_ROLES))):
         """Submissions still awaiting a score.
 
         This is a shared pool, not a per-judge assignment list: the schema has a
         single score per submission and no assignment table, so inventing an
         owner here would be fiction. Ordered oldest-first so nothing starves.
+
+        `?competition_id=` scopes the queue to one cycle so a judge working a
+        cycle is not shown every unscored submission on the platform. The counts
+        below are scoped the same way, otherwise the badge and the list disagree.
         """
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        rows = _judge_queue_rows(cur, track)
-        cur.execute("SELECT COUNT(*) FROM assignment_submissions WHERE score IS NULL")
+        rows = _judge_queue_rows(cur, track, competition_id=competition_id)
+        if competition_id:
+            cur.execute(
+                "SELECT COUNT(*) FROM assignment_submissions "
+                "WHERE score IS NULL AND competition_id = %s",
+                (competition_id,),
+            )
+        else:
+            cur.execute("SELECT COUNT(*) FROM assignment_submissions WHERE score IS NULL")
         pending_total = cur.fetchone()[0]
-        cur.execute(
+        track_sql = (
             "SELECT COALESCE(lower(st.track), '') , COUNT(*) "
             "FROM assignment_submissions s LEFT JOIN students st ON st.id = s.student_id "
-            "WHERE s.score IS NULL GROUP BY lower(st.track) ORDER BY 2 DESC"
+            "WHERE s.score IS NULL "
         )
+        if competition_id:
+            cur.execute(
+                track_sql + "AND s.competition_id = %s GROUP BY lower(st.track) ORDER BY 2 DESC",
+                (competition_id,),
+            )
+        else:
+            cur.execute(track_sql + "GROUP BY lower(st.track) ORDER BY 2 DESC")
         by_track = [{"track": r[0], "pending": r[1]} for r in cur.fetchall()]
         cur.close()
         release_db_connection(conn)
@@ -4364,11 +4401,28 @@ try:
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, title, description, track, category, deadline, status, created_at, comp_type, max_teams, teams, prize, start_date, end_date, phases, rules, criteria, progress FROM competitions ORDER BY created_at DESC")
+        # `teams` is reported as a live count of what is actually attached to the
+        # cycle, not the hand-typed integer in the column. That number was only
+        # ever set by whoever last edited the cycle, so it drifted away from
+        # reality immediately and every panel showed a different figure.
+        # entrants = students registered for the cycle; team_count = teams in it.
+        cur.execute(
+            "SELECT c.id, c.title, c.description, c.track, c.category, c.deadline, c.status, "
+            "c.created_at, c.comp_type, c.max_teams, c.prize, c.start_date, c.end_date, "
+            "c.phases, c.rules, c.criteria, c.progress, "
+            "(SELECT COUNT(*) FROM teams t WHERE t.competition_id = c.id) AS team_count, "
+            "(SELECT COUNT(*) FROM competition_registrations r "
+            " WHERE r.competition_id = c.id AND r.status = 'registered') AS entrant_count "
+            "FROM competitions c ORDER BY c.created_at DESC"
+        )
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)
-        return [{"id": r[0], "title": r[1], "description": r[2], "track": r[3], "category": r[4], "deadline": r[5], "status": r[6], "created_at": str(r[7]), "type": r[8], "maxTeams": r[9], "teams": r[10], "prize": r[11], "startDate": r[12], "endDate": r[13], "phases": r[14], "rules": r[15], "criteria": r[16], "progress": r[17]} for r in rows]
+        return [{"id": r[0], "title": r[1], "description": r[2], "track": r[3], "category": r[4],
+                 "deadline": r[5], "status": r[6], "created_at": str(r[7]), "type": r[8],
+                 "maxTeams": r[9], "prize": r[10], "startDate": r[11], "endDate": r[12],
+                 "phases": r[13], "rules": r[14], "criteria": r[15], "progress": r[16],
+                 "teams": r[17], "entrants": r[18]} for r in rows]
 
     @app.post("/api/competitions", status_code=status.HTTP_201_CREATED)
     def create_competition(payload: CompetitionCreate, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
@@ -4472,18 +4526,50 @@ try:
         members: int = 1
         status: str = "Active"
         school_name: str = ""
+        # Which cycle this team is competing in. Optional: teams created before
+        # cycles were linked, and teams not tied to one, carry None.
+        competition_id: Optional[str] = None
+
+    def _validate_competition_ref(cur, competition_id: Optional[str]) -> Optional[str]:
+        """Reject a reference to a cycle that does not exist.
+
+        There are no FK constraints on competitions.id, so without this a typo'd
+        or stale id is accepted and the row simply never joins to anything --
+        which is how records ended up invisible in every cycle-scoped view.
+        """
+        if not competition_id:
+            return None
+        cur.execute("SELECT id FROM competitions WHERE id = %s", (competition_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=422, detail=f"Unknown competition cycle '{competition_id}'")
+        return competition_id
 
     @app.get("/api/teams")
-    def list_teams(_auth: dict = Depends(require_auth)):
+    def list_teams(competition_id: str = "", _auth: dict = Depends(require_auth)):
+        """List teams, optionally scoped to one cycle.
+
+        `?competition_id=` is what lets each panel show "the teams in this cycle"
+        instead of every team on the platform.
+        """
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, name, track, lead, members, status, school_name FROM teams ORDER BY name ASC")
+        if competition_id:
+            cur.execute(
+                "SELECT id, name, track, lead, members, status, school_name, competition_id "
+                "FROM teams WHERE competition_id = %s ORDER BY name ASC",
+                (competition_id,),
+            )
+        else:
+            cur.execute(
+                "SELECT id, name, track, lead, members, status, school_name, competition_id "
+                "FROM teams ORDER BY name ASC"
+            )
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)
-        return [{"id": r[0], "name": r[1], "track": r[2], "lead": r[3], "members": r[4], "status": r[5], "school_name": r[6]} for r in rows]
+        return [{"id": r[0], "name": r[1], "track": r[2], "lead": r[3], "members": r[4], "status": r[5], "school_name": r[6], "competition_id": r[7]} for r in rows]
 
     @app.post("/api/teams", status_code=status.HTTP_201_CREATED)
     def create_team(payload: TeamCreate, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
@@ -4493,9 +4579,15 @@ try:
         team_id = "team-" + str(uuid.uuid4())[:8]
         cur = conn.cursor()
         try:
-            cur.execute("INSERT INTO teams (id, name, track, lead, members, status, school_name) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                        (team_id, payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name))
+            comp_ref = _validate_competition_ref(cur, payload.competition_id)
+            cur.execute("INSERT INTO teams (id, name, track, lead, members, status, school_name, competition_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                        (team_id, payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name, comp_ref))
             conn.commit()
+        except HTTPException:
+            conn.rollback()
+            cur.close()
+            release_db_connection(conn)
+            raise
         except Exception as e:
             conn.rollback()
             cur.close()
@@ -4504,7 +4596,7 @@ try:
         cur.close()
         release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "teams"})
-        return {"id": team_id, "name": payload.name, "status": payload.status}
+        return {"id": team_id, "name": payload.name, "status": payload.status, "competition_id": comp_ref}
 
     @app.patch("/api/teams/{item_id}")
     def update_team(item_id: str, payload: TeamCreate, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
@@ -4513,12 +4605,18 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         try:
+            comp_ref = _validate_competition_ref(cur, payload.competition_id)
             cur.execute(
-                "UPDATE teams SET name = %s, track = %s, lead = %s, members = %s, status = %s, school_name = %s WHERE id = %s RETURNING id",
-                (payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name, item_id)
+                "UPDATE teams SET name = %s, track = %s, lead = %s, members = %s, status = %s, school_name = %s, competition_id = %s WHERE id = %s RETURNING id",
+                (payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name, comp_ref, item_id)
             )
             row = cur.fetchone()
             conn.commit()
+        except HTTPException:
+            conn.rollback()
+            cur.close()
+            release_db_connection(conn)
+            raise
         except Exception as e:
             conn.rollback()
             cur.close()

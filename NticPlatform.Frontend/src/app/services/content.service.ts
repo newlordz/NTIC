@@ -6,7 +6,8 @@ import { DataStorageService } from './data-storage.service';
 import { ApiService } from './api.service';
 import { WsSyncService } from './ws-sync.service';
 import {
-  CYCLE_STATUSES, CycleStatus, parseCycleStatus, canTransition, nextCycleStatus
+  CYCLE_STATUSES, CycleStatus, parseCycleStatus, canTransition, nextCycleStatus,
+  isRegistrationOpen, isPubliclyVisible
 } from './competition-lifecycle';
 
 export interface UpcomingEvent {
@@ -89,7 +90,10 @@ export interface Competition {
   track: string;
   icon: string;
   category: string;
+  /** Live count of teams attached to this cycle, derived server-side. */
   teams: number;
+  /** Live count of students registered for this cycle, derived server-side. */
+  entrants?: number;
   maxTeams?: number;
   deadline: string;
   startDate?: string;
@@ -351,6 +355,8 @@ export interface Team {
   lead: string;
   members: number;
   status: string;
+  /** The cycle this team competes in, or null when it is not cycle-scoped. */
+  competitionId?: string | null;
   schoolName?: string;
   region?: string;
   photoFileId?: string;
@@ -1065,6 +1071,13 @@ private readonly defaultTeams: Team[] = [];
           error: () => {}
         });
         return;
+      case 'competition_registrations':
+        // The server broadcasts this whenever a student joins or leaves a cycle.
+        // It used to fall through to `default:` and trigger a full reload of all
+        // 18 collections. Only the cycle rows carry the derived entrant/team
+        // counts, so refreshing competitions alone is sufficient.
+        this.reloadCollection('competitions');
+        return;
       default:
         // Unknown or unlabelled broadcast: be safe and refresh everything.
         this.loadFromBackend();
@@ -1181,6 +1194,7 @@ private readonly defaultTeams: Team[] = [];
         icon: 'emoji_events',
         category: b.category || '',
         teams: b.teams || 0,
+        entrants: b.entrants || 0,
         maxTeams: b.maxTeams || 50,
         deadline: b.deadline || '',
         prize: b.prize || '',
@@ -1209,6 +1223,7 @@ private readonly defaultTeams: Team[] = [];
         lead: b.lead || 'Team Lead',
         members: b.members ?? 1,
         status: b.status || 'Active',
+        competitionId: b.competition_id ?? null,
         schoolName: b.school_name || ''
       });
     });
@@ -1828,7 +1843,8 @@ private readonly defaultTeams: Team[] = [];
       lead: team.lead || 'Team Lead',
       members: team.members ?? 1,
       status: team.status || 'Active',
-      school_name: team.schoolName || ''
+      school_name: team.schoolName || '',
+      competition_id: team.competitionId ?? null
     }).subscribe({
       next: (res: any) => {
         if (res && res.id) {
@@ -2138,6 +2154,35 @@ private readonly defaultTeams: Team[] = [];
     if (from === null) return null;
     const next = nextCycleStatus(from);
     return next ? this.setCompetitionStatus(comp, next) : null;
+  }
+
+  /** Look up one cycle by id. */
+  getCompetition(id: string): Competition | undefined {
+    return this.competitions.find(c => c.id === id);
+  }
+
+  /**
+   * Cycles in a given lifecycle state. The panels each hand-rolled this filter,
+   * which is why the admin board and the public board disagreed about which
+   * cycles were live.
+   */
+  getCompetitionsByStatus(...statuses: CycleStatus[]): Competition[] {
+    return this.competitions.filter(c => statuses.includes(c.status));
+  }
+
+  /** Cycles a student may currently join. */
+  getOpenCompetitions(): Competition[] {
+    return this.competitions.filter(c => isRegistrationOpen(c.status));
+  }
+
+  /** Cycles an unauthenticated visitor should see. */
+  getPublicCompetitions(): Competition[] {
+    return this.competitions.filter(c => isPubliclyVisible(c.status));
+  }
+
+  /** Teams attached to one cycle. */
+  getTeamsForCompetition(competitionId: string): Team[] {
+    return this.teams.filter(t => t.competitionId === competitionId);
   }
 
   removeCompetition(id: string): void {

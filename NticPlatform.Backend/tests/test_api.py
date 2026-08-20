@@ -1368,6 +1368,11 @@ class TestPublicSurface:
             return _R()
 
         monkeypatch.setattr(main.httpx, "post", fake_post)
+        # The endpoint refuses with 503 unless a mail transport is configured, so
+        # without this the test only passed on machines with a real key in .env
+        # and failed in CI -- where a key deliberately does not exist. The
+        # outbound call is already faked, so nothing is actually sent.
+        monkeypatch.setattr(main.settings, "BREVO_API_KEY", "test-key-not-real", raising=False)
         resp = client.post(
             "/api/send-email",
             json={
@@ -4518,3 +4523,338 @@ class TestPartnerCopyIsEditable:
     def test_partner_copy_edit_requires_permission(self, client):
         assert client.put("/api/landing-copy",
                           json={"partners.heading": "Hijacked"}).status_code in (401, 403)
+
+class TestCycleLifecycle:
+    """The competition cycle state machine (app/lifecycle.py).
+
+    A cycle is a competitions row. These pin the contract the whole UI relies
+    on: the status column used to accept any string, and nothing enforced the
+    transitions the panels offered.
+    """
+
+    def _make_cycle(self, client, admin_token, **overrides):
+        body = {"title": f"Cycle {uuid.uuid4()}"}
+        body.update(overrides)
+        resp = client.post("/api/competitions",
+                           headers={"Authorization": f"Bearer {admin_token}"},
+                           json=body)
+        assert resp.status_code == 201, resp.text
+        return resp.json()
+
+    def test_new_cycle_defaults_to_draft_not_active(self, client, admin_token):
+        # Creating a cycle must never publish it to entrants immediately.
+        assert self._make_cycle(client, admin_token)["status"] == "draft"
+
+    def test_invalid_status_is_rejected(self, client, admin_token):
+        resp = client.post("/api/competitions",
+                           headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"title": "Bad", "status": "totally-made-up"})
+        assert resp.status_code == 422, resp.text
+        assert "Invalid cycle status" in resp.json()["detail"]
+
+    def test_status_is_case_and_whitespace_normalised(self, client, admin_token):
+        assert self._make_cycle(client, admin_token, status="  DRAFT ")["status"] == "draft"
+
+    def test_legal_transition_is_accepted(self, client, admin_token):
+        cycle = self._make_cycle(client, admin_token)
+        resp = client.patch(f"/api/competitions/{cycle['id']}",
+                            headers={"Authorization": f"Bearer {admin_token}"},
+                            json={"title": "x", "status": "registration"})
+        assert resp.status_code == 200, resp.text
+
+    def test_illegal_transition_is_refused(self, client, admin_token):
+        # draft -> completed skips the whole lifecycle.
+        cycle = self._make_cycle(client, admin_token)
+        resp = client.patch(f"/api/competitions/{cycle['id']}",
+                            headers={"Authorization": f"Bearer {admin_token}"},
+                            json={"title": "x", "status": "completed"})
+        assert resp.status_code == 409, resp.text
+        assert "Cannot move a cycle" in resp.json()["detail"]
+
+    def test_completed_cycle_cannot_reopen_registration(self, client, admin_token):
+        # The case that matters: results are out, entrants must not be let back in.
+        cycle = self._make_cycle(client, admin_token)
+        h = {"Authorization": f"Bearer {admin_token}"}
+        for nxt in ("registration", "active", "completed"):
+            assert client.patch(f"/api/competitions/{cycle['id']}", headers=h,
+                                json={"title": "x", "status": nxt}).status_code == 200
+        resp = client.patch(f"/api/competitions/{cycle['id']}", headers=h,
+                            json={"title": "x", "status": "registration"})
+        assert resp.status_code == 409, resp.text
+
+    def test_archive_is_reachable_from_any_live_state(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        for start in ("draft", "registration", "active"):
+            cycle = self._make_cycle(client, admin_token)
+            if start != "draft":
+                client.patch(f"/api/competitions/{cycle['id']}", headers=h,
+                             json={"title": "x", "status": "registration"})
+            if start == "active":
+                client.patch(f"/api/competitions/{cycle['id']}", headers=h,
+                             json={"title": "x", "status": "active"})
+            resp = client.patch(f"/api/competitions/{cycle['id']}", headers=h,
+                                json={"title": "x", "status": "archived"})
+            assert resp.status_code == 200, f"{start} -> archived: {resp.text}"
+
+    def test_draft_cycle_refuses_student_registration(self, client, admin_token, student_token):
+        cycle = self._make_cycle(client, admin_token)
+        resp = client.post("/api/competitions/register",
+                           headers={"Authorization": f"Bearer {student_token}"},
+                           json={"competition_id": cycle["id"]})
+        assert resp.status_code == 409, resp.text
+
+    def test_open_cycle_accepts_student_registration(self, client, admin_token, student_token):
+        cycle = self._make_cycle(client, admin_token)
+        client.patch(f"/api/competitions/{cycle['id']}",
+                     headers={"Authorization": f"Bearer {admin_token}"},
+                     json={"title": "x", "status": "registration"})
+        resp = client.post("/api/competitions/register",
+                           headers={"Authorization": f"Bearer {student_token}"},
+                           json={"competition_id": cycle["id"]})
+        assert resp.status_code in (200, 201), resp.text
+
+    def test_deleting_a_cycle_detaches_its_registrations(self, client, admin_token, student_token):
+        cycle = self._make_cycle(client, admin_token)
+        h = {"Authorization": f"Bearer {admin_token}"}
+        client.patch(f"/api/competitions/{cycle['id']}", headers=h,
+                     json={"title": "x", "status": "registration"})
+        client.post("/api/competitions/register",
+                    headers={"Authorization": f"Bearer {student_token}"},
+                    json={"competition_id": cycle["id"]})
+        assert client.delete(f"/api/competitions/{cycle['id']}", headers=h).status_code == 200
+        mine = client.get("/api/competitions/my-registrations",
+                          headers={"Authorization": f"Bearer {student_token}"}).json()
+        assert all(r["competition_id"] != cycle["id"] for r in mine)
+
+
+class TestApprovalProvisioning:
+    """Approving an application must create the account it entitles.
+
+    Previously PATCH /api/approvals only flipped a status column, so an
+    applicant could be "approved" and still have no way to sign in.
+    """
+
+    def _submit(self, client, admin_token, approval_type, contact, entity="Test Entity"):
+        approval_id = f"APR-{uuid.uuid4().hex[:10]}"
+        resp = client.post("/api/approvals",
+                           headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"id": approval_id, "type": approval_type,
+                                 "entity": entity, "contact": contact,
+                                 "details": {}, "status": "pending"})
+        assert resp.status_code in (200, 201), resp.text
+        return approval_id
+
+    def _approve(self, client, admin_token, approval_id):
+        resp = client.patch(f"/api/approvals/{approval_id}",
+                            headers={"Authorization": f"Bearer {admin_token}"},
+                            json={"status": "approved", "reviewer": "admin@ntic.org.gh"})
+        assert resp.status_code == 200, resp.text
+        return resp.json()
+
+    @pytest.mark.parametrize("approval_type,expected_role", [
+        ("School Registration", "school_admin"),
+        ("Instructor Access", "instructor"),
+        ("Team Addition", "student"),
+    ])
+    def test_approval_provisions_account_with_mapped_role(
+            self, client, admin_token, approval_type, expected_role):
+        email = f"prov-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = self._submit(client, admin_token, approval_type, email)
+        account = self._approve(client, admin_token, approval_id)["account"]
+        assert account["provisioned"] is True, account
+        assert account["role"] == expected_role
+        assert account["email"] == email
+        assert account["temporary_password"]
+
+    def test_provisioned_account_can_sign_in(self, client, admin_token):
+        email = f"signin-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = self._submit(client, admin_token, "Instructor Access", email)
+        account = self._approve(client, admin_token, approval_id)["account"]
+        resp = client.post("/api/login", json={
+            "email": email, "password": account["temporary_password"]})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["role"] == "instructor"
+
+    def test_reapproving_does_not_create_a_second_account(self, client, admin_token):
+        email = f"idem-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = self._submit(client, admin_token, "Instructor Access", email)
+        assert self._approve(client, admin_token, approval_id)["account"]["provisioned"] is True
+        again = self._approve(client, admin_token, approval_id)["account"]
+        assert again["provisioned"] is False
+
+    def test_rejection_provisions_nothing(self, client, admin_token):
+        email = f"reject-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = self._submit(client, admin_token, "Instructor Access", email)
+        resp = client.patch(f"/api/approvals/{approval_id}",
+                            headers={"Authorization": f"Bearer {admin_token}"},
+                            json={"status": "rejected", "reviewer": "admin@ntic.org.gh"})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["account"]["provisioned"] is False
+        assert client.post("/api/login", json={
+            "email": email, "password": "irrelevant"}).status_code == 401
+
+    def test_approval_without_contact_email_still_records_decision(self, client, admin_token):
+        # The reviewer must always be able to record a decision, even when the
+        # application is too incomplete to provision from.
+        approval_id = self._submit(client, admin_token, "Instructor Access", "")
+        account = self._approve(client, admin_token, approval_id)["account"]
+        assert account["provisioned"] is False
+        assert "contact email" in account["reason"]
+
+    def test_unknown_approval_type_records_decision_without_provisioning(self, client, admin_token):
+        approval_id = self._submit(client, admin_token, "Mystery Type",
+                                   f"unknown-{uuid.uuid4().hex[:8]}@example.com")
+        account = self._approve(client, admin_token, approval_id)["account"]
+        assert account["provisioned"] is False
+        assert "No role mapping" in account["reason"]
+
+    def test_approving_missing_approval_returns_404(self, client, admin_token):
+        resp = client.patch("/api/approvals/APR-does-not-exist",
+                            headers={"Authorization": f"Bearer {admin_token}"},
+                            json={"status": "approved"})
+        assert resp.status_code == 404
+
+
+class TestPublicRegistrationCannotSelfActivate:
+    def test_public_signup_is_forced_pending(self, client, admin_token):
+        # This endpoint is unauthenticated; honouring a client-sent status let
+        # anyone self-register as active and skip review.
+        email = f"selfact-{uuid.uuid4().hex[:8]}@example.com"
+        resp = client.post("/api/users/register", json={
+            "email": email, "full_name": "Self Activator",
+            "role": "judge", "status": "active"})
+        assert resp.status_code == 201, resp.text
+        users = client.get("/api/users", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        created = [u for u in users if u["email"].lower() == email]
+        assert created, "user was not created"
+        assert created[0]["status"] == "pending"
+
+    def test_public_signup_cannot_choose_a_privileged_role(self, client):
+        resp = client.post("/api/users/register", json={
+            "email": f"esc-{uuid.uuid4().hex[:8]}@example.com",
+            "full_name": "Escalator", "role": "super_admin"})
+        assert resp.status_code == 403
+
+
+class TestCycleScoping:
+    """Records must be attributable to a cycle, and listable by it.
+
+    Before this, only competition_registrations pointed at a cycle. Teams and
+    submissions had no link at all, so every panel showed every record it could
+    find and no two role views ever agreed on what was "in" a cycle.
+    """
+
+    def _cycle(self, client, admin_token, status="registration"):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        cyc = client.post("/api/competitions", headers=h,
+                          json={"title": f"Scoped {uuid.uuid4()}"}).json()
+        if status != "draft":
+            client.patch(f"/api/competitions/{cyc['id']}", headers=h,
+                         json={"title": "x", "status": "registration"})
+        return cyc["id"]
+
+    def test_team_round_trips_its_cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        cid = self._cycle(client, admin_token)
+        created = client.post("/api/teams", headers=h,
+                              json={"name": f"T{uuid.uuid4().hex[:6]}", "competition_id": cid})
+        assert created.status_code == 201, created.text
+        assert created.json()["competition_id"] == cid
+        listed = client.get("/api/teams", headers=h).json()
+        mine = [t for t in listed if t["id"] == created.json()["id"]]
+        assert mine and mine[0]["competition_id"] == cid
+
+    def test_teams_can_be_filtered_to_one_cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        a, b = self._cycle(client, admin_token), self._cycle(client, admin_token)
+        in_a = client.post("/api/teams", headers=h,
+                           json={"name": f"A{uuid.uuid4().hex[:6]}", "competition_id": a}).json()["id"]
+        in_b = client.post("/api/teams", headers=h,
+                           json={"name": f"B{uuid.uuid4().hex[:6]}", "competition_id": b}).json()["id"]
+        ids = [t["id"] for t in client.get(f"/api/teams?competition_id={a}", headers=h).json()]
+        assert in_a in ids and in_b not in ids
+
+    def test_team_referencing_unknown_cycle_is_rejected(self, client, admin_token):
+        resp = client.post("/api/teams", headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"name": "Orphan", "competition_id": "comp-does-not-exist"})
+        assert resp.status_code == 422, resp.text
+        assert "Unknown competition cycle" in resp.json()["detail"]
+
+    def test_team_without_a_cycle_is_still_allowed(self, client, admin_token):
+        # Not every team is cycle-scoped; the link is optional by design.
+        resp = client.post("/api/teams", headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"name": f"Free{uuid.uuid4().hex[:6]}"})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["competition_id"] is None
+
+    def test_cycle_team_count_is_derived_not_hand_typed(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        cid = self._cycle(client, admin_token)
+        before = [c for c in client.get("/api/competitions").json() if c["id"] == cid][0]
+        assert before["teams"] == 0
+        client.post("/api/teams", headers=h,
+                    json={"name": f"C{uuid.uuid4().hex[:6]}", "competition_id": cid})
+        after = [c for c in client.get("/api/competitions").json() if c["id"] == cid][0]
+        assert after["teams"] == 1, "team count should reflect reality, not the stored integer"
+
+    def test_cycle_reports_entrant_count(self, client, admin_token, student_token):
+        cid = self._cycle(client, admin_token)
+        client.post("/api/competitions/register",
+                    headers={"Authorization": f"Bearer {student_token}"},
+                    json={"competition_id": cid})
+        row = [c for c in client.get("/api/competitions").json() if c["id"] == cid][0]
+        assert row["entrants"] >= 1
+
+    def test_submissions_can_be_filtered_to_one_cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        a, b = self._cycle(client, admin_token), self._cycle(client, admin_token)
+        st = client.post("/api/students", headers=h, json={
+            "first_name": "Scope", "last_name": "Test",
+            "email": f"scope-{uuid.uuid4().hex[:8]}@example.com"})
+        assert st.status_code in (200, 201), st.text
+        sid = st.json()["id"]
+        sub_a = client.post("/api/submissions", headers=h, json={
+            "student_id": sid, "source_code_path": "a.zip", "competition_id": a})
+        assert sub_a.status_code == 201, sub_a.text
+        client.post("/api/submissions", headers=h, json={
+            "student_id": sid, "source_code_path": "b.zip", "competition_id": b})
+        scoped = client.get(f"/api/submissions?competition_id={a}", headers=h).json()
+        assert scoped, "expected at least one submission in cycle a"
+        assert all(s["competition_id"] == a for s in scoped)
+
+    def test_submission_referencing_unknown_cycle_is_rejected(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        st = client.post("/api/students", headers=h, json={
+            "first_name": "Bad", "last_name": "Ref",
+            "email": f"badref-{uuid.uuid4().hex[:8]}@example.com"}).json()
+        resp = client.post("/api/submissions", headers=h, json={
+            "student_id": st["id"], "source_code_path": "x.zip",
+            "competition_id": "comp-nope"})
+        assert resp.status_code == 422, resp.text
+
+    def test_judge_queue_can_be_scoped_to_a_cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        a, b = self._cycle(client, admin_token), self._cycle(client, admin_token)
+        st = client.post("/api/students", headers=h, json={
+            "first_name": "Queue", "last_name": "Scope",
+            "email": f"queue-{uuid.uuid4().hex[:8]}@example.com"}).json()
+        client.post("/api/submissions", headers=h, json={
+            "student_id": st["id"], "source_code_path": "q.zip", "competition_id": a})
+        client.post("/api/submissions", headers=h, json={
+            "student_id": st["id"], "source_code_path": "r.zip", "competition_id": b})
+        scoped = client.get(f"/api/judge/queue?competition_id={a}", headers=h).json()
+        unscoped = client.get("/api/judge/queue", headers=h).json()
+        assert scoped["pending_total"] >= 1
+        assert scoped["pending_total"] <= unscoped["pending_total"]
+        assert len(scoped["submissions"]) <= len(unscoped["submissions"])
+
+    def test_deleting_a_cycle_leaves_its_teams_but_clears_stale_counts(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        cid = self._cycle(client, admin_token)
+        team_id = client.post("/api/teams", headers=h,
+                              json={"name": f"Keep{uuid.uuid4().hex[:6]}",
+                                    "competition_id": cid}).json()["id"]
+        assert client.delete(f"/api/competitions/{cid}", headers=h).status_code == 200
+        # The team record survives -- it is history -- and the cycle is gone.
+        assert any(t["id"] == team_id for t in client.get("/api/teams", headers=h).json())
+        assert not any(c["id"] == cid for c in client.get("/api/competitions").json())

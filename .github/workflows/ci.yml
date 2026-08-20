@@ -165,12 +165,16 @@ jobs:
             fi
           }
 
+          # The regex patterns below cannot match their own source text, because a
+          # literal '[' is not alphanumeric. A plain literal like the Postgres
+          # password can, so it needs the allowlist marker or this job fails on
+          # its own definition file -- which is exactly what it was doing.
           check "Brevo API key"      'xkeysib-[A-Za-z0-9]{20,}'
           check "Google API key"     'AIza[0-9A-Za-z_-]{30,}'
           check "AWS access key"     'AKIA[0-9A-Z]{16}'
           check "Private key block"  'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY'
           check "Hardcoded admin pw" 'Admin@Ntic[0-9]{4}'
-          check "Old Postgres pw"    'botsio212nyc'
+          check "Old Postgres pw"    'botsio212nyc'  # pragma: allowlist secret
 
           if [ -f .env ]; then
             echo "::error::.env is committed. It must stay git-ignored."

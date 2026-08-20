@@ -7,7 +7,7 @@ import { ContentService, Competition, CompetitionPhase } from '../../services/co
 import { ThemeService } from '../../services/theme.service';
 import { ApiService } from '../../services/api.service';
 import { PublicNavComponent } from '../../components/public-nav/public-nav.component';
-import { CYCLE_STATUSES, advanceLabel, advanceIcon } from '../../services/competition-lifecycle';
+import { CYCLE_STATUSES, advanceLabel, advanceIcon, isRegistrationOpen } from '../../services/competition-lifecycle';
 
 @Component({
   selector: 'app-competitions',
@@ -162,7 +162,9 @@ export class CompetitionsComponent implements OnInit {
 
   /** Whether deadline countdown should be shown on this card */
   showCountdown(comp: Competition): boolean {
-    return !!comp.deadline && (comp.status === 'active' || comp.status === 'registration');
+    // Same predicate the API uses to decide whether sign-up is open, so the
+    // countdown can never advertise a deadline for a cycle nobody can join.
+    return !!comp.deadline && isRegistrationOpen(comp.status);
   }
 
   /**

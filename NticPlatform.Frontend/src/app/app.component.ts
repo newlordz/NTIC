@@ -73,7 +73,7 @@ export class AppComponent implements OnInit, OnDestroy {
     'talent':       'Talent Discovery',
     'sponsors':     'Sponsors',
     'reporting':    'Reports & Analytics',
-    'judge':        'Judging Workspace',
+    'judge':        'Observatory',
     'records':      'Records',
     'user-management': 'User Management',
     'profile-completion': 'Profile & Account Settings',
