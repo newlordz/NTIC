@@ -2797,6 +2797,25 @@ textarea.form-control { resize: vertical; min-height: 100px; }
       }
     }
 
+    /* Moved here from landing.component.scss. It was defined there but never
+       used in that file, and Angular scopes component keyframe names -- so this
+       global rule could not resolve it and the Ken Burns effect never ran, even
+       though `will-change: transform` above was declared specifically for it.
+       Only transform and opacity, so it composites. */
+    @keyframes highPerformanceKenBurns {
+      0% {
+        opacity: 0;
+        transform: scale(1.08) translate3d(0, 0, 0);
+      }
+      30% {
+        opacity: 0.75;
+      }
+      100% {
+        opacity: 0.75;
+        transform: scale(1) translate3d(0, 0, 0);
+      }
+    }
+
     .video-edit-overlay {
       position: absolute;
       inset: 0;

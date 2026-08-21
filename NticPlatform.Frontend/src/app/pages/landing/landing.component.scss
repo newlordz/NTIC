@@ -4252,19 +4252,10 @@ body.dark-theme .partners-strip {
   }
 }
 
-@keyframes highPerformanceKenBurns {
-  0% {
-    opacity: 0;
-    transform: scale(1.08) translate3d(0, 0, 0);
-  }
-  30% {
-    opacity: 0.75;
-  }
-  100% {
-    opacity: 0.75;
-    transform: scale(1) translate3d(0, 0, 0);
-  }
-}
+/* `highPerformanceKenBurns` was defined here but never used in this file. Its
+   only consumer is the global .video-edit-frame.active rule in styles.scss, and
+   Angular scopes component keyframes -- so a global rule could not reach this
+   definition and the effect never ran. Moved to styles.scss beside its user. */
 
 /* Pruned unused championship stories keyframes to satisfy Angular component SCSS budget */
 
