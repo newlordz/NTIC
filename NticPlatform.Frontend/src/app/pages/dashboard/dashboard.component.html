@@ -664,6 +664,11 @@
                       <div class="cc-ncard-status">
                         <span class="cc-live-dot" [ngClass]="nodeDotClass(node.status)"></span>
                         <span>{{ node.status }}</span>
+                        <!-- API sends measured:false for components it only checks the
+                             config of (Email, Gemini, SMS) instead of probing. Without
+                             this badge "Configured" looks like a real health check. -->
+                        <span *ngIf="!node.measured" class="cc-node-badge"
+                              title="Reflects configuration, not a live probe">config</span>
                       </div>
                     </div>
                   </div>

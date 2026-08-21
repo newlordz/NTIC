@@ -1,0 +1,73 @@
+<div class="custom-select-container" [class.is-open]="isOpen" [class.is-disabled]="disabled" [ngClass]="customClass">
+  <!-- Trigger Button -->
+  <button #triggerButton
+          type="button"
+          class="custom-select-trigger"
+          [attr.aria-expanded]="isOpen"
+          [attr.aria-haspopup]="'listbox'"
+          [disabled]="disabled"
+          (click)="toggleDropdown($event)"
+          (keydown)="onKeyDown($event)">
+    <div class="trigger-left">
+      <span class="trigger-icon material-symbols-outlined" *ngIf="selectedOption?.icon">
+        {{ selectedOption?.icon }}
+      </span>
+      <span class="trigger-label" [class.placeholder-text]="isPlaceholder">
+        {{ displayLabel }}
+      </span>
+    </div>
+    <div class="trigger-right">
+      <span class="trigger-chevron material-symbols-outlined" aria-hidden="true">
+        expand_more
+      </span>
+    </div>
+  </button>
+
+  <!-- Animated Floating Dropdown Panel -->
+  <div class="custom-select-dropdown" *ngIf="isOpen" (click)="$event.stopPropagation()">
+    <!-- Quick Search Filter -->
+    <div class="select-search-wrap" *ngIf="shouldShowSearch()">
+      <span class="material-symbols-outlined search-icon">search</span>
+      <input #searchInput
+             type="text"
+             class="select-search-input"
+             placeholder="Search options..."
+             [(ngModel)]="searchQuery"
+             (ngModelChange)="filterOptions()"
+             (keydown)="onKeyDown($event)">
+      <button type="button" class="clear-search-btn" *ngIf="searchQuery" (click)="searchQuery = ''; filterOptions()" title="Clear">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Scrollable Options List -->
+    <div class="select-options-list" role="listbox" tabindex="-1">
+      <div *ngFor="let opt of filteredOptions; let i = index"
+           class="select-option-item"
+           [class.selected]="opt.value === selectedValue"
+           [class.focused]="i === focusedIndex"
+           [class.disabled]="opt.disabled"
+           role="option"
+           [attr.aria-selected]="opt.value === selectedValue"
+           (click)="selectOption(opt, $event)"
+           (mouseenter)="focusedIndex = i">
+        <div class="opt-left">
+          <span class="material-symbols-outlined opt-icon" *ngIf="opt.icon">{{ opt.icon }}</span>
+          <div class="opt-text-wrap">
+            <span class="opt-label">{{ opt.label }}</span>
+            <span class="opt-sublabel" *ngIf="opt.sublabel">{{ opt.sublabel }}</span>
+          </div>
+        </div>
+        <div class="opt-right" *ngIf="opt.value === selectedValue">
+          <span class="material-symbols-outlined check-badge">check</span>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div class="select-empty-state" *ngIf="filteredOptions.length === 0">
+        <span class="material-symbols-outlined">search_off</span>
+        <span>No matching options</span>
+      </div>
+    </div>
+  </div>
+</div>
