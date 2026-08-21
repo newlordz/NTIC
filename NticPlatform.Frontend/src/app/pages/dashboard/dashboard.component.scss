@@ -4909,7 +4909,9 @@
   }
 }
 
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+/* `fadeIn` was declared twice in this file. The other definition (further down,
+   which also slides 4px) won the cascade, so this opacity-only version never
+   applied. Removed rather than left as a trap for the next edit. */
 @keyframes modalSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
 .admin-table-empty {

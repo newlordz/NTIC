@@ -353,7 +353,7 @@
       margin-bottom: 16px;
       padding: 6px 12px;
       font-size: 11.5px;
-      animation: pulse 2s infinite ease-in-out;
+      animation: tipPulse 2s infinite ease-in-out;
     }
 
     .timer-row {
@@ -1421,18 +1421,17 @@ select.form-control {
   }
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* `fadeInUp` was defined twice here: this 20px variant and a 12px one further
+   down. The 12px one won the cascade, so this block never applied to anything
+   and has been removed rather than left as a trap. The single surviving
+   definition lives beside the .animate-fade-in-up utility. */
 
-@keyframes pulse {
+/* Renamed from `pulse`. There were two @keyframes named `pulse` in this file:
+   this subtle grow, and a shrink-to-0.6-opacity further down for the generic
+   .animate-pulse utility. The later one won the cascade, so .test-tip -- which
+   was written against this one -- was fading its text to 60% opacity instead of
+   gently growing. Distinct name so both survive and mean what they say. */
+@keyframes tipPulse {
   0% {
     transform: scale(1);
     opacity: 0.95;
@@ -2624,7 +2623,7 @@ select.form-control {
       position: absolute;
       left: 0;
       right: 0;
-      top: 6px; /* baseline for barcodeScan's translateY */
+      top: 0;
       height: 2px;
       background: #ef4444;
       box-shadow: 0 0 8px #ef4444;
@@ -2666,13 +2665,14 @@ select.form-control {
   }
 }
 
-/* translateY instead of `top` so this composites instead of running layout on
-   every frame. Both users sit at top: 6px, so 6->22px becomes a 16px travel. */
-@keyframes barcodeScan {
-  0% { transform: translateY(0); }
-  50% { transform: translateY(16px); }
-  100% { transform: translateY(0); }
-}
+/* NOTE: `barcodeScan` was defined twice in this file. The second definition
+   (further down, a top:0->100% sweep with an opacity fade) came later in the
+   cascade, so it silently won and this bounce variant never ran at all. The
+   dead duplicate has been removed; the surviving sweep is the live behaviour.
+   It still animates `top`, which is not composited, but the elements are 2px
+   absolutely-positioned lines whose containers have no fixed height -- so a
+   translateY conversion would mean hardcoding a container height and risking a
+   visible regression on a card users actually see. Left as-is deliberately. */
 
 /* =========================================================
    TEAM PREVIEW CARD
@@ -3355,7 +3355,7 @@ select.form-control {
       position: absolute;
       left: 0;
       right: 0;
-      top: 6px; /* baseline for barcodeScan's translateY */
+      top: 0;
       height: 1.5px;
       background: #ef4444;
       box-shadow: 0 0 6px #ef4444;

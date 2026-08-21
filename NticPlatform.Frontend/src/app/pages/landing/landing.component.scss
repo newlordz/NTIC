@@ -3171,24 +3171,27 @@ body.dark-theme .partners-strip {
 
     &.node-projects {
       .node-tooltip {
-        top: 110%;
+        top: 50%;
         bottom: auto;
-        left: 50%;
-        transform: translateX(-50%) translateY(-10px) scale(0.95);
+        left: auto;
+        right: 115%;
+        transform: translateY(-50%) translateX(12px) scale(0.95);
         
         .tooltip-arrow {
           position: absolute;
-          bottom: 100%;
-          left: 50%;
-          transform: translateX(-50%);
+          top: 50%;
+          bottom: auto;
+          left: 100%;
+          right: auto;
+          transform: translateY(-50%);
           border-width: 6px;
           border-style: solid;
-          border-color: transparent transparent #1c1c1c transparent;
+          border-color: transparent transparent transparent #1c1c1c;
         }
       }
       &.active, &:hover {
         .node-tooltip {
-          transform: translateX(-50%) translateY(0) scale(1);
+          transform: translateY(-50%) translateX(0) scale(1);
         }
       }
     }
@@ -3724,10 +3727,9 @@ body.dark-theme .partners-strip {
   100% { top: 100%; opacity: 0; }
 }
 
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* `slideDown` was declared twice in this file. The other definition (further
+   down, beside .challenge-result, travelling -10px) won the cascade, so this
+   -8px version never applied. Removed rather than left as a trap. */
 
 @keyframes spin {
   to { transform: rotate(360deg); }
@@ -6857,15 +6859,15 @@ body.dark-theme .partners-strip {
   top: auto;
   left: 100%;
   transform: translateY(0) translateX(0);
-  width: 270px;
-  background: var(--bg-white);
+  width: 290px;
+  background: #0b1329 !important;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  color: var(--charcoal);
-  border: 1.5px solid var(--border-color);
-  border-radius: 18px;
+  color: #f8fafc !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 16px;
   padding: 16px;
-  box-shadow: 0 20px 48px rgba(0, 40, 90, 0.22);
+  box-shadow: 0 24px 54px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
   opacity: 0;
   visibility: hidden;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -6873,7 +6875,7 @@ body.dark-theme .partners-strip {
   pointer-events: none;
   text-align: left;
   margin-bottom: 0;
-  margin-left: 10px;
+  margin-left: 12px;
 
   &::after {
     content: '';
@@ -6884,7 +6886,7 @@ body.dark-theme .partners-strip {
     transform: none;
     border-width: 7px;
     border-style: solid;
-    border-color: transparent var(--bg-white) transparent transparent;
+    border-color: transparent #0b1329 transparent transparent !important;
   }
 
   .popover-header {
@@ -6892,20 +6894,20 @@ body.dark-theme .partners-strip {
     align-items: center;
     gap: 10px;
     padding-bottom: 10px;
-    border-bottom: 1.5px dashed rgba(0, 63, 135, 0.12);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     margin-bottom: 10px;
 
     .popover-header-icon {
-      width: 34px;
-      height: 34px;
+      width: 36px;
+      height: 36px;
       border-radius: 10px;
-      background: linear-gradient(135deg, #003f87 0%, #0078d7 100%);
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
       color: #fff;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      box-shadow: 0 4px 10px rgba(0, 63, 135, 0.25);
+      box-shadow: 0 4px 10px rgba(2, 132, 199, 0.3);
       overflow: hidden;
 
       img {
@@ -6917,41 +6919,48 @@ body.dark-theme .partners-strip {
     }
 
     .popover-title {
-      font-size: 13.5px;
+      font-size: 14px;
       font-weight: 800;
-      color: #071e27;
-      line-height: 1.2;
+      color: #ffffff !important;
+      line-height: 1.25;
+      letter-spacing: -0.2px;
     }
     .popover-sub {
-      font-size: 11px;
-      color: #5c6b73;
+      font-size: 11.5px;
+      color: #94a3b8 !important;
       font-weight: 500;
+      margin-top: 2px;
     }
   }
 
   .popover-project {
-    font-size: 11px;
-    color: #003f87;
-    background: linear-gradient(135deg, #e0f2fe 0%, #edf7ff 100%);
-    border: 1px solid rgba(0, 63, 135, 0.12);
+    font-size: 11.5px;
+    color: #e0f2fe !important;
+    background: rgba(2, 132, 199, 0.2) !important;
+    border: 1px solid rgba(56, 189, 248, 0.35) !important;
     padding: 8px 10px;
     border-radius: 8px;
     margin-bottom: 10px;
-    line-height: 1.35;
+    line-height: 1.4;
+
+    strong {
+      color: #38bdf8 !important;
+      font-weight: 800 !important;
+    }
   }
 
   .popover-members-list {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    max-height: 160px;
+    max-height: 170px;
     overflow-y: auto;
 
     &::-webkit-scrollbar {
       width: 4px;
     }
     &::-webkit-scrollbar-thumb {
-      background: rgba(0, 63, 135, 0.2);
+      background: #334155;
       border-radius: 4px;
     }
   }
@@ -6961,24 +6970,26 @@ body.dark-theme .partners-strip {
     align-items: center;
     gap: 10px;
     font-size: 12px;
-    padding: 6px 10px;
+    padding: 7px 10px;
     border-radius: 8px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    transition: background 0.15s ease;
+    background: #131d36 !important;
+    border: 1px solid #1e293b !important;
+    transition: all 0.15s ease;
 
     &:hover {
-      background: #f1f5f9;
+      background: #1a2747 !important;
+      border-color: #38bdf8 !important;
     }
 
     .member-num {
       font-weight: 800;
-      color: #003f87;
+      color: #38bdf8 !important;
       font-size: 10.5px;
       width: 22px;
       height: 22px;
-      border-radius: 50%;
-      background: #e0f2fe;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.15) !important;
+      border: 1px solid rgba(56, 189, 248, 0.25);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -6986,7 +6997,10 @@ body.dark-theme .partners-strip {
     }
     .member-name {
       font-weight: 700;
-      color: #1e293b;
+      color: #f8fafc !important;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 }
