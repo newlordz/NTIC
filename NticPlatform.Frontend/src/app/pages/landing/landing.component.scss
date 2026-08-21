@@ -2808,9 +2808,15 @@ body.dark-theme .partners-strip {
     stroke-dashoffset: 144;
     opacity: 0.15; // subtle default
     pointer-events: none;
-    will-change: stroke-dashoffset, opacity;
+    /* `animation: energyFlowOutward 2.4s linear infinite` used to sit here, but
+       no @keyframes of that name has ever existed anywhere in the project, so
+       the flow effect never ran. Removed rather than implemented: it would mean
+       an infinite stroke-dashoffset repaint on the landing page for decoration
+       that has never been seen. If it is wanted, add it deliberately.
+       will-change is now opacity only -- naming stroke-dashoffset promoted a
+       compositor layer for a property that never animates. */
+    will-change: opacity;
     transition: opacity 0.4s ease, stroke-width 0.4s;
-    animation: energyFlowOutward 2.4s linear infinite;
 
     &.highlighted {
       opacity: 0.95;
@@ -10128,7 +10134,11 @@ body.dark-theme .partners-strip {
     height: 3px;
     background: linear-gradient(90deg, var(--crimson), var(--gold), var(--primary-container));
     background-size: 200% 100%;
-    animation: shimmerBar 4s linear infinite;
+    /* `animation: shimmerBar 4s linear infinite` was here, but no @keyframes of
+       that name exists anywhere, so the shimmer never ran. Removed rather than
+       implemented -- it would animate background-position, an infinite per-frame
+       repaint. background-size is left at 200% so the gradient renders exactly
+       as it does today. */
   }
 
   .close-modal-btn {
