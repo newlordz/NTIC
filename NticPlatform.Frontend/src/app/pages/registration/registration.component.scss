@@ -472,7 +472,7 @@
   border: 1px solid #e2e8f0;
   border-radius: 14px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03);
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   transition: border-color 0.25s ease;
@@ -575,6 +575,7 @@ select.form-control {
   background-position: right 12px center;
   background-size: 18px;
   padding-right: 36px;
+  cursor: pointer;
 }
 
 .form-actions {
@@ -1382,6 +1383,7 @@ select.form-control {
   .scan-laser {
     position: absolute;
     left: 0; right: 0;
+    top: 4px; /* baseline for the translateY keyframes (was set by `top` frames) */
     height: 3px;
     background: #00ffaa;
     box-shadow: 0 0 8px #00ffaa, 0 0 15px rgba(0, 255, 170, 0.5);
@@ -1445,12 +1447,15 @@ select.form-control {
   }
 }
 
+/* Animating `top` ran layout on every frame, forever. translateY is
+   composited on the GPU instead. Parent .scanning-shield is 80px tall, so the
+   old 5%->90% is 4px->72px, i.e. a 68px travel from a 4px baseline. */
 @keyframes successLaserLine {
   0% {
-    top: 5%;
+    transform: translateY(0);
   }
   100% {
-    top: 90%;
+    transform: translateY(68px);
   }
 }
 
@@ -2619,7 +2624,7 @@ select.form-control {
       position: absolute;
       left: 0;
       right: 0;
-      top: 0;
+      top: 6px; /* baseline for barcodeScan's translateY */
       height: 2px;
       background: #ef4444;
       box-shadow: 0 0 8px #ef4444;
@@ -2661,10 +2666,12 @@ select.form-control {
   }
 }
 
+/* translateY instead of `top` so this composites instead of running layout on
+   every frame. Both users sit at top: 6px, so 6->22px becomes a 16px travel. */
 @keyframes barcodeScan {
-  0% { top: 6px; }
-  50% { top: 22px; }
-  100% { top: 6px; }
+  0% { transform: translateY(0); }
+  50% { transform: translateY(16px); }
+  100% { transform: translateY(0); }
 }
 
 /* =========================================================
@@ -3348,7 +3355,7 @@ select.form-control {
       position: absolute;
       left: 0;
       right: 0;
-      top: 0;
+      top: 6px; /* baseline for barcodeScan's translateY */
       height: 1.5px;
       background: #ef4444;
       box-shadow: 0 0 6px #ef4444;
@@ -3539,11 +3546,7 @@ select.form-control {
     background-position: right 12px center !important;
     background-size: 18px !important;
     padding-right: 36px !important;
-    
-    option {
-      background: var(--surface-container-low) !important;
-      color: var(--on-surface) !important;
-    }
+    cursor: pointer !important;
   }
   
   .school-preview-card,
@@ -5084,6 +5087,526 @@ select.form-control {
 
       &:hover {
         background: rgba(255, 255, 255, 0.22);
+      }
+    }
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════
+   GHANA SCHOOL GPS LOOKUP — Premium Split Modal
+═══════════════════════════════════════════════════ */
+
+.gps-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 5, 18, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 20px;
+  animation: fadeInOverlay 0.22s ease;
+
+  @keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+.gps-modal-shell {
+  background: linear-gradient(145deg, #0c1426 0%, #0a1020 60%, #080d1a 100%);
+  border: 1px solid #1e3050;
+  border-radius: 22px;
+  width: 100%;
+  max-width: 900px;
+  box-shadow:
+    0 40px 80px -20px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(56, 189, 248, 0.08) inset,
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+  overflow: hidden;
+  animation: scaleInModal 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+
+  @keyframes scaleInModal {
+    from { opacity: 0; transform: scale(0.95) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+}
+
+/* ── Header ── */
+.gps-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 24px 18px;
+  border-bottom: 1px solid rgba(56, 189, 248, 0.12);
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.06) 0%, transparent 60%);
+  flex-shrink: 0;
+
+  .gps-modal-header-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.25) 0%, rgba(14, 165, 233, 0.15) 100%);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2), 0 0 0 4px rgba(56, 189, 248, 0.06);
+
+    span {
+      font-size: 24px;
+      color: #38bdf8;
+    }
+  }
+
+  .gps-modal-header-text {
+    flex: 1;
+    min-width: 0;
+
+    h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 800;
+      color: #f0f6ff;
+      letter-spacing: -0.3px;
+      line-height: 1.2;
+    }
+
+    p {
+      margin: 4px 0 0;
+      font-size: 12.5px;
+      color: #64748b;
+      line-height: 1.4;
+    }
+  }
+
+  .gps-modal-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    flex-shrink: 0;
+
+    span { font-size: 20px; }
+
+    &:hover {
+      background: rgba(248, 113, 113, 0.15);
+      border-color: rgba(248, 113, 113, 0.4);
+      color: #f87171;
+    }
+  }
+}
+
+/* ── Search Bar ── */
+.gps-search-bar-wrap {
+  display: flex;
+  gap: 10px;
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.2);
+
+  .gps-search-input-wrap {
+    position: relative;
+    flex: 1;
+
+    .gps-search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 20px;
+      color: #38bdf8;
+      pointer-events: none;
+    }
+
+    .gps-search-field {
+      width: 100%;
+      height: 46px;
+      background: #101828;
+      border: 1.5px solid #1e3050;
+      border-radius: 12px;
+      padding: 0 40px 0 46px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #f0f6ff;
+      outline: none;
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+
+      &::placeholder {
+        color: #334155;
+        font-weight: 400;
+      }
+
+      &:focus {
+        border-color: #38bdf8;
+        background: #0d1f38;
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+      }
+    }
+
+    .gps-clear-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.07);
+      border: none;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+
+      &:hover { background: rgba(248, 113, 113, 0.2); color: #f87171; }
+    }
+  }
+
+  .gps-run-search-btn {
+    height: 46px;
+    padding: 0 22px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+    border: 1px solid #38bdf8;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.1px;
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
+      transform: translateY(-1px);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+/* ── Body: split layout ── */
+.gps-modal-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Left: Results Panel ── */
+.gps-results-panel {
+  overflow-y: auto;
+  padding: 16px;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 360px;
+  max-height: 460px;
+
+  // Custom scrollbar
+  &::-webkit-scrollbar { width: 5px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: #1e3050; border-radius: 10px; }
+  &::-webkit-scrollbar-thumb:hover { background: #2d4a70; }
+
+  .gps-state-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    gap: 12px;
+    text-align: center;
+
+    .gps-state-icon {
+      font-size: 40px;
+      display: block;
+    }
+
+    .gps-state-text {
+      font-size: 13px;
+      color: #475569;
+      line-height: 1.6;
+      max-width: 220px;
+    }
+  }
+}
+
+.gps-result-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 6px;
+  background: transparent;
+
+  &:hover {
+    background: rgba(56, 189, 248, 0.06);
+    border-color: rgba(56, 189, 248, 0.2);
+  }
+
+  &.gps-result-active {
+    background: rgba(56, 189, 248, 0.1);
+    border-color: rgba(56, 189, 248, 0.4);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.1);
+  }
+
+  .gps-result-rank {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    background: rgba(30, 48, 80, 0.8);
+    border: 1px solid #1e3050;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .gps-result-body {
+    flex: 1;
+    min-width: 0;
+
+    .gps-result-name {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #e2e8f0;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .gps-result-addr {
+      font-size: 11.5px;
+      color: #475569;
+      margin-top: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .gps-result-coords {
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: #38bdf8;
+      margin-top: 5px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+
+  .gps-result-actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .gps-apply-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    background: rgba(3, 105, 161, 0.4);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+
+    &:hover {
+      background: rgba(2, 132, 199, 0.6);
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 3px 10px rgba(56, 189, 248, 0.3);
+    }
+  }
+}
+
+.gps-results-footer {
+  margin-top: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #2d4a70;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* ── Right: Map Panel ── */
+.gps-map-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #070d18;
+  min-height: 360px;
+  max-height: 460px;
+
+  .gps-map-placeholder {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center, #0c1a2e 0%, #070d18 70%);
+    border-left: 1px solid rgba(56, 189, 248, 0.05);
+  }
+
+  .gps-map-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(0, 0, 0, 0.4);
+    border-bottom: 1px solid rgba(56, 189, 248, 0.1);
+    flex-shrink: 0;
+
+    .gps-map-school-name {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #94a3b8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .gps-map-frame-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+
+    .gps-map-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+      background: #e5e3df;
+    }
+  }
+
+  .gps-map-footer {
+    padding: 12px 14px;
+    background: rgba(0, 0, 0, 0.5);
+    border-top: 1px solid rgba(56, 189, 248, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+
+    .gps-coord-chips {
+      display: flex;
+      gap: 6px;
+
+      .gps-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 11px;
+        font-weight: 700;
+        color: #38bdf8;
+        background: rgba(56, 189, 248, 0.08);
+        border: 1px solid rgba(56, 189, 248, 0.25);
+        padding: 4px 9px;
+        border-radius: 6px;
+        letter-spacing: 0.3px;
+      }
+    }
+
+    .gps-map-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .gps-ext-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748b;
+        text-decoration: none;
+        padding: 5px 10px;
+        border-radius: 7px;
+        border: 1px solid #1e3050;
+        background: rgba(255, 255, 255, 0.03);
+        transition: all 0.18s ease;
+
+        &:hover {
+          color: #94a3b8;
+          border-color: #2d4a70;
+          background: rgba(255, 255, 255, 0.07);
+        }
+      }
+
+      .gps-apply-btn-lg {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 800;
+        color: #ffffff;
+        background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+        border: 1px solid #38bdf8;
+        padding: 7px 16px;
+        border-radius: 9px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        letter-spacing: 0.1px;
+
+        &:hover {
+          background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+          box-shadow: 0 4px 16px rgba(56, 189, 248, 0.45);
+          transform: translateY(-1px);
+        }
       }
     }
   }

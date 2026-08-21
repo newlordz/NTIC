@@ -92,6 +92,35 @@ function formatToChatId(phone) {
   return cleaned;
 }
 
+async function sendMessageInternal(targetPhone, message) {
+  if (!targetPhone || !message) {
+    const err = new Error('Phone number and message are required.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (!isConnected) {
+    const err = new Error('WhatsApp Gateway is not paired or connected yet. Please scan QR code in server terminal.');
+    err.statusCode = 503;
+    throw err;
+  }
+
+  const chatId = formatToChatId(targetPhone);
+  const sentMsg = await client.sendMessage(chatId, message);
+  console.log(`[WhatsApp Gateway] Sent message to ${targetPhone} (ChatID: ${chatId})`);
+  
+  let msgId = 'sent';
+  if (sentMsg && sentMsg.id) {
+    msgId = sentMsg.id._serialized || sentMsg.id.id || 'sent';
+  }
+  
+  return {
+    success: true,
+    messageId: msgId,
+    recipient: targetPhone
+  };
+}
+
 // API Routes
 app.get('/status', (req, res) => {
   res.json({
@@ -107,29 +136,12 @@ app.post('/send', async (req, res) => {
   const { phone, number, message } = req.body;
   const targetPhone = phone || number;
 
-  if (!targetPhone || !message) {
-    return res.status(400).json({ success: false, error: 'Phone number and message are required.' });
-  }
-
-  if (!isConnected) {
-    return res.status(503).json({
-      success: false,
-      error: 'WhatsApp Gateway is not paired or connected yet. Please scan QR code in server terminal.'
-    });
-  }
-
   try {
-    const chatId = formatToChatId(targetPhone);
-    const sentMsg = await client.sendMessage(chatId, message);
-    console.log(`[WhatsApp Gateway] Sent message to ${targetPhone} (ChatID: ${chatId})`);
-    return res.json({
-      success: true,
-      messageId: sentMsg.id?.id || 'sent',
-      recipient: targetPhone
-    });
+    const result = await sendMessageInternal(targetPhone, message);
+    return res.json(result);
   } catch (err) {
     console.error('[WhatsApp Gateway] Send Error:', err);
-    return res.status(500).json({
+    return res.status(err.statusCode || 500).json({
       success: false,
       error: err?.message || 'Failed to send WhatsApp message.'
     });
@@ -137,26 +149,46 @@ app.post('/send', async (req, res) => {
 });
 
 app.post('/send-otp', async (req, res) => {
-  const { phone, otp } = req.body;
-  if (!phone || !otp) {
+  const { phone, number, otp } = req.body;
+  const targetPhone = phone || number;
+
+  if (!targetPhone || !otp) {
     return res.status(400).json({ success: false, error: 'Phone and OTP are required.' });
   }
-  const message = ` *NTIC Competition Platform*\n\nYour OTP verification code is: *${otp}*\n\nPlease enter this code on the registration page to verify your account. Do not share this PIN.`;
+  const message = `*NTIC Competition Platform*\n\nYour OTP verification code is: *${otp}*\n\nPlease enter this code on the registration page to verify your account. Do not share this PIN.`;
   
-  req.body.message = message;
-  return app._router.handle({ ...req, url: '/send', method: 'POST' }, res);
+  try {
+    const result = await sendMessageInternal(targetPhone, message);
+    return res.json(result);
+  } catch (err) {
+    console.error('[WhatsApp Gateway] Send OTP Error:', err);
+    return res.status(err.statusCode || 500).json({
+      success: false,
+      error: err?.message || 'Failed to send WhatsApp OTP.'
+    });
+  }
 });
 
 app.post('/send-credentials', async (req, res) => {
-  const { phone, fullName, ticket, pin } = req.body;
-  if (!phone || !ticket || !pin) {
+  const { phone, number, fullName, ticket, pin } = req.body;
+  const targetPhone = phone || number;
+
+  if (!targetPhone || !ticket || !pin) {
     return res.status(400).json({ success: false, error: 'Phone, ticket, and pin are required.' });
   }
 
-  const message = ` *NTIC Competition Platform*\n\nWelcome *${fullName || 'Participant'}*!\n\nYour account has been registered successfully.\n Access Pass: *${ticket}*\n PIN Code: *${pin}*\n\nLogin Portal: https://ntic.edu.gh`;
+  const message = `*NTIC Competition Platform*\n\nWelcome *${fullName || 'Participant'}*!\n\nYour account has been registered successfully.\nAccess Pass: *${ticket}*\nPIN Code: *${pin}*\n\nLogin Portal: https://ntic.edu.gh`;
 
-  req.body.message = message;
-  return app._router.handle({ ...req, url: '/send', method: 'POST' }, res);
+  try {
+    const result = await sendMessageInternal(targetPhone, message);
+    return res.json(result);
+  } catch (err) {
+    console.error('[WhatsApp Gateway] Send Credentials Error:', err);
+    return res.status(err.statusCode || 500).json({
+      success: false,
+      error: err?.message || 'Failed to send WhatsApp credentials.'
+    });
+  }
 });
 
 // Start Express Server & WhatsApp Client

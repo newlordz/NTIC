@@ -2187,22 +2187,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.recomputeAuditState();
     this.recomputeRoleDistribution();
     this.recomputeSchoolAdminData();
-    if (typeof window !== 'undefined') {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-      setTimeout(() => {
-        window.scrollTo(0, 0);
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-          mainContent.scrollTop = 0;
-          mainContent.scrollLeft = 0;
-        }
-        document.querySelectorAll('.admin-tickets-table, .admin-table-sm').forEach(el => {
-          el.scrollLeft = 0;
-        });
-      }, 0);
-    }
     this.activeRoleId = getAuthValue('activeRoleId') || 'student';
     // An absent role grants nothing. The !this.activeRoleId || prefix used to
     // make a missing role behave like a full administrator.

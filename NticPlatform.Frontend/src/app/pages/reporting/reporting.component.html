@@ -85,6 +85,19 @@
             </select>
           </div>
           <div class="form-group">
+            <label class="form-label">Competition Cycle</label>
+            <select class="form-control form-select" [(ngModel)]="selectedCycleId"
+                    (ngModelChange)="onCycleScopeChange()">
+              <option value="">All cycles</option>
+              <option *ngFor="let cyc of cycleOptions" [value]="cyc.id">
+                {{ cyc.title }} ({{ cyc.status | titlecase }})
+              </option>
+            </select>
+            <small style="color:var(--text-secondary);">
+              Scopes every figure and export below to one cycle.
+            </small>
+          </div>
+          <div class="form-group">
             <label class="form-label">Date Range</label>
             <div class="grid-2" style="gap:8px;">
               <input class="form-control" type="date" [(ngModel)]="dateFrom">

@@ -60,6 +60,16 @@ export class JudgeComponent implements OnInit {
   selectedTrackFilter = '';
   selectedStatusFilter = '';
 
+  /**
+   * Restricts the evaluation queue to one competition cycle. Empty means every
+   * cycle, which is the historical behaviour.
+   *
+   * Scoped server-side via `?competition_id=` so the queue and its counts are
+   * filtered together -- filtering only the list would leave the pending badge
+   * reporting a platform-wide total that disagreed with what is on screen.
+   */
+  cycleFilter = '';
+
   /** View switcher: Competitions Observatory, Evaluation Queue, Scoring Archive */
   view: 'competitions' | 'queue' | 'history' = 'competitions';
 
@@ -141,7 +151,7 @@ export class JudgeComponent implements OnInit {
     this.loadError = '';
 
     // 1. Load Live Queue
-    this.apiService.getJudgeQueue(this.trackFilter).subscribe({
+    this.apiService.getJudgeQueue(this.trackFilter, this.cycleFilter).subscribe({
       next: q => {
         this.queue = q;
         this.loading = false;
@@ -482,11 +492,40 @@ export class JudgeComponent implements OnInit {
     this.refresh();
   }
 
+  /**
+   * Jump from a cycle in the Observatory straight to that cycle's queue.
+   *
+   * Track is cleared deliberately: the intent is "show me everything awaiting a
+   * score in this cycle", and keeping a stale track filter would silently hide
+   * most of it.
+   */
+  openQueueForCycle(comp: Competition): void {
+    this.cycleFilter = comp.id;
+    this.trackFilter = '';
+    this.view = 'queue';
+    this.active = null;
+    this.selectedCompetitionModal = null;
+    this.refresh();
+  }
+
+  /** Drop the cycle restriction and show the whole platform queue again. */
+  clearCycleFilter(): void {
+    this.cycleFilter = '';
+    this.active = null;
+    this.refresh();
+  }
+
+  /** Title of the cycle currently scoping the queue, for the UI. */
+  get cycleFilterLabel(): string {
+    if (!this.cycleFilter) return '';
+    return this.competitions.find(c => c.id === this.cycleFilter)?.title ?? 'Selected cycle';
+  }
+
   startEvaluatingTrack(track: string): void {
     this.trackFilter = track;
     this.view = 'queue';
     this.loading = true;
-    this.apiService.getJudgeQueue(track).subscribe({
+    this.apiService.getJudgeQueue(track, this.cycleFilter).subscribe({
       next: q => {
         this.queue = q;
         this.loading = false;

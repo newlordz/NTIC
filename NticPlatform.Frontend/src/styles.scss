@@ -21,6 +21,7 @@
 
 /* ── Color Tokens ── */
 :root {
+  color-scheme: light;
   --primary:                 #003f87;
   --primary-container:       #0056b3;
   --primary-fixed-dim:       #acc7ff;
@@ -140,7 +141,7 @@
 }
 
 /* ── Reset & Base ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 html {
   min-height: 100%;
@@ -621,11 +622,16 @@ button,
 }
 
 /* ── Input focus ring ── */
-input, textarea, select {
+input:not([type="checkbox"]):not([type="radio"]), textarea {
   transition:
     border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow   0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    background   0.2s ease !important;
+    background   0.2s ease;
+}
+select {
+  transition:
+    border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow   0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ── Avatar bounce ── */
@@ -1070,6 +1076,8 @@ body.ac-expanded .main-content {
       gap: 12px;
       padding: 13px 16px;
       border-bottom: 1px solid var(--outline-variant);
+      cursor: pointer;
+      user-select: none;
       transition: background 0.15s;
 
       &:last-child { border-bottom: none; }
@@ -1177,6 +1185,8 @@ body.ac-expanded .main-content {
       color: var(--on-surface);
       font-size: 13px;
       font-weight: 600;
+      cursor: pointer;
+      user-select: none;
       transition: background 0.15s;
 
       &:hover { background: var(--surface-container-low); }
@@ -1227,9 +1237,7 @@ body.ac-expanded .main-content {
   border: 1px solid var(--outline-variant);
   border-radius: 12px;
   box-shadow: var(--shadow-card);
-  /* Use clip-path so content stays clipped but transform lift isn't blocked by overflow:hidden */
-  overflow: hidden;
-  isolation: isolate; /* creates a new stacking context -- allows z-index on card contents */
+  overflow: visible;
 }
 
 .card-header {
@@ -1413,6 +1421,7 @@ select, .form-select {
   background-position: right 10px center !important; 
   background-size: 20px !important; 
   padding-right: 36px !important; 
+  cursor: pointer;
 }
 textarea.form-control { resize: vertical; min-height: 100px; }
 
@@ -4077,6 +4086,12 @@ body.dark-theme {
 
   background: #0b1120;
   color: #e2e8f0;
+  color-scheme: dark;
+
+  // NOTE: Do NOT set color-scheme on individual <select> elements.
+  // The body-level color-scheme is inherited by OS-native popups automatically.
+  // Per-element overrides cause the Win32 popup to initialize in dark mode
+  // (black canvas) before paint, producing a visible black flash on click.
 
   // Top nav
   .pub-topnav,

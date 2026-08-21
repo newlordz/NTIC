@@ -127,10 +127,14 @@ export class AppSelectComponent implements ControlValueAccessor {
     this.focusedIndex = selectedIdx >= 0 ? selectedIdx : 0;
 
     setTimeout(() => {
-      if (this.shouldShowSearch() && this.searchInput) {
-        this.searchInput.nativeElement.focus();
+      const container = this.elementRef.nativeElement.querySelector('.select-options-list');
+      if (container) {
+        container.scrollTop = 0;
       }
-    }, 50);
+      if (this.shouldShowSearch() && this.searchInput) {
+        this.searchInput.nativeElement.focus({ preventScroll: true });
+      }
+    }, 20);
   }
 
   closeDropdown(): void {

@@ -484,33 +484,11 @@
             <div class="grid-2">
               <div class="form-group">
                 <label class="form-label">Category</label>
-                <select class="form-control form-select" [(ngModel)]="schoolForm.category" name="schoolCategory">
-                  <option value="Public High School">Public High School</option>
-                  <option value="Private Academy">Private Academy</option>
-                  <option value="Charter School">Charter School</option>
-                  <option value="Technical School">Technical School</option>
-                </select>
+                <app-select [options]="schoolCategories" [(ngModel)]="schoolForm.category" name="schoolCategory" placeholder="Select School Category"></app-select>
               </div>
               <div class="form-group">
                 <label class="form-label">Region</label>
-                <select class="form-control form-select" [(ngModel)]="schoolForm.region" name="schoolRegion">
-                  <option value="Greater Accra">Greater Accra</option>
-                  <option value="Ashanti">Ashanti</option>
-                  <option value="Eastern">Eastern</option>
-                  <option value="Western">Western</option>
-                  <option value="Northern">Northern</option>
-                  <option value="Central">Central</option>
-                  <option value="Volta">Volta</option>
-                  <option value="Western North">Western North</option>
-                  <option value="Bono">Bono</option>
-                  <option value="Bono East">Bono East</option>
-                  <option value="Ahafo">Ahafo</option>
-                  <option value="Oti">Oti</option>
-                  <option value="Savannah">Savannah</option>
-                  <option value="North East">North East</option>
-                  <option value="Upper West">Upper West</option>
-                  <option value="Upper East">Upper East</option>
-                </select>
+                <app-select [options]="ghanaRegions" [(ngModel)]="schoolForm.region" name="schoolRegion" placeholder="Select Region" [searchable]="true"></app-select>
               </div>
             </div>
             <div class="form-group">
@@ -693,23 +671,13 @@
                 </div>
                 <div class="form-group">
                   <label class="form-label">Gender</label>
-                  <select class="form-control form-select" [(ngModel)]="studentForm.gender" name="stuGender">
-                    <option value="" disabled>Select gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Prefer not to say">Prefer not to say</option>
-                  </select>
+                  <app-select [options]="genderOptions" [(ngModel)]="studentForm.gender" name="stuGender" placeholder="Select Gender"></app-select>
                 </div>
               </div>
               <div class="grid-2">
                 <div class="form-group">
                   <label class="form-label">Class / Form</label>
-                  <select class="form-control form-select" [(ngModel)]="studentForm.class" name="stuClass">
-                    <option value="" disabled>Select class</option>
-                    <option value="Form 1">Form 1</option>
-                    <option value="Form 2">Form 2</option>
-                    <option value="Form 3">Form 3</option>
-                  </select>
+                  <app-select [options]="studentClasses" [(ngModel)]="studentForm.class" name="stuClass" placeholder="Select Class"></app-select>
                 </div>
                 <div class="grid-2" style="margin-bottom: 20px;">
                   <div class="form-group">
@@ -776,14 +744,7 @@
                 </div>
                 <div class="form-group">
                   <label class="form-label">Target Competition Track *</label>
-                  <select class="form-control form-select" [(ngModel)]="teamForm.track" name="teamTrack">
-                    <option value="" disabled>Select track</option>
-                    <option value="Coding">Coding</option>
-                    <option value="Robotics">Robotics</option>
-                    <option value="AI">AI</option>
-                    <option value="Cybersecurity">Networking & Cybersecurity</option>
-                    <option value="Innovation">Innovation</option>
-                  </select>
+                  <app-select [options]="competitionTracks" [(ngModel)]="teamForm.track" name="teamTrack" placeholder="Select Track"></app-select>
                 </div>
               </div>
 
@@ -1397,34 +1358,11 @@
           <div class="grid-2" style="margin-bottom: 20px;">
             <div>
               <label class="form-label">Region</label>
-              <select class="form-control form-select" [(ngModel)]="instructorForm.region" name="instRegion">
-                <option value="Greater Accra">Greater Accra</option>
-                <option value="Ashanti">Ashanti</option>
-                <option value="Eastern">Eastern</option>
-                <option value="Western">Western</option>
-                <option value="Northern">Northern</option>
-                <option value="Central">Central</option>
-                <option value="Volta">Volta</option>
-                <option value="Western North">Western North</option>
-                <option value="Bono">Bono</option>
-                <option value="Bono East">Bono East</option>
-                <option value="Ahafo">Ahafo</option>
-                <option value="Oti">Oti</option>
-                <option value="Savannah">Savannah</option>
-                <option value="North East">North East</option>
-                <option value="Upper West">Upper West</option>
-                <option value="Upper East">Upper East</option>
-              </select>
+              <app-select [options]="ghanaRegions" [(ngModel)]="instructorForm.region" name="instRegion" placeholder="Select Region" [searchable]="true"></app-select>
             </div>
             <div>
               <label class="form-label">Highest Qualification</label>
-              <select class="form-control form-select" [(ngModel)]="instructorForm.qualification" name="instQual">
-                <option value="BSc">BSc</option>
-                <option value="MSc">MSc</option>
-                <option value="PhD">PhD</option>
-                <option value="HND">HND</option>
-                <option value="Other">Other</option>
-              </select>
+              <app-select [options]="instructorQualifications" [(ngModel)]="instructorForm.qualification" name="instQual" placeholder="Select Qualification"></app-select>
             </div>
           </div>
 
@@ -1602,13 +1540,8 @@
                 <input class="form-control" type="date" [(ngModel)]="studentForm.dob" name="stuDob">
               </div>
               <div>
-                  <label class="form-label">Gender</label>
-                <select class="form-control form-select" [(ngModel)]="studentForm.gender" name="stuGender">
-                  <option value="" disabled>Select gender</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
+                <label class="form-label">Gender</label>
+                <app-select [options]="genderOptions" [(ngModel)]="studentForm.gender" name="stuGender" placeholder="Select Gender"></app-select>
               </div>
             </div>
 
@@ -1618,40 +1551,15 @@
                 <input class="form-control" type="text" placeholder="Your current school (optional)" [(ngModel)]="studentForm.school" name="stuSchool">
               </div>
               <div>
-                  <label class="form-label">Class / Form</label>
-                <select class="form-control form-select" [(ngModel)]="studentForm.class" name="stuClass">
-                  <option value="" disabled>Select class</option>
-                  <option value="Form 1">Form 1</option>
-                  <option value="Form 2">Form 2</option>
-                  <option value="Form 3">Form 3</option>
-                  <option value="JHS 1">JHS 1</option>
-                  <option value="JHS 2">JHS 2</option>
-                  <option value="JHS 3">JHS 3</option>
-                </select>
+                <label class="form-label">Class / Form</label>
+                <app-select [options]="studentClasses" [(ngModel)]="studentForm.class" name="stuClass" placeholder="Select Class"></app-select>
               </div>
             </div>
 
             <div class="grid-2" style="margin-bottom: 20px;">
               <div>
                 <label class="form-label">Region</label>
-                <select class="form-control form-select" [(ngModel)]="studentForm.region" name="stuRegion">
-                  <option value="Greater Accra">Greater Accra</option>
-                  <option value="Ashanti">Ashanti</option>
-                  <option value="Eastern">Eastern</option>
-                  <option value="Western">Western</option>
-                  <option value="Northern">Northern</option>
-                  <option value="Central">Central</option>
-                  <option value="Volta">Volta</option>
-                  <option value="Western North">Western North</option>
-                  <option value="Bono">Bono</option>
-                  <option value="Bono East">Bono East</option>
-                  <option value="Ahafo">Ahafo</option>
-                  <option value="Oti">Oti</option>
-                  <option value="Savannah">Savannah</option>
-                  <option value="North East">North East</option>
-                  <option value="Upper West">Upper West</option>
-                  <option value="Upper East">Upper East</option>
-                </select>
+                <app-select [options]="ghanaRegions" [(ngModel)]="studentForm.region" name="stuRegion" placeholder="Select Region" [searchable]="true"></app-select>
               </div>
               <div>
                 <label class="form-label">Guardian Name</label>
@@ -1750,35 +1658,11 @@
             <div class="grid-2" style="margin-bottom: 20px;">
               <div>
                 <label class="form-label">Region</label>
-                <select class="form-control form-select" [(ngModel)]="teamForm.region" name="squadRegion">
-                  <option value="Greater Accra">Greater Accra</option>
-                  <option value="Ashanti">Ashanti</option>
-                  <option value="Eastern">Eastern</option>
-                  <option value="Western">Western</option>
-                  <option value="Northern">Northern</option>
-                  <option value="Central">Central</option>
-                  <option value="Volta">Volta</option>
-                  <option value="Western North">Western North</option>
-                  <option value="Bono">Bono</option>
-                  <option value="Bono East">Bono East</option>
-                  <option value="Ahafo">Ahafo</option>
-                  <option value="Oti">Oti</option>
-                  <option value="Savannah">Savannah</option>
-                  <option value="North East">North East</option>
-                  <option value="Upper West">Upper West</option>
-                  <option value="Upper East">Upper East</option>
-                </select>
+                <app-select [options]="ghanaRegions" [(ngModel)]="teamForm.region" name="squadRegion" placeholder="Select Region" [searchable]="true"></app-select>
               </div>
               <div>
                 <label class="form-label">Competition Track *</label>
-                <select class="form-control form-select" [(ngModel)]="teamForm.track" name="squadTrack">
-                  <option value="" disabled selected>-- Select Competition Track --</option>
-                  <option value="Coding">Coding</option>
-                  <option value="Robotics">Robotics</option>
-                  <option value="AI">AI</option>
-                  <option value="Cybersecurity">Networking & Cybersecurity</option>
-                  <option value="Innovation">Innovation</option>
-                </select>
+                <app-select [options]="competitionTracks" [(ngModel)]="teamForm.track" name="squadTrack" placeholder="Select Competition Track"></app-select>
               </div>
             </div>
 
@@ -2200,15 +2084,11 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Age Group</label>
-                <select class="form-control form-select" [(ngModel)]="openRegForm.ageGroup" name="openAgeGroup">
-                  <option *ngFor="let ag of ageGroups" [value]="ag.value">{{ ag.label }}</option>
-                </select>
+                <app-select [options]="ageGroups" [(ngModel)]="openRegForm.ageGroup" name="openAgeGroup" placeholder="Select Age Group"></app-select>
               </div>
               <div class="form-group">
                 <label class="form-label">Experience Level</label>
-                <select class="form-control form-select" [(ngModel)]="openRegForm.experienceLevel" name="openExpLevel">
-                  <option *ngFor="let el of experienceLevels" [value]="el.value">{{ el.label }}</option>
-                </select>
+                <app-select [options]="experienceLevels" [(ngModel)]="openRegForm.experienceLevel" name="openExpLevel" placeholder="Select Experience Level"></app-select>
               </div>
               <div class="form-group">
                 <label class="form-label">Organization / Background (optional)</label>
@@ -2439,24 +2319,7 @@
             <div class="grid-2">
               <div class="form-group">
                 <label class="form-label">Region</label>
-                <select class="form-control form-select" [(ngModel)]="judgeForm.region" name="jdRegion">
-                  <option value="Greater Accra">Greater Accra</option>
-                  <option value="Ashanti">Ashanti</option>
-                  <option value="Eastern">Eastern</option>
-                  <option value="Western">Western</option>
-                  <option value="Northern">Northern</option>
-                  <option value="Central">Central</option>
-                  <option value="Volta">Volta</option>
-                  <option value="Western North">Western North</option>
-                  <option value="Bono">Bono</option>
-                  <option value="Bono East">Bono East</option>
-                  <option value="Ahafo">Ahafo</option>
-                  <option value="Oti">Oti</option>
-                  <option value="Savannah">Savannah</option>
-                  <option value="North East">North East</option>
-                  <option value="Upper West">Upper West</option>
-                  <option value="Upper East">Upper East</option>
-                </select>
+                <app-select [options]="ghanaRegions" [(ngModel)]="judgeForm.region" name="jdRegion" placeholder="Select Region" [searchable]="true"></app-select>
               </div>
               <div class="form-group">
                 <label class="form-label">Organization / Institution</label>
@@ -2467,25 +2330,11 @@
           <div class="grid-2">
             <div class="form-group">
               <label class="form-label">Primary Area of Expertise</label>
-              <select class="form-control form-select" [(ngModel)]="judgeForm.expertise" name="jdExpertise">
-                <option value="" disabled selected>Select Expertise</option>
-                <option value="Software Engineering">Software Engineering</option>
-                <option value="Robotics">Robotics</option>
-                <option value="Artificial Intelligence">Artificial Intelligence</option>
-                <option value="Cyber Security">Cyber Security</option>
-                <option value="Innovation">Innovation</option>
-                <option value="Data Science">Data Science</option>
-              </select>
+              <app-select [options]="judgeExpertiseOptions" [(ngModel)]="judgeForm.expertise" name="jdExpertise" placeholder="Select Expertise"></app-select>
             </div>
             <div class="form-group">
               <label class="form-label">Years of Experience</label>
-              <select class="form-control form-select" [(ngModel)]="judgeForm.experience" name="jdExperience">
-                <option value="" disabled selected>Select Experience</option>
-                <option value="1 -- 3 years">1 -- 3 years</option>
-                <option value="4 -- 7 years">4 -- 7 years</option>
-                <option value="8 -- 15 years">8 -- 15 years</option>
-                <option value="15+ years">15+ years</option>
-              </select>
+              <app-select [options]="judgeExperienceOptions" [(ngModel)]="judgeForm.experience" name="jdExperience" placeholder="Select Experience"></app-select>
             </div>
           </div>
           <div class="form-group">
@@ -2975,110 +2824,195 @@
 
 <!-- ═══ FIELD VERIFICATION OTP MODAL ═══ -->
 <div class="custom-modal-backdrop" *ngIf="verifyOtpModalOpen" (click)="closeVerifyModal()">
-  <div class="custom-alert-card info" style="max-width:400px;" (click)="$event.stopPropagation()">
+  <div class="custom-alert-card info" style="max-width:420px;" (click)="$event.stopPropagation()">
     <div class="custom-alert-icon-wrap">
-      <span class="material-symbols-outlined">shield</span>
+      <span class="material-symbols-outlined">{{ verifyTargetType === 'email' ? 'mark_email_read' : 'chat' }}</span>
     </div>
     <div class="custom-alert-content">
-      <h4 class="custom-alert-title">Verify {{ verifyTargetType === 'email' ? 'Email' : 'Phone Number' }}</h4>
-      <p class="custom-alert-message" style="font-size:13px;">
-        Enter the 6-digit code sent to<br><strong>{{ verifyTargetValue }}</strong>
+      <h4 class="custom-alert-title">
+        Verify {{ verifyTargetType === 'email' ? 'Email Address' : 'Phone Number' }}
+      </h4>
+      <p class="custom-alert-message" style="font-size:13px; line-height: 1.5;">
+        A 6-digit code was dispatched via <strong>{{ verifyTargetType === 'email' ? 'Email' : 'WhatsApp / SMS' }}</strong> to<br>
+        <span style="display:inline-block; font-weight:700; color:var(--primary); background:rgba(0,63,135,0.08); padding:2px 8px; border-radius:6px; margin-top:4px;">{{ verifyTargetValue }}</span>
       </p>
-      <div style="margin-top:12px;">
+      <div style="margin-top:16px;">
         <input class="form-control" type="text" maxlength="6" placeholder="000000"
-          [(ngModel)]="verifyOtpInput" style="text-align:center;font-size:1.4rem;letter-spacing:8px;font-weight:700;max-width:180px;margin:0 auto;display:block;"
-          (keyup.enter)="confirmVerifyOtp()">
+          [(ngModel)]="verifyOtpInput" (ngModelChange)="onVerifyOtpInputChange()"
+          style="text-align:center;font-size:1.5rem;letter-spacing:10px;font-weight:700;max-width:200px;margin:0 auto;display:block;padding:8px 12px;font-family:monospace;"
+          (keyup.enter)="confirmVerifyOtp()" autofocus>
         <p *ngIf="verifyOtpError" style="color:#ef4444;font-size:12px;margin-top:6px;text-align:center;">{{ verifyOtpError }}</p>
+        
+        <!-- Resend timer / action -->
+        <div style="margin-top:12px; font-size:12px; text-align:center; color:var(--on-surface-variant);">
+          <span *ngIf="verifyOtpCountdown > 0">
+            Resend code in <strong>{{ verifyOtpCountdown }}s</strong>
+          </span>
+          <button *ngIf="verifyOtpCountdown === 0" type="button" class="btn-subtle" (click)="resendVerifyOtp()" [disabled]="verifyOtpBusy" style="padding:4px 10px; font-size:12px; cursor:pointer; color:var(--primary); font-weight:600; border:none; background:transparent; text-decoration:underline;">
+            {{ verifyOtpBusy ? 'Sending...' : 'Resend Code Now' }}
+          </button>
+        </div>
       </div>
     </div>
-    <div class="custom-alert-actions" style="gap:8px;">
+    <div class="custom-alert-actions" style="gap:8px; margin-top:16px;">
       <button class="btn-alert-dismiss" style="background:var(--outline-variant);color:var(--on-surface);" (click)="closeVerifyModal()">Cancel</button>
-      <button class="btn-alert-dismiss" (click)="confirmVerifyOtp()">Verify</button>
+      <button class="btn-alert-dismiss" (click)="confirmVerifyOtp()" [disabled]="verifyOtpBusy || verifyOtpInput.length !== 6">
+        <span *ngIf="verifyOtpBusy">Verifying...</span>
+        <span *ngIf="!verifyOtpBusy">Confirm & Verify</span>
+      </button>
     </div>
   </div>
 </div>
 
-<!-- ═══ SCHOOL GPS LOOKUP & SEARCH MODAL ═══ -->
-<div class="custom-modal-backdrop" *ngIf="isGpsSearchModalOpen" (click)="closeSchoolGpsModal()">
-  <div class="custom-alert-card info" style="max-width:560px; width:100%; text-align:left; align-items:stretch;" (click)="$event.stopPropagation()">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <div class="custom-alert-icon-wrap" style="margin-bottom:0; width:42px; height:42px;">
-          <span class="material-symbols-outlined" style="font-size:22px;">pin_drop</span>
-        </div>
-        <div>
-          <h4 class="custom-alert-title" style="margin:0; font-size:16px; text-align:left;">Ghana School GPS Lookup</h4>
-          <p style="margin:0; font-size:12px; color:var(--on-surface-variant); text-align:left;">Search and select your institution to auto-fill coordinates</p>
-        </div>
+<!-- ═══ SCHOOL GPS LOOKUP MODAL (Premium Redesign) ═══ -->
+<div class="gps-modal-overlay" *ngIf="isGpsSearchModalOpen" (click)="closeSchoolGpsModal()">
+  <div class="gps-modal-shell" (click)="$event.stopPropagation()">
+
+    <!-- ── Header ── -->
+    <div class="gps-modal-header">
+      <div class="gps-modal-header-icon">
+        <span class="material-symbols-outlined">location_on</span>
       </div>
-      <button type="button" class="btn-icon" (click)="closeSchoolGpsModal()" style="background:transparent; border:none; color:var(--on-surface-variant); cursor:pointer;">
+      <div class="gps-modal-header-text">
+        <h3>Ghana School GPS Lookup</h3>
+        <p>Search by school name, city, or abbreviation · coordinates auto-applied</p>
+      </div>
+      <button class="gps-modal-close" (click)="closeSchoolGpsModal()" type="button" title="Close">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
 
-    <!-- Search Input -->
-    <div style="display:flex; gap:8px; margin-bottom:14px;">
-      <div style="position:relative; flex:1;">
-        <input class="form-control" type="text" placeholder="Search school name (e.g. Achimota, Prempeh, PRESEC)..."
-          [(ngModel)]="gpsSearchQuery" (keyup.enter)="searchSchoolGps()" style="padding-left:36px; width:100%;">
-        <span class="material-symbols-outlined" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:18px; color:var(--outline);">search</span>
+    <!-- ── Search Bar ── -->
+    <div class="gps-search-bar-wrap">
+      <div class="gps-search-input-wrap">
+        <span class="material-symbols-outlined gps-search-icon">search</span>
+        <input
+          class="gps-search-field"
+          type="text"
+          placeholder="Try: Achimota, PRESEC, Prempeh, GSTS, Legon …"
+          [(ngModel)]="gpsSearchQuery"
+          (keyup.enter)="searchSchoolGps()"
+          autocomplete="off"
+        />
+        <button class="gps-clear-btn" *ngIf="gpsSearchQuery" (click)="gpsSearchQuery=''; gpsSearchResults=[]; gpsSelectedPreview=null" type="button">
+          <span class="material-symbols-outlined" style="font-size:16px;">close</span>
+        </button>
       </div>
-      <button type="button" class="btn btn-primary btn-sm" (click)="searchSchoolGps()" [disabled]="gpsSearching" style="display:flex; align-items:center; gap:6px;">
-        <span class="material-symbols-outlined" [class.spin]="gpsSearching" style="font-size:16px;">{{ gpsSearching ? 'progress_activity' : 'search' }}</span>
-        <span>Search</span>
+      <button class="gps-run-search-btn" (click)="searchSchoolGps()" [disabled]="gpsSearching" type="button">
+        <span class="material-symbols-outlined" [class.spin]="gpsSearching" style="font-size:18px;">{{ gpsSearching ? 'progress_activity' : 'travel_explore' }}</span>
+        <span>{{ gpsSearching ? 'Searching…' : 'Search' }}</span>
       </button>
     </div>
 
-    <!-- Results List -->
-    <div style="max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">
-      <div *ngIf="gpsSearching" style="padding:24px; text-align:center; color:var(--on-surface-variant); font-size:13px;">
-        <span class="material-symbols-outlined spin" style="font-size:28px; display:block; margin-bottom:8px; color:var(--primary);">progress_activity</span>
-        Searching Ghanaian schools and educational landmarks...
-      </div>
+    <!-- ── Body: list + map ── -->
+    <div class="gps-modal-body">
 
-      <div *ngIf="!gpsSearching && gpsSearchResults.length > 0">
-        <div *ngFor="let item of gpsSearchResults" 
-          (click)="selectSchoolGps(item)"
-          style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-radius:10px; background:var(--surface-variant, rgba(255,255,255,0.04)); border:1px solid var(--border-color, rgba(255,255,255,0.1)); cursor:pointer; transition:all 0.15s ease; margin-bottom:6px;"
-          onmouseover="this.style.background='rgba(0, 242, 254, 0.1)'; this.style.borderColor='rgba(0, 242, 254, 0.4)';"
-          onmouseout="this.style.background='var(--surface-variant, rgba(255,255,255,0.04))'; this.style.borderColor='var(--border-color, rgba(255,255,255,0.1))';"
-        >
-          <div style="flex:1; min-width:0; padding-right:12px;">
-            <div style="font-weight:600; font-size:13.5px; color:var(--on-surface); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-              {{ item.name }}
-            </div>
-            <div style="font-size:11.5px; color:var(--on-surface-variant); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">
-              {{ item.address }}
-            </div>
-          </div>
-          <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-            <a [href]="'https://www.google.com/maps?q=' + item.lat + ',' + item.lng" target="_blank" rel="noopener noreferrer" 
-               class="btn-icon btn-sm" title="Preview on Map" style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:6px; background:rgba(255,255,255,0.06); color:var(--on-surface-variant); text-decoration:none;" 
-               (click)="$event.stopPropagation()">
-              <span class="material-symbols-outlined" style="font-size:15px;">map</span>
-            </a>
-            <span style="font-size:11px; font-family:monospace; background:rgba(0,0,0,0.25); padding:3px 6px; border-radius:4px; color:var(--primary-fixed-dim, #acc7ff);">
-              {{ item.lat }}, {{ item.lng }}
-            </span>
-            <button type="button" class="btn btn-subtle btn-sm" style="padding:4px 10px; font-size:12px;" (click)="selectSchoolGps(item); $event.stopPropagation()">
-              Select
-            </button>
-          </div>
+      <!-- Left: Results list -->
+      <div class="gps-results-panel">
+        <!-- Loading -->
+        <div class="gps-state-wrap" *ngIf="gpsSearching">
+          <span class="material-symbols-outlined spin gps-state-icon" style="color:#38bdf8;">progress_activity</span>
+          <span class="gps-state-text">Searching Ghanaian schools & landmarks…</span>
         </div>
+
+        <!-- Empty -->
+        <div class="gps-state-wrap" *ngIf="!gpsSearching && gpsSearchResults.length === 0">
+          <span class="material-symbols-outlined gps-state-icon" style="color:#64748b;">location_off</span>
+          <span class="gps-state-text">{{ gpsSearchError || 'Type a school name above and click Search.' }}</span>
+        </div>
+
+        <!-- Results -->
+        <ng-container *ngIf="!gpsSearching && gpsSearchResults.length > 0">
+          <div
+            *ngFor="let item of gpsSearchResults; let i = index"
+            class="gps-result-row"
+            [class.gps-result-active]="gpsSelectedPreview?.name === item.name && gpsSelectedPreview?.lat === item.lat"
+            (click)="previewSchoolGps(item, $event)"
+          >
+            <div class="gps-result-rank">{{ i + 1 }}</div>
+            <div class="gps-result-body">
+              <div class="gps-result-name">{{ item.name }}</div>
+              <div class="gps-result-addr">{{ item.address }}</div>
+              <div class="gps-result-coords">
+                <span class="material-symbols-outlined" style="font-size:12px; vertical-align:middle;">my_location</span>
+                {{ item.lat }}, {{ item.lng }}
+              </div>
+            </div>
+            <div class="gps-result-actions">
+              <button
+                class="gps-apply-btn"
+                (click)="selectSchoolGps(item); $event.stopPropagation()"
+                type="button"
+                title="Apply these coordinates"
+              >
+                <span class="material-symbols-outlined" style="font-size:15px;">check_circle</span>
+                Apply
+              </button>
+            </div>
+          </div>
+
+          <div class="gps-results-footer">
+            {{ gpsSearchResults.length }} result{{ gpsSearchResults.length !== 1 ? 's' : '' }} found — click a row to preview on map
+          </div>
+        </ng-container>
       </div>
 
-      <div *ngIf="!gpsSearching && gpsSearchResults.length === 0" style="padding:24px; text-align:center; color:var(--on-surface-variant); font-size:13px;">
-        <span class="material-symbols-outlined" style="font-size:32px; opacity:0.5; margin-bottom:8px; display:block;">location_off</span>
-        {{ gpsSearchError || 'No matching schools found. Try searching by city/town or another keyword.' }}
-      </div>
-    </div>
+      <!-- Right: Map Preview -->
+      <div class="gps-map-panel">
+        <!-- No selection yet -->
+        <div class="gps-map-placeholder" *ngIf="!gpsSelectedPreview">
+          <span class="material-symbols-outlined" style="font-size:52px; color:#1e3a5f; margin-bottom:12px;">map</span>
+          <span style="font-size:13px; color:#475569; text-align:center; line-height:1.5;">
+            Click any result<br/>to preview on map
+          </span>
+        </div>
 
-    <!-- Modal Footer -->
-    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.1);">
-      <button type="button" class="btn btn-subtle btn-sm" (click)="closeSchoolGpsModal()">Close</button>
-    </div>
+        <!-- Live OSM iframe -->
+        <ng-container *ngIf="gpsSelectedPreview">
+          <div class="gps-map-header">
+            <span class="material-symbols-outlined" style="font-size:15px; color:#38bdf8;">location_on</span>
+            <span class="gps-map-school-name">{{ gpsSelectedPreview.name }}</span>
+          </div>
+          <div class="gps-map-frame-wrap">
+            <iframe
+              [src]="getMapPreviewUrl(gpsSelectedPreview.lat, gpsSelectedPreview.lng) | safe"
+              class="gps-map-iframe"
+              frameborder="0"
+              scrolling="no"
+              title="School Map Preview"
+              loading="lazy"
+            ></iframe>
+          </div>
+          <div class="gps-map-footer">
+            <div class="gps-coord-chips">
+              <span class="gps-chip">
+                <span class="material-symbols-outlined" style="font-size:12px;">north</span>
+                {{ gpsSelectedPreview.lat }}° N
+              </span>
+              <span class="gps-chip">
+                <span class="material-symbols-outlined" style="font-size:12px;">east</span>
+                {{ gpsSelectedPreview.lng }}°
+              </span>
+            </div>
+            <div class="gps-map-links">
+              <a [href]="getMapLinkUrl(gpsSelectedPreview.lat, gpsSelectedPreview.lng)" target="_blank" rel="noopener noreferrer" class="gps-ext-link" title="Open in Google Maps">
+                <span class="material-symbols-outlined" style="font-size:14px;">open_in_new</span>
+                Google Maps
+              </a>
+              <button class="gps-apply-btn-lg" (click)="selectSchoolGps(gpsSelectedPreview!)" type="button">
+                <span class="material-symbols-outlined" style="font-size:16px;">check_circle</span>
+                Apply Coordinates
+              </button>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+
+    </div><!-- /body -->
   </div>
 </div>
+
+
 
 <div class="login-modal-backdrop" *ngIf="isLoginModalOpen" [class.open]="isLoginModalOpen" (click)="closeLoginModal()">
   <div class="login-modal-card" (click)="$event.stopPropagation()">

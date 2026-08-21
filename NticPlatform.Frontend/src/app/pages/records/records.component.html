@@ -83,18 +83,14 @@
 
     <div class="toolbar-controls">
       <!-- Region Filter -->
-      <select [(ngModel)]="selectedRegionFilter" (ngModelChange)="applyFilters()" class="select-input">
-        <option value="all">All Regions</option>
-        <option *ngFor="let r of availableRegions" [value]="r">{{ r }}</option>
-      </select>
+      <div class="filter-select-wrap">
+        <app-select [options]="regionSelectOptions" [(ngModel)]="selectedRegionFilter" (selectionChange)="applyFilters()" placeholder="All Regions" [searchable]="true"></app-select>
+      </div>
 
       <!-- Sort Filter -->
-      <select [(ngModel)]="sortBy" (ngModelChange)="setSort($event)" class="select-input">
-        <option value="submittedAt">Date Submitted</option>
-        <option value="entityName">Entity Name</option>
-        <option value="status">Status</option>
-        <option value="region">Region</option>
-      </select>
+      <div class="filter-select-wrap">
+        <app-select [options]="sortOptions" [(ngModel)]="sortBy" (selectionChange)="setSort($event)" placeholder="Sort by..."></app-select>
+      </div>
 
       <button class="btn btn-subtle icon-only" (click)="sortDir = sortDir === 'asc' ? 'desc' : 'asc'; applyFilters()" [title]="sortDir === 'asc' ? 'Ascending' : 'Descending'">
         <span class="material-symbols-outlined">{{ sortDir === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</span>

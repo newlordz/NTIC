@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router, ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ContentService, User } from '../../services/content.service';
 import { ChatbotService, SupportTicket } from '../../services/chatbot.service';
@@ -115,7 +116,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.loadUsers();
     this.loadTickets();
 
-    this.route.queryParams.subscribe(params => {
+    this.queryParamsSub = this.route.queryParams.subscribe(params => {
       if (params['edit']) {
         const query = String(params['edit']).toLowerCase();
         const found = this.users.find(u => String(u.id).toLowerCase() === query || u.email.toLowerCase() === query);
@@ -142,6 +143,9 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       clearInterval(this.ticketRefreshTimer);
       this.ticketRefreshTimer = null;
     }
+    // route.queryParams never completes, so without this the subscription
+    // outlived the component and kept the whole instance reachable.
+    this.queryParamsSub?.unsubscribe();
   }
 
   isSyncing = false;
@@ -600,6 +604,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   private ticketRefreshTimer: any = null;
+  /** Held so ngOnDestroy can unsubscribe; route params never complete. */
+  private queryParamsSub?: Subscription;
 
   // ── Support Center Methods ──────────────────────────────────────────
   setActiveMainTab(tab: 'users' | 'support'): void {

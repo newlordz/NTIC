@@ -157,6 +157,7 @@
   padding: 10px 14px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   background: #f8fafc;
+  flex-shrink: 0;
 
   .search-icon {
     font-size: 18px;
@@ -205,19 +206,27 @@
 
 /* ── Scrollable Options List ── */
 .select-options-list {
-  max-height: 320px;
+  max-height: 420px;
   overflow-y: auto;
-  padding: 6px;
+  padding: 4px;
   outline: none;
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 63, 135, 0.2) transparent;
+  scrollbar-color: rgba(0, 63, 135, 0.4) rgba(0, 63, 135, 0.06);
 
   &::-webkit-scrollbar {
-    width: 5px;
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 63, 135, 0.04);
+    border-radius: 4px;
   }
   &::-webkit-scrollbar-thumb {
-    background: rgba(0, 63, 135, 0.2);
+    background: rgba(0, 63, 135, 0.35);
     border-radius: 4px;
+
+    &:hover {
+      background: rgba(0, 63, 135, 0.6);
+    }
   }
 }
 
@@ -226,14 +235,19 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px 14px;
-  border-radius: 9px;
+  padding: 8px 12px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 13.5px;
   color: #1e293b;
   font-weight: 500;
-  line-height: 1.4;
-  transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1);
+  line-height: 1.35;
+  /* Deliberately NOT `transition: all`. Hover shifts padding-left 12px->17px
+     and .selected changes font-weight, so `all` animated layout on every
+     hover while scrolling the list. Colour is the part worth easing; the 5px
+     nudge snaps, which is imperceptible. */
+  transition: background-color 0.16s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.16s cubic-bezier(0.4, 0, 0.2, 1);
 
   .opt-left {
     display: flex;
@@ -401,10 +415,17 @@
   }
 
   .select-options-list {
-    scrollbar-color: rgba(56, 189, 248, 0.2) transparent;
+    scrollbar-color: rgba(56, 189, 248, 0.4) rgba(255, 255, 255, 0.04);
 
+    &::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.03);
+    }
     &::-webkit-scrollbar-thumb {
-      background: rgba(56, 189, 248, 0.2);
+      background: rgba(56, 189, 248, 0.35);
+
+      &:hover {
+        background: rgba(56, 189, 248, 0.6);
+      }
     }
   }
 

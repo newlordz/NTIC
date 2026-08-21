@@ -6,6 +6,7 @@ import { ThemeService } from '../../services/theme.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { ApiService } from '../../services/api.service';
 import { ActivatedRoute } from '@angular/router';
+import { AppSelectComponent } from '../../components/app-select/app-select.component';
 
 interface RecordFile {
   name: string;
@@ -35,11 +36,24 @@ interface Record {
 @Component({
   selector: 'app-records',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, AppSelectComponent],
   templateUrl: './records.component.html',
   styleUrl: './records.component.scss'
 })
 export class RecordsComponent implements OnInit {
+  readonly sortOptions = [
+    { value: 'submittedAt', label: 'Date Submitted' },
+    { value: 'entityName', label: 'Entity Name' },
+    { value: 'status', label: 'Status' },
+    { value: 'region', label: 'Region' }
+  ];
+
+  get regionSelectOptions(): { value: string; label: string }[] {
+    return [
+      { value: 'all', label: 'All Regions' },
+      ...this.availableRegions.map(r => ({ value: r, label: r }))
+    ];
+  }
   records: Record[] = [];
   allRecords: Record[] = [];
   filteredRecords: Record[] = [];
@@ -57,14 +71,20 @@ export class RecordsComponent implements OnInit {
   sortBy = 'submittedAt';
   sortDir = 'desc';
 
+  readonly ghanaRegions = [
+    'Ahafo', 'Ashanti', 'Bono', 'Bono East', 'Central', 'Eastern',
+    'Greater Accra', 'North East', 'Northern', 'Oti', 'Savannah',
+    'Upper East', 'Upper West', 'Volta', 'Western', 'Western North'
+  ];
+
   get availableRegions(): string[] {
-    const regions = new Set<string>();
+    const regions = new Set<string>(this.ghanaRegions);
     this.allRecords.forEach(r => {
       if (r.region && r.region.trim()) {
         regions.add(r.region.trim());
       }
     });
-    return Array.from(regions).sort();
+    return Array.from(regions).sort((a, b) => a.localeCompare(b));
   }
 
   get pendingCount(): number {

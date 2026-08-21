@@ -955,6 +955,15 @@ try:
         """
         gateway = os.getenv("SMS_GATEWAY_URL", "").strip().rstrip("/")
         if not gateway:
+            try:
+                from dotenv import dotenv_values
+                root_env = Path(__file__).resolve().parent.parent.parent / ".env"
+                if root_env.exists() and "SMS_GATEWAY_URL" not in os.environ:
+                    env_vals = dotenv_values(root_env)
+                    gateway = (env_vals.get("SMS_GATEWAY_URL") or env_vals.get("WHATSAPP_GATEWAY_URL") or "").strip().rstrip("/")
+            except Exception:
+                pass
+        if not gateway:
             return False
         try:
             resp = httpx.post(

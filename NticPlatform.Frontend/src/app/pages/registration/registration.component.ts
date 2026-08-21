@@ -3,6 +3,7 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { ThemeService } from '../../services/theme.service';
 import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
@@ -12,15 +13,41 @@ import { NotificationService } from '../../services/notification.service';
 import { DialogService } from '../../services/dialog.service';
 import { ApiService } from '../../services/api.service';
 import { OtpService } from '../../services/otp.service';
+import { AppSelectComponent } from '../../components/app-select/app-select.component';
+import { SafePipe } from '../../pipes/safe.pipe';
 
 @Component({
   selector: 'app-registration',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, AppSelectComponent, SafePipe],
   templateUrl: './registration.component.html',
   styleUrl: './registration.component.scss'
 })
 export class RegistrationComponent implements OnInit, OnDestroy {
+  readonly ghanaRegions = [
+    'Ahafo', 'Ashanti', 'Bono', 'Bono East', 'Central', 'Eastern',
+    'Greater Accra', 'North East', 'Northern', 'Oti', 'Savannah',
+    'Upper East', 'Upper West', 'Volta', 'Western', 'Western North'
+  ];
+
+  readonly schoolCategories = [
+    'Public High School', 'Private Academy', 'Charter School', 'Technical School'
+  ];
+
+  readonly genderOptions = ['Male', 'Female'];
+  readonly studentClasses = ['SHS 1', 'SHS 2', 'SHS 3', 'JHS 3', 'Other'];
+  readonly instructorQualifications = [
+    'B.Ed / BSc Science/Computing', 'Master of Education / MSc', 'PhD', 'Diploma in Education', 'Industry Certified Professional'
+  ];
+  readonly competitionTracks = [
+    'Robotics & AI', 'Coding & App Development', 'Cybersecurity', 'Web & Cloud Development', 'IoT & Embedded Systems'
+  ];
+  readonly judgeExpertiseOptions = [
+    'Robotics & Hardware', 'Software Engineering & AI', 'Cybersecurity & Networks', 'Data Science & Cloud', 'General STEM Education'
+  ];
+  readonly judgeExperienceOptions = [
+    '1-3 Years', '4-7 Years', '8+ Years (Senior Lead)'
+  ];
   regState = 'gateway'; // 'gateway', 'new', 'continue_select', 'otp_verification', 'resume_success'
   activeTab: any = 'school';
   isPathModalOpen = false;
@@ -191,14 +218,25 @@ setAuthValue('activeUserEmail', email);
   gpsSearchResults: Array<{ name: string; address: string; lat: string; lng: string }> = [];
   gpsSearching = false;
   gpsSearchError = '';
+  gpsSelectedPreview: { name: string; address: string; lat: string; lng: string } | null = null;
+
+  getMapPreviewUrl(lat: string, lng: string): string {
+    const latStr = encodeURIComponent(lat.trim());
+    const lngStr = encodeURIComponent(lng.trim());
+    return `https://maps.google.com/maps?q=${latStr},${lngStr}&hl=en&z=17&output=embed`;
+  }
+
+  getMapLinkUrl(lat: string, lng: string): string {
+    return `https://www.google.com/maps?q=${lat},${lng}&z=17`;
+  }
 
   private ghanaSchoolsGpsDb: Array<{ name: string; address: string; lat: string; lng: string; aliases?: string[] }> = [
     // Western Region
-    { name: 'Ghana Secondary Technical School (GSTS)', address: 'Takoradi, Western Region', lat: '4.908300', lng: '-1.758300', aliases: ['gsts', 'ghana secondary technical', 'takoradi tech'] },
-    { name: 'Archbishop Porter Girls\' Senior High School', address: 'Fijai, Takoradi, Western Region', lat: '4.922100', lng: '-1.761200', aliases: ['porter girls', 'apgss'] },
-    { name: 'Sekondi College (SEKCO)', address: 'Sekondi, Western Region', lat: '4.938500', lng: '-1.712400', aliases: ['sekco'] },
-    { name: 'Takoradi Senior High School (TADISCO)', address: 'Takoradi, Western Region', lat: '4.912400', lng: '-1.774500', aliases: ['tadisco'] },
-    { name: 'Fijai Senior High School', address: 'Fijai, Sekondi-Takoradi, Western Region', lat: '4.931200', lng: '-1.754300', aliases: ['fijai'] },
+    { name: 'Ghana Secondary Technical School (GSTS)', address: 'Takoradi, Western Region', lat: '4.897719', lng: '-1.749927', aliases: ['gsts', 'ghana secondary technical', 'takoradi tech'] },
+    { name: 'Archbishop Porter Girls\' Senior High School', address: 'Fijai, Takoradi, Western Region', lat: '4.941459', lng: '-1.748635', aliases: ['porter girls', 'apgss', 'archbishop porter'] },
+    { name: 'Fijai Senior High School', address: 'Fijai, Sekondi-Takoradi, Western Region', lat: '4.938800', lng: '-1.751600', aliases: ['fijai', 'fisa'] },
+    { name: 'Sekondi College (SEKCO)', address: 'Inchaban, Sekondi, Western Region', lat: '4.946400', lng: '-1.712800', aliases: ['sekco'] },
+    { name: 'Takoradi Senior High School (TADISCO)', address: 'Tanokrom, Takoradi, Western Region', lat: '4.896500', lng: '-1.776200', aliases: ['tadisco'] },
     { name: 'Tarkwa Senior High School', address: 'Tarkwa, Western Region', lat: '5.302100', lng: '-1.984500', aliases: ['tarcisco'] },
     { name: 'University of Mines and Technology (UMaT)', address: 'Tarkwa, Western Region', lat: '5.298200', lng: '-1.996100', aliases: ['umat'] },
     { name: 'Takoradi Technical University (TTU)', address: 'Takoradi, Western Region', lat: '4.901500', lng: '-1.762000', aliases: ['ttu'] },
@@ -289,6 +327,7 @@ setAuthValue('activeUserEmail', email);
 
   closeSchoolGpsModal(): void {
     this.isGpsSearchModalOpen = false;
+    this.gpsSelectedPreview = null;
   }
 
   async searchSchoolGps(): Promise<void> {
@@ -322,8 +361,49 @@ setAuthValue('activeUserEmail', email);
 
     this.gpsSearchResults = [...localMatches];
 
-    // 2. Also perform live OpenStreetMap search if query provided
+    // 2. Perform live search with Photon API (free, fast, no API key required)
     if (q) {
+      try {
+        const photonQueries = [
+          rawQuery,
+          `${rawQuery} Ghana`
+        ];
+        for (const pq of photonQueries) {
+          const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(pq)}&limit=8&lat=5.6&lon=-0.2`;
+          const pRes = await fetch(photonUrl);
+          if (pRes.ok) {
+            const pData = await pRes.json();
+            if (pData?.features && Array.isArray(pData.features)) {
+              for (const feat of pData.features) {
+                const coords = feat.geometry?.coordinates;
+                const props = feat.properties || {};
+                if (coords && coords.length >= 2) {
+                  const lng = parseFloat(coords[0]).toFixed(6);
+                  const lat = parseFloat(coords[1]).toFixed(6);
+                  // Check if in Ghana bounding box (lat: 4.5 to 11.5, lng: -3.5 to 1.5)
+                  const latNum = parseFloat(lat);
+                  const lngNum = parseFloat(lng);
+                  const inGhana = (props.countrycode === 'GH' || props.country === 'Ghana') || 
+                                  (latNum >= 4.5 && latNum <= 11.5 && lngNum >= -3.5 && lngNum <= 1.5);
+                  if (inGhana) {
+                    const name = props.name || rawQuery;
+                    const addrParts = [props.street, props.district, props.city, props.state, props.country || 'Ghana'].filter(Boolean);
+                    const address = addrParts.join(', ') || 'Ghana';
+                    if (!this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - latNum) < 0.0002 && Math.abs(parseFloat(r.lng) - lngNum) < 0.0002)) {
+                      this.gpsSearchResults.push({ name, address, lat, lng });
+                    }
+                  }
+                }
+              }
+            }
+          }
+          if (this.gpsSearchResults.length > localMatches.length) break;
+        }
+      } catch {
+        // Fall through to Nominatim
+      }
+
+      // 3. Fallback to OpenStreetMap Nominatim search
       const queryVariants = [
         rawQuery,
         `${rawQuery}, Ghana`
@@ -341,11 +421,11 @@ setAuthValue('activeUserEmail', email);
                 const lng = parseFloat(item.lon).toFixed(6);
                 const name = item.name || (item.display_name ? item.display_name.split(',')[0] : 'Location in Ghana');
                 const address = item.display_name || '';
-                if (!this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - parseFloat(lat)) < 0.0001 && Math.abs(parseFloat(r.lng) - parseFloat(lng)) < 0.0001)) {
+                if (!this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - parseFloat(lat)) < 0.0002 && Math.abs(parseFloat(r.lng) - parseFloat(lng)) < 0.0002)) {
                   this.gpsSearchResults.push({ name, address, lat, lng });
                 }
               }
-              break; // Got results
+              break;
             }
           }
         } catch {
@@ -356,6 +436,9 @@ setAuthValue('activeUserEmail', email);
 
     if (this.gpsSearchResults.length === 0) {
       this.gpsSearchError = 'No matching schools or landmarks found in Ghana. Try searching by short name (e.g. GSTS, Prempeh) or city.';
+      this.gpsSelectedPreview = null;
+    } else {
+      this.gpsSelectedPreview = this.gpsSearchResults[0];
     }
 
     this.gpsSearching = false;
@@ -366,8 +449,14 @@ setAuthValue('activeUserEmail', email);
     this.gpsAddress = result.address || result.name;
     this.gpsAccuracyWarning = '';
     this.isGpsSearchModalOpen = false;
+    this.gpsSelectedPreview = null;
     this.notificationService.success(`Applied GPS coordinates for ${result.name}`, 'GPS Coordinates Set');
     this.tryAutoSave();
+  }
+
+  previewSchoolGps(result: { name: string; address: string; lat: string; lng: string }, event: Event): void {
+    event.stopPropagation();
+    this.gpsSelectedPreview = result;
   }
 
   studentForm = {
@@ -499,7 +588,7 @@ setAuthValue('activeUserEmail', email);
 
   clearValidationState(): void {
     this.fieldValidation = {};
-    this.fieldVerified = {};
+    this.verifiedValues = {};
     for (const key in this.validationTimers) {
       if (this.validationTimers[key]) clearTimeout(this.validationTimers[key]);
     }
@@ -575,26 +664,30 @@ setAuthValue('activeUserEmail', email);
     if (this.validationTimers[fieldName]) clearTimeout(this.validationTimers[fieldName]);
     if (!value || !value.trim()) {
       this.fieldValidation[fieldName] = { status: 'idle', message: '' };
-      delete this.fieldVerified[fieldName];
+      delete this.verifiedValues[fieldName];
       return;
+    }
+    const cleanVal = value.trim().toLowerCase();
+    if (this.verifiedValues[fieldName] && this.verifiedValues[fieldName] !== cleanVal) {
+      delete this.verifiedValues[fieldName];
     }
     this.fieldValidation[fieldName] = { status: 'checking', message: 'Checking...' };
     this.validationTimers[fieldName] = setTimeout(() => {
       if (!value || !value.trim()) {
         this.fieldValidation[fieldName] = { status: 'idle', message: '' };
-        delete this.fieldVerified[fieldName];
+        delete this.verifiedValues[fieldName];
         this.revalidateSiblingFields(fieldName, 'email');
         return;
       }
       if (!this.contentService.isValidEmail(value)) {
         this.fieldValidation[fieldName] = { status: 'invalid', message: 'Invalid email format' };
       } else if (this.isDuplicateInForm(fieldName, value)) {
-        const msg = this.activeTab === 'school'
+        const msg = this.activeTab === 'school' && (fieldName === 'schoolEmail' || fieldName === 'schoolRepEmail')
           ? 'School email and representative email cannot be the same'
-          : 'Duplicate email used by another squad member';
+          : 'This email is already in use by another role or member in your form';
         this.fieldValidation[fieldName] = { status: 'taken', message: msg };
       } else if (this.contentService.isEmailTaken(value, this.editingApprovalId || undefined)) {
-        this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered' };
+        this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered to an account' };
       } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
         const timeRemaining = this.getDraftTimeRemaining(value);
         const timeText = timeRemaining ? ` (${timeRemaining})` : '';
@@ -603,27 +696,50 @@ setAuthValue('activeUserEmail', email);
         this.fieldValidation[fieldName] = { status: 'valid', message: 'Email available' };
       }
       this.revalidateSiblingFields(fieldName, 'email');
-    }, 400);
+    }, 350);
   }
 
   private isDuplicateInForm(fieldName: string, value: string): boolean {
     const v = value.trim().toLowerCase();
     if (!v) return false;
+
+    // Direct school sibling check
     if (this.activeTab === 'school') {
       if (fieldName === 'schoolEmail') return (this.schoolForm.repEmail || '').trim().toLowerCase() === v;
       if (fieldName === 'schoolRepEmail') return (this.schoolForm.email || '').trim().toLowerCase() === v;
     }
+
+    // Direct squad roster check
     if (this.activeTab === 'team' || (this.activeTab === 'student' && this.competitorMode === 'group')) {
-      const emails: { name: string; value: string }[] = [
+      const squadEmails: { name: string; value: string }[] = [
         { name: 'squadLeadEmail', value: this.teamForm.leadEmail },
         { name: 'squadM2Email', value: this.teamForm.member2Email },
         { name: 'squadM3Email', value: this.teamForm.member3Email },
         { name: 'squadM4Email', value: this.teamForm.member4Email },
         { name: 'squadM5Email', value: this.teamForm.member5Email },
       ];
-      return emails.some(e => e.name !== fieldName && e.value?.trim().toLowerCase() === v);
+      if (squadEmails.some(e => e.name !== fieldName && e.value?.trim().toLowerCase() === v)) {
+        return true;
+      }
     }
-    return false;
+
+    // Cross-tab active fields in this browser session
+    const allFilledEmails: { name: string; value: string }[] = [
+      { name: 'schoolEmail', value: this.schoolForm.email },
+      { name: 'schoolRepEmail', value: this.schoolForm.repEmail },
+      { name: 'instEmail', value: this.instructorForm.email },
+      { name: 'studentEmail', value: this.studentForm.email },
+      { name: 'squadLeadEmail', value: this.teamForm.leadEmail },
+      { name: 'squadM2Email', value: this.teamForm.member2Email },
+      { name: 'squadM3Email', value: this.teamForm.member3Email },
+      { name: 'squadM4Email', value: this.teamForm.member4Email },
+      { name: 'squadM5Email', value: this.teamForm.member5Email },
+      { name: 'jdEmail', value: this.judgeForm.email },
+      { name: 'sponsEmail', value: this.sponsorForm.email },
+      { name: 'openEmail', value: this.openRegForm.email },
+    ];
+
+    return allFilledEmails.some(e => e.name !== fieldName && e.value?.trim().toLowerCase() === v);
   }
 
   private normalizePhone(phone: string): string {
@@ -645,7 +761,15 @@ setAuthValue('activeUserEmail', email);
       if (fieldName === 'schoolTel') return this.normalizePhone(this.schoolForm.repTel) === v;
       if (fieldName === 'schoolRepTel') return this.normalizePhone(this.schoolForm.tel) === v;
     }
-    return false;
+    const allFilledPhones: { name: string; value: string }[] = [
+      { name: 'schoolTel', value: this.schoolForm.tel },
+      { name: 'schoolRepTel', value: this.schoolForm.repTel },
+      { name: 'instTel', value: this.instructorForm.tel },
+      { name: 'jdTel', value: this.judgeForm.tel },
+      { name: 'sponsContact', value: this.sponsorForm.repContact },
+      { name: 'openPhone', value: this.openRegForm.phone },
+    ];
+    return allFilledPhones.some(p => p.name !== fieldName && this.normalizePhone(p.value) === v);
   }
 
   private revalidateSiblingFields(currentFieldName: string, type: 'email' | 'phone'): void {
@@ -824,7 +948,7 @@ setAuthValue('activeUserEmail', email);
   }
 
   // ── FIELD VERIFICATION + OTP ───────────────────────────────────
-  fieldVerified: Record<string, boolean> = {};
+  verifiedValues: Record<string, string> = {};
   verifyOtpModalOpen = false;
   verifyTargetField = '';
   verifyTargetType: 'email' | 'phone' = 'email';
@@ -833,18 +957,49 @@ setAuthValue('activeUserEmail', email);
   verifyOtpError = '';
   verifyOtpSent = false;
   verifyOtpBusy = false;
+  verifyOtpCountdown = 0;
+  private verifyOtpTimer: any = null;
+  /** Held so ngOnDestroy can unsubscribe; route params never complete. */
+  private queryParamsSub?: Subscription;
   /** Opaque handle from the server. The actual code is never held client-side. */
   private verifyChallengeId = '';
 
+  isFieldVerified(fieldName: string, currentValue?: string): boolean {
+    if (!currentValue || !currentValue.trim()) return false;
+    const verifiedVal = this.verifiedValues[fieldName];
+    if (!verifiedVal) return false;
+    const cleanCurrent = (fieldName.toLowerCase().includes('phone') || fieldName.toLowerCase().includes('tel') || fieldName.toLowerCase().includes('contact'))
+      ? this.normalizePhone(currentValue)
+      : currentValue.trim().toLowerCase();
+    return verifiedVal === cleanCurrent;
+  }
+
+  get fieldVerified(): Record<string, boolean> {
+    return {
+      schoolEmail: this.isFieldVerified('schoolEmail', this.schoolForm.email),
+      schoolRepTel: this.isFieldVerified('schoolRepTel', this.schoolForm.repTel),
+      instEmail: this.isFieldVerified('instEmail', this.instructorForm.email),
+      instTel: this.isFieldVerified('instTel', this.instructorForm.tel),
+      jdEmail: this.isFieldVerified('jdEmail', this.judgeForm.email),
+      jdTel: this.isFieldVerified('jdTel', this.judgeForm.tel),
+      sponsEmail: this.isFieldVerified('sponsEmail', this.sponsorForm.email),
+      sponsContact: this.isFieldVerified('sponsContact', this.sponsorForm.repContact),
+    };
+  }
+
   get currentTabVerified(): boolean {
     if (this.activeTab === 'school') {
-      return !!(this.fieldVerified['schoolEmail'] && this.fieldVerified['schoolRepTel']);
+      return this.isFieldVerified('schoolEmail', this.schoolForm.email) &&
+             this.isFieldVerified('schoolRepTel', this.schoolForm.repTel);
     } else if (this.activeTab === 'instructor') {
-      return !!(this.fieldVerified['instEmail'] && this.fieldVerified['instTel']);
+      return this.isFieldVerified('instEmail', this.instructorForm.email) &&
+             this.isFieldVerified('instTel', this.instructorForm.tel);
     } else if (this.activeTab === 'judge') {
-      return !!(this.fieldVerified['jdEmail'] && this.fieldVerified['jdTel']);
+      return this.isFieldVerified('jdEmail', this.judgeForm.email) &&
+             this.isFieldVerified('jdTel', this.judgeForm.tel);
     } else if (this.activeTab === 'sponsor') {
-      return !!(this.fieldVerified['sponsEmail'] && this.fieldVerified['sponsContact']);
+      return this.isFieldVerified('sponsEmail', this.sponsorForm.email) &&
+             this.isFieldVerified('sponsContact', this.sponsorForm.repContact);
     }
     return false;
   }
@@ -852,7 +1007,7 @@ setAuthValue('activeUserEmail', email);
   canVerifyField(fieldName: string, value?: string): boolean {
     if (value !== undefined && (!value || !value.trim())) return false;
     const v = this.fieldValidation[fieldName];
-    return v?.status === 'valid' && !this.fieldVerified[fieldName];
+    return v?.status === 'valid' && !this.isFieldVerified(fieldName, value);
   }
 
   sendVerifyOtp(fieldName: string, type: 'email' | 'phone', value: string): void {
@@ -873,6 +1028,7 @@ setAuthValue('activeUserEmail', email);
         this.verifyOtpSent = true;
         this.verifyOtpModalOpen = true;
         this.verifyOtpBusy = false;
+        this.startVerifyOtpTimer(challenge.expiresIn || 60);
         this.notificationService.info(
           `A 6-digit verification code was sent to ${challenge.targetMasked}`,
           'Verification Code Sent'
@@ -886,6 +1042,34 @@ setAuthValue('activeUserEmail', email);
         this.cdr?.markForCheck?.();
       }
     });
+  }
+
+  startVerifyOtpTimer(seconds: number = 60): void {
+    if (this.verifyOtpTimer) {
+      clearInterval(this.verifyOtpTimer);
+    }
+    this.verifyOtpCountdown = Math.min(seconds, 60);
+    this.verifyOtpTimer = setInterval(() => {
+      if (this.verifyOtpCountdown > 0) {
+        this.verifyOtpCountdown--;
+        this.cdr?.markForCheck?.();
+      } else {
+        clearInterval(this.verifyOtpTimer);
+        this.verifyOtpTimer = null;
+        this.cdr?.markForCheck?.();
+      }
+    }, 1000);
+  }
+
+  resendVerifyOtp(): void {
+    if (this.verifyOtpCountdown > 0 || this.verifyOtpBusy || !this.verifyTargetValue) return;
+    this.sendVerifyOtp(this.verifyTargetField, this.verifyTargetType, this.verifyTargetValue);
+  }
+
+  onVerifyOtpInputChange(): void {
+    if (this.verifyOtpInput && this.verifyOtpInput.length === 6) {
+      this.confirmVerifyOtp();
+    }
   }
 
   confirmVerifyOtp(): void {
@@ -905,9 +1089,16 @@ setAuthValue('activeUserEmail', email);
     this.otpService.verify(this.verifyChallengeId, this.verifyOtpInput).subscribe({
       next: () => {
         this.verifyOtpBusy = false;
-        this.fieldVerified[this.verifyTargetField] = true;
+        const verifiedClean = this.verifyTargetType === 'email'
+          ? this.verifyTargetValue.trim().toLowerCase()
+          : this.normalizePhone(this.verifyTargetValue);
+        this.verifiedValues[this.verifyTargetField] = verifiedClean;
         this.verifyOtpModalOpen = false;
         this.verifyChallengeId = '';
+        if (this.verifyOtpTimer) {
+          clearInterval(this.verifyOtpTimer);
+          this.verifyOtpTimer = null;
+        }
         this.notificationService.success(
           `${this.verifyTargetType === 'email' ? 'Email' : 'Phone number'} verified successfully!`,
           'Verified'
@@ -929,6 +1120,10 @@ setAuthValue('activeUserEmail', email);
     this.verifyOtpError = '';
     this.verifyChallengeId = '';
     this.verifyOtpBusy = false;
+    if (this.verifyOtpTimer) {
+      clearInterval(this.verifyOtpTimer);
+      this.verifyOtpTimer = null;
+    }
   }
 
   private tryAutoSave(): void {
@@ -1432,7 +1627,7 @@ setAuthValue('activeUserEmail', email);
     const activeRoleId = getAuthValue('activeRoleId');
     this.isAuthorizedUser = !!(activeRoleId && ['super_admin', 'school_admin', 'instructor'].includes(activeRoleId));
 
-    this.route.queryParams.subscribe(params => {
+    this.queryParamsSub = this.route.queryParams.subscribe(params => {
       this.showAdminPaths = params['admin'] === 'true';
       if (params['track']) {
         this.selectedTrack = params['track'];
@@ -1450,6 +1645,22 @@ setAuthValue('activeUserEmail', email);
 
   ngOnDestroy(): void {
     this.clearTimer();
+
+    // clearTimer() only clears resendInterval. verifyOtpTimer is cleared at
+    // every normal exit from the OTP flow, but not when the user navigates
+    // away mid-countdown -- so it kept ticking after the component was gone.
+    // zone.js patches setInterval, so each orphaned tick ran a full app-wide
+    // change detection pass, once per second, forever, and another one was
+    // added every time the page was revisited.
+    if (this.verifyOtpTimer) {
+      clearInterval(this.verifyOtpTimer);
+      this.verifyOtpTimer = null;
+    }
+
+    // route.queryParams never completes, so this subscription outlived the
+    // component and kept the whole class instance (and its template state)
+    // reachable, re-running the handler on later navigations.
+    this.queryParamsSub?.unsubscribe();
   }
 
   selectNewRegistration(): void {
@@ -2436,6 +2647,7 @@ setAuthValue('activeUserEmail', email);
   }
 
   selectRolePath(role: string): void {
+    this.clearValidationState();
     this.isPathModalOpen = false;
     if (role === 'sponsor') {
       this.activeTab = 'sponsor';

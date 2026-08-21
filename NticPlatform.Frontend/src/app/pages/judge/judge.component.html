@@ -274,6 +274,18 @@
        ══════════════════════════════════════════════════════════════ -->
   <ng-container *ngIf="view === 'queue' && !loadError">
 
+    <!-- Makes a cycle-scoped queue obvious. Without it an empty queue looks like
+         "nothing left to score" when it really means "nothing left in this cycle". -->
+    <div class="jw-track-row" *ngIf="cycleFilter">
+      <span class="jw-chip active" style="cursor:default;">
+        <span class="material-symbols-outlined" style="font-size:16px;">filter_alt</span>
+        {{ cycleFilterLabel }}
+      </span>
+      <button class="jw-chip" (click)="clearCycleFilter()" title="Show every cycle">
+        Clear cycle filter
+      </button>
+    </div>
+
     <div class="jw-track-row" *ngIf="queue && queue.by_track.length > 1">
       <button class="jw-chip" [class.active]="trackFilter === ''" (click)="setTrack('')">
         All tracks
@@ -294,10 +306,15 @@
 
     <div class="jw-empty" *ngIf="queue && queue.submissions.length === 0">
       <span class="material-symbols-outlined">task_alt</span>
-      <p *ngIf="!trackFilter">Nothing is waiting to be scored. Good work.</p>
-      <p *ngIf="trackFilter">No entries are waiting in this track.</p>
+      <p *ngIf="!trackFilter && !cycleFilter">Nothing is waiting to be scored. Good work.</p>
+      <p *ngIf="trackFilter && !cycleFilter">No entries are waiting in this track.</p>
+      <p *ngIf="cycleFilter && !trackFilter">No entries are waiting in {{ cycleFilterLabel }}.</p>
+      <p *ngIf="cycleFilter && trackFilter">No entries are waiting in this track for {{ cycleFilterLabel }}.</p>
       <button class="jw-btn jw-btn-ghost jw-btn-sm" *ngIf="trackFilter" (click)="setTrack('')">
         View all tracks
+      </button>
+      <button class="jw-btn jw-btn-ghost jw-btn-sm" *ngIf="cycleFilter" (click)="clearCycleFilter()">
+        View all cycles
       </button>
     </div>
 
@@ -688,6 +705,9 @@
 
       <div class="jw-modal-footer">
         <button class="jw-btn jw-btn-ghost" (click)="closeCompetitionModal()">Close</button>
+        <button class="jw-btn jw-btn-ghost" (click)="openQueueForCycle(selectedCompetitionModal)">
+          <span class="material-symbols-outlined">filter_alt</span>Evaluate This Cycle
+        </button>
         <button class="jw-btn jw-btn-primary" (click)="startEvaluatingTrack(selectedCompetitionModal.track); closeCompetitionModal()">
           <span class="material-symbols-outlined">rate_review</span>Start Evaluating Track
         </button>
