@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import time
 import uuid
 from decimal import Decimal
@@ -628,6 +629,13 @@ try:
         PUBLIC_UNSAFE = {
             "/api/login",
             "/api/users/register",
+            # The public registration form filing an application for review.
+            # Purpose-built rather than widening anything: type is allowlisted,
+            # status is always 'pending', the id is server-generated and the
+            # handler is rate limited per IP. Before this existed, applications
+            # only went to POST /api/bulk-sync (admin-only), so every anonymous
+            # application 401'd and never reached a reviewer.
+            "/api/approvals/public",
             # Anonymous registration writes a student record for the team lead.
             # Rate limited in the handler. TODO: route through the approvals
             # queue so this can require a session.
@@ -4535,6 +4543,9 @@ try:
         members: int = 1
         status: str = "Active"
         school_name: str = ""
+        mentor: str = ""
+        motto: str = ""
+        roster_list: list = []
         # Which cycle this team is competing in. Optional: teams created before
         # cycles were linked, and teams not tied to one, carry None.
         competition_id: Optional[str] = None
@@ -4566,20 +4577,50 @@ try:
         cur = conn.cursor()
         if competition_id:
             cur.execute(
-                "SELECT id, name, track, lead, members, status, school_name, competition_id "
+                "SELECT id, name, track, lead, members, status, school_name, competition_id, COALESCE(mentor, ''), COALESCE(motto, ''), COALESCE(roster_list, '[]'::jsonb) "
                 "FROM teams WHERE competition_id = %s ORDER BY name ASC",
                 (competition_id,),
             )
         else:
             cur.execute(
-                "SELECT id, name, track, lead, members, status, school_name, competition_id "
+                "SELECT id, name, track, lead, members, status, school_name, competition_id, COALESCE(mentor, ''), COALESCE(motto, ''), COALESCE(roster_list, '[]'::jsonb) "
                 "FROM teams ORDER BY name ASC"
             )
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)
-        return [{"id": r[0], "name": r[1], "track": r[2], "lead": r[3], "members": r[4], "status": r[5], "school_name": r[6], "competition_id": r[7]} for r in rows]
+        res = []
+        for r in rows:
+            r_list = r[10]
+            if isinstance(r_list, str):
+                try:
+                    r_list = json.loads(r_list)
+                except Exception:
+                    r_list = []
+            elif not isinstance(r_list, list):
+                r_list = []
+            res.append({
+                "id": r[0],
+                "name": r[1],
+                "track": r[2],
+                "lead": r[3],
+                "members": r[4],
+                "status": r[5],
+                "school_name": r[6],
+                "competition_id": r[7],
+                "mentor": r[8],
+                "motto": r[9],
+                "rosterList": r_list
+            })
+        return res
 
+    # Team writes are decision points, not proposals.
+    #
+    # These used to accept STUDENT_ADMIN_ROLES, which includes school_admin and
+    # instructor -- so the team-change approval workflow was enforced only in the
+    # frontend and an institution could rename, add or disband a team by calling
+    # the API directly. Institutions now propose changes via
+    # POST /api/approvals/team-change and an admin applies them on approval.
     @app.post("/api/teams", status_code=status.HTTP_201_CREATED)
     def create_team(payload: TeamCreate, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
         conn = get_db_connection()
@@ -4589,8 +4630,22 @@ try:
         cur = conn.cursor()
         try:
             comp_ref = _validate_competition_ref(cur, payload.competition_id)
-            cur.execute("INSERT INTO teams (id, name, track, lead, members, status, school_name, competition_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                        (team_id, payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name, comp_ref))
+            cur.execute(
+                "SELECT id FROM teams WHERE lower(name) = %s AND lower(COALESCE(school_name, '')) = %s",
+                (payload.name.strip().lower(), (payload.school_name or "").strip().lower())
+            )
+            existing = cur.fetchone()
+            if existing:
+                team_id = existing[0]
+                cur.execute(
+                    "UPDATE teams SET track = %s, lead = %s, members = %s, status = %s, competition_id = %s, mentor = %s, motto = %s, roster_list = %s WHERE id = %s",
+                    (payload.track, payload.lead, payload.members, payload.status, comp_ref, payload.mentor, payload.motto, json.dumps(payload.roster_list), team_id)
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO teams (id, name, track, lead, members, status, school_name, competition_id, mentor, motto, roster_list) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    (team_id, payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name, comp_ref, payload.mentor, payload.motto, json.dumps(payload.roster_list))
+                )
             conn.commit()
         except HTTPException:
             conn.rollback()
@@ -4616,8 +4671,8 @@ try:
         try:
             comp_ref = _validate_competition_ref(cur, payload.competition_id)
             cur.execute(
-                "UPDATE teams SET name = %s, track = %s, lead = %s, members = %s, status = %s, school_name = %s, competition_id = %s WHERE id = %s RETURNING id",
-                (payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name, comp_ref, item_id)
+                "UPDATE teams SET name = %s, track = %s, lead = %s, members = %s, status = %s, school_name = %s, competition_id = %s, mentor = %s, motto = %s, roster_list = %s WHERE id = %s RETURNING id",
+                (payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name, comp_ref, payload.mentor, payload.motto, json.dumps(payload.roster_list), item_id)
             )
             row = cur.fetchone()
             conn.commit()
@@ -5696,7 +5751,11 @@ try:
 
     @app.post("/api/users/register", status_code=status.HTTP_201_CREATED)
     def register_user_public(payload: UserCreate):
-        if payload.role not in ["judge", "sponsor"]:
+        # 'student' is here for the open-competition registration tab, which had
+        # been calling the admin-only POST /api/users and therefore never created
+        # anything. student is the lowest-privilege role, and the forced-pending
+        # rule below still applies, so this does not widen self-service access.
+        if payload.role not in ["judge", "sponsor", "student"]:
             raise HTTPException(status_code=403, detail="Role not allowed for public registration")
         # Status is NOT taken from the request. This endpoint is unauthenticated,
         # so honouring a client-supplied status let anyone self-register as
@@ -6189,20 +6248,80 @@ try:
         rejection_notes: str = ""
 
     @app.get("/api/approvals")
-    def list_approvals(status: str = "", _admin: dict = Depends(require_admin)):
+    def list_approvals(status: str = "", competition_id: str = "", _admin: dict = Depends(require_admin)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         import json as _json
+        # competition_id scopes the queue to one cycle. Without it the reviewer
+        # sees every application ever filed, which is what the records panel had
+        # to do because there was nothing to filter on.
+        cols = ("SELECT id, type, entity, contact, submitted, details, status, reviewed_at, "
+                "reviewer, rejection_reasons, rejection_notes, created_at, competition_id "
+                "FROM pending_approvals")
+        clauses, params = [], []
         if status:
-            cur.execute("SELECT id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes, created_at FROM pending_approvals WHERE status = %s ORDER BY created_at DESC, id ASC", (status,))
-        else:
-            cur.execute("SELECT id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes, created_at FROM pending_approvals ORDER BY created_at DESC, id ASC")
+            clauses.append("status = %s")
+            params.append(status)
+        if competition_id:
+            clauses.append("competition_id = %s")
+            params.append(competition_id)
+        sql = cols + ((" WHERE " + " AND ".join(clauses)) if clauses else "")
+        sql += " ORDER BY created_at DESC, id ASC"
+        cur.execute(sql, tuple(params))
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)
-        return [{"id": r[0], "type": r[1], "entity": r[2], "contact": r[3], "submitted": r[4], "details": r[5] if isinstance(r[5], dict) else _json.loads(r[5] or "{}"), "status": r[6], "reviewedAt": r[7], "reviewer": r[8], "rejectionReasons": r[9], "rejectionNotes": r[10], "created_at": str(r[11])} for r in rows]
+        return [{"id": r[0], "type": r[1], "entity": r[2], "contact": r[3], "submitted": r[4], "details": r[5] if isinstance(r[5], dict) else _json.loads(r[5] or "{}"), "status": r[6], "reviewedAt": r[7], "reviewer": r[8], "rejectionReasons": r[9], "rejectionNotes": r[10], "created_at": str(r[11]), "competitionId": r[12]} for r in rows]
+
+    @app.get("/api/approvals/mine")
+    def list_my_approvals(actor: dict = Depends(require_auth)):
+        """The caller's own applications and requests, with their outcome.
+
+        GET /api/approvals is admin-only, so an institution that filed a team
+        change had no way to find out what happened to it -- their only copy was
+        in localStorage, which never learns the reviewer's decision. That meant
+        resubmitting blindly, and never seeing a rejection reason.
+
+        Scoped to the caller's own contact address, so this discloses nothing
+        about anyone else's application.
+        """
+        email = (actor.get("email") or "").strip().lower()
+        if not email:
+            return []
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            import json as _json
+            cur.execute(
+                "SELECT id, type, entity, submitted, details, status, reviewed_at, "
+                "reviewer, rejection_reasons, rejection_notes, created_at, competition_id "
+                "FROM pending_approvals WHERE lower(COALESCE(contact, '')) = %s "
+                "ORDER BY created_at DESC, id ASC",
+                (email,),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {
+                "id": r[0],
+                "type": r[1],
+                "entity": r[2],
+                "submitted": r[3],
+                "details": r[4] if isinstance(r[4], dict) else _json.loads(r[4] or "{}"),
+                "status": r[5],
+                "reviewedAt": r[6],
+                "reviewer": r[7],
+                "rejectionReasons": r[8],
+                "rejectionNotes": r[9],
+                "created_at": str(r[10]),
+                "competitionId": r[11],
+            }
+            for r in rows
+        ]
 
     @app.post("/api/approvals", status_code=status.HTTP_201_CREATED)
     def create_approval(payload: ApprovalCreate, _actor: dict = Depends(require_role(APPROVAL_ROLES))):
@@ -6324,6 +6443,278 @@ try:
         broadcast_async({"type": "data_changed", "collection": "approvals"})
         return {"id": approval_id, "type": type_by_role[role], "status": "pending"}
 
+    class TeamChangeRequest(BaseModel):
+        """An institution proposing a team change for admin review.
+
+        Deliberately does NOT carry the school. See submit_team_change.
+        """
+        type: str = Field(..., description="'Team Addition', 'Team Modification' or 'Team Disbandment'")
+        team_id: str = Field(default="", max_length=64)
+        name: str = Field(..., min_length=1, max_length=150)
+        track: str = Field(default="", max_length=100)
+        lead: str = Field(default="", max_length=150)
+        members: list[str] = Field(default_factory=list)
+        mentor: str = Field(default="", max_length=200)
+        motto: str = Field(default="", max_length=300)
+        competition_id: str = Field(default="", max_length=64)
+
+    TEAM_CHANGE_TYPES = ("Team Addition", "Team Modification", "Team Disbandment")
+    # Who may propose a team change. Note this is deliberately NOT APPROVAL_ROLES:
+    # these roles may only *file* a request, never decide it.
+    TEAM_CHANGE_ROLES = (ROLE_SCHOOL_ADMIN, ROLE_INSTRUCTOR)
+
+    @app.post("/api/approvals/team-change", status_code=status.HTTP_201_CREATED)
+    def submit_team_change(
+        payload: TeamChangeRequest,
+        actor: dict = Depends(require_auth),
+    ):
+        """File a team addition or rename/roster change for admin review.
+
+        This endpoint exists because the workflow it serves was unreachable. The
+        dashboard already builds 'Team Addition' and 'Team Modification' requests
+        and the admin side already applies them on approval, but a school admin
+        had no way to persist one: `saveApprovals()` goes to POST /api/bulk-sync
+        (admin only) and `createApproval()` goes to POST /api/approvals
+        (APPROVAL_ROLES, which excludes school_admin). Both 403'd, the error was
+        downgraded to a console warning, and the UI still reported success -- so
+        the request never left the browser and no admin ever saw it.
+
+        The institution is taken from the caller's own user row, never from the
+        request body, so this cannot be used to file a change against another
+        school. For a modification the target team must already belong to the
+        caller's institution. Status is hard-coded to 'pending': filing a request
+        and deciding it are separate privileges.
+        """
+        role = (actor.get("role") or "").strip().lower()
+        if role not in TEAM_CHANGE_ROLES:
+            raise HTTPException(
+                status_code=403,
+                detail="Only an institution account may propose team changes",
+            )
+
+        req_type = (payload.type or "").strip()
+        if req_type not in TEAM_CHANGE_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"type must be one of {', '.join(TEAM_CHANGE_TYPES)}",
+            )
+
+        new_name = payload.name.strip()
+        if not new_name:
+            raise HTTPException(status_code=400, detail="Team name is required")
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT full_name, email, organization FROM users WHERE id = %s",
+                (actor["id"],),
+            )
+            row = cur.fetchone()
+            if not row:
+                cur.close()
+                raise HTTPException(status_code=404, detail="User not found")
+
+            full_name, email, school = row[0] or "", row[1] or "", (row[2] or "").strip()
+            if not school:
+                cur.close()
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "Your account is not linked to an institution, so a team "
+                        "change cannot be attributed. Ask an administrator to set "
+                        "your organisation."
+                    ),
+                )
+
+            original_name = ""
+            # A disbandment targets an existing team, so it needs the same
+            # ownership check as a modification.
+            if req_type in ("Team Modification", "Team Disbandment"):
+                if not payload.team_id.strip():
+                    cur.close()
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"team_id is required to {'disband' if req_type == 'Team Disbandment' else 'modify'} a team",
+                    )
+                # Scope check: the team must belong to the caller's institution.
+                # Compared case-insensitively and trimmed, matching how
+                # POST /api/teams already de-duplicates on (name, school_name).
+                cur.execute(
+                    "SELECT name, COALESCE(school_name, '') FROM teams WHERE id = %s",
+                    (payload.team_id.strip(),),
+                )
+                team = cur.fetchone()
+                if not team:
+                    cur.close()
+                    raise HTTPException(status_code=404, detail="Team not found")
+                if (team[1] or "").strip().lower() != school.lower():
+                    cur.close()
+                    # 404 rather than 403: whether a team exists in another
+                    # institution is not this caller's business.
+                    raise HTTPException(status_code=404, detail="Team not found")
+                original_name = team[0] or ""
+
+            members = [m.strip() for m in payload.members if m and m.strip()][:50]
+            details = {
+                "school": school,
+                "institution": school,
+                "teamId": payload.team_id.strip(),
+                "originalName": original_name,
+                "newName": new_name,
+                "track": payload.track.strip(),
+                "lead": payload.lead.strip(),
+                "leadName": payload.lead.strip(),
+                "members": members,
+                "memberCount": len(members),
+                "mentor": payload.mentor.strip(),
+                "motto": payload.motto.strip(),
+                "requestedBy": email or full_name,
+                "requestedByRole": role,
+            }
+            entity = (
+                f"{original_name} -> {new_name}"
+                if req_type == "Team Modification" and original_name
+                else (original_name or new_name)
+                if req_type == "Team Disbandment"
+                else new_name
+            )
+
+            approval_id = "apr-" + str(uuid.uuid4())[:8]
+            # Validated so a bad id cannot be stored and silently never match.
+            comp_ref = _validate_competition_ref(cur, payload.competition_id or None)
+            import json as _json
+            cur.execute(
+                "INSERT INTO pending_approvals (id, type, entity, contact, submitted, "
+                "details, status, competition_id) VALUES (%s, %s, %s, %s, %s, %s, 'pending', %s)",
+                (
+                    approval_id,
+                    req_type,
+                    entity,
+                    email,
+                    datetime.datetime.now(datetime.UTC).isoformat(),
+                    _json.dumps(details),
+                    comp_ref,
+                ),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "approvals"})
+        return {
+            "id": approval_id,
+            "type": req_type,
+            "entity": entity,
+            "school": school,
+            "status": "pending",
+            "competitionId": comp_ref,
+        }
+
+    class PublicApplicationPayload(BaseModel):
+        """An application filed from the public registration page."""
+        type: str = Field(..., max_length=60)
+        entity: str = Field(..., min_length=1, max_length=200)
+        contact: str = Field(default="", max_length=150)
+        details: dict = Field(default_factory=dict)
+        competition_id: str = Field(default="", max_length=64)
+
+    # What the public registration form is allowed to file. Anything else has to
+    # come from an authenticated route.
+    PUBLIC_APPLICATION_TYPES = {
+        "School Registration",
+        "Instructor Access",
+        "Team Addition",
+        "Judge Access",
+        "Sponsor Access",
+    }
+    # Details are applicant-supplied and end up rendered in the admin queue, so
+    # the payload is capped rather than stored unbounded.
+    _MAX_DETAIL_KEYS = 60
+    _MAX_DETAIL_VALUE_LEN = 4000
+
+    @app.post("/api/approvals/public", status_code=status.HTTP_201_CREATED)
+    def submit_public_application(payload: PublicApplicationPayload, request: Request):
+        """File an application from the unauthenticated registration page.
+
+        This endpoint exists because public registration never reached the server.
+        `submitRegistration()` persisted applications only through
+        `contentService.saveApprovals()` -> POST /api/bulk-sync, which requires an
+        admin, so for an anonymous applicant every write 401'd. The applicant saw a
+        success screen and got a "pending confirmation" email while the reviewer
+        queue stayed empty -- every school, instructor, judge and sponsor
+        application was lost in the applicant's own browser.
+
+        Nothing here is trusted: the type must be on an allowlist, the status is
+        always 'pending', and the id is generated server-side so a caller cannot
+        overwrite an existing decision by guessing one.
+        """
+        client_ip = extract_client_ip(request)
+        check_rate_limit(f"public-application:{client_ip}", max_attempts=5, window_seconds=300)
+        check_rate_limit(f"public-application-hourly:{client_ip}", max_attempts=20, window_seconds=3600)
+
+        req_type = (payload.type or "").strip()
+        if req_type not in PUBLIC_APPLICATION_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail="That application type cannot be filed from public registration",
+            )
+
+        details = payload.details if isinstance(payload.details, dict) else {}
+        if len(details) > _MAX_DETAIL_KEYS:
+            raise HTTPException(status_code=400, detail="Application detail is too large")
+        trimmed: dict = {}
+        for key, value in list(details.items())[:_MAX_DETAIL_KEYS]:
+            if isinstance(value, str) and len(value) > _MAX_DETAIL_VALUE_LEN:
+                value = value[:_MAX_DETAIL_VALUE_LEN]
+            trimmed[str(key)[:100]] = value
+
+        contact = (payload.contact or "").strip().lower()
+        approval_id = "apr-" + str(uuid.uuid4())[:8]
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            # One open application per contact, so a resubmit updates the pending
+            # row instead of stacking duplicates in the reviewer's queue. Matches
+            # the behaviour of POST /api/approvals/mine.
+            if contact:
+                cur.execute(
+                    "SELECT id FROM pending_approvals "
+                    "WHERE lower(COALESCE(contact, '')) = %s AND status = 'pending' "
+                    "AND type = %s LIMIT 1",
+                    (contact, req_type),
+                )
+                existing = cur.fetchone()
+                if existing:
+                    approval_id = existing[0]
+
+            import json as _json
+            comp_ref = _validate_competition_ref(cur, payload.competition_id or None)
+            cur.execute(
+                "INSERT INTO pending_approvals (id, type, entity, contact, submitted, "
+                "details, status, competition_id) VALUES (%s, %s, %s, %s, %s, %s, 'pending', %s) "
+                "ON CONFLICT (id) DO UPDATE SET type = EXCLUDED.type, "
+                "entity = EXCLUDED.entity, contact = EXCLUDED.contact, "
+                "submitted = EXCLUDED.submitted, details = EXCLUDED.details, "
+                "competition_id = EXCLUDED.competition_id, status = 'pending'",
+                (
+                    approval_id,
+                    req_type,
+                    payload.entity.strip(),
+                    contact,
+                    datetime.datetime.now(datetime.UTC).isoformat(),
+                    _json.dumps(trimmed),
+                    comp_ref,
+                ),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "approvals"})
+        return {"id": approval_id, "type": req_type, "status": "pending", "competitionId": comp_ref}
+
     # Which role an approved application results in.
     #
     # This is the mapping that makes "Approved" mean something. Until now
@@ -6340,6 +6731,49 @@ try:
         "instructor access": ROLE_INSTRUCTOR,
         "team addition": ROLE_STUDENT,
     }
+
+    def _apply_approved_team_change(cur, approval_row) -> dict:
+        """Carry out the team change an approved request authorised.
+
+        Only disbandment is applied here. Additions and renames are already
+        applied by the dashboard on approval, but a delete cannot be, because
+        institutions no longer have DELETE /api/teams -- so approving a
+        disbandment has to perform it server-side or the decision would record
+        as approved while the team stayed live.
+
+        Runs in the reviewer's transaction, so a failure rolls the decision back
+        rather than leaving an approved request that never took effect.
+        """
+        approval_type = (approval_row["type"] or "").strip().lower()
+        if approval_type != "team disbandment":
+            return {"applied": False, "reason": "Not a team change that needs applying"}
+
+        details = approval_row["details"] or {}
+        if isinstance(details, str):
+            import json as _json_local
+            try:
+                details = _json_local.loads(details)
+            except Exception:
+                details = {}
+        if not isinstance(details, dict):
+            details = {}
+
+        team_id = str(details.get("teamId") or "").strip()
+        if not team_id:
+            return {"applied": False, "reason": "Request did not record which team to disband"}
+
+        # Re-check ownership at decision time: the team may have moved or been
+        # removed between filing and review.
+        school = str(details.get("school") or "").strip().lower()
+        cur.execute("SELECT COALESCE(school_name, '') FROM teams WHERE id = %s", (team_id,))
+        row = cur.fetchone()
+        if not row:
+            return {"applied": False, "reason": "Team no longer exists"}
+        if school and (row[0] or "").strip().lower() != school:
+            return {"applied": False, "reason": "Team no longer belongs to the requesting institution"}
+
+        cur.execute("DELETE FROM teams WHERE id = %s", (team_id,))
+        return {"applied": True, "team_id": team_id}
 
     def _provision_approved_account(cur, approval_row) -> dict:
         """Create the account an approved application entitles the applicant to.
@@ -6445,13 +6879,18 @@ try:
                 raise HTTPException(status_code=404, detail="Approval not found")
 
             account: dict = {"provisioned": False, "reason": "Not an approval transition"}
+            team_change: dict = {"applied": False, "reason": "Not an approval transition"}
             if now_approved and not was_approved:
-                account = _provision_approved_account(cur, {
+                approval_row = {
                     "type": before[0],
                     "entity": before[1],
                     "contact": before[2],
                     "details": before[3],
-                })
+                }
+                account = _provision_approved_account(cur, approval_row)
+                # A disbandment has to be carried out here: institutions no longer
+                # hold DELETE /api/teams, so nothing else would perform it.
+                team_change = _apply_approved_team_change(cur, approval_row)
 
             conn.commit()
         except HTTPException:
@@ -6466,7 +6905,9 @@ try:
         broadcast_async({"type": "data_changed", "collection": "approvals"})
         if account.get("provisioned"):
             broadcast_async({"type": "data_changed", "collection": "users"})
-        return {"id": item_id, "status": "updated", "account": account}
+        if team_change.get("applied"):
+            broadcast_async({"type": "data_changed", "collection": "teams"})
+        return {"id": item_id, "status": "updated", "account": account, "team_change": team_change}
 
     @app.delete("/api/approvals/{item_id}")
     def delete_approval(item_id: str, _actor: dict = Depends(require_role(APPROVAL_ROLES))):

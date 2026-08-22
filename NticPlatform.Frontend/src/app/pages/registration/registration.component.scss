@@ -4,7 +4,9 @@
   flex: 1;
   min-height: 0;
 
-  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  /* `spin` is declared again later in this file; the later definition wins the
+     cascade, so defining it here too had no effect. The .spin utility below
+     resolves to that one. */
   .spin { animation: spin 1s linear infinite; }
 }
 

@@ -1325,6 +1325,12 @@ class TestPublicSurface:
         ("POST", "/api/otp/verify"),
         ("POST", "/api/drafts"),
         ("POST", "/api/notify/registration-received"),
+        # The public registration form filing an application for review. Type is
+        # allowlisted, status is forced to 'pending', the id is server-generated
+        # and the handler is rate limited per IP. Added deliberately: before it,
+        # applications only went to the admin-only POST /api/bulk-sync, so every
+        # anonymous application 401'd and no reviewer ever saw it.
+        ("POST", "/api/approvals/public"),
     }
 
     def test_no_unexpected_anonymous_write_endpoints(self):
@@ -4858,3 +4864,369 @@ class TestCycleScoping:
         # The team record survives -- it is history -- and the cycle is gone.
         assert any(t["id"] == team_id for t in client.get("/api/teams", headers=h).json())
         assert not any(c["id"] == cid for c in client.get("/api/competitions").json())
+
+
+class TestTeamChangeApproval:
+    """An institution proposes team changes; only an admin decides them.
+
+    The workflow existed in the UI but was unreachable: a school admin's request
+    went to POST /api/bulk-sync (admin only) and POST /api/approvals
+    (APPROVAL_ROLES, which excludes school_admin), so both 403'd and the request
+    never left the browser while the UI still reported success.
+    """
+
+    def _school_admin(self, client, admin_token, school: str):
+        """A school_admin whose account is linked to `school`."""
+        from app.security import clear_all_rate_limits
+        email = f"sa-{uuid.uuid4().hex[:8]}@ntic.test"
+        password = "Ada-Foah-Estuary-Bright-33"
+        resp = client.post("/api/users", headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"email": email, "full_name": "School Admin",
+                                 "role": "school_admin", "password": password,
+                                 "status": "Active", "organization": school})
+        assert resp.status_code in (200, 201), resp.text
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": password})
+        assert login.status_code == 200, login.text
+        return login.json()["token"]
+
+    def _team(self, client, admin_token, school: str):
+        name = f"Squad{uuid.uuid4().hex[:6]}"
+        resp = client.post("/api/teams", headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"name": name, "school_name": school})
+        assert resp.status_code == 201, resp.text
+        return resp.json()["id"], name
+
+    def test_school_admin_can_file_a_rename_for_its_own_team(self, client, admin_token):
+        school = f"Accra Academy {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        team_id, original = self._team(client, admin_token, school)
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Modification", "team_id": team_id,
+                                 "name": "Renamed Squad", "members": ["A", "B"]})
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["status"] == "pending"
+        assert body["school"] == school
+        assert original in body["entity"] and "Renamed Squad" in body["entity"]
+
+    def test_the_rename_does_not_touch_the_team_until_approved(self, client, admin_token):
+        school = f"Mfantsipim {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        team_id, original = self._team(client, admin_token, school)
+        client.post("/api/approvals/team-change",
+                    headers={"Authorization": f"Bearer {token}"},
+                    json={"type": "Team Modification", "team_id": team_id,
+                          "name": "Should Not Apply Yet"})
+        teams = client.get("/api/teams", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        live = next(t for t in teams if t["id"] == team_id)
+        assert live["name"] == original
+
+    def test_school_admin_cannot_file_against_another_school(self, client, admin_token):
+        mine = f"Wesley Girls {uuid.uuid4().hex[:5]}"
+        theirs = f"Prempeh College {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, mine)
+        other_team_id, _ = self._team(client, admin_token, theirs)
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Modification", "team_id": other_team_id,
+                                 "name": "Hijacked"})
+        # 404, not 403: the existence of another school's team is not disclosed.
+        assert resp.status_code == 404, resp.text
+
+    def test_school_is_taken_from_the_session_not_the_body(self, client, admin_token):
+        school = f"Achimota {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Addition", "name": "New Squad",
+                                 "school": "Somebody Else", "institution": "Somebody Else"})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["school"] == school
+
+    def test_a_client_cannot_file_a_pre_approved_request(self, client, admin_token):
+        school = f"Adisadel {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Addition", "name": "Sneaky",
+                                 "status": "approved"})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["status"] == "pending"
+
+    def test_an_unknown_change_type_is_rejected(self, client, admin_token):
+        token = self._school_admin(client, admin_token, f"Keta {uuid.uuid4().hex[:5]}")
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Deletion", "name": "X"})
+        assert resp.status_code == 400, resp.text
+
+    def test_a_student_cannot_propose_team_changes(self, client, student_token):
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {student_token}"},
+                           json={"type": "Team Addition", "name": "Student Squad"})
+        assert resp.status_code == 403, resp.text
+
+    def test_an_account_with_no_institution_is_told_why(self, client, admin_token):
+        token = self._school_admin(client, admin_token, "")
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Addition", "name": "Orphan Squad"})
+        assert resp.status_code == 409, resp.text
+        assert "institution" in resp.json()["detail"].lower()
+
+    def test_modification_requires_a_team_id(self, client, admin_token):
+        token = self._school_admin(client, admin_token, f"Tamale SHS {uuid.uuid4().hex[:5]}")
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Modification", "name": "No Id"})
+        assert resp.status_code == 400, resp.text
+
+    def test_institutions_can_no_longer_write_teams_directly(self, client, admin_token):
+        """The gate has to be server-side or it is only advice."""
+        school = f"Bypass Test {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        h = {"Authorization": f"Bearer {token}"}
+        team_id, _ = self._team(client, admin_token, school)
+        assert client.post("/api/teams", headers=h,
+                           json={"name": "Direct", "school_name": school}).status_code == 403
+        assert client.patch(f"/api/teams/{team_id}", headers=h,
+                            json={"name": "Direct Rename"}).status_code == 403
+        assert client.delete(f"/api/teams/{team_id}", headers=h).status_code == 403
+
+
+    def test_a_disbandment_request_does_not_remove_the_team_until_approved(self, client, admin_token):
+        school = f"Disband {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        team_id, _ = self._team(client, admin_token, school)
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Disbandment", "team_id": team_id,
+                                 "name": "ignored"})
+        assert resp.status_code == 201, resp.text
+        teams = client.get("/api/teams", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        assert any(t["id"] == team_id for t in teams), "team was removed before approval"
+
+    def test_approving_a_disbandment_actually_removes_the_team(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"Disband OK {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        team_id, _ = self._team(client, admin_token, school)
+        req = client.post("/api/approvals/team-change",
+                          headers={"Authorization": f"Bearer {token}"},
+                          json={"type": "Team Disbandment", "team_id": team_id,
+                                "name": "ignored"}).json()
+        patch = client.patch(f"/api/approvals/{req['id']}", headers=h,
+                             json={"status": "approved", "reviewer": "admin"})
+        assert patch.status_code == 200, patch.text
+        assert patch.json()["team_change"]["applied"] is True
+        teams = client.get("/api/teams", headers=h).json()
+        assert not any(t["id"] == team_id for t in teams), "team survived an approved disbandment"
+
+    def test_rejecting_a_disbandment_leaves_the_team_alone(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"Disband No {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        team_id, _ = self._team(client, admin_token, school)
+        req = client.post("/api/approvals/team-change",
+                          headers={"Authorization": f"Bearer {token}"},
+                          json={"type": "Team Disbandment", "team_id": team_id,
+                                "name": "ignored"}).json()
+        client.patch(f"/api/approvals/{req['id']}", headers=h,
+                     json={"status": "rejected", "reviewer": "admin",
+                           "rejection_reasons": "Still competing"})
+        teams = client.get("/api/teams", headers=h).json()
+        assert any(t["id"] == team_id for t in teams)
+
+    def test_disbandment_requires_a_team_id(self, client, admin_token):
+        token = self._school_admin(client, admin_token, f"NoId {uuid.uuid4().hex[:5]}")
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Disbandment", "name": "x"})
+        assert resp.status_code == 400, resp.text
+
+    def test_cannot_request_disbandment_of_another_schools_team(self, client, admin_token):
+        token = self._school_admin(client, admin_token, f"Mine {uuid.uuid4().hex[:5]}")
+        other_id, _ = self._team(client, admin_token, f"Theirs {uuid.uuid4().hex[:5]}")
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Disbandment", "team_id": other_id,
+                                 "name": "x"})
+        assert resp.status_code == 404, resp.text
+
+
+    def test_an_institution_can_see_its_own_request_and_the_outcome(self, client, admin_token):
+        """Without this the requester never learns the decision or its reason."""
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"Sees Own {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        team_id, _ = self._team(client, admin_token, school)
+        req = client.post("/api/approvals/team-change",
+                          headers={"Authorization": f"Bearer {token}"},
+                          json={"type": "Team Modification", "team_id": team_id,
+                                "name": "Pending Look"}).json()
+
+        mine = client.get("/api/approvals/mine",
+                          headers={"Authorization": f"Bearer {token}"})
+        assert mine.status_code == 200, mine.text
+        found = next(a for a in mine.json() if a["id"] == req["id"])
+        assert found["status"] == "pending"
+
+        client.patch(f"/api/approvals/{req['id']}", headers=h,
+                     json={"status": "rejected", "reviewer": "admin",
+                           "rejection_reasons": "Name already taken",
+                           "rejection_notes": "Pick another"})
+        after = client.get("/api/approvals/mine",
+                           headers={"Authorization": f"Bearer {token}"}).json()
+        decided = next(a for a in after if a["id"] == req["id"])
+        assert decided["status"] == "rejected"
+        assert decided["rejectionReasons"] == "Name already taken"
+
+    def test_mine_does_not_leak_other_applicants(self, client, admin_token):
+        a_token = self._school_admin(client, admin_token, f"A {uuid.uuid4().hex[:5]}")
+        b_school = f"B {uuid.uuid4().hex[:5]}"
+        b_token = self._school_admin(client, admin_token, b_school)
+        b_team, _ = self._team(client, admin_token, b_school)
+        b_req = client.post("/api/approvals/team-change",
+                            headers={"Authorization": f"Bearer {b_token}"},
+                            json={"type": "Team Modification", "team_id": b_team,
+                                  "name": "B Only"}).json()
+        a_sees = client.get("/api/approvals/mine",
+                            headers={"Authorization": f"Bearer {a_token}"}).json()
+        assert not any(x["id"] == b_req["id"] for x in a_sees)
+
+    def test_mine_requires_a_session(self, client):
+        assert client.get("/api/approvals/mine").status_code == 401
+
+
+class TestPublicApplicationReachesTheQueue:
+    """Public registration has to reach a reviewer.
+
+    Applications were persisted only via contentService.saveApprovals() ->
+    POST /api/bulk-sync, which is admin-only. For an anonymous applicant every
+    write 401'd, so the applicant got a confirmation email and the reviewer queue
+    stayed empty.
+    """
+
+    def _clear_limits(self):
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+
+    def test_an_anonymous_applicant_can_file_an_application(self, client, admin_token):
+        self._clear_limits()
+        contact = f"school-{uuid.uuid4().hex[:8]}@example.com"
+        resp = client.post("/api/approvals/public", json={
+            "type": "School Registration", "entity": "Kumasi High",
+            "contact": contact, "details": {"region": "Ashanti"}})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["status"] == "pending"
+        queue = client.get("/api/approvals",
+                           headers={"Authorization": f"Bearer {admin_token}"}).json()
+        assert any((a.get("contact") or "").lower() == contact for a in queue), \
+            "application did not reach the reviewer queue"
+
+    def test_the_application_is_always_pending(self, client, admin_token):
+        self._clear_limits()
+        contact = f"sneaky-{uuid.uuid4().hex[:8]}@example.com"
+        client.post("/api/approvals/public", json={
+            "type": "Judge Access", "entity": "Self Approver",
+            "contact": contact, "status": "approved", "id": "apr-forged"})
+        queue = client.get("/api/approvals",
+                           headers={"Authorization": f"Bearer {admin_token}"}).json()
+        row = next(a for a in queue if (a.get("contact") or "").lower() == contact)
+        assert row["status"] == "pending"
+        # The id is generated server-side, so a caller cannot target an existing row.
+        assert row["id"] != "apr-forged"
+
+    def test_an_unlisted_type_is_refused(self, client):
+        self._clear_limits()
+        resp = client.post("/api/approvals/public", json={
+            "type": "Team Disbandment", "entity": "X",
+            "contact": f"x-{uuid.uuid4().hex[:6]}@example.com"})
+        assert resp.status_code == 400, resp.text
+
+    def test_resubmitting_updates_rather_than_duplicates(self, client, admin_token):
+        self._clear_limits()
+        contact = f"resub-{uuid.uuid4().hex[:8]}@example.com"
+        first = client.post("/api/approvals/public", json={
+            "type": "Instructor Access", "entity": "First Try", "contact": contact})
+        second = client.post("/api/approvals/public", json={
+            "type": "Instructor Access", "entity": "Second Try", "contact": contact})
+        assert first.status_code == 201 and second.status_code == 201
+        assert first.json()["id"] == second.json()["id"]
+        queue = client.get("/api/approvals",
+                           headers={"Authorization": f"Bearer {admin_token}"}).json()
+        mine = [a for a in queue if (a.get("contact") or "").lower() == contact]
+        assert len(mine) == 1, "resubmitting stacked duplicates in the queue"
+        assert mine[0]["entity"] == "Second Try"
+
+    def test_it_is_rate_limited(self, client):
+        self._clear_limits()
+        codes = []
+        for i in range(8):
+            codes.append(client.post("/api/approvals/public", json={
+                "type": "Sponsor Access", "entity": f"Flood {i}",
+                "contact": f"flood-{i}-{uuid.uuid4().hex[:6]}@example.com"}).status_code)
+        assert 429 in codes, f"no rate limiting applied: {codes}"
+
+    def test_oversized_detail_is_refused(self, client):
+        self._clear_limits()
+        resp = client.post("/api/approvals/public", json={
+            "type": "School Registration", "entity": "Big",
+            "contact": f"big-{uuid.uuid4().hex[:6]}@example.com",
+            "details": {f"k{i}": "v" for i in range(200)}})
+        assert resp.status_code == 400, resp.text
+
+    def test_open_registration_can_create_a_participant(self, client, admin_token):
+        """The open tab called the admin-only POST /api/users, so nothing was made."""
+        self._clear_limits()
+        email = f"open-{uuid.uuid4().hex[:8]}@example.com"
+        resp = client.post("/api/users/register", json={
+            "email": email, "full_name": "Open Entrant", "role": "student"})
+        assert resp.status_code == 201, resp.text
+        users = client.get("/api/users",
+                           headers={"Authorization": f"Bearer {admin_token}"}).json()
+        created = [u for u in users if u["email"].lower() == email]
+        assert created, "participant was not created"
+        # Still pending: public sign-up must not self-activate.
+        assert created[0]["status"] == "pending"
+
+    def test_public_registration_still_cannot_take_a_privileged_role(self, client):
+        self._clear_limits()
+        for role in ("admin", "super_admin", "school_admin", "instructor"):
+            resp = client.post("/api/users/register", json={
+                "email": f"esc-{uuid.uuid4().hex[:8]}@example.com",
+                "full_name": "Escalator", "role": role})
+            assert resp.status_code == 403, f"{role} was allowed: {resp.text}"
+
+    def test_applications_can_be_scoped_to_a_cycle(self, client, admin_token):
+        """The reviewer queue could not be filtered by cycle at all before this."""
+        self._clear_limits()
+        h = {"Authorization": f"Bearer {admin_token}"}
+        cid = client.post("/api/competitions", headers=h, json={
+            "title": f"Cycle {uuid.uuid4().hex[:6]}", "year": 2026}).json()["id"]
+        scoped_contact = f"scoped-{uuid.uuid4().hex[:8]}@example.com"
+        client.post("/api/approvals/public", json={
+            "type": "School Registration", "entity": "In Cycle",
+            "contact": scoped_contact, "competition_id": cid})
+        client.post("/api/approvals/public", json={
+            "type": "School Registration", "entity": "No Cycle",
+            "contact": f"unscoped-{uuid.uuid4().hex[:8]}@example.com"})
+
+        scoped = client.get(f"/api/approvals?competition_id={cid}", headers=h).json()
+        assert [a["contact"] for a in scoped] == [scoped_contact]
+        assert all(a["competitionId"] == cid for a in scoped)
+        # And the unscoped view still returns everything.
+        assert len(client.get("/api/approvals", headers=h).json()) > len(scoped)
+
+    def test_a_bad_cycle_reference_is_rejected(self, client):
+        """Storing an id that matches nothing is how records became invisible."""
+        self._clear_limits()
+        resp = client.post("/api/approvals/public", json={
+            "type": "School Registration", "entity": "Bad Ref",
+            "contact": f"badref-{uuid.uuid4().hex[:6]}@example.com",
+            "competition_id": "comp-does-not-exist"})
+        # 422 is what _validate_competition_ref raises for an unknown cycle.
+        assert resp.status_code == 422, resp.text
+        assert "comp-does-not-exist" in resp.json()["detail"]

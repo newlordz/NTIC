@@ -2086,6 +2086,14 @@ setAuthValue('activeUserEmail', email);
       const id = this.selectedFileIds[k]?.[0];
       if (id) memberPhotoIds.push(id);
     });
+    const rosterList = [
+      this.teamForm.leadName,
+      this.teamForm.member2Name,
+      this.teamForm.member3Name,
+      this.teamForm.member4Name,
+      this.teamForm.member5Name
+    ].filter(Boolean).map((n: string) => n.trim()).filter((n: string) => n.length > 0);
+
     this.schoolForm.teams.push({
       name: this.teamForm.name,
       track: this.teamForm.track,
@@ -2099,6 +2107,8 @@ setAuthValue('activeUserEmail', email);
       member4Email: this.teamForm.member4Email,
       member5Name: this.teamForm.member5Name,
       member5Email: this.teamForm.member5Email,
+      rosterList,
+      members: rosterList,
       memberPhotos: memberPhotoIds.length ? memberPhotoIds : undefined
     });
     this.teamForm.name = '';
@@ -3064,7 +3074,10 @@ setAuthValue('activeUserEmail', email);
             : this.generateApplicationCode('school'),
           tracks: this.schoolForm.teams.map((t: any) => t.track).filter((value: any, index: number, self: any[]) => self.indexOf(value) === index).join(', ') || 'Coding, Robotics',
           teamsList: this.schoolForm.teams,
-          studentCount: this.schoolForm.students.length,
+          studentCount: this.schoolForm.students.length + this.schoolForm.teams.reduce((sum: number, t: any) => {
+            const count = t.rosterList?.length || t.members?.length || [t.leadName, t.member2Name, t.member3Name, t.member4Name, t.member5Name].filter(Boolean).length;
+            return sum + (count > 0 ? count : 1);
+          }, 0),
           students: this.schoolForm.students.map((s: any) => ({ id: s.id, name: s.name, track: s.track, class: s.class, dob: s.dob, gender: s.gender, guardianName: s.guardianName, guardianPhone: s.guardianPhone, skills: s.skills })),
           docs: this.selectedFileIds['accredDocs']?.length
             ? this.selectedFileIds['accredDocs'].map((id, i) => `${id}::${this.selectedFileNames['accredDocs']?.[i] || 'document.pdf'}`)
@@ -3140,7 +3153,12 @@ setAuthValue('activeUserEmail', email);
           memberPhotos: memberPhotoIds.length ? memberPhotoIds : undefined
         };
         currentTeams.push(regTeam);
-        this.contentService.syncNewTeamToBackend(regTeam);
+        // Deliberately NOT calling syncNewTeamToBackend here. This branch files a
+        // 'Team Addition' approval (see approvalType above), so creating the team
+        // at the same time contradicted it: the team went live before anyone
+        // reviewed it. For an anonymous registrant the call 401'd and was
+        // swallowed, but a signed-in school admin really did create the team and
+        // skip approval. The team is now created by the admin approve handler.
         this.contentService.saveTeams(currentTeams);
       } else if (this.activeTab === 'instructor') {
         approvalType = 'Instructor Access';
@@ -3191,12 +3209,16 @@ setAuthValue('activeUserEmail', email);
         };
         if (judgeLogoId) (newJudge as any).logoFileId = judgeLogoId;
         // Create server-side FIRST; the server issues the one-time password.
-        this.apiService.createUser({
+        // registerPublicUser, not createUser: POST /api/users is admin-only, so
+        // this call always failed for an applicant and no judge account was ever
+        // created. `status` is not sent -- the server forces 'pending', which is
+        // also why the old `status: 'Active'` here was a self-activation attempt
+        // that only failed by accident.
+        this.apiService.registerPublicUser({
           email: newJudge.email,
           full_name: newJudge.fullName,
           role: newJudge.role,
           ticket: newJudge.ticket,
-          status: 'Active',
           phone: newJudge.phone || ''
         } as any).subscribe({
           next: (created: any) => {
@@ -3254,12 +3276,12 @@ setAuthValue('activeUserEmail', email);
         };
         if (logoFileId) (newSponsor as any).logoFileId = logoFileId;
         // Create server-side FIRST; the server issues the one-time password.
-        this.apiService.createUser({
+        // See the judge branch above: createUser is admin-only, so this never ran.
+        this.apiService.registerPublicUser({
           email: newSponsor.email,
           full_name: newSponsor.fullName,
           role: newSponsor.role,
           ticket: newSponsor.ticket,
-          status: 'Active',
           phone: newSponsor.phone || ''
         } as any).subscribe({
           next: (created: any) => {
@@ -3324,7 +3346,10 @@ setAuthValue('activeUserEmail', email);
         if (this.openRegPhotoFileId) (newUser as any).profilePhotoFileId = this.openRegPhotoFileId;
         if (this.openRegDocFileId) (newUser as any).docFileId = this.openRegDocFileId;
 
-        this.apiService.createUser({
+        // Open-competition entry. Was calling the admin-only POST /api/users, so
+        // no participant account was ever created. The public endpoint records
+        // them as 'pending' for activation rather than self-activating.
+        this.apiService.registerPublicUser({
           email: newUser.email,
           full_name: newUser.fullName,
           role: 'student',
@@ -3335,8 +3360,7 @@ setAuthValue('activeUserEmail', email);
           experience_level: newUser.experienceLevel || '',
           competition_id: newUser.competitionId || '',
           photo_file_id: this.openRegPhotoFileId || '',
-          doc_file_id: this.openRegDocFileId || '',
-          status: 'Active'
+          doc_file_id: this.openRegDocFileId || ''
         } as any).subscribe({
           next: (created: any) => {
             otp = created?.temporary_password || '';
@@ -3403,6 +3427,31 @@ setAuthValue('activeUserEmail', email);
           });
         }
         this.contentService.saveApprovals(currentApprovals);
+
+        // The application has to exist on the server or no reviewer will ever see
+        // it. saveApprovals() above only reaches POST /api/bulk-sync, which is
+        // admin-only, so for an anonymous applicant it 401'd and the application
+        // lived solely in this browser -- while the confirmation email below told
+        // them it had been received. This files it for real.
+        if (approvalType && entity) {
+          this.apiService.submitPublicApplication({
+            type: approvalType,
+            entity,
+            contact,
+            details
+          }).subscribe({
+            next: () => {},
+            error: (err: any) => {
+              const detail = err?.error?.detail || err?.message || 'Unknown error';
+              this.dialogService.toast(
+                err?.status === 0
+                  ? 'Your application could not be sent to the server. Please check your connection and submit again.'
+                  : `Your application was not received: ${detail}`,
+                'error'
+              );
+            }
+          });
+        }
 
         const emailTo = contact || '';
         const emailName = entity || '';

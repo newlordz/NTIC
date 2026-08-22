@@ -283,7 +283,7 @@ export interface User {
 
 export interface ApprovalRequest {
   id: string;
-  type: 'School Registration' | 'Team Addition' | 'Student Registration' | 'Instructor Access';
+  type: 'School Registration' | 'Team Addition' | 'Team Modification' | 'Student Registration' | 'Instructor Access' | 'Track Change Request';
   entity: string;
   contact: string;
   submitted: string;
@@ -307,12 +307,21 @@ export interface ApprovalRequest {
     studentCount?: number;
     students?: { name: string; track: string; class: string; guardianName?: string; guardianPhone?: string }[];
     school?: string;
+    institution?: string;
     track?: string;
     project?: string;
     members?: string[];
     memberEmails?: string[];
     leadEmail?: string;
+    leadName?: string;
+    lead?: string;
     coach?: string;
+    mentor?: string;
+    motto?: string;
+    memberCount?: number;
+    teamId?: string;
+    originalName?: string;
+    newName?: string;
     photoFileId?: string;
     memberPhotos?: string[];
     skills?: any;
@@ -321,7 +330,6 @@ export interface ApprovalRequest {
     guardianName?: string;
     guardianPhone?: string;
     class?: string;
-    institution?: string;
     credentials?: string;
     specialization?: string;
     experience?: string;
@@ -1213,21 +1221,34 @@ private readonly defaultTeams: Team[] = [];
   }
 
   private mergeTeams(backendTeams: any[]): Team[] {
-    const localById = new Map<string, Team>();
-    this.teams.forEach(t => { if (t.id) localById.set(t.id, t); });
-    backendTeams.forEach((b: any) => {
-      localById.set(b.id, {
+    const list: Team[] = backendTeams.map((b: any) => {
+      const existing = this.teams.find(t => t.id === b.id || (t.name?.toLowerCase() === b.name?.toLowerCase() && t.schoolName?.toLowerCase() === b.school_name?.toLowerCase()));
+      return {
         id: b.id,
         name: b.name || 'Untitled Team',
         track: b.track || 'Coding',
         lead: b.lead || 'Team Lead',
         members: b.members ?? 1,
-        status: b.status || 'Active',
+        status: b.status || 'In Competition',
         competitionId: b.competition_id ?? null,
-        schoolName: b.school_name || ''
-      });
+        schoolName: b.school_name || '',
+        rosterList: (Array.isArray(b.rosterList) && b.rosterList.length > 0) ? b.rosterList : (existing?.rosterList || undefined),
+        mentor: b.mentor || existing?.mentor || undefined,
+        motto: b.motto || existing?.motto || undefined
+      };
     });
-    return Array.from(localById.values());
+
+    // Only keep un-synced temporary local teams if not already present in backend
+    this.teams.forEach(t => {
+      if (t.id && t.id.startsWith('temp-')) {
+        const match = list.find(b => b.name?.toLowerCase() === t.name?.toLowerCase() && b.schoolName?.toLowerCase() === t.schoolName?.toLowerCase());
+        if (!match) {
+          list.push(t);
+        }
+      }
+    });
+
+    return list;
   }
   private loadStateAndFallback(): void {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -1642,7 +1663,15 @@ private readonly defaultTeams: Team[] = [];
         schoolNames.add(a.entity);
         if (a.details?.region) regions.add(a.details.region);
         if (a.details?.district) regions.add(a.details.district);
-        if (a.details?.studentCount) studentCount += a.details.studentCount;
+        let schoolStudents = a.details?.studentCount || 0;
+        if (Array.isArray(a.details?.teamsList)) {
+          const teamStudents = a.details.teamsList.reduce((sum: number, t: any) => {
+            const count = t.rosterList?.length || t.members?.length || [t.leadName, t.member2Name, t.member3Name, t.member4Name, t.member5Name].filter(Boolean).length;
+            return sum + (count > 0 ? count : 1);
+          }, 0);
+          schoolStudents = Math.max(schoolStudents, (a.details?.students?.length || 0) + teamStudents);
+        }
+        studentCount += schoolStudents;
       }
     }
 
@@ -1825,7 +1854,7 @@ private readonly defaultTeams: Team[] = [];
     const seen = new Set<string>();
     const deduped: Team[] = [];
     for (const t of teamsList) {
-      const key = `${(t.name || '').trim()}::${(t.schoolName || '').trim()}::${(t.track || '').trim()}`.toLowerCase();
+      const key = `${(t.name || '').trim()}::${(t.schoolName || '').trim()}`.toLowerCase();
       if (!seen.has(key)) {
         seen.add(key);
         deduped.push(t);
@@ -1833,7 +1862,6 @@ private readonly defaultTeams: Team[] = [];
     }
     this.teams = deduped;
     this.saveState('teams', this.teams);
-    deduped.forEach(t => this.apiService.createTeam({ name: t.name, track: t.track || '', school_name: t.schoolName || '', lead: t.lead || '', members: t.members || 1 }).subscribe());
   }
 
   syncNewTeamToBackend(team: Team): void {

@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import {
   ContentService,
+  ApprovalRequest,
   ChampionshipStory,
   HallOfFameEntry,
   LeaderboardEntry,
@@ -3943,14 +3944,75 @@ setTimeout(async () => {
 
       this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp);
       this.openCredentialsModal('School Registration Approved!', `School Admin account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access credentials sent to ${req.contact}`);
+    } else if (req.type === 'Team Modification') {
+      const teamId = req.details?.teamId;
+      const targetName = req.details?.originalName || req.entity;
+      const newName = req.details?.newName || req.details?.name || req.entity;
+      const school = req.details?.school || req.details?.institution || 'Partner School';
+      const roster = req.details?.members || [];
+      const track = req.details?.track || 'Coding';
+      const lead = req.details?.lead || (roster[0] || 'Team Lead');
+      const mentor = req.details?.mentor || '';
+      const motto = req.details?.motto || '';
+
+      const updatedTeamPayload = {
+        name: newName,
+        track: track,
+        lead: lead,
+        members: Math.max(roster.length, 3),
+        status: 'In Competition',
+        school_name: school,
+        mentor: mentor,
+        motto: motto,
+        roster_list: roster
+      };
+
+      const updateLocalAndNotify = () => {
+        const currentTeams = this.contentService.teams.map(t => {
+          if ((teamId && t.id === teamId) || t.name === targetName || t.name === newName) {
+            return {
+              ...t,
+              name: newName,
+              track: track,
+              lead: lead,
+              members: Math.max(roster.length, 3),
+              rosterList: roster,
+              mentor: mentor,
+              motto: motto,
+              schoolName: school,
+              status: 'In Competition'
+            };
+          }
+          return t;
+        });
+        this.contentService.saveTeams(currentTeams);
+        this.emailService.sendApprovalEmail(req.contact, lead, req.entity, req.type, 'N/A -- Team Modified', 'N/A');
+        this.showCustomAlert(`Squad modifications for "${newName}" (${school}) approved and live in tournament database.`, 'Team Modification Approved', 'success');
+      };
+
+      if (teamId && !teamId.startsWith('temp-')) {
+        this.apiService.updateTeam(teamId, updatedTeamPayload).subscribe({
+          next: () => updateLocalAndNotify(),
+          error: (err: any) => {
+            console.error('Failed to update team in backend:', err);
+            updateLocalAndNotify();
+          }
+        });
+      } else {
+        updateLocalAndNotify();
+      }
     } else if (req.type === 'Team Addition') {
+      const roster = req.details?.members || (req.details?.rosterList || [req.details?.lead || 'Team Lead']);
       const newTeam = {
         name: req.entity,
-        track: req.details?.track || 'Robotics',
-        lead: req.details?.members?.[0] || 'Team Lead',
-        members: req.details?.members?.length || 3,
+        track: req.details?.track || 'Coding',
+        lead: req.details?.lead || (roster[0] || 'Team Lead'),
+        members: Math.max(roster.length, 3),
+        rosterList: roster,
+        mentor: req.details?.mentor || '',
+        motto: req.details?.motto || '',
         status: 'In Competition',
-        schoolName: req.details?.school || 'Partner School'
+        schoolName: req.details?.school || req.details?.institution || 'Partner School'
       };
       const currentTeams = [...this.contentService.teams];
       currentTeams.push(newTeam);
@@ -4112,6 +4174,54 @@ setTimeout(async () => {
     if (reason.includes('registry')) return 'database';
     if (reason.includes('student team')) return 'groups';
     return 'error';
+  }
+
+  getSchoolStudentCount(details: any): number {
+    if (!details) return 0;
+    const soloCount = Array.isArray(details.students)
+      ? details.students.length
+      : (details.studentCount && !details.teamsList?.length ? details.studentCount : 0);
+    const teams = Array.isArray(details.teamsList) ? details.teamsList : [];
+    const teamMembersCount = teams.reduce((sum: number, t: any) => {
+      const roster = this.getTeamMembers(t);
+      return sum + (roster.length > 0 ? roster.length : 1);
+    }, 0);
+    const total = soloCount + teamMembersCount;
+    return Math.max(total, details.studentCount || 0);
+  }
+
+  getTeamMembers(team: any): string[] {
+    if (!team) return [];
+    if (Array.isArray(team.rosterList) && team.rosterList.length > 0) return team.rosterList;
+    if (Array.isArray(team.members) && team.members.length > 0) return team.members;
+    const directNames = [team.leadName, team.member2Name, team.member3Name, team.member4Name, team.member5Name]
+      .filter(Boolean)
+      .map(n => String(n).trim())
+      .filter(n => n.length > 0);
+    if (directNames.length > 0) return directNames;
+
+    // Cross-reference from pending / approved registrations
+    const teamName = (team.name || '').trim().toLowerCase();
+    if (teamName) {
+      const allReqs = [...this.contentService.pendingApprovals, ...this.contentService.approvedApprovals];
+      for (const req of allReqs) {
+        if (req.details?.teamsList && Array.isArray(req.details.teamsList)) {
+          const match = req.details.teamsList.find((t: any) => (t.name || '').trim().toLowerCase() === teamName);
+          if (match) {
+            const matchNames = [match.leadName, match.member2Name, match.member3Name, match.member4Name, match.member5Name]
+              .filter(Boolean)
+              .map(n => String(n).trim())
+              .filter(n => n.length > 0);
+            if (matchNames.length > 0) return matchNames;
+          }
+        }
+      }
+    }
+
+    if (team.lead && typeof team.lead === 'string' && team.lead.trim()) {
+      return [team.lead.trim()];
+    }
+    return [];
   }
 
   openPreview(req: any): void {
@@ -5399,7 +5509,7 @@ setTimeout(async () => {
     const seenKeys = new Set<string>();
 
     const addMember = (m: any) => {
-      const key = (m.email || m.name || m.fullName || '').trim().toLowerCase();
+      const key = (m.name || m.fullName || m.email || '').trim().toLowerCase();
       if (key && !seenKeys.has(key)) {
         seenKeys.add(key);
         memberList.push(m);
@@ -5427,24 +5537,7 @@ setTimeout(async () => {
       }
     });
 
-    // 2. Fetch members from team rosters
-    this.schoolTeams.forEach((t: any) => {
-      if (t.rosterList && Array.isArray(t.rosterList)) {
-        t.rosterList.forEach((memberName: string, idx: number) => {
-          addMember({
-            name: memberName,
-            email: idx === 0 ? (t.leadEmail || `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`) : `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
-            role: idx === 0 ? 'Team Lead / Captain' : 'Team Member',
-            teamName: t.name,
-            track: t.track || 'Coding',
-            organization: t.schoolName || this.schoolName,
-            status: 'In Competition'
-          });
-        });
-      }
-    });
-
-    // 3. Fetch members registered under school / team applications
+    // 2. Fetch members registered under school / team applications (has detailed member roster)
     const allReqs = [...this.contentService.pendingApprovals, ...this.contentService.approvedApprovals];
     allReqs.forEach((req: any) => {
       const reqOrg = (req.entity || req.details?.school || req.details?.institution || '').trim().toLowerCase();
@@ -5464,11 +5557,55 @@ setTimeout(async () => {
               guardianName: s.guardianName || 'N/A',
               guardianPhone: s.guardianPhone || 'N/A',
               track: s.track || 'Coding & Algorithms',
-              organization: reqOrg || this.schoolName,
-              status: 'Registered'
+              organization: req.entity || this.schoolName,
+              status: 'In Competition'
             });
           });
         }
+        if (req.details?.teamsList && Array.isArray(req.details.teamsList)) {
+          req.details.teamsList.forEach((t: any) => {
+            const roster = this.getTeamMembers(t);
+            roster.forEach((memberName: string, idx: number) => {
+              addMember({
+                name: memberName,
+                email: (idx === 0 && t.leadEmail) ? t.leadEmail : `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
+                role: idx === 0 ? 'Team Lead / Captain' : 'Team Member',
+                teamName: t.name,
+                track: t.track || req.details?.tracks || 'Coding',
+                organization: req.entity || this.schoolName,
+                status: 'In Competition'
+              });
+            });
+          });
+        }
+      }
+    });
+
+    // 3. Fetch members from team rosters in active registry
+    this.schoolTeams.forEach((t: any) => {
+      const roster = this.getTeamMembers(t);
+      if (roster.length > 0) {
+        roster.forEach((memberName: string, idx: number) => {
+          addMember({
+            name: memberName,
+            email: idx === 0 ? (t.leadEmail || `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`) : `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
+            role: idx === 0 ? 'Team Lead / Captain' : 'Team Member',
+            teamName: t.name,
+            track: t.track || 'Coding',
+            organization: t.schoolName || this.schoolName,
+            status: t.status || 'In Competition'
+          });
+        });
+      } else if (t.lead) {
+        addMember({
+          name: t.lead,
+          email: `${t.lead.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
+          role: 'Team Lead / Captain',
+          teamName: t.name,
+          track: t.track || 'Coding',
+          organization: t.schoolName || this.schoolName,
+          status: t.status || 'In Competition'
+        });
       }
     });
 
@@ -5501,7 +5638,7 @@ setTimeout(async () => {
 
   editTeam(team: any): void {
     this.editingTeamOriginalName = team.name;
-    const roster = team.rosterList || [team.lead];
+    const roster = this.getTeamMembers(team);
     const namesArray = ['', '', '', '', '', '', '', ''];
     for (let i = 1; i < roster.length && i <= 8; i++) {
       namesArray[i - 1] = roster[i];
@@ -5512,7 +5649,7 @@ setTimeout(async () => {
       name: team.name,
       track: team.track || 'Coding',
       lead: team.lead || (roster[0] || ''),
-      members: team.members || roster.length || 4,
+      members: Math.max(team.members || 3, roster.length),
       mentor: team.mentor || '',
       motto: team.motto || '',
       memberNames: namesArray
@@ -5522,36 +5659,78 @@ setTimeout(async () => {
 
 
   async disbandTeam(team: any): Promise<void> {
+    // Institutions no longer hold DELETE /api/teams -- disbanding a team is a
+    // change like a rename, so it goes through approval. Admins and competition
+    // managers still delete directly, since they are the ones who decide.
+    const canDeleteDirectly = ['super_admin', 'admin', 'competition_manager'].includes(this.activeRoleId);
+
     const ok = await this.dialogService.confirm({
-      title: 'Disband Squad',
-      message: `Are you sure you want to disband squad "${team.name}" and remove all registered student members from the tournament?`,
-      confirmText: 'Disband Squad',
+      title: canDeleteDirectly ? 'Disband Squad' : 'Request Disbandment',
+      message: canDeleteDirectly
+        ? `Are you sure you want to disband squad "${team.name}" and remove all registered student members from the tournament?`
+        : `Submit a request to disband squad "${team.name}"? The squad stays in the tournament until an administrator approves it.`,
+      confirmText: canDeleteDirectly ? 'Disband Squad' : 'Submit Request',
       type: 'danger'
     });
-    if (ok) {
-      const deleteSuccess = () => {
-        const currentTeams = this.contentService.teams.filter(t => t !== team && t.name !== team.name && t.id !== team.id);
-        this.contentService.saveTeams(currentTeams);
-        this.addAuditLog({
-          action: `School Admin (${this.schoolName}) disbanded squad: ${team.name}`,
-          user: getAuthValue('activeUserEmail') || 'School Admin',
-          time: new Date().toISOString(),
-          type: 'approval'
-        });
-        this.dialogService.toast(`Squad "${team.name}" has been disbanded.`, 'info');
-      };
+    if (!ok) return;
 
-      if (team.id && !team.id.startsWith('temp-')) {
-        this.apiService.deleteTeam(team.id).subscribe({
-          next: deleteSuccess,
-          error: (err) => {
-            console.error('Failed to delete team in backend:', err);
-            this.dialogService.toast('Failed to disband squad in database.', 'error');
-          }
-        });
-      } else {
-        deleteSuccess();
+    if (!canDeleteDirectly) {
+      if (!team.id || String(team.id).startsWith('temp-')) {
+        this.dialogService.toast('This squad has not finished registering yet, so it cannot be disbanded.', 'error');
+        return;
       }
+      this.apiService.submitTeamChange({
+        type: 'Team Disbandment',
+        team_id: team.id,
+        name: team.name,
+        track: team.track || '',
+        lead: team.lead || ''
+      }).subscribe({
+        next: () => {
+          this.addAuditLog({
+            action: `School Admin (${this.schoolName}) requested disbandment of squad: ${team.name}`,
+            user: getAuthValue('activeUserEmail') || 'School Admin',
+            time: new Date().toISOString(),
+            type: 'approval'
+          });
+          this.dialogService.toast(`Disbandment request for "${team.name}" submitted for Super Admin review.`, 'success');
+        },
+        error: (err: any) => {
+          const detail = err?.error?.detail || err?.message || 'Unknown error';
+          this.dialogService.toast(
+            err?.status === 0
+              ? 'Could not reach the server, so the disbandment request was not submitted.'
+              : `Disbandment request was not submitted: ${detail}`,
+            'error'
+          );
+        }
+      });
+      return;
+    }
+
+    const deleteSuccess = () => {
+      const currentTeams = this.contentService.teams.filter(t => t !== team && t.name !== team.name && t.id !== team.id);
+      this.contentService.saveTeams(currentTeams);
+      this.addAuditLog({
+        action: `${this.getRoleLabel(this.activeRoleId)} disbanded squad: ${team.name}`,
+        user: getAuthValue('activeUserEmail') || 'Administrator',
+        time: new Date().toISOString(),
+        type: 'approval'
+      });
+      this.dialogService.toast(`Squad "${team.name}" has been disbanded.`, 'info');
+    };
+
+    if (team.id && !team.id.startsWith('temp-')) {
+      this.apiService.deleteTeam(team.id).subscribe({
+        next: deleteSuccess,
+        error: (err) => {
+          console.error('Failed to delete team in backend:', err);
+          const detail = err?.error?.detail || err?.message || 'Unknown error';
+          this.dialogService.toast(`Failed to disband squad: ${detail}`, 'error');
+        }
+      });
+    } else {
+      deleteSuccess();
     }
   }
 
@@ -5575,75 +5754,139 @@ setTimeout(async () => {
         .filter(name => name.length > 0)
     ];
 
-    const teamPayload = {
-      name: this.teamForm.name.trim(),
-      track: this.teamForm.track,
-      lead: this.teamForm.lead.trim(),
-      members: Math.max(this.teamForm.members || 4, activeMembersList.length),
-      status: 'In Competition',
-      school_name: this.schoolName
-    };
+    if (this.editingTeamOriginalName) {
+      // 1. EDIT MODE: Submit a formal Team Modification approval request for Super Admin review
+      const existingTeam = this.contentService.teams.find(t => 
+        (this.teamForm.id && t.id === this.teamForm.id) ||
+        (t.name === this.editingTeamOriginalName)
+      );
+      const school = existingTeam?.schoolName || (this.schoolName || '').replace(/\s+Admin$/i, '').trim();
+      const teamId = existingTeam?.id || this.teamForm.id;
+      const leadEmail = `${this.teamForm.lead.trim().toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`;
+      const reqId = 'REQ-' + Date.now();
 
-    const done = (dbTeam: any) => {
-      const newTeam: any = {
-        id: dbTeam?.id || this.teamForm.id || `team-${Date.now()}`,
+      const approvalReq: ApprovalRequest = {
+        id: reqId,
+        entity: `${this.editingTeamOriginalName} ➔ ${this.teamForm.name.trim()}`,
+        type: 'Team Modification',
+        contact: getAuthValue('activeUserEmail') || leadEmail,
+        submitted: 'Modified ' + new Date().toLocaleString('en-GB'),
+        details: {
+          school: school,
+          institution: school,
+          teamId: teamId,
+          originalName: this.editingTeamOriginalName,
+          newName: this.teamForm.name.trim(),
+          track: existingTeam?.track || this.teamForm.track,
+          lead: this.teamForm.lead.trim(),
+          leadName: this.teamForm.lead.trim(),
+          leadEmail: leadEmail,
+          members: activeMembersList,
+          memberCount: activeMembersList.length,
+          mentor: this.teamForm.mentor || '',
+          motto: this.teamForm.motto || '',
+          category: 'Public High School'
+        }
+      };
+
+      // The server owns this request. It is the only copy that an admin can see,
+      // so the local list is only updated once the write has actually succeeded
+      // -- the previous version seeded localStorage first, downgraded the failure
+      // to a console warning and still showed a success toast, so a request that
+      // never left the browser looked submitted.
+      this.apiService.submitTeamChange({
+        type: 'Team Modification',
+        team_id: teamId,
+        name: this.teamForm.name.trim(),
+        track: existingTeam?.track || this.teamForm.track,
+        lead: this.teamForm.lead.trim(),
+        members: activeMembersList,
+        mentor: this.teamForm.mentor || '',
+        motto: this.teamForm.motto || ''
+      }).subscribe({
+        next: (res) => {
+          this.contentService.saveApprovals([
+            { ...approvalReq, id: res.id, entity: res.entity || approvalReq.entity },
+            ...this.contentService.pendingApprovals
+          ]);
+          this.addAuditLog({
+            action: `School Admin (${school}) submitted Team Modification request for "${this.editingTeamOriginalName}" (New Name: "${this.teamForm.name.trim()}")`,
+            user: getAuthValue('activeUserEmail') || 'School Admin',
+            time: new Date().toISOString(),
+            type: 'approval'
+          });
+          this.dialogService.toast(`Modification request for "${this.teamForm.name.trim()}" submitted for Super Admin review and approval.`, 'success');
+          this.closeAddTeamModal();
+        },
+        error: (err: any) => {
+          const detail = err?.error?.detail || err?.message || 'Unknown error';
+          this.dialogService.toast(
+            err?.status === 0
+              ? 'Could not reach the server, so the modification request was not submitted. Check your connection and try again.'
+              : `Modification request was not submitted: ${detail}`,
+            'error'
+          );
+        }
+      });
+    } else {
+      // 2. NEW TEAM MODE: Requires formal Super Admin approval via Team Addition request
+      const leadEmail = `${this.teamForm.lead.trim().toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`;
+      const reqId = 'REQ-' + Date.now();
+      const approvalReq: ApprovalRequest = {
+        id: reqId,
+        entity: this.teamForm.name.trim(),
+        type: 'Team Addition',
+        contact: getAuthValue('activeUserEmail') || leadEmail,
+        submitted: 'Registered ' + new Date().toLocaleString('en-GB'),
+        details: {
+          school: this.schoolName,
+          institution: this.schoolName,
+          track: this.teamForm.track,
+          tracks: this.teamForm.track,
+          lead: this.teamForm.lead.trim(),
+          leadName: this.teamForm.lead.trim(),
+          leadEmail: leadEmail,
+          members: activeMembersList,
+          memberCount: activeMembersList.length,
+          mentor: this.teamForm.mentor || '',
+          motto: this.teamForm.motto || '',
+          category: 'Public High School'
+        }
+      };
+
+      // Same as the modification branch: only record it locally once the server
+      // has accepted it, and surface a real failure instead of a success toast.
+      this.apiService.submitTeamChange({
+        type: 'Team Addition',
         name: this.teamForm.name.trim(),
         track: this.teamForm.track,
         lead: this.teamForm.lead.trim(),
-        members: Math.max(this.teamForm.members || 4, activeMembersList.length),
-        rosterList: activeMembersList,
-        mentor: this.teamForm.mentor || 'Assigned Coordinator',
-        motto: this.teamForm.motto ? this.teamForm.motto.trim() : '',
-        status: 'In Competition',
-        schoolName: this.schoolName
-      };
-
-      const currentTeams = [...this.contentService.teams];
-      if (this.editingTeamOriginalName) {
-        const idx = currentTeams.findIndex(t => t.name === this.editingTeamOriginalName && t.schoolName === this.schoolName);
-        if (idx !== -1) {
-          currentTeams[idx] = newTeam;
-        } else {
-          currentTeams.push(newTeam);
-        }
-        this.editingTeamOriginalName = null;
-      } else {
-        currentTeams.push(newTeam);
-      }
-      this.contentService.saveTeams(currentTeams);
-
-      // Add audit log
-      const currentAudit = [...this.contentService.auditLogs];
-      currentAudit.unshift({
-        action: `School Admin (${this.schoolName}) registered/updated Team: ${newTeam.name} under ${newTeam.track}`,
-        user: getAuthValue('activeUserEmail') || 'School Admin',
-        time: new Date().toISOString(),
-        type: 'approval'
-      });
-      this.contentService.saveAuditLogs(currentAudit);
-
-      this.closeAddTeamModal();
-    };
-
-    if (this.editingTeamOriginalName) {
-      const existingTeam = this.contentService.teams.find(t => t.name === this.editingTeamOriginalName && t.schoolName === this.schoolName);
-      if (existingTeam && existingTeam.id && !existingTeam.id.startsWith('temp-')) {
-        this.apiService.updateTeam(existingTeam.id, teamPayload).subscribe({
-          next: (res) => done({ id: existingTeam.id }),
-          error: (err) => {
-            console.error('Failed to update team in backend:', err);
-            this.dialogService.toast('Failed to save team updates to database.', 'error');
-          }
-        });
-      } else {
-        done(null);
-      }
-    } else {
-      this.apiService.createTeam(teamPayload).subscribe({
-        next: (res) => done(res),
-        error: (err) => {
-          console.error('Failed to create team in backend:', err);
-          this.dialogService.toast('Failed to create team in database.', 'error');
+        members: activeMembersList,
+        mentor: this.teamForm.mentor || '',
+        motto: this.teamForm.motto || ''
+      }).subscribe({
+        next: (res) => {
+          this.contentService.saveApprovals([
+            { ...approvalReq, id: res.id, entity: res.entity || approvalReq.entity },
+            ...this.contentService.pendingApprovals
+          ]);
+          this.addAuditLog({
+            action: `School Admin (${this.schoolName}) requested new Team Addition: ${approvalReq.entity} (${this.teamForm.track})`,
+            user: getAuthValue('activeUserEmail') || 'School Admin',
+            time: new Date().toISOString(),
+            type: 'approval'
+          });
+          this.dialogService.toast(`Team Addition "${approvalReq.entity}" submitted for Super Admin review and approval.`, 'success');
+          this.closeAddTeamModal();
+        },
+        error: (err: any) => {
+          const detail = err?.error?.detail || err?.message || 'Unknown error';
+          this.dialogService.toast(
+            err?.status === 0
+              ? 'Could not reach the server, so the team was not submitted. Check your connection and try again.'
+              : `Team Addition was not submitted: ${detail}`,
+            'error'
+          );
         }
       });
     }

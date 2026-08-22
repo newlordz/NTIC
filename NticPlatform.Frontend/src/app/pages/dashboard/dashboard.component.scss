@@ -4065,9 +4065,9 @@
   animation: spin 0.7s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+/* `spin` is also declared further down this file (with `100%` instead of `to`,
+   which is the same thing). The later one wins the cascade, so this copy never
+   applied. Removed to keep one definition. */
 
 .admin-form-error {
   display: flex;

@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
+import { HANDLES_OWN_WRITE_ERRORS } from '../interceptors/http-resilience.interceptor';
 import { Observable, timeout } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -1129,8 +1130,75 @@ export class ApiService {
      return this.http.get<any[]>(this.apiUrl + '/approvals' + qs);
    }
 
+   /**
+    * The caller's own applications and requests, including the outcome.
+    *
+    * GET /api/approvals is admin-only, so an institution that filed a team change
+    * previously had no way to see what happened to it -- the only copy was in
+    * localStorage, which never learns the reviewer's decision or its reason.
+    */
+   getMyApprovals(): Observable<Array<{
+     id: string; type: string; entity: string; status: string;
+     submitted: string; reviewedAt: string; reviewer: string;
+     rejectionReasons: string; rejectionNotes: string;
+     details: any; competitionId: string | null;
+   }>> {
+     return this.http.get<any[]>(this.apiUrl + '/approvals/mine');
+   }
+
    createApproval(payload: any): Observable<any> {
      return this.http.post(this.apiUrl + '/approvals', payload);
+   }
+
+   /**
+    * File a team addition or rename/roster change for admin review.
+    *
+    * Institutions cannot use `createApproval`: POST /api/approvals requires
+    * APPROVAL_ROLES, which excludes school_admin and instructor, so their
+    * requests 403'd and never reached the admin queue. This endpoint accepts
+    * those roles and derives the institution from the caller's session, so no
+    * school can file a change against another.
+    */
+   submitTeamChange(payload: {
+     type: 'Team Addition' | 'Team Modification' | 'Team Disbandment';
+     name: string;
+     team_id?: string;
+     track?: string;
+     lead?: string;
+     members?: string[];
+     mentor?: string;
+     motto?: string;
+   }): Observable<{ id: string; type: string; entity: string; school: string; status: string }> {
+     return this.http.post<{ id: string; type: string; entity: string; school: string; status: string }>(
+       this.apiUrl + '/approvals/team-change',
+       payload,
+       // The dashboard reports this one itself, naming the squad involved.
+       { context: new HttpContext().set(HANDLES_OWN_WRITE_ERRORS, true) }
+     );
+   }
+
+   /**
+    * File an application from the public registration page.
+    *
+    * Public registration previously persisted applications only through
+    * `contentService.saveApprovals()` -> POST /api/bulk-sync, which requires an
+    * admin -- so for an anonymous applicant every write 401'd, the applicant got
+    * a confirmation email, and the reviewer queue stayed empty. This endpoint is
+    * unauthenticated, allowlists the type and always records status 'pending'.
+    */
+   submitPublicApplication(payload: {
+     type: string;
+     entity: string;
+     contact?: string;
+     details?: any;
+   }): Observable<{ id: string; type: string; status: string }> {
+     return this.http.post<{ id: string; type: string; status: string }>(
+       this.apiUrl + '/approvals/public',
+       payload,
+       // The registration page reports this failure itself, with wording specific
+       // to an applicant rather than the generic "change not saved".
+       { context: new HttpContext().set(HANDLES_OWN_WRITE_ERRORS, true) }
+     );
    }
 
    updateApproval(id: string, payload: any): Observable<any> {

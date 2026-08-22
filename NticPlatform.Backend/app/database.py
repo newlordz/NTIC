@@ -434,6 +434,9 @@ def _create_tables(conn):
     # Nullable on purpose: rows that predate this, and records that genuinely are
     # not cycle-scoped, keep working. NULL means "not attached to a cycle".
     cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS competition_id VARCHAR(64);")
+    cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS mentor VARCHAR(150) DEFAULT '';")
+    cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS motto VARCHAR(255) DEFAULT '';")
+    cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS roster_list JSONB DEFAULT '[]'::jsonb;")
     cur.execute("ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS competition_id VARCHAR(64);")
 
     # users.competition_id was declared VARCHAR(100) while competitions.id is
@@ -715,6 +718,26 @@ def _create_tables(conn):
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
+    conn.commit()
+
+    # Deliberately after the CREATE block above, not up with the other ALTERs:
+    # pending_approvals is created here, so altering it earlier fails on a fresh
+    # database and aborts the whole schema init.
+    #
+    # Applications need to be attributable to a cycle for the same reason teams
+    # do -- the records and reporting panels can scope teams and submissions by
+    # cycle but had nothing to filter approvals on, so a reviewer looking at one
+    # cycle saw every application ever filed. Nullable: rows filed before this,
+    # and applications that are not cycle-specific, keep working.
+    cur.execute("ALTER TABLE pending_approvals ADD COLUMN IF NOT EXISTS competition_id VARCHAR(64);")
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_pending_approvals_competition "
+        "ON pending_approvals (competition_id);"
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_pending_approvals_status "
+        "ON pending_approvals (status);"
+    )
     conn.commit()
 
     _create_indexes(cur)
