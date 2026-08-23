@@ -6245,14 +6245,24 @@ body.dark-theme .partners-strip {
   stroke-width: 2px;
   stroke-linejoin: round;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* The "lift" comes from scaling around the shape's own centre, not from
+     translateY. translateY moved the whole path up and away from the cursor, so
+     hovering the bottom edge dropped the cursor out of the shape, hover
+     released, the path snapped back under the cursor, hover re-triggered -- a
+     rapid loop that read as shaking. Scaling from centre grows toward the cursor
+     instead of retreating from it, so the lift is stable at every edge. */
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+              fill 0.25s ease, stroke 0.25s ease, stroke-width 0.25s ease,
+              filter 0.25s ease;
 }
 .ghana-map .gh-region:hover,
 .ghana-map .gh-region.selected {
   fill: rgba(255, 215, 0, 0.85) !important;
   stroke: #ffffff !important;
   stroke-width: 3.5px;
-  transform: translateY(-5px) scale(1.03);
+  transform: scale(1.05);
   filter: drop-shadow(0 0 25px rgba(255, 215, 0, 0.9));
 }
 .ghana-map .region-label {
