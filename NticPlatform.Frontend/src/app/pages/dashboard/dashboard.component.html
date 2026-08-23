@@ -61,6 +61,34 @@
       <div>
         <!-- Student Portal Coursework -->
         <div *ngIf="activeRoleId === 'student'">
+          <!-- My Teams / mentor status. A solo entrant is a team of one, so this
+               is where an individual sees their competition team and can ask for
+               a mentor if none is assigned. -->
+          <div *ngIf="myTeams.length > 0" class="card" style="margin-bottom:16px;">
+            <div class="card-header" style="display:flex;align-items:center;gap:8px;">
+              <span class="material-symbols-outlined" style="font-size:18px;">diversity_3</span>
+              <h3 style="margin:0;font-size:14px;">My Competition Teams</h3>
+            </div>
+            <div class="card-body" style="padding:12px;display:flex;flex-direction:column;gap:10px;">
+              <div *ngFor="let t of myTeams" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;">
+                <div style="min-width:0;">
+                  <div style="font-weight:700;font-size:13px;">{{ t.name }}
+                    <span *ngIf="t.isSolo" class="badge" style="font-size:9px;">Individual</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--on-surface-variant);">{{ t.track || 'No track' }}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                  <span *ngIf="t.mentorId" class="badge secondary" style="font-size:10px;">Mentor assigned</span>
+                  <span *ngIf="!t.mentorId && t.mentorStatus === 'requested'" class="badge primary" style="font-size:10px;">Mentor requested</span>
+                  <button *ngIf="!t.mentorId && t.mentorStatus !== 'requested'"
+                          class="btn btn-sm" (click)="requestMentor(t.id)" style="font-size:11px;">
+                    <span class="material-symbols-outlined" style="font-size:14px;">co_present</span> Request a mentor
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Was bound to `enrolledTracks`, which was declared as [] and never
                assigned anywhere in the codebase -- so this grid was permanently
                empty for every student. It now reads real enrolments, and "View All"
@@ -321,6 +349,9 @@
             <button class="btn btn-primary btn-sm" (click)="openAddTeamModal()" style="margin-left: auto;">
               <span class="material-symbols-outlined">add</span>Register Team
             </button>
+            <button class="btn btn-secondary btn-sm" (click)="openInstitutionPortal()" style="margin-left: 8px;">
+              <span class="material-symbols-outlined">manage_accounts</span>Student Portal
+            </button>
           </div>
 
           <!-- School Teams Roster List -->
@@ -337,6 +368,18 @@
                   <div><strong>Team Lead:</strong> {{ team.lead }}</div>
                   <div><strong>Members:</strong> {{ team.members }} active students</div>
                   <div *ngIf="team.mentor"><strong>Mentor:</strong> {{ team.mentor }}</div>
+                  <!-- Assign a real instructor account as mentor. Backed by
+                       PATCH /api/teams/{id}/mentor, scoped to this institution. -->
+                  <div style="margin-top:6px;display:flex;align-items:center;gap:6px;">
+                    <span class="material-symbols-outlined" style="font-size:14px;color:var(--primary);">co_present</span>
+                    <select class="mentor-assign-select"
+                            [ngModel]="team.mentorId || ''"
+                            (ngModelChange)="assignMentor(team.id, $event)"
+                            style="flex:1;font-size:11.5px;padding:5px 8px;border:1px solid var(--outline-variant);border-radius:6px;">
+                      <option value="">{{ team.mentorId ? 'Change mentor…' : 'Assign a mentor…' }}</option>
+                      <option *ngFor="let inst of institutionInstructors" [value]="inst.id">{{ inst.full_name }}</option>
+                    </select>
+                  </div>
                   <div *ngIf="team.motto" style="font-style:italic;color:var(--primary);margin-top:4px;border-top:1px dashed var(--outline-variant);padding-top:4px;">"{{ team.motto }}"</div>
                   
                   <!-- Display Roster Chips if available -->
@@ -1474,6 +1517,18 @@
               <div class="cc-control-card-label">Manage Admins</div>
               <div class="cc-control-card-desc">Create, edit, and manage administrator accounts and their permissions.</div>
               <div class="cc-control-card-count">{{ adminUsers.length }} admins active</div>
+            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+          </div>
+
+          <div class="cc-control-card" (click)="autoAssignMentors()" *ngIf="canManageUsers">
+            <div class="cc-control-card-icon cc-icon-admins">
+              <span class="material-symbols-outlined">co_present</span>
+            </div>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">Auto-assign Mentors</div>
+              <div class="cc-control-card-desc">Give every team without a mentor an instructor -- squads and individual entrants alike. Matched by track, balanced by load.</div>
+              <div class="cc-control-card-count">Covers anyone who didn't request one</div>
             </div>
             <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
@@ -3321,19 +3376,71 @@
 
       <div class="cms-form-error" *ngIf="landingCopySaveState === 'error'">Failed to publish. Please try again.</div>
 
-      <div *ngFor="let section of landingCopySections" class="cms-pagecopy-section">
+      <!-- ── Copy Search & Quick Filters ── -->
+      <div class="cms-copy-search-bar">
+        <div class="cms-copy-search-top">
+          <div class="cms-search-input-wrap">
+            <span class="material-symbols-outlined cms-search-icon">search</span>
+            <input type="text" [(ngModel)]="landingCopySearchQuery" (ngModelChange)="updateLandingCopyFilter()"
+                   placeholder="Search by section, label, button, key, or text... (e.g. 'button', 'Why We Exist', 'apply', 'sponsor')">
+            <button *ngIf="landingCopySearchQuery" class="cms-search-clear" (click)="clearLandingCopySearch()" title="Clear search">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="cms-copy-filter-chips">
+          <button type="button" class="cms-filter-chip" [class.active]="landingCopyFilterType === 'all'" (click)="setLandingCopyFilter('all')">
+            <span class="material-symbols-outlined">select_all</span> All Fields
+          </button>
+          <button type="button" class="cms-filter-chip" [class.active]="landingCopyFilterType === 'buttons'" (click)="setLandingCopyFilter('buttons')">
+            <span class="material-symbols-outlined">smart_button</span> Buttons &amp; Links
+          </button>
+          <button type="button" class="cms-filter-chip" [class.active]="landingCopyFilterType === 'headings'" (click)="setLandingCopyFilter('headings')">
+            <span class="material-symbols-outlined">title</span> Headings &amp; Badges
+          </button>
+          <button type="button" class="cms-filter-chip" [class.active]="landingCopyFilterType === 'descriptions'" (click)="setLandingCopyFilter('descriptions')">
+            <span class="material-symbols-outlined">notes</span> Paragraphs &amp; Body
+          </button>
+        </div>
+
+        <div class="cms-copy-search-stats" *ngIf="landingCopySearchQuery || landingCopyFilterType !== 'all'">
+          <span>Found <strong>{{ totalMatchingCopyFieldsCount }}</strong> fields across <strong>{{ filteredLandingCopySections.length }}</strong> sections</span>
+          <button class="btn-clear-all" (click)="clearLandingCopySearch()">Reset Filter</button>
+        </div>
+      </div>
+
+      <!-- Empty Search State -->
+      <div class="cms-empty-state" *ngIf="filteredLandingCopySections.length === 0" style="padding: 40px 20px; text-align: center;">
+        <span class="material-symbols-outlined" style="font-size: 48px; color: var(--outline); opacity: 0.7;">search_off</span>
+        <h4 style="margin: 12px 0 4px; font-weight: 700; color: var(--on-surface);">No matching copy fields found</h4>
+        <p style="color: var(--on-surface-variant); font-size: 13px; margin: 0 0 16px;">
+          No fields matched "<strong style="color:var(--primary);">{{ landingCopySearchQuery }}</strong>" in current filter.
+        </p>
+        <button class="btn btn-subtle btn-sm" (click)="clearLandingCopySearch()">
+          Clear Search &amp; Show All
+        </button>
+      </div>
+
+      <div *ngFor="let item of filteredLandingCopySections; trackBy: trackBySectionTitle" class="cms-pagecopy-section">
         <div class="cms-pagecopy-section-header">
-          <span class="material-symbols-outlined">{{ section.icon }}</span>
-          <span class="cms-pagecopy-section-title">{{ section.title }}</span>
-          <button class="cms-pagecopy-save-btn" type="button" (click)="saveLandingCopySection(section)"
-            [disabled]="landingCopySavingSection === section.title"
-            [title]="'Save ' + section.title">
-            <span class="material-symbols-outlined">{{ landingCopySavingSection === section.title ? 'hourglass_top' : 'save' }}</span>
+          <span class="material-symbols-outlined">{{ item.section.icon }}</span>
+          <span class="cms-pagecopy-section-title">{{ item.section.title }}</span>
+          <span class="cms-section-match-badge" *ngIf="landingCopySearchQuery || landingCopyFilterType !== 'all'">
+            {{ item.fields.length }} / {{ item.section.fields.length }} fields
+          </span>
+          <button class="cms-pagecopy-save-btn" type="button" (click)="saveLandingCopySection(item.section)"
+            [disabled]="landingCopySavingSection === item.section.title"
+            [title]="'Save ' + item.section.title">
+            <span class="material-symbols-outlined">{{ landingCopySavingSection === item.section.title ? 'hourglass_top' : 'save' }}</span>
           </button>
         </div>
         <div class="cms-form-grid">
-          <div class="cms-field" *ngFor="let field of section.fields" [ngClass]="{ 'cms-field-full': field.multiline }">
-            <label>{{ field.label }}</label>
+          <div class="cms-field" *ngFor="let field of item.fields; trackBy: trackByFieldKey" [ngClass]="{ 'cms-field-full': field.multiline }">
+            <div class="cms-field-label-row">
+              <label>{{ field.label }}</label>
+              <span class="cms-field-key">{{ field.key }}</span>
+            </div>
             <textarea *ngIf="field.multiline" rows="2" [(ngModel)]="landingCopyForm[field.key]" [placeholder]="'Enter ' + field.label.toLowerCase() + '...'"></textarea>
             <input *ngIf="!field.multiline" type="text" [(ngModel)]="landingCopyForm[field.key]" [placeholder]="'Enter ' + field.label.toLowerCase() + '...'">
           </div>
@@ -4511,13 +4618,13 @@
     <div class="ticket-modal preview-application-modal" (click)="$event.stopPropagation()">
 
       <!-- Banner Header -->
-      <div class="preview-banner" [class]="'type-' + (activePreviewRequest.type === 'School Registration' ? 'school' : activePreviewRequest.type === 'Team Addition' ? 'team' : activePreviewRequest.type === 'Student Registration' ? 'student' : 'instructor')">
+      <div class="preview-banner" [class]="'type-' + (activePreviewRequest.type === 'School Registration' ? 'school' : (activePreviewRequest.type === 'Team Addition' || activePreviewRequest.type === 'Team Modification') ? 'team' : activePreviewRequest.type === 'Student Registration' ? 'student' : 'instructor')">
         <div class="preview-banner-row">
           <div class="preview-banner-icon">
             <img *ngIf="activePreviewRequest.type === 'School Registration' && getLogoUrl(activePreviewRequest.details)"
                  [src]="getLogoUrl(activePreviewRequest.details)" alt="Logo" class="preview-banner-logo">
             <span *ngIf="!getLogoUrl(activePreviewRequest.details)" class="material-symbols-outlined">
-              {{ activePreviewRequest.type === 'School Registration' ? 'account_balance' : activePreviewRequest.type === 'Team Addition' ? 'groups' : activePreviewRequest.type === 'Student Registration' ? 'person' : 'school' }}
+              {{ activePreviewRequest.type === 'School Registration' ? 'account_balance' : activePreviewRequest.type === 'Team Modification' ? 'edit_note' : activePreviewRequest.type === 'Team Addition' ? 'groups' : activePreviewRequest.type === 'Student Registration' ? 'person' : 'school' }}
             </span>
           </div>
           <div class="preview-banner-info">
@@ -4596,7 +4703,7 @@
                 <span class="material-symbols-outlined detail-icon">school</span>
                 <div class="detail-content">
                   <span class="detail-label">Students Registered</span>
-                  <span class="detail-value">{{ activePreviewRequest.details.studentCount || 0 }}</span>
+                  <span class="detail-value">{{ getSchoolStudentCount(activePreviewRequest.details) }}</span>
                 </div>
               </div>
               <div class="preview-detail-card">
@@ -4665,8 +4772,8 @@
                     Track: <strong>{{ team.track || 'Coding' }}</strong>
                     <span *ngIf="team.leadName"> · Lead: <strong>{{ team.leadName }}</strong></span>
                   </div>
-                  <div *ngIf="team.rosterList?.length > 1" style="font-size:11px;color:var(--on-surface-variant);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                    Members: {{ team.rosterList.join(', ') }}
+                  <div *ngIf="getTeamMembers(team).length > 0" style="font-size:11px;color:var(--on-surface-variant);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    Members ({{ getTeamMembers(team).length }}): {{ getTeamMembers(team).join(', ') }}
                   </div>
                 </div>
                 <span class="badge secondary" style="flex-shrink:0;white-space:nowrap;">{{ team.track || 'Coding' }}</span>
@@ -4759,7 +4866,74 @@
           </div>
         </ng-container>
 
-        <!-- === Instructor Access === -->
+        <!-- = = =  Team Modification = = =  -->
+        <ng-container *ngIf="activePreviewRequest.type === 'Team Modification'">
+          <div class="preview-section">
+            <div class="preview-section-header">
+              <span class="material-symbols-outlined preview-section-icon">edit_note</span>
+              <span class="preview-section-title">Requested Squad Modifications</span>
+            </div>
+            <div class="preview-details-grid">
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">badge</span>
+                <div class="detail-content">
+                  <span class="detail-label">Original Squad Name</span>
+                  <span class="detail-value" style="text-decoration:line-through;color:var(--error);">{{ activePreviewRequest.details.originalName || activePreviewRequest.entity }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">verified</span>
+                <div class="detail-content">
+                  <span class="detail-label">Requested New Name</span>
+                  <span class="detail-value" style="font-weight:700;color:var(--primary);">{{ activePreviewRequest.details.newName || activePreviewRequest.entity }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">account_balance</span>
+                <div class="detail-content">
+                  <span class="detail-label">Institution</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.school || activePreviewRequest.details.institution }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card">
+                <span class="material-symbols-outlined detail-icon">category</span>
+                <div class="detail-content">
+                  <span class="detail-label">Competition Track</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.track }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card full-width" *ngIf="activePreviewRequest.details.motto">
+                <span class="material-symbols-outlined detail-icon">tips_and_updates</span>
+                <div class="detail-content">
+                  <span class="detail-label">Project Motto / Innovation Theme</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.motto }}</span>
+                </div>
+              </div>
+              <div class="preview-detail-card" *ngIf="activePreviewRequest.details.mentor">
+                <span class="material-symbols-outlined detail-icon">school</span>
+                <div class="detail-content">
+                  <span class="detail-label">Assigned Mentor</span>
+                  <span class="detail-value">{{ activePreviewRequest.details.mentor }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="preview-section" *ngIf="activePreviewRequest.details.members?.length">
+            <div class="preview-section-header">
+              <span class="material-symbols-outlined preview-section-icon">group</span>
+              <span class="preview-section-title">Updated Squad Roster ({{ activePreviewRequest.details.members.length }} Students)</span>
+            </div>
+            <div class="preview-members-list">
+              <div class="preview-member-chip" *ngFor="let m of activePreviewRequest.details.members; let i = index">
+                <div class="member-avatar">{{ i + 1 }}</div>
+                <span class="member-name">{{ m }} {{ i === 0 ? '(Captain)' : '' }}</span>
+              </div>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- = = =  Instructor Access = = =  -->
         <ng-container *ngIf="activePreviewRequest.type === 'Instructor Access'">
           <div class="preview-section">
             <div class="preview-section-header">
@@ -5603,8 +5777,19 @@
         
         <!-- Section 1: Track Selector -->
         <div class="enlist-section">
-          <label class="enlist-label">1. Select Competition Track <span class="req">*</span></label>
-          <div class="track-cards-grid">
+          <label class="enlist-label">1. {{ editingTeamOriginalName ? 'Competition Track (Locked)' : 'Select Competition Track' }} <span class="req">*</span></label>
+          
+          <!-- Locked Banner for Edit Mode -->
+          <div *ngIf="editingTeamOriginalName" class="track-locked-banner" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(0,63,135,0.06);border:1px solid rgba(0,63,135,0.2);border-radius:10px;margin-bottom:8px;">
+            <span class="material-symbols-outlined" style="color:var(--primary);font-size:24px;">lock</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--on-surface);">Track Locked: {{ teamForm.track }}</div>
+              <div style="font-size:11px;color:var(--on-surface-variant);margin-top:2px;">Competition track is bound to approved registration. Track reassignments require official administrative approval.</div>
+            </div>
+          </div>
+
+          <!-- Selectable Grid for New Team Registration -->
+          <div class="track-cards-grid" *ngIf="!editingTeamOriginalName">
             <div 
               class="track-select-card" 
               [class.active]="teamForm.track === 'Coding'" 
@@ -5710,6 +5895,20 @@
             </div>
 
             <div class="enlist-field full-width">
+              <span class="field-label">Team Lead Email <span class="optional">(Optional — links their account)</span></span>
+              <div class="input-with-icon">
+                <span class="material-symbols-outlined prefix-icon">alternate_email</span>
+                <input 
+                  type="email" 
+                  name="teamLeadEmail" 
+                  [(ngModel)]="teamForm.leadEmail" 
+                  placeholder="e.g. samuel.osei@student.ntic.edu.gh" 
+                  class="enlist-input"
+                >
+              </div>
+            </div>
+
+            <div class="enlist-field full-width">
               <span class="field-label">Project Motto / Innovation Theme <span class="optional">(Optional)</span></span>
               <div class="input-with-icon">
                 <span class="material-symbols-outlined prefix-icon">tips_and_updates</span>
@@ -5762,6 +5961,13 @@
                   [placeholder]="'Student Member #' + (idx + 2) + ' Full Name (e.g. Amina Yusuf)'" 
                   class="enlist-input member-name-input"
                 >
+                <input 
+                  type="email" 
+                  [name]="'member_email_' + idx" 
+                  [(ngModel)]="teamForm.memberEmails[idx]" 
+                  placeholder="email (optional)" 
+                  class="enlist-input member-email-input"
+                >
               </div>
             </div>
           </div>
@@ -5770,14 +5976,18 @@
         <!-- Modal Footer Actions -->
         <div class="enlist-footer">
           <div class="enlist-footer-info">
-            <span class="material-symbols-outlined" style="color:#0ea5e9;font-size:18px;">verified</span>
-            <span>Enlisted squads gain immediate access to LMS arenas & challenge repos.</span>
+            <span class="material-symbols-outlined" style="color:var(--primary);font-size:18px;">
+              hourglass_top
+            </span>
+            <span>
+              {{ editingTeamOriginalName ? 'Squad name, roster, and mentor changes require Super Admin review and approval before updating tournament records.' : 'New squad submissions are routed to Super Admin for tournament bracket approval.' }}
+            </span>
           </div>
           <div class="enlist-actions">
             <button type="button" class="enlist-btn-cancel" (click)="closeAddTeamModal()">Cancel</button>
             <button type="submit" class="enlist-btn-submit" [disabled]="!addTeamForm.form.valid">
-              <span class="material-symbols-outlined">{{ editingTeamOriginalName ? 'save' : 'rocket_launch' }}</span>
-              {{ editingTeamOriginalName ? 'Save Roster Changes' : 'Enlist Squad into Tournament' }}
+              <span class="material-symbols-outlined">send</span>
+              {{ editingTeamOriginalName ? 'Submit Modifications for Admin Approval' : 'Submit Squad for Admin Approval' }}
             </button>
           </div>
         </div>
@@ -5975,6 +6185,77 @@
       </div>
       <div class="admin-modal-footer" style="padding:12px 20px;border-top:1px solid var(--outline-variant);display:flex;justify-content:flex-end;">
         <button class="btn btn-primary btn-sm" (click)="closeMemberProfileModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Institution Student Portal Modal -->
+  <div class="admin-modal-overlay" *ngIf="isPortalOpen" (click)="closeInstitutionPortal()">
+    <div class="admin-modal" (click)="$event.stopPropagation()" style="max-width:760px;border-radius:16px;max-height:88vh;display:flex;flex-direction:column;">
+      <div class="admin-modal-header" style="background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="material-symbols-outlined" style="font-size:24px;">manage_accounts</span>
+          <div>
+            <h3 style="margin:0;font-size:16px;">Student Portal — {{ schoolName }}</h3>
+            <span style="font-size:11px;opacity:0.85;">Manage the login accounts of students under your institution</span>
+          </div>
+        </div>
+        <button class="cc-rec-modal-close" (click)="closeInstitutionPortal()" type="button" style="color:#fff;">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div style="padding:16px 20px;overflow-y:auto;flex:1;">
+        <!-- One-time credentials banner, shown after issuing -->
+        <div *ngIf="issuedCredentials" style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:14px;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span class="material-symbols-outlined" style="color:#059669;">key</span>
+            <strong style="color:#065f46;">New login for {{ issuedCredentials.full_name }}</strong>
+          </div>
+          <p style="font-size:12px;color:#065f46;margin:0 0 10px 0;">Give these to the student now. The password is shown once and cannot be retrieved again. They must change it on first login.</p>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:13px;">
+            <div><span style="color:#047857;">Email:</span> <strong>{{ issuedCredentials.email }}</strong></div>
+            <div><span style="color:#047857;">Password:</span> <strong>{{ issuedCredentials.temporary_password }}</strong></div>
+          </div>
+          <button class="btn btn-sm" (click)="dismissIssuedCredentials()" style="margin-top:10px;">Done</button>
+        </div>
+
+        <div *ngIf="institutionLoading" style="text-align:center;padding:32px;color:var(--on-surface-variant);">
+          <span class="material-symbols-outlined" style="font-size:32px;opacity:0.4;">hourglass_top</span>
+          <p style="font-size:13px;">Loading your students…</p>
+        </div>
+
+        <div *ngIf="!institutionLoading && institutionStudents.length === 0" style="text-align:center;padding:32px;color:var(--on-surface-variant);">
+          <span class="material-symbols-outlined" style="font-size:36px;opacity:0.3;">person_off</span>
+          <p style="font-size:13px;margin-top:6px;">No student accounts yet. Students get an account automatically once their team is approved with their email on file.</p>
+        </div>
+
+        <table *ngIf="!institutionLoading && institutionStudents.length > 0" style="width:100%;border-collapse:collapse;font-size:12.5px;">
+          <thead>
+            <tr style="text-align:left;border-bottom:2px solid var(--outline-variant);color:var(--on-surface-variant);">
+              <th style="padding:8px 6px;">Student</th>
+              <th style="padding:8px 6px;">Email</th>
+              <th style="padding:8px 6px;">Login status</th>
+              <th style="padding:8px 6px;text-align:right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of institutionStudents" style="border-bottom:1px solid var(--outline-variant);">
+              <td style="padding:8px 6px;font-weight:600;">{{ s.full_name }}</td>
+              <td style="padding:8px 6px;color:var(--on-surface-variant);">{{ s.email }}</td>
+              <td style="padding:8px 6px;">
+                <span *ngIf="s.has_logged_in && !s.must_change_password" class="badge secondary" style="font-size:10px;">Active</span>
+                <span *ngIf="s.must_change_password" class="badge primary" style="font-size:10px;">Awaiting first login</span>
+                <span *ngIf="!s.has_logged_in && !s.must_change_password" class="badge" style="font-size:10px;">Never signed in</span>
+              </td>
+              <td style="padding:8px 6px;text-align:right;">
+                <button class="btn btn-sm" (click)="resetStudentCredentials(s)" style="font-size:11px;">
+                  <span class="material-symbols-outlined" style="font-size:14px;">key</span> Issue login
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>

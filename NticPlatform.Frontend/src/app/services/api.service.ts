@@ -147,6 +147,8 @@ export interface AuthoredCourse {
   assignment_count: number;
   awaiting_grading: number;
   average_progress: number;
+  /** The cycle this course prepares for, or null for evergreen material. */
+  competitionId?: string | null;
 }
 
 /** One enrolled student on a course the caller owns. */
@@ -569,22 +571,23 @@ export class ApiService {
   // browser's localStorage while the UI reported success.
 
   /** Courses the caller authored, with live roster and grading counts. */
-  getMyAuthoredCourses(): Observable<AuthoredCourse[]> {
-    return this.http.get<AuthoredCourse[]>(this.apiUrl + '/lms/my-courses');
+  getMyAuthoredCourses(competitionId?: string): Observable<AuthoredCourse[]> {
+    const qs = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : '';
+    return this.http.get<AuthoredCourse[]>(this.apiUrl + '/lms/my-courses' + qs);
   }
 
   createAuthoredCourse(payload: {
     title: string; track?: string; icon?: string; level?: string;
-    description?: string; modules?: number;
-  }): Observable<{ id: string; title: string; approval_status: string }> {
-    return this.http.post<{ id: string; title: string; approval_status: string }>(
+    description?: string; modules?: number; competition_id?: string;
+  }): Observable<{ id: string; title: string; approval_status: string; competitionId?: string | null }> {
+    return this.http.post<{ id: string; title: string; approval_status: string; competitionId?: string | null }>(
       this.apiUrl + '/lms/courses', payload
     );
   }
 
   updateAuthoredCourse(courseId: string, payload: {
     title: string; track?: string; icon?: string; level?: string;
-    description?: string; modules?: number;
+    description?: string; modules?: number; competition_id?: string;
   }): Observable<any> {
     return this.http.patch(`${this.apiUrl}/lms/courses/${encodeURIComponent(courseId)}`, payload);
   }
@@ -1037,16 +1040,72 @@ export class ApiService {
     return this.http.get<any[]>(this.apiUrl + '/teams' + q);
   }
 
-  createTeam(payload: { name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string; competition_id?: string | null }): Observable<any> {
+  createTeam(payload: { name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string; competition_id?: string | null; lead_email?: string; member_emails?: string[] }): Observable<any> {
     return this.http.post(this.apiUrl + '/teams', payload);
   }
 
-  updateTeam(id: string, payload: { name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string; competition_id?: string | null }): Observable<any> {
+  updateTeam(id: string, payload: { name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string; competition_id?: string | null; lead_email?: string; member_emails?: string[] }): Observable<any> {
     return this.http.patch(this.apiUrl + '/teams/' + id, payload);
   }
 
   deleteTeam(id: string): Observable<any> {
     return this.http.delete(this.apiUrl + '/teams/' + id);
+  }
+
+  // ── Institution student portal & mentors ──────────────────────────
+
+  /** Student accounts belonging to the caller's institution (or all, for admins). */
+  getInstitutionStudents(): Observable<Array<{
+    id: string; full_name: string; email: string; ticket: string;
+    status: string; organization: string; must_change_password: boolean;
+    has_logged_in: boolean;
+  }>> {
+    return this.http.get<any[]>(this.apiUrl + '/institution/students');
+  }
+
+  /** Issue a fresh one-time password for a student in the caller's institution. */
+  resetStudentCredentials(studentId: string): Observable<{
+    id: string; full_name: string; email: string; temporary_password: string;
+  }> {
+    return this.http.post<any>(
+      this.apiUrl + '/institution/students/' + encodeURIComponent(studentId) + '/reset-credentials',
+      {}
+    );
+  }
+
+  /** Instructors the caller can pick a mentor from. */
+  getInstitutionInstructors(): Observable<Array<{
+    id: string; full_name: string; email: string; organization: string;
+  }>> {
+    return this.http.get<any[]>(this.apiUrl + '/institution/instructors');
+  }
+
+  /** Assign an instructor as a team's mentor. */
+  assignTeamMentor(teamId: string, mentorId: string): Observable<any> {
+    return this.http.patch(
+      this.apiUrl + '/teams/' + encodeURIComponent(teamId) + '/mentor',
+      { mentor_id: mentorId }
+    );
+  }
+
+  /** A team with no institution asks to be given a mentor. */
+  requestTeamMentor(teamId: string): Observable<any> {
+    return this.http.post(
+      this.apiUrl + '/teams/' + encodeURIComponent(teamId) + '/request-mentor', {}
+    );
+  }
+
+  /** Admin: give every mentor-less team an instructor. */
+  autoAssignMentors(): Observable<{ assigned: number }> {
+    return this.http.post<{ assigned: number }>(this.apiUrl + '/teams/auto-assign-mentors', {});
+  }
+
+  /** The teams the signed-in student belongs to (solo or squad), with mentor status. */
+  getMyTeams(): Observable<Array<{
+    id: string; name: string; track: string; competitionId: string | null;
+    mentorId: string | null; mentorStatus: string; isSolo: boolean; isLead: boolean;
+  }>> {
+    return this.http.get<any[]>(this.apiUrl + '/teams/mine');
   }
 
   gradeSubmission(id: string, payload: { score?: number; feedback?: string; status?: string }): Observable<any> {

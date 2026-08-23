@@ -1920,7 +1920,28 @@ try:
                 status_code=403,
                 detail="Only a student account can perform this action",
             )
-        return _ensure_student_record(cur, actor)
+        student_id = _ensure_student_record(cur, actor)
+        # A team may have been formed before this student registered, leaving
+        # name-only membership rows. Now that their account is resolved, link
+        # those rows so team derivation and roster grouping work.
+        _link_membership_by_email(cur, student_id, actor.get("email") or "")
+        return student_id
+
+    def _link_membership_by_email(cur, student_id: str, email: str) -> None:
+        """Attach any name-only team_members rows to a now-known student account.
+
+        A team may be formed before its members register. Those rows carry an
+        email but a NULL student_id. Once the student's account is resolved,
+        link the rows so team derivation and roster grouping start working.
+        """
+        email = (email or "").strip().lower()
+        if not email:
+            return
+        cur.execute(
+            "UPDATE team_members SET student_id = %s "
+            "WHERE student_id IS NULL AND LOWER(COALESCE(email, '')) = %s",
+            (student_id, email),
+        )
 
     def _recount_course_enrolment(cur, course_id: str) -> int:
         """Keep lms_courses.enrolled in step with reality.
@@ -1954,7 +1975,7 @@ try:
             student_id = _require_student_identity(cur, actor)
 
             cur.execute(
-                "SELECT id, title, approval_status, status FROM lms_courses WHERE id = %s",
+                "SELECT id, title, approval_status, status, competition_id FROM lms_courses WHERE id = %s",
                 (payload.course_id,),
             )
             course = cur.fetchone()
@@ -1966,13 +1987,29 @@ try:
                 conn.rollback(); cur.close()
                 raise HTTPException(status_code=409, detail="This course is not open for enrolment yet")
 
+            # Derive the student's squad: if this course belongs to a cycle and the
+            # student is a member of a team in that cycle, record the team so an
+            # instructor's roster can be grouped by squad. Absent that, the
+            # enrolment is individual / open-registration and team_id stays NULL.
+            team_id = None
+            if course[4]:
+                cur.execute(
+                    "SELECT tm.team_id FROM team_members tm "
+                    "JOIN teams t ON t.id = tm.team_id "
+                    "WHERE tm.student_id = %s AND t.competition_id = %s LIMIT 1",
+                    (student_id, course[4]),
+                )
+                trow = cur.fetchone()
+                team_id = trow[0] if trow else None
+
             cur.execute(
                 "INSERT INTO lms_enrollments (id, course_id, student_id, student_name, "
-                "student_email, progress_pct, enrolled_at, last_active, status) "
-                "VALUES (%s, %s, %s, %s, %s, 0, %s, %s, 'active') "
+                "student_email, progress_pct, enrolled_at, last_active, status, team_id) "
+                "VALUES (%s, %s, %s, %s, %s, 0, %s, %s, 'active', %s) "
                 "ON CONFLICT (course_id, student_id) DO UPDATE SET "
                 "status = 'active', last_active = EXCLUDED.last_active, "
-                "student_name = EXCLUDED.student_name, student_email = EXCLUDED.student_email "
+                "student_name = EXCLUDED.student_name, student_email = EXCLUDED.student_email, "
+                "team_id = EXCLUDED.team_id "
                 "RETURNING id",
                 (
                     "enr-" + str(uuid.uuid4())[:8],
@@ -1982,6 +2019,7 @@ try:
                     actor.get("email") or "",
                     datetime.datetime.now(datetime.UTC).isoformat(),
                     datetime.datetime.now(datetime.UTC).isoformat(),
+                    team_id,
                 ),
             )
             enrolment_id = cur.fetchone()[0]
@@ -2386,14 +2424,22 @@ try:
                 ),
             )
             registration_id = cur.fetchone()[0]
+            # Model the solo entrant as a team of one, so mentors and LMS
+            # auto-enrolment work for them the same as for a squad (Option B).
+            solo_team_id = _ensure_solo_team(
+                cur, student_id, actor.get("full_name") or "",
+                actor.get("email") or "", payload.competition_id, comp[3] or "",
+            )
             conn.commit()
             cur.close()
         finally:
             release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "competition_registrations"})
+        broadcast_async({"type": "data_changed", "collection": "teams"})
         return {
             "id": registration_id, "competition_id": payload.competition_id,
             "competition_title": comp[1], "status": "registered",
+            "solo_team_id": solo_team_id,
         }
 
     @app.delete("/api/competitions/register/{competition_id}")
@@ -2518,6 +2564,9 @@ try:
         level: str = Field(default="", max_length=50)
         description: str = Field(default="", max_length=5000)
         modules: int = Field(default=0, ge=0, le=500)
+        # Which cycle this course prepares students for. Empty means evergreen
+        # material that is not tied to one competition.
+        competition_id: str = Field(default="", max_length=64)
 
     @app.post("/api/lms/courses", status_code=status.HTTP_201_CREATED)
     def create_my_course(payload: LmsCoursePayload, actor: dict = Depends(require_role(LMS_ROLES))):
@@ -2532,17 +2581,21 @@ try:
         conn = _get_db()
         try:
             cur = conn.cursor()
+            # Validated rather than stored blind: there are no FK constraints on
+            # competitions.id, so a stale or typo'd id would be accepted and the
+            # course would simply never appear in any cycle-scoped view.
+            comp_ref = _validate_competition_ref(cur, payload.competition_id or None)
             cur.execute(
                 "INSERT INTO lms_courses (id, title, track, icon, level, description, "
                 "modules, enrolled, completion, status, created_at, submitted_by, "
-                "approval_status, owner_id) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s,0,0,'active',%s,%s,%s,%s)",
+                "approval_status, owner_id, competition_id) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,0,0,'active',%s,%s,%s,%s,%s)",
                 (
                     course_id, payload.title, payload.track, payload.icon, payload.level,
                     payload.description, payload.modules,
                     datetime.datetime.now(datetime.UTC).isoformat(),
                     actor.get("full_name") or actor.get("email") or "",
-                    approval, actor["id"],
+                    approval, actor["id"], comp_ref,
                 ),
             )
             conn.commit()
@@ -2550,7 +2603,12 @@ try:
         finally:
             release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "lms_courses"})
-        return {"id": course_id, "title": payload.title, "approval_status": approval}
+        return {
+            "id": course_id,
+            "title": payload.title,
+            "approval_status": approval,
+            "competitionId": comp_ref,
+        }
 
     @app.patch("/api/lms/courses/{course_id}")
     def update_my_course(
@@ -2566,18 +2624,25 @@ try:
             # An instructor editing already-published content sends it back for
             # review; staff edits stay published.
             approval = existing[3] if _is_lms_staff(actor) else "pending"
+            comp_ref = _validate_competition_ref(cur, payload.competition_id or None)
             cur.execute(
                 "UPDATE lms_courses SET title=%s, track=%s, icon=%s, level=%s, "
-                "description=%s, modules=%s, approval_status=%s WHERE id=%s",
+                "description=%s, modules=%s, approval_status=%s, competition_id=%s "
+                "WHERE id=%s",
                 (payload.title, payload.track, payload.icon, payload.level,
-                 payload.description, payload.modules, approval, course_id),
+                 payload.description, payload.modules, approval, comp_ref, course_id),
             )
             conn.commit()
             cur.close()
         finally:
             release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "lms_courses"})
-        return {"id": course_id, "status": "updated", "approval_status": approval}
+        return {
+            "id": course_id,
+            "status": "updated",
+            "approval_status": approval,
+            "competitionId": comp_ref,
+        }
 
     @app.delete("/api/lms/courses/{course_id}")
     def delete_my_course(course_id: str, actor: dict = Depends(require_role(LMS_ROLES))):
@@ -2609,20 +2674,28 @@ try:
         return {"status": "deleted", "id": course_id}
 
     @app.get("/api/lms/my-courses")
-    def list_my_courses(actor: dict = Depends(require_role(LMS_ROLES))):
-        """Courses the caller authored, with live roster and grading counts."""
+    def list_my_courses(competition_id: str = "", actor: dict = Depends(require_role(LMS_ROLES))):
+        """Courses the caller authored, with live roster and grading counts.
+
+        competition_id scopes the list to one cycle. The LMS previously had no
+        notion of cycles at all -- courses were organised only by `track` -- so an
+        instructor preparing for a specific competition had no way to see just
+        that material.
+        """
         conn = _get_db()
         try:
             cur = conn.cursor()
+            clause = " AND c.competition_id = %s" if competition_id else ""
+            params = (actor["id"],) if not competition_id else (actor["id"], competition_id)
             cur.execute(
                 "SELECT c.id, c.title, c.track, c.icon, c.level, c.description, c.modules, "
-                "c.status, c.approval_status, c.rejection_reason, c.created_at, "
+                "c.status, c.approval_status, c.rejection_reason, c.created_at, c.competition_id, "
                 "(SELECT COUNT(*) FROM lms_enrollments e WHERE e.course_id=c.id AND e.status='active'), "
                 "(SELECT COUNT(*) FROM lms_assignments a WHERE a.course_id=c.id), "
                 "(SELECT COUNT(*) FROM lms_submissions s WHERE s.course_id=c.id AND s.score IS NULL), "
                 "(SELECT ROUND(AVG(e.progress_pct)) FROM lms_enrollments e WHERE e.course_id=c.id AND e.status='active') "
-                "FROM lms_courses c WHERE c.owner_id = %s ORDER BY c.created_at DESC NULLS LAST",
-                (actor["id"],),
+                "FROM lms_courses c WHERE c.owner_id = %s" + clause + " ORDER BY c.created_at DESC NULLS LAST",
+                params,
             )
             rows = cur.fetchall()
             cur.close()
@@ -2634,9 +2707,10 @@ try:
                 "level": r[4] or "", "description": r[5] or "", "modules": r[6] or 0,
                 "status": r[7] or "active", "approval_status": r[8] or "approved",
                 "rejection_reason": r[9] or "", "created_at": r[10] or "",
-                "enrolled_count": r[11] or 0, "assignment_count": r[12] or 0,
-                "awaiting_grading": r[13] or 0,
-                "average_progress": int(r[14]) if r[14] is not None else 0,
+                "competitionId": r[11],
+                "enrolled_count": r[12] or 0, "assignment_count": r[13] or 0,
+                "awaiting_grading": r[14] or 0,
+                "average_progress": int(r[15]) if r[15] is not None else 0,
             }
             for r in rows
         ]
@@ -2655,12 +2729,14 @@ try:
             _load_owned_course(cur, course_id, actor)
             cur.execute(
                 "SELECT e.student_id, e.student_name, e.student_email, e.progress_pct, "
-                "e.enrolled_at, e.last_active, e.status, "
+                "e.enrolled_at, e.last_active, e.status, e.team_id, t.name, "
                 "(SELECT COUNT(*) FROM lms_submissions s WHERE s.course_id=e.course_id AND s.student_id=e.student_id), "
                 "(SELECT COUNT(*) FROM lms_submissions s WHERE s.course_id=e.course_id AND s.student_id=e.student_id AND s.score IS NOT NULL), "
                 "(SELECT ROUND(AVG(s.score)) FROM lms_submissions s WHERE s.course_id=e.course_id AND s.student_id=e.student_id AND s.score IS NOT NULL) "
-                "FROM lms_enrollments e WHERE e.course_id=%s AND e.status='active' "
-                "ORDER BY e.student_name",
+                "FROM lms_enrollments e "
+                "LEFT JOIN teams t ON t.id = e.team_id "
+                "WHERE e.course_id=%s AND e.status='active' "
+                "ORDER BY t.name NULLS LAST, e.student_name",
                 (course_id,),
             )
             rows = cur.fetchall()
@@ -2671,8 +2747,9 @@ try:
             {
                 "student_id": r[0], "student_name": r[1] or "", "student_email": r[2] or "",
                 "progress_pct": r[3] or 0, "enrolled_at": r[4] or "", "last_active": r[5] or "",
-                "status": r[6] or "active", "submissions": r[7] or 0, "graded": r[8] or 0,
-                "average_score": int(r[9]) if r[9] is not None else None,
+                "status": r[6] or "active", "team_id": r[7], "team_name": r[8] or "",
+                "submissions": r[9] or 0, "graded": r[10] or 0,
+                "average_score": int(r[11]) if r[11] is not None else None,
             }
             for r in rows
         ]
@@ -4549,6 +4626,12 @@ try:
         # Which cycle this team is competing in. Optional: teams created before
         # cycles were linked, and teams not tied to one, carry None.
         competition_id: Optional[str] = None
+        # Member identities. Used to build real team_members rows keyed by
+        # account. lead_email/member_emails are optional and may be empty when a
+        # form only collected names; those rows are stored name-only until a
+        # student account is linked.
+        lead_email: str = Field(default="", max_length=150)
+        member_emails: list[str] = Field(default_factory=list)
 
     def _validate_competition_ref(cur, competition_id: Optional[str]) -> Optional[str]:
         """Reject a reference to a cycle that does not exist.
@@ -4564,6 +4647,221 @@ try:
             raise HTTPException(status_code=422, detail=f"Unknown competition cycle '{competition_id}'")
         return competition_id
 
+    def _resolve_student_by_email(cur, email: str) -> Optional[str]:
+        """Map a member email to a students.id, if the account exists.
+
+        A student's `students` row may not exist yet (it is created lazily on
+        first learner action). In that case fall back to the users row, whose id
+        becomes the students.id, so the membership is keyed to the right account
+        from the start and resolves once the students row appears.
+        """
+        email = (email or "").strip().lower()
+        if not email:
+            return None
+        cur.execute(
+            "SELECT id FROM students WHERE LOWER(email) = %s LIMIT 1",
+            (email,),
+        )
+        row = cur.fetchone()
+        if row:
+            return row[0]
+        cur.execute(
+            "SELECT id FROM users WHERE LOWER(email) = %s LIMIT 1",
+            (email,),
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+
+    def _sync_team_members(cur, team_id: str, lead: str, roster: list,
+                           lead_email: str, member_emails: list) -> int:
+        """Rebuild team_members for a team from its roster and any emails.
+
+        Replaces the whole set for the team (idempotent, so edit + create share
+        it). Names are stored as recorded; emails are resolved to students.id
+        where an account already exists. Returns the number of rows written.
+        """
+        names = [n for n in roster if isinstance(n, str) and n.strip()]
+        emails = [e for e in member_emails if isinstance(e, str) and e.strip()]
+
+        # Lead first, then the rest, then any emails without a matching name slot.
+        rows = []
+        if lead and lead.strip():
+            rows.append((True, lead.strip(), (lead_email or "").strip()))
+        for idx, name in enumerate(names):
+            rows.append((False, name, emails[idx] if idx < len(emails) else ""))
+
+        cur.execute("DELETE FROM team_members WHERE team_id = %s", (team_id,))
+        count = 0
+        for is_lead, name, email in rows:
+            student_id = _resolve_student_by_email(cur, email) if email else None
+            member_id = "tm-" + str(uuid.uuid4())[:8]
+            cur.execute(
+                "INSERT INTO team_members (id, team_id, student_id, email, name, is_lead) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (member_id, team_id, student_id, email or None, name, is_lead),
+            )
+            count += 1
+        return count
+
+    def _provision_team_member_accounts(cur, team_id: str, school_name: str) -> list:
+        """Create student accounts for team members who have an email but no account.
+
+        This is what makes "all students under an institution get a student
+        account" real: once a team is approved, every member with an email gets a
+        login under that institution. Accounts are minted server-side with a
+        one-time password and must_change_password=TRUE, so the institution can
+        hand out the initial credentials and the student sets their own on first
+        login. Members who already have an account are left untouched (idempotent).
+
+        Returns a list of {name, email, temporary_password} for the accounts that
+        were newly created, so the caller can surface them to the institution
+        exactly once.
+        """
+        from app.security import hash_password
+        cur.execute(
+            "SELECT id, name, email FROM team_members "
+            "WHERE team_id = %s AND email IS NOT NULL AND student_id IS NULL",
+            (team_id,),
+        )
+        pending = cur.fetchall()
+        created = []
+        for member_row_id, name, email in pending:
+            email_norm = (email or "").strip().lower()
+            if not email_norm:
+                continue
+            # Skip if an account already exists for this email.
+            cur.execute("SELECT id FROM users WHERE lower(email) = %s", (email_norm,))
+            if cur.fetchone():
+                # Link the existing account to the membership and move on.
+                cur.execute("SELECT id FROM users WHERE lower(email) = %s", (email_norm,))
+                uid = cur.fetchone()[0]
+                cur.execute(
+                    "UPDATE team_members SET student_id = %s WHERE id = %s",
+                    (uid, member_row_id),
+                )
+                continue
+
+            user_id = "USR-" + str(uuid.uuid4())[:8]
+            temp_password = _generate_temp_password()
+            ticket = f"NTIC-STU-{_generate_access_code()}"
+            cur.execute(
+                "INSERT INTO users (id, email, full_name, role, ticket, password_hash, "
+                "status, organization, must_change_password) "
+                "VALUES (%s, %s, %s, 'student', %s, %s, 'active', %s, TRUE)",
+                (user_id, email_norm, name or "Student", ticket,
+                 hash_password(temp_password), school_name or None),
+            )
+            # Link the fresh account to the membership row.
+            cur.execute(
+                "UPDATE team_members SET student_id = %s WHERE id = %s",
+                (user_id, member_row_id),
+            )
+            created.append({
+                "name": name or "Student",
+                "email": email_norm,
+                "temporary_password": temp_password,
+                "ticket": ticket,
+            })
+        return created
+
+    def _auto_enroll_team_members(cur, team_id: str, competition_id: str) -> int:
+        """Enrol a team's members on the approved courses for its cycle.
+
+        This is the "seamless" step: once a team is attached to a cycle, its
+        members should already be in that cycle's courses rather than having to
+        find and self-enrol in each one. Only members already linked to a student
+        account are enrolled; name-only rows are picked up later, when the
+        student's identity is resolved (enrolling themselves re-links membership).
+
+        Only 'approved' courses are enrolled: pending moderation content is not
+        student-facing yet. Returns the number of new enrolment rows.
+        """
+        if not competition_id:
+            return 0
+        cur.execute(
+            "SELECT c.id FROM lms_courses c "
+            "WHERE c.competition_id = %s AND (c.approval_status IS NULL OR c.approval_status = 'approved') "
+            "AND c.status = 'active'",
+            (competition_id,),
+        )
+        courses = [r[0] for r in cur.fetchall()]
+        if not courses:
+            return 0
+
+        cur.execute(
+            "SELECT student_id, name, email FROM team_members "
+            "WHERE team_id = %s AND student_id IS NOT NULL",
+            (team_id,),
+        )
+        members = cur.fetchall()
+        if not members:
+            return 0
+
+        now = datetime.datetime.now(datetime.UTC).isoformat()
+        created = 0
+        for course_id in courses:
+            for student_id, name, email in members:
+                cur.execute(
+                    "INSERT INTO lms_enrollments (id, course_id, student_id, student_name, "
+                    "student_email, progress_pct, enrolled_at, last_active, status, team_id) "
+                    "VALUES (%s, %s, %s, %s, %s, 0, %s, %s, 'active', %s) "
+                    "ON CONFLICT (course_id, student_id) DO UPDATE SET "
+                    "team_id = EXCLUDED.team_id, status = 'active'",
+                    (
+                        "enr-" + str(uuid.uuid4())[:8],
+                        course_id,
+                        student_id,
+                        name or "Member",
+                        email or "",
+                        now,
+                        now,
+                        team_id,
+                    ),
+                )
+                created += 1
+            _recount_course_enrolment(cur, course_id)
+        return created
+
+    def _ensure_solo_team(cur, student_id: str, full_name: str, email: str,
+                          competition_id: str, track: str) -> str:
+        """Represent a solo/open entrant as a one-person team for a cycle.
+
+        Option B of the mentor design: rather than a second mentor code path for
+        individuals, a solo entrant becomes a team of one. That means mentors,
+        auto-assignment, LMS auto-enrolment and roster grouping all work for them
+        with no extra logic. Idempotent -- re-registering returns the same solo
+        team rather than making duplicates.
+        """
+        # A solo team is identified by its single member and its cycle.
+        cur.execute(
+            "SELECT t.id FROM teams t JOIN team_members m ON m.team_id = t.id "
+            "WHERE t.is_solo = TRUE AND m.student_id = %s "
+            "AND COALESCE(t.competition_id, '') = COALESCE(%s, '') LIMIT 1",
+            (student_id, competition_id or None),
+        )
+        row = cur.fetchone()
+        if row:
+            return row[0]
+
+        team_id = "team-" + str(uuid.uuid4())[:8]
+        display = (full_name or email or "Individual Entrant").strip()
+        cur.execute(
+            "INSERT INTO teams (id, name, track, lead, members, status, school_name, "
+            "competition_id, mentor_status, is_solo, roster_list) "
+            "VALUES (%s, %s, %s, %s, 1, 'In Competition', NULL, %s, 'none', TRUE, %s)",
+            (team_id, f"{display} (Individual)", track or "", display,
+             competition_id or None, json.dumps([display])),
+        )
+        member_id = "tm-" + str(uuid.uuid4())[:8]
+        cur.execute(
+            "INSERT INTO team_members (id, team_id, student_id, email, name, is_lead) "
+            "VALUES (%s, %s, %s, %s, %s, TRUE)",
+            (member_id, team_id, student_id, (email or "").strip().lower() or None, display),
+        )
+        if competition_id:
+            _auto_enroll_team_members(cur, team_id, competition_id)
+        return team_id
+
     @app.get("/api/teams")
     def list_teams(competition_id: str = "", _auth: dict = Depends(require_auth)):
         """List teams, optionally scoped to one cycle.
@@ -4577,13 +4875,13 @@ try:
         cur = conn.cursor()
         if competition_id:
             cur.execute(
-                "SELECT id, name, track, lead, members, status, school_name, competition_id, COALESCE(mentor, ''), COALESCE(motto, ''), COALESCE(roster_list, '[]'::jsonb) "
+                "SELECT id, name, track, lead, members, status, school_name, competition_id, COALESCE(mentor, ''), COALESCE(motto, ''), COALESCE(roster_list, '[]'::jsonb), mentor_id, COALESCE(mentor_status, 'none'), COALESCE(is_solo, FALSE) "
                 "FROM teams WHERE competition_id = %s ORDER BY name ASC",
                 (competition_id,),
             )
         else:
             cur.execute(
-                "SELECT id, name, track, lead, members, status, school_name, competition_id, COALESCE(mentor, ''), COALESCE(motto, ''), COALESCE(roster_list, '[]'::jsonb) "
+                "SELECT id, name, track, lead, members, status, school_name, competition_id, COALESCE(mentor, ''), COALESCE(motto, ''), COALESCE(roster_list, '[]'::jsonb), mentor_id, COALESCE(mentor_status, 'none'), COALESCE(is_solo, FALSE) "
                 "FROM teams ORDER BY name ASC"
             )
         rows = cur.fetchall()
@@ -4610,9 +4908,43 @@ try:
                 "competition_id": r[7],
                 "mentor": r[8],
                 "motto": r[9],
-                "rosterList": r_list
+                "rosterList": r_list,
+                "mentorId": r[11] if len(r) > 11 else None,
+                "mentorStatus": r[12] if len(r) > 12 else "none",
+                "isSolo": bool(r[13]) if len(r) > 13 else False,
             })
         return res
+
+    @app.get("/api/teams/mine")
+    def list_my_teams(actor: dict = Depends(require_auth)):
+        """The teams the caller belongs to, with mentor status.
+
+        Lets a student -- solo or in a squad -- see their team and whether it has
+        a mentor, so the "Request a mentor" action has a team id to act on.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT t.id, t.name, t.track, t.competition_id, t.mentor_id, "
+                "COALESCE(t.mentor_status, 'none'), COALESCE(t.is_solo, FALSE), "
+                "m.is_lead "
+                "FROM teams t JOIN team_members m ON m.team_id = t.id "
+                "WHERE m.student_id = %s ORDER BY t.name",
+                (actor["id"],),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {
+                "id": r[0], "name": r[1], "track": r[2] or "",
+                "competitionId": r[3], "mentorId": r[4],
+                "mentorStatus": r[5], "isSolo": bool(r[6]), "isLead": bool(r[7]),
+            }
+            for r in rows
+        ]
 
     # Team writes are decision points, not proposals.
     #
@@ -4646,6 +4978,14 @@ try:
                     "INSERT INTO teams (id, name, track, lead, members, status, school_name, competition_id, mentor, motto, roster_list) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (team_id, payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name, comp_ref, payload.mentor, payload.motto, json.dumps(payload.roster_list))
                 )
+            _sync_team_members(cur, team_id, payload.lead, payload.roster_list,
+                               payload.lead_email, payload.member_emails)
+            # Provision a student login for each member who supplied an email but
+            # has no account yet. This is what puts every student "under" the
+            # institution with a login they can be given.
+            provisioned = _provision_team_member_accounts(cur, team_id, payload.school_name)
+            if comp_ref:
+                _auto_enroll_team_members(cur, team_id, comp_ref)
             conn.commit()
         except HTTPException:
             conn.rollback()
@@ -4660,7 +5000,10 @@ try:
         cur.close()
         release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "teams"})
-        return {"id": team_id, "name": payload.name, "status": payload.status, "competition_id": comp_ref}
+        if provisioned:
+            broadcast_async({"type": "data_changed", "collection": "users"})
+        return {"id": team_id, "name": payload.name, "status": payload.status,
+                "competition_id": comp_ref, "provisioned_accounts": provisioned}
 
     @app.patch("/api/teams/{item_id}")
     def update_team(item_id: str, payload: TeamCreate, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
@@ -4675,6 +5018,13 @@ try:
                 (payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name, comp_ref, payload.mentor, payload.motto, json.dumps(payload.roster_list), item_id)
             )
             row = cur.fetchone()
+            provisioned = []
+            if row:
+                _sync_team_members(cur, item_id, payload.lead, payload.roster_list,
+                                   payload.lead_email, payload.member_emails)
+                provisioned = _provision_team_member_accounts(cur, item_id, payload.school_name)
+                if comp_ref:
+                    _auto_enroll_team_members(cur, item_id, comp_ref)
             conn.commit()
         except HTTPException:
             conn.rollback()
@@ -4691,7 +5041,9 @@ try:
         if not row:
             raise HTTPException(status_code=404, detail="Team not found")
         broadcast_async({"type": "data_changed", "collection": "teams"})
-        return {"id": item_id, "status": "updated"}
+        if provisioned:
+            broadcast_async({"type": "data_changed", "collection": "users"})
+        return {"id": item_id, "status": "updated", "provisioned_accounts": provisioned}
 
     @app.delete("/api/teams/{item_id}")
     def delete_team(item_id: str, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
@@ -4705,6 +5057,286 @@ try:
         release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "teams"})
         return {"status": "deleted", "id": item_id}
+
+    # ── Institution student portal ────────────────────────────────────
+    # An institution (school_admin) can see the student accounts it provisioned
+    # and hand out / reset their initial credentials. Everything is scoped to the
+    # caller's own organisation, so one school cannot see or touch another's
+    # students, and an admin sees all.
+
+    def _actor_org(cur, actor: dict) -> str:
+        cur.execute("SELECT organization FROM users WHERE id = %s", (actor["id"],))
+        row = cur.fetchone()
+        return (row[0] or "").strip() if row else ""
+
+    @app.get("/api/institution/students")
+    def list_institution_students(actor: dict = Depends(require_role(STUDENT_ADMIN_ROLES))):
+        """Student accounts belonging to the caller's institution.
+
+        Lets an institution monitor its students: who has an account, whether they
+        have logged in, and whether they still owe a password change.
+        """
+        is_admin = (actor.get("role") or "") in ("super_admin", "admin")
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            org = _actor_org(cur, actor)
+            if not is_admin and not org:
+                cur.close()
+                raise HTTPException(
+                    status_code=409,
+                    detail="Your account is not linked to an institution.",
+                )
+            if is_admin:
+                cur.execute(
+                    "SELECT id, full_name, email, ticket, status, organization, "
+                    "COALESCE(must_change_password, FALSE), password_changed_at "
+                    "FROM users WHERE role = 'student' ORDER BY organization, full_name"
+                )
+            else:
+                cur.execute(
+                    "SELECT id, full_name, email, ticket, status, organization, "
+                    "COALESCE(must_change_password, FALSE), password_changed_at "
+                    "FROM users WHERE role = 'student' AND LOWER(COALESCE(organization,'')) = LOWER(%s) "
+                    "ORDER BY full_name",
+                    (org,),
+                )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {
+                "id": r[0], "full_name": r[1] or "", "email": r[2] or "",
+                "ticket": r[3] or "", "status": r[4] or "", "organization": r[5] or "",
+                "must_change_password": bool(r[6]),
+                "has_logged_in": r[7] is not None,
+            }
+            for r in rows
+        ]
+
+    @app.post("/api/institution/students/{student_id}/reset-credentials")
+    def reset_student_credentials(student_id: str, actor: dict = Depends(require_role(STUDENT_ADMIN_ROLES))):
+        """Issue a fresh one-time password for a student in the caller's institution.
+
+        The new password is minted server-side (never chosen by the institution)
+        and returned exactly once, and the account is flagged must_change_password
+        so the student sets their own on next login. Scoped: a school_admin may
+        only reset a student in their own organisation. This is the safe form of
+        "the institution provides their login" -- it cannot be used to take over an
+        arbitrary account because the target must be a student in the caller's org.
+        """
+        from app.security import hash_password
+        is_admin = (actor.get("role") or "") in ("super_admin", "admin")
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            org = _actor_org(cur, actor)
+            cur.execute(
+                "SELECT role, organization, full_name, email FROM users WHERE id = %s",
+                (student_id,),
+            )
+            target = cur.fetchone()
+            if not target:
+                cur.close()
+                raise HTTPException(status_code=404, detail="Student not found")
+            if (target[0] or "") != "student":
+                cur.close()
+                raise HTTPException(status_code=400, detail="That account is not a student")
+            if not is_admin and (target[1] or "").strip().lower() != org.lower():
+                cur.close()
+                # Do not disclose students in other institutions.
+                raise HTTPException(status_code=404, detail="Student not found")
+
+            temp_password = _generate_temp_password()
+            cur.execute(
+                "UPDATE users SET password_hash = %s, must_change_password = TRUE, "
+                "password_changed_at = NULL WHERE id = %s",
+                (hash_password(temp_password), student_id),
+            )
+            # Any active session for that student is now stale.
+            cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (student_id,))
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return {
+            "id": student_id,
+            "full_name": target[2] or "",
+            "email": target[3] or "",
+            "temporary_password": temp_password,
+        }
+
+    # ── Mentors ───────────────────────────────────────────────────────
+    # A mentor is an instructor account assigned to a team. This is what lets a
+    # mentor log in, see their students and be monitored, and connects a team to
+    # the LMS instructor flow.
+
+    @app.get("/api/institution/instructors")
+    def list_institution_instructors(actor: dict = Depends(require_role(STUDENT_ADMIN_ROLES))):
+        """Instructors an institution can pick a mentor from.
+
+        School admins see instructors in their own organisation; admins see all.
+        """
+        is_admin = (actor.get("role") or "") in ("super_admin", "admin")
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            org = _actor_org(cur, actor)
+            if is_admin:
+                cur.execute(
+                    "SELECT id, full_name, email, organization FROM users "
+                    "WHERE role = 'instructor' AND LOWER(status) = 'active' ORDER BY full_name"
+                )
+            else:
+                cur.execute(
+                    "SELECT id, full_name, email, organization FROM users "
+                    "WHERE role = 'instructor' AND LOWER(status) = 'active' "
+                    "AND LOWER(COALESCE(organization,'')) = LOWER(%s) ORDER BY full_name",
+                    (org,),
+                )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [{"id": r[0], "full_name": r[1] or "", "email": r[2] or "",
+                 "organization": r[3] or ""} for r in rows]
+
+    class AssignMentorPayload(BaseModel):
+        mentor_id: str = Field(min_length=1, max_length=64)
+
+    @app.patch("/api/teams/{team_id}/mentor")
+    def assign_team_mentor(team_id: str, payload: AssignMentorPayload,
+                           actor: dict = Depends(require_role(STUDENT_ADMIN_ROLES))):
+        """Assign an instructor as a team's mentor.
+
+        The target must be an instructor account. A school_admin may only assign a
+        mentor to a team in their own institution, and only pick an instructor in
+        their own institution; an admin may do either.
+        """
+        is_admin = (actor.get("role") or "") in ("super_admin", "admin")
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            org = _actor_org(cur, actor)
+            cur.execute("SELECT school_name FROM teams WHERE id = %s", (team_id,))
+            team = cur.fetchone()
+            if not team:
+                cur.close()
+                raise HTTPException(status_code=404, detail="Team not found")
+            if not is_admin and (team[0] or "").strip().lower() != org.lower():
+                cur.close()
+                raise HTTPException(status_code=404, detail="Team not found")
+
+            cur.execute(
+                "SELECT role, organization FROM users WHERE id = %s", (payload.mentor_id,)
+            )
+            mentor = cur.fetchone()
+            if not mentor or (mentor[0] or "") != "instructor":
+                cur.close()
+                raise HTTPException(status_code=400, detail="Mentor must be an instructor account")
+            if not is_admin and (mentor[1] or "").strip().lower() != org.lower():
+                cur.close()
+                raise HTTPException(status_code=400, detail="That instructor is not in your institution")
+
+            cur.execute(
+                "UPDATE teams SET mentor_id = %s, mentor_status = 'assigned' WHERE id = %s",
+                (payload.mentor_id, team_id),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "teams"})
+        return {"team_id": team_id, "mentor_id": payload.mentor_id, "mentor_status": "assigned"}
+
+    @app.post("/api/teams/{team_id}/request-mentor")
+    def request_team_mentor(team_id: str, actor: dict = Depends(require_auth)):
+        """A team with no institution asks to be given a mentor.
+
+        For groups, open and single entrants who are not under an institution:
+        after approval they request a mentor. If they never do, the nightly/admin
+        auto-assign covers them. Requesting only flags intent; an admin or the
+        auto-assign then attaches an actual instructor.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT mentor_id FROM teams WHERE id = %s", (team_id,))
+            team = cur.fetchone()
+            if not team:
+                cur.close()
+                raise HTTPException(status_code=404, detail="Team not found")
+            # Only a member of the team (or an admin) may request its mentor, so
+            # one entrant cannot flag another's team.
+            is_admin = (actor.get("role") or "") in ("super_admin", "admin")
+            if not is_admin:
+                cur.execute(
+                    "SELECT 1 FROM team_members WHERE team_id = %s AND student_id = %s LIMIT 1",
+                    (team_id, actor["id"]),
+                )
+                if not cur.fetchone():
+                    cur.close()
+                    raise HTTPException(status_code=404, detail="Team not found")
+            if team[0]:
+                cur.close()
+                return {"team_id": team_id, "mentor_status": "assigned",
+                        "detail": "A mentor is already assigned"}
+            cur.execute(
+                "UPDATE teams SET mentor_status = 'requested' WHERE id = %s", (team_id,)
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "teams"})
+        return {"team_id": team_id, "mentor_status": "requested"}
+
+    @app.post("/api/teams/auto-assign-mentors")
+    def auto_assign_mentors(actor: dict = Depends(require_role(ADMIN_ROLES))):
+        """Give every mentor-less team an instructor, so none is left unsupervised.
+
+        Covers the entrants who never requested one. Assignment is by track where
+        possible (an instructor whose track matches the team's), else any active
+        instructor, chosen by current mentor load so the distribution stays even.
+        """
+        conn = _get_db()
+        assigned = 0
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id, track FROM teams "
+                "WHERE mentor_id IS NULL AND COALESCE(status,'') <> 'Disbanded'"
+            )
+            teams = cur.fetchall()
+            # Instructor pool with current load, cheapest first.
+            cur.execute(
+                "SELECT u.id, u.track, "
+                "(SELECT COUNT(*) FROM teams t WHERE t.mentor_id = u.id) AS load "
+                "FROM users u WHERE u.role = 'instructor' AND LOWER(u.status) = 'active'"
+            )
+            instructors = [{"id": r[0], "track": (r[1] or "").lower(), "load": r[2]} for r in cur.fetchall()]
+            if not instructors:
+                cur.close()
+                return {"assigned": 0, "detail": "No active instructors to assign"}
+
+            for team_id, track in teams:
+                track_l = (track or "").lower()
+                pool = [i for i in instructors if i["track"] == track_l] or instructors
+                pick = min(pool, key=lambda i: i["load"])
+                cur.execute(
+                    "UPDATE teams SET mentor_id = %s, mentor_status = 'assigned' WHERE id = %s",
+                    (pick["id"], team_id),
+                )
+                pick["load"] += 1
+                assigned += 1
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        if assigned:
+            broadcast_async({"type": "data_changed", "collection": "teams"})
+        return {"assigned": assigned}
 
     # EVENTS
     @app.get("/api/events")
@@ -6187,16 +6819,24 @@ try:
         rejection_reason: str = ""
 
     @app.get("/api/lms-courses")
-    def list_lms_courses(_auth: dict = Depends(require_auth)):
+    def list_lms_courses(competition_id: str = "", _auth: dict = Depends(require_auth)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status, rejection_reason FROM lms_courses ORDER BY created_at DESC")
+        clause = " WHERE competition_id = %s" if competition_id else ""
+        params = (competition_id,) if competition_id else ()
+        cur.execute(
+            "SELECT id, title, track, icon, level, description, modules, enrolled, "
+            "completion, status, created_at, submitted_by, approval_status, "
+            "rejection_reason, competition_id FROM lms_courses" + clause +
+            " ORDER BY created_at DESC",
+            params,
+        )
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)
-        return [{"id": r[0], "title": r[1], "track": r[2], "icon": r[3], "level": r[4], "description": r[5], "modules": r[6], "enrolled": r[7], "completion": r[8], "status": r[9], "created_at": r[10], "submitted_by": r[11], "approval_status": r[12], "rejection_reason": r[13]} for r in rows]
+        return [{"id": r[0], "title": r[1], "track": r[2], "icon": r[3], "level": r[4], "description": r[5], "modules": r[6], "enrolled": r[7], "completion": r[8], "status": r[9], "created_at": r[10], "submitted_by": r[11], "approval_status": r[12], "rejection_reason": r[13], "competitionId": r[14]} for r in rows]
 
     @app.post("/api/lms-courses", status_code=status.HTTP_201_CREATED)
     def create_lms_course(payload: LmsCourseCreate, actor: dict = Depends(require_role(LMS_ROLES))):

@@ -39,6 +39,10 @@ export class LmsManagerComponent implements OnInit {
   selectedLevel = 'all';
   selectedCourseId = 'all';
   selectedApprovalFilter = 'all'; // 'all' | 'pending' | 'approved' | 'rejected'
+  // Cycle scoping: courses can now be tied to a competition cycle. 'all' shows
+  // every course the author owns; a specific id scopes to that cycle.
+  competitions: Array<{ id: string; title: string }> = [];
+  selectedCycle = 'all';
 
   // Modals visibility
   isCourseModalOpen = false;
@@ -97,7 +101,18 @@ export class LmsManagerComponent implements OnInit {
     this.isLoading = true;
     this.loadError = '';
 
-    this.apiService.getMyAuthoredCourses().subscribe({
+    // Cycles are needed to label and filter courses. A failure here must not
+    // take the page down, so it is tolerated.
+    this.apiService.getCompetitions().subscribe({
+      next: rows => {
+        this.competitions = (rows || [])
+          .map(c => ({ id: c.id, title: c.title }))
+          .sort((a, b) => a.title.localeCompare(b.title));
+      },
+      error: () => { this.competitions = []; }
+    });
+
+    this.apiService.getMyAuthoredCourses(this.selectedCycle === 'all' ? undefined : this.selectedCycle).subscribe({
       next: rows => {
         this.authoredCourses = rows || [];
         this.isLoading = false;
@@ -256,6 +271,18 @@ export class LmsManagerComponent implements OnInit {
     // The reason is required server-side too, so it genuinely reaches the author.
     this.moderate(this.activeRejectItem.id, false, this.rejectionReasonInput.trim());
     this.closeRejectModal();
+  }
+
+  /** Scope the course list to a cycle (or 'all') and reload from the server. */
+  onCycleChange(): void {
+    this.reload();
+  }
+
+  /** Human label for a course's cycle, falling back to 'Evergreen'. */
+  cycleLabel(competitionId?: string | null): string {
+    if (!competitionId) return 'Evergreen';
+    const c = this.competitions.find(x => x.id === competitionId);
+    return c ? c.title : competitionId;
   }
 
   // ── Filtered Lists ──────────────────────────────────────────
@@ -452,6 +479,7 @@ export class LmsManagerComponent implements OnInit {
       level: this.courseForm.level || '',
       description: this.courseForm.description || '',
       modules: this.courseForm.modules || 0,
+      competition_id: this.courseForm.competitionId || '',
     };
 
     const request = this.formMode === 'create'
@@ -779,7 +807,8 @@ export class LmsManagerComponent implements OnInit {
       completion: 0,
       status: 'active',
       approvalStatus: 'approved',
-      createdAt: new Date().toISOString().split('T')[0]
+      createdAt: new Date().toISOString().split('T')[0],
+      competitionId: ''
     };
   }
 

@@ -962,9 +962,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ],
     },
     {
+      title: 'Upcoming Competitions', icon: 'timer',
+      fields: [
+        { key: 'countdown.badge', label: 'Countdown Badge' },
+        { key: 'countdown.desc', label: 'Countdown Description', multiline: true },
+      ],
+    },
+    {
       title: 'Core Philosophy', icon: 'lightbulb',
       fields: [
         { key: 'philosophy.sub', label: 'Section Eyebrow' },
+        { key: 'philosophy.heading', label: 'Headline Motto' },
         { key: 'philosophy.desc', label: 'Description', multiline: true },
       ],
     },
@@ -1087,14 +1095,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ],
     },
     {
-      title: 'Login Gateway', icon: 'vpn_key',
-      fields: [
-        { key: 'gateway.badge', label: 'Badge' },
-        { key: 'gateway.heading', label: 'Heading' },
-        { key: 'gateway.desc', label: 'Description', multiline: true },
-      ],
-    },
-    {
       title: 'Footer', icon: 'copyright',
       fields: [
         { key: 'footer.heading', label: 'Heading' },
@@ -1114,6 +1114,76 @@ export class DashboardComponent implements OnInit, OnDestroy {
   landingCopySaveState: 'idle' | 'saving' | 'saved' | 'error' = 'idle';
   landingCopyLastSaved: string = '';
   landingCopySavingSection: string | null = null;
+  landingCopySearchQuery: string = '';
+  landingCopyFilterType: 'all' | 'buttons' | 'headings' | 'descriptions' = 'all';
+  filteredLandingCopySections: { section: LandingCopySection; fields: LandingCopyField[] }[] = [];
+  totalMatchingCopyFieldsCount: number = 0;
+
+  trackBySectionTitle(_index: number, item: { section: LandingCopySection }): string {
+    return item.section.title;
+  }
+
+  trackByFieldKey(_index: number, field: LandingCopyField): string {
+    return field.key;
+  }
+
+  setLandingCopyFilter(type: 'all' | 'buttons' | 'headings' | 'descriptions'): void {
+    this.landingCopyFilterType = type;
+    this.updateLandingCopyFilter();
+  }
+
+  clearLandingCopySearch(): void {
+    this.landingCopySearchQuery = '';
+    this.landingCopyFilterType = 'all';
+    this.updateLandingCopyFilter();
+  }
+
+  updateLandingCopyFilter(): void {
+    const q = (this.landingCopySearchQuery || '').trim().toLowerCase();
+    const filter = this.landingCopyFilterType;
+
+    const results: { section: LandingCopySection; fields: LandingCopyField[] }[] = [];
+
+    for (const section of this.landingCopySections) {
+      const sectionTitleMatches = !q || section.title.toLowerCase().includes(q);
+
+      const matchingFields = section.fields.filter(field => {
+        // Quick Category Filter
+        if (filter === 'buttons') {
+          const l = field.label.toLowerCase();
+          const k = field.key.toLowerCase();
+          if (!l.includes('button') && !l.includes('link') && !l.includes('cta') && !l.includes('apply') && !k.includes('link') && !k.includes('cta') && !k.includes('btn') && !k.includes('viewall') && !k.includes('viewfull')) {
+            return false;
+          }
+        } else if (filter === 'headings') {
+          const l = field.label.toLowerCase();
+          if (!l.includes('heading') && !l.includes('title') && !l.includes('eyebrow') && !l.includes('badge') && !l.includes('motto') && !l.includes('sub') && !l.includes('name')) {
+            return false;
+          }
+        } else if (filter === 'descriptions') {
+          const l = field.label.toLowerCase();
+          if (!field.multiline && !l.includes('desc') && !l.includes('body') && !l.includes('lead') && !l.includes('intro') && !l.includes('paragraph') && !l.includes('bullet') && !l.includes('b1') && !l.includes('b2') && !l.includes('b3') && !l.includes('brief')) {
+            return false;
+          }
+        }
+
+        if (!q) return true;
+
+        const labelMatch = field.label.toLowerCase().includes(q);
+        const keyMatch = field.key.toLowerCase().includes(q);
+        const valMatch = (this.landingCopyForm[field.key] || '').toLowerCase().includes(q);
+
+        return sectionTitleMatches || labelMatch || keyMatch || valMatch;
+      });
+
+      if (matchingFields.length > 0) {
+        results.push({ section, fields: matchingFields });
+      }
+    }
+
+    this.filteredLandingCopySections = results;
+    this.totalMatchingCopyFieldsCount = results.reduce((sum, item) => sum + item.fields.length, 0);
+  }
 
   showPageCopy(): void {
     this.contentTab = 'pagecopy';
@@ -1130,6 +1200,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     this.landingCopyForm = form;
     this.landingCopySaveState = 'idle';
+    this.updateLandingCopyFilter();
   }
 
   resetLandingCopyForm(): void {
@@ -1141,6 +1212,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     this.landingCopyForm = form;
     this.landingCopySaveState = 'idle';
+    this.updateLandingCopyFilter();
   }
 
   saveLandingCopy(): void {
@@ -1380,7 +1452,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // School Admin Portal Specific Flow
   schoolName = '';
   isAddTeamModalOpen = false;
-  teamForm = { id: undefined as string | undefined, name: '', track: 'Coding', lead: '', members: 4, mentor: '', motto: '', memberNames: ['', '', '', '', '', '', '', ''] };
+  teamForm = { id: undefined as string | undefined, name: '', track: 'Coding', lead: '', members: 4, mentor: '', motto: '', memberNames: ['', '', '', '', '', '', '', ''], leadEmail: '', memberEmails: ['', '', '', '', '', '', '', ''] };
 
   // Registration form
   regForm = {
@@ -1512,6 +1584,54 @@ export class DashboardComponent implements OnInit, OnDestroy {
   studentEnrolments: MyEnrolledCourse[] = [];
   studentRecentSubmissions: MySubmission[] = [];
   isLoadingStudentSummary = false;
+
+  // The student's own teams (solo or squad) + mentor status, so a solo entrant
+  // can see their team and request a mentor.
+  myTeams: Array<{
+    id: string; name: string; track: string; competitionId: string | null;
+    mentorId: string | null; mentorStatus: string; isSolo: boolean; isLead: boolean;
+  }> = [];
+
+  loadMyTeams(): void {
+    this.apiService.getMyTeams().subscribe({
+      next: rows => { this.myTeams = rows || []; },
+      error: () => { this.myTeams = []; }
+    });
+  }
+
+  requestMentor(teamId: string): void {
+    this.apiService.requestTeamMentor(teamId).subscribe({
+      next: () => {
+        this.dialogService.toast('Mentor requested. An instructor will be assigned.', 'success');
+        this.loadMyTeams();
+      },
+      error: (err: any) => {
+        const detail = err?.error?.detail || 'Could not request a mentor.';
+        this.dialogService.toast(detail, 'error');
+      }
+    });
+  }
+
+  /** Admin: give every mentor-less team (squad or solo) an instructor. */
+  async autoAssignMentors(): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Auto-assign Mentors',
+      message: 'Assign an instructor to every team that has no mentor yet? Matched by track where possible and balanced across instructors.',
+      confirmText: 'Assign',
+      type: 'info'
+    });
+    if (!ok) return;
+    this.apiService.autoAssignMentors().subscribe({
+      next: res => {
+        this.dialogService.toast(`${res.assigned} team${res.assigned === 1 ? '' : 's'} assigned a mentor.`, 'success');
+        this.contentService.refreshBackendData();
+      },
+      error: (err: any) => {
+        const detail = err?.error?.detail || 'Could not auto-assign mentors.';
+        this.dialogService.toast(detail, 'error');
+      }
+    });
+  }
 
   loadStudentSummary(): void {
     if (this.activeRoleId !== 'student') return;
@@ -2200,6 +2320,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (profile) {
         this.loadDashboardData();
         this.loadStudentSummary();
+        if (this.activeRoleId === 'student') this.loadMyTeams();
         this.loadSponsorSummary();
         this.loadInstructorCourses();
         this.cdr.markForCheck();
@@ -2329,6 +2450,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.schoolName = cachedUser.organization || (cachedUser.role === 'school_admin' ? cachedUser.fullName : '');
     } else {
       this.schoolName = '';
+    }
+
+    // A school admin's mentor dropdowns need the institution's instructors, so
+    // load them up front rather than only when the portal opens.
+    if (this.activeRoleId === 'school_admin') {
+      this.apiService.getInstitutionInstructors().subscribe({
+        next: rows => { this.institutionInstructors = rows || []; },
+        error: () => { this.institutionInstructors = []; }
+      });
     }
 
     // Unified view of the signed-in user for the role branches below. me is the
@@ -3964,7 +4094,9 @@ setTimeout(async () => {
         school_name: school,
         mentor: mentor,
         motto: motto,
-        roster_list: roster
+        roster_list: roster,
+        lead_email: req.details?.leadEmail || '',
+        member_emails: req.details?.memberEmails || []
       };
 
       const updateLocalAndNotify = () => {
@@ -4012,7 +4144,9 @@ setTimeout(async () => {
         mentor: req.details?.mentor || '',
         motto: req.details?.motto || '',
         status: 'In Competition',
-        schoolName: req.details?.school || req.details?.institution || 'Partner School'
+        schoolName: req.details?.school || req.details?.institution || 'Partner School',
+        leadEmail: req.details?.leadEmail || '',
+        memberEmails: req.details?.memberEmails || []
       };
       const currentTeams = [...this.contentService.teams];
       currentTeams.push(newTeam);
@@ -5435,6 +5569,83 @@ setTimeout(async () => {
     this.selectedMemberProfile = member;
   }
 
+  // ── Institution student portal ────────────────────────────────────
+  // Backed by GET /api/institution/students and the reset-credentials and
+  // mentor endpoints. Everything here is server-scoped to the caller's own
+  // institution, so a school admin only ever sees or acts on their own students.
+  institutionStudents: Array<{
+    id: string; full_name: string; email: string; ticket: string;
+    status: string; organization: string; must_change_password: boolean;
+    has_logged_in: boolean;
+  }> = [];
+  institutionInstructors: Array<{ id: string; full_name: string; email: string; organization: string }> = [];
+  institutionLoading = false;
+  isPortalOpen = false;
+  /** The credentials most recently issued, shown once for the institution to copy. */
+  issuedCredentials: { full_name: string; email: string; temporary_password: string } | null = null;
+
+  openInstitutionPortal(): void {
+    this.isPortalOpen = true;
+    this.loadInstitutionPortal();
+  }
+
+  closeInstitutionPortal(): void {
+    this.isPortalOpen = false;
+    this.issuedCredentials = null;
+  }
+
+  loadInstitutionPortal(): void {
+    this.institutionLoading = true;
+    this.apiService.getInstitutionStudents().subscribe({
+      next: rows => { this.institutionStudents = rows || []; this.institutionLoading = false; },
+      error: () => { this.institutionStudents = []; this.institutionLoading = false; }
+    });
+    this.apiService.getInstitutionInstructors().subscribe({
+      next: rows => { this.institutionInstructors = rows || []; },
+      error: () => { this.institutionInstructors = []; }
+    });
+  }
+
+  async resetStudentCredentials(student: { id: string; full_name: string }): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Issue New Login',
+      message: `Generate a new one-time password for ${student.full_name}? Any current session is signed out, and they must set a new password on next login.`,
+      confirmText: 'Generate',
+      type: 'info'
+    });
+    if (!ok) return;
+    this.apiService.resetStudentCredentials(student.id).subscribe({
+      next: res => {
+        // Shown once. The password is not retrievable again after this.
+        this.issuedCredentials = { full_name: res.full_name, email: res.email, temporary_password: res.temporary_password };
+        this.loadInstitutionPortal();
+      },
+      error: (err: any) => {
+        const detail = err?.error?.detail || 'Could not issue credentials.';
+        this.dialogService.toast(detail, 'error');
+      }
+    });
+  }
+
+  dismissIssuedCredentials(): void {
+    this.issuedCredentials = null;
+  }
+
+  /** Assign one of this institution's instructors as a team's mentor. */
+  assignMentor(teamId: string, mentorId: string): void {
+    if (!mentorId) return;
+    this.apiService.assignTeamMentor(teamId, mentorId).subscribe({
+      next: () => {
+        this.dialogService.toast('Mentor assigned.', 'success');
+        this.contentService.refreshBackendData();
+      },
+      error: (err: any) => {
+        const detail = err?.error?.detail || 'Could not assign mentor.';
+        this.dialogService.toast(detail, 'error');
+      }
+    });
+  }
+
   closeMemberProfileModal(): void {
     this.selectedMemberProfile = null;
   }
@@ -5632,7 +5843,7 @@ setTimeout(async () => {
 
   openAddTeamModal(): void {
     this.editingTeamOriginalName = null;
-    this.teamForm = { id: undefined, name: '', track: 'Coding', lead: '', members: 4, mentor: '', motto: '', memberNames: ['', '', '', '', '', '', '', ''] };
+    this.teamForm = { id: undefined, name: '', track: 'Coding', lead: '', members: 4, mentor: '', motto: '', memberNames: ['', '', '', '', '', '', '', ''], leadEmail: '', memberEmails: ['', '', '', '', '', '', '', ''] };
     this.isAddTeamModalOpen = true;
   }
 
@@ -5652,7 +5863,9 @@ setTimeout(async () => {
       members: Math.max(team.members || 3, roster.length),
       mentor: team.mentor || '',
       motto: team.motto || '',
-      memberNames: namesArray
+      memberNames: namesArray,
+      leadEmail: team.leadEmail || '',
+      memberEmails: team.memberEmails?.length ? team.memberEmails : ['', '', '', '', '', '', '', '']
     };
     this.isAddTeamModalOpen = true;
   }
@@ -5762,7 +5975,13 @@ setTimeout(async () => {
       );
       const school = existingTeam?.schoolName || (this.schoolName || '').replace(/\s+Admin$/i, '').trim();
       const teamId = existingTeam?.id || this.teamForm.id;
-      const leadEmail = `${this.teamForm.lead.trim().toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`;
+      // A real address when one was entered, else the old derived fallback.
+      const leadEmail = (this.teamForm.leadEmail || '').trim()
+        || `${this.teamForm.lead.trim().toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`;
+      const memberEmails = this.teamForm.memberEmails
+        .slice(0, (this.teamForm.members || 1) - 1)
+        .map(e => (e || '').trim())
+        .filter(e => e.length > 0);
       const reqId = 'REQ-' + Date.now();
 
       const approvalReq: ApprovalRequest = {
@@ -5781,6 +6000,7 @@ setTimeout(async () => {
           lead: this.teamForm.lead.trim(),
           leadName: this.teamForm.lead.trim(),
           leadEmail: leadEmail,
+          memberEmails: memberEmails,
           members: activeMembersList,
           memberCount: activeMembersList.length,
           mentor: this.teamForm.mentor || '',
@@ -5830,7 +6050,12 @@ setTimeout(async () => {
       });
     } else {
       // 2. NEW TEAM MODE: Requires formal Super Admin approval via Team Addition request
-      const leadEmail = `${this.teamForm.lead.trim().toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`;
+      const leadEmail = (this.teamForm.leadEmail || '').trim()
+        || `${this.teamForm.lead.trim().toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`;
+      const memberEmails = this.teamForm.memberEmails
+        .slice(0, (this.teamForm.members || 1) - 1)
+        .map(e => (e || '').trim())
+        .filter(e => e.length > 0);
       const reqId = 'REQ-' + Date.now();
       const approvalReq: ApprovalRequest = {
         id: reqId,
@@ -5846,6 +6071,7 @@ setTimeout(async () => {
           lead: this.teamForm.lead.trim(),
           leadName: this.teamForm.lead.trim(),
           leadEmail: leadEmail,
+          memberEmails: memberEmails,
           members: activeMembersList,
           memberCount: activeMembersList.length,
           mentor: this.teamForm.mentor || '',

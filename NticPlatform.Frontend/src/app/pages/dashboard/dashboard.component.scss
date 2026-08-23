@@ -6380,6 +6380,189 @@
   }
 }
 
+/* ── Page Manager Copy Search & Filters ── */
+.cms-copy-search-bar {
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+
+  .cms-copy-search-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .cms-search-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+
+    .cms-search-icon {
+      position: absolute;
+      left: 12px;
+      font-size: 18px;
+      color: var(--on-surface-variant);
+      pointer-events: none;
+    }
+
+    input {
+      width: 100%;
+      padding: 9px 34px 9px 38px;
+      background: var(--surface-container-low);
+      border: 1px solid var(--outline-variant);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--on-surface);
+      outline: none;
+      transition: all 0.2s ease;
+
+      &:focus {
+        border-color: var(--primary);
+        background: var(--surface-container-lowest);
+        box-shadow: 0 0 0 3px rgba(0, 89, 178, 0.12);
+      }
+
+      &::placeholder {
+        color: var(--on-surface-variant);
+        opacity: 0.75;
+      }
+    }
+
+    .cms-search-clear {
+      position: absolute;
+      right: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 50%;
+      cursor: pointer;
+      color: var(--on-surface-variant);
+      padding: 0;
+      transition: all 0.15s ease;
+
+      .material-symbols-outlined { font-size: 14px; }
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.15);
+        color: var(--on-surface);
+      }
+    }
+  }
+
+  .cms-copy-filter-chips {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+
+    .cms-filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--outline-variant);
+      border-radius: 20px;
+      background: var(--surface-container-low);
+      color: var(--on-surface-variant);
+      cursor: pointer;
+      transition: all 0.18s ease;
+
+      .material-symbols-outlined {
+        font-size: 15px;
+      }
+
+      &:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: rgba(0, 89, 178, 0.06);
+      }
+
+      &.active {
+        background: var(--primary);
+        color: #ffffff;
+        border-color: var(--primary);
+        box-shadow: 0 2px 6px rgba(0, 89, 178, 0.25);
+      }
+    }
+  }
+
+  .cms-copy-search-stats {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--on-surface-variant);
+    padding-top: 6px;
+    border-top: 1px dashed var(--outline-variant);
+
+    strong {
+      color: var(--primary);
+    }
+
+    .btn-clear-all {
+      border: none;
+      background: none;
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+      &:hover {
+        opacity: 0.8;
+      }
+    }
+  }
+}
+
+.cms-section-match-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(0, 89, 178, 0.1);
+  color: var(--primary);
+  letter-spacing: 0.02em;
+  margin-right: 8px;
+}
+
+.cms-field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+
+  label {
+    margin-bottom: 0 !important;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .cms-field-key {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 10px;
+    color: var(--on-surface-variant);
+    opacity: 0.6;
+    background: var(--surface-container);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+}
+
 .cms-radio-label {
   display: inline-flex;
   align-items: center;
@@ -8807,6 +8990,12 @@
 .member-name-input {
   flex: 1;
   padding-left: 14px !important;
+}
+
+.member-email-input {
+  flex: 1;
+  max-width: 46%;
+  font-size: 12.5px;
 }
 
 

@@ -134,6 +134,8 @@ export interface LmsCourse {
   rejectionReason?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  /** The cycle this course prepares for, or empty for evergreen material. */
+  competitionId?: string;
 }
 
 export interface LmsModule {
@@ -1872,7 +1874,9 @@ private readonly defaultTeams: Team[] = [];
       members: team.members ?? 1,
       status: team.status || 'Active',
       school_name: team.schoolName || '',
-      competition_id: team.competitionId ?? null
+      competition_id: team.competitionId ?? null,
+      lead_email: (team as any).leadEmail || '',
+      member_emails: (team as any).memberEmails || []
     }).subscribe({
       next: (res: any) => {
         if (res && res.id) {
