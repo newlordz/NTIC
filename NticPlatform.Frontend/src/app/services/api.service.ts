@@ -1080,8 +1080,8 @@ export class ApiService {
     return this.http.get<any[]>(this.apiUrl + '/institution/instructors');
   }
 
-  /** Assign an instructor as a team's mentor. */
-  assignTeamMentor(teamId: string, mentorId: string): Observable<any> {
+  /** Assign or unassign an instructor as a team's mentor. */
+  assignTeamMentor(teamId: string, mentorId: string | null): Observable<any> {
     return this.http.patch(
       this.apiUrl + '/teams/' + encodeURIComponent(teamId) + '/mentor',
       { mentor_id: mentorId }

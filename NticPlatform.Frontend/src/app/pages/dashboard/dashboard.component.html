@@ -367,18 +367,18 @@
                 <div class="team-card-meta">
                   <div><strong>Team Lead:</strong> {{ team.lead }}</div>
                   <div><strong>Members:</strong> {{ team.members }} active students</div>
-                  <div *ngIf="team.mentor"><strong>Mentor:</strong> {{ team.mentor }}</div>
-                  <!-- Assign a real instructor account as mentor. Backed by
-                       PATCH /api/teams/{id}/mentor, scoped to this institution. -->
-                  <div style="margin-top:6px;display:flex;align-items:center;gap:6px;">
-                    <span class="material-symbols-outlined" style="font-size:14px;color:var(--primary);">co_present</span>
-                    <select class="mentor-assign-select"
-                            [ngModel]="team.mentorId || ''"
-                            (ngModelChange)="assignMentor(team.id, $event)"
-                            style="flex:1;font-size:11.5px;padding:5px 8px;border:1px solid var(--outline-variant);border-radius:6px;">
-                      <option value="">{{ team.mentorId ? 'Change mentor…' : 'Assign a mentor…' }}</option>
-                      <option *ngFor="let inst of institutionInstructors" [value]="inst.id">{{ inst.full_name }}</option>
-                    </select>
+                  <!-- Mentor is centrally assigned by NTIC Administration -->
+                  <div style="margin-top:8px;padding:6px 10px;background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;">
+                    <span style="display:flex;align-items:center;gap:5px;color:var(--on-surface-variant);">
+                      <span class="material-symbols-outlined" style="font-size:15px;color:var(--primary);">co_present</span>
+                      <strong>Assigned Mentor:</strong>
+                    </span>
+                    <span *ngIf="team.mentorId || team.mentor" class="badge secondary" style="font-size:10.5px;">
+                      {{ getMentorName(team.mentorId) || team.mentor }}
+                    </span>
+                    <span *ngIf="!team.mentorId && !team.mentor" style="color:var(--on-surface-variant);font-style:italic;font-size:11px;">
+                      Pending NTIC allocation
+                    </span>
                   </div>
                   <div *ngIf="team.motto" style="font-style:italic;color:var(--primary);margin-top:4px;border-top:1px dashed var(--outline-variant);padding-top:4px;">"{{ team.motto }}"</div>
                   
@@ -1521,14 +1521,14 @@
             <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
 
-          <div class="cc-control-card" (click)="autoAssignMentors()" *ngIf="canManageUsers">
+          <div class="cc-control-card" (click)="goToSubTab('mentors')" *ngIf="canManageUsers || activeRoleId === 'competition_manager'">
             <div class="cc-control-card-icon cc-icon-admins">
               <span class="material-symbols-outlined">co_present</span>
             </div>
             <div class="cc-control-card-body">
-              <div class="cc-control-card-label">Auto-assign Mentors</div>
-              <div class="cc-control-card-desc">Give every team without a mentor an instructor -- squads and individual entrants alike. Matched by track, balanced by load.</div>
-              <div class="cc-control-card-count">Covers anyone who didn't request one</div>
+              <div class="cc-control-card-label">Mentor &amp; Instructor Assignment</div>
+              <div class="cc-control-card-desc">Allocate instructors to squads and solo entrants, match by technical track, balance workloads, or run smart auto-allocation.</div>
+              <div class="cc-control-card-count">{{ mentorAllocationStats.unassigned }} needing mentor &bull; {{ mentorAllocationStats.requested }} requested</div>
             </div>
             <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
@@ -1571,6 +1571,287 @@
         </div>
       </div>
     </div>
+    <!-- ── TAB: MENTOR & INSTRUCTOR ALLOCATION PORTAL ── -->
+    <div *ngIf="adminTab === 'control' && adminSubTab === 'mentors'" class="admin-tab-body mentor-portal-wrapper" [class.ac-expanded]="expandedSection">
+      <!-- Top Navigation & Action Header -->
+      <div class="ac-top-bar">
+        <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
+          <span class="material-symbols-outlined">arrow_back</span>Admin Control
+        </button>
+        <div style="display:flex;align-items:center;gap:10px;margin-left:auto;">
+          <button class="btn btn-secondary btn-sm" (click)="contentService.refreshBackendData()">
+            <span class="material-symbols-outlined">refresh</span>Refresh
+          </button>
+          <button class="btn btn-primary btn-sm" (click)="autoAssignMentors()" title="Automatically match and assign unassigned teams by track and load">
+            <span class="material-symbols-outlined">magic_button</span>Smart Auto-Assign All
+          </button>
+          <button class="ac-expand-btn" (click)="expandedSection = !expandedSection" [title]="expandedSection ? 'Collapse' : 'Expand to full screen'">
+            <span class="material-symbols-outlined">{{ expandedSection ? 'collapse_content' : 'expand_content' }}</span>
+            {{ expandedSection ? 'Collapse' : 'Expand' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Portal Hero Title Banner -->
+      <div class="mentor-portal-header">
+        <div class="mentor-portal-header-icon">
+          <span class="material-symbols-outlined">co_present</span>
+        </div>
+        <div class="mentor-portal-header-info">
+          <h2>Mentor &amp; Instructor Allocation Center</h2>
+          <p>Directly allocate, reassign, or unassign instructors for competition squads and solo entrants. Match by technical track and balance instructor capacity.</p>
+        </div>
+      </div>
+
+      <!-- Live KPI Metrics Strip -->
+      <div class="mp-kpi-grid">
+        <div class="mp-kpi-card mp-kpi-total">
+          <div class="mp-kpi-icon"><span class="material-symbols-outlined">diversity_3</span></div>
+          <div class="mp-kpi-content">
+            <div class="mp-kpi-val">{{ mentorAllocationStats.total }}</div>
+            <div class="mp-kpi-lbl">Total Entrant Teams</div>
+          </div>
+        </div>
+
+        <div class="mp-kpi-card mp-kpi-assigned" [class.active-filter]="mentorStatusFilter === 'assigned'" (click)="mentorStatusFilter = (mentorStatusFilter === 'assigned' ? 'all' : 'assigned')">
+          <div class="mp-kpi-icon"><span class="material-symbols-outlined">verified</span></div>
+          <div class="mp-kpi-content">
+            <div class="mp-kpi-val">{{ mentorAllocationStats.assigned }} <span class="mp-kpi-sub">({{ mentorAllocationStats.pct }}%)</span></div>
+            <div class="mp-kpi-lbl">Mentors Assigned</div>
+          </div>
+        </div>
+
+        <div class="mp-kpi-card mp-kpi-unassigned" [class.active-filter]="mentorStatusFilter === 'unassigned'" (click)="mentorStatusFilter = (mentorStatusFilter === 'unassigned' ? 'all' : 'unassigned')">
+          <div class="mp-kpi-icon"><span class="material-symbols-outlined">person_add</span></div>
+          <div class="mp-kpi-content">
+            <div class="mp-kpi-val">{{ mentorAllocationStats.unassigned }}</div>
+            <div class="mp-kpi-lbl">Needs Mentor</div>
+          </div>
+        </div>
+
+        <div class="mp-kpi-card mp-kpi-requested" [class.active-filter]="mentorStatusFilter === 'requested'" (click)="mentorStatusFilter = (mentorStatusFilter === 'requested' ? 'all' : 'requested')">
+          <div class="mp-kpi-icon"><span class="material-symbols-outlined">notifications_active</span></div>
+          <div class="mp-kpi-content">
+            <div class="mp-kpi-val">{{ mentorAllocationStats.requested }}</div>
+            <div class="mp-kpi-lbl">Requested a Mentor</div>
+          </div>
+        </div>
+
+        <div class="mp-kpi-card mp-kpi-instructors">
+          <div class="mp-kpi-icon"><span class="material-symbols-outlined">school</span></div>
+          <div class="mp-kpi-content">
+            <div class="mp-kpi-val">{{ mentorAllocationStats.instructorCount }} <span class="mp-kpi-sub">(avg {{ mentorAllocationStats.avgLoad }}/inst)</span></div>
+            <div class="mp-kpi-lbl">Active Instructors Pool</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Instructor Workload Strip / Pool -->
+      <div class="mp-section-card">
+        <div class="mp-section-header">
+          <div class="mp-section-title">
+            <span class="material-symbols-outlined" style="color:var(--primary);">badge</span>
+            Instructor Capacity &amp; Workload Pool ({{ allPlatformInstructors.length }})
+          </div>
+          <span *ngIf="selectedMentorInstructorFilter" class="mp-filter-active-pill">
+            Showing teams assigned to: <strong>{{ getMentorName(selectedMentorInstructorFilter) }}</strong>
+            <button (click)="selectedMentorInstructorFilter = ''" title="Clear instructor filter"><span class="material-symbols-outlined">close</span></button>
+          </span>
+        </div>
+        <div class="mp-instructors-scroll">
+          <div *ngFor="let inst of allPlatformInstructors" 
+               class="mp-inst-chip-card" 
+               [class.selected]="selectedMentorInstructorFilter === inst.id"
+               (click)="filterByInstructor(inst.id)">
+            <div class="mp-inst-avatar">{{ getInitials(inst.name) }}</div>
+            <div class="mp-inst-info">
+              <div class="mp-inst-name">{{ inst.name }}</div>
+              <div class="mp-inst-meta">
+                <span class="mp-track-pill" *ngIf="inst.track">{{ inst.track }}</span>
+                <span class="mp-inst-org" *ngIf="inst.organization">{{ inst.organization }}</span>
+              </div>
+            </div>
+            <div class="mp-inst-load-badge" [class.high]="inst.assignedCount >= 4" [class.medium]="inst.assignedCount >= 2 && inst.assignedCount < 4" [class.low]="inst.assignedCount < 2">
+              {{ inst.assignedCount }} team{{ inst.assignedCount === 1 ? '' : 's' }}
+            </div>
+          </div>
+          <div *ngIf="allPlatformInstructors.length === 0" style="padding:16px;color:var(--on-surface-variant);font-size:12.5px;">
+            No active instructor accounts found. Create instructor accounts in User Management to allocate them as mentors.
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Filter & Search Toolbar -->
+      <div class="mp-toolbar">
+        <div class="mp-search-box">
+          <span class="material-symbols-outlined">search</span>
+          <input type="text" [(ngModel)]="mentorSearchQuery" placeholder="Search teams, leads, schools, tracks, or mentors…" />
+          <button *ngIf="mentorSearchQuery" (click)="mentorSearchQuery = ''" class="mp-clear-btn" title="Clear search">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="mp-filter-group">
+          <!-- Status filter tabs -->
+          <div class="mp-pill-tabs">
+            <button [class.active]="mentorStatusFilter === 'all'" (click)="mentorStatusFilter = 'all'">All ({{ mentorAllocationStats.total }})</button>
+            <button [class.active]="mentorStatusFilter === 'unassigned'" (click)="mentorStatusFilter = 'unassigned'">Needs Mentor ({{ mentorAllocationStats.unassigned }})</button>
+            <button [class.active]="mentorStatusFilter === 'requested'" (click)="mentorStatusFilter = 'requested'">Requested ({{ mentorAllocationStats.requested }})</button>
+            <button [class.active]="mentorStatusFilter === 'assigned'" (click)="mentorStatusFilter = 'assigned'">Assigned ({{ mentorAllocationStats.assigned }})</button>
+          </div>
+
+          <!-- Track filter select -->
+          <select [(ngModel)]="mentorTrackFilter" class="mp-select">
+            <option value="all">All Tracks</option>
+            <option value="coding">Coding &amp; Software</option>
+            <option value="ai">AI &amp; Data Science</option>
+            <option value="robotics">Robotics &amp; Embedded</option>
+            <option value="cyber">Cybersecurity</option>
+            <option value="iot">IoT &amp; Hardware</option>
+          </select>
+
+          <!-- Type filter select -->
+          <select [(ngModel)]="mentorTypeFilter" class="mp-select">
+            <option value="all">All Entrant Types</option>
+            <option value="squad">Squad Teams Only</option>
+            <option value="solo">Solo / Single Entrants</option>
+          </select>
+
+          <button class="btn btn-ghost btn-sm" (click)="clearMentorFilters()" *ngIf="mentorSearchQuery || mentorStatusFilter !== 'all' || mentorTrackFilter !== 'all' || mentorTypeFilter !== 'all' || selectedMentorInstructorFilter">
+            <span class="material-symbols-outlined">filter_alt_off</span>Reset
+          </button>
+        </div>
+      </div>
+
+      <!-- Teams Allocation Roster Table -->
+      <div class="mp-table-card">
+        <div class="mp-table-header">
+          <div style="font-size:13.5px;font-weight:700;">
+            Competition Teams &amp; Squads ({{ filteredMentorTeams.length }})
+          </div>
+          <div style="font-size:11.5px;color:var(--on-surface-variant);" *ngIf="filteredMentorTeams.length !== mentorAllocationStats.total">
+            Filtered from {{ mentorAllocationStats.total }} total teams
+          </div>
+        </div>
+
+        <div class="mp-table-responsive">
+          <table class="mp-table">
+            <thead>
+              <tr>
+                <th style="width:26%;">Team / Entrant</th>
+                <th style="width:14%;">Track</th>
+                <th style="width:14%;">Status</th>
+                <th style="width:24%;">Assigned Mentor</th>
+                <th style="width:22%;text-align:right;">Manual Allocation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let team of filteredMentorTeams" [class.mp-row-requested]="!team.mentorId && !team.mentor_id && (team.mentorStatus === 'requested' || team.mentor_status === 'requested')">
+                <!-- Team Column -->
+                <td>
+                  <div class="mp-team-cell">
+                    <div class="mp-team-name-row">
+                      <span class="mp-team-name">{{ team.name }}</span>
+                      <span *ngIf="team.isSolo || team.is_solo" class="mp-badge-solo">Individual</span>
+                      <span *ngIf="!team.isSolo && !team.is_solo" class="mp-badge-squad">Squad</span>
+                    </div>
+                    <div class="mp-team-sub">
+                      <span class="material-symbols-outlined" style="font-size:12px;">school</span>
+                      {{ team.schoolName || team.school_name || 'Independent / Open Entrant' }}
+                    </div>
+                    <div class="mp-team-sub" *ngIf="team.lead">
+                      <span class="material-symbols-outlined" style="font-size:12px;">person</span>
+                      Lead: {{ team.lead }} <span *ngIf="team.members">&bull; {{ team.members }} member{{ team.members === 1 ? '' : 's' }}</span>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- Track Column -->
+                <td>
+                  <span class="mp-track-tag" [class]="(team.track || 'general').toLowerCase()">
+                    <span class="material-symbols-outlined" style="font-size:13px;">
+                      {{ (team.track || '').toLowerCase().includes('ai') ? 'psychology' : (team.track || '').toLowerCase().includes('robot') ? 'precision_manufacturing' : (team.track || '').toLowerCase().includes('cyber') ? 'security' : 'code' }}
+                    </span>
+                    {{ team.track || 'General' }}
+                  </span>
+                </td>
+
+                <!-- Status Column -->
+                <td>
+                  <div *ngIf="team.mentorId || team.mentor_id" class="mp-status-badge assigned">
+                    <span class="material-symbols-outlined" style="font-size:13px;">check_circle</span>
+                    Assigned
+                  </div>
+                  <div *ngIf="!(team.mentorId || team.mentor_id) && (team.mentorStatus === 'requested' || team.mentor_status === 'requested')" class="mp-status-badge requested">
+                    <span class="material-symbols-outlined" style="font-size:13px;">priority_high</span>
+                    Mentor Requested
+                  </div>
+                  <div *ngIf="!(team.mentorId || team.mentor_id) && team.mentorStatus !== 'requested' && team.mentor_status !== 'requested'" class="mp-status-badge unassigned">
+                    <span class="material-symbols-outlined" style="font-size:13px;">help_outline</span>
+                    No Mentor
+                  </div>
+                </td>
+
+                <!-- Assigned Mentor Column -->
+                <td>
+                  <div *ngIf="team.mentorId || team.mentor_id" class="mp-mentor-assigned-cell">
+                    <div class="mp-mentor-avatar">
+                      {{ getInitials(getMentorName(team.mentorId || team.mentor_id)) }}
+                    </div>
+                    <div class="mp-mentor-meta">
+                      <div class="mp-mentor-name">{{ getMentorName(team.mentorId || team.mentor_id) }}</div>
+                      <div class="mp-mentor-details">
+                        <span *ngIf="getMentorObj(team.mentorId || team.mentor_id)?.track" class="mp-mentor-track-badge" [class.match]="isTrackMatch(team.track, getMentorObj(team.mentorId || team.mentor_id)?.track)">
+                          {{ getMentorObj(team.mentorId || team.mentor_id)?.track }}
+                          <span *ngIf="isTrackMatch(team.track, getMentorObj(team.mentorId || team.mentor_id)?.track)">&bull; Match</span>
+                        </span>
+                        <span class="mp-mentor-email">{{ getMentorObj(team.mentorId || team.mentor_id)?.email }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div *ngIf="!(team.mentorId || team.mentor_id)" class="mp-mentor-none">
+                    <span class="material-symbols-outlined" style="font-size:16px;">person_off</span>
+                    <span>Unassigned</span>
+                  </div>
+                </td>
+
+                <!-- Manual Allocation Dropdown Column -->
+                <td style="text-align:right;">
+                  <div class="mp-action-cell">
+                    <div class="mp-assign-selector-wrapper">
+                      <select class="mp-mentor-select"
+                              [ngModel]="team.mentorId || team.mentor_id || ''"
+                              (ngModelChange)="assignMentorToTeam(team.id, $event)"
+                              [disabled]="mentorActionInProgress[team.id]">
+                        <option value="">-- {{ (team.mentorId || team.mentor_id) ? 'Change instructor…' : 'Assign an instructor…' }} --</option>
+                        <option *ngFor="let inst of allPlatformInstructors" [value]="inst.id">
+                          {{ isTrackMatch(team.track, inst.track) ? '★ ' : '' }}{{ inst.name }} ({{ inst.track || 'General' }} • {{ inst.assignedCount }} teams)
+                        </option>
+                      </select>
+                      <button *ngIf="team.mentorId || team.mentor_id" 
+                              class="mp-unassign-btn" 
+                              (click)="unassignMentorFromTeam(team.id, team.name)"
+                              [disabled]="mentorActionInProgress[team.id]"
+                              title="Unassign / Remove mentor">
+                        <span class="material-symbols-outlined">close</span>
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div *ngIf="filteredMentorTeams.length === 0" class="mp-empty-state">
+            <span class="material-symbols-outlined">co_present</span>
+            <h3>No competition teams match your filter</h3>
+            <p>Try clearing your search keyword or changing status/track filter criteria.</p>
+            <button class="btn btn-primary btn-sm" (click)="clearMentorFilters()">Clear All Filters</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── TAB: USERS FULL (User Management) ── -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'users_full'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
       <div class="ac-top-bar">

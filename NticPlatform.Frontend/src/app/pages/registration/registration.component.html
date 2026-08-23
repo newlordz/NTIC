@@ -13,7 +13,8 @@
        ========================================================= -->
   <div *ngIf="regState === 'gateway'" class="gateway-screen">
     <button class="back-link-btn" routerLink="/">
-      <span class="material-symbols-outlined">arrow_back</span> Return to Homepage
+      <span class="btn-icon-wrap"><span class="material-symbols-outlined">arrow_back</span></span>
+      <span class="btn-text">Return to Homepage</span>
     </button>
     <div class="gateway-top-actions" style="position: absolute; top: 20px; right: 28px; z-index: 10; display: flex; align-items: center; gap: 10px;">
       <button type="button" (click)="openLoginModal($event)" class="gateway-login-btn" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; border-radius: 8px; background: linear-gradient(135deg, var(--primary, #003f87) 0%, #1d4ed8 100%); color: #ffffff; box-shadow: 0 4px 14px rgba(0, 63, 135, 0.35); transition: all 0.2s ease;">
@@ -110,7 +111,8 @@
        ========================================================= -->
   <div *ngIf="regState === 'tracker'" class="gateway-screen" style="min-height: 100vh;">
     <button class="back-link-btn" (click)="goBackToGatewayFromTracker()">
-      <span class="material-symbols-outlined">arrow_back</span> Back to Registration
+      <span class="btn-icon-wrap"><span class="material-symbols-outlined">arrow_back</span></span>
+      <span class="btn-text">Back to Registration</span>
     </button>
 
     <div class="gateway-header">
@@ -316,7 +318,8 @@
        ========================================================= -->
   <div *ngIf="regState === 'continue_select'" class="otp-screen">
     <button class="back-link-btn" (click)="goBackToGateway()">
-      <span class="material-symbols-outlined">arrow_back</span> Back to Gateway
+      <span class="btn-icon-wrap"><span class="material-symbols-outlined">arrow_back</span></span>
+      <span class="btn-text">Back to Gateway</span>
     </button>
 
     <div class="otp-card">
@@ -372,7 +375,8 @@
        ========================================================= -->
   <div *ngIf="regState === 'otp_verification'" class="otp-screen">
     <button class="back-link-btn" (click)="selectContinueRegistration()">
-      <span class="material-symbols-outlined">arrow_back</span> Change contact details
+      <span class="btn-icon-wrap"><span class="material-symbols-outlined">arrow_back</span></span>
+      <span class="btn-text">Change contact details</span>
     </button>
 
     <div class="otp-card">

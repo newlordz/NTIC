@@ -62,8 +62,13 @@ LANDING_COPY_DEFAULTS = [
     ("News & Events", "news.heading3", "Events"),
     ("News & Events", "news.desc", "Championship stories & updates -- how Ghana's next generation of scientists, developers, engineers, and innovators are building the future."),
 
+    # ── Competitions Countdown ──────────────────────────────────────
+    ("Upcoming Competitions", "countdown.badge", "Competitions Coming Soon"),
+    ("Upcoming Competitions", "countdown.desc", "We're preparing something extraordinary. Target launch:"),
+
     # ── Core Philosophy ─────────────────────────────────────────────
     ("Core Philosophy", "philosophy.sub", "Our Core Philosophy"),
+    ("Core Philosophy", "philosophy.heading", "Learn. Innovate. Build."),
     ("Core Philosophy", "philosophy.desc", "A glimpse into the real faces and moments that define our pursuit of excellence."),
 
     # ── Hall of Fame ────────────────────────────────────────────────
@@ -163,10 +168,6 @@ LANDING_COPY_DEFAULTS = [
     # nothing is better than showing invented logos.
     ("Partner Ecosystem", "partners.empty", "Partner organisations will be announced here as commitments are confirmed."),
 
-    # ── Login Gateway ───────────────────────────────────────────────
-    ("Login Gateway", "gateway.badge", "Accredited Portal v2.0"),
-    ("Login Gateway", "gateway.heading", "NTI Championship Gateway"),
-    ("Login Gateway", "gateway.desc", "Enter your institutional credentials below. The system will automatically identify your role and route you to the appropriate workspace."),
 
     # ── Footer ──────────────────────────────────────────────────────
     ("Footer", "footer.heading", "National Technology and Innovation Championship"),

@@ -427,7 +427,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ─── SUPER ADMIN STATE ─────────────────────────
   adminTab: 'overview' | 'control' | 'dashboard' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'dashboard';
-  adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'audit' | 'users_full' | 'personnel' | '' = '';
+  adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'audit' | 'users_full' | 'personnel' | 'mentors' | '' = '';
 
   goToTab(tab: string): void {
     this.adminTab = tab as any;
@@ -1612,6 +1612,161 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  // ─── MENTOR & INSTRUCTOR ALLOCATION PORTAL ─────────────────
+  mentorSearchQuery: string = '';
+  mentorStatusFilter: 'all' | 'unassigned' | 'requested' | 'assigned' = 'all';
+  mentorTrackFilter: string = 'all';
+  mentorTypeFilter: 'all' | 'squad' | 'solo' = 'all';
+  selectedMentorInstructorFilter: string = '';
+  mentorActionInProgress: { [teamId: string]: boolean } = {};
+  selectedMentorForTeam: { [teamId: string]: string } = {};
+
+  get allPlatformInstructors(): any[] {
+    const users = this.registeredUsers || [];
+    const teams = (this.contentService.teams || []).filter(t => (t.status || '').toLowerCase() !== 'disbanded');
+    return users
+      .filter(u => (u.role || '').toLowerCase() === 'instructor')
+      .map(inst => {
+        const id = inst.id;
+        const assignedTeams = teams.filter(t => (t.mentorId === id || t.mentor_id === id));
+        return {
+          id: inst.id,
+          name: inst.fullName || inst.full_name || inst.name || inst.email || 'Instructor',
+          email: inst.email || '',
+          track: inst.track || '',
+          organization: inst.organization || inst.school || '',
+          status: inst.status || 'Active',
+          assignedCount: assignedTeams.length,
+          assignedTeams
+        };
+      })
+      .sort((a, b) => b.assignedCount - a.assignedCount || a.name.localeCompare(b.name));
+  }
+
+  get mentorAllocationStats(): {
+    total: number;
+    assigned: number;
+    unassigned: number;
+    requested: number;
+    pct: number;
+    instructorCount: number;
+    avgLoad: string;
+  } {
+    const teams = (this.contentService.teams || []).filter(t => (t.status || '').toLowerCase() !== 'disbanded');
+    const total = teams.length;
+    const assigned = teams.filter(t => !!(t.mentorId || t.mentor_id)).length;
+    const requested = teams.filter(t => !(t.mentorId || t.mentor_id) && (t.mentorStatus === 'requested' || t.mentor_status === 'requested')).length;
+    const unassigned = total - assigned;
+    const pct = total > 0 ? Math.round((assigned / total) * 100) : 0;
+    const instructors = this.allPlatformInstructors;
+    const avgLoad = instructors.length > 0 ? (assigned / instructors.length).toFixed(1) : '0';
+    return { total, assigned, unassigned, requested, pct, instructorCount: instructors.length, avgLoad };
+  }
+
+  get filteredMentorTeams(): any[] {
+    let list = (this.contentService.teams || []).filter(t => (t.status || '').toLowerCase() !== 'disbanded');
+    const q = (this.mentorSearchQuery || '').trim().toLowerCase();
+    if (q) {
+      list = list.filter(t => {
+        const name = (t.name || '').toLowerCase();
+        const lead = (t.lead || '').toLowerCase();
+        const school = (t.schoolName || t.school_name || '').toLowerCase();
+        const track = (t.track || '').toLowerCase();
+        const mentorName = this.getMentorName(t.mentorId || t.mentor_id).toLowerCase();
+        return name.includes(q) || lead.includes(q) || school.includes(q) || track.includes(q) || mentorName.includes(q);
+      });
+    }
+    if (this.mentorStatusFilter === 'assigned') {
+      list = list.filter(t => !!(t.mentorId || t.mentor_id));
+    } else if (this.mentorStatusFilter === 'unassigned') {
+      list = list.filter(t => !(t.mentorId || t.mentor_id));
+    } else if (this.mentorStatusFilter === 'requested') {
+      list = list.filter(t => !(t.mentorId || t.mentor_id) && (t.mentorStatus === 'requested' || t.mentor_status === 'requested'));
+    }
+    if (this.mentorTrackFilter && this.mentorTrackFilter !== 'all') {
+      list = list.filter(t => (t.track || '').toLowerCase() === this.mentorTrackFilter.toLowerCase());
+    }
+    if (this.mentorTypeFilter === 'squad') {
+      list = list.filter(t => !t.isSolo && !t.is_solo);
+    } else if (this.mentorTypeFilter === 'solo') {
+      list = list.filter(t => !!(t.isSolo || t.is_solo));
+    }
+    if (this.selectedMentorInstructorFilter) {
+      list = list.filter(t => (t.mentorId === this.selectedMentorInstructorFilter || t.mentor_id === this.selectedMentorInstructorFilter));
+    }
+    return list;
+  }
+
+  getMentorName(mentorId: string | null | undefined): string {
+    if (!mentorId) return 'Unassigned';
+    const inst = (this.registeredUsers || []).find(u => u.id === mentorId);
+    return inst ? (inst.fullName || inst.full_name || inst.name || inst.email || 'Instructor') : 'Assigned Instructor';
+  }
+
+  getMentorObj(mentorId: string | null | undefined): any {
+    if (!mentorId) return null;
+    return (this.registeredUsers || []).find(u => u.id === mentorId) || null;
+  }
+
+  isTrackMatch(teamTrack: string | null | undefined, instructorTrack: string | null | undefined): boolean {
+    if (!teamTrack || !instructorTrack) return false;
+    const tt = teamTrack.toLowerCase().trim();
+    const it = instructorTrack.toLowerCase().trim();
+    return tt.includes(it) || it.includes(tt) || (tt === 'ai' && it.includes('ai')) || (tt === 'coding' && it.includes('code'));
+  }
+
+  assignMentorToTeam(teamId: string, mentorId: string | null): void {
+    if (!teamId) return;
+    this.mentorActionInProgress[teamId] = true;
+    this.apiService.assignTeamMentor(teamId, mentorId || null).subscribe({
+      next: () => {
+        this.mentorActionInProgress[teamId] = false;
+        if (mentorId) {
+          const mName = this.getMentorName(mentorId);
+          this.dialogService.toast(`Assigned ${mName} as mentor.`, 'success');
+        } else {
+          this.dialogService.toast('Mentor unassigned.', 'info');
+        }
+        this.contentService.refreshBackendData();
+        this.cdr.markForCheck();
+      },
+      error: (err: any) => {
+        this.mentorActionInProgress[teamId] = false;
+        const detail = err?.error?.detail || 'Could not update mentor assignment.';
+        this.dialogService.toast(detail, 'error');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  async unassignMentorFromTeam(teamId: string, teamName?: string): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Unassign Mentor',
+      message: `Are you sure you want to remove the assigned mentor from "${teamName || 'this team'}"?`,
+      confirmText: 'Unassign',
+      type: 'warning'
+    });
+    if (!ok) return;
+    this.assignMentorToTeam(teamId, null);
+  }
+
+  filterByInstructor(instructorId: string): void {
+    if (this.selectedMentorInstructorFilter === instructorId) {
+      this.selectedMentorInstructorFilter = '';
+    } else {
+      this.selectedMentorInstructorFilter = instructorId;
+      this.mentorStatusFilter = 'all';
+    }
+  }
+
+  clearMentorFilters(): void {
+    this.mentorSearchQuery = '';
+    this.mentorStatusFilter = 'all';
+    this.mentorTrackFilter = 'all';
+    this.mentorTypeFilter = 'all';
+    this.selectedMentorInstructorFilter = '';
+  }
+
   /** Admin: give every mentor-less team (squad or solo) an instructor. */
   async autoAssignMentors(): Promise<void> {
     const ok = await this.dialogService.confirm({
@@ -2336,7 +2491,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (params['tab'] && ['dashboard', 'overview', 'control', 'register', 'tickets', 'approvals', 'content', 'users', 'admins'].includes(params['tab'])) {
         this.adminTab = params['tab'] as any;
         if (this.adminTab === 'control') {
-          this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins','audit','users_full','personnel'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
+          this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins','audit','users_full','personnel','mentors'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
         }
         if (params['subtab'] === 'personnel') {
           this.loadPersonnel();

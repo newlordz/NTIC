@@ -748,6 +748,13 @@ class TestInstitutionAndMentors:
         assert resp.status_code == 200, resp.text
         assert resp.json()["mentor_status"] == "assigned"
 
+        # Unassigning clears the mentor
+        resp_unassign = client.patch(f"/api/teams/{team_id}/mentor", headers=h,
+                                     json={"mentor_id": None})
+        assert resp_unassign.status_code == 200, resp_unassign.text
+        assert resp_unassign.json()["mentor_status"] == "none"
+        assert resp_unassign.json()["mentor_id"] is None
+
     def test_request_mentor_flags_a_team(self, client, admin_token):
         h = {"Authorization": f"Bearer {admin_token}"}
         team_id = client.post("/api/teams", headers=h,

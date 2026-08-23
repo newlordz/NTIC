@@ -372,6 +372,13 @@ export interface Team {
   photoFileId?: string;
   logoFileId?: string;
   mentor?: string;
+  mentorId?: string | null;
+  mentor_id?: string | null;
+  mentorStatus?: string;
+  mentor_status?: string;
+  isSolo?: boolean;
+  is_solo?: boolean;
+  school_name?: string;
   motto?: string;
   rosterList?: string[];
   memberNames?: string[];

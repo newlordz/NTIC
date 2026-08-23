@@ -5257,48 +5257,50 @@ try:
 
     @app.patch("/api/teams/{team_id}/mentor")
     def assign_team_mentor(team_id: str, payload: AssignMentorPayload,
-                           actor: dict = Depends(require_role(STUDENT_ADMIN_ROLES))):
+                           actor: dict = Depends(require_role(COMPETITION_ROLES))):
         """Assign or unassign an instructor as a team's mentor.
 
-        The target must be an instructor account. A school_admin may only assign a
-        mentor to a team in their own institution, and only pick an instructor in
-        their own institution; an admin may do either.
+        Only competition administrators (super_admin, admin, competition_manager)
+        may designate or alter team mentors across the platform.
         """
-        is_admin = (actor.get("role") or "") in ("super_admin", "admin")
         conn = _get_db()
         try:
             cur = conn.cursor()
-            org = _actor_org(cur, actor)
             cur.execute("SELECT school_name FROM teams WHERE id = %s", (team_id,))
             team = cur.fetchone()
             if not team:
                 cur.close()
                 raise HTTPException(status_code=404, detail="Team not found")
-            if not is_admin and (team[0] or "").strip().lower() != org.lower():
+
+            target_mentor = (payload.mentor_id or "").strip()
+            if not target_mentor or target_mentor.lower() in ("none", "null", "unassigned"):
+                cur.execute(
+                    "UPDATE teams SET mentor_id = NULL, mentor_status = 'none' WHERE id = %s",
+                    (team_id,),
+                )
+                conn.commit()
                 cur.close()
-                raise HTTPException(status_code=404, detail="Team not found")
+                broadcast_async({"type": "data_changed", "collection": "teams"})
+                return {"team_id": team_id, "mentor_id": None, "mentor_status": "none"}
 
             cur.execute(
-                "SELECT role, organization FROM users WHERE id = %s", (payload.mentor_id,)
+                "SELECT role, organization FROM users WHERE id = %s", (target_mentor,)
             )
             mentor = cur.fetchone()
             if not mentor or (mentor[0] or "") != "instructor":
                 cur.close()
                 raise HTTPException(status_code=400, detail="Mentor must be an instructor account")
-            if not is_admin and (mentor[1] or "").strip().lower() != org.lower():
-                cur.close()
-                raise HTTPException(status_code=400, detail="That instructor is not in your institution")
 
             cur.execute(
                 "UPDATE teams SET mentor_id = %s, mentor_status = 'assigned' WHERE id = %s",
-                (payload.mentor_id, team_id),
+                (target_mentor, team_id),
             )
             conn.commit()
             cur.close()
         finally:
             release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "teams"})
-        return {"team_id": team_id, "mentor_id": payload.mentor_id, "mentor_status": "assigned"}
+        return {"team_id": team_id, "mentor_id": target_mentor, "mentor_status": "assigned"}
 
     @app.post("/api/teams/{team_id}/request-mentor")
     def request_team_mentor(team_id: str, actor: dict = Depends(require_auth)):
