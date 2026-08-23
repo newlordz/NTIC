@@ -3095,68 +3095,15 @@
           <button type="button" class="lm-forgot-link" (click)="openForgotPassword()">Forgot password?</button>
         </div>
       </form>
-
-      <!-- ── Forgot-password flow ── -->
-      <div *ngIf="forgotStep" class="lm-form" style="margin-top:4px;">
-        <div class="login-modal-header" style="margin-top:12px;">
-          <h3>Reset your password</h3>
-          <p *ngIf="forgotStep === 'email'">Enter the email for your account and we'll send a code.</p>
-          <p *ngIf="forgotStep === 'otp'">Enter the code sent to <strong>{{ forgotEmail }}</strong>.</p>
-          <p *ngIf="forgotStep === 'reset'">Choose a new password.</p>
-        </div>
-
-        <div class="lm-group" *ngIf="forgotStep === 'email'">
-          <label>Email *</label>
-          <div class="lm-input-wrap">
-            <span class="material-symbols-outlined lm-icon">mail</span>
-            <input type="email" name="forgotEmail" [(ngModel)]="forgotEmail" placeholder="name@school.edu.gh" class="lm-input" autocomplete="username">
-          </div>
-        </div>
-
-        <div class="lm-group" *ngIf="forgotStep === 'otp'">
-          <label>Verification code *</label>
-          <div class="lm-input-wrap">
-            <span class="material-symbols-outlined lm-icon">pin</span>
-            <input type="text" name="forgotOtp" [(ngModel)]="forgotOtpCode" placeholder="6-digit code" class="lm-input" maxlength="10" autocomplete="one-time-code">
-          </div>
-        </div>
-
-        <div class="lm-group" *ngIf="forgotStep === 'reset'">
-          <label>New password *</label>
-          <div class="lm-input-wrap">
-            <span class="material-symbols-outlined lm-icon">lock</span>
-            <input type="password" name="forgotNewPassword" [(ngModel)]="forgotNewPassword" placeholder="New password" class="lm-input" autocomplete="new-password">
-          </div>
-        </div>
-
-        <div class="lm-group" *ngIf="forgotStep === 'reset'">
-          <label>Confirm new password *</label>
-          <div class="lm-input-wrap">
-            <span class="material-symbols-outlined lm-icon">lock</span>
-            <input type="password" name="forgotNewPasswordConfirm" [(ngModel)]="forgotNewPasswordConfirm" placeholder="Repeat new password" class="lm-input" autocomplete="new-password">
-          </div>
-        </div>
-
-        <div class="lm-error" *ngIf="forgotError">
-          <span class="material-symbols-outlined">error_outline</span>
-          <span>{{ forgotError }}</span>
-        </div>
-
-        <button type="button" class="lm-submit" [disabled]="forgotBusy"
-                (click)="forgotStep === 'email' ? submitForgotEmail() : forgotStep === 'otp' ? submitForgotOtp() : submitForgotReset()">
-          <ng-container *ngIf="!forgotBusy">
-            <span>{{ forgotStep === 'email' ? 'Send code' : forgotStep === 'otp' ? 'Confirm code' : 'Change password' }}</span>
-            <span class="material-symbols-outlined">arrow_right_alt</span>
-          </ng-container>
-          <ng-container *ngIf="forgotBusy">
-            <span class="lm-spinner"></span>
-            <span>Please wait...</span>
-          </ng-container>
-        </button>
-
-        <button type="button" class="lm-forgot-link" (click)="closeForgotPassword()" style="width:100%;margin-top:12px;">Back to sign in</button>
-      </div>
     </div>
 
   </div>
 </div>
+
+<!-- Forgot-password popup -->
+<app-forgot-password
+  *ngIf="showForgotPassword"
+  [initialEmail]="loginEmail"
+  (closed)="closeForgotPassword()"
+  (resetComplete)="onPasswordReset($event)">
+</app-forgot-password>

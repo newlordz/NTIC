@@ -14,12 +14,13 @@ import { DialogService } from '../../services/dialog.service';
 import { ApiService } from '../../services/api.service';
 import { OtpService } from '../../services/otp.service';
 import { AppSelectComponent } from '../../components/app-select/app-select.component';
+import { ForgotPasswordComponent } from '../../components/forgot-password/forgot-password.component';
 import { SafePipe } from '../../pipes/safe.pipe';
 
 @Component({
   selector: 'app-registration',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, AppSelectComponent, SafePipe],
+  imports: [CommonModule, FormsModule, RouterLink, AppSelectComponent, SafePipe, ForgotPasswordComponent],
   templateUrl: './registration.component.html',
   styleUrl: './registration.component.scss'
 })

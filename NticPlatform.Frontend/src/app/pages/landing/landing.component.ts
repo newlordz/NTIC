@@ -8,9 +8,9 @@ import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
 import { ApiService, PublicPartner } from '../../services/api.service';
-import { OtpService } from '../../services/otp.service';
 import { IdleTimeoutService } from '../../services/idle-timeout.service';
 import { ChatbotComponent } from '../../chatbot/chatbot.component';
+import { ForgotPasswordComponent } from '../../components/forgot-password/forgot-password.component';
 
 interface UserRole {
   id: string;
@@ -51,7 +51,7 @@ interface LeaderboardEntry {
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, DecimalPipe, ChatbotComponent],
+  imports: [CommonModule, RouterLink, FormsModule, DecimalPipe, ChatbotComponent, ForgotPasswordComponent],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -341,113 +341,24 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   isLoginModalOpen = false;
   rememberDevice = false;
 
-  // ── Forgot-password flow (email -> OTP -> change password) ──────
-  // Mirrors the registration login modal so both sign-in points behave the same.
-  forgotStep: 'email' | 'otp' | 'reset' | null = null;
-  forgotEmail = '';
-  forgotChallengeId = '';
-  forgotOtpCode = '';
-  forgotResetToken = '';
-  forgotNewPassword = '';
-  forgotNewPasswordConfirm = '';
-  forgotError = '';
-  forgotBusy = false;
+  /** Forgot-password popup. The flow itself lives in ForgotPasswordComponent. */
+  showForgotPassword = false;
 
   openForgotPassword(): void {
-    this.forgotStep = 'email';
-    this.forgotEmail = this.email || '';
-    this.forgotOtpCode = '';
-    this.forgotResetToken = '';
-    this.forgotNewPassword = '';
-    this.forgotNewPasswordConfirm = '';
-    this.forgotError = '';
     this.loginError = '';
+    this.showForgotPassword = true;
   }
 
   closeForgotPassword(): void {
-    this.forgotStep = null;
-    this.forgotError = '';
+    this.showForgotPassword = false;
   }
 
-  submitForgotEmail(): void {
-    const email = (this.forgotEmail || '').trim();
-    if (!email) {
-      this.forgotError = 'Please enter your email address.';
-      return;
-    }
-    this.forgotBusy = true;
-    this.forgotError = '';
-    this.apiService.forgotPassword(email).subscribe({
-      next: res => {
-        this.forgotBusy = false;
-        // The server does not reveal whether the email is registered; it only
-        // returns a challenge id when it is. Only a real account gets a code.
-        this.forgotChallengeId = res.challenge_id || '';
-        this.forgotStep = 'otp';
-        this.cdr.markForCheck();
-      },
-      error: (err: any) => {
-        this.forgotBusy = false;
-        this.forgotError = err?.error?.detail || 'Could not send the code. Please try again.';
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
-  submitForgotOtp(): void {
-    const code = (this.forgotOtpCode || '').trim();
-    if (!code) {
-      this.forgotError = 'Please enter the code sent to your email.';
-      return;
-    }
-    this.forgotBusy = true;
-    this.forgotError = '';
-    this.otpService.verify(this.forgotChallengeId, code).subscribe({
-      next: res => {
-        this.forgotBusy = false;
-        this.forgotResetToken = res.reset_token || '';
-        if (!this.forgotResetToken) {
-          this.forgotError = 'Verification succeeded but no reset was started. Please try again.';
-        } else {
-          this.forgotStep = 'reset';
-        }
-        this.cdr.markForCheck();
-      },
-      error: (err: any) => {
-        this.forgotBusy = false;
-        this.forgotError = err?.message || 'Incorrect code. Please try again.';
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
-  submitForgotReset(): void {
-    const pw = this.forgotNewPassword;
-    if (!pw) {
-      this.forgotError = 'Please choose a new password.';
-      return;
-    }
-    if (pw !== this.forgotNewPasswordConfirm) {
-      this.forgotError = 'The two passwords do not match.';
-      return;
-    }
-    this.forgotBusy = true;
-    this.forgotError = '';
-    this.apiService.resetPasswordWithToken(this.forgotResetToken, pw).subscribe({
-      next: () => {
-        this.forgotBusy = false;
-        this.closeForgotPassword();
-        this.email = this.forgotEmail;
-        this.password = '';
-        this.loginError = 'Password reset. Sign in with your new password.';
-        this.cdr.markForCheck();
-      },
-      error: (err: any) => {
-        this.forgotBusy = false;
-        this.forgotError = err?.error?.detail || 'Could not reset the password. Please try again.';
-        this.cdr.markForCheck();
-      }
-    });
+  onPasswordReset(email: string): void {
+    this.showForgotPassword = false;
+    this.email = email;
+    this.password = '';
+    this.loginError = 'Password reset. Sign in with your new password.';
+    this.cdr.markForCheck();
   }
 
   openInfoModal(event?: Event, section?: string): void {
@@ -1100,7 +1011,6 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     private cdr: ChangeDetectorRef,
     public dialogService: DialogService,
     private apiService: ApiService,
-    private otpService: OtpService,
     private idleTimeout: IdleTimeoutService
   ) {
     this.activeRoleId = '';
