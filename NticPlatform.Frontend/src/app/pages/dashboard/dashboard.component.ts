@@ -5975,9 +5975,11 @@ setTimeout(async () => {
       );
       const school = existingTeam?.schoolName || (this.schoolName || '').replace(/\s+Admin$/i, '').trim();
       const teamId = existingTeam?.id || this.teamForm.id;
-      // A real address when one was entered, else the old derived fallback.
-      const leadEmail = (this.teamForm.leadEmail || '').trim()
-        || `${this.teamForm.lead.trim().toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`;
+      // No invented address. If the institution didn't enter a real email, the
+      // lead stays name-only and gets an account later when the email is added
+      // (provisioning runs on every edit). A guessed address used to mint a
+      // login nobody could receive.
+      const leadEmail = (this.teamForm.leadEmail || '').trim();
       const memberEmails = this.teamForm.memberEmails
         .slice(0, (this.teamForm.members || 1) - 1)
         .map(e => (e || '').trim())
@@ -6050,8 +6052,8 @@ setTimeout(async () => {
       });
     } else {
       // 2. NEW TEAM MODE: Requires formal Super Admin approval via Team Addition request
-      const leadEmail = (this.teamForm.leadEmail || '').trim()
-        || `${this.teamForm.lead.trim().toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`;
+      // No invented address -- same as the edit branch above.
+      const leadEmail = (this.teamForm.leadEmail || '').trim();
       const memberEmails = this.teamForm.memberEmails
         .slice(0, (this.teamForm.members || 1) - 1)
         .map(e => (e || '').trim())

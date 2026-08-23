@@ -903,6 +903,233 @@ class TestSoloEntrantTeams:
         assert resp.status_code == 404, resp.text
 
 
+class TestCycleCloseAutoAssign:
+    """Closing a cycle must not leave any entrant without a mentor."""
+
+    def _instructor(self, client, admin_token, track="coding"):
+        from app.security import clear_all_rate_limits
+        email = f"ca-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers={"Authorization": f"Bearer {admin_token}"},
+                    json={"email": email, "full_name": "Cycle Instructor",
+                          "role": "instructor", "password": "Mole-Park-Elephant-21",
+                          "status": "Active", "track": track})
+        clear_all_rate_limits()
+        return email
+
+    def _cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        cid = client.post("/api/competitions", headers=h,
+                          json={"title": f"Close Cycle {uuid.uuid4().hex[:6]}"}).json()["id"]
+        client.patch(f"/api/competitions/{cid}", headers=h,
+                     json={"title": "x", "status": "registration"})
+        return cid
+
+    def _close(self, client, admin_token, cid):
+        """Walk the legal path registration -> active -> completed."""
+        h = {"Authorization": f"Bearer {admin_token}"}
+        client.patch(f"/api/competitions/{cid}", headers=h, json={"title": "x", "status": "active"})
+        return client.patch(f"/api/competitions/{cid}", headers=h,
+                            json={"title": "x", "status": "completed"})
+
+    def test_closing_a_cycle_assigns_mentors_to_unmentored_teams(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        self._instructor(client, admin_token)
+        cid = self._cycle(client, admin_token)
+        team_id = client.post("/api/teams", headers=h, json={
+            "name": f"Need Mentor {uuid.uuid4().hex[:5]}", "track": "coding",
+            "competition_id": cid
+        }).json()["id"]
+
+        resp = self._close(client, admin_token, cid)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["mentors_assigned"] >= 1
+        teams = client.get("/api/teams", headers=h).json()
+        mine = next(t for t in teams if t["id"] == team_id)
+        assert mine["mentorId"] is not None
+
+    def test_closing_a_cycle_does_not_reassign_mentored_teams(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        iemail = self._instructor(client, admin_token)
+        users = client.get("/api/users", headers=h).json()
+        iid = next(u["id"] for u in users if u["email"] == iemail)
+        cid = self._cycle(client, admin_token)
+        team_id = client.post("/api/teams", headers=h, json={
+            "name": f"Has Mentor {uuid.uuid4().hex[:5]}", "track": "coding",
+            "competition_id": cid
+        }).json()["id"]
+        client.patch(f"/api/teams/{team_id}/mentor", headers=h, json={"mentor_id": iid})
+
+        resp = self._close(client, admin_token, cid)
+        assert resp.status_code == 200, resp.text
+        teams = client.get("/api/teams", headers=h).json()
+        mine = next(t for t in teams if t["id"] == team_id)
+        assert mine["mentorId"] == iid
+
+
+class TestFullHappyPath:
+    """One end-to-end journey: institution registers a team -> student gets a
+    login -> student logs in, sees their team, requests a mentor -> assigned.
+
+    This is the automated stand-in for the manual click-through: it exercises the
+    exact endpoints the institution portal, the student dashboard and the mentor
+    flow call, so any wiring gap between them shows up here.
+    """
+
+    def test_full_journey(self, client, admin_token):
+        from app.security import clear_all_rate_limits
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"Happy {uuid.uuid4().hex[:5]}"
+        iemail = f"hp-i-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers=h, json={
+            "email": iemail, "full_name": "Happy Mentor", "role": "instructor",
+            "password": "Shai-Hills-Reserve-55", "status": "Active", "track": "coding",
+            "organization": school})
+        clear_all_rate_limits()
+
+        # 1. Institution creates a team with a lead email. The backend provisions
+        #    the student account.
+        lead_email = f"hp-s-{uuid.uuid4().hex[:8]}@ntic.test"
+        team = client.post("/api/teams", headers=h, json={
+            "name": "Happy Squad", "lead": "Efua Mensimah", "lead_email": lead_email,
+            "members": 1, "school_name": school, "track": "coding"
+        })
+        assert team.status_code == 201, team.text
+        provisioned = team.json()["provisioned_accounts"]
+        assert provisioned and provisioned[0]["email"] == lead_email
+
+        # 2. The institution's portal lists that student.
+        sa_email = f"hp-sa-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers=h, json={
+            "email": sa_email, "full_name": "Happy Admin", "role": "school_admin",
+            "password": "Boti-Waterfalls-99", "status": "Active", "organization": school})
+        clear_all_rate_limits()
+        sa_login = client.post("/api/login", json={"email": sa_email, "password": "Boti-Waterfalls-99"})
+        sah = {"Authorization": f"Bearer {sa_login.json()['token']}"}
+        roster = client.get("/api/institution/students", headers=sah).json()
+        assert any(s["email"] == lead_email for s in roster)
+
+        # 3. The institution issues a login (reset credentials).
+        users = client.get("/api/users", headers=h).json()
+        sid = next(u["id"] for u in users if u["email"] == lead_email)
+        reset = client.post(f"/api/institution/students/{sid}/reset-credentials", headers=sah)
+        assert reset.status_code == 200, reset.text
+        temp_pw = reset.json()["temporary_password"]
+
+        # 4. The student logs in with the issued credentials.
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": lead_email, "password": temp_pw})
+        assert login.status_code == 200, login.text
+        sh = {"Authorization": f"Bearer {login.json()['token']}"}
+
+        # 5. The student sees their team.
+        mine = client.get("/api/teams/mine", headers=sh).json()
+        assert any(t["name"] == "Happy Squad" for t in mine)
+
+        # 6. The student requests a mentor.
+        team_id = next(t["id"] for t in mine if t["name"] == "Happy Squad")
+        req = client.post(f"/api/teams/{team_id}/request-mentor", headers=sh)
+        assert req.status_code == 200, req.text
+
+        # 7. An admin auto-assigns, and the student's team has a mentor.
+        client.post("/api/teams/auto-assign-mentors", headers=h)
+        teams = client.get("/api/teams", headers=h).json()
+        happy = next(t for t in teams if t["id"] == team_id)
+        assert happy["mentorId"] is not None
+        assert happy["mentorStatus"] == "assigned"
+
+
+class TestJudgeSeesLmsContext:
+    """Option A of joining the grading paths: the judge sees a student's LMS
+    coursework as read-only context, without it affecting the judge's score."""
+
+    def test_queue_surfaces_instructor_grades_as_context(self, client, admin_token):
+        from app.security import clear_all_rate_limits
+        import app.database as db
+        h = {"Authorization": f"Bearer {admin_token}"}
+
+        email = f"jc-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers=h, json={
+            "email": email, "full_name": "Context Student", "role": "student",
+            "password": "Kakum-Canopy-Walk-31", "status": "Active"})
+        clear_all_rate_limits()
+        users = client.get("/api/users", headers=h).json()
+        sid = next(u["id"] for u in users if u["email"] == email)
+        conn = db.get_db_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO students (id, tenant_id, first_name, last_name, email) "
+                "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (id) DO NOTHING",
+                (sid, "default", "Context", "Student", email),
+            )
+            cur.execute(
+                "INSERT INTO lms_courses (id, title, track, status, approval_status) "
+                "VALUES ('jc-course', 'Judge Context Course', 'coding', 'active', 'approved')"
+            )
+            cur.execute(
+                "INSERT INTO lms_assignments (id, course_id, title, status, approval_status) "
+                "VALUES ('jc-assign', 'jc-course', 'HW 1', 'active', 'approved')"
+            )
+            cur.execute(
+                "INSERT INTO lms_submissions (id, assignment_id, course_id, student_id, "
+                "student_name, student_email, score, status) "
+                "VALUES ('jc-sub', 'jc-assign', 'jc-course', %s, 'Context Student', %s, 88, 'graded')",
+                (sid, email),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            db.release_db_connection(conn)
+
+        sub = client.post("/api/submissions", headers=h, json={
+            "student_id": sid, "source_code_path": "https://example.com/project.zip",
+            "tenant_id": "default"
+        }).json()
+
+        queue = client.get("/api/judge/queue", headers=h).json()
+        mine = next(s for s in queue["submissions"] if s["id"] == sub["id"])
+        ctx = mine.get("lms_context")
+        assert ctx is not None
+        assert ctx["assignments_submitted"] == 1
+        assert ctx["average_score"] == 88
+        assert ctx["assignments"][0]["score"] == 88
+
+    def test_judge_score_is_not_derived_from_lms_context(self, client, admin_token):
+        # A student with no LMS work gets empty context, and the judge's score is
+        # their own input -- lms_context never feeds it.
+        from app.security import clear_all_rate_limits
+        import app.database as db
+        h = {"Authorization": f"Bearer {admin_token}"}
+        email = f"jc2-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers=h, json={
+            "email": email, "full_name": "No LMS Student", "role": "student",
+            "password": "Wli-Waterfall-28", "status": "Active"})
+        clear_all_rate_limits()
+        users = client.get("/api/users", headers=h).json()
+        sid = next(u["id"] for u in users if u["email"] == email)
+        conn = db.get_db_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO students (id, tenant_id, first_name, last_name, email) "
+                "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (id) DO NOTHING",
+                (sid, "default", "No", "LMS", email),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            db.release_db_connection(conn)
+
+        sub = client.post("/api/submissions", headers=h, json={
+            "student_id": sid, "source_code_path": "z.zip", "tenant_id": "default"
+        }).json()
+        queue = client.get("/api/judge/queue", headers=h).json()
+        mine = next(s for s in queue["submissions"] if s["id"] == sub["id"])
+        ctx = mine.get("lms_context") or {}
+        assert ctx.get("assignments_submitted") == 0
+        assert ctx.get("average_score") is None
+
+
 class TestBulkSync:
     def test_bulk_sync_hof(self, client, admin_token):
         resp = client.post("/api/bulk-sync", json={

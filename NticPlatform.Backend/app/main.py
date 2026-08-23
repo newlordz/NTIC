@@ -30,7 +30,7 @@ from app.ws_manager import ws_manager, broadcast_async
 from app.lifecycle import (
     CYCLE_STATUSES, DEFAULT_STATUS as DEFAULT_CYCLE_STATUS,
     parse_status as parse_cycle_status, can_transition as can_cycle_transition,
-    is_registration_open,
+    is_registration_open, STATUS_COMPLETED,
 )
 
 try:
@@ -4365,6 +4365,41 @@ try:
             "max_score": MAX_SUBMISSION_SCORE,
         }
 
+    def _lms_context_map(cur, student_ids):
+        """Instructor-coursework context for a set of students (read-only).
+
+        Joins the two grading paths the safe way: it surfaces each student's LMS
+        assignment history next to their competition submission so a judge has
+        context, but it is deliberately read-only -- it does NOT feed into the
+        judge's score. Only the judge's own score counts toward the competition.
+        """
+        if not student_ids:
+            return {}
+        placeholders = ", ".join(["%s"] * len(student_ids))
+        cur.execute(
+            "SELECT s.student_id, a.title, s.score, s.status "
+            "FROM lms_submissions s JOIN lms_assignments a ON a.id = s.assignment_id "
+            f"WHERE s.student_id IN ({placeholders}) "
+            "ORDER BY s.student_id, a.title",
+            list(student_ids),
+        )
+        by_student = {}
+        for student_id, title, score, status in cur.fetchall():
+            by_student.setdefault(student_id, []).append({
+                "assignment": title, "score": score, "status": status or "submitted",
+            })
+        result = {}
+        for sid in student_ids:
+            items = by_student.get(sid, [])
+            graded = [i for i in items if i["score"] is not None]
+            result[sid] = {
+                "assignments_submitted": len(items),
+                "assignments_graded": len(graded),
+                "average_score": round(sum(i["score"] for i in graded) / len(graded), 2) if graded else None,
+                "assignments": items,
+            }
+        return result
+
     @app.get("/api/judge/queue")
     def judge_queue(track: str = "", competition_id: str = "", _actor: dict = Depends(require_role(GRADING_ROLES))):
         """Submissions still awaiting a score.
@@ -4404,12 +4439,19 @@ try:
         else:
             cur.execute(track_sql + "GROUP BY lower(st.track) ORDER BY 2 DESC")
         by_track = [{"track": r[0], "pending": r[1]} for r in cur.fetchall()]
+        # Enrich each submission with the student's LMS coursework context so the
+        # judge sees it, but read-only -- it never changes the judge's score.
+        shaped = [_shape_submission(r) for r in rows]
+        student_ids = [s["student_id"] for s in shaped if s.get("student_id")]
+        lms_map = _lms_context_map(cur, student_ids) if student_ids else {}
+        for s in shaped:
+            s["lms_context"] = lms_map.get(s["student_id"])
         cur.close()
         release_db_connection(conn)
         return {
             "pending_total": pending_total,
             "by_track": by_track,
-            "submissions": [_shape_submission(r) for r in rows],
+            "submissions": shaped,
         }
 
     @app.get("/api/judge/history")
@@ -4572,6 +4614,12 @@ try:
                 (payload.title, payload.description, payload.track, payload.category, payload.deadline, new_status, payload.comp_type, payload.max_teams, payload.teams, payload.prize, payload.start_date, payload.end_date, payload.phases, payload.rules, payload.criteria, payload.progress, item_id)
             )
             row = cur.fetchone()
+            # When registration closes, make sure no entrant is left without a
+            # mentor: assign one to every team in this cycle that doesn't have one.
+            # Those who already requested keep their flag; the rest are covered.
+            assigned_mentors = 0
+            if new_status == STATUS_COMPLETED and (current_status or "") != STATUS_COMPLETED:
+                assigned_mentors = _auto_assign_mentors(cur, item_id)
             conn.commit()
         except Exception as e:
             conn.rollback()
@@ -4583,7 +4631,9 @@ try:
         if not row:
             raise HTTPException(status_code=404, detail="Competition not found")
         broadcast_async({"type": "data_changed", "collection": "competitions"})
-        return {"id": item_id, "status": "updated"}
+        if assigned_mentors:
+            broadcast_async({"type": "data_changed", "collection": "teams"})
+        return {"id": item_id, "status": "updated", "mentors_assigned": assigned_mentors}
 
     @app.delete("/api/competitions/{item_id}")
     def delete_competition(item_id: str, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
@@ -5203,12 +5253,12 @@ try:
                  "organization": r[3] or ""} for r in rows]
 
     class AssignMentorPayload(BaseModel):
-        mentor_id: str = Field(min_length=1, max_length=64)
+        mentor_id: Optional[str] = None
 
     @app.patch("/api/teams/{team_id}/mentor")
     def assign_team_mentor(team_id: str, payload: AssignMentorPayload,
                            actor: dict = Depends(require_role(STUDENT_ADMIN_ROLES))):
-        """Assign an instructor as a team's mentor.
+        """Assign or unassign an instructor as a team's mentor.
 
         The target must be an instructor account. A school_admin may only assign a
         mentor to a team in their own institution, and only pick an instructor in
@@ -5292,44 +5342,60 @@ try:
         broadcast_async({"type": "data_changed", "collection": "teams"})
         return {"team_id": team_id, "mentor_status": "requested"}
 
+    def _auto_assign_mentors(cur, competition_id: str = "") -> int:
+        """Give mentor-less teams an instructor, optionally scoped to one cycle.
+
+        Assignment is by track where possible (an instructor whose track matches
+        the team's), else any active instructor, chosen by current mentor load so
+        the distribution stays even. Returns the number of teams assigned.
+        """
+        if competition_id:
+            cur.execute(
+                "SELECT id, track FROM teams "
+                "WHERE mentor_id IS NULL AND COALESCE(status,'') <> 'Disbanded' "
+                "AND competition_id = %s",
+                (competition_id,),
+            )
+        else:
+            cur.execute(
+                "SELECT id, track FROM teams "
+                "WHERE mentor_id IS NULL AND COALESCE(status,'') <> 'Disbanded'"
+            )
+        teams = cur.fetchall()
+        if not teams:
+            return 0
+        cur.execute(
+            "SELECT u.id, u.track, "
+            "(SELECT COUNT(*) FROM teams t WHERE t.mentor_id = u.id) AS load "
+            "FROM users u WHERE u.role = 'instructor' AND LOWER(u.status) = 'active'"
+        )
+        instructors = [{"id": r[0], "track": (r[1] or "").lower(), "load": r[2]} for r in cur.fetchall()]
+        if not instructors:
+            return 0
+        assigned = 0
+        for team_id, track in teams:
+            track_l = (track or "").lower()
+            pool = [i for i in instructors if i["track"] == track_l] or instructors
+            pick = min(pool, key=lambda i: i["load"])
+            cur.execute(
+                "UPDATE teams SET mentor_id = %s, mentor_status = 'assigned' WHERE id = %s",
+                (pick["id"], team_id),
+            )
+            pick["load"] += 1
+            assigned += 1
+        return assigned
+
     @app.post("/api/teams/auto-assign-mentors")
     def auto_assign_mentors(actor: dict = Depends(require_role(ADMIN_ROLES))):
         """Give every mentor-less team an instructor, so none is left unsupervised.
 
-        Covers the entrants who never requested one. Assignment is by track where
-        possible (an instructor whose track matches the team's), else any active
-        instructor, chosen by current mentor load so the distribution stays even.
+        Covers the entrants who never requested one.
         """
         conn = _get_db()
         assigned = 0
         try:
             cur = conn.cursor()
-            cur.execute(
-                "SELECT id, track FROM teams "
-                "WHERE mentor_id IS NULL AND COALESCE(status,'') <> 'Disbanded'"
-            )
-            teams = cur.fetchall()
-            # Instructor pool with current load, cheapest first.
-            cur.execute(
-                "SELECT u.id, u.track, "
-                "(SELECT COUNT(*) FROM teams t WHERE t.mentor_id = u.id) AS load "
-                "FROM users u WHERE u.role = 'instructor' AND LOWER(u.status) = 'active'"
-            )
-            instructors = [{"id": r[0], "track": (r[1] or "").lower(), "load": r[2]} for r in cur.fetchall()]
-            if not instructors:
-                cur.close()
-                return {"assigned": 0, "detail": "No active instructors to assign"}
-
-            for team_id, track in teams:
-                track_l = (track or "").lower()
-                pool = [i for i in instructors if i["track"] == track_l] or instructors
-                pick = min(pool, key=lambda i: i["load"])
-                cur.execute(
-                    "UPDATE teams SET mentor_id = %s, mentor_status = 'assigned' WHERE id = %s",
-                    (pick["id"], team_id),
-                )
-                pick["load"] += 1
-                assigned += 1
+            assigned = _auto_assign_mentors(cur)
             conn.commit()
             cur.close()
         finally:
@@ -5337,7 +5403,6 @@ try:
         if assigned:
             broadcast_async({"type": "data_changed", "collection": "teams"})
         return {"assigned": assigned}
-
     # EVENTS
     @app.get("/api/events")
     def list_events():
