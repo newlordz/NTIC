@@ -1904,7 +1904,7 @@
           </p>
         </div>
 
-        <form (ngSubmit)="login()" #loginModalForm="ngForm" class="lm-form">
+        <form (ngSubmit)="login()" #loginModalForm="ngForm" class="lm-form" autocomplete="off">
 
           <div class="lm-group">
             <label for="lm-email">Email or Access Pass</label>
@@ -1912,7 +1912,7 @@
               <span class="material-symbols-outlined lm-icon">mail</span>
               <input type="text" id="lm-email" name="email" [(ngModel)]="email" required
                 placeholder="name@school.edu.gh or NTI Championship ticket code" class="lm-input"
-                (input)="detectRoleFromInput(email)" autocomplete="username">
+                (input)="detectRoleFromInput(email)" autocomplete="off">
               <span class="lm-input-glow"></span>
             </div>
           </div>
@@ -1923,7 +1923,7 @@
               <span class="material-symbols-outlined lm-icon">lock</span>
               <input [type]="isPasswordVisible ? 'text' : 'password'" id="lm-pass" name="password"
                 [(ngModel)]="password" [required]="!isAdminEmail" placeholder="Enter your password or verification code"
-                class="lm-input" autocomplete="current-password">
+                class="lm-input" autocomplete="new-password">
               <button type="button" class="lm-pass-toggle" (click)="isPasswordVisible = !isPasswordVisible"
                 tabindex="-1">
                 <span class="material-symbols-outlined">{{ isPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
@@ -1952,7 +1952,62 @@
             <input type="checkbox" name="rememberDevice" [(ngModel)]="rememberDevice">
             <span>Remember this device</span>
           </label>
+
+          <div style="text-align:center;margin-top:12px;">
+            <button type="button" class="lm-forgot-link" (click)="openForgotPassword()">Forgot password?</button>
+          </div>
         </form>
+
+        <!-- ── Forgot-password flow ── -->
+        <div *ngIf="forgotStep" class="lm-forgot-panel">
+          <div class="lm-forgot-head">
+            <h3>Reset your password</h3>
+            <p *ngIf="forgotStep === 'email'">Enter the email for your account and we'll send a code.</p>
+            <p *ngIf="forgotStep === 'otp'">Enter the code sent to <strong>{{ forgotEmail }}</strong>.</p>
+            <p *ngIf="forgotStep === 'reset'">Choose a new password.</p>
+          </div>
+
+          <div class="lm-field" *ngIf="forgotStep === 'email'">
+            <label>Email *</label>
+            <input type="email" name="forgotEmail" [(ngModel)]="forgotEmail"
+                   placeholder="name@school.edu.gh" autocomplete="username">
+          </div>
+
+          <div class="lm-field" *ngIf="forgotStep === 'otp'">
+            <label>Verification code *</label>
+            <input type="text" name="forgotOtp" [(ngModel)]="forgotOtpCode"
+                   placeholder="6-digit code" maxlength="10" autocomplete="one-time-code">
+          </div>
+
+          <div class="lm-field" *ngIf="forgotStep === 'reset'">
+            <label>New password *</label>
+            <input type="password" name="forgotNewPassword" [(ngModel)]="forgotNewPassword"
+                   placeholder="New password" autocomplete="new-password">
+          </div>
+
+          <div class="lm-field" *ngIf="forgotStep === 'reset'">
+            <label>Confirm new password *</label>
+            <input type="password" name="forgotNewPasswordConfirm" [(ngModel)]="forgotNewPasswordConfirm"
+                   placeholder="Repeat new password" autocomplete="new-password">
+          </div>
+
+          <div class="lm-forgot-error" *ngIf="forgotError">{{ forgotError }}</div>
+
+          <button type="button" class="lm-submit" [disabled]="forgotBusy"
+                  (click)="forgotStep === 'email' ? submitForgotEmail() : forgotStep === 'otp' ? submitForgotOtp() : submitForgotReset()">
+            <ng-container *ngIf="!forgotBusy">
+              <span>{{ forgotStep === 'email' ? 'Send code' : forgotStep === 'otp' ? 'Confirm code' : 'Change password' }}</span>
+              <span class="material-symbols-outlined">arrow_right_alt</span>
+            </ng-container>
+            <ng-container *ngIf="forgotBusy">
+              <span class="lm-spinner"></span>
+              <span>Please wait...</span>
+            </ng-container>
+          </button>
+
+          <button type="button" class="lm-forgot-link" (click)="closeForgotPassword()"
+                  style="width:100%;margin-top:12px;">Back to sign in</button>
+        </div>
 
         <!-- Telemetry Console -->
         <div class="telemetry-console" *ngIf="telemetryLogs.length > 0">

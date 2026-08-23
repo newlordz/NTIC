@@ -1500,6 +1500,26 @@ setAuthValue('activeUserEmail', email);
   isPasswordVisible = false;
   rememberDevice = false;
 
+  /** Forgot-password popup. The flow itself lives in ForgotPasswordComponent. */
+  showForgotPassword = false;
+
+  openForgotPassword(): void {
+    this.loginError = '';
+    this.showForgotPassword = true;
+  }
+
+  closeForgotPassword(): void {
+    this.showForgotPassword = false;
+  }
+
+  onPasswordReset(email: string): void {
+    this.showForgotPassword = false;
+    // Pre-fill sign-in so the user only types their new password.
+    this.loginEmail = email;
+    this.loginPassword = '';
+    this.loginError = 'Password reset. Sign in with your new password.';
+  }
+
   openLoginModal(event?: Event): void {
     if (event) {
       event.preventDefault();
@@ -1525,6 +1545,7 @@ setAuthValue('activeUserEmail', email);
     this.loginEmail = '';
     this.loginPassword = '';
     this.loginError = '';
+    this.closeForgotPassword();
   }
 
   get hasSavedCredentials(): boolean {

@@ -1137,6 +1137,99 @@ class TestJudgeSeesLmsContext:
         assert ctx.get("average_score") is None
 
 
+class TestForgotPassword:
+    """Forgot-password: email -> OTP -> new password, bound to a real account."""
+
+    def _user(self, client, admin_token, name="Forgot User"):
+        from app.security import clear_all_rate_limits
+        email = f"fp-{uuid.uuid4().hex[:8]}@ntic.test"
+        password = "Bole-Bamboi-Ferry-42"
+        client.post("/api/users", headers={"Authorization": f"Bearer {admin_token}"},
+                    json={"email": email, "full_name": name, "role": "student",
+                          "password": password, "status": "Active"})
+        clear_all_rate_limits()
+        return email, password
+
+    def _capture_code(self, monkeypatch):
+        import app.main as main
+        captured = {}
+        monkeypatch.setattr(
+            main, "_send_brevo_email",
+            lambda to, name, subj, html: (captured.update(html=html), True)[1],
+        )
+        return captured
+
+    def test_full_flow_resets_the_password(self, client, admin_token, monkeypatch):
+        import re
+        from app.security import clear_all_rate_limits
+        email, _old = self._user(client, admin_token)
+        captured = self._capture_code(monkeypatch)
+
+        clear_all_rate_limits()
+        start = client.post("/api/auth/forgot-password", json={"email": email})
+        assert start.status_code == 200, start.text
+        challenge_id = start.json()["challenge_id"]
+        assert challenge_id
+
+        code = re.search(r">(\d{6})<", captured["html"]).group(1)
+        clear_all_rate_limits()
+        verify = client.post("/api/otp/verify", json={"challenge_id": challenge_id, "code": code})
+        assert verify.status_code == 200, verify.text
+        reset_token = verify.json()["reset_token"]
+        assert reset_token
+
+        clear_all_rate_limits()
+        reset = client.post("/api/auth/forgot-password/reset",
+                            json={"reset_token": reset_token, "new_password": "New-Kintampo-Falls-99"})
+        assert reset.status_code == 200, reset.text
+
+        # Old password no longer works; the new one does.
+        clear_all_rate_limits()
+        assert client.post("/api/login", json={"email": email, "password": _old}).status_code == 401
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": "New-Kintampo-Falls-99"})
+        assert login.status_code == 200, login.text
+
+    def test_unknown_email_returns_no_challenge(self, client, admin_token, monkeypatch):
+        import app.main as main
+        sent = {"n": 0}
+        monkeypatch.setattr(main, "_send_brevo_email", lambda *a, **k: (sent.update(n=sent["n"] + 1), True)[1])
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        resp = client.post("/api/auth/forgot-password",
+                           json={"email": f"ghost-{uuid.uuid4().hex[:8]}@ntic.test"})
+        assert resp.status_code == 200
+        assert resp.json()["challenge_id"] is None
+        # And no email was actually sent, so a fake account can't be used.
+        assert sent["n"] == 0
+
+    def test_reset_token_cannot_be_reused(self, client, admin_token, monkeypatch):
+        import re
+        from app.security import clear_all_rate_limits
+        email, _ = self._user(client, admin_token)
+        captured = self._capture_code(monkeypatch)
+        clear_all_rate_limits()
+        challenge_id = client.post("/api/auth/forgot-password", json={"email": email}).json()["challenge_id"]
+        code = re.search(r">(\d{6})<", captured["html"]).group(1)
+        clear_all_rate_limits()
+        reset_token = client.post("/api/otp/verify", json={"challenge_id": challenge_id, "code": code}).json()["reset_token"]
+        clear_all_rate_limits()
+        first = client.post("/api/auth/forgot-password/reset",
+                            json={"reset_token": reset_token, "new_password": "First-New-Password-1"})
+        assert first.status_code == 200
+        clear_all_rate_limits()
+        replay = client.post("/api/auth/forgot-password/reset",
+                             json={"reset_token": reset_token, "new_password": "Second-New-Password-2"})
+        assert replay.status_code == 400, replay.text
+
+    def test_invalid_token_is_rejected(self, client):
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        resp = client.post("/api/auth/forgot-password/reset",
+                           json={"reset_token": "x" * 32, "new_password": "Whatever-Password-1"})
+        assert resp.status_code == 400, resp.text
+
+
 class TestBulkSync:
     def test_bulk_sync_hof(self, client, admin_token):
         resp = client.post("/api/bulk-sync", json={
@@ -2081,6 +2174,11 @@ class TestPublicSurface:
         ("POST", "/api/auth/verify-contact"),
         ("POST", "/api/otp/request"),
         ("POST", "/api/otp/verify"),
+        # Forgot-password: unauthenticated by definition. Rate limited, and the
+        # reset token is only issued after OTP verification, so it cannot reset
+        # an account without owning its email.
+        ("POST", "/api/auth/forgot-password"),
+        ("POST", "/api/auth/forgot-password/reset"),
         ("POST", "/api/drafts"),
         ("POST", "/api/notify/registration-received"),
         # The public registration form filing an application for review. Type is

@@ -818,6 +818,25 @@ export class ApiService {
     );
   }
 
+  /**
+   * Start a forgot-password reset. The server only issues a code if the email
+   * exists, but returns the same shape either way to avoid account enumeration.
+   */
+  forgotPassword(email: string): Observable<{ challenge_id: string | null; target_masked: string; expires_in?: number }> {
+    return this.http.post<{ challenge_id: string | null; target_masked: string; expires_in?: number }>(
+      this.apiUrl + '/auth/forgot-password',
+      { email }
+    );
+  }
+
+  /** Set a new password using the token returned after OTP verification. */
+  resetPasswordWithToken(resetToken: string, newPassword: string): Observable<{ status: string; email: string }> {
+    return this.http.post<{ status: string; email: string }>(
+      this.apiUrl + '/auth/forgot-password/reset',
+      { reset_token: resetToken, new_password: newPassword }
+    );
+  }
+
   getStudents(): Observable<BackendStudent[]> {
     return this.http.get<BackendStudent[]>(this.apiUrl + '/students');
   }

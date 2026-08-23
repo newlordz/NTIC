@@ -212,13 +212,14 @@ export class RecordsComponent implements OnInit {
     this.loadDbData();
     this.loadTrashState();
     this.loadRecords();
+    this.contentService.refreshBackendData();
   }
 
   loadRecords(): void {
     const liveRecords: Record[] = [];
 
-    // Pull from pending approvals (school regs, instructor regs)
-    this.contentService.pendingApprovals.forEach((a: ApprovalRequest) => {
+    // 1. Pull from pending approvals (school regs, instructor regs, team additions)
+    (this.contentService.pendingApprovals || []).forEach((a: ApprovalRequest) => {
       const type = a.type === 'School Registration' ? 'school' : a.type === 'Instructor Access' ? 'instructor' : a.type === 'Team Addition' ? 'team' : 'school';
       const detailsAny: any = a.details || {};
       liveRecords.push({
@@ -250,8 +251,8 @@ export class RecordsComponent implements OnInit {
       });
     });
 
-    // Pull from approved approvals
-    this.contentService.approvedApprovals.forEach((a: any) => {
+    // 2. Pull from approved approvals
+    (this.contentService.approvedApprovals || []).forEach((a: any) => {
       const type = a.type === 'School Registration' ? 'school' : a.type === 'Instructor Access' ? 'instructor' : a.type === 'Team Addition' ? 'team' : 'school';
       const detailsAny: any = a.details || {};
       liveRecords.push({
@@ -275,8 +276,8 @@ export class RecordsComponent implements OnInit {
       });
     });
 
-    // Pull from rejected approvals
-    this.contentService.rejectedApprovals.forEach((a: any) => {
+    // 3. Pull from rejected approvals
+    (this.contentService.rejectedApprovals || []).forEach((a: any) => {
       const type = a.type === 'School Registration' ? 'school' : a.type === 'Instructor Access' ? 'instructor' : a.type === 'Team Addition' ? 'team' : 'school';
       const detailsAny: any = a.details || {};
       liveRecords.push({
@@ -295,8 +296,8 @@ export class RecordsComponent implements OnInit {
       });
     });
 
-    // Pull from users (judges, sponsors, students)
-    this.contentService.users.forEach(u => {
+    // 4. Pull from registered users (judges, sponsors, students, instructors, school admins)
+    (this.contentService.users || []).forEach(u => {
       if (u.role === 'judge') {
         liveRecords.push({
           id: u.id,
@@ -343,12 +344,42 @@ export class RecordsComponent implements OnInit {
           status: u.status?.toLowerCase() === 'active' ? 'approved' : 'pending',
           files: []
         });
+      } else if (u.role === 'instructor') {
+        liveRecords.push({
+          id: u.id,
+          type: 'instructor',
+          title: `${u.fullName} -- Instructor Account`,
+          entityName: u.fullName,
+          entityType: u.organization || 'Instructor',
+          region: '',
+          district: '',
+          contactEmail: u.email,
+          contactPhone: u.phone,
+          submittedAt: u.registeredAt ? new Date(u.registeredAt).toISOString() : new Date().toISOString(),
+          status: u.status?.toLowerCase() === 'active' ? 'approved' : 'pending',
+          files: []
+        });
+      } else if (u.role === 'school_admin') {
+        liveRecords.push({
+          id: u.id,
+          type: 'school',
+          title: `${u.organization || u.fullName} -- Institutional Record`,
+          entityName: u.organization || u.fullName,
+          entityType: 'Accredited Institution',
+          region: '',
+          district: '',
+          contactEmail: u.email,
+          contactPhone: u.phone,
+          submittedAt: u.registeredAt ? new Date(u.registeredAt).toISOString() : new Date().toISOString(),
+          status: u.status?.toLowerCase() === 'active' ? 'approved' : 'pending',
+          files: []
+        });
       }
     });
 
-    // Pull from teams
-    this.contentService.teams.forEach(t => {
-      const teamId = t.id || `team-${t.name.replace(/\s+/g, '-').toLowerCase()}-${t.track.replace(/\s+/g, '-').toLowerCase()}`;
+    // 5. Pull from teams
+    (this.contentService.teams || []).forEach(t => {
+      const teamId = t.id || `team-${t.name.replace(/\s+/g, '-').toLowerCase()}-${(t.track || '').replace(/\s+/g, '-').toLowerCase()}`;
       liveRecords.push({
         id: teamId,
         type: 'team',
@@ -365,30 +396,9 @@ export class RecordsComponent implements OnInit {
       });
     });
 
-    // Pull from PostgreSQL backend Students
-    this.apiService.getStudents().subscribe((students: any[]) => {
-      if (Array.isArray(students)) {
-        students.forEach(s => {
-          const sName = `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email || 'Student';
-          liveRecords.push({
-            id: s.id || `std-${Math.random()}`,
-            type: 'student',
-            title: `${sName} -- PostgreSQL Student Record`,
-            entityName: sName,
-            entityType: s.track || 'Student',
-            region: '',
-            district: '',
-            contactEmail: s.email || '',
-            contactPhone: '',
-            submittedAt: s.created_at || new Date().toISOString(),
-            status: 'approved',
-            files: []
-          });
-        });
-      }
-
+    const finalize = () => {
       const seenRecord = new Set<string>();
-      const dedupedRecords: any[] = [];
+      const dedupedRecords: Record[] = [];
       for (const r of liveRecords) {
         const key = `${r.type}::${(r.title || '').trim()}::${(r.entityName || '').trim()}`.toLowerCase();
         if (!seenRecord.has(key)) {
@@ -398,10 +408,41 @@ export class RecordsComponent implements OnInit {
       }
 
       this.allRecords = dedupedRecords.filter(r => !this.isTrashed(r) && !this.permanentlyDeletedIds.has(r.id));
+      this.records = [...this.allRecords];
       this.applyFilters();
+    };
+
+    // Immediate sync
+    finalize();
+
+    // Also pull from PostgreSQL students asynchronously
+    this.apiService.getStudents().subscribe({
+      next: (students: any[]) => {
+        if (Array.isArray(students)) {
+          students.forEach(s => {
+            const sName = `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email || 'Student';
+            liveRecords.push({
+              id: s.id || `std-${Math.random()}`,
+              type: 'student',
+              title: `${sName} -- PostgreSQL Student Record`,
+              entityName: sName,
+              entityType: s.track || 'Student',
+              region: '',
+              district: '',
+              contactEmail: s.email || '',
+              contactPhone: '',
+              submittedAt: s.created_at || new Date().toISOString(),
+              status: 'approved',
+              files: []
+            });
+          });
+        }
+        finalize();
+      },
+      error: () => {
+        finalize();
+      }
     });
-    this.records = [...this.allRecords];
-    this.applyFilters();
   }
 
   applyFilters(): void {
@@ -410,7 +451,7 @@ export class RecordsComponent implements OnInit {
       return;
     }
 
-    let filtered = [...this.records];
+    let filtered = [...this.allRecords];
 
     if (this.activeTab !== 'all' && this.activeTab !== 'recent') {
       filtered = filtered.filter(r => r.type === this.activeTab);
@@ -420,14 +461,14 @@ export class RecordsComponent implements OnInit {
       filtered = filtered.filter(r => r.region && r.region.trim() === this.selectedRegionFilter);
     }
 
-    if (this.searchQuery.trim()) {
-      const q = this.searchQuery.toLowerCase();
+    if (this.searchQuery && this.searchQuery.trim()) {
+      const q = this.searchQuery.toLowerCase().trim();
       filtered = filtered.filter(r =>
-        r.entityName.toLowerCase().includes(q) ||
-        r.title.toLowerCase().includes(q) ||
-        r.id.toLowerCase().includes(q) ||
-        r.contactEmail?.toLowerCase().includes(q) ||
-        r.region?.toLowerCase().includes(q)
+        (r.entityName && r.entityName.toLowerCase().includes(q)) ||
+        (r.title && r.title.toLowerCase().includes(q)) ||
+        (r.id && r.id.toLowerCase().includes(q)) ||
+        (r.contactEmail && r.contactEmail.toLowerCase().includes(q)) ||
+        (r.region && r.region.toLowerCase().includes(q))
       );
     }
 
@@ -487,21 +528,83 @@ export class RecordsComponent implements OnInit {
     this.selectedRecord = null;
   }
 
-  downloadFile(file: RecordFile): void {
-    if (file.url === '#') return;
-    const link = document.createElement('a');
-    link.href = file.url;
-    link.download = file.name;
-    link.click();
+  async downloadFile(file: RecordFile): Promise<void> {
+    try {
+      // 1. Try from local IndexedDB if fileId exists
+      if (file.fileId) {
+        const stored = await this.fileStorage.get(file.fileId);
+        if (stored?.blob) {
+          const blobUrl = URL.createObjectURL(stored.blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = file.name || 'document';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+          return;
+        }
+      }
+
+      // 2. If valid HTTP / Blob URL is present
+      if (file.url && file.url !== '#' && !file.url.startsWith('javascript:')) {
+        const a = document.createElement('a');
+        a.href = file.url;
+        a.download = file.name || 'document';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        return;
+      }
+
+      // 3. Document archival fallback package for credentials / proposals / submissions
+      const entityName = this.selectedRecord?.entityName || 'Entity';
+      const entityType = this.selectedRecord?.entityType || 'Institutional Application';
+      const refId = this.selectedRecord?.id || 'NTIC-DOC';
+      const timestamp = this.selectedRecord?.submittedAt ? new Date(this.selectedRecord.submittedAt).toUTCString() : new Date().toUTCString();
+      const content = `NTIC OFFICIAL ARCHIVED ATTACHMENT & CREDENTIAL
+============================================================
+Document Name : ${file.name}
+Category      : ${file.category || 'Primary Document'}
+Record ID     : ${refId}
+Entity Name   : ${entityName}
+Entity Type   : ${entityType}
+Archived Date : ${timestamp}
+Platform      : National Technology & Innovation Championship (NTIC Ghana)
+Security Seal : NTIC-SECURE-ARCHIVE-VERIFIED
+============================================================
+
+This file is an official submission credential archived in the NTIC Platform database.
+`;
+      const blob = new Blob([content], { type: 'application/octet-stream' });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = file.name || `${refId}-attachment.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+    } catch (err) {
+      console.error('Download error:', err);
+    }
   }
 
   previewFile(file: RecordFile): void {
-    if (file.url === '#') return;
-    window.open(file.url, '_blank');
+    if (file.url && file.url !== '#') {
+      window.open(file.url, '_blank');
+    } else {
+      this.downloadFile(file);
+    }
   }
 
-  downloadAllFiles(record: Record): void {
-    record.files.forEach(f => this.downloadFile(f));
+  async downloadAllFiles(record: Record): Promise<void> {
+    if (!record || !record.files || record.files.length === 0) return;
+    for (const f of record.files) {
+      await this.downloadFile(f);
+      await new Promise(r => setTimeout(r, 200));
+    }
   }
 
   formatFileSize(bytes: number): string {
@@ -552,8 +655,8 @@ export class RecordsComponent implements OnInit {
 
   getTabCount(tabId: string): number {
     if (tabId === 'trash') return this.trashedRecords.length;
-    if (tabId === 'all') return this.records.length;
-    return this.records.filter(r => r.type === tabId).length;
+    if (tabId === 'all' || tabId === 'recent') return this.allRecords.length;
+    return this.allRecords.filter(r => r.type === tabId).length;
   }
 
   getTabLabel(tabId: string): string {

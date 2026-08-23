@@ -628,6 +628,22 @@ def _create_tables(conn):
         "CREATE INDEX IF NOT EXISTS idx_team_members_email ON team_members (lower(email));"
     )
 
+    # Short-lived tokens for the forgot-password flow. A token is issued only
+    # after the account holder proves email access via OTP, and is single-use and
+    # expiring, so a leaked link cannot be replayed and an unused one dies.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id VARCHAR(128) PRIMARY KEY,
+            email VARCHAR(150) NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            used_at TIMESTAMP NULL
+        );
+    """)
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_email "
+        "ON password_reset_tokens (lower(email));"
+    )
+
     # A team's mentor, as a real instructor account (not the free-text `mentor`
     # name that was there before). This is what lets a mentor log in, see their
     # students, and be monitored -- and what connects a team to the LMS instructor

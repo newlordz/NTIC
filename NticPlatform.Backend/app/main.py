@@ -646,6 +646,12 @@ try:
             "/api/auth/verify-contact",
             "/api/otp/request",
             "/api/otp/verify",
+            # Forgot-password: unauthenticated by definition. Rate limited per IP
+            # and per target, and the reset token is only issued after OTP
+            # verification, so this cannot be used to reset an account without
+            # owning its email.
+            "/api/auth/forgot-password",
+            "/api/auth/forgot-password/reset",
             "/api/drafts",
             # Server-templated notification for the pre-login registration flow.
             # The generic /api/send-email now requires a session.
@@ -917,7 +923,7 @@ try:
     # reading their own network tab or localStorage.
     _OTP_TTL_SECONDS = 600
     _OTP_MAX_ATTEMPTS = 5
-    _OTP_PURPOSES = {"contact_verification", "draft_resume"}
+    _OTP_PURPOSES = {"contact_verification", "draft_resume", "password_reset"}
     _OTP_CHANNELS = {"email", "phone"}
 
     def _generate_otp() -> str:
@@ -997,6 +1003,36 @@ try:
             '<p style="font-size:12px;color:#bbb;margin-top:24px;">NTIC Ghana National Championship</p>'
             "</div>"
         )
+
+    def _password_reset_email_html(code: str) -> str:
+        return (
+            '<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">'
+            '<h2 style="color:#1a237e;">Reset your NTIC password</h2>'
+            '<p style="font-size:15px;color:#333;">You asked to reset your password. Use the code below to continue:</p>'
+            '<div style="background:#f5f5f5;border-radius:12px;padding:20px;text-align:center;margin:24px 0;">'
+            f'<span style="font-size:32px;font-weight:800;letter-spacing:8px;color:#d4a017;">{code}</span>'
+            "</div>"
+            '<p style="font-size:13px;color:#999;">This code expires in 10 minutes. If you did not request this, ignore this email.</p>'
+            '<p style="font-size:12px;color:#bbb;margin-top:24px;">NTIC Ghana National Championship</p>'
+            "</div>"
+        )
+
+    def _issue_password_reset_token(email: str) -> str:
+        """Mint a single-use, short-lived reset token bound to a verified email."""
+        token = secrets.token_urlsafe(32)
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO password_reset_tokens (id, email, expires_at) "
+                "VALUES (%s, %s, %s)",
+                (token, email, datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=15)),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return token
 
     class OtpRequestPayload(BaseModel):
         purpose: str = Field(max_length=40)
@@ -1150,8 +1186,153 @@ try:
             # short window, so the draft's PII is only released to someone who
             # actually received the code.
             result["resume_token"] = payload.challenge_id
+        if purpose == "password_reset":
+            # Only after the OTP is verified do we hand out a reset token. It is
+            # single-use and short-lived, and bound to the verified email, so it
+            # cannot be used to reset a different account.
+            result["reset_token"] = _issue_password_reset_token(target)
         return result
 
+    class ForgotPasswordPayload(BaseModel):
+        email: str = Field(min_length=3, max_length=254)
+
+    class ResetPasswordPayload(BaseModel):
+        reset_token: str = Field(min_length=16, max_length=128)
+        new_password: str = Field(min_length=1, max_length=200)
+
+    @app.post("/api/auth/forgot-password")
+    def forgot_password(payload: ForgotPasswordPayload, request: Request):
+        """Start a password reset: issue an OTP to the account's email.
+
+        The email must exist in the system for a code to be sent. To avoid
+        account enumeration the response is the same shape whether or not the
+        account exists -- but a challenge id (and therefore a code) is only ever
+        produced for a real account, so only a real user can complete the reset.
+        """
+        email = payload.email.strip().lower()
+        if not _EMAIL_RE.match(email):
+            raise HTTPException(status_code=422, detail="Invalid email address")
+
+        client_ip = extract_client_ip(request)
+        check_rate_limit(f"pwreset-ip:{client_ip}", max_attempts=5, window_seconds=300)
+        check_rate_limit(f"pwreset-target:{email}", max_attempts=4, window_seconds=900)
+
+        conn = _get_db()
+        exists = False
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT 1 FROM users WHERE lower(email) = %s", (email,))
+            exists = cur.fetchone() is not None
+            cur.close()
+        finally:
+            release_db_connection(conn)
+
+        if not exists:
+            return {"challenge_id": None, "target_masked": _mask_otp_target("email", email)}
+
+        code = _generate_otp()
+        challenge_id = "otp-" + secrets.token_urlsafe(18)
+        expires_at = datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=_OTP_TTL_SECONDS)
+        delivered = _send_brevo_email(
+            email, email.split("@")[0], "Reset your password - NTIC Ghana",
+            _password_reset_email_html(code),
+        )
+        if not delivered:
+            raise HTTPException(status_code=503, detail="Could not send the email. Please try again shortly.")
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE otp_challenges SET consumed_at = CURRENT_TIMESTAMP "
+                "WHERE target = %s AND purpose = 'password_reset' AND consumed_at IS NULL",
+                (email,),
+            )
+            cur.execute(
+                "INSERT INTO otp_challenges (id, purpose, channel, target, code_hash, max_attempts, expires_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (challenge_id, "password_reset", "email", email, hash_password(code), _OTP_MAX_ATTEMPTS, expires_at),
+            )
+            cur.execute("DELETE FROM otp_challenges WHERE expires_at < CURRENT_TIMESTAMP - INTERVAL '1 day'")
+            conn.commit()
+            cur.close()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Could not persist password-reset OTP: {e}")
+            raise HTTPException(status_code=500, detail="Could not start password reset")
+        finally:
+            release_db_connection(conn)
+
+        return {
+            "challenge_id": challenge_id,
+            "target_masked": _mask_otp_target("email", email),
+            "expires_in": _OTP_TTL_SECONDS,
+        }
+
+    @app.post("/api/auth/forgot-password/reset")
+    def reset_password(payload: ResetPasswordPayload, request: Request):
+        """Set a new password using a token obtained after OTP verification."""
+        client_ip = extract_client_ip(request)
+        check_rate_limit(f"pwreset-reset:{client_ip}", max_attempts=10, window_seconds=300)
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT email, (expires_at < CURRENT_TIMESTAMP) AS expired, used_at "
+                "FROM password_reset_tokens WHERE id = %s",
+                (payload.reset_token,),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=400, detail="This reset link is invalid or has expired. Please request a new code.")
+            email, expired, used_at = row
+            if used_at is not None:
+                raise HTTPException(status_code=400, detail="This reset link has already been used. Please request a new code.")
+            if expired:
+                raise HTTPException(status_code=400, detail="This reset link has expired. Please request a new code.")
+
+            cur.execute("SELECT id, full_name, password_hash FROM users WHERE lower(email) = %s", (email,))
+            user = cur.fetchone()
+            if not user:
+                raise HTTPException(status_code=400, detail="No account found for this reset link.")
+
+            user_id, full_name, stored_hash = user
+            new_password = payload.new_password
+            problem = validate_password_strength(new_password, email=email, full_name=full_name or "")
+            if problem:
+                raise HTTPException(status_code=422, detail=problem)
+            if verify_password(new_password, stored_hash):
+                raise HTTPException(status_code=422, detail="Your new password must be different from the current one")
+
+            cur.execute(
+                "UPDATE users SET password_hash = %s, must_change_password = FALSE, "
+                "password_changed_at = CURRENT_TIMESTAMP WHERE id = %s",
+                (hash_password(new_password), user_id),
+            )
+            # Sign out every device: the old password no longer works.
+            cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (user_id,))
+            cur.execute("UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = %s", (payload.reset_token,))
+            try:
+                cur.execute(
+                    "INSERT INTO audit_logs (action, usr, time, type, ip) VALUES (%s, %s, %s, %s, %s)",
+                    (f"Password reset via forgot-password: {email}", email,
+                     datetime.datetime.now(datetime.UTC).isoformat(), "security", anonymize_ip(client_ip)),
+                )
+            except Exception:
+                pass
+            conn.commit()
+            cur.close()
+        except HTTPException:
+            raise
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Password reset failed: {e}")
+            raise HTTPException(status_code=500, detail="Could not reset password")
+        finally:
+            release_db_connection(conn)
+
+        return {"status": "reset", "email": email}
 
     # AUTH
     class LoginRequest(BaseModel):
