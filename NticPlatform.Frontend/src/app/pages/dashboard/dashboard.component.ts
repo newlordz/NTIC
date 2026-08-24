@@ -839,12 +839,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.credentialsModal.copiedPin = true;
       setTimeout(() => { if (this.credentialsModal) this.credentialsModal.copiedPin = false; }, 2500);
     } else if (type === 'all') {
-      textToCopy = `Access Pass: ${this.credentialsModal.accessPass}\nPIN / OTP: ${this.credentialsModal.pin}`;
+      const pinPart = this.credentialsModal.pin ? `\nPIN / OTP: ${this.credentialsModal.pin}` : '';
+      textToCopy = `Access Pass: ${this.credentialsModal.accessPass}${pinPart}`;
       this.credentialsModal.copiedAll = true;
       setTimeout(() => { if (this.credentialsModal) this.credentialsModal.copiedAll = false; }, 2500);
     }
-    if (typeof navigator !== 'undefined' && navigator?.clipboard) {
-      navigator.clipboard.writeText(textToCopy);
+    if (typeof navigator !== 'undefined' && navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(textToCopy).catch(() => {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = textToCopy;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        } catch {}
+      });
     }
   }
 
@@ -4147,286 +4159,285 @@ setTimeout(async () => {
     if (this.approvingIds.has(req.id)) return;
     this.approvingIds.add(req.id);
 
-    const approved = {
-      ...req,
-      reviewedAt: new Date().toLocaleString('en-GB'),
-      reviewer: 'admin@ntic.org.gh'
-    };
-    const currentApproved = [...this.contentService.approvedApprovals];
-    currentApproved.unshift(approved);
-    this.contentService.saveApprovedApprovals(currentApproved);
-
-    this.pendingApprovals = this.pendingApprovals.filter(r => r.id !== req.id);
-
-    // Persist to backend so other machines see the approval
-    this.apiService.updateApproval(req.id, {
-      status: 'approved',
-      reviewed_at: new Date().toLocaleString('en-GB'),
-      reviewer: 'admin@ntic.org.gh'
-    }).subscribe({
-      next: (res: any) => {
-        // The server reports whether approving actually provisioned an account.
-        // This response used to be discarded, so when provisioning no-opped --
-        // most often because an account already existed for that email -- the
-        // reviewer was still told the approval succeeded and no account was made.
-        const account = res?.account;
-        if (account && account.provisioned === false && account.reason
-            && account.reason !== 'Not an approval transition'
-            && !String(account.reason).startsWith('No role mapping')) {
-          this.dialogService.toast(
-            `Approved, but no account was created: ${account.reason}`,
-            'warning'
-          );
-        }
-      },
-      error: () => {}
-    });
-
-    // Apply side-effects depending on the type of approval request
-    if (req.type === 'School Registration') {
-      const ticket = 'NTIC-SCH-' + this.randomSuffix();
-      const newSchoolAdmin = {
-        id: 'USR-' + Date.now() + '-' + this.randomSuffix(4).toLowerCase(),
-        role: 'school_admin' as const,
-        fullName: req.entity + ' Admin',
-        email: req.contact,
-        phone: req.details?.phone || '+233 24 555 1234',
-        otp: '',
-        organization: req.entity,
-        region: req.details?.region || '',
-        ticket,
-        applicationCode: req.details?.code || '',
-        status: 'Active',
-        registeredAt: new Date().toLocaleDateString('en-GB'),
-        lastLogin: 'Never'
+    try {
+      const approved = {
+        ...req,
+        reviewedAt: new Date().toLocaleString('en-GB'),
+        reviewer: 'admin@ntic.org.gh'
       };
+      const currentApproved = [...this.contentService.approvedApprovals];
+      currentApproved.unshift(approved);
+      this.contentService.saveApprovedApprovals(currentApproved);
 
-      const otp = await this.provisionAccount({
-        email: newSchoolAdmin.email, full_name: newSchoolAdmin.fullName, role: 'school_admin',
-        ticket, status: 'Active', phone: newSchoolAdmin.phone
-      });
-      newSchoolAdmin.otp = otp;
+      this.pendingApprovals = this.pendingApprovals.filter(r => r.id !== req.id);
 
-      const stats = { ...this.contentService.platformStats };
-      stats.schools += 1;
-      this.contentService.updatePlatformStats(stats);
-
-      if (req.details?.teamsList && Array.isArray(req.details.teamsList)) {
-        const currentTeams = [...this.contentService.teams];
-        req.details.teamsList.forEach((t: any) => {
-          const roster = [t.leadName, t.member2Name, t.member3Name, t.member4Name, t.member5Name].filter(Boolean).map((n: string) => n.trim()).filter((n: string) => n.length > 0);
-          const newTeam: any = {
-            name: t.name,
-            track: t.track || 'Coding',
-            lead: t.leadName || (roster[0] || 'Student Captain'),
-            members: Math.max(roster.length, 3),
-            rosterList: roster,
-            status: 'In Competition',
-            mentor: 'Assigned Coordinator',
-            motto: 'National NTI Competition Squad',
-            schoolName: req.entity
-          };
-          currentTeams.push(newTeam);
-          this.contentService.syncNewTeamToBackend(newTeam);
-        });
-        this.contentService.saveTeams(currentTeams);
+      // Persist to backend and obtain server-provisioned credentials in a single source of truth
+      let updateRes: any = null;
+      try {
+        updateRes = await firstValueFrom(this.apiService.updateApproval(req.id, {
+          status: 'approved',
+          reviewed_at: new Date().toLocaleString('en-GB'),
+          reviewer: 'admin@ntic.org.gh'
+        }));
+      } catch (err: any) {
+        console.error('Approval update failed on server:', err);
       }
 
-      if (req.details?.students && Array.isArray(req.details.students)) {
-        req.details.students.forEach((s: any) => {
-          const existingEmail = s.email || `${s.name?.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`;
-          const sTicket = `NTIC-STU-${this.randomSuffix()}`;
-          // No password sent - the server generates one.
-          this.apiService.createUser({
-            email: existingEmail, full_name: s.name, role: 'student',
-            ticket: sTicket, status: 'Active', phone: ''
-          } as any).subscribe({ next: () => {}, error: () => {} });
-        });
+      const account = updateRes?.account;
+      const ticket = account?.ticket || ('NTIC-' + (req.type === 'School Registration' ? 'SCH' : req.type === 'Instructor Access' ? 'INS' : 'STU') + '-' + this.randomSuffix());
+      const otp = account?.temporary_password || '';
+
+      if (account && account.provisioned === false && account.reason
+          && account.reason !== 'Not an approval transition'
+          && !String(account.reason).startsWith('No role mapping')) {
+        this.dialogService.toast(
+          `Approved, but no account was created: ${account.reason}`,
+          'warning'
+        );
       }
 
-      this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp);
-      this.openCredentialsModal('School Registration Approved!', `School Admin account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access credentials sent to ${req.contact}`);
-    } else if (req.type === 'Team Modification') {
-      const teamId = req.details?.teamId;
-      const targetName = req.details?.originalName || req.entity;
-      const newName = req.details?.newName || req.details?.name || req.entity;
-      const school = req.details?.school || req.details?.institution || 'Partner School';
-      const roster = req.details?.members || [];
-      const track = req.details?.track || 'Coding';
-      const lead = req.details?.lead || (roster[0] || 'Team Lead');
-      const mentor = req.details?.mentor || '';
-      const motto = req.details?.motto || '';
-
-      const updatedTeamPayload = {
-        name: newName,
-        track: track,
-        lead: lead,
-        members: Math.max(roster.length, 3),
-        status: 'In Competition',
-        school_name: school,
-        mentor: mentor,
-        motto: motto,
-        roster_list: roster,
-        lead_email: req.details?.leadEmail || '',
-        member_emails: req.details?.memberEmails || []
-      };
-
-      const updateLocalAndNotify = () => {
-        const currentTeams = this.contentService.teams.map(t => {
-          if ((teamId && t.id === teamId) || t.name === targetName || t.name === newName) {
-            return {
-              ...t,
-              name: newName,
-              track: track,
-              lead: lead,
-              members: Math.max(roster.length, 3),
-              rosterList: roster,
-              mentor: mentor,
-              motto: motto,
-              schoolName: school,
-              status: 'In Competition'
-            };
-          }
-          return t;
-        });
-        this.contentService.saveTeams(currentTeams);
-        this.emailService.sendApprovalEmail(req.contact, lead, req.entity, req.type, 'N/A -- Team Modified', 'N/A');
-        this.showCustomAlert(`Squad modifications for "${newName}" (${school}) approved and live in tournament database.`, 'Team Modification Approved', 'success');
-      };
-
-      if (teamId && !teamId.startsWith('temp-')) {
-        this.apiService.updateTeam(teamId, updatedTeamPayload).subscribe({
-          next: () => updateLocalAndNotify(),
-          error: (err: any) => {
-            console.error('Failed to update team in backend:', err);
-            updateLocalAndNotify();
-          }
-        });
-      } else {
-        updateLocalAndNotify();
-      }
-    } else if (req.type === 'Team Addition') {
-      const roster = req.details?.members || (req.details?.rosterList || [req.details?.lead || 'Team Lead']);
-      const newTeam = {
-        name: req.entity,
-        track: req.details?.track || 'Coding',
-        lead: req.details?.lead || (roster[0] || 'Team Lead'),
-        members: Math.max(roster.length, 3),
-        rosterList: roster,
-        mentor: req.details?.mentor || '',
-        motto: req.details?.motto || '',
-        status: 'In Competition',
-        schoolName: req.details?.school || req.details?.institution || 'Partner School',
-        leadEmail: req.details?.leadEmail || '',
-        memberEmails: req.details?.memberEmails || []
-      };
-      const currentTeams = [...this.contentService.teams];
-      currentTeams.push(newTeam);
-      this.contentService.saveTeams(currentTeams);
-      this.contentService.syncNewTeamToBackend(newTeam);
-
-      const stats = { ...this.contentService.platformStats };
-      stats.projects += 0.1;
-      this.contentService.updatePlatformStats(stats);
-
-      const leadEmail = req.details?.leadEmail || req.contact;
-      if (leadEmail) {
-        const ticket = 'NTIC-GRP-' + this.randomSuffix();
-        const leadName = req.details?.members?.[0] || 'Team Lead';
-        const newLeadUser = {
-          id: 'USR-' + Date.now() + '-' + this.randomSuffix(4).toLowerCase(),
-          role: 'student' as const,
-          registrationMode: 'group' as const,
-          fullName: `${leadName} (${req.entity})`,
-          email: leadEmail,
-          phone: '',
-          otp: '',
+      // Apply side-effects depending on the type of approval request
+      if (req.type === 'School Registration') {
+        const newSchoolAdmin = {
+          id: account?.user_id || ('USR-' + Date.now() + '-' + this.randomSuffix(4).toLowerCase()),
+          role: 'school_admin' as const,
+          fullName: req.entity + ' Admin',
+          email: req.contact,
+          phone: req.details?.phone || '+233 24 555 1234',
+          otp,
           organization: req.entity,
-          track: req.details?.track || 'Coding',
+          region: req.details?.region || '',
           ticket,
           applicationCode: req.details?.code || '',
           status: 'Active',
           registeredAt: new Date().toLocaleDateString('en-GB'),
           lastLogin: 'Never'
         };
-        if (req.details?.memberPhotos?.length) (newLeadUser as any).photoFileId = req.details.memberPhotos[0];
-        const otp = await this.provisionAccount({
-          email: newLeadUser.email, full_name: newLeadUser.fullName, role: newLeadUser.role,
-          ticket: newLeadUser.ticket, status: 'Active', phone: ''
-        });
-        newLeadUser.otp = otp;
 
-        this.emailService.sendApprovalEmail(leadEmail, leadName, req.entity, req.type, ticket, otp);
-        this.openCredentialsModal('Team Addition Approved!', `Your squad "${req.entity}" has been approved. Team Lead credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${leadEmail}`);
-      } else {
-        this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A -- Team Added', 'N/A');
-        this.showCustomAlert(`Team "${req.entity}" has been successfully approved and added to national competition tracks.`, 'Team Addition Approved', 'success');
+        const currentUsers = [...this.contentService.users];
+        currentUsers.unshift(newSchoolAdmin as any);
+        this.contentService.saveUsers(currentUsers);
+
+        const stats = { ...this.contentService.platformStats };
+        stats.schools += 1;
+        this.contentService.updatePlatformStats(stats);
+
+        if (req.details?.teamsList && Array.isArray(req.details.teamsList)) {
+          const currentTeams = [...this.contentService.teams];
+          req.details.teamsList.forEach((t: any) => {
+            const roster = [t.leadName, t.member2Name, t.member3Name, t.member4Name, t.member5Name].filter(Boolean).map((n: string) => n.trim()).filter((n: string) => n.length > 0);
+            const newTeam: any = {
+              name: t.name,
+              track: t.track || 'Coding',
+              lead: t.leadName || (roster[0] || 'Student Captain'),
+              members: Math.max(roster.length, 3),
+              rosterList: roster,
+              status: 'In Competition',
+              mentor: 'Assigned Coordinator',
+              motto: 'National NTI Competition Squad',
+              schoolName: req.entity
+            };
+            currentTeams.push(newTeam);
+            this.contentService.syncNewTeamToBackend(newTeam);
+          });
+          this.contentService.saveTeams(currentTeams);
+        }
+
+        this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp);
+        this.openCredentialsModal('School Registration Approved!', `School Admin account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access credentials sent to ${req.contact}`);
+      } else if (req.type === 'Team Modification') {
+        const teamId = req.details?.teamId;
+        const targetName = req.details?.originalName || req.entity;
+        const newName = req.details?.newName || req.details?.name || req.entity;
+        const school = req.details?.school || req.details?.institution || 'Partner School';
+        const roster = req.details?.members || [];
+        const track = req.details?.track || 'Coding';
+        const lead = req.details?.lead || (roster[0] || 'Team Lead');
+        const mentor = req.details?.mentor || '';
+        const motto = req.details?.motto || '';
+
+        const updatedTeamPayload = {
+          name: newName,
+          track: track,
+          lead: lead,
+          members: Math.max(roster.length, 3),
+          status: 'In Competition',
+          school_name: school,
+          mentor: mentor,
+          motto: motto,
+          roster_list: roster,
+          lead_email: req.details?.leadEmail || '',
+          member_emails: req.details?.memberEmails || []
+        };
+
+        const updateLocalAndNotify = () => {
+          const currentTeams = this.contentService.teams.map(t => {
+            if ((teamId && t.id === teamId) || t.name === targetName || t.name === newName) {
+              return {
+                ...t,
+                name: newName,
+                track: track,
+                lead: lead,
+                members: Math.max(roster.length, 3),
+                rosterList: roster,
+                mentor: mentor,
+                motto: motto,
+                schoolName: school,
+                status: 'In Competition'
+              };
+            }
+            return t;
+          });
+          this.contentService.saveTeams(currentTeams);
+          this.emailService.sendApprovalEmail(req.contact, lead, req.entity, req.type, 'N/A -- Team Modified', 'N/A');
+          this.showCustomAlert(`Squad modifications for "${newName}" (${school}) approved and live in tournament database.`, 'Team Modification Approved', 'success');
+        };
+
+        if (teamId && !teamId.startsWith('temp-')) {
+          this.apiService.updateTeam(teamId, updatedTeamPayload).subscribe({
+            next: () => updateLocalAndNotify(),
+            error: (err: any) => {
+              console.error('Failed to update team in backend:', err);
+              updateLocalAndNotify();
+            }
+          });
+        } else {
+          updateLocalAndNotify();
+        }
+      } else if (req.type === 'Team Addition') {
+        const roster = req.details?.members || (req.details?.rosterList || [req.details?.lead || 'Team Lead']);
+        const newTeam = {
+          name: req.entity,
+          track: req.details?.track || 'Coding',
+          lead: req.details?.lead || (roster[0] || 'Team Lead'),
+          members: Math.max(roster.length, 3),
+          rosterList: roster,
+          mentor: req.details?.mentor || '',
+          motto: req.details?.motto || '',
+          status: 'In Competition',
+          schoolName: req.details?.school || req.details?.institution || 'Partner School',
+          leadEmail: req.details?.leadEmail || '',
+          memberEmails: req.details?.memberEmails || []
+        };
+        const currentTeams = [...this.contentService.teams];
+        currentTeams.push(newTeam);
+        this.contentService.saveTeams(currentTeams);
+        this.contentService.syncNewTeamToBackend(newTeam);
+
+        const stats = { ...this.contentService.platformStats };
+        stats.projects += 0.1;
+        this.contentService.updatePlatformStats(stats);
+
+        const leadEmail = req.details?.leadEmail || req.contact;
+        if (leadEmail) {
+          const leadName = req.details?.members?.[0] || 'Team Lead';
+          const newLeadUser = {
+            id: account?.user_id || ('USR-' + Date.now() + '-' + this.randomSuffix(4).toLowerCase()),
+            role: 'student' as const,
+            registrationMode: 'group' as const,
+            fullName: `${leadName} (${req.entity})`,
+            email: leadEmail,
+            phone: '',
+            otp,
+            organization: req.entity,
+            track: req.details?.track || 'Coding',
+            ticket,
+            applicationCode: req.details?.code || '',
+            status: 'Active',
+            registeredAt: new Date().toLocaleDateString('en-GB'),
+            lastLogin: 'Never'
+          };
+          if (req.details?.memberPhotos?.length) (newLeadUser as any).photoFileId = req.details.memberPhotos[0];
+
+          const currentUsers = [...this.contentService.users];
+          currentUsers.unshift(newLeadUser as any);
+          this.contentService.saveUsers(currentUsers);
+
+          this.emailService.sendApprovalEmail(leadEmail, leadName, req.entity, req.type, ticket, otp);
+          this.openCredentialsModal('Team Addition Approved!', `Your squad "${req.entity}" has been approved. Team Lead credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${leadEmail}`);
+        } else {
+          this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A -- Team Added', 'N/A');
+          this.showCustomAlert(`Team "${req.entity}" has been successfully approved and added to national competition tracks.`, 'Team Addition Approved', 'success');
+        }
+      } else if (req.type === 'Student Registration' || req.type === 'Open Registration') {
+        const newStudent = {
+          id: account?.user_id || ('USR-' + Date.now() + '-' + this.randomSuffix(4).toLowerCase()),
+          role: 'student' as const,
+          fullName: req.entity,
+          email: req.contact,
+          phone: '',
+          guardianName: req.details?.guardianName || '',
+          guardianPhone: req.details?.guardianPhone || '',
+          photoFileId: req.details?.photoFileId || undefined,
+          otp,
+          organization: req.details?.school || 'Independent Competitor',
+          region: req.details?.region || '',
+          track: req.details?.track || 'Coding',
+          skills: req.details?.skills || { alg: 'intermediate', hw: 'novice', ai: 'novice' },
+          ticket,
+          applicationCode: req.details?.code || '',
+          status: 'Active',
+          registeredAt: new Date().toLocaleDateString('en-GB'),
+          lastLogin: 'Never'
+        };
+
+        const currentUsers = [...this.contentService.users];
+        currentUsers.unshift(newStudent as any);
+        this.contentService.saveUsers(currentUsers);
+
+        const stats = { ...this.contentService.platformStats };
+        stats.students += 1;
+        this.contentService.updatePlatformStats(stats);
+
+        this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
+        this.openCredentialsModal('Student Registration Approved!', `Competitor account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
+      } else if (req.type === 'Instructor Access') {
+        const newInstructor = {
+          id: account?.user_id || ('USR-' + Date.now() + '-' + this.randomSuffix(4).toLowerCase()),
+          role: 'instructor' as const,
+          fullName: req.entity,
+          email: req.contact,
+          phone: req.details?.phone || '',
+          otp,
+          organization: req.details?.school || 'Partner School',
+          ticket,
+          applicationCode: req.details?.code || '',
+          status: 'Active',
+          registeredAt: new Date().toLocaleDateString('en-GB'),
+          lastLogin: 'Never'
+        };
+
+        const currentUsers = [...this.contentService.users];
+        currentUsers.unshift(newInstructor as any);
+        this.contentService.saveUsers(currentUsers);
+
+        const stats = { ...this.contentService.platformStats };
+        stats.mentors += 1;
+        this.contentService.updatePlatformStats(stats);
+
+        this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
+        this.openCredentialsModal('Instructor Access Approved!', `Certified Instructor account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
       }
-    } else if (req.type === 'Student Registration') {
-      const ticket = 'NTIC-STU-' + this.randomSuffix();
-      const newStudent = {
-        id: 'USR-' + Date.now() + '-' + this.randomSuffix(4).toLowerCase(),
-        role: 'student' as const,
-        fullName: req.entity,
-        email: req.contact,
-        phone: '',
-        guardianName: req.details?.guardianName || '',
-        guardianPhone: req.details?.guardianPhone || '',
-        photoFileId: req.details?.photoFileId || undefined,
-        otp: '',
-        organization: req.details?.school || 'Independent Competitor',
-        region: req.details?.region || '',
-        track: req.details?.track || 'Coding',
-        skills: req.details?.skills || { alg: 'intermediate', hw: 'novice', ai: 'novice' },
-        ticket,
-        applicationCode: req.details?.code || '',
-        status: 'Active',
-        registeredAt: new Date().toLocaleDateString('en-GB'),
-        lastLogin: 'Never'
-      };
-      const otp = await this.provisionAccount({
-        email: newStudent.email, full_name: newStudent.fullName, role: 'student',
-        ticket, status: 'Active', phone: ''
+
+      const currentAudit = [...this.contentService.auditLogs];
+      currentAudit.unshift({
+        action: `${req.type} approved: ${req.entity}`,
+        user: 'admin@ntic.org.gh',
+        time: new Date().toISOString(),
+        type: 'approval'
       });
-      newStudent.otp = otp;
+      this.contentService.saveAuditLogs(currentAudit);
 
-      const stats = { ...this.contentService.platformStats };
-      stats.students += 1;
-      this.contentService.updatePlatformStats(stats);
+      this.stats = this.stats.map(s =>
+        s.icon === 'verified_user'
+          ? { ...s, value: String(this.pendingApprovals.length), meta: this.pendingApprovals.length > 0 ? 'Action required' : 'All clear' }
+          : s
+      );
 
-      this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
-      this.openCredentialsModal('Student Registration Approved!', `Competitor account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
-    } else if (req.type === 'Instructor Access') {
-      const ticket = 'NTIC-INS-' + this.randomSuffix();
-      const otp = await this.provisionAccount({
-        email: req.contact, full_name: req.entity, role: 'instructor',
-        ticket, status: 'Active', phone: req.details?.phone || ''
-      });
-
-      const stats = { ...this.contentService.platformStats };
-      stats.mentors += 1;
-      this.contentService.updatePlatformStats(stats);
-
-      this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
-      this.openCredentialsModal('Instructor Access Approved!', `Certified Instructor account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
+      this.dialogService.toast(`${req.type} approved for "${req.entity}".`, 'success');
+    } finally {
+      this.approvingIds.delete(req.id);
     }
-
-    const currentAudit = [...this.contentService.auditLogs];
-    currentAudit.unshift({
-      action: `${req.type} approved: ${req.entity}`,
-      user: 'admin@ntic.org.gh',
-      time: new Date().toISOString(),
-      type: 'approval'
-    });
-    this.contentService.saveAuditLogs(currentAudit);
-
-    this.stats = this.stats.map(s =>
-      s.icon === 'verified_user'
-        ? { ...s, value: String(this.pendingApprovals.length), meta: this.pendingApprovals.length > 0 ? 'Action required' : 'All clear' }
-        : s
-    );
-
-    this.approvingIds.delete(req.id);
   }
 
   rejectRequest(req: any): void {

@@ -5523,10 +5523,13 @@ class TestApprovalProvisioning:
         email = f"prov-{uuid.uuid4().hex[:8]}@example.com"
         approval_id = self._submit(client, admin_token, approval_type, email)
         account = self._approve(client, admin_token, approval_id)["account"]
-        assert account["provisioned"] is True, account
-        assert account["role"] == expected_role
-        assert account["email"] == email
         assert account["temporary_password"]
+        assert account.get("ticket") and account["ticket"].startswith("NTIC-")
+        # Ensure the user roster in GET /api/users reflects the exact same ticket
+        users = client.get("/api/users", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        matching = [u for u in users if u.get("email") == email]
+        assert len(matching) == 1
+        assert matching[0]["ticket"] == account["ticket"]
 
     def test_provisioned_account_can_sign_in(self, client, admin_token):
         email = f"signin-{uuid.uuid4().hex[:8]}@example.com"

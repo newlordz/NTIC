@@ -75,3 +75,17 @@ that a hook finding is a false positive.
 If a rebase conflicts, stop and report it. Do not resolve conflicts in another
 agent's files.
 
+### CREDENTIAL, VALIDATION & APPROVAL INVARIANTS
+
+1. **Server as Single Source of Truth for Provisioning & Credentials**:
+   - The backend server (`NticPlatform.Backend`) is the sole authority for generating tickets (`NTIC-...`) and passwords/OTPs (`Temp-...`).
+   - When an application is approved via `PATCH /api/approvals/{id}`, the backend automatically provisions the user in PostgreSQL and returns `{ account: { provisioned: True, ticket: str, temporary_password: str } }`.
+   - Frontend approval handlers (such as `approveRequest()`) must **NEVER** generate client-side random tickets or attempt a second `provisionAccount()` / `createUser()` call. They must directly consume the server-returned `account.ticket` and `account.temporary_password` for confirmation modals, emails, and local roster updates.
+
+2. **Authoritative Live Duplicate Validation**:
+   - `GET /api/auth/check-availability` in `main.py` is the single authoritative endpoint for email and phone duplication checks. It inspects all PostgreSQL tables (`users`, `pending_approvals` across all statuses `pending`/`approved`/`active`, and `students`).
+   - Frontend pre-submission guards (`submitRegistration()`, `registerStudent()`) must always verify against `apiService.checkAvailability()` in real time to prevent duplicate submissions.
+
+3. **Compound Clipboard Copying**:
+   - All `copyText` / `copyModalText` methods must guard against empty fields (e.g. omitting the OTP line if empty) and include `document.execCommand('copy')` fallback mechanisms for cross-browser reliability.
+

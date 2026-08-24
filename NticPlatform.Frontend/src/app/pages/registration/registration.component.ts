@@ -136,12 +136,24 @@ export class RegistrationComponent implements OnInit, OnDestroy {
       this.credentialsModal.copiedPin = true;
       setTimeout(() => { if (this.credentialsModal) this.credentialsModal.copiedPin = false; }, 2500);
     } else if (type === 'all') {
-      textToCopy = `Access Pass: ${this.credentialsModal.accessPass}\nPIN: ${this.credentialsModal.pin}`;
+      const pinPart = this.credentialsModal.pin ? `\nPIN: ${this.credentialsModal.pin}` : '';
+      textToCopy = `Access Pass: ${this.credentialsModal.accessPass}${pinPart}`;
       this.credentialsModal.copiedAll = true;
       setTimeout(() => { if (this.credentialsModal) this.credentialsModal.copiedAll = false; }, 2500);
     }
-    if (navigator?.clipboard) {
-      navigator.clipboard.writeText(textToCopy);
+    if (typeof navigator !== 'undefined' && navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(textToCopy).catch(() => {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = textToCopy;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        } catch {}
+      });
     }
   }
 
@@ -584,7 +596,13 @@ setAuthValue('activeUserEmail', email);
   ];
 
   // ── LIVE VALIDATION STATE ────────────────────────────────────────
-  fieldValidation: Record<string, { status: 'idle' | 'checking' | 'valid' | 'taken' | 'invalid' | 'draft_found'; message: string }> = {};
+  // `serverConfirmed` marks a 'taken' that came from GET /api/auth/check-availability
+  // rather than from an in-form rule. Sibling revalidation must not clear those:
+  // it used to decide a field was 'valid' from contentService.isEmailTaken, which
+  // scans the admin-only roster and is always false for a public registrant, so a
+  // real "already registered" warning was wiped the moment the user edited the
+  // neighbouring field.
+  fieldValidation: Record<string, { status: 'idle' | 'checking' | 'valid' | 'taken' | 'invalid' | 'draft_found'; message: string; serverConfirmed?: boolean }> = {};
   private validationTimers: Record<string, any> = {};
 
   clearValidationState(): void {
@@ -710,7 +728,7 @@ setAuthValue('activeUserEmail', email);
       this.apiService.checkAvailability(cleanVal, '').subscribe({
         next: (res) => {
           if (res && res.email_taken) {
-            this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered to an account' };
+            this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered to an account', serverConfirmed: true };
           } else {
             this.fieldValidation[fieldName] = { status: 'valid', message: '' };
           }
@@ -875,7 +893,7 @@ setAuthValue('activeUserEmail', email);
       this.apiService.checkAvailability('', value).subscribe({
         next: (res) => {
           if (res && res.phone_taken) {
-            this.fieldValidation[fieldName] = { status: 'taken', message: 'This number is already registered' };
+            this.fieldValidation[fieldName] = { status: 'taken', message: 'This number is already registered', serverConfirmed: true };
           } else {
             this.fieldValidation[fieldName] = { status: 'valid', message: '' };
           }
