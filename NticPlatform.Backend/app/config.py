@@ -38,7 +38,7 @@ class Config:
     # Outbound email identity is controlled by the server ONLY. Clients may
     # never choose the From address, otherwise /api/send-email becomes an
     # open, spoofable relay on our paid Brevo account.
-    MAIL_FROM_EMAIL: str = _get_nonempty_env("MAIL_FROM_EMAIL", "no-reply@ntic.org.gh")
+    MAIL_FROM_EMAIL: str = _get_nonempty_env("MAIL_FROM_EMAIL", "enochessel5@gmail.com")
     MAIL_FROM_NAME: str = _get_nonempty_env("MAIL_FROM_NAME", "NTIC Ghana Championship")
     # Where security alerts are delivered. Falls back to the sender.
     SECURITY_ALERT_EMAIL: str = _get_nonempty_env("SECURITY_ALERT_EMAIL", "")

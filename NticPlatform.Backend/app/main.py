@@ -832,17 +832,61 @@ try:
                     logger.info(f"Email successfully sent via Brevo to {to_email}")
                     return True
                 logger.warning(f"Brevo API error {resp.status_code}: {resp.text[:500]}")
+                return False
             except Exception as e:
                 logger.error(f"Email send failed: {e}")
+                return False
 
-        # 3. Development / Local Fallback: print to console so development testing never breaks
-        print(f"\n==================== [DEV OUTBOUND EMAIL DISPATCH] ====================")
-        print(f"To:      {to_name} <{to_email}>")
-        print(f"From:    {settings.MAIL_FROM_NAME} <{settings.MAIL_FROM_EMAIL}>")
-        print(f"Subject: {subject}")
-        print(f"Content:\n{html_content[:400]}...")
-        print(f"=======================================================================\n")
-        return True
+        # 3. Development / Local Fallback: print to console only when dev mode is active
+        if os.getenv("NTIC_DEV_RELOAD"):
+            print(f"\n==================== [DEV OUTBOUND EMAIL DISPATCH] ====================")
+            print(f"To:      {to_name} <{to_email}>")
+            print(f"From:    {settings.MAIL_FROM_NAME} <{settings.MAIL_FROM_EMAIL}>")
+            print(f"Subject: {subject}")
+            print(f"Content:\n{html_content[:400]}...")
+            print(f"=======================================================================\n")
+            return True
+        return False
+
+    @app.get("/api/email/diagnostics")
+    def email_diagnostics():
+        """Public diagnostic to inspect Brevo status and verified sender without exposing secrets."""
+        has_key = bool(settings.BREVO_API_KEY)
+        key_masked = f"{settings.BREVO_API_KEY[:8]}...{settings.BREVO_API_KEY[-4:]}" if has_key else "NOT SET"
+        return {
+            "email_service_ready": has_key,
+            "provider": "Brevo API" if has_key else "None",
+            "api_key_configured": has_key,
+            "api_key_preview": key_masked,
+            "sender_email": settings.MAIL_FROM_EMAIL,
+            "sender_name": settings.MAIL_FROM_NAME,
+            "smtp_fallback_configured": bool(settings.SMTP_HOST),
+        }
+
+    class EmailTestPayload(BaseModel):
+        target_email: str = Field(min_length=5, max_length=254)
+
+    @app.post("/api/email/test")
+    def send_test_email(payload: EmailTestPayload, _actor: dict = Depends(require_admin)):
+        """Direct test endpoint to verify Brevo delivery. Requires admin role."""
+        if not settings.BREVO_API_KEY:
+            raise HTTPException(status_code=503, detail="BREVO_API_KEY is not configured in environment variables.")
+
+        to_email = payload.target_email.strip()
+        test_html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;">
+            <h2 style="color:#2563eb;margin-top:0;">NTIC Ghana Championship</h2>
+            <p><strong>Live Email Delivery Test</strong></p>
+            <p>This email confirms that Brevo is working properly from your Railway deployment.</p>
+            <p>Sender: <code>{settings.MAIL_FROM_EMAIL}</code></p>
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;" />
+            <p style="font-size:12px;color:#64748b;">National Technology & Innovation Championship &copy; 2026</p>
+        </div>
+        """
+        ok = _send_brevo_email(to_email, "Platform Admin", "Live Brevo Delivery Test - NTIC Platform", test_html)
+        if not ok:
+            raise HTTPException(status_code=502, detail=f"Failed to dispatch via Brevo. Make sure '{settings.MAIL_FROM_EMAIL}' is a verified sender in Brevo.")
+        return {"status": "sent", "recipient": to_email, "sender": settings.MAIL_FROM_EMAIL}
 
     class EmailPayload(BaseModel):
         # Accepted for backwards compatibility with existing callers but
