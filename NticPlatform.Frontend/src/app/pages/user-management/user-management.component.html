@@ -856,6 +856,10 @@
                 <input type="text" [(ngModel)]="newUserForm.organization" placeholder="School or Sponsor Company" class="ca-input" />
               </div>
             </div>
+            <p class="ca-creds-note">
+            <span class="material-symbols-outlined">info</span>
+            Credentials will be delivered automatically via Email upon account creation.
+          </p>
           </div>
         </div>
 
@@ -880,10 +884,6 @@
               </div>
             </div>
           </div>
-          <p class="ca-creds-note">
-            <span class="material-symbols-outlined">info</span>
-            Credentials will be delivered automatically via SMS &amp; Email upon account creation.
-          </p>
         </div>
 
       </div>
@@ -913,26 +913,19 @@
           <span class="material-symbols-outlined" style="font-size:24px;">check_circle</span>
           <div>
             <h3 style="margin:0;font-size:16px;color:#fff;">Account Created Successfully! 🎉</h3>
-            <span style="font-size:11px;opacity:0.85;">Credentials generated and sent via SMS &amp; Email</span>
+            <span style="font-size:11px;opacity:0.85;">Credentials generated and dispatched via Email</span>
           </div>
         </div>
         <button class="um-modal-close" (click)="closeCreatedUserModal()" style="color:#fff;">&times;</button>
       </div>
       <div class="um-modal-body" style="padding:20px;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--outline-variant);">
-          <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">
-            {{ getInitials(createdUserModal?.user?.fullName || '') }}
-          </div>
-          <div>
-            <h4 style="margin:0 0 2px 0;font-size:15px;font-weight:700;color:var(--on-surface);">{{ createdUserModal?.user?.fullName }}</h4>
-            <span class="badge primary">{{ getRoleLabel(createdUserModal?.user?.role || '') }}</span>
-            <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">{{ createdUserModal?.user?.email }}</div>
-          </div>
-        </div>
+        <p style="font-size:13.5px;color:var(--on-surface);margin:0 0 16px 0;line-height:1.5;">
+          A new <strong>{{ getUserRoleLabel(createdUserModal?.user || null) }}</strong> account has been created for <strong>{{ createdUserModal?.user?.fullName }}</strong>.
+        </p>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:var(--surface-container-low);padding:14px;border-radius:10px;border:1px dashed var(--outline-variant);margin-bottom:16px;">
+        <div style="background:var(--surface-container-low, rgba(0,0,0,0.03));border:1.5px solid var(--outline-variant);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;flex-direction:column;gap:10px;">
           <div>
-            <span style="font-size:11px;font-weight:700;color:var(--primary);display:block;margin-bottom:4px;">Access Pass / Ticket</span>
+            <span style="font-size:11px;font-weight:700;color:var(--primary);display:block;margin-bottom:4px;">Access Ticket ID</span>
             <div style="display:flex;align-items:center;gap:6px;">
               <code style="font-size:13px;font-weight:700;color:var(--on-surface);">{{ createdUserModal?.user?.ticket }}</code>
               <button class="cmd-btn cmd-btn-ghost btn-sm" (click)="copyCreatedUserText('ticket')" style="padding:2px 8px;font-size:11px;">

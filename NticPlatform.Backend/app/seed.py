@@ -56,6 +56,32 @@ def _ensure_landing_copy(cur) -> None:
 def seed_initial_data(conn):
     cur = conn.cursor()
 
+    # ── Optional Test Data Purge ──────────────────────────────────────
+    if os.getenv("NTIC_PURGE_TEST_DATA", "").strip().lower() in ("true", "1") or \
+       os.getenv("NTIC_RESET_DATABASE", "").strip().lower() in ("true", "1"):
+        logger.warning(
+            "=" * 72
+            + "\nNTIC_PURGE_TEST_DATA=true detected: Purging test records for clean slate..."
+            + "\nClearing: teams, students, submissions, approvals, tickets, test accounts..."
+            + "\n" + "=" * 72
+        )
+        tables_to_purge = [
+            "assignment_submissions", "students", "teams", "pending_approvals",
+            "approved_approvals", "rejected_approvals", "support_tickets",
+            "audit_logs", "lms_submissions", "lms_enrollments", "auth_sessions"
+        ]
+        for tbl in tables_to_purge:
+            try:
+                cur.execute(f"TRUNCATE TABLE {tbl} CASCADE;")
+            except Exception as e:
+                logger.warning(f"Could not truncate {tbl}: {e}")
+        try:
+            cur.execute("DELETE FROM users WHERE id != %s AND email != %s", (ADMIN_ID, ADMIN_EMAIL))
+        except Exception as e:
+            logger.warning(f"Could not purge non-admin users: {e}")
+        conn.commit()
+        logger.info("Test data purged successfully. Super-admin preserved.")
+
     # ── Bootstrap super-admin ─────────────────────────────────────────
     # Rule: create the account if it is missing. NEVER touch the password or
     # status of an account that already exists — that would silently undo a

@@ -34,8 +34,10 @@ if (systemBrowserPath) {
   console.log(`[WhatsApp Gateway] Found system browser: ${systemBrowserPath}`);
 }
 
+const sessionPath = process.env.WHATSAPP_SESSION_PATH || './whatsapp_session';
+
 const client = new Client({
-  authStrategy: new LocalAuth({ dataPath: './whatsapp_session' }),
+  authStrategy: new LocalAuth({ dataPath: sessionPath }),
   puppeteer: {
     headless: true,
     executablePath: systemBrowserPath,
