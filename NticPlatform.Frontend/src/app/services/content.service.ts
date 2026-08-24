@@ -6,7 +6,8 @@ import { DataStorageService } from './data-storage.service';
 import { ApiService } from './api.service';
 import { WsSyncService } from './ws-sync.service';
 import {
-  CYCLE_STATUSES, CycleStatus, parseCycleStatus, canTransition, nextCycleStatus
+  CYCLE_STATUSES, CycleStatus, parseCycleStatus, canTransition, nextCycleStatus,
+  isRegistrationOpen, isPubliclyVisible
 } from './competition-lifecycle';
 
 export interface UpcomingEvent {
@@ -89,7 +90,10 @@ export interface Competition {
   track: string;
   icon: string;
   category: string;
+  /** Live count of teams attached to this cycle, derived server-side. */
   teams: number;
+  /** Live count of students registered for this cycle, derived server-side. */
+  entrants?: number;
   maxTeams?: number;
   deadline: string;
   startDate?: string;
@@ -130,6 +134,8 @@ export interface LmsCourse {
   rejectionReason?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  /** The cycle this course prepares for, or empty for evergreen material. */
+  competitionId?: string;
 }
 
 export interface LmsModule {
@@ -279,7 +285,7 @@ export interface User {
 
 export interface ApprovalRequest {
   id: string;
-  type: 'School Registration' | 'Team Addition' | 'Student Registration' | 'Instructor Access';
+  type: 'School Registration' | 'Team Addition' | 'Team Modification' | 'Student Registration' | 'Instructor Access' | 'Track Change Request';
   entity: string;
   contact: string;
   submitted: string;
@@ -303,12 +309,21 @@ export interface ApprovalRequest {
     studentCount?: number;
     students?: { name: string; track: string; class: string; guardianName?: string; guardianPhone?: string }[];
     school?: string;
+    institution?: string;
     track?: string;
     project?: string;
     members?: string[];
     memberEmails?: string[];
     leadEmail?: string;
+    leadName?: string;
+    lead?: string;
     coach?: string;
+    mentor?: string;
+    motto?: string;
+    memberCount?: number;
+    teamId?: string;
+    originalName?: string;
+    newName?: string;
     photoFileId?: string;
     memberPhotos?: string[];
     skills?: any;
@@ -317,7 +332,6 @@ export interface ApprovalRequest {
     guardianName?: string;
     guardianPhone?: string;
     class?: string;
-    institution?: string;
     credentials?: string;
     specialization?: string;
     experience?: string;
@@ -351,11 +365,20 @@ export interface Team {
   lead: string;
   members: number;
   status: string;
+  /** The cycle this team competes in, or null when it is not cycle-scoped. */
+  competitionId?: string | null;
   schoolName?: string;
   region?: string;
   photoFileId?: string;
   logoFileId?: string;
   mentor?: string;
+  mentorId?: string | null;
+  mentor_id?: string | null;
+  mentorStatus?: string;
+  mentor_status?: string;
+  isSolo?: boolean;
+  is_solo?: boolean;
+  school_name?: string;
   motto?: string;
   rosterList?: string[];
   memberNames?: string[];
@@ -1065,6 +1088,13 @@ private readonly defaultTeams: Team[] = [];
           error: () => {}
         });
         return;
+      case 'competition_registrations':
+        // The server broadcasts this whenever a student joins or leaves a cycle.
+        // It used to fall through to `default:` and trigger a full reload of all
+        // 18 collections. Only the cycle rows carry the derived entrant/team
+        // counts, so refreshing competitions alone is sufficient.
+        this.reloadCollection('competitions');
+        return;
       default:
         // Unknown or unlabelled broadcast: be safe and refresh everything.
         this.loadFromBackend();
@@ -1181,6 +1211,7 @@ private readonly defaultTeams: Team[] = [];
         icon: 'emoji_events',
         category: b.category || '',
         teams: b.teams || 0,
+        entrants: b.entrants || 0,
         maxTeams: b.maxTeams || 50,
         deadline: b.deadline || '',
         prize: b.prize || '',
@@ -1199,20 +1230,34 @@ private readonly defaultTeams: Team[] = [];
   }
 
   private mergeTeams(backendTeams: any[]): Team[] {
-    const localById = new Map<string, Team>();
-    this.teams.forEach(t => { if (t.id) localById.set(t.id, t); });
-    backendTeams.forEach((b: any) => {
-      localById.set(b.id, {
+    const list: Team[] = backendTeams.map((b: any) => {
+      const existing = this.teams.find(t => t.id === b.id || (t.name?.toLowerCase() === b.name?.toLowerCase() && t.schoolName?.toLowerCase() === b.school_name?.toLowerCase()));
+      return {
         id: b.id,
         name: b.name || 'Untitled Team',
         track: b.track || 'Coding',
         lead: b.lead || 'Team Lead',
         members: b.members ?? 1,
-        status: b.status || 'Active',
-        schoolName: b.school_name || ''
-      });
+        status: b.status || 'In Competition',
+        competitionId: b.competition_id ?? null,
+        schoolName: b.school_name || '',
+        rosterList: (Array.isArray(b.rosterList) && b.rosterList.length > 0) ? b.rosterList : (existing?.rosterList || undefined),
+        mentor: b.mentor || existing?.mentor || undefined,
+        motto: b.motto || existing?.motto || undefined
+      };
     });
-    return Array.from(localById.values());
+
+    // Only keep un-synced temporary local teams if not already present in backend
+    this.teams.forEach(t => {
+      if (t.id && t.id.startsWith('temp-')) {
+        const match = list.find(b => b.name?.toLowerCase() === t.name?.toLowerCase() && b.schoolName?.toLowerCase() === t.schoolName?.toLowerCase());
+        if (!match) {
+          list.push(t);
+        }
+      }
+    });
+
+    return list;
   }
   private loadStateAndFallback(): void {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -1627,7 +1672,15 @@ private readonly defaultTeams: Team[] = [];
         schoolNames.add(a.entity);
         if (a.details?.region) regions.add(a.details.region);
         if (a.details?.district) regions.add(a.details.district);
-        if (a.details?.studentCount) studentCount += a.details.studentCount;
+        let schoolStudents = a.details?.studentCount || 0;
+        if (Array.isArray(a.details?.teamsList)) {
+          const teamStudents = a.details.teamsList.reduce((sum: number, t: any) => {
+            const count = t.rosterList?.length || t.members?.length || [t.leadName, t.member2Name, t.member3Name, t.member4Name, t.member5Name].filter(Boolean).length;
+            return sum + (count > 0 ? count : 1);
+          }, 0);
+          schoolStudents = Math.max(schoolStudents, (a.details?.students?.length || 0) + teamStudents);
+        }
+        studentCount += schoolStudents;
       }
     }
 
@@ -1694,7 +1747,6 @@ private readonly defaultTeams: Team[] = [];
     const e = email.trim().toLowerCase();
     if (!e) return false;
     if (this.users.some(u => u.id !== excludeId && u.email?.trim().toLowerCase() === e)) return true;
-    if (this.pendingApprovals.some(a => a.id !== excludeId && (a.contact?.trim().toLowerCase() === e || a.details?.email?.trim().toLowerCase() === e || a.details?.repEmail?.trim().toLowerCase() === e))) return true;
     return false;
   }
 
@@ -1729,7 +1781,6 @@ private readonly defaultTeams: Team[] = [];
       return v === p || v.endsWith(p) || p.endsWith(v);
     };
     if (this.users.some(u => u.id !== excludeId && matches(u.phone))) return true;
-    if (this.pendingApprovals.some(a => a.id !== excludeId && (matches(a.contact) || matches(a.details?.phone) || matches(a.details?.repTel)))) return true;
     return false;
   }
 
@@ -1810,7 +1861,7 @@ private readonly defaultTeams: Team[] = [];
     const seen = new Set<string>();
     const deduped: Team[] = [];
     for (const t of teamsList) {
-      const key = `${(t.name || '').trim()}::${(t.schoolName || '').trim()}::${(t.track || '').trim()}`.toLowerCase();
+      const key = `${(t.name || '').trim()}::${(t.schoolName || '').trim()}`.toLowerCase();
       if (!seen.has(key)) {
         seen.add(key);
         deduped.push(t);
@@ -1818,7 +1869,6 @@ private readonly defaultTeams: Team[] = [];
     }
     this.teams = deduped;
     this.saveState('teams', this.teams);
-    deduped.forEach(t => this.apiService.createTeam({ name: t.name, track: t.track || '', school_name: t.schoolName || '', lead: t.lead || '', members: t.members || 1 }).subscribe());
   }
 
   syncNewTeamToBackend(team: Team): void {
@@ -1828,7 +1878,10 @@ private readonly defaultTeams: Team[] = [];
       lead: team.lead || 'Team Lead',
       members: team.members ?? 1,
       status: team.status || 'Active',
-      school_name: team.schoolName || ''
+      school_name: team.schoolName || '',
+      competition_id: team.competitionId ?? null,
+      lead_email: (team as any).leadEmail || '',
+      member_emails: (team as any).memberEmails || []
     }).subscribe({
       next: (res: any) => {
         if (res && res.id) {
@@ -2138,6 +2191,35 @@ private readonly defaultTeams: Team[] = [];
     if (from === null) return null;
     const next = nextCycleStatus(from);
     return next ? this.setCompetitionStatus(comp, next) : null;
+  }
+
+  /** Look up one cycle by id. */
+  getCompetition(id: string): Competition | undefined {
+    return this.competitions.find(c => c.id === id);
+  }
+
+  /**
+   * Cycles in a given lifecycle state. The panels each hand-rolled this filter,
+   * which is why the admin board and the public board disagreed about which
+   * cycles were live.
+   */
+  getCompetitionsByStatus(...statuses: CycleStatus[]): Competition[] {
+    return this.competitions.filter(c => statuses.includes(c.status));
+  }
+
+  /** Cycles a student may currently join. */
+  getOpenCompetitions(): Competition[] {
+    return this.competitions.filter(c => isRegistrationOpen(c.status));
+  }
+
+  /** Cycles an unauthenticated visitor should see. */
+  getPublicCompetitions(): Competition[] {
+    return this.competitions.filter(c => isPubliclyVisible(c.status));
+  }
+
+  /** Teams attached to one cycle. */
+  getTeamsForCompetition(competitionId: string): Team[] {
+    return this.teams.filter(t => t.competitionId === competitionId);
   }
 
   removeCompetition(id: string): void {

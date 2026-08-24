@@ -7,7 +7,7 @@ import { ContentService, Competition, CompetitionPhase } from '../../services/co
 import { ThemeService } from '../../services/theme.service';
 import { ApiService } from '../../services/api.service';
 import { PublicNavComponent } from '../../components/public-nav/public-nav.component';
-import { CYCLE_STATUSES, advanceLabel, advanceIcon } from '../../services/competition-lifecycle';
+import { CYCLE_STATUSES, advanceLabel, advanceIcon, isRegistrationOpen } from '../../services/competition-lifecycle';
 
 @Component({
   selector: 'app-competitions',
@@ -114,12 +114,19 @@ export class CompetitionsComponent implements OnInit {
     return ['super_admin', 'admin', 'support_admin', 'school_admin', 'instructor', 'competition_manager', 'content_manager'].includes(this.activeRoleId);
   }
 
-  get totalCycles(): number { return this.competitions.length; }
-  get liveCycles(): number { return this.competitions.filter(c => c.status === 'active').length; }
-  get openRegistrationCycles(): number { return this.competitions.filter(c => c.status === 'registration').length; }
+  get visibleCompetitions(): Competition[] {
+    if (!this.canManageCompetitions) {
+      return this.competitions.filter(c => c.status !== 'draft');
+    }
+    return this.competitions;
+  }
+
+  get totalCycles(): number { return this.visibleCompetitions.length; }
+  get liveCycles(): number { return this.visibleCompetitions.filter(c => c.status === 'active').length; }
+  get openRegistrationCycles(): number { return this.visibleCompetitions.filter(c => c.status === 'registration').length; }
 
   get displayTabs() {
-    if (this.isStudent) {
+    if (!this.canManageCompetitions) {
       return this.tabs.filter(t => t.id !== 'draft');
     }
     return this.tabs;
@@ -128,7 +135,7 @@ export class CompetitionsComponent implements OnInit {
   /** Returns cycles for a given board column (ignores tab/search for board view) */
   getColumnCycles(statusId: string): Competition[] {
     let list = this.competitions.filter(c => c.status === statusId);
-    if (this.isStudent) list = list.filter(c => c.status !== 'draft');
+    if (!this.canManageCompetitions) list = list.filter(c => c.status !== 'draft');
     return list;
   }
 
@@ -162,7 +169,9 @@ export class CompetitionsComponent implements OnInit {
 
   /** Whether deadline countdown should be shown on this card */
   showCountdown(comp: Competition): boolean {
-    return !!comp.deadline && (comp.status === 'active' || comp.status === 'registration');
+    // Same predicate the API uses to decide whether sign-up is open, so the
+    // countdown can never advertise a deadline for a cycle nobody can join.
+    return !!comp.deadline && isRegistrationOpen(comp.status);
   }
 
   /**
@@ -236,6 +245,7 @@ export class CompetitionsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.contentService.refreshBackendData();
     this.loadCompetitions();
     // Registration state comes from the server now, so a refresh no longer wipes it.
     this.loadMyRegistrations();
@@ -248,14 +258,25 @@ export class CompetitionsComponent implements OnInit {
       return new Date(bDate).getTime() - new Date(aDate).getTime();
     });
     this.applyFilters();
+
+    // Direct backend fetch to ensure fresh server data
+    this.apiService.getCompetitions().subscribe({
+      next: (data) => {
+        if (data && Array.isArray(data)) {
+          this.competitions = [...data].sort((a, b) => {
+            const aDate = a.createdAt || a.startDate || a.deadline;
+            const bDate = b.createdAt || b.startDate || b.deadline;
+            return new Date(bDate).getTime() - new Date(aDate).getTime();
+          });
+          this.applyFilters();
+        }
+      },
+      error: () => {}
+    });
   }
 
   applyFilters(): void {
-    let filtered = [...this.competitions];
-
-    if (this.isStudent) {
-      filtered = filtered.filter(c => c.status !== 'draft');
-    }
+    let filtered = [...this.visibleCompetitions];
 
     if (this.activeTab !== 'all') {
       filtered = filtered.filter(c => c.status === this.activeTab);
@@ -590,8 +611,8 @@ export class CompetitionsComponent implements OnInit {
   }
 
   getTabCount(tabId: string): number {
-    if (tabId === 'all') return this.competitions.length;
-    return this.competitions.filter(c => c.status === tabId).length;
+    if (tabId === 'all') return this.visibleCompetitions.length;
+    return this.visibleCompetitions.filter(c => c.status === tabId).length;
   }
 
   get trackIcons(): { [key: string]: string } {

@@ -2,7 +2,7 @@ import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ContentService } from '../../services/content.service';
+import { ContentService, Competition, Team } from '../../services/content.service';
 import { TimeAgoPipe } from '../../services/time-ago.pipe';
 
 @Component({
@@ -28,7 +28,42 @@ export class ReportingComponent implements OnInit {
   downloadOffset = 0;
   reportToDelete: any = null;
 
+  /**
+   * Which competition cycle this report covers. Empty string means every cycle.
+   *
+   * Reports were previously always computed over every team on the platform, so
+   * a "School Performance Summary" for one cycle silently included squads from
+   * every other cycle -- and the exported file said nothing about which cycle it
+   * covered, making two exports indistinguishable.
+   */
+  selectedCycleId = '';
+
   constructor(public contentService: ContentService) {}
+
+  /** Cycles offered in the scope picker, newest first. */
+  get cycleOptions(): Competition[] {
+    return this.contentService.competitions;
+  }
+
+  /** Teams the current scope covers. */
+  get scopedTeams(): Team[] {
+    return this.selectedCycleId
+      ? this.contentService.getTeamsForCompetition(this.selectedCycleId)
+      : this.contentService.teams;
+  }
+
+  /** Human-readable scope, used in the UI and stamped into every export. */
+  get scopeLabel(): string {
+    if (!this.selectedCycleId) return 'All cycles';
+    return this.contentService.getCompetition(this.selectedCycleId)?.title
+      ?? 'Unknown cycle';
+  }
+
+  onCycleScopeChange(): void {
+    // Counts shown on the page are derived in loadRoleData, so they have to be
+    // recomputed when the scope changes or the page would keep the old figures.
+    this.loadRoleData();
+  }
 
   ngOnInit(): void {
     if (typeof window !== 'undefined') {
@@ -47,8 +82,8 @@ export class ReportingComponent implements OnInit {
   }
 
   loadRoleData(): void {
-    const teamsCount = this.contentService.teams.length;
-    const studentsCount = this.contentService.teams.reduce((acc, t) => acc + (t.rosterList?.length || 0), 0);
+    const teamsCount = this.scopedTeams.length;
+    const studentsCount = this.scopedTeams.reduce((acc, t) => acc + (t.rosterList?.length || 0), 0);
 
     if (this.activeRoleId === 'school_admin') {
       this.selectedReportType = 'School Performance Summary';
@@ -228,8 +263,9 @@ export class ReportingComponent implements OnInit {
     this.downloadOffset++;
     this.saveReportsState();
 
-    const teamsCount = this.contentService.teams.length;
-    const studentsCount = this.contentService.teams.reduce((acc, t) => acc + (t.rosterList?.length || 0), 0);
+    const scopedTeams = this.scopedTeams;
+    const teamsCount = scopedTeams.length;
+    const studentsCount = scopedTeams.reduce((acc, t) => acc + (t.rosterList?.length || 0), 0);
     const dateStr = new Date().toLocaleString();
 
     let content = `==========================================================\n`;
@@ -242,6 +278,9 @@ export class ReportingComponent implements OnInit {
     content += `Generated Date  : ${report.date}\n`;
     content += `Exported On     : ${dateStr}\n`;
     content += `Institution     : ${this.schoolName}\n`;
+    // Without this the file gives no way to tell which cycle it covers, so two
+    // exports taken at different scopes look identical.
+    content += `Cycle Scope     : ${this.scopeLabel}\n`;
     content += `Compiled By     : ${this.userName} (${this.activeRoleId})\n\n`;
     content += `--- SUMMARY METRICS ---\n`;
     content += `Total Enlisted Squads   : ${teamsCount}\n`;
@@ -250,14 +289,16 @@ export class ReportingComponent implements OnInit {
     content += `--- SQUAD ROSTER DETAILS ---\n`;
 
     if (teamsCount > 0) {
-      this.contentService.teams.forEach((t, i) => {
+      scopedTeams.forEach((t, i) => {
         content += `${i + 1}. Squad Name : ${t.name}\n`;
         content += `   Track      : ${t.track}\n`;
         content += `   Lead       : ${t.lead}\n`;
         content += `   Members    : ${t.rosterList?.join(', ') || 'N/A'}\n\n`;
       });
     } else {
-      content += `No student squads have been registered under this institution yet.\n`;
+      content += this.selectedCycleId
+        ? `No student squads are registered for ${this.scopeLabel}.\n`
+        : `No student squads have been registered under this institution yet.\n`;
     }
 
     content += `==========================================================\n`;

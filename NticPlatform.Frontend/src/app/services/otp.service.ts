@@ -4,7 +4,7 @@ import { Observable, catchError, map, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export type OtpChannel = 'email' | 'phone';
-export type OtpPurpose = 'contact_verification' | 'draft_resume';
+export type OtpPurpose = 'contact_verification' | 'draft_resume' | 'password_reset';
 
 export interface OtpChallenge {
   challengeId: string;
@@ -27,6 +27,11 @@ export interface OtpVerification {
    * registration draft. Short-lived.
    */
   resume_token?: string;
+  /**
+   * Present for `password_reset`. Single-use credential that lets the verified
+   * account holder set a new password. Short-lived.
+   */
+  reset_token?: string;
 }
 
 /**

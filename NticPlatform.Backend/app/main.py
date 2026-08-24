@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import time
 import uuid
 from decimal import Decimal
@@ -8,6 +9,7 @@ import secrets
 import datetime
 import logging
 import platform
+from pathlib import Path
 from typing import Optional
 from html import escape as html_escape
 
@@ -29,7 +31,7 @@ from app.ws_manager import ws_manager, broadcast_async
 from app.lifecycle import (
     CYCLE_STATUSES, DEFAULT_STATUS as DEFAULT_CYCLE_STATUS,
     parse_status as parse_cycle_status, can_transition as can_cycle_transition,
-    is_registration_open,
+    is_registration_open, STATUS_COMPLETED,
 )
 
 try:
@@ -628,6 +630,14 @@ try:
         PUBLIC_UNSAFE = {
             "/api/login",
             "/api/users/register",
+            # The public registration form filing an application for review.
+            # Purpose-built rather than widening anything: type is allowlisted,
+            # status is always 'pending', the id is server-generated and the
+            # handler is rate limited per IP. Before this existed, applications
+            # only went to POST /api/bulk-sync (admin-only), so every anonymous
+            # application 401'd and never reached a reviewer.
+            "/api/approvals/public",
+            "/api/approvals/status",
             # Anonymous registration writes a student record for the team lead.
             # Rate limited in the handler. TODO: route through the approvals
             # queue so this can require a session.
@@ -638,6 +648,12 @@ try:
             "/api/auth/verify-contact",
             "/api/otp/request",
             "/api/otp/verify",
+            # Forgot-password: unauthenticated by definition. Rate limited per IP
+            # and per target, and the reset token is only issued after OTP
+            # verification, so this cannot be used to reset an account without
+            # owning its email.
+            "/api/auth/forgot-password",
+            "/api/auth/forgot-password/reset",
             "/api/drafts",
             # Server-templated notification for the pre-login registration flow.
             # The generic /api/send-email now requires a session.
@@ -704,6 +720,10 @@ try:
         source_code_path: str
         video_url: str = ""
         tenant_id: str = "11111111-1111-1111-1111-111111111111"
+        # Which cycle this submission belongs to. Optional so pre-existing rows
+        # and non-cycle coursework keep working; set it and the judge queue and
+        # every cycle-scoped view can filter on it.
+        competition_id: Optional[str] = None
 
     class EventCreate(BaseModel):
         title: str
@@ -813,17 +833,61 @@ try:
                     logger.info(f"Email successfully sent via Brevo to {to_email}")
                     return True
                 logger.warning(f"Brevo API error {resp.status_code}: {resp.text[:500]}")
+                return False
             except Exception as e:
                 logger.error(f"Email send failed: {e}")
+                return False
 
-        # 3. Development / Local Fallback: print to console so development testing never breaks
-        print(f"\n==================== [DEV OUTBOUND EMAIL DISPATCH] ====================")
-        print(f"To:      {to_name} <{to_email}>")
-        print(f"From:    {settings.MAIL_FROM_NAME} <{settings.MAIL_FROM_EMAIL}>")
-        print(f"Subject: {subject}")
-        print(f"Content:\n{html_content[:400]}...")
-        print(f"=======================================================================\n")
-        return True
+        # 3. Development / Local Fallback: print to console only when dev mode is active
+        if os.getenv("NTIC_DEV_RELOAD"):
+            print(f"\n==================== [DEV OUTBOUND EMAIL DISPATCH] ====================")
+            print(f"To:      {to_name} <{to_email}>")
+            print(f"From:    {settings.MAIL_FROM_NAME} <{settings.MAIL_FROM_EMAIL}>")
+            print(f"Subject: {subject}")
+            print(f"Content:\n{html_content[:400]}...")
+            print(f"=======================================================================\n")
+            return True
+        return False
+
+    @app.get("/api/email/diagnostics")
+    def email_diagnostics():
+        """Public diagnostic to inspect Brevo status and verified sender without exposing secrets."""
+        has_key = bool(settings.BREVO_API_KEY)
+        key_masked = f"{settings.BREVO_API_KEY[:8]}...{settings.BREVO_API_KEY[-4:]}" if has_key else "NOT SET"
+        return {
+            "email_service_ready": has_key,
+            "provider": "Brevo API" if has_key else "None",
+            "api_key_configured": has_key,
+            "api_key_preview": key_masked,
+            "sender_email": settings.MAIL_FROM_EMAIL,
+            "sender_name": settings.MAIL_FROM_NAME,
+            "smtp_fallback_configured": bool(settings.SMTP_HOST),
+        }
+
+    class EmailTestPayload(BaseModel):
+        target_email: str = Field(min_length=5, max_length=254)
+
+    @app.post("/api/email/test")
+    def send_test_email(payload: EmailTestPayload, _actor: dict = Depends(require_admin)):
+        """Direct test endpoint to verify Brevo delivery. Requires admin role."""
+        if not settings.BREVO_API_KEY:
+            raise HTTPException(status_code=503, detail="BREVO_API_KEY is not configured in environment variables.")
+
+        to_email = payload.target_email.strip()
+        test_html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;">
+            <h2 style="color:#2563eb;margin-top:0;">NTIC Ghana Championship</h2>
+            <p><strong>Live Email Delivery Test</strong></p>
+            <p>This email confirms that Brevo is working properly from your Railway deployment.</p>
+            <p>Sender: <code>{settings.MAIL_FROM_EMAIL}</code></p>
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;" />
+            <p style="font-size:12px;color:#64748b;">National Technology & Innovation Championship &copy; 2026</p>
+        </div>
+        """
+        ok = _send_brevo_email(to_email, "Platform Admin", "Live Brevo Delivery Test - NTIC Platform", test_html)
+        if not ok:
+            raise HTTPException(status_code=502, detail=f"Failed to dispatch via Brevo. Make sure '{settings.MAIL_FROM_EMAIL}' is a verified sender in Brevo.")
+        return {"status": "sent", "recipient": to_email, "sender": settings.MAIL_FROM_EMAIL}
 
     class EmailPayload(BaseModel):
         # Accepted for backwards compatibility with existing callers but
@@ -859,10 +923,11 @@ try:
         to_name: str = Field(default="", max_length=120)
         entity_name: str = Field(default="", max_length=160)
         application_type: str = Field(default="Application", max_length=80)
+        application_code: str = Field(default="", max_length=50)
 
     @app.post("/api/notify/registration-received")
     def notify_registration_received(payload: RegistrationNoticePayload, request: Request):
-        """Public 'we received your application' email."""
+        """Public 'we received your application' email with Application Tracking Code."""
         if not settings.BREVO_API_KEY and not settings.SMTP_HOST and not os.getenv("NTIC_DEV_RELOAD"):
             raise HTTPException(status_code=503, detail="Email service not configured")
 
@@ -877,6 +942,18 @@ try:
         to_name = html_escape(payload.to_name.strip() or to_email.split("@")[0])
         entity = html_escape(payload.entity_name.strip() or "your application")
         app_type = html_escape(payload.application_type.strip() or "Application")
+        app_code = payload.application_code.strip()
+
+        code_box = ""
+        if app_code:
+            code_escaped = html_escape(app_code)
+            code_box = (
+                '<div style="background:#f1f5f9;border:2px dashed #4f46e5;border-radius:10px;padding:16px 20px;margin:18px 0;text-align:center;">'
+                '<p style="margin:0 0 4px;font-size:12px;color:#4f46e5;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Your Application Tracking Code</p>'
+                f'<p style="margin:0;font-size:24px;font-weight:800;color:#1e1b4b;font-family:monospace;letter-spacing:2px;">{code_escaped}</p>'
+                '<p style="margin:8px 0 0;font-size:12px;color:#64748b;">Save this code. You can use it in "Track Your Application" to check review progress or update details.</p>'
+                '</div>'
+            )
 
         html = (
             '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">'
@@ -887,6 +964,7 @@ try:
             '<div style="background:#f8fafc;padding:28px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;">'
             f'<p style="color:#475569;line-height:1.6;margin:0 0 16px;">Dear <strong>{to_name}</strong>,</p>'
             f'<p style="color:#475569;line-height:1.6;margin:0 0 16px;">We have received your <strong>{app_type}</strong> for <strong>{entity}</strong>. Your application is now under review.</p>'
+            f"{code_box}"
             '<div style="background:#fffbeb;border:1px solid #fbbf24;border-radius:8px;padding:14px 16px;margin:0 0 16px;">'
             '<p style="margin:0;color:#92400e;font-size:14px;"><strong>Status:</strong> Pending Review<br>You will receive another email once a decision has been made.</p>'
             "</div>"
@@ -905,7 +983,7 @@ try:
     # reading their own network tab or localStorage.
     _OTP_TTL_SECONDS = 600
     _OTP_MAX_ATTEMPTS = 5
-    _OTP_PURPOSES = {"contact_verification", "draft_resume"}
+    _OTP_PURPOSES = {"contact_verification", "draft_resume", "password_reset"}
     _OTP_CHANNELS = {"email", "phone"}
 
     def _generate_otp() -> str:
@@ -951,6 +1029,15 @@ try:
         """
         gateway = os.getenv("SMS_GATEWAY_URL", "").strip().rstrip("/")
         if not gateway:
+            try:
+                from dotenv import dotenv_values
+                root_env = Path(__file__).resolve().parent.parent.parent / ".env"
+                if root_env.exists() and "SMS_GATEWAY_URL" not in os.environ:
+                    env_vals = dotenv_values(root_env)
+                    gateway = (env_vals.get("SMS_GATEWAY_URL") or env_vals.get("WHATSAPP_GATEWAY_URL") or "").strip().rstrip("/")
+            except Exception:
+                pass
+        if not gateway:
             return False
         try:
             resp = httpx.post(
@@ -976,6 +1063,36 @@ try:
             '<p style="font-size:12px;color:#bbb;margin-top:24px;">NTIC Ghana National Championship</p>'
             "</div>"
         )
+
+    def _password_reset_email_html(code: str) -> str:
+        return (
+            '<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">'
+            '<h2 style="color:#1a237e;">Reset your NTIC password</h2>'
+            '<p style="font-size:15px;color:#333;">You asked to reset your password. Use the code below to continue:</p>'
+            '<div style="background:#f5f5f5;border-radius:12px;padding:20px;text-align:center;margin:24px 0;">'
+            f'<span style="font-size:32px;font-weight:800;letter-spacing:8px;color:#d4a017;">{code}</span>'
+            "</div>"
+            '<p style="font-size:13px;color:#999;">This code expires in 10 minutes. If you did not request this, ignore this email.</p>'
+            '<p style="font-size:12px;color:#bbb;margin-top:24px;">NTIC Ghana National Championship</p>'
+            "</div>"
+        )
+
+    def _issue_password_reset_token(email: str) -> str:
+        """Mint a single-use, short-lived reset token bound to a verified email."""
+        token = secrets.token_urlsafe(32)
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO password_reset_tokens (id, email, expires_at) "
+                "VALUES (%s, %s, %s)",
+                (token, email, datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=15)),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return token
 
     class OtpRequestPayload(BaseModel):
         purpose: str = Field(max_length=40)
@@ -1129,8 +1246,153 @@ try:
             # short window, so the draft's PII is only released to someone who
             # actually received the code.
             result["resume_token"] = payload.challenge_id
+        if purpose == "password_reset":
+            # Only after the OTP is verified do we hand out a reset token. It is
+            # single-use and short-lived, and bound to the verified email, so it
+            # cannot be used to reset a different account.
+            result["reset_token"] = _issue_password_reset_token(target)
         return result
 
+    class ForgotPasswordPayload(BaseModel):
+        email: str = Field(min_length=3, max_length=254)
+
+    class ResetPasswordPayload(BaseModel):
+        reset_token: str = Field(min_length=16, max_length=128)
+        new_password: str = Field(min_length=1, max_length=200)
+
+    @app.post("/api/auth/forgot-password")
+    def forgot_password(payload: ForgotPasswordPayload, request: Request):
+        """Start a password reset: issue an OTP to the account's email.
+
+        The email must exist in the system for a code to be sent. To avoid
+        account enumeration the response is the same shape whether or not the
+        account exists -- but a challenge id (and therefore a code) is only ever
+        produced for a real account, so only a real user can complete the reset.
+        """
+        email = payload.email.strip().lower()
+        if not _EMAIL_RE.match(email):
+            raise HTTPException(status_code=422, detail="Invalid email address")
+
+        client_ip = extract_client_ip(request)
+        check_rate_limit(f"pwreset-ip:{client_ip}", max_attempts=5, window_seconds=300)
+        check_rate_limit(f"pwreset-target:{email}", max_attempts=4, window_seconds=900)
+
+        conn = _get_db()
+        exists = False
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT 1 FROM users WHERE lower(email) = %s", (email,))
+            exists = cur.fetchone() is not None
+            cur.close()
+        finally:
+            release_db_connection(conn)
+
+        if not exists:
+            return {"challenge_id": None, "target_masked": _mask_otp_target("email", email)}
+
+        code = _generate_otp()
+        challenge_id = "otp-" + secrets.token_urlsafe(18)
+        expires_at = datetime.datetime.now(datetime.UTC) + datetime.timedelta(seconds=_OTP_TTL_SECONDS)
+        delivered = _send_brevo_email(
+            email, email.split("@")[0], "Reset your password - NTIC Ghana",
+            _password_reset_email_html(code),
+        )
+        if not delivered:
+            raise HTTPException(status_code=503, detail="Could not send the email. Please try again shortly.")
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "UPDATE otp_challenges SET consumed_at = CURRENT_TIMESTAMP "
+                "WHERE target = %s AND purpose = 'password_reset' AND consumed_at IS NULL",
+                (email,),
+            )
+            cur.execute(
+                "INSERT INTO otp_challenges (id, purpose, channel, target, code_hash, max_attempts, expires_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                (challenge_id, "password_reset", "email", email, hash_password(code), _OTP_MAX_ATTEMPTS, expires_at),
+            )
+            cur.execute("DELETE FROM otp_challenges WHERE expires_at < CURRENT_TIMESTAMP - INTERVAL '1 day'")
+            conn.commit()
+            cur.close()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Could not persist password-reset OTP: {e}")
+            raise HTTPException(status_code=500, detail="Could not start password reset")
+        finally:
+            release_db_connection(conn)
+
+        return {
+            "challenge_id": challenge_id,
+            "target_masked": _mask_otp_target("email", email),
+            "expires_in": _OTP_TTL_SECONDS,
+        }
+
+    @app.post("/api/auth/forgot-password/reset")
+    def reset_password(payload: ResetPasswordPayload, request: Request):
+        """Set a new password using a token obtained after OTP verification."""
+        client_ip = extract_client_ip(request)
+        check_rate_limit(f"pwreset-reset:{client_ip}", max_attempts=10, window_seconds=300)
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT email, (expires_at < CURRENT_TIMESTAMP) AS expired, used_at "
+                "FROM password_reset_tokens WHERE id = %s",
+                (payload.reset_token,),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=400, detail="This reset link is invalid or has expired. Please request a new code.")
+            email, expired, used_at = row
+            if used_at is not None:
+                raise HTTPException(status_code=400, detail="This reset link has already been used. Please request a new code.")
+            if expired:
+                raise HTTPException(status_code=400, detail="This reset link has expired. Please request a new code.")
+
+            cur.execute("SELECT id, full_name, password_hash FROM users WHERE lower(email) = %s", (email,))
+            user = cur.fetchone()
+            if not user:
+                raise HTTPException(status_code=400, detail="No account found for this reset link.")
+
+            user_id, full_name, stored_hash = user
+            new_password = payload.new_password
+            problem = validate_password_strength(new_password, email=email, full_name=full_name or "")
+            if problem:
+                raise HTTPException(status_code=422, detail=problem)
+            if verify_password(new_password, stored_hash):
+                raise HTTPException(status_code=422, detail="Your new password must be different from the current one")
+
+            cur.execute(
+                "UPDATE users SET password_hash = %s, must_change_password = FALSE, "
+                "password_changed_at = CURRENT_TIMESTAMP WHERE id = %s",
+                (hash_password(new_password), user_id),
+            )
+            # Sign out every device: the old password no longer works.
+            cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (user_id,))
+            cur.execute("UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = %s", (payload.reset_token,))
+            try:
+                cur.execute(
+                    "INSERT INTO audit_logs (action, usr, time, type, ip) VALUES (%s, %s, %s, %s, %s)",
+                    (f"Password reset via forgot-password: {email}", email,
+                     datetime.datetime.now(datetime.UTC).isoformat(), "security", anonymize_ip(client_ip)),
+                )
+            except Exception:
+                pass
+            conn.commit()
+            cur.close()
+        except HTTPException:
+            raise
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"Password reset failed: {e}")
+            raise HTTPException(status_code=500, detail="Could not reset password")
+        finally:
+            release_db_connection(conn)
+
+        return {"status": "reset", "email": email}
 
     # AUTH
     class LoginRequest(BaseModel):
@@ -1902,7 +2164,28 @@ try:
                 status_code=403,
                 detail="Only a student account can perform this action",
             )
-        return _ensure_student_record(cur, actor)
+        student_id = _ensure_student_record(cur, actor)
+        # A team may have been formed before this student registered, leaving
+        # name-only membership rows. Now that their account is resolved, link
+        # those rows so team derivation and roster grouping work.
+        _link_membership_by_email(cur, student_id, actor.get("email") or "")
+        return student_id
+
+    def _link_membership_by_email(cur, student_id: str, email: str) -> None:
+        """Attach any name-only team_members rows to a now-known student account.
+
+        A team may be formed before its members register. Those rows carry an
+        email but a NULL student_id. Once the student's account is resolved,
+        link the rows so team derivation and roster grouping start working.
+        """
+        email = (email or "").strip().lower()
+        if not email:
+            return
+        cur.execute(
+            "UPDATE team_members SET student_id = %s "
+            "WHERE student_id IS NULL AND LOWER(COALESCE(email, '')) = %s",
+            (student_id, email),
+        )
 
     def _recount_course_enrolment(cur, course_id: str) -> int:
         """Keep lms_courses.enrolled in step with reality.
@@ -1936,7 +2219,7 @@ try:
             student_id = _require_student_identity(cur, actor)
 
             cur.execute(
-                "SELECT id, title, approval_status, status FROM lms_courses WHERE id = %s",
+                "SELECT id, title, approval_status, status, competition_id FROM lms_courses WHERE id = %s",
                 (payload.course_id,),
             )
             course = cur.fetchone()
@@ -1948,13 +2231,29 @@ try:
                 conn.rollback(); cur.close()
                 raise HTTPException(status_code=409, detail="This course is not open for enrolment yet")
 
+            # Derive the student's squad: if this course belongs to a cycle and the
+            # student is a member of a team in that cycle, record the team so an
+            # instructor's roster can be grouped by squad. Absent that, the
+            # enrolment is individual / open-registration and team_id stays NULL.
+            team_id = None
+            if course[4]:
+                cur.execute(
+                    "SELECT tm.team_id FROM team_members tm "
+                    "JOIN teams t ON t.id = tm.team_id "
+                    "WHERE tm.student_id = %s AND t.competition_id = %s LIMIT 1",
+                    (student_id, course[4]),
+                )
+                trow = cur.fetchone()
+                team_id = trow[0] if trow else None
+
             cur.execute(
                 "INSERT INTO lms_enrollments (id, course_id, student_id, student_name, "
-                "student_email, progress_pct, enrolled_at, last_active, status) "
-                "VALUES (%s, %s, %s, %s, %s, 0, %s, %s, 'active') "
+                "student_email, progress_pct, enrolled_at, last_active, status, team_id) "
+                "VALUES (%s, %s, %s, %s, %s, 0, %s, %s, 'active', %s) "
                 "ON CONFLICT (course_id, student_id) DO UPDATE SET "
                 "status = 'active', last_active = EXCLUDED.last_active, "
-                "student_name = EXCLUDED.student_name, student_email = EXCLUDED.student_email "
+                "student_name = EXCLUDED.student_name, student_email = EXCLUDED.student_email, "
+                "team_id = EXCLUDED.team_id "
                 "RETURNING id",
                 (
                     "enr-" + str(uuid.uuid4())[:8],
@@ -1964,6 +2263,7 @@ try:
                     actor.get("email") or "",
                     datetime.datetime.now(datetime.UTC).isoformat(),
                     datetime.datetime.now(datetime.UTC).isoformat(),
+                    team_id,
                 ),
             )
             enrolment_id = cur.fetchone()[0]
@@ -2368,14 +2668,22 @@ try:
                 ),
             )
             registration_id = cur.fetchone()[0]
+            # Model the solo entrant as a team of one, so mentors and LMS
+            # auto-enrolment work for them the same as for a squad (Option B).
+            solo_team_id = _ensure_solo_team(
+                cur, student_id, actor.get("full_name") or "",
+                actor.get("email") or "", payload.competition_id, comp[3] or "",
+            )
             conn.commit()
             cur.close()
         finally:
             release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "competition_registrations"})
+        broadcast_async({"type": "data_changed", "collection": "teams"})
         return {
             "id": registration_id, "competition_id": payload.competition_id,
             "competition_title": comp[1], "status": "registered",
+            "solo_team_id": solo_team_id,
         }
 
     @app.delete("/api/competitions/register/{competition_id}")
@@ -2500,6 +2808,9 @@ try:
         level: str = Field(default="", max_length=50)
         description: str = Field(default="", max_length=5000)
         modules: int = Field(default=0, ge=0, le=500)
+        # Which cycle this course prepares students for. Empty means evergreen
+        # material that is not tied to one competition.
+        competition_id: str = Field(default="", max_length=64)
 
     @app.post("/api/lms/courses", status_code=status.HTTP_201_CREATED)
     def create_my_course(payload: LmsCoursePayload, actor: dict = Depends(require_role(LMS_ROLES))):
@@ -2514,17 +2825,21 @@ try:
         conn = _get_db()
         try:
             cur = conn.cursor()
+            # Validated rather than stored blind: there are no FK constraints on
+            # competitions.id, so a stale or typo'd id would be accepted and the
+            # course would simply never appear in any cycle-scoped view.
+            comp_ref = _validate_competition_ref(cur, payload.competition_id or None)
             cur.execute(
                 "INSERT INTO lms_courses (id, title, track, icon, level, description, "
                 "modules, enrolled, completion, status, created_at, submitted_by, "
-                "approval_status, owner_id) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s,0,0,'active',%s,%s,%s,%s)",
+                "approval_status, owner_id, competition_id) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,0,0,'active',%s,%s,%s,%s,%s)",
                 (
                     course_id, payload.title, payload.track, payload.icon, payload.level,
                     payload.description, payload.modules,
                     datetime.datetime.now(datetime.UTC).isoformat(),
                     actor.get("full_name") or actor.get("email") or "",
-                    approval, actor["id"],
+                    approval, actor["id"], comp_ref,
                 ),
             )
             conn.commit()
@@ -2532,7 +2847,12 @@ try:
         finally:
             release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "lms_courses"})
-        return {"id": course_id, "title": payload.title, "approval_status": approval}
+        return {
+            "id": course_id,
+            "title": payload.title,
+            "approval_status": approval,
+            "competitionId": comp_ref,
+        }
 
     @app.patch("/api/lms/courses/{course_id}")
     def update_my_course(
@@ -2548,18 +2868,25 @@ try:
             # An instructor editing already-published content sends it back for
             # review; staff edits stay published.
             approval = existing[3] if _is_lms_staff(actor) else "pending"
+            comp_ref = _validate_competition_ref(cur, payload.competition_id or None)
             cur.execute(
                 "UPDATE lms_courses SET title=%s, track=%s, icon=%s, level=%s, "
-                "description=%s, modules=%s, approval_status=%s WHERE id=%s",
+                "description=%s, modules=%s, approval_status=%s, competition_id=%s "
+                "WHERE id=%s",
                 (payload.title, payload.track, payload.icon, payload.level,
-                 payload.description, payload.modules, approval, course_id),
+                 payload.description, payload.modules, approval, comp_ref, course_id),
             )
             conn.commit()
             cur.close()
         finally:
             release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "lms_courses"})
-        return {"id": course_id, "status": "updated", "approval_status": approval}
+        return {
+            "id": course_id,
+            "status": "updated",
+            "approval_status": approval,
+            "competitionId": comp_ref,
+        }
 
     @app.delete("/api/lms/courses/{course_id}")
     def delete_my_course(course_id: str, actor: dict = Depends(require_role(LMS_ROLES))):
@@ -2591,20 +2918,28 @@ try:
         return {"status": "deleted", "id": course_id}
 
     @app.get("/api/lms/my-courses")
-    def list_my_courses(actor: dict = Depends(require_role(LMS_ROLES))):
-        """Courses the caller authored, with live roster and grading counts."""
+    def list_my_courses(competition_id: str = "", actor: dict = Depends(require_role(LMS_ROLES))):
+        """Courses the caller authored, with live roster and grading counts.
+
+        competition_id scopes the list to one cycle. The LMS previously had no
+        notion of cycles at all -- courses were organised only by `track` -- so an
+        instructor preparing for a specific competition had no way to see just
+        that material.
+        """
         conn = _get_db()
         try:
             cur = conn.cursor()
+            clause = " AND c.competition_id = %s" if competition_id else ""
+            params = (actor["id"],) if not competition_id else (actor["id"], competition_id)
             cur.execute(
                 "SELECT c.id, c.title, c.track, c.icon, c.level, c.description, c.modules, "
-                "c.status, c.approval_status, c.rejection_reason, c.created_at, "
+                "c.status, c.approval_status, c.rejection_reason, c.created_at, c.competition_id, "
                 "(SELECT COUNT(*) FROM lms_enrollments e WHERE e.course_id=c.id AND e.status='active'), "
                 "(SELECT COUNT(*) FROM lms_assignments a WHERE a.course_id=c.id), "
                 "(SELECT COUNT(*) FROM lms_submissions s WHERE s.course_id=c.id AND s.score IS NULL), "
                 "(SELECT ROUND(AVG(e.progress_pct)) FROM lms_enrollments e WHERE e.course_id=c.id AND e.status='active') "
-                "FROM lms_courses c WHERE c.owner_id = %s ORDER BY c.created_at DESC NULLS LAST",
-                (actor["id"],),
+                "FROM lms_courses c WHERE c.owner_id = %s" + clause + " ORDER BY c.created_at DESC NULLS LAST",
+                params,
             )
             rows = cur.fetchall()
             cur.close()
@@ -2616,9 +2951,10 @@ try:
                 "level": r[4] or "", "description": r[5] or "", "modules": r[6] or 0,
                 "status": r[7] or "active", "approval_status": r[8] or "approved",
                 "rejection_reason": r[9] or "", "created_at": r[10] or "",
-                "enrolled_count": r[11] or 0, "assignment_count": r[12] or 0,
-                "awaiting_grading": r[13] or 0,
-                "average_progress": int(r[14]) if r[14] is not None else 0,
+                "competitionId": r[11],
+                "enrolled_count": r[12] or 0, "assignment_count": r[13] or 0,
+                "awaiting_grading": r[14] or 0,
+                "average_progress": int(r[15]) if r[15] is not None else 0,
             }
             for r in rows
         ]
@@ -2637,12 +2973,14 @@ try:
             _load_owned_course(cur, course_id, actor)
             cur.execute(
                 "SELECT e.student_id, e.student_name, e.student_email, e.progress_pct, "
-                "e.enrolled_at, e.last_active, e.status, "
+                "e.enrolled_at, e.last_active, e.status, e.team_id, t.name, "
                 "(SELECT COUNT(*) FROM lms_submissions s WHERE s.course_id=e.course_id AND s.student_id=e.student_id), "
                 "(SELECT COUNT(*) FROM lms_submissions s WHERE s.course_id=e.course_id AND s.student_id=e.student_id AND s.score IS NOT NULL), "
                 "(SELECT ROUND(AVG(s.score)) FROM lms_submissions s WHERE s.course_id=e.course_id AND s.student_id=e.student_id AND s.score IS NOT NULL) "
-                "FROM lms_enrollments e WHERE e.course_id=%s AND e.status='active' "
-                "ORDER BY e.student_name",
+                "FROM lms_enrollments e "
+                "LEFT JOIN teams t ON t.id = e.team_id "
+                "WHERE e.course_id=%s AND e.status='active' "
+                "ORDER BY t.name NULLS LAST, e.student_name",
                 (course_id,),
             )
             rows = cur.fetchall()
@@ -2653,8 +2991,9 @@ try:
             {
                 "student_id": r[0], "student_name": r[1] or "", "student_email": r[2] or "",
                 "progress_pct": r[3] or 0, "enrolled_at": r[4] or "", "last_active": r[5] or "",
-                "status": r[6] or "active", "submissions": r[7] or 0, "graded": r[8] or 0,
-                "average_score": int(r[9]) if r[9] is not None else None,
+                "status": r[6] or "active", "team_id": r[7], "team_name": r[8] or "",
+                "submissions": r[9] or 0, "graded": r[10] or 0,
+                "average_score": int(r[11]) if r[11] is not None else None,
             }
             for r in rows
         ]
@@ -4061,16 +4400,22 @@ try:
 
     # SUBMISSIONS
     @app.get("/api/submissions")
-    def list_submissions(_auth: dict = Depends(require_auth)):
+    def list_submissions(competition_id: str = "", _auth: dict = Depends(require_auth)):
+        """List submissions, optionally scoped to one cycle."""
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, tenant_id, student_id, source_code_path, video_url, status, score, feedback, created_at FROM assignment_submissions ORDER BY created_at DESC")
+        base = ("SELECT id, tenant_id, student_id, source_code_path, video_url, status, "
+                "score, feedback, created_at, competition_id FROM assignment_submissions")
+        if competition_id:
+            cur.execute(base + " WHERE competition_id = %s ORDER BY created_at DESC", (competition_id,))
+        else:
+            cur.execute(base + " ORDER BY created_at DESC")
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)
-        return [{"id": r[0], "tenant_id": r[1], "student_id": r[2], "source_code_path": r[3], "video_url": r[4], "status": r[5], "score": r[6], "feedback": r[7], "created_at": str(r[8])} for r in rows]
+        return [{"id": r[0], "tenant_id": r[1], "student_id": r[2], "source_code_path": r[3], "video_url": r[4], "status": r[5], "score": r[6], "feedback": r[7], "created_at": str(r[8]), "competition_id": r[9]} for r in rows]
 
     @app.post("/api/submissions", status_code=status.HTTP_201_CREATED)
     def create_submission(payload: SubmissionCreate, _actor: dict = Depends(require_auth)):
@@ -4080,9 +4425,15 @@ try:
         sub_id = str(uuid.uuid4())
         cur = conn.cursor()
         try:
-            cur.execute("INSERT INTO assignment_submissions (id, tenant_id, student_id, source_code_path, video_url, status) VALUES (%s, %s, %s, %s, %s, 'Pending')",
-                        (sub_id, payload.tenant_id, payload.student_id, payload.source_code_path, payload.video_url))
+            comp_ref = _validate_competition_ref(cur, payload.competition_id)
+            cur.execute("INSERT INTO assignment_submissions (id, tenant_id, student_id, source_code_path, video_url, status, competition_id) VALUES (%s, %s, %s, %s, %s, 'Pending', %s)",
+                        (sub_id, payload.tenant_id, payload.student_id, payload.source_code_path, payload.video_url, comp_ref))
             conn.commit()
+        except HTTPException:
+            conn.rollback()
+            cur.close()
+            release_db_connection(conn)
+            raise
         except Exception as e:
             conn.rollback()
             cur.close()
@@ -4216,7 +4567,7 @@ try:
     # and the LMS grading screens exclude the role. These two endpoints are the
     # backend half of an actual judging surface.
 
-    def _judge_queue_rows(cur, track: str = "", limit: int = 200):
+    def _judge_queue_rows(cur, track: str = "", limit: int = 200, competition_id: str = ""):
         """Unscored competition submissions, oldest first (fairest order)."""
         sql = (
             "SELECT s.id, s.student_id, s.source_code_path, s.video_url, s.status, "
@@ -4229,6 +4580,9 @@ try:
         if track:
             sql += "AND lower(COALESCE(st.track, '')) = lower(%s) "
             params.append(track)
+        if competition_id:
+            sql += "AND s.competition_id = %s "
+            params.append(competition_id)
         sql += "ORDER BY s.created_at ASC NULLS LAST LIMIT %s"
         params.append(limit)
         cur.execute(sql, params)
@@ -4255,33 +4609,93 @@ try:
             "max_score": MAX_SUBMISSION_SCORE,
         }
 
+    def _lms_context_map(cur, student_ids):
+        """Instructor-coursework context for a set of students (read-only).
+
+        Joins the two grading paths the safe way: it surfaces each student's LMS
+        assignment history next to their competition submission so a judge has
+        context, but it is deliberately read-only -- it does NOT feed into the
+        judge's score. Only the judge's own score counts toward the competition.
+        """
+        if not student_ids:
+            return {}
+        placeholders = ", ".join(["%s"] * len(student_ids))
+        cur.execute(
+            "SELECT s.student_id, a.title, s.score, s.status "
+            "FROM lms_submissions s JOIN lms_assignments a ON a.id = s.assignment_id "
+            f"WHERE s.student_id IN ({placeholders}) "
+            "ORDER BY s.student_id, a.title",
+            list(student_ids),
+        )
+        by_student = {}
+        for student_id, title, score, status in cur.fetchall():
+            by_student.setdefault(student_id, []).append({
+                "assignment": title, "score": score, "status": status or "submitted",
+            })
+        result = {}
+        for sid in student_ids:
+            items = by_student.get(sid, [])
+            graded = [i for i in items if i["score"] is not None]
+            result[sid] = {
+                "assignments_submitted": len(items),
+                "assignments_graded": len(graded),
+                "average_score": round(sum(i["score"] for i in graded) / len(graded), 2) if graded else None,
+                "assignments": items,
+            }
+        return result
+
     @app.get("/api/judge/queue")
-    def judge_queue(track: str = "", _actor: dict = Depends(require_role(GRADING_ROLES))):
+    def judge_queue(track: str = "", competition_id: str = "", _actor: dict = Depends(require_role(GRADING_ROLES))):
         """Submissions still awaiting a score.
 
         This is a shared pool, not a per-judge assignment list: the schema has a
         single score per submission and no assignment table, so inventing an
         owner here would be fiction. Ordered oldest-first so nothing starves.
+
+        `?competition_id=` scopes the queue to one cycle so a judge working a
+        cycle is not shown every unscored submission on the platform. The counts
+        below are scoped the same way, otherwise the badge and the list disagree.
         """
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        rows = _judge_queue_rows(cur, track)
-        cur.execute("SELECT COUNT(*) FROM assignment_submissions WHERE score IS NULL")
+        rows = _judge_queue_rows(cur, track, competition_id=competition_id)
+        if competition_id:
+            cur.execute(
+                "SELECT COUNT(*) FROM assignment_submissions "
+                "WHERE score IS NULL AND competition_id = %s",
+                (competition_id,),
+            )
+        else:
+            cur.execute("SELECT COUNT(*) FROM assignment_submissions WHERE score IS NULL")
         pending_total = cur.fetchone()[0]
-        cur.execute(
+        track_sql = (
             "SELECT COALESCE(lower(st.track), '') , COUNT(*) "
             "FROM assignment_submissions s LEFT JOIN students st ON st.id = s.student_id "
-            "WHERE s.score IS NULL GROUP BY lower(st.track) ORDER BY 2 DESC"
+            "WHERE s.score IS NULL "
         )
+        if competition_id:
+            cur.execute(
+                track_sql + "AND s.competition_id = %s GROUP BY lower(st.track) ORDER BY 2 DESC",
+                (competition_id,),
+            )
+        else:
+            cur.execute(track_sql + "GROUP BY lower(st.track) ORDER BY 2 DESC")
         by_track = [{"track": r[0], "pending": r[1]} for r in cur.fetchall()]
+        # Enrich each submission with the student's LMS coursework context so the
+        # judge sees it, but read-only -- it never changes the judge's score.
+        shaped = [_shape_submission(r) for r in rows]
+        student_ids = [s["student_id"] for s in shaped if s.get("student_id")]
+        lms_map = _lms_context_map(cur, student_ids) if student_ids else {}
+        for s in shaped:
+            s["lms_context"] = lms_map.get(s["student_id"])
         cur.close()
         release_db_connection(conn)
         return {
             "pending_total": pending_total,
             "by_track": by_track,
-            "submissions": [_shape_submission(r) for r in rows],
+            "submissions": shaped,
         }
 
     @app.get("/api/judge/history")
@@ -4367,11 +4781,28 @@ try:
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, title, description, track, category, deadline, status, created_at, comp_type, max_teams, teams, prize, start_date, end_date, phases, rules, criteria, progress FROM competitions ORDER BY created_at DESC")
+        # `teams` is reported as a live count of what is actually attached to the
+        # cycle, not the hand-typed integer in the column. That number was only
+        # ever set by whoever last edited the cycle, so it drifted away from
+        # reality immediately and every panel showed a different figure.
+        # entrants = students registered for the cycle; team_count = teams in it.
+        cur.execute(
+            "SELECT c.id, c.title, c.description, c.track, c.category, c.deadline, c.status, "
+            "c.created_at, c.comp_type, c.max_teams, c.prize, c.start_date, c.end_date, "
+            "c.phases, c.rules, c.criteria, c.progress, "
+            "(SELECT COUNT(*) FROM teams t WHERE t.competition_id = c.id) AS team_count, "
+            "(SELECT COUNT(*) FROM competition_registrations r "
+            " WHERE r.competition_id = c.id AND r.status = 'registered') AS entrant_count "
+            "FROM competitions c ORDER BY c.created_at DESC"
+        )
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)
-        return [{"id": r[0], "title": r[1], "description": r[2], "track": r[3], "category": r[4], "deadline": r[5], "status": r[6], "created_at": str(r[7]), "type": r[8], "maxTeams": r[9], "teams": r[10], "prize": r[11], "startDate": r[12], "endDate": r[13], "phases": r[14], "rules": r[15], "criteria": r[16], "progress": r[17]} for r in rows]
+        return [{"id": r[0], "title": r[1], "description": r[2], "track": r[3], "category": r[4],
+                 "deadline": r[5], "status": r[6], "created_at": str(r[7]), "type": r[8],
+                 "maxTeams": r[9], "prize": r[10], "startDate": r[11], "endDate": r[12],
+                 "phases": r[13], "rules": r[14], "criteria": r[15], "progress": r[16],
+                 "teams": r[17], "entrants": r[18]} for r in rows]
 
     @app.post("/api/competitions", status_code=status.HTTP_201_CREATED)
     def create_competition(payload: CompetitionCreate, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
@@ -4427,6 +4858,12 @@ try:
                 (payload.title, payload.description, payload.track, payload.category, payload.deadline, new_status, payload.comp_type, payload.max_teams, payload.teams, payload.prize, payload.start_date, payload.end_date, payload.phases, payload.rules, payload.criteria, payload.progress, item_id)
             )
             row = cur.fetchone()
+            # When registration closes, make sure no entrant is left without a
+            # mentor: assign one to every team in this cycle that doesn't have one.
+            # Those who already requested keep their flag; the rest are covered.
+            assigned_mentors = 0
+            if new_status == STATUS_COMPLETED and (current_status or "") != STATUS_COMPLETED:
+                assigned_mentors = _auto_assign_mentors(cur, item_id)
             conn.commit()
         except Exception as e:
             conn.rollback()
@@ -4438,7 +4875,9 @@ try:
         if not row:
             raise HTTPException(status_code=404, detail="Competition not found")
         broadcast_async({"type": "data_changed", "collection": "competitions"})
-        return {"id": item_id, "status": "updated"}
+        if assigned_mentors:
+            broadcast_async({"type": "data_changed", "collection": "teams"})
+        return {"id": item_id, "status": "updated", "mentors_assigned": assigned_mentors}
 
     @app.delete("/api/competitions/{item_id}")
     def delete_competition(item_id: str, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
@@ -4475,19 +4914,339 @@ try:
         members: int = 1
         status: str = "Active"
         school_name: str = ""
+        mentor: str = ""
+        motto: str = ""
+        roster_list: list = []
+        # Which cycle this team is competing in. Optional: teams created before
+        # cycles were linked, and teams not tied to one, carry None.
+        competition_id: Optional[str] = None
+        # Member identities. Used to build real team_members rows keyed by
+        # account. lead_email/member_emails are optional and may be empty when a
+        # form only collected names; those rows are stored name-only until a
+        # student account is linked.
+        lead_email: str = Field(default="", max_length=150)
+        member_emails: list[str] = Field(default_factory=list)
+
+    def _validate_competition_ref(cur, competition_id: Optional[str]) -> Optional[str]:
+        """Reject a reference to a cycle that does not exist.
+
+        There are no FK constraints on competitions.id, so without this a typo'd
+        or stale id is accepted and the row simply never joins to anything --
+        which is how records ended up invisible in every cycle-scoped view.
+        """
+        if not competition_id:
+            return None
+        cur.execute("SELECT id FROM competitions WHERE id = %s", (competition_id,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=422, detail=f"Unknown competition cycle '{competition_id}'")
+        return competition_id
+
+    def _resolve_student_by_email(cur, email: str) -> Optional[str]:
+        """Map a member email to a students.id, if the account exists.
+
+        A student's `students` row may not exist yet (it is created lazily on
+        first learner action). In that case fall back to the users row, whose id
+        becomes the students.id, so the membership is keyed to the right account
+        from the start and resolves once the students row appears.
+        """
+        email = (email or "").strip().lower()
+        if not email:
+            return None
+        cur.execute(
+            "SELECT id FROM students WHERE LOWER(email) = %s LIMIT 1",
+            (email,),
+        )
+        row = cur.fetchone()
+        if row:
+            return row[0]
+        cur.execute(
+            "SELECT id FROM users WHERE LOWER(email) = %s LIMIT 1",
+            (email,),
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+
+    def _sync_team_members(cur, team_id: str, lead: str, roster: list,
+                           lead_email: str, member_emails: list) -> int:
+        """Rebuild team_members for a team from its roster and any emails.
+
+        Replaces the whole set for the team (idempotent, so edit + create share
+        it). Names are stored as recorded; emails are resolved to students.id
+        where an account already exists. Returns the number of rows written.
+        """
+        names = [n for n in roster if isinstance(n, str) and n.strip()]
+        emails = [e for e in member_emails if isinstance(e, str) and e.strip()]
+
+        # Lead first, then the rest, then any emails without a matching name slot.
+        rows = []
+        if lead and lead.strip():
+            rows.append((True, lead.strip(), (lead_email or "").strip()))
+        for idx, name in enumerate(names):
+            rows.append((False, name, emails[idx] if idx < len(emails) else ""))
+
+        cur.execute("DELETE FROM team_members WHERE team_id = %s", (team_id,))
+        count = 0
+        for is_lead, name, email in rows:
+            student_id = _resolve_student_by_email(cur, email) if email else None
+            member_id = "tm-" + str(uuid.uuid4())[:8]
+            cur.execute(
+                "INSERT INTO team_members (id, team_id, student_id, email, name, is_lead) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (member_id, team_id, student_id, email or None, name, is_lead),
+            )
+            count += 1
+        return count
+
+    def _provision_team_member_accounts(cur, team_id: str, school_name: str) -> list:
+        """Create student accounts for team members who have an email but no account.
+
+        This is what makes "all students under an institution get a student
+        account" real: once a team is approved, every member with an email gets a
+        login under that institution. Accounts are minted server-side with a
+        one-time password and must_change_password=TRUE, so the institution can
+        hand out the initial credentials and the student sets their own on first
+        login. Members who already have an account are left untouched (idempotent).
+
+        Returns a list of {name, email, temporary_password} for the accounts that
+        were newly created, so the caller can surface them to the institution
+        exactly once.
+        """
+        from app.security import hash_password
+        cur.execute(
+            "SELECT id, name, email FROM team_members "
+            "WHERE team_id = %s AND email IS NOT NULL AND student_id IS NULL",
+            (team_id,),
+        )
+        pending = cur.fetchall()
+        created = []
+        for member_row_id, name, email in pending:
+            email_norm = (email or "").strip().lower()
+            if not email_norm:
+                continue
+            # Skip if an account already exists for this email.
+            cur.execute("SELECT id FROM users WHERE lower(email) = %s", (email_norm,))
+            if cur.fetchone():
+                # Link the existing account to the membership and move on.
+                cur.execute("SELECT id FROM users WHERE lower(email) = %s", (email_norm,))
+                uid = cur.fetchone()[0]
+                cur.execute(
+                    "UPDATE team_members SET student_id = %s WHERE id = %s",
+                    (uid, member_row_id),
+                )
+                continue
+
+            user_id = "USR-" + str(uuid.uuid4())[:8]
+            temp_password = _generate_temp_password()
+            ticket = f"NTIC-STU-{_generate_access_code()}"
+            cur.execute(
+                "INSERT INTO users (id, email, full_name, role, ticket, password_hash, "
+                "status, organization, must_change_password) "
+                "VALUES (%s, %s, %s, 'student', %s, %s, 'active', %s, TRUE)",
+                (user_id, email_norm, name or "Student", ticket,
+                 hash_password(temp_password), school_name or None),
+            )
+            # Link the fresh account to the membership row.
+            cur.execute(
+                "UPDATE team_members SET student_id = %s WHERE id = %s",
+                (user_id, member_row_id),
+            )
+            created.append({
+                "name": name or "Student",
+                "email": email_norm,
+                "temporary_password": temp_password,
+                "ticket": ticket,
+            })
+        return created
+
+    def _auto_enroll_team_members(cur, team_id: str, competition_id: str) -> int:
+        """Enrol a team's members on the approved courses for its cycle.
+
+        This is the "seamless" step: once a team is attached to a cycle, its
+        members should already be in that cycle's courses rather than having to
+        find and self-enrol in each one. Only members already linked to a student
+        account are enrolled; name-only rows are picked up later, when the
+        student's identity is resolved (enrolling themselves re-links membership).
+
+        Only 'approved' courses are enrolled: pending moderation content is not
+        student-facing yet. Returns the number of new enrolment rows.
+        """
+        if not competition_id:
+            return 0
+        cur.execute(
+            "SELECT c.id FROM lms_courses c "
+            "WHERE c.competition_id = %s AND (c.approval_status IS NULL OR c.approval_status = 'approved') "
+            "AND c.status = 'active'",
+            (competition_id,),
+        )
+        courses = [r[0] for r in cur.fetchall()]
+        if not courses:
+            return 0
+
+        cur.execute(
+            "SELECT student_id, name, email FROM team_members "
+            "WHERE team_id = %s AND student_id IS NOT NULL",
+            (team_id,),
+        )
+        members = cur.fetchall()
+        if not members:
+            return 0
+
+        now = datetime.datetime.now(datetime.UTC).isoformat()
+        created = 0
+        for course_id in courses:
+            for student_id, name, email in members:
+                cur.execute(
+                    "INSERT INTO lms_enrollments (id, course_id, student_id, student_name, "
+                    "student_email, progress_pct, enrolled_at, last_active, status, team_id) "
+                    "VALUES (%s, %s, %s, %s, %s, 0, %s, %s, 'active', %s) "
+                    "ON CONFLICT (course_id, student_id) DO UPDATE SET "
+                    "team_id = EXCLUDED.team_id, status = 'active'",
+                    (
+                        "enr-" + str(uuid.uuid4())[:8],
+                        course_id,
+                        student_id,
+                        name or "Member",
+                        email or "",
+                        now,
+                        now,
+                        team_id,
+                    ),
+                )
+                created += 1
+            _recount_course_enrolment(cur, course_id)
+        return created
+
+    def _ensure_solo_team(cur, student_id: str, full_name: str, email: str,
+                          competition_id: str, track: str) -> str:
+        """Represent a solo/open entrant as a one-person team for a cycle.
+
+        Option B of the mentor design: rather than a second mentor code path for
+        individuals, a solo entrant becomes a team of one. That means mentors,
+        auto-assignment, LMS auto-enrolment and roster grouping all work for them
+        with no extra logic. Idempotent -- re-registering returns the same solo
+        team rather than making duplicates.
+        """
+        # A solo team is identified by its single member and its cycle.
+        cur.execute(
+            "SELECT t.id FROM teams t JOIN team_members m ON m.team_id = t.id "
+            "WHERE t.is_solo = TRUE AND m.student_id = %s "
+            "AND COALESCE(t.competition_id, '') = COALESCE(%s, '') LIMIT 1",
+            (student_id, competition_id or None),
+        )
+        row = cur.fetchone()
+        if row:
+            return row[0]
+
+        team_id = "team-" + str(uuid.uuid4())[:8]
+        display = (full_name or email or "Individual Entrant").strip()
+        cur.execute(
+            "INSERT INTO teams (id, name, track, lead, members, status, school_name, "
+            "competition_id, mentor_status, is_solo, roster_list) "
+            "VALUES (%s, %s, %s, %s, 1, 'In Competition', NULL, %s, 'none', TRUE, %s)",
+            (team_id, f"{display} (Individual)", track or "", display,
+             competition_id or None, json.dumps([display])),
+        )
+        member_id = "tm-" + str(uuid.uuid4())[:8]
+        cur.execute(
+            "INSERT INTO team_members (id, team_id, student_id, email, name, is_lead) "
+            "VALUES (%s, %s, %s, %s, %s, TRUE)",
+            (member_id, team_id, student_id, (email or "").strip().lower() or None, display),
+        )
+        if competition_id:
+            _auto_enroll_team_members(cur, team_id, competition_id)
+        return team_id
 
     @app.get("/api/teams")
-    def list_teams(_auth: dict = Depends(require_auth)):
+    def list_teams(competition_id: str = "", _auth: dict = Depends(require_auth)):
+        """List teams, optionally scoped to one cycle.
+
+        `?competition_id=` is what lets each panel show "the teams in this cycle"
+        instead of every team on the platform.
+        """
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, name, track, lead, members, status, school_name FROM teams ORDER BY name ASC")
+        if competition_id:
+            cur.execute(
+                "SELECT id, name, track, lead, members, status, school_name, competition_id, COALESCE(mentor, ''), COALESCE(motto, ''), COALESCE(roster_list, '[]'::jsonb), mentor_id, COALESCE(mentor_status, 'none'), COALESCE(is_solo, FALSE) "
+                "FROM teams WHERE competition_id = %s ORDER BY name ASC",
+                (competition_id,),
+            )
+        else:
+            cur.execute(
+                "SELECT id, name, track, lead, members, status, school_name, competition_id, COALESCE(mentor, ''), COALESCE(motto, ''), COALESCE(roster_list, '[]'::jsonb), mentor_id, COALESCE(mentor_status, 'none'), COALESCE(is_solo, FALSE) "
+                "FROM teams ORDER BY name ASC"
+            )
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)
-        return [{"id": r[0], "name": r[1], "track": r[2], "lead": r[3], "members": r[4], "status": r[5], "school_name": r[6]} for r in rows]
+        res = []
+        for r in rows:
+            r_list = r[10]
+            if isinstance(r_list, str):
+                try:
+                    r_list = json.loads(r_list)
+                except Exception:
+                    r_list = []
+            elif not isinstance(r_list, list):
+                r_list = []
+            res.append({
+                "id": r[0],
+                "name": r[1],
+                "track": r[2],
+                "lead": r[3],
+                "members": r[4],
+                "status": r[5],
+                "school_name": r[6],
+                "competition_id": r[7],
+                "mentor": r[8],
+                "motto": r[9],
+                "rosterList": r_list,
+                "mentorId": r[11] if len(r) > 11 else None,
+                "mentorStatus": r[12] if len(r) > 12 else "none",
+                "isSolo": bool(r[13]) if len(r) > 13 else False,
+            })
+        return res
 
+    @app.get("/api/teams/mine")
+    def list_my_teams(actor: dict = Depends(require_auth)):
+        """The teams the caller belongs to, with mentor status.
+
+        Lets a student -- solo or in a squad -- see their team and whether it has
+        a mentor, so the "Request a mentor" action has a team id to act on.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT t.id, t.name, t.track, t.competition_id, t.mentor_id, "
+                "COALESCE(t.mentor_status, 'none'), COALESCE(t.is_solo, FALSE), "
+                "m.is_lead "
+                "FROM teams t JOIN team_members m ON m.team_id = t.id "
+                "WHERE m.student_id = %s ORDER BY t.name",
+                (actor["id"],),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {
+                "id": r[0], "name": r[1], "track": r[2] or "",
+                "competitionId": r[3], "mentorId": r[4],
+                "mentorStatus": r[5], "isSolo": bool(r[6]), "isLead": bool(r[7]),
+            }
+            for r in rows
+        ]
+
+    # Team writes are decision points, not proposals.
+    #
+    # These used to accept STUDENT_ADMIN_ROLES, which includes school_admin and
+    # instructor -- so the team-change approval workflow was enforced only in the
+    # frontend and an institution could rename, add or disband a team by calling
+    # the API directly. Institutions now propose changes via
+    # POST /api/approvals/team-change and an admin applies them on approval.
     @app.post("/api/teams", status_code=status.HTTP_201_CREATED)
     def create_team(payload: TeamCreate, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
         conn = get_db_connection()
@@ -4496,9 +5255,37 @@ try:
         team_id = "team-" + str(uuid.uuid4())[:8]
         cur = conn.cursor()
         try:
-            cur.execute("INSERT INTO teams (id, name, track, lead, members, status, school_name) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                        (team_id, payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name))
+            comp_ref = _validate_competition_ref(cur, payload.competition_id)
+            cur.execute(
+                "SELECT id FROM teams WHERE lower(name) = %s AND lower(COALESCE(school_name, '')) = %s",
+                (payload.name.strip().lower(), (payload.school_name or "").strip().lower())
+            )
+            existing = cur.fetchone()
+            if existing:
+                team_id = existing[0]
+                cur.execute(
+                    "UPDATE teams SET track = %s, lead = %s, members = %s, status = %s, competition_id = %s, mentor = %s, motto = %s, roster_list = %s WHERE id = %s",
+                    (payload.track, payload.lead, payload.members, payload.status, comp_ref, payload.mentor, payload.motto, json.dumps(payload.roster_list), team_id)
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO teams (id, name, track, lead, members, status, school_name, competition_id, mentor, motto, roster_list) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    (team_id, payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name, comp_ref, payload.mentor, payload.motto, json.dumps(payload.roster_list))
+                )
+            _sync_team_members(cur, team_id, payload.lead, payload.roster_list,
+                               payload.lead_email, payload.member_emails)
+            # Provision a student login for each member who supplied an email but
+            # has no account yet. This is what puts every student "under" the
+            # institution with a login they can be given.
+            provisioned = _provision_team_member_accounts(cur, team_id, payload.school_name)
+            if comp_ref:
+                _auto_enroll_team_members(cur, team_id, comp_ref)
             conn.commit()
+        except HTTPException:
+            conn.rollback()
+            cur.close()
+            release_db_connection(conn)
+            raise
         except Exception as e:
             conn.rollback()
             cur.close()
@@ -4507,7 +5294,10 @@ try:
         cur.close()
         release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "teams"})
-        return {"id": team_id, "name": payload.name, "status": payload.status}
+        if provisioned:
+            broadcast_async({"type": "data_changed", "collection": "users"})
+        return {"id": team_id, "name": payload.name, "status": payload.status,
+                "competition_id": comp_ref, "provisioned_accounts": provisioned}
 
     @app.patch("/api/teams/{item_id}")
     def update_team(item_id: str, payload: TeamCreate, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
@@ -4516,12 +5306,25 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         try:
+            comp_ref = _validate_competition_ref(cur, payload.competition_id)
             cur.execute(
-                "UPDATE teams SET name = %s, track = %s, lead = %s, members = %s, status = %s, school_name = %s WHERE id = %s RETURNING id",
-                (payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name, item_id)
+                "UPDATE teams SET name = %s, track = %s, lead = %s, members = %s, status = %s, school_name = %s, competition_id = %s, mentor = %s, motto = %s, roster_list = %s WHERE id = %s RETURNING id",
+                (payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name, comp_ref, payload.mentor, payload.motto, json.dumps(payload.roster_list), item_id)
             )
             row = cur.fetchone()
+            provisioned = []
+            if row:
+                _sync_team_members(cur, item_id, payload.lead, payload.roster_list,
+                                   payload.lead_email, payload.member_emails)
+                provisioned = _provision_team_member_accounts(cur, item_id, payload.school_name)
+                if comp_ref:
+                    _auto_enroll_team_members(cur, item_id, comp_ref)
             conn.commit()
+        except HTTPException:
+            conn.rollback()
+            cur.close()
+            release_db_connection(conn)
+            raise
         except Exception as e:
             conn.rollback()
             cur.close()
@@ -4532,7 +5335,9 @@ try:
         if not row:
             raise HTTPException(status_code=404, detail="Team not found")
         broadcast_async({"type": "data_changed", "collection": "teams"})
-        return {"id": item_id, "status": "updated"}
+        if provisioned:
+            broadcast_async({"type": "data_changed", "collection": "users"})
+        return {"id": item_id, "status": "updated", "provisioned_accounts": provisioned}
 
     @app.delete("/api/teams/{item_id}")
     def delete_team(item_id: str, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
@@ -4547,6 +5352,303 @@ try:
         broadcast_async({"type": "data_changed", "collection": "teams"})
         return {"status": "deleted", "id": item_id}
 
+    # ── Institution student portal ────────────────────────────────────
+    # An institution (school_admin) can see the student accounts it provisioned
+    # and hand out / reset their initial credentials. Everything is scoped to the
+    # caller's own organisation, so one school cannot see or touch another's
+    # students, and an admin sees all.
+
+    def _actor_org(cur, actor: dict) -> str:
+        cur.execute("SELECT organization FROM users WHERE id = %s", (actor["id"],))
+        row = cur.fetchone()
+        return (row[0] or "").strip() if row else ""
+
+    @app.get("/api/institution/students")
+    def list_institution_students(actor: dict = Depends(require_role(STUDENT_ADMIN_ROLES))):
+        """Student accounts belonging to the caller's institution.
+
+        Lets an institution monitor its students: who has an account, whether they
+        have logged in, and whether they still owe a password change.
+        """
+        is_admin = (actor.get("role") or "") in ("super_admin", "admin")
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            org = _actor_org(cur, actor)
+            if not is_admin and not org:
+                cur.close()
+                raise HTTPException(
+                    status_code=409,
+                    detail="Your account is not linked to an institution.",
+                )
+            if is_admin:
+                cur.execute(
+                    "SELECT id, full_name, email, ticket, status, organization, "
+                    "COALESCE(must_change_password, FALSE), password_changed_at "
+                    "FROM users WHERE role = 'student' ORDER BY organization, full_name"
+                )
+            else:
+                cur.execute(
+                    "SELECT id, full_name, email, ticket, status, organization, "
+                    "COALESCE(must_change_password, FALSE), password_changed_at "
+                    "FROM users WHERE role = 'student' AND LOWER(COALESCE(organization,'')) = LOWER(%s) "
+                    "ORDER BY full_name",
+                    (org,),
+                )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {
+                "id": r[0], "full_name": r[1] or "", "email": r[2] or "",
+                "ticket": r[3] or "", "status": r[4] or "", "organization": r[5] or "",
+                "must_change_password": bool(r[6]),
+                "has_logged_in": r[7] is not None,
+            }
+            for r in rows
+        ]
+
+    @app.post("/api/institution/students/{student_id}/reset-credentials")
+    def reset_student_credentials(student_id: str, actor: dict = Depends(require_role(STUDENT_ADMIN_ROLES))):
+        """Issue a fresh one-time password for a student in the caller's institution.
+
+        The new password is minted server-side (never chosen by the institution)
+        and returned exactly once, and the account is flagged must_change_password
+        so the student sets their own on next login. Scoped: a school_admin may
+        only reset a student in their own organisation. This is the safe form of
+        "the institution provides their login" -- it cannot be used to take over an
+        arbitrary account because the target must be a student in the caller's org.
+        """
+        from app.security import hash_password
+        is_admin = (actor.get("role") or "") in ("super_admin", "admin")
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            org = _actor_org(cur, actor)
+            cur.execute(
+                "SELECT role, organization, full_name, email FROM users WHERE id = %s",
+                (student_id,),
+            )
+            target = cur.fetchone()
+            if not target:
+                cur.close()
+                raise HTTPException(status_code=404, detail="Student not found")
+            if (target[0] or "") != "student":
+                cur.close()
+                raise HTTPException(status_code=400, detail="That account is not a student")
+            if not is_admin and (target[1] or "").strip().lower() != org.lower():
+                cur.close()
+                # Do not disclose students in other institutions.
+                raise HTTPException(status_code=404, detail="Student not found")
+
+            temp_password = _generate_temp_password()
+            cur.execute(
+                "UPDATE users SET password_hash = %s, must_change_password = TRUE, "
+                "password_changed_at = NULL WHERE id = %s",
+                (hash_password(temp_password), student_id),
+            )
+            # Any active session for that student is now stale.
+            cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (student_id,))
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return {
+            "id": student_id,
+            "full_name": target[2] or "",
+            "email": target[3] or "",
+            "temporary_password": temp_password,
+        }
+
+    # ── Mentors ───────────────────────────────────────────────────────
+    # A mentor is an instructor account assigned to a team. This is what lets a
+    # mentor log in, see their students and be monitored, and connects a team to
+    # the LMS instructor flow.
+
+    @app.get("/api/institution/instructors")
+    def list_institution_instructors(actor: dict = Depends(require_role(STUDENT_ADMIN_ROLES))):
+        """Instructors an institution can pick a mentor from.
+
+        School admins see instructors in their own organisation; admins see all.
+        """
+        is_admin = (actor.get("role") or "") in ("super_admin", "admin")
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            org = _actor_org(cur, actor)
+            if is_admin:
+                cur.execute(
+                    "SELECT id, full_name, email, organization FROM users "
+                    "WHERE role = 'instructor' AND LOWER(status) = 'active' ORDER BY full_name"
+                )
+            else:
+                cur.execute(
+                    "SELECT id, full_name, email, organization FROM users "
+                    "WHERE role = 'instructor' AND LOWER(status) = 'active' "
+                    "AND LOWER(COALESCE(organization,'')) = LOWER(%s) ORDER BY full_name",
+                    (org,),
+                )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [{"id": r[0], "full_name": r[1] or "", "email": r[2] or "",
+                 "organization": r[3] or ""} for r in rows]
+
+    class AssignMentorPayload(BaseModel):
+        mentor_id: Optional[str] = None
+
+    @app.patch("/api/teams/{team_id}/mentor")
+    def assign_team_mentor(team_id: str, payload: AssignMentorPayload,
+                           actor: dict = Depends(require_role(COMPETITION_ROLES))):
+        """Assign or unassign an instructor as a team's mentor.
+
+        Only competition administrators (super_admin, admin, competition_manager)
+        may designate or alter team mentors across the platform.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT school_name FROM teams WHERE id = %s", (team_id,))
+            team = cur.fetchone()
+            if not team:
+                cur.close()
+                raise HTTPException(status_code=404, detail="Team not found")
+
+            target_mentor = (payload.mentor_id or "").strip()
+            if not target_mentor or target_mentor.lower() in ("none", "null", "unassigned"):
+                cur.execute(
+                    "UPDATE teams SET mentor_id = NULL, mentor_status = 'none' WHERE id = %s",
+                    (team_id,),
+                )
+                conn.commit()
+                cur.close()
+                broadcast_async({"type": "data_changed", "collection": "teams"})
+                return {"team_id": team_id, "mentor_id": None, "mentor_status": "none"}
+
+            cur.execute(
+                "SELECT role, organization FROM users WHERE id = %s", (target_mentor,)
+            )
+            mentor = cur.fetchone()
+            if not mentor or (mentor[0] or "") != "instructor":
+                cur.close()
+                raise HTTPException(status_code=400, detail="Mentor must be an instructor account")
+
+            cur.execute(
+                "UPDATE teams SET mentor_id = %s, mentor_status = 'assigned' WHERE id = %s",
+                (target_mentor, team_id),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "teams"})
+        return {"team_id": team_id, "mentor_id": target_mentor, "mentor_status": "assigned"}
+
+    @app.post("/api/teams/{team_id}/request-mentor")
+    def request_team_mentor(team_id: str, actor: dict = Depends(require_auth)):
+        """A team with no institution asks to be given a mentor.
+
+        For groups, open and single entrants who are not under an institution:
+        after approval they request a mentor. If they never do, the nightly/admin
+        auto-assign covers them. Requesting only flags intent; an admin or the
+        auto-assign then attaches an actual instructor.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT mentor_id FROM teams WHERE id = %s", (team_id,))
+            team = cur.fetchone()
+            if not team:
+                cur.close()
+                raise HTTPException(status_code=404, detail="Team not found")
+            # Only a member of the team (or an admin) may request its mentor, so
+            # one entrant cannot flag another's team.
+            is_admin = (actor.get("role") or "") in ("super_admin", "admin")
+            if not is_admin:
+                cur.execute(
+                    "SELECT 1 FROM team_members WHERE team_id = %s AND student_id = %s LIMIT 1",
+                    (team_id, actor["id"]),
+                )
+                if not cur.fetchone():
+                    cur.close()
+                    raise HTTPException(status_code=404, detail="Team not found")
+            if team[0]:
+                cur.close()
+                return {"team_id": team_id, "mentor_status": "assigned",
+                        "detail": "A mentor is already assigned"}
+            cur.execute(
+                "UPDATE teams SET mentor_status = 'requested' WHERE id = %s", (team_id,)
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "teams"})
+        return {"team_id": team_id, "mentor_status": "requested"}
+
+    def _auto_assign_mentors(cur, competition_id: str = "") -> int:
+        """Give mentor-less teams an instructor, optionally scoped to one cycle.
+
+        Assignment is by track where possible (an instructor whose track matches
+        the team's), else any active instructor, chosen by current mentor load so
+        the distribution stays even. Returns the number of teams assigned.
+        """
+        if competition_id:
+            cur.execute(
+                "SELECT id, track FROM teams "
+                "WHERE mentor_id IS NULL AND COALESCE(status,'') <> 'Disbanded' "
+                "AND competition_id = %s",
+                (competition_id,),
+            )
+        else:
+            cur.execute(
+                "SELECT id, track FROM teams "
+                "WHERE mentor_id IS NULL AND COALESCE(status,'') <> 'Disbanded'"
+            )
+        teams = cur.fetchall()
+        if not teams:
+            return 0
+        cur.execute(
+            "SELECT u.id, u.track, "
+            "(SELECT COUNT(*) FROM teams t WHERE t.mentor_id = u.id) AS load "
+            "FROM users u WHERE u.role = 'instructor' AND LOWER(u.status) = 'active'"
+        )
+        instructors = [{"id": r[0], "track": (r[1] or "").lower(), "load": r[2]} for r in cur.fetchall()]
+        if not instructors:
+            return 0
+        assigned = 0
+        for team_id, track in teams:
+            track_l = (track or "").lower()
+            pool = [i for i in instructors if i["track"] == track_l] or instructors
+            pick = min(pool, key=lambda i: i["load"])
+            cur.execute(
+                "UPDATE teams SET mentor_id = %s, mentor_status = 'assigned' WHERE id = %s",
+                (pick["id"], team_id),
+            )
+            pick["load"] += 1
+            assigned += 1
+        return assigned
+
+    @app.post("/api/teams/auto-assign-mentors")
+    def auto_assign_mentors(actor: dict = Depends(require_role(ADMIN_ROLES))):
+        """Give every mentor-less team an instructor, so none is left unsupervised.
+
+        Covers the entrants who never requested one.
+        """
+        conn = _get_db()
+        assigned = 0
+        try:
+            cur = conn.cursor()
+            assigned = _auto_assign_mentors(cur)
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        if assigned:
+            broadcast_async({"type": "data_changed", "collection": "teams"})
+        return {"assigned": assigned}
     # EVENTS
     @app.get("/api/events")
     def list_events():
@@ -5592,7 +6694,11 @@ try:
 
     @app.post("/api/users/register", status_code=status.HTTP_201_CREATED)
     def register_user_public(payload: UserCreate):
-        if payload.role not in ["judge", "sponsor"]:
+        # 'student' is here for the open-competition registration tab, which had
+        # been calling the admin-only POST /api/users and therefore never created
+        # anything. student is the lowest-privilege role, and the forced-pending
+        # rule below still applies, so this does not widen self-service access.
+        if payload.role not in ["judge", "sponsor", "student"]:
             raise HTTPException(status_code=403, detail="Role not allowed for public registration")
         # Status is NOT taken from the request. This endpoint is unauthenticated,
         # so honouring a client-supplied status let anyone self-register as
@@ -6024,16 +7130,24 @@ try:
         rejection_reason: str = ""
 
     @app.get("/api/lms-courses")
-    def list_lms_courses(_auth: dict = Depends(require_auth)):
+    def list_lms_courses(competition_id: str = "", _auth: dict = Depends(require_auth)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status, rejection_reason FROM lms_courses ORDER BY created_at DESC")
+        clause = " WHERE competition_id = %s" if competition_id else ""
+        params = (competition_id,) if competition_id else ()
+        cur.execute(
+            "SELECT id, title, track, icon, level, description, modules, enrolled, "
+            "completion, status, created_at, submitted_by, approval_status, "
+            "rejection_reason, competition_id FROM lms_courses" + clause +
+            " ORDER BY created_at DESC",
+            params,
+        )
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)
-        return [{"id": r[0], "title": r[1], "track": r[2], "icon": r[3], "level": r[4], "description": r[5], "modules": r[6], "enrolled": r[7], "completion": r[8], "status": r[9], "created_at": r[10], "submitted_by": r[11], "approval_status": r[12], "rejection_reason": r[13]} for r in rows]
+        return [{"id": r[0], "title": r[1], "track": r[2], "icon": r[3], "level": r[4], "description": r[5], "modules": r[6], "enrolled": r[7], "completion": r[8], "status": r[9], "created_at": r[10], "submitted_by": r[11], "approval_status": r[12], "rejection_reason": r[13], "competitionId": r[14]} for r in rows]
 
     @app.post("/api/lms-courses", status_code=status.HTTP_201_CREATED)
     def create_lms_course(payload: LmsCourseCreate, actor: dict = Depends(require_role(LMS_ROLES))):
@@ -6085,20 +7199,80 @@ try:
         rejection_notes: str = ""
 
     @app.get("/api/approvals")
-    def list_approvals(status: str = "", _admin: dict = Depends(require_admin)):
+    def list_approvals(status: str = "", competition_id: str = "", _admin: dict = Depends(require_admin)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         import json as _json
+        # competition_id scopes the queue to one cycle. Without it the reviewer
+        # sees every application ever filed, which is what the records panel had
+        # to do because there was nothing to filter on.
+        cols = ("SELECT id, type, entity, contact, submitted, details, status, reviewed_at, "
+                "reviewer, rejection_reasons, rejection_notes, created_at, competition_id "
+                "FROM pending_approvals")
+        clauses, params = [], []
         if status:
-            cur.execute("SELECT id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes, created_at FROM pending_approvals WHERE status = %s ORDER BY created_at DESC, id ASC", (status,))
-        else:
-            cur.execute("SELECT id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes, created_at FROM pending_approvals ORDER BY created_at DESC, id ASC")
+            clauses.append("status = %s")
+            params.append(status)
+        if competition_id:
+            clauses.append("competition_id = %s")
+            params.append(competition_id)
+        sql = cols + ((" WHERE " + " AND ".join(clauses)) if clauses else "")
+        sql += " ORDER BY created_at DESC, id ASC"
+        cur.execute(sql, tuple(params))
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)
-        return [{"id": r[0], "type": r[1], "entity": r[2], "contact": r[3], "submitted": r[4], "details": r[5] if isinstance(r[5], dict) else _json.loads(r[5] or "{}"), "status": r[6], "reviewedAt": r[7], "reviewer": r[8], "rejectionReasons": r[9], "rejectionNotes": r[10], "created_at": str(r[11])} for r in rows]
+        return [{"id": r[0], "type": r[1], "entity": r[2], "contact": r[3], "submitted": r[4], "details": r[5] if isinstance(r[5], dict) else _json.loads(r[5] or "{}"), "status": r[6], "reviewedAt": r[7], "reviewer": r[8], "rejectionReasons": r[9], "rejectionNotes": r[10], "created_at": str(r[11]), "competitionId": r[12]} for r in rows]
+
+    @app.get("/api/approvals/mine")
+    def list_my_approvals(actor: dict = Depends(require_auth)):
+        """The caller's own applications and requests, with their outcome.
+
+        GET /api/approvals is admin-only, so an institution that filed a team
+        change had no way to find out what happened to it -- their only copy was
+        in localStorage, which never learns the reviewer's decision. That meant
+        resubmitting blindly, and never seeing a rejection reason.
+
+        Scoped to the caller's own contact address, so this discloses nothing
+        about anyone else's application.
+        """
+        email = (actor.get("email") or "").strip().lower()
+        if not email:
+            return []
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            import json as _json
+            cur.execute(
+                "SELECT id, type, entity, submitted, details, status, reviewed_at, "
+                "reviewer, rejection_reasons, rejection_notes, created_at, competition_id "
+                "FROM pending_approvals WHERE lower(COALESCE(contact, '')) = %s "
+                "ORDER BY created_at DESC, id ASC",
+                (email,),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [
+            {
+                "id": r[0],
+                "type": r[1],
+                "entity": r[2],
+                "submitted": r[3],
+                "details": r[4] if isinstance(r[4], dict) else _json.loads(r[4] or "{}"),
+                "status": r[5],
+                "reviewedAt": r[6],
+                "reviewer": r[7],
+                "rejectionReasons": r[8],
+                "rejectionNotes": r[9],
+                "created_at": str(r[10]),
+                "competitionId": r[11],
+            }
+            for r in rows
+        ]
 
     @app.post("/api/approvals", status_code=status.HTTP_201_CREATED)
     def create_approval(payload: ApprovalCreate, _actor: dict = Depends(require_role(APPROVAL_ROLES))):
@@ -6220,6 +7394,335 @@ try:
         broadcast_async({"type": "data_changed", "collection": "approvals"})
         return {"id": approval_id, "type": type_by_role[role], "status": "pending"}
 
+    class TeamChangeRequest(BaseModel):
+        """An institution proposing a team change for admin review.
+
+        Deliberately does NOT carry the school. See submit_team_change.
+        """
+        type: str = Field(..., description="'Team Addition', 'Team Modification' or 'Team Disbandment'")
+        team_id: str = Field(default="", max_length=64)
+        name: str = Field(..., min_length=1, max_length=150)
+        track: str = Field(default="", max_length=100)
+        lead: str = Field(default="", max_length=150)
+        members: list[str] = Field(default_factory=list)
+        mentor: str = Field(default="", max_length=200)
+        motto: str = Field(default="", max_length=300)
+        competition_id: str = Field(default="", max_length=64)
+
+    TEAM_CHANGE_TYPES = ("Team Addition", "Team Modification", "Team Disbandment")
+    # Who may propose a team change. Note this is deliberately NOT APPROVAL_ROLES:
+    # these roles may only *file* a request, never decide it.
+    TEAM_CHANGE_ROLES = (ROLE_SCHOOL_ADMIN, ROLE_INSTRUCTOR)
+
+    @app.post("/api/approvals/team-change", status_code=status.HTTP_201_CREATED)
+    def submit_team_change(
+        payload: TeamChangeRequest,
+        actor: dict = Depends(require_auth),
+    ):
+        """File a team addition or rename/roster change for admin review.
+
+        This endpoint exists because the workflow it serves was unreachable. The
+        dashboard already builds 'Team Addition' and 'Team Modification' requests
+        and the admin side already applies them on approval, but a school admin
+        had no way to persist one: `saveApprovals()` goes to POST /api/bulk-sync
+        (admin only) and `createApproval()` goes to POST /api/approvals
+        (APPROVAL_ROLES, which excludes school_admin). Both 403'd, the error was
+        downgraded to a console warning, and the UI still reported success -- so
+        the request never left the browser and no admin ever saw it.
+
+        The institution is taken from the caller's own user row, never from the
+        request body, so this cannot be used to file a change against another
+        school. For a modification the target team must already belong to the
+        caller's institution. Status is hard-coded to 'pending': filing a request
+        and deciding it are separate privileges.
+        """
+        role = (actor.get("role") or "").strip().lower()
+        if role not in TEAM_CHANGE_ROLES:
+            raise HTTPException(
+                status_code=403,
+                detail="Only an institution account may propose team changes",
+            )
+
+        req_type = (payload.type or "").strip()
+        if req_type not in TEAM_CHANGE_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"type must be one of {', '.join(TEAM_CHANGE_TYPES)}",
+            )
+
+        new_name = payload.name.strip()
+        if not new_name:
+            raise HTTPException(status_code=400, detail="Team name is required")
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT full_name, email, organization FROM users WHERE id = %s",
+                (actor["id"],),
+            )
+            row = cur.fetchone()
+            if not row:
+                cur.close()
+                raise HTTPException(status_code=404, detail="User not found")
+
+            full_name, email, school = row[0] or "", row[1] or "", (row[2] or "").strip()
+            if not school:
+                cur.close()
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "Your account is not linked to an institution, so a team "
+                        "change cannot be attributed. Ask an administrator to set "
+                        "your organisation."
+                    ),
+                )
+
+            original_name = ""
+            # A disbandment targets an existing team, so it needs the same
+            # ownership check as a modification.
+            if req_type in ("Team Modification", "Team Disbandment"):
+                if not payload.team_id.strip():
+                    cur.close()
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"team_id is required to {'disband' if req_type == 'Team Disbandment' else 'modify'} a team",
+                    )
+                # Scope check: the team must belong to the caller's institution.
+                # Compared case-insensitively and trimmed, matching how
+                # POST /api/teams already de-duplicates on (name, school_name).
+                cur.execute(
+                    "SELECT name, COALESCE(school_name, '') FROM teams WHERE id = %s",
+                    (payload.team_id.strip(),),
+                )
+                team = cur.fetchone()
+                if not team:
+                    cur.close()
+                    raise HTTPException(status_code=404, detail="Team not found")
+                if (team[1] or "").strip().lower() != school.lower():
+                    cur.close()
+                    # 404 rather than 403: whether a team exists in another
+                    # institution is not this caller's business.
+                    raise HTTPException(status_code=404, detail="Team not found")
+                original_name = team[0] or ""
+
+            members = [m.strip() for m in payload.members if m and m.strip()][:50]
+            details = {
+                "school": school,
+                "institution": school,
+                "teamId": payload.team_id.strip(),
+                "originalName": original_name,
+                "newName": new_name,
+                "track": payload.track.strip(),
+                "lead": payload.lead.strip(),
+                "leadName": payload.lead.strip(),
+                "members": members,
+                "memberCount": len(members),
+                "mentor": payload.mentor.strip(),
+                "motto": payload.motto.strip(),
+                "requestedBy": email or full_name,
+                "requestedByRole": role,
+            }
+            entity = (
+                f"{original_name} -> {new_name}"
+                if req_type == "Team Modification" and original_name
+                else (original_name or new_name)
+                if req_type == "Team Disbandment"
+                else new_name
+            )
+
+            approval_id = "apr-" + str(uuid.uuid4())[:8]
+            # Validated so a bad id cannot be stored and silently never match.
+            comp_ref = _validate_competition_ref(cur, payload.competition_id or None)
+            import json as _json
+            cur.execute(
+                "INSERT INTO pending_approvals (id, type, entity, contact, submitted, "
+                "details, status, competition_id) VALUES (%s, %s, %s, %s, %s, %s, 'pending', %s)",
+                (
+                    approval_id,
+                    req_type,
+                    entity,
+                    email,
+                    datetime.datetime.now(datetime.UTC).isoformat(),
+                    _json.dumps(details),
+                    comp_ref,
+                ),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "approvals"})
+        return {
+            "id": approval_id,
+            "type": req_type,
+            "entity": entity,
+            "school": school,
+            "status": "pending",
+            "competitionId": comp_ref,
+        }
+
+    class PublicApplicationPayload(BaseModel):
+        """An application filed from the public registration page."""
+        type: str = Field(..., max_length=60)
+        entity: str = Field(..., min_length=1, max_length=200)
+        contact: str = Field(default="", max_length=150)
+        details: dict = Field(default_factory=dict)
+        competition_id: str = Field(default="", max_length=64)
+
+    # What the public registration form is allowed to file. Anything else has to
+    # come from an authenticated route.
+    PUBLIC_APPLICATION_TYPES = {
+        "School Registration",
+        "Instructor Access",
+        "Team Addition",
+        "Judge Access",
+        "Sponsor Access",
+        "Student Registration",
+        "Open Registration",
+    }
+    # Details are applicant-supplied and end up rendered in the admin queue, so
+    # the payload is capped rather than stored unbounded.
+    _MAX_DETAIL_KEYS = 60
+    _MAX_DETAIL_VALUE_LEN = 4000
+
+    @app.post("/api/approvals/public", status_code=status.HTTP_201_CREATED)
+    def submit_public_application(payload: PublicApplicationPayload, request: Request):
+        """File an application from the unauthenticated registration page.
+
+        This endpoint exists because public registration never reached the server.
+        `submitRegistration()` persisted applications only through
+        `contentService.saveApprovals()` -> POST /api/bulk-sync, which requires an
+        admin, so for an anonymous applicant every write 401'd. The applicant saw a
+        success screen and got a "pending confirmation" email while the reviewer
+        queue stayed empty -- every school, instructor, judge and sponsor
+        application was lost in the applicant's own browser.
+
+        Nothing here is trusted: the type must be on an allowlist, the status is
+        always 'pending', and the id is generated server-side so a caller cannot
+        overwrite an existing decision by guessing one.
+        """
+        client_ip = extract_client_ip(request)
+        check_rate_limit(f"public-application:{client_ip}", max_attempts=5, window_seconds=300)
+        check_rate_limit(f"public-application-hourly:{client_ip}", max_attempts=20, window_seconds=3600)
+
+        req_type = (payload.type or "").strip()
+        if req_type not in PUBLIC_APPLICATION_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail="That application type cannot be filed from public registration",
+            )
+
+        details = payload.details if isinstance(payload.details, dict) else {}
+        if len(details) > _MAX_DETAIL_KEYS:
+            raise HTTPException(status_code=400, detail="Application detail is too large")
+        trimmed: dict = {}
+        for key, value in list(details.items())[:_MAX_DETAIL_KEYS]:
+            if isinstance(value, str) and len(value) > _MAX_DETAIL_VALUE_LEN:
+                value = value[:_MAX_DETAIL_VALUE_LEN]
+            trimmed[str(key)[:100]] = value
+
+        contact = (payload.contact or "").strip().lower()
+        approval_id = "apr-" + str(uuid.uuid4())[:8]
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            # One open application per contact, so a resubmit updates the pending
+            # row instead of stacking duplicates in the reviewer's queue. Matches
+            # the behaviour of POST /api/approvals/mine.
+            if contact:
+                cur.execute(
+                    "SELECT id FROM pending_approvals "
+                    "WHERE lower(COALESCE(contact, '')) = %s AND status = 'pending' "
+                    "AND type = %s LIMIT 1",
+                    (contact, req_type),
+                )
+                existing = cur.fetchone()
+                if existing:
+                    approval_id = existing[0]
+
+            import json as _json
+            comp_ref = _validate_competition_ref(cur, payload.competition_id or None)
+            cur.execute(
+                "INSERT INTO pending_approvals (id, type, entity, contact, submitted, "
+                "details, status, competition_id) VALUES (%s, %s, %s, %s, %s, %s, 'pending', %s) "
+                "ON CONFLICT (id) DO UPDATE SET type = EXCLUDED.type, "
+                "entity = EXCLUDED.entity, contact = EXCLUDED.contact, "
+                "submitted = EXCLUDED.submitted, details = EXCLUDED.details, "
+                "competition_id = EXCLUDED.competition_id, status = 'pending'",
+                (
+                    approval_id,
+                    req_type,
+                    payload.entity.strip(),
+                    contact,
+                    datetime.datetime.now(datetime.UTC).isoformat(),
+                    _json.dumps(trimmed),
+                    comp_ref,
+                ),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "approvals"})
+        return {"id": approval_id, "type": req_type, "status": "pending", "competitionId": comp_ref}
+
+    @app.get("/api/approvals/status")
+    def lookup_public_approval_status(query: str = ""):
+        """Allow public applicants to check their application status by Application Code or Contact Email."""
+        q = (query or "").strip().lower()
+        if not q:
+            return {"status": "not_found"}
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes
+                FROM pending_approvals
+                WHERE lower(COALESCE(contact, '')) = %s 
+                   OR lower(COALESCE(details->>'code', '')) = %s
+                   OR lower(COALESCE(entity, '')) = %s
+                ORDER BY submitted DESC LIMIT 1
+            """, (q, q, q))
+            row = cur.fetchone()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        if not row:
+            return {"status": "not_found"}
+
+        details = row[5] if isinstance(row[5], dict) else {}
+        if isinstance(row[5], str):
+            try:
+                import json as _j
+                details = _j.loads(row[5])
+            except Exception:
+                details = {}
+
+        st = row[6] or "pending"
+        app_obj = {
+            "id": row[0],
+            "type": row[1],
+            "entity": row[2],
+            "contact": row[3],
+            "submitted": row[4],
+            "details": details,
+            "status": st,
+            "reviewedAt": str(row[7]) if row[7] else None,
+            "reviewer": row[8] or None,
+            "rejectionReasons": row[9] or None,
+            "rejectionNotes": row[10] or None,
+        }
+        res = {"status": st, "application": app_obj}
+        if st == "rejected":
+            res["rejectedDetails"] = {
+                "reasons": row[9] or "",
+                "notes": row[10] or "",
+                "reviewedAt": str(row[7]) if row[7] else "",
+            }
+        return res
+
     # Which role an approved application results in.
     #
     # This is the mapping that makes "Approved" mean something. Until now
@@ -6235,7 +7738,52 @@ try:
         "school registration": ROLE_SCHOOL_ADMIN,
         "instructor access": ROLE_INSTRUCTOR,
         "team addition": ROLE_STUDENT,
+        "student registration": ROLE_STUDENT,
+        "open registration": ROLE_STUDENT,
     }
+
+    def _apply_approved_team_change(cur, approval_row) -> dict:
+        """Carry out the team change an approved request authorised.
+
+        Only disbandment is applied here. Additions and renames are already
+        applied by the dashboard on approval, but a delete cannot be, because
+        institutions no longer have DELETE /api/teams -- so approving a
+        disbandment has to perform it server-side or the decision would record
+        as approved while the team stayed live.
+
+        Runs in the reviewer's transaction, so a failure rolls the decision back
+        rather than leaving an approved request that never took effect.
+        """
+        approval_type = (approval_row["type"] or "").strip().lower()
+        if approval_type != "team disbandment":
+            return {"applied": False, "reason": "Not a team change that needs applying"}
+
+        details = approval_row["details"] or {}
+        if isinstance(details, str):
+            import json as _json_local
+            try:
+                details = _json_local.loads(details)
+            except Exception:
+                details = {}
+        if not isinstance(details, dict):
+            details = {}
+
+        team_id = str(details.get("teamId") or "").strip()
+        if not team_id:
+            return {"applied": False, "reason": "Request did not record which team to disband"}
+
+        # Re-check ownership at decision time: the team may have moved or been
+        # removed between filing and review.
+        school = str(details.get("school") or "").strip().lower()
+        cur.execute("SELECT COALESCE(school_name, '') FROM teams WHERE id = %s", (team_id,))
+        row = cur.fetchone()
+        if not row:
+            return {"applied": False, "reason": "Team no longer exists"}
+        if school and (row[0] or "").strip().lower() != school:
+            return {"applied": False, "reason": "Team no longer belongs to the requesting institution"}
+
+        cur.execute("DELETE FROM teams WHERE id = %s", (team_id,))
+        return {"applied": True, "team_id": team_id}
 
     def _provision_approved_account(cur, approval_row) -> dict:
         """Create the account an approved application entitles the applicant to.
@@ -6341,13 +7889,18 @@ try:
                 raise HTTPException(status_code=404, detail="Approval not found")
 
             account: dict = {"provisioned": False, "reason": "Not an approval transition"}
+            team_change: dict = {"applied": False, "reason": "Not an approval transition"}
             if now_approved and not was_approved:
-                account = _provision_approved_account(cur, {
+                approval_row = {
                     "type": before[0],
                     "entity": before[1],
                     "contact": before[2],
                     "details": before[3],
-                })
+                }
+                account = _provision_approved_account(cur, approval_row)
+                # A disbandment has to be carried out here: institutions no longer
+                # hold DELETE /api/teams, so nothing else would perform it.
+                team_change = _apply_approved_team_change(cur, approval_row)
 
             conn.commit()
         except HTTPException:
@@ -6362,7 +7915,9 @@ try:
         broadcast_async({"type": "data_changed", "collection": "approvals"})
         if account.get("provisioned"):
             broadcast_async({"type": "data_changed", "collection": "users"})
-        return {"id": item_id, "status": "updated", "account": account}
+        if team_change.get("applied"):
+            broadcast_async({"type": "data_changed", "collection": "teams"})
+        return {"id": item_id, "status": "updated", "account": account, "team_change": team_change}
 
     @app.delete("/api/approvals/{item_id}")
     def delete_approval(item_id: str, _actor: dict = Depends(require_role(APPROVAL_ROLES))):

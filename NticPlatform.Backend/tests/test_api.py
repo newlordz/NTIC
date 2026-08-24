@@ -379,6 +379,857 @@ class TestLmsCourses:
         assert "id" in data
 
 
+class TestLmsCycleScoping:
+    """The LMS was organised only by track; courses now carry a cycle."""
+
+    def _instructor(self, client, admin_token):
+        from app.security import clear_all_rate_limits
+        email = f"instr-{uuid.uuid4().hex[:8]}@ntic.test"
+        password = "Volta-Keta-Lagoon-99"
+        resp = client.post("/api/users", headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"email": email, "full_name": "Instructor",
+                                 "role": "instructor", "password": password,
+                                 "status": "Active"})
+        assert resp.status_code in (200, 201), resp.text
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": password})
+        assert login.status_code == 200, login.text
+        return login.json()["token"]
+
+    def _cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        return client.post("/api/competitions", headers=h,
+                           json={"title": f"LMS Cycle {uuid.uuid4().hex[:6]}"}).json()["id"]
+
+    def test_a_course_can_be_attached_to_a_cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        token = self._instructor(client, admin_token)
+        cid = self._cycle(client, admin_token)
+        ih = {"Authorization": f"Bearer {token}"}
+        resp = client.post("/api/lms/courses", headers=ih,
+                           json={"title": "Cycle Course", "competition_id": cid})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["competitionId"] == cid
+
+    def test_a_course_with_no_cycle_is_evergreen(self, client, admin_token):
+        token = self._instructor(client, admin_token)
+        ih = {"Authorization": f"Bearer {token}"}
+        resp = client.post("/api/lms/courses", headers=ih, json={"title": "Evergreen"})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["competitionId"] is None
+
+    def test_a_cycle_scoped_list_excludes_other_cycles(self, client, admin_token):
+        token = self._instructor(client, admin_token)
+        ih = {"Authorization": f"Bearer {token}"}
+        a = self._cycle(client, admin_token)
+        b = self._cycle(client, admin_token)
+        client.post("/api/lms/courses", headers=ih,
+                    json={"title": "For A", "competition_id": a})
+        client.post("/api/lms/courses", headers=ih,
+                    json={"title": "For B", "competition_id": b})
+
+        scoped = client.get(f"/api/lms/my-courses?competition_id={a}", headers=ih).json()
+        assert all(c["competitionId"] == a for c in scoped)
+        assert any(c["title"] == "For A" for c in scoped)
+        assert not any(c["title"] == "For B" for c in scoped)
+
+    def test_a_bad_cycle_reference_is_rejected(self, client, admin_token):
+        token = self._instructor(client, admin_token)
+        ih = {"Authorization": f"Bearer {token}"}
+        resp = client.post("/api/lms/courses", headers=ih,
+                           json={"title": "Bad Ref", "competition_id": "comp-nope"})
+        assert resp.status_code == 422, resp.text
+
+    def test_the_public_browse_list_carries_the_cycle(self, client, admin_token):
+        cid = self._cycle(client, admin_token)
+        h = {"Authorization": f"Bearer {admin_token}"}
+        client.post("/api/lms/courses", headers=h,
+                    json={"title": "Browsable", "competition_id": cid})
+        scoped = client.get(f"/api/lms-courses?competition_id={cid}", headers=h).json()
+        assert all(c["competitionId"] == cid for c in scoped)
+        assert any(c["title"] == "Browsable" for c in scoped)
+
+
+class TestTeamMembership:
+    """teams stored member *names* only, so nothing could join a student to a team."""
+
+    def _student(self, client, admin_token):
+        from app.security import clear_all_rate_limits
+        email = f"stu-{uuid.uuid4().hex[:8]}@ntic.test"
+        password = "Accra-Osu-Castle-77"
+        resp = client.post("/api/users", headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"email": email, "full_name": "Kofi Mensah",
+                                 "role": "student", "password": password,
+                                 "status": "Active"})
+        assert resp.status_code in (200, 201), resp.text
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": password})
+        assert login.status_code == 200, login.text
+        return login.json()["token"], email
+
+    def _cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        return client.post("/api/competitions", headers=h,
+                           json={"title": f"TM Cycle {uuid.uuid4().hex[:6]}"}).json()["id"]
+
+    def test_team_members_are_resolved_from_emails(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        token, email = self._student(client, admin_token)
+        team_id = client.post("/api/teams", headers=h, json={
+            "name": "Roster Team", "lead": "Kofi Mensah",
+            "lead_email": email, "competition_id": self._cycle(client, admin_token)
+        }).json()["id"]
+        # The membership row exists and is keyed to the student's account via the
+        # email (the student account already exists in this test).
+        import app.database as db
+        conn = db.get_db_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT student_id, email, is_lead FROM team_members WHERE team_id = %s",
+                (team_id,),
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            db.release_db_connection(conn)
+        assert any(r[0] is not None and (r[1] or "").lower() == email for r in rows), rows
+
+    def test_enrolment_records_the_students_team(self, client, admin_token):
+        """Enrolling in a cycle course should tag the student with their squad."""
+        h = {"Authorization": f"Bearer {admin_token}"}
+        stoken, email = self._student(client, admin_token)
+        cid = self._cycle(client, admin_token)
+        team_id = client.post("/api/teams", headers=h, json={
+            "name": "Enrol Team", "lead": "Kofi Mensah", "lead_email": email,
+            "competition_id": cid
+        }).json()["id"]
+
+        # Instructor creates a course for that cycle, and approves it.
+        from app.security import clear_all_rate_limits
+        iemail = f"inst-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers=h, json={
+            "email": iemail, "full_name": "Instructor", "role": "instructor",
+            "password": "Volta-Ho-Wli-44", "status": "Active"})
+        clear_all_rate_limits()
+        ilogin = client.post("/api/login", json={"email": iemail, "password": "Volta-Ho-Wli-44"})
+        ih = {"Authorization": f"Bearer {ilogin.json()['token']}"}
+        course = client.post("/api/lms/courses", headers=ih,
+                             json={"title": "Cycle Course", "competition_id": cid}).json()
+        client.patch(f"/api/lms/courses/{course['id']}/moderate", headers=h,
+                     json={"approve": True})
+
+        clear_all_rate_limits()
+        # The student enrols; the roster must show their team.
+        sh = {"Authorization": f"Bearer {stoken}"}
+        client.post("/api/lms/enrollments", headers=sh,
+                    json={"course_id": course["id"]})
+        roster = client.get(f"/api/lms/courses/{course['id']}/students", headers=ih).json()
+        assert any(r["team_id"] == team_id for r in roster), roster
+
+
+class TestTeamAutoEnrollment:
+    """Approving a team into a cycle should enrol its members on that cycle's courses."""
+
+    def _student(self, client, admin_token, name="Kofi Mensah"):
+        from app.security import clear_all_rate_limits
+        email = f"ae-{uuid.uuid4().hex[:8]}@ntic.test"
+        password = "Accra-Jamestown-51"
+        client.post("/api/users", headers={"Authorization": f"Bearer {admin_token}"},
+                    json={"email": email, "full_name": name,
+                          "role": "student", "password": password, "status": "Active"})
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": password})
+        return login.json()["token"], email
+
+    def _cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        return client.post("/api/competitions", headers=h,
+                           json={"title": f"AE Cycle {uuid.uuid4().hex[:6]}"}).json()["id"]
+
+    def _approved_course(self, client, admin_token, cid, title="AE Course"):
+        from app.security import clear_all_rate_limits
+        h = {"Authorization": f"Bearer {admin_token}"}
+        iemail = f"aei-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers=h, json={
+            "email": iemail, "full_name": "Instructor", "role": "instructor",
+            "password": "Volta-Afadja-22", "status": "Active"})
+        clear_all_rate_limits()
+        ilogin = client.post("/api/login", json={"email": iemail, "password": "Volta-Afadja-22"})
+        ih = {"Authorization": f"Bearer {ilogin.json()['token']}"}
+        course = client.post("/api/lms/courses", headers=ih,
+                             json={"title": title, "competition_id": cid}).json()
+        client.patch(f"/api/lms/courses/{course['id']}/moderate", headers=h,
+                     json={"approve": True})
+        return course["id"]
+
+    def test_creating_a_cycle_team_auto_enrols_its_members(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        token, email = self._student(client, admin_token)
+        cid = self._cycle(client, admin_token)
+        course_id = self._approved_course(client, admin_token, cid)
+
+        client.post("/api/teams", headers=h, json={
+            "name": "Auto Team", "lead": "Kofi Mensah", "lead_email": email,
+            "competition_id": cid
+        })
+
+        roster = client.get(f"/api/lms/courses/{course_id}/students", headers=h).json()
+        assert any(r["student_email"].lower() == email for r in roster), roster
+
+    def test_members_are_not_enrolled_on_unapproved_courses(self, client, admin_token):
+        from app.security import clear_all_rate_limits
+        h = {"Authorization": f"Bearer {admin_token}"}
+        token, email = self._student(client, admin_token)
+        cid = self._cycle(client, admin_token)
+        iemail = f"aei-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers=h, json={
+            "email": iemail, "full_name": "Instructor", "role": "instructor",
+            "password": "Volta-Afadja-22", "status": "Active"})
+        clear_all_rate_limits()
+        ilogin = client.post("/api/login", json={"email": iemail, "password": "Volta-Afadja-22"})
+        ih = {"Authorization": f"Bearer {ilogin.json()['token']}"}
+        course = client.post("/api/lms/courses", headers=ih,
+                             json={"title": "Pending Course", "competition_id": cid}).json()
+        # Deliberately NOT moderated: still pending.
+
+        client.post("/api/teams", headers=h, json={
+            "name": "No Enrol", "lead": "Kofi Mensah", "lead_email": email,
+            "competition_id": cid
+        })
+
+        roster = client.get(f"/api/lms/courses/{course['id']}/students", headers=ih).json()
+        assert not any(r["student_email"].lower() == email for r in roster), roster
+
+    def test_evergreen_team_is_not_auto_enrolled(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        token, email = self._student(client, admin_token)
+        cid = self._cycle(client, admin_token)
+        course_id = self._approved_course(client, admin_token, cid)
+
+        # No competition_id: an evergreen team, not tied to this cycle.
+        client.post("/api/teams", headers=h, json={
+            "name": "Evergreen Team", "lead": "Kofi Mensah", "lead_email": email
+        })
+
+        roster = client.get(f"/api/lms/courses/{course_id}/students", headers=h).json()
+        assert not any(r["student_email"].lower() == email for r in roster), roster
+
+
+class TestInstitutionAndMentors:
+    """Institution student provisioning, credential reset scope, and mentors."""
+
+    def _school_admin(self, client, admin_token, school):
+        from app.security import clear_all_rate_limits
+        email = f"sa-{uuid.uuid4().hex[:8]}@ntic.test"
+        password = "Cape-Coast-Castle-88"
+        client.post("/api/users", headers={"Authorization": f"Bearer {admin_token}"},
+                    json={"email": email, "full_name": "School Admin",
+                          "role": "school_admin", "password": password,
+                          "status": "Active", "organization": school})
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": password})
+        return login.json()["token"], email
+
+    def _instructor(self, client, admin_token, school):
+        from app.security import clear_all_rate_limits
+        email = f"in-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers={"Authorization": f"Bearer {admin_token}"},
+                    json={"email": email, "full_name": "Mentor Instructor",
+                          "role": "instructor", "password": "Kumasi-Manhyia-19",
+                          "status": "Active", "organization": school})
+        clear_all_rate_limits()
+        return email
+
+    def test_provisioning_creates_student_accounts_for_members_with_emails(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"Provision {uuid.uuid4().hex[:5]}"
+        m1 = f"m1-{uuid.uuid4().hex[:8]}@ntic.test"
+        m2 = f"m2-{uuid.uuid4().hex[:8]}@ntic.test"
+        resp = client.post("/api/teams", headers=h, json={
+            "name": "Provisioned Team", "lead": "Ama Owusu", "lead_email": m1,
+            "members": 2, "roster_list": ["Ama Owusu", "Yaw Boateng"],
+            "member_emails": [m2], "school_name": school
+        })
+        assert resp.status_code == 201, resp.text
+        provisioned = resp.json()["provisioned_accounts"]
+        assert {p["email"] for p in provisioned} == {m1, m2}
+        assert all(p["temporary_password"] for p in provisioned)
+        users = client.get("/api/users", headers=h).json()
+        made = [u for u in users if u["email"] in (m1, m2)]
+        assert len(made) == 2
+        assert all(u["role"] == "student" for u in made)
+
+    def test_provisioning_is_idempotent_for_existing_accounts(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"Idem {uuid.uuid4().hex[:5]}"
+        existing = f"exist-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers=h, json={
+            "email": existing, "full_name": "Already Here", "role": "student",
+            "password": "Sekondi-Takoradi-77", "status": "Active"})
+        resp = client.post("/api/teams", headers=h, json={
+            "name": "Idem Team", "lead": "Already Here", "lead_email": existing,
+            "school_name": school
+        })
+        assert resp.status_code == 201, resp.text
+        assert all(p["email"] != existing for p in resp.json()["provisioned_accounts"])
+
+    def test_institution_sees_only_its_own_students(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        mine = f"Mine {uuid.uuid4().hex[:5]}"
+        theirs = f"Theirs {uuid.uuid4().hex[:5]}"
+        token, _ = self._school_admin(client, admin_token, mine)
+        my_student = f"ms-{uuid.uuid4().hex[:8]}@ntic.test"
+        their_student = f"ts-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/teams", headers=h, json={
+            "name": "My Team", "lead": "S1", "lead_email": my_student, "school_name": mine})
+        client.post("/api/teams", headers=h, json={
+            "name": "Their Team", "lead": "S2", "lead_email": their_student, "school_name": theirs})
+
+        seen = client.get("/api/institution/students",
+                          headers={"Authorization": f"Bearer {token}"}).json()
+        emails = {s["email"] for s in seen}
+        assert my_student in emails
+        assert their_student not in emails
+
+    def test_credential_reset_is_scoped_to_own_institution(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        mine = f"RMine {uuid.uuid4().hex[:5]}"
+        theirs = f"RTheirs {uuid.uuid4().hex[:5]}"
+        token, _ = self._school_admin(client, admin_token, mine)
+        their_student = f"rts-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/teams", headers=h, json={
+            "name": "R Their Team", "lead": "S", "lead_email": their_student, "school_name": theirs})
+        users = client.get("/api/users", headers=h).json()
+        tid = next(u["id"] for u in users if u["email"] == their_student)
+        resp = client.post(f"/api/institution/students/{tid}/reset-credentials",
+                           headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 404, resp.text
+
+    def test_credential_reset_returns_a_one_time_password(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"Reset {uuid.uuid4().hex[:5]}"
+        token, _ = self._school_admin(client, admin_token, school)
+        student = f"rs-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/teams", headers=h, json={
+            "name": "Reset Team", "lead": "S", "lead_email": student, "school_name": school})
+        users = client.get("/api/users", headers=h).json()
+        sid = next(u["id"] for u in users if u["email"] == student)
+        resp = client.post(f"/api/institution/students/{sid}/reset-credentials",
+                           headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["temporary_password"]
+
+    def test_a_non_instructor_cannot_be_a_mentor(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"Ment {uuid.uuid4().hex[:5]}"
+        team_id = client.post("/api/teams", headers=h,
+                              json={"name": "Ment Team", "school_name": school}).json()["id"]
+        student = f"nm-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers=h, json={
+            "email": student, "full_name": "Not Mentor", "role": "student",
+            "password": "Ho-Volta-Region-33", "status": "Active"})
+        users = client.get("/api/users", headers=h).json()
+        sid = next(u["id"] for u in users if u["email"] == student)
+        resp = client.patch(f"/api/teams/{team_id}/mentor", headers=h,
+                            json={"mentor_id": sid})
+        assert resp.status_code == 400, resp.text
+
+    def test_an_instructor_can_be_assigned_as_mentor(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"Ment2 {uuid.uuid4().hex[:5]}"
+        iemail = self._instructor(client, admin_token, school)
+        users = client.get("/api/users", headers=h).json()
+        iid = next(u["id"] for u in users if u["email"] == iemail)
+        team_id = client.post("/api/teams", headers=h,
+                              json={"name": "Ment2 Team", "school_name": school}).json()["id"]
+        resp = client.patch(f"/api/teams/{team_id}/mentor", headers=h,
+                            json={"mentor_id": iid})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["mentor_status"] == "assigned"
+
+        # Unassigning clears the mentor
+        resp_unassign = client.patch(f"/api/teams/{team_id}/mentor", headers=h,
+                                     json={"mentor_id": None})
+        assert resp_unassign.status_code == 200, resp_unassign.text
+        assert resp_unassign.json()["mentor_status"] == "none"
+        assert resp_unassign.json()["mentor_id"] is None
+
+    def test_request_mentor_flags_a_team(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        team_id = client.post("/api/teams", headers=h,
+                              json={"name": f"Req {uuid.uuid4().hex[:5]}"}).json()["id"]
+        resp = client.post(f"/api/teams/{team_id}/request-mentor", headers=h)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["mentor_status"] == "requested"
+
+    def test_auto_assign_covers_mentorless_teams(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"Auto {uuid.uuid4().hex[:5]}"
+        self._instructor(client, admin_token, school)
+        team_id = client.post("/api/teams", headers=h,
+                              json={"name": f"Auto Team {uuid.uuid4().hex[:5]}",
+                                    "track": "coding"}).json()["id"]
+        resp = client.post("/api/teams/auto-assign-mentors", headers=h)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["assigned"] >= 1
+        teams = client.get("/api/teams", headers=h).json()
+        mine = next(t for t in teams if t["id"] == team_id)
+        assert mine["mentorId"] is not None
+        assert mine["mentorStatus"] == "assigned"
+
+    def test_adding_an_email_on_edit_provisions_the_account_later(self, client, admin_token):
+        """A member added by name only must get an account when their email is
+        supplied on a later edit -- not be stranded forever."""
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"LateEmail {uuid.uuid4().hex[:5]}"
+        # Create with the lead recorded by NAME only -- no email, no account.
+        team_id = client.post("/api/teams", headers=h, json={
+            "name": "Late Team", "lead": "Esi Ansah", "members": 1,
+            "school_name": school
+        }).json()["id"]
+        created_now = client.post("/api/teams", headers=h, json={
+            "name": "Late Team", "lead": "Esi Ansah", "members": 1,
+            "school_name": school
+        }).json()
+        assert created_now["provisioned_accounts"] == []
+
+        # Now the email is known; edit the team to add it.
+        late_email = f"esi-{uuid.uuid4().hex[:8]}@ntic.test"
+        resp = client.patch(f"/api/teams/{team_id}", headers=h, json={
+            "name": "Late Team", "lead": "Esi Ansah", "members": 1,
+            "lead_email": late_email, "school_name": school
+        })
+        assert resp.status_code == 200, resp.text
+        assert any(p["email"] == late_email for p in resp.json()["provisioned_accounts"])
+        # And the account really exists as a student in that institution.
+        users = client.get("/api/users", headers=h).json()
+        made = next((u for u in users if u["email"] == late_email), None)
+        assert made is not None and made["role"] == "student"
+
+
+class TestSoloEntrantTeams:
+    """Open/single entrants are modelled as a team of one (Option B), so mentors
+    and LMS auto-enrolment work for them with no separate code path."""
+
+    def _student(self, client, admin_token, name="Solo Runner"):
+        from app.security import clear_all_rate_limits
+        email = f"solo-{uuid.uuid4().hex[:8]}@ntic.test"
+        password = "Larabanga-Mosque-64"
+        client.post("/api/users", headers={"Authorization": f"Bearer {admin_token}"},
+                    json={"email": email, "full_name": name,
+                          "role": "student", "password": password, "status": "Active"})
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": password})
+        return login.json()["token"], email
+
+    def _open_cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        cid = client.post("/api/competitions", headers=h,
+                          json={"title": f"Solo Cycle {uuid.uuid4().hex[:6]}"}).json()["id"]
+        client.patch(f"/api/competitions/{cid}", headers=h,
+                     json={"title": "x", "status": "registration"})
+        return cid
+
+    def test_registering_creates_a_solo_team(self, client, admin_token):
+        token, email = self._student(client, admin_token)
+        cid = self._open_cycle(client, admin_token)
+        sh = {"Authorization": f"Bearer {token}"}
+        resp = client.post("/api/competitions/register", headers=sh,
+                           json={"competition_id": cid})
+        assert resp.status_code == 201, resp.text
+        solo_id = resp.json()["solo_team_id"]
+        assert solo_id
+        teams = client.get(f"/api/teams?competition_id={cid}",
+                          headers={"Authorization": f"Bearer {admin_token}"}).json()
+        solo = next(t for t in teams if t["id"] == solo_id)
+        assert solo["isSolo"] is True
+        assert solo["members"] == 1
+
+    def test_registering_twice_reuses_the_same_solo_team(self, client, admin_token):
+        token, email = self._student(client, admin_token)
+        cid = self._open_cycle(client, admin_token)
+        sh = {"Authorization": f"Bearer {token}"}
+        first = client.post("/api/competitions/register", headers=sh,
+                            json={"competition_id": cid}).json()["solo_team_id"]
+        client.delete(f"/api/competitions/register/{cid}", headers=sh)
+        second = client.post("/api/competitions/register", headers=sh,
+                             json={"competition_id": cid}).json()["solo_team_id"]
+        assert first == second
+
+    def test_a_solo_team_can_be_auto_assigned_a_mentor(self, client, admin_token):
+        from app.security import clear_all_rate_limits
+        h = {"Authorization": f"Bearer {admin_token}"}
+        token, email = self._student(client, admin_token)
+        cid = self._open_cycle(client, admin_token)
+        client.post("/api/users", headers=h, json={
+            "email": f"si-{uuid.uuid4().hex[:8]}@ntic.test", "full_name": "Solo Mentor",
+            "role": "instructor", "password": "Paga-Crocodile-88", "status": "Active"})
+        clear_all_rate_limits()
+        sh = {"Authorization": f"Bearer {token}"}
+        solo_id = client.post("/api/competitions/register", headers=sh,
+                             json={"competition_id": cid}).json()["solo_team_id"]
+        client.post("/api/teams/auto-assign-mentors", headers=h)
+        teams = client.get("/api/teams", headers=h).json()
+        solo = next(t for t in teams if t["id"] == solo_id)
+        assert solo["mentorId"] is not None
+
+    def test_a_solo_entrant_can_request_a_mentor(self, client, admin_token):
+        token, email = self._student(client, admin_token)
+        cid = self._open_cycle(client, admin_token)
+        sh = {"Authorization": f"Bearer {token}"}
+        solo_id = client.post("/api/competitions/register", headers=sh,
+                             json={"competition_id": cid}).json()["solo_team_id"]
+        resp = client.post(f"/api/teams/{solo_id}/request-mentor", headers=sh)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["mentor_status"] == "requested"
+
+    def test_a_solo_entrant_can_find_their_team(self, client, admin_token):
+        token, email = self._student(client, admin_token)
+        cid = self._open_cycle(client, admin_token)
+        sh = {"Authorization": f"Bearer {token}"}
+        solo_id = client.post("/api/competitions/register", headers=sh,
+                             json={"competition_id": cid}).json()["solo_team_id"]
+        mine = client.get("/api/teams/mine", headers=sh).json()
+        found = next(t for t in mine if t["id"] == solo_id)
+        assert found["isSolo"] is True
+        assert found["isLead"] is True
+
+    def test_one_entrant_cannot_request_anothers_mentor(self, client, admin_token):
+        from app.security import clear_all_rate_limits
+        token_a, _ = self._student(client, admin_token, "Runner A")
+        token_b, _ = self._student(client, admin_token, "Runner B")
+        cid = self._open_cycle(client, admin_token)
+        clear_all_rate_limits()
+        sa = {"Authorization": f"Bearer {token_a}"}
+        a_solo = client.post("/api/competitions/register", headers=sa,
+                            json={"competition_id": cid}).json()["solo_team_id"]
+        clear_all_rate_limits()
+        sb = {"Authorization": f"Bearer {token_b}"}
+        resp = client.post(f"/api/teams/{a_solo}/request-mentor", headers=sb)
+        assert resp.status_code == 404, resp.text
+
+
+class TestCycleCloseAutoAssign:
+    """Closing a cycle must not leave any entrant without a mentor."""
+
+    def _instructor(self, client, admin_token, track="coding"):
+        from app.security import clear_all_rate_limits
+        email = f"ca-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers={"Authorization": f"Bearer {admin_token}"},
+                    json={"email": email, "full_name": "Cycle Instructor",
+                          "role": "instructor", "password": "Mole-Park-Elephant-21",
+                          "status": "Active", "track": track})
+        clear_all_rate_limits()
+        return email
+
+    def _cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        cid = client.post("/api/competitions", headers=h,
+                          json={"title": f"Close Cycle {uuid.uuid4().hex[:6]}"}).json()["id"]
+        client.patch(f"/api/competitions/{cid}", headers=h,
+                     json={"title": "x", "status": "registration"})
+        return cid
+
+    def _close(self, client, admin_token, cid):
+        """Walk the legal path registration -> active -> completed."""
+        h = {"Authorization": f"Bearer {admin_token}"}
+        client.patch(f"/api/competitions/{cid}", headers=h, json={"title": "x", "status": "active"})
+        return client.patch(f"/api/competitions/{cid}", headers=h,
+                            json={"title": "x", "status": "completed"})
+
+    def test_closing_a_cycle_assigns_mentors_to_unmentored_teams(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        self._instructor(client, admin_token)
+        cid = self._cycle(client, admin_token)
+        team_id = client.post("/api/teams", headers=h, json={
+            "name": f"Need Mentor {uuid.uuid4().hex[:5]}", "track": "coding",
+            "competition_id": cid
+        }).json()["id"]
+
+        resp = self._close(client, admin_token, cid)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["mentors_assigned"] >= 1
+        teams = client.get("/api/teams", headers=h).json()
+        mine = next(t for t in teams if t["id"] == team_id)
+        assert mine["mentorId"] is not None
+
+    def test_closing_a_cycle_does_not_reassign_mentored_teams(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        iemail = self._instructor(client, admin_token)
+        users = client.get("/api/users", headers=h).json()
+        iid = next(u["id"] for u in users if u["email"] == iemail)
+        cid = self._cycle(client, admin_token)
+        team_id = client.post("/api/teams", headers=h, json={
+            "name": f"Has Mentor {uuid.uuid4().hex[:5]}", "track": "coding",
+            "competition_id": cid
+        }).json()["id"]
+        client.patch(f"/api/teams/{team_id}/mentor", headers=h, json={"mentor_id": iid})
+
+        resp = self._close(client, admin_token, cid)
+        assert resp.status_code == 200, resp.text
+        teams = client.get("/api/teams", headers=h).json()
+        mine = next(t for t in teams if t["id"] == team_id)
+        assert mine["mentorId"] == iid
+
+
+class TestFullHappyPath:
+    """One end-to-end journey: institution registers a team -> student gets a
+    login -> student logs in, sees their team, requests a mentor -> assigned.
+
+    This is the automated stand-in for the manual click-through: it exercises the
+    exact endpoints the institution portal, the student dashboard and the mentor
+    flow call, so any wiring gap between them shows up here.
+    """
+
+    def test_full_journey(self, client, admin_token):
+        from app.security import clear_all_rate_limits
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"Happy {uuid.uuid4().hex[:5]}"
+        iemail = f"hp-i-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers=h, json={
+            "email": iemail, "full_name": "Happy Mentor", "role": "instructor",
+            "password": "Shai-Hills-Reserve-55", "status": "Active", "track": "coding",
+            "organization": school})
+        clear_all_rate_limits()
+
+        # 1. Institution creates a team with a lead email. The backend provisions
+        #    the student account.
+        lead_email = f"hp-s-{uuid.uuid4().hex[:8]}@ntic.test"
+        team = client.post("/api/teams", headers=h, json={
+            "name": "Happy Squad", "lead": "Efua Mensimah", "lead_email": lead_email,
+            "members": 1, "school_name": school, "track": "coding"
+        })
+        assert team.status_code == 201, team.text
+        provisioned = team.json()["provisioned_accounts"]
+        assert provisioned and provisioned[0]["email"] == lead_email
+
+        # 2. The institution's portal lists that student.
+        sa_email = f"hp-sa-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers=h, json={
+            "email": sa_email, "full_name": "Happy Admin", "role": "school_admin",
+            "password": "Boti-Waterfalls-99", "status": "Active", "organization": school})
+        clear_all_rate_limits()
+        sa_login = client.post("/api/login", json={"email": sa_email, "password": "Boti-Waterfalls-99"})
+        sah = {"Authorization": f"Bearer {sa_login.json()['token']}"}
+        roster = client.get("/api/institution/students", headers=sah).json()
+        assert any(s["email"] == lead_email for s in roster)
+
+        # 3. The institution issues a login (reset credentials).
+        users = client.get("/api/users", headers=h).json()
+        sid = next(u["id"] for u in users if u["email"] == lead_email)
+        reset = client.post(f"/api/institution/students/{sid}/reset-credentials", headers=sah)
+        assert reset.status_code == 200, reset.text
+        temp_pw = reset.json()["temporary_password"]
+
+        # 4. The student logs in with the issued credentials.
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": lead_email, "password": temp_pw})
+        assert login.status_code == 200, login.text
+        sh = {"Authorization": f"Bearer {login.json()['token']}"}
+
+        # 5. The student sees their team.
+        mine = client.get("/api/teams/mine", headers=sh).json()
+        assert any(t["name"] == "Happy Squad" for t in mine)
+
+        # 6. The student requests a mentor.
+        team_id = next(t["id"] for t in mine if t["name"] == "Happy Squad")
+        req = client.post(f"/api/teams/{team_id}/request-mentor", headers=sh)
+        assert req.status_code == 200, req.text
+
+        # 7. An admin auto-assigns, and the student's team has a mentor.
+        client.post("/api/teams/auto-assign-mentors", headers=h)
+        teams = client.get("/api/teams", headers=h).json()
+        happy = next(t for t in teams if t["id"] == team_id)
+        assert happy["mentorId"] is not None
+        assert happy["mentorStatus"] == "assigned"
+
+
+class TestJudgeSeesLmsContext:
+    """Option A of joining the grading paths: the judge sees a student's LMS
+    coursework as read-only context, without it affecting the judge's score."""
+
+    def test_queue_surfaces_instructor_grades_as_context(self, client, admin_token):
+        from app.security import clear_all_rate_limits
+        import app.database as db
+        h = {"Authorization": f"Bearer {admin_token}"}
+
+        email = f"jc-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers=h, json={
+            "email": email, "full_name": "Context Student", "role": "student",
+            "password": "Kakum-Canopy-Walk-31", "status": "Active"})
+        clear_all_rate_limits()
+        users = client.get("/api/users", headers=h).json()
+        sid = next(u["id"] for u in users if u["email"] == email)
+        conn = db.get_db_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO students (id, tenant_id, first_name, last_name, email) "
+                "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (id) DO NOTHING",
+                (sid, "default", "Context", "Student", email),
+            )
+            cur.execute(
+                "INSERT INTO lms_courses (id, title, track, status, approval_status) "
+                "VALUES ('jc-course', 'Judge Context Course', 'coding', 'active', 'approved')"
+            )
+            cur.execute(
+                "INSERT INTO lms_assignments (id, course_id, title, status, approval_status) "
+                "VALUES ('jc-assign', 'jc-course', 'HW 1', 'active', 'approved')"
+            )
+            cur.execute(
+                "INSERT INTO lms_submissions (id, assignment_id, course_id, student_id, "
+                "student_name, student_email, score, status) "
+                "VALUES ('jc-sub', 'jc-assign', 'jc-course', %s, 'Context Student', %s, 88, 'graded')",
+                (sid, email),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            db.release_db_connection(conn)
+
+        sub = client.post("/api/submissions", headers=h, json={
+            "student_id": sid, "source_code_path": "https://example.com/project.zip",
+            "tenant_id": "default"
+        }).json()
+
+        queue = client.get("/api/judge/queue", headers=h).json()
+        mine = next(s for s in queue["submissions"] if s["id"] == sub["id"])
+        ctx = mine.get("lms_context")
+        assert ctx is not None
+        assert ctx["assignments_submitted"] == 1
+        assert ctx["average_score"] == 88
+        assert ctx["assignments"][0]["score"] == 88
+
+    def test_judge_score_is_not_derived_from_lms_context(self, client, admin_token):
+        # A student with no LMS work gets empty context, and the judge's score is
+        # their own input -- lms_context never feeds it.
+        from app.security import clear_all_rate_limits
+        import app.database as db
+        h = {"Authorization": f"Bearer {admin_token}"}
+        email = f"jc2-{uuid.uuid4().hex[:8]}@ntic.test"
+        client.post("/api/users", headers=h, json={
+            "email": email, "full_name": "No LMS Student", "role": "student",
+            "password": "Wli-Waterfall-28", "status": "Active"})
+        clear_all_rate_limits()
+        users = client.get("/api/users", headers=h).json()
+        sid = next(u["id"] for u in users if u["email"] == email)
+        conn = db.get_db_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO students (id, tenant_id, first_name, last_name, email) "
+                "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (id) DO NOTHING",
+                (sid, "default", "No", "LMS", email),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            db.release_db_connection(conn)
+
+        sub = client.post("/api/submissions", headers=h, json={
+            "student_id": sid, "source_code_path": "z.zip", "tenant_id": "default"
+        }).json()
+        queue = client.get("/api/judge/queue", headers=h).json()
+        mine = next(s for s in queue["submissions"] if s["id"] == sub["id"])
+        ctx = mine.get("lms_context") or {}
+        assert ctx.get("assignments_submitted") == 0
+        assert ctx.get("average_score") is None
+
+
+class TestForgotPassword:
+    """Forgot-password: email -> OTP -> new password, bound to a real account."""
+
+    def _user(self, client, admin_token, name="Forgot User"):
+        from app.security import clear_all_rate_limits
+        email = f"fp-{uuid.uuid4().hex[:8]}@ntic.test"
+        password = "Bole-Bamboi-Ferry-42"
+        client.post("/api/users", headers={"Authorization": f"Bearer {admin_token}"},
+                    json={"email": email, "full_name": name, "role": "student",
+                          "password": password, "status": "Active"})
+        clear_all_rate_limits()
+        return email, password
+
+    def _capture_code(self, monkeypatch):
+        import app.main as main
+        captured = {}
+        monkeypatch.setattr(
+            main, "_send_brevo_email",
+            lambda to, name, subj, html: (captured.update(html=html), True)[1],
+        )
+        return captured
+
+    def test_full_flow_resets_the_password(self, client, admin_token, monkeypatch):
+        import re
+        from app.security import clear_all_rate_limits
+        email, _old = self._user(client, admin_token)
+        captured = self._capture_code(monkeypatch)
+
+        clear_all_rate_limits()
+        start = client.post("/api/auth/forgot-password", json={"email": email})
+        assert start.status_code == 200, start.text
+        challenge_id = start.json()["challenge_id"]
+        assert challenge_id
+
+        code = re.search(r">(\d{6})<", captured["html"]).group(1)
+        clear_all_rate_limits()
+        verify = client.post("/api/otp/verify", json={"challenge_id": challenge_id, "code": code})
+        assert verify.status_code == 200, verify.text
+        reset_token = verify.json()["reset_token"]
+        assert reset_token
+
+        clear_all_rate_limits()
+        reset = client.post("/api/auth/forgot-password/reset",
+                            json={"reset_token": reset_token, "new_password": "New-Kintampo-Falls-99"})
+        assert reset.status_code == 200, reset.text
+
+        # Old password no longer works; the new one does.
+        clear_all_rate_limits()
+        assert client.post("/api/login", json={"email": email, "password": _old}).status_code == 401
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": "New-Kintampo-Falls-99"})
+        assert login.status_code == 200, login.text
+
+    def test_unknown_email_returns_no_challenge(self, client, admin_token, monkeypatch):
+        import app.main as main
+        sent = {"n": 0}
+        monkeypatch.setattr(main, "_send_brevo_email", lambda *a, **k: (sent.update(n=sent["n"] + 1), True)[1])
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        resp = client.post("/api/auth/forgot-password",
+                           json={"email": f"ghost-{uuid.uuid4().hex[:8]}@ntic.test"})
+        assert resp.status_code == 200
+        assert resp.json()["challenge_id"] is None
+        # And no email was actually sent, so a fake account can't be used.
+        assert sent["n"] == 0
+
+    def test_reset_token_cannot_be_reused(self, client, admin_token, monkeypatch):
+        import re
+        from app.security import clear_all_rate_limits
+        email, _ = self._user(client, admin_token)
+        captured = self._capture_code(monkeypatch)
+        clear_all_rate_limits()
+        challenge_id = client.post("/api/auth/forgot-password", json={"email": email}).json()["challenge_id"]
+        code = re.search(r">(\d{6})<", captured["html"]).group(1)
+        clear_all_rate_limits()
+        reset_token = client.post("/api/otp/verify", json={"challenge_id": challenge_id, "code": code}).json()["reset_token"]
+        clear_all_rate_limits()
+        first = client.post("/api/auth/forgot-password/reset",
+                            json={"reset_token": reset_token, "new_password": "First-New-Password-1"})
+        assert first.status_code == 200
+        clear_all_rate_limits()
+        replay = client.post("/api/auth/forgot-password/reset",
+                             json={"reset_token": reset_token, "new_password": "Second-New-Password-2"})
+        assert replay.status_code == 400, replay.text
+
+    def test_invalid_token_is_rejected(self, client):
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+        resp = client.post("/api/auth/forgot-password/reset",
+                           json={"reset_token": "x" * 32, "new_password": "Whatever-Password-1"})
+        assert resp.status_code == 400, resp.text
+
+
 class TestBulkSync:
     def test_bulk_sync_hof(self, client, admin_token):
         resp = client.post("/api/bulk-sync", json={
@@ -1323,8 +2174,19 @@ class TestPublicSurface:
         ("POST", "/api/auth/verify-contact"),
         ("POST", "/api/otp/request"),
         ("POST", "/api/otp/verify"),
+        # Forgot-password: unauthenticated by definition. Rate limited, and the
+        # reset token is only issued after OTP verification, so it cannot reset
+        # an account without owning its email.
+        ("POST", "/api/auth/forgot-password"),
+        ("POST", "/api/auth/forgot-password/reset"),
         ("POST", "/api/drafts"),
         ("POST", "/api/notify/registration-received"),
+        # The public registration form filing an application for review. Type is
+        # allowlisted, status is forced to 'pending', the id is server-generated
+        # and the handler is rate limited per IP. Added deliberately: before it,
+        # applications only went to the admin-only POST /api/bulk-sync, so every
+        # anonymous application 401'd and no reviewer ever saw it.
+        ("POST", "/api/approvals/public"),
     }
 
     def test_no_unexpected_anonymous_write_endpoints(self):
@@ -1368,6 +2230,11 @@ class TestPublicSurface:
             return _R()
 
         monkeypatch.setattr(main.httpx, "post", fake_post)
+        # The endpoint refuses with 503 unless a mail transport is configured, so
+        # without this the test only passed on machines with a real key in .env
+        # and failed in CI -- where a key deliberately does not exist. The
+        # outbound call is already faked, so nothing is actually sent.
+        monkeypatch.setattr(main.settings, "BREVO_API_KEY", "test-key-not-real", raising=False)
         resp = client.post(
             "/api/send-email",
             json={
@@ -4518,3 +5385,704 @@ class TestPartnerCopyIsEditable:
     def test_partner_copy_edit_requires_permission(self, client):
         assert client.put("/api/landing-copy",
                           json={"partners.heading": "Hijacked"}).status_code in (401, 403)
+
+class TestCycleLifecycle:
+    """The competition cycle state machine (app/lifecycle.py).
+
+    A cycle is a competitions row. These pin the contract the whole UI relies
+    on: the status column used to accept any string, and nothing enforced the
+    transitions the panels offered.
+    """
+
+    def _make_cycle(self, client, admin_token, **overrides):
+        body = {"title": f"Cycle {uuid.uuid4()}"}
+        body.update(overrides)
+        resp = client.post("/api/competitions",
+                           headers={"Authorization": f"Bearer {admin_token}"},
+                           json=body)
+        assert resp.status_code == 201, resp.text
+        return resp.json()
+
+    def test_new_cycle_defaults_to_draft_not_active(self, client, admin_token):
+        # Creating a cycle must never publish it to entrants immediately.
+        assert self._make_cycle(client, admin_token)["status"] == "draft"
+
+    def test_invalid_status_is_rejected(self, client, admin_token):
+        resp = client.post("/api/competitions",
+                           headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"title": "Bad", "status": "totally-made-up"})
+        assert resp.status_code == 422, resp.text
+        assert "Invalid cycle status" in resp.json()["detail"]
+
+    def test_status_is_case_and_whitespace_normalised(self, client, admin_token):
+        assert self._make_cycle(client, admin_token, status="  DRAFT ")["status"] == "draft"
+
+    def test_legal_transition_is_accepted(self, client, admin_token):
+        cycle = self._make_cycle(client, admin_token)
+        resp = client.patch(f"/api/competitions/{cycle['id']}",
+                            headers={"Authorization": f"Bearer {admin_token}"},
+                            json={"title": "x", "status": "registration"})
+        assert resp.status_code == 200, resp.text
+
+    def test_illegal_transition_is_refused(self, client, admin_token):
+        # draft -> completed skips the whole lifecycle.
+        cycle = self._make_cycle(client, admin_token)
+        resp = client.patch(f"/api/competitions/{cycle['id']}",
+                            headers={"Authorization": f"Bearer {admin_token}"},
+                            json={"title": "x", "status": "completed"})
+        assert resp.status_code == 409, resp.text
+        assert "Cannot move a cycle" in resp.json()["detail"]
+
+    def test_completed_cycle_cannot_reopen_registration(self, client, admin_token):
+        # The case that matters: results are out, entrants must not be let back in.
+        cycle = self._make_cycle(client, admin_token)
+        h = {"Authorization": f"Bearer {admin_token}"}
+        for nxt in ("registration", "active", "completed"):
+            assert client.patch(f"/api/competitions/{cycle['id']}", headers=h,
+                                json={"title": "x", "status": nxt}).status_code == 200
+        resp = client.patch(f"/api/competitions/{cycle['id']}", headers=h,
+                            json={"title": "x", "status": "registration"})
+        assert resp.status_code == 409, resp.text
+
+    def test_archive_is_reachable_from_any_live_state(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        for start in ("draft", "registration", "active"):
+            cycle = self._make_cycle(client, admin_token)
+            if start != "draft":
+                client.patch(f"/api/competitions/{cycle['id']}", headers=h,
+                             json={"title": "x", "status": "registration"})
+            if start == "active":
+                client.patch(f"/api/competitions/{cycle['id']}", headers=h,
+                             json={"title": "x", "status": "active"})
+            resp = client.patch(f"/api/competitions/{cycle['id']}", headers=h,
+                                json={"title": "x", "status": "archived"})
+            assert resp.status_code == 200, f"{start} -> archived: {resp.text}"
+
+    def test_draft_cycle_refuses_student_registration(self, client, admin_token, student_token):
+        cycle = self._make_cycle(client, admin_token)
+        resp = client.post("/api/competitions/register",
+                           headers={"Authorization": f"Bearer {student_token}"},
+                           json={"competition_id": cycle["id"]})
+        assert resp.status_code == 409, resp.text
+
+    def test_open_cycle_accepts_student_registration(self, client, admin_token, student_token):
+        cycle = self._make_cycle(client, admin_token)
+        client.patch(f"/api/competitions/{cycle['id']}",
+                     headers={"Authorization": f"Bearer {admin_token}"},
+                     json={"title": "x", "status": "registration"})
+        resp = client.post("/api/competitions/register",
+                           headers={"Authorization": f"Bearer {student_token}"},
+                           json={"competition_id": cycle["id"]})
+        assert resp.status_code in (200, 201), resp.text
+
+    def test_deleting_a_cycle_detaches_its_registrations(self, client, admin_token, student_token):
+        cycle = self._make_cycle(client, admin_token)
+        h = {"Authorization": f"Bearer {admin_token}"}
+        client.patch(f"/api/competitions/{cycle['id']}", headers=h,
+                     json={"title": "x", "status": "registration"})
+        client.post("/api/competitions/register",
+                    headers={"Authorization": f"Bearer {student_token}"},
+                    json={"competition_id": cycle["id"]})
+        assert client.delete(f"/api/competitions/{cycle['id']}", headers=h).status_code == 200
+        mine = client.get("/api/competitions/my-registrations",
+                          headers={"Authorization": f"Bearer {student_token}"}).json()
+        assert all(r["competition_id"] != cycle["id"] for r in mine)
+
+
+class TestApprovalProvisioning:
+    """Approving an application must create the account it entitles.
+
+    Previously PATCH /api/approvals only flipped a status column, so an
+    applicant could be "approved" and still have no way to sign in.
+    """
+
+    def _submit(self, client, admin_token, approval_type, contact, entity="Test Entity"):
+        approval_id = f"APR-{uuid.uuid4().hex[:10]}"
+        resp = client.post("/api/approvals",
+                           headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"id": approval_id, "type": approval_type,
+                                 "entity": entity, "contact": contact,
+                                 "details": {}, "status": "pending"})
+        assert resp.status_code in (200, 201), resp.text
+        return approval_id
+
+    def _approve(self, client, admin_token, approval_id):
+        resp = client.patch(f"/api/approvals/{approval_id}",
+                            headers={"Authorization": f"Bearer {admin_token}"},
+                            json={"status": "approved", "reviewer": "admin@ntic.org.gh"})
+        assert resp.status_code == 200, resp.text
+        return resp.json()
+
+    @pytest.mark.parametrize("approval_type,expected_role", [
+        ("School Registration", "school_admin"),
+        ("Instructor Access", "instructor"),
+        ("Team Addition", "student"),
+    ])
+    def test_approval_provisions_account_with_mapped_role(
+            self, client, admin_token, approval_type, expected_role):
+        email = f"prov-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = self._submit(client, admin_token, approval_type, email)
+        account = self._approve(client, admin_token, approval_id)["account"]
+        assert account["provisioned"] is True, account
+        assert account["role"] == expected_role
+        assert account["email"] == email
+        assert account["temporary_password"]
+
+    def test_provisioned_account_can_sign_in(self, client, admin_token):
+        email = f"signin-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = self._submit(client, admin_token, "Instructor Access", email)
+        account = self._approve(client, admin_token, approval_id)["account"]
+        resp = client.post("/api/login", json={
+            "email": email, "password": account["temporary_password"]})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["role"] == "instructor"
+
+    def test_reapproving_does_not_create_a_second_account(self, client, admin_token):
+        email = f"idem-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = self._submit(client, admin_token, "Instructor Access", email)
+        assert self._approve(client, admin_token, approval_id)["account"]["provisioned"] is True
+        again = self._approve(client, admin_token, approval_id)["account"]
+        assert again["provisioned"] is False
+
+    def test_rejection_provisions_nothing(self, client, admin_token):
+        email = f"reject-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = self._submit(client, admin_token, "Instructor Access", email)
+        resp = client.patch(f"/api/approvals/{approval_id}",
+                            headers={"Authorization": f"Bearer {admin_token}"},
+                            json={"status": "rejected", "reviewer": "admin@ntic.org.gh"})
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["account"]["provisioned"] is False
+        assert client.post("/api/login", json={
+            "email": email, "password": "irrelevant"}).status_code == 401
+
+    def test_approval_without_contact_email_still_records_decision(self, client, admin_token):
+        # The reviewer must always be able to record a decision, even when the
+        # application is too incomplete to provision from.
+        approval_id = self._submit(client, admin_token, "Instructor Access", "")
+        account = self._approve(client, admin_token, approval_id)["account"]
+        assert account["provisioned"] is False
+        assert "contact email" in account["reason"]
+
+    def test_unknown_approval_type_records_decision_without_provisioning(self, client, admin_token):
+        approval_id = self._submit(client, admin_token, "Mystery Type",
+                                   f"unknown-{uuid.uuid4().hex[:8]}@example.com")
+        account = self._approve(client, admin_token, approval_id)["account"]
+        assert account["provisioned"] is False
+        assert "No role mapping" in account["reason"]
+
+    def test_approving_missing_approval_returns_404(self, client, admin_token):
+        resp = client.patch("/api/approvals/APR-does-not-exist",
+                            headers={"Authorization": f"Bearer {admin_token}"},
+                            json={"status": "approved"})
+        assert resp.status_code == 404
+
+
+class TestPublicRegistrationCannotSelfActivate:
+    def test_public_signup_is_forced_pending(self, client, admin_token):
+        # This endpoint is unauthenticated; honouring a client-sent status let
+        # anyone self-register as active and skip review.
+        email = f"selfact-{uuid.uuid4().hex[:8]}@example.com"
+        resp = client.post("/api/users/register", json={
+            "email": email, "full_name": "Self Activator",
+            "role": "judge", "status": "active"})
+        assert resp.status_code == 201, resp.text
+        users = client.get("/api/users", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        created = [u for u in users if u["email"].lower() == email]
+        assert created, "user was not created"
+        assert created[0]["status"] == "pending"
+
+    def test_public_signup_cannot_choose_a_privileged_role(self, client):
+        resp = client.post("/api/users/register", json={
+            "email": f"esc-{uuid.uuid4().hex[:8]}@example.com",
+            "full_name": "Escalator", "role": "super_admin"})
+        assert resp.status_code == 403
+
+
+class TestCycleScoping:
+    """Records must be attributable to a cycle, and listable by it.
+
+    Before this, only competition_registrations pointed at a cycle. Teams and
+    submissions had no link at all, so every panel showed every record it could
+    find and no two role views ever agreed on what was "in" a cycle.
+    """
+
+    def _cycle(self, client, admin_token, status="registration"):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        cyc = client.post("/api/competitions", headers=h,
+                          json={"title": f"Scoped {uuid.uuid4()}"}).json()
+        if status != "draft":
+            client.patch(f"/api/competitions/{cyc['id']}", headers=h,
+                         json={"title": "x", "status": "registration"})
+        return cyc["id"]
+
+    def test_team_round_trips_its_cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        cid = self._cycle(client, admin_token)
+        created = client.post("/api/teams", headers=h,
+                              json={"name": f"T{uuid.uuid4().hex[:6]}", "competition_id": cid})
+        assert created.status_code == 201, created.text
+        assert created.json()["competition_id"] == cid
+        listed = client.get("/api/teams", headers=h).json()
+        mine = [t for t in listed if t["id"] == created.json()["id"]]
+        assert mine and mine[0]["competition_id"] == cid
+
+    def test_teams_can_be_filtered_to_one_cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        a, b = self._cycle(client, admin_token), self._cycle(client, admin_token)
+        in_a = client.post("/api/teams", headers=h,
+                           json={"name": f"A{uuid.uuid4().hex[:6]}", "competition_id": a}).json()["id"]
+        in_b = client.post("/api/teams", headers=h,
+                           json={"name": f"B{uuid.uuid4().hex[:6]}", "competition_id": b}).json()["id"]
+        ids = [t["id"] for t in client.get(f"/api/teams?competition_id={a}", headers=h).json()]
+        assert in_a in ids and in_b not in ids
+
+    def test_team_referencing_unknown_cycle_is_rejected(self, client, admin_token):
+        resp = client.post("/api/teams", headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"name": "Orphan", "competition_id": "comp-does-not-exist"})
+        assert resp.status_code == 422, resp.text
+        assert "Unknown competition cycle" in resp.json()["detail"]
+
+    def test_team_without_a_cycle_is_still_allowed(self, client, admin_token):
+        # Not every team is cycle-scoped; the link is optional by design.
+        resp = client.post("/api/teams", headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"name": f"Free{uuid.uuid4().hex[:6]}"})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["competition_id"] is None
+
+    def test_cycle_team_count_is_derived_not_hand_typed(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        cid = self._cycle(client, admin_token)
+        before = [c for c in client.get("/api/competitions").json() if c["id"] == cid][0]
+        assert before["teams"] == 0
+        client.post("/api/teams", headers=h,
+                    json={"name": f"C{uuid.uuid4().hex[:6]}", "competition_id": cid})
+        after = [c for c in client.get("/api/competitions").json() if c["id"] == cid][0]
+        assert after["teams"] == 1, "team count should reflect reality, not the stored integer"
+
+    def test_cycle_reports_entrant_count(self, client, admin_token, student_token):
+        cid = self._cycle(client, admin_token)
+        client.post("/api/competitions/register",
+                    headers={"Authorization": f"Bearer {student_token}"},
+                    json={"competition_id": cid})
+        row = [c for c in client.get("/api/competitions").json() if c["id"] == cid][0]
+        assert row["entrants"] >= 1
+
+    def test_submissions_can_be_filtered_to_one_cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        a, b = self._cycle(client, admin_token), self._cycle(client, admin_token)
+        st = client.post("/api/students", headers=h, json={
+            "first_name": "Scope", "last_name": "Test",
+            "email": f"scope-{uuid.uuid4().hex[:8]}@example.com"})
+        assert st.status_code in (200, 201), st.text
+        sid = st.json()["id"]
+        sub_a = client.post("/api/submissions", headers=h, json={
+            "student_id": sid, "source_code_path": "a.zip", "competition_id": a})
+        assert sub_a.status_code == 201, sub_a.text
+        client.post("/api/submissions", headers=h, json={
+            "student_id": sid, "source_code_path": "b.zip", "competition_id": b})
+        scoped = client.get(f"/api/submissions?competition_id={a}", headers=h).json()
+        assert scoped, "expected at least one submission in cycle a"
+        assert all(s["competition_id"] == a for s in scoped)
+
+    def test_submission_referencing_unknown_cycle_is_rejected(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        st = client.post("/api/students", headers=h, json={
+            "first_name": "Bad", "last_name": "Ref",
+            "email": f"badref-{uuid.uuid4().hex[:8]}@example.com"}).json()
+        resp = client.post("/api/submissions", headers=h, json={
+            "student_id": st["id"], "source_code_path": "x.zip",
+            "competition_id": "comp-nope"})
+        assert resp.status_code == 422, resp.text
+
+    def test_judge_queue_can_be_scoped_to_a_cycle(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        a, b = self._cycle(client, admin_token), self._cycle(client, admin_token)
+        st = client.post("/api/students", headers=h, json={
+            "first_name": "Queue", "last_name": "Scope",
+            "email": f"queue-{uuid.uuid4().hex[:8]}@example.com"}).json()
+        client.post("/api/submissions", headers=h, json={
+            "student_id": st["id"], "source_code_path": "q.zip", "competition_id": a})
+        client.post("/api/submissions", headers=h, json={
+            "student_id": st["id"], "source_code_path": "r.zip", "competition_id": b})
+        scoped = client.get(f"/api/judge/queue?competition_id={a}", headers=h).json()
+        unscoped = client.get("/api/judge/queue", headers=h).json()
+        assert scoped["pending_total"] >= 1
+        assert scoped["pending_total"] <= unscoped["pending_total"]
+        assert len(scoped["submissions"]) <= len(unscoped["submissions"])
+
+    def test_deleting_a_cycle_leaves_its_teams_but_clears_stale_counts(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        cid = self._cycle(client, admin_token)
+        team_id = client.post("/api/teams", headers=h,
+                              json={"name": f"Keep{uuid.uuid4().hex[:6]}",
+                                    "competition_id": cid}).json()["id"]
+        assert client.delete(f"/api/competitions/{cid}", headers=h).status_code == 200
+        # The team record survives -- it is history -- and the cycle is gone.
+        assert any(t["id"] == team_id for t in client.get("/api/teams", headers=h).json())
+        assert not any(c["id"] == cid for c in client.get("/api/competitions").json())
+
+
+class TestTeamChangeApproval:
+    """An institution proposes team changes; only an admin decides them.
+
+    The workflow existed in the UI but was unreachable: a school admin's request
+    went to POST /api/bulk-sync (admin only) and POST /api/approvals
+    (APPROVAL_ROLES, which excludes school_admin), so both 403'd and the request
+    never left the browser while the UI still reported success.
+    """
+
+    def _school_admin(self, client, admin_token, school: str):
+        """A school_admin whose account is linked to `school`."""
+        from app.security import clear_all_rate_limits
+        email = f"sa-{uuid.uuid4().hex[:8]}@ntic.test"
+        password = "Ada-Foah-Estuary-Bright-33"
+        resp = client.post("/api/users", headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"email": email, "full_name": "School Admin",
+                                 "role": "school_admin", "password": password,
+                                 "status": "Active", "organization": school})
+        assert resp.status_code in (200, 201), resp.text
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": password})
+        assert login.status_code == 200, login.text
+        return login.json()["token"]
+
+    def _team(self, client, admin_token, school: str):
+        name = f"Squad{uuid.uuid4().hex[:6]}"
+        resp = client.post("/api/teams", headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"name": name, "school_name": school})
+        assert resp.status_code == 201, resp.text
+        return resp.json()["id"], name
+
+    def test_school_admin_can_file_a_rename_for_its_own_team(self, client, admin_token):
+        school = f"Accra Academy {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        team_id, original = self._team(client, admin_token, school)
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Modification", "team_id": team_id,
+                                 "name": "Renamed Squad", "members": ["A", "B"]})
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["status"] == "pending"
+        assert body["school"] == school
+        assert original in body["entity"] and "Renamed Squad" in body["entity"]
+
+    def test_the_rename_does_not_touch_the_team_until_approved(self, client, admin_token):
+        school = f"Mfantsipim {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        team_id, original = self._team(client, admin_token, school)
+        client.post("/api/approvals/team-change",
+                    headers={"Authorization": f"Bearer {token}"},
+                    json={"type": "Team Modification", "team_id": team_id,
+                          "name": "Should Not Apply Yet"})
+        teams = client.get("/api/teams", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        live = next(t for t in teams if t["id"] == team_id)
+        assert live["name"] == original
+
+    def test_school_admin_cannot_file_against_another_school(self, client, admin_token):
+        mine = f"Wesley Girls {uuid.uuid4().hex[:5]}"
+        theirs = f"Prempeh College {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, mine)
+        other_team_id, _ = self._team(client, admin_token, theirs)
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Modification", "team_id": other_team_id,
+                                 "name": "Hijacked"})
+        # 404, not 403: the existence of another school's team is not disclosed.
+        assert resp.status_code == 404, resp.text
+
+    def test_school_is_taken_from_the_session_not_the_body(self, client, admin_token):
+        school = f"Achimota {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Addition", "name": "New Squad",
+                                 "school": "Somebody Else", "institution": "Somebody Else"})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["school"] == school
+
+    def test_a_client_cannot_file_a_pre_approved_request(self, client, admin_token):
+        school = f"Adisadel {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Addition", "name": "Sneaky",
+                                 "status": "approved"})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["status"] == "pending"
+
+    def test_an_unknown_change_type_is_rejected(self, client, admin_token):
+        token = self._school_admin(client, admin_token, f"Keta {uuid.uuid4().hex[:5]}")
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Deletion", "name": "X"})
+        assert resp.status_code == 400, resp.text
+
+    def test_a_student_cannot_propose_team_changes(self, client, student_token):
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {student_token}"},
+                           json={"type": "Team Addition", "name": "Student Squad"})
+        assert resp.status_code == 403, resp.text
+
+    def test_an_account_with_no_institution_is_told_why(self, client, admin_token):
+        token = self._school_admin(client, admin_token, "")
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Addition", "name": "Orphan Squad"})
+        assert resp.status_code == 409, resp.text
+        assert "institution" in resp.json()["detail"].lower()
+
+    def test_modification_requires_a_team_id(self, client, admin_token):
+        token = self._school_admin(client, admin_token, f"Tamale SHS {uuid.uuid4().hex[:5]}")
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Modification", "name": "No Id"})
+        assert resp.status_code == 400, resp.text
+
+    def test_institutions_can_no_longer_write_teams_directly(self, client, admin_token):
+        """The gate has to be server-side or it is only advice."""
+        school = f"Bypass Test {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        h = {"Authorization": f"Bearer {token}"}
+        team_id, _ = self._team(client, admin_token, school)
+        assert client.post("/api/teams", headers=h,
+                           json={"name": "Direct", "school_name": school}).status_code == 403
+        assert client.patch(f"/api/teams/{team_id}", headers=h,
+                            json={"name": "Direct Rename"}).status_code == 403
+        assert client.delete(f"/api/teams/{team_id}", headers=h).status_code == 403
+
+
+    def test_a_disbandment_request_does_not_remove_the_team_until_approved(self, client, admin_token):
+        school = f"Disband {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        team_id, _ = self._team(client, admin_token, school)
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Disbandment", "team_id": team_id,
+                                 "name": "ignored"})
+        assert resp.status_code == 201, resp.text
+        teams = client.get("/api/teams", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        assert any(t["id"] == team_id for t in teams), "team was removed before approval"
+
+    def test_approving_a_disbandment_actually_removes_the_team(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"Disband OK {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        team_id, _ = self._team(client, admin_token, school)
+        req = client.post("/api/approvals/team-change",
+                          headers={"Authorization": f"Bearer {token}"},
+                          json={"type": "Team Disbandment", "team_id": team_id,
+                                "name": "ignored"}).json()
+        patch = client.patch(f"/api/approvals/{req['id']}", headers=h,
+                             json={"status": "approved", "reviewer": "admin"})
+        assert patch.status_code == 200, patch.text
+        assert patch.json()["team_change"]["applied"] is True
+        teams = client.get("/api/teams", headers=h).json()
+        assert not any(t["id"] == team_id for t in teams), "team survived an approved disbandment"
+
+    def test_rejecting_a_disbandment_leaves_the_team_alone(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"Disband No {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        team_id, _ = self._team(client, admin_token, school)
+        req = client.post("/api/approvals/team-change",
+                          headers={"Authorization": f"Bearer {token}"},
+                          json={"type": "Team Disbandment", "team_id": team_id,
+                                "name": "ignored"}).json()
+        client.patch(f"/api/approvals/{req['id']}", headers=h,
+                     json={"status": "rejected", "reviewer": "admin",
+                           "rejection_reasons": "Still competing"})
+        teams = client.get("/api/teams", headers=h).json()
+        assert any(t["id"] == team_id for t in teams)
+
+    def test_disbandment_requires_a_team_id(self, client, admin_token):
+        token = self._school_admin(client, admin_token, f"NoId {uuid.uuid4().hex[:5]}")
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Disbandment", "name": "x"})
+        assert resp.status_code == 400, resp.text
+
+    def test_cannot_request_disbandment_of_another_schools_team(self, client, admin_token):
+        token = self._school_admin(client, admin_token, f"Mine {uuid.uuid4().hex[:5]}")
+        other_id, _ = self._team(client, admin_token, f"Theirs {uuid.uuid4().hex[:5]}")
+        resp = client.post("/api/approvals/team-change",
+                           headers={"Authorization": f"Bearer {token}"},
+                           json={"type": "Team Disbandment", "team_id": other_id,
+                                 "name": "x"})
+        assert resp.status_code == 404, resp.text
+
+
+    def test_an_institution_can_see_its_own_request_and_the_outcome(self, client, admin_token):
+        """Without this the requester never learns the decision or its reason."""
+        h = {"Authorization": f"Bearer {admin_token}"}
+        school = f"Sees Own {uuid.uuid4().hex[:5]}"
+        token = self._school_admin(client, admin_token, school)
+        team_id, _ = self._team(client, admin_token, school)
+        req = client.post("/api/approvals/team-change",
+                          headers={"Authorization": f"Bearer {token}"},
+                          json={"type": "Team Modification", "team_id": team_id,
+                                "name": "Pending Look"}).json()
+
+        mine = client.get("/api/approvals/mine",
+                          headers={"Authorization": f"Bearer {token}"})
+        assert mine.status_code == 200, mine.text
+        found = next(a for a in mine.json() if a["id"] == req["id"])
+        assert found["status"] == "pending"
+
+        client.patch(f"/api/approvals/{req['id']}", headers=h,
+                     json={"status": "rejected", "reviewer": "admin",
+                           "rejection_reasons": "Name already taken",
+                           "rejection_notes": "Pick another"})
+        after = client.get("/api/approvals/mine",
+                           headers={"Authorization": f"Bearer {token}"}).json()
+        decided = next(a for a in after if a["id"] == req["id"])
+        assert decided["status"] == "rejected"
+        assert decided["rejectionReasons"] == "Name already taken"
+
+    def test_mine_does_not_leak_other_applicants(self, client, admin_token):
+        a_token = self._school_admin(client, admin_token, f"A {uuid.uuid4().hex[:5]}")
+        b_school = f"B {uuid.uuid4().hex[:5]}"
+        b_token = self._school_admin(client, admin_token, b_school)
+        b_team, _ = self._team(client, admin_token, b_school)
+        b_req = client.post("/api/approvals/team-change",
+                            headers={"Authorization": f"Bearer {b_token}"},
+                            json={"type": "Team Modification", "team_id": b_team,
+                                  "name": "B Only"}).json()
+        a_sees = client.get("/api/approvals/mine",
+                            headers={"Authorization": f"Bearer {a_token}"}).json()
+        assert not any(x["id"] == b_req["id"] for x in a_sees)
+
+    def test_mine_requires_a_session(self, client):
+        assert client.get("/api/approvals/mine").status_code == 401
+
+
+class TestPublicApplicationReachesTheQueue:
+    """Public registration has to reach a reviewer.
+
+    Applications were persisted only via contentService.saveApprovals() ->
+    POST /api/bulk-sync, which is admin-only. For an anonymous applicant every
+    write 401'd, so the applicant got a confirmation email and the reviewer queue
+    stayed empty.
+    """
+
+    def _clear_limits(self):
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+
+    def test_an_anonymous_applicant_can_file_an_application(self, client, admin_token):
+        self._clear_limits()
+        contact = f"school-{uuid.uuid4().hex[:8]}@example.com"
+        resp = client.post("/api/approvals/public", json={
+            "type": "School Registration", "entity": "Kumasi High",
+            "contact": contact, "details": {"region": "Ashanti"}})
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["status"] == "pending"
+        queue = client.get("/api/approvals",
+                           headers={"Authorization": f"Bearer {admin_token}"}).json()
+        assert any((a.get("contact") or "").lower() == contact for a in queue), \
+            "application did not reach the reviewer queue"
+
+    def test_the_application_is_always_pending(self, client, admin_token):
+        self._clear_limits()
+        contact = f"sneaky-{uuid.uuid4().hex[:8]}@example.com"
+        client.post("/api/approvals/public", json={
+            "type": "Judge Access", "entity": "Self Approver",
+            "contact": contact, "status": "approved", "id": "apr-forged"})
+        queue = client.get("/api/approvals",
+                           headers={"Authorization": f"Bearer {admin_token}"}).json()
+        row = next(a for a in queue if (a.get("contact") or "").lower() == contact)
+        assert row["status"] == "pending"
+        # The id is generated server-side, so a caller cannot target an existing row.
+        assert row["id"] != "apr-forged"
+
+    def test_an_unlisted_type_is_refused(self, client):
+        self._clear_limits()
+        resp = client.post("/api/approvals/public", json={
+            "type": "Team Disbandment", "entity": "X",
+            "contact": f"x-{uuid.uuid4().hex[:6]}@example.com"})
+        assert resp.status_code == 400, resp.text
+
+    def test_resubmitting_updates_rather_than_duplicates(self, client, admin_token):
+        self._clear_limits()
+        contact = f"resub-{uuid.uuid4().hex[:8]}@example.com"
+        first = client.post("/api/approvals/public", json={
+            "type": "Instructor Access", "entity": "First Try", "contact": contact})
+        second = client.post("/api/approvals/public", json={
+            "type": "Instructor Access", "entity": "Second Try", "contact": contact})
+        assert first.status_code == 201 and second.status_code == 201
+        assert first.json()["id"] == second.json()["id"]
+        queue = client.get("/api/approvals",
+                           headers={"Authorization": f"Bearer {admin_token}"}).json()
+        mine = [a for a in queue if (a.get("contact") or "").lower() == contact]
+        assert len(mine) == 1, "resubmitting stacked duplicates in the queue"
+        assert mine[0]["entity"] == "Second Try"
+
+    def test_it_is_rate_limited(self, client):
+        self._clear_limits()
+        codes = []
+        for i in range(8):
+            codes.append(client.post("/api/approvals/public", json={
+                "type": "Sponsor Access", "entity": f"Flood {i}",
+                "contact": f"flood-{i}-{uuid.uuid4().hex[:6]}@example.com"}).status_code)
+        assert 429 in codes, f"no rate limiting applied: {codes}"
+
+    def test_oversized_detail_is_refused(self, client):
+        self._clear_limits()
+        resp = client.post("/api/approvals/public", json={
+            "type": "School Registration", "entity": "Big",
+            "contact": f"big-{uuid.uuid4().hex[:6]}@example.com",
+            "details": {f"k{i}": "v" for i in range(200)}})
+        assert resp.status_code == 400, resp.text
+
+    def test_open_registration_can_create_a_participant(self, client, admin_token):
+        """The open tab called the admin-only POST /api/users, so nothing was made."""
+        self._clear_limits()
+        email = f"open-{uuid.uuid4().hex[:8]}@example.com"
+        resp = client.post("/api/users/register", json={
+            "email": email, "full_name": "Open Entrant", "role": "student"})
+        assert resp.status_code == 201, resp.text
+        users = client.get("/api/users",
+                           headers={"Authorization": f"Bearer {admin_token}"}).json()
+        created = [u for u in users if u["email"].lower() == email]
+        assert created, "participant was not created"
+        # Still pending: public sign-up must not self-activate.
+        assert created[0]["status"] == "pending"
+
+    def test_public_registration_still_cannot_take_a_privileged_role(self, client):
+        self._clear_limits()
+        for role in ("admin", "super_admin", "school_admin", "instructor"):
+            resp = client.post("/api/users/register", json={
+                "email": f"esc-{uuid.uuid4().hex[:8]}@example.com",
+                "full_name": "Escalator", "role": role})
+            assert resp.status_code == 403, f"{role} was allowed: {resp.text}"
+
+    def test_applications_can_be_scoped_to_a_cycle(self, client, admin_token):
+        """The reviewer queue could not be filtered by cycle at all before this."""
+        self._clear_limits()
+        h = {"Authorization": f"Bearer {admin_token}"}
+        cid = client.post("/api/competitions", headers=h, json={
+            "title": f"Cycle {uuid.uuid4().hex[:6]}", "year": 2026}).json()["id"]
+        scoped_contact = f"scoped-{uuid.uuid4().hex[:8]}@example.com"
+        client.post("/api/approvals/public", json={
+            "type": "School Registration", "entity": "In Cycle",
+            "contact": scoped_contact, "competition_id": cid})
+        client.post("/api/approvals/public", json={
+            "type": "School Registration", "entity": "No Cycle",
+            "contact": f"unscoped-{uuid.uuid4().hex[:8]}@example.com"})
+
+        scoped = client.get(f"/api/approvals?competition_id={cid}", headers=h).json()
+        assert [a["contact"] for a in scoped] == [scoped_contact]
+        assert all(a["competitionId"] == cid for a in scoped)
+        # And the unscoped view still returns everything.
+        assert len(client.get("/api/approvals", headers=h).json()) > len(scoped)
+
+    def test_a_bad_cycle_reference_is_rejected(self, client):
+        """Storing an id that matches nothing is how records became invisible."""
+        self._clear_limits()
+        resp = client.post("/api/approvals/public", json={
+            "type": "School Registration", "entity": "Bad Ref",
+            "contact": f"badref-{uuid.uuid4().hex[:6]}@example.com",
+            "competition_id": "comp-does-not-exist"})
+        # 422 is what _validate_competition_ref raises for an unknown cycle.
+        assert resp.status_code == 422, resp.text
+        assert "comp-does-not-exist" in resp.json()["detail"]

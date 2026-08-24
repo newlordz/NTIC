@@ -10,6 +10,7 @@ import { DialogService } from '../../services/dialog.service';
 import { ApiService, PublicPartner } from '../../services/api.service';
 import { IdleTimeoutService } from '../../services/idle-timeout.service';
 import { ChatbotComponent } from '../../chatbot/chatbot.component';
+import { ForgotPasswordComponent } from '../../components/forgot-password/forgot-password.component';
 
 interface UserRole {
   id: string;
@@ -50,7 +51,7 @@ interface LeaderboardEntry {
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, DecimalPipe, ChatbotComponent],
+  imports: [CommonModule, RouterLink, FormsModule, DecimalPipe, ChatbotComponent, ForgotPasswordComponent],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -340,6 +341,26 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   isLoginModalOpen = false;
   rememberDevice = false;
 
+  /** Forgot-password popup. The flow itself lives in ForgotPasswordComponent. */
+  showForgotPassword = false;
+
+  openForgotPassword(): void {
+    this.loginError = '';
+    this.showForgotPassword = true;
+  }
+
+  closeForgotPassword(): void {
+    this.showForgotPassword = false;
+  }
+
+  onPasswordReset(email: string): void {
+    this.showForgotPassword = false;
+    this.email = email;
+    this.password = '';
+    this.loginError = 'Password reset. Sign in with your new password.';
+    this.cdr.markForCheck();
+  }
+
   openInfoModal(event?: Event, section?: string): void {
     if (event) {
       event.preventDefault();
@@ -398,6 +419,7 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       event.stopPropagation();
     }
     this.isLoginModalOpen = false;
+    this.closeForgotPassword();
     if (typeof document !== 'undefined') {
       document.body.style.overflow = '';
     }

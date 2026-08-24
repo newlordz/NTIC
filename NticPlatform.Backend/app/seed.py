@@ -28,8 +28,59 @@ def _resolve_admin_password() -> tuple[str, bool]:
     return secrets.token_urlsafe(24), True
 
 
+def _seed_demo_content() -> bool:
+    """Whether to seed the placeholder/demo content (schools, events, news, etc.).
+
+    Off by default so a fresh database starts clean and the operator enters real
+    data. Set NTIC_SEED_DEMO=true only for a throwaway dev environment. The
+    super-admin account and the editable landing-page copy are seeded regardless.
+    """
+    return os.getenv("NTIC_SEED_DEMO", "").strip().lower() == "true"
+
+
+def _ensure_landing_copy(cur) -> None:
+    """Seed only the landing-copy keys that are missing, so an admin's edits are
+    never clobbered on restart. New defaults added in code are back-filled."""
+    cur.execute("SELECT count(*) FROM landing_copy")
+    if cur.fetchone()[0] == 0:
+        for _section, key, value in LANDING_COPY_DEFAULTS:
+            cur.execute("INSERT INTO landing_copy (key, value, section) VALUES (%s, %s, %s)", (key, value, _section))
+    else:
+        cur.execute("SELECT key FROM landing_copy")
+        existing_keys = {row[0] for row in cur.fetchall()}
+        for _section, key, value in LANDING_COPY_DEFAULTS:
+            if key not in existing_keys:
+                cur.execute("INSERT INTO landing_copy (key, value, section) VALUES (%s, %s, %s)", (key, value, _section))
+
+
 def seed_initial_data(conn):
     cur = conn.cursor()
+
+    # ── Optional Test Data Purge ──────────────────────────────────────
+    if os.getenv("NTIC_PURGE_TEST_DATA", "").strip().lower() in ("true", "1") or \
+       os.getenv("NTIC_RESET_DATABASE", "").strip().lower() in ("true", "1"):
+        logger.warning(
+            "=" * 72
+            + "\nNTIC_PURGE_TEST_DATA=true detected: Purging test records for clean slate..."
+            + "\nClearing: teams, students, submissions, approvals, tickets, test accounts..."
+            + "\n" + "=" * 72
+        )
+        tables_to_purge = [
+            "assignment_submissions", "students", "teams", "pending_approvals",
+            "approved_approvals", "rejected_approvals", "support_tickets",
+            "audit_logs", "lms_submissions", "lms_enrollments", "auth_sessions"
+        ]
+        for tbl in tables_to_purge:
+            try:
+                cur.execute(f"TRUNCATE TABLE {tbl} CASCADE;")
+            except Exception as e:
+                logger.warning(f"Could not truncate {tbl}: {e}")
+        try:
+            cur.execute("DELETE FROM users WHERE id != %s AND email != %s", (ADMIN_ID, ADMIN_EMAIL))
+        except Exception as e:
+            logger.warning(f"Could not purge non-admin users: {e}")
+        conn.commit()
+        logger.info("Test data purged successfully. Super-admin preserved.")
 
     # ── Bootstrap super-admin ─────────────────────────────────────────
     # Rule: create the account if it is missing. NEVER touch the password or
@@ -91,6 +142,15 @@ def seed_initial_data(conn):
             )
     else:
         logger.info("Super-admin account already exists — leaving password and status untouched.")
+
+    # Demo/placeholder content is opt-in. Without it the schema is created and the
+    # operator starts with real data; set NTIC_SEED_DEMO=true for a dev sandbox.
+    if not _seed_demo_content():
+        _ensure_landing_copy(cur)
+        conn.commit()
+        cur.close()
+        return
+
     # Philosophy Cards
     cur.execute("SELECT count(*) FROM philosophy_cards")
     if cur.fetchone()[0] == 0:
@@ -203,16 +263,7 @@ def seed_initial_data(conn):
     # Landing page copy — seed only the keys that are missing so an admin's
     # edits are never clobbered on restart. New defaults added in code are
     # back-filled automatically.
-    cur.execute("SELECT count(*) FROM landing_copy")
-    if cur.fetchone()[0] == 0:
-        for _section, key, value in LANDING_COPY_DEFAULTS:
-            cur.execute("INSERT INTO landing_copy (key, value, section) VALUES (%s, %s, %s)", (key, value, _section))
-    else:
-        cur.execute("SELECT key FROM landing_copy")
-        existing_keys = {row[0] for row in cur.fetchall()}
-        for _section, key, value in LANDING_COPY_DEFAULTS:
-            if key not in existing_keys:
-                cur.execute("INSERT INTO landing_copy (key, value, section) VALUES (%s, %s, %s)", (key, value, _section))
+    _ensure_landing_copy(cur)
 
     conn.commit()
     cur.close()

@@ -1225,6 +1225,18 @@
   &:hover { opacity: 0.88; }
 }
 
+.toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  .filter-select-wrap {
+    min-width: 175px;
+    position: relative;
+  }
+}
+
 /* ═══════════════════════════════════════════
    DARK THEME -- RECORDS / DB MANAGER
    ═══════════════════════════════════════════ */

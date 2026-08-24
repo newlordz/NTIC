@@ -434,6 +434,9 @@ def _create_tables(conn):
     # Nullable on purpose: rows that predate this, and records that genuinely are
     # not cycle-scoped, keep working. NULL means "not attached to a cycle".
     cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS competition_id VARCHAR(64);")
+    cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS mentor VARCHAR(150) DEFAULT '';")
+    cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS motto VARCHAR(255) DEFAULT '';")
+    cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS roster_list JSONB DEFAULT '[]'::jsonb;")
     cur.execute("ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS competition_id VARCHAR(64);")
 
     # users.competition_id was declared VARCHAR(100) while competitions.id is
@@ -559,6 +562,102 @@ def _create_tables(conn):
               AND (LOWER(t.submitted_by) = LOWER(u.email)
                    OR LOWER(t.submitted_by) = LOWER(u.full_name))
         """)
+
+    # Tie LMS content to the competition cycle it prepares students for.
+    #
+    # Nothing in the LMS knew competitions existed. Courses were organised only by
+    # `track`, a free-text category like 'Coding', so there was no way to express
+    # "these are the courses for the 2026 cycle": an instructor could not prepare
+    # cycle-specific material and a student could not see what a given competition
+    # actually required.
+    #
+    # Nullable on purpose. A NULL competition_id means evergreen material that is
+    # not tied to any one cycle, which is the correct state for most existing
+    # rows -- so this does not strand anything already in the table.
+    cur.execute("ALTER TABLE lms_courses ADD COLUMN IF NOT EXISTS competition_id VARCHAR(64);")
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_lms_courses_competition "
+        "ON lms_courses (competition_id);"
+    )
+
+    # Which squad a student is enrolled as part of.
+    #
+    # The three participation modes -- team, individual and open registration --
+    # all existed outside the LMS (teams.competition_id, competition_registrations)
+    # but none of them reached lms_enrollments, so an instructor's roster was a
+    # flat list with no way to group by squad.
+    #
+    # Only team_id is stored, not competition_id: the cycle is reachable through
+    # teams.competition_id, and duplicating it here would be a second source of
+    # truth that could disagree. NULL means an individual or open-registration
+    # entrant with no squad, which is a legitimate state.
+    cur.execute("ALTER TABLE lms_enrollments ADD COLUMN IF NOT EXISTS team_id VARCHAR(64);")
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_lms_enrollments_team "
+        "ON lms_enrollments (team_id);"
+    )
+
+    # Real team membership, keyed by student account.
+    #
+    # teams.roster_list was a JSON array of *names* -- human-readable, but nothing
+    # joined it to an account, so the system could not answer "which account is on
+    # which team". That made it impossible to derive a student's squad for LMS
+    # enrollment or to group an instructor's roster by team. The names are kept for
+    # display; this table is the joinable source of truth.
+    #
+    # student_id is nullable: a member may be recorded by name/email before they
+    # have an account, and is linked later once they register.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS team_members (
+            id VARCHAR(64) PRIMARY KEY,
+            team_id VARCHAR(64) NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+            student_id VARCHAR(64),
+            email VARCHAR(150),
+            name VARCHAR(200),
+            is_lead BOOLEAN DEFAULT FALSE,
+            joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_team_members_team ON team_members (team_id);"
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_team_members_student ON team_members (student_id);"
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_team_members_email ON team_members (lower(email));"
+    )
+
+    # Short-lived tokens for the forgot-password flow. A token is issued only
+    # after the account holder proves email access via OTP, and is single-use and
+    # expiring, so a leaked link cannot be replayed and an unused one dies.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id VARCHAR(128) PRIMARY KEY,
+            email VARCHAR(150) NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            used_at TIMESTAMP NULL
+        );
+    """)
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_email "
+        "ON password_reset_tokens (lower(email));"
+    )
+
+    # A team's mentor, as a real instructor account (not the free-text `mentor`
+    # name that was there before). This is what lets a mentor log in, see their
+    # students, and be monitored -- and what connects a team to the LMS instructor
+    # flow. Nullable: unaffiliated groups, open and single entrants request or are
+    # auto-assigned a mentor after approval, and may not have one yet.
+    cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS mentor_id VARCHAR(64);")
+    cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS mentor_status VARCHAR(20) DEFAULT 'none';")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_teams_mentor ON teams (mentor_id);")
+
+    # A solo/open-registration entrant is modelled as a "team of one" so that the
+    # whole mentor + LMS-enrolment machinery works for them without a second code
+    # path. is_solo marks these so a UI can label or filter them; they are real
+    # team rows with one member and no school.
+    cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS is_solo BOOLEAN DEFAULT FALSE;")
 
     # Sponsor commitments and the payments made against them.
     cur.execute("""
@@ -715,6 +814,26 @@ def _create_tables(conn):
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
+    conn.commit()
+
+    # Deliberately after the CREATE block above, not up with the other ALTERs:
+    # pending_approvals is created here, so altering it earlier fails on a fresh
+    # database and aborts the whole schema init.
+    #
+    # Applications need to be attributable to a cycle for the same reason teams
+    # do -- the records and reporting panels can scope teams and submissions by
+    # cycle but had nothing to filter approvals on, so a reviewer looking at one
+    # cycle saw every application ever filed. Nullable: rows filed before this,
+    # and applications that are not cycle-specific, keep working.
+    cur.execute("ALTER TABLE pending_approvals ADD COLUMN IF NOT EXISTS competition_id VARCHAR(64);")
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_pending_approvals_competition "
+        "ON pending_approvals (competition_id);"
+    )
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_pending_approvals_status "
+        "ON pending_approvals (status);"
+    )
     conn.commit()
 
     _create_indexes(cur)

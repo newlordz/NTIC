@@ -51,8 +51,8 @@
         LMS
       </a>
       <a class="nav-item" *ngIf="hasAccess('judging')" routerLink="/judge" routerLinkActive="active" (click)="closeMobileSidebar()">
-        <span class="material-symbols-outlined">gavel</span>
-        Judging
+        <span class="material-symbols-outlined">visibility</span>
+        Observatory
       </a>
       <a class="nav-item" *ngIf="hasAccess('competitions')" [routerLink]="currentUser?.roleId === 'student' || currentUser?.roleId === 'judge' ? '/competitions' : '/admin/competitions'" [routerLinkActiveOptions]="{exact: true}" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">emoji_events</span>

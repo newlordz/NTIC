@@ -37,9 +37,10 @@ import { getAuthValue } from '../../services/session.util';
             <span class="material-symbols-outlined">home</span>
             <span>Homepage</span>
           </a>
-          <a routerLink="/" [fragment]="'news'" class="pub-back-btn">
+          <!-- Dynamic contextual back button matching the active page -->
+          <a routerLink="/" [fragment]="backButtonFragment" class="pub-back-btn" [title]="'Return to ' + backButtonLabel">
             <span class="material-symbols-outlined">arrow_back</span>
-            <span>News &amp; Events</span>
+            <span>{{ backButtonLabel }}</span>
           </a>
           <button class="theme-toggle-btn" (click)="toggleTheme()" [title]="isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
             <span class="material-symbols-outlined">{{ isDark ? 'light_mode' : 'dark_mode' }}</span>
@@ -223,6 +224,25 @@ import { getAuthValue } from '../../services/session.util';
 export class PublicNavComponent implements OnInit, OnDestroy {
   @Input() activePage = '';
   isDark = false;
+
+  get backButtonLabel(): string {
+    switch (this.activePage) {
+      case 'leaderboard':   return 'Leaderboard';
+      case 'competitions':  return 'Competitions';
+      case 'news':          return 'News & Events';
+      case 'talent':        return 'Talent Portal';
+      default:              return this.activePage ? (this.activePage.charAt(0).toUpperCase() + this.activePage.slice(1)) : 'Back';
+    }
+  }
+
+  get backButtonFragment(): string | undefined {
+    switch (this.activePage) {
+      case 'news':          return 'news';
+      case 'competitions':  return 'tracks';
+      case 'leaderboard':   return 'stats';
+      default:              return undefined;
+    }
+  }
   /**
    * Where a signed-in visitor's own workspace is, or '' when nobody is signed in.
    *

@@ -73,7 +73,7 @@ export class AppComponent implements OnInit, OnDestroy {
     'talent':       'Talent Discovery',
     'sponsors':     'Sponsors',
     'reporting':    'Reports & Analytics',
-    'judge':        'Judging Workspace',
+    'judge':        'Observatory',
     'records':      'Records',
     'user-management': 'User Management',
     'profile-completion': 'Profile & Account Settings',
@@ -148,9 +148,9 @@ export class AppComponent implements OnInit, OnDestroy {
         );
       }
 
-      // ONLY scroll to top when genuinely transitioning to a DIFFERENT page,
-      // NOT during in-page events, same-page scroll, or section anchor navigation.
+      // If transitioning to a DIFFERENT page, clear that page's saved scroll and reset to top.
       if (isDifferentRoute && !hasFragment && typeof window !== 'undefined') {
+        try { sessionStorage.removeItem(`ntic_scroll_pos_${parsedUrl}`); } catch (_) {}
         document.body.style.overflow = '';
         window.scrollTo(0, 0);
         document.documentElement.scrollTop = 0;
@@ -159,8 +159,82 @@ export class AppComponent implements OnInit, OnDestroy {
         if (mainContent) {
           mainContent.scrollTop = 0;
         }
+      } else if (!isDifferentRoute && typeof window !== 'undefined') {
+        // Same route / Page Refresh: restore exact scroll position across render frames
+        this.restoreScrollPosition(parsedUrl);
       }
     });
+  }
+
+  private isRestoringScroll = false;
+  private scrollSaveTimer: any = null;
+
+  private onWindowScroll(): void {
+    if (this.isRestoringScroll || typeof window === 'undefined') return;
+    if (this.scrollSaveTimer) clearTimeout(this.scrollSaveTimer);
+    this.scrollSaveTimer = setTimeout(() => {
+      try {
+        const path = (window.location.pathname || '/').split('?')[0].split('#')[0];
+        const y = window.scrollY || document.documentElement.scrollTop || 0;
+        if (y > 0) {
+          sessionStorage.setItem(`ntic_scroll_pos_${path}`, y.toString());
+        }
+      } catch (_) {}
+    }, 80);
+  }
+
+  private restoreScrollPosition(path: string): void {
+    if (typeof window === 'undefined') return;
+    let saved: string | null = null;
+    try {
+      saved = sessionStorage.getItem(`ntic_scroll_pos_${path}`);
+    } catch (_) {}
+    if (!saved) return;
+    const targetY = parseInt(saved, 10);
+    if (isNaN(targetY) || targetY <= 0) return;
+
+    this.isRestoringScroll = true;
+    let attempts = 0;
+    const maxAttempts = 16;
+
+    const performRestore = () => {
+      if (!this.isRestoringScroll) return;
+      attempts++;
+      window.scrollTo({ top: targetY, behavior: 'instant' as ScrollBehavior });
+      document.documentElement.scrollTop = targetY;
+      document.body.scrollTop = targetY;
+
+      const currentY = window.scrollY || document.documentElement.scrollTop || 0;
+      if (Math.abs(currentY - targetY) < 10 || attempts >= maxAttempts) {
+        if (attempts >= 4) {
+          this.isRestoringScroll = false;
+          return;
+        }
+      }
+
+      if (attempts < maxAttempts) {
+        setTimeout(performRestore, 60);
+      } else {
+        this.isRestoringScroll = false;
+      }
+    };
+
+    const userCancel = () => {
+      this.isRestoringScroll = false;
+      window.removeEventListener('wheel', userCancel);
+      window.removeEventListener('touchstart', userCancel);
+      window.removeEventListener('keydown', userCancel);
+    };
+    window.addEventListener('wheel', userCancel, { passive: true, once: true });
+    window.addEventListener('touchstart', userCancel, { passive: true, once: true });
+    window.addEventListener('keydown', userCancel, { passive: true, once: true });
+
+    // Multi-phase restoration as DOM paints
+    requestAnimationFrame(performRestore);
+    setTimeout(performRestore, 80);
+    setTimeout(performRestore, 220);
+    setTimeout(performRestore, 500);
+    setTimeout(performRestore, 900);
   }
 
   ngOnInit(): void {
@@ -189,7 +263,16 @@ export class AppComponent implements OnInit, OnDestroy {
       .pipe(throttleTime(8000))
       .subscribe(failure => this.dialogService.toast(failure.message, 'error', 9000));
     if (typeof window !== 'undefined') {
-      window.addEventListener('scroll', this.scrollListener, true);
+      window.addEventListener('scroll', () => this.onWindowScroll(), { passive: true });
+      window.addEventListener('beforeunload', () => {
+        try {
+          const path = (window.location.pathname || '/').split('?')[0].split('#')[0];
+          const y = window.scrollY || document.documentElement.scrollTop || 0;
+          if (y > 0) {
+            sessionStorage.setItem(`ntic_scroll_pos_${path}`, y.toString());
+          }
+        } catch (_) {}
+      });
       window.addEventListener('beforeinstallprompt', (e: Event) => {
         e.preventDefault();
       });

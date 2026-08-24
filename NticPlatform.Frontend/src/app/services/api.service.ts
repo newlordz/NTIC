@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
+import { HANDLES_OWN_WRITE_ERRORS } from '../interceptors/http-resilience.interceptor';
 import { Observable, timeout } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -148,6 +149,8 @@ export interface AuthoredCourse {
   assignment_count: number;
   awaiting_grading: number;
   average_progress: number;
+  /** The cycle this course prepares for, or null for evergreen material. */
+  competitionId?: string | null;
 }
 
 /** One enrolled student on a course the caller owns. */
@@ -571,22 +574,23 @@ export class ApiService {
   // browser's localStorage while the UI reported success.
 
   /** Courses the caller authored, with live roster and grading counts. */
-  getMyAuthoredCourses(): Observable<AuthoredCourse[]> {
-    return this.http.get<AuthoredCourse[]>(this.apiUrl + '/lms/my-courses');
+  getMyAuthoredCourses(competitionId?: string): Observable<AuthoredCourse[]> {
+    const qs = competitionId ? `?competition_id=${encodeURIComponent(competitionId)}` : '';
+    return this.http.get<AuthoredCourse[]>(this.apiUrl + '/lms/my-courses' + qs);
   }
 
   createAuthoredCourse(payload: {
     title: string; track?: string; icon?: string; level?: string;
-    description?: string; modules?: number;
-  }): Observable<{ id: string; title: string; approval_status: string }> {
-    return this.http.post<{ id: string; title: string; approval_status: string }>(
+    description?: string; modules?: number; competition_id?: string;
+  }): Observable<{ id: string; title: string; approval_status: string; competitionId?: string | null }> {
+    return this.http.post<{ id: string; title: string; approval_status: string; competitionId?: string | null }>(
       this.apiUrl + '/lms/courses', payload
     );
   }
 
   updateAuthoredCourse(courseId: string, payload: {
     title: string; track?: string; icon?: string; level?: string;
-    description?: string; modules?: number;
+    description?: string; modules?: number; competition_id?: string;
   }): Observable<any> {
     return this.http.patch(`${this.apiUrl}/lms/courses/${encodeURIComponent(courseId)}`, payload);
   }
@@ -817,6 +821,25 @@ export class ApiService {
     );
   }
 
+  /**
+   * Start a forgot-password reset. The server only issues a code if the email
+   * exists, but returns the same shape either way to avoid account enumeration.
+   */
+  forgotPassword(email: string): Observable<{ challenge_id: string | null; target_masked: string; expires_in?: number }> {
+    return this.http.post<{ challenge_id: string | null; target_masked: string; expires_in?: number }>(
+      this.apiUrl + '/auth/forgot-password',
+      { email }
+    );
+  }
+
+  /** Set a new password using the token returned after OTP verification. */
+  resetPasswordWithToken(resetToken: string, newPassword: string): Observable<{ status: string; email: string }> {
+    return this.http.post<{ status: string; email: string }>(
+      this.apiUrl + '/auth/forgot-password/reset',
+      { reset_token: resetToken, new_password: newPassword }
+    );
+  }
+
   getStudents(): Observable<BackendStudent[]> {
     return this.http.get<BackendStudent[]>(this.apiUrl + '/students');
   }
@@ -829,11 +852,12 @@ export class ApiService {
     return this.http.delete(this.apiUrl + '/students/' + id);
   }
 
-  getSubmissions(): Observable<BackendSubmission[]> {
-    return this.http.get<BackendSubmission[]>(this.apiUrl + '/submissions');
+  getSubmissions(competitionId = ''): Observable<BackendSubmission[]> {
+    const q = competitionId ? '?competition_id=' + encodeURIComponent(competitionId) : '';
+    return this.http.get<BackendSubmission[]>(this.apiUrl + '/submissions' + q);
   }
 
-  createSubmission(payload: { student_id: string; source_code_path: string; video_url: string }): Observable<any> {
+  createSubmission(payload: { student_id: string; source_code_path: string; video_url: string; competition_id?: string | null }): Observable<any> {
     return this.http.post(this.apiUrl + '/submissions', payload);
   }
 
@@ -1033,20 +1057,77 @@ login(email: string, password: string): Observable<any> {
     return this.http.delete(this.apiUrl + '/competitions/' + id);
   }
 
-  getTeams(): Observable<any[]> {
-    return this.http.get<any[]>(this.apiUrl + '/teams');
+  getTeams(competitionId = ''): Observable<any[]> {
+    const q = competitionId ? '?competition_id=' + encodeURIComponent(competitionId) : '';
+    return this.http.get<any[]>(this.apiUrl + '/teams' + q);
   }
 
-  createTeam(payload: { name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string }): Observable<any> {
+  createTeam(payload: { name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string; competition_id?: string | null; lead_email?: string; member_emails?: string[] }): Observable<any> {
     return this.http.post(this.apiUrl + '/teams', payload);
   }
 
-  updateTeam(id: string, payload: { name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string }): Observable<any> {
+  updateTeam(id: string, payload: Partial<{ name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string; competition_id?: string | null; lead_email?: string; member_emails?: string[]; motto?: string }>): Observable<any> {
     return this.http.patch(this.apiUrl + '/teams/' + id, payload);
   }
 
   deleteTeam(id: string): Observable<any> {
     return this.http.delete(this.apiUrl + '/teams/' + id);
+  }
+
+  // ── Institution student portal & mentors ──────────────────────────
+
+  /** Student accounts belonging to the caller's institution (or all, for admins). */
+  getInstitutionStudents(): Observable<Array<{
+    id: string; full_name: string; email: string; ticket: string;
+    status: string; organization: string; must_change_password: boolean;
+    has_logged_in: boolean;
+  }>> {
+    return this.http.get<any[]>(this.apiUrl + '/institution/students');
+  }
+
+  /** Issue a fresh one-time password for a student in the caller's institution. */
+  resetStudentCredentials(studentId: string): Observable<{
+    id: string; full_name: string; email: string; temporary_password: string;
+  }> {
+    return this.http.post<any>(
+      this.apiUrl + '/institution/students/' + encodeURIComponent(studentId) + '/reset-credentials',
+      {}
+    );
+  }
+
+  /** Instructors the caller can pick a mentor from. */
+  getInstitutionInstructors(): Observable<Array<{
+    id: string; full_name: string; email: string; organization: string;
+  }>> {
+    return this.http.get<any[]>(this.apiUrl + '/institution/instructors');
+  }
+
+  /** Assign or unassign an instructor as a team's mentor. */
+  assignTeamMentor(teamId: string, mentorId: string | null): Observable<any> {
+    return this.http.patch(
+      this.apiUrl + '/teams/' + encodeURIComponent(teamId) + '/mentor',
+      { mentor_id: mentorId }
+    );
+  }
+
+  /** A team with no institution asks to be given a mentor. */
+  requestTeamMentor(teamId: string): Observable<any> {
+    return this.http.post(
+      this.apiUrl + '/teams/' + encodeURIComponent(teamId) + '/request-mentor', {}
+    );
+  }
+
+  /** Admin: give every mentor-less team an instructor. */
+  autoAssignMentors(): Observable<{ assigned: number }> {
+    return this.http.post<{ assigned: number }>(this.apiUrl + '/teams/auto-assign-mentors', {});
+  }
+
+  /** The teams the signed-in student belongs to (solo or squad), with mentor status. */
+  getMyTeams(): Observable<Array<{
+    id: string; name: string; track: string; competitionId: string | null;
+    mentorId: string | null; mentorStatus: string; isSolo: boolean; isLead: boolean;
+  }>> {
+    return this.http.get<any[]>(this.apiUrl + '/teams/mine');
   }
 
   gradeSubmission(id: string, payload: { score?: number; feedback?: string; status?: string }): Observable<any> {
@@ -1089,8 +1170,13 @@ login(email: string, password: string): Observable<any> {
   }
 
   /** Submissions still awaiting a score. Shared pool, oldest first. */
-  getJudgeQueue(track = ''): Observable<JudgeQueue> {
-    const q = track ? '?track=' + encodeURIComponent(track) : '';
+  getJudgeQueue(track = '', competitionId = ''): Observable<JudgeQueue> {
+    const params: string[] = [];
+    if (track) params.push('track=' + encodeURIComponent(track));
+    // Scopes the queue to one cycle so a judge working a cycle is not shown
+    // every unscored submission on the platform.
+    if (competitionId) params.push('competition_id=' + encodeURIComponent(competitionId));
+    const q = params.length ? '?' + params.join('&') : '';
     return this.http.get<JudgeQueue>(this.apiUrl + '/judge/queue' + q);
   }
 
@@ -1125,8 +1211,81 @@ login(email: string, password: string): Observable<any> {
      return this.http.get<any[]>(this.apiUrl + '/approvals' + qs);
    }
 
+   /**
+    * The caller's own applications and requests, including the outcome.
+    *
+    * GET /api/approvals is admin-only, so an institution that filed a team change
+    * previously had no way to see what happened to it -- the only copy was in
+    * localStorage, which never learns the reviewer's decision or its reason.
+    */
+   getMyApprovals(): Observable<Array<{
+     id: string; type: string; entity: string; status: string;
+     submitted: string; reviewedAt: string; reviewer: string;
+     rejectionReasons: string; rejectionNotes: string;
+     details: any; competitionId: string | null;
+   }>> {
+     return this.http.get<any[]>(this.apiUrl + '/approvals/mine');
+   }
+
    createApproval(payload: any): Observable<any> {
      return this.http.post(this.apiUrl + '/approvals', payload);
+   }
+
+   /**
+    * File a team addition or rename/roster change for admin review.
+    *
+    * Institutions cannot use `createApproval`: POST /api/approvals requires
+    * APPROVAL_ROLES, which excludes school_admin and instructor, so their
+    * requests 403'd and never reached the admin queue. This endpoint accepts
+    * those roles and derives the institution from the caller's session, so no
+    * school can file a change against another.
+    */
+   submitTeamChange(payload: {
+     type: 'Team Addition' | 'Team Modification' | 'Team Disbandment';
+     name: string;
+     team_id?: string;
+     track?: string;
+     lead?: string;
+     members?: string[];
+     mentor?: string;
+     motto?: string;
+   }): Observable<{ id: string; type: string; entity: string; school: string; status: string }> {
+     return this.http.post<{ id: string; type: string; entity: string; school: string; status: string }>(
+       this.apiUrl + '/approvals/team-change',
+       payload,
+       // The dashboard reports this one itself, naming the squad involved.
+       { context: new HttpContext().set(HANDLES_OWN_WRITE_ERRORS, true) }
+     );
+   }
+
+   /**
+    * File an application from the public registration page.
+    *
+    * Public registration previously persisted applications only through
+    * `contentService.saveApprovals()` -> POST /api/bulk-sync, which requires an
+    * admin -- so for an anonymous applicant every write 401'd, the applicant got
+    * a confirmation email, and the reviewer queue stayed empty. This endpoint is
+    * unauthenticated, allowlists the type and always records status 'pending'.
+    */
+   submitPublicApplication(payload: {
+     type: string;
+     entity: string;
+     contact?: string;
+     details?: any;
+   }): Observable<{ id: string; type: string; status: string }> {
+     return this.http.post<{ id: string; type: string; status: string }>(
+       this.apiUrl + '/approvals/public',
+       payload,
+       // The registration page reports this failure itself, with wording specific
+       // to an applicant rather than the generic "change not saved".
+       { context: new HttpContext().set(HANDLES_OWN_WRITE_ERRORS, true) }
+     );
+   }
+
+   getPublicApprovalStatus(query: string): Observable<any> {
+     return this.http.get<any>(
+       `${this.apiUrl}/approvals/status?query=${encodeURIComponent(query)}`
+     );
    }
 
    updateApproval(id: string, payload: any): Observable<any> {

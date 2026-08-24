@@ -21,10 +21,57 @@ After providing the direct, flawless answer, apply lateral thinking to deliver a
 - Beyond-the-Box Insights: Conclude with a dedicated section featuring non-obvious recommendations, hidden risks, or lateral strategies.
 
 ### GIT SYNC WORKFLOW
-When the user says "sync to git", you must run the following sequence to ensure harmony with other AI agents:
-1. `git stash` (to safely store any local changes made by the other AI)
-2. `git pull --rebase origin main` (to fetch any remote changes)
-3. `git stash pop` (and handle conflicts if any)
-4. `git add .` (to stage all local changes)
-5. `git commit -m "chore: auto-sync with AI agents"`
-6. `git push origin main`
+
+Run this **only** when the user explicitly says "sync to git". Never on your own
+initiative, and never as a background or periodic action.
+
+```sh
+# 0. One-time per clone: enable the credential guard.
+git config core.hooksPath .githooks
+
+# 1. See exactly what is here. More than one agent works in this repo, so the
+#    working tree may contain someone else's half-finished edits.
+git status
+git diff
+
+# 2. Stage ONLY the files belonging to the work you were asked to sync.
+git add <explicit/path/one> <explicit/path/two>
+
+# 3. Confirm the staged set is exactly what you intend to commit.
+git diff --cached --stat
+
+# 4. Verify before recording anything.
+cd NticPlatform.Backend && python -m pytest tests/ -q && cd ..
+cd NticPlatform.Frontend && npx tsc --noEmit -p tsconfig.app.json && cd ..
+
+# 5. Commit with a message that describes the change.
+git commit -m "<type>: <what changed and why>"
+
+# 6. Rebase onto remote, then push.
+git pull --rebase origin main
+git push origin main
+```
+
+**`git add .` is forbidden in this repo.** It caused real damage:
+
+- `build-with-env.js` injects the live Brevo / SMSMode / Gemini keys into
+  `NticPlatform.Frontend/src/environments/environment.ts` for the duration of a
+  build and restores the placeholders afterwards. That file is tracked and not
+  git-ignored, so `git add .` during a build commits live credentials. The
+  `.githooks/pre-commit` hook now blocks this, but the hook is a backstop, not a
+  licence to stage blindly.
+- Multiple agents edit this repo concurrently. `git add .` sweeps up whatever
+  another agent has in flight — untested, half-written code committed under a
+  message describing something else entirely.
+
+**Do not use `git stash` / `git stash pop` here.** The old workflow stashed
+before pulling, which discards the distinction between your work and another
+agent's, and `git stash pop` fails outright when there is nothing to pop or
+conflicts on the way back. Commit your own files explicitly instead, then rebase.
+
+**Never use `git commit --no-verify`** unless the user has explicitly confirmed
+that a hook finding is a false positive.
+
+If a rebase conflicts, stop and report it. Do not resolve conflicts in another
+agent's files.
+

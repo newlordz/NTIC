@@ -3,6 +3,13 @@
 
 # Force LF for shell scripts and web assets
 *.sh text eol=lf
+
+# Git hooks are run by sh.exe, which chokes on a CRLF shebang ("bad
+# interpreter"). These files have no extension, so the *.sh rule above misses
+# them and `* text=auto` with core.autocrlf=true would rewrite them to CRLF on
+# the next checkout, silently disabling the hook.
+.githooks/** text eol=lf
+
 *.ts text=auto
 *.scss text=auto
 *.html text=auto

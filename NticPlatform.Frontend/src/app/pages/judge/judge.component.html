@@ -1,18 +1,20 @@
 <div class="jw-page">
 
+  <!-- Header -->
   <header class="jw-head">
     <div class="jw-head-icon">
-      <span class="material-symbols-outlined">gavel</span>
+      <span class="material-symbols-outlined">visibility</span>
     </div>
     <div class="jw-head-text">
-      <h1>Judging Workspace</h1>
-      <p>Score competition entries and review everything you have marked.</p>
+      <h1>Observatory</h1>
+      <p>Monitor active competitions, evaluate submission queues, and analyze judges' impact across all championship tracks.</p>
     </div>
     <button class="jw-btn jw-btn-ghost" (click)="refresh()" [disabled]="loading">
-      <span class="material-symbols-outlined">refresh</span>{{ loading ? 'Refreshing…' : 'Refresh' }}
+      <span class="material-symbols-outlined" [class.jw-spin]="loading">refresh</span>{{ loading ? 'Refreshing…' : 'Refresh' }}
     </button>
   </header>
 
+  <!-- Alerts -->
   <div class="jw-alert jw-alert-error" *ngIf="loadError">
     <span class="material-symbols-outlined">error</span>
     <span>{{ loadError }}</span>
@@ -30,39 +32,259 @@
   <!-- Stat strip -->
   <div class="jw-stats" *ngIf="!loadError">
     <div class="jw-stat">
-      <div class="jw-stat-value">{{ queue?.pending_total ?? '—' }}</div>
-      <div class="jw-stat-label">Awaiting a score</div>
+      <div class="jw-stat-value">{{ competitions.length }}</div>
+      <div class="jw-stat-label">Competitions Monitored</div>
+    </div>
+    <div class="jw-stat jw-stat-wait">
+      <div class="jw-stat-value">{{ queue?.pending_total ?? 0 }}</div>
+      <div class="jw-stat-label">Awaiting Evaluation</div>
     </div>
     <div class="jw-stat jw-stat-done">
-      <div class="jw-stat-value">{{ history?.graded_total ?? '—' }}</div>
-      <div class="jw-stat-label">You have scored</div>
+      <div class="jw-stat-value">{{ totalEvaluatedCount }}</div>
+      <div class="jw-stat-label">Submissions Graded</div>
     </div>
     <div class="jw-stat">
-      <div class="jw-stat-value">
-        {{ history?.average_score !== null && history?.average_score !== undefined ? history?.average_score : '—' }}
-      </div>
-      <div class="jw-stat-label">Your average score</div>
+      <div class="jw-stat-value">{{ averageScoreLabel }}</div>
+      <div class="jw-stat-label">Judges' Average Score</div>
     </div>
     <div class="jw-stat jw-stat-wait" *ngIf="oldestWaitLabel">
       <div class="jw-stat-value">{{ oldestWaitLabel }}</div>
-      <div class="jw-stat-label">Longest wait</div>
+      <div class="jw-stat-label">Longest Queue Wait</div>
     </div>
   </div>
 
   <!-- View switch -->
   <div class="jw-tabs" *ngIf="!loadError">
+    <button class="jw-tab" [class.active]="view === 'competitions'" (click)="view = 'competitions'">
+      <span class="material-symbols-outlined">travel_explore</span>Competitions &amp; Impact
+      <span class="jw-tab-badge" *ngIf="competitions.length > 0">{{ competitions.length }}</span>
+    </button>
     <button class="jw-tab" [class.active]="view === 'queue'" (click)="view = 'queue'">
-      <span class="material-symbols-outlined">inbox</span>Queue
+      <span class="material-symbols-outlined">inbox</span>Evaluation Queue
       <span class="jw-tab-badge" *ngIf="queue && queue.pending_total > 0">{{ queue.pending_total }}</span>
     </button>
     <button class="jw-tab" [class.active]="view === 'history'" (click)="view = 'history'">
-      <span class="material-symbols-outlined">history</span>My scores
+      <span class="material-symbols-outlined">history</span>My Scores &amp; Revisions
       <span class="jw-tab-badge" *ngIf="history && history.graded_total > 0">{{ history.graded_total }}</span>
     </button>
   </div>
 
-  <!-- ── QUEUE ── -->
+  <!-- ══════════════════════════════════════════════════════════════
+       VIEW 1: COMPETITIONS OBSERVATORY & JUDGE IMPACT
+       ══════════════════════════════════════════════════════════════ -->
+  <ng-container *ngIf="view === 'competitions' && !loadError">
+
+    <!-- Search & Filter Controls -->
+    <div class="jw-filter-bar">
+      <div class="jw-search-wrap">
+        <span class="material-symbols-outlined jw-search-ic">search</span>
+        <input type="text" [(ngModel)]="searchQuery" class="jw-search-input"
+               placeholder="Search competitions by title, track, or keyword…" />
+        <button *ngIf="searchQuery" class="jw-search-clear" (click)="searchQuery = ''">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="jw-filter-selects">
+        <select [(ngModel)]="selectedTrackFilter" class="jw-select">
+          <option value="">All Tracks</option>
+          <option value="coding">Coding &amp; Software</option>
+          <option value="robotics">Robotics &amp; Hardware</option>
+          <option value="ai">AI &amp; Data Science</option>
+          <option value="cyber">Cybersecurity</option>
+          <option value="iot">IoT &amp; Innovation</option>
+        </select>
+
+        <select [(ngModel)]="selectedStatusFilter" class="jw-select">
+          <option value="">All Statuses</option>
+          <option value="judging">In Judging</option>
+          <option value="active">Active Track</option>
+          <option value="registration">Registration Open</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Competition Cards Grid -->
+    <div class="jw-comp-grid" *ngIf="filteredCompetitions.length > 0">
+      <article class="jw-comp-card" *ngFor="let comp of filteredCompetitions" [ngClass]="'track-border-' + comp.track">
+        
+        <div class="jw-comp-head">
+          <div class="jw-comp-avatar" [ngClass]="'track-bg-' + comp.track">
+            <span class="material-symbols-outlined">{{ getTrackIcon(comp.track) }}</span>
+          </div>
+          <div class="jw-comp-info">
+            <div class="jw-comp-badges">
+              <span class="jw-track-tag">{{ (comp.category || comp.track) | titlecase }}</span>
+              <span class="jw-status-badge" [ngClass]="'status-' + (comp.status || 'active')">
+                <span class="jw-live-dot"></span>
+                {{ (comp.status || 'Active') | uppercase }}
+              </span>
+            </div>
+            <h3 class="jw-comp-title">{{ comp.title }}</h3>
+          </div>
+        </div>
+
+        <p class="jw-comp-desc" *ngIf="comp.description">{{ comp.description }}</p>
+
+        <!-- Metrics Row -->
+        <div class="jw-comp-stats-row">
+          <div class="jw-comp-stat">
+            <span class="material-symbols-outlined">groups</span>
+            <div>
+              <span class="jw-comp-stat-val">{{ comp.teams || 0 }}</span>
+              <span class="jw-comp-stat-lbl">Teams</span>
+            </div>
+          </div>
+          <div class="jw-comp-stat">
+            <span class="material-symbols-outlined">payments</span>
+            <div>
+              <span class="jw-comp-stat-val">{{ comp.prize || 'Award' }}</span>
+              <span class="jw-comp-stat-lbl">Prize Pool</span>
+            </div>
+          </div>
+          <div class="jw-comp-stat">
+            <span class="material-symbols-outlined">event</span>
+            <div>
+              <span class="jw-comp-stat-val">{{ comp.deadline ? (comp.deadline | slice:0:10) : 'Open' }}</span>
+              <span class="jw-comp-stat-lbl">Target Date</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Competition & Judging Timeline Progress -->
+        <div class="jw-comp-progress-wrap">
+          <div class="jw-comp-progress-labels">
+            <span>Evaluation &amp; Cycle Progression</span>
+            <strong>{{ comp.progress || 50 }}%</strong>
+          </div>
+          <div class="jw-comp-progress-bar">
+            <div class="jw-comp-progress-fill" [style.width.%]="comp.progress || 50" [ngClass]="'track-bg-' + comp.track"></div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="jw-comp-footer">
+          <button class="jw-btn jw-btn-ghost jw-btn-sm" (click)="inspectCompetition(comp)" title="Inspect tournament schedule, rules, and track rubric">
+            <span class="material-symbols-outlined">info</span>Details
+          </button>
+          <button class="jw-btn jw-btn-primary jw-btn-sm" (click)="startEvaluatingTrack(comp.track)" title="Open evaluation queue and load first pending submission">
+            <span class="material-symbols-outlined">rate_review</span>Evaluate Track
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <!-- Empty State when filtering -->
+    <div class="jw-empty" *ngIf="filteredCompetitions.length === 0">
+      <span class="material-symbols-outlined">filter_alt_off</span>
+      <p>No competitions match your current search filters.</p>
+      <button class="jw-btn jw-btn-ghost jw-btn-sm" (click)="searchQuery = ''; selectedTrackFilter = ''; selectedStatusFilter = ''">
+        Reset filters
+      </button>
+    </div>
+
+    <!-- ── CROSS-TRACK JUDGES' IMPACT & STATISTICAL CALIBRATION MATRIX ── -->
+    <div class="jw-impact-matrix-card">
+      <div class="jw-impact-head">
+        <div>
+          <h2 class="jw-impact-title">
+            <span class="material-symbols-outlined">analytics</span>
+            Judges' Impact &amp; Statistical Calibration Matrix (Z-Score &amp; Gaussian Distribution)
+          </h2>
+          <p class="jw-impact-sub">Cross-track statistical telemetry monitoring scoring variance (&sigma;), mean score (&mu;), feedback density, and outlier bias detection.</p>
+        </div>
+      </div>
+
+      <div class="jw-impact-table-wrap">
+        <table class="jw-impact-table">
+          <thead>
+            <tr>
+              <th>Competition Track</th>
+              <th>Monitored Comps</th>
+              <th>Teams</th>
+              <th>Pending</th>
+              <th>Graded</th>
+              <th>Mean (&mu;)</th>
+              <th>Std Dev (&sigma;)</th>
+              <th>Feedback Rate</th>
+              <th>Bias &amp; Calibration</th>
+              <th style="text-align: right;">Calibration / Queue</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of trackImpactMetrics">
+              <td>
+                <div class="jw-table-track-cell">
+                  <div class="jw-table-track-icon" [style.background]="item.accentColor">
+                    <span class="material-symbols-outlined">{{ item.icon }}</span>
+                  </div>
+                  <div>
+                    <strong>{{ item.label }}</strong>
+                    <span class="jw-table-sub">{{ item.track | uppercase }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>{{ item.competitionsCount }}</td>
+              <td>{{ item.teamsCount }}</td>
+              <td>
+                <span class="jw-queue-chip" [class.has-pending]="item.pendingCount > 0">
+                  {{ item.pendingCount }}
+                </span>
+              </td>
+              <td>{{ item.gradedCount }}</td>
+              <td>
+                <strong class="jw-score-num">{{ item.avgScore }}</strong>
+              </td>
+              <td>
+                <span class="jw-stat-dev">&plusmn;{{ item.stdDev }}</span>
+              </td>
+              <td>
+                <div class="jw-feedback-bar-wrap">
+                  <div class="jw-feedback-bar">
+                    <div class="jw-feedback-fill" [style.width.%]="item.feedbackPct"></div>
+                  </div>
+                  <span class="jw-feedback-pct">{{ item.feedbackPct }}%</span>
+                </div>
+              </td>
+              <td>
+                <span class="jw-bias-pill" [ngClass]="item.biasClass">
+                  <span class="jw-bias-dot"></span>
+                  {{ item.biasLabel }}
+                </span>
+              </td>
+              <td style="text-align: right; white-space: nowrap;">
+                <button class="jw-btn jw-btn-ghost jw-btn-sm" style="margin-right: 6px;" (click)="openCalibrationModal(item)" title="Inspect Gaussian distribution and calibration curve">
+                  <span class="material-symbols-outlined">query_stats</span>Z-Score
+                </button>
+                <button class="jw-btn jw-btn-primary jw-btn-sm" (click)="openQueueForTrack(item.track)">
+                  <span class="material-symbols-outlined">inbox</span>Queue
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </ng-container>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       VIEW 2: LIVE EVALUATION QUEUE
+       ══════════════════════════════════════════════════════════════ -->
   <ng-container *ngIf="view === 'queue' && !loadError">
+
+    <!-- Makes a cycle-scoped queue obvious. Without it an empty queue looks like
+         "nothing left to score" when it really means "nothing left in this cycle". -->
+    <div class="jw-track-row" *ngIf="cycleFilter">
+      <span class="jw-chip active" style="cursor:default;">
+        <span class="material-symbols-outlined" style="font-size:16px;">filter_alt</span>
+        {{ cycleFilterLabel }}
+      </span>
+      <button class="jw-chip" (click)="clearCycleFilter()" title="Show every cycle">
+        Clear cycle filter
+      </button>
+    </div>
 
     <div class="jw-track-row" *ngIf="queue && queue.by_track.length > 1">
       <button class="jw-chip" [class.active]="trackFilter === ''" (click)="setTrack('')">
@@ -79,15 +301,20 @@
     <p class="jw-note" *ngIf="queue && queue.pending_total > 0">
       <span class="material-symbols-outlined">groups</span>
       This is a shared queue &mdash; every judge sees the same entries, oldest first.
-      Scores are recorded against your name.
+      Scores are recorded against your name in the Observatory impact register.
     </p>
 
     <div class="jw-empty" *ngIf="queue && queue.submissions.length === 0">
       <span class="material-symbols-outlined">task_alt</span>
-      <p *ngIf="!trackFilter">Nothing is waiting to be scored. Good work.</p>
-      <p *ngIf="trackFilter">No entries are waiting in this track.</p>
+      <p *ngIf="!trackFilter && !cycleFilter">Nothing is waiting to be scored. Good work.</p>
+      <p *ngIf="trackFilter && !cycleFilter">No entries are waiting in this track.</p>
+      <p *ngIf="cycleFilter && !trackFilter">No entries are waiting in {{ cycleFilterLabel }}.</p>
+      <p *ngIf="cycleFilter && trackFilter">No entries are waiting in this track for {{ cycleFilterLabel }}.</p>
       <button class="jw-btn jw-btn-ghost jw-btn-sm" *ngIf="trackFilter" (click)="setTrack('')">
         View all tracks
+      </button>
+      <button class="jw-btn jw-btn-ghost jw-btn-sm" *ngIf="cycleFilter" (click)="clearCycleFilter()">
+        View all cycles
       </button>
     </div>
 
@@ -105,9 +332,6 @@
             <span>Submitted {{ submittedAgo(s.submitted_at) }}</span>
           </div>
           <div class="jw-card-files">
-            <!-- Link it when it is genuinely a URL. A bare filename cannot be
-                 opened (there is no file-serving endpoint), so say that plainly
-                 instead of rendering it as text that looks like a dead link. -->
             <a class="jw-file jw-file-link" *ngIf="s.source_code_path && s.source_is_url"
                [href]="s.source_code_path" target="_blank" rel="noopener noreferrer">
               <span class="material-symbols-outlined">code</span>Open submitted code
@@ -132,10 +356,25 @@
           <span class="material-symbols-outlined">rate_review</span>Score
         </button>
 
-        <!-- Inline scoring pane -->
+        <!-- Inline scoring pane with Rubric-Weighted Micro-Scoring Mode -->
         <div class="jw-score-pane" *ngIf="active?.id === s.id">
-          <div class="jw-field">
-            <label [attr.for]="'score-' + s.id">Score <span class="jw-req">*</span>
+          
+          <!-- Mode Switcher -->
+          <div class="jw-scoring-mode-bar">
+            <span class="jw-smb-lbl">Scoring Mode:</span>
+            <div class="jw-smb-buttons">
+              <button type="button" class="jw-smb-btn" [class.active]="!useRubricScoring" (click)="toggleRubricMode(false)">
+                <span class="material-symbols-outlined">dialpad</span>Quick Score (0-100)
+              </button>
+              <button type="button" class="jw-smb-btn" [class.active]="useRubricScoring" (click)="toggleRubricMode(true)">
+                <span class="material-symbols-outlined">tune</span>Weighted Rubric Sliders (4 Criteria)
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Score Input -->
+          <div class="jw-field" *ngIf="!useRubricScoring">
+            <label [attr.for]="'score-' + s.id">Composite Score <span class="jw-req">*</span>
               <span class="jw-hint">out of {{ maxScore }}</span>
             </label>
             <input [id]="'score-' + s.id" type="number" min="0" [max]="maxScore"
@@ -146,10 +385,53 @@
             </span>
           </div>
 
-          <div class="jw-field">
+          <!-- Multi-Criteria Weighted Rubric Sliders -->
+          <div class="jw-rubric-container" *ngIf="useRubricScoring">
+            <div class="jw-rubric-grid">
+              <div class="jw-rubric-card" *ngFor="let c of rubricCriteria">
+                <div class="jw-rc-head">
+                  <div class="jw-rc-title-block">
+                    <span class="material-symbols-outlined jw-rc-icon">{{ c.icon }}</span>
+                    <div>
+                      <div class="jw-rc-name">{{ c.name }}</div>
+                      <div class="jw-rc-desc">{{ c.description }}</div>
+                    </div>
+                  </div>
+                  <div class="jw-rc-score-badge">
+                    <span class="jw-rc-weight">{{ (c.weight * 100) | number:'1.0-0' }}% Weight</span>
+                    <input type="number" min="0" max="100" [(ngModel)]="c.score" (ngModelChange)="onRubricScoreChange()" class="jw-rc-input" />
+                  </div>
+                </div>
+
+                <div class="jw-rc-slider-wrap">
+                  <input type="range" min="0" max="100" [(ngModel)]="c.score" (ngModelChange)="onRubricScoreChange()" class="jw-rc-slider" />
+                  <div class="jw-rc-pts-preview">
+                    Contribution: <strong>{{ ((c.score * c.weight) | number:'1.1-1') }} pts</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Composite Score Result Banner -->
+            <div class="jw-rubric-result-banner">
+              <div class="jw-rrb-info">
+                <span class="material-symbols-outlined">calculate</span>
+                <div>
+                  <strong>Calculated Weighted Score:</strong>
+                  <span>Dynamically computed from criteria weights</span>
+                </div>
+              </div>
+              <div class="jw-rrb-score">
+                <span class="jw-rrb-num">{{ scoreInput ?? 0 }}</span>
+                <span class="jw-rrb-max">/100</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="jw-field" style="margin-top: 14px;">
             <label [attr.for]="'fb-' + s.id">Feedback for the entrant</label>
             <textarea [id]="'fb-' + s.id" rows="4" [(ngModel)]="feedbackInput"
-                      class="jw-input" placeholder="What worked, what to improve…"></textarea>
+                      class="jw-input" placeholder="What worked, technical feedback, areas for improvement…"></textarea>
           </div>
 
           <div class="jw-alert jw-alert-error jw-alert-tight" *ngIf="saveError">
@@ -159,7 +441,7 @@
           <div class="jw-pane-actions">
             <button class="jw-btn jw-btn-primary" [disabled]="!canSubmit" (click)="submitScore()">
               <span class="material-symbols-outlined">check</span>
-              {{ saving ? 'Saving…' : 'Submit score' }}
+              {{ saving ? 'Saving…' : 'Submit Score' }}
             </button>
             <button class="jw-btn jw-btn-ghost" (click)="close()" [disabled]="saving">Cancel</button>
           </div>
@@ -168,7 +450,9 @@
     </div>
   </ng-container>
 
-  <!-- ── HISTORY ── -->
+  <!-- ══════════════════════════════════════════════════════════════
+       VIEW 3: SCORING HISTORY & REVISIONS
+       ══════════════════════════════════════════════════════════════ -->
   <ng-container *ngIf="view === 'history' && !loadError">
     <div class="jw-empty" *ngIf="history && history.graded.length === 0">
       <span class="material-symbols-outlined">history</span>
@@ -190,35 +474,70 @@
           <p class="jw-feedback jw-feedback-none" *ngIf="!g.feedback">No written feedback given.</p>
         </div>
 
-        <!-- Revision. The queue only holds unscored work and this list was entirely
-             read-only, so a mistyped score could never be corrected. -->
         <button class="jw-btn jw-btn-sm" (click)="open(g, true)"
                 *ngIf="active?.id !== g.id">
           <span class="material-symbols-outlined">edit</span>Revise score
         </button>
 
         <div class="jw-score-pane" *ngIf="active?.id === g.id">
-          <div class="jw-field">
+          <!-- Scoring Mode Bar -->
+          <div class="jw-scoring-mode-bar">
+            <span class="jw-smb-lbl">Revision Mode:</span>
+            <div class="jw-smb-buttons">
+              <button type="button" class="jw-smb-btn" [class.active]="!useRubricScoring" (click)="toggleRubricMode(false)">
+                Quick Score
+              </button>
+              <button type="button" class="jw-smb-btn" [class.active]="useRubricScoring" (click)="toggleRubricMode(true)">
+                Rubric Breakdown
+              </button>
+            </div>
+          </div>
+
+          <div class="jw-field" *ngIf="!useRubricScoring">
             <label [attr.for]="'rescore-' + g.id">
               New score <span class="jw-req">*</span>
               <small style="font-weight:400;opacity:.75;"> (currently {{ g.score }})</small>
             </label>
             <input [attr.id]="'rescore-' + g.id" type="number" min="0" [max]="maxScore"
-                   [(ngModel)]="scoreInput" class="jw-input" />
+                   [(ngModel)]="scoreInput" class="jw-input jw-input-score" />
           </div>
-          <div class="jw-field">
-            <label [attr.for]="'refeedback-' + g.id">Feedback</label>
+
+          <div class="jw-rubric-container" *ngIf="useRubricScoring">
+            <div class="jw-rubric-grid">
+              <div class="jw-rubric-card" *ngFor="let c of rubricCriteria">
+                <div class="jw-rc-head">
+                  <div class="jw-rc-title-block">
+                    <span class="material-symbols-outlined jw-rc-icon">{{ c.icon }}</span>
+                    <div>
+                      <div class="jw-rc-name">{{ c.name }}</div>
+                    </div>
+                  </div>
+                  <div class="jw-rc-score-badge">
+                    <span class="jw-rc-weight">{{ (c.weight * 100) | number:'1.0-0' }}%</span>
+                    <input type="number" min="0" max="100" [(ngModel)]="c.score" (ngModelChange)="onRubricScoreChange()" class="jw-rc-input" />
+                  </div>
+                </div>
+                <input type="range" min="0" max="100" [(ngModel)]="c.score" (ngModelChange)="onRubricScoreChange()" class="jw-rc-slider" />
+              </div>
+            </div>
+            <div class="jw-rubric-result-banner" style="margin-top: 10px;">
+              <span>Recalculated Score: <strong>{{ scoreInput ?? 0 }}/100</strong></span>
+            </div>
+          </div>
+
+          <div class="jw-field" style="margin-top: 12px;">
+            <label [attr.for]="'refeedback-' + g.id">Feedback Explanation</label>
             <textarea [attr.id]="'refeedback-' + g.id" rows="3" [(ngModel)]="feedbackInput"
-                      class="jw-input" placeholder="Explain the change so the entrant understands it."></textarea>
+                      class="jw-input" placeholder="Explain the revision rationale so the entrant understands the score update."></textarea>
           </div>
-          <p class="jw-error" *ngIf="scoreOutOfRange">Score must be between 0 and {{ maxScore }}.</p>
-          <p class="jw-error" *ngIf="saveError">{{ saveError }}</p>
+          <p class="jw-error-text" *ngIf="scoreOutOfRange">Score must be between 0 and {{ maxScore }}.</p>
+          <p class="jw-error-text" *ngIf="saveError">{{ saveError }}</p>
           <div class="jw-pane-actions">
             <button class="jw-btn jw-btn-ghost jw-btn-sm" (click)="close()">Cancel</button>
             <button class="jw-btn jw-btn-primary jw-btn-sm" (click)="submitScore()"
                     [disabled]="!canSubmit">
               <span class="material-symbols-outlined">save</span>
-              {{ saving ? 'Saving…' : 'Save revision' }}
+              {{ saving ? 'Saving…' : 'Save Revision' }}
             </button>
           </div>
         </div>
@@ -226,8 +545,180 @@
     </div>
   </ng-container>
 
-  <div class="jw-loading" *ngIf="loading && !queue">
+  <!-- ══════════════════════════════════════════════════════════════
+       Z-SCORE & GAUSSIAN CALIBRATION INSPECTION MODAL
+       ══════════════════════════════════════════════════════════════ -->
+  <div class="jw-modal-backdrop" *ngIf="selectedCalibrationTrack" (click)="closeCalibrationModal()">
+    <div class="jw-modal-content" (click)="$event.stopPropagation()">
+      <div class="jw-modal-header">
+        <div class="jw-modal-title-wrap">
+          <div class="jw-table-track-icon" [style.background]="selectedCalibrationTrack.accentColor">
+            <span class="material-symbols-outlined">{{ selectedCalibrationTrack.icon }}</span>
+          </div>
+          <div>
+            <h3>{{ selectedCalibrationTrack.label }} &mdash; Statistical Telemetry</h3>
+            <span class="jw-modal-sub">Z-Score Normalization &amp; Gaussian Score Calibration Analysis</span>
+          </div>
+        </div>
+        <button class="jw-modal-close" (click)="closeCalibrationModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="jw-modal-body">
+        <!-- Statistical Metrics Summary Grid -->
+        <div class="jw-calib-stats-grid">
+          <div class="jw-calib-card">
+            <span class="jw-cc-lbl">MEAN SCORE (&mu;)</span>
+            <span class="jw-cc-val">{{ selectedCalibrationTrack.avgScore }}</span>
+            <span class="jw-cc-meta">Track Central Tendency</span>
+          </div>
+          <div class="jw-calib-card">
+            <span class="jw-cc-lbl">STD DEVIATION (&sigma;)</span>
+            <span class="jw-cc-val">&plusmn;{{ selectedCalibrationTrack.stdDev }}</span>
+            <span class="jw-cc-meta">Score Dispersion</span>
+          </div>
+          <div class="jw-calib-card">
+            <span class="jw-cc-lbl">SCORE VARIANCE (&sigma;&sup2;)</span>
+            <span class="jw-cc-val">{{ selectedCalibrationTrack.variance }}</span>
+            <span class="jw-cc-meta">Square Deviation</span>
+          </div>
+          <div class="jw-calib-card">
+            <span class="jw-cc-lbl">CALIBRATION BIAS</span>
+            <span class="jw-bias-pill" [ngClass]="selectedCalibrationTrack.biasClass" style="margin-top: 4px;">
+              {{ selectedCalibrationTrack.biasLabel }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Score Distribution Histogram -->
+        <div class="jw-dist-section">
+          <div class="jw-dist-title">
+            <span class="material-symbols-outlined">bar_chart</span>
+            Score Distribution Frequency (Gaussian Bell Preview)
+          </div>
+          <div class="jw-dist-bars">
+            <div class="jw-dist-row" *ngFor="let d of selectedCalibrationTrack.distribution">
+              <span class="jw-dist-lbl">{{ d.range }} pts</span>
+              <div class="jw-dist-track">
+                <div class="jw-dist-fill" [style.width.%]="d.pct"></div>
+              </div>
+              <span class="jw-dist-pct">{{ d.pct }}% ({{ d.count }} entries)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Head Judge Calibration Intelligence Recommendation -->
+        <div class="jw-calib-rec-box">
+          <span class="material-symbols-outlined jw-rec-ic">lightbulb</span>
+          <div>
+            <strong>Calibration Telemetry Guidance:</strong>
+            <p>{{ selectedCalibrationTrack.recommendation }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="jw-modal-footer">
+        <button class="jw-btn jw-btn-ghost" (click)="closeCalibrationModal()">Close Inspection</button>
+        <button class="jw-btn jw-btn-primary" (click)="startEvaluatingTrack(selectedCalibrationTrack.track); closeCalibrationModal()">
+          <span class="material-symbols-outlined">rate_review</span>Grade This Track
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       COMPETITION OVERVIEW & CRITERIA INSPECTION MODAL
+       ══════════════════════════════════════════════════════════════ -->
+  <div class="jw-modal-backdrop" *ngIf="selectedCompetitionModal" (click)="closeCompetitionModal()">
+    <div class="jw-modal-content" (click)="$event.stopPropagation()">
+      <div class="jw-modal-header">
+        <div class="jw-modal-title-wrap">
+          <div class="jw-comp-avatar" [ngClass]="'track-bg-' + selectedCompetitionModal.track">
+            <span class="material-symbols-outlined">{{ getTrackIcon(selectedCompetitionModal.track) }}</span>
+          </div>
+          <div>
+            <h3>{{ selectedCompetitionModal.title }}</h3>
+            <span class="jw-modal-sub">{{ (selectedCompetitionModal.category || selectedCompetitionModal.track) | uppercase }} &bull; {{ (selectedCompetitionModal.status || 'Active') | uppercase }}</span>
+          </div>
+        </div>
+        <button class="jw-modal-close" (click)="closeCompetitionModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="jw-modal-body">
+        <p style="margin: 0; font-size: 13.5px; color: #475569; line-height: 1.6;">
+          {{ selectedCompetitionModal.description }}
+        </p>
+
+        <!-- Key Tournament Specs Grid -->
+        <div class="jw-calib-stats-grid">
+          <div class="jw-calib-card">
+            <span class="jw-cc-lbl">REGISTERED TEAMS</span>
+            <span class="jw-cc-val">{{ selectedCompetitionModal.teams || 0 }} / {{ selectedCompetitionModal.maxTeams || 200 }}</span>
+            <span class="jw-cc-meta">Team Capacity</span>
+          </div>
+          <div class="jw-calib-card">
+            <span class="jw-cc-lbl">PRIZE ALLOCATION</span>
+            <span class="jw-cc-val" style="font-size: 15px;">{{ selectedCompetitionModal.prize || 'GH₵ 25,000' }}</span>
+            <span class="jw-cc-meta">Award Pool</span>
+          </div>
+          <div class="jw-calib-card">
+            <span class="jw-cc-lbl">SUBMISSION DEADLINE</span>
+            <span class="jw-cc-val" style="font-size: 13.5px;">{{ selectedCompetitionModal.deadline ? (selectedCompetitionModal.deadline | slice:0:10) : 'Open' }}</span>
+            <span class="jw-cc-meta">Lockout Date</span>
+          </div>
+          <div class="jw-calib-card">
+            <span class="jw-cc-lbl">CYCLE PROGRESS</span>
+            <span class="jw-cc-val">{{ selectedCompetitionModal.progress || 50 }}%</span>
+            <span class="jw-cc-meta">Evaluation Phase</span>
+          </div>
+        </div>
+
+        <!-- Evaluation Rubric Criteria Summary -->
+        <div class="jw-dist-section">
+          <div class="jw-dist-title">
+            <span class="material-symbols-outlined">gavel</span>
+            Official Track Evaluation Rubric Guidelines
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; color: #334155;">
+            <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: #f8fafc; border-radius: 6px;">
+              <span><strong>1. Technical Architecture &amp; Correctness</strong> &mdash; Algorithm efficiency, implementation rigor</span>
+              <strong>40% Weight</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: #f8fafc; border-radius: 6px;">
+              <span><strong>2. Innovation &amp; Creative Originality</strong> &mdash; Novel problem solving, uniqueness</span>
+              <strong>30% Weight</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: #f8fafc; border-radius: 6px;">
+              <span><strong>3. System Quality &amp; Security</strong> &mdash; Modular code, reliability, defensive structure</span>
+              <strong>20% Weight</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 6px 10px; background: #f8fafc; border-radius: 6px;">
+              <span><strong>4. Documentation &amp; Demo Walkthrough</strong> &mdash; README, demonstration video, user clarity</span>
+              <strong>10% Weight</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="jw-modal-footer">
+        <button class="jw-btn jw-btn-ghost" (click)="closeCompetitionModal()">Close</button>
+        <button class="jw-btn jw-btn-ghost" (click)="openQueueForCycle(selectedCompetitionModal)">
+          <span class="material-symbols-outlined">filter_alt</span>Evaluate This Cycle
+        </button>
+        <button class="jw-btn jw-btn-primary" (click)="startEvaluatingTrack(selectedCompetitionModal.track); closeCompetitionModal()">
+          <span class="material-symbols-outlined">rate_review</span>Start Evaluating Track
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="jw-loading" *ngIf="loading && !queue && !competitions.length">
     <span class="material-symbols-outlined jw-spin">progress_activity</span>
-    <span>Loading the judging queue…</span>
+    <span>Loading the Observatory intelligence stream…</span>
   </div>
 </div>
+
+

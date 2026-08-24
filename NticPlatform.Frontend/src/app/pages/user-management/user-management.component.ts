@@ -4,10 +4,13 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router, ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { ContentService, User } from '../../services/content.service';
+import { ContentService, User, Team } from '../../services/content.service';
+import { ApiService } from '../../services/api.service';
 import { ChatbotService, SupportTicket } from '../../services/chatbot.service';
 import { FilterTicketsPipe } from '../../services/filter-tickets.pipe';
+import { FileStorageService } from '../../services/file-storage.service';
 
 import { SmsService } from '../../services/sms.service';
 import { BrevoEmailService } from '../../services/brevo-email.service';
@@ -31,6 +34,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   isDetailOpen = false;
   isEditOpen = false;
   editForm: any = {};
+  userAvatarUrls: Record<string, string> = {};
+  teamAvatarUrls: Record<string, string> = {};
   newUserForm: any = {
     fullName: '',
     email: '',
@@ -61,10 +66,32 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   adminReplyText = '';
   ticketStatusFilter: 'all' | 'open' | 'in_progress' | 'resolved' | 'recycle_bin' = 'all';
 
+  // ── Teams & Squads State ───────────────────────────
+  teams: Team[] = [];
+  filteredTeams: Team[] = [];
+  teamSearchQuery: string = '';
+  teamTrackFilter: string = 'all';
+  teamStatusFilter: string = 'all';
+  deleteTeamConfirm: Team | null = null;
+  isDeleteTeamLoading: boolean = false;
+  isEditTeamOpen: boolean = false;
+  editTeamForm: any = {};
+  isAddTeamOpen: boolean = false;
+  newTeamForm: any = {
+    name: '',
+    track: 'Coding',
+    lead: '',
+    members: 3,
+    school_name: '',
+    status: 'Active',
+    motto: ''
+  };
+
   roleTabs = [
     { id: 'all', label: 'All Users', icon: 'group' },
     { id: 'school_admin', label: 'School Admins', icon: 'school' },
     { id: 'student', label: 'Students', icon: 'person' },
+    { id: 'teams', label: 'Teams & Squads', icon: 'groups' },
     { id: 'instructor', label: 'Instructors', icon: 'badge' },
     { id: 'judge', label: 'Judges', icon: 'gavel' },
     { id: 'sponsor', label: 'Sponsors', icon: 'handshake' },
@@ -76,10 +103,12 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   constructor(
     public contentService: ContentService,
+    private apiService: ApiService,
     private router: Router,
     private route: ActivatedRoute,
     public chatbotService: ChatbotService,
     private http: HttpClient,
+    private fileStorage: FileStorageService,
     public smsService: SmsService,
     public emailService: BrevoEmailService
   ) {}
@@ -113,9 +142,10 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       return;
     }
     this.loadUsers();
+    this.loadTeams();
     this.loadTickets();
 
-    this.route.queryParams.subscribe(params => {
+    this.queryParamsSub = this.route.queryParams.subscribe(params => {
       if (params['edit']) {
         const query = String(params['edit']).toLowerCase();
         const found = this.users.find(u => String(u.id).toLowerCase() === query || u.email.toLowerCase() === query);
@@ -142,6 +172,9 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       clearInterval(this.ticketRefreshTimer);
       this.ticketRefreshTimer = null;
     }
+    // route.queryParams never completes, so without this the subscription
+    // outlived the component and kept the whole instance reachable.
+    this.queryParamsSub?.unsubscribe();
   }
 
   isSyncing = false;
@@ -154,7 +187,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         for (const u of this.contentService.users) {
           existingLookup[u.id] = u;
         }
-        const mapped: User[] = backendUsers.map((u: any) => {
+        const mapped: User[] = (backendUsers || []).map((u: any) => {
           const existing = existingLookup[u.id];
           return {
             id: u.id,
@@ -173,18 +206,63 @@ export class UserManagementComponent implements OnInit, OnDestroy {
             lastLogin: existing?.lastLogin || ''
           };
         });
+
+        // Also merge team squad accounts into users list so they appear under All Users
+        for (const t of this.teams) {
+          const matchingIdx = mapped.findIndex(u => u.id === t.id || (t.name && u.fullName.includes(t.name)));
+          if (matchingIdx === -1) {
+            mapped.push({
+              id: t.id || `squad-${Date.now()}`,
+              email: `${(t.name || 'squad').toLowerCase().replace(/[^a-z0-9]/g, '')}@squad.ntic.org.gh`,
+              fullName: t.lead ? `${t.lead} (${t.name})` : t.name,
+              phone: '',
+              otp: t.motto || '',
+              password: '',
+              mustSetPassword: false,
+              organization: t.schoolName || t.school_name || 'Independent',
+              role: 'student',
+              ticket: `NTIC-SQD-${(t.id || '0000').slice(-4).toUpperCase()}`,
+              status: t.status || 'Active',
+              registeredAt: '',
+              lastLogin: ''
+            });
+          }
+        }
+
         this.contentService.users = mapped;
         this.contentService.saveUsers(mapped);
         this.users = [...mapped];
         this.applyFilters();
+        this.loadAvatars();
         this.isSyncing = false;
         if (showToastNotice) {
           this.showToast('Accounts Synced', `Successfully synchronized ${mapped.length} accounts from backend database.`);
         }
       },
       error: () => {
-        this.users = [...this.contentService.users];
+        const fallback = [...this.contentService.users];
+        for (const t of this.teams) {
+          if (!fallback.some(u => u.id === t.id || (t.name && u.fullName.includes(t.name)))) {
+            fallback.push({
+              id: t.id || `squad-${Date.now()}`,
+              email: `${(t.name || 'squad').toLowerCase().replace(/[^a-z0-9]/g, '')}@squad.ntic.org.gh`,
+              fullName: t.lead ? `${t.lead} (${t.name})` : t.name,
+              phone: '',
+              otp: '',
+              password: '',
+              mustSetPassword: false,
+              organization: t.schoolName || t.school_name || 'Independent',
+              role: 'student',
+              ticket: `NTIC-SQD-${(t.id || '0000').slice(-4).toUpperCase()}`,
+              status: t.status || 'Active',
+              registeredAt: '',
+              lastLogin: ''
+            });
+          }
+        }
+        this.users = fallback;
         this.applyFilters();
+        this.loadAvatars();
         this.isSyncing = false;
         if (showToastNotice) {
           this.showToast('Sync Notice', 'Backend sync unavailable. Loaded cached user accounts.', 4000);
@@ -194,7 +272,98 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   loadUsers(): void {
-    this.syncAccounts(false);
+    this.apiService.getTeams().subscribe({
+      next: (backendTeams) => {
+        this.teams = (backendTeams || []).map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          track: t.track || 'General',
+          lead: t.lead || 'Unassigned',
+          members: t.members || 1,
+          status: t.status || 'Active',
+          schoolName: t.school_name || t.schoolName || '',
+          school_name: t.school_name || t.schoolName || '',
+          mentor: t.mentor || '',
+          mentorId: t.mentorId || t.mentor_id || null,
+          mentorStatus: t.mentorStatus || t.mentor_status || 'none',
+          motto: t.motto || '',
+          rosterList: t.rosterList || [],
+          competitionId: t.competition_id || t.competitionId || null,
+          photoFileId: t.photoFileId || t.photo_file_id || t.logoFileId || t.logo_file_id
+        }));
+        this.syncAccounts(false);
+      },
+      error: () => {
+        this.teams = [...this.contentService.teams];
+        this.syncAccounts(false);
+      }
+    });
+  }
+
+  async loadAvatars(): Promise<void> {
+    // 1. Resolve direct user profile photos
+    for (const u of this.users) {
+      if (this.userAvatarUrls[u.id]) continue;
+      const explicitPhoto = (u as any).avatarUrl || (u as any).photo_url || (u as any).image;
+      if (explicitPhoto) {
+        this.userAvatarUrls[u.id] = explicitPhoto;
+        continue;
+      }
+      const fileId = u.photoFileId || (u as any).profilePhotoFileId || (u as any).photo_file_id;
+      if (fileId) {
+        try {
+          const url = await this.fileStorage.getUrl(fileId);
+          if (url) this.userAvatarUrls[u.id] = url;
+        } catch { }
+      }
+    }
+
+    // 2. Cross-reference approvals and registrations
+    const allApprovals = [
+      ...this.contentService.approvedApprovals,
+      ...this.contentService.pendingApprovals
+    ];
+    for (const req of allApprovals) {
+      const contact = (req.contact || '').toLowerCase();
+      const entity = (req.entity || '').toLowerCase();
+      const fileId = req.details?.photoFileId || req.details?.logoFileId || (req.details?.memberPhotos?.[0]);
+      if (!fileId) continue;
+      
+      for (const u of this.users) {
+        if (this.userAvatarUrls[u.id]) continue;
+        if (u.email.toLowerCase() === contact || u.fullName.toLowerCase().includes(entity) || entity.includes(u.fullName.toLowerCase())) {
+          try {
+            const url = await this.fileStorage.getUrl(fileId);
+            if (url) this.userAvatarUrls[u.id] = url;
+          } catch { }
+        }
+      }
+    }
+
+    // 3. Resolve team logos/photos
+    for (const t of this.teams) {
+      const teamKey = t.id || t.name;
+      if (this.teamAvatarUrls[teamKey]) continue;
+      const fileId = t.logoFileId || t.photoFileId || (t as any).logo_file_id || (t as any).photo_file_id;
+      if (fileId) {
+        try {
+          const url = await this.fileStorage.getUrl(fileId);
+          if (url) this.teamAvatarUrls[teamKey] = url;
+        } catch { }
+      } else if ((t as any).photo_url || (t as any).logo_url || (t as any).image) {
+        this.teamAvatarUrls[teamKey] = (t as any).photo_url || (t as any).logo_url || (t as any).image;
+      }
+    }
+  }
+
+  getUserAvatarUrl(u: User | null): string {
+    if (!u || !u.id) return '';
+    return this.userAvatarUrls[u.id] || '';
+  }
+
+  getTeamAvatarUrl(t: Team | null): string {
+    if (!t) return '';
+    return this.teamAvatarUrls[t.id || t.name] || '';
   }
 
   applyFilters(): void {
@@ -220,11 +389,16 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   setRoleTab(role: string): void {
     this.roleFilter = role;
-    this.applyFilters();
+    if (role === 'teams') {
+      this.applyTeamFilters();
+    } else {
+      this.applyFilters();
+    }
   }
 
   getRoleCount(role: string): number {
     if (role === 'all') return this.users.length;
+    if (role === 'teams') return this.teams.length;
     return this.users.filter(u => u.role === role).length;
   }
 
@@ -469,6 +643,24 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   toggleStatus(user: User): void {
     if (this.isMainAdmin(user)) return;
     const newStatus = user.status === 'Active' ? 'Suspended' : 'Active';
+
+    // Check if this user represents a team squad
+    const matchingTeam = this.teams.find(t => t.id === user.id || (t.name && user.fullName.includes(t.name)));
+    if (matchingTeam && matchingTeam.id) {
+      this.apiService.updateTeam(matchingTeam.id, { status: newStatus }).subscribe({
+        next: () => {
+          matchingTeam.status = newStatus;
+          user.status = newStatus;
+          this.showToast('Status Changed', `${user.fullName} is now ${newStatus}.`);
+          this.loadUsers();
+        },
+        error: (err) => {
+          this.showToast('Error', err?.error?.detail || 'Failed to update squad status.', 4000);
+        }
+      });
+      return;
+    }
+
     this.http.patch(`${environment.apiUrl}/users/${user.id}`, {
       email: user.email,
       full_name: user.fullName,
@@ -505,6 +697,25 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   confirmDelete(): void {
     if (!this.deleteUserConfirm) return;
     const userToDelete = this.deleteUserConfirm;
+
+    // Check if this user is a squad
+    const matchingTeam = this.teams.find(t => t.id === userToDelete.id || (t.name && userToDelete.fullName.includes(t.name)));
+    if (matchingTeam && matchingTeam.id) {
+      this.apiService.deleteTeam(matchingTeam.id).subscribe({
+        next: () => {
+          this.teams = this.teams.filter(t => t.id !== matchingTeam.id);
+          this.showToast('Squad Deleted', `${userToDelete.fullName} has been removed.`);
+          this.deleteUserConfirm = null;
+          this.loadUsers();
+        },
+        error: (err) => {
+          this.showToast('Error', err?.error?.detail || 'Failed to delete squad.', 4000);
+          this.deleteUserConfirm = null;
+        }
+      });
+      return;
+    }
+
     this.http.delete(`${environment.apiUrl}/users/${userToDelete.id}`).subscribe({
       next: () => {
         const users = this.contentService.users.filter(u => u.id !== userToDelete.id);
@@ -526,6 +737,13 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   regenerateOTP(user: User): void {
+    // Check if this is a team squad account
+    const matchingTeam = this.teams.find(t => t.id === user.id || (t.name && user.fullName.includes(t.name)));
+    if (matchingTeam && matchingTeam.id) {
+      this.regenerateTeamOTP(matchingTeam);
+      return;
+    }
+
     // Delegate to the dedicated endpoint: it mints the password with a CSPRNG
     // and revokes the user's existing sessions at the same time.
     this.http.post<{ temporary_password?: string; otp?: string }>(
@@ -541,12 +759,64 @@ export class UserManagementComponent implements OnInit, OnDestroy {
           users[idx].passwordChanged = false;
           this.contentService.saveUsers(users);
         }
+        this.openCreatedUserModal({
+          ...user,
+          otp: newOTP
+        });
         this.showToast('Password Reset', `A new one-time password was generated for ${user.fullName}.`, 6000);
         this.loadUsers();
       },
       error: (err) => {
         console.error('Failed to reset the password in the backend:', err);
         this.showToast('Error', 'Failed to reset the password in the backend database.', 4000);
+      }
+    });
+  }
+
+  toggleTeamStatus(team: Team): void {
+    const newStatus = team.status === 'Active' ? 'Suspended' : 'Active';
+    this.apiService.updateTeam(team.id || '', { status: newStatus }).subscribe({
+      next: () => {
+        team.status = newStatus;
+        const uIdx = this.users.findIndex(u => u.id === team.id || (team.name && u.fullName.includes(team.name)));
+        if (uIdx > -1) {
+          this.users[uIdx].status = newStatus;
+        }
+        this.applyTeamFilters();
+        this.applyFilters();
+        this.showToast('Squad Status Changed', `${team.name} is now ${newStatus}.`);
+      },
+      error: (err) => {
+        this.showToast('Error', err?.error?.detail || 'Failed to update squad status.', 4000);
+      }
+    });
+  }
+
+  regenerateTeamOTP(team: Team): void {
+    const newPass = 'NTIC-' + this.randomSuffix(6);
+    this.apiService.updateTeam(team.id || '', { motto: newPass }).subscribe({
+      next: () => {
+        const uIdx = this.users.findIndex(u => u.id === team.id || (team.name && u.fullName.includes(team.name)));
+        if (uIdx > -1) {
+          this.users[uIdx].otp = newPass;
+        }
+        this.openCreatedUserModal({
+          id: team.id || '',
+          email: `${team.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@squad.ntic.org.gh`,
+          fullName: `${team.name} (${team.lead || 'Squad Lead'})`,
+          phone: '',
+          role: 'student',
+          organization: team.schoolName || team.school_name || 'Independent',
+          ticket: `NTIC-SQD-${(team.id || '0000').slice(-4).toUpperCase()}`,
+          status: team.status || 'Active',
+          otp: newPass,
+          registeredAt: '',
+          lastLogin: ''
+        });
+        this.showToast('Credentials Reset', `New access pass generated for ${team.name}.`, 5000);
+      },
+      error: (err) => {
+        this.showToast('Error', err?.error?.detail || 'Failed to reset credentials for squad.', 4000);
       }
     });
   }
@@ -600,6 +870,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   private ticketRefreshTimer: any = null;
+  /** Held so ngOnDestroy can unsubscribe; route params never complete. */
+  private queryParamsSub?: Subscription;
 
   // ── Support Center Methods ──────────────────────────────────────────
   setActiveMainTab(tab: 'users' | 'support'): void {
@@ -607,6 +879,215 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     if (tab === 'support') {
       this.loadTickets();
     }
+  }
+
+  // ── Teams & Squads Management Methods ──────────────────────────────
+  loadTeams(): void {
+    this.apiService.getTeams().subscribe({
+      next: (backendTeams) => {
+        this.teams = (backendTeams || []).map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          track: t.track || 'General',
+          lead: t.lead || 'Unassigned',
+          members: t.members || 1,
+          status: t.status || 'Active',
+          schoolName: t.school_name || t.schoolName || '',
+          school_name: t.school_name || t.schoolName || '',
+          mentor: t.mentor || '',
+          mentorId: t.mentorId || t.mentor_id || null,
+          mentorStatus: t.mentorStatus || t.mentor_status || 'none',
+          motto: t.motto || '',
+          rosterList: t.rosterList || [],
+          competitionId: t.competition_id || t.competitionId || null
+        }));
+        this.applyTeamFilters();
+      },
+      error: () => {
+        this.teams = [...this.contentService.teams];
+        this.applyTeamFilters();
+      }
+    });
+  }
+
+  applyTeamFilters(): void {
+    let list = [...this.teams];
+    if (this.teamTrackFilter !== 'all') {
+      list = list.filter(t => (t.track || '').toLowerCase() === this.teamTrackFilter.toLowerCase());
+    }
+    if (this.teamStatusFilter !== 'all') {
+      list = list.filter(t => (t.status || '').toLowerCase() === this.teamStatusFilter.toLowerCase());
+    }
+    if (this.teamSearchQuery.trim()) {
+      const q = this.teamSearchQuery.toLowerCase();
+      list = list.filter(t =>
+        (t.name || '').toLowerCase().includes(q) ||
+        (t.schoolName || t.school_name || '').toLowerCase().includes(q) ||
+        (t.lead || '').toLowerCase().includes(q) ||
+        (t.mentor || '').toLowerCase().includes(q) ||
+        (t.track || '').toLowerCase().includes(q)
+      );
+    }
+    this.filteredTeams = list;
+  }
+
+  setTeamTrackFilter(track: string): void {
+    this.teamTrackFilter = track;
+    this.applyTeamFilters();
+  }
+
+  setTeamStatusFilter(status: string): void {
+    this.teamStatusFilter = status;
+    this.applyTeamFilters();
+  }
+
+  get instructorsList(): User[] {
+    return this.users.filter(u => (u.role || '').toLowerCase() === 'instructor');
+  }
+
+  openDeleteTeamModal(team: Team): void {
+    this.deleteTeamConfirm = team;
+  }
+
+  closeDeleteTeamModal(): void {
+    this.deleteTeamConfirm = null;
+    this.isDeleteTeamLoading = false;
+  }
+
+  confirmDeleteTeam(): void {
+    if (!this.deleteTeamConfirm || !this.deleteTeamConfirm.id) return;
+    this.isDeleteTeamLoading = true;
+    const teamId = this.deleteTeamConfirm.id;
+    const teamName = this.deleteTeamConfirm.name;
+
+    this.apiService.deleteTeam(teamId).subscribe({
+      next: () => {
+        this.teams = this.teams.filter(t => t.id !== teamId);
+        this.contentService.teams = this.contentService.teams.filter(t => t.id !== teamId);
+        this.applyTeamFilters();
+        this.closeDeleteTeamModal();
+        this.showToast('Team Deleted', `Squad "${teamName}" was permanently removed.`);
+      },
+      error: (err) => {
+        this.isDeleteTeamLoading = false;
+        this.showToast('Deletion Failed', err?.error?.detail || 'Could not delete squad.', 5000);
+      }
+    });
+  }
+
+  openEditTeamModal(team: Team): void {
+    this.editTeamForm = {
+      id: team.id,
+      name: team.name,
+      track: team.track,
+      lead: team.lead,
+      members: team.members,
+      school_name: team.schoolName || team.school_name,
+      status: team.status || 'Active',
+      motto: team.motto || '',
+      mentorId: team.mentorId || ''
+    };
+    this.isEditTeamOpen = true;
+  }
+
+  closeEditTeamModal(): void {
+    this.isEditTeamOpen = false;
+    this.editTeamForm = {};
+  }
+
+  saveEditTeam(): void {
+    if (!this.editTeamForm.id || !this.editTeamForm.name.trim()) return;
+    const payload = {
+      name: this.editTeamForm.name.trim(),
+      track: this.editTeamForm.track,
+      lead: this.editTeamForm.lead,
+      members: Number(this.editTeamForm.members) || 1,
+      school_name: this.editTeamForm.school_name,
+      status: this.editTeamForm.status,
+      motto: this.editTeamForm.motto
+    };
+
+    this.apiService.updateTeam(this.editTeamForm.id, payload).subscribe({
+      next: () => {
+        const idx = this.teams.findIndex(t => t.id === this.editTeamForm.id);
+        if (idx !== -1) {
+          this.teams[idx] = {
+            ...this.teams[idx],
+            ...payload,
+            schoolName: payload.school_name
+          };
+          this.applyTeamFilters();
+        }
+        this.closeEditTeamModal();
+        this.showToast('Team Updated', `Squad "${payload.name}" updated successfully.`);
+      },
+      error: (err) => {
+        this.showToast('Update Failed', err?.error?.detail || 'Could not update squad.', 5000);
+      }
+    });
+  }
+
+  openAddTeamModal(): void {
+    this.newTeamForm = {
+      name: '',
+      track: 'Coding',
+      lead: '',
+      members: 3,
+      school_name: '',
+      status: 'Active',
+      motto: ''
+    };
+    this.isAddTeamOpen = true;
+  }
+
+  closeAddTeamModal(): void {
+    this.isAddTeamOpen = false;
+  }
+
+  saveNewTeam(): void {
+    if (!this.newTeamForm.name.trim()) return;
+    const payload = {
+      name: this.newTeamForm.name.trim(),
+      track: this.newTeamForm.track,
+      lead: this.newTeamForm.lead || 'Team Lead',
+      members: Number(this.newTeamForm.members) || 3,
+      school_name: this.newTeamForm.school_name || 'Independent',
+      status: this.newTeamForm.status || 'Active',
+      motto: this.newTeamForm.motto || ''
+    };
+
+    this.apiService.createTeam(payload).subscribe({
+      next: (res: any) => {
+        const newTeam: Team = {
+          id: res.id || 'team-' + Date.now(),
+          ...payload,
+          schoolName: payload.school_name
+        };
+        this.teams.unshift(newTeam);
+        this.applyTeamFilters();
+        this.closeAddTeamModal();
+        this.showToast('Squad Registered', `Squad "${newTeam.name}" has been registered.`);
+      },
+      error: (err) => {
+        this.showToast('Registration Failed', err?.error?.detail || 'Could not register squad.', 5000);
+      }
+    });
+  }
+
+  assignTeamMentor(team: Team, mentorId: string): void {
+    const mId = mentorId ? mentorId : null;
+    const mentorUser = this.users.find(u => u.id === mId);
+    this.apiService.assignTeamMentor(team.id || '', mId).subscribe({
+      next: () => {
+        team.mentorId = mId;
+        team.mentor = mentorUser ? mentorUser.fullName : '';
+        team.mentorStatus = mId ? 'assigned' : 'none';
+        this.showToast('Mentor Assigned', mentorUser ? `Assigned ${mentorUser.fullName} to ${team.name}.` : `Unassigned mentor from ${team.name}.`);
+      },
+      error: (err) => {
+        this.showToast('Mentor Update Failed', err?.error?.detail || 'Failed to update mentor.', 4000);
+      }
+    });
   }
 
   get filteredTickets(): SupportTicket[] {

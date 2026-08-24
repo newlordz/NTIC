@@ -251,10 +251,10 @@
     <div class="countdown-inner" *ngIf="!hasCompetitions">
       <div class="countdown-label">
         <span class="live-dot pulse"></span>
-        <span>Competitions Coming Soon</span>
+        <span>{{ contentService.copy('countdown.badge', 'Competitions Coming Soon') }}</span>
       </div>
       <p class="countdown-description">
-        We're preparing something extraordinary. Target launch: <strong>{{ competitionDate | date:'medium' }}</strong>
+        {{ contentService.copy('countdown.desc', "We're preparing something extraordinary. Target launch:") }} <strong>{{ competitionDate | date:'medium' }}</strong>
       </p>
 
       <!-- Flip countdown clock -->
@@ -658,9 +658,8 @@
       <div class="story-header">
         <span class="academic-sub scroll-animate fade-up">{{ contentService.copy('philosophy.sub', 'Our Core Philosophy') }}</span>
         <h2>
-          <span class="animated-word w1">Learn.</span>
-          <span class="animated-word w2">Innovate.</span>
-          <span class="animated-word w3">Build.</span>
+          <span *ngFor="let w of (contentService.copy('philosophy.heading', 'Learn. Innovate. Build.').split(' ')); let i = index"
+                class="animated-word" [ngClass]="'w' + ((i % 3) + 1)">{{ w }} </span>
         </h2>
         <p class="scroll-animate fade-up" style="transition-delay: 0.3s">{{ contentService.copy('philosophy.desc', 'A glimpse into the real faces and moments that define our pursuit of excellence.') }}</p>
       </div>
@@ -1905,7 +1904,7 @@
           </p>
         </div>
 
-        <form (ngSubmit)="login()" #loginModalForm="ngForm" class="lm-form">
+        <form (ngSubmit)="login()" #loginModalForm="ngForm" class="lm-form" autocomplete="off">
 
           <div class="lm-group">
             <label for="lm-email">Email or Access Pass</label>
@@ -1913,7 +1912,7 @@
               <span class="material-symbols-outlined lm-icon">mail</span>
               <input type="text" id="lm-email" name="email" [(ngModel)]="email" required
                 placeholder="name@school.edu.gh or NTI Championship ticket code" class="lm-input"
-                (input)="detectRoleFromInput(email)" autocomplete="username">
+                (input)="detectRoleFromInput(email)" autocomplete="off">
               <span class="lm-input-glow"></span>
             </div>
           </div>
@@ -1924,7 +1923,7 @@
               <span class="material-symbols-outlined lm-icon">lock</span>
               <input [type]="isPasswordVisible ? 'text' : 'password'" id="lm-pass" name="password"
                 [(ngModel)]="password" [required]="!isAdminEmail" placeholder="Enter your password or verification code"
-                class="lm-input" autocomplete="current-password">
+                class="lm-input" autocomplete="new-password">
               <button type="button" class="lm-pass-toggle" (click)="isPasswordVisible = !isPasswordVisible"
                 tabindex="-1">
                 <span class="material-symbols-outlined">{{ isPasswordVisible ? 'visibility_off' : 'visibility' }}</span>
@@ -1953,6 +1952,10 @@
             <input type="checkbox" name="rememberDevice" [(ngModel)]="rememberDevice">
             <span>Remember this device</span>
           </label>
+
+          <div style="text-align:center;margin-top:12px;">
+            <button type="button" class="lm-forgot-link" (click)="openForgotPassword()">Forgot password?</button>
+          </div>
         </form>
 
         <!-- Telemetry Console -->
@@ -1976,6 +1979,15 @@
       </div>
     </div>
   </div>
+
+  <!-- Forgot-password popup -->
+  <app-forgot-password
+    *ngIf="showForgotPassword"
+    [initialEmail]="email"
+    theme="dark"
+    (closed)="closeForgotPassword()"
+    (resetComplete)="onPasswordReset($event)">
+  </app-forgot-password>
 
   <!-- ══════════════════════════════════════════
        FLOATING ACTION BUTTON

@@ -1,0 +1,104 @@
+#!/bin/sh
+#
+# Blocks commits that would leak a credential.
+#
+# Why this exists: `NticPlatform.Frontend/build-with-env.js` runs `inject-env.js`,
+# which writes the real Brevo / SMSMode / Gemini keys into
+# `src/environments/environment.ts` for the duration of a build and restores the
+# placeholders afterwards. That file is tracked and not git-ignored, so any
+# `git add .` landing inside that window commits live secrets.
+#
+# CI already scans for these patterns (.github/workflows/ci.yml), but CI runs
+# *after* the push -- by then the secret is on GitHub and the only fix is a
+# history rewrite plus key rotation. This hook stops it before it leaves the
+# machine.
+#
+# Enable (one-time, per clone):
+#     git config core.hooksPath .githooks
+#
+# Escape hatch for a deliberate non-secret (for example a scanner's own
+# denylist pattern): put `pragma: allowlist secret` on the line.
+
+FAIL=0
+
+# Only inspect what is actually being committed. Using the working tree instead
+# would block a commit because of an unrelated dirty file.
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$STAGED" ] && exit 0
+
+staged_content() {
+    git show ":$1" 2>/dev/null
+}
+
+# ── 1. Never commit .env ──────────────────────────────────────────────────────
+for f in $STAGED; do
+    case "$f" in
+        .env|*/.env)
+            echo "pre-commit: refusing to commit '$f'. It must stay git-ignored."
+            FAIL=1
+            ;;
+    esac
+done
+
+# ── 2. Known credential signatures ────────────────────────────────────────────
+# Kept in step with the `check` calls in .github/workflows/ci.yml. Note the
+# patterns do not match their own source text (the literal '[' is not
+# alphanumeric), so the scanner definitions themselves are not flagged.
+scan() {
+    label="$1"
+    pattern="$2"
+    for f in $STAGED; do
+        case "$f" in
+            *.py|*.ts|*.js|*.cjs|*.mjs|*.json|*.yml|*.yaml|*.env|*.bat|*.ps1|*.sh)
+                hit=$(staged_content "$f" \
+                      | grep -nE "$pattern" \
+                      | grep -v 'pragma: allowlist secret')
+                if [ -n "$hit" ]; then
+                    echo "pre-commit: possible $label in $f:"
+                    echo "$hit" | sed 's/^/    /'
+                    FAIL=1
+                fi
+                ;;
+        esac
+    done
+}
+
+scan "Brevo API key"     'xkeysib-[A-Za-z0-9]{20,}'
+scan "Brevo SMTP key"    'xsmtpsib-[A-Za-z0-9]{20,}'
+scan "Google API key"    'AIza[0-9A-Za-z_-]{30,}'
+scan "AWS access key"    'AKIA[0-9A-Z]{16}'
+scan "private key block" 'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY'
+scan "hardcoded admin password" 'Admin@Ntic[0-9]{4}'
+scan "old Postgres password"    'botsio212nyc'
+
+# ── 3. environment.ts must still hold its placeholders ────────────────────────
+# SMSMode keys have no recognisable prefix, so signature scanning alone cannot
+# catch an injected one. Instead assert the file is in its pre-build state.
+#
+# Deliberately scoped to environment.ts only: environment.prod.ts is *expected*
+# to carry inert placeholders and never receives injected keys, because these
+# third-party keys stay server-side. See the CI note in ci.yml.
+ENV_DEV="NticPlatform.Frontend/src/environments/environment.ts"
+case "$STAGED" in
+    *"$ENV_DEV"*)
+        body=$(staged_content "$ENV_DEV")
+        for token in REPLACE_BREVO_API_KEY REPLACE_SMSMODE_API_KEY REPLACE_GEMINI_API_KEY; do
+            if ! printf '%s' "$body" | grep -q "$token"; then
+                echo "pre-commit: $ENV_DEV is missing the '$token' placeholder."
+                echo "    A build is probably mid-flight and has injected real keys."
+                echo "    Restore the file, then commit:"
+                echo "        cd NticPlatform.Frontend && node inject-env.js restore"
+                FAIL=1
+            fi
+        done
+        ;;
+esac
+
+if [ "$FAIL" -ne 0 ]; then
+    echo ""
+    echo "pre-commit: commit aborted. Nothing has been staged or unstaged."
+    echo "To bypass deliberately (you had better be sure): git commit --no-verify"
+    exit 1
+fi
+
+exit 0

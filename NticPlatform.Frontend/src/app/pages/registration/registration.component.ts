@@ -3,6 +3,7 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { ThemeService } from '../../services/theme.service';
 import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
@@ -12,15 +13,42 @@ import { NotificationService } from '../../services/notification.service';
 import { DialogService } from '../../services/dialog.service';
 import { ApiService } from '../../services/api.service';
 import { OtpService } from '../../services/otp.service';
+import { AppSelectComponent } from '../../components/app-select/app-select.component';
+import { ForgotPasswordComponent } from '../../components/forgot-password/forgot-password.component';
+import { SafePipe } from '../../pipes/safe.pipe';
 
 @Component({
   selector: 'app-registration',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, AppSelectComponent, SafePipe, ForgotPasswordComponent],
   templateUrl: './registration.component.html',
   styleUrl: './registration.component.scss'
 })
 export class RegistrationComponent implements OnInit, OnDestroy {
+  readonly ghanaRegions = [
+    'Ahafo', 'Ashanti', 'Bono', 'Bono East', 'Central', 'Eastern',
+    'Greater Accra', 'North East', 'Northern', 'Oti', 'Savannah',
+    'Upper East', 'Upper West', 'Volta', 'Western', 'Western North'
+  ];
+
+  readonly schoolCategories = [
+    'Public High School', 'Private Academy', 'Charter School', 'Technical School'
+  ];
+
+  readonly genderOptions = ['Male', 'Female'];
+  readonly studentClasses = ['SHS 1', 'SHS 2', 'SHS 3', 'JHS 3', 'Other'];
+  readonly instructorQualifications = [
+    'B.Ed / BSc Science/Computing', 'Master of Education / MSc', 'PhD', 'Diploma in Education', 'Industry Certified Professional'
+  ];
+  readonly competitionTracks = [
+    'Robotics & AI', 'Coding & App Development', 'Cybersecurity', 'Web & Cloud Development', 'IoT & Embedded Systems'
+  ];
+  readonly judgeExpertiseOptions = [
+    'Robotics & Hardware', 'Software Engineering & AI', 'Cybersecurity & Networks', 'Data Science & Cloud', 'General STEM Education'
+  ];
+  readonly judgeExperienceOptions = [
+    '1-3 Years', '4-7 Years', '8+ Years (Senior Lead)'
+  ];
   regState = 'gateway'; // 'gateway', 'new', 'continue_select', 'otp_verification', 'resume_success'
   activeTab: any = 'school';
   isPathModalOpen = false;
@@ -191,14 +219,25 @@ setAuthValue('activeUserEmail', email);
   gpsSearchResults: Array<{ name: string; address: string; lat: string; lng: string }> = [];
   gpsSearching = false;
   gpsSearchError = '';
+  gpsSelectedPreview: { name: string; address: string; lat: string; lng: string } | null = null;
+
+  getMapPreviewUrl(lat: string, lng: string): string {
+    const latStr = encodeURIComponent(lat.trim());
+    const lngStr = encodeURIComponent(lng.trim());
+    return `https://maps.google.com/maps?q=${latStr},${lngStr}&hl=en&z=17&output=embed`;
+  }
+
+  getMapLinkUrl(lat: string, lng: string): string {
+    return `https://www.google.com/maps?q=${lat},${lng}&z=17`;
+  }
 
   private ghanaSchoolsGpsDb: Array<{ name: string; address: string; lat: string; lng: string; aliases?: string[] }> = [
     // Western Region
-    { name: 'Ghana Secondary Technical School (GSTS)', address: 'Takoradi, Western Region', lat: '4.908300', lng: '-1.758300', aliases: ['gsts', 'ghana secondary technical', 'takoradi tech'] },
-    { name: 'Archbishop Porter Girls\' Senior High School', address: 'Fijai, Takoradi, Western Region', lat: '4.922100', lng: '-1.761200', aliases: ['porter girls', 'apgss'] },
-    { name: 'Sekondi College (SEKCO)', address: 'Sekondi, Western Region', lat: '4.938500', lng: '-1.712400', aliases: ['sekco'] },
-    { name: 'Takoradi Senior High School (TADISCO)', address: 'Takoradi, Western Region', lat: '4.912400', lng: '-1.774500', aliases: ['tadisco'] },
-    { name: 'Fijai Senior High School', address: 'Fijai, Sekondi-Takoradi, Western Region', lat: '4.931200', lng: '-1.754300', aliases: ['fijai'] },
+    { name: 'Ghana Secondary Technical School (GSTS)', address: 'Takoradi, Western Region', lat: '4.897719', lng: '-1.749927', aliases: ['gsts', 'ghana secondary technical', 'takoradi tech'] },
+    { name: 'Archbishop Porter Girls\' Senior High School', address: 'Fijai, Takoradi, Western Region', lat: '4.941459', lng: '-1.748635', aliases: ['porter girls', 'apgss', 'archbishop porter'] },
+    { name: 'Fijai Senior High School', address: 'Fijai, Sekondi-Takoradi, Western Region', lat: '4.938800', lng: '-1.751600', aliases: ['fijai', 'fisa'] },
+    { name: 'Sekondi College (SEKCO)', address: 'Inchaban, Sekondi, Western Region', lat: '4.946400', lng: '-1.712800', aliases: ['sekco'] },
+    { name: 'Takoradi Senior High School (TADISCO)', address: 'Tanokrom, Takoradi, Western Region', lat: '4.896500', lng: '-1.776200', aliases: ['tadisco'] },
     { name: 'Tarkwa Senior High School', address: 'Tarkwa, Western Region', lat: '5.302100', lng: '-1.984500', aliases: ['tarcisco'] },
     { name: 'University of Mines and Technology (UMaT)', address: 'Tarkwa, Western Region', lat: '5.298200', lng: '-1.996100', aliases: ['umat'] },
     { name: 'Takoradi Technical University (TTU)', address: 'Takoradi, Western Region', lat: '4.901500', lng: '-1.762000', aliases: ['ttu'] },
@@ -289,6 +328,7 @@ setAuthValue('activeUserEmail', email);
 
   closeSchoolGpsModal(): void {
     this.isGpsSearchModalOpen = false;
+    this.gpsSelectedPreview = null;
   }
 
   async searchSchoolGps(): Promise<void> {
@@ -322,8 +362,49 @@ setAuthValue('activeUserEmail', email);
 
     this.gpsSearchResults = [...localMatches];
 
-    // 2. Also perform live OpenStreetMap search if query provided
+    // 2. Perform live search with Photon API (free, fast, no API key required)
     if (q) {
+      try {
+        const photonQueries = [
+          rawQuery,
+          `${rawQuery} Ghana`
+        ];
+        for (const pq of photonQueries) {
+          const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(pq)}&limit=8&lat=5.6&lon=-0.2`;
+          const pRes = await fetch(photonUrl);
+          if (pRes.ok) {
+            const pData = await pRes.json();
+            if (pData?.features && Array.isArray(pData.features)) {
+              for (const feat of pData.features) {
+                const coords = feat.geometry?.coordinates;
+                const props = feat.properties || {};
+                if (coords && coords.length >= 2) {
+                  const lng = parseFloat(coords[0]).toFixed(6);
+                  const lat = parseFloat(coords[1]).toFixed(6);
+                  // Check if in Ghana bounding box (lat: 4.5 to 11.5, lng: -3.5 to 1.5)
+                  const latNum = parseFloat(lat);
+                  const lngNum = parseFloat(lng);
+                  const inGhana = (props.countrycode === 'GH' || props.country === 'Ghana') || 
+                                  (latNum >= 4.5 && latNum <= 11.5 && lngNum >= -3.5 && lngNum <= 1.5);
+                  if (inGhana) {
+                    const name = props.name || rawQuery;
+                    const addrParts = [props.street, props.district, props.city, props.state, props.country || 'Ghana'].filter(Boolean);
+                    const address = addrParts.join(', ') || 'Ghana';
+                    if (!this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - latNum) < 0.0002 && Math.abs(parseFloat(r.lng) - lngNum) < 0.0002)) {
+                      this.gpsSearchResults.push({ name, address, lat, lng });
+                    }
+                  }
+                }
+              }
+            }
+          }
+          if (this.gpsSearchResults.length > localMatches.length) break;
+        }
+      } catch {
+        // Fall through to Nominatim
+      }
+
+      // 3. Fallback to OpenStreetMap Nominatim search
       const queryVariants = [
         rawQuery,
         `${rawQuery}, Ghana`
@@ -341,11 +422,11 @@ setAuthValue('activeUserEmail', email);
                 const lng = parseFloat(item.lon).toFixed(6);
                 const name = item.name || (item.display_name ? item.display_name.split(',')[0] : 'Location in Ghana');
                 const address = item.display_name || '';
-                if (!this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - parseFloat(lat)) < 0.0001 && Math.abs(parseFloat(r.lng) - parseFloat(lng)) < 0.0001)) {
+                if (!this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - parseFloat(lat)) < 0.0002 && Math.abs(parseFloat(r.lng) - parseFloat(lng)) < 0.0002)) {
                   this.gpsSearchResults.push({ name, address, lat, lng });
                 }
               }
-              break; // Got results
+              break;
             }
           }
         } catch {
@@ -356,6 +437,9 @@ setAuthValue('activeUserEmail', email);
 
     if (this.gpsSearchResults.length === 0) {
       this.gpsSearchError = 'No matching schools or landmarks found in Ghana. Try searching by short name (e.g. GSTS, Prempeh) or city.';
+      this.gpsSelectedPreview = null;
+    } else {
+      this.gpsSelectedPreview = this.gpsSearchResults[0];
     }
 
     this.gpsSearching = false;
@@ -366,8 +450,14 @@ setAuthValue('activeUserEmail', email);
     this.gpsAddress = result.address || result.name;
     this.gpsAccuracyWarning = '';
     this.isGpsSearchModalOpen = false;
+    this.gpsSelectedPreview = null;
     this.notificationService.success(`Applied GPS coordinates for ${result.name}`, 'GPS Coordinates Set');
     this.tryAutoSave();
+  }
+
+  previewSchoolGps(result: { name: string; address: string; lat: string; lng: string }, event: Event): void {
+    event.stopPropagation();
+    this.gpsSelectedPreview = result;
   }
 
   studentForm = {
@@ -499,7 +589,7 @@ setAuthValue('activeUserEmail', email);
 
   clearValidationState(): void {
     this.fieldValidation = {};
-    this.fieldVerified = {};
+    this.verifiedValues = {};
     for (const key in this.validationTimers) {
       if (this.validationTimers[key]) clearTimeout(this.validationTimers[key]);
     }
@@ -575,26 +665,30 @@ setAuthValue('activeUserEmail', email);
     if (this.validationTimers[fieldName]) clearTimeout(this.validationTimers[fieldName]);
     if (!value || !value.trim()) {
       this.fieldValidation[fieldName] = { status: 'idle', message: '' };
-      delete this.fieldVerified[fieldName];
+      delete this.verifiedValues[fieldName];
       return;
+    }
+    const cleanVal = value.trim().toLowerCase();
+    if (this.verifiedValues[fieldName] && this.verifiedValues[fieldName] !== cleanVal) {
+      delete this.verifiedValues[fieldName];
     }
     this.fieldValidation[fieldName] = { status: 'checking', message: 'Checking...' };
     this.validationTimers[fieldName] = setTimeout(() => {
       if (!value || !value.trim()) {
         this.fieldValidation[fieldName] = { status: 'idle', message: '' };
-        delete this.fieldVerified[fieldName];
+        delete this.verifiedValues[fieldName];
         this.revalidateSiblingFields(fieldName, 'email');
         return;
       }
       if (!this.contentService.isValidEmail(value)) {
         this.fieldValidation[fieldName] = { status: 'invalid', message: 'Invalid email format' };
       } else if (this.isDuplicateInForm(fieldName, value)) {
-        const msg = this.activeTab === 'school'
+        const msg = this.activeTab === 'school' && (fieldName === 'schoolEmail' || fieldName === 'schoolRepEmail')
           ? 'School email and representative email cannot be the same'
-          : 'Duplicate email used by another squad member';
+          : 'This email is already in use by another role or member in your form';
         this.fieldValidation[fieldName] = { status: 'taken', message: msg };
       } else if (this.contentService.isEmailTaken(value, this.editingApprovalId || undefined)) {
-        this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered' };
+        this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered to an account' };
       } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
         const timeRemaining = this.getDraftTimeRemaining(value);
         const timeText = timeRemaining ? ` (${timeRemaining})` : '';
@@ -603,26 +697,31 @@ setAuthValue('activeUserEmail', email);
         this.fieldValidation[fieldName] = { status: 'valid', message: 'Email available' };
       }
       this.revalidateSiblingFields(fieldName, 'email');
-    }, 400);
+    }, 350);
   }
 
   private isDuplicateInForm(fieldName: string, value: string): boolean {
     const v = value.trim().toLowerCase();
     if (!v) return false;
+
+    // Direct school sibling check
     if (this.activeTab === 'school') {
       if (fieldName === 'schoolEmail') return (this.schoolForm.repEmail || '').trim().toLowerCase() === v;
       if (fieldName === 'schoolRepEmail') return (this.schoolForm.email || '').trim().toLowerCase() === v;
     }
+
+    // Direct squad roster check
     if (this.activeTab === 'team' || (this.activeTab === 'student' && this.competitorMode === 'group')) {
-      const emails: { name: string; value: string }[] = [
+      const squadEmails: { name: string; value: string }[] = [
         { name: 'squadLeadEmail', value: this.teamForm.leadEmail },
         { name: 'squadM2Email', value: this.teamForm.member2Email },
         { name: 'squadM3Email', value: this.teamForm.member3Email },
         { name: 'squadM4Email', value: this.teamForm.member4Email },
         { name: 'squadM5Email', value: this.teamForm.member5Email },
       ];
-      return emails.some(e => e.name !== fieldName && e.value?.trim().toLowerCase() === v);
+      return squadEmails.some(e => e.name !== fieldName && e.value?.trim().toLowerCase() === v);
     }
+
     return false;
   }
 
@@ -824,7 +923,7 @@ setAuthValue('activeUserEmail', email);
   }
 
   // ── FIELD VERIFICATION + OTP ───────────────────────────────────
-  fieldVerified: Record<string, boolean> = {};
+  verifiedValues: Record<string, string> = {};
   verifyOtpModalOpen = false;
   verifyTargetField = '';
   verifyTargetType: 'email' | 'phone' = 'email';
@@ -833,18 +932,49 @@ setAuthValue('activeUserEmail', email);
   verifyOtpError = '';
   verifyOtpSent = false;
   verifyOtpBusy = false;
+  verifyOtpCountdown = 0;
+  private verifyOtpTimer: any = null;
+  /** Held so ngOnDestroy can unsubscribe; route params never complete. */
+  private queryParamsSub?: Subscription;
   /** Opaque handle from the server. The actual code is never held client-side. */
   private verifyChallengeId = '';
 
+  isFieldVerified(fieldName: string, currentValue?: string): boolean {
+    if (!currentValue || !currentValue.trim()) return false;
+    const verifiedVal = this.verifiedValues[fieldName];
+    if (!verifiedVal) return false;
+    const cleanCurrent = (fieldName.toLowerCase().includes('phone') || fieldName.toLowerCase().includes('tel') || fieldName.toLowerCase().includes('contact'))
+      ? this.normalizePhone(currentValue)
+      : currentValue.trim().toLowerCase();
+    return verifiedVal === cleanCurrent;
+  }
+
+  get fieldVerified(): Record<string, boolean> {
+    return {
+      schoolEmail: this.isFieldVerified('schoolEmail', this.schoolForm.email),
+      schoolRepTel: this.isFieldVerified('schoolRepTel', this.schoolForm.repTel),
+      instEmail: this.isFieldVerified('instEmail', this.instructorForm.email),
+      instTel: this.isFieldVerified('instTel', this.instructorForm.tel),
+      jdEmail: this.isFieldVerified('jdEmail', this.judgeForm.email),
+      jdTel: this.isFieldVerified('jdTel', this.judgeForm.tel),
+      sponsEmail: this.isFieldVerified('sponsEmail', this.sponsorForm.email),
+      sponsContact: this.isFieldVerified('sponsContact', this.sponsorForm.repContact),
+    };
+  }
+
   get currentTabVerified(): boolean {
     if (this.activeTab === 'school') {
-      return !!(this.fieldVerified['schoolEmail'] && this.fieldVerified['schoolRepTel']);
+      return this.isFieldVerified('schoolEmail', this.schoolForm.email) &&
+             this.isFieldVerified('schoolRepTel', this.schoolForm.repTel);
     } else if (this.activeTab === 'instructor') {
-      return !!(this.fieldVerified['instEmail'] && this.fieldVerified['instTel']);
+      return this.isFieldVerified('instEmail', this.instructorForm.email) &&
+             this.isFieldVerified('instTel', this.instructorForm.tel);
     } else if (this.activeTab === 'judge') {
-      return !!(this.fieldVerified['jdEmail'] && this.fieldVerified['jdTel']);
+      return this.isFieldVerified('jdEmail', this.judgeForm.email) &&
+             this.isFieldVerified('jdTel', this.judgeForm.tel);
     } else if (this.activeTab === 'sponsor') {
-      return !!(this.fieldVerified['sponsEmail'] && this.fieldVerified['sponsContact']);
+      return this.isFieldVerified('sponsEmail', this.sponsorForm.email) &&
+             this.isFieldVerified('sponsContact', this.sponsorForm.repContact);
     }
     return false;
   }
@@ -852,7 +982,7 @@ setAuthValue('activeUserEmail', email);
   canVerifyField(fieldName: string, value?: string): boolean {
     if (value !== undefined && (!value || !value.trim())) return false;
     const v = this.fieldValidation[fieldName];
-    return v?.status === 'valid' && !this.fieldVerified[fieldName];
+    return v?.status === 'valid' && !this.isFieldVerified(fieldName, value);
   }
 
   sendVerifyOtp(fieldName: string, type: 'email' | 'phone', value: string): void {
@@ -873,6 +1003,7 @@ setAuthValue('activeUserEmail', email);
         this.verifyOtpSent = true;
         this.verifyOtpModalOpen = true;
         this.verifyOtpBusy = false;
+        this.startVerifyOtpTimer(challenge.expiresIn || 60);
         this.notificationService.info(
           `A 6-digit verification code was sent to ${challenge.targetMasked}`,
           'Verification Code Sent'
@@ -886,6 +1017,34 @@ setAuthValue('activeUserEmail', email);
         this.cdr?.markForCheck?.();
       }
     });
+  }
+
+  startVerifyOtpTimer(seconds: number = 60): void {
+    if (this.verifyOtpTimer) {
+      clearInterval(this.verifyOtpTimer);
+    }
+    this.verifyOtpCountdown = Math.min(seconds, 60);
+    this.verifyOtpTimer = setInterval(() => {
+      if (this.verifyOtpCountdown > 0) {
+        this.verifyOtpCountdown--;
+        this.cdr?.markForCheck?.();
+      } else {
+        clearInterval(this.verifyOtpTimer);
+        this.verifyOtpTimer = null;
+        this.cdr?.markForCheck?.();
+      }
+    }, 1000);
+  }
+
+  resendVerifyOtp(): void {
+    if (this.verifyOtpCountdown > 0 || this.verifyOtpBusy || !this.verifyTargetValue) return;
+    this.sendVerifyOtp(this.verifyTargetField, this.verifyTargetType, this.verifyTargetValue);
+  }
+
+  onVerifyOtpInputChange(): void {
+    if (this.verifyOtpInput && this.verifyOtpInput.length === 6) {
+      this.confirmVerifyOtp();
+    }
   }
 
   confirmVerifyOtp(): void {
@@ -905,9 +1064,16 @@ setAuthValue('activeUserEmail', email);
     this.otpService.verify(this.verifyChallengeId, this.verifyOtpInput).subscribe({
       next: () => {
         this.verifyOtpBusy = false;
-        this.fieldVerified[this.verifyTargetField] = true;
+        const verifiedClean = this.verifyTargetType === 'email'
+          ? this.verifyTargetValue.trim().toLowerCase()
+          : this.normalizePhone(this.verifyTargetValue);
+        this.verifiedValues[this.verifyTargetField] = verifiedClean;
         this.verifyOtpModalOpen = false;
         this.verifyChallengeId = '';
+        if (this.verifyOtpTimer) {
+          clearInterval(this.verifyOtpTimer);
+          this.verifyOtpTimer = null;
+        }
         this.notificationService.success(
           `${this.verifyTargetType === 'email' ? 'Email' : 'Phone number'} verified successfully!`,
           'Verified'
@@ -929,6 +1095,10 @@ setAuthValue('activeUserEmail', email);
     this.verifyOtpError = '';
     this.verifyChallengeId = '';
     this.verifyOtpBusy = false;
+    if (this.verifyOtpTimer) {
+      clearInterval(this.verifyOtpTimer);
+      this.verifyOtpTimer = null;
+    }
   }
 
   private tryAutoSave(): void {
@@ -1305,6 +1475,26 @@ setAuthValue('activeUserEmail', email);
   isPasswordVisible = false;
   rememberDevice = false;
 
+  /** Forgot-password popup. The flow itself lives in ForgotPasswordComponent. */
+  showForgotPassword = false;
+
+  openForgotPassword(): void {
+    this.loginError = '';
+    this.showForgotPassword = true;
+  }
+
+  closeForgotPassword(): void {
+    this.showForgotPassword = false;
+  }
+
+  onPasswordReset(email: string): void {
+    this.showForgotPassword = false;
+    // Pre-fill sign-in so the user only types their new password.
+    this.loginEmail = email;
+    this.loginPassword = '';
+    this.loginError = 'Password reset. Sign in with your new password.';
+  }
+
   openLoginModal(event?: Event): void {
     if (event) {
       event.preventDefault();
@@ -1330,6 +1520,7 @@ setAuthValue('activeUserEmail', email);
     this.loginEmail = '';
     this.loginPassword = '';
     this.loginError = '';
+    this.closeForgotPassword();
   }
 
   get hasSavedCredentials(): boolean {
@@ -1353,6 +1544,13 @@ setAuthValue('activeUserEmail', email);
       this.loginError = 'Please enter your email or access pass.';
       return;
     }
+
+    const upperCred = this.loginEmail.trim().toUpperCase();
+    if (upperCred.startsWith('NTIC-STU-20') || upperCred.startsWith('NTIC-TM-20') || upperCred.startsWith('NTIC-SCH-20') || upperCred.startsWith('NTIC-INS-20') || upperCred.startsWith('NTIC-OPEN-20')) {
+      this.loginError = 'This is an Application Tracking Code. Applications under review cannot log in yet. Go to "Track / Edit Submitted Application" to check your status or wait for admin approval.';
+      return;
+    }
+
     this.isLoggingIn = true;
     this.loginError = '';
 
@@ -1432,47 +1630,101 @@ setAuthValue('activeUserEmail', email);
     const activeRoleId = getAuthValue('activeRoleId');
     this.isAuthorizedUser = !!(activeRoleId && ['super_admin', 'school_admin', 'instructor'].includes(activeRoleId));
 
-    this.route.queryParams.subscribe(params => {
+    this.queryParamsSub = this.route.queryParams.subscribe(params => {
       this.showAdminPaths = params['admin'] === 'true';
-      if (params['track']) {
+      const sectionParam = params['section'];
+      const tabParam = params['tab'];
+      const codeParam = params['code'] || params['q'];
+      const stepParam = params['step'];
+
+      if (sectionParam === 'tracker' || params['track_app']) {
+        this.regState = 'tracker';
+        if (codeParam) {
+          this.trackerQuery = codeParam;
+          this.searchApplication();
+        }
+      } else if (sectionParam === 'continue') {
+        this.regState = 'continue_select';
+      } else if (params['track']) {
         this.selectedTrack = params['track'];
         this.regState = 'gateway';
         this.isPathModalOpen = true; // Open Select Registration Path popup immediately
-      } else if (params['tab']) {
-        this.activeTab = params['tab'] === 'student' ? 'school' : params['tab'];
+      } else if (tabParam || sectionParam === 'new') {
+        if (tabParam) {
+          this.activeTab = tabParam;
+        }
         this.regState = 'new';
+        if (stepParam) {
+          const stepNum = parseInt(stepParam, 10);
+          if (!isNaN(stepNum) && stepNum >= 1 && stepNum <= 4) {
+            this.schoolStep = stepNum;
+            this.syncCardSubTab(stepNum);
+          }
+        }
       } else {
-        // Fresh visit (no tab/track param) -- always show the gateway
-        this.regState = 'gateway';
+        // Restore from session state on page refresh if available
+        const savedUi = this.loadSavedRegUi();
+        if (savedUi && savedUi.regState && savedUi.regState !== 'gateway') {
+          this.regState = savedUi.regState;
+          if (savedUi.activeTab) this.activeTab = savedUi.activeTab;
+          if (savedUi.schoolStep) {
+            this.schoolStep = savedUi.schoolStep;
+            this.syncCardSubTab(savedUi.schoolStep);
+          }
+          if (savedUi.maxSchoolStepReached) this.maxSchoolStepReached = savedUi.maxSchoolStepReached;
+          if (savedUi.trackerQuery) {
+            this.trackerQuery = savedUi.trackerQuery;
+            if (savedUi.regState === 'tracker' && this.trackerQuery) {
+              this.searchApplication();
+            }
+          }
+        } else {
+          this.regState = 'gateway';
+        }
       }
     });
   }
 
   ngOnDestroy(): void {
     this.clearTimer();
+
+    // clearTimer() only clears resendInterval. verifyOtpTimer is cleared at
+    // every normal exit from the OTP flow, but not when the user navigates
+    // away mid-countdown -- so it kept ticking after the component was gone.
+    // zone.js patches setInterval, so each orphaned tick ran a full app-wide
+    // change detection pass, once per second, forever, and another one was
+    // added every time the page was revisited.
+    if (this.verifyOtpTimer) {
+      clearInterval(this.verifyOtpTimer);
+      this.verifyOtpTimer = null;
+    }
+
+    // route.queryParams never completes, so this subscription outlived the
+    // component and kept the whole class instance (and its template state)
+    // reachable, re-running the handler on later navigations.
+    this.queryParamsSub?.unsubscribe();
   }
 
   selectNewRegistration(): void {
     this.isPathModalOpen = true;
     this.clearDraftPrefills();
-    this.clearRegState();
   }
 
   selectContinueRegistration(): void {
     this.regState = 'continue_select';
-    this.clearRegState();
     this.verificationInput = '';
     this.otpCode = '';
     this.otpError = '';
+    this.saveRegState();
   }
 
   openTracker(): void {
     this.regState = 'tracker';
-    this.clearRegState();
     this.trackerQuery = '';
     this.trackerResult = null;
     this.trackerStatus = 'idle';
     this.trackerSearched = false;
+    this.saveRegState();
   }
 
   generateApplicationCode(type: 'school' | 'team' | 'instructor' | 'student'): string {
@@ -1521,11 +1773,36 @@ setAuthValue('activeUserEmail', email);
   }
 
   searchApplication(): void {
-    if (!this.trackerQuery.trim()) return;
-    const result = this.contentService.lookupApplication(this.trackerQuery);
-    this.trackerResult = result;
-    this.trackerStatus = result.status;
-    this.trackerSearched = true;
+    const q = this.trackerQuery.trim();
+    if (!q) return;
+    const localResult = this.contentService.lookupApplication(q);
+    if (localResult && localResult.status !== 'not_found') {
+      this.trackerResult = localResult;
+      this.trackerStatus = localResult.status;
+      this.trackerSearched = true;
+      this.saveRegState();
+      return;
+    }
+    // Query server if not found in local memory
+    this.apiService.getPublicApprovalStatus(q).subscribe({
+      next: (serverResult: any) => {
+        if (serverResult && serverResult.status && serverResult.status !== 'not_found') {
+          this.trackerResult = serverResult;
+          this.trackerStatus = serverResult.status;
+        } else {
+          this.trackerResult = { status: 'not_found' };
+          this.trackerStatus = 'not_found';
+        }
+        this.trackerSearched = true;
+        this.saveRegState();
+      },
+      error: () => {
+        this.trackerResult = { status: 'not_found' };
+        this.trackerStatus = 'not_found';
+        this.trackerSearched = true;
+        this.saveRegState();
+      }
+    });
   }
 
   startEditApplication(): void {
@@ -1641,6 +1918,58 @@ setAuthValue('activeUserEmail', email);
         this.selectedFileIds['instructorDocs'] = d.docs.map((x: string) => x.split('::')[0]);
         this.selectedFileNames['instructorDocs'] = d.docs.map((x: string) => x.split('::')[1] || 'document.pdf');
       }
+    } else if (app.type === 'Judge Registration' || app.type === 'Judge') {
+      this.activeTab = 'judge';
+      this.judgeForm = {
+        name: app.entity || '',
+        tel: d.phone || '',
+        email: app.contact || '',
+        organization: d.organization || '',
+        region: d.region || 'Greater Accra',
+        expertise: d.expertise || '',
+        experience: d.experience || '',
+        bio: d.bio || '',
+        ticketCode: d.code || '',
+        otp: '',
+        acceptedTerms: true
+      };
+      if (d.logoFileId) {
+        this.selectedFileIds['judgeLogo'] = [d.logoFileId];
+        this.selectedFileNames['judgeLogo'] = ['Judge Logo'];
+      }
+    } else if (app.type === 'Sponsor Registration' || app.type === 'Sponsor') {
+      this.activeTab = 'sponsor';
+      this.sponsorForm = {
+        name: app.entity || '',
+        sector: d.sector || 'Energy & Mining',
+        repName: d.repName || '',
+        repContact: d.phone || d.repContact || '',
+        email: app.contact || d.email || '',
+        region: d.region || 'Greater Accra',
+        package: d.package || '',
+        acceptedTerms: true,
+        arenas: d.arenas || {
+          'Coding Track': true,
+          'Robotics Arena': true,
+          'AI & ML Challenge': true,
+          'Cyber Security CTF': true,
+          'Open Innovation': true
+        }
+      };
+    } else if (app.type === 'Open Registration' || app.type === 'Open') {
+      this.activeTab = 'open';
+      this.openRegForm = {
+        fullName: app.entity || '',
+        email: app.contact || '',
+        phone: d.phone || '',
+        ageGroup: d.ageGroup || 'junior',
+        experienceLevel: d.experienceLevel || 'beginner',
+        organization: d.organization || '',
+        selectedCompetitionId: d.competitionId || '',
+        acceptedTerms: true,
+        emailVerified: true,
+        phoneVerified: !!d.phone
+      };
     }
   }
 
@@ -1875,6 +2204,14 @@ setAuthValue('activeUserEmail', email);
       const id = this.selectedFileIds[k]?.[0];
       if (id) memberPhotoIds.push(id);
     });
+    const rosterList = [
+      this.teamForm.leadName,
+      this.teamForm.member2Name,
+      this.teamForm.member3Name,
+      this.teamForm.member4Name,
+      this.teamForm.member5Name
+    ].filter(Boolean).map((n: string) => n.trim()).filter((n: string) => n.length > 0);
+
     this.schoolForm.teams.push({
       name: this.teamForm.name,
       track: this.teamForm.track,
@@ -1888,6 +2225,8 @@ setAuthValue('activeUserEmail', email);
       member4Email: this.teamForm.member4Email,
       member5Name: this.teamForm.member5Name,
       member5Email: this.teamForm.member5Email,
+      rosterList,
+      members: rosterList,
       memberPhotos: memberPhotoIds.length ? memberPhotoIds : undefined
     });
     this.teamForm.name = '';
@@ -2059,8 +2398,19 @@ setAuthValue('activeUserEmail', email);
       });
       this.contentService.saveApprovals(currentApprovals);
 
+      // Real backend persist for reviewers
+      this.apiService.submitPublicApplication({
+        type: 'Team Addition',
+        entity: this.teamForm.name,
+        contact: leadEmail,
+        details
+      }).subscribe({
+        next: () => {},
+        error: (err: any) => console.warn('[Registration] Team submit error:', err)
+      });
+
       if (leadEmail) {
-        this.emailService.sendPendingConfirmation(leadEmail, this.teamForm.leadName, this.teamForm.name, 'Team Addition');
+        this.emailService.sendPendingConfirmation(leadEmail, this.teamForm.leadName, this.teamForm.name, 'Team Addition', code);
       }
 
       const currentAudit = [...this.contentService.auditLogs];
@@ -2144,8 +2494,19 @@ setAuthValue('activeUserEmail', email);
     }
     this.contentService.saveApprovals(currentApprovals);
 
+    // Real backend persist for reviewers
+    this.apiService.submitPublicApplication({
+      type: 'Student Registration',
+      entity: this.studentForm.name,
+      contact: studentEmail,
+      details
+    }).subscribe({
+      next: () => {},
+      error: (err: any) => console.warn('[Registration] Student submit error:', err)
+    });
+
     if (studentEmail) {
-      this.emailService.sendPendingConfirmation(studentEmail, this.studentForm.name, this.studentForm.name, 'Student Registration');
+      this.emailService.sendPendingConfirmation(studentEmail, this.studentForm.name, this.studentForm.name, 'Student Registration', code);
     }
 
     const currentAudit = [...this.contentService.auditLogs];
@@ -2241,8 +2602,9 @@ setAuthValue('activeUserEmail', email);
   }
 
   loadOpenCompetitions(): void {
-    this.availableOpenCompetitions = this.contentService.competitions
-      .filter(c => c.status === 'registration' || c.status === 'active')
+    // Uses the shared lifecycle predicate rather than its own status list, so
+    // this picker can never offer a cycle the API will refuse to register into.
+    this.availableOpenCompetitions = this.contentService.getOpenCompetitions()
       .map(c => ({
         id: c.id,
         title: c.title,
@@ -2435,6 +2797,7 @@ setAuthValue('activeUserEmail', email);
   }
 
   selectRolePath(role: string): void {
+    this.clearValidationState();
     this.isPathModalOpen = false;
     if (role === 'sponsor') {
       this.activeTab = 'sponsor';
@@ -2558,19 +2921,54 @@ setAuthValue('activeUserEmail', email);
     }
   }
 
+  private loadSavedRegUi(): any {
+    try {
+      const raw = sessionStorage.getItem('ntic_reg_ui') || localStorage.getItem('ntic_reg_ui');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
   private saveRegState(): void {
     try {
-      localStorage.setItem('ntic_reg_ui', JSON.stringify({
+      const state = {
         regState: this.regState,
         activeTab: this.activeTab,
         schoolStep: this.schoolStep,
         maxSchoolStepReached: this.maxSchoolStepReached,
-      }));
+        trackerQuery: this.trackerQuery
+      };
+      sessionStorage.setItem('ntic_reg_ui', JSON.stringify(state));
+      localStorage.setItem('ntic_reg_ui', JSON.stringify(state));
+
+      const queryParams: Record<string, any> = {
+        section: this.regState !== 'gateway' ? this.regState : null,
+        tab: this.regState === 'new' ? this.activeTab : null,
+        step: this.regState === 'new' && this.activeTab === 'school' && this.schoolStep > 1 ? this.schoolStep : null,
+        q: this.regState === 'tracker' && this.trackerQuery ? this.trackerQuery : null
+      };
+
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams,
+        queryParamsHandling: 'merge',
+        replaceUrl: true
+      });
     } catch {}
   }
 
   private clearRegState(): void {
-    localStorage.removeItem('ntic_reg_ui');
+    try {
+      sessionStorage.removeItem('ntic_reg_ui');
+      localStorage.removeItem('ntic_reg_ui');
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { section: null, tab: null, step: null, q: null, code: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true
+      });
+    } catch {}
   }
 
   private clearDraftPrefills(): void {
@@ -2851,7 +3249,10 @@ setAuthValue('activeUserEmail', email);
             : this.generateApplicationCode('school'),
           tracks: this.schoolForm.teams.map((t: any) => t.track).filter((value: any, index: number, self: any[]) => self.indexOf(value) === index).join(', ') || 'Coding, Robotics',
           teamsList: this.schoolForm.teams,
-          studentCount: this.schoolForm.students.length,
+          studentCount: this.schoolForm.students.length + this.schoolForm.teams.reduce((sum: number, t: any) => {
+            const count = t.rosterList?.length || t.members?.length || [t.leadName, t.member2Name, t.member3Name, t.member4Name, t.member5Name].filter(Boolean).length;
+            return sum + (count > 0 ? count : 1);
+          }, 0),
           students: this.schoolForm.students.map((s: any) => ({ id: s.id, name: s.name, track: s.track, class: s.class, dob: s.dob, gender: s.gender, guardianName: s.guardianName, guardianPhone: s.guardianPhone, skills: s.skills })),
           docs: this.selectedFileIds['accredDocs']?.length
             ? this.selectedFileIds['accredDocs'].map((id, i) => `${id}::${this.selectedFileNames['accredDocs']?.[i] || 'document.pdf'}`)
@@ -2927,7 +3328,12 @@ setAuthValue('activeUserEmail', email);
           memberPhotos: memberPhotoIds.length ? memberPhotoIds : undefined
         };
         currentTeams.push(regTeam);
-        this.contentService.syncNewTeamToBackend(regTeam);
+        // Deliberately NOT calling syncNewTeamToBackend here. This branch files a
+        // 'Team Addition' approval (see approvalType above), so creating the team
+        // at the same time contradicted it: the team went live before anyone
+        // reviewed it. For an anonymous registrant the call 401'd and was
+        // swallowed, but a signed-in school admin really did create the team and
+        // skip approval. The team is now created by the admin approve handler.
         this.contentService.saveTeams(currentTeams);
       } else if (this.activeTab === 'instructor') {
         approvalType = 'Instructor Access';
@@ -2978,12 +3384,16 @@ setAuthValue('activeUserEmail', email);
         };
         if (judgeLogoId) (newJudge as any).logoFileId = judgeLogoId;
         // Create server-side FIRST; the server issues the one-time password.
-        this.apiService.createUser({
+        // registerPublicUser, not createUser: POST /api/users is admin-only, so
+        // this call always failed for an applicant and no judge account was ever
+        // created. `status` is not sent -- the server forces 'pending', which is
+        // also why the old `status: 'Active'` here was a self-activation attempt
+        // that only failed by accident.
+        this.apiService.registerPublicUser({
           email: newJudge.email,
           full_name: newJudge.fullName,
           role: newJudge.role,
           ticket: newJudge.ticket,
-          status: 'Active',
           phone: newJudge.phone || ''
         } as any).subscribe({
           next: (created: any) => {
@@ -3041,12 +3451,12 @@ setAuthValue('activeUserEmail', email);
         };
         if (logoFileId) (newSponsor as any).logoFileId = logoFileId;
         // Create server-side FIRST; the server issues the one-time password.
-        this.apiService.createUser({
+        // See the judge branch above: createUser is admin-only, so this never ran.
+        this.apiService.registerPublicUser({
           email: newSponsor.email,
           full_name: newSponsor.fullName,
           role: newSponsor.role,
           ticket: newSponsor.ticket,
-          status: 'Active',
           phone: newSponsor.phone || ''
         } as any).subscribe({
           next: (created: any) => {
@@ -3111,7 +3521,10 @@ setAuthValue('activeUserEmail', email);
         if (this.openRegPhotoFileId) (newUser as any).profilePhotoFileId = this.openRegPhotoFileId;
         if (this.openRegDocFileId) (newUser as any).docFileId = this.openRegDocFileId;
 
-        this.apiService.createUser({
+        // Open-competition entry. Was calling the admin-only POST /api/users, so
+        // no participant account was ever created. The public endpoint records
+        // them as 'pending' for activation rather than self-activating.
+        this.apiService.registerPublicUser({
           email: newUser.email,
           full_name: newUser.fullName,
           role: 'student',
@@ -3122,8 +3535,7 @@ setAuthValue('activeUserEmail', email);
           experience_level: newUser.experienceLevel || '',
           competition_id: newUser.competitionId || '',
           photo_file_id: this.openRegPhotoFileId || '',
-          doc_file_id: this.openRegDocFileId || '',
-          status: 'Active'
+          doc_file_id: this.openRegDocFileId || ''
         } as any).subscribe({
           next: (created: any) => {
             otp = created?.temporary_password || '';
@@ -3191,6 +3603,31 @@ setAuthValue('activeUserEmail', email);
         }
         this.contentService.saveApprovals(currentApprovals);
 
+        // The application has to exist on the server or no reviewer will ever see
+        // it. saveApprovals() above only reaches POST /api/bulk-sync, which is
+        // admin-only, so for an anonymous applicant it 401'd and the application
+        // lived solely in this browser -- while the confirmation email below told
+        // them it had been received. This files it for real.
+        if (approvalType && entity) {
+          this.apiService.submitPublicApplication({
+            type: approvalType,
+            entity,
+            contact,
+            details
+          }).subscribe({
+            next: () => {},
+            error: (err: any) => {
+              const detail = err?.error?.detail || err?.message || 'Unknown error';
+              this.dialogService.toast(
+                err?.status === 0
+                  ? 'Your application could not be sent to the server. Please check your connection and submit again.'
+                  : `Your application was not received: ${detail}`,
+                'error'
+              );
+            }
+          });
+        }
+
         const emailTo = contact || '';
         const emailName = entity || '';
         let phone = '';
@@ -3198,7 +3635,7 @@ setAuthValue('activeUserEmail', email);
         else if (this.activeTab === 'team') phone = '';
         else if (this.activeTab === 'instructor') phone = this.instructorForm.tel || '';
         if (emailTo) {
-          this.emailService.sendPendingConfirmation(emailTo, emailName, emailName, approvalType);
+          this.emailService.sendPendingConfirmation(emailTo, emailName, emailName, approvalType, details?.code || this.lastApplicationCode || '');
         }
 
         const currentAudit = [...this.contentService.auditLogs];

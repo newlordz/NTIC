@@ -221,7 +221,7 @@
       position: absolute;
       left: 0;
       right: 0;
-      top: 0;
+      top: 4px; /* baseline for barcodeScan's translateY */
       height: 2px;
       background: #ef4444;
       box-shadow: 0 0 6px #ef4444;
@@ -366,10 +366,12 @@
 }
 
 /* --- ANIMATIONS --- */
+/* translateY instead of `top` so this composites rather than running layout on
+   every frame. Element now sits at top: 4px, so 4->22px is an 18px travel. */
 @keyframes barcodeScan {
-  0% { top: 4px; }
-  50% { top: 22px; }
-  100% { top: 4px; }
+  0% { transform: translateY(0); }
+  50% { transform: translateY(18px); }
+  100% { transform: translateY(0); }
 }
 
 /* --- DARK MODE ADJUSTMENTS FOR LMS --- */

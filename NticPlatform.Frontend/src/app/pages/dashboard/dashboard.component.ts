@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import {
   ContentService,
+  ApprovalRequest,
   ChampionshipStory,
   HallOfFameEntry,
   LeaderboardEntry,
@@ -426,7 +427,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ─── SUPER ADMIN STATE ─────────────────────────
   adminTab: 'overview' | 'control' | 'dashboard' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'dashboard';
-  adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'audit' | 'users_full' | 'personnel' | '' = '';
+  adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'audit' | 'users_full' | 'personnel' | 'mentors' | '' = '';
 
   goToTab(tab: string): void {
     this.adminTab = tab as any;
@@ -961,9 +962,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ],
     },
     {
+      title: 'Upcoming Competitions', icon: 'timer',
+      fields: [
+        { key: 'countdown.badge', label: 'Countdown Badge' },
+        { key: 'countdown.desc', label: 'Countdown Description', multiline: true },
+      ],
+    },
+    {
       title: 'Core Philosophy', icon: 'lightbulb',
       fields: [
         { key: 'philosophy.sub', label: 'Section Eyebrow' },
+        { key: 'philosophy.heading', label: 'Headline Motto' },
         { key: 'philosophy.desc', label: 'Description', multiline: true },
       ],
     },
@@ -1086,14 +1095,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ],
     },
     {
-      title: 'Login Gateway', icon: 'vpn_key',
-      fields: [
-        { key: 'gateway.badge', label: 'Badge' },
-        { key: 'gateway.heading', label: 'Heading' },
-        { key: 'gateway.desc', label: 'Description', multiline: true },
-      ],
-    },
-    {
       title: 'Footer', icon: 'copyright',
       fields: [
         { key: 'footer.heading', label: 'Heading' },
@@ -1113,6 +1114,76 @@ export class DashboardComponent implements OnInit, OnDestroy {
   landingCopySaveState: 'idle' | 'saving' | 'saved' | 'error' = 'idle';
   landingCopyLastSaved: string = '';
   landingCopySavingSection: string | null = null;
+  landingCopySearchQuery: string = '';
+  landingCopyFilterType: 'all' | 'buttons' | 'headings' | 'descriptions' = 'all';
+  filteredLandingCopySections: { section: LandingCopySection; fields: LandingCopyField[] }[] = [];
+  totalMatchingCopyFieldsCount: number = 0;
+
+  trackBySectionTitle(_index: number, item: { section: LandingCopySection }): string {
+    return item.section.title;
+  }
+
+  trackByFieldKey(_index: number, field: LandingCopyField): string {
+    return field.key;
+  }
+
+  setLandingCopyFilter(type: 'all' | 'buttons' | 'headings' | 'descriptions'): void {
+    this.landingCopyFilterType = type;
+    this.updateLandingCopyFilter();
+  }
+
+  clearLandingCopySearch(): void {
+    this.landingCopySearchQuery = '';
+    this.landingCopyFilterType = 'all';
+    this.updateLandingCopyFilter();
+  }
+
+  updateLandingCopyFilter(): void {
+    const q = (this.landingCopySearchQuery || '').trim().toLowerCase();
+    const filter = this.landingCopyFilterType;
+
+    const results: { section: LandingCopySection; fields: LandingCopyField[] }[] = [];
+
+    for (const section of this.landingCopySections) {
+      const sectionTitleMatches = !q || section.title.toLowerCase().includes(q);
+
+      const matchingFields = section.fields.filter(field => {
+        // Quick Category Filter
+        if (filter === 'buttons') {
+          const l = field.label.toLowerCase();
+          const k = field.key.toLowerCase();
+          if (!l.includes('button') && !l.includes('link') && !l.includes('cta') && !l.includes('apply') && !k.includes('link') && !k.includes('cta') && !k.includes('btn') && !k.includes('viewall') && !k.includes('viewfull')) {
+            return false;
+          }
+        } else if (filter === 'headings') {
+          const l = field.label.toLowerCase();
+          if (!l.includes('heading') && !l.includes('title') && !l.includes('eyebrow') && !l.includes('badge') && !l.includes('motto') && !l.includes('sub') && !l.includes('name')) {
+            return false;
+          }
+        } else if (filter === 'descriptions') {
+          const l = field.label.toLowerCase();
+          if (!field.multiline && !l.includes('desc') && !l.includes('body') && !l.includes('lead') && !l.includes('intro') && !l.includes('paragraph') && !l.includes('bullet') && !l.includes('b1') && !l.includes('b2') && !l.includes('b3') && !l.includes('brief')) {
+            return false;
+          }
+        }
+
+        if (!q) return true;
+
+        const labelMatch = field.label.toLowerCase().includes(q);
+        const keyMatch = field.key.toLowerCase().includes(q);
+        const valMatch = (this.landingCopyForm[field.key] || '').toLowerCase().includes(q);
+
+        return sectionTitleMatches || labelMatch || keyMatch || valMatch;
+      });
+
+      if (matchingFields.length > 0) {
+        results.push({ section, fields: matchingFields });
+      }
+    }
+
+    this.filteredLandingCopySections = results;
+    this.totalMatchingCopyFieldsCount = results.reduce((sum, item) => sum + item.fields.length, 0);
+  }
 
   showPageCopy(): void {
     this.contentTab = 'pagecopy';
@@ -1129,6 +1200,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     this.landingCopyForm = form;
     this.landingCopySaveState = 'idle';
+    this.updateLandingCopyFilter();
   }
 
   resetLandingCopyForm(): void {
@@ -1140,6 +1212,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     this.landingCopyForm = form;
     this.landingCopySaveState = 'idle';
+    this.updateLandingCopyFilter();
   }
 
   saveLandingCopy(): void {
@@ -1379,7 +1452,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // School Admin Portal Specific Flow
   schoolName = '';
   isAddTeamModalOpen = false;
-  teamForm = { id: undefined as string | undefined, name: '', track: 'Coding', lead: '', members: 4, mentor: '', motto: '', memberNames: ['', '', '', '', '', '', '', ''] };
+  teamForm = { id: undefined as string | undefined, name: '', track: 'Coding', lead: '', members: 4, mentor: '', motto: '', memberNames: ['', '', '', '', '', '', '', ''], leadEmail: '', memberEmails: ['', '', '', '', '', '', '', ''] };
 
   // Registration form
   regForm = {
@@ -1511,6 +1584,209 @@ export class DashboardComponent implements OnInit, OnDestroy {
   studentEnrolments: MyEnrolledCourse[] = [];
   studentRecentSubmissions: MySubmission[] = [];
   isLoadingStudentSummary = false;
+
+  // The student's own teams (solo or squad) + mentor status, so a solo entrant
+  // can see their team and request a mentor.
+  myTeams: Array<{
+    id: string; name: string; track: string; competitionId: string | null;
+    mentorId: string | null; mentorStatus: string; isSolo: boolean; isLead: boolean;
+  }> = [];
+
+  loadMyTeams(): void {
+    this.apiService.getMyTeams().subscribe({
+      next: rows => { this.myTeams = rows || []; },
+      error: () => { this.myTeams = []; }
+    });
+  }
+
+  requestMentor(teamId: string): void {
+    this.apiService.requestTeamMentor(teamId).subscribe({
+      next: () => {
+        this.dialogService.toast('Mentor requested. An instructor will be assigned.', 'success');
+        this.loadMyTeams();
+      },
+      error: (err: any) => {
+        const detail = err?.error?.detail || 'Could not request a mentor.';
+        this.dialogService.toast(detail, 'error');
+      }
+    });
+  }
+
+  // ─── MENTOR & INSTRUCTOR ALLOCATION PORTAL ─────────────────
+  mentorSearchQuery: string = '';
+  mentorStatusFilter: 'all' | 'unassigned' | 'requested' | 'assigned' = 'all';
+  mentorTrackFilter: string = 'all';
+  mentorTypeFilter: 'all' | 'squad' | 'solo' = 'all';
+  selectedMentorInstructorFilter: string = '';
+  mentorActionInProgress: { [teamId: string]: boolean } = {};
+  selectedMentorForTeam: { [teamId: string]: string } = {};
+
+  get allPlatformInstructors(): any[] {
+    const users = this.registeredUsers || [];
+    const teams = (this.contentService.teams || []).filter(t => (t.status || '').toLowerCase() !== 'disbanded');
+    return users
+      .filter(u => (u.role || '').toLowerCase() === 'instructor')
+      .map(inst => {
+        const id = inst.id;
+        const assignedTeams = teams.filter(t => (t.mentorId === id || t.mentor_id === id));
+        return {
+          id: inst.id,
+          name: inst.fullName || inst.full_name || inst.name || inst.email || 'Instructor',
+          email: inst.email || '',
+          track: inst.track || '',
+          organization: inst.organization || inst.school || '',
+          status: inst.status || 'Active',
+          assignedCount: assignedTeams.length,
+          assignedTeams
+        };
+      })
+      .sort((a, b) => b.assignedCount - a.assignedCount || a.name.localeCompare(b.name));
+  }
+
+  get mentorAllocationStats(): {
+    total: number;
+    assigned: number;
+    unassigned: number;
+    requested: number;
+    pct: number;
+    instructorCount: number;
+    avgLoad: string;
+  } {
+    const teams = (this.contentService.teams || []).filter(t => (t.status || '').toLowerCase() !== 'disbanded');
+    const total = teams.length;
+    const assigned = teams.filter(t => !!(t.mentorId || t.mentor_id)).length;
+    const requested = teams.filter(t => !(t.mentorId || t.mentor_id) && (t.mentorStatus === 'requested' || t.mentor_status === 'requested')).length;
+    const unassigned = total - assigned;
+    const pct = total > 0 ? Math.round((assigned / total) * 100) : 0;
+    const instructors = this.allPlatformInstructors;
+    const avgLoad = instructors.length > 0 ? (assigned / instructors.length).toFixed(1) : '0';
+    return { total, assigned, unassigned, requested, pct, instructorCount: instructors.length, avgLoad };
+  }
+
+  get filteredMentorTeams(): any[] {
+    let list = (this.contentService.teams || []).filter(t => (t.status || '').toLowerCase() !== 'disbanded');
+    const q = (this.mentorSearchQuery || '').trim().toLowerCase();
+    if (q) {
+      list = list.filter(t => {
+        const name = (t.name || '').toLowerCase();
+        const lead = (t.lead || '').toLowerCase();
+        const school = (t.schoolName || t.school_name || '').toLowerCase();
+        const track = (t.track || '').toLowerCase();
+        const mentorName = this.getMentorName(t.mentorId || t.mentor_id).toLowerCase();
+        return name.includes(q) || lead.includes(q) || school.includes(q) || track.includes(q) || mentorName.includes(q);
+      });
+    }
+    if (this.mentorStatusFilter === 'assigned') {
+      list = list.filter(t => !!(t.mentorId || t.mentor_id));
+    } else if (this.mentorStatusFilter === 'unassigned') {
+      list = list.filter(t => !(t.mentorId || t.mentor_id));
+    } else if (this.mentorStatusFilter === 'requested') {
+      list = list.filter(t => !(t.mentorId || t.mentor_id) && (t.mentorStatus === 'requested' || t.mentor_status === 'requested'));
+    }
+    if (this.mentorTrackFilter && this.mentorTrackFilter !== 'all') {
+      list = list.filter(t => (t.track || '').toLowerCase() === this.mentorTrackFilter.toLowerCase());
+    }
+    if (this.mentorTypeFilter === 'squad') {
+      list = list.filter(t => !t.isSolo && !t.is_solo);
+    } else if (this.mentorTypeFilter === 'solo') {
+      list = list.filter(t => !!(t.isSolo || t.is_solo));
+    }
+    if (this.selectedMentorInstructorFilter) {
+      list = list.filter(t => (t.mentorId === this.selectedMentorInstructorFilter || t.mentor_id === this.selectedMentorInstructorFilter));
+    }
+    return list;
+  }
+
+  getMentorName(mentorId: string | null | undefined): string {
+    if (!mentorId) return 'Unassigned';
+    const inst = (this.registeredUsers || []).find(u => u.id === mentorId);
+    return inst ? (inst.fullName || inst.full_name || inst.name || inst.email || 'Instructor') : 'Assigned Instructor';
+  }
+
+  getMentorObj(mentorId: string | null | undefined): any {
+    if (!mentorId) return null;
+    return (this.registeredUsers || []).find(u => u.id === mentorId) || null;
+  }
+
+  isTrackMatch(teamTrack: string | null | undefined, instructorTrack: string | null | undefined): boolean {
+    if (!teamTrack || !instructorTrack) return false;
+    const tt = teamTrack.toLowerCase().trim();
+    const it = instructorTrack.toLowerCase().trim();
+    return tt.includes(it) || it.includes(tt) || (tt === 'ai' && it.includes('ai')) || (tt === 'coding' && it.includes('code'));
+  }
+
+  assignMentorToTeam(teamId: string, mentorId: string | null): void {
+    if (!teamId) return;
+    this.mentorActionInProgress[teamId] = true;
+    this.apiService.assignTeamMentor(teamId, mentorId || null).subscribe({
+      next: () => {
+        this.mentorActionInProgress[teamId] = false;
+        if (mentorId) {
+          const mName = this.getMentorName(mentorId);
+          this.dialogService.toast(`Assigned ${mName} as mentor.`, 'success');
+        } else {
+          this.dialogService.toast('Mentor unassigned.', 'info');
+        }
+        this.contentService.refreshBackendData();
+        this.cdr.markForCheck();
+      },
+      error: (err: any) => {
+        this.mentorActionInProgress[teamId] = false;
+        const detail = err?.error?.detail || 'Could not update mentor assignment.';
+        this.dialogService.toast(detail, 'error');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  async unassignMentorFromTeam(teamId: string, teamName?: string): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Unassign Mentor',
+      message: `Are you sure you want to remove the assigned mentor from "${teamName || 'this team'}"?`,
+      confirmText: 'Unassign',
+      type: 'warning'
+    });
+    if (!ok) return;
+    this.assignMentorToTeam(teamId, null);
+  }
+
+  filterByInstructor(instructorId: string): void {
+    if (this.selectedMentorInstructorFilter === instructorId) {
+      this.selectedMentorInstructorFilter = '';
+    } else {
+      this.selectedMentorInstructorFilter = instructorId;
+      this.mentorStatusFilter = 'all';
+    }
+  }
+
+  clearMentorFilters(): void {
+    this.mentorSearchQuery = '';
+    this.mentorStatusFilter = 'all';
+    this.mentorTrackFilter = 'all';
+    this.mentorTypeFilter = 'all';
+    this.selectedMentorInstructorFilter = '';
+  }
+
+  /** Admin: give every mentor-less team (squad or solo) an instructor. */
+  async autoAssignMentors(): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Auto-assign Mentors',
+      message: 'Assign an instructor to every team that has no mentor yet? Matched by track where possible and balanced across instructors.',
+      confirmText: 'Assign',
+      type: 'info'
+    });
+    if (!ok) return;
+    this.apiService.autoAssignMentors().subscribe({
+      next: res => {
+        this.dialogService.toast(`${res.assigned} team${res.assigned === 1 ? '' : 's'} assigned a mentor.`, 'success');
+        this.contentService.refreshBackendData();
+      },
+      error: (err: any) => {
+        const detail = err?.error?.detail || 'Could not auto-assign mentors.';
+        this.dialogService.toast(detail, 'error');
+      }
+    });
+  }
 
   loadStudentSummary(): void {
     if (this.activeRoleId !== 'student') return;
@@ -2187,22 +2463,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.recomputeAuditState();
     this.recomputeRoleDistribution();
     this.recomputeSchoolAdminData();
-    if (typeof window !== 'undefined') {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-      setTimeout(() => {
-        window.scrollTo(0, 0);
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-          mainContent.scrollTop = 0;
-          mainContent.scrollLeft = 0;
-        }
-        document.querySelectorAll('.admin-tickets-table, .admin-table-sm').forEach(el => {
-          el.scrollLeft = 0;
-        });
-      }, 0);
-    }
     this.activeRoleId = getAuthValue('activeRoleId') || 'student';
     // An absent role grants nothing. The !this.activeRoleId || prefix used to
     // make a missing role behave like a full administrator.
@@ -2215,6 +2475,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (profile) {
         this.loadDashboardData();
         this.loadStudentSummary();
+        if (this.activeRoleId === 'student') this.loadMyTeams();
         this.loadSponsorSummary();
         this.loadInstructorCourses();
         this.cdr.markForCheck();
@@ -2230,7 +2491,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (params['tab'] && ['dashboard', 'overview', 'control', 'register', 'tickets', 'approvals', 'content', 'users', 'admins'].includes(params['tab'])) {
         this.adminTab = params['tab'] as any;
         if (this.adminTab === 'control') {
-          this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins','audit','users_full','personnel'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
+          this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins','audit','users_full','personnel','mentors'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
         }
         if (params['subtab'] === 'personnel') {
           this.loadPersonnel();
@@ -2344,6 +2605,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.schoolName = cachedUser.organization || (cachedUser.role === 'school_admin' ? cachedUser.fullName : '');
     } else {
       this.schoolName = '';
+    }
+
+    // A school admin's mentor dropdowns need the institution's instructors, so
+    // load them up front rather than only when the portal opens.
+    if (this.activeRoleId === 'school_admin') {
+      this.apiService.getInstitutionInstructors().subscribe({
+        next: rows => { this.institutionInstructors = rows || []; },
+        error: () => { this.institutionInstructors = []; }
+      });
     }
 
     // Unified view of the signed-in user for the role branches below. me is the
@@ -3959,14 +4229,79 @@ setTimeout(async () => {
 
       this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp);
       this.openCredentialsModal('School Registration Approved!', `School Admin account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access credentials sent to ${req.contact}`);
+    } else if (req.type === 'Team Modification') {
+      const teamId = req.details?.teamId;
+      const targetName = req.details?.originalName || req.entity;
+      const newName = req.details?.newName || req.details?.name || req.entity;
+      const school = req.details?.school || req.details?.institution || 'Partner School';
+      const roster = req.details?.members || [];
+      const track = req.details?.track || 'Coding';
+      const lead = req.details?.lead || (roster[0] || 'Team Lead');
+      const mentor = req.details?.mentor || '';
+      const motto = req.details?.motto || '';
+
+      const updatedTeamPayload = {
+        name: newName,
+        track: track,
+        lead: lead,
+        members: Math.max(roster.length, 3),
+        status: 'In Competition',
+        school_name: school,
+        mentor: mentor,
+        motto: motto,
+        roster_list: roster,
+        lead_email: req.details?.leadEmail || '',
+        member_emails: req.details?.memberEmails || []
+      };
+
+      const updateLocalAndNotify = () => {
+        const currentTeams = this.contentService.teams.map(t => {
+          if ((teamId && t.id === teamId) || t.name === targetName || t.name === newName) {
+            return {
+              ...t,
+              name: newName,
+              track: track,
+              lead: lead,
+              members: Math.max(roster.length, 3),
+              rosterList: roster,
+              mentor: mentor,
+              motto: motto,
+              schoolName: school,
+              status: 'In Competition'
+            };
+          }
+          return t;
+        });
+        this.contentService.saveTeams(currentTeams);
+        this.emailService.sendApprovalEmail(req.contact, lead, req.entity, req.type, 'N/A -- Team Modified', 'N/A');
+        this.showCustomAlert(`Squad modifications for "${newName}" (${school}) approved and live in tournament database.`, 'Team Modification Approved', 'success');
+      };
+
+      if (teamId && !teamId.startsWith('temp-')) {
+        this.apiService.updateTeam(teamId, updatedTeamPayload).subscribe({
+          next: () => updateLocalAndNotify(),
+          error: (err: any) => {
+            console.error('Failed to update team in backend:', err);
+            updateLocalAndNotify();
+          }
+        });
+      } else {
+        updateLocalAndNotify();
+      }
     } else if (req.type === 'Team Addition') {
+      const roster = req.details?.members || (req.details?.rosterList || [req.details?.lead || 'Team Lead']);
       const newTeam = {
         name: req.entity,
-        track: req.details?.track || 'Robotics',
-        lead: req.details?.members?.[0] || 'Team Lead',
-        members: req.details?.members?.length || 3,
+        track: req.details?.track || 'Coding',
+        lead: req.details?.lead || (roster[0] || 'Team Lead'),
+        members: Math.max(roster.length, 3),
+        rosterList: roster,
+        mentor: req.details?.mentor || '',
+        motto: req.details?.motto || '',
         status: 'In Competition',
-        schoolName: req.details?.school || 'Partner School'
+        schoolName: req.details?.school || req.details?.institution || 'Partner School',
+        leadEmail: req.details?.leadEmail || '',
+        memberEmails: req.details?.memberEmails || []
       };
       const currentTeams = [...this.contentService.teams];
       currentTeams.push(newTeam);
@@ -4128,6 +4463,54 @@ setTimeout(async () => {
     if (reason.includes('registry')) return 'database';
     if (reason.includes('student team')) return 'groups';
     return 'error';
+  }
+
+  getSchoolStudentCount(details: any): number {
+    if (!details) return 0;
+    const soloCount = Array.isArray(details.students)
+      ? details.students.length
+      : (details.studentCount && !details.teamsList?.length ? details.studentCount : 0);
+    const teams = Array.isArray(details.teamsList) ? details.teamsList : [];
+    const teamMembersCount = teams.reduce((sum: number, t: any) => {
+      const roster = this.getTeamMembers(t);
+      return sum + (roster.length > 0 ? roster.length : 1);
+    }, 0);
+    const total = soloCount + teamMembersCount;
+    return Math.max(total, details.studentCount || 0);
+  }
+
+  getTeamMembers(team: any): string[] {
+    if (!team) return [];
+    if (Array.isArray(team.rosterList) && team.rosterList.length > 0) return team.rosterList;
+    if (Array.isArray(team.members) && team.members.length > 0) return team.members;
+    const directNames = [team.leadName, team.member2Name, team.member3Name, team.member4Name, team.member5Name]
+      .filter(Boolean)
+      .map(n => String(n).trim())
+      .filter(n => n.length > 0);
+    if (directNames.length > 0) return directNames;
+
+    // Cross-reference from pending / approved registrations
+    const teamName = (team.name || '').trim().toLowerCase();
+    if (teamName) {
+      const allReqs = [...this.contentService.pendingApprovals, ...this.contentService.approvedApprovals];
+      for (const req of allReqs) {
+        if (req.details?.teamsList && Array.isArray(req.details.teamsList)) {
+          const match = req.details.teamsList.find((t: any) => (t.name || '').trim().toLowerCase() === teamName);
+          if (match) {
+            const matchNames = [match.leadName, match.member2Name, match.member3Name, match.member4Name, match.member5Name]
+              .filter(Boolean)
+              .map(n => String(n).trim())
+              .filter(n => n.length > 0);
+            if (matchNames.length > 0) return matchNames;
+          }
+        }
+      }
+    }
+
+    if (team.lead && typeof team.lead === 'string' && team.lead.trim()) {
+      return [team.lead.trim()];
+    }
+    return [];
   }
 
   openPreview(req: any): void {
@@ -5341,6 +5724,83 @@ setTimeout(async () => {
     this.selectedMemberProfile = member;
   }
 
+  // ── Institution student portal ────────────────────────────────────
+  // Backed by GET /api/institution/students and the reset-credentials and
+  // mentor endpoints. Everything here is server-scoped to the caller's own
+  // institution, so a school admin only ever sees or acts on their own students.
+  institutionStudents: Array<{
+    id: string; full_name: string; email: string; ticket: string;
+    status: string; organization: string; must_change_password: boolean;
+    has_logged_in: boolean;
+  }> = [];
+  institutionInstructors: Array<{ id: string; full_name: string; email: string; organization: string }> = [];
+  institutionLoading = false;
+  isPortalOpen = false;
+  /** The credentials most recently issued, shown once for the institution to copy. */
+  issuedCredentials: { full_name: string; email: string; temporary_password: string } | null = null;
+
+  openInstitutionPortal(): void {
+    this.isPortalOpen = true;
+    this.loadInstitutionPortal();
+  }
+
+  closeInstitutionPortal(): void {
+    this.isPortalOpen = false;
+    this.issuedCredentials = null;
+  }
+
+  loadInstitutionPortal(): void {
+    this.institutionLoading = true;
+    this.apiService.getInstitutionStudents().subscribe({
+      next: rows => { this.institutionStudents = rows || []; this.institutionLoading = false; },
+      error: () => { this.institutionStudents = []; this.institutionLoading = false; }
+    });
+    this.apiService.getInstitutionInstructors().subscribe({
+      next: rows => { this.institutionInstructors = rows || []; },
+      error: () => { this.institutionInstructors = []; }
+    });
+  }
+
+  async resetStudentCredentials(student: { id: string; full_name: string }): Promise<void> {
+    const ok = await this.dialogService.confirm({
+      title: 'Issue New Login',
+      message: `Generate a new one-time password for ${student.full_name}? Any current session is signed out, and they must set a new password on next login.`,
+      confirmText: 'Generate',
+      type: 'info'
+    });
+    if (!ok) return;
+    this.apiService.resetStudentCredentials(student.id).subscribe({
+      next: res => {
+        // Shown once. The password is not retrievable again after this.
+        this.issuedCredentials = { full_name: res.full_name, email: res.email, temporary_password: res.temporary_password };
+        this.loadInstitutionPortal();
+      },
+      error: (err: any) => {
+        const detail = err?.error?.detail || 'Could not issue credentials.';
+        this.dialogService.toast(detail, 'error');
+      }
+    });
+  }
+
+  dismissIssuedCredentials(): void {
+    this.issuedCredentials = null;
+  }
+
+  /** Assign one of this institution's instructors as a team's mentor. */
+  assignMentor(teamId: string, mentorId: string): void {
+    if (!mentorId) return;
+    this.apiService.assignTeamMentor(teamId, mentorId).subscribe({
+      next: () => {
+        this.dialogService.toast('Mentor assigned.', 'success');
+        this.contentService.refreshBackendData();
+      },
+      error: (err: any) => {
+        const detail = err?.error?.detail || 'Could not assign mentor.';
+        this.dialogService.toast(detail, 'error');
+      }
+    });
+  }
+
   closeMemberProfileModal(): void {
     this.selectedMemberProfile = null;
   }
@@ -5415,7 +5875,7 @@ setTimeout(async () => {
     const seenKeys = new Set<string>();
 
     const addMember = (m: any) => {
-      const key = (m.email || m.name || m.fullName || '').trim().toLowerCase();
+      const key = (m.name || m.fullName || m.email || '').trim().toLowerCase();
       if (key && !seenKeys.has(key)) {
         seenKeys.add(key);
         memberList.push(m);
@@ -5443,24 +5903,7 @@ setTimeout(async () => {
       }
     });
 
-    // 2. Fetch members from team rosters
-    this.schoolTeams.forEach((t: any) => {
-      if (t.rosterList && Array.isArray(t.rosterList)) {
-        t.rosterList.forEach((memberName: string, idx: number) => {
-          addMember({
-            name: memberName,
-            email: idx === 0 ? (t.leadEmail || `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`) : `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
-            role: idx === 0 ? 'Team Lead / Captain' : 'Team Member',
-            teamName: t.name,
-            track: t.track || 'Coding',
-            organization: t.schoolName || this.schoolName,
-            status: 'In Competition'
-          });
-        });
-      }
-    });
-
-    // 3. Fetch members registered under school / team applications
+    // 2. Fetch members registered under school / team applications (has detailed member roster)
     const allReqs = [...this.contentService.pendingApprovals, ...this.contentService.approvedApprovals];
     allReqs.forEach((req: any) => {
       const reqOrg = (req.entity || req.details?.school || req.details?.institution || '').trim().toLowerCase();
@@ -5480,11 +5923,55 @@ setTimeout(async () => {
               guardianName: s.guardianName || 'N/A',
               guardianPhone: s.guardianPhone || 'N/A',
               track: s.track || 'Coding & Algorithms',
-              organization: reqOrg || this.schoolName,
-              status: 'Registered'
+              organization: req.entity || this.schoolName,
+              status: 'In Competition'
             });
           });
         }
+        if (req.details?.teamsList && Array.isArray(req.details.teamsList)) {
+          req.details.teamsList.forEach((t: any) => {
+            const roster = this.getTeamMembers(t);
+            roster.forEach((memberName: string, idx: number) => {
+              addMember({
+                name: memberName,
+                email: (idx === 0 && t.leadEmail) ? t.leadEmail : `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
+                role: idx === 0 ? 'Team Lead / Captain' : 'Team Member',
+                teamName: t.name,
+                track: t.track || req.details?.tracks || 'Coding',
+                organization: req.entity || this.schoolName,
+                status: 'In Competition'
+              });
+            });
+          });
+        }
+      }
+    });
+
+    // 3. Fetch members from team rosters in active registry
+    this.schoolTeams.forEach((t: any) => {
+      const roster = this.getTeamMembers(t);
+      if (roster.length > 0) {
+        roster.forEach((memberName: string, idx: number) => {
+          addMember({
+            name: memberName,
+            email: idx === 0 ? (t.leadEmail || `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`) : `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
+            role: idx === 0 ? 'Team Lead / Captain' : 'Team Member',
+            teamName: t.name,
+            track: t.track || 'Coding',
+            organization: t.schoolName || this.schoolName,
+            status: t.status || 'In Competition'
+          });
+        });
+      } else if (t.lead) {
+        addMember({
+          name: t.lead,
+          email: `${t.lead.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
+          role: 'Team Lead / Captain',
+          teamName: t.name,
+          track: t.track || 'Coding',
+          organization: t.schoolName || this.schoolName,
+          status: t.status || 'In Competition'
+        });
       }
     });
 
@@ -5511,13 +5998,13 @@ setTimeout(async () => {
 
   openAddTeamModal(): void {
     this.editingTeamOriginalName = null;
-    this.teamForm = { id: undefined, name: '', track: 'Coding', lead: '', members: 4, mentor: '', motto: '', memberNames: ['', '', '', '', '', '', '', ''] };
+    this.teamForm = { id: undefined, name: '', track: 'Coding', lead: '', members: 4, mentor: '', motto: '', memberNames: ['', '', '', '', '', '', '', ''], leadEmail: '', memberEmails: ['', '', '', '', '', '', '', ''] };
     this.isAddTeamModalOpen = true;
   }
 
   editTeam(team: any): void {
     this.editingTeamOriginalName = team.name;
-    const roster = team.rosterList || [team.lead];
+    const roster = this.getTeamMembers(team);
     const namesArray = ['', '', '', '', '', '', '', ''];
     for (let i = 1; i < roster.length && i <= 8; i++) {
       namesArray[i - 1] = roster[i];
@@ -5528,46 +6015,90 @@ setTimeout(async () => {
       name: team.name,
       track: team.track || 'Coding',
       lead: team.lead || (roster[0] || ''),
-      members: team.members || roster.length || 4,
+      members: Math.max(team.members || 3, roster.length),
       mentor: team.mentor || '',
       motto: team.motto || '',
-      memberNames: namesArray
+      memberNames: namesArray,
+      leadEmail: team.leadEmail || '',
+      memberEmails: team.memberEmails?.length ? team.memberEmails : ['', '', '', '', '', '', '', '']
     };
     this.isAddTeamModalOpen = true;
   }
 
 
   async disbandTeam(team: any): Promise<void> {
+    // Institutions no longer hold DELETE /api/teams -- disbanding a team is a
+    // change like a rename, so it goes through approval. Admins and competition
+    // managers still delete directly, since they are the ones who decide.
+    const canDeleteDirectly = ['super_admin', 'admin', 'competition_manager'].includes(this.activeRoleId);
+
     const ok = await this.dialogService.confirm({
-      title: 'Disband Squad',
-      message: `Are you sure you want to disband squad "${team.name}" and remove all registered student members from the tournament?`,
-      confirmText: 'Disband Squad',
+      title: canDeleteDirectly ? 'Disband Squad' : 'Request Disbandment',
+      message: canDeleteDirectly
+        ? `Are you sure you want to disband squad "${team.name}" and remove all registered student members from the tournament?`
+        : `Submit a request to disband squad "${team.name}"? The squad stays in the tournament until an administrator approves it.`,
+      confirmText: canDeleteDirectly ? 'Disband Squad' : 'Submit Request',
       type: 'danger'
     });
-    if (ok) {
-      const deleteSuccess = () => {
-        const currentTeams = this.contentService.teams.filter(t => t !== team && t.name !== team.name && t.id !== team.id);
-        this.contentService.saveTeams(currentTeams);
-        this.addAuditLog({
-          action: `School Admin (${this.schoolName}) disbanded squad: ${team.name}`,
-          user: getAuthValue('activeUserEmail') || 'School Admin',
-          time: new Date().toISOString(),
-          type: 'approval'
-        });
-        this.dialogService.toast(`Squad "${team.name}" has been disbanded.`, 'info');
-      };
+    if (!ok) return;
 
-      if (team.id && !team.id.startsWith('temp-')) {
-        this.apiService.deleteTeam(team.id).subscribe({
-          next: deleteSuccess,
-          error: (err) => {
-            console.error('Failed to delete team in backend:', err);
-            this.dialogService.toast('Failed to disband squad in database.', 'error');
-          }
-        });
-      } else {
-        deleteSuccess();
+    if (!canDeleteDirectly) {
+      if (!team.id || String(team.id).startsWith('temp-')) {
+        this.dialogService.toast('This squad has not finished registering yet, so it cannot be disbanded.', 'error');
+        return;
       }
+      this.apiService.submitTeamChange({
+        type: 'Team Disbandment',
+        team_id: team.id,
+        name: team.name,
+        track: team.track || '',
+        lead: team.lead || ''
+      }).subscribe({
+        next: () => {
+          this.addAuditLog({
+            action: `School Admin (${this.schoolName}) requested disbandment of squad: ${team.name}`,
+            user: getAuthValue('activeUserEmail') || 'School Admin',
+            time: new Date().toISOString(),
+            type: 'approval'
+          });
+          this.dialogService.toast(`Disbandment request for "${team.name}" submitted for Super Admin review.`, 'success');
+        },
+        error: (err: any) => {
+          const detail = err?.error?.detail || err?.message || 'Unknown error';
+          this.dialogService.toast(
+            err?.status === 0
+              ? 'Could not reach the server, so the disbandment request was not submitted.'
+              : `Disbandment request was not submitted: ${detail}`,
+            'error'
+          );
+        }
+      });
+      return;
+    }
+
+    const deleteSuccess = () => {
+      const currentTeams = this.contentService.teams.filter(t => t !== team && t.name !== team.name && t.id !== team.id);
+      this.contentService.saveTeams(currentTeams);
+      this.addAuditLog({
+        action: `${this.getRoleLabel(this.activeRoleId)} disbanded squad: ${team.name}`,
+        user: getAuthValue('activeUserEmail') || 'Administrator',
+        time: new Date().toISOString(),
+        type: 'approval'
+      });
+      this.dialogService.toast(`Squad "${team.name}" has been disbanded.`, 'info');
+    };
+
+    if (team.id && !team.id.startsWith('temp-')) {
+      this.apiService.deleteTeam(team.id).subscribe({
+        next: deleteSuccess,
+        error: (err) => {
+          console.error('Failed to delete team in backend:', err);
+          const detail = err?.error?.detail || err?.message || 'Unknown error';
+          this.dialogService.toast(`Failed to disband squad: ${detail}`, 'error');
+        }
+      });
+    } else {
+      deleteSuccess();
     }
   }
 
@@ -5591,75 +6122,154 @@ setTimeout(async () => {
         .filter(name => name.length > 0)
     ];
 
-    const teamPayload = {
-      name: this.teamForm.name.trim(),
-      track: this.teamForm.track,
-      lead: this.teamForm.lead.trim(),
-      members: Math.max(this.teamForm.members || 4, activeMembersList.length),
-      status: 'In Competition',
-      school_name: this.schoolName
-    };
+    if (this.editingTeamOriginalName) {
+      // 1. EDIT MODE: Submit a formal Team Modification approval request for Super Admin review
+      const existingTeam = this.contentService.teams.find(t => 
+        (this.teamForm.id && t.id === this.teamForm.id) ||
+        (t.name === this.editingTeamOriginalName)
+      );
+      const school = existingTeam?.schoolName || (this.schoolName || '').replace(/\s+Admin$/i, '').trim();
+      const teamId = existingTeam?.id || this.teamForm.id;
+      // No invented address. If the institution didn't enter a real email, the
+      // lead stays name-only and gets an account later when the email is added
+      // (provisioning runs on every edit). A guessed address used to mint a
+      // login nobody could receive.
+      const leadEmail = (this.teamForm.leadEmail || '').trim();
+      const memberEmails = this.teamForm.memberEmails
+        .slice(0, (this.teamForm.members || 1) - 1)
+        .map(e => (e || '').trim())
+        .filter(e => e.length > 0);
+      const reqId = 'REQ-' + Date.now();
 
-    const done = (dbTeam: any) => {
-      const newTeam: any = {
-        id: dbTeam?.id || this.teamForm.id || `team-${Date.now()}`,
+      const approvalReq: ApprovalRequest = {
+        id: reqId,
+        entity: `${this.editingTeamOriginalName} ➔ ${this.teamForm.name.trim()}`,
+        type: 'Team Modification',
+        contact: getAuthValue('activeUserEmail') || leadEmail,
+        submitted: 'Modified ' + new Date().toLocaleString('en-GB'),
+        details: {
+          school: school,
+          institution: school,
+          teamId: teamId,
+          originalName: this.editingTeamOriginalName,
+          newName: this.teamForm.name.trim(),
+          track: existingTeam?.track || this.teamForm.track,
+          lead: this.teamForm.lead.trim(),
+          leadName: this.teamForm.lead.trim(),
+          leadEmail: leadEmail,
+          memberEmails: memberEmails,
+          members: activeMembersList,
+          memberCount: activeMembersList.length,
+          mentor: this.teamForm.mentor || '',
+          motto: this.teamForm.motto || '',
+          category: 'Public High School'
+        }
+      };
+
+      // The server owns this request. It is the only copy that an admin can see,
+      // so the local list is only updated once the write has actually succeeded
+      // -- the previous version seeded localStorage first, downgraded the failure
+      // to a console warning and still showed a success toast, so a request that
+      // never left the browser looked submitted.
+      this.apiService.submitTeamChange({
+        type: 'Team Modification',
+        team_id: teamId,
+        name: this.teamForm.name.trim(),
+        track: existingTeam?.track || this.teamForm.track,
+        lead: this.teamForm.lead.trim(),
+        members: activeMembersList,
+        mentor: this.teamForm.mentor || '',
+        motto: this.teamForm.motto || ''
+      }).subscribe({
+        next: (res) => {
+          this.contentService.saveApprovals([
+            { ...approvalReq, id: res.id, entity: res.entity || approvalReq.entity },
+            ...this.contentService.pendingApprovals
+          ]);
+          this.addAuditLog({
+            action: `School Admin (${school}) submitted Team Modification request for "${this.editingTeamOriginalName}" (New Name: "${this.teamForm.name.trim()}")`,
+            user: getAuthValue('activeUserEmail') || 'School Admin',
+            time: new Date().toISOString(),
+            type: 'approval'
+          });
+          this.dialogService.toast(`Modification request for "${this.teamForm.name.trim()}" submitted for Super Admin review and approval.`, 'success');
+          this.closeAddTeamModal();
+        },
+        error: (err: any) => {
+          const detail = err?.error?.detail || err?.message || 'Unknown error';
+          this.dialogService.toast(
+            err?.status === 0
+              ? 'Could not reach the server, so the modification request was not submitted. Check your connection and try again.'
+              : `Modification request was not submitted: ${detail}`,
+            'error'
+          );
+        }
+      });
+    } else {
+      // 2. NEW TEAM MODE: Requires formal Super Admin approval via Team Addition request
+      // No invented address -- same as the edit branch above.
+      const leadEmail = (this.teamForm.leadEmail || '').trim();
+      const memberEmails = this.teamForm.memberEmails
+        .slice(0, (this.teamForm.members || 1) - 1)
+        .map(e => (e || '').trim())
+        .filter(e => e.length > 0);
+      const reqId = 'REQ-' + Date.now();
+      const approvalReq: ApprovalRequest = {
+        id: reqId,
+        entity: this.teamForm.name.trim(),
+        type: 'Team Addition',
+        contact: getAuthValue('activeUserEmail') || leadEmail,
+        submitted: 'Registered ' + new Date().toLocaleString('en-GB'),
+        details: {
+          school: this.schoolName,
+          institution: this.schoolName,
+          track: this.teamForm.track,
+          tracks: this.teamForm.track,
+          lead: this.teamForm.lead.trim(),
+          leadName: this.teamForm.lead.trim(),
+          leadEmail: leadEmail,
+          memberEmails: memberEmails,
+          members: activeMembersList,
+          memberCount: activeMembersList.length,
+          mentor: this.teamForm.mentor || '',
+          motto: this.teamForm.motto || '',
+          category: 'Public High School'
+        }
+      };
+
+      // Same as the modification branch: only record it locally once the server
+      // has accepted it, and surface a real failure instead of a success toast.
+      this.apiService.submitTeamChange({
+        type: 'Team Addition',
         name: this.teamForm.name.trim(),
         track: this.teamForm.track,
         lead: this.teamForm.lead.trim(),
-        members: Math.max(this.teamForm.members || 4, activeMembersList.length),
-        rosterList: activeMembersList,
-        mentor: this.teamForm.mentor || 'Assigned Coordinator',
-        motto: this.teamForm.motto ? this.teamForm.motto.trim() : '',
-        status: 'In Competition',
-        schoolName: this.schoolName
-      };
-
-      const currentTeams = [...this.contentService.teams];
-      if (this.editingTeamOriginalName) {
-        const idx = currentTeams.findIndex(t => t.name === this.editingTeamOriginalName && t.schoolName === this.schoolName);
-        if (idx !== -1) {
-          currentTeams[idx] = newTeam;
-        } else {
-          currentTeams.push(newTeam);
-        }
-        this.editingTeamOriginalName = null;
-      } else {
-        currentTeams.push(newTeam);
-      }
-      this.contentService.saveTeams(currentTeams);
-
-      // Add audit log
-      const currentAudit = [...this.contentService.auditLogs];
-      currentAudit.unshift({
-        action: `School Admin (${this.schoolName}) registered/updated Team: ${newTeam.name} under ${newTeam.track}`,
-        user: getAuthValue('activeUserEmail') || 'School Admin',
-        time: new Date().toISOString(),
-        type: 'approval'
-      });
-      this.contentService.saveAuditLogs(currentAudit);
-
-      this.closeAddTeamModal();
-    };
-
-    if (this.editingTeamOriginalName) {
-      const existingTeam = this.contentService.teams.find(t => t.name === this.editingTeamOriginalName && t.schoolName === this.schoolName);
-      if (existingTeam && existingTeam.id && !existingTeam.id.startsWith('temp-')) {
-        this.apiService.updateTeam(existingTeam.id, teamPayload).subscribe({
-          next: (res) => done({ id: existingTeam.id }),
-          error: (err) => {
-            console.error('Failed to update team in backend:', err);
-            this.dialogService.toast('Failed to save team updates to database.', 'error');
-          }
-        });
-      } else {
-        done(null);
-      }
-    } else {
-      this.apiService.createTeam(teamPayload).subscribe({
-        next: (res) => done(res),
-        error: (err) => {
-          console.error('Failed to create team in backend:', err);
-          this.dialogService.toast('Failed to create team in database.', 'error');
+        members: activeMembersList,
+        mentor: this.teamForm.mentor || '',
+        motto: this.teamForm.motto || ''
+      }).subscribe({
+        next: (res) => {
+          this.contentService.saveApprovals([
+            { ...approvalReq, id: res.id, entity: res.entity || approvalReq.entity },
+            ...this.contentService.pendingApprovals
+          ]);
+          this.addAuditLog({
+            action: `School Admin (${this.schoolName}) requested new Team Addition: ${approvalReq.entity} (${this.teamForm.track})`,
+            user: getAuthValue('activeUserEmail') || 'School Admin',
+            time: new Date().toISOString(),
+            type: 'approval'
+          });
+          this.dialogService.toast(`Team Addition "${approvalReq.entity}" submitted for Super Admin review and approval.`, 'success');
+          this.closeAddTeamModal();
+        },
+        error: (err: any) => {
+          const detail = err?.error?.detail || err?.message || 'Unknown error';
+          this.dialogService.toast(
+            err?.status === 0
+              ? 'Could not reach the server, so the team was not submitted. Check your connection and try again.'
+              : `Team Addition was not submitted: ${detail}`,
+            'error'
+          );
         }
       });
     }
