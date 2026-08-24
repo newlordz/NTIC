@@ -2800,9 +2800,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
           else if (a.status === 'approved') approved.push(mapped);
           else if (a.status === 'rejected') rejected.push(mapped);
         });
-        if (pending.length > 0) this.contentService.saveApprovals(pending);
-        if (approved.length > 0) this.contentService.saveApprovedApprovals(approved);
-        if (rejected.length > 0) this.contentService.saveRejectedApprovals(rejected);
+        this.contentService.pendingApprovals = pending;
+        this.contentService.approvedApprovals = approved;
+        this.contentService.rejectedApprovals = rejected;
       },
       error: () => {}
     });

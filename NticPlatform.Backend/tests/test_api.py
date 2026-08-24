@@ -1287,6 +1287,29 @@ class TestBulkSync:
         })
         assert resp.status_code == 401
 
+    def test_bulk_sync_users_handles_conflicts_gracefully(self, client, admin_token):
+        resp = client.post("/api/bulk-sync", json={
+            "collection": "users",
+            "items": [
+                {
+                    "id": "USR-SYNC-1",
+                    "email": "admin@ntic.org.gh",
+                    "fullName": "Super Administrator",
+                    "role": "super_admin",
+                    "status": "Active"
+                },
+                {
+                    "id": "USR-SYNC-2",
+                    "email": "newsyncuser@example.com",
+                    "fullName": "New Sync User",
+                    "role": "student",
+                    "status": "Active"
+                }
+            ]
+        }, headers={"Authorization": f"Bearer {admin_token}"})
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "synced"
+
 
 class TestUserCrud:
     def test_create_user(self, client, admin_token):
@@ -1330,6 +1353,18 @@ class TestUserCrud:
         resp = client.delete(f"/api/users/{user_id}", headers={"Authorization": f"Bearer {admin_token}"})
         assert resp.status_code == 200
         assert resp.json()["status"] == "deleted"
+
+        # Email must be immediately freed for check-availability and re-registration
+        avail = client.get(f"/api/auth/check-availability?email={email}").json()
+        assert avail["email_taken"] is False
+
+        # Re-creating an account with the same email succeeds without conflict
+        recreate_resp = client.post("/api/users", json={
+            "email": email,
+            "full_name": "Recreated User",
+            "role": "student"
+        }, headers={"Authorization": f"Bearer {admin_token}"})
+        assert recreate_resp.status_code == 201
 
     def test_create_user_requires_admin(self, client):
         resp = client.post("/api/users", json={

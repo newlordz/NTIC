@@ -230,7 +230,9 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         }
 
         this.contentService.users = mapped;
-        this.contentService.saveUsers(mapped);
+        try {
+          localStorage.setItem('ntic_users', JSON.stringify(mapped));
+        } catch {}
         this.users = [...mapped];
         this.applyFilters();
         this.loadAvatars();

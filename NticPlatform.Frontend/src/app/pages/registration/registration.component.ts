@@ -790,6 +790,13 @@ setAuthValue('activeUserEmail', email);
   }
 
   private revalidateSiblingFields(currentFieldName: string, type: 'email' | 'phone'): void {
+    // Never downgrade a server-confirmed 'taken' to 'valid'. The local
+    // isEmailTaken/isPhoneTaken fall back to an admin-only roster, so for a
+    // public registrant they always say "free" -- which used to silently erase a
+    // genuine "already registered" warning on the sibling field.
+    const serverSaysTaken = (field: string) =>
+      this.fieldValidation[field]?.status === 'taken' && this.fieldValidation[field]?.serverConfirmed === true;
+
     if (this.activeTab === 'school') {
       if (type === 'email') {
         const sibling = currentFieldName === 'schoolEmail' ? 'schoolRepEmail' : currentFieldName === 'schoolRepEmail' ? 'schoolEmail' : null;
@@ -800,7 +807,7 @@ setAuthValue('activeUserEmail', email);
               this.fieldValidation[sibling] = { status: 'invalid', message: 'Invalid email format' };
             } else if (this.isDuplicateInForm(sibling, val)) {
               this.fieldValidation[sibling] = { status: 'taken', message: 'School email and representative email cannot be the same' };
-            } else if (!this.contentService.isEmailTaken(val, this.editingApprovalId || undefined)) {
+            } else if (!serverSaysTaken(sibling) && !this.contentService.isEmailTaken(val, this.editingApprovalId || undefined)) {
               this.fieldValidation[sibling] = { status: 'valid', message: '' };
             }
           }
@@ -814,7 +821,7 @@ setAuthValue('activeUserEmail', email);
               this.fieldValidation[sibling] = { status: 'invalid', message: 'Enter a valid Ghana number (0XX XXX XXXX or +233...)' };
             } else if (this.isDuplicatePhoneInForm(sibling, val)) {
               this.fieldValidation[sibling] = { status: 'taken', message: 'School telephone and representative telephone cannot be the same' };
-            } else if (!this.contentService.isPhoneTaken(val, this.editingApprovalId || undefined)) {
+            } else if (!serverSaysTaken(sibling) && !this.contentService.isPhoneTaken(val, this.editingApprovalId || undefined)) {
               this.fieldValidation[sibling] = { status: 'valid', message: '' };
             }
           }
@@ -831,9 +838,10 @@ setAuthValue('activeUserEmail', email);
       fields.filter(f => f !== currentFieldName).forEach(f => {
         const val = this.getSquadEmailValue(f);
         if (val && this.fieldValidation[f] && (this.fieldValidation[f].status === 'valid' || this.fieldValidation[f].status === 'taken')) {
+          const serverTaken = this.fieldValidation[f].status === 'taken' && this.fieldValidation[f].serverConfirmed === true;
           if (this.isDuplicateInForm(f, val)) {
             this.fieldValidation[f] = { status: 'taken', message: 'Duplicate email used by another squad member' };
-          } else if (!this.contentService.isEmailTaken(val, this.editingApprovalId || undefined)) {
+          } else if (!serverTaken && !this.contentService.isEmailTaken(val, this.editingApprovalId || undefined)) {
             this.fieldValidation[f] = { status: 'valid', message: '' };
           }
         }
@@ -946,12 +954,18 @@ setAuthValue('activeUserEmail', email);
     let blocked = false;
     for (const [key, { value, type }] of Object.entries(fields)) {
       if (!value?.trim()) continue;
+      // A server-confirmed 'taken' from the live check must block here too. The
+      // local isEmailTaken/isPhoneTaken below only see the admin-only roster, so
+      // on their own this loop never blocked a real duplicate for a public
+      // registrant; the awaited check in submitRegistration was the only catch.
+      const serverTaken = this.fieldValidation[key]?.status === 'taken'
+        && this.fieldValidation[key]?.serverConfirmed === true;
       if (type === 'email') {
         if (!this.contentService.isValidEmail(value)) {
           this.fieldValidation[key] = { status: 'invalid', message: 'Invalid email format' };
           blocked = true;
-        } else if (this.contentService.isEmailTaken(value, this.editingApprovalId || undefined)) {
-          this.fieldValidation[key] = { status: 'taken', message: 'This email is already registered' };
+        } else if (serverTaken || this.contentService.isEmailTaken(value, this.editingApprovalId || undefined)) {
+          this.fieldValidation[key] = { status: 'taken', message: 'This email is already registered', serverConfirmed: serverTaken || undefined };
           blocked = true;
         } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
           const timeText = this.getDraftTimeRemaining(value);
@@ -962,8 +976,8 @@ setAuthValue('activeUserEmail', email);
         if (!this.contentService.isValidGhanaPhone(value)) {
           this.fieldValidation[key] = { status: 'invalid', message: 'Enter a valid Ghana number' };
           blocked = true;
-        } else if (this.contentService.isPhoneTaken(value, this.editingApprovalId || undefined)) {
-          this.fieldValidation[key] = { status: 'taken', message: 'This number is already registered' };
+        } else if (serverTaken || this.contentService.isPhoneTaken(value, this.editingApprovalId || undefined)) {
+          this.fieldValidation[key] = { status: 'taken', message: 'This number is already registered', serverConfirmed: serverTaken || undefined };
           blocked = true;
         } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
           const timeText = this.getDraftTimeRemaining(value);

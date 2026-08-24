@@ -1416,14 +1416,15 @@ try:
                 if cur.fetchone():
                     email_taken = True
                 else:
-                    # 2. Check pending_approvals table (any status: pending, approved, active)
+                    # 2. Check pending_approvals table for in-flight pending applications
                     cur.execute("""
                         SELECT 1 FROM pending_approvals 
-                        WHERE lower(COALESCE(contact, '')) = %s 
+                        WHERE status = 'pending'
+                          AND (lower(COALESCE(contact, '')) = %s 
                            OR lower(COALESCE(details->>'schoolEmail', '')) = %s
                            OR lower(COALESCE(details->>'repEmail', '')) = %s
                            OR lower(COALESCE(details->>'leadEmail', '')) = %s
-                           OR lower(COALESCE(details->>'email', '')) = %s
+                           OR lower(COALESCE(details->>'email', '')) = %s)
                         LIMIT 1
                     """, (em, em, em, em, em))
                     if cur.fetchone():
@@ -1456,13 +1457,14 @@ try:
                     if cur.fetchone():
                         phone_taken = True
                     else:
-                        # Check pending_approvals table
+                        # Check pending_approvals table for in-flight pending applications
                         cur.execute("""
                             SELECT 1 FROM pending_approvals 
-                            WHERE right(regexp_replace(COALESCE(contact, ''), '\\D', '', 'g'), 9) = %s 
+                            WHERE status = 'pending'
+                              AND (right(regexp_replace(COALESCE(contact, ''), '\\D', '', 'g'), 9) = %s 
                                OR right(regexp_replace(COALESCE(details->>'tel', ''), '\\D', '', 'g'), 9) = %s
                                OR right(regexp_replace(COALESCE(details->>'repTel', ''), '\\D', '', 'g'), 9) = %s
-                               OR right(regexp_replace(COALESCE(details->>'phone', ''), '\\D', '', 'g'), 9) = %s
+                               OR right(regexp_replace(COALESCE(details->>'phone', ''), '\\D', '', 'g'), 9) = %s)
                             LIMIT 1
                         """, (suffix, suffix, suffix, suffix))
                         if cur.fetchone():
@@ -6868,12 +6870,31 @@ try:
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
+        cur.execute("SELECT email FROM users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        email = (row[0] or "").strip().lower() if row and row[0] else ""
+
         cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (user_id,))
         cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        if email:
+            cur.execute("""
+                DELETE FROM pending_approvals 
+                WHERE lower(COALESCE(contact, '')) = %s 
+                   OR lower(COALESCE(details->>'schoolEmail', '')) = %s
+                   OR lower(COALESCE(details->>'repEmail', '')) = %s
+                   OR lower(COALESCE(details->>'leadEmail', '')) = %s
+                   OR lower(COALESCE(details->>'email', '')) = %s
+            """, (email, email, email, email, email))
+            cur.execute("DELETE FROM students WHERE lower(COALESCE(email, '')) = %s", (email,))
+            try:
+                cur.execute("DELETE FROM registration_drafts WHERE lower(COALESCE(email, '')) = %s", (email,))
+            except Exception:
+                pass
         conn.commit()
         cur.close()
         release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "users"})
+        broadcast_async({"type": "data_changed", "collection": "approvals"})
         return {"status": "deleted", "id": user_id}
 
     @app.post("/api/users/{user_id}/reset-password")
@@ -8075,8 +8096,35 @@ try:
                             (item.get("action",""), item.get("user",""), item.get("time",""), item.get("type","")))
         elif payload.collection == "users":
             for item in payload.items:
-                cur.execute("INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name, role = EXCLUDED.role, status = EXCLUDED.status, phone = EXCLUDED.phone",
-                            (item.get("id"), item.get("email",""), item.get("fullName",""), item.get("role","student"), item.get("ticket",""), "synced_noauth", item.get("status","Active"), item.get("phone","")))
+                uid = item.get("id")
+                email = (item.get("email") or "").strip().lower()
+                if not uid or not email or "@" not in email:
+                    continue
+                raw_phone = (item.get("phone") or "").strip()
+                phone = raw_phone if raw_phone else None
+                ticket = (item.get("ticket") or "").strip() or None
+                # Prevent unique constraint violations if email belongs to another ID
+                cur.execute("SELECT id FROM users WHERE lower(email) = %s AND id != %s", (email, uid))
+                existing_match = cur.fetchone()
+                if existing_match:
+                    cur.execute("""
+                        UPDATE users SET
+                            full_name = %s,
+                            role = %s,
+                            status = %s,
+                            phone = COALESCE(%s, phone)
+                        WHERE id = %s
+                    """, (item.get("fullName",""), item.get("role","student"), item.get("status","Active"), phone, existing_match[0]))
+                else:
+                    cur.execute("""
+                        INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (id) DO UPDATE SET
+                            full_name = EXCLUDED.full_name,
+                            role = EXCLUDED.role,
+                            status = EXCLUDED.status,
+                            phone = COALESCE(EXCLUDED.phone, users.phone)
+                    """, (uid, email, item.get("fullName",""), item.get("role","student"), ticket, "synced_noauth", item.get("status","Active"), phone))
         elif payload.collection == "approvals":
             for item in payload.items:
                 cur.execute("INSERT INTO pending_approvals (id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status",
