@@ -649,6 +649,7 @@ export class AppComponent implements OnInit, OnDestroy {
         this.currentPasswordInput = '';
         this.newPasswordInput = '';
         this.confirmPasswordInput = '';
+        this.currentUserService.refresh().subscribe();
         const revoked = res?.other_sessions_revoked || 0;
         this.passwordSetupToast = revoked
           ? `Password updated. ${revoked} other device(s) were signed out.`

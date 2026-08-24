@@ -365,7 +365,7 @@
                 </div>
                 <h3 class="team-card-title">{{ team.name }}</h3>
                 <div class="team-card-meta">
-                  <div><strong>Team Lead:</strong> {{ team.lead }}</div>
+                  <div><strong>Team Lead:</strong> {{ team.rosterList?.[0] || team.lead }}</div>
                   <div><strong>Members:</strong> {{ team.members }} active students</div>
                   <!-- Mentor is centrally assigned by NTIC Administration -->
                   <div style="margin-top:8px;padding:6px 10px;background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;">

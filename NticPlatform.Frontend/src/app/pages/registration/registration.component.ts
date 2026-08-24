@@ -1742,25 +1742,9 @@ setAuthValue('activeUserEmail', email);
           }
         }
       } else {
-        // Restore from session state on page refresh if available
-        const savedUi = this.loadSavedRegUi();
-        if (savedUi && savedUi.regState && savedUi.regState !== 'gateway') {
-          this.regState = savedUi.regState;
-          if (savedUi.activeTab) this.activeTab = savedUi.activeTab;
-          if (savedUi.schoolStep) {
-            this.schoolStep = savedUi.schoolStep;
-            this.syncCardSubTab(savedUi.schoolStep);
-          }
-          if (savedUi.maxSchoolStepReached) this.maxSchoolStepReached = savedUi.maxSchoolStepReached;
-          if (savedUi.trackerQuery) {
-            this.trackerQuery = savedUi.trackerQuery;
-            if (savedUi.regState === 'tracker' && this.trackerQuery) {
-              this.searchApplication();
-            }
-          }
-        } else {
-          this.regState = 'gateway';
-        }
+        // Clean navigation without query params -> ALWAYS default to Championship Entry Gateway
+        this.clearRegState();
+        this.regState = 'gateway';
       }
     });
   }
@@ -3016,7 +3000,8 @@ setAuthValue('activeUserEmail', email);
 
   private loadSavedRegUi(): any {
     try {
-      const raw = sessionStorage.getItem('ntic_reg_ui') || localStorage.getItem('ntic_reg_ui');
+      localStorage.removeItem('ntic_reg_ui');
+      const raw = sessionStorage.getItem('ntic_reg_ui');
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
@@ -3033,7 +3018,7 @@ setAuthValue('activeUserEmail', email);
         trackerQuery: this.trackerQuery
       };
       sessionStorage.setItem('ntic_reg_ui', JSON.stringify(state));
-      localStorage.setItem('ntic_reg_ui', JSON.stringify(state));
+      localStorage.removeItem('ntic_reg_ui');
 
       const queryParams: Record<string, any> = {
         section: this.regState !== 'gateway' ? this.regState : null,
@@ -3057,7 +3042,7 @@ setAuthValue('activeUserEmail', email);
       localStorage.removeItem('ntic_reg_ui');
       this.router.navigate([], {
         relativeTo: this.route,
-        queryParams: { section: null, tab: null, step: null, q: null, code: null },
+        queryParams: { section: null, tab: null, step: null, q: null, code: null, track: null, admin: null },
         queryParamsHandling: 'merge',
         replaceUrl: true
       });
@@ -3194,6 +3179,7 @@ setAuthValue('activeUserEmail', email);
     };
     this.selectedPackages = [];
 
+    sessionStorage.removeItem('ntic_reg_ui');
     localStorage.removeItem('ntic_reg_ui');
   }
 

@@ -2708,6 +2708,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       case 'school_admin':
         this.dashboardTitle = activeUser ? `${activeUser.organization} Admin Dashboard` : 'School Admin Dashboard';
         this.dashboardSubtitle = `Welcome back, ${userName}. NTIC Analytics & Team Management.`;
+        this.recomputeSchoolAdminData();
         this.stats = this.schoolAdminStats;
         break;
 
@@ -5886,8 +5887,6 @@ setTimeout(async () => {
       });
 
       if (restoredTeams.length > 0) {
-        const current = [...this.contentService.teams, ...restoredTeams];
-        this.contentService.saveTeams(current);
         return restoredTeams;
       }
       return [];
@@ -5903,7 +5902,18 @@ setTimeout(async () => {
     const seenKeys = new Set<string>();
 
     const addMember = (m: any) => {
-      const key = (m.name || m.fullName || m.email || '').trim().toLowerCase();
+      const email = (m.email || '').trim().toLowerCase();
+      const name = (m.name || m.fullName || '').trim().toLowerCase();
+      const key = (name || email).trim();
+      
+      // Exclude school admin / representative from student competitor profiles
+      if (email && email === activeEmail && this.activeRoleId === 'school_admin') {
+        return;
+      }
+      if (m.role === 'school_admin' || m.role === 'School Admin') {
+        return;
+      }
+
       if (key && !seenKeys.has(key)) {
         seenKeys.add(key);
         memberList.push(m);
@@ -5913,9 +5923,10 @@ setTimeout(async () => {
     // 1. Fetch registered users linked to institution
     this.contentService.users.forEach(u => {
       const uOrg = (u.organization || '').trim().toLowerCase();
+      const uEmail = (u.email || '').trim().toLowerCase();
       if (u.role === 'student' || u.role === 'instructor') {
         if ((activeOrg && (uOrg === activeOrg || uOrg.includes(activeOrg) || activeOrg.includes(uOrg))) ||
-            (activeEmail && u.email?.toLowerCase() === activeEmail)) {
+            (activeEmail && uEmail === activeEmail)) {
           addMember({
             name: u.fullName || u.email,
             email: u.email,
@@ -5936,11 +5947,15 @@ setTimeout(async () => {
     allReqs.forEach((req: any) => {
       const reqOrg = (req.entity || req.details?.school || req.details?.institution || '').trim().toLowerCase();
       const reqEmail = (req.contact || req.details?.email || req.details?.repEmail || '').trim().toLowerCase();
+      const repName = (req.details?.repName || '').trim().toLowerCase();
 
       if ((activeOrg && (reqOrg === activeOrg || reqOrg.includes(activeOrg) || activeOrg.includes(reqOrg))) ||
           (activeEmail && reqEmail === activeEmail)) {
         if (req.details?.students && Array.isArray(req.details.students)) {
           req.details.students.forEach((s: any) => {
+            const sEmail = (s.email || '').trim().toLowerCase();
+            const sName = (s.name || '').trim().toLowerCase();
+            if (sEmail === reqEmail || (repName && sName === repName)) return;
             addMember({
               name: s.name,
               email: s.email || `${s.name?.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
@@ -5962,7 +5977,9 @@ setTimeout(async () => {
             roster.forEach((memberName: string, idx: number) => {
               addMember({
                 name: memberName,
-                email: (idx === 0 && t.leadEmail) ? t.leadEmail : `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
+                email: (idx === 0 && t.leadEmail && t.leadEmail.toLowerCase() !== reqEmail)
+                  ? t.leadEmail
+                  : `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
                 role: idx === 0 ? 'Team Lead / Captain' : 'Team Member',
                 teamName: t.name,
                 track: t.track || req.details?.tracks || 'Coding',
@@ -5982,7 +5999,9 @@ setTimeout(async () => {
         roster.forEach((memberName: string, idx: number) => {
           addMember({
             name: memberName,
-            email: idx === 0 ? (t.leadEmail || `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`) : `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
+            email: (idx === 0 && t.leadEmail && t.leadEmail.toLowerCase() !== activeEmail)
+              ? t.leadEmail
+              : `${memberName.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,
             role: idx === 0 ? 'Team Lead / Captain' : 'Team Member',
             teamName: t.name,
             track: t.track || 'Coding',
@@ -5990,7 +6009,7 @@ setTimeout(async () => {
             status: t.status || 'In Competition'
           });
         });
-      } else if (t.lead) {
+      } else if (t.lead && (!activeEmail || t.lead.toLowerCase() !== activeEmail)) {
         addMember({
           name: t.lead,
           email: `${t.lead.toLowerCase().replace(/\s+/g, '.')}@student.ntic.edu.gh`,

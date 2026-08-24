@@ -35,7 +35,7 @@
         <span class="material-symbols-outlined">admin_panel_settings</span>
         Admin Control
       </a>
-      <a class="nav-item" *ngIf="hasAccess('roster')" routerLink="/dashboard" [queryParams]="{ action: 'add_team' }" [class.active]="false" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('roster')" routerLink="/dashboard" [queryParams]="{ tab: 'roster' }" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">groups</span>
         My Teams &amp; Roster
       </a>
@@ -109,22 +109,25 @@
         <span class="page-title">{{ currentTitle }}</span>
       </div>
 
-      <div class="topbar-right" style="position: relative;">
-        <button class="icon-btn" (click)="themeService.toggleTheme()" [title]="themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
-          <span class="material-symbols-outlined">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
+      <div class="topbar-right">
+        <!-- Theme Toggle -->
+        <button class="topbar-action-btn theme-action-btn" (click)="themeService.toggleTheme()" [title]="themeService.isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'" aria-label="Toggle theme">
+          <span class="material-symbols-outlined action-icon">{{ themeService.isDarkMode ? 'light_mode' : 'dark_mode' }}</span>
         </button>
 
         <!-- Notifications Bell -->
-        <div style="position: relative;">
-          <button class="icon-btn" (click)="toggleNotifications($event)">
-            <span class="material-symbols-outlined">notifications</span>
-            <span class="badge" *ngIf="activeUnreadCount > 0">{{ activeUnreadCount }}</span>
+        <div class="action-dropdown-wrapper">
+          <button class="topbar-action-btn notif-action-btn" [class.has-unread]="activeUnreadCount > 0" (click)="toggleNotifications($event)" [title]="'Notifications (' + activeUnreadCount + ' new)'" aria-label="Notifications">
+            <span class="material-symbols-outlined action-icon">notifications</span>
+            <span class="pulse-beacon" *ngIf="activeUnreadCount > 0"></span>
+            <span class="action-badge" *ngIf="activeUnreadCount > 0">{{ activeUnreadCount }}</span>
           </button>
 
           <!-- Notifications Panel -->
           <div class="header-dropdown notifications-dropdown" *ngIf="showNotificationsDropdown" (click)="$event.stopPropagation()">
             <div class="dropdown-header">
               <div class="dropdown-header-title">
+                <span class="material-symbols-outlined" style="font-size: 18px; color: var(--primary);">notifications</span>
                 <span>Notifications</span>
                 <span class="unread-pill" *ngIf="activeUnreadCount > 0">{{ activeUnreadCount }} new</span>
               </div>
@@ -146,14 +149,17 @@
         </div>
 
         <!-- Apps Suite Launcher -->
-        <div style="position: relative;">
-          <button class="icon-btn" (click)="toggleApps($event)">
-            <span class="material-symbols-outlined">apps</span>
+        <div class="action-dropdown-wrapper">
+          <button class="topbar-action-btn apps-action-btn" (click)="toggleApps($event)" title="NTIC Apps Suite" aria-label="Apps launcher">
+            <span class="material-symbols-outlined action-icon">apps</span>
           </button>
 
           <div class="header-dropdown apps-dropdown" *ngIf="showAppsDropdown" (click)="$event.stopPropagation()">
             <div class="dropdown-header">
-              <div class="dropdown-header-title">NTIC Quick Apps</div>
+              <div class="dropdown-header-title">
+                <span class="material-symbols-outlined" style="font-size: 18px; color: var(--primary);">grid_view</span>
+                <span>NTIC Quick Apps</span>
+              </div>
             </div>
             <div class="apps-grid">
               <a *ngIf="hasAccess('dashboard')" routerLink="/dashboard" class="app-item" (click)="showAppsDropdown = false">
@@ -184,11 +190,16 @@
         </div>
 
         <!-- User Profile Avatar -->
-        <div style="position: relative;">
-          <div class="avatar-btn" (click)="toggleProfile($event)" style="cursor: pointer;">
-            <span *ngIf="!currentUser?.photoUrl">{{ currentUser?.avatar || 'SA' }}</span>
-<img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" class="avatar" alt="Profile" />
-          </div>
+        <div class="action-dropdown-wrapper">
+          <button class="topbar-avatar-btn" (click)="toggleProfile($event)" [title]="(currentUser?.name || 'Account') + ' Profile'" aria-label="User Profile">
+            <div class="avatar-gradient-ring">
+              <div class="avatar-core">
+                <span *ngIf="!currentUser?.photoUrl" class="avatar-initials">{{ currentUser?.avatar || 'SA' }}</span>
+                <img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" class="avatar-img" alt="Profile" />
+              </div>
+            </div>
+            <span class="presence-badge online" title="Active"></span>
+          </button>
 
           <div class="header-dropdown profile-dropdown" *ngIf="showProfileDropdown" (click)="$event.stopPropagation()">
             <div class="profile-header-card">
