@@ -106,6 +106,10 @@ export class CompetitionsComponent implements OnInit {
     return (typeof localStorage !== 'undefined' && getAuthValue('activeRoleId')) || 'student';
   }
 
+  get isLoggedIn(): boolean {
+    return typeof localStorage !== 'undefined' && !!getAuthValue('activeRoleId');
+  }
+
   get isStudent(): boolean {
     return this.activeRoleId === 'student';
   }

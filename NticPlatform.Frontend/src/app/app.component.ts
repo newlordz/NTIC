@@ -104,22 +104,21 @@ export class AppComponent implements OnInit, OnDestroy {
 
       this.loadUserProfile();
 
-      this.isLandingPage =
-        parsedUrl === '/' ||
-        parsedUrl === '/landing' ||
-        parsedUrl === '' ||
-        parsedUrl === '/registration' ||
-        parsedUrl === '/news' ||
-        parsedUrl === '/leaderboard' ||
-        parsedUrl === '/competitions' ||
-        parsedUrl === '/talent';
+      const authedRole = getAuthValue('activeRoleId');
+      const isAuthed = !!authedRole;
 
-      // Admins on /leaderboard get the admin shell (sidebar + header), not the public nav
-      if (parsedUrl === '/leaderboard') {
-        const role = getAuthValue('activeRoleId');
-        if (role === 'super_admin' || role === 'admin') {
-          this.isLandingPage = false;
-        }
+      if (isAuthed && (parsedUrl === '/leaderboard' || parsedUrl === '/competitions' || parsedUrl === '/news' || parsedUrl === '/talent')) {
+        this.isLandingPage = false;
+      } else {
+        this.isLandingPage =
+          parsedUrl === '/' ||
+          parsedUrl === '/landing' ||
+          parsedUrl === '' ||
+          parsedUrl === '/registration' ||
+          parsedUrl === '/news' ||
+          parsedUrl === '/leaderboard' ||
+          parsedUrl === '/competitions' ||
+          parsedUrl === '/talent';
       }
 
       // Visiting the public homepage ends a NON-remembered session, so

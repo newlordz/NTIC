@@ -1,7 +1,7 @@
 <div class="leaderboard-page">
 
   <!-- Top Nav -->
-  <app-public-nav *ngIf="!isAdmin" activePage="leaderboard"></app-public-nav>
+  <app-public-nav *ngIf="!isLoggedIn" activePage="leaderboard"></app-public-nav>
 
   <!-- ═══ ADMIN TOOLBAR ═══ -->
   <div class="lb-admin-bar" *ngIf="isAdmin">

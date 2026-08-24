@@ -1,7 +1,7 @@
 <div class="competitions-page-container" [class.panel-open]="isDetailPanelOpen">
 
   <!-- Top Nav (Flush to top 0px, full-bleed) -->
-  <app-public-nav activePage="competitions"></app-public-nav>
+  <app-public-nav *ngIf="!isLoggedIn" activePage="competitions"></app-public-nav>
 
   <div class="competitions-page">
 

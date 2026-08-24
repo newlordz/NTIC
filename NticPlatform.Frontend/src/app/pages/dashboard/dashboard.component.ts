@@ -2513,6 +2513,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       }
       this.isRegModalOpen = params['openRegModal'] === 'true';
+      if (params['tab'] === 'roster') {
+        setTimeout(() => {
+          if (typeof document !== 'undefined') {
+            const el = document.getElementById('school-roster-section');
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }
+        }, 150);
+      }
       if (params['action'] === 'add_team') {
         this.openAddTeamModal();
       }
@@ -5717,25 +5727,81 @@ setTimeout(async () => {
     const activeEmail = (getAuthValue('activeUserEmail') || '').trim().toLowerCase();
     const cleanSchoolName = (this.schoolName || this.currentUser?.organization || '').trim().toLowerCase();
 
-    this._cachedSchoolTeams = this.contentService.teams.filter(t => {
-      const cleanTeamSchool = (t.schoolName || '').trim().toLowerCase();
-      const cleanLeadEmail = ((t as any).leadEmail || '').trim().toLowerCase();
-      const cleanLeadName = (t.lead || '').trim().toLowerCase();
-      return (cleanSchoolName && (cleanTeamSchool === cleanSchoolName || cleanTeamSchool.includes(cleanSchoolName) || cleanSchoolName.includes(cleanTeamSchool))) ||
-             (activeEmail && (cleanLeadEmail === activeEmail || cleanLeadName === activeEmail));
-    });
-
-    const myTeams = this._cachedSchoolTeams;
+    // 1. Get school teams from active registry or approval records
+    const myTeams = this.schoolTeams;
     const teamsCount = myTeams.length;
-    const studentsCount = myTeams.reduce((acc, t) => acc + (t.rosterList?.length || Number(t.members) || 0), 0);
-    const uniqueMentors = new Set(myTeams.map(t => t.mentor || t.coach).filter(Boolean)).size;
-    const mentorsCount = uniqueMentors > 0 ? uniqueMentors : (teamsCount > 0 ? 1 : 0);
+    
+    // 2. Count registered students from roster and member records
+    const studentsCount = this.schoolMembers.length;
+
+    // 3. Count actually assigned mentors
+    const assignedMentors = new Set<string>();
+    myTeams.forEach(t => {
+      const m = t.mentorId || t.mentor;
+      if (m && m !== 'Assigned Coordinator' && m !== 'Pending NTIC allocation' && !m.includes('Pending')) {
+        assignedMentors.add(m);
+      }
+    });
+    const mentorsCount = assignedMentors.size;
+
+    // 4. Compute actual average score from submissions if available
+    const myTeamNames = new Set(myTeams.map(t => (t.name || '').trim().toLowerCase()));
+    const mySubmissions = (this.contentService.submissions || []).filter((s: any) => {
+      const sTeam = (s.team || s.teamName || s.student || '').trim().toLowerCase();
+      const sSchool = (s.school || s.organization || '').trim().toLowerCase();
+      return (sTeam && myTeamNames.has(sTeam)) || (cleanSchoolName && (sSchool === cleanSchoolName || sSchool.includes(cleanSchoolName)));
+    });
+    const scoredSubs = mySubmissions.filter((s: any) => typeof s.score === 'number' && s.score !== null && !isNaN(s.score));
+    let avgScoreStr = '—';
+    let avgScoreMeta = 'Tournament scoring pending';
+    if (scoredSubs.length > 0) {
+      const avg = scoredSubs.reduce((sum: number, s: any) => sum + (Number(s.score) || 0), 0) / scoredSubs.length;
+      avgScoreStr = `${avg.toFixed(1)}%`;
+      avgScoreMeta = `Based on ${scoredSubs.length} scored project${scoredSubs.length === 1 ? '' : 's'}`;
+    }
+
+    // 5. Look up real leaderboard standing
+    const lbEntries = this.contentService.leaderboardData || [];
+    const lbIndex = lbEntries.findIndex(e => {
+      const eSchool = (e.schoolName || '').trim().toLowerCase();
+      return cleanSchoolName && (eSchool === cleanSchoolName || eSchool.includes(cleanSchoolName) || cleanSchoolName.includes(eSchool));
+    });
+    let rankStr = 'Unranked';
+    let rankMeta = 'Qualifiers pending';
+    if (lbIndex !== -1) {
+      rankStr = `#${lbIndex + 1}`;
+      rankMeta = `${lbEntries[lbIndex].region || 'National'} Bracket`;
+    }
 
     this._cachedSchoolAdminStats = [
-      { label: 'Registered Students', value: studentsCount.toString(), icon: 'group', meta: `Across ${teamsCount} team${teamsCount === 1 ? '' : 's'}`, color: 'primary' },
-      { label: 'Active Mentors', value: mentorsCount.toString(), icon: 'co_present', meta: mentorsCount > 0 ? 'Fully assigned' : 'No mentors assigned', color: 'secondary' },
-      { label: 'Average Score', value: teamsCount > 0 ? '84.5%' : '-', icon: 'percent', meta: teamsCount > 0 ? 'Active Tournament Average' : 'No scores yet', color: 'tertiary' },
-      { label: 'Regional Rank', value: teamsCount > 0 ? '#3' : 'Unranked', icon: 'workspace_premium', meta: teamsCount > 0 ? 'National Qualifier Bracket' : 'Pending participation', color: 'error' }
+      {
+        label: 'Registered Students',
+        value: studentsCount.toString(),
+        icon: 'group',
+        meta: `Across ${teamsCount} team${teamsCount === 1 ? '' : 's'}`,
+        color: 'primary'
+      },
+      {
+        label: 'Active Mentors',
+        value: mentorsCount.toString(),
+        icon: 'co_present',
+        meta: mentorsCount > 0 ? `${mentorsCount} assigned` : 'Pending NTIC allocation',
+        color: 'secondary'
+      },
+      {
+        label: 'Average Score',
+        value: avgScoreStr,
+        icon: 'percent',
+        meta: avgScoreMeta,
+        color: 'tertiary'
+      },
+      {
+        label: 'Regional Rank',
+        value: rankStr,
+        icon: 'workspace_premium',
+        meta: rankMeta,
+        color: 'error'
+      }
     ];
   }
 

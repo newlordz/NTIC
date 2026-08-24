@@ -1,4 +1,4 @@
-﻿import { Component, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +14,7 @@ import { getAuthValue } from '../../services/session.util';
   styleUrl: './leaderboard.component.scss'
 })
 export class LeaderboardComponent implements OnInit {
+  isLoggedIn = false;
   isAdmin = false;
   showAddForm = false;
   editId: string | null = null;
@@ -30,6 +31,7 @@ export class LeaderboardComponent implements OnInit {
 
   ngOnInit(): void {
     const role = getAuthValue('activeRoleId');
+    this.isLoggedIn = !!role;
     this.isAdmin = role === 'super_admin' || role === 'admin';
   }
 
