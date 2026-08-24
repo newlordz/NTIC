@@ -1063,7 +1063,7 @@ export class ApiService {
     return this.http.post(this.apiUrl + '/teams', payload);
   }
 
-  updateTeam(id: string, payload: { name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string; competition_id?: string | null; lead_email?: string; member_emails?: string[] }): Observable<any> {
+  updateTeam(id: string, payload: Partial<{ name: string; track?: string; lead?: string; members?: number; status?: string; school_name?: string; competition_id?: string | null; lead_email?: string; member_emails?: string[]; motto?: string }>): Observable<any> {
     return this.http.patch(this.apiUrl + '/teams/' + id, payload);
   }
 

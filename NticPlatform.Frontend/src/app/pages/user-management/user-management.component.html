@@ -128,175 +128,319 @@
       </button>
     </div>
 
-    <!-- Search & Filter Toolbar -->
-    <div class="um-toolbar">
-      <div class="um-search">
-        <span class="um-search-icon material-symbols-outlined">search</span>
-        <input
-          type="text"
-          [(ngModel)]="searchQuery"
-          (ngModelChange)="applyFilters()"
-          placeholder="Search by name, email, school, ticket ID, phone…"
-          class="um-search-input"
-        />
-        <button class="um-search-clear" *ngIf="searchQuery" (click)="searchQuery=''; applyFilters()">
-          <span class="material-symbols-outlined">close</span>
+    <!-- ─── ROLE FILTER !== 'teams': USER TOOLBAR & TABLES ─── -->
+    <ng-container *ngIf="roleFilter !== 'teams'">
+      <!-- Search & Filter Toolbar -->
+      <div class="um-toolbar">
+        <div class="um-search">
+          <span class="um-search-icon material-symbols-outlined">search</span>
+          <input
+            type="text"
+            [(ngModel)]="searchQuery"
+            (ngModelChange)="applyFilters()"
+            placeholder="Search by name, email, school, ticket ID, phone…"
+            class="um-search-input"
+          />
+          <button class="um-search-clear" *ngIf="searchQuery" (click)="searchQuery=''; applyFilters()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <div class="um-toolbar-right">
+          <!-- Status pills -->
+          <div class="status-pills">
+            <button class="status-pill" [class.active]="statusFilter === 'all'" (click)="statusFilter='all'; applyFilters()">All</button>
+            <button class="status-pill pill-active" [class.active]="statusFilter === 'active'" (click)="statusFilter='active'; applyFilters()">Active</button>
+            <button class="status-pill pill-pending" [class.active]="statusFilter === 'pending'" (click)="statusFilter='pending'; applyFilters()">Pending</button>
+            <button class="status-pill pill-suspended" [class.active]="statusFilter === 'suspended'" (click)="statusFilter='suspended'; applyFilters()">Suspended</button>
+          </div>
+
+          <!-- View toggle -->
+          <div class="view-toggle">
+            <button class="vt-btn" [class.active]="viewMode === 'table'" (click)="viewMode = 'table'" title="Table View">
+              <span class="material-symbols-outlined">table_rows</span>
+            </button>
+            <button class="vt-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'" title="Card View">
+              <span class="material-symbols-outlined">grid_view</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toast Notification -->
+      <div class="um-toast" *ngIf="successMessage">
+        <div class="um-toast-inner">
+          <span class="material-symbols-outlined">check_circle</span>
+          <div>
+            <strong>{{ toastTitle }}</strong>
+            <div class="um-toast-detail">{{ toastDetail }}</div>
+          </div>
+          <div class="um-toast-progress"></div>
+        </div>
+      </div>
+
+      <!-- ─── VIEW 1: TABLE ─── -->
+      <div class="um-panel" *ngIf="viewMode === 'table' && filteredUsers.length > 0">
+        <div class="um-table-wrap">
+          <table class="um-table">
+            <thead>
+              <tr>
+                <th class="th-user">User Info</th>
+                <th>Role Privilege</th>
+                <th>Organization / School</th>
+                <th>Access Ticket</th>
+                <th>Status</th>
+                <th class="th-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let u of filteredUsers" class="um-row" (click)="viewUser(u)">
+                <td class="td-user">
+                  <div class="um-user-cell">
+                    <div class="um-avatar" [class]="'av-' + u.role">
+                      <img *ngIf="getUserAvatarUrl(u)" [src]="getUserAvatarUrl(u)" class="um-avatar-img" [alt]="u.fullName" />
+                      <span *ngIf="!getUserAvatarUrl(u)">{{ getInitials(u.fullName || u.email) }}</span>
+                    </div>
+                    <div class="um-user-info">
+                      <div class="um-name">{{ u.fullName }} <span *ngIf="isCurrentUser(u)" class="you-badge">You</span></div>
+                      <div class="um-email">{{ u.email }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="role-pill" [class]="'rp-' + u.role">{{ getUserRoleLabel(u) }}</span>
+                </td>
+                <td>
+                  <span class="um-org">{{ u.organization || 'NTIC Platform' }}</span>
+                </td>
+                <td>
+                  <span class="um-ticket">{{ isMainAdmin(u) ? '••••••••••••' : (u.ticket || '--') }}</span>
+                </td>
+                <td>
+                  <span class="um-status" [class]="'st-' + (u.status || 'active').toLowerCase()">
+                    <span class="um-status-dot"></span>
+                    {{ u.status || 'Active' }}
+                  </span>
+                </td>
+                <td class="td-actions" (click)="$event.stopPropagation()">
+                  <div class="row-actions" *ngIf="!isMainAdmin(u)">
+                    <button class="ra-btn ra-status" (click)="toggleStatus(u)" [title]="u.status === 'Active' ? 'Suspend Account' : 'Activate Account'">
+                      <span class="material-symbols-outlined">{{ u.status === 'Active' ? 'block' : 'check_circle' }}</span>
+                    </button>
+                    <button class="ra-btn ra-reset" (click)="regenerateOTP(u)" title="Reset Password / Regenerate Credentials">
+                      <span class="material-symbols-outlined">lock_reset</span>
+                    </button>
+                    <button class="ra-btn ra-delete" (click)="deleteUser(u)" title="Delete User">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
+                  </div>
+                  <span *ngIf="isMainAdmin(u)" class="locked-tag">
+                    <span class="material-symbols-outlined">lock</span> Protected
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ─── VIEW 2: CARD GRID ─── -->
+      <div class="um-grid" *ngIf="viewMode === 'grid' && filteredUsers.length > 0">
+        <div *ngFor="let u of filteredUsers" class="um-card" (click)="viewUser(u)">
+          <div class="um-card-accent" [class]="'ca-' + u.role"></div>
+          <div class="um-card-top">
+            <div class="um-avatar large" [class]="'av-' + u.role">
+              <img *ngIf="getUserAvatarUrl(u)" [src]="getUserAvatarUrl(u)" class="um-avatar-img" [alt]="u.fullName" />
+              <span *ngIf="!getUserAvatarUrl(u)">{{ getInitials(u.fullName || u.email) }}</span>
+            </div>
+            <span class="um-status" [class]="'st-' + (u.status || 'active').toLowerCase()">
+              <span class="um-status-dot"></span>
+              {{ u.status || 'Active' }}
+            </span>
+          </div>
+          <div class="um-card-body">
+            <h3 class="um-card-name">{{ u.fullName }} <span *ngIf="isCurrentUser(u)" class="you-badge">You</span></h3>
+            <div class="um-card-email">{{ u.email }}</div>
+            <span class="role-pill" [class]="'rp-' + u.role">{{ getUserRoleLabel(u) }}</span>
+
+            <div class="um-card-meta">
+              <span class="material-symbols-outlined">business</span>
+              <span>{{ u.organization || 'NTIC Platform' }}</span>
+            </div>
+            <div class="um-card-meta" *ngIf="u.ticket">
+              <span class="material-symbols-outlined">confirmation_number</span>
+              <span class="um-ticket">{{ isMainAdmin(u) ? '••••••••••••' : u.ticket }}</span>
+            </div>
+          </div>
+          <div class="um-card-footer" (click)="$event.stopPropagation()">
+            <button class="cmd-btn cmd-btn-ghost panel-btn btn-sm" (click)="editUser(u)">
+              <span class="material-symbols-outlined">edit</span> Edit
+            </button>
+            <button *ngIf="!isMainAdmin(u)" class="cmd-btn cmd-btn-ghost panel-btn btn-sm cmd-btn-danger" (click)="deleteUser(u)">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+            <span *ngIf="isMainAdmin(u)" class="locked-tag">
+              <span class="material-symbols-outlined">lock</span> Protected Admin
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── EMPTY STATE: USERS ─── -->
+      <div class="um-empty" *ngIf="filteredUsers.length === 0">
+        <div class="um-empty-icon">
+          <span class="material-symbols-outlined">manage_search</span>
+        </div>
+        <h3>No Users Found</h3>
+        <p>No accounts match your current filters or search query.</p>
+        <button class="cmd-btn cmd-btn-primary" (click)="searchQuery=''; roleFilter='all'; statusFilter='all'; applyFilters()">
+          <span class="material-symbols-outlined">clear_all</span>
+          Reset Filters
         </button>
       </div>
+    </ng-container>
 
-      <div class="um-toolbar-right">
-        <!-- Status pills -->
-        <div class="status-pills">
-          <button class="status-pill" [class.active]="statusFilter === 'all'" (click)="statusFilter='all'; applyFilters()">All</button>
-          <button class="status-pill pill-active" [class.active]="statusFilter === 'active'" (click)="statusFilter='active'; applyFilters()">Active</button>
-          <button class="status-pill pill-pending" [class.active]="statusFilter === 'pending'" (click)="statusFilter='pending'; applyFilters()">Pending</button>
-          <button class="status-pill pill-suspended" [class.active]="statusFilter === 'suspended'" (click)="statusFilter='suspended'; applyFilters()">Suspended</button>
+    <!-- ─── ROLE FILTER === 'teams': TEAMS & SQUADS VIEW ─── -->
+    <ng-container *ngIf="roleFilter === 'teams'">
+      <!-- Search & Filter Toolbar for Teams -->
+      <div class="um-toolbar">
+        <div class="um-search">
+          <span class="um-search-icon material-symbols-outlined">search</span>
+          <input
+            type="text"
+            [(ngModel)]="teamSearchQuery"
+            (ngModelChange)="applyTeamFilters()"
+            placeholder="Search squads by name, school, lead, track, mentor…"
+            class="um-search-input"
+          />
+          <button class="um-search-clear" *ngIf="teamSearchQuery" (click)="teamSearchQuery=''; applyTeamFilters()">
+            <span class="material-symbols-outlined">close</span>
+          </button>
         </div>
 
-        <!-- View toggle -->
-        <div class="view-toggle">
-          <button class="vt-btn" [class.active]="viewMode === 'table'" (click)="viewMode = 'table'" title="Table View">
-            <span class="material-symbols-outlined">table_rows</span>
-          </button>
-          <button class="vt-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'" title="Card View">
-            <span class="material-symbols-outlined">grid_view</span>
+        <div class="um-toolbar-right">
+          <!-- Track Select -->
+          <div style="display:flex;align-items:center;gap:6px;">
+            <select
+              [(ngModel)]="teamTrackFilter"
+              (ngModelChange)="applyTeamFilters()"
+              class="squad-mentor-select"
+              style="min-width:145px;height:36px;">
+              <option value="all">All Tracks</option>
+              <option value="coding">Coding &amp; Software</option>
+              <option value="robotics">Robotics &amp; IoT</option>
+              <option value="ai">AI &amp; ML</option>
+              <option value="cybersecurity">Cybersecurity</option>
+              <option value="innovation">Open Innovation</option>
+            </select>
+          </div>
+
+          <!-- Status pills -->
+          <div class="status-pills">
+            <button class="status-pill" [class.active]="teamStatusFilter === 'all'" (click)="teamStatusFilter='all'; applyTeamFilters()">All</button>
+            <button class="status-pill pill-active" [class.active]="teamStatusFilter === 'active'" (click)="teamStatusFilter='active'; applyTeamFilters()">Active</button>
+            <button class="status-pill pill-pending" [class.active]="teamStatusFilter === 'pending'" (click)="teamStatusFilter='pending'; applyTeamFilters()">Pending</button>
+          </div>
+
+          <!-- Add Team Button -->
+          <button class="cmd-btn cmd-btn-primary" (click)="openAddTeamModal()" style="height:36px;">
+            <span class="material-symbols-outlined">group_add</span>
+            <span>+ Create Squad</span>
           </button>
         </div>
       </div>
-    </div>
 
-    <!-- Toast Notification -->
-    <div class="um-toast" *ngIf="successMessage">
-      <div class="um-toast-inner">
-        <span class="material-symbols-outlined">check_circle</span>
-        <div>
-          <strong>{{ toastTitle }}</strong>
-          <div class="um-toast-detail">{{ toastDetail }}</div>
-        </div>
-        <div class="um-toast-progress"></div>
-      </div>
-    </div>
-
-    <!-- ─── VIEW 1: TABLE ─── -->
-    <div class="um-panel" *ngIf="viewMode === 'table' && filteredUsers.length > 0">
-      <div class="um-table-wrap">
-        <table class="um-table">
-          <thead>
-            <tr>
-              <th class="th-user">User Info</th>
-              <th>Role Privilege</th>
-              <th>Organization / School</th>
-              <th>Access Ticket</th>
-              <th>Status</th>
-              <th class="th-actions">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let u of filteredUsers" class="um-row" (click)="viewUser(u)">
-              <td class="td-user">
-                <div class="um-user-cell">
-                  <div class="um-avatar" [class]="'av-' + u.role">
-                    {{ getInitials(u.fullName || u.email) }}
+      <!-- Teams Table -->
+      <div class="um-panel" *ngIf="filteredTeams.length > 0">
+        <div class="um-table-wrap">
+          <table class="um-table">
+            <thead>
+              <tr>
+                <th class="th-user">Team / Squad</th>
+                <th>Competition Track</th>
+                <th>Organization / School</th>
+                <th>Team Lead &amp; Members</th>
+                <th>Assigned Mentor</th>
+                <th>Status</th>
+                <th class="th-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let t of filteredTeams" class="um-row">
+                <td class="td-user">
+                  <div class="um-user-cell">
+                    <div class="um-avatar av-student" style="background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;display:flex;align-items:center;justify-content:center;">
+                      <img *ngIf="getTeamAvatarUrl(t)" [src]="getTeamAvatarUrl(t)" class="um-avatar-img" [alt]="t.name" />
+                      <span class="material-symbols-outlined" *ngIf="!getTeamAvatarUrl(t)" style="font-size:18px;">groups</span>
+                    </div>
+                    <div class="um-user-info">
+                      <div class="um-name">{{ t.name }}</div>
+                      <div class="um-email" *ngIf="t.motto" style="font-style:italic;">"{{ t.motto }}"</div>
+                    </div>
                   </div>
-                  <div class="um-user-info">
-                    <div class="um-name">{{ u.fullName }} <span *ngIf="isCurrentUser(u)" class="you-badge">You</span></div>
-                    <div class="um-email">{{ u.email }}</div>
+                </td>
+                <td>
+                  <span class="role-pill rp-student">{{ t.track || 'General' }}</span>
+                </td>
+                <td>
+                  <span class="um-org">{{ t.schoolName || t.school_name || 'Independent' }}</span>
+                </td>
+                <td>
+                  <div style="font-size:13px;font-weight:600;color:var(--on-surface);">{{ t.lead || 'Unassigned' }}</div>
+                  <div style="font-size:11px;color:var(--on-surface-variant);">{{ t.members || 1 }} member{{ (t.members || 1) > 1 ? 's' : '' }}</div>
+                </td>
+                <td>
+                  <select
+                    class="squad-mentor-select"
+                    [ngModel]="t.mentorId || ''"
+                    (ngModelChange)="assignTeamMentor(t, $event)">
+                    <option value="">-- No Mentor --</option>
+                    <option *ngFor="let inst of instructorsList" [value]="inst.id">
+                      {{ inst.fullName || inst.email }} (Instructor)
+                    </option>
+                  </select>
+                </td>
+                <td>
+                  <span class="um-status" [class]="'st-' + (t.status || 'active').toLowerCase()">
+                    <span class="um-status-dot"></span>
+                    {{ t.status || 'Active' }}
+                  </span>
+                </td>
+                <td class="td-actions" (click)="$event.stopPropagation()">
+                  <div class="row-actions">
+                    <button class="ra-btn ra-status" (click)="toggleTeamStatus(t)" [title]="t.status === 'Active' ? 'Suspend Squad Account' : 'Activate Squad Account'">
+                      <span class="material-symbols-outlined">{{ t.status === 'Active' ? 'block' : 'check_circle' }}</span>
+                    </button>
+                    <button class="ra-btn ra-reset" (click)="regenerateTeamOTP(t)" title="Reset Password / Regenerate Access Pass">
+                      <span class="material-symbols-outlined">lock_reset</span>
+                    </button>
+                    <button class="ra-btn" (click)="openEditTeamModal(t)" title="Edit Squad">
+                      <span class="material-symbols-outlined">edit</span>
+                    </button>
+                    <button class="ra-btn ra-delete" (click)="openDeleteTeamModal(t)" title="Delete Squad">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
                   </div>
-                </div>
-              </td>
-              <td>
-                <span class="role-pill" [class]="'rp-' + u.role">{{ getUserRoleLabel(u) }}</span>
-              </td>
-              <td>
-                <span class="um-org">{{ u.organization || 'NTIC Platform' }}</span>
-              </td>
-              <td>
-                <span class="um-ticket">{{ isMainAdmin(u) ? '••••••••••••' : (u.ticket || '--') }}</span>
-              </td>
-              <td>
-                <span class="um-status" [class]="'st-' + (u.status || 'active').toLowerCase()">
-                  <span class="um-status-dot"></span>
-                  {{ u.status || 'Active' }}
-                </span>
-              </td>
-              <td class="td-actions" (click)="$event.stopPropagation()">
-                <div class="row-actions" *ngIf="!isMainAdmin(u)">
-                  <button class="ra-btn ra-status" (click)="toggleStatus(u)" [title]="u.status === 'Active' ? 'Suspend Account' : 'Activate Account'">
-                    <span class="material-symbols-outlined">{{ u.status === 'Active' ? 'block' : 'check_circle' }}</span>
-                  </button>
-                  <button class="ra-btn ra-reset" (click)="regenerateOTP(u)" title="Reset Password / Regenerate Credentials">
-                    <span class="material-symbols-outlined">lock_reset</span>
-                  </button>
-                  <button class="ra-btn ra-delete" (click)="deleteUser(u)" title="Delete User">
-                    <span class="material-symbols-outlined">delete</span>
-                  </button>
-                </div>
-                <span *ngIf="isMainAdmin(u)" class="locked-tag">
-                  <span class="material-symbols-outlined">lock</span> Protected
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ─── VIEW 2: CARD GRID ─── -->
-    <div class="um-grid" *ngIf="viewMode === 'grid' && filteredUsers.length > 0">
-      <div *ngFor="let u of filteredUsers" class="um-card" (click)="viewUser(u)">
-        <div class="um-card-accent" [class]="'ca-' + u.role"></div>
-        <div class="um-card-top">
-          <div class="um-avatar large" [class]="'av-' + u.role">
-            {{ getInitials(u.fullName || u.email) }}
-          </div>
-          <span class="um-status" [class]="'st-' + (u.status || 'active').toLowerCase()">
-            <span class="um-status-dot"></span>
-            {{ u.status || 'Active' }}
-          </span>
-        </div>
-        <div class="um-card-body">
-          <h3 class="um-card-name">{{ u.fullName }} <span *ngIf="isCurrentUser(u)" class="you-badge">You</span></h3>
-          <div class="um-card-email">{{ u.email }}</div>
-          <span class="role-pill" [class]="'rp-' + u.role">{{ getUserRoleLabel(u) }}</span>
-
-          <div class="um-card-meta">
-            <span class="material-symbols-outlined">business</span>
-            <span>{{ u.organization || 'NTIC Platform' }}</span>
-          </div>
-          <div class="um-card-meta" *ngIf="u.ticket">
-            <span class="material-symbols-outlined">confirmation_number</span>
-            <span class="um-ticket">{{ isMainAdmin(u) ? '••••••••••••' : u.ticket }}</span>
-          </div>
-        </div>
-        <div class="um-card-foot" (click)="$event.stopPropagation()">
-          <button class="cmd-btn cmd-btn-ghost cmd-btn-sm" *ngIf="!isMainAdmin(u)" (click)="toggleStatus(u)" [title]="u.status === 'Active' ? 'Suspend Account' : 'Activate Account'">
-            <span class="material-symbols-outlined">{{ u.status === 'Active' ? 'block' : 'check_circle' }}</span>
-          </button>
-          <button class="cmd-btn cmd-btn-ghost cmd-btn-sm" *ngIf="!isMainAdmin(u)" (click)="regenerateOTP(u)" title="Reset Password">
-            <span class="material-symbols-outlined">lock_reset</span>
-          </button>
-          <button class="cmd-btn cmd-btn-danger cmd-btn-sm" *ngIf="!isMainAdmin(u)" (click)="deleteUser(u)" title="Delete User">
-            <span class="material-symbols-outlined">delete</span>
-          </button>
-          <span *ngIf="isMainAdmin(u)" class="locked-tag">
-            <span class="material-symbols-outlined">lock</span> Protected Admin
-          </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
 
-    <!-- ─── EMPTY STATE ─── -->
-    <div class="um-empty" *ngIf="filteredUsers.length === 0">
-      <div class="um-empty-icon">
-        <span class="material-symbols-outlined">manage_search</span>
+      <!-- ─── EMPTY STATE: TEAMS ─── -->
+      <div class="um-empty" *ngIf="filteredTeams.length === 0">
+        <div class="um-empty-icon">
+          <span class="material-symbols-outlined">groups</span>
+        </div>
+        <h3>No Teams Found</h3>
+        <p>No squads match your current filters or search query.</p>
+        <button class="cmd-btn cmd-btn-primary" (click)="teamSearchQuery=''; teamTrackFilter='all'; teamStatusFilter='all'; applyTeamFilters()">
+          <span class="material-symbols-outlined">clear_all</span>
+          Reset Filters
+        </button>
       </div>
-      <h3>No Users Found</h3>
-      <p>No accounts match your current filters or search query.</p>
-      <button class="cmd-btn cmd-btn-primary" (click)="searchQuery=''; roleFilter='all'; statusFilter='all'; applyFilters()">
-        <span class="material-symbols-outlined">clear_all</span>
-        Reset Filters
-      </button>
-    </div>
+    </ng-container>
 
   </ng-container>
   <!-- ═══ END USERS TAB ═══ -->
@@ -547,7 +691,8 @@
       <div class="um-modal-header">
         <div class="um-modal-title-row">
           <div class="um-avatar large" [class]="'av-' + selectedUser.role">
-            {{ getInitials(selectedUser.fullName || selectedUser.email) }}
+            <img *ngIf="getUserAvatarUrl(selectedUser)" [src]="getUserAvatarUrl(selectedUser)" class="um-avatar-img" [alt]="selectedUser.fullName" />
+            <span *ngIf="!getUserAvatarUrl(selectedUser)">{{ getInitials(selectedUser.fullName || selectedUser.email) }}</span>
           </div>
           <div>
             <h3>{{ selectedUser.fullName }}</h3>
@@ -813,6 +958,183 @@
       </div>
       <div class="um-modal-footer" style="padding:12px 20px;border-top:1px solid var(--outline-variant);display:flex;justify-content:flex-end;">
         <button class="cmd-btn cmd-btn-primary" (click)="closeCreatedUserModal()">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODAL: DELETE TEAM CONFIRMATION
+  ══════════════════════════════════════════ -->
+  <div class="um-modal-backdrop" *ngIf="deleteTeamConfirm" (click)="closeDeleteTeamModal()">
+    <div class="um-modal" style="max-width:480px;" (click)="$event.stopPropagation()">
+      <div class="um-modal-header" style="background:rgba(239,68,68,0.08);border-bottom:1px solid rgba(239,68,68,0.2);">
+        <div class="um-modal-title-row">
+          <div class="um-avatar large" style="background:rgba(239,68,68,0.15);color:#ef4444;display:flex;align-items:center;justify-content:center;">
+            <span class="material-symbols-outlined">delete_forever</span>
+          </div>
+          <div>
+            <h3 style="color:#ef4444;margin:0;">Delete Squad</h3>
+            <span style="font-size:12px;color:var(--on-surface-variant);">Permanent removal from PostgreSQL</span>
+          </div>
+        </div>
+        <button class="um-modal-close" (click)="closeDeleteTeamModal()">&times;</button>
+      </div>
+      <div class="um-modal-body">
+        <p style="font-size:13.5px;line-height:1.5;color:var(--on-surface);margin:0 0 14px 0;">
+          Are you sure you want to permanently delete <strong>{{ deleteTeamConfirm.name }}</strong>
+          <span *ngIf="deleteTeamConfirm.schoolName || deleteTeamConfirm.school_name"> ({{ deleteTeamConfirm.schoolName || deleteTeamConfirm.school_name }})</span>?
+        </p>
+        <div style="background:rgba(239,68,68,0.06);border:1px dashed rgba(239,68,68,0.25);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;font-size:12px;color:#991b1b;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="material-symbols-outlined" style="font-size:16px;color:#ef4444;">warning</span>
+            <span>Removes the squad from competition brackets and mentorship allocations.</span>
+          </div>
+        </div>
+      </div>
+      <div class="um-modal-footer">
+        <button class="cmd-btn cmd-btn-ghost" (click)="closeDeleteTeamModal()" [disabled]="isDeleteTeamLoading">
+          Cancel
+        </button>
+        <button class="cmd-btn" style="background:#ef4444;color:#fff;border:none;font-weight:700;" (click)="confirmDeleteTeam()" [disabled]="isDeleteTeamLoading">
+          <span class="material-symbols-outlined" *ngIf="!isDeleteTeamLoading">delete</span>
+          <span class="material-symbols-outlined spinning" *ngIf="isDeleteTeamLoading">sync</span>
+          {{ isDeleteTeamLoading ? 'Deleting...' : 'Delete Permanently' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODAL: EDIT TEAM
+  ══════════════════════════════════════════ -->
+  <div class="um-modal-backdrop" *ngIf="isEditTeamOpen" (click)="closeEditTeamModal()">
+    <div class="um-modal" (click)="$event.stopPropagation()">
+      <div class="um-modal-header">
+        <div class="um-modal-title-row">
+          <div class="um-avatar large" style="background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;">
+            <span class="material-symbols-outlined">edit</span>
+          </div>
+          <div>
+            <h3>Edit Squad Details</h3>
+            <span class="role-pill rp-student">{{ editTeamForm.name }}</span>
+          </div>
+        </div>
+        <button class="um-modal-close" (click)="closeEditTeamModal()">&times;</button>
+      </div>
+      <div class="um-modal-body">
+        <div class="ca-form-grid">
+          <div class="ca-field">
+            <label class="ca-label">Team / Squad Name <span class="ca-required">*</span></label>
+            <input type="text" [(ngModel)]="editTeamForm.name" class="ca-input" style="padding-left:12px;" />
+          </div>
+          <div class="ca-field">
+            <label class="ca-label">Competition Track</label>
+            <select [(ngModel)]="editTeamForm.track" class="ca-input" style="padding-left:12px;">
+              <option value="Coding">Coding &amp; Software</option>
+              <option value="Robotics">Robotics &amp; IoT</option>
+              <option value="AI">AI &amp; Machine Learning</option>
+              <option value="Cybersecurity">Cybersecurity</option>
+              <option value="Innovation">Open Innovation</option>
+            </select>
+          </div>
+          <div class="ca-field">
+            <label class="ca-label">Organization / School</label>
+            <input type="text" [(ngModel)]="editTeamForm.school_name" class="ca-input" style="padding-left:12px;" />
+          </div>
+          <div class="ca-field">
+            <label class="ca-label">Team Lead Name</label>
+            <input type="text" [(ngModel)]="editTeamForm.lead" class="ca-input" style="padding-left:12px;" />
+          </div>
+          <div class="ca-field">
+            <label class="ca-label">Members Count</label>
+            <input type="number" min="1" max="10" [(ngModel)]="editTeamForm.members" class="ca-input" style="padding-left:12px;" />
+          </div>
+          <div class="ca-field">
+            <label class="ca-label">Status</label>
+            <select [(ngModel)]="editTeamForm.status" class="ca-input" style="padding-left:12px;">
+              <option value="Active">Active</option>
+              <option value="Pending">Pending</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+          <div class="ca-field" style="grid-column:1/-1;">
+            <label class="ca-label">Team Motto / Slogan</label>
+            <input type="text" [(ngModel)]="editTeamForm.motto" placeholder="e.g. Innovate beyond limits" class="ca-input" style="padding-left:12px;" />
+          </div>
+        </div>
+      </div>
+      <div class="um-modal-footer">
+        <button class="cmd-btn cmd-btn-ghost" (click)="closeEditTeamModal()">Cancel</button>
+        <button class="cmd-btn cmd-btn-primary" (click)="saveEditTeam()" [disabled]="!editTeamForm.name?.trim()">
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODAL: CREATE TEAM
+  ══════════════════════════════════════════ -->
+  <div class="um-modal-backdrop" *ngIf="isAddTeamOpen" (click)="closeAddTeamModal()">
+    <div class="um-modal" (click)="$event.stopPropagation()">
+      <div class="um-modal-header">
+        <div class="um-modal-title-row">
+          <div class="um-avatar large" style="background:linear-gradient(135deg,var(--primary),#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;">
+            <span class="material-symbols-outlined">group_add</span>
+          </div>
+          <div>
+            <h3>Register New Squad</h3>
+            <span style="font-size:12px;color:var(--on-surface-variant);">Register competition entrant team</span>
+          </div>
+        </div>
+        <button class="um-modal-close" (click)="closeAddTeamModal()">&times;</button>
+      </div>
+      <div class="um-modal-body">
+        <div class="ca-form-grid">
+          <div class="ca-field">
+            <label class="ca-label">Team / Squad Name <span class="ca-required">*</span></label>
+            <input type="text" [(ngModel)]="newTeamForm.name" placeholder="e.g. CyberKnights" class="ca-input" style="padding-left:12px;" />
+          </div>
+          <div class="ca-field">
+            <label class="ca-label">Competition Track</label>
+            <select [(ngModel)]="newTeamForm.track" class="ca-input" style="padding-left:12px;">
+              <option value="Coding">Coding &amp; Software</option>
+              <option value="Robotics">Robotics &amp; IoT</option>
+              <option value="AI">AI &amp; Machine Learning</option>
+              <option value="Cybersecurity">Cybersecurity</option>
+              <option value="Innovation">Open Innovation</option>
+            </select>
+          </div>
+          <div class="ca-field">
+            <label class="ca-label">Organization / School</label>
+            <input type="text" [(ngModel)]="newTeamForm.school_name" placeholder="e.g. Accra Academy" class="ca-input" style="padding-left:12px;" />
+          </div>
+          <div class="ca-field">
+            <label class="ca-label">Team Lead Name</label>
+            <input type="text" [(ngModel)]="newTeamForm.lead" placeholder="e.g. Kwame Mensah" class="ca-input" style="padding-left:12px;" />
+          </div>
+          <div class="ca-field">
+            <label class="ca-label">Members Count</label>
+            <input type="number" min="1" max="10" [(ngModel)]="newTeamForm.members" class="ca-input" style="padding-left:12px;" />
+          </div>
+          <div class="ca-field">
+            <label class="ca-label">Status</label>
+            <select [(ngModel)]="newTeamForm.status" class="ca-input" style="padding-left:12px;">
+              <option value="Active">Active</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+          <div class="ca-field" style="grid-column:1/-1;">
+            <label class="ca-label">Team Motto / Slogan</label>
+            <input type="text" [(ngModel)]="newTeamForm.motto" placeholder="e.g. Innovate beyond limits" class="ca-input" style="padding-left:12px;" />
+          </div>
+        </div>
+      </div>
+      <div class="um-modal-footer">
+        <button class="cmd-btn cmd-btn-ghost" (click)="closeAddTeamModal()">Cancel</button>
+        <button class="cmd-btn cmd-btn-primary" (click)="saveNewTeam()" [disabled]="!newTeamForm.name?.trim()">
+          Create Squad
+        </button>
       </div>
     </div>
   </div>
