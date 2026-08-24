@@ -31,12 +31,13 @@ export class BrevoEmailService {
    * requires a session precisely because arbitrary HTML to an arbitrary
    * recipient is a mail-relay primitive.
    */
-  sendPendingConfirmation(toEmail: string, toName: string, entityName: string, applicationType: string): void {
+  sendPendingConfirmation(toEmail: string, toName: string, entityName: string, applicationType: string, applicationCode?: string): void {
     this.http.post(this.registrationNoticeUrl, {
       to_email: toEmail,
       to_name: toName,
       entity_name: entityName,
-      application_type: applicationType
+      application_type: applicationType,
+      application_code: applicationCode || ''
     }).subscribe({
       next: () => {},
       error: (err) => console.warn('[Email] Registration notice failed:', err?.error?.detail || err.message)

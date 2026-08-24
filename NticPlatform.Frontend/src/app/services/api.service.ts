@@ -1279,6 +1279,12 @@ export class ApiService {
      );
    }
 
+   getPublicApprovalStatus(query: string): Observable<any> {
+     return this.http.get<any>(
+       `${this.apiUrl}/approvals/status?query=${encodeURIComponent(query)}`
+     );
+   }
+
    updateApproval(id: string, payload: any): Observable<any> {
      return this.http.patch(this.apiUrl + '/approvals/' + id, payload);
    }

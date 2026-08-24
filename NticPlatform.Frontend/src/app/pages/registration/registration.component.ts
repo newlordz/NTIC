@@ -719,28 +719,10 @@ setAuthValue('activeUserEmail', email);
         { name: 'squadM4Email', value: this.teamForm.member4Email },
         { name: 'squadM5Email', value: this.teamForm.member5Email },
       ];
-      if (squadEmails.some(e => e.name !== fieldName && e.value?.trim().toLowerCase() === v)) {
-        return true;
-      }
+      return squadEmails.some(e => e.name !== fieldName && e.value?.trim().toLowerCase() === v);
     }
 
-    // Cross-tab active fields in this browser session
-    const allFilledEmails: { name: string; value: string }[] = [
-      { name: 'schoolEmail', value: this.schoolForm.email },
-      { name: 'schoolRepEmail', value: this.schoolForm.repEmail },
-      { name: 'instEmail', value: this.instructorForm.email },
-      { name: 'studentEmail', value: this.studentForm.email },
-      { name: 'squadLeadEmail', value: this.teamForm.leadEmail },
-      { name: 'squadM2Email', value: this.teamForm.member2Email },
-      { name: 'squadM3Email', value: this.teamForm.member3Email },
-      { name: 'squadM4Email', value: this.teamForm.member4Email },
-      { name: 'squadM5Email', value: this.teamForm.member5Email },
-      { name: 'jdEmail', value: this.judgeForm.email },
-      { name: 'sponsEmail', value: this.sponsorForm.email },
-      { name: 'openEmail', value: this.openRegForm.email },
-    ];
-
-    return allFilledEmails.some(e => e.name !== fieldName && e.value?.trim().toLowerCase() === v);
+    return false;
   }
 
   private normalizePhone(phone: string): string {
@@ -762,15 +744,7 @@ setAuthValue('activeUserEmail', email);
       if (fieldName === 'schoolTel') return this.normalizePhone(this.schoolForm.repTel) === v;
       if (fieldName === 'schoolRepTel') return this.normalizePhone(this.schoolForm.tel) === v;
     }
-    const allFilledPhones: { name: string; value: string }[] = [
-      { name: 'schoolTel', value: this.schoolForm.tel },
-      { name: 'schoolRepTel', value: this.schoolForm.repTel },
-      { name: 'instTel', value: this.instructorForm.tel },
-      { name: 'jdTel', value: this.judgeForm.tel },
-      { name: 'sponsContact', value: this.sponsorForm.repContact },
-      { name: 'openPhone', value: this.openRegForm.phone },
-    ];
-    return allFilledPhones.some(p => p.name !== fieldName && this.normalizePhone(p.value) === v);
+    return false;
   }
 
   private revalidateSiblingFields(currentFieldName: string, type: 'email' | 'phone'): void {
@@ -1570,6 +1544,13 @@ setAuthValue('activeUserEmail', email);
       this.loginError = 'Please enter your email or access pass.';
       return;
     }
+
+    const upperCred = this.loginEmail.trim().toUpperCase();
+    if (upperCred.startsWith('NTIC-STU-20') || upperCred.startsWith('NTIC-TM-20') || upperCred.startsWith('NTIC-SCH-20') || upperCred.startsWith('NTIC-INS-20') || upperCred.startsWith('NTIC-OPEN-20')) {
+      this.loginError = 'This is an Application Tracking Code. Applications under review cannot log in yet. Go to "Track / Edit Submitted Application" to check your status or wait for admin approval.';
+      return;
+    }
+
     this.isLoggingIn = true;
     this.loginError = '';
 
@@ -1792,12 +1773,36 @@ setAuthValue('activeUserEmail', email);
   }
 
   searchApplication(): void {
-    if (!this.trackerQuery.trim()) return;
-    const result = this.contentService.lookupApplication(this.trackerQuery);
-    this.trackerResult = result;
-    this.trackerStatus = result.status;
-    this.trackerSearched = true;
-    this.saveRegState();
+    const q = this.trackerQuery.trim();
+    if (!q) return;
+    const localResult = this.contentService.lookupApplication(q);
+    if (localResult && localResult.status !== 'not_found') {
+      this.trackerResult = localResult;
+      this.trackerStatus = localResult.status;
+      this.trackerSearched = true;
+      this.saveRegState();
+      return;
+    }
+    // Query server if not found in local memory
+    this.apiService.getPublicApprovalStatus(q).subscribe({
+      next: (serverResult: any) => {
+        if (serverResult && serverResult.status && serverResult.status !== 'not_found') {
+          this.trackerResult = serverResult;
+          this.trackerStatus = serverResult.status;
+        } else {
+          this.trackerResult = { status: 'not_found' };
+          this.trackerStatus = 'not_found';
+        }
+        this.trackerSearched = true;
+        this.saveRegState();
+      },
+      error: () => {
+        this.trackerResult = { status: 'not_found' };
+        this.trackerStatus = 'not_found';
+        this.trackerSearched = true;
+        this.saveRegState();
+      }
+    });
   }
 
   startEditApplication(): void {
@@ -2393,8 +2398,19 @@ setAuthValue('activeUserEmail', email);
       });
       this.contentService.saveApprovals(currentApprovals);
 
+      // Real backend persist for reviewers
+      this.apiService.submitPublicApplication({
+        type: 'Team Addition',
+        entity: this.teamForm.name,
+        contact: leadEmail,
+        details
+      }).subscribe({
+        next: () => {},
+        error: (err: any) => console.warn('[Registration] Team submit error:', err)
+      });
+
       if (leadEmail) {
-        this.emailService.sendPendingConfirmation(leadEmail, this.teamForm.leadName, this.teamForm.name, 'Team Addition');
+        this.emailService.sendPendingConfirmation(leadEmail, this.teamForm.leadName, this.teamForm.name, 'Team Addition', code);
       }
 
       const currentAudit = [...this.contentService.auditLogs];
@@ -2478,8 +2494,19 @@ setAuthValue('activeUserEmail', email);
     }
     this.contentService.saveApprovals(currentApprovals);
 
+    // Real backend persist for reviewers
+    this.apiService.submitPublicApplication({
+      type: 'Student Registration',
+      entity: this.studentForm.name,
+      contact: studentEmail,
+      details
+    }).subscribe({
+      next: () => {},
+      error: (err: any) => console.warn('[Registration] Student submit error:', err)
+    });
+
     if (studentEmail) {
-      this.emailService.sendPendingConfirmation(studentEmail, this.studentForm.name, this.studentForm.name, 'Student Registration');
+      this.emailService.sendPendingConfirmation(studentEmail, this.studentForm.name, this.studentForm.name, 'Student Registration', code);
     }
 
     const currentAudit = [...this.contentService.auditLogs];
@@ -3608,7 +3635,7 @@ setAuthValue('activeUserEmail', email);
         else if (this.activeTab === 'team') phone = '';
         else if (this.activeTab === 'instructor') phone = this.instructorForm.tel || '';
         if (emailTo) {
-          this.emailService.sendPendingConfirmation(emailTo, emailName, emailName, approvalType);
+          this.emailService.sendPendingConfirmation(emailTo, emailName, emailName, approvalType, details?.code || this.lastApplicationCode || '');
         }
 
         const currentAudit = [...this.contentService.auditLogs];

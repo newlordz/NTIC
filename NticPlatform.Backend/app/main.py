@@ -637,6 +637,7 @@ try:
             # only went to POST /api/bulk-sync (admin-only), so every anonymous
             # application 401'd and never reached a reviewer.
             "/api/approvals/public",
+            "/api/approvals/status",
             # Anonymous registration writes a student record for the team lead.
             # Rate limited in the handler. TODO: route through the approvals
             # queue so this can require a session.
@@ -922,10 +923,11 @@ try:
         to_name: str = Field(default="", max_length=120)
         entity_name: str = Field(default="", max_length=160)
         application_type: str = Field(default="Application", max_length=80)
+        application_code: str = Field(default="", max_length=50)
 
     @app.post("/api/notify/registration-received")
     def notify_registration_received(payload: RegistrationNoticePayload, request: Request):
-        """Public 'we received your application' email."""
+        """Public 'we received your application' email with Application Tracking Code."""
         if not settings.BREVO_API_KEY and not settings.SMTP_HOST and not os.getenv("NTIC_DEV_RELOAD"):
             raise HTTPException(status_code=503, detail="Email service not configured")
 
@@ -940,6 +942,18 @@ try:
         to_name = html_escape(payload.to_name.strip() or to_email.split("@")[0])
         entity = html_escape(payload.entity_name.strip() or "your application")
         app_type = html_escape(payload.application_type.strip() or "Application")
+        app_code = payload.application_code.strip()
+
+        code_box = ""
+        if app_code:
+            code_escaped = html_escape(app_code)
+            code_box = (
+                '<div style="background:#f1f5f9;border:2px dashed #4f46e5;border-radius:10px;padding:16px 20px;margin:18px 0;text-align:center;">'
+                '<p style="margin:0 0 4px;font-size:12px;color:#4f46e5;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Your Application Tracking Code</p>'
+                f'<p style="margin:0;font-size:24px;font-weight:800;color:#1e1b4b;font-family:monospace;letter-spacing:2px;">{code_escaped}</p>'
+                '<p style="margin:8px 0 0;font-size:12px;color:#64748b;">Save this code. You can use it in "Track Your Application" to check review progress or update details.</p>'
+                '</div>'
+            )
 
         html = (
             '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">'
@@ -950,6 +964,7 @@ try:
             '<div style="background:#f8fafc;padding:28px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;">'
             f'<p style="color:#475569;line-height:1.6;margin:0 0 16px;">Dear <strong>{to_name}</strong>,</p>'
             f'<p style="color:#475569;line-height:1.6;margin:0 0 16px;">We have received your <strong>{app_type}</strong> for <strong>{entity}</strong>. Your application is now under review.</p>'
+            f"{code_box}"
             '<div style="background:#fffbeb;border:1px solid #fbbf24;border-radius:8px;padding:14px 16px;margin:0 0 16px;">'
             '<p style="margin:0;color:#92400e;font-size:14px;"><strong>Status:</strong> Pending Review<br>You will receive another email once a decision has been made.</p>'
             "</div>"
@@ -7560,6 +7575,8 @@ try:
         "Team Addition",
         "Judge Access",
         "Sponsor Access",
+        "Student Registration",
+        "Open Registration",
     }
     # Details are applicant-supplied and end up rendered in the admin queue, so
     # the payload is capped rather than stored unbounded.
@@ -7648,6 +7665,61 @@ try:
         broadcast_async({"type": "data_changed", "collection": "approvals"})
         return {"id": approval_id, "type": req_type, "status": "pending", "competitionId": comp_ref}
 
+    @app.get("/api/approvals/status")
+    def lookup_public_approval_status(query: str = ""):
+        """Allow public applicants to check their application status by Application Code or Contact Email."""
+        q = (query or "").strip().lower()
+        if not q:
+            return {"status": "not_found"}
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes
+                FROM pending_approvals
+                WHERE lower(COALESCE(contact, '')) = %s 
+                   OR lower(COALESCE(details->>'code', '')) = %s
+                   OR lower(COALESCE(entity, '')) = %s
+                ORDER BY submitted DESC LIMIT 1
+            """, (q, q, q))
+            row = cur.fetchone()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        if not row:
+            return {"status": "not_found"}
+
+        details = row[5] if isinstance(row[5], dict) else {}
+        if isinstance(row[5], str):
+            try:
+                import json as _j
+                details = _j.loads(row[5])
+            except Exception:
+                details = {}
+
+        st = row[6] or "pending"
+        app_obj = {
+            "id": row[0],
+            "type": row[1],
+            "entity": row[2],
+            "contact": row[3],
+            "submitted": row[4],
+            "details": details,
+            "status": st,
+            "reviewedAt": str(row[7]) if row[7] else None,
+            "reviewer": row[8] or None,
+            "rejectionReasons": row[9] or None,
+            "rejectionNotes": row[10] or None,
+        }
+        res = {"status": st, "application": app_obj}
+        if st == "rejected":
+            res["rejectedDetails"] = {
+                "reasons": row[9] or "",
+                "notes": row[10] or "",
+                "reviewedAt": str(row[7]) if row[7] else "",
+            }
+        return res
+
     # Which role an approved application results in.
     #
     # This is the mapping that makes "Approved" mean something. Until now
@@ -7663,6 +7735,8 @@ try:
         "school registration": ROLE_SCHOOL_ADMIN,
         "instructor access": ROLE_INSTRUCTOR,
         "team addition": ROLE_STUDENT,
+        "student registration": ROLE_STUDENT,
+        "open registration": ROLE_STUDENT,
     }
 
     def _apply_approved_team_change(cur, approval_row) -> dict:

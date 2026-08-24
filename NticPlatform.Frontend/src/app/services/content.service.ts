@@ -1747,7 +1747,6 @@ private readonly defaultTeams: Team[] = [];
     const e = email.trim().toLowerCase();
     if (!e) return false;
     if (this.users.some(u => u.id !== excludeId && u.email?.trim().toLowerCase() === e)) return true;
-    if (this.pendingApprovals.some(a => a.id !== excludeId && (a.contact?.trim().toLowerCase() === e || a.details?.email?.trim().toLowerCase() === e || a.details?.repEmail?.trim().toLowerCase() === e))) return true;
     return false;
   }
 
@@ -1782,7 +1781,6 @@ private readonly defaultTeams: Team[] = [];
       return v === p || v.endsWith(p) || p.endsWith(v);
     };
     if (this.users.some(u => u.id !== excludeId && matches(u.phone))) return true;
-    if (this.pendingApprovals.some(a => a.id !== excludeId && (matches(a.contact) || matches(a.details?.phone) || matches(a.details?.repTel)))) return true;
     return false;
   }
 
