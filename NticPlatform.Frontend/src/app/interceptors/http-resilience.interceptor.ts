@@ -30,6 +30,7 @@ const QUIET_ON_FAILURE = [
   '/api/chat',          // support widget, has its own inline state
   '/api/audit-logs',    // client-side audit event, best-effort and non-blocking for public applicants
   '/api/bulk-sync',     // background sync, unauthenticated visitors safely ignore
+  '/api/otp',           // OTP requests have dedicated inline failure handling and alerts
 ];
 
 export const httpResilienceInterceptor: HttpInterceptorFn = (req, next) => {

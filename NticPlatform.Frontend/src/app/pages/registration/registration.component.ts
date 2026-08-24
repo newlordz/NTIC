@@ -1670,7 +1670,7 @@ setAuthValue('activeUserEmail', email);
         this.isPathModalOpen = true; // Open Select Registration Path popup immediately
       } else if (tabParam || sectionParam === 'new') {
         if (tabParam) {
-          this.activeTab = tabParam === 'student' ? 'school' : tabParam;
+          this.activeTab = tabParam;
         }
         this.regState = 'new';
         if (stepParam) {
@@ -1913,6 +1913,58 @@ setAuthValue('activeUserEmail', email);
         this.selectedFileIds['instructorDocs'] = d.docs.map((x: string) => x.split('::')[0]);
         this.selectedFileNames['instructorDocs'] = d.docs.map((x: string) => x.split('::')[1] || 'document.pdf');
       }
+    } else if (app.type === 'Judge Registration' || app.type === 'Judge') {
+      this.activeTab = 'judge';
+      this.judgeForm = {
+        name: app.entity || '',
+        tel: d.phone || '',
+        email: app.contact || '',
+        organization: d.organization || '',
+        region: d.region || 'Greater Accra',
+        expertise: d.expertise || '',
+        experience: d.experience || '',
+        bio: d.bio || '',
+        ticketCode: d.code || '',
+        otp: '',
+        acceptedTerms: true
+      };
+      if (d.logoFileId) {
+        this.selectedFileIds['judgeLogo'] = [d.logoFileId];
+        this.selectedFileNames['judgeLogo'] = ['Judge Logo'];
+      }
+    } else if (app.type === 'Sponsor Registration' || app.type === 'Sponsor') {
+      this.activeTab = 'sponsor';
+      this.sponsorForm = {
+        name: app.entity || '',
+        sector: d.sector || 'Energy & Mining',
+        repName: d.repName || '',
+        repContact: d.phone || d.repContact || '',
+        email: app.contact || d.email || '',
+        region: d.region || 'Greater Accra',
+        package: d.package || '',
+        acceptedTerms: true,
+        arenas: d.arenas || {
+          'Coding Track': true,
+          'Robotics Arena': true,
+          'AI & ML Challenge': true,
+          'Cyber Security CTF': true,
+          'Open Innovation': true
+        }
+      };
+    } else if (app.type === 'Open Registration' || app.type === 'Open') {
+      this.activeTab = 'open';
+      this.openRegForm = {
+        fullName: app.entity || '',
+        email: app.contact || '',
+        phone: d.phone || '',
+        ageGroup: d.ageGroup || 'junior',
+        experienceLevel: d.experienceLevel || 'beginner',
+        organization: d.organization || '',
+        selectedCompetitionId: d.competitionId || '',
+        acceptedTerms: true,
+        emailVerified: true,
+        phoneVerified: !!d.phone
+      };
     }
   }
 
