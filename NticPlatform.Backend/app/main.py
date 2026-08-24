@@ -7677,6 +7677,19 @@ try:
         conn = _get_db()
         try:
             cur = conn.cursor()
+            # An application exists to CREATE an account. If one already exists for
+            # this email, approving it can never provision anything -- account
+            # provisioning is idempotent and would silently no-op, leaving the
+            # reviewer thinking they had approved a real account. Reject it up
+            # front with something the applicant can act on.
+            if contact:
+                cur.execute("SELECT 1 FROM users WHERE lower(email) = %s", (contact,))
+                if cur.fetchone():
+                    cur.close()
+                    raise HTTPException(
+                        status_code=409,
+                        detail="An account already exists for this email address. Please sign in, or use 'Forgot password' if you cannot get in.",
+                    )
             # One open application per contact, so a resubmit updates the pending
             # row instead of stacking duplicates in the reviewer's queue. Matches
             # the behaviour of POST /api/approvals/mine.

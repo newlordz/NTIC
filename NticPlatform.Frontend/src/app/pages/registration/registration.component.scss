@@ -6055,7 +6055,7 @@ select.form-control {
   padding: 4px 0;
   .material-symbols-outlined { font-size: 15px; }
   &.checking { color: #f59e0b; }
-  &.valid    { color: #22c55e; }
+  &.valid    { display: none !important; }
   &.taken    { color: #ef4444; }
   &.invalid  { color: #ef4444; }
 }

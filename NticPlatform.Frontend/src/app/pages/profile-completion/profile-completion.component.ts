@@ -245,7 +245,7 @@ export class ProfileCompletionComponent implements OnInit {
       } else if (this.contentService.isEmailTaken(value, this.currentUser?.id)) {
         this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered' };
       } else {
-        this.fieldValidation[fieldName] = { status: 'valid', message: 'Email available' };
+        this.fieldValidation[fieldName] = { status: 'valid', message: '' };
       }
     }, 400);
   }

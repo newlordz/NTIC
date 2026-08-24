@@ -764,7 +764,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return;
     }
     this.emailValid = true;
-    this.emailMessage = 'Email available';
+    this.emailMessage = '';
   }
 
   validatePhone(): void {
