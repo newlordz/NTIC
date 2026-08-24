@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, of } from 'rxjs';
-import { catchError, shareReplay, tap } from 'rxjs/operators';
+import { BehaviorSubject, Observable, of, from } from 'rxjs';
+import { catchError, shareReplay, tap, switchMap } from 'rxjs/operators';
 import { ApiService, MyProfile } from './api.service';
 import { getAuthValue, setAuthValue } from './session.util';
+import { FileStorageService } from './file-storage.service';
 
 /**
  * The signed-in user's real identity, fetched once from GET /api/users/me.
@@ -40,7 +41,7 @@ export class CurrentUserService {
 
   private inFlight: Observable<MyProfile | null> | null = null;
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private fileStorage: FileStorageService) {}
 
   /** Last known profile, or null if not loaded / not signed in. */
   profile(): MyProfile | null {
@@ -109,6 +110,27 @@ export class CurrentUserService {
       ? parts[0][0] + parts[parts.length - 1][0]
       : parts[0].slice(0, 2);
     return letters.toUpperCase();
+  }
+
+  /** Returns true if the user has a profile photo uploaded. */
+  hasPhoto(): boolean {
+    return !!this._profile$.value?.photo_file_id;
+  }
+
+  /** Returns the profile photo URL as an Observable, or null if no photo. */
+  photoUrl$(): Observable<string | null> {
+    const fileId = this._profile$.value?.photo_file_id;
+    if (!fileId) return of(null);
+    return from(this.fileStorage.getUrl(fileId));
+  }
+
+  /** Returns the avatar for the user: either the profile photo URL or initials. */
+  avatar$(): Observable<{ url: string | null; initials: string }> {
+    const fileId = this._profile$.value?.photo_file_id;
+    if (!fileId) return of({ url: null, initials: this.initials() });
+    return from(this.fileStorage.getUrl(fileId)).pipe(
+      switchMap(url => of({ url, initials: this.initials() }))
+    );
   }
 
   /**

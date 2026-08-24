@@ -47,11 +47,13 @@ export interface MyProfile {
   /** Competition/learning track. Read by the student LMS profile and the judge
    *  dashboard filter, both of which previously saw `undefined`. */
   track: string;
-  /** The caller's `students` row id, provisioned on first read. Equal to `id`.
-   *  Null for every non-student role. This is the id to send with submissions,
-   *  enrolments and progress -- the client used to invent a random one per
-   *  render, which is why none of that data could be read back. */
-  student_id: string | null;
+/** The caller's `students` row id, provisioned on first read. Equal to `id`.
+     *  Null for every non-student role. This is the id to send with submissions,
+     *  enrolments and progress -- the client used to invent a random one per
+     *  render, which is why none of that data could be read back. */
+    student_id: string | null;
+    /** File ID of the user's profile photo (stored in IndexedDB via FileStorageService). */
+    photo_file_id: string | null;
 }
 
 /** Result of enrolling on a course. */
@@ -461,6 +463,7 @@ export class ApiService {
     tier?: string;
     experience_level?: string;
     track?: string;
+    photo_file_id?: string;
   }): Observable<{ status: string; updated: string[] }> {
     return this.http.patch<{ status: string; updated: string[] }>(
       this.apiUrl + '/users/me',
@@ -946,9 +949,9 @@ export class ApiService {
     return this.http.delete(this.apiUrl + '/schools/' + id);
   }
 
-  login(email: string, password: string): Observable<any> {
+login(email: string, password: string): Observable<any> {
     return this.http.post(this.apiUrl + '/login', { email, password }).pipe(
-      timeout(8000)
+      timeout(30000)
     );
   }
 

@@ -84,7 +84,8 @@
       </a>
       <div class="divider"></div>
       <div class="user-profile-chip" (click)="toggleProfile($event)" style="cursor: pointer;">
-        <div class="avatar">{{ currentUser?.avatar || 'SA' }}</div>
+        <div class="avatar" *ngIf="!currentUser?.photoUrl">{{ currentUser?.avatar || 'SA' }}</div>
+        <img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" class="avatar" alt="Profile" />
         <div class="user-info">
           <div class="user-name">{{ currentUser?.name || 'Super Admin' }}</div>
           <div class="user-role">{{ currentUser?.roleName || 'Administrator' }}</div>
@@ -184,11 +185,15 @@
 
         <!-- User Profile Avatar -->
         <div style="position: relative;">
-          <div class="avatar-btn" (click)="toggleProfile($event)" style="cursor: pointer;">{{ currentUser?.avatar || 'SA' }}</div>
+          <div class="avatar-btn" (click)="toggleProfile($event)" style="cursor: pointer;">
+            <span *ngIf="!currentUser?.photoUrl">{{ currentUser?.avatar || 'SA' }}</span>
+<img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" class="avatar" alt="Profile" />
+          </div>
 
           <div class="header-dropdown profile-dropdown" *ngIf="showProfileDropdown" (click)="$event.stopPropagation()">
             <div class="profile-header-card">
-              <div class="profile-avatar-lg">{{ currentUser?.avatar || 'SA' }}</div>
+              <div class="profile-avatar-lg" *ngIf="!currentUser?.photoUrl">{{ currentUser?.avatar || 'SA' }}</div>
+              <img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" class="profile-avatar-lg" alt="Profile" />
               <div class="profile-meta">
                 <div class="profile-name">{{ currentUser?.name || 'Super Admin' }}</div>
                 <div class="profile-role">{{ currentUser?.roleName || 'System Administrator' }}</div>

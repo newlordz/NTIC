@@ -42,7 +42,7 @@ export class AppComponent implements OnInit, OnDestroy {
   title = 'ntic-frontend';
   isLandingPage = true;
   isRouteLoading = false;
-  currentUser: { name: string; avatar: string; roleName: string; roleId: string } | null = null;
+  currentUser: { name: string; avatar: string; roleName: string; roleId: string; photoUrl?: string | null } | null = null;
   showScrollToTop = false;
   isMobileSidebarOpen = false;
   private ticketPollTimer: any = null;
@@ -458,12 +458,15 @@ export class AppComponent implements OnInit, OnDestroy {
     // judge saw "Prof. Yaw Osei" and a real student saw "Kwame Asante".
     this.currentUserService.ensureLoaded().subscribe(profile => {
       if (profile) {
-        this.currentUser = {
-          roleId: profile.role || roleId,
-          name: profile.full_name,
-          avatar: this.getInitials(profile.full_name),
-          roleName: this.roleLabels[profile.role] || 'User',
-        };
+        this.currentUserService.avatar$().subscribe(avatar => {
+          this.currentUser = {
+            roleId: profile.role || roleId,
+            name: profile.full_name,
+            avatar: avatar.initials,
+            photoUrl: avatar.url,
+            roleName: this.roleLabels[profile.role] || 'User',
+          };
+        });
         // The server is authoritative about whether a password rotation is due.
         this.applyPasswordRequirement(profile);
         return;
@@ -477,6 +480,7 @@ export class AppComponent implements OnInit, OnDestroy {
         roleId,
         name: storedName,
         avatar: this.getInitials(storedName),
+        photoUrl: null,
         roleName: this.roleLabels[roleId] || 'User',
       };
     });

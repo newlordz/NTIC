@@ -1420,7 +1420,7 @@ try:
             cur.execute(
                 "SELECT id, email, full_name, role, ticket, status, phone, organization, "
                 "COALESCE(must_change_password, FALSE), password_changed_at, "
-                "bio, expertise, sector, rep_name, tier, experience_level, track "
+                "bio, expertise, sector, rep_name, tier, experience_level, track, photo_file_id "
                 "FROM users WHERE id = %s",
                 (actor["id"],),
             )
@@ -1454,6 +1454,7 @@ try:
             "tier": row[14] or "",
             "experience_level": row[15] or "",
             "track": row[16] or "",
+            "photo_file_id": row[17] or "",
             "student_id": student_id,
         }
 
@@ -1482,6 +1483,7 @@ try:
         tier: str = Field(default=None, max_length=50)
         experience_level: str = Field(default=None, max_length=50)
         track: str = Field(default=None, max_length=100)
+        photo_file_id: str = Field(default=None, max_length=255)
 
     @app.patch("/api/users/me")
     def update_my_profile(payload: UpdateMyProfilePayload, actor: dict = Depends(require_auth)):
@@ -1506,6 +1508,7 @@ try:
             "tier": payload.tier,
             "experience_level": payload.experience_level,
             "track": payload.track,
+            "photo_file_id": payload.photo_file_id,
         }
         # Only touch what was actually sent. Absent (None) means "leave alone";
         # an explicit "" means "clear it".

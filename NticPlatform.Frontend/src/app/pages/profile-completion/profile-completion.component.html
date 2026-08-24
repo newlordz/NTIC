@@ -11,7 +11,26 @@
       </div>
       <h2>{{ profileHeading }} Profile & Account Settings</h2>
       <p>Welcome, {{ currentUser?.fullName }}. Manage your account information and preferences.</p>
-      <span *ngIf="isDraftResumed" class="draft-badge">Draft Restored</span>
+    </div>
+
+    <!-- Profile Photo -->
+    <div class="pc-photo-section" *ngIf="currentUser?.role === 'student' || currentUser?.role === 'instructor' || currentUser?.role === 'school_admin'">
+      <label class="photo-label">Profile Photo</label>
+      <div class="photo-preview-wrapper">
+        <div class="photo-preview" [style.background-image]="profilePhotoPreviewUrl ? ('url(' + profilePhotoPreviewUrl + ')') : 'none'">
+          <span class="material-symbols-outlined" *ngIf="!profilePhotoFileId">person</span>
+        </div>
+        <div class="photo-actions">
+          <input type="file" accept="image/*" (change)="onPhotoSelected($event)" #photoInput hidden>
+          <button type="button" class="btn btn-subtle btn-sm" (click)="photoInput.click()" [disabled]="isSubmitting">
+            <span class="material-symbols-outlined">photo_camera</span> {{ profilePhotoFileId ? 'Change Photo' : 'Add Photo' }}
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="removePhoto()" *ngIf="profilePhotoFileId" [disabled]="isSubmitting">
+            <span class="material-symbols-outlined">delete</span> Remove
+          </button>
+        </div>
+        <p class="photo-hint" *ngIf="saveError && saveError.includes('image')">{{ saveError }}</p>
+      </div>
     </div>
 
     <div class="pc-form">

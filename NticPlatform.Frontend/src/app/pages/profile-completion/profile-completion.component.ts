@@ -7,6 +7,7 @@ import { ContentService, User } from '../../services/content.service';
 import { ThemeService } from '../../services/theme.service';
 import { CurrentUserService } from '../../services/current-user.service';
 import { ApiService } from '../../services/api.service';
+import { FileStorageService } from '../../services/file-storage.service';
 
 @Component({
   selector: 'app-profile-completion',
@@ -18,6 +19,8 @@ import { ApiService } from '../../services/api.service';
 export class ProfileCompletionComponent implements OnInit {
   currentUser: User | null = null;
   profileForm: any = {};
+  profilePhotoFileId: string | null = null;
+  profilePhotoPreviewUrl: string | null = null;
   isSubmitting = false;
   isSaved = false;
   isDraftResumed = false;
@@ -31,7 +34,8 @@ export class ProfileCompletionComponent implements OnInit {
     public contentService: ContentService,
     public themeService: ThemeService,
     private apiService: ApiService,
-    private currentUserService: CurrentUserService
+    private currentUserService: CurrentUserService,
+    private fileStorage: FileStorageService
   ) {}
 
   ngOnInit(): void {
@@ -299,6 +303,7 @@ export class ProfileCompletionComponent implements OnInit {
       sector: this.isSponsor ? (this.profileForm.sector || undefined) : undefined,
       rep_name: this.isSponsor ? (this.profileForm.repName?.trim() || undefined) : undefined,
       tier: this.isSponsor ? (this.profileForm.tier || undefined) : undefined,
+      photo_file_id: this.profilePhotoFileId || undefined,
     }).subscribe({
       next: () => {
         // PATCH /api/users/me is the save. There used to be a
@@ -365,5 +370,32 @@ export class ProfileCompletionComponent implements OnInit {
     const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
     delete drafts[this.currentUser.email];
     localStorage.setItem('ntic_drafts', JSON.stringify(drafts));
+  }
+
+  async onPhotoSelected(event: any): Promise<void> {
+    const files: FileList = event.target.files;
+    if (!files?.length) return;
+    const file = files[0];
+    if (!file.type.startsWith('image/')) {
+      this.saveError = 'Please select an image file.';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      this.saveError = 'Image must be smaller than 5MB.';
+      return;
+    }
+    this.saveError = '';
+    const id = this.fileStorage.generateId();
+    await this.fileStorage.store(id, file);
+    this.profilePhotoFileId = id;
+    this.profilePhotoPreviewUrl = await this.fileStorage.getUrl(id);
+  }
+
+  removePhoto(): void {
+    if (this.profilePhotoFileId) {
+      this.fileStorage.remove(this.profilePhotoFileId).catch(() => {});
+      this.profilePhotoFileId = null;
+      this.profilePhotoPreviewUrl = null;
+    }
   }
 }
