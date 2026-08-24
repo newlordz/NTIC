@@ -1743,6 +1743,17 @@ private readonly defaultTeams: Team[] = [];
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
+  /**
+   * Fast local duplicate check against the loaded roster.
+   *
+   * IMPORTANT: `this.users` is filled from GET /api/users, which is admin-only.
+   * For an anonymous registrant it holds only the seeded default admin, so this
+   * returns false for every real duplicate. It is a pre-filter for admin screens
+   * ONLY -- never rely on it as the duplicate gate.
+   *
+   * The authoritative checks are GET /api/auth/check-availability (live, public)
+   * and the UNIQUE constraints on users.email / users.phone.
+   */
   isEmailTaken(email: string, excludeId?: string): boolean {
     const e = email.trim().toLowerCase();
     if (!e) return false;
@@ -1772,6 +1783,12 @@ private readonly defaultTeams: Team[] = [];
     return 'Unknown';
   }
 
+  /**
+   * Fast local duplicate check. Same admin-only caveat as isEmailTaken: for a
+   * non-admin `this.users` is not the real roster, so this cannot be the gate.
+   * GET /api/auth/check-availability is authoritative (it normalises to the last
+   * 9 digits, so 0241234567 / +233241234567 / 233241234567 all match).
+   */
   isPhoneTaken(phone: string, excludeId?: string): boolean {
     const p = phone.replace(/[\s\-().]/g, '');
     if (!p) return false;

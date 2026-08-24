@@ -1397,7 +1397,7 @@ try:
 
     @app.get("/api/auth/check-availability")
     def check_availability(email: str = "", phone: str = ""):
-        """Check if an email or phone number is already registered in the database."""
+        """Check if an email or phone number is already in the database."""
         em = (email or "").strip().lower()
         ph = (phone or "").strip()
         
@@ -1411,15 +1411,31 @@ try:
         try:
             cur = conn.cursor()
             if em:
-                # Check users table
-                cur.execute("SELECT id FROM users WHERE lower(COALESCE(email, '')) = %s LIMIT 1", (em,))
+                # 1. Check users table
+                cur.execute("SELECT 1 FROM users WHERE lower(COALESCE(email, '')) = %s LIMIT 1", (em,))
                 if cur.fetchone():
                     email_taken = True
                 else:
-                    # Also check pending approvals if approved or active
-                    cur.execute("SELECT id FROM pending_approvals WHERE lower(COALESCE(contact, '')) = %s AND status IN ('approved', 'active') LIMIT 1", (em,))
+                    # 2. Check pending_approvals table (any status: pending, approved, active)
+                    cur.execute("""
+                        SELECT 1 FROM pending_approvals 
+                        WHERE lower(COALESCE(contact, '')) = %s 
+                           OR lower(COALESCE(details->>'schoolEmail', '')) = %s
+                           OR lower(COALESCE(details->>'repEmail', '')) = %s
+                           OR lower(COALESCE(details->>'leadEmail', '')) = %s
+                           OR lower(COALESCE(details->>'email', '')) = %s
+                        LIMIT 1
+                    """, (em, em, em, em, em))
                     if cur.fetchone():
                         email_taken = True
+                    else:
+                        # 3. Check students table
+                        try:
+                            cur.execute("SELECT 1 FROM students WHERE lower(COALESCE(email, '')) = %s LIMIT 1", (em,))
+                            if cur.fetchone():
+                                email_taken = True
+                        except Exception:
+                            pass
             
             if ph:
                 # Clean phone digits for comparison (last 9 digits)
@@ -1430,13 +1446,27 @@ try:
                     digits = digits[1:]
                 
                 if digits and len(digits) >= 8:
+                    suffix = digits[-9:]
+                    # Check users table
                     cur.execute("""
-                        SELECT id FROM users 
+                        SELECT 1 FROM users 
                         WHERE right(regexp_replace(COALESCE(phone, ''), '\\D', '', 'g'), 9) = %s 
                         LIMIT 1
-                    """, (digits[-9:],))
+                    """, (suffix,))
                     if cur.fetchone():
                         phone_taken = True
+                    else:
+                        # Check pending_approvals table
+                        cur.execute("""
+                            SELECT 1 FROM pending_approvals 
+                            WHERE right(regexp_replace(COALESCE(contact, ''), '\\D', '', 'g'), 9) = %s 
+                               OR right(regexp_replace(COALESCE(details->>'tel', ''), '\\D', '', 'g'), 9) = %s
+                               OR right(regexp_replace(COALESCE(details->>'repTel', ''), '\\D', '', 'g'), 9) = %s
+                               OR right(regexp_replace(COALESCE(details->>'phone', ''), '\\D', '', 'g'), 9) = %s
+                            LIMIT 1
+                        """, (suffix, suffix, suffix, suffix))
+                        if cur.fetchone():
+                            phone_taken = True
             cur.close()
         finally:
             release_db_connection(conn)

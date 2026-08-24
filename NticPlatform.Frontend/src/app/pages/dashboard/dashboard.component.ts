@@ -4163,7 +4163,24 @@ setTimeout(async () => {
       status: 'approved',
       reviewed_at: new Date().toLocaleString('en-GB'),
       reviewer: 'admin@ntic.org.gh'
-    }).subscribe({ next: () => {}, error: () => {} });
+    }).subscribe({
+      next: (res: any) => {
+        // The server reports whether approving actually provisioned an account.
+        // This response used to be discarded, so when provisioning no-opped --
+        // most often because an account already existed for that email -- the
+        // reviewer was still told the approval succeeded and no account was made.
+        const account = res?.account;
+        if (account && account.provisioned === false && account.reason
+            && account.reason !== 'Not an approval transition'
+            && !String(account.reason).startsWith('No role mapping')) {
+          this.dialogService.toast(
+            `Approved, but no account was created: ${account.reason}`,
+            'warning'
+          );
+        }
+      },
+      error: () => {}
+    });
 
     // Apply side-effects depending on the type of approval request
     if (req.type === 'School Registration') {

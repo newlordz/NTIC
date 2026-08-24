@@ -5956,6 +5956,96 @@ class TestTeamChangeApproval:
         assert client.get("/api/approvals/mine").status_code == 401
 
 
+class TestDuplicateContactGate:
+    """Duplicate email / phone must actually be caught.
+
+    The frontend's local isEmailTaken/isPhoneTaken scan contentService.users,
+    which comes from the admin-only GET /api/users -- so for an anonymous
+    registrant it is empty and those checks never fire. These prove the checks
+    that DO hold: the live availability endpoint, and the server-side rejection
+    of an application whose email already has an account (which used to be
+    accepted, approved, and then silently fail to provision).
+    """
+
+    def _clear(self):
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+
+    def _user(self, client, admin_token, phone=None):
+        email = f"dup-{uuid.uuid4().hex[:8]}@ntic.test"
+        body = {"email": email, "full_name": "Dup Check", "role": "student",
+                "password": "Nzulezu-Stilt-Village-7", "status": "Active"}
+        if phone:
+            body["phone"] = phone
+        resp = client.post("/api/users", headers={"Authorization": f"Bearer {admin_token}"}, json=body)
+        assert resp.status_code in (200, 201), resp.text
+        self._clear()
+        return email
+
+    def test_availability_endpoint_detects_a_taken_email(self, client, admin_token):
+        email = self._user(client, admin_token)
+        self._clear()
+        resp = client.get(f"/api/auth/check-availability?email={email}")
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["email_taken"] is True
+
+    def test_availability_is_case_insensitive_for_email(self, client, admin_token):
+        email = self._user(client, admin_token)
+        self._clear()
+        resp = client.get(f"/api/auth/check-availability?email={email.upper()}")
+        assert resp.json()["email_taken"] is True
+
+    def test_availability_detects_a_taken_phone_in_any_format(self, client, admin_token):
+        digits = f"24{uuid.uuid4().int % 10000000:07d}"
+        self._user(client, admin_token, phone=f"0{digits}")
+        self._clear()
+        # Local, international and 233-prefixed forms must all match.
+        for form in (f"0{digits}", f"+233{digits}", f"233{digits}"):
+            resp = client.get(f"/api/auth/check-availability?phone={form}")
+            assert resp.json()["phone_taken"] is True, form
+
+    def test_availability_reports_a_free_contact(self, client):
+        self._clear()
+        resp = client.get(f"/api/auth/check-availability?email=free-{uuid.uuid4().hex[:8]}@ntic.test")
+        assert resp.json()["email_taken"] is False
+
+    def test_public_application_is_rejected_when_the_email_already_has_an_account(self, client, admin_token):
+        """This is the hole: it used to be accepted, then approving it silently
+        provisioned nothing because provisioning is idempotent."""
+        email = self._user(client, admin_token)
+        self._clear()
+        resp = client.post("/api/approvals/public", json={
+            "type": "School Registration", "entity": "Dup School", "contact": email})
+        assert resp.status_code == 409, resp.text
+        assert "already exists" in resp.json()["detail"].lower()
+
+    def test_a_fresh_email_can_still_apply(self, client):
+        self._clear()
+        resp = client.post("/api/approvals/public", json={
+            "type": "School Registration", "entity": "Fresh School",
+            "contact": f"fresh-{uuid.uuid4().hex[:8]}@ntic.test"})
+        assert resp.status_code == 201, resp.text
+
+    def test_public_register_rejects_a_duplicate_email(self, client, admin_token):
+        email = self._user(client, admin_token)
+        self._clear()
+        resp = client.post("/api/users/register", json={
+            "email": email, "full_name": "Dup Again", "role": "judge"})
+        assert resp.status_code == 400, resp.text
+        assert "already registered" in resp.json()["detail"].lower()
+
+    def test_public_register_rejects_a_duplicate_phone(self, client, admin_token):
+        digits = f"27{uuid.uuid4().int % 10000000:07d}"
+        phone = f"0{digits}"
+        self._user(client, admin_token, phone=phone)
+        self._clear()
+        resp = client.post("/api/users/register", json={
+            "email": f"other-{uuid.uuid4().hex[:8]}@ntic.test", "full_name": "Other",
+            "role": "judge", "phone": phone})
+        assert resp.status_code == 400, resp.text
+        assert "phone" in resp.json()["detail"].lower()
+
+
 class TestPublicApplicationReachesTheQueue:
     """Public registration has to reach a reviewer.
 
@@ -6086,3 +6176,44 @@ class TestPublicApplicationReachesTheQueue:
         # 422 is what _validate_competition_ref raises for an unknown cycle.
         assert resp.status_code == 422, resp.text
         assert "comp-does-not-exist" in resp.json()["detail"]
+
+
+class TestCheckAvailability:
+    def test_existing_email_returns_taken(self, client):
+        resp = client.get("/api/auth/check-availability?email=admin@ntic.org.gh")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["email_taken"] is True
+
+    def test_existing_email_case_insensitive(self, client):
+        resp = client.get("/api/auth/check-availability?email=ADMIN@NTIC.ORG.GH")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["email_taken"] is True
+
+    def test_new_email_returns_available(self, client):
+        import uuid
+        random_email = f"user-{uuid.uuid4().hex[:10]}@notregistereddomain.org"
+        resp = client.get(f"/api/auth/check-availability?email={random_email}")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["email_taken"] is False
+
+    def test_empty_query_returns_false(self, client):
+        resp = client.get("/api/auth/check-availability")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["email_taken"] is False
+        assert data["phone_taken"] is False
+
+    def test_pending_approval_email_returns_taken(self, client):
+        import uuid
+        pending_email = f"pending-{uuid.uuid4().hex[:8]}@school.edu.gh"
+        client.post("/api/approvals/public", json={
+            "type": "School Registration",
+            "entity": "St. Peters",
+            "contact": pending_email
+        })
+        resp = client.get(f"/api/auth/check-availability?email={pending_email}")
+        assert resp.status_code == 200
+        assert resp.json()["email_taken"] is True

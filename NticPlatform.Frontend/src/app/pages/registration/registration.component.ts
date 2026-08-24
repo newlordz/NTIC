@@ -3,7 +3,7 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { ThemeService } from '../../services/theme.service';
 import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
@@ -2315,7 +2315,7 @@ setAuthValue('activeUserEmail', email);
 
   competitorMode: 'individual' | 'group' = 'group';
 
-  registerStudent(): void {
+  async registerStudent(): Promise<void> {
     if (this.competitorMode === 'group') {
       if (!this.teamForm.name || !this.teamForm.leadName) {
         this.showCustomAlert('Please enter your Group / Team Name and Team Lead full name.', 'Missing Information', 'warning');
@@ -2334,17 +2334,23 @@ setAuthValue('activeUserEmail', email);
           this.showCustomAlert('One or more team emails have invalid format. Please check.', 'Invalid Email', 'warning');
           return;
         }
-        if (this.contentService.isEmailTaken(email!, this.editingApprovalId || undefined)) {
-          this.showCustomAlert(`The email "${email}" is already registered. Please use a different email.`, 'Email Taken', 'warning');
-          return;
+        if (!this.editingApprovalId) {
+          try {
+            const avail = await firstValueFrom(this.apiService.checkAvailability(email!.trim(), ''));
+            if (avail && avail.email_taken) {
+              this.showCustomAlert(`The email "${email}" is already registered in the system. Please use a different email.`, 'Email Taken', 'warning');
+              return;
+            }
+          } catch {
+            if (this.contentService.isEmailTaken(email!, this.editingApprovalId || undefined)) {
+              this.showCustomAlert(`The email "${email}" is already registered. Please use a different email.`, 'Email Taken', 'warning');
+              return;
+            }
+          }
         }
       }
       const ticket = `NTIC-GRP-${this.randomSuffix()}`;
       const leadEmail = this.teamForm.leadEmail?.trim() || `${ticket.toLowerCase()}@squad.ntic.gh`;
-      if (this.teamForm.leadEmail?.trim() && this.contentService.isEmailTaken(leadEmail, this.editingApprovalId || undefined)) {
-        this.showCustomAlert('An account with this Team Lead email already exists. Please log in instead.', 'Account Exists', 'warning');
-        return;
-      }
 
       if (this.editingApprovalId) {
         const rosterList = [this.teamForm.leadName, this.teamForm.member2Name, this.teamForm.member3Name, this.teamForm.member4Name, this.teamForm.member5Name].filter(Boolean).map((n: string) => n.trim()).filter((n: string) => n.length > 0);
@@ -2483,9 +2489,19 @@ setAuthValue('activeUserEmail', email);
     }
     const ticket = `NTIC-STU-${this.randomSuffix()}`;
     const studentEmail = this.studentForm.email?.trim() || `${ticket.toLowerCase()}@stu.ntic.gh`;
-    if (this.contentService.isEmailTaken(studentEmail, this.editingApprovalId || undefined)) {
-      this.showCustomAlert('An account with this email already exists. Please log in instead.', 'Account Exists', 'warning');
-      return;
+    if (this.studentForm.email?.trim() && !this.editingApprovalId) {
+      try {
+        const avail = await firstValueFrom(this.apiService.checkAvailability(studentEmail, ''));
+        if (avail && avail.email_taken) {
+          this.showCustomAlert('An account or application with this email already exists in the system. Please log in instead.', 'Account Exists', 'warning');
+          return;
+        }
+      } catch {
+        if (this.contentService.isEmailTaken(studentEmail, this.editingApprovalId || undefined)) {
+          this.showCustomAlert('An account with this email already exists. Please log in instead.', 'Account Exists', 'warning');
+          return;
+        }
+      }
     }
     const code = this.editingApprovalId
       ? (this.contentService.pendingApprovals.find(a => a.id === this.editingApprovalId)?.details?.code || this.generateApplicationCode('student'))
@@ -3239,19 +3255,48 @@ setAuthValue('activeUserEmail', email);
     if (this.isSubmitting) return;
     if (!this.validateCurrentTab()) return;
 
-    // Final pre-submit guard against duplicate emails across active/pending accounts
+    // Final pre-submit guard against duplicate emails & phones across PostgreSQL database
     let targetEmail = '';
-    if (this.activeTab === 'school') targetEmail = this.schoolForm.repEmail || this.schoolForm.email;
-    else if (this.activeTab === 'instructor') targetEmail = this.instructorForm.email;
-    else if (this.activeTab === 'judge') targetEmail = this.judgeForm.email;
-    else if (this.activeTab === 'sponsor') targetEmail = this.sponsorForm.email;
-    else if (this.activeTab === 'team') targetEmail = this.teamForm.leadEmail;
+    let targetPhone = '';
+    if (this.activeTab === 'school') {
+      targetEmail = this.schoolForm.repEmail || this.schoolForm.email;
+      targetPhone = this.schoolForm.repTel || this.schoolForm.tel;
+    } else if (this.activeTab === 'instructor') {
+      targetEmail = this.instructorForm.email;
+      targetPhone = this.instructorForm.tel;
+    } else if (this.activeTab === 'judge') {
+      targetEmail = this.judgeForm.email;
+      targetPhone = this.judgeForm.tel;
+    } else if (this.activeTab === 'sponsor') {
+      targetEmail = this.sponsorForm.email;
+      targetPhone = this.sponsorForm.repContact;
+    } else if (this.activeTab === 'team') {
+      targetEmail = this.teamForm.leadEmail;
+    }
 
-    if (targetEmail && this.contentService.isEmailTaken(targetEmail, this.editingApprovalId || undefined)) {
-      this.isSubmitting = false;
-      this.isPreviewModalOpen = false;
-      this.showCustomAlert(`The email address "${targetEmail}" is already registered to an active account or pending request. Multiple accounts cannot be created using the same email address.`, 'Email Already Registered', 'warning');
-      return;
+    if (targetEmail || targetPhone) {
+      try {
+        const avail = await firstValueFrom(this.apiService.checkAvailability(targetEmail, targetPhone));
+        if (avail && avail.email_taken && !this.editingApprovalId) {
+          this.isSubmitting = false;
+          this.isPreviewModalOpen = false;
+          this.showCustomAlert(`The email address "${targetEmail}" is already registered in the system. Please use a different email address or sign in.`, 'Email Already Registered', 'warning');
+          return;
+        }
+        if (avail && avail.phone_taken && !this.editingApprovalId) {
+          this.isSubmitting = false;
+          this.isPreviewModalOpen = false;
+          this.showCustomAlert(`The phone number "${targetPhone}" is already registered in the system. Please use a different phone number.`, 'Phone Already Registered', 'warning');
+          return;
+        }
+      } catch {
+        if (targetEmail && this.contentService.isEmailTaken(targetEmail, this.editingApprovalId || undefined)) {
+          this.isSubmitting = false;
+          this.isPreviewModalOpen = false;
+          this.showCustomAlert(`The email address "${targetEmail}" is already registered.`, 'Email Already Registered', 'warning');
+          return;
+        }
+      }
     }
 
     this.isSubmitting = true;
