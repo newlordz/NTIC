@@ -1288,6 +1288,15 @@ login(email: string, password: string): Observable<any> {
      );
    }
 
+   checkAvailability(email?: string, phone?: string): Observable<{ email_taken: boolean; phone_taken: boolean }> {
+     const params = new URLSearchParams();
+     if (email) params.set('email', email);
+     if (phone) params.set('phone', phone);
+     return this.http.get<{ email_taken: boolean; phone_taken: boolean }>(
+       `${this.apiUrl}/auth/check-availability?${params.toString()}`
+     );
+   }
+
    updateApproval(id: string, payload: any): Observable<any> {
      return this.http.patch(this.apiUrl + '/approvals/' + id, payload);
    }

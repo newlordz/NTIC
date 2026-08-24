@@ -654,6 +654,7 @@ try:
             # owning its email.
             "/api/auth/forgot-password",
             "/api/auth/forgot-password/reset",
+            "/api/auth/check-availability",
             "/api/drafts",
             # Server-templated notification for the pre-login registration flow.
             # The generic /api/send-email now requires a session.
@@ -1393,6 +1394,54 @@ try:
             release_db_connection(conn)
 
         return {"status": "reset", "email": email}
+
+    @app.get("/api/auth/check-availability")
+    def check_availability(email: str = "", phone: str = ""):
+        """Check if an email or phone number is already registered in the database."""
+        em = (email or "").strip().lower()
+        ph = (phone or "").strip()
+        
+        email_taken = False
+        phone_taken = False
+        
+        if not em and not ph:
+            return {"email_taken": False, "phone_taken": False}
+            
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            if em:
+                # Check users table
+                cur.execute("SELECT id FROM users WHERE lower(COALESCE(email, '')) = %s LIMIT 1", (em,))
+                if cur.fetchone():
+                    email_taken = True
+                else:
+                    # Also check pending approvals if approved or active
+                    cur.execute("SELECT id FROM pending_approvals WHERE lower(COALESCE(contact, '')) = %s AND status IN ('approved', 'active') LIMIT 1", (em,))
+                    if cur.fetchone():
+                        email_taken = True
+            
+            if ph:
+                # Clean phone digits for comparison (last 9 digits)
+                digits = re.sub(r"\D", "", ph)
+                if digits.startswith("233") and len(digits) >= 12:
+                    digits = digits[3:]
+                elif digits.startswith("0") and len(digits) >= 10:
+                    digits = digits[1:]
+                
+                if digits and len(digits) >= 8:
+                    cur.execute("""
+                        SELECT id FROM users 
+                        WHERE right(regexp_replace(COALESCE(phone, ''), '\\D', '', 'g'), 9) = %s 
+                        LIMIT 1
+                    """, (digits[-9:],))
+                    if cur.fetchone():
+                        phone_taken = True
+            cur.close()
+        finally:
+            release_db_connection(conn)
+            
+        return {"email_taken": email_taken, "phone_taken": phone_taken}
 
     # AUTH
     class LoginRequest(BaseModel):

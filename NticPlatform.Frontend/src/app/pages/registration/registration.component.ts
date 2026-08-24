@@ -682,21 +682,45 @@ setAuthValue('activeUserEmail', email);
       }
       if (!this.contentService.isValidEmail(value)) {
         this.fieldValidation[fieldName] = { status: 'invalid', message: 'Invalid email format' };
-      } else if (this.isDuplicateInForm(fieldName, value)) {
+        this.revalidateSiblingFields(fieldName, 'email');
+        return;
+      }
+      if (this.isDuplicateInForm(fieldName, value)) {
         const msg = this.activeTab === 'school' && (fieldName === 'schoolEmail' || fieldName === 'schoolRepEmail')
           ? 'School email and representative email cannot be the same'
           : 'This email is already in use by another role or member in your form';
         this.fieldValidation[fieldName] = { status: 'taken', message: msg };
-      } else if (this.contentService.isEmailTaken(value, this.editingApprovalId || undefined)) {
-        this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered to an account' };
-      } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
+        this.revalidateSiblingFields(fieldName, 'email');
+        return;
+      }
+      if (this.hasSavedDraft(value) && !this.isDraftResumed) {
         const timeRemaining = this.getDraftTimeRemaining(value);
         const timeText = timeRemaining ? ` (${timeRemaining})` : '';
         this.fieldValidation[fieldName] = { status: 'draft_found', message: `This email is reserved by a saved draft${timeText}. Resume the draft or wait for expiry.` };
-      } else {
-        this.fieldValidation[fieldName] = { status: 'valid', message: 'Email available' };
+        this.revalidateSiblingFields(fieldName, 'email');
+        return;
       }
-      this.revalidateSiblingFields(fieldName, 'email');
+      if (this.contentService.isEmailTaken(value, this.editingApprovalId || undefined)) {
+        this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered to an account' };
+        this.revalidateSiblingFields(fieldName, 'email');
+        return;
+      }
+
+      // Check PostgreSQL backend database in real time
+      this.apiService.checkAvailability(cleanVal, '').subscribe({
+        next: (res) => {
+          if (res && res.email_taken) {
+            this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered to an account' };
+          } else {
+            this.fieldValidation[fieldName] = { status: 'valid', message: '' };
+          }
+          this.revalidateSiblingFields(fieldName, 'email');
+        },
+        error: () => {
+          this.fieldValidation[fieldName] = { status: 'valid', message: '' };
+          this.revalidateSiblingFields(fieldName, 'email');
+        }
+      });
     }, 350);
   }
 
@@ -759,7 +783,7 @@ setAuthValue('activeUserEmail', email);
             } else if (this.isDuplicateInForm(sibling, val)) {
               this.fieldValidation[sibling] = { status: 'taken', message: 'School email and representative email cannot be the same' };
             } else if (!this.contentService.isEmailTaken(val, this.editingApprovalId || undefined)) {
-              this.fieldValidation[sibling] = { status: 'valid', message: 'Email available' };
+              this.fieldValidation[sibling] = { status: 'valid', message: '' };
             }
           }
         }
@@ -773,7 +797,7 @@ setAuthValue('activeUserEmail', email);
             } else if (this.isDuplicatePhoneInForm(sibling, val)) {
               this.fieldValidation[sibling] = { status: 'taken', message: 'School telephone and representative telephone cannot be the same' };
             } else if (!this.contentService.isPhoneTaken(val, this.editingApprovalId || undefined)) {
-              this.fieldValidation[sibling] = { status: 'valid', message: 'Number available' };
+              this.fieldValidation[sibling] = { status: 'valid', message: '' };
             }
           }
         }
@@ -792,7 +816,7 @@ setAuthValue('activeUserEmail', email);
           if (this.isDuplicateInForm(f, val)) {
             this.fieldValidation[f] = { status: 'taken', message: 'Duplicate email used by another squad member' };
           } else if (!this.contentService.isEmailTaken(val, this.editingApprovalId || undefined)) {
-            this.fieldValidation[f] = { status: 'valid', message: 'Email available' };
+            this.fieldValidation[f] = { status: 'valid', message: '' };
           }
         }
       });
@@ -826,18 +850,42 @@ setAuthValue('activeUserEmail', email);
       }
       if (!this.contentService.isValidGhanaPhone(value)) {
         this.fieldValidation[fieldName] = { status: 'invalid', message: 'Enter a valid Ghana number (0XX XXX XXXX or +233...)' };
-      } else if (this.isDuplicatePhoneInForm(fieldName, value)) {
+        this.revalidateSiblingFields(fieldName, 'phone');
+        return;
+      }
+      if (this.isDuplicatePhoneInForm(fieldName, value)) {
         this.fieldValidation[fieldName] = { status: 'taken', message: 'School telephone and representative telephone cannot be the same' };
-      } else if (this.contentService.isPhoneTaken(value, this.editingApprovalId || undefined)) {
-        this.fieldValidation[fieldName] = { status: 'taken', message: 'This number is already registered' };
-      } else if (this.hasSavedDraft(value) && !this.isDraftResumed) {
+        this.revalidateSiblingFields(fieldName, 'phone');
+        return;
+      }
+      if (this.hasSavedDraft(value) && !this.isDraftResumed) {
         const timeRemaining = this.getDraftTimeRemaining(value);
         const timeText = timeRemaining ? ` (${timeRemaining})` : '';
         this.fieldValidation[fieldName] = { status: 'draft_found', message: `This number is reserved by a saved draft${timeText}. Resume the draft or wait for expiry.` };
-      } else {
-        this.fieldValidation[fieldName] = { status: 'valid', message: 'Number available' };
+        this.revalidateSiblingFields(fieldName, 'phone');
+        return;
       }
-      this.revalidateSiblingFields(fieldName, 'phone');
+      if (this.contentService.isPhoneTaken(value, this.editingApprovalId || undefined)) {
+        this.fieldValidation[fieldName] = { status: 'taken', message: 'This number is already registered' };
+        this.revalidateSiblingFields(fieldName, 'phone');
+        return;
+      }
+
+      // Check PostgreSQL backend database in real time
+      this.apiService.checkAvailability('', value).subscribe({
+        next: (res) => {
+          if (res && res.phone_taken) {
+            this.fieldValidation[fieldName] = { status: 'taken', message: 'This number is already registered' };
+          } else {
+            this.fieldValidation[fieldName] = { status: 'valid', message: '' };
+          }
+          this.revalidateSiblingFields(fieldName, 'phone');
+        },
+        error: () => {
+          this.fieldValidation[fieldName] = { status: 'valid', message: '' };
+          this.revalidateSiblingFields(fieldName, 'phone');
+        }
+      });
     }, 400);
   }
 
@@ -2323,18 +2371,15 @@ setAuthValue('activeUserEmail', email);
           };
         this.contentService.saveApprovals(currentApprovals);
 
-        // Also persist to backend so other machines see pending approvals
-        const latestApproval = currentApprovals[0];
-        if (latestApproval) {
-          this.apiService.createApproval({
-            id: latestApproval.id,
-            type: latestApproval.type,
-            entity: latestApproval.entity,
-            contact: latestApproval.contact,
-            submitted: latestApproval.submitted,
-            details: latestApproval.details,
-            status: 'pending'
-          }).subscribe({ next: () => {}, error: () => {} });
+        // Also persist to backend so other machines and reviewers see updated approvals
+        const updatedApproval = currentApprovals[idx];
+        if (updatedApproval) {
+          this.apiService.submitPublicApplication({
+            type: updatedApproval.type,
+            entity: updatedApproval.entity,
+            contact: updatedApproval.contact,
+            details: updatedApproval.details
+          }).subscribe({ next: () => {}, error: (err: any) => console.warn('[Registration] Update error:', err) });
         }
 
           const currentAudit = [...this.contentService.auditLogs];
