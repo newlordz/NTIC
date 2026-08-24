@@ -1651,16 +1651,55 @@ setAuthValue('activeUserEmail', email);
 
     this.queryParamsSub = this.route.queryParams.subscribe(params => {
       this.showAdminPaths = params['admin'] === 'true';
-      if (params['track']) {
+      const sectionParam = params['section'];
+      const tabParam = params['tab'];
+      const codeParam = params['code'] || params['q'];
+      const stepParam = params['step'];
+
+      if (sectionParam === 'tracker' || params['track_app']) {
+        this.regState = 'tracker';
+        if (codeParam) {
+          this.trackerQuery = codeParam;
+          this.searchApplication();
+        }
+      } else if (sectionParam === 'continue') {
+        this.regState = 'continue_select';
+      } else if (params['track']) {
         this.selectedTrack = params['track'];
         this.regState = 'gateway';
         this.isPathModalOpen = true; // Open Select Registration Path popup immediately
-      } else if (params['tab']) {
-        this.activeTab = params['tab'] === 'student' ? 'school' : params['tab'];
+      } else if (tabParam || sectionParam === 'new') {
+        if (tabParam) {
+          this.activeTab = tabParam === 'student' ? 'school' : tabParam;
+        }
         this.regState = 'new';
+        if (stepParam) {
+          const stepNum = parseInt(stepParam, 10);
+          if (!isNaN(stepNum) && stepNum >= 1 && stepNum <= 4) {
+            this.schoolStep = stepNum;
+            this.syncCardSubTab(stepNum);
+          }
+        }
       } else {
-        // Fresh visit (no tab/track param) -- always show the gateway
-        this.regState = 'gateway';
+        // Restore from session state on page refresh if available
+        const savedUi = this.loadSavedRegUi();
+        if (savedUi && savedUi.regState && savedUi.regState !== 'gateway') {
+          this.regState = savedUi.regState;
+          if (savedUi.activeTab) this.activeTab = savedUi.activeTab;
+          if (savedUi.schoolStep) {
+            this.schoolStep = savedUi.schoolStep;
+            this.syncCardSubTab(savedUi.schoolStep);
+          }
+          if (savedUi.maxSchoolStepReached) this.maxSchoolStepReached = savedUi.maxSchoolStepReached;
+          if (savedUi.trackerQuery) {
+            this.trackerQuery = savedUi.trackerQuery;
+            if (savedUi.regState === 'tracker' && this.trackerQuery) {
+              this.searchApplication();
+            }
+          }
+        } else {
+          this.regState = 'gateway';
+        }
       }
     });
   }
@@ -1688,24 +1727,23 @@ setAuthValue('activeUserEmail', email);
   selectNewRegistration(): void {
     this.isPathModalOpen = true;
     this.clearDraftPrefills();
-    this.clearRegState();
   }
 
   selectContinueRegistration(): void {
     this.regState = 'continue_select';
-    this.clearRegState();
     this.verificationInput = '';
     this.otpCode = '';
     this.otpError = '';
+    this.saveRegState();
   }
 
   openTracker(): void {
     this.regState = 'tracker';
-    this.clearRegState();
     this.trackerQuery = '';
     this.trackerResult = null;
     this.trackerStatus = 'idle';
     this.trackerSearched = false;
+    this.saveRegState();
   }
 
   generateApplicationCode(type: 'school' | 'team' | 'instructor' | 'student'): string {
@@ -1759,6 +1797,7 @@ setAuthValue('activeUserEmail', email);
     this.trackerResult = result;
     this.trackerStatus = result.status;
     this.trackerSearched = true;
+    this.saveRegState();
   }
 
   startEditApplication(): void {
@@ -2803,19 +2842,54 @@ setAuthValue('activeUserEmail', email);
     }
   }
 
+  private loadSavedRegUi(): any {
+    try {
+      const raw = sessionStorage.getItem('ntic_reg_ui') || localStorage.getItem('ntic_reg_ui');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
   private saveRegState(): void {
     try {
-      localStorage.setItem('ntic_reg_ui', JSON.stringify({
+      const state = {
         regState: this.regState,
         activeTab: this.activeTab,
         schoolStep: this.schoolStep,
         maxSchoolStepReached: this.maxSchoolStepReached,
-      }));
+        trackerQuery: this.trackerQuery
+      };
+      sessionStorage.setItem('ntic_reg_ui', JSON.stringify(state));
+      localStorage.setItem('ntic_reg_ui', JSON.stringify(state));
+
+      const queryParams: Record<string, any> = {
+        section: this.regState !== 'gateway' ? this.regState : null,
+        tab: this.regState === 'new' ? this.activeTab : null,
+        step: this.regState === 'new' && this.activeTab === 'school' && this.schoolStep > 1 ? this.schoolStep : null,
+        q: this.regState === 'tracker' && this.trackerQuery ? this.trackerQuery : null
+      };
+
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams,
+        queryParamsHandling: 'merge',
+        replaceUrl: true
+      });
     } catch {}
   }
 
   private clearRegState(): void {
-    localStorage.removeItem('ntic_reg_ui');
+    try {
+      sessionStorage.removeItem('ntic_reg_ui');
+      localStorage.removeItem('ntic_reg_ui');
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { section: null, tab: null, step: null, q: null, code: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true
+      });
+    } catch {}
   }
 
   private clearDraftPrefills(): void {

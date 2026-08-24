@@ -4247,6 +4247,154 @@ body.dark-theme {
       }
     }
   }
+
+  .glass-modal-card {
+    background: #0f172a !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+
+    .glass-modal-header {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.15) 0%, rgba(30, 58, 138, 0.25) 100%) !important;
+      border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+
+      .header-titles {
+        h3 { color: #f8fafc !important; }
+        p { color: #94a3b8 !important; }
+      }
+
+      .close-circle-btn {
+        background: rgba(255, 255, 255, 0.08) !important;
+        color: #94a3b8 !important;
+      }
+    }
+
+    .glass-modal-body {
+      background: #0f172a !important;
+    }
+
+    .preview-section-box {
+      background: rgba(30, 41, 59, 0.65) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+
+      .section-title-row {
+        color: #60a5fa !important;
+      }
+
+      .modal-info-item {
+        .item-lbl { color: #94a3b8 !important; }
+        .item-val { color: #f1f5f9 !important; }
+      }
+
+      .modal-roster-row {
+        background: rgba(15, 23, 42, 0.85) !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+        .modal-roster-name { color: #f1f5f9 !important; }
+      }
+    }
+
+    .glass-modal-footer {
+      background: #0b1120 !important;
+      border-top-color: rgba(255, 255, 255, 0.08) !important;
+      .terms-checkbox-wrapper { color: #94a3b8 !important; }
+    }
+  }
+
+  .success-screen-card {
+    background: #0f172a !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+
+    h3 { color: #f8fafc !important; }
+    p { color: #94a3b8 !important; }
+
+    .app-code-box {
+      background: rgba(16, 185, 129, 0.1) !important;
+      border: 1.5px dashed rgba(52, 211, 153, 0.45) !important;
+
+      .app-code-label { color: #34d399 !important; }
+      .app-code-value { color: #a7f3d0 !important; text-shadow: 0 0 12px rgba(52, 211, 153, 0.4) !important; }
+      .app-code-hint { color: #94a3b8 !important; border-top-color: rgba(255, 255, 255, 0.1) !important; }
+    }
+
+    .judge-token-box {
+      background: rgba(16, 185, 129, 0.1) !important;
+      border-color: rgba(52, 211, 153, 0.35) !important;
+      .token-label { color: #94a3b8 !important; }
+      .token-value { color: #a7f3d0 !important; }
+      .token-confirm { color: #94a3b8 !important; }
+    }
+  }
+
+  .tracker-status-box {
+    &.pending {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.18) 100%) !important;
+      border-color: rgba(245, 158, 11, 0.45) !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(245, 158, 11, 0.12) !important;
+
+      .status-icon-wrap {
+        background: #d97706 !important;
+        box-shadow: 0 0 16px rgba(245, 158, 11, 0.5) !important;
+      }
+      .status-title { color: #fbbf24 !important; }
+      .status-sub { color: #fde68a !important; }
+      .status-desc { color: #fef3c7 !important; }
+    }
+
+    &.approved {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.18) 100%) !important;
+      border-color: rgba(52, 211, 153, 0.45) !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(16, 185, 129, 0.12) !important;
+
+      .status-icon-wrap {
+        background: #059669 !important;
+        box-shadow: 0 0 16px rgba(16, 185, 129, 0.5) !important;
+      }
+      .status-title { color: #34d399 !important; }
+      .status-sub { color: #6ee7b7 !important; }
+      .status-desc { color: #a7f3d0 !important; }
+    }
+
+    &.rejected {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(185, 28, 28, 0.18) 100%) !important;
+      border-color: rgba(248, 113, 113, 0.45) !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(239, 68, 68, 0.12) !important;
+
+      .status-icon-wrap { background: #dc2626 !important; }
+      .status-title { color: #f87171 !important; }
+      .status-sub { color: #fca5a5 !important; }
+      .status-desc { color: #fecaca !important; }
+    }
+  }
+
+  .tracker-reason-box {
+    background: rgba(15, 23, 42, 0.8) !important;
+    border: 1px solid rgba(248, 113, 113, 0.25) !important;
+
+    .reason-title { color: #f87171 !important; }
+    .reason-text { color: #fecaca !important; }
+  }
+
+  .tracker-details-card {
+    background: rgba(30, 41, 59, 0.75) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+
+    .tracker-details-grid {
+      .detail-label { color: #94a3b8 !important; }
+      .detail-value {
+        color: #f1f5f9 !important;
+
+        &.code-highlight-pending {
+          color: #fbbf24 !important;
+          text-shadow: 0 0 10px rgba(245, 158, 11, 0.4) !important;
+        }
+
+        &.code-highlight-approved {
+          color: #34d399 !important;
+          text-shadow: 0 0 10px rgba(52, 211, 153, 0.4) !important;
+        }
+      }
+    }
+  }
 }
 
 /* ── Modal, Sidebar & Scroll Containment (Beyond-the-Box) ── */

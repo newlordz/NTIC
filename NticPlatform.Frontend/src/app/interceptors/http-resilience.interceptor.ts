@@ -28,6 +28,8 @@ const QUIET_ON_FAILURE = [
   '/api/auth/verify',   // probed on load; failure is handled by the 401 path
   '/api/drafts',        // best-effort autosave, retried on the next keystroke
   '/api/chat',          // support widget, has its own inline state
+  '/api/audit-logs',    // client-side audit event, best-effort and non-blocking for public applicants
+  '/api/bulk-sync',     // background sync, unauthenticated visitors safely ignore
 ];
 
 export const httpResilienceInterceptor: HttpInterceptorFn = (req, next) => {

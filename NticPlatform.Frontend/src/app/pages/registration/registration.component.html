@@ -148,102 +148,108 @@
       </div>
 
       <!-- No result yet -->
-      <div *ngIf="!trackerSearched" style="text-align: center; padding: 60px 20px; color: var(--on-surface-variant);">
-        <span class="material-symbols-outlined" style="font-size: 48px; opacity: 0.3; display: block; margin-bottom: 12px;">manage_search</span>
-        <p style="font-size: 15px;">Enter your details above to check your application status.</p>
+      <div *ngIf="!trackerSearched" class="tracker-empty-state">
+        <span class="material-symbols-outlined tracker-empty-icon">manage_search</span>
+        <p>Enter your details above to check your application status.</p>
       </div>
 
       <!-- Not Found -->
-      <div *ngIf="trackerSearched && trackerStatus === 'not_found'" style="text-align: center; padding: 48px 20px;">
-        <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--error-container, #fef2f2); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-          <span class="material-symbols-outlined" style="font-size: 32px; color: var(--error, #ef4444);">help</span>
+      <div *ngIf="trackerSearched && trackerStatus === 'not_found'" class="tracker-not-found-state">
+        <div class="not-found-icon-wrap">
+          <span class="material-symbols-outlined">help</span>
         </div>
-        <h3 style="margin: 0 0 8px; font-size: 18px;">No Application Found</h3>
-        <p style="color: var(--on-surface-variant); font-size: 14px; margin: 0;">No registration was found matching your search. Please check your email, school name, or application code and try again.</p>
+        <h3>No Application Found</h3>
+        <p>No registration was found matching your search. Please check your email, school name, or application code and try again.</p>
       </div>
 
       <!-- Pending Status -->
-      <div *ngIf="trackerSearched && trackerStatus === 'pending'" style="padding: 0;">
-        <div style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1px solid #fbbf24; border-radius: 14px; padding: 28px; margin-bottom: 20px;">
-          <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: #f59e0b; display: flex; align-items: center; justify-content: center;">
-              <span class="material-symbols-outlined" style="color: #fff; font-size: 28px;">pending</span>
+      <div *ngIf="trackerSearched && trackerStatus === 'pending'" class="tracker-result-wrap">
+        <div class="tracker-status-box pending">
+          <div class="status-header">
+            <div class="status-icon-wrap">
+              <span class="material-symbols-outlined">pending</span>
             </div>
             <div>
-              <h3 style="margin: 0; font-size: 18px; color: #92400e;">Application Under Review</h3>
-              <p style="margin: 2px 0 0; font-size: 13px; color: #a16207;">Submitted {{ trackerResult?.application?.submitted }}</p>
+              <h3 class="status-title">Application Under Review</h3>
+              <p class="status-sub">Submitted {{ trackerResult?.application?.submitted }}</p>
             </div>
           </div>
-          <p style="margin: 0 0 4px; font-size: 14px; color: #78350f;">Your <strong>{{ trackerResult?.application?.type }}</strong> for <strong>{{ trackerResult?.application?.entity }}</strong> is currently being reviewed by our team. You will be notified once a decision is made.</p>
+          <p class="status-desc">Your <strong>{{ trackerResult?.application?.type }}</strong> for <strong>{{ trackerResult?.application?.entity }}</strong> is currently being reviewed by our team. You will be notified once a decision is made.</p>
         </div>
-        <div style="background: var(--surface-container, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px; padding: 16px 20px;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
-            <div><span style="color: var(--on-surface-variant);">Application Code:</span> <strong style="font-family: 'Courier New', monospace; letter-spacing: 0.5px; color: #92400e;">{{ trackerResult?.application?.details?.code || '--' }}</strong></div>
-            <div><span style="color: var(--on-surface-variant);">Type:</span> <strong>{{ trackerResult?.application?.type }}</strong></div>
-            <div><span style="color: var(--on-surface-variant);">Entity:</span> <strong>{{ trackerResult?.application?.entity }}</strong></div>
-            <div><span style="color: var(--on-surface-variant);">Contact:</span> <strong>{{ trackerResult?.application?.contact }}</strong></div>
-            <div><span style="color: var(--on-surface-variant);">Region:</span> <strong>{{ trackerResult?.application?.details?.region || '--' }}</strong></div>
+
+        <div class="tracker-details-card">
+          <div class="tracker-details-grid">
+            <div><span class="detail-label">Application Code:</span> <strong class="detail-value code-highlight-pending">{{ trackerResult?.application?.details?.code || '--' }}</strong></div>
+            <div><span class="detail-label">Type:</span> <strong class="detail-value">{{ trackerResult?.application?.type }}</strong></div>
+            <div><span class="detail-label">Entity:</span> <strong class="detail-value">{{ trackerResult?.application?.entity }}</strong></div>
+            <div><span class="detail-label">Contact:</span> <strong class="detail-value">{{ trackerResult?.application?.contact }}</strong></div>
+            <div><span class="detail-label">Region:</span> <strong class="detail-value">{{ trackerResult?.application?.details?.region || '--' }}</strong></div>
           </div>
         </div>
-        <div style="text-align: center; padding: 20px 0;">
+
+        <div class="tracker-actions">
           <button class="btn btn-primary" (click)="startEditApplication()">
-            <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">edit</span>
+            <span class="material-symbols-outlined">edit</span>
             Edit Application
           </button>
-          <p style="font-size: 12px; color: var(--on-surface-variant); margin: 10px 0 0;">While your application is still under review, you can correct or update any details you submitted.</p>
+          <p class="tracker-edit-hint">While your application is still under review, you can correct or update any details you submitted.</p>
         </div>
       </div>
 
       <!-- Approved Status -->
-      <div *ngIf="trackerSearched && trackerStatus === 'approved'" style="padding: 0;">
-        <div style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1px solid #34d399; border-radius: 14px; padding: 28px; margin-bottom: 20px;">
-          <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: #10b981; display: flex; align-items: center; justify-content: center;">
-              <span class="material-symbols-outlined" style="color: #fff; font-size: 28px;">check_circle</span>
+      <div *ngIf="trackerSearched && trackerStatus === 'approved'" class="tracker-result-wrap">
+        <div class="tracker-status-box approved">
+          <div class="status-header">
+            <div class="status-icon-wrap">
+              <span class="material-symbols-outlined">check_circle</span>
             </div>
             <div>
-              <h3 style="margin: 0; font-size: 18px; color: #065f46;">Application Approved!</h3>
-              <p style="margin: 2px 0 0; font-size: 13px; color: #047857;">Reviewed {{ trackerResult?.application?.reviewedAt }}</p>
+              <h3 class="status-title">Application Approved!</h3>
+              <p class="status-sub">Reviewed {{ trackerResult?.application?.reviewedAt }}</p>
             </div>
           </div>
-          <p style="margin: 0; font-size: 14px; color: #064e3b;">Your <strong>{{ trackerResult?.application?.type }}</strong> for <strong>{{ trackerResult?.application?.entity }}</strong> has been approved. Your access credentials have been generated. Please contact the NTIC admin team to receive your login details.</p>
+          <p class="status-desc">Your <strong>{{ trackerResult?.application?.type }}</strong> for <strong>{{ trackerResult?.application?.entity }}</strong> has been approved. Your access credentials have been generated. Please contact the NTIC admin team to receive your login details.</p>
         </div>
-        <div style="background: var(--surface-container, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px; padding: 16px 20px;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
-            <div><span style="color: var(--on-surface-variant);">Application Code:</span> <strong style="font-family: 'Courier New', monospace; letter-spacing: 0.5px; color: #047857;">{{ trackerResult?.application?.details?.code || '--' }}</strong></div>
-            <div><span style="color: var(--on-surface-variant);">Type:</span> <strong>{{ trackerResult?.application?.type }}</strong></div>
-            <div><span style="color: var(--on-surface-variant);">Entity:</span> <strong>{{ trackerResult?.application?.entity }}</strong></div>
-            <div><span style="color: var(--on-surface-variant);">Contact:</span> <strong>{{ trackerResult?.application?.contact }}</strong></div>
-            <div><span style="color: var(--on-surface-variant);">Region:</span> <strong>{{ trackerResult?.application?.details?.region || '--' }}</strong></div>
+
+        <div class="tracker-details-card">
+          <div class="tracker-details-grid">
+            <div><span class="detail-label">Application Code:</span> <strong class="detail-value code-highlight-approved">{{ trackerResult?.application?.details?.code || '--' }}</strong></div>
+            <div><span class="detail-label">Type:</span> <strong class="detail-value">{{ trackerResult?.application?.type }}</strong></div>
+            <div><span class="detail-label">Entity:</span> <strong class="detail-value">{{ trackerResult?.application?.entity }}</strong></div>
+            <div><span class="detail-label">Contact:</span> <strong class="detail-value">{{ trackerResult?.application?.contact }}</strong></div>
+            <div><span class="detail-label">Region:</span> <strong class="detail-value">{{ trackerResult?.application?.details?.region || '--' }}</strong></div>
           </div>
         </div>
       </div>
 
       <!-- Rejected Status -->
-      <div *ngIf="trackerSearched && trackerStatus === 'rejected'" style="padding: 0;">
-        <div style="background: linear-gradient(135deg, #fef2f2, #fee2e2); border: 1px solid #f87171; border-radius: 14px; padding: 28px; margin-bottom: 20px;">
-          <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
-            <div style="width: 48px; height: 48px; border-radius: 50%; background: #ef4444; display: flex; align-items: center; justify-content: center;">
-              <span class="material-symbols-outlined" style="color: #fff; font-size: 28px;">cancel</span>
+      <div *ngIf="trackerSearched && trackerStatus === 'rejected'" class="tracker-result-wrap">
+        <div class="tracker-status-box rejected">
+          <div class="status-header">
+            <div class="status-icon-wrap">
+              <span class="material-symbols-outlined">cancel</span>
             </div>
             <div>
-              <h3 style="margin: 0; font-size: 18px; color: #991b1b;">Application Rejected</h3>
-              <p style="margin: 2px 0 0; font-size: 13px; color: #b91c1c;">Reviewed {{ trackerResult?.rejectedDetails?.reviewedAt }}</p>
+              <h3 class="status-title">Application Rejected</h3>
+              <p class="status-sub">Reviewed {{ trackerResult?.rejectedDetails?.reviewedAt }}</p>
             </div>
           </div>
-          <p style="margin: 0 0 12px; font-size: 14px; color: #7f1d1d;">Your <strong>{{ trackerResult?.application?.type }}</strong> for <strong>{{ trackerResult?.application?.entity }}</strong> was not approved.</p>
-          <div style="background: rgba(255,255,255,0.6); border-radius: 8px; padding: 14px 16px; margin-bottom: 8px;">
-            <div style="font-size: 12px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Reasons</div>
-            <p style="margin: 0; font-size: 14px; color: #7f1d1d; line-height: 1.5;">{{ trackerResult?.rejectedDetails?.reasons }}</p>
+          <p class="status-desc">Your <strong>{{ trackerResult?.application?.type }}</strong> for <strong>{{ trackerResult?.application?.entity }}</strong> was not approved.</p>
+          
+          <div class="tracker-reason-box" *ngIf="trackerResult?.rejectedDetails?.reasons">
+            <div class="reason-title">Reasons</div>
+            <p class="reason-text">{{ trackerResult?.rejectedDetails?.reasons }}</p>
           </div>
-          <div *ngIf="trackerResult?.rejectedDetails?.notes" style="background: rgba(255,255,255,0.6); border-radius: 8px; padding: 14px 16px;">
-            <div style="font-size: 12px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Additional Notes</div>
-            <p style="margin: 0; font-size: 14px; color: #7f1d1d; line-height: 1.5;">{{ trackerResult?.rejectedDetails?.notes }}</p>
+          
+          <div class="tracker-reason-box" *ngIf="trackerResult?.rejectedDetails?.notes">
+            <div class="reason-title">Additional Notes</div>
+            <p class="reason-text">{{ trackerResult?.rejectedDetails?.notes }}</p>
           </div>
         </div>
-        <div style="text-align: center; padding: 16px 0;">
+
+        <div class="tracker-actions">
           <button class="btn btn-primary" (click)="goBackToGatewayFromTracker(); selectNewRegistration();">
-            <span class="material-symbols-outlined" style="font-size: 18px; vertical-align: middle; margin-right: 4px;">replay</span>
+            <span class="material-symbols-outlined">replay</span>
             Reapply
           </button>
         </div>
@@ -2561,6 +2567,9 @@
                 {{ (selectedFileIds['accredDocs'] || []).length ? 'Pending Review' : 'Required -- Please upload' }}
               </span>
             </div>
+          </div>
+        </div>
+
         <!-- Section 5: Data Protection Compliance (Act 843) -->
         <div class="preview-section-box">
           <div class="section-title-row">
@@ -2583,7 +2592,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </div><!-- /glass-modal-body -->
 
       <div class="glass-modal-footer">
         <button class="btn btn-subtle" (click)="closePreviewModal()">Edit Details</button>
@@ -2598,8 +2607,6 @@
           <span *ngIf="isSubmitting" class="spinner-inline"></span>
         </button>
       </div>
-    </div>
-      </div><!-- /glass-modal-body -->
     </div><!-- /glass-modal-card -->
   </div><!-- /glass-modal-backdrop -->
 
