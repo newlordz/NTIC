@@ -4280,8 +4280,13 @@ setTimeout(async () => {
       }
 
       const account = updateRes?.account;
-      const ticket = account?.ticket || ('NTIC-' + (req.type === 'School Registration' ? 'SCH' : req.type === 'Instructor Access' ? 'INS' : 'STU') + '-' + this.randomSuffix());
-      const otp = account?.temporary_password || Math.floor(100000 + Math.random() * 900000).toString();
+      // Only show/send credentials the server actually minted. Previously a
+      // fallback Math.random() PIN and a fabricated ticket were shown and
+      // emailed whenever the account already existed or the update failed,
+      // handing the applicant a PIN that never worked.
+      const provisioned = !!(account && account.provisioned);
+      const ticket = provisioned ? (account.ticket || '') : '';
+      const otp = provisioned ? (account.temporary_password || '') : '';
 
       if (account && account.provisioned === false && account.reason
           && account.reason !== 'Not an approval transition'
@@ -4339,8 +4344,10 @@ setTimeout(async () => {
           this.contentService.saveTeams(currentTeams);
         }
 
-        this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp);
-        this.openCredentialsModal('School Registration Approved!', `School Admin account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access credentials sent to ${req.contact}`);
+        if (provisioned) {
+          this.emailService.sendApprovalEmail(req.contact, req.entity + ' Admin', req.entity, req.type, ticket, otp);
+          this.openCredentialsModal('School Registration Approved!', `School Admin account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access credentials sent to ${req.contact}`);
+        }
       } else if (req.type === 'Team Modification') {
         const teamId = req.details?.teamId;
         const targetName = req.details?.originalName || req.entity;
@@ -4449,8 +4456,13 @@ setTimeout(async () => {
           currentUsers.unshift(newLeadUser as any);
           this.contentService.saveUsers(currentUsers);
 
-          this.emailService.sendApprovalEmail(leadEmail, leadName, req.entity, req.type, ticket, otp);
-          this.openCredentialsModal('Team Addition Approved!', `Your squad "${req.entity}" has been approved. Team Lead credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${leadEmail}`);
+          if (provisioned) {
+            this.emailService.sendApprovalEmail(leadEmail, leadName, req.entity, req.type, ticket, otp);
+            this.openCredentialsModal('Team Addition Approved!', `Your squad "${req.entity}" has been approved. Team Lead credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${leadEmail}`);
+          } else {
+            this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A -- Team Added', 'N/A');
+            this.showCustomAlert(`Team "${req.entity}" has been successfully approved and added to national competition tracks.`, 'Team Addition Approved', 'success');
+          }
         } else {
           this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A -- Team Added', 'N/A');
           this.showCustomAlert(`Team "${req.entity}" has been successfully approved and added to national competition tracks.`, 'Team Addition Approved', 'success');
@@ -4485,8 +4497,10 @@ setTimeout(async () => {
         stats.students += 1;
         this.contentService.updatePlatformStats(stats);
 
-        this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
-        this.openCredentialsModal('Student Registration Approved!', `Competitor account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
+        if (provisioned) {
+          this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
+          this.openCredentialsModal('Student Registration Approved!', `Competitor account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
+        }
       } else if (req.type === 'Instructor Access') {
         const newInstructor = {
           id: account?.user_id || ('USR-' + Date.now() + '-' + this.randomSuffix(4).toLowerCase()),
@@ -4511,8 +4525,10 @@ setTimeout(async () => {
         stats.mentors += 1;
         this.contentService.updatePlatformStats(stats);
 
-        this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
-        this.openCredentialsModal('Instructor Access Approved!', `Certified Instructor account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
+        if (provisioned) {
+          this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
+          this.openCredentialsModal('Instructor Access Approved!', `Certified Instructor account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
+        }
       }
 
       const currentAudit = [...this.contentService.auditLogs];

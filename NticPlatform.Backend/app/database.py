@@ -836,6 +836,25 @@ def _create_tables(conn):
     )
     conn.commit()
 
+    # Access passes (tickets) are login identifiers alongside email, so two users
+    # must never share one. `users.ticket` was historically not UNIQUE, and public
+    # registration once accepted a client-supplied ticket, so legacy duplicates
+    # are possible. Collapse them before the unique index is created below,
+    # keeping the earliest row's pass and dropping the rest (those users still
+    # sign in by email).
+    cur.execute("""
+        UPDATE users u
+        SET ticket = NULL
+        WHERE u.ticket IS NOT NULL
+          AND u.id <> (
+              SELECT keep.id FROM users keep
+              WHERE keep.ticket IS NOT NULL
+                AND upper(keep.ticket) = upper(u.ticket)
+              ORDER BY keep.id LIMIT 1
+          )
+    """)
+    conn.commit()
+
     _create_indexes(cur)
     conn.commit()
     cur.close()
@@ -857,6 +876,11 @@ def _create_indexes(cur):
         # so the expression must match the query.
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users (lower(email));",
         "CREATE INDEX IF NOT EXISTS idx_users_ticket_upper ON users (upper(ticket));",
+        # Enforce "access passes are unique" going forward. A distinct name from
+        # the non-unique lookup index above so it actually takes effect on
+        # databases that already have the older index. Partial so multiple NULL
+        # tickets remain legal.
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_ticket_upper_unique ON users (upper(ticket)) WHERE ticket IS NOT NULL;",
         "CREATE INDEX IF NOT EXISTS idx_users_role ON users (role);",
         # The judging queue filters on "not yet scored" and the judge's own
         # history filters on graded_by, both on every page load.

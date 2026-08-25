@@ -1190,7 +1190,7 @@ class TestForgotPassword:
         login = client.post("/api/login", json={"email": email, "password": "New-Kintampo-Falls-99"})
         assert login.status_code == 200, login.text
 
-    def test_unknown_email_returns_no_challenge(self, client, admin_token, monkeypatch):
+    def test_unknown_email_returns_no_usable_challenge(self, client, admin_token, monkeypatch):
         import app.main as main
         sent = {"n": 0}
         monkeypatch.setattr(main, "_send_brevo_email", lambda *a, **k: (sent.update(n=sent["n"] + 1), True)[1])
@@ -1199,9 +1199,16 @@ class TestForgotPassword:
         resp = client.post("/api/auth/forgot-password",
                            json={"email": f"ghost-{uuid.uuid4().hex[:8]}@ntic.test"})
         assert resp.status_code == 200
-        assert resp.json()["challenge_id"] is None
-        # And no email was actually sent, so a fake account can't be used.
+        # The response shape matches a real account (anti-enumeration), but the
+        # challenge is fake: no email was sent and it can never be verified.
+        body = resp.json()
+        assert body["challenge_id"]
+        assert body["expires_in"]
         assert sent["n"] == 0
+        clear_all_rate_limits()
+        verify = client.post("/api/otp/verify",
+                             json={"challenge_id": body["challenge_id"], "code": "000000"})
+        assert verify.status_code == 404
 
     def test_reset_token_cannot_be_reused(self, client, admin_token, monkeypatch):
         import re

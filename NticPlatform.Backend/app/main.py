@@ -3,6 +3,7 @@ import re
 import json
 import time
 import uuid
+import ipaddress
 from decimal import Decimal
 import random
 import secrets
@@ -1003,13 +1004,50 @@ try:
     _CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
     _PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
 
-    def _generate_temp_password(length: int = 6) -> str:
-        """A clean 6-digit numeric OTP / security code for newly provisioned or approved accounts."""
-        return f"{secrets.randbelow(1_000_000):06d}"
+    def _generate_temp_password(length: int = 14) -> str:
+        """A strong one-time password for a newly provisioned or approved account.
+
+        Distinct from _generate_otp() -- the 6-digit numeric email/SMS code: this
+        is an actual login password, so it must be long enough to resist brute
+        force. Generated from a 57-char alphabet with a CSPRNG; must_change_password
+        still forces the user to replace it on first sign-in.
+        """
+        return "".join(secrets.choice(_PASSWORD_ALPHABET) for _ in range(length))
+
+    # A valid PBKDF2 hash of a value nobody knows, used to equalise the cost of
+    # a login attempt against an unknown identifier with one against a known but
+    # wrong password. Without it the "no such user" path returns in microseconds
+    # while the "wrong password" path burns the full key-derivation, leaking
+    # which emails/tickets exist through response timing.
+    _DUMMY_PASSWORD_HASH = hash_password(secrets.token_urlsafe(24))
 
     def _generate_access_code(length: int = 6) -> str:
         """The human-readable suffix of an access pass / ticket."""
         return "".join(secrets.choice(_CODE_ALPHABET) for _ in range(length))
+
+    _TICKET_PREFIXES = {
+        "super_admin": "ADM", "admin": "ADM", "support_admin": "SUP",
+        "judge": "JDG", "sponsor": "SPO",
+        "student": "STU", "instructor": "INS", "content_manager": "MGR",
+        "reviewer": "REV", "competition_manager": "CMP", "school_admin": "SCH"
+    }
+
+    def _allocate_unique_ticket(cur, role: str) -> str:
+        """Mint an access pass that does not collide with an existing one.
+
+        Access passes are login identifiers alongside email, so two users must
+        never share one. `ticket` is not historically constrained UNIQUE in the
+        schema, so uniqueness is enforced here (and, going forward, by a unique
+        partial index). The bounded retry fails fast rather than spinning once
+        the code space is exhausted.
+        """
+        prefix = _TICKET_PREFIXES.get((role or "").strip().lower(), "USR")
+        for _ in range(10):
+            candidate = f"NTIC-{prefix}-{_generate_access_code()}"
+            cur.execute("SELECT 1 FROM users WHERE ticket = %s", (candidate,))
+            if cur.fetchone() is None:
+                return candidate
+        raise HTTPException(status_code=500, detail="Could not allocate a unique access pass")
 
     def _normalize_otp_target(channel: str, target: str) -> str:
         target = (target or "").strip()
@@ -1271,10 +1309,12 @@ try:
     def forgot_password(payload: ForgotPasswordPayload, request: Request):
         """Start a password reset: issue an OTP to the account's email.
 
-        The email must exist in the system for a code to be sent. To avoid
-        account enumeration the response is the same shape whether or not the
-        account exists -- but a challenge id (and therefore a code) is only ever
-        produced for a real account, so only a real user can complete the reset.
+        The email must exist in the system for a code to actually be sent. The
+        response is byte-for-byte the same shape whether or not the account
+        exists, and a fake (never-persisted) challenge id is returned for an
+        unknown address, so the JSON alone does not reveal account existence.
+        Only a real account ever has a live challenge, so only a real user can
+        complete the reset.
         """
         email = payload.email.strip().lower()
         if not _EMAIL_RE.match(email):
@@ -1295,7 +1335,13 @@ try:
             release_db_connection(conn)
 
         if not exists:
-            return {"challenge_id": None, "target_masked": _mask_otp_target("email", email)}
+            # Identical shape to the success response; this challenge id is never
+            # stored, so any attempt to verify it fails with 404.
+            return {
+                "challenge_id": "otp-" + secrets.token_urlsafe(18),
+                "target_masked": _mask_otp_target("email", email),
+                "expires_in": _OTP_TTL_SECONDS,
+            }
 
         code = _generate_otp()
         challenge_id = "otp-" + secrets.token_urlsafe(18)
@@ -1561,19 +1607,56 @@ try:
         )
         return user_id
 
+    # Proxies whose client-IP headers we accept. Empty means "loopback/private
+    # only"; add Cloudflare/load-balancer ranges here if the app sits behind one.
+    _TRUSTED_PROXY_IPS = {
+        ip.strip()
+        for ip in os.getenv("TRUSTED_PROXY_IPS", "").split(",")
+        if ip.strip()
+    }
+
+    def _is_trusted_proxy_peer(host: str) -> bool:
+        """True when `host` is a proxy we trust to set client-IP headers.
+
+        Loopback and RFC1918 addresses are trusted by default so a same-host
+        reverse proxy keeps working without configuration; anything else must be
+        listed in TRUSTED_PROXY_IPS (comma-separated) -- e.g. the Cloudflare or
+        load-balancer ranges for this deployment.
+        """
+        if not host:
+            return False
+        if host in _TRUSTED_PROXY_IPS:
+            return True
+        try:
+            ip = ipaddress.ip_address(host)
+        except ValueError:
+            return False
+        return ip.is_loopback or ip.is_private
+
     def extract_client_ip(request: Request) -> str:
+        # X-Forwarded-For / X-Real-IP are only honoured when the request arrived
+        # from a proxy we trust. Otherwise anyone could set these headers to a
+        # fresh value on every request and defeat the IP rate limits on login,
+        # OTP and the other public endpoints.
+        peer = request.client.host if request.client else ""
+        if _is_trusted_proxy_peer(peer):
+            # Only reachable when the direct peer is a trusted proxy, so these
+            # headers are set by that proxy rather than by the client.
+            real_ip = request.headers.get("x-real-ip")
+            if real_ip:
+                return real_ip.strip()
+            forwarded = request.headers.get("x-forwarded-for")
+            if forwarded:
+                parts = [p.strip() for p in forwarded.split(",") if p.strip()]
+                if parts:
+                    return parts[0]
+        # Cloudflare overwrites cf-connecting-ip on every request, so it cannot
+        # be spoofed by the end client when traffic actually flows through
+        # Cloudflare.
         cf_ip = request.headers.get("cf-connecting-ip")
         if cf_ip:
             return cf_ip.strip()
-        real_ip = request.headers.get("x-real-ip")
-        if real_ip:
-            return real_ip.strip()
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            parts = [p.strip() for p in forwarded.split(",") if p.strip()]
-            if parts:
-                return parts[0]
-        return request.client.host if request.client else "127.0.0.1"
+        return peer or "127.0.0.1"
 
     def anonymize_ip(ip: str) -> str:
         """Mask last octet for GDPR/PII compliance if ENABLE_IP_ANONYMIZATION is true"""
@@ -1655,6 +1738,9 @@ try:
             release_db_connection(conn)
 
         if not row:
+            # Burn the same PBKDF2 work as a wrong-password attempt so the
+            # response time does not reveal whether the email/ticket exists.
+            verify_password(payload.password, _DUMMY_PASSWORD_HASH)
             raise HTTPException(status_code=401, detail="Invalid credentials")
         user_id, db_email, full_name, role, ticket, password_hash, status, organization, must_change_password = row
         if not verify_password(payload.password, password_hash):
@@ -4062,32 +4148,13 @@ try:
     def generate_access_token(payload: dict = None, _admin: dict = Depends(require_admin)):
         payload = payload or {}
         role = payload.get("role", "student").lower()
-        prefix_map = {
-            "super_admin": "ADM", "admin": "ADM", "support_admin": "SUP",
-            "judge": "JDG", "sponsor": "SPO",
-            "student": "STU", "instructor": "INS", "content_manager": "MGR",
-            "reviewer": "REV", "competition_manager": "CMP", "school_admin": "SCH"
-        }
-        prefix = prefix_map.get(role, "USR")
-        # Bounded retry: an unbounded `while True` would spin forever once the
-        # code space filled up. 6 CSPRNG chars from a 32-char alphabet is ~1e9
-        # combinations, so a collision inside 10 tries means something is wrong.
-        ticket = ""
-        for _ in range(10):
-            candidate = f"NTIC-{prefix}-{_generate_access_code()}"
-            conn = _get_db()
-            try:
-                cur = conn.cursor()
-                cur.execute("SELECT COUNT(*) FROM users WHERE ticket = %s", (candidate,))
-                taken = cur.fetchone()[0] > 0
-                cur.close()
-            finally:
-                release_db_connection(conn)
-            if not taken:
-                ticket = candidate
-                break
-        if not ticket:
-            raise HTTPException(status_code=500, detail="Could not allocate a unique access pass")
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            ticket = _allocate_unique_ticket(cur, role)
+            cur.close()
+        finally:
+            release_db_connection(conn)
         return {"ticket": ticket}
 
     # ─── REAL-TIME SYNC WEBSOCKET ────────────────────────────────────
@@ -6820,13 +6887,18 @@ try:
         return response
 
     @app.post("/api/users/register", status_code=status.HTTP_201_CREATED)
-    def register_user_public(payload: UserCreate):
+    def register_user_public(payload: UserCreate, request: Request):
         # 'student' is here for the open-competition registration tab, which had
         # been calling the admin-only POST /api/users and therefore never created
         # anything. student is the lowest-privilege role, and the forced-pending
         # rule below still applies, so this does not widen self-service access.
         if payload.role not in ["judge", "sponsor", "student"]:
             raise HTTPException(status_code=403, detail="Role not allowed for public registration")
+        # Unauthenticated account creation is a spam/DoS target; throttle it like
+        # the other public write paths.
+        client_ip = extract_client_ip(request)
+        check_rate_limit(f"public-register:{client_ip}", max_attempts=5, window_seconds=300)
+        check_rate_limit(f"public-register-hourly:{client_ip}", max_attempts=20, window_seconds=3600)
         # Status is NOT taken from the request. This endpoint is unauthenticated,
         # so honouring a client-supplied status let anyone self-register as
         # 'active' and skip review entirely. Public sign-ups always start pending
@@ -6856,7 +6928,10 @@ try:
         supplied_password = (payload.password or "").strip()
         generated_password = "" if supplied_password else _generate_temp_password()
         password_hash = hash_password(supplied_password or generated_password)
-        ticket = payload.ticket or f"NTIC-{payload.role.upper()[:3]}-{_generate_access_code()}"
+        # The access pass is always minted server-side: a client-supplied ticket
+        # could collide with an existing user's pass and make ticket-login
+        # ambiguous.
+        ticket = _allocate_unique_ticket(cur, payload.role)
         phone = payload.phone.strip() if payload.phone and payload.phone.strip() else None
         try:
             cur.execute(
@@ -7981,29 +8056,25 @@ try:
             or email
         )
 
-        temp_password = _generate_temp_password()
-        cur.execute("SELECT id, role, ticket FROM users WHERE lower(email) = %s", (email,))
+        # If an account already exists for this email the application is stale:
+        # approving it must not touch the existing account. Overwriting the
+        # password here would let an (auto-generated or duplicate) application
+        # silently reset a real user's credentials, and forcing status='active'
+        # would un-suspend an account an admin had disabled. Return the existing
+        # account untouched and let the reviewer surface the reason instead.
+        cur.execute("SELECT id, role FROM users WHERE lower(email) = %s", (email,))
         existing = cur.fetchone()
         if existing:
-            user_id, existing_role, existing_ticket = existing
-            ticket = existing_ticket or f"NTIC-{role.upper()[:3]}-{_generate_access_code()}"
-            cur.execute(
-                "UPDATE users SET ticket = %s, password_hash = %s, must_change_password = true, status = 'active' "
-                "WHERE id = %s",
-                (ticket, hash_password(temp_password), user_id),
-            )
             return {
-                "provisioned": True,
-                "user_id": user_id,
-                "email": email,
-                "full_name": full_name,
-                "role": existing_role or role,
-                "ticket": ticket,
-                "temporary_password": temp_password,
+                "provisioned": False,
+                "reason": "An account already exists for this email",
+                "user_id": existing[0],
+                "role": existing[1],
             }
 
+        temp_password = _generate_temp_password()
         user_id = "USR-" + str(uuid.uuid4())[:8]
-        ticket = f"NTIC-{role.upper()[:3]}-{_generate_access_code()}"
+        ticket = _allocate_unique_ticket(cur, role)
         cur.execute(
             "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, "
             "organization, must_change_password) "
@@ -8026,6 +8097,9 @@ try:
 
     @app.patch("/api/approvals/{item_id}")
     def update_approval(item_id: str, payload: ApprovalUpdate, _actor: dict = Depends(require_role(APPROVAL_ROLES))):
+        target_status = (payload.status or "").strip().lower()
+        if target_status not in {"approved", "rejected", "pending"}:
+            raise HTTPException(status_code=422, detail="Invalid approval status")
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
@@ -8045,11 +8119,11 @@ try:
                 raise HTTPException(status_code=404, detail="Approval not found")
 
             was_approved = (before[4] or "").strip().lower() == "approved"
-            now_approved = (payload.status or "").strip().lower() == "approved"
+            now_approved = target_status == "approved"
 
             cur.execute(
                 "UPDATE pending_approvals SET status = %s, reviewed_at = %s, reviewer = %s, rejection_reasons = %s, rejection_notes = %s WHERE id = %s RETURNING id",
-                (payload.status, payload.reviewed_at, payload.reviewer, payload.rejection_reasons, payload.rejection_notes, item_id)
+                (target_status, payload.reviewed_at, payload.reviewer, payload.rejection_reasons, payload.rejection_notes, item_id)
             )
             row = cur.fetchone()
             if not row:
@@ -8163,24 +8237,27 @@ try:
                 cur.execute("SELECT id FROM users WHERE lower(email) = %s AND id != %s", (email, uid))
                 existing_match = cur.fetchone()
                 if existing_match:
+                    # Never let a sync payload rewrite an existing account's role,
+                    # status or password -- that would be a privilege-escalation
+                    # vector. Only fill in missing display/contact detail.
                     cur.execute("""
                         UPDATE users SET
-                            full_name = %s,
-                            role = %s,
-                            status = %s,
+                            full_name = COALESCE(NULLIF(%s, ''), full_name),
                             phone = COALESCE(%s, phone)
                         WHERE id = %s
-                    """, (item.get("fullName",""), item.get("role","student"), item.get("status","Active"), phone, existing_match[0]))
+                    """, (item.get("fullName",""), phone, existing_match[0]))
                 else:
+                    # Legacy row with no real account: create it with a real
+                    # (unrecoverable) password hash rather than a magic literal,
+                    # and never overwrite role/status/password on a later sync.
                     cur.execute("""
-                        INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone, must_change_password)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE)
                         ON CONFLICT (id) DO UPDATE SET
                             full_name = EXCLUDED.full_name,
-                            role = EXCLUDED.role,
-                            status = EXCLUDED.status,
                             phone = COALESCE(EXCLUDED.phone, users.phone)
-                    """, (uid, email, item.get("fullName",""), item.get("role","student"), ticket, "synced_noauth", item.get("status","Active"), phone))
+                    """, (uid, email, item.get("fullName",""), item.get("role","student"), ticket,
+                          hash_password(secrets.token_urlsafe(24)), item.get("status","Active"), phone))
         elif payload.collection == "approvals":
             for item in payload.items:
                 cur.execute("INSERT INTO pending_approvals (id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status",
