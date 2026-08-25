@@ -14401,6 +14401,49 @@
   font-style: italic;
 }
 
+// Refresh Action Button & Animation
+.mp-refresh-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+  .mp-refresh-ic {
+    font-size: 16px;
+    transition: transform 0.3s ease;
+
+    &.spin-active {
+      animation: spinPulse 0.8s linear infinite;
+    }
+  }
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 89, 178, 0.18);
+
+    .mp-refresh-ic:not(.spin-active) {
+      transform: rotate(180deg);
+    }
+  }
+
+  &.is-refreshing {
+    opacity: 0.85;
+    cursor: wait;
+    border-color: var(--primary, #003f87);
+    box-shadow: 0 0 0 3px rgba(0, 63, 135, 0.15);
+  }
+}
+
+@keyframes spinPulse {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 // Action Cell Trigger Buttons
 .mp-action-cell {
   position: relative;

@@ -140,22 +140,11 @@ export class ReportingComponent implements OnInit {
   }
 
   get downloadsCount(): number {
-    let base = 1840;
-    if (this.activeRoleId === 'school_admin') {
-      base = this.reports.length * 3;
-    } else if (this.activeRoleId === 'instructor') {
-      base = this.reports.length * 5;
-    }
-    return base + (this.downloadOffset || 0);
+    return this.downloadOffset || 0;
   }
 
   get scheduledReportsCount(): number {
-    if (this.activeRoleId === 'school_admin') {
-      return 1;
-    } else if (this.activeRoleId === 'instructor') {
-      return 2;
-    }
-    return 12;
+    return 0;
   }
 
   get generatingCount(): number {

@@ -1768,6 +1768,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.assignMentorToTeam(teamId, mentorId);
   }
 
+  isRefreshingMentors = false;
+
+  refreshMentorAllocationData(): void {
+    if (this.isRefreshingMentors) return;
+    this.isRefreshingMentors = true;
+    this.contentService.refreshBackendData();
+    this.loadApprovalsFromBackend();
+    this.loadPersonnel();
+    setTimeout(() => {
+      this.isRefreshingMentors = false;
+      this.dialogService.toast('Mentor & Instructor records refreshed from database.', 'success');
+      this.cdr.markForCheck();
+    }, 850);
+  }
+
   assignMentorToTeam(teamId: string, mentorId: string | null): void {
     if (!teamId) return;
     this.mentorActionInProgress[teamId] = true;

@@ -1583,8 +1583,13 @@
           <span class="material-symbols-outlined">arrow_back</span>Admin Control
         </button>
         <div style="display:flex;align-items:center;gap:10px;margin-left:auto;">
-          <button class="btn btn-secondary btn-sm" (click)="contentService.refreshBackendData()">
-            <span class="material-symbols-outlined">refresh</span>Refresh
+          <button class="btn btn-secondary btn-sm mp-refresh-action-btn" 
+                  [class.is-refreshing]="isRefreshingMentors" 
+                  (click)="refreshMentorAllocationData()" 
+                  [disabled]="isRefreshingMentors"
+                  title="Synchronize mentor assignments and instructor workload">
+            <span class="material-symbols-outlined mp-refresh-ic" [class.spin-active]="isRefreshingMentors">refresh</span>
+            <span>{{ isRefreshingMentors ? 'Refreshing...' : 'Refresh' }}</span>
           </button>
           <button class="btn btn-primary btn-sm" (click)="autoAssignMentors()" title="Automatically match and assign unassigned teams by track and load">
             <span class="material-symbols-outlined">magic_button</span>Smart Auto-Assign All

@@ -364,11 +364,11 @@
 <!-- ══ GLOBAL TOAST CONTAINER (DialogService) ══ -->
 <div class="global-toast-container">
   <div *ngFor="let t of (dialogService.toasts$ | async)" class="global-toast-item" [class]="t.type || 'info'">
-    <span class="material-symbols-outlined icon">
+    <span class="material-symbols-outlined toast-icon">
       {{ t.type === 'success' ? 'check_circle' : t.type === 'error' ? 'error' : t.type === 'warning' ? 'warning' : 'info' }}
     </span>
-    <span>{{ t.message }}</span>
-    <button type="button" class="toast-close" (click)="dialogService.removeToast(t.id)">
+    <span class="toast-message">{{ t.message }}</span>
+    <button type="button" class="toast-close" (click)="dialogService.removeToast(t.id)" aria-label="Close alert">
       <span class="material-symbols-outlined">close</span>
     </button>
   </div>
