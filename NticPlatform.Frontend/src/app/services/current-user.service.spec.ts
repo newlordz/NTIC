@@ -20,7 +20,7 @@ describe('CurrentUserService', () => {
     phone: null, organization: 'Achimota School',
     must_change_password: false, password_changed_at: null, password_min_length: 10,
     bio: '', expertise: '', sector: '', rep_name: '', experience_level: '', tier: '',
-    track: 'Robotics', student_id: 'usr-1',
+    track: 'Robotics', student_id: 'usr-1', photo_file_id: null,
   };
 
   beforeEach(() => {
