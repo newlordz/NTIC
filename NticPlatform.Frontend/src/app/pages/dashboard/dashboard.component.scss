@@ -250,7 +250,9 @@
   }
 
   &:active {
-    transform: scale(0.97);
+    transform: scale(0.95) translateY(1px);
+    border-color: var(--cc-primary);
+    background: rgba(0, 63, 135, 0.12);
   }
 }
 
