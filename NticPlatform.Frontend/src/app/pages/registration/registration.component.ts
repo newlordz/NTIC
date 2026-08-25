@@ -233,14 +233,21 @@ setAuthValue('activeUserEmail', email);
   gpsSearchError = '';
   gpsSelectedPreview: { name: string; address: string; lat: string; lng: string } | null = null;
 
-  getMapPreviewUrl(lat: string, lng: string): string {
+  getMapPreviewUrl(lat: string, lng: string, name?: string): string {
     const latStr = encodeURIComponent(lat.trim());
     const lngStr = encodeURIComponent(lng.trim());
-    return `https://maps.google.com/maps?q=${latStr},${lngStr}&hl=en&z=17&output=embed`;
+    if (name && !name.toLowerCase().includes('custom')) {
+      const qStr = encodeURIComponent(`${name.trim()}, ${lat.trim()},${lng.trim()}`);
+      return `https://maps.google.com/maps?q=${qStr}&hl=en&z=19&output=embed`;
+    }
+    return `https://maps.google.com/maps?q=${latStr},${lngStr}&hl=en&z=19&output=embed`;
   }
 
-  getMapLinkUrl(lat: string, lng: string): string {
-    return `https://www.google.com/maps?q=${lat},${lng}&z=17`;
+  getMapLinkUrl(lat: string, lng: string, name?: string): string {
+    if (name && !name.toLowerCase().includes('custom')) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name.trim() + ' ' + lat + ',' + lng)}`;
+    }
+    return `https://www.google.com/maps?q=${lat},${lng}&z=19`;
   }
 
   private ghanaSchoolsGpsDb: Array<{ name: string; address: string; lat: string; lng: string; aliases?: string[] }> = [
@@ -270,6 +277,7 @@ setAuthValue('activeUserEmail', email);
     { name: 'Accra Technical University (ATU)', address: 'Barnes Road, Accra, Greater Accra Region', lat: '5.551200', lng: '-0.203400', aliases: ['atu', 'accra poly'] },
 
     // Ashanti Region
+    { name: 'Mavenstar Academy', address: 'Kumasi-Sunyani Road, Tanoso, Kumasi, Ashanti Region', lat: '6.697580', lng: '-1.686320', aliases: ['mavenstar', 'mavenstar academy', 'maven star', 'mavenstar acadamy', 'mavenstar basic school', 'tanoso academy', 'tanoso montessori', 'm8w7+wc', '6crwm8w7+wc'] },
     { name: 'Prempeh College', address: 'Sofoline, Kumasi, Ashanti Region', lat: '6.697200', lng: '-1.646800', aliases: ['amanfoo', 'prempeh'] },
     { name: 'Opoku Ware School (OWASS)', address: 'Santasi, Kumasi, Ashanti Region', lat: '6.671900', lng: '-1.637500', aliases: ['owass', 'akatasuo'] },
     { name: 'Kumasi Academy', address: 'Asokore Mampong, Kumasi, Ashanti Region', lat: '6.702300', lng: '-1.584100', aliases: ['kumaca'] },
@@ -277,6 +285,8 @@ setAuthValue('activeUserEmail', email);
     { name: 'St. Louis Senior High School', address: 'Oduom, Kumasi, Ashanti Region', lat: '6.692300', lng: '-1.564500', aliases: ['st louis'] },
     { name: 'Kumasi High School', address: 'Gyinyase, Kumasi, Ashanti Region', lat: '6.663400', lng: '-1.591200', aliases: ['kuhis', 'mmerante3'] },
     { name: 'T.I. Ahmadiyya Senior High School (AMASS Kumasi)', address: 'Kumasi, Ashanti Region', lat: '6.687200', lng: '-1.614500', aliases: ['amass', 'real amass'] },
+    { name: 'Joy Standard College', address: 'Atonsu, Kumasi, Ashanti Region', lat: '6.654100', lng: '-1.597800', aliases: ['joy standard'] },
+    { name: 'Great Faith Academy', address: 'Asokwa, Kumasi, Ashanti Region', lat: '6.671200', lng: '-1.611400', aliases: ['great faith'] },
     { name: 'Kwame Nkrumah University of Science and Technology (KNUST)', address: 'Kumasi, Ashanti Region', lat: '6.674500', lng: '-1.571600', aliases: ['knust', 'tech'] },
     { name: 'Kumasi Technical University (KsTU)', address: 'Kumasi, Ashanti Region', lat: '6.698400', lng: '-1.621200', aliases: ['kstu'] },
 
@@ -287,6 +297,7 @@ setAuthValue('activeUserEmail', email);
     { name: 'Wesley Girls\' High School', address: 'Cape Coast, Central Region', lat: '5.132800', lng: '-1.276400', aliases: ['wey gey hey', 'wesley girls'] },
     { name: 'St. Augustine\'s College', address: 'Cape Coast, Central Region', lat: '5.105400', lng: '-1.289100', aliases: ['augusco', 'st augustines'] },
     { name: 'Ghana National College', address: 'Cape Coast, Central Region', lat: '5.139200', lng: '-1.258900', aliases: ['national', 'ghana national'] },
+    { name: 'Samrose Complex Academy', address: 'Ayensu Road, Apewosika, Cape Coast, Central Region', lat: '5.113581', lng: '-1.300501', aliases: ['samrose', 'samrose complex', 'samrose acadamy'] },
     { name: 'Aggrey Memorial A.M.E. Zion Senior High School', address: 'Cape Coast, Central Region', lat: '5.148200', lng: '-1.231400', aliases: ['aggrey memorial'] },
     { name: 'University of Cape Coast (UCC)', address: 'Cape Coast, Central Region', lat: '5.115500', lng: '-1.282500', aliases: ['ucc'] },
 
@@ -328,7 +339,13 @@ setAuthValue('activeUserEmail', email);
     { name: 'Faith Montessori School', address: 'Airport West, Accra, Greater Accra Region', lat: '5.602100', lng: '-0.188400', aliases: ['faith montessori'] },
     { name: 'The Roman Ridge School', address: 'Roman Ridge, Accra, Greater Accra Region', lat: '5.594500', lng: '-0.191200', aliases: ['roman ridge'] },
     { name: 'Alpha Beta Education Centres', address: 'Dansoman, Accra, Greater Accra Region', lat: '5.548900', lng: '-0.271200', aliases: ['alpha beta'] },
-    { name: 'British International School (BIS)', address: 'East Legon, Accra, Greater Accra Region', lat: '5.641200', lng: '-0.148900', aliases: ['bis', 'british international'] }
+    { name: 'British International School (BIS)', address: 'East Legon, Accra, Greater Accra Region', lat: '5.641200', lng: '-0.148900', aliases: ['bis', 'british international'] },
+    { name: 'Soul Clinic International School', address: 'East Cantonments, Accra, Greater Accra Region', lat: '5.586200', lng: '-0.161200', aliases: ['soul clinic'] },
+    { name: 'St. Martin de Porres School', address: 'Dansoman, Accra, Greater Accra Region', lat: '5.543200', lng: '-0.268900', aliases: ['st martin de porres'] },
+    { name: 'Christ the King International School', address: 'Cantonments, Accra, Greater Accra Region', lat: '5.579400', lng: '-0.184500', aliases: ['christ the king'] },
+    { name: 'Al-Rayan International School', address: 'East Legon, Accra, Greater Accra Region', lat: '5.647800', lng: '-0.149100', aliases: ['al-rayan', 'al rayan'] },
+    { name: 'Delhi Public School International (DPSI Ghana)', address: 'Tema Community 25, Greater Accra Region', lat: '5.731200', lng: '0.041200', aliases: ['dpsi', 'delhi public school'] },
+    { name: 'Alsyd Academy', address: 'Dzorwulu, Accra, Greater Accra Region', lat: '5.604500', lng: '-0.198900', aliases: ['alsyd'] }
   ];
 
   openSchoolGpsModal(): void {
@@ -343,118 +360,230 @@ setAuthValue('activeUserEmail', email);
     this.gpsSelectedPreview = null;
   }
 
+  private parseDirectCoordinates(query: string): { lat: string; lng: string } | null {
+    if (!query) return null;
+    const str = query.trim();
+
+    // 1. DMS format: 6°42'42.5"N 1°41'54.6"W or 6°42'42.5" N, 1°41'54.6" W
+    const dmsMatch = str.match(/(\d+)[°\s]+(\d+)['\s]+([\d.]+)"?\s*([NSns])[,;\s]+(\d+)[°\s]+(\d+)['\s]+([\d.]+)"?\s*([EWew])/);
+    if (dmsMatch) {
+      const latDeg = parseFloat(dmsMatch[1]);
+      const latMin = parseFloat(dmsMatch[2]);
+      const latSec = parseFloat(dmsMatch[3]);
+      const latHem = dmsMatch[4].toUpperCase();
+      let lat = latDeg + latMin / 60 + latSec / 3600;
+      if (latHem === 'S') lat = -lat;
+
+      const lngDeg = parseFloat(dmsMatch[5]);
+      const lngMin = parseFloat(dmsMatch[6]);
+      const lngSec = parseFloat(dmsMatch[7]);
+      const lngHem = dmsMatch[8].toUpperCase();
+      let lng = lngDeg + lngMin / 60 + lngSec / 3600;
+      if (lngHem === 'W') lng = -lng;
+
+      return { lat: lat.toFixed(6), lng: lng.toFixed(6) };
+    }
+
+    // 2. Decimal format: 6.711800, -1.698500 or 6.7118 -1.6985
+    const decMatch = str.match(/([+-]?\d+\.\d+)[°\s]*([NSns])?[,\s]+([+-]?\d+\.\d+)[°\s]*([EWew])?/);
+    if (decMatch) {
+      let lat = parseFloat(decMatch[1]);
+      if (decMatch[2]?.toUpperCase() === 'S') lat = -Math.abs(lat);
+      let lng = parseFloat(decMatch[3]);
+      if (decMatch[4]?.toUpperCase() === 'W') lng = -Math.abs(lng);
+
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        return { lat: lat.toFixed(6), lng: lng.toFixed(6) };
+      }
+    }
+
+    // 3. Plus Code format (e.g. M8W7+WC Kumasi, Ghana, M8W7+WC, 6CRWM8W7+WC)
+    const plusMatch = str.match(/([23456789CFGHJMPQRVWX]{4,8})\+([23456789CFGHJMPQRVWX]{2,4})/i);
+    if (plusMatch) {
+      const alphabet = '23456789CFGHJMPQRVWX';
+      const codePrefix = '6CRW'; // Default Kumasi/Ghana base prefix
+      const localPart = plusMatch[1].toUpperCase() + plusMatch[2].toUpperCase();
+      const fullCode = localPart.length === 6 ? codePrefix + localPart : localPart;
+      
+      let lat = -90.0;
+      let lng = -180.0;
+      let latRes = 20.0;
+      let lngRes = 20.0;
+      for (let i = 0; i < Math.min(fullCode.length, 10); i += 2) {
+        const latVal = alphabet.indexOf(fullCode[i]);
+        const lngVal = alphabet.indexOf(fullCode[i+1]);
+        if (latVal < 0 || lngVal < 0) return null;
+        lat += latVal * latRes;
+        lng += lngVal * lngRes;
+        latRes /= 20.0;
+        lngRes /= 20.0;
+      }
+      lat += latRes * 10;
+      lng += lngRes * 10;
+      return { lat: lat.toFixed(6), lng: lng.toFixed(6) };
+    }
+
+    return null;
+  }
+
   async searchSchoolGps(): Promise<void> {
     const rawQuery = (this.gpsSearchQuery || '').trim();
-    const q = rawQuery.toLowerCase();
+    if (!rawQuery) {
+      this.gpsSearchResults = this.ghanaSchoolsGpsDb.slice(0, 15);
+      this.gpsSelectedPreview = this.gpsSearchResults[0] || null;
+      this.gpsSearching = false;
+      return;
+    }
+
+    // Direct coordinate check (DMS or decimal degrees)
+    const directCoords = this.parseDirectCoordinates(rawQuery);
+    if (directCoords) {
+      this.gpsSearchResults = [{
+        name: this.schoolForm.name?.trim() || 'Custom GPS Pin',
+        address: `Direct Coordinates: ${directCoords.lat}, ${directCoords.lng}`,
+        lat: directCoords.lat,
+        lng: directCoords.lng
+      }];
+      this.gpsSelectedPreview = this.gpsSearchResults[0];
+      this.gpsSearching = false;
+      this.cdr?.markForCheck?.();
+      return;
+    }
+
+    // Normalized query (fixes common typos like "acadamy" -> "academy", "colledge" -> "college", "shs" -> "senior high school")
+    const normalized = rawQuery.toLowerCase()
+      .replace(/\bacadam[ey]\b/g, 'academy')
+      .replace(/\bcolledge\b/g, 'college')
+      .replace(/\bsch\b/g, 'school')
+      .replace(/\bsec\b/g, 'secondary')
+      .replace(/\btech\b/g, 'technical');
+
     this.gpsSearching = true;
     this.gpsSearchError = '';
     this.gpsSearchResults = [];
 
-    // 1. First search local Ghanaian schools database using token matching & aliases
-    const searchTokens = q.split(/[\s,.-]+/).filter(t => t.length > 1 && t !== 'school' && t !== 'shs' && t !== 'senior' && t !== 'high');
-    const localMatches = this.ghanaSchoolsGpsDb.filter(s => {
-      if (!q) return true;
+    // Distinctive search tokens (exclude stopwords like school, academy, senior, high, ghana, etc.)
+    const genericStopwords = new Set(['school', 'academy', 'acadamy', 'senior', 'high', 'shs', 'ghana', 'college', 'complex', 'international', 'basic', 'the', 'and', 'for', 'of']);
+    const rawTokens = normalized.split(/[\s,.-]+/).filter(t => t.length > 1);
+    const distinctiveTokens = rawTokens.filter(t => !genericStopwords.has(t));
+    const tokensToUse = distinctiveTokens.length > 0 ? distinctiveTokens : rawTokens;
+
+    // 1. Search local curated Ghanaian schools database
+    const scoredLocalMatches: Array<{ item: { name: string; address: string; lat: string; lng: string; aliases?: string[] }; score: number }> = [];
+
+    for (const s of this.ghanaSchoolsGpsDb) {
       const sName = s.name.toLowerCase();
       const sAddr = s.address.toLowerCase();
       const sAliases = (s.aliases || []).map(a => a.toLowerCase());
 
-      // Direct match or alias match
-      if (sName.includes(q) || sAddr.includes(q) || sAliases.some(a => a.includes(q) || q.includes(a))) {
-        return true;
+      let score = 0;
+      // Exact substring match
+      if (sName.includes(normalized) || sAliases.some(a => a.includes(normalized))) {
+        score += 100;
+      }
+      // Distinctive token matches
+      for (const dt of tokensToUse) {
+        if (sName.includes(dt)) score += 50;
+        if (sAliases.some(a => a.includes(dt))) score += 40;
+        if (sAddr.includes(dt)) score += 20;
       }
 
-      // Token intersection match (e.g. "ghana secondary technical" matches "Ghana Secondary Technical School (GSTS)")
-      if (searchTokens.length > 0) {
-        const matchesAllTokens = searchTokens.every(t => sName.includes(t) || sAddr.includes(t) || sAliases.some(a => a.includes(t)));
-        if (matchesAllTokens) return true;
+      if (score > 0) {
+        scoredLocalMatches.push({ item: s, score });
       }
+    }
 
-      return false;
-    });
+    // Sort by relevance score descending
+    scoredLocalMatches.sort((a, b) => b.score - a.score);
+    this.gpsSearchResults = scoredLocalMatches.map(m => m.item);
 
-    this.gpsSearchResults = [...localMatches];
+    // 2. Perform live search with Photon and Nominatim for unlisted institutions
+    try {
+      const liveQueries = [
+        rawQuery,
+        normalized,
+        `${distinctiveTokens.join(' ')} Ghana`,
+        `${normalized} Ghana`
+      ].filter((v, i, a) => v && a.indexOf(v) === i);
 
-    // 2. Perform live search with Photon API (free, fast, no API key required)
-    if (q) {
-      try {
-        const photonQueries = [
-          rawQuery,
-          `${rawQuery} Ghana`
-        ];
-        for (const pq of photonQueries) {
-          const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(pq)}&limit=8&lat=5.6&lon=-0.2`;
-          const pRes = await fetch(photonUrl);
-          if (pRes.ok) {
-            const pData = await pRes.json();
-            if (pData?.features && Array.isArray(pData.features)) {
-              for (const feat of pData.features) {
-                const coords = feat.geometry?.coordinates;
-                const props = feat.properties || {};
-                if (coords && coords.length >= 2) {
-                  const lng = parseFloat(coords[0]).toFixed(6);
-                  const lat = parseFloat(coords[1]).toFixed(6);
-                  // Check if in Ghana bounding box (lat: 4.5 to 11.5, lng: -3.5 to 1.5)
-                  const latNum = parseFloat(lat);
-                  const lngNum = parseFloat(lng);
-                  const inGhana = (props.countrycode === 'GH' || props.country === 'Ghana') || 
-                                  (latNum >= 4.5 && latNum <= 11.5 && lngNum >= -3.5 && lngNum <= 1.5);
-                  if (inGhana) {
-                    const name = props.name || rawQuery;
-                    const addrParts = [props.street, props.district, props.city, props.state, props.country || 'Ghana'].filter(Boolean);
-                    const address = addrParts.join(', ') || 'Ghana';
-                    if (!this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - latNum) < 0.0002 && Math.abs(parseFloat(r.lng) - lngNum) < 0.0002)) {
-                      this.gpsSearchResults.push({ name, address, lat, lng });
-                    }
+      for (const pq of liveQueries) {
+        const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(pq)}&limit=8&lat=5.6&lon=-0.2`;
+        const pRes = await fetch(photonUrl);
+        if (pRes.ok) {
+          const pData = await pRes.json();
+          if (pData?.features && Array.isArray(pData.features)) {
+            for (const feat of pData.features) {
+              const coords = feat.geometry?.coordinates;
+              const props = feat.properties || {};
+              if (coords && coords.length >= 2) {
+                const lng = parseFloat(coords[0]).toFixed(6);
+                const lat = parseFloat(coords[1]).toFixed(6);
+                const latNum = parseFloat(lat);
+                const lngNum = parseFloat(lng);
+                const inGhana = (props.countrycode === 'GH' || props.country === 'Ghana') ||
+                                (latNum >= 4.5 && latNum <= 11.5 && lngNum >= -3.5 && lngNum <= 1.5);
+                if (inGhana) {
+                  const name = props.name || rawQuery;
+                  const addrParts = [props.street, props.district, props.city, props.state, props.country || 'Ghana'].filter(Boolean);
+                  const address = addrParts.join(', ') || 'Ghana';
+                  
+                  // Relevance filter: if we have distinctive tokens, ensure result actually relates to them
+                  const featText = `${name} ${address}`.toLowerCase();
+                  const matchesDistinctive = distinctiveTokens.length === 0 || distinctiveTokens.some(t => featText.includes(t));
+                  
+                  if (matchesDistinctive && !this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - latNum) < 0.0002 && Math.abs(parseFloat(r.lng) - lngNum) < 0.0002)) {
+                    this.gpsSearchResults.push({ name, address, lat, lng });
                   }
                 }
               }
             }
           }
-          if (this.gpsSearchResults.length > localMatches.length) break;
         }
-      } catch {
-        // Fall through to Nominatim
+        if (this.gpsSearchResults.length >= 8) break;
       }
+    } catch {
+      // Graceful fallback
+    }
 
-      // 3. Fallback to OpenStreetMap Nominatim search
-      const queryVariants = [
-        rawQuery,
-        `${rawQuery}, Ghana`
-      ];
-
-      for (const queryVariant of queryVariants) {
-        try {
-          const queryEncoded = encodeURIComponent(queryVariant);
-          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${queryEncoded}&countrycodes=gh&limit=8`);
+    // 3. Nominatim fallback if still needed
+    if (this.gpsSearchResults.length < 3) {
+      try {
+        const nomQueries = [
+          `${normalized}, Ghana`,
+          distinctiveTokens.length > 0 ? `${distinctiveTokens.join(' ')}, Ghana` : `${rawQuery}, Ghana`
+        ];
+        for (const nq of nomQueries) {
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(nq)}&countrycodes=gh&limit=6`);
           if (res.ok) {
             const data = await res.json();
-            if (Array.isArray(data) && data.length > 0) {
+            if (Array.isArray(data)) {
               for (const item of data) {
                 const lat = parseFloat(item.lat).toFixed(6);
                 const lng = parseFloat(item.lon).toFixed(6);
                 const name = item.name || (item.display_name ? item.display_name.split(',')[0] : 'Location in Ghana');
                 const address = item.display_name || '';
-                if (!this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - parseFloat(lat)) < 0.0002 && Math.abs(parseFloat(r.lng) - parseFloat(lng)) < 0.0002)) {
+                const itemText = `${name} ${address}`.toLowerCase();
+                const matchesDistinctive = distinctiveTokens.length === 0 || distinctiveTokens.some(t => itemText.includes(t));
+
+                if (matchesDistinctive && !this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - parseFloat(lat)) < 0.0002 && Math.abs(parseFloat(r.lng) - parseFloat(lng)) < 0.0002)) {
                   this.gpsSearchResults.push({ name, address, lat, lng });
                 }
               }
-              break;
             }
           }
-        } catch {
-          // Network issues handled gracefully
         }
-      }
+      } catch {}
     }
 
+    this.gpsSearching = false;
+
     if (this.gpsSearchResults.length === 0) {
-      this.gpsSearchError = 'No matching schools or landmarks found in Ghana. Try searching by short name (e.g. GSTS, Prempeh) or city.';
+      this.gpsSearchError = `No GPS records found for "${rawQuery}". You can search by town/city (e.g. "Tanoso, Kumasi") or manually enter GPS coordinates.`;
       this.gpsSelectedPreview = null;
     } else {
       this.gpsSelectedPreview = this.gpsSearchResults[0];
     }
-
-    this.gpsSearching = false;
+    this.cdr?.markForCheck?.();
   }
 
   selectSchoolGps(result: { name: string; address: string; lat: string; lng: string }): void {

@@ -3056,7 +3056,7 @@
           </div>
           <div class="gps-map-frame-wrap">
             <iframe
-              [src]="getMapPreviewUrl(gpsSelectedPreview.lat, gpsSelectedPreview.lng) | safe"
+              [src]="getMapPreviewUrl(gpsSelectedPreview.lat, gpsSelectedPreview.lng, gpsSelectedPreview.name) | safe"
               class="gps-map-iframe"
               frameborder="0"
               scrolling="no"
@@ -3076,7 +3076,7 @@
               </span>
             </div>
             <div class="gps-map-links">
-              <a [href]="getMapLinkUrl(gpsSelectedPreview.lat, gpsSelectedPreview.lng)" target="_blank" rel="noopener noreferrer" class="gps-ext-link" title="Open in Google Maps">
+              <a [href]="getMapLinkUrl(gpsSelectedPreview.lat, gpsSelectedPreview.lng, gpsSelectedPreview.name)" target="_blank" rel="noopener noreferrer" class="gps-ext-link" title="Open in Google Maps">
                 <span class="material-symbols-outlined" style="font-size:14px;">open_in_new</span>
                 Google Maps
               </a>
