@@ -1729,22 +1729,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return tt.includes(it) || it.includes(tt) || (tt === 'ai' && it.includes('ai')) || (tt === 'coding' && it.includes('code'));
   }
 
-  activeMentorDropdownTeamId: string | null = null;
+  activeMentorModalTeam: any = null;
   mentorPickerSearchQuery: string = '';
 
-  toggleMentorDropdown(teamId: string, event: MouseEvent): void {
-    event.stopPropagation();
-    if (this.activeMentorDropdownTeamId === teamId) {
-      this.activeMentorDropdownTeamId = null;
-      this.mentorPickerSearchQuery = '';
-    } else {
-      this.activeMentorDropdownTeamId = teamId;
-      this.mentorPickerSearchQuery = '';
-    }
+  openMentorModal(team: any, event?: MouseEvent): void {
+    if (event) event.stopPropagation();
+    this.activeMentorModalTeam = team;
+    this.mentorPickerSearchQuery = '';
   }
 
-  closeMentorDropdown(): void {
-    this.activeMentorDropdownTeamId = null;
+  closeMentorModal(): void {
+    this.activeMentorModalTeam = null;
     this.mentorPickerSearchQuery = '';
   }
 
@@ -1769,7 +1764,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   selectMentorForTeam(teamId: string, mentorId: string): void {
-    this.closeMentorDropdown();
+    this.closeMentorModal();
     this.assignMentorToTeam(teamId, mentorId);
   }
 
