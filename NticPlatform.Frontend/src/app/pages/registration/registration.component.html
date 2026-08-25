@@ -96,7 +96,7 @@
           </ul>
         </div>
         <div class="gateway-card-footer" style="display:flex; flex-direction:column; gap:8px;">
-          <button class="btn btn-secondary btn-full">Resume Application</button>
+          <button class="btn btn-secondary btn-full" (click)="selectContinueRegistration(); $event.stopPropagation()">Resume Application</button>
           <button class="btn btn-subtle btn-full" (click)="$event.stopPropagation(); openTracker()">
             <span class="material-symbols-outlined" style="font-size: 17px; vertical-align: middle; margin-right: 4px;">manage_search</span>
             Track / Edit Submitted Application
@@ -451,81 +451,7 @@
     </div>
   </div>
 
-  <!-- =========================================================
-       RESUME SELECTION SCREEN
-       ========================================================= -->
-  <div *ngIf="regState === 'continue_select'" class="otp-screen">
-    <div class="otp-brand-header">
-      <div class="landing-brand-logo-wrap">
-        <div class="brand-crest">
-          <div class="crest-shield">
-            <span class="material-symbols-outlined shield-icon">local_library</span>
-          </div>
-        </div>
-        <div class="brand-text">
-          <span class="brand-name">NTIC</span>
-          <span class="brand-sub">GHANA NATIONAL COMPETITION</span>
-        </div>
-      </div>
-    </div>
 
-    <div class="otp-challenge-card">
-      <p>We've found a saved draft application. A 6-digit verification code has been sent to your registered email or mobile number.</p>
-      <p>Enter the code below to resume your application.</p>
-
-      <div class="otp-input-wrapper">
-        <input type="text" otpInput maxlength="6" placeholder="Enter verification code" [(ngModel)]="otpCode" otpLength="6" (otpCodeEntered)="verifyOTP()" />
-      </div>
-
-      <div class="timer-row">
-        <span *ngIf="resendTimer > 0">Resend code in <strong>{{ resendTimer }}s</strong></span>
-        <button class="resend-btn" *ngIf="resendTimer === 0" (click)="resendOTPCode()">Resend Verification Code</button>
-      </div>
-
-      <button class="btn btn-secondary btn-full" (click)="verifyOTP()" [disabled]="otpCode.length !== 6">
-        <span>Verify & Resume</span>
-        <span class="material-symbols-outlined">task_alt</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- =========================================================
-       VERIFICATION IN PROGRESS / SUCCESS
-       ========================================================= -->
-  <div *ngIf="regState === 'otp_verification'" class="otp-screen">
-    <div class="otp-brand-header">
-      <div class="landing-brand-logo-wrap">
-        <div class="brand-crest">
-          <div class="crest-shield">
-            <span class="material-symbols-outlined shield-icon">local_library</span>
-          </div>
-        </div>
-        <div class="brand-text">
-          <span class="brand-name">NTIC</span>
-          <span class="brand-sub">GHANA NATIONAL COMPETITION</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="otp-challenge-card">
-      <p>A verification code has been sent to your registered contact.</p>
-      <p>Enter the 6-digit code to resume your draft application.</p>
-
-      <div class="otp-input-wrapper">
-        <input type="text" otpInput maxlength="6" placeholder="Enter verification code" [(ngModel)]="otpCode" otpLength="6" (otpCodeEntered)="verifyOTP()" />
-      </div>
-
-      <div class="timer-row">
-        <span *ngIf="resendTimer > 0">Resend code in <strong>{{ resendTimer }}s</strong></span>
-        <button class="resend-btn" *ngIf="resendTimer === 0" (click)="resendOTPCode()">Resend Verification Code</button>
-      </div>
-
-      <button class="btn btn-secondary btn-full" (click)="verifyOTP()" [disabled]="otpCode.length !== 6">
-        <span>Verify & Resume</span>
-        <span class="material-symbols-outlined">task_alt</span>
-      </button>
-    </div>
-  </div>
 
   <!-- =========================================================
        SUCCESS LOADER SCREEN

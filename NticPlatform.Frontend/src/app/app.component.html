@@ -130,9 +130,12 @@
                 <span class="material-symbols-outlined" style="font-size: 18px; color: var(--primary);">notifications</span>
                 <span>Notifications</span>
                 <span class="unread-pill" *ngIf="activeUnreadCount > 0">{{ activeUnreadCount }} new</span>
-                <span class="unread-pill" style="background: rgba(34, 197, 94, 0.12); color: #16a34a;" *ngIf="activeUnreadCount === 0">All caught up</span>
+                <span class="unread-pill" style="background: rgba(34, 197, 94, 0.12); color: #16a34a;" *ngIf="activeUnreadCount === 0 && notifications.length > 0">All read</span>
               </div>
-              <button class="mark-read-btn" *ngIf="activeUnreadCount > 0" (click)="markAllNotificationsRead($event)" title="Mark all notifications as read">Mark all read</button>
+              <div class="dropdown-header-actions">
+                <button type="button" class="mark-read-btn" *ngIf="activeUnreadCount > 0" (click)="markAllNotificationsRead($event)" title="Mark all notifications as read">Mark all read</button>
+                <button type="button" class="clear-all-btn" *ngIf="notifications.length > 0" (click)="clearAllNotifications($event)" title="Clear all past notifications">Clear all</button>
+              </div>
             </div>
             <div class="dropdown-list">
               <div *ngFor="let item of notifications; trackBy: trackByNotification" 
@@ -147,10 +150,22 @@
                   <div class="notif-category">{{ item.category }} &middot; {{ item.time }}</div>
                   <div class="notif-title">{{ item.title }}</div>
                 </div>
-                <button class="notif-check-btn" *ngIf="item.unread" (click)="dismissNotification(item, $event)" title="Mark as read">
-                  <span class="material-symbols-outlined">done</span>
-                </button>
+                <div class="notif-actions-group" (click)="$event.stopPropagation()">
+                  <button type="button" class="notif-check-btn" *ngIf="item.unread" (click)="dismissNotification(item, $event)" title="Mark as read">
+                    <span class="material-symbols-outlined">done</span>
+                  </button>
+                  <button type="button" class="notif-close-btn" (click)="removeNotification(item, $event)" title="Clear this notification">
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                </div>
                 <div class="notif-dot" *ngIf="item.unread" title="Unread"></div>
+              </div>
+
+              <!-- Empty State -->
+              <div class="notif-empty-state" *ngIf="notifications.length === 0">
+                <span class="material-symbols-outlined notif-empty-ic">notifications_off</span>
+                <p>No notifications yet</p>
+                <span class="notif-empty-sub">You're completely all caught up!</span>
               </div>
             </div>
           </div>

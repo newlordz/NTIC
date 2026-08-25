@@ -1723,8 +1723,12 @@ setAuthValue('activeUserEmail', email);
           this.trackerQuery = codeParam;
           this.searchApplication();
         }
-      } else if (sectionParam === 'continue') {
+      } else if (sectionParam === 'continue' || sectionParam === 'continue_select') {
         this.regState = 'continue_select';
+      } else if (sectionParam === 'otp_verification' || sectionParam === 'otp') {
+        this.regState = 'otp_verification';
+      } else if (sectionParam === 'resume_success') {
+        this.regState = 'resume_success';
       } else if (params['track']) {
         this.selectedTrack = params['track'];
         this.regState = 'gateway';
@@ -1746,6 +1750,7 @@ setAuthValue('activeUserEmail', email);
         this.clearRegState();
         this.regState = 'gateway';
       }
+      this.cdr?.markForCheck?.();
     });
   }
 
@@ -1775,11 +1780,12 @@ setAuthValue('activeUserEmail', email);
   }
 
   selectContinueRegistration(): void {
-    this.regState = 'otp_verification';
+    this.regState = 'continue_select';
     this.verificationInput = '';
     this.otpCode = '';
     this.otpError = '';
     this.saveRegState();
+    this.cdr?.markForCheck?.();
   }
 
   openTracker(): void {

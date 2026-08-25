@@ -471,7 +471,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { id: 'instructor', label: 'Instructors', icon: 'badge' },
   ];
 
-  loadPersonnel(): void {
+  loadPersonnel(showFeedback = false): void {
     if (this.personnelLoading) return;
     this.personnelLoading = true;
     this.personnelError = '';
@@ -479,6 +479,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       next: roster => {
         this.personnelRoster = roster;
         this.personnelLoading = false;
+        if (showFeedback) {
+          this.dialogService.toast('Personnel roster refreshed from database.', 'success');
+        }
         this.cdr.detectChanges();
       },
       error: err => {
@@ -490,6 +493,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
           : err?.status === 401
             ? 'Your session expired. Sign in again to view the roster.'
             : 'Could not reach the server to load the personnel roster.';
+        if (showFeedback) {
+          this.dialogService.toast(this.personnelError, 'error');
+        }
         this.cdr.detectChanges();
       },
     });
@@ -3626,6 +3632,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
     return `${Math.floor(seconds / 86400)}d`;
+  }
+
+  refreshActiveSessionsWithToast(): void {
+    this.loadAuthSessions();
+    this.loadAuthSessionCount();
+    setTimeout(() => {
+      this.dialogService.toast('Active authentication sessions refreshed.', 'success');
+    }, 600);
   }
 
   loadAuthSessions(): void {

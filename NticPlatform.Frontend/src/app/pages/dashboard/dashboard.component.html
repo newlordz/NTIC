@@ -1907,8 +1907,13 @@
 
       <div class="admin-header-actions">
         <div class="section-title">Personnel Monitor</div>
-        <button class="btn btn-secondary btn-sm" (click)="loadPersonnel()" [disabled]="personnelLoading">
-          <span class="material-symbols-outlined">refresh</span>{{ personnelLoading ? 'Refreshingâ€¦' : 'Refresh' }}
+        <button class="btn btn-secondary btn-sm mp-refresh-action-btn" 
+                [class.is-refreshing]="personnelLoading"
+                (click)="loadPersonnel(true)" 
+                [disabled]="personnelLoading"
+                title="Synchronize personnel roster from database">
+          <span class="material-symbols-outlined mp-refresh-ic" [class.spin-active]="personnelLoading">refresh</span>
+          <span>{{ personnelLoading ? 'Refreshing...' : 'Refresh' }}</span>
         </button>
       </div>
 
@@ -3382,8 +3387,13 @@
           </div>
         </div>
         <div *ngIf="tokenViewMode === 'sessions'" style="display:flex;gap:8px;">
-          <button class="btn btn-subtle btn-sm" (click)="loadAuthSessions(); loadAuthSessionCount()" title="Refresh live sessions from backend">
-            <span class="material-symbols-outlined" [class.spin-refresh]="isRefreshingSessions">refresh</span>Refresh
+          <button class="btn btn-subtle btn-sm mp-refresh-action-btn" 
+                  [class.is-refreshing]="isRefreshingSessions"
+                  (click)="refreshActiveSessionsWithToast()" 
+                  [disabled]="isRefreshingSessions" 
+                  title="Refresh live sessions from backend">
+            <span class="material-symbols-outlined mp-refresh-ic" [class.spin-active]="isRefreshingSessions">refresh</span>
+            <span>{{ isRefreshingSessions ? 'Refreshing...' : 'Refresh' }}</span>
           </button>
           <button class="btn btn-subtle btn-sm" style="color:#ef4444;border-color:rgba(239,68,68,0.3);" (click)="revokeAllSessions()" title="Revoke all sessions except current active session">
             <span class="material-symbols-outlined">link_off</span>Revoke All

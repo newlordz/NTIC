@@ -719,6 +719,7 @@ export class AppComponent implements OnInit, OnDestroy {
   showProfileDropdown = false;
 
   readNotificationIds = new Set<string>();
+  clearedNotificationIds = new Set<string>();
   notifications: any[] = [];
   activeUnreadCount = 0;
 
@@ -732,6 +733,13 @@ export class AppComponent implements OnInit, OnDestroy {
           this.readNotificationIds = new Set(parsed);
         }
       }
+      const cleared = localStorage.getItem('ntic_cleared_notifications');
+      if (cleared) {
+        const parsedCleared = JSON.parse(cleared);
+        if (Array.isArray(parsedCleared)) {
+          this.clearedNotificationIds = new Set(parsedCleared);
+        }
+      }
     } catch (_) {}
     this.recalculateNotifications();
   }
@@ -740,6 +748,13 @@ export class AppComponent implements OnInit, OnDestroy {
     if (typeof window === 'undefined') return;
     try {
       localStorage.setItem('ntic_read_notifications', JSON.stringify(Array.from(this.readNotificationIds)));
+    } catch (_) {}
+  }
+
+  private saveClearedNotificationIds(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('ntic_cleared_notifications', JSON.stringify(Array.from(this.clearedNotificationIds)));
     } catch (_) {}
   }
 
@@ -794,7 +809,7 @@ export class AppComponent implements OnInit, OnDestroy {
       });
     }
 
-    this.notifications = list;
+    this.notifications = list.filter(item => !this.clearedNotificationIds.has(item.id.toString()));
     this.activeUnreadCount = this.notifications.filter(n => n.unread).length;
   }
 
@@ -848,6 +863,18 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
+  removeNotification(item: any, event?: MouseEvent): void {
+    if (event) event.stopPropagation();
+    if (item && item.id) {
+      this.clearedNotificationIds.add(item.id.toString());
+      this.readNotificationIds.add(item.id.toString());
+      this.saveClearedNotificationIds();
+      this.saveReadNotificationIds();
+      this.notifications = this.notifications.filter(n => n.id !== item.id);
+      this.activeUnreadCount = this.notifications.filter(n => n.unread).length;
+    }
+  }
+
   markAllNotificationsRead(event?: MouseEvent): void {
     if (event) event.stopPropagation();
     for (const n of this.notifications) {
@@ -858,6 +885,21 @@ export class AppComponent implements OnInit, OnDestroy {
     }
     this.saveReadNotificationIds();
     this.activeUnreadCount = 0;
+  }
+
+  clearAllNotifications(event?: MouseEvent): void {
+    if (event) event.stopPropagation();
+    for (const n of this.notifications) {
+      if (n && n.id) {
+        this.clearedNotificationIds.add(n.id.toString());
+        this.readNotificationIds.add(n.id.toString());
+      }
+    }
+    this.saveClearedNotificationIds();
+    this.saveReadNotificationIds();
+    this.notifications = [];
+    this.activeUnreadCount = 0;
+    this.dialogService.toast('All past notifications cleared.', 'info');
   }
 
   @HostListener('document:click')
