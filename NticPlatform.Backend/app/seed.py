@@ -67,7 +67,7 @@ def seed_initial_data(conn):
         )
         tables_to_purge = [
             "assignment_submissions", "students", "teams", "pending_approvals",
-            "approved_approvals", "rejected_approvals", "support_tickets",
+            "support_tickets", "otp_challenges", "password_reset_tokens",
             "audit_logs", "lms_submissions", "lms_enrollments", "auth_sessions"
         ]
         for tbl in tables_to_purge:
