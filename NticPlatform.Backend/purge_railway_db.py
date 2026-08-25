@@ -22,10 +22,9 @@ TABLES_TO_PURGE = [
     "students",
     "teams",
     "pending_approvals",
-    "approved_approvals",
-    "rejected_approvals",
     "support_tickets",
-    "audit_logs",
+    "otp_challenges",
+    "password_reset_tokens",
     "lms_submissions",
     "lms_enrollments",
     "auth_sessions"
@@ -33,29 +32,29 @@ TABLES_TO_PURGE = [
 
 
 def purge_database(db_url: str):
-    print(f"Connecting to database...")
+    print("Connecting to database...")
     try:
         conn = psycopg2.connect(db_url)
+        conn.autocommit = True
         cur = conn.cursor()
 
         print("Purging test tables (CASCADE)...")
         for table in TABLES_TO_PURGE:
             try:
                 cur.execute(f"TRUNCATE TABLE {table} CASCADE;")
-                print(f"  ✓ Truncated {table}")
+                print(f"  [OK] Truncated {table}")
             except Exception as e:
-                print(f"  ⚠ Note on {table}: {e}")
+                print(f"  [WARN] Note on {table}: {e}")
 
         print("Removing non-admin user accounts...")
         cur.execute("DELETE FROM users WHERE id != %s AND email != %s", (ADMIN_ID, ADMIN_EMAIL))
-        print(f"  ✓ Preserved super-admin ({ADMIN_EMAIL})")
+        print(f"  [OK] Preserved super-admin ({ADMIN_EMAIL})")
 
-        conn.commit()
         cur.close()
         conn.close()
-        print("\n✅ Database successfully cleared! Ready for real users.")
+        print("\n[SUCCESS] Database successfully cleared! Ready for real users.")
     except Exception as e:
-        print(f"\n❌ Error connecting to database: {e}")
+        print(f"\n[ERROR] Database error: {e}")
         sys.exit(1)
 
 

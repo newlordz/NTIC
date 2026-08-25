@@ -1003,9 +1003,9 @@ try:
     _CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
     _PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
 
-    def _generate_temp_password(length: int = 14) -> str:
-        """A one-time password for a newly provisioned account."""
-        return "".join(secrets.choice(_PASSWORD_ALPHABET) for _ in range(length))
+    def _generate_temp_password(length: int = 6) -> str:
+        """A clean 6-digit numeric OTP / security code for newly provisioned or approved accounts."""
+        return f"{secrets.randbelow(1_000_000):06d}"
 
     def _generate_access_code(length: int = 6) -> str:
         """The human-readable suffix of an access pass / ticket."""
@@ -6586,6 +6586,46 @@ try:
         finally:
             release_db_connection(conn)
         return {"id": user_id, "sessions_revoked": revoked}
+
+    @app.post("/api/admin/purge-test-data")
+    def purge_test_data(actor: dict = Depends(require_admin)):
+        """Purge test tables and reset the platform for real live users.
+
+        Preserves super-admin accounts only.
+        """
+        tables = [
+            "assignment_submissions",
+            "students",
+            "teams",
+            "pending_approvals",
+            "support_tickets",
+            "otp_challenges",
+            "lms_submissions",
+            "lms_enrollments",
+        ]
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            for t in tables:
+                try:
+                    cur.execute(f"TRUNCATE TABLE {t} CASCADE;")
+                except Exception:
+                    pass
+            cur.execute("DELETE FROM users WHERE role != %s AND id != 'USR-000'", (ROLE_SUPER_ADMIN,))
+            cur.execute(
+                "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s,%s,%s,%s)",
+                ("Purged test data and reset database for production",
+                 actor.get("email") or actor["id"],
+                 datetime.datetime.now(datetime.UTC).isoformat(), "admin"),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "approvals"})
+        broadcast_async({"type": "data_changed", "collection": "users"})
+        broadcast_async({"type": "data_changed", "collection": "teams"})
+        return {"status": "purged", "message": "Database successfully cleared of test records and ready for live users."}
 
     @app.get("/api/admin/personnel/{user_id}")
     def personnel_detail(user_id: str, _admin: dict = Depends(require_admin)):

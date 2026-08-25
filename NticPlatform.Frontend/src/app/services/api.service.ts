@@ -1370,4 +1370,8 @@ login(email: string, password: string): Observable<any> {
   bulkSync(collection: string, items: any[]): Observable<any> {
     return this.http.post(this.apiUrl + '/bulk-sync', { collection, items });
   }
+
+  purgeTestData(): Observable<any> {
+    return this.http.post(this.apiUrl + '/admin/purge-test-data', {});
+  }
 }
