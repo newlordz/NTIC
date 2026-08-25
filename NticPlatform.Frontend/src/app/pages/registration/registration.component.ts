@@ -232,6 +232,8 @@ setAuthValue('activeUserEmail', email);
   gpsSearching = false;
   gpsSearchError = '';
   gpsSelectedPreview: { name: string; address: string; lat: string; lng: string } | null = null;
+  /** Bumped on every search so a slow geocoder cannot overwrite newer results. */
+  private gpsSearchSeq = 0;
 
   getMapPreviewUrl(lat: string, lng: string, name?: string): string {
     const latStr = encodeURIComponent(lat.trim());
@@ -360,6 +362,147 @@ setAuthValue('activeUserEmail', email);
     this.gpsSelectedPreview = null;
   }
 
+  /** Tokens that carry no discriminating power on their own; nearly every
+   *  Ghanaian school name contains two or three of them. */
+  private static readonly GPS_GENERIC_TOKENS = new Set([
+    'school', 'schools', 'academy', 'senior', 'high', 'shs', 'jhs', 'basic',
+    'college', 'complex', 'international', 'ghana', 'the', 'and', 'for', 'of',
+    'saint', 'preparatory', 'montessori', 'education', 'educational', 'institute',
+    'university', 'technical', 'secondary', 'junior', 'memorial', 'girls', 'boys',
+    'model', 'christian', 'islamic', 'seminary', 'centre', 'center'
+  ]);
+
+  /** Canonical form used on both sides of every comparison: diacritics stripped,
+   *  punctuation dropped, and the abbreviations Ghanaian schools are commonly
+   *  written with expanded, so "St. Peter's SHS" and "saint peters senior high
+   *  school" reduce to the same words. */
+  private normalizeGpsText(raw: string): string {
+    return (raw || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/['\u2018\u2019`]/g, '')
+      .replace(/\bacadam[ey]\b/g, 'academy')
+      .replace(/\bcolledge\b/g, 'college')
+      .replace(/\bsecondry\b/g, 'secondary')
+      .replace(/\bsch\b/g, 'school')
+      .replace(/\bsec\b/g, 'secondary')
+      .replace(/\btech\b/g, 'technical')
+      .replace(/\bsnr\b/g, 'senior')
+      .replace(/\bjnr\b/g, 'junior')
+      .replace(/\bintl?\b/g, 'international')
+      .replace(/\buniv\b/g, 'university')
+      .replace(/\bmem\b/g, 'memorial')
+      .replace(/\bpresby\b/g, 'presbyterian')
+      .replace(/\bcath\b/g, 'catholic')
+      .replace(/\bst\b/g, 'saint')
+      .replace(/[^a-z0-9+\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private gpsTokens(normalized: string): string[] {
+    return normalized.split(' ').filter(t => t.length >= 2);
+  }
+
+  /** Whole-word containment. The earlier scorer used bare `includes`, so the
+   *  two-character token "st" matched inside "GSTS", "Christ" and "Bishop" and
+   *  buried the real result under unrelated schools. */
+  private hasWord(haystack: string, needle: string): boolean {
+    if (!needle || !haystack) return false;
+    let from = 0;
+    for (;;) {
+      const at = haystack.indexOf(needle, from);
+      if (at < 0) return false;
+      const prev = at > 0 ? haystack[at - 1] : ' ';
+      const next = at + needle.length < haystack.length ? haystack[at + needle.length] : ' ';
+      if (!/[a-z0-9]/.test(prev) && !/[a-z0-9]/.test(next)) return true;
+      from = at + 1;
+    }
+  }
+
+  /** True when two words differ by at most one insertion, deletion or
+   *  substitution, which absorbs the usual single-key typo. */
+  private within1Edit(a: string, b: string): boolean {
+    const la = a.length;
+    const lb = b.length;
+    if (Math.abs(la - lb) > 1) return false;
+    let i = 0;
+    let j = 0;
+    let edits = 0;
+    while (i < la && j < lb) {
+      if (a[i] === b[j]) { i++; j++; continue; }
+      if (++edits > 1) return false;
+      if (la === lb) { i++; j++; } else if (la > lb) { i++; } else { j++; }
+    }
+    if (i < la || j < lb) edits++;
+    return edits <= 1;
+  }
+
+  /** Only applied to tokens of five characters or more; below that a single
+   *  edit changes the word into a genuinely different one. */
+  private hasFuzzyWord(words: string[], needle: string): boolean {
+    if (needle.length < 5) return false;
+    return words.some(w => w.length >= 4 && this.within1Edit(w, needle));
+  }
+
+  /** Relevance of one candidate. `strong` marks a hit on the name or an alias;
+   *  address-only hits stay weak so a same-town neighbour never outranks the
+   *  school actually being searched for. */
+  private scoreGpsCandidate(
+    nameNorm: string,
+    addrNorm: string,
+    aliasNorms: string[],
+    queryNorm: string,
+    tokens: string[]
+  ): { score: number; strong: boolean } {
+    const nameWords = nameNorm.split(' ');
+    const aliasWords = aliasNorms.join(' ').split(' ').filter(Boolean);
+    let score = 0;
+    let strong = false;
+
+    if (queryNorm && (this.hasWord(nameNorm, queryNorm) || aliasNorms.some(a => this.hasWord(a, queryNorm)))) {
+      score += 220;
+      strong = true;
+    }
+
+    for (const t of tokens) {
+      const generic = RegistrationComponent.GPS_GENERIC_TOKENS.has(t);
+      const weight = generic ? 6 : (t.length <= 2 ? 12 : 60);
+
+      if (this.hasWord(nameNorm, t)) {
+        score += weight;
+        if (!generic) strong = true;
+      } else if (aliasNorms.some(a => this.hasWord(a, t))) {
+        score += Math.round(weight * 0.85);
+        if (!generic) strong = true;
+      } else if (!generic && this.hasFuzzyWord(nameWords, t)) {
+        score += 40;
+        strong = true;
+      } else if (!generic && this.hasFuzzyWord(aliasWords, t)) {
+        score += 32;
+        strong = true;
+      } else if (this.hasWord(addrNorm, t)) {
+        score += generic ? 2 : 14;
+      }
+    }
+
+    return { score, strong };
+  }
+
+  /** Aborts instead of leaving the spinner up forever when a geocoder hangs. */
+  private async fetchGpsJson(url: string, timeoutMs = 6000): Promise<any | null> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      return res.ok ? await res.json() : null;
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   private parseDirectCoordinates(query: string): { lat: string; lng: string } | null {
     if (!query) return null;
     const str = query.trim();
@@ -429,8 +572,10 @@ setAuthValue('activeUserEmail', email);
   async searchSchoolGps(): Promise<void> {
     const rawQuery = (this.gpsSearchQuery || '').trim();
     if (!rawQuery) {
+      this.gpsSearchSeq++;
       this.gpsSearchResults = this.ghanaSchoolsGpsDb.slice(0, 15);
       this.gpsSelectedPreview = this.gpsSearchResults[0] || null;
+      this.gpsSearchError = '';
       this.gpsSearching = false;
       return;
     }
@@ -438,6 +583,7 @@ setAuthValue('activeUserEmail', email);
     // Direct coordinate check (DMS or decimal degrees)
     const directCoords = this.parseDirectCoordinates(rawQuery);
     if (directCoords) {
+      this.gpsSearchSeq++;
       this.gpsSearchResults = [{
         name: this.schoolForm.name?.trim() || 'Custom GPS Pin',
         address: `Direct Coordinates: ${directCoords.lat}, ${directCoords.lng}`,
@@ -450,135 +596,126 @@ setAuthValue('activeUserEmail', email);
       return;
     }
 
-    // Normalized query (fixes common typos like "acadamy" -> "academy", "colledge" -> "college", "shs" -> "senior high school")
-    const normalized = rawQuery.toLowerCase()
-      .replace(/\bacadam[ey]\b/g, 'academy')
-      .replace(/\bcolledge\b/g, 'college')
-      .replace(/\bsch\b/g, 'school')
-      .replace(/\bsec\b/g, 'secondary')
-      .replace(/\btech\b/g, 'technical');
+    const queryNorm = this.normalizeGpsText(rawQuery);
+    const tokens = this.gpsTokens(queryNorm);
+    const distinctive = tokens.filter(t => !RegistrationComponent.GPS_GENERIC_TOKENS.has(t));
+    const seq = ++this.gpsSearchSeq;
 
     this.gpsSearching = true;
     this.gpsSearchError = '';
     this.gpsSearchResults = [];
 
-    // Distinctive search tokens (exclude stopwords like school, academy, senior, high, ghana, etc.)
-    const genericStopwords = new Set(['school', 'academy', 'acadamy', 'senior', 'high', 'shs', 'ghana', 'college', 'complex', 'international', 'basic', 'the', 'and', 'for', 'of']);
-    const rawTokens = normalized.split(/[\s,.-]+/).filter(t => t.length > 1);
-    const distinctiveTokens = rawTokens.filter(t => !genericStopwords.has(t));
-    const tokensToUse = distinctiveTokens.length > 0 ? distinctiveTokens : rawTokens;
+    // Merge buffer. Curated rows land first and keep their cleaner name and
+    // address if a geocoder later returns the same coordinates.
+    const merged: Array<{ item: { name: string; address: string; lat: string; lng: string }; score: number }> = [];
+    const addCandidate = (item: { name: string; address: string; lat: string; lng: string }, score: number): void => {
+      const lat = parseFloat(item.lat);
+      const lng = parseFloat(item.lng);
+      if (!isFinite(lat) || !isFinite(lng)) return;
+      const near = merged.find(m =>
+        Math.abs(parseFloat(m.item.lat) - lat) < 0.00025 &&
+        Math.abs(parseFloat(m.item.lng) - lng) < 0.00025);
+      if (near) {
+        near.score = Math.max(near.score, score);
+        return;
+      }
+      merged.push({ item, score });
+    };
 
-    // 1. Search local curated Ghanaian schools database
-    const scoredLocalMatches: Array<{ item: { name: string; address: string; lat: string; lng: string; aliases?: string[] }; score: number }> = [];
-
+    // 1. Curated Ghanaian schools. Weak (address-only) hits are capped so they
+    // sort below anything that actually matched a name or alias.
     for (const s of this.ghanaSchoolsGpsDb) {
-      const sName = s.name.toLowerCase();
-      const sAddr = s.address.toLowerCase();
-      const sAliases = (s.aliases || []).map(a => a.toLowerCase());
+      const { score, strong } = this.scoreGpsCandidate(
+        this.normalizeGpsText(s.name),
+        this.normalizeGpsText(s.address),
+        (s.aliases || []).map(a => this.normalizeGpsText(a)),
+        queryNorm,
+        tokens
+      );
+      // A score built only from generic words ("school", "academy") means nothing
+      // matched; 14 is the weight of a single distinctive address hit.
+      if (!strong && score < 14) continue;
+      addCandidate({ name: s.name, address: s.address, lat: s.lat, lng: s.lng }, strong ? score : Math.min(score, 30));
+    }
 
-      let score = 0;
-      // Exact substring match
-      if (sName.includes(normalized) || sAliases.some(a => a.includes(normalized))) {
-        score += 100;
-      }
-      // Distinctive token matches
-      for (const dt of tokensToUse) {
-        if (sName.includes(dt)) score += 50;
-        if (sAliases.some(a => a.includes(dt))) score += 40;
-        if (sAddr.includes(dt)) score += 20;
-      }
+    // Paint curated hits immediately so the panel is not blank while the
+    // geocoders are still in flight.
+    merged.sort((a, b) => b.score - a.score);
+    this.gpsSearchResults = merged.slice(0, 12).map(m => m.item);
+    this.gpsSelectedPreview = this.gpsSearchResults[0] || null;
+    this.cdr?.markForCheck?.();
 
-      if (score > 0) {
-        scoredLocalMatches.push({ item: s, score });
+    // 2. Live geocoders. These now always run and run concurrently. The previous
+    // version skipped the Nominatim fallback whenever three curated rows had
+    // matched, so for a school that is not in the curated list three same-town
+    // neighbours crowded out the only lookup that could have found it.
+    const photonQueries = Array.from(new Set([
+      rawQuery,
+      distinctive.length ? `${distinctive.join(' ')} school ghana` : '',
+      `${queryNorm} ghana`
+    ].map(q => q.trim()).filter(Boolean))).slice(0, 3);
+
+    // Nominatim asks for at most one request per second, so it gets the single
+    // best query rather than one per variant.
+    const nominatimQuery = `${distinctive.length ? distinctive.join(' ') : queryNorm}, Ghana`;
+
+    const [photonResponses, nominatimResponse] = await Promise.all([
+      Promise.all(photonQueries.map(q =>
+        this.fetchGpsJson(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lat=7.95&lon=-1.03`))),
+      this.fetchGpsJson(`https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=gh&limit=8&q=${encodeURIComponent(nominatimQuery)}`)
+    ]);
+
+    // A newer search started while these were in flight; let it win.
+    if (seq !== this.gpsSearchSeq) return;
+
+    const eduBonus = (text: string): number =>
+      /\b(school|academy|college|university|education|institute|campus|seminary|polytechnic)\b/.test(text) ? 45 : 0;
+    const inGhana = (lat: number, lng: number): boolean =>
+      lat >= 4.5 && lat <= 11.5 && lng >= -3.5 && lng <= 1.5;
+
+    for (const pData of photonResponses) {
+      const features = Array.isArray(pData?.features) ? pData.features : [];
+      for (const feat of features) {
+        const coords = feat?.geometry?.coordinates;
+        const props = feat?.properties || {};
+        if (!Array.isArray(coords) || coords.length < 2) continue;
+        const lngNum = parseFloat(coords[0]);
+        const latNum = parseFloat(coords[1]);
+        if (!isFinite(latNum) || !isFinite(lngNum)) continue;
+        if (!(props.countrycode === 'GH' || props.country === 'Ghana' || inGhana(latNum, lngNum))) continue;
+
+        const name = props.name || rawQuery;
+        const address = [props.street, props.district, props.city, props.state, props.country || 'Ghana']
+          .filter(Boolean).join(', ') || 'Ghana';
+        const { score } = this.scoreGpsCandidate(
+          this.normalizeGpsText(name), this.normalizeGpsText(address), [], queryNorm, tokens);
+        const bonus = eduBonus(this.normalizeGpsText(`${name} ${props.osm_value || ''}`));
+        if (score + bonus <= 0) continue;
+        addCandidate({ name, address, lat: latNum.toFixed(6), lng: lngNum.toFixed(6) }, score + bonus);
       }
     }
 
-    // Sort by relevance score descending
-    scoredLocalMatches.sort((a, b) => b.score - a.score);
-    this.gpsSearchResults = scoredLocalMatches.map(m => m.item);
-
-    // 2. Perform live search with Photon and Nominatim for unlisted institutions
-    try {
-      const liveQueries = [
-        rawQuery,
-        normalized,
-        `${distinctiveTokens.join(' ')} Ghana`,
-        `${normalized} Ghana`
-      ].filter((v, i, a) => v && a.indexOf(v) === i);
-
-      for (const pq of liveQueries) {
-        const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(pq)}&limit=8&lat=5.6&lon=-0.2`;
-        const pRes = await fetch(photonUrl);
-        if (pRes.ok) {
-          const pData = await pRes.json();
-          if (pData?.features && Array.isArray(pData.features)) {
-            for (const feat of pData.features) {
-              const coords = feat.geometry?.coordinates;
-              const props = feat.properties || {};
-              if (coords && coords.length >= 2) {
-                const lng = parseFloat(coords[0]).toFixed(6);
-                const lat = parseFloat(coords[1]).toFixed(6);
-                const latNum = parseFloat(lat);
-                const lngNum = parseFloat(lng);
-                const inGhana = (props.countrycode === 'GH' || props.country === 'Ghana') ||
-                                (latNum >= 4.5 && latNum <= 11.5 && lngNum >= -3.5 && lngNum <= 1.5);
-                if (inGhana) {
-                  const name = props.name || rawQuery;
-                  const addrParts = [props.street, props.district, props.city, props.state, props.country || 'Ghana'].filter(Boolean);
-                  const address = addrParts.join(', ') || 'Ghana';
-                  
-                  // Relevance filter: if we have distinctive tokens, ensure result actually relates to them
-                  const featText = `${name} ${address}`.toLowerCase();
-                  const matchesDistinctive = distinctiveTokens.length === 0 || distinctiveTokens.some(t => featText.includes(t));
-                  
-                  if (matchesDistinctive && !this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - latNum) < 0.0002 && Math.abs(parseFloat(r.lng) - lngNum) < 0.0002)) {
-                    this.gpsSearchResults.push({ name, address, lat, lng });
-                  }
-                }
-              }
-            }
-          }
-        }
-        if (this.gpsSearchResults.length >= 8) break;
+    if (Array.isArray(nominatimResponse)) {
+      for (const item of nominatimResponse) {
+        const latNum = parseFloat(item?.lat);
+        const lngNum = parseFloat(item?.lon);
+        if (!isFinite(latNum) || !isFinite(lngNum) || !inGhana(latNum, lngNum)) continue;
+        const display = typeof item.display_name === 'string' ? item.display_name : '';
+        const name = item.name || (display ? display.split(',')[0] : 'Location in Ghana');
+        const { score } = this.scoreGpsCandidate(
+          this.normalizeGpsText(name), this.normalizeGpsText(display), [], queryNorm, tokens);
+        const bonus = eduBonus(this.normalizeGpsText(`${name} ${item.type || ''} ${item.category || ''}`));
+        if (score + bonus <= 0) continue;
+        addCandidate({ name, address: display || 'Ghana', lat: latNum.toFixed(6), lng: lngNum.toFixed(6) }, score + bonus);
       }
-    } catch {
-      // Graceful fallback
     }
 
-    // 3. Nominatim fallback if still needed
-    if (this.gpsSearchResults.length < 3) {
-      try {
-        const nomQueries = [
-          `${normalized}, Ghana`,
-          distinctiveTokens.length > 0 ? `${distinctiveTokens.join(' ')}, Ghana` : `${rawQuery}, Ghana`
-        ];
-        for (const nq of nomQueries) {
-          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(nq)}&countrycodes=gh&limit=6`);
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data)) {
-              for (const item of data) {
-                const lat = parseFloat(item.lat).toFixed(6);
-                const lng = parseFloat(item.lon).toFixed(6);
-                const name = item.name || (item.display_name ? item.display_name.split(',')[0] : 'Location in Ghana');
-                const address = item.display_name || '';
-                const itemText = `${name} ${address}`.toLowerCase();
-                const matchesDistinctive = distinctiveTokens.length === 0 || distinctiveTokens.some(t => itemText.includes(t));
-
-                if (matchesDistinctive && !this.gpsSearchResults.some(r => Math.abs(parseFloat(r.lat) - parseFloat(lat)) < 0.0002 && Math.abs(parseFloat(r.lng) - parseFloat(lng)) < 0.0002)) {
-                  this.gpsSearchResults.push({ name, address, lat, lng });
-                }
-              }
-            }
-          }
-        }
-      } catch {}
-    }
-
+    merged.sort((a, b) => b.score - a.score);
+    this.gpsSearchResults = merged.slice(0, 12).map(m => m.item);
     this.gpsSearching = false;
 
     if (this.gpsSearchResults.length === 0) {
-      this.gpsSearchError = `No GPS records found for "${rawQuery}". You can search by town/city (e.g. "Tanoso, Kumasi") or manually enter GPS coordinates.`;
+      this.gpsSearchError = `No GPS records found for "${rawQuery}". Try the town or city (e.g. "Tanoso, Kumasi"), or paste coordinates or a Plus Code directly.`;
       this.gpsSelectedPreview = null;
     } else {
       this.gpsSelectedPreview = this.gpsSearchResults[0];

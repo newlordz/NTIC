@@ -7941,18 +7941,28 @@ try:
             or email
         )
 
-        cur.execute("SELECT id, role FROM users WHERE lower(email) = %s", (email,))
+        temp_password = _generate_temp_password()
+        cur.execute("SELECT id, role, ticket FROM users WHERE lower(email) = %s", (email,))
         existing = cur.fetchone()
         if existing:
+            user_id, existing_role, existing_ticket = existing
+            ticket = existing_ticket or f"NTIC-{role.upper()[:3]}-{_generate_access_code()}"
+            cur.execute(
+                "UPDATE users SET ticket = %s, password_hash = %s, must_change_password = true, status = 'active' "
+                "WHERE id = %s",
+                (ticket, hash_password(temp_password), user_id),
+            )
             return {
-                "provisioned": False,
-                "reason": "An account already exists for this email",
-                "user_id": existing[0],
-                "role": existing[1],
+                "provisioned": True,
+                "user_id": user_id,
+                "email": email,
+                "full_name": full_name,
+                "role": existing_role or role,
+                "ticket": ticket,
+                "temporary_password": temp_password,
             }
 
         user_id = "USR-" + str(uuid.uuid4())[:8]
-        temp_password = _generate_temp_password()
         ticket = f"NTIC-{role.upper()[:3]}-{_generate_access_code()}"
         cur.execute(
             "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, "

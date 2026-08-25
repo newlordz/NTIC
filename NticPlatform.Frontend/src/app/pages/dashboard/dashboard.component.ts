@@ -4281,7 +4281,7 @@ setTimeout(async () => {
 
       const account = updateRes?.account;
       const ticket = account?.ticket || ('NTIC-' + (req.type === 'School Registration' ? 'SCH' : req.type === 'Instructor Access' ? 'INS' : 'STU') + '-' + this.randomSuffix());
-      const otp = account?.temporary_password || '';
+      const otp = account?.temporary_password || ('Temp-' + this.randomSuffix(4).toUpperCase());
 
       if (account && account.provisioned === false && account.reason
           && account.reason !== 'Not an approval transition'
