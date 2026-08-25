@@ -273,6 +273,32 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     });
   }
 
+  isPurging = false;
+
+  purgeTestData(): void {
+    if (!this.canManageUsers) return;
+    const confirmed = window.confirm(
+      'Are you sure you want to PURGE ALL TEST DATA?\n\nThis will permanently delete all test teams, students, submissions, approvals, and non-admin user accounts from PostgreSQL. Only your Super Admin account will remain.'
+    );
+    if (!confirmed) return;
+
+    this.isPurging = true;
+    this.apiService.purgeTestData().subscribe({
+      next: (res) => {
+        this.isPurging = false;
+        this.contentService.clearAllData();
+        this.teams = [];
+        this.users = [];
+        this.syncAccounts(false);
+        this.showToast('Database Purged', res?.message || 'Database successfully cleared of test records.', 5000);
+      },
+      error: (err) => {
+        this.isPurging = false;
+        this.showToast('Purge Failed', err?.error?.detail || err?.message || 'Could not purge database.', 5000);
+      }
+    });
+  }
+
   loadUsers(): void {
     this.apiService.getTeams().subscribe({
       next: (backendTeams) => {

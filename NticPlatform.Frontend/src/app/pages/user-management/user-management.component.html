@@ -37,6 +37,10 @@
           <span class="material-symbols-outlined" [class.spinning]="isSyncing">sync</span>
           {{ isSyncing ? 'Syncing...' : 'Sync Accounts' }}
         </button>
+        <button class="cmd-btn cmd-btn-danger" [disabled]="isPurging" (click)="purgeTestData()" style="background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 600;">
+          <span class="material-symbols-outlined" [class.spinning]="isPurging">delete_sweep</span>
+          {{ isPurging ? 'Purging...' : 'Purge Test Data' }}
+        </button>
       </div>
 
     </div>
