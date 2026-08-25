@@ -1265,7 +1265,7 @@ private readonly defaultTeams: Team[] = [];
         const keysToClear = [
           'championshipStories','upcomingEvents','hallOfFameEntries','leaderboardData',
           'talentDiscovery','platformStats','heroSlides','newsFeedItems','countdownDate',
-          'users','pendingApprovals','rejectedApprovals','approvedApprovals',
+          'users','ntic_users','pendingApprovals','rejectedApprovals','approvedApprovals',
           'teams','submissions','auditLogs','csrUpdates','competitions',
           'philosophyCards','lmsCourses','lmsModules','lmsMaterials','lmsAssignments',
           'lmsSubmissions','lmsEnrollments'
