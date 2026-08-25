@@ -830,7 +830,7 @@ private readonly defaultTeams: Team[] = [];
 
     this.apiService.getTeams().subscribe({
       next: (teams: any[]) => {
-        if (teams && teams.length > 0) {
+        if (Array.isArray(teams)) {
           const merged = this.mergeTeams(teams);
           this.teams = merged;
           this.saveState('teams', merged);
@@ -841,7 +841,7 @@ private readonly defaultTeams: Team[] = [];
 
     this.apiService.getSubmissions().subscribe({
       next: (subs: any[]) => {
-        if (subs && subs.length > 0) {
+        if (Array.isArray(subs)) {
           const merged = this.mergeSubmissions(subs);
           this.submissions = merged;
           this.saveState('submissions', merged);
@@ -1005,7 +1005,7 @@ private readonly defaultTeams: Team[] = [];
       case 'teams':
         this.apiService.getTeams().subscribe({
           next: (teams: any[]) => {
-            if (teams && teams.length > 0) {
+            if (Array.isArray(teams)) {
               const merged = this.mergeTeams(teams);
               this.teams = merged;
               this.saveState('teams', merged);
@@ -1017,7 +1017,7 @@ private readonly defaultTeams: Team[] = [];
       case 'submissions':
         this.apiService.getSubmissions().subscribe({
           next: (subs: any[]) => {
-            if (subs && subs.length > 0) {
+            if (Array.isArray(subs)) {
               const merged = this.mergeSubmissions(subs);
               this.submissions = merged;
               this.saveState('submissions', merged);
@@ -1260,11 +1260,20 @@ private readonly defaultTeams: Team[] = [];
   private loadStateAndFallback(): void {
     if (typeof window !== 'undefined' && window.localStorage) {
       // Clear stale localStorage cache if version bumped (prevents old mock data lingering)
-      const DATA_VERSION = '2';
+      const DATA_VERSION = '3';
       if (localStorage.getItem('_dataVersion') !== DATA_VERSION) {
-        const keysToClear = ['championshipStories','upcomingEvents','hallOfFameEntries','leaderboardData',
-          'talentDiscovery','platformStats','heroSlides','newsFeedItems','countdownDate'];
-        keysToClear.forEach(k => localStorage.removeItem(k));
+        const keysToClear = [
+          'championshipStories','upcomingEvents','hallOfFameEntries','leaderboardData',
+          'talentDiscovery','platformStats','heroSlides','newsFeedItems','countdownDate',
+          'users','pendingApprovals','rejectedApprovals','approvedApprovals',
+          'teams','submissions','auditLogs','csrUpdates','competitions',
+          'philosophyCards','lmsCourses','lmsModules','lmsMaterials','lmsAssignments',
+          'lmsSubmissions','lmsEnrollments'
+        ];
+        keysToClear.forEach(k => {
+          try { localStorage.removeItem(k); } catch { /* ignore */ }
+          this.dataStorage.remove(k).catch(() => {});
+        });
         localStorage.setItem('_dataVersion', DATA_VERSION);
       }
       // Load from localStorage first for instant render.
