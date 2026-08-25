@@ -24,6 +24,8 @@ import { TimeAgoPipe } from '../../services/time-ago.pipe';
 import { WsSyncService } from '../../services/ws-sync.service';
 import { LmsManagerComponent } from '../lms-manager/lms-manager.component';
 import { UserManagementComponent } from '../user-management/user-management.component';
+import { ApplicationPreviewModalComponent } from './application-preview-modal/application-preview-modal.component';
+import { SponsorTierModalComponent } from './sponsor-tier-modal/sponsor-tier-modal.component';
 
 interface LandingCopyField { key: string; label: string; multiline?: boolean; }
 interface LandingCopySection { title: string; icon: string; fields: LandingCopyField[]; }
@@ -36,7 +38,7 @@ type PersonnelRole = 'student' | 'sponsor' | 'judge' | 'instructor';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, TimeAgoPipe, LmsManagerComponent, UserManagementComponent],
+  imports: [CommonModule, RouterLink, FormsModule, TimeAgoPipe, LmsManagerComponent, UserManagementComponent, ApplicationPreviewModalComponent, SponsorTierModalComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -1727,6 +1729,50 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return tt.includes(it) || it.includes(tt) || (tt === 'ai' && it.includes('ai')) || (tt === 'coding' && it.includes('code'));
   }
 
+  activeMentorDropdownTeamId: string | null = null;
+  mentorPickerSearchQuery: string = '';
+
+  toggleMentorDropdown(teamId: string, event: MouseEvent): void {
+    event.stopPropagation();
+    if (this.activeMentorDropdownTeamId === teamId) {
+      this.activeMentorDropdownTeamId = null;
+      this.mentorPickerSearchQuery = '';
+    } else {
+      this.activeMentorDropdownTeamId = teamId;
+      this.mentorPickerSearchQuery = '';
+    }
+  }
+
+  closeMentorDropdown(): void {
+    this.activeMentorDropdownTeamId = null;
+    this.mentorPickerSearchQuery = '';
+  }
+
+  getFilteredPickerInstructors(teamTrack?: string): any[] {
+    let list = this.allPlatformInstructors || [];
+    if (this.mentorPickerSearchQuery.trim()) {
+      const q = this.mentorPickerSearchQuery.toLowerCase().trim();
+      list = list.filter(i => 
+        (i.name && i.name.toLowerCase().includes(q)) ||
+        (i.track && i.track.toLowerCase().includes(q)) ||
+        (i.email && i.email.toLowerCase().includes(q))
+      );
+    }
+    if (teamTrack) {
+      list = [...list].sort((a, b) => {
+        const matchA = this.isTrackMatch(teamTrack, a.track) ? 1 : 0;
+        const matchB = this.isTrackMatch(teamTrack, b.track) ? 1 : 0;
+        return matchB - matchA;
+      });
+    }
+    return list;
+  }
+
+  selectMentorForTeam(teamId: string, mentorId: string): void {
+    this.closeMentorDropdown();
+    this.assignMentorToTeam(teamId, mentorId);
+  }
+
   assignMentorToTeam(teamId: string, mentorId: string | null): void {
     if (!teamId) return;
     this.mentorActionInProgress[teamId] = true;
@@ -2787,33 +2833,48 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  syncPendingApprovalsStat(): void {
+    const count = this.pendingApprovals.length;
+    const idx = this.stats.findIndex(s => s.label === 'Pending Approvals' || s.icon === 'verified_user');
+    if (idx >= 0) {
+      this.stats[idx] = {
+        ...this.stats[idx],
+        value: String(count),
+        meta: count > 0 ? 'Action required' : 'All clear'
+      };
+    }
+  }
+
   loadApprovalsFromBackend(): void {
     this.apiService.getApprovals().subscribe({
       next: (backendApprovals: any[]) => {
-        if (!backendApprovals || backendApprovals.length === 0) return;
         const pending: any[] = [];
         const approved: any[] = [];
         const rejected: any[] = [];
-        backendApprovals.forEach((a: any) => {
-          const mapped = {
-            id: a.id,
-            type: a.type,
-            entity: a.entity,
-            contact: a.contact,
-            submitted: a.submitted,
-            details: a.details || {},
-            reviewedAt: a.reviewedAt,
-            reviewer: a.reviewer,
-            rejectionReasons: a.rejectionReasons,
-            rejectionNotes: a.rejectionNotes
-          };
-          if (a.status === 'pending') pending.push(mapped);
-          else if (a.status === 'approved') approved.push(mapped);
-          else if (a.status === 'rejected') rejected.push(mapped);
-        });
+        if (backendApprovals && backendApprovals.length > 0) {
+          backendApprovals.forEach((a: any) => {
+            const mapped = {
+              id: a.id,
+              type: a.type,
+              entity: a.entity,
+              contact: a.contact,
+              submitted: a.submitted,
+              details: a.details || {},
+              reviewedAt: a.reviewedAt,
+              reviewer: a.reviewer,
+              rejectionReasons: a.rejectionReasons,
+              rejectionNotes: a.rejectionNotes
+            };
+            if (a.status === 'pending') pending.push(mapped);
+            else if (a.status === 'approved') approved.push(mapped);
+            else if (a.status === 'rejected') rejected.push(mapped);
+          });
+        }
         this.contentService.pendingApprovals = pending;
         this.contentService.approvedApprovals = approved;
         this.contentService.rejectedApprovals = rejected;
+        this.syncPendingApprovalsStat();
+        this.loadDashboardRecords();
       },
       error: () => {}
     });
@@ -6225,7 +6286,15 @@ setTimeout(async () => {
   }
 
   submitAddTeam(): void {
-    if (!this.teamForm.name.trim() || !this.teamForm.lead.trim()) return;
+    if (!this.teamForm.name.trim() || !this.teamForm.lead.trim() || !this.teamForm.leadEmail?.trim()) {
+      this.dialogService.toast('Team Name, Team Lead Name, and Team Lead Email are required.', 'warning');
+      return;
+    }
+
+    if (!this.contentService.isValidEmail(this.teamForm.leadEmail.trim())) {
+      this.dialogService.toast('Please provide a valid email address for the Team Lead.', 'warning');
+      return;
+    }
 
     const activeMembersList = [
       this.teamForm.lead.trim(),

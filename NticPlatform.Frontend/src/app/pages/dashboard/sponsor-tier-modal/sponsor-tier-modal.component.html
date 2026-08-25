@@ -1,0 +1,118 @@
+<div class="sponsor-tier-modal-backdrop" *ngIf="tier" (click)="close.emit()">
+  <div class="sponsor-tier-modal-card" [ngClass]="'modal-tier-' + tier.key" (click)="$event.stopPropagation()">
+
+    <!-- Modal Header -->
+    <div class="stm-header">
+      <div class="stm-header-left">
+        <div class="stm-tier-badge" [ngClass]="'stier-badge-' + tier.key">
+          <span class="material-symbols-outlined">{{ tier.metaIcon }}</span>
+          <span>{{ tier.badge }}</span>
+        </div>
+        <div class="stm-title-group">
+          <h3 class="stm-title">{{ tier.title }}</h3>
+          <p class="stm-subtitle">{{ tier.sponsorCount }} Corporate &amp; Resource Partners · Total Allocation: <strong>{{ tier.amountFormatted }}</strong></p>
+        </div>
+      </div>
+      <div class="stm-header-actions">
+        <button class="stm-btn-export" (click)="exportCsv()" title="Export to CSV">
+          <span class="material-symbols-outlined">download</span>
+          <span>Export CSV</span>
+        </button>
+        <button class="stm-close-btn" (click)="close.emit()" title="Close dialog">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Search & Filter Toolbar -->
+    <div class="stm-toolbar">
+      <div class="stm-search-box">
+        <span class="material-symbols-outlined stm-search-ic">search</span>
+        <input type="text"
+               class="stm-search-input"
+               [(ngModel)]="search"
+               placeholder="Search sponsors, items (e.g. water, laptops, books, t-shirts), or schools...">
+        <button *ngIf="search" class="stm-clear-search" (click)="search = ''">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="stm-partner-count-tag">
+        Showing {{ filteredPartners.length }} of {{ tier.partners.length }} Sponsors
+      </div>
+    </div>
+
+    <!-- Partners Detailed Breakdown List -->
+    <div class="stm-body">
+      <div class="stm-partners-grid">
+        <div *ngFor="let partner of filteredPartners; trackBy: trackByPartnerName" class="stm-partner-card">
+          <div class="stm-pcard-header">
+            <div class="stm-pcard-brand">
+              <div class="stm-pcard-icon-box" [ngClass]="'pcard-icon-' + tier.key">
+                <span class="material-symbols-outlined">{{ partner.categoryIcon }}</span>
+              </div>
+              <div>
+                <h4 class="stm-pname">{{ partner.name }}</h4>
+                <span class="stm-ptype-pill">{{ partner.type }}</span>
+              </div>
+            </div>
+            <div class="stm-pcard-value">
+              <span class="stm-pval-label">Committed Value</span>
+              <span class="stm-pval-num">{{ partner.valueFormatted }}</span>
+            </div>
+          </div>
+
+          <div class="stm-pcard-details">
+            <div class="stm-pdetail-row">
+              <span class="stm-pdetail-lbl">
+                <span class="material-symbols-outlined">inventory</span>
+                Allocated Contribution / Items:
+              </span>
+              <span class="stm-pdetail-val highlight">{{ partner.contribution }}</span>
+            </div>
+
+            <div class="stm-pdetail-row" *ngIf="partner.beneficiaries">
+              <span class="stm-pdetail-lbl">
+                <span class="material-symbols-outlined">school</span>
+                Target Beneficiaries:
+              </span>
+              <span class="stm-pdetail-val">{{ partner.beneficiaries }}</span>
+            </div>
+          </div>
+
+          <div class="stm-pcard-footer">
+            <!-- Was an "ESG verified" pill plus a "100% ESG Audited" tag, driven by
+                 an `esgVerified: true` literal on every hardcoded partner. There is
+                 no ESG verification model in this system, so asserting an audit
+                 status was fabrication. Replaced with the real money position. -->
+            <span class="stm-status-pill">
+              <span class="material-symbols-outlined">account_balance</span>
+              {{ partner.status | titlecase }}
+            </span>
+            <span class="stm-esg-tag">
+              <span class="stm-esg-dot"></span>
+              {{ partner.receivedFormatted }} received
+              <ng-container *ngIf="partner.pendingFormatted && partner.pendingFormatted !== 'GH₵ 0'">
+                · {{ partner.pendingFormatted }} awaiting verification
+              </ng-container>
+            </span>
+          </div>
+        </div>
+
+        <div *ngIf="filteredPartners.length === 0" class="stm-empty-search">
+          <span class="material-symbols-outlined">search_off</span>
+          <p>No sponsors found matching "<strong>{{ search }}</strong>" in this tier.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="stm-footer">
+      <div class="stm-footer-info">
+        <span class="material-symbols-outlined">info</span>
+        <span>All corporate commitments &amp; in-kind deliveries are verified by the NTIC Sponsorship Committee.</span>
+      </div>
+      <button class="btn btn-subtle" (click)="close.emit()">Close</button>
+    </div>
+
+  </div>
+</div>

@@ -1775,7 +1775,7 @@ setAuthValue('activeUserEmail', email);
   }
 
   selectContinueRegistration(): void {
-    this.regState = 'continue_select';
+    this.regState = 'otp_verification';
     this.verificationInput = '';
     this.otpCode = '';
     this.otpError = '';
@@ -2259,8 +2259,12 @@ setAuthValue('activeUserEmail', email);
   }
 
   addTeam(): void {
-    if (!this.teamForm.name) {
-      this.showCustomAlert('Please enter team name.', 'Validation Error', 'warning');
+    if (!this.teamForm.name?.trim() || !this.teamForm.leadName?.trim() || !this.teamForm.leadEmail?.trim()) {
+      this.showCustomAlert('Please enter team name, Team Lead full name, and Team Lead email address.', 'Validation Error', 'warning');
+      return;
+    }
+    if (!this.contentService.isValidEmail(this.teamForm.leadEmail.trim())) {
+      this.showCustomAlert('Please provide a valid email address for the Team Lead.', 'Invalid Email', 'warning');
       return;
     }
     const memberPhotoIds: string[] = [];
@@ -2333,8 +2337,12 @@ setAuthValue('activeUserEmail', email);
 
   async registerStudent(): Promise<void> {
     if (this.competitorMode === 'group') {
-      if (!this.teamForm.name || !this.teamForm.leadName) {
-        this.showCustomAlert('Please enter your Group / Team Name and Team Lead full name.', 'Missing Information', 'warning');
+      if (!this.teamForm.name?.trim() || !this.teamForm.leadName?.trim() || !this.teamForm.leadEmail?.trim()) {
+        this.showCustomAlert('Please enter your Group / Team Name, Team Lead full name, and Team Lead email address. All group leads must provide an email.', 'Missing Information', 'warning');
+        return;
+      }
+      if (!this.contentService.isValidEmail(this.teamForm.leadEmail.trim())) {
+        this.showCustomAlert('Please provide a valid email address for the Team Lead.', 'Invalid Email', 'warning');
         return;
       }
       // Validate all provided emails

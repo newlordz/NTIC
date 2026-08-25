@@ -1,0 +1,506 @@
+<div class="ticket-modal-backdrop" *ngIf="request" (click)="close.emit()">
+  <div class="ticket-modal preview-application-modal" (click)="$event.stopPropagation()">
+
+    <!-- Banner Header -->
+    <div class="preview-banner" [class]="'type-' + (request.type === 'School Registration' ? 'school' : (request.type === 'Team Addition' || request.type === 'Team Modification') ? 'team' : request.type === 'Student Registration' ? 'student' : 'instructor')">
+      <div class="preview-banner-row">
+        <div class="preview-banner-icon">
+          <img *ngIf="request.type === 'School Registration' && getLogoUrl(request.details)"
+               [src]="getLogoUrl(request.details)" alt="Logo" class="preview-banner-logo">
+          <span *ngIf="!getLogoUrl(request.details)" class="material-symbols-outlined">
+            {{ request.type === 'School Registration' ? 'account_balance' : request.type === 'Team Modification' ? 'edit_note' : request.type === 'Team Addition' ? 'groups' : request.type === 'Student Registration' ? 'person' : 'school' }}
+          </span>
+        </div>
+        <div class="preview-banner-info">
+          <div class="preview-banner-entity">{{ request.entity }}</div>
+          <div class="preview-banner-meta">
+            <span class="preview-type-chip">{{ request.type }}</span>
+            <span class="preview-banner-contact">
+              <span class="material-symbols-outlined">person</span>
+              {{ request.contact }}
+            </span>
+            <span class="preview-banner-date">
+              <span class="material-symbols-outlined">schedule</span>
+              {{ request.submitted }}
+            </span>
+          </div>
+        </div>
+        <button class="preview-banner-close" (click)="close.emit()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="preview-modal-body">
+
+      <!-- School Registration -->
+      <ng-container *ngIf="request.type === 'School Registration'">
+        <div class="preview-section">
+          <div class="preview-section-header">
+            <span class="material-symbols-outlined preview-section-icon">info</span>
+            <span class="preview-section-title">School Profile</span>
+          </div>
+          <div class="preview-details-grid">
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">badge</span>
+              <div class="detail-content">
+                <span class="detail-label">School Name</span>
+                <span class="detail-value">{{ request.entity }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">pin_drop</span>
+              <div class="detail-content">
+                <span class="detail-label">Region</span>
+                <span class="detail-value">{{ request.details.region }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">qr_code</span>
+              <div class="detail-content">
+                <span class="detail-label">Registry Code</span>
+                <span class="detail-value detail-code">{{ request.details.code }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">phone</span>
+              <div class="detail-content">
+                <span class="detail-label">Phone Number</span>
+                <span class="detail-value">{{ request.details.phone }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">category</span>
+              <div class="detail-content">
+                <span class="detail-label">Subscribed Tracks</span>
+                <span class="detail-value">{{ request.details.tracks }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">group</span>
+              <div class="detail-content">
+                <span class="detail-label">Number of Teams</span>
+                <span class="detail-value">{{ request.details.teamsList?.length || 0 }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">school</span>
+              <div class="detail-content">
+                <span class="detail-label">Students Registered</span>
+                <span class="detail-value">{{ getSchoolStudentCount(request.details) }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">location_on</span>
+              <div class="detail-content">
+                <span class="detail-label">District</span>
+                <span class="detail-value">{{ request.details.district || '--' }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">gps_fixed</span>
+              <div class="detail-content">
+                <span class="detail-label">GPS Address</span>
+                <span class="detail-value">{{ request.details.gps || '--' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Representative Info -->
+        <div class="preview-section">
+          <div class="preview-section-header">
+            <span class="material-symbols-outlined preview-section-icon">contact_phone</span>
+            <span class="preview-section-title">School Representative</span>
+          </div>
+          <div class="preview-details-grid">
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">person</span>
+              <div class="detail-content">
+                <span class="detail-label">Representative Name</span>
+                <span class="detail-value">{{ request.details.repName || '--' }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">mail</span>
+              <div class="detail-content">
+                <span class="detail-label">Representative Email</span>
+                <span class="detail-value">{{ request.details.repEmail || '--' }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">phone</span>
+              <div class="detail-content">
+                <span class="detail-label">Representative Phone</span>
+                <span class="detail-value">{{ request.details.repTel || '--' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Teams List -->
+        <div class="preview-section" *ngIf="request.details.teamsList?.length">
+          <div class="preview-section-header">
+            <span class="material-symbols-outlined preview-section-icon">groups</span>
+            <span class="preview-section-title">Registered Teams</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div *ngFor="let team of request.details.teamsList; let ti = index"
+                 style="padding:12px 16px; background:var(--surface-container-lowest); border:1px solid var(--outline-variant); border-radius:10px; display:flex; align-items:center; gap:14px;">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--primary-container);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span style="font-size:13px;font-weight:700;color:var(--on-primary-container);">T{{ ti + 1 }}</span>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;font-size:14px;color:var(--on-surface);">{{ team.name }}</div>
+                <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">
+                  Track: <strong>{{ team.track || 'Coding' }}</strong>
+                  <span *ngIf="team.leadName"> · Lead: <strong>{{ team.leadName }}</strong></span>
+                </div>
+                <div *ngIf="getTeamMembers(team).length > 0" style="font-size:11px;color:var(--on-surface-variant);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                  Members ({{ getTeamMembers(team).length }}): {{ getTeamMembers(team).join(', ') }}
+                </div>
+              </div>
+              <span class="badge secondary" style="flex-shrink:0;white-space:nowrap;">{{ team.track || 'Coding' }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="preview-section" *ngIf="request.details.docs?.length">
+          <div class="preview-section-header">
+            <span class="material-symbols-outlined preview-section-icon">description</span>
+            <span class="preview-section-title">Submitted Documents</span>
+          </div>
+          <div class="preview-docs-grid">
+            <div class="preview-doc-card" *ngFor="let doc of request.details.docs" (click)="viewDocument(doc, request.entity)" [title]="'Click to View ' + (doc.includes('::') ? doc.split('::')[1] : doc)">
+              <div class="doc-thumb">
+                <span class="material-symbols-outlined">picture_as_pdf</span>
+              </div>
+              <div class="doc-info">
+                <span class="doc-name">{{ doc.includes('::') ? doc.split('::')[1] : doc }}</span>
+                <span class="doc-hint">Click to preview</span>
+              </div>
+              <span class="material-symbols-outlined doc-arrow">open_in_new</span>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Team Addition -->
+      <ng-container *ngIf="request.type === 'Team Addition'">
+        <div class="preview-section">
+          <div class="preview-section-header">
+            <span class="material-symbols-outlined preview-section-icon">info</span>
+            <span class="preview-section-title">Team Details</span>
+          </div>
+          <div class="preview-details-grid">
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">group</span>
+              <div class="detail-content">
+                <span class="detail-label">Team Name</span>
+                <span class="detail-value">{{ request.entity }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">account_balance</span>
+              <div class="detail-content">
+                <span class="detail-label">School / Affiliation</span>
+                <span class="detail-value">{{ request.details.school }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">pin_drop</span>
+              <div class="detail-content">
+                <span class="detail-label">Region</span>
+                <span class="detail-value">{{ request.details.region }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">category</span>
+              <div class="detail-content">
+                <span class="detail-label">Competition Track</span>
+                <span class="detail-value">{{ request.details.track }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card full-width">
+              <span class="material-symbols-outlined detail-icon">lightbulb</span>
+              <div class="detail-content">
+                <span class="detail-label">Project Title / Proposal</span>
+                <span class="detail-value">{{ request.details.project }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">co_present</span>
+              <div class="detail-content">
+                <span class="detail-label">Assigned Coach / Mentor</span>
+                <span class="detail-value">{{ request.details.coach }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="preview-section">
+          <div class="preview-section-header">
+            <span class="material-symbols-outlined preview-section-icon">group</span>
+            <span class="preview-section-title">Team Members</span>
+          </div>
+          <div class="preview-members-list">
+            <div class="preview-member-chip" *ngFor="let m of request.details.members; let i = index">
+              <div class="member-avatar">{{ i + 1 }}</div>
+              <span class="member-name">{{ m }}</span>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Team Modification -->
+      <ng-container *ngIf="request.type === 'Team Modification'">
+        <div class="preview-section">
+          <div class="preview-section-header">
+            <span class="material-symbols-outlined preview-section-icon">edit_note</span>
+            <span class="preview-section-title">Requested Squad Modifications</span>
+          </div>
+          <div class="preview-details-grid">
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">badge</span>
+              <div class="detail-content">
+                <span class="detail-label">Original Squad Name</span>
+                <span class="detail-value" style="text-decoration:line-through;color:var(--error);">{{ request.details.originalName || request.entity }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">verified</span>
+              <div class="detail-content">
+                <span class="detail-label">Requested New Name</span>
+                <span class="detail-value" style="font-weight:700;color:var(--primary);">{{ request.details.newName || request.entity }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">account_balance</span>
+              <div class="detail-content">
+                <span class="detail-label">Institution</span>
+                <span class="detail-value">{{ request.details.school || request.details.institution }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">category</span>
+              <div class="detail-content">
+                <span class="detail-label">Competition Track</span>
+                <span class="detail-value">{{ request.details.track }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card full-width" *ngIf="request.details.motto">
+              <span class="material-symbols-outlined detail-icon">tips_and_updates</span>
+              <div class="detail-content">
+                <span class="detail-label">Project Motto / Innovation Theme</span>
+                <span class="detail-value">{{ request.details.motto }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card" *ngIf="request.details.mentor">
+              <span class="material-symbols-outlined detail-icon">school</span>
+              <div class="detail-content">
+                <span class="detail-label">Assigned Mentor</span>
+                <span class="detail-value">{{ request.details.mentor }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="preview-section" *ngIf="request.details.members?.length">
+          <div class="preview-section-header">
+            <span class="material-symbols-outlined preview-section-icon">group</span>
+            <span class="preview-section-title">Updated Squad Roster ({{ request.details.members.length }} Students)</span>
+          </div>
+          <div class="preview-members-list">
+            <div class="preview-member-chip" *ngFor="let m of request.details.members; let i = index">
+              <div class="member-avatar">{{ i + 1 }}</div>
+              <span class="member-name">{{ m }} {{ i === 0 ? '(Captain)' : '' }}</span>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Instructor Access -->
+      <ng-container *ngIf="request.type === 'Instructor Access'">
+        <div class="preview-section">
+          <div class="preview-section-header">
+            <span class="material-symbols-outlined preview-section-icon">info</span>
+            <span class="preview-section-title">Instructor Profile</span>
+          </div>
+          <div class="preview-details-grid">
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">badge</span>
+              <div class="detail-content">
+                <span class="detail-label">Full Name / Title</span>
+                <span class="detail-value">{{ request.entity }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">domain</span>
+              <div class="detail-content">
+                <span class="detail-label">Institutional Affiliation</span>
+                <span class="detail-value">{{ request.details.institution }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">mail</span>
+              <div class="detail-content">
+                <span class="detail-label">Contact Email</span>
+                <span class="detail-value">{{ request.contact }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">verified</span>
+              <div class="detail-content">
+                <span class="detail-label">Certified Credentials</span>
+                <span class="detail-value">{{ request.details.credentials }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">tune</span>
+              <div class="detail-content">
+                <span class="detail-label">Track Specialization</span>
+                <span class="detail-value">{{ request.details.specialization }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">history_edu</span>
+              <div class="detail-content">
+                <span class="detail-label">Mentorship Experience</span>
+                <span class="detail-value">{{ request.details.experience }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="preview-section">
+          <div class="preview-section-header">
+            <span class="material-symbols-outlined preview-section-icon">menu_book</span>
+            <span class="preview-section-title">Assigned Curriculums</span>
+          </div>
+          <div class="preview-members-list">
+            <div class="preview-member-chip" *ngFor="let c of request.details.courses">
+              <div class="member-avatar curriculum">
+                <span class="material-symbols-outlined">book</span>
+              </div>
+              <span class="member-name">{{ c }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="preview-section" *ngIf="request.details.docs?.length">
+          <div class="preview-section-header">
+            <span class="material-symbols-outlined preview-section-icon">description</span>
+            <span class="preview-section-title">Uploaded Documents</span>
+          </div>
+          <div class="preview-docs-grid">
+            <div class="preview-doc-card" *ngFor="let doc of request.details.docs" (click)="viewDocument(doc, request.entity)" [title]="'Click to View ' + (doc.includes('::') ? doc.split('::')[1] : doc)">
+              <div class="doc-thumb">
+                <span class="material-symbols-outlined">picture_as_pdf</span>
+              </div>
+              <div class="doc-info">
+                <span class="doc-name">{{ doc.includes('::') ? doc.split('::')[1] : doc }}</span>
+                <span class="doc-hint">Click to preview</span>
+              </div>
+              <span class="material-symbols-outlined doc-arrow">open_in_new</span>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Student Registration -->
+      <ng-container *ngIf="request.type === 'Student Registration'">
+        <div class="preview-section">
+          <div class="preview-section-header">
+            <span class="material-symbols-outlined preview-section-icon">person</span>
+            <span class="preview-section-title">Student Profile</span>
+          </div>
+
+          <!-- Profile Photo -->
+          <div class="student-profile-photo-wrap" *ngIf="getLogoUrl(request.details)">
+            <img [src]="getLogoUrl(request.details)" alt="Student photo" class="student-profile-photo">
+          </div>
+
+          <div class="preview-details-grid">
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">badge</span>
+              <div class="detail-content">
+                <span class="detail-label">Full Name</span>
+                <span class="detail-value">{{ request.entity }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">mail</span>
+              <div class="detail-content">
+                <span class="detail-label">Contact Email</span>
+                <span class="detail-value">{{ request.contact }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">tune</span>
+              <div class="detail-content">
+                <span class="detail-label">Competition Track</span>
+                <span class="detail-value">{{ request.details.track }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">pin_drop</span>
+              <div class="detail-content">
+                <span class="detail-label">Region</span>
+                <span class="detail-value">{{ request.details.region }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">account_balance</span>
+              <div class="detail-content">
+                <span class="detail-label">School / Institution</span>
+                <span class="detail-value">{{ request.details.school || 'Independent Competitor' }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">calendar_today</span>
+              <div class="detail-content">
+                <span class="detail-label">Date of Birth</span>
+                <span class="detail-value">{{ request.details.dob || '--' }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">wc</span>
+              <div class="detail-content">
+                <span class="detail-label">Gender</span>
+                <span class="detail-value">{{ request.details.gender || '--' }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">school</span>
+              <div class="detail-content">
+                <span class="detail-label">Class</span>
+                <span class="detail-value">{{ request.details.class || '--' }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card">
+              <span class="material-symbols-outlined detail-icon">family_restroom</span>
+              <div class="detail-content">
+                <span class="detail-label">Guardian</span>
+                <span class="detail-value">{{ request.details.guardianName || '--' }} {{ request.details.guardianPhone ? '* ' + request.details.guardianPhone : '' }}</span>
+              </div>
+            </div>
+            <div class="preview-detail-card" *ngIf="request.details.code">
+              <span class="material-symbols-outlined detail-icon">qr_code</span>
+              <div class="detail-content">
+                <span class="detail-label">Registry Code</span>
+                <span class="detail-value detail-code">{{ request.details.code }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+    </div>
+
+    <div class="preview-modal-footer">
+      <button class="btn btn-subtle" (click)="close.emit()">Close</button>
+      <button class="btn btn-primary btn-reject" style="background:var(--error);border-color:var(--error);" (click)="reject.emit()">
+        <span class="material-symbols-outlined">cancel</span>Reject
+      </button>
+      <button class="btn btn-primary btn-approve" (click)="approve.emit(request); close.emit()">
+        <span class="material-symbols-outlined">check_circle</span>Approve Application
+      </button>
+    </div>
+  </div>
+</div>

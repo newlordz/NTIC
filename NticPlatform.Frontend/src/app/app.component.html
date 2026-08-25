@@ -130,19 +130,27 @@
                 <span class="material-symbols-outlined" style="font-size: 18px; color: var(--primary);">notifications</span>
                 <span>Notifications</span>
                 <span class="unread-pill" *ngIf="activeUnreadCount > 0">{{ activeUnreadCount }} new</span>
+                <span class="unread-pill" style="background: rgba(34, 197, 94, 0.12); color: #16a34a;" *ngIf="activeUnreadCount === 0">All caught up</span>
               </div>
-              <button class="mark-read-btn" *ngIf="activeUnreadCount > 0" (click)="markAllNotificationsRead($event)">Mark all read</button>
+              <button class="mark-read-btn" *ngIf="activeUnreadCount > 0" (click)="markAllNotificationsRead($event)" title="Mark all notifications as read">Mark all read</button>
             </div>
             <div class="dropdown-list">
-              <div *ngFor="let item of liveNotifications" class="dropdown-notification-item" [class.unread]="item.unread">
+              <div *ngFor="let item of notifications; trackBy: trackByNotification" 
+                   class="dropdown-notification-item" 
+                   [class.unread]="item.unread"
+                   (click)="markNotificationAsRead(item, $event)"
+                   [title]="item.unread ? 'Click to view and mark as read' : 'View notification'">
                 <div class="notif-icon-wrap">
                   <span class="material-symbols-outlined">{{ item.icon }}</span>
                 </div>
                 <div class="notif-body">
-                  <div class="notif-category">{{ item.category }} &middot; {{ item.time | timeAgo }}</div>
+                  <div class="notif-category">{{ item.category }} &middot; {{ item.time }}</div>
                   <div class="notif-title">{{ item.title }}</div>
                 </div>
-                <div class="notif-dot" *ngIf="item.unread"></div>
+                <button class="notif-check-btn" *ngIf="item.unread" (click)="dismissNotification(item, $event)" title="Mark as read">
+                  <span class="material-symbols-outlined">done</span>
+                </button>
+                <div class="notif-dot" *ngIf="item.unread" title="Unread"></div>
               </div>
             </div>
           </div>

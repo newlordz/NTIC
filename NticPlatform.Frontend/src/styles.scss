@@ -1115,6 +1115,7 @@ body.ac-expanded .main-content {
     .avatar-initials {
       background: linear-gradient(135deg, #1e40af, #3b82f6);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
       font-weight: 800;
     }
@@ -1276,6 +1277,33 @@ body.ac-expanded .main-content {
         background: var(--success);
         flex-shrink: 0;
         margin-top: 4px;
+      }
+
+      .notif-check-btn {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: var(--on-surface-variant);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        opacity: 0.6;
+        transition: all 0.15s ease;
+        flex-shrink: 0;
+        margin-top: 2px;
+
+        .material-symbols-outlined {
+          font-size: 15px;
+        }
+
+        &:hover {
+          background: rgba(var(--primary-rgb), 0.14);
+          color: var(--primary);
+          opacity: 1;
+        }
       }
     }
 

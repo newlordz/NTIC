@@ -116,15 +116,15 @@
     </button>
 
     <div class="gateway-header">
-      <div class="landing-brand-logo-wrap">
+      <div class="landing-brand-logo-wrap" (click)="goBackToGatewayFromTracker()" style="cursor: pointer;" title="Back to Entry Gateway">
         <div class="brand-crest">
-          <div class="crest-shield" style="background: linear-gradient(135deg, #065f46, #10b981);">
-            <span class="material-symbols-outlined shield-icon">manage_search</span>
+          <div class="crest-shield">
+            <span class="material-symbols-outlined shield-icon">local_library</span>
           </div>
         </div>
         <div class="brand-text">
           <span class="brand-name">NTIC</span>
-          <span class="brand-sub">APPLICATION TRACKER</span>
+          <span class="brand-sub">GHANA NATIONAL COMPETITION</span>
         </div>
       </div>
       <h2 style="margin-top: 16px;">Track Your Application</h2>
@@ -328,6 +328,20 @@
       <span class="btn-text">Back to Gateway</span>
     </button>
 
+    <div class="otp-brand-header">
+      <div class="landing-brand-logo-wrap" (click)="goBackToGateway()" style="cursor: pointer;" title="Back to Entry Gateway">
+        <div class="brand-crest">
+          <div class="crest-shield">
+            <span class="material-symbols-outlined shield-icon">local_library</span>
+          </div>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">NTIC</span>
+          <span class="brand-sub">GHANA NATIONAL COMPETITION</span>
+        </div>
+      </div>
+    </div>
+
     <div class="otp-card">
       <div class="otp-card-header">
         <div class="shield-crest">
@@ -385,6 +399,20 @@
       <span class="btn-text">Change contact details</span>
     </button>
 
+    <div class="otp-brand-header">
+      <div class="landing-brand-logo-wrap" (click)="goBackToGateway()" style="cursor: pointer;" title="Back to Entry Gateway">
+        <div class="brand-crest">
+          <div class="crest-shield">
+            <span class="material-symbols-outlined shield-icon">local_library</span>
+          </div>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">NTIC</span>
+          <span class="brand-sub">GHANA NATIONAL COMPETITION</span>
+        </div>
+      </div>
+    </div>
+
     <div class="otp-card">
       <div class="otp-card-header">
         <div class="lock-crest">
@@ -424,9 +452,99 @@
   </div>
 
   <!-- =========================================================
+       RESUME SELECTION SCREEN
+       ========================================================= -->
+  <div *ngIf="regState === 'continue_select'" class="otp-screen">
+    <div class="otp-brand-header">
+      <div class="landing-brand-logo-wrap">
+        <div class="brand-crest">
+          <div class="crest-shield">
+            <span class="material-symbols-outlined shield-icon">local_library</span>
+          </div>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">NTIC</span>
+          <span class="brand-sub">GHANA NATIONAL COMPETITION</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="otp-challenge-card">
+      <p>We've found a saved draft application. A 6-digit verification code has been sent to your registered email or mobile number.</p>
+      <p>Enter the code below to resume your application.</p>
+
+      <div class="otp-input-wrapper">
+        <input type="text" otpInput maxlength="6" placeholder="Enter verification code" [(ngModel)]="otpCode" otpLength="6" (otpCodeEntered)="verifyOTP()" />
+      </div>
+
+      <div class="timer-row">
+        <span *ngIf="resendTimer > 0">Resend code in <strong>{{ resendTimer }}s</strong></span>
+        <button class="resend-btn" *ngIf="resendTimer === 0" (click)="resendOTPCode()">Resend Verification Code</button>
+      </div>
+
+      <button class="btn btn-secondary btn-full" (click)="verifyOTP()" [disabled]="otpCode.length !== 6">
+        <span>Verify & Resume</span>
+        <span class="material-symbols-outlined">task_alt</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       VERIFICATION IN PROGRESS / SUCCESS
+       ========================================================= -->
+  <div *ngIf="regState === 'otp_verification'" class="otp-screen">
+    <div class="otp-brand-header">
+      <div class="landing-brand-logo-wrap">
+        <div class="brand-crest">
+          <div class="crest-shield">
+            <span class="material-symbols-outlined shield-icon">local_library</span>
+          </div>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">NTIC</span>
+          <span class="brand-sub">GHANA NATIONAL COMPETITION</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="otp-challenge-card">
+      <p>A verification code has been sent to your registered contact.</p>
+      <p>Enter the 6-digit code to resume your draft application.</p>
+
+      <div class="otp-input-wrapper">
+        <input type="text" otpInput maxlength="6" placeholder="Enter verification code" [(ngModel)]="otpCode" otpLength="6" (otpCodeEntered)="verifyOTP()" />
+      </div>
+
+      <div class="timer-row">
+        <span *ngIf="resendTimer > 0">Resend code in <strong>{{ resendTimer }}s</strong></span>
+        <button class="resend-btn" *ngIf="resendTimer === 0" (click)="resendOTPCode()">Resend Verification Code</button>
+      </div>
+
+      <button class="btn btn-secondary btn-full" (click)="verifyOTP()" [disabled]="otpCode.length !== 6">
+        <span>Verify & Resume</span>
+        <span class="material-symbols-outlined">task_alt</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- =========================================================
        SUCCESS LOADER SCREEN
        ========================================================= -->
   <div *ngIf="regState === 'resume_success'" class="otp-screen">
+    <div class="otp-brand-header">
+      <div class="landing-brand-logo-wrap">
+        <div class="brand-crest">
+          <div class="crest-shield">
+            <span class="material-symbols-outlined shield-icon">local_library</span>
+          </div>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">NTIC</span>
+          <span class="brand-sub">GHANA NATIONAL COMPETITION</span>
+        </div>
+      </div>
+    </div>
+
     <div class="success-card">
       <div class="shield-scan-wrap">
         <div class="scanning-shield">
@@ -447,7 +565,7 @@
        ========================================================= -->
   <div *ngIf="regState === 'new'" class="registration-form-container">
     <div class="page-header">
-      <div>
+      <div class="header-left">
         <h1 class="page-title-main" style="display:flex; align-items:center; gap:8px;">
           <button class="btn btn-ghost btn-sm" (click)="goBackToGateway()" style="padding: 4px; border-radius: 50%; color:var(--on-surface-variant); display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;"><span class="material-symbols-outlined" style="margin:0;">arrow_back</span></button>
           {{ activeTab === 'school' ? 'Institution' : activeTab === 'instructor' ? 'Instructor' : activeTab === 'student' ? 'Group/Individual' : activeTab === 'open' ? 'Open Registration' : activeTab === 'judge' ? 'Judge' : 'Sponsor' }} Registration
@@ -457,7 +575,22 @@
         <p class="page-subtitle" *ngIf="!editingApprovalId">{{ activeTab === 'student' ? 'Register onto the national championship platform as an independent competitor or competition squad' : 'Register onto the national championship platform as a chosen ' + (activeTab === 'school' ? 'institution representative' : activeTab) }}</p>
         <p class="page-subtitle" *ngIf="editingApprovalId">You are correcting details on a pending application. Changes will be synced to your submitted application, which remains under review.</p>
       </div>
-      <div style="display:flex; gap:10px; align-items:center;">
+
+      <div class="header-center">
+        <div class="landing-brand-logo-wrap" (click)="goBackToGateway()" style="cursor: pointer;" title="Back to Entry Gateway">
+          <div class="brand-crest">
+            <div class="crest-shield">
+              <span class="material-symbols-outlined shield-icon">local_library</span>
+            </div>
+          </div>
+          <div class="brand-text">
+            <span class="brand-name">NTIC</span>
+            <span class="brand-sub">GHANA NATIONAL COMPETITION</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-right" style="display:flex; gap:10px; align-items:center;">
         <button type="button" class="btn btn-subtle" (click)="openLoginModal($event)" style="display: flex; align-items: center; gap: 6px;">
           <span class="material-symbols-outlined" style="font-size: 18px;">login</span>
           <span>Login</span>
@@ -770,7 +903,7 @@
                     <input class="form-control" type="text" placeholder="Full Name (Lead)" [(ngModel)]="teamForm.leadName" name="teamLeadName">
                   </div>
                   <div style="flex:1;min-width:0;">
-                    <input class="form-control" type="email" placeholder="Email (optional)" [(ngModel)]="teamForm.leadEmail" name="teamLeadEmail" (ngModelChange)="validateEmailLive('squadLeadEmail', $event)">
+                    <input class="form-control" type="email" placeholder="Team Lead Email *" [(ngModel)]="teamForm.leadEmail" name="teamLeadEmail" required (ngModelChange)="validateEmailLive('squadLeadEmail', $event)">
                     <div class="field-validation-msg" *ngIf="fieldValidation['squadLeadEmail'] && fieldValidation['squadLeadEmail'].status !== 'idle' && fieldValidation['squadLeadEmail'].status !== 'valid' && fieldValidation['squadLeadEmail'].message" [ngClass]="fieldValidation['squadLeadEmail'].status">
                       <span class="material-symbols-outlined">{{ fieldValidation['squadLeadEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadLeadEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
                       {{ fieldValidation['squadLeadEmail'].message }}
@@ -1018,9 +1151,9 @@
                     <span class="material-symbols-outlined" (click)="removeFile('accredDocs', i); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);margin-left:auto;">close</span>
                   </li>
                 </ul>
-                <span>PDF, DOCX (Max 10MB)</span>
+                <span>PDF, Word, Images &amp; Documents (Max 10MB each)</span>
               </div>
-              <input #accredInput type="file" multiple (change)="onFileSelected($event, 'accredDocs')" accept=".pdf,.docx" style="display:none">
+              <input #accredInput type="file" multiple (change)="onFileSelected($event, 'accredDocs')" accept=".pdf,.doc,.docx,.odt,.rtf,.txt,.png,.jpg,.jpeg,.webp,.zip,.rar,.xls,.xlsx,.ppt,.pptx" style="display:none">
               <p *ngIf="missingDocsError && activeTab === 'school'" style="color:var(--error);font-size:12px;margin:6px 0 0;">{{ missingDocsError }}</p>
             </div>
             <div class="form-actions">
@@ -1403,9 +1536,9 @@
                   <span class="material-symbols-outlined" (click)="removeFile('instructorDocs', i); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);margin-left:auto;">close</span>
                 </li>
               </ul>
-              <span>PDF (Max 10MB each)</span>
+              <span>PDF, Word, Images &amp; Documents (Max 10MB each)</span>
             </div>
-            <input #instructorDocsInput type="file" multiple (change)="onFileSelected($event, 'instructorDocs')" accept=".pdf" style="display:none">
+            <input #instructorDocsInput type="file" multiple (change)="onFileSelected($event, 'instructorDocs')" accept=".pdf,.doc,.docx,.odt,.rtf,.txt,.png,.jpg,.jpeg,.webp,.zip,.rar,.xls,.xlsx,.ppt,.pptx" style="display:none">
             <p *ngIf="missingDocsError && activeTab === 'instructor'" style="color:var(--error);font-size:12px;margin:6px 0 0;">{{ missingDocsError }}</p>
           </div>
 
@@ -1737,7 +1870,7 @@
 
             <div style="margin: 20px 0 14px; border-bottom: 1px solid var(--outline-variant); padding-bottom: 8px;">
               <h4 style="font-size: 13px; font-weight: 700; color: var(--on-surface); margin: 0;">Squad Roster (3 to 5 Competitors)</h4>
-              <p style="font-size: 11px; color: var(--on-surface-variant); margin: 2px 0 0;">Enter each competitor's name (email addresses are optional).</p>
+              <p style="font-size: 11px; color: var(--on-surface-variant); margin: 2px 0 0;">Enter each competitor's name. Team Lead email is mandatory for credentials; other member emails are optional.</p>
             </div>
 
             <div class="form-group" style="margin-bottom: 16px;">
@@ -1747,7 +1880,7 @@
                   <input class="form-control" type="text" placeholder="Team Lead Full Name" [(ngModel)]="teamForm.leadName" name="squadLeadName">
                 </div>
                 <div style="flex:1;min-width:0;">
-                  <input class="form-control" type="email" placeholder="Team Lead Email (Optional)" [(ngModel)]="teamForm.leadEmail" name="squadLeadEmail" (ngModelChange)="validateEmailLive('squadLeadEmail', $event)">
+                  <input class="form-control" type="email" placeholder="Team Lead Email *" [(ngModel)]="teamForm.leadEmail" name="squadLeadEmail" required (ngModelChange)="validateEmailLive('squadLeadEmail', $event)">
                   <div class="field-validation-msg" *ngIf="fieldValidation['squadLeadEmail'] && fieldValidation['squadLeadEmail'].status !== 'idle' && fieldValidation['squadLeadEmail'].status !== 'valid' && fieldValidation['squadLeadEmail'].message" [ngClass]="fieldValidation['squadLeadEmail'].status">
                     <span class="material-symbols-outlined">{{ fieldValidation['squadLeadEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['squadLeadEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
                     {{ fieldValidation['squadLeadEmail'].message }}
@@ -2160,9 +2293,9 @@
                       <span class="material-symbols-outlined">delete</span> Remove
                     </button>
                   </div>
-                  <small>PDF, DOC, PNG (Max 5MB)</small>
+                  <small>PDF, Word, Images &amp; Documents (Max 10MB each)</small>
                 </div>
-                <input #openRegDocInput type="file" (change)="onOpenRegDocSelected($event)" accept=".pdf,.doc,.docx,.png,.jpg" style="display:none">
+                <input #openRegDocInput type="file" (change)="onOpenRegDocSelected($event)" accept=".pdf,.doc,.docx,.odt,.rtf,.txt,.png,.jpg,.jpeg,.webp,.zip,.rar,.xls,.xlsx,.ppt,.pptx" style="display:none">
               </div>
             </div>
           </div>

@@ -253,6 +253,7 @@ export class AppComponent implements OnInit, OnDestroy {
     // PWA can stay on a stale bundle indefinitely.
     this.appUpdate.init();
     this.loadUserProfile();
+    this.loadReadNotifications();
     // Tell the user when a save did not reach the server. These writes go through
     // POST /api/bulk-sync, which is admin-only, so an instructor's course or a
     // sponsor's payment would 403 and survive only in this browser -- previously
@@ -717,34 +718,93 @@ export class AppComponent implements OnInit, OnDestroy {
   showAppsDropdown = false;
   showProfileDropdown = false;
 
-  notificationsList = [
-    { id: 1, title: 'New School Admin registered: Prempeh College', time: new Date().toISOString(), icon: 'school', unread: true, category: 'Registration' },
-    { id: 2, title: 'Analytics engine synced 1,248 student records', time: new Date(Date.now() - 300000).toISOString(), icon: 'sync', unread: true, category: 'System' },
-    { id: 3, title: 'Submission graded: Coding Challenge #4', time: new Date(Date.now() - 3600000).toISOString(), icon: 'task_alt', unread: true, category: 'Judging' },
-    { id: 4, title: 'LMS backup snapshot created successfully', time: new Date(Date.now() - 7200000).toISOString(), icon: 'cloud_done', unread: false, category: 'System' }
-  ];
+  readNotificationIds = new Set<string>();
+  notifications: any[] = [];
+  activeUnreadCount = 0;
 
-  get liveNotifications(): any[] {
-    const list = [...this.notificationsList];
-    if (this.contentService && this.contentService.pendingApprovals && this.contentService.pendingApprovals.length > 0) {
-      list.unshift({
-        id: 999,
-        title: `${this.contentService.pendingApprovals.length} pending registration approvals awaiting action`,
-        time: 'Live Action Required',
-        icon: 'verified_user',
-        unread: true,
-        category: 'Pending Review'
-      });
-    }
-    return list;
+  private loadReadNotifications(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = localStorage.getItem('ntic_read_notifications');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          this.readNotificationIds = new Set(parsed);
+        }
+      }
+    } catch (_) {}
+    this.recalculateNotifications();
   }
 
-  get activeUnreadCount(): number {
-    return this.liveNotifications.filter(n => n.unread).length;
+  private saveReadNotificationIds(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('ntic_read_notifications', JSON.stringify(Array.from(this.readNotificationIds)));
+    } catch (_) {}
+  }
+
+  readonly baseNotifications = [
+    { id: 'notif-1', title: 'New School Admin registered: Prempeh College', time: '1 hour ago', icon: 'school', category: 'Registration', route: '/dashboard', queryParams: { tab: 'schools' } },
+    { id: 'notif-2', title: 'Analytics engine synced 1,248 student records', time: '2 hours ago', icon: 'sync', category: 'System', route: '/reporting' },
+    { id: 'notif-3', title: 'Submission graded: Coding Challenge #4', time: '4 hours ago', icon: 'task_alt', category: 'Judging', route: '/judge' },
+    { id: 'notif-4', title: 'LMS backup snapshot created successfully', time: '8 hours ago', icon: 'cloud_done', category: 'System', route: '/lms' }
+  ];
+
+  recalculateNotifications(): void {
+    const list: any[] = [];
+
+    // Real dynamic pending registration approvals
+    if (this.contentService && this.contentService.pendingApprovals && this.contentService.pendingApprovals.length > 0) {
+      const count = this.contentService.pendingApprovals.length;
+      const approvalId = `pending-approvals-${count}`;
+      list.push({
+        id: approvalId,
+        title: `${count} pending registration ${count === 1 ? 'approval' : 'approvals'} awaiting review`,
+        time: 'Action Required',
+        icon: 'verified_user',
+        category: 'Pending Review',
+        unread: !this.readNotificationIds.has(approvalId),
+        route: '/dashboard',
+        queryParams: { tab: 'approvals' }
+      });
+    }
+
+    // Recent audit events
+    if (this.contentService && this.contentService.auditLogs && this.contentService.auditLogs.length > 0) {
+      const recentLogs = this.contentService.auditLogs.slice(0, 2);
+      for (const log of recentLogs) {
+        const logId = `audit-${log.id || log.time || log.action}`;
+        list.push({
+          id: logId,
+          title: log.action || 'System activity logged',
+          time: log.time ? 'Recent' : 'Today',
+          icon: log.type === 'error' ? 'error' : log.type === 'warn' ? 'warning' : 'receipt_long',
+          category: 'Audit Log',
+          unread: !this.readNotificationIds.has(logId),
+          route: '/dashboard'
+        });
+      }
+    }
+
+    // Base system notifications
+    for (const item of this.baseNotifications) {
+      list.push({
+        ...item,
+        unread: !this.readNotificationIds.has(item.id)
+      });
+    }
+
+    this.notifications = list;
+    this.activeUnreadCount = this.notifications.filter(n => n.unread).length;
+  }
+
+  trackByNotification(_index: number, item: any): string {
+    return item ? String(item.id) : String(_index);
   }
 
   toggleNotifications(event: MouseEvent): void {
     event.stopPropagation();
+    this.recalculateNotifications();
     this.showNotificationsDropdown = !this.showNotificationsDropdown;
     this.showAppsDropdown = false;
     this.showProfileDropdown = false;
@@ -764,9 +824,40 @@ export class AppComponent implements OnInit, OnDestroy {
     this.showAppsDropdown = false;
   }
 
+  markNotificationAsRead(item: any, event?: MouseEvent): void {
+    if (event) event.stopPropagation();
+    if (item && item.id) {
+      item.unread = false;
+      this.readNotificationIds.add(item.id.toString());
+      this.saveReadNotificationIds();
+      this.activeUnreadCount = this.notifications.filter(n => n.unread).length;
+    }
+    if (item?.route) {
+      this.showNotificationsDropdown = false;
+      this.router.navigate([item.route], { queryParams: item.queryParams || {} });
+    }
+  }
+
+  dismissNotification(item: any, event: MouseEvent): void {
+    event.stopPropagation();
+    if (item && item.id) {
+      item.unread = false;
+      this.readNotificationIds.add(item.id.toString());
+      this.saveReadNotificationIds();
+      this.activeUnreadCount = this.notifications.filter(n => n.unread).length;
+    }
+  }
+
   markAllNotificationsRead(event?: MouseEvent): void {
     if (event) event.stopPropagation();
-    this.notificationsList.forEach(n => n.unread = false);
+    for (const n of this.notifications) {
+      if (n && n.id) {
+        n.unread = false;
+        this.readNotificationIds.add(n.id.toString());
+      }
+    }
+    this.saveReadNotificationIds();
+    this.activeUnreadCount = 0;
   }
 
   @HostListener('document:click')
@@ -776,3 +867,4 @@ export class AppComponent implements OnInit, OnDestroy {
     this.showProfileDropdown = false;
   }
 }
+

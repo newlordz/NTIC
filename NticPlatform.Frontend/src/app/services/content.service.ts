@@ -917,7 +917,7 @@ private readonly defaultTeams: Team[] = [];
 
     this.apiService.getApprovals().subscribe({
       next: (backendApprovals: any[]) => {
-        if (backendApprovals && backendApprovals.length > 0) {
+        if (backendApprovals) {
           const pending: any[] = [];
           const approved: any[] = [];
           const rejected: any[] = [];
@@ -932,18 +932,12 @@ private readonly defaultTeams: Team[] = [];
             else if (a.status === 'approved') approved.push(mapped);
             else if (a.status === 'rejected') rejected.push(mapped);
           });
-          if (pending.length > 0) {
-            this.pendingApprovals = pending;
-            this.saveState('pendingApprovals', pending);
-          }
-          if (approved.length > 0) {
-            this.approvedApprovals = approved;
-            this.saveState('approvedApprovals', approved);
-          }
-          if (rejected.length > 0) {
-            this.rejectedApprovals = rejected;
-            this.saveState('rejectedApprovals', rejected);
-          }
+          this.pendingApprovals = pending;
+          this.saveState('pendingApprovals', pending);
+          this.approvedApprovals = approved;
+          this.saveState('approvedApprovals', approved);
+          this.rejectedApprovals = rejected;
+          this.saveState('rejectedApprovals', rejected);
         }
       },
       error: () => {}
@@ -1049,7 +1043,7 @@ private readonly defaultTeams: Team[] = [];
       case 'approvals':
         this.apiService.getApprovals().subscribe({
           next: (backendApprovals: any[]) => {
-            if (!backendApprovals || backendApprovals.length === 0) return;
+            if (!backendApprovals) return;
             const pending: any[] = [];
             const approved: any[] = [];
             const rejected: any[] = [];
@@ -1064,18 +1058,12 @@ private readonly defaultTeams: Team[] = [];
               else if (a.status === 'approved') approved.push(mapped);
               else if (a.status === 'rejected') rejected.push(mapped);
             });
-            if (pending.length > 0) {
-              this.pendingApprovals = pending;
-              this.saveState('pendingApprovals', pending);
-            }
-            if (approved.length > 0) {
-              this.approvedApprovals = approved;
-              this.saveState('approvedApprovals', approved);
-            }
-            if (rejected.length > 0) {
-              this.rejectedApprovals = rejected;
-              this.saveState('rejectedApprovals', rejected);
-            }
+            this.pendingApprovals = pending;
+            this.saveState('pendingApprovals', pending);
+            this.approvedApprovals = approved;
+            this.saveState('approvedApprovals', approved);
+            this.rejectedApprovals = rejected;
+            this.saveState('rejectedApprovals', rejected);
           },
           error: () => {}
         });
@@ -1241,9 +1229,19 @@ private readonly defaultTeams: Team[] = [];
         status: b.status || 'In Competition',
         competitionId: b.competition_id ?? null,
         schoolName: b.school_name || '',
+        school_name: b.school_name || '',
         rosterList: (Array.isArray(b.rosterList) && b.rosterList.length > 0) ? b.rosterList : (existing?.rosterList || undefined),
         mentor: b.mentor || existing?.mentor || undefined,
-        motto: b.motto || existing?.motto || undefined
+        motto: b.motto || existing?.motto || undefined,
+        // The mentor allocation portal reads these, but they were dropped on
+        // every merge, so a Refresh wiped mentor assignments from the view and
+        // every team appeared as "No Mentor".
+        mentorId: b.mentorId ?? existing?.mentorId ?? null,
+        mentor_id: b.mentorId ?? existing?.mentor_id ?? null,
+        mentorStatus: b.mentorStatus ?? existing?.mentorStatus ?? 'none',
+        mentor_status: b.mentorStatus ?? existing?.mentor_status ?? 'none',
+        isSolo: b.isSolo ?? existing?.isSolo ?? false,
+        is_solo: b.isSolo ?? existing?.is_solo ?? false
       };
     });
 

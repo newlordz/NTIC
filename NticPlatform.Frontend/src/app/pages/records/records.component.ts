@@ -240,7 +240,15 @@ export class RecordsComponent implements OnInit {
           const fileName = sepIdx > -1 ? doc.slice(sepIdx + 2) : doc;
           return {
             name: fileName,
-            type: fileName.endsWith('.pdf') ? 'application/pdf' : fileName.match(/\.(png|jpg|jpeg)$/i) ? 'image/' + fileName.split('.').pop()!.toLowerCase() : 'application/octet-stream',
+            type: fileName.endsWith('.pdf')
+              ? 'application/pdf'
+              : fileName.match(/\.(png|jpg|jpeg|webp|gif|svg)$/i)
+              ? 'image/' + fileName.split('.').pop()!.toLowerCase()
+              : fileName.match(/\.(doc|docx)$/i)
+              ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+              : fileName.match(/\.(zip|rar|7z|tar|gz)$/i)
+              ? 'application/zip'
+              : 'application/octet-stream',
             size: 0,
             url: '#',
             fileId: fileId,
