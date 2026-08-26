@@ -215,29 +215,7 @@ export class RecordsComponent implements OnInit {
     this.contentService.refreshBackendData();
   }
 
-<<<<<<< Updated upstream
-=======
-  getFileIcon(file: RecordFile): string {
-    if (!file) return 'description';
-    const name = (file.name || '').toLowerCase();
-    const type = (file.type || '').toLowerCase();
-    if (name.endsWith('.pdf') || type.includes('pdf')) return 'picture_as_pdf';
-    if (type.startsWith('image/') || name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.webp') || name.endsWith('.svg')) return 'image';
-    if (name.endsWith('.zip') || name.endsWith('.rar') || name.endsWith('.7z') || name.endsWith('.tar') || name.endsWith('.gz')) return 'folder_zip';
-    if (name.endsWith('.doc') || name.endsWith('.docx')) return 'article';
-    if (name.endsWith('.xls') || name.endsWith('.xlsx') || name.endsWith('.csv')) return 'table_view';
-    return 'description';
-  }
 
-  isImageFile(file: RecordFile): boolean {
-    if (!file) return false;
-    if (!file.url || file.url === '#') return false;
-    const name = (file.name || '').toLowerCase();
-    const type = (file.type || '').toLowerCase();
-    return type.startsWith('image/') || name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.webp') || name.endsWith('.svg');
-  }
-
->>>>>>> Stashed changes
   private guessMimeType(fileName: string): string {
     if (!fileName) return 'application/octet-stream';
     const lower = fileName.toLowerCase();
