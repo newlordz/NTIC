@@ -215,13 +215,165 @@ export class RecordsComponent implements OnInit {
     this.contentService.refreshBackendData();
   }
 
+<<<<<<< Updated upstream
+=======
+  getFileIcon(file: RecordFile): string {
+    if (!file) return 'description';
+    const name = (file.name || '').toLowerCase();
+    const type = (file.type || '').toLowerCase();
+    if (name.endsWith('.pdf') || type.includes('pdf')) return 'picture_as_pdf';
+    if (type.startsWith('image/') || name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.webp') || name.endsWith('.svg')) return 'image';
+    if (name.endsWith('.zip') || name.endsWith('.rar') || name.endsWith('.7z') || name.endsWith('.tar') || name.endsWith('.gz')) return 'folder_zip';
+    if (name.endsWith('.doc') || name.endsWith('.docx')) return 'article';
+    if (name.endsWith('.xls') || name.endsWith('.xlsx') || name.endsWith('.csv')) return 'table_view';
+    return 'description';
+  }
+
+  isImageFile(file: RecordFile): boolean {
+    if (!file) return false;
+    if (!file.url || file.url === '#') return false;
+    const name = (file.name || '').toLowerCase();
+    const type = (file.type || '').toLowerCase();
+    return type.startsWith('image/') || name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.webp') || name.endsWith('.svg');
+  }
+
+>>>>>>> Stashed changes
+  private guessMimeType(fileName: string): string {
+    if (!fileName) return 'application/octet-stream';
+    const lower = fileName.toLowerCase();
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.svg')) return 'image/svg+xml';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    if (lower.endsWith('.doc')) return 'application/msword';
+    if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    if (lower.endsWith('.zip') || lower.endsWith('.rar') || lower.endsWith('.7z') || lower.endsWith('.tar') || lower.endsWith('.gz')) return 'application/zip';
+    return 'application/octet-stream';
+  }
+
+  extractRecordFiles(source: any): RecordFile[] {
+    const files: RecordFile[] = [];
+    if (!source) return files;
+
+    const details = source.details || source;
+
+    const addFile = (fileId: string | undefined, name: string, category: string, fallbackType?: string) => {
+      if (!fileId && !name) return;
+      if (fileId && files.some(f => f.fileId === fileId)) return;
+      if (!fileId && files.some(f => f.name === name)) return;
+      files.push({
+        name: name || 'Document.pdf',
+        type: fallbackType || this.guessMimeType(name),
+        size: 0,
+        url: '#',
+        fileId: fileId || undefined,
+        uploadedAt: source.submittedAt || source.submitted || source.registeredAt || new Date().toISOString(),
+        category
+      });
+    };
+
+    // 1. docs array: ["fileId::fileName.pdf"] or ["fileName.pdf"] or ["fileId"]
+    if (Array.isArray(details.docs)) {
+      details.docs.forEach((doc: string, i: number) => {
+        if (!doc) return;
+        const sepIdx = doc.indexOf('::');
+        const fileId = sepIdx > -1 ? doc.slice(0, sepIdx) : (doc.startsWith('file-') ? doc : '');
+        const fileName = sepIdx > -1 ? doc.slice(sepIdx + 2) : (doc.startsWith('file-') ? `Accreditation-Document-${i + 1}.pdf` : doc);
+        addFile(fileId, fileName, i === 0 ? 'Primary Accreditation Document' : 'Supporting Document');
+      });
+    }
+
+    // 2. accredDocs array
+    if (Array.isArray(details.accredDocs)) {
+      details.accredDocs.forEach((doc: string, i: number) => {
+        if (!doc) return;
+        const sepIdx = doc.indexOf('::');
+        const fileId = sepIdx > -1 ? doc.slice(0, sepIdx) : (doc.startsWith('file-') ? doc : '');
+        const fileName = sepIdx > -1 ? doc.slice(sepIdx + 2) : `Accreditation-Certificate-${i + 1}.pdf`;
+        addFile(fileId, fileName, 'Accreditation Certificate');
+      });
+    }
+
+    // 3. instructorDocs array
+    if (Array.isArray(details.instructorDocs)) {
+      details.instructorDocs.forEach((doc: string, i: number) => {
+        if (!doc) return;
+        const sepIdx = doc.indexOf('::');
+        const fileId = sepIdx > -1 ? doc.slice(0, sepIdx) : (doc.startsWith('file-') ? doc : '');
+        const fileName = sepIdx > -1 ? doc.slice(sepIdx + 2) : `Teaching-Credential-${i + 1}.pdf`;
+        addFile(fileId, fileName, 'Teaching Credential');
+      });
+    }
+
+    // 4. logoFileId / logo_file_id
+    const logoId = details.logoFileId || details.logo_file_id || source.logoFileId || source.logo_file_id;
+    if (logoId && typeof logoId === 'string') {
+      addFile(logoId, 'Institutional-Logo.png', 'Institutional Crest / Logo', 'image/png');
+    }
+
+    // 5. photoFileId / profilePhotoFileId / photo_file_id
+    const photoId = details.photoFileId || details.photo_file_id || details.profilePhotoFileId || source.photoFileId || source.photo_file_id || source.profilePhotoFileId;
+    if (photoId && typeof photoId === 'string') {
+      addFile(photoId, 'Official-Profile-Photo.jpg', 'Identification Photo', 'image/jpeg');
+    }
+
+    // 6. memberPhotos array
+    if (Array.isArray(details.memberPhotos)) {
+      details.memberPhotos.forEach((pid: string, idx: number) => {
+        if (pid && typeof pid === 'string') {
+          addFile(pid, `Squad-Member-${idx + 1}-Photo.jpg`, `Member #${idx + 1} Photo`, 'image/jpeg');
+        }
+      });
+    }
+
+    // 7. idCardFileId / idCard
+    const idCardId = details.idCardFileId || details.idCard;
+    if (idCardId && typeof idCardId === 'string') {
+      addFile(idCardId, 'Official-ID-Card.pdf', 'National ID / Student Card');
+    }
+
+    // 8. consentFileId / consentDoc
+    const consentId = details.consentFileId || details.consentDoc;
+    if (consentId && typeof consentId === 'string') {
+      addFile(consentId, 'Signed-Parental-Consent.pdf', 'Parental / School Consent', 'application/pdf');
+    }
+
+    // 9. csrProposalFileId / proposal
+    const proposalId = details.csrProposalFileId || details.proposal;
+    if (proposalId && typeof proposalId === 'string') {
+      addFile(proposalId, 'CSR-Sponsorship-Agreement.pdf', 'CSR Sponsorship Proposal', 'application/pdf');
+    }
+
+    // 10. direct documentUrl
+    const docUrl = details.documentUrl || details.document;
+    if (docUrl && typeof docUrl === 'string') {
+      files.push({
+        name: 'Submission-Documentation.pdf',
+        type: this.guessMimeType(docUrl),
+        size: 0,
+        url: docUrl,
+        uploadedAt: source.submittedAt || new Date().toISOString(),
+        category: 'Project Submission Document'
+      });
+    }
+
+    return files;
+  }
+
   loadRecords(): void {
     const liveRecords: Record[] = [];
+
+    // Active sets from live user accounts
+    const activeUserEmails = new Set<string>((this.contentService.users || []).map(u => (u.email || '').toLowerCase().trim()).filter(Boolean));
+    const activeUserIds = new Set<string>((this.contentService.users || []).map(u => (u.id || '').toLowerCase().trim()).filter(Boolean));
 
     // 1. Pull from pending approvals (school regs, instructor regs, team additions)
     (this.contentService.pendingApprovals || []).forEach((a: ApprovalRequest) => {
       const type = a.type === 'School Registration' ? 'school' : a.type === 'Instructor Access' ? 'instructor' : a.type === 'Team Addition' ? 'team' : 'school';
       const detailsAny: any = a.details || {};
+      const files = this.extractRecordFiles(a);
       liveRecords.push({
         id: a.id,
         type: type as Record['type'],
@@ -234,28 +386,7 @@ export class RecordsComponent implements OnInit {
         contactPhone: detailsAny.phone || '',
         submittedAt: a.submitted === 'Just now' ? new Date().toISOString() : a.submitted || new Date().toISOString(),
         status: 'pending',
-        files: (detailsAny.docs || []).map((doc: string, i: number) => {
-          const sepIdx = doc.indexOf('::');
-          const fileId = sepIdx > -1 ? doc.slice(0, sepIdx) : '';
-          const fileName = sepIdx > -1 ? doc.slice(sepIdx + 2) : doc;
-          return {
-            name: fileName,
-            type: fileName.endsWith('.pdf')
-              ? 'application/pdf'
-              : fileName.match(/\.(png|jpg|jpeg|webp|gif|svg)$/i)
-              ? 'image/' + fileName.split('.').pop()!.toLowerCase()
-              : fileName.match(/\.(doc|docx)$/i)
-              ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-              : fileName.match(/\.(zip|rar|7z|tar|gz)$/i)
-              ? 'application/zip'
-              : 'application/octet-stream',
-            size: 0,
-            url: '#',
-            fileId: fileId,
-            uploadedAt: new Date().toISOString(),
-            category: i === 0 ? 'Primary Document' : 'Supporting Document'
-          };
-        })
+        files
       });
     });
 
@@ -263,6 +394,16 @@ export class RecordsComponent implements OnInit {
     (this.contentService.approvedApprovals || []).forEach((a: any) => {
       const type = a.type === 'School Registration' ? 'school' : a.type === 'Instructor Access' ? 'instructor' : a.type === 'Team Addition' ? 'team' : 'school';
       const detailsAny: any = a.details || {};
+      const files = this.extractRecordFiles(a);
+      const email = (a.contact || detailsAny.contactEmail || '').toLowerCase().trim();
+      const id = (a.id || '').toLowerCase().trim();
+      const isStillActive = activeUserEmails.has(email) || activeUserIds.has(id);
+
+      // RULE 1: If user was deleted from User Management and provided NO files, omit from archive
+      if (!isStillActive && files.length === 0) {
+        return;
+      }
+
       liveRecords.push({
         id: a.id,
         type: type as Record['type'],
@@ -275,12 +416,7 @@ export class RecordsComponent implements OnInit {
         contactPhone: detailsAny.phone || '',
         submittedAt: a.submitted === 'Just now' ? new Date().toISOString() : a.submitted || new Date().toISOString(),
         status: 'approved',
-        files: (detailsAny.docs || []).map((doc: string, i: number) => {
-          const sepIdx = doc.indexOf('::');
-          const fileId = sepIdx > -1 ? doc.slice(0, sepIdx) : '';
-          const fileName = sepIdx > -1 ? doc.slice(sepIdx + 2) : doc;
-          return { name: fileName, type: 'application/octet-stream', size: 0, url: '#', fileId, uploadedAt: new Date().toISOString(), category: i === 0 ? 'Primary Document' : 'Supporting Document' };
-        })
+        files
       });
     });
 
@@ -288,6 +424,13 @@ export class RecordsComponent implements OnInit {
     (this.contentService.rejectedApprovals || []).forEach((a: any) => {
       const type = a.type === 'School Registration' ? 'school' : a.type === 'Instructor Access' ? 'instructor' : a.type === 'Team Addition' ? 'team' : 'school';
       const detailsAny: any = a.details || {};
+      const files = this.extractRecordFiles(a);
+
+      // If rejected and has no files, omit from archive
+      if (files.length === 0) {
+        return;
+      }
+
       liveRecords.push({
         id: a.id,
         type: type as Record['type'],
@@ -300,118 +443,97 @@ export class RecordsComponent implements OnInit {
         contactPhone: detailsAny.phone || '',
         submittedAt: a.submitted === 'Just now' ? new Date().toISOString() : a.submitted || new Date().toISOString(),
         status: 'rejected',
-        files: []
+        files
       });
     });
 
-    // 4. Pull from registered users (judges, sponsors, students, instructors, school admins)
+    // 4. Pull from registered users
     (this.contentService.users || []).forEach(u => {
-      if (u.role === 'judge') {
-        liveRecords.push({
-          id: u.id,
-          type: 'judge',
-          title: `${u.fullName} -- Judge Application`,
-          entityName: u.fullName,
-          entityType: 'Judge',
-          region: '',
-          district: '',
-          contactEmail: u.email,
-          contactPhone: u.phone,
-          submittedAt: u.registeredAt ? new Date(u.registeredAt).toISOString() : new Date().toISOString(),
-          status: u.status?.toLowerCase() === 'active' ? 'approved' : 'pending',
-          files: []
-        });
-      } else if (u.role === 'sponsor') {
-        liveRecords.push({
-          id: u.id,
-          type: 'sponsor',
-          title: `${u.fullName} -- Sponsor Registration`,
-          entityName: u.fullName,
-          entityType: (u as any).tier ? `${(u as any).tier} Sponsor` : 'Corporate Sponsor',
-          region: '',
-          district: '',
-          contactEmail: u.email,
-          contactPhone: u.phone,
-          submittedAt: u.registeredAt ? new Date(u.registeredAt).toISOString() : new Date().toISOString(),
-          status: u.status?.toLowerCase() === 'active' ? 'approved' : 'pending',
-          files: []
-        });
-      } else if (u.role === 'student') {
-        const isGroupLead = this.contentService.isGroupLeadUser(u);
-        liveRecords.push({
-          id: u.id,
-          type: 'student',
-          title: `${u.fullName} -- ${isGroupLead ? 'Group Registration' : 'Student Registration'}`,
-          entityName: u.fullName,
-          entityType: isGroupLead ? 'Group Competitor' : 'Student Competitor',
-          region: '',
-          district: '',
-          contactEmail: u.email,
-          contactPhone: u.phone,
-          submittedAt: u.registeredAt ? new Date(u.registeredAt).toISOString() : new Date().toISOString(),
-          status: u.status?.toLowerCase() === 'active' ? 'approved' : 'pending',
-          files: []
-        });
-      } else if (u.role === 'instructor') {
-        liveRecords.push({
-          id: u.id,
-          type: 'instructor',
-          title: `${u.fullName} -- Instructor Account`,
-          entityName: u.fullName,
-          entityType: u.organization || 'Instructor',
-          region: '',
-          district: '',
-          contactEmail: u.email,
-          contactPhone: u.phone,
-          submittedAt: u.registeredAt ? new Date(u.registeredAt).toISOString() : new Date().toISOString(),
-          status: u.status?.toLowerCase() === 'active' ? 'approved' : 'pending',
-          files: []
-        });
-      } else if (u.role === 'school_admin') {
-        liveRecords.push({
-          id: u.id,
-          type: 'school',
-          title: `${u.organization || u.fullName} -- Institutional Record`,
-          entityName: u.organization || u.fullName,
-          entityType: 'Accredited Institution',
-          region: '',
-          district: '',
-          contactEmail: u.email,
-          contactPhone: u.phone,
-          submittedAt: u.registeredAt ? new Date(u.registeredAt).toISOString() : new Date().toISOString(),
-          status: u.status?.toLowerCase() === 'active' ? 'approved' : 'pending',
-          files: []
-        });
-      }
+      const files = this.extractRecordFiles(u);
+      const isGroupLead = this.contentService.isGroupLeadUser(u);
+      const entityType = u.role === 'judge' ? 'Judge'
+        : u.role === 'sponsor' ? ((u as any).tier ? `${(u as any).tier} Sponsor` : 'Corporate Sponsor')
+        : u.role === 'student' ? (isGroupLead ? 'Group Competitor' : 'Student Competitor')
+        : u.role === 'instructor' ? (u.organization || 'Instructor')
+        : u.role === 'school_admin' ? 'Accredited Institution'
+        : u.role || 'User';
+
+      liveRecords.push({
+        id: u.id,
+        type: (u.role === 'school_admin' ? 'school' : u.role) as Record['type'],
+        title: `${u.organization || u.fullName} -- ${entityType} Record`,
+        entityName: u.organization || u.fullName,
+        entityType,
+        region: (u as any).region || '',
+        district: (u as any).district || '',
+        contactEmail: u.email,
+        contactPhone: u.phone,
+        submittedAt: u.registeredAt ? new Date(u.registeredAt).toISOString() : new Date().toISOString(),
+        status: u.status?.toLowerCase() === 'active' ? 'approved' : 'pending',
+        files
+      });
     });
 
     // 5. Pull from teams
     (this.contentService.teams || []).forEach(t => {
       const teamId = t.id || `team-${t.name.replace(/\s+/g, '-').toLowerCase()}-${(t.track || '').replace(/\s+/g, '-').toLowerCase()}`;
+      const files = this.extractRecordFiles(t);
       liveRecords.push({
         id: teamId,
         type: 'team',
         title: `${t.name} -- Team Registration`,
         entityName: t.name,
         entityType: `${t.track || 'Mixed'} Team`,
-        region: '',
-        district: '',
+        region: t.region || '',
+        district: (t as any).district || '',
         contactEmail: '',
         contactPhone: '',
         submittedAt: new Date().toISOString(),
         status: (t as any).status === 'In Competition' ? 'approved' : 'pending',
-        files: []
+        files
       });
     });
 
-    const finalize = () => {
+    const finalize = async () => {
       const seenRecord = new Set<string>();
       const dedupedRecords: Record[] = [];
+
       for (const r of liveRecords) {
-        const key = `${r.type}::${(r.title || '').trim()}::${(r.entityName || '').trim()}`.toLowerCase();
+        const key = `${r.type}::${(r.contactEmail || r.entityName || r.id).trim().toLowerCase()}`;
         if (!seenRecord.has(key)) {
           seenRecord.add(key);
           dedupedRecords.push(r);
+        } else {
+          // If already added, merge any additional files found
+          const existing = dedupedRecords.find(x => `${x.type}::${(x.contactEmail || x.entityName || x.id).trim().toLowerCase()}` === key);
+          if (existing && r.files.length > 0) {
+            r.files.forEach(f => {
+              if (!existing.files.some(ef => (ef.fileId && ef.fileId === f.fileId) || ef.name === f.name)) {
+                existing.files.push(f);
+              }
+            });
+          }
+        }
+      }
+
+      // Enrich file metadata asynchronously from local IndexedDB storage
+      for (const r of dedupedRecords) {
+        if (r.files && r.files.length > 0) {
+          for (const f of r.files) {
+            if (f.fileId) {
+              try {
+                const stored = await this.fileStorage.get(f.fileId);
+                if (stored?.metadata) {
+                  if (stored.metadata.name) f.name = stored.metadata.name;
+                  if (stored.metadata.size) f.size = stored.metadata.size;
+                  if (stored.metadata.type) f.type = stored.metadata.type;
+                }
+                if (stored?.blob) {
+                  f.url = URL.createObjectURL(stored.blob);
+                }
+              } catch {}
+            }
+          }
         }
       }
 
@@ -420,7 +542,6 @@ export class RecordsComponent implements OnInit {
       this.applyFilters();
     };
 
-    // Immediate sync
     finalize();
 
     // Also pull from PostgreSQL students asynchronously
@@ -429,19 +550,20 @@ export class RecordsComponent implements OnInit {
         if (Array.isArray(students)) {
           students.forEach(s => {
             const sName = `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email || 'Student';
+            const files = this.extractRecordFiles(s);
             liveRecords.push({
               id: s.id || `std-${Math.random()}`,
               type: 'student',
               title: `${sName} -- PostgreSQL Student Record`,
               entityName: sName,
               entityType: s.track || 'Student',
-              region: '',
-              district: '',
+              region: s.region || '',
+              district: s.district || '',
               contactEmail: s.email || '',
-              contactPhone: '',
+              contactPhone: s.phone || '',
               submittedAt: s.created_at || new Date().toISOString(),
               status: 'approved',
-              files: []
+              files
             });
           });
         }
@@ -520,8 +642,17 @@ export class RecordsComponent implements OnInit {
 
     for (const file of record.files) {
       if (file.fileId) {
-        const url = await this.fileStorage.getUrl(file.fileId);
-        if (url) file.url = url;
+        try {
+          const stored = await this.fileStorage.get(file.fileId);
+          if (stored?.metadata) {
+            if (stored.metadata.name) file.name = stored.metadata.name;
+            if (stored.metadata.size) file.size = stored.metadata.size;
+            if (stored.metadata.type) file.type = stored.metadata.type;
+          }
+          if (stored?.blob) {
+            file.url = URL.createObjectURL(stored.blob);
+          }
+        } catch {}
       }
     }
   }
@@ -529,7 +660,9 @@ export class RecordsComponent implements OnInit {
   closeModal(): void {
     if (this.selectedRecord) {
       for (const file of this.selectedRecord.files) {
-        if (file.url && file.url !== '#') this.fileStorage.revokeUrl(file.url);
+        if (file.url && file.url !== '#' && file.url.startsWith('blob:')) {
+          this.fileStorage.revokeUrl(file.url);
+        }
       }
     }
     this.isModalOpen = false;
@@ -545,7 +678,7 @@ export class RecordsComponent implements OnInit {
           const blobUrl = URL.createObjectURL(stored.blob);
           const a = document.createElement('a');
           a.href = blobUrl;
-          a.download = file.name || 'document';
+          a.download = file.name || stored.metadata?.name || 'document';
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -599,7 +732,16 @@ This file is an official submission credential archived in the NTIC Platform dat
     }
   }
 
-  previewFile(file: RecordFile): void {
+  async previewFile(file: RecordFile): Promise<void> {
+    if (file.fileId) {
+      const stored = await this.fileStorage.get(file.fileId);
+      if (stored?.blob) {
+        const blobUrl = URL.createObjectURL(stored.blob);
+        window.open(blobUrl, '_blank');
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+        return;
+      }
+    }
     if (file.url && file.url !== '#') {
       window.open(file.url, '_blank');
     } else {
@@ -653,12 +795,30 @@ This file is an official submission credential archived in the NTIC Platform dat
     return icons[type] || 'folder';
   }
 
-  getFileIcon(type: string): string {
-    if (type.startsWith('image/')) return 'image';
-    if (type === 'application/pdf') return 'picture_as_pdf';
-    if (type.includes('word') || type.includes('document')) return 'description';
-    if (type.includes('zip') || type.includes('compressed')) return 'archive';
-    return 'insert_drive_file';
+  isImageFile(file: any): boolean {
+    if (!file) return false;
+    if (!file.url || file.url === '#') return false;
+    const name = (file.name || '').toLowerCase();
+    const type = (file.type || '').toLowerCase();
+    return type.startsWith('image/') || name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.webp') || name.endsWith('.svg');
+  }
+
+  getFileIcon(fileOrType: any): string {
+    if (!fileOrType) return 'description';
+    let name = '';
+    let type = '';
+    if (typeof fileOrType === 'string') {
+      type = fileOrType.toLowerCase();
+    } else {
+      name = (fileOrType.name || '').toLowerCase();
+      type = (fileOrType.type || '').toLowerCase();
+    }
+    if (name.endsWith('.pdf') || type === 'application/pdf' || type.includes('pdf')) return 'picture_as_pdf';
+    if (type.startsWith('image/') || name.endsWith('.png') || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.webp') || name.endsWith('.svg')) return 'image';
+    if (name.endsWith('.zip') || name.endsWith('.rar') || name.endsWith('.7z') || name.endsWith('.tar') || name.endsWith('.gz') || type.includes('zip') || type.includes('compressed')) return 'folder_zip';
+    if (name.endsWith('.doc') || name.endsWith('.docx') || type.includes('word') || type.includes('document')) return 'article';
+    if (name.endsWith('.xls') || name.endsWith('.xlsx') || name.endsWith('.csv')) return 'table_view';
+    return 'description';
   }
 
   getTabCount(tabId: string): number {

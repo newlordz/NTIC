@@ -332,15 +332,27 @@
           <div class="files-list" *ngIf="selectedRecord.files.length > 0">
             <div *ngFor="let file of selectedRecord.files" class="file-item-card">
               <div class="file-icon">
-                <span class="material-symbols-outlined">description</span>
+                <img *ngIf="isImageFile(file)" 
+                     [src]="file.url" 
+                     alt="" 
+                     style="width:36px;height:36px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.15);" />
+                <span *ngIf="!isImageFile(file)" 
+                      class="material-symbols-outlined">
+                  {{ getFileIcon(file) }}
+                </span>
               </div>
               <div class="file-details">
                 <span class="file-name">{{ file.name }}</span>
-                <span class="file-cat">{{ file.category }}</span>
+                <span class="file-cat">{{ file.category }}<span *ngIf="file.size > 0"> · {{ formatFileSize(file.size) }}</span></span>
               </div>
-              <button class="btn btn-xs btn-outline" (click)="downloadFile(file); $event.stopPropagation()" title="Download this document">
-                <span class="material-symbols-outlined">download</span> Download
-              </button>
+              <div style="display:flex;gap:8px;margin-left:auto;align-items:center;">
+                <button class="btn btn-xs btn-primary" (click)="previewFile(file); $event.stopPropagation()" title="View document directly">
+                  <span class="material-symbols-outlined">visibility</span> View
+                </button>
+                <button class="btn btn-xs btn-outline" (click)="downloadFile(file); $event.stopPropagation()" title="Download this document">
+                  <span class="material-symbols-outlined">download</span> Download
+                </button>
+              </div>
             </div>
           </div>
 
