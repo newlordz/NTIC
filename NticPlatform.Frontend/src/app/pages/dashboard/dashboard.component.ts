@@ -439,6 +439,41 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }));
   }
 
+  get totalSchoolsCount(): number {
+    const schools = new Set<string>();
+    for (const t of (this.contentService.teams || [])) {
+      const s = (t.schoolName || t.school_name || '').trim();
+      if (s) schools.add(s.toLowerCase());
+    }
+    for (const u of (this.contentService.users || [])) {
+      const anyUser = u as any;
+      const s = (u.organization || anyUser.school || anyUser.schoolName || '').trim();
+      if (s && s !== 'NTIC Platform' && s !== '--') schools.add(s.toLowerCase());
+    }
+    return schools.size;
+  }
+
+  get totalInstructorsAndMentorsCount(): number {
+    return (this.contentService.users || []).filter(u => u.role === 'instructor' || u.role === 'school_admin').length;
+  }
+
+  get totalStudentsCount(): number {
+    const studentUsers = (this.contentService.users || []).filter(u => u.role === 'student').length;
+    const teamMembers = (this.contentService.teams || []).reduce((acc, t) => acc + (t.members || 0), 0);
+    return Math.max(studentUsers, teamMembers);
+  }
+
+  get participatingRegionsCount(): number {
+    const regions = new Set<string>();
+    for (const t of (this.contentService.teams || [])) {
+      if (t.region && t.region.trim()) regions.add(t.region.trim().toLowerCase());
+    }
+    for (const u of (this.contentService.users || [])) {
+      if (u.region && u.region.trim()) regions.add(u.region.trim().toLowerCase());
+    }
+    return regions.size;
+  }
+
   /**
    * Component health, populated from GET /api/system/nodes-health.
    *

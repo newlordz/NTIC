@@ -164,10 +164,27 @@ LANDING_COPY_DEFAULTS = [
     ("Partner Ecosystem", "partners.eyebrow", "Official Corporate & Resource Ecosystem"),
     ("Partner Ecosystem", "partners.heading", "Powered by Ghana's Foremost Technology & Industry Leaders"),
     ("Partner Ecosystem", "partners.cta", "Partner With Us"),
-    # Shown instead of the wall when no partner has been confirmed yet. Saying
-    # nothing is better than showing invented logos.
-    ("Partner Ecosystem", "partners.empty", "Partner organisations will be announced here as commitments are confirmed."),
-
+    # ── Championship Entry Gateway ──────────────────────────────────
+    ("Entry Gateway", "gateway.brandName", "NTIC"),
+    ("Entry Gateway", "gateway.brandSub", "GHANA NATIONAL COMPETITION"),
+    ("Entry Gateway", "gateway.backHome", "Return to Homepage"),
+    ("Entry Gateway", "gateway.accountLogin", "Account Login"),
+    ("Entry Gateway", "gateway.sub", "Official Registration Portal"),
+    ("Entry Gateway", "gateway.heading", "Championship Entry Gateway"),
+    ("Entry Gateway", "gateway.lead", "Welcome to the National Technology & Innovation Championship registration. Choose your entry path below."),
+    ("Entry Gateway", "gateway.card1.title", "New Registration"),
+    ("Entry Gateway", "gateway.card1.body", "Begin a fresh application for a School, Student squad, or Certified Instructor."),
+    ("Entry Gateway", "gateway.card1.f1", "Create new institutional or student account"),
+    ("Entry Gateway", "gateway.card1.f2", "Upload accreditation and credentials"),
+    ("Entry Gateway", "gateway.card1.f3", "Select competition tracks & arenas"),
+    ("Entry Gateway", "gateway.card1.btn", "Start Application"),
+    ("Entry Gateway", "gateway.card2.title", "Resume Registration"),
+    ("Entry Gateway", "gateway.card2.body", "Resume a saved draft application, or track and correct an already-submitted application that is still under review."),
+    ("Entry Gateway", "gateway.card2.f1", "Retrieve partially filled forms"),
+    ("Entry Gateway", "gateway.card2.f2", "Secure OTP identification"),
+    ("Entry Gateway", "gateway.card2.f3", "Edit or finalize pending drafts"),
+    ("Entry Gateway", "gateway.card2.btnResume", "Resume Application"),
+    ("Entry Gateway", "gateway.card2.btnTrack", "Track / Edit Submitted Application"),
 
     # ── Footer ──────────────────────────────────────────────────────
     ("Footer", "footer.heading", "National Technology and Innovation Championship"),
