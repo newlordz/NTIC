@@ -1199,6 +1199,34 @@ setAuthValue('activeUserEmail', email);
         this.showCustomAlert('The school email and representative email cannot be the same. Please use distinct email addresses.', 'Duplicate Email', 'warning');
         return false;
       }
+      // Prevent the school/representative email being reused as a team lead or
+      // member email, and prevent the same email appearing more than once across
+      // the squad. Previously only school-vs-rep was compared, so a rep email
+      // reused as a team lead sailed through silently.
+      const repLower = (this.schoolForm.repEmail || '').trim().toLowerCase();
+      const schoolLower = (this.schoolForm.email || '').trim().toLowerCase();
+      const teamEmails: string[] = (this.schoolForm.teams || [])
+        .reduce((acc: any[], t: any) => acc.concat([
+          t.leadEmail, t.member2Email, t.member3Email, t.member4Email, t.member5Email
+        ]), [])
+        .filter((e: any) => e && String(e).trim())
+        .map((e: any) => String(e).trim().toLowerCase());
+      const seen = new Set<string>();
+      for (const te of teamEmails) {
+        if (repLower && te === repLower) {
+          this.showCustomAlert('The representative email cannot also be a team lead or member email. Please use distinct email addresses.', 'Duplicate Email', 'warning');
+          return false;
+        }
+        if (schoolLower && te === schoolLower) {
+          this.showCustomAlert('The school email cannot also be a team lead or member email. Please use distinct email addresses.', 'Duplicate Email', 'warning');
+          return false;
+        }
+        if (seen.has(te)) {
+          this.showCustomAlert('The same email is used more than once across the squad. Each team lead and member needs a distinct email address.', 'Duplicate Email', 'warning');
+          return false;
+        }
+        seen.add(te);
+      }
     } else if (this.activeTab === 'instructor') {
       fields['instEmail'] = { value: this.instructorForm.email, type: 'email' };
       fields['instTel'] = { value: this.instructorForm.tel, type: 'phone' };
@@ -1293,6 +1321,24 @@ setAuthValue('activeUserEmail', email);
       ? this.normalizePhone(currentValue)
       : currentValue.trim().toLowerCase();
     return verifiedVal === cleanCurrent;
+  }
+
+  /** The primary contact email for the active tab, and the field whose OTP
+   *  verification state represents it. Used to require verification on submit. */
+  private primaryVerifyField(): { field: string; value: string } | null {
+    if (this.activeTab === 'school') {
+      if (this.schoolForm.repEmail?.trim()) return { field: 'schoolRepEmail', value: this.schoolForm.repEmail };
+      if (this.schoolForm.email?.trim()) return { field: 'schoolEmail', value: this.schoolForm.email };
+    } else if (this.activeTab === 'instructor') {
+      if (this.instructorForm.email?.trim()) return { field: 'instEmail', value: this.instructorForm.email };
+    } else if (this.activeTab === 'judge') {
+      if (this.judgeForm.email?.trim()) return { field: 'jdEmail', value: this.judgeForm.email };
+    } else if (this.activeTab === 'sponsor') {
+      if (this.sponsorForm.email?.trim()) return { field: 'sponsEmail', value: this.sponsorForm.email };
+    } else if (this.activeTab === 'team') {
+      if (this.teamForm.leadEmail?.trim()) return { field: 'squadLeadEmail', value: this.teamForm.leadEmail };
+    }
+    return null;
   }
 
   get fieldVerified(): Record<string, boolean> {
@@ -3552,6 +3598,21 @@ setAuthValue('activeUserEmail', email);
   async submitRegistration(): Promise<void> {
     if (this.isSubmitting) return;
     if (!this.validateCurrentTab()) return;
+
+    // Require the primary contact email to be OTP-verified before filing. The
+    // server enforces the same rule, so this is a prompt rather than the only
+    // guard -- but it tells the applicant exactly what is missing.
+    const pv = this.primaryVerifyField();
+    if (pv && !this.isFieldVerified(pv.field, pv.value)) {
+      this.isSubmitting = false;
+      this.isPreviewModalOpen = false;
+      this.showCustomAlert(
+        `Please verify your email address (${pv.value}) before submitting. Tap "Verify" next to the email field.`,
+        'Verification Required',
+        'warning'
+      );
+      return;
+    }
 
     // Final pre-submit guard against duplicate emails & phones across PostgreSQL database
     let targetEmail = '';
