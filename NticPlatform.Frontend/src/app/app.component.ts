@@ -763,43 +763,84 @@ export class AppComponent implements OnInit, OnDestroy {
     { id: 'notif-stats', title: 'Platform stats updated', time: '', icon: 'dashboard', category: 'System', route: '/reporting' }
   ];
 
+  private readonly adminRoles = ['super_admin', 'admin', 'content_manager', 'reviewer', 'competition_manager'];
+
+  // ... existing code ...
+
   recalculateNotifications(): void {
     const list: any[] = [];
 
+    // Only show pending approvals + audit events to users with admin-like roles
+    const activeRole = getAuthValue('activeRoleId');
+    const hasAdminRole = !!activeRole && this.adminRoles.includes(activeRole);
+
     // Real dynamic pending registration approvals
-    if (this.contentService && this.contentService.pendingApprovals && this.contentService.pendingApprovals.length > 0) {
-      const count = this.contentService.pendingApprovals.length;
-      const approvalId = `pending-approvals-${count}`;
+    // Only show to admin-like roles; for others, show a generic message
+    if (hasAdminRole) {
+      if (this.contentService && this.contentService.pendingApprovals && this.contentService.pendingApprovals.length > 0) {
+        const count = this.contentService.pendingApprovals.length;
+        const approvalId = `pending-approvals-${count}`;
+        list.push({
+          id: approvalId,
+          title: `${count} pending registration ${count === 1 ? 'approval' : 'approvals'} awaiting review`,
+          time: 'Action Required',
+          icon: 'verified_user',
+          category: 'Pending Review',
+          unread: !this.readNotificationIds.has(approvalId),
+          route: '/dashboard',
+          queryParams: { tab: 'approvals' }
+        });
+      }
+    } else if (this.contentService && !getAuthValue('activeUserToken')) {
+      // unauthenticated visitors see a generic invite
       list.push({
-        id: approvalId,
-        title: `${count} pending registration ${count === 1 ? 'approval' : 'approvals'} awaiting review`,
-        time: 'Action Required',
-        icon: 'verified_user',
-        category: 'Pending Review',
-        unread: !this.readNotificationIds.has(approvalId),
-        route: '/dashboard',
-        queryParams: { tab: 'approvals' }
+        id: 'notif-welcome',
+        title: 'Welcome to NTIC Portal',
+        time: '',
+        icon: 'folder_open',
+        category: 'Info',
+        unread: true,
+        route: '/registration'
       });
     }
 
     // Recent audit events
-    if (this.contentService && this.contentService.auditLogs && this.contentService.auditLogs.length > 0) {
-      const recentLogs = this.contentService.auditLogs.slice(0, 3);
-      for (const log of recentLogs) {
-        const logId = `audit-${log.id || log.time || log.action}`;
+    // Only show to admin-like roles
+    if (hasAdminRole) {
+      if (this.contentService && this.contentService.auditLogs && this.contentService.auditLogs.length > 0) {
+        const recentLogs = this.contentService.auditLogs.slice(0, 3);
+        for (const log of recentLogs) {
+          const logId = `audit-${log.id || log.time || log.action}`;
+          list.push({
+            id: logId,
+            title: log.action || 'System activity logged',
+            time: log.time ? 'Recent' : 'Today',
+            icon: log.type === 'error' ? 'error' : log.type === 'warn' ? 'warning' : 'receipt_long',
+            category: 'Audit Log',
+            unread: !this.readNotificationIds.has(logId),
+            route: '/dashboard'
+          });
+        }
+      }
+    }
+
+    // Dynamic system summary notifications
+    // Show pending registrations count to admin-like roles
+    if (hasAdminRole) {
+      if (this.contentService && this.contentService.pendingApprovals && this.contentService.pendingApprovals.length > 0) {
+        const pendingCount = this.contentService.pendingApprovals.length;
         list.push({
-          id: logId,
-          title: log.action || 'System activity logged',
-          time: log.time ? 'Recent' : 'Today',
-          icon: log.type === 'error' ? 'error' : log.type === 'warn' ? 'warning' : 'receipt_long',
-          category: 'Audit Log',
-          unread: !this.readNotificationIds.has(logId),
-          route: '/dashboard'
+          id: 'sys-pending-' + pendingCount,
+          title: `${pendingCount} ${pendingCount === 1 ? 'registration' : 'registrations'} pending review`,
+          time: 'Action Required',
+          icon: 'verified_user',
+          category: 'System',
+          unread: !this.readNotificationIds.has('sys-pending-' + pendingCount),
         });
       }
     }
 
-    // Base system notifications
+    // Base system notifications (always shown, role-independent)
     for (const item of this.baseNotifications) {
       list.push({
         ...item,
