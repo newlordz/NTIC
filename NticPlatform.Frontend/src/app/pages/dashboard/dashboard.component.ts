@@ -165,41 +165,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ── COMPETITION ARENA GETTERS (COMMAND CENTER) ──
   get competitionTracksCount(): number {
-    return this.trackDistribution ? this.trackDistribution.length : 5;
+    return this.trackDistribution.length;
   }
 
   get totalCompetitionTeamsCount(): number {
-    const teams = this.contentService.teams || [];
-    return teams.length > 0 ? teams.length : 128;
+    return (this.contentService.teams || []).length;
   }
 
   get totalCompetitionSubmissionsCount(): number {
-    const subs = this.contentService.submissions || [];
-    return subs.length > 0 ? subs.length : 128;
+    return (this.contentService.submissions || []).length;
   }
 
   get scoredCompetitionSubmissionsCount(): number {
     const subs = this.contentService.submissions || [];
-    const scored = subs.filter(s => s.score !== null && s.score !== undefined);
-    return scored.length > 0 ? scored.length : 114;
+    return subs.filter(s => s.score !== null && s.score !== undefined).length;
   }
 
   get pendingCompetitionScoringCount(): number {
     const subs = this.contentService.submissions || [];
-    const pending = subs.filter(s => s.score === null || s.score === undefined);
-    return pending.length > 0 ? pending.length : 14;
+    return subs.filter(s => s.score === null || s.score === undefined).length;
   }
 
   get competitionLeaderboardTop(): any[] {
-    const leaders = this.contentService.leaderboardData || [];
-    if (leaders.length > 0) return leaders.slice(0, 5);
-    return [
-      { rank: 1, team: 'Prempeh RoboTech A', school: 'Prempeh College', track: 'Robotics & IoT', score: 98.4, badge: '🥇 1st Place' },
-      { rank: 2, team: 'Achimota AI Wolves', school: 'Achimota School', track: 'Artificial Intelligence', score: 96.8, badge: '🥈 2nd Place' },
-      { rank: 3, team: 'OWASS Binary Titans', school: 'Opoku Ware School', track: 'Coding & Algorithms', score: 94.2, badge: '🥉 3rd Place' },
-      { rank: 4, team: 'Presec Cyber Knights', school: 'Presbyterian Boys Sec.', track: 'Cybersecurity CTF', score: 92.5, badge: 'Top 5' },
-      { rank: 5, team: 'Wesley Girls Innovators', school: 'Wesley Girls High', track: 'Open Innovation', score: 91.0, badge: 'Top 5' }
-    ];
+    return (this.contentService.leaderboardData || []).slice(0, 5);
   }
 
   openCompetitionCenter(): void {
@@ -217,12 +205,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   tournamentAudioEnabled = false;
   private scoringPulseDebounceTimer: any = null;
 
-  tournamentTickerTracks: any[] = [
-    { id: 1, title: 'AI & Machine Learning', track: 'Artificial Intelligence', teamsCount: 18, leaderName: 'Prempeh College Alpha', score: '96.8', icon: 'psychology', badge: 'Scoring Open', badgeClass: 'cc-tbadge-live' },
-    { id: 2, title: 'Robotics & IoT Systems', track: 'Hardware & Embedded', teamsCount: 14, leaderName: 'St. Peter\'s CyberBots', score: '95.2', icon: 'precision_manufacturing', badge: 'Live Heats', badgeClass: 'cc-tbadge-live' },
-    { id: 3, title: 'Cybersecurity Defense', track: 'SecOps & Cryptography', teamsCount: 12, leaderName: 'Achimota SecOps', score: '93.6', icon: 'security', badge: 'Active Lab', badgeClass: 'cc-tbadge-live' },
-    { id: 4, title: 'Software & Web Innovation', track: 'Full Stack Engineering', teamsCount: 16, leaderName: 'Wesley Girls Tech', score: '94.4', icon: 'code', badge: 'Judging Phase', badgeClass: 'cc-tbadge-live' }
-  ];
+  tournamentTickerTracks: any[] = [];
 
   recomputeTournamentTracks(): void {
     const list = this.contentService.competitions?.filter(c => c.status !== 'archived' && c.status !== 'draft') || [];
@@ -380,22 +363,81 @@ export class DashboardComponent implements OnInit, OnDestroy {
   systemGauges: { label: string; value: number | string; color: string; unit: string }[] = [];
   telemetryError = '';
 
-  trackDistribution = [
-    { name: 'Coding & Algorithms', count: 48, pct: 35, color: '#3b82f6', icon: 'code' },
-    { name: 'Robotics & IoT', count: 34, pct: 25, color: '#10b981', icon: 'smart_toy' },
-    { name: 'Artificial Intelligence', count: 28, pct: 20, color: '#6366f1', icon: 'psychology' },
-    { name: 'Cybersecurity CTF', count: 18, pct: 13, color: '#f59e0b', icon: 'security' },
-    { name: 'Open Innovation', count: 10, pct: 7, color: '#ec4899', icon: 'lightbulb' }
-  ];
+  private readonly trackColors = ['#3b82f6','#10b981','#6366f1','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316'];
+  private readonly trackIcons: Record<string, string> = {
+    'coding': 'code', 'algorithm': 'code', 'software': 'code', 'web': 'code',
+    'robotics': 'smart_toy', 'iot': 'smart_toy', 'hardware': 'precision_manufacturing',
+    'ai': 'psychology', 'artificial': 'psychology', 'machine': 'psychology',
+    'cyber': 'security', 'security': 'security', 'ctf': 'security',
+    'innovation': 'lightbulb', 'open': 'lightbulb'
+  };
 
-  regionalBreakdown = [
-    { region: 'Greater Accra Zone', schools: 45, pct: 35, color: '#3b82f6', leads: 90, students: 3200 },
-    { region: 'Ashanti Regional Zone', schools: 38, pct: 28, color: '#10b981', leads: 76, students: 2800 },
-    { region: 'Western & Central Zone', schools: 32, pct: 22, color: '#6366f1', leads: 64, students: 2300 },
-    { region: 'Northern & Volta Zone', schools: 25, pct: 15, color: '#f59e0b', leads: 50, students: 1800 },
-    { region: 'Eastern & Oti Zone', schools: 22, pct: 14, color: '#ec4899', leads: 44, students: 1400 },
-    { region: 'Bono & Ahafo Zone', schools: 18, pct: 12, color: '#8b5cf6', leads: 36, students: 1100 }
-  ];
+  private _trackIcon(name: string): string {
+    const lower = name.toLowerCase();
+    for (const [key, icon] of Object.entries(this.trackIcons)) {
+      if (lower.includes(key)) return icon;
+    }
+    return 'emoji_events';
+  }
+
+  get trackDistribution(): { name: string; count: number; pct: number; color: string; icon: string }[] {
+    const subs = this.contentService.submissions || [];
+    const comps = this.contentService.competitions || [];
+    // Derive tracks from submissions first, fall back to competitions list
+    const trackMap = new Map<string, number>();
+    if (subs.length > 0) {
+      for (const s of subs) {
+        const t = (s.track || 'Unknown').trim();
+        trackMap.set(t, (trackMap.get(t) || 0) + 1);
+      }
+    } else if (comps.length > 0) {
+      for (const c of comps) {
+        const t = (c.track || c.category || 'Unknown').trim();
+        trackMap.set(t, (trackMap.get(t) || 0) + (c.teams || 0));
+      }
+    }
+    if (trackMap.size === 0) return [];
+    const total = Array.from(trackMap.values()).reduce((a, b) => a + b, 0) || 1;
+    const sorted = Array.from(trackMap.entries()).sort((a, b) => b[1] - a[1]);
+    return sorted.map(([name, count], i) => ({
+      name,
+      count,
+      pct: Math.round((count / total) * 100),
+      color: this.trackColors[i % this.trackColors.length],
+      icon: this._trackIcon(name)
+    }));
+  }
+
+  get regionalBreakdown(): { region: string; schools: number; pct: number; color: string; leads: number; students: number }[] {
+    const teams = this.contentService.teams || [];
+    const users = this.contentService.users || [];
+    const regionMap = new Map<string, { schools: Set<string>; leads: number; students: number }>();
+    for (const t of teams) {
+      const r = (t.region || 'Unknown').trim();
+      if (!regionMap.has(r)) regionMap.set(r, { schools: new Set(), leads: 0, students: 0 });
+      const entry = regionMap.get(r)!;
+      if (t.schoolName || t.school_name) entry.schools.add((t.schoolName || t.school_name)!);
+      entry.students += (t.members || 0);
+    }
+    for (const u of users) {
+      if (u.role === 'instructor' || u.role === 'school_admin') {
+        const r = (u.region || 'Unknown').trim();
+        if (!regionMap.has(r)) regionMap.set(r, { schools: new Set(), leads: 0, students: 0 });
+        regionMap.get(r)!.leads++;
+      }
+    }
+    if (regionMap.size === 0) return [];
+    const sorted = Array.from(regionMap.entries()).sort((a, b) => b[1].schools.size - a[1].schools.size);
+    const maxSchools = sorted[0]?.[1].schools.size || 1;
+    return sorted.map(([region, data], i) => ({
+      region,
+      schools: data.schools.size,
+      pct: Math.round((data.schools.size / maxSchools) * 100),
+      color: this.trackColors[i % this.trackColors.length],
+      leads: data.leads,
+      students: data.students
+    }));
+  }
 
   /**
    * Component health, populated from GET /api/system/nodes-health.
