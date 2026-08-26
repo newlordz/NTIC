@@ -759,10 +759,8 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   readonly baseNotifications = [
-    { id: 'notif-1', title: 'New School Admin registered: Prempeh College', time: '1 hour ago', icon: 'school', category: 'Registration', route: '/dashboard', queryParams: { tab: 'schools' } },
-    { id: 'notif-2', title: 'Analytics engine synced 1,248 student records', time: '2 hours ago', icon: 'sync', category: 'System', route: '/reporting' },
-    { id: 'notif-3', title: 'Submission graded: Coding Challenge #4', time: '4 hours ago', icon: 'task_alt', category: 'Judging', route: '/judge' },
-    { id: 'notif-4', title: 'LMS backup snapshot created successfully', time: '8 hours ago', icon: 'cloud_done', category: 'System', route: '/lms' }
+    { id: 'notif-system', title: 'System active', time: '', icon: 'system', category: 'System', route: '/dashboard' },
+    { id: 'notif-stats', title: 'Platform stats updated', time: '', icon: 'dashboard', category: 'System', route: '/reporting' }
   ];
 
   recalculateNotifications(): void {
@@ -786,7 +784,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Recent audit events
     if (this.contentService && this.contentService.auditLogs && this.contentService.auditLogs.length > 0) {
-      const recentLogs = this.contentService.auditLogs.slice(0, 2);
+      const recentLogs = this.contentService.auditLogs.slice(0, 3);
       for (const log of recentLogs) {
         const logId = `audit-${log.id || log.time || log.action}`;
         list.push({

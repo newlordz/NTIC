@@ -999,6 +999,19 @@ def _create_indexes(cur):
 # ── Connection Pool & Helpers ──
 _pool = None
 
+def _is_conn_alive(conn) -> bool:
+    """Check if a psycopg2 connection is open and responsive."""
+    if conn is None or getattr(conn, "closed", 1) != 0:
+        return False
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
+        cur.fetchone()
+        cur.close()
+        return True
+    except Exception:
+        return False
+
 def init_connection_pool():
     """Initialize a ThreadedConnectionPool for high-concurrency scaling."""
     global _pool
@@ -1011,18 +1024,27 @@ def init_connection_pool():
         logger.warning("psycopg2.pool not available")
         return None
 
-    # Try URL connections first
+    # Try URL connections first (Railway environment standard)
     for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
         db_url = os.environ.get(url_key, "").strip()
         if db_url:
             try:
-                _pool = ThreadedConnectionPool(minconn=2, maxconn=35, dsn=db_url, connect_timeout=10)
+                _pool = ThreadedConnectionPool(
+                    minconn=2,
+                    maxconn=35,
+                    dsn=db_url,
+                    connect_timeout=10,
+                    keepalives=1,
+                    keepalives_idle=30,
+                    keepalives_interval=10,
+                    keepalives_count=5
+                )
                 logger.info(f"Initialized PostgreSQL ThreadedConnectionPool via {url_key} (max 35 connections)")
                 return _pool
             except Exception as e:
                 logger.warning(f"Failed initializing connection pool via {url_key}: {e}")
 
-    # Fallback to individual vars
+    # Fallback to individual host vars
     db_host = settings.POSTGRES_HOST
     if db_host in ("localhost", ""):
         db_host = "127.0.0.1"
@@ -1035,7 +1057,11 @@ def init_connection_pool():
             user=settings.POSTGRES_USER,
             password=settings.POSTGRES_PASSWORD,
             dbname=settings.POSTGRES_DB,
-            connect_timeout=10
+            connect_timeout=10,
+            keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=5
         )
         logger.info(f"Initialized PostgreSQL ThreadedConnectionPool via host vars ({db_host}:{settings.POSTGRES_PORT})")
         return _pool
@@ -1045,40 +1071,79 @@ def init_connection_pool():
 
 
 def get_db_connection():
-    """Return a connection from the ThreadedConnectionPool, or a fresh connection if pool is unavailable."""
+    """Return a validated connection from the pool, or a fresh connection with automatic recovery."""
     global _pool
     if _pool is None:
         init_connection_pool()
     if _pool is not None:
         try:
-            return _pool.getconn()
+            conn = _pool.getconn()
+            if _is_conn_alive(conn):
+                return conn
+            # Connection from pool was dead/stale (e.g. SSL EOF or restart): discard and retry
+            try:
+                _pool.putconn(conn, close=True)
+            except Exception:
+                pass
+            conn = _pool.getconn()
+            if _is_conn_alive(conn):
+                return conn
         except Exception as e:
-            logger.warning(f"Pool getconn failed, falling back to direct connect: {e}")
+            logger.warning(f"Pool getconn failed, attempting pool reset: {e}")
+            try:
+                _pool.closeall()
+            except Exception:
+                pass
+            _pool = None
+            init_connection_pool()
+            if _pool is not None:
+                try:
+                    conn = _pool.getconn()
+                    if _is_conn_alive(conn):
+                        return conn
+                except Exception:
+                    pass
 
-    # Fallback direct connect
+    # Fallback direct connect if pool is unavailable
     import os, psycopg2
     for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
         db_url = os.environ.get(url_key, "").strip()
         if db_url:
             try:
-                return psycopg2.connect(db_url, connect_timeout=10)
+                conn = psycopg2.connect(
+                    db_url,
+                    connect_timeout=10,
+                    keepalives=1,
+                    keepalives_idle=30,
+                    keepalives_interval=10,
+                    keepalives_count=5
+                )
+                if _is_conn_alive(conn):
+                    return conn
             except Exception:
                 pass
     db_host = settings.POSTGRES_HOST
     if db_host in ("localhost", ""):
         db_host = "127.0.0.1"
     try:
-        return psycopg2.connect(
+        conn = psycopg2.connect(
             host=db_host,
             port=settings.POSTGRES_PORT,
             user=settings.POSTGRES_USER,
             password=settings.POSTGRES_PASSWORD,
             dbname=settings.POSTGRES_DB,
             connect_timeout=10,
+            keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=5
         )
+        if _is_conn_alive(conn):
+            return conn
     except Exception as e:
-        logger.error(f"PostgreSQL connection failed: {e}")
+        logger.error(f"PostgreSQL direct connection failed: {e}")
         return None
+    return None
 
 
 def release_db_connection(conn):
@@ -1086,9 +1151,10 @@ def release_db_connection(conn):
     global _pool
     if conn is None:
         return
+    is_closed = getattr(conn, "closed", 1) != 0
     if _pool is not None:
         try:
-            _pool.putconn(conn)
+            _pool.putconn(conn, close=is_closed)
             return
         except Exception:
             pass
