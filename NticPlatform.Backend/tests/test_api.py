@@ -188,8 +188,19 @@ class TestCORS:
             "Origin": "http://localhost:4200",
             "Access-Control-Request-Method": "GET"
         })
-        assert resp.status_code == 204
+        # Preflight is handled by CORSMiddleware, which answers 200 (not 204).
+        # The requirement is that it is not rejected and carries the CORS header.
+        assert resp.status_code < 400
         assert "access-control-allow-origin" in resp.headers
+
+    def test_disallowed_origin_is_not_reflected(self, client):
+        resp = client.options("/api/health", headers={
+            "Origin": "https://evil.example.com",
+            "Access-Control-Request-Method": "GET"
+        })
+        # A non-allowlisted origin must not be echoed back, otherwise any site
+        # could read credentialed responses.
+        assert resp.headers.get("access-control-allow-origin") != "https://evil.example.com"
 
 
 class TestShapes:
@@ -5428,6 +5439,38 @@ class TestPartnerCopyIsEditable:
         assert client.put("/api/landing-copy",
                           json={"partners.heading": "Hijacked"}).status_code in (401, 403)
 
+
+class TestGatewayCopyIsEditable:
+    """The Championship Entry Gateway headings and options are editable via Page Manager."""
+
+    def test_gateway_copy_keys_are_seeded(self, client):
+        copy = client.get("/api/landing-copy").json()
+        keys = (
+            "gateway.brandName", "gateway.brandSub", "gateway.backHome",
+            "gateway.accountLogin", "gateway.sub", "gateway.heading",
+            "gateway.lead", "gateway.card1.title", "gateway.card1.body",
+            "gateway.card1.f1", "gateway.card1.f2", "gateway.card1.f3",
+            "gateway.card1.btn", "gateway.card2.title", "gateway.card2.body",
+            "gateway.card2.f1", "gateway.card2.f2", "gateway.card2.f3",
+            "gateway.card2.btnResume", "gateway.card2.btnTrack"
+        )
+        for key in keys:
+            assert key in copy, f"{key} missing -- page manager cannot edit it"
+
+    def test_gateway_defaults_match_the_original_wording(self, client):
+        copy = client.get("/api/landing-copy").json()
+        assert copy["gateway.heading"] == "Championship Entry Gateway"
+        assert copy["gateway.card1.title"] == "New Registration"
+        assert copy["gateway.card2.title"] == "Resume Registration"
+
+    def test_a_content_manager_can_edit_gateway_copy(self, client, admin_token):
+        resp = client.put("/api/landing-copy",
+                          headers={"Authorization": f"Bearer {admin_token}"},
+                          json={"gateway.heading": "National Finals Entry Portal"})
+        assert resp.status_code == 200, resp.text
+        assert client.get("/api/landing-copy").json()["gateway.heading"] == "National Finals Entry Portal"
+
+
 class TestCycleLifecycle:
     """The competition cycle state machine (app/lifecycle.py).
 
@@ -6001,6 +6044,24 @@ class TestTeamChangeApproval:
         assert client.get("/api/approvals/mine").status_code == 401
 
 
+def _mark_contact_verified(email: str) -> None:
+    """Insert a consumed contact_verification OTP for `email`, so a public
+    application can pass the server-side verification gate in these tests."""
+    from app.database import get_db_connection, release_db_connection
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO otp_challenges (id, purpose, channel, target, code_hash, max_attempts, consumed_at, expires_at) "
+            "VALUES (%s, 'contact_verification', 'email', %s, 'dummy', 5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '10 minutes')",
+            (f"otp-{uuid.uuid4().hex}", email),
+        )
+        conn.commit()
+        cur.close()
+    finally:
+        release_db_connection(conn)
+
+
 class TestDuplicateContactGate:
     """Duplicate email / phone must actually be caught.
 
@@ -6066,9 +6127,11 @@ class TestDuplicateContactGate:
 
     def test_a_fresh_email_can_still_apply(self, client):
         self._clear()
+        contact = f"fresh-{uuid.uuid4().hex[:8]}@ntic.test"
+        _mark_contact_verified(contact)
         resp = client.post("/api/approvals/public", json={
             "type": "School Registration", "entity": "Fresh School",
-            "contact": f"fresh-{uuid.uuid4().hex[:8]}@ntic.test"})
+            "contact": contact})
         assert resp.status_code == 201, resp.text
 
     def test_public_register_rejects_a_duplicate_email(self, client, admin_token):
@@ -6107,6 +6170,7 @@ class TestPublicApplicationReachesTheQueue:
     def test_an_anonymous_applicant_can_file_an_application(self, client, admin_token):
         self._clear_limits()
         contact = f"school-{uuid.uuid4().hex[:8]}@example.com"
+        _mark_contact_verified(contact)
         resp = client.post("/api/approvals/public", json={
             "type": "School Registration", "entity": "Kumasi High",
             "contact": contact, "details": {"region": "Ashanti"}})
@@ -6117,9 +6181,18 @@ class TestPublicApplicationReachesTheQueue:
         assert any((a.get("contact") or "").lower() == contact for a in queue), \
             "application did not reach the reviewer queue"
 
+    def test_unverified_contact_is_refused(self, client):
+        self._clear_limits()
+        contact = f"noverify-{uuid.uuid4().hex[:8]}@example.com"
+        resp = client.post("/api/approvals/public", json={
+            "type": "School Registration", "entity": "No Verify", "contact": contact})
+        assert resp.status_code == 403, resp.text
+        assert "verify" in resp.json()["detail"].lower()
+
     def test_the_application_is_always_pending(self, client, admin_token):
         self._clear_limits()
         contact = f"sneaky-{uuid.uuid4().hex[:8]}@example.com"
+        _mark_contact_verified(contact)
         client.post("/api/approvals/public", json={
             "type": "Judge Access", "entity": "Self Approver",
             "contact": contact, "status": "approved", "id": "apr-forged"})
@@ -6140,6 +6213,7 @@ class TestPublicApplicationReachesTheQueue:
     def test_resubmitting_updates_rather_than_duplicates(self, client, admin_token):
         self._clear_limits()
         contact = f"resub-{uuid.uuid4().hex[:8]}@example.com"
+        _mark_contact_verified(contact)
         first = client.post("/api/approvals/public", json={
             "type": "Instructor Access", "entity": "First Try", "contact": contact})
         second = client.post("/api/approvals/public", json={
@@ -6198,12 +6272,15 @@ class TestPublicApplicationReachesTheQueue:
         cid = client.post("/api/competitions", headers=h, json={
             "title": f"Cycle {uuid.uuid4().hex[:6]}", "year": 2026}).json()["id"]
         scoped_contact = f"scoped-{uuid.uuid4().hex[:8]}@example.com"
+        unscoped_contact = f"unscoped-{uuid.uuid4().hex[:8]}@example.com"
+        _mark_contact_verified(scoped_contact)
+        _mark_contact_verified(unscoped_contact)
         client.post("/api/approvals/public", json={
             "type": "School Registration", "entity": "In Cycle",
             "contact": scoped_contact, "competition_id": cid})
         client.post("/api/approvals/public", json={
             "type": "School Registration", "entity": "No Cycle",
-            "contact": f"unscoped-{uuid.uuid4().hex[:8]}@example.com"})
+            "contact": unscoped_contact})
 
         scoped = client.get(f"/api/approvals?competition_id={cid}", headers=h).json()
         assert [a["contact"] for a in scoped] == [scoped_contact]
@@ -6214,9 +6291,11 @@ class TestPublicApplicationReachesTheQueue:
     def test_a_bad_cycle_reference_is_rejected(self, client):
         """Storing an id that matches nothing is how records became invisible."""
         self._clear_limits()
+        contact = f"badref-{uuid.uuid4().hex[:6]}@example.com"
+        _mark_contact_verified(contact)
         resp = client.post("/api/approvals/public", json={
             "type": "School Registration", "entity": "Bad Ref",
-            "contact": f"badref-{uuid.uuid4().hex[:6]}@example.com",
+            "contact": contact,
             "competition_id": "comp-does-not-exist"})
         # 422 is what _validate_competition_ref raises for an unknown cycle.
         assert resp.status_code == 422, resp.text
@@ -6254,6 +6333,7 @@ class TestCheckAvailability:
     def test_pending_approval_email_returns_taken(self, client):
         import uuid
         pending_email = f"pending-{uuid.uuid4().hex[:8]}@school.edu.gh"
+        _mark_contact_verified(pending_email)
         client.post("/api/approvals/public", json={
             "type": "School Registration",
             "entity": "St. Peters",

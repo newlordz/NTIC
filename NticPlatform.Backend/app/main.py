@@ -368,7 +368,7 @@ try:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.ALLOWED_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -376,23 +376,11 @@ try:
 
     @app.middleware("http")
     async def add_security_headers(request: Request, call_next):
-        origin = request.headers.get("Origin", "*")
-        if request.method == "OPTIONS":
-            response = Response(status_code=204)
-            response.headers["Access-Control-Allow-Origin"] = origin if origin else "*"
-            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-            response.headers["Access-Control-Allow-Headers"] = "*"
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Max-Age"] = "86400"
-            return response
-
+        # CORS is handled by CORSMiddleware above against the configured
+        # allow-list. This middleware only adds non-CORS security headers; it
+        # must not reflect the Origin header, otherwise any site could read
+        # credentialed responses regardless of ALLOWED_ORIGINS.
         response = await call_next(request)
-        if origin:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Methods"] = "*"
-            response.headers["Access-Control-Allow-Headers"] = "*"
-
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
@@ -1618,10 +1606,13 @@ try:
     def _is_trusted_proxy_peer(host: str) -> bool:
         """True when `host` is a proxy we trust to set client-IP headers.
 
-        Loopback and RFC1918 addresses are trusted by default so a same-host
-        reverse proxy keeps working without configuration; anything else must be
-        listed in TRUSTED_PROXY_IPS (comma-separated) -- e.g. the Cloudflare or
-        load-balancer ranges for this deployment.
+        Any non-globally-routable peer (loopback, RFC1918, link-local, and the
+        100.64.0.0/10 carrier-grade NAT range used by Railway's edge proxy) is
+        treated as a trusted reverse proxy. `is_private` alone would miss
+        100.64.0.0/10 -- exactly where Railway's proxy IPs live -- and would stop
+        trusting X-Forwarded-For, collapsing every client into one rate-limit
+        bucket. Public proxy IPs (e.g. Cloudflare) can be listed explicitly in
+        TRUSTED_PROXY_IPS.
         """
         if not host:
             return False
@@ -1631,7 +1622,7 @@ try:
             ip = ipaddress.ip_address(host)
         except ValueError:
             return False
-        return ip.is_loopback or ip.is_private
+        return not ip.is_global
 
     def extract_client_ip(request: Request) -> str:
         # X-Forwarded-For / X-Real-IP are only honoured when the request arrived
@@ -2237,6 +2228,42 @@ try:
     # A consumed draft_resume OTP challenge acts as the read credential for that
     # one email address, for this long after verification.
     _DRAFT_RESUME_GRACE_MINUTES = 30
+
+    # How long a consumed verification OTP remains valid proof that the
+    # applicant controls the contact address, for the public application gate.
+    _CONTACT_VERIFY_GRACE_HOURS = 24
+
+    def _contact_is_verified(channel: str, target: str) -> bool:
+        """True when `target` was recently proven via a consumed OTP challenge.
+
+        `contact_verification` is the explicit "Verify" button on the
+        registration form; `draft_resume` also proves control because it is only
+        issued to someone who received the code at `target`. Both are accepted
+        so a user who resumes a saved draft is not forced to re-verify.
+        """
+        if not target:
+            return False
+        conn = get_db_connection()
+        if not conn:
+            return False
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT 1 FROM otp_challenges "
+                "WHERE purpose IN ('contact_verification', 'draft_resume') "
+                "AND channel = %s AND target = %s "
+                "AND consumed_at IS NOT NULL "
+                "AND consumed_at > CURRENT_TIMESTAMP - (%s * INTERVAL '1 hour') "
+                "LIMIT 1",
+                (channel, target, _CONTACT_VERIFY_GRACE_HOURS),
+            )
+            ok = cur.fetchone() is not None
+            cur.close()
+            return ok
+        except Exception:
+            return False
+        finally:
+            release_db_connection(conn)
 
     def _draft_resume_is_authorized(email: str, resume_token: str) -> bool:
         """True when `resume_token` is a recently-verified draft_resume challenge
@@ -7862,6 +7889,18 @@ try:
                         status_code=409,
                         detail="An account already exists for this email address. Please sign in, or use 'Forgot password' if you cannot get in.",
                     )
+
+            # The contact address must have been proven via OTP before an
+            # application is filed against it. Without this, anyone could file an
+            # application with someone else's email and the reviewer would
+            # provision an account for an address the victim never confirmed.
+            if contact and not _contact_is_verified("email", contact):
+                cur.close()
+                raise HTTPException(
+                    status_code=403,
+                    detail="Please verify your email address before submitting your application.",
+                )
+
             # One open application per contact, so a resubmit updates the pending
             # row instead of stacking duplicates in the reviewer's queue. Matches
             # the behaviour of POST /api/approvals/mine.
@@ -7903,11 +7942,20 @@ try:
         return {"id": approval_id, "type": req_type, "status": "pending", "competitionId": comp_ref}
 
     @app.get("/api/approvals/status")
-    def lookup_public_approval_status(query: str = ""):
-        """Allow public applicants to check their application status by Application Code or Contact Email."""
+    def lookup_public_approval_status(query: str = "", request: Request = None):
+        """Public applicants check their status by application code, contact
+        email, or entity name.
+
+        Full application details (name, phone, guardian contacts, GPS, member
+        emails) are only returned when the query matches the secret application
+        code. A match on a guessable email or school name returns a redacted
+        summary, so the endpoint cannot be used to harvest other people's data.
+        """
         q = (query or "").strip().lower()
         if not q:
             return {"status": "not_found"}
+        client_ip = extract_client_ip(request) if request else "127.0.0.1"
+        check_rate_limit(f"approval-status:{client_ip}", max_attempts=10, window_seconds=300)
         conn = _get_db()
         try:
             cur = conn.cursor()
@@ -7934,17 +7982,20 @@ try:
             except Exception:
                 details = {}
 
+        code = (details.get("code") or "").strip().lower()
+        matched_by_code = bool(code) and code == q
+
         st = row[6] or "pending"
         app_obj = {
             "id": row[0],
             "type": row[1],
             "entity": row[2],
-            "contact": row[3],
+            "contact": row[3] if matched_by_code else "",
             "submitted": row[4],
-            "details": details,
+            "details": details if matched_by_code else {"code": details.get("code", "")},
             "status": st,
             "reviewedAt": str(row[7]) if row[7] else None,
-            "reviewer": row[8] or None,
+            "reviewer": row[8] if matched_by_code else None,
             "rejectionReasons": row[9] or None,
             "rejectionNotes": row[10] or None,
         }

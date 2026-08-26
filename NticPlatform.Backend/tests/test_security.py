@@ -49,3 +49,33 @@ class TestAdminRoles:
 
     def test_student_is_not_admin(self):
         assert "student" not in ADMIN_ROLES
+
+
+class TestTrustedProxyPeer:
+    """extract_client_ip only honours X-Forwarded-For from a trusted proxy.
+
+    Railway's edge proxy sits in the 100.64.0.0/10 carrier-grade NAT range,
+    which Python's `is_private` reports as False. If we trusted only
+    `is_private`, we would stop trusting X-Forwarded-For on Railway and collapse
+    every user into a single rate-limit bucket.
+    """
+
+    def _peer(self, host):
+        from app.main import _is_trusted_proxy_peer
+        return _is_trusted_proxy_peer(host)
+
+    def test_railway_cgnat_range_is_trusted(self):
+        assert self._peer("100.64.0.18") is True
+
+    def test_loopback_and_private_are_trusted(self):
+        assert self._peer("127.0.0.1") is True
+        assert self._peer("10.0.0.5") is True
+        assert self._peer("172.31.1.1") is True
+
+    def test_public_ip_is_not_trusted(self):
+        assert self._peer("8.8.8.8") is False
+        assert self._peer("1.2.3.4") is False
+
+    def test_garbage_host_is_not_trusted(self):
+        assert self._peer("not-an-ip") is False
+        assert self._peer("") is False
