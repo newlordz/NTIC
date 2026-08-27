@@ -420,9 +420,6 @@ export class AdminCompetitionsComponent implements OnInit {
   }
 
   savePhase(): void {
-    const target = this.editingCompetition || this.selectedCompetition;
-    if (!target) return;
-
     const phases = [...(this.formModel.phases || this.selectedCompetition?.phases || [])];
     const phaseData: CompetitionPhase = {
       ...this.phaseModel,
@@ -447,9 +444,6 @@ export class AdminCompetitionsComponent implements OnInit {
   }
 
   removePhase(index: number): void {
-    const target = this.editingCompetition || this.selectedCompetition;
-    if (!target) return;
-
     const phases = [...(this.formModel.phases || this.selectedCompetition?.phases || [])];
     phases.splice(index, 1);
 

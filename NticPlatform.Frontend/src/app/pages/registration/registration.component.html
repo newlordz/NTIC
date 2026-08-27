@@ -2405,7 +2405,7 @@
                     {{ fieldValidation['jdTel'].message }}
                   </div>
                 </div>
-                <button *ngIf="canVerifyField('jdTel')" class="verify-field-btn" (click)="sendVerifyOtp('jdTel', 'phone', judgeForm.tel)">
+                <button *ngIf="judgeForm.tel && canVerifyField('jdTel', judgeForm.tel)" class="verify-field-btn" (click)="sendVerifyOtp('jdTel', 'phone', judgeForm.tel)">
                   <span class="material-symbols-outlined">verified</span> Verify
                 </button>
                 <span *ngIf="fieldVerified['jdTel']" class="verified-field-badge">
@@ -2425,7 +2425,7 @@
                     {{ fieldValidation['jdEmail'].message }}
                   </div>
                 </div>
-                <button *ngIf="canVerifyField('jdEmail')" class="verify-field-btn" (click)="sendVerifyOtp('jdEmail', 'email', judgeForm.email)">
+                <button *ngIf="judgeForm.email && canVerifyField('jdEmail', judgeForm.email)" class="verify-field-btn" (click)="sendVerifyOtp('jdEmail', 'email', judgeForm.email)">
                   <span class="material-symbols-outlined">verified</span> Verify
                 </button>
                 <span *ngIf="fieldVerified['jdEmail']" class="verified-field-badge">
