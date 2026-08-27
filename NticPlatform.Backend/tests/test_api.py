@@ -1219,7 +1219,9 @@ class TestForgotPassword:
         clear_all_rate_limits()
         verify = client.post("/api/otp/verify",
                              json={"challenge_id": body["challenge_id"], "code": "000000"})
-        assert verify.status_code == 404
+        # Same status as a wrong code on a real account: the fake challenge must
+        # be indistinguishable, or the forgot-password flow becomes an oracle.
+        assert verify.status_code == 400
 
     def test_reset_token_cannot_be_reused(self, client, admin_token, monkeypatch):
         import re
@@ -2657,7 +2659,7 @@ class TestServerSideOtp:
         resp = client.post(
             "/api/otp/verify", json={"challenge_id": "otp-does-not-exist", "code": "123456"}
         )
-        assert resp.status_code == 404
+        assert resp.status_code == 400
 
     def test_invalid_purpose_and_channel_are_rejected(self, client):
         assert self._request(client, purpose="anything").status_code == 422
@@ -6342,3 +6344,65 @@ class TestCheckAvailability:
         resp = client.get(f"/api/auth/check-availability?email={pending_email}")
         assert resp.status_code == 200
         assert resp.json()["email_taken"] is True
+
+
+class TestPublicStatusLookupRedaction:
+    """The public status lookup must not leak the secret application code.
+
+    The code is the credential that unlocks the applicant's full details, so a
+    match on a guessable email or entity name must NOT echo the code back (nor
+    the rejection reasons/notes). Only an exact code match returns everything.
+    """
+
+    def _clear_limits(self):
+        from app.security import clear_all_rate_limits
+        clear_all_rate_limits()
+
+    def _file(self, client, email, code, entity="Redact School"):
+        _mark_contact_verified(email)
+        resp = client.post("/api/approvals/public", json={
+            "type": "School Registration", "entity": entity, "contact": email,
+            "details": {"code": code, "repName": "Secret Rep", "region": "Ashanti"}})
+        assert resp.status_code == 201, resp.text
+
+    def test_email_match_redacts_everything_including_the_code(self, client):
+        self._clear_limits()
+        email = f"redact-{uuid.uuid4().hex[:8]}@example.com"
+        code = f"NTIC-{uuid.uuid4().hex[:6].upper()}"
+        self._file(client, email, code)
+        self._clear_limits()
+        resp = client.get(f"/api/approvals/status?query={email}")
+        assert resp.status_code == 200
+        app = resp.json()["application"]
+        assert app["contact"] == "", "contact must not be returned on an email match"
+        assert app["details"] == {}, "details (incl. the secret code) must not be returned"
+        assert app["reviewer"] is None
+        assert app["rejectionReasons"] is None
+        # The code itself must not be discoverable from an email match.
+        assert code.lower() not in resp.text.lower()
+
+    def test_entity_match_is_also_redacted(self, client):
+        self._clear_limits()
+        email = f"redact2-{uuid.uuid4().hex[:8]}@example.com"
+        code = f"NTIC-{uuid.uuid4().hex[:6].upper()}"
+        self._file(client, email, code, entity="Unique School Name")
+        self._clear_limits()
+        resp = client.get("/api/approvals/status?query=unique school name")
+        assert resp.status_code == 200
+        app = resp.json()["application"]
+        assert app["contact"] == ""
+        assert app["details"] == {}
+        assert code.lower() not in resp.text.lower()
+
+    def test_code_match_returns_full_details(self, client):
+        self._clear_limits()
+        email = f"fullcode-{uuid.uuid4().hex[:8]}@example.com"
+        code = f"NTIC-{uuid.uuid4().hex[:6].upper()}"
+        self._file(client, email, code)
+        self._clear_limits()
+        resp = client.get(f"/api/approvals/status?query={code.lower()}")
+        assert resp.status_code == 200
+        app = resp.json()["application"]
+        assert app["contact"].lower() == email
+        assert app["details"].get("repName") == "Secret Rep"
+

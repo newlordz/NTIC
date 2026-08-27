@@ -3370,8 +3370,8 @@
                   <div class="live-user-email">{{ session.email }} &middot; <small>Started {{ session.created_at | slice:0:16 }}</small></div>
                 </div>
                 <div class="live-item-right">
-                  <code class="live-ticket-code">{{ isMainAdmin(session) ? '••••••••••••' : ((session.display || (session.token | slice:0:12)) + '...') }}</code>
-                  <button class="live-action-btn danger" (mousedown)="$event.stopPropagation(); revokeSession(session.token)" title="Revoke Session">
+                  <code class="live-ticket-code">{{ isMainAdmin(session) ? '••••••••••••' : (session.display) }}</code>
+                  <button class="live-action-btn danger" (mousedown)="$event.stopPropagation(); revokeSession(session.user_id)" title="Revoke Session">
                     <span class="material-symbols-outlined">link_off</span>
                   </button>
                 </div>
@@ -3485,7 +3485,7 @@
               </span>
             </div>
             <div class="admin-ticket-cell">
-              <code class="admin-ticket-code" style="font-size:0.65rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;">{{ isMainAdmin(session) ? '••••••••••••' : (session.display || session.token) }}</code>
+              <code class="admin-ticket-code" style="font-size:0.65rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;">{{ isMainAdmin(session) ? '••••••••••••' : session.display }}</code>
             </div>
             <div class="admin-date-cell">{{ session.created_at | slice:0:16 }}</div>
             <div class="admin-date-cell">{{ session.expires_at | slice:0:16 }}</div>
@@ -3496,7 +3496,7 @@
               </span>
             </div>
             <div class="admin-actions-cell">
-              <button class="admin-action-btn admin-action-danger" title="Revoke Session" (click)="revokeSession(session.token); $event.stopPropagation()">
+              <button class="admin-action-btn admin-action-danger" title="Revoke Session" (click)="revokeSession(session.user_id); $event.stopPropagation()">
                 <span class="material-symbols-outlined">link_off</span>
               </button>
             </div>

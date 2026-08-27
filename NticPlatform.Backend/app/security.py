@@ -65,6 +65,10 @@ LMS_ROLES = ADMIN_ROLES | {ROLE_INSTRUCTOR, ROLE_CONTENT_MANAGER}
 DISABLED_STATUSES = frozenset({
     "suspended", "inactive", "disabled", "revoked", "banned", "deleted",
     "rejected", "locked",
+    # Public sign-ups are created 'pending' and must be activated by a reviewer.
+    # Without this entry a self-registered judge/sponsor/student could log in
+    # before any review took place, defeating the review gate entirely.
+    "pending",
 })
 
 

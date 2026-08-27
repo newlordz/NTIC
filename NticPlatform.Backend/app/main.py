@@ -1229,7 +1229,15 @@ try:
             )
             row = cur.fetchone()
             if not row:
-                raise HTTPException(status_code=404, detail="No verification in progress. Please request a new code.")
+                # Return the same shape as a wrong-code attempt so a caller who
+                # holds a challenge id for a NON-existent account (forgot-password
+                # hands out a fake, never-persisted id) cannot tell it apart from
+                # a real account with a mistyped code. This closes an
+                # account-existence side channel through the OTP verify path.
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Incorrect code. {_OTP_MAX_ATTEMPTS} attempt(s) remaining.",
+                )
 
             purpose, channel, target, code_hash, attempts, max_attempts, consumed_at, is_expired = row
             if consumed_at is not None:
@@ -1436,11 +1444,20 @@ try:
         return {"status": "reset", "email": email}
 
     @app.get("/api/auth/check-availability")
-    def check_availability(email: str = "", phone: str = ""):
-        """Check if an email or phone number is already in the database."""
+    def check_availability(email: str = "", phone: str = "", request: Request = None):
+        """Check if an email or phone number is already in the database.
+
+        This is an existence oracle, so it is rate-limited like every other
+        public enumeration surface. Without a limit it would let an attacker
+        script the whole user base and harvest which emails/phones are taken.
+        """
         em = (email or "").strip().lower()
         ph = (phone or "").strip()
-        
+
+        if request is not None:
+            client_ip = extract_client_ip(request)
+            check_rate_limit(f"check-availability:{client_ip}", max_attempts=30, window_seconds=60)
+
         email_taken = False
         phone_taken = False
         
@@ -1717,11 +1734,12 @@ try:
         row = None
         try:
             cur = conn.cursor()
-            # Try email first, then ticket (access pass)
+            # Try email first, then ticket (access pass), then phone
             cur.execute(
                 "SELECT id, email, full_name, role, ticket, password_hash, status, organization, "
-                "COALESCE(must_change_password, FALSE) FROM users WHERE lower(email) = %s OR upper(ticket) = %s",
-                (credential.lower(), credential.upper()),
+                "COALESCE(must_change_password, FALSE) FROM users "
+                "WHERE lower(email) = %s OR upper(ticket) = %s OR phone = %s",
+                (credential.lower(), credential.upper(), credential),
             )
             row = cur.fetchone()
             cur.close()
@@ -1739,6 +1757,8 @@ try:
 
         # A suspended/disabled account must not be able to obtain a session.
         if account_is_disabled(status):
+            if (status or "").strip().lower() == "pending":
+                raise HTTPException(status_code=403, detail="Your account is pending review and has not been activated yet.")
             raise HTTPException(status_code=403, detail="This account has been disabled")
 
         # Password verified -> clear rate limit counter
@@ -2118,20 +2138,23 @@ try:
         )
         rows = cur.fetchall()
         cur.close(); release_db_connection(conn)
+        # Never return the raw bearer token. It is a live session credential, and
+        # exposing it to every admin (or a compromised admin account) lets anyone
+        # impersonate any user. Sessions are revoked by user_id instead.
         return [
-            {"token": r[0], "display": r[0][:8] + "..." + r[0][-8:], "user_id": r[1], "email": r[2], "created_at": str(r[3]),
+            {"display": r[0][:8] + "..." + r[0][-8:], "user_id": r[1], "email": r[2], "created_at": str(r[3]),
              "expires_at": str(r[4]), "full_name": r[5], "role": r[6], "active": True}
             for r in rows
         ]
 
     @app.post("/api/auth/sessions/revoke")
     def auth_revoke_session(payload: dict, _admin: dict = Depends(require_admin)):
-        token = payload.get("token", "").strip()
-        if not token:
-            raise HTTPException(status_code=400, detail="Token is required")
+        user_id = (payload.get("user_id") or "").strip()
+        if not user_id:
+            raise HTTPException(status_code=400, detail="user_id is required")
         conn = _get_db()
         cur = conn.cursor()
-        cur.execute("DELETE FROM auth_sessions WHERE token = %s", (token,))
+        cur.execute("DELETE FROM auth_sessions WHERE user_id = %s", (user_id,))
         deleted = cur.rowcount
         conn.commit()
         cur.close(); release_db_connection(conn)
@@ -6921,6 +6944,8 @@ try:
         # rule below still applies, so this does not widen self-service access.
         if payload.role not in ["judge", "sponsor", "student"]:
             raise HTTPException(status_code=403, detail="Role not allowed for public registration")
+        if not payload.email or not _EMAIL_RE.match(payload.email.strip()):
+            raise HTTPException(status_code=422, detail="A valid email address is required")
         # Unauthenticated account creation is a spam/DoS target; throttle it like
         # the other public write paths.
         client_ip = extract_client_ip(request)
@@ -6942,17 +6967,37 @@ try:
             release_db_connection(conn)
             raise HTTPException(status_code=400, detail="This email is already registered")
         if payload.phone:
-            cur.execute("SELECT id FROM users WHERE phone = %s", (payload.phone,))
-            if cur.fetchone():
-                cur.close()
-                release_db_connection(conn)
-                raise HTTPException(status_code=400, detail="This phone number is already registered")
+            # Normalise the phone to its last 9 digits so "+233244…", "0244…"
+            # and "244…" all map to the same identity. An exact match here let
+            # the same number register repeatedly under different formats.
+            digits = re.sub(r"\D", "", payload.phone)
+            if digits.startswith("233") and len(digits) >= 12:
+                digits = digits[3:]
+            elif digits.startswith("0") and len(digits) >= 10:
+                digits = digits[1:]
+            phone_suffix = digits[-9:] if len(digits) >= 8 else None
+            if phone_suffix:
+                cur.execute(
+                    "SELECT id FROM users WHERE right(regexp_replace(COALESCE(phone, ''), '\\D', '', 'g'), 9) = %s",
+                    (phone_suffix,),
+                )
+                if cur.fetchone():
+                    cur.close()
+                    release_db_connection(conn)
+                    raise HTTPException(status_code=400, detail="This phone number is already registered")
         
         user_id = "USR-" + str(uuid.uuid4())[:8]
         # Public self-registration must still end up with a real password. If
         # none was supplied, mint one server-side rather than falling back to a
         # shared literal that anyone could guess.
         supplied_password = (payload.password or "").strip()
+        if supplied_password:
+            # A client-supplied password on the public path must meet the same
+            # policy as the admin path, otherwise a registrant could set a weak
+            # credential that defeats the point of the review + password rules.
+            pw_error = validate_password_strength(supplied_password, payload.email.strip().lower(), payload.full_name or "")
+            if pw_error:
+                raise HTTPException(status_code=422, detail=pw_error)
         generated_password = "" if supplied_password else _generate_temp_password()
         password_hash = hash_password(supplied_password or generated_password)
         # The access pass is always minted server-side: a client-supplied ticket
@@ -7992,15 +8037,19 @@ try:
             "entity": row[2],
             "contact": row[3] if matched_by_code else "",
             "submitted": row[4],
-            "details": details if matched_by_code else {"code": details.get("code", "")},
+            # Redacted matches must not echo the application code back: the code
+            # is the secret that unlocks full details, so returning it here would
+            # let anyone who guesses an email obtain the code and re-query for the
+            # full PII. Rejection reasons/notes and reviewer are likewise withheld.
+            "details": details if matched_by_code else {},
             "status": st,
             "reviewedAt": str(row[7]) if row[7] else None,
             "reviewer": row[8] if matched_by_code else None,
-            "rejectionReasons": row[9] or None,
-            "rejectionNotes": row[10] or None,
+            "rejectionReasons": (row[9] or None) if matched_by_code else None,
+            "rejectionNotes": (row[10] or None) if matched_by_code else None,
         }
         res = {"status": st, "application": app_obj}
-        if st == "rejected":
+        if st == "rejected" and matched_by_code:
             res["rejectedDetails"] = {
                 "reasons": row[9] or "",
                 "notes": row[10] or "",
@@ -8025,6 +8074,10 @@ try:
         "team addition": ROLE_STUDENT,
         "student registration": ROLE_STUDENT,
         "open registration": ROLE_STUDENT,
+        "judge access": ROLE_JUDGE,
+        "judge application": ROLE_JUDGE,
+        "sponsor access": ROLE_SPONSOR,
+        "sponsor application": ROLE_SPONSOR,
     }
 
     def _apply_approved_team_change(cur, approval_row) -> dict:
@@ -8174,7 +8227,7 @@ try:
 
             cur.execute(
                 "UPDATE pending_approvals SET status = %s, reviewed_at = %s, reviewer = %s, rejection_reasons = %s, rejection_notes = %s WHERE id = %s RETURNING id",
-                (target_status, payload.reviewed_at, payload.reviewer, payload.rejection_reasons, payload.rejection_notes, item_id)
+                (target_status, datetime.datetime.now(datetime.UTC).isoformat(), _actor["email"], payload.rejection_reasons, payload.rejection_notes, item_id)
             )
             row = cur.fetchone()
             if not row:
@@ -8198,6 +8251,17 @@ try:
 
             conn.commit()
         except HTTPException:
+            # Never leak the connection or leave a half-written transaction open
+            # when a business-rule error is raised mid-flight.
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            try:
+                cur.close()
+            except Exception:
+                pass
+            release_db_connection(conn)
             raise
         except Exception as e:
             conn.rollback()

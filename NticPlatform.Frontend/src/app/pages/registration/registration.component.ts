@@ -1351,6 +1351,8 @@ setAuthValue('activeUserEmail', email);
   get fieldVerified(): Record<string, boolean> {
     return {
       schoolEmail: this.isFieldVerified('schoolEmail', this.schoolForm.email),
+      schoolTel: this.isFieldVerified('schoolTel', this.schoolForm.tel),
+      schoolRepEmail: this.isFieldVerified('schoolRepEmail', this.schoolForm.repEmail),
       schoolRepTel: this.isFieldVerified('schoolRepTel', this.schoolForm.repTel),
       instEmail: this.isFieldVerified('instEmail', this.instructorForm.email),
       instTel: this.isFieldVerified('instTel', this.instructorForm.tel),
@@ -2121,7 +2123,10 @@ setAuthValue('activeUserEmail', email);
   generateApplicationCode(type: 'school' | 'team' | 'instructor' | 'student'): string {
     const prefix = type === 'school' ? 'SCH' : type === 'team' ? 'TM' : type === 'student' ? 'STU' : 'INS';
     const year = new Date().getFullYear();
-    return `NTIC-${prefix}-${year}-${this.randomSuffix(4)}`;
+    // 12-character suffix (~2^60) so the code is effectively unguessable. The
+    // old 4-character suffix (~1M values) let anyone brute-force the public
+    // status lookup to harvest an applicant's full details.
+    return `NTIC-${prefix}-${year}-${this.randomSuffix(12)}`;
   }
 
   /**
@@ -3780,7 +3785,7 @@ setAuthValue('activeUserEmail', email);
     }
     
     // Simulate API call with modern loader
-    setTimeout(() => {
+    setTimeout(async () => {
     try {
       this.isSubmitting = false;
       this.isPreviewModalOpen = false;
@@ -4163,32 +4168,26 @@ setAuthValue('activeUserEmail', email);
             details
           });
         }
-        this.contentService.saveApprovals(currentApprovals);
-
         // The application has to exist on the server or no reviewer will ever see
-        // it. saveApprovals() above only reaches POST /api/bulk-sync, which is
-        // admin-only, so for an anonymous applicant it 401'd and the application
-        // lived solely in this browser -- while the confirmation email below told
-        // them it had been received. This files it for real.
+        // it. This files it for real and awaits server confirmation.
         if (approvalType && entity) {
-          this.apiService.submitPublicApplication({
-            type: approvalType,
-            entity,
-            contact,
-            details
-          }).subscribe({
-            next: () => {},
-            error: (err: any) => {
-              const detail = err?.error?.detail || err?.message || 'Unknown error';
-              this.dialogService.toast(
-                err?.status === 0
-                  ? 'Your application could not be sent to the server. Please check your connection and submit again.'
-                  : `Your application was not received: ${detail}`,
-                'error'
-              );
-            }
-          });
+          try {
+            await firstValueFrom(this.apiService.submitPublicApplication({
+              type: approvalType,
+              entity,
+              contact,
+              details
+            }));
+          } catch (err: any) {
+            const detail = err?.error?.detail || err?.message || 'Server rejected application. Please verify all details and try again.';
+            this.isSubmitting = false;
+            this.isPreviewModalOpen = false;
+            this.showCustomAlert(detail, 'Submission Failed', 'error');
+            return;
+          }
         }
+
+        this.contentService.saveApprovals(currentApprovals);
 
         const emailTo = contact || '';
         const emailName = entity || '';
@@ -4219,7 +4218,7 @@ setAuthValue('activeUserEmail', email);
 
       this.justUpdatedApplication = !!this.editingApprovalId;
       this.editingApprovalId = null;
-      this.lastApplicationCode = details.code || null;
+      this.lastApplicationCode = details?.code || null;
       this.copiedApplicationCode = false;
       this.isSuccessModalOpen = true;
       this.clearDraftPrefills();

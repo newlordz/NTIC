@@ -992,8 +992,8 @@ login(email: string, password: string): Observable<any> {
     return this.http.get<any[]>(this.apiUrl + '/auth/sessions');
   }
 
-  revokeAuthSession(token: string): Observable<any> {
-    return this.http.post(this.apiUrl + '/auth/sessions/revoke', { token });
+  revokeAuthSession(userId: string): Observable<any> {
+    return this.http.post(this.apiUrl + '/auth/sessions/revoke', { user_id: userId });
   }
 
   revokeAllSessions(): Observable<{ status: string; revoked: number }> {

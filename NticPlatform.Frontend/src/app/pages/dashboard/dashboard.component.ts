@@ -3752,7 +3752,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  async revokeSession(token: string): Promise<void> {
+  async revokeSession(userId: string): Promise<void> {
     const ok = await this.dialogService.confirm({
       title: 'Revoke Active Session',
       message: 'Are you sure you want to terminate this live user session token? The user will be signed out immediately.',
@@ -3761,9 +3761,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
     if (!ok) return;
 
-    this.apiService.revokeAuthSession(token).subscribe({
+    this.apiService.revokeAuthSession(userId).subscribe({
       next: () => {
-        this.authSessions = this.authSessions.filter(s => s.token !== token);
+        this.authSessions = this.authSessions.filter(s => s.user_id !== userId);
         this.authSessionCount = Math.max(0, this.authSessionCount - 1);
         const tokensIdx = this.stats.findIndex(s => s.label === 'Active Sessions');
         if (tokensIdx >= 0) {
@@ -3788,14 +3788,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.apiService.revokeAllSessions().subscribe({
       next: (res) => {
-        const currentToken = getAuthValue('activeUserToken');
-        // Keep only the current admin's session in the local list
-        this.authSessions = this.authSessions.filter(s => s.token === currentToken);
-        this.authSessionCount = this.authSessions.length;
-        const tokensIdx = this.stats.findIndex(s => s.label === 'Active Sessions');
-        if (tokensIdx >= 0) {
-          this.stats[tokensIdx] = { ...this.stats[tokensIdx], value: String(this.authSessionCount) };
-        }
+        // The backend already spares the caller's own session; reload from the
+        // server rather than filtering by a token the API no longer exposes.
+        this.loadAuthSessions();
+        this.loadAuthSessionCount();
         this.dialogService.toast(`Successfully revoked ${res.revoked} active session(s).`, 'success');
       },
       error: (err) => {
@@ -3902,7 +3898,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         s.full_name?.toLowerCase().includes(q) ||
         s.email?.toLowerCase().includes(q) ||
         s.role?.toLowerCase().includes(q) ||
-        s.token?.toLowerCase().includes(q)
+        s.display?.toLowerCase().includes(q)
       );
     }
     return list;
@@ -4606,6 +4602,54 @@ setTimeout(async () => {
           this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
           this.openCredentialsModal('Instructor Access Approved!', `Certified Instructor account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
         }
+      } else if (req.type === 'Judge Access' || req.type === 'Judge Application') {
+        const newJudge = {
+          id: account?.user_id || ('USR-' + Date.now() + '-' + this.randomSuffix(4).toLowerCase()),
+          role: 'judge' as const,
+          fullName: req.entity,
+          email: req.contact,
+          phone: req.details?.phone || req.details?.tel || '',
+          otp,
+          organization: req.details?.organization || 'Advisory Judging Panel',
+          ticket,
+          applicationCode: req.details?.code || '',
+          status: 'Active',
+          registeredAt: new Date().toLocaleDateString('en-GB'),
+          lastLogin: 'Never'
+        };
+
+        const currentUsers = [...this.contentService.users];
+        currentUsers.unshift(newJudge as any);
+        this.contentService.saveUsers(currentUsers);
+
+        if (provisioned) {
+          this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
+          this.openCredentialsModal('Judge Access Approved!', `Championship Judge account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
+        }
+      } else if (req.type === 'Sponsor Access' || req.type === 'Sponsor Application') {
+        const newSponsor = {
+          id: account?.user_id || ('USR-' + Date.now() + '-' + this.randomSuffix(4).toLowerCase()),
+          role: 'sponsor' as const,
+          fullName: req.entity,
+          email: req.contact,
+          phone: req.details?.phone || req.details?.repContact || '',
+          otp,
+          organization: req.details?.company || req.entity,
+          ticket,
+          applicationCode: req.details?.code || '',
+          status: 'Active',
+          registeredAt: new Date().toLocaleDateString('en-GB'),
+          lastLogin: 'Never'
+        };
+
+        const currentUsers = [...this.contentService.users];
+        currentUsers.unshift(newSponsor as any);
+        this.contentService.saveUsers(currentUsers);
+
+        if (provisioned) {
+          this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, ticket, otp);
+          this.openCredentialsModal('Sponsor Application Approved!', `Sponsor Partner account generated for ${req.entity}. Official credentials ready below:`, ticket, otp, `Access pass & security PIN sent to ${req.contact}`);
+        }
       }
 
       const currentAudit = [...this.contentService.auditLogs];
@@ -4831,6 +4875,17 @@ setTimeout(async () => {
     this.contentService.saveRejectedApprovals(currentRejected);
 
     this.pendingApprovals = this.pendingApprovals.filter(r => r.id !== req.id);
+
+    // Persist the rejection to the backend. Previously this quick-reject only
+    // mutated localStorage, so the row stayed 'pending' in PostgreSQL and every
+    // other reviewer (and the applicant's public status lookup) still saw it.
+    this.apiService.updateApproval(req.id, {
+      status: 'rejected',
+      reviewed_at: new Date().toLocaleString('en-GB'),
+      reviewer: 'admin@ntic.org.gh',
+      rejection_reasons: reason,
+      rejection_notes: 'Rejected during preview review.'
+    }).subscribe({ next: () => {}, error: () => {} });
 
     this.emailService.sendRejectionEmail(
       req.contact, req.entity, req.entity, req.type,
