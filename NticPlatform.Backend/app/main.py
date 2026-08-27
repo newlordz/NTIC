@@ -8123,6 +8123,144 @@ try:
         cur.execute("DELETE FROM teams WHERE id = %s", (team_id,))
         return {"applied": True, "team_id": team_id}
 
+    def _upsert_team(cur, name, track, lead, members, status, school_name,
+                      competition_id, mentor, motto, roster_list, lead_email, member_emails) -> str:
+        """Create or update a team and sync its members + member accounts.
+
+        Idempotent by (name, school_name) and shared by the team endpoints and
+        the approval-provisioning path, so approving a school/team application
+        materialises the team in the SAME transaction rather than relying on the
+        reviewer's browser to do it later.
+        """
+        cur.execute(
+            "SELECT id FROM teams WHERE lower(name) = %s AND lower(COALESCE(school_name, '')) = %s",
+            (name.strip().lower(), (school_name or "").strip().lower()),
+        )
+        existing = cur.fetchone()
+        if existing:
+            team_id = existing[0]
+            cur.execute(
+                "UPDATE teams SET track = %s, lead = %s, members = %s, status = %s, "
+                "competition_id = %s, mentor = %s, motto = %s, roster_list = %s WHERE id = %s",
+                (track, lead, members, status, competition_id or None, mentor, motto,
+                 json.dumps(roster_list or []), team_id),
+            )
+        else:
+            team_id = "team-" + str(uuid.uuid4())[:8]
+            cur.execute(
+                "INSERT INTO teams (id, name, track, lead, members, status, school_name, "
+                "competition_id, mentor, motto, roster_list) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (team_id, name, track, lead, members, status, school_name or "",
+                 competition_id or None, mentor, motto, json.dumps(roster_list or [])),
+            )
+        _sync_team_members(cur, team_id, lead, roster_list or [], lead_email or "", member_emails or [])
+        _provision_team_member_accounts(cur, team_id, school_name or None)
+        if competition_id:
+            _auto_enroll_team_members(cur, team_id, competition_id)
+        return team_id
+
+    def _provision_approved_teams(cur, approval_row) -> dict:
+        """Create the teams a school/team application entitles the applicant to.
+
+        Previously these were created by the reviewer's browser AFTER the PATCH,
+        so an approved application could be recorded without its teams if that
+        browser crashed, or a second reviewer approving via the API left no team
+        at all. This performs the same work inside the approval transaction, so
+        an approved application is always fully materialised.
+        """
+        approval_type = (approval_row["type"] or "").strip().lower()
+        details = approval_row["details"] or {}
+        if isinstance(details, str):
+            import json as _json_local
+            try:
+                details = _json_local.loads(details)
+            except Exception:
+                details = {}
+        if not isinstance(details, dict):
+            details = {}
+        entity = (approval_row["entity"] or "").strip()
+        competition_id = (approval_row.get("competition_id") or "").strip()
+        created: list = []
+
+        def _names(raw):
+            if isinstance(raw, str):
+                return [raw.strip()] if raw.strip() else []
+            if isinstance(raw, list):
+                return [str(x).strip() for x in raw if str(x).strip()]
+            return []
+
+        if approval_type == "school registration":
+            teams = details.get("teamsList")
+            if not isinstance(teams, list):
+                return {"applied": False, "reason": "No teams listed in application"}
+            for t in teams:
+                if not isinstance(t, dict):
+                    continue
+                name = (t.get("name") or "").strip()
+                if not name:
+                    continue
+                roster = _names(t.get("rosterList") or t.get("members"))
+                if not roster:
+                    roster = _names([t.get("leadName"), t.get("member2Name"),
+                                     t.get("member3Name"), t.get("member4Name"),
+                                     t.get("member5Name")])
+                emails = _names([t.get("leadEmail"), t.get("member2Email"),
+                                 t.get("member3Email"), t.get("member4Email"),
+                                 t.get("member5Email")])
+                if not emails:
+                    emails = _names(t.get("memberEmails"))
+                lead = (t.get("leadName") or t.get("lead") or (roster[0] if roster else "") or "Team Lead").strip()
+                track = (t.get("track") or "Coding").strip()
+                team_id = _upsert_team(cur, name, track, lead, max(len(roster), 1), "In Competition",
+                                       entity, competition_id, "", "", roster,
+                                       (emails[0] if emails else ""), emails)
+                created.append(team_id)
+        elif approval_type == "team addition":
+            name = entity
+            if not name:
+                return {"applied": False, "reason": "No team name"}
+            roster = _names(details.get("members") or details.get("rosterList"))
+            lead = (details.get("lead") or (roster[0] if roster else "") or "Team Lead").strip()
+            track = (details.get("track") or "Coding").strip()
+            school = (details.get("school") or details.get("institution") or "Partner School").strip()
+            mentor = (details.get("mentor") or "").strip()
+            motto = (details.get("motto") or "").strip()
+            lead_email = (details.get("leadEmail") or "").strip()
+            member_emails = _names(details.get("memberEmails"))
+            team_id = _upsert_team(cur, name, track, lead, max(len(roster), 1), "In Competition",
+                                   school, competition_id, mentor, motto, roster,
+                                   lead_email, member_emails)
+            created.append(team_id)
+        elif approval_type == "team modification":
+            team_id = (details.get("teamId") or "").strip()
+            if not team_id:
+                return {"applied": False, "reason": "No team id"}
+            new_name = (details.get("newName") or details.get("name") or entity).strip()
+            roster = _names(details.get("members"))
+            lead = (details.get("lead") or (roster[0] if roster else "") or "Team Lead").strip()
+            track = (details.get("track") or "Coding").strip()
+            school = (details.get("school") or details.get("institution") or "").strip()
+            mentor = (details.get("mentor") or "").strip()
+            motto = (details.get("motto") or "").strip()
+            lead_email = (details.get("leadEmail") or "").strip()
+            member_emails = _names(details.get("memberEmails"))
+            cur.execute(
+                "UPDATE teams SET name = %s, track = %s, lead = %s, members = %s, "
+                "status = 'In Competition', school_name = %s, mentor = %s, motto = %s, roster_list = %s WHERE id = %s",
+                (new_name, track, lead, max(len(roster), 1), school, mentor, motto,
+                 json.dumps(roster), team_id),
+            )
+            _sync_team_members(cur, team_id, lead, roster, lead_email, member_emails)
+            _provision_team_member_accounts(cur, team_id, school or None)
+            if competition_id:
+                _auto_enroll_team_members(cur, team_id, competition_id)
+            created.append(team_id)
+        else:
+            return {"applied": False, "reason": "Not a team-provisioning approval type"}
+
+        return {"applied": True, "teams": created}
+
     def _provision_approved_account(cur, approval_row) -> dict:
         """Create the account an approved application entitles the applicant to.
 
@@ -8213,7 +8351,7 @@ try:
             # account, and that needs the type/contact/details in the same
             # transaction so a failure rolls the whole decision back.
             cur.execute(
-                "SELECT type, entity, contact, details, status FROM pending_approvals WHERE id = %s",
+                "SELECT type, entity, contact, details, status, COALESCE(competition_id, '') FROM pending_approvals WHERE id = %s",
                 (item_id,),
             )
             before = cur.fetchone()
@@ -8237,17 +8375,23 @@ try:
 
             account: dict = {"provisioned": False, "reason": "Not an approval transition"}
             team_change: dict = {"applied": False, "reason": "Not an approval transition"}
+            teams: dict = {"applied": False, "reason": "Not an approval transition"}
             if now_approved and not was_approved:
                 approval_row = {
                     "type": before[0],
                     "entity": before[1],
                     "contact": before[2],
                     "details": before[3],
+                    "competition_id": before[5] or "",
                 }
                 account = _provision_approved_account(cur, approval_row)
                 # A disbandment has to be carried out here: institutions no longer
                 # hold DELETE /api/teams, so nothing else would perform it.
                 team_change = _apply_approved_team_change(cur, approval_row)
+                # Teams must also be created server-side, otherwise an approved
+                # school/team application is recorded without its teams whenever
+                # the reviewer's browser is not the one to materialise them.
+                teams = _provision_approved_teams(cur, approval_row)
 
             conn.commit()
         except HTTPException:
@@ -8273,9 +8417,12 @@ try:
         broadcast_async({"type": "data_changed", "collection": "approvals"})
         if account.get("provisioned"):
             broadcast_async({"type": "data_changed", "collection": "users"})
-        if team_change.get("applied"):
+        if team_change.get("applied") or teams.get("applied"):
             broadcast_async({"type": "data_changed", "collection": "teams"})
-        return {"id": item_id, "status": "updated", "account": account, "team_change": team_change}
+            if teams.get("applied"):
+                broadcast_async({"type": "data_changed", "collection": "users"})
+        return {"id": item_id, "status": "updated", "account": account,
+                "team_change": team_change, "teams": teams}
 
     @app.delete("/api/approvals/{item_id}")
     def delete_approval(item_id: str, _actor: dict = Depends(require_role(APPROVAL_ROLES))):

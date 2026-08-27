@@ -5666,6 +5666,52 @@ class TestApprovalProvisioning:
                             json={"status": "approved"})
         assert resp.status_code == 404
 
+    def test_approving_school_registration_creates_teams_server_side(self, client, admin_token):
+        email = f"teams-{uuid.uuid4().hex[:8]}@example.com"
+        lead_email = f"lead-{uuid.uuid4().hex[:6]}@example.com"
+        approval_id = f"APR-{uuid.uuid4().hex[:10]}"
+        resp = client.post("/api/approvals",
+                           headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"id": approval_id, "type": "School Registration",
+                                 "entity": "Nationwide School", "contact": email,
+                                 "details": {"teamsList": [
+                                     {"name": "Squad One", "track": "Coding",
+                                      "leadName": "Lead A", "leadEmail": lead_email,
+                                      "member2Name": "Member B",
+                                      "member2Email": f"m2-{uuid.uuid4().hex[:6]}@example.com"}
+                                 ]}, "status": "pending"})
+        assert resp.status_code in (200, 201), resp.text
+        result = self._approve(client, admin_token, approval_id)
+        assert result["teams"]["applied"] is True
+        teams = client.get("/api/teams", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        assert any(t.get("name") == "Squad One" for t in teams), \
+            "approving a school registration did not create its team server-side"
+
+    def test_approving_team_addition_creates_team_and_member_accounts(self, client, admin_token):
+        lead_email = f"addlead-{uuid.uuid4().hex[:8]}@example.com"
+        member_email = f"addmem-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = f"APR-{uuid.uuid4().hex[:10]}"
+        resp = client.post("/api/approvals",
+                           headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"id": approval_id, "type": "Team Addition",
+                                 "entity": "Independent Squad", "contact": lead_email,
+                                 "details": {"track": "Robotics", "lead": "Lead A",
+                                             "members": ["Lead A", "Member B"],
+                                             "leadEmail": lead_email,
+                                             "memberEmails": [lead_email, member_email]},
+                                 "status": "pending"})
+        assert resp.status_code in (200, 201), resp.text
+        result = self._approve(client, admin_token, approval_id)
+        assert result["teams"]["applied"] is True
+        teams = client.get("/api/teams", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        assert any(t.get("name") == "Independent Squad" for t in teams), \
+            "approving a team addition did not create the team server-side"
+        # Member accounts are minted server-side too.
+        users = client.get("/api/users", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        emails = {u.get("email") for u in users}
+        assert lead_email in emails and member_email in emails, \
+            "team member accounts were not provisioned server-side"
+
 
 class TestPublicRegistrationCannotSelfActivate:
     def test_public_signup_is_forced_pending(self, client, admin_token):
