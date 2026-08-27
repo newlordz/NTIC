@@ -164,6 +164,7 @@ LANDING_COPY_DEFAULTS = [
     ("Partner Ecosystem", "partners.eyebrow", "Official Corporate & Resource Ecosystem"),
     ("Partner Ecosystem", "partners.heading", "Powered by Ghana's Foremost Technology & Industry Leaders"),
     ("Partner Ecosystem", "partners.cta", "Partner With Us"),
+    ("Partner Ecosystem", "partners.empty", "Partner organisations will be announced here as commitments are confirmed."),
     # ── Championship Entry Gateway ──────────────────────────────────
     ("Entry Gateway", "gateway.brandName", "NTIC"),
     ("Entry Gateway", "gateway.brandSub", "GHANA NATIONAL COMPETITION"),

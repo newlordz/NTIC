@@ -763,7 +763,11 @@ export class AppComponent implements OnInit, OnDestroy {
     { id: 'notif-stats', title: 'Platform stats updated', time: '', icon: 'dashboard', category: 'System', route: '/reporting' }
   ];
 
-  private readonly adminRoles = ['super_admin', 'admin', 'content_manager', 'reviewer', 'competition_manager'];
+  readonly adminRoles: string[] = ['super_admin', 'admin', 'content_manager', 'reviewer', 'competition_manager'];
+
+  isAdminRole(roleId?: string | null): boolean {
+    return !!roleId && this.adminRoles.includes(roleId);
+  }
 
   // ... existing code ...
 
@@ -772,7 +776,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Only show pending approvals + audit events to users with admin-like roles
     const activeRole = getAuthValue('activeRoleId');
-    const hasAdminRole = !!activeRole && this.adminRoles.includes(activeRole);
+    const hasAdminRole = this.isAdminRole(activeRole);
 
     // Real dynamic pending registration approvals
     // Only show to admin-like roles; for others, show a generic message

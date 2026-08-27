@@ -1337,6 +1337,13 @@ setAuthValue('activeUserEmail', email);
       if (this.sponsorForm.email?.trim()) return { field: 'sponsEmail', value: this.sponsorForm.email };
     } else if (this.activeTab === 'team') {
       if (this.teamForm.leadEmail?.trim()) return { field: 'squadLeadEmail', value: this.teamForm.leadEmail };
+    } else if (this.activeTab === 'student') {
+      if (this.competitorMode === 'individual' && this.studentForm.email?.trim()) {
+        return { field: 'stuEmail', value: this.studentForm.email };
+      }
+      if (this.competitorMode === 'group' && this.teamForm.leadEmail?.trim()) {
+        return { field: 'squadLeadEmail', value: this.teamForm.leadEmail };
+      }
     }
     return null;
   }
@@ -1351,6 +1358,8 @@ setAuthValue('activeUserEmail', email);
       jdTel: this.isFieldVerified('jdTel', this.judgeForm.tel),
       sponsEmail: this.isFieldVerified('sponsEmail', this.sponsorForm.email),
       sponsContact: this.isFieldVerified('sponsContact', this.sponsorForm.repContact),
+      stuEmail: this.isFieldVerified('stuEmail', this.studentForm.email),
+      squadLeadEmail: this.isFieldVerified('squadLeadEmail', this.teamForm.leadEmail),
     };
   }
 
@@ -2576,6 +2585,99 @@ setAuthValue('activeUserEmail', email);
     this.schoolForm.students.splice(index, 1);
   }
 
+  editingSchoolTeamIndex: number | null = null;
+
+  async editTeam(index: number): Promise<void> {
+    if (index < 0 || index >= this.schoolForm.teams.length) return;
+    const t = this.schoolForm.teams[index];
+    this.editingSchoolTeamIndex = index;
+    this.studentRegMode = 'group';
+
+    this.teamForm = {
+      ...this.teamForm,
+      name: t.name || '',
+      track: t.track || '',
+      leadName: t.leadName || '',
+      leadEmail: t.leadEmail || '',
+      member2Name: t.member2Name || '',
+      member2Email: t.member2Email || '',
+      member3Name: t.member3Name || '',
+      member3Email: t.member3Email || '',
+      member4Name: t.member4Name || '',
+      member4Email: t.member4Email || '',
+      member5Name: t.member5Name || '',
+      member5Email: t.member5Email || '',
+    };
+
+    const photoKeys = ['memberLeadPhoto', 'member2Photo', 'member3Photo', 'member4Photo', 'member5Photo'];
+    const urlKeys = ['lead', 'm2', 'm3', 'm4', 'm5'];
+
+    // Clear current temporary photo URLs
+    urlKeys.forEach(k => {
+      if (this.memberPhotoUrls[k]) {
+        this.fileStorage.revokeUrl(this.memberPhotoUrls[k]!);
+      }
+    });
+    this.memberPhotoUrls = { lead: null, m2: null, m3: null, m4: null, m5: null };
+
+    if (t.memberPhotos && Array.isArray(t.memberPhotos)) {
+      for (let idx = 0; idx < photoKeys.length; idx++) {
+        const key = photoKeys[idx];
+        const id = t.memberPhotos[idx];
+        if (id) {
+          this.selectedFileIds[key] = [id];
+          this.memberPhotoUrls[urlKeys[idx]] = await this.fileStorage.getUrl(id);
+        } else {
+          this.selectedFileIds[key] = [];
+        }
+      }
+    }
+
+    setTimeout(() => {
+      const teamFormEl = document.getElementById('schoolTeamFormContainer');
+      if (teamFormEl) {
+        teamFormEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 50);
+  }
+
+  cancelEditTeam(): void {
+    this.editingSchoolTeamIndex = null;
+    this.clearTeamForm();
+  }
+
+  private clearTeamForm(): void {
+    this.teamForm.name = '';
+    this.teamForm.school = '';
+    this.teamForm.leadName = '';
+    this.teamForm.leadEmail = '';
+    this.teamForm.member2Name = '';
+    this.teamForm.member2Email = '';
+    this.teamForm.member3Name = '';
+    this.teamForm.member3Email = '';
+    this.teamForm.member4Name = '';
+    this.teamForm.member4Email = '';
+    this.teamForm.member5Name = '';
+    this.teamForm.member5Email = '';
+    const urlKeys = ['lead', 'm2', 'm3', 'm4', 'm5'];
+    urlKeys.forEach(k => {
+      if (this.memberPhotoUrls[k]) {
+        this.fileStorage.revokeUrl(this.memberPhotoUrls[k]!);
+      }
+    });
+    this.selectedFileIds['memberLeadPhoto'] = [];
+    this.selectedFileIds['member2Photo'] = [];
+    this.selectedFileIds['member3Photo'] = [];
+    this.selectedFileIds['member4Photo'] = [];
+    this.selectedFileIds['member5Photo'] = [];
+    this.selectedFileNames['memberLeadPhoto'] = [];
+    this.selectedFileNames['member2Photo'] = [];
+    this.selectedFileNames['member3Photo'] = [];
+    this.selectedFileNames['member4Photo'] = [];
+    this.selectedFileNames['member5Photo'] = [];
+    this.memberPhotoUrls = { lead: null, m2: null, m3: null, m4: null, m5: null };
+  }
+
   addTeam(): void {
     if (!this.teamForm.name?.trim() || !this.teamForm.leadName?.trim() || !this.teamForm.leadEmail?.trim()) {
       this.showCustomAlert('Please enter team name, Team Lead full name, and Team Lead email address.', 'Validation Error', 'warning');
@@ -2598,7 +2700,7 @@ setAuthValue('activeUserEmail', email);
       this.teamForm.member5Name
     ].filter(Boolean).map((n: string) => n.trim()).filter((n: string) => n.length > 0);
 
-    this.schoolForm.teams.push({
+    const teamData = {
       name: this.teamForm.name,
       track: this.teamForm.track,
       leadName: this.teamForm.leadName,
@@ -2614,40 +2716,25 @@ setAuthValue('activeUserEmail', email);
       rosterList,
       members: rosterList,
       memberPhotos: memberPhotoIds.length ? memberPhotoIds : undefined
-    });
-    this.teamForm.name = '';
-    this.teamForm.school = '';
-    this.teamForm.leadName = '';
-    this.teamForm.leadEmail = '';
-    this.teamForm.member2Name = '';
-    this.teamForm.member2Email = '';
-    this.teamForm.member3Name = '';
-    this.teamForm.member3Email = '';
-    this.teamForm.member4Name = '';
-    this.teamForm.member4Email = '';
-    this.teamForm.member5Name = '';
-    this.teamForm.member5Email = '';
-    // Clear member photos
-    ['memberLeadPhoto', 'member2Photo', 'member3Photo', 'member4Photo', 'member5Photo'].forEach(k => {
-      const id = this.selectedFileIds[k]?.[0];
-      if (id) { this.fileStorage.remove(id); }
-    });
-    const urlKeys = ['lead', 'm2', 'm3', 'm4', 'm5'];
-    urlKeys.forEach(k => { if (this.memberPhotoUrls[k]) { this.fileStorage.revokeUrl(this.memberPhotoUrls[k]!); } });
-    this.selectedFileIds['memberLeadPhoto'] = [];
-    this.selectedFileIds['member2Photo'] = [];
-    this.selectedFileIds['member3Photo'] = [];
-    this.selectedFileIds['member4Photo'] = [];
-    this.selectedFileIds['member5Photo'] = [];
-    this.selectedFileNames['memberLeadPhoto'] = [];
-    this.selectedFileNames['member2Photo'] = [];
-    this.selectedFileNames['member3Photo'] = [];
-    this.selectedFileNames['member4Photo'] = [];
-    this.selectedFileNames['member5Photo'] = [];
-    this.memberPhotoUrls = { lead: null, m2: null, m3: null, m4: null, m5: null };
+    };
+
+    if (this.editingSchoolTeamIndex !== null && this.editingSchoolTeamIndex >= 0 && this.editingSchoolTeamIndex < this.schoolForm.teams.length) {
+      this.schoolForm.teams[this.editingSchoolTeamIndex] = teamData;
+      this.showCustomAlert(`Team "${teamData.name}" has been updated successfully!`, 'Team Updated', 'info');
+      this.editingSchoolTeamIndex = null;
+    } else {
+      this.schoolForm.teams.push(teamData);
+    }
+
+    this.clearTeamForm();
   }
 
   removeTeam(index: number): void {
+    if (this.editingSchoolTeamIndex === index) {
+      this.cancelEditTeam();
+    } else if (this.editingSchoolTeamIndex !== null && this.editingSchoolTeamIndex > index) {
+      this.editingSchoolTeamIndex--;
+    }
     this.schoolForm.teams.splice(index, 1);
   }
 
@@ -2780,6 +2867,15 @@ setAuthValue('activeUserEmail', email);
         skills: { ...this.teamForm.skills }
       };
 
+      if (this.teamForm.leadEmail?.trim() && !this.isFieldVerified('squadLeadEmail', this.teamForm.leadEmail.trim())) {
+        this.showCustomAlert(
+          `Please verify your Team Lead email address (${this.teamForm.leadEmail.trim()}) before submitting. Click "Verify" next to the email field.`,
+          'Verification Required',
+          'warning'
+        );
+        return;
+      }
+
       const currentApprovals = [...this.contentService.pendingApprovals];
       currentApprovals.unshift({
         id: 'REQ-' + Date.now(),
@@ -2789,18 +2885,22 @@ setAuthValue('activeUserEmail', email);
         submitted: 'Just now',
         details
       });
-      this.contentService.saveApprovals(currentApprovals);
 
       // Real backend persist for reviewers
-      this.apiService.submitPublicApplication({
-        type: 'Team Addition',
-        entity: this.teamForm.name,
-        contact: leadEmail,
-        details
-      }).subscribe({
-        next: () => {},
-        error: (err: any) => console.warn('[Registration] Team submit error:', err)
-      });
+      try {
+        await firstValueFrom(this.apiService.submitPublicApplication({
+          type: 'Team Addition',
+          entity: this.teamForm.name,
+          contact: leadEmail,
+          details
+        }));
+      } catch (err: any) {
+        const msg = err?.error?.detail || 'Failed to submit application to server. Please verify your email and try again.';
+        this.showCustomAlert(msg, 'Submission Failed', 'error');
+        return;
+      }
+
+      this.contentService.saveApprovals(currentApprovals);
 
       if (leadEmail) {
         this.emailService.sendPendingConfirmation(leadEmail, this.teamForm.leadName, this.teamForm.name, 'Team Addition', code);
@@ -2845,6 +2945,16 @@ setAuthValue('activeUserEmail', email);
         }
       }
     }
+
+    if (this.studentForm.email?.trim() && !this.isFieldVerified('stuEmail', this.studentForm.email.trim())) {
+      this.showCustomAlert(
+        `Please verify your email address (${this.studentForm.email.trim()}) before submitting. Click "Verify" next to the email field.`,
+        'Verification Required',
+        'warning'
+      );
+      return;
+    }
+
     const code = this.editingApprovalId
       ? (this.contentService.pendingApprovals.find(a => a.id === this.editingApprovalId)?.details?.code || this.generateApplicationCode('student'))
       : this.generateApplicationCode('student');
@@ -2862,6 +2972,20 @@ setAuthValue('activeUserEmail', email);
     };
     const photoFileId = this.selectedFileIds['studentPhoto']?.[0];
     if (photoFileId) details.photoFileId = photoFileId;
+
+    // Real backend persist for reviewers
+    try {
+      await firstValueFrom(this.apiService.submitPublicApplication({
+        type: 'Student Registration',
+        entity: this.studentForm.name,
+        contact: studentEmail,
+        details
+      }));
+    } catch (err: any) {
+      const msg = err?.error?.detail || 'Failed to submit application to server. Please verify your email and try again.';
+      this.showCustomAlert(msg, 'Submission Failed', 'error');
+      return;
+    }
 
     const currentApprovals = [...this.contentService.pendingApprovals];
     if (this.editingApprovalId) {
@@ -2896,17 +3020,6 @@ setAuthValue('activeUserEmail', email);
       });
     }
     this.contentService.saveApprovals(currentApprovals);
-
-    // Real backend persist for reviewers
-    this.apiService.submitPublicApplication({
-      type: 'Student Registration',
-      entity: this.studentForm.name,
-      contact: studentEmail,
-      details
-    }).subscribe({
-      next: () => {},
-      error: (err: any) => console.warn('[Registration] Student submit error:', err)
-    });
 
     if (studentEmail) {
       this.emailService.sendPendingConfirmation(studentEmail, this.studentForm.name, this.studentForm.name, 'Student Registration', code);

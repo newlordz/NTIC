@@ -805,7 +805,17 @@
             </div>
 
             <!-- Group / Team Form -->
-            <div *ngIf="studentRegMode==='group'" class="nested-form-container fade-in" style="background: var(--surface-container-lowest); border: 1px solid var(--outline-variant); padding: 16px; border-radius: 12px; margin-bottom: 20px;">
+            <div id="schoolTeamFormContainer" *ngIf="studentRegMode==='group'" class="nested-form-container fade-in" style="background: var(--surface-container-lowest); border: 1px solid var(--outline-variant); padding: 16px; border-radius: 12px; margin-bottom: 20px;">
+              <div *ngIf="editingSchoolTeamIndex !== null" style="background: rgba(0, 63, 135, 0.08); border-left: 4px solid var(--primary); padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                <span style="font-size: 13px; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 6px;">
+                  <span class="material-symbols-outlined" style="font-size: 18px;">edit_note</span>
+                  Editing Team #{{ editingSchoolTeamIndex + 1 }}: "{{ schoolForm.teams[editingSchoolTeamIndex]?.name }}"
+                </span>
+                <button type="button" class="btn btn-subtle btn-sm" (click)="cancelEditTeam()" style="font-size: 12px; padding: 4px 10px; height: auto;">
+                  Cancel Edit
+                </button>
+              </div>
+
               <div class="grid-2">
                 <div class="form-group">
                   <label class="form-label">Team / Group Name *</label>
@@ -958,9 +968,13 @@
                 </div>
               </div>
 
-              <div style="display:flex; justify-content:flex-end;">
+              <div style="display:flex; justify-content:flex-end; gap: 8px; align-items: center;">
+                <button *ngIf="editingSchoolTeamIndex !== null" type="button" class="btn btn-subtle btn-sm" (click)="cancelEditTeam()">
+                  Cancel
+                </button>
                 <button type="button" class="btn btn-secondary btn-sm" (click)="addTeam()">
-                  <span class="material-symbols-outlined">add_circle</span> Add Team to Registry
+                  <span class="material-symbols-outlined">{{ editingSchoolTeamIndex !== null ? 'check_circle' : 'add_circle' }}</span>
+                  {{ editingSchoolTeamIndex !== null ? 'Update Team in Registry' : 'Add Team to Registry' }}
                 </button>
               </div>
             </div>
@@ -979,7 +993,7 @@
                       <th>Name / Group</th>
                       <th>Track</th>
                       <th>Detail / Members</th>
-                      <th style="width: 80px; text-align:center;">Action</th>
+                      <th style="width: 100px; text-align:center;">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -994,15 +1008,20 @@
                         </button>
                       </td>
                     </tr>
-                    <tr *ngFor="let t of schoolForm.teams; let i = index">
+                    <tr *ngFor="let t of schoolForm.teams; let i = index" [style.background]="editingSchoolTeamIndex === i ? 'rgba(0, 63, 135, 0.08)' : null">
                       <td><span class="badge primary" style="font-size:10px;">Group</span></td>
                       <td><strong>{{t.name}}</strong></td>
                       <td><span class="track-chip" [class]="t.track.toLowerCase()">{{t.track}}</span></td>
                       <td>Lead: {{t.leadName}} + {{ (t.member5Name ? 4 : t.member4Name ? 3 : t.member3Name ? 2 : t.member2Name ? 1 : 0) }} members</td>
                       <td style="text-align:center;">
-                        <button type="button" class="btn btn-subtle btn-sm" style="padding:4px; color:var(--error);" (click)="removeTeam(i)">
-                          <span class="material-symbols-outlined" style="margin:0;">delete</span>
-                        </button>
+                        <div style="display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+                          <button type="button" class="btn btn-subtle btn-sm" style="padding:4px; color:var(--primary);" (click)="editTeam(i)" title="Edit Team">
+                            <span class="material-symbols-outlined" style="margin:0; font-size:18px;">edit</span>
+                          </button>
+                          <button type="button" class="btn btn-subtle btn-sm" style="padding:4px; color:var(--error);" (click)="removeTeam(i)" title="Delete Team">
+                            <span class="material-symbols-outlined" style="margin:0; font-size:18px;">delete</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   </tbody>
@@ -1595,10 +1614,20 @@
               </div>
               <div>
                 <label class="form-label">Email *</label>
-                <input class="form-control" type="email" placeholder="you@email.com" [(ngModel)]="studentForm.email" name="stuEmail" (ngModelChange)="validateEmailLive('stuEmail', $event)">
-                <div class="field-validation-msg" *ngIf="fieldValidation['stuEmail'] && fieldValidation['stuEmail'].status !== 'idle' && fieldValidation['stuEmail'].status !== 'valid' && fieldValidation['stuEmail'].message" [ngClass]="fieldValidation['stuEmail'].status">
-                  <span class="material-symbols-outlined">{{ fieldValidation['stuEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['stuEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
-                  {{ fieldValidation['stuEmail'].message }}
+                <div style="display:flex;gap:8px;align-items:flex-start;">
+                  <div style="flex:1;">
+                    <input class="form-control" type="email" placeholder="you@email.com" [(ngModel)]="studentForm.email" name="stuEmail" (ngModelChange)="validateEmailLive('stuEmail', $event)">
+                    <div class="field-validation-msg" *ngIf="studentForm.email && fieldValidation['stuEmail'] && fieldValidation['stuEmail'].status !== 'idle' && fieldValidation['stuEmail'].status !== 'valid' && fieldValidation['stuEmail'].message" [ngClass]="fieldValidation['stuEmail'].status">
+                      <span class="material-symbols-outlined">{{ fieldValidation['stuEmail'].status === 'checking' ? 'hourglass_top' : fieldValidation['stuEmail'].status === 'draft_found' ? 'history' : fieldValidation['stuEmail'].status === 'taken' ? 'error' : 'warning' }}</span>
+                      <span>{{ fieldValidation['stuEmail'].message }}</span>
+                    </div>
+                  </div>
+                  <button *ngIf="studentForm.email && canVerifyField('stuEmail', studentForm.email)" class="verify-field-btn" (click)="sendVerifyOtp('stuEmail', 'email', studentForm.email)">
+                    <span class="material-symbols-outlined">verified</span> Verify
+                  </button>
+                  <span *ngIf="studentForm.email && fieldVerified['stuEmail']" class="verified-field-badge">
+                    <span class="material-symbols-outlined">check_circle</span> Verified
+                  </span>
                 </div>
               </div>
             </div>
