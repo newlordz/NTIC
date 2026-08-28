@@ -6202,15 +6202,63 @@ try:
         return {"status": "deleted", "id": item_id}
 
     # PLATFORM STATS + COUNTDOWN
+    #
+    # The six impact figures are now COMPUTED live from the database rather than
+    # read back from a manually-edited row that was seeded with placeholder
+    # numbers (16 / 85 / 512 / 12 / 3.2 / 2.5). Every value is either a real
+    # count or a real sum; where nothing exists it is 0, never invented. Only
+    # the countdown target date is configurable.
     @app.get("/api/platform-stats")
     def get_platform_stats():
         conn = get_db_connection()
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT regions, mentors, schools, students, projects, grants, countdown_date FROM platform_stats WHERE id='stats-1'")
-        row = cur.fetchone(); cur.close(); release_db_connection(conn)
-        if not row: return {"regions": 0, "mentors": 0, "schools": 0, "students": 0, "projects": 0, "grants": 0, "countdownDate": "2026-08-15T09:00:00"}
-        return {"regions": row[0], "mentors": row[1], "schools": row[2], "students": row[3], "projects": row[4], "grants": row[5], "countdownDate": row[6] or "2026-08-15T09:00:00"}
+        try:
+            cur.execute("SELECT COALESCE(countdown_date,'') FROM platform_stats WHERE id='stats-1'")
+            row = cur.fetchone()
+            countdown = (row[0] if row and row[0] else "") or "2026-08-15T09:00:00"
+
+            # Regions: distinct regions held on the school directory.
+            cur.execute("SELECT COUNT(DISTINCT region) FROM schools WHERE region IS NOT NULL AND region <> ''")
+            regions = cur.fetchone()[0] or 0
+
+            # Mentors: instructors and school admins on the platform.
+            cur.execute("SELECT COUNT(*) FROM users WHERE role IN ('instructor','school_admin')")
+            mentors = cur.fetchone()[0] or 0
+
+            # Schools: distinct schools with a registered team, plus distinct
+            # school-admin organisations that have no team yet.
+            cur.execute(
+                "SELECT COUNT(*) FROM ("
+                "  SELECT LOWER(school_name) AS s FROM teams WHERE school_name IS NOT NULL AND school_name <> ''"
+                "  UNION"
+                "  SELECT LOWER(organization) AS s FROM users WHERE organization IS NOT NULL"
+                "    AND organization <> '' AND organization <> 'NTIC Platform' AND organization <> '--'"
+                ") d"
+            )
+            schools = cur.fetchone()[0] or 0
+
+            # Students: real student accounts.
+            cur.execute("SELECT COUNT(*) FROM users WHERE role = 'student'")
+            students = cur.fetchone()[0] or 0
+
+            # Projects: one submitted team per project entry.
+            cur.execute("SELECT COUNT(*) FROM teams")
+            projects = cur.fetchone()[0] or 0
+
+            # Grants: money actually banked (verified sponsorship payments).
+            cur.execute("SELECT COALESCE(SUM(amount),0) FROM sponsorship_payments WHERE status='verified'")
+            grants = float(cur.fetchone()[0] or 0)
+
+            cur.close()
+        finally:
+            release_db_connection(conn)
+
+        return {
+            "regions": regions, "mentors": mentors, "schools": schools,
+            "students": students, "projects": projects, "grants": grants,
+            "countdownDate": countdown,
+        }
 
     class StatsUpdate(BaseModel):
         regions: Optional[int] = None
@@ -6223,33 +6271,25 @@ try:
 
     @app.patch("/api/platform-stats")
     def update_platform_stats(payload: StatsUpdate, _actor: dict = Depends(require_role(CONTENT_ROLES))):
+        # Only the countdown date is editable. The six impact figures are
+        # computed live by GET /api/platform-stats, so manual overrides are
+        # accepted but deliberately ignored.
+        countdown_date = payload.countdown_date
+        if countdown_date is None:
+            raise HTTPException(status_code=400, detail="countdown_date is required")
         conn = get_db_connection()
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT regions, mentors, schools, students, projects, grants, countdown_date FROM platform_stats WHERE id='stats-1'")
-        existing = cur.fetchone()
-
-        curr_regions = existing[0] if existing and existing[0] is not None else 0
-        curr_mentors = existing[1] if existing and existing[1] is not None else 0
-        curr_schools = existing[2] if existing and existing[2] is not None else 0
-        curr_students = existing[3] if existing and existing[3] is not None else 0
-        curr_projects = existing[4] if existing and existing[4] is not None else 0.0
-        curr_grants = existing[5] if existing and existing[5] is not None else 0.0
-        curr_countdown = existing[6] if existing and existing[6] is not None else "2026-08-15T09:00:00"
-
-        regions = payload.regions if payload.regions is not None else curr_regions
-        mentors = payload.mentors if payload.mentors is not None else curr_mentors
-        schools = payload.schools if payload.schools is not None else curr_schools
-        students = payload.students if payload.students is not None else curr_students
-        projects = payload.projects if payload.projects is not None else curr_projects
-        grants = payload.grants if payload.grants is not None else curr_grants
-        countdown_date = payload.countdown_date if payload.countdown_date is not None else curr_countdown
-
-        cur.execute(
-            "INSERT INTO platform_stats (id, regions, mentors, schools, students, projects, grants, countdown_date) VALUES ('stats-1',%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO UPDATE SET regions=EXCLUDED.regions, mentors=EXCLUDED.mentors, schools=EXCLUDED.schools, students=EXCLUDED.students, projects=EXCLUDED.projects, grants=EXCLUDED.grants, countdown_date=EXCLUDED.countdown_date, updated_at=CURRENT_TIMESTAMP",
-            (regions, mentors, schools, students, projects, grants, countdown_date)
-        )
-        conn.commit(); cur.close(); release_db_connection(conn)
+        try:
+            cur.execute(
+                "INSERT INTO platform_stats (id, countdown_date) VALUES ('stats-1', %s) "
+                "ON CONFLICT (id) DO UPDATE SET countdown_date=EXCLUDED.countdown_date, updated_at=CURRENT_TIMESTAMP",
+                (countdown_date,),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "platform_stats"})
         return {"status": "updated"}
 

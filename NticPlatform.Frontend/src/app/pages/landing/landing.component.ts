@@ -219,6 +219,11 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   statsAnimated = false;
   hoveredNode: string | null = null;
 
+  get grantsLabel(): string {
+    const n = Number(this.grantsCount || 0);
+    return '\u20B5' + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+
   // ── COUNTDOWN CLOCK ──────────────────────────────────────────
   countdownDays = 0;
   countdownHours = 0;
@@ -2015,7 +2020,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         if (schoolsEl) schoolsEl.textContent = `${s}+`;
         if (studentsEl) studentsEl.textContent = `${st}+`;
         if (projectsEl) projectsEl.textContent = `${p}+`;
-        if (grantsEl) grantsEl.textContent = `${g}`;
+        if (grantsEl) grantsEl.textContent = '\u20B5' + g.toLocaleString();
 
         if (progress < 1) {
           requestAnimationFrame(step);
@@ -2025,7 +2030,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
           if (schoolsEl) schoolsEl.textContent = `${stats.schools}+`;
           if (studentsEl) studentsEl.textContent = `${stats.students}+`;
           if (projectsEl) projectsEl.textContent = `${stats.projects}+`;
-          if (grantsEl) grantsEl.textContent = `${stats.grants}`;
+          if (grantsEl) grantsEl.textContent = '\u20B5' + Number(stats.grants || 0).toLocaleString();
           
           this.ngZone.run(() => {
             this.regionsCount = stats.regions;

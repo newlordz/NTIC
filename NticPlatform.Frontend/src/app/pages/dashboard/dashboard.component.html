@@ -4432,56 +4432,42 @@
           </div>
           <div>
             <h3 class="cms-panel-title">Platform Impact Metrics</h3>
-            <p class="cms-panel-desc">Real-time statistics rendered with count-up animations across the landing page impact section.</p>
+            <p class="cms-panel-desc">Live counts computed from the database &mdash; regions, mentors, schools, students, projects and grants received.</p>
           </div>
-        </div>
-        <div class="cms-panel-actions">
-          <button class="btn btn-primary btn-sm" *ngIf="!statsEditMode" (click)="openStatsEdit()">
-            <span class="material-symbols-outlined">edit</span>Edit Numbers
-          </button>
-          <button class="btn btn-primary btn-sm" *ngIf="statsEditMode" (click)="saveStats()">
-            <span class="material-symbols-outlined">save</span>Save &amp; Publish Stats
-          </button>
         </div>
       </div>
 
-      <!-- Stats Grid Display / Edit -->
+      <!-- Stats Grid Display (live) -->
       <div class="cms-stats-grid">
         <div class="cms-stat-card">
           <div class="cms-stat-icon-wrap"><span class="material-symbols-outlined">map</span></div>
           <div class="cms-stat-label">Regions Represented</div>
-          <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.regions }}</div>
-          <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.regions" class="cms-stat-input">
+          <div class="cms-stat-value">{{ contentService.platformStats.regions }}</div>
         </div>
         <div class="cms-stat-card">
           <div class="cms-stat-icon-wrap"><span class="material-symbols-outlined">co_present</span></div>
           <div class="cms-stat-label">Certified Mentors</div>
-          <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.mentors }}+</div>
-          <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.mentors" class="cms-stat-input">
+          <div class="cms-stat-value">{{ contentService.platformStats.mentors }}</div>
         </div>
         <div class="cms-stat-card">
           <div class="cms-stat-icon-wrap"><span class="material-symbols-outlined">school</span></div>
           <div class="cms-stat-label">Participating Schools</div>
-          <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.schools }}+</div>
-          <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.schools" class="cms-stat-input">
+          <div class="cms-stat-value">{{ contentService.platformStats.schools }}</div>
         </div>
         <div class="cms-stat-card">
           <div class="cms-stat-icon-wrap"><span class="material-symbols-outlined">groups</span></div>
-          <div class="cms-stat-label">Students Reached (K)</div>
-          <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.students }}K+</div>
-          <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.students" class="cms-stat-input">
+          <div class="cms-stat-label">Students Reached</div>
+          <div class="cms-stat-value">{{ contentService.platformStats.students }}</div>
         </div>
         <div class="cms-stat-card">
           <div class="cms-stat-icon-wrap"><span class="material-symbols-outlined">terminal</span></div>
-          <div class="cms-stat-label">Projects Submitted (K)</div>
-          <div class="cms-stat-value" *ngIf="!statsEditMode">{{ contentService.platformStats.projects }}K+</div>
-          <input *ngIf="statsEditMode" type="number" step="0.1" [(ngModel)]="statsForm.projects" class="cms-stat-input">
+          <div class="cms-stat-label">Projects Submitted</div>
+          <div class="cms-stat-value">{{ contentService.platformStats.projects }}</div>
         </div>
         <div class="cms-stat-card">
           <div class="cms-stat-icon-wrap"><span class="material-symbols-outlined">monetization_on</span></div>
-          <div class="cms-stat-label">Grants Awarded (â‚µM)</div>
-          <div class="cms-stat-value" *ngIf="!statsEditMode">â‚µ{{ contentService.platformStats.grants }}M+</div>
-          <input *ngIf="statsEditMode" type="number" [(ngModel)]="statsForm.grants" class="cms-stat-input">
+          <div class="cms-stat-label">Grants Awarded</div>
+          <div class="cms-stat-value">{{ formatCedis(contentService.platformStats.grants) }}</div>
         </div>
       </div>
     </div>

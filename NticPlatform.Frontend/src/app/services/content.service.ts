@@ -217,9 +217,9 @@ export interface PlatformStats {
   regions: number;
   mentors: number;
   schools: number;
-  students: number;       // in thousands
-  projects: number;       // in thousands (1 decimal)
-  grants: number;         // in millions
+  students: number;       // live count of student accounts
+  projects: number;       // live count of submitted teams/projects
+  grants: number;         // live total of verified sponsorship payments (GHS)
 }
 
 export interface HeroSlide {
@@ -1616,54 +1616,6 @@ export class ContentService {
         id: n.id, headline: n.headline, tag: n.tag, date: n.date, link: n.link
       })));
     }
-  }
-
-  updatePlatformStats(stats: PlatformStats): void {
-    this.platformStats = { ...stats };
-    this.saveState('platformStats', this.platformStats);
-    this.apiService.updatePlatformStats({ countdown_date: this.countdownDate, regions: stats.regions, schools: stats.schools, students: stats.students }).subscribe();
-  }
-
-  recalculatePlatformStats(): void {
-    const schoolNames = new Set<string>();
-    const regions = new Set<string>();
-    let studentCount = 0;
-
-    for (const u of this.users) {
-      if (u.role === 'student') studentCount++;
-      if (u.organization && !u.organization.startsWith('Independent')) {
-        schoolNames.add(u.organization);
-      }
-    }
-
-    for (const a of [...this.approvedApprovals, ...this.pendingApprovals]) {
-      if (a.type === 'School Registration') {
-        schoolNames.add(a.entity);
-        if (a.details?.region) regions.add(a.details.region);
-        if (a.details?.district) regions.add(a.details.district);
-        let schoolStudents = a.details?.studentCount || 0;
-        if (Array.isArray(a.details?.teamsList)) {
-          const teamStudents = a.details.teamsList.reduce((sum: number, t: any) => {
-            const count = t.rosterList?.length || t.members?.length || [t.leadName, t.member2Name, t.member3Name, t.member4Name, t.member5Name].filter(Boolean).length;
-            return sum + (count > 0 ? count : 1);
-          }, 0);
-          schoolStudents = Math.max(schoolStudents, (a.details?.students?.length || 0) + teamStudents);
-        }
-        studentCount += schoolStudents;
-      }
-    }
-
-    const mentorCount = this.users.filter(u => u.role === 'instructor').length;
-
-    this.platformStats = {
-      regions: regions.size || 16,
-      mentors: mentorCount || this.platformStats.mentors,
-      schools: schoolNames.size || this.platformStats.schools,
-      students: studentCount || this.platformStats.students,
-      projects: this.platformStats.projects,
-      grants: this.platformStats.grants
-    };
-    this.saveState('platformStats', this.platformStats);
   }
 
   updateCountdownDate(dateStr: string): void {

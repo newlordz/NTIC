@@ -243,10 +243,12 @@ def seed_initial_data(conn):
         cur.execute("INSERT INTO hero_slides (id, tag, title, description, image, sort_order) VALUES ('slide-2', '500+ Schools Registered', 'Over 16 Regions Represented', 'From Accra to Tamale, young minds are competing to solve real-world problems with technology.', 'assets/ntic_image_4.jpeg', 1)")
         cur.execute("INSERT INTO hero_slides (id, tag, title, description, image, sort_order) VALUES ('slide-3', 'Innovate. Build. Lead.', 'Ready to Make an Impact?', 'Join Ghana''s largest high school tech competition. Registration is open for all tracks.', 'assets/ntic_image_7.jpeg', 2)")
 
-    # Platform Stats
+    # Platform Stats: only the countdown target date is seeded/editable. The six
+    # impact figures are computed live by GET /api/platform-stats, so seeding
+    # placeholder numbers (16 regions / 512 schools / ...) would be misleading.
     cur.execute("SELECT count(*) FROM platform_stats")
     if cur.fetchone()[0] == 0:
-        cur.execute("INSERT INTO platform_stats (id, regions, mentors, schools, students, projects, grants, countdown_date) VALUES ('stats-1', 16, 85, 512, 12, 3.2, 2.5, '2026-08-15T09:00:00')")
+        cur.execute("INSERT INTO platform_stats (id, countdown_date) VALUES ('stats-1', '2026-08-15T09:00:00')")
 
     # Talent Discovery
     cur.execute("SELECT count(*) FROM talent_discovery")

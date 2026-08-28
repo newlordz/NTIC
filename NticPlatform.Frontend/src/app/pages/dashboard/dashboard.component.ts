@@ -1553,10 +1553,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   newsFormError = '';
   editingNewsId: string | null = null;
 
-  // Stats edit mode
-  statsEditMode = false;
-  statsForm = { regions: 16, mentors: 800, schools: 180, students: 12, projects: 1.5, grants: 2 };
-
   // Countdown settings
   countdownInput: string = '';
   previewDays = 0;
@@ -2742,7 +2738,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       });
       this.liveIntervals.push({ unsubscribe: () => auditSub.unsubscribe() });
 
-      this.statsForm = { ...this.contentService.platformStats };
       if (this.contentService.countdownDate) {
         this.countdownInput = this.contentService.countdownDate.substring(0, 16);
       }
@@ -5539,25 +5534,6 @@ setTimeout(async () => {
     this.contentService.removeTalentDiscovery(id);
     this.apiService.deleteTalent(id).subscribe({ next: () => {}, error: () => {} });
     this.addAuditLog({ action: `Talent Discovery entry removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
-  }
-
-  // Platform Stats
-  openStatsEdit(): void {
-    this.statsForm = { ...this.contentService.platformStats };
-    this.statsEditMode = true;
-  }
-  saveStats(): void {
-    this.contentService.updatePlatformStats({ ...this.statsForm });
-    this.apiService.updatePlatformStats({
-      regions: this.statsForm.regions,
-      mentors: this.statsForm.mentors,
-      schools: this.statsForm.schools,
-      students: this.statsForm.students,
-      projects: this.statsForm.projects,
-      grants: this.statsForm.grants
-    }).subscribe({ next: () => {}, error: () => {} });
-    this.statsEditMode = false;
-    this.addAuditLog({ action: 'Platform impact stats updated', user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
   async clearAllData(): Promise<void> {
