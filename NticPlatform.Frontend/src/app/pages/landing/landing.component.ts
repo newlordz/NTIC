@@ -1647,25 +1647,50 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       return;
     }
     const lookup = credential.trim().toLowerCase();
+
+    // Security Hardening: Never expose or identify Super Admin / Administrator role to prevent user enumeration
+    if (lookup === 'admin@ntic.org.gh' || lookup.includes('admin@')) {
+      if (this.detectedRoleName) {
+        this.detectedRoleName = '';
+        this.telemetryLogs = [
+          `SECURE ACCESS PORTAL READY`,
+          `SYSTEM INTEGRITY: ACCREDITED`,
+          `AWAITING OPERATOR INPUT...`
+        ];
+      }
+      return;
+    }
+
     const user = this.contentService.users.find(u =>
       u.email?.trim().toLowerCase() === lookup ||
       u.ticket?.trim().toLowerCase() === lookup
     );
     if (user) {
+      if (user.role === 'super_admin' || user.role === 'admin') {
+        if (this.detectedRoleName) {
+          this.detectedRoleName = '';
+          this.telemetryLogs = [
+            `SECURE ACCESS PORTAL READY`,
+            `SYSTEM INTEGRITY: ACCREDITED`,
+            `AWAITING OPERATOR INPUT...`
+          ];
+        }
+        return;
+      }
       const labels: Record<string, string> = {
         student: 'Student',
         instructor: 'Instructor',
         school_admin: 'School Admin',
         judge: 'Judge',
-        sponsor: 'Sponsor',
-        super_admin: 'Administrator'
+        sponsor: 'Sponsor'
       };
-      const role = labels[user.role] || 'User';
-      this.detectedRoleName = role;
-      this.updateTelemetry(role);
-    } else if (lookup === 'admin@ntic.org.gh') {
-      this.detectedRoleName = 'Administrator';
-      this.updateTelemetry('Administrator');
+      const role = labels[user.role] || '';
+      if (role) {
+        this.detectedRoleName = role;
+        this.updateTelemetry(role);
+      } else if (this.detectedRoleName) {
+        this.detectedRoleName = '';
+      }
     } else {
       if (this.detectedRoleName) {
         this.detectedRoleName = '';
