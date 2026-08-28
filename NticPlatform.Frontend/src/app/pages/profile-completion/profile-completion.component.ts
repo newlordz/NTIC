@@ -52,6 +52,12 @@ export class ProfileCompletionComponent implements OnInit {
     // form, and saving would have written them to their real account.
     this.currentUserService.ensureLoaded().subscribe(me => {
       if (me) {
+        if (me.photo_file_id) {
+          this.profilePhotoFileId = me.photo_file_id;
+          this.fileStorage.getUrl(me.photo_file_id).then(url => {
+            this.profilePhotoPreviewUrl = url;
+          });
+        }
         this.applyProfile({
           id: me.id,
           fullName: me.full_name,
@@ -66,6 +72,7 @@ export class ProfileCompletionComponent implements OnInit {
           expertise: me.expertise || '',
           repName: me.rep_name || '',
           experience: me.experience_level || '',
+          photo_file_id: me.photo_file_id || '',
         } as any);
       } else {
         // Offline: fall back to the little we know for certain, leaving the rest

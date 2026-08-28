@@ -14,7 +14,7 @@
     </div>
 
     <!-- Profile Photo -->
-    <div class="pc-photo-section" *ngIf="currentUser?.role === 'student' || currentUser?.role === 'instructor' || currentUser?.role === 'school_admin'">
+    <div class="pc-photo-section">
       <label class="photo-label">Profile Photo</label>
       <div class="photo-preview-wrapper">
         <div class="photo-preview" [style.background-image]="profilePhotoPreviewUrl ? ('url(' + profilePhotoPreviewUrl + ')') : 'none'">

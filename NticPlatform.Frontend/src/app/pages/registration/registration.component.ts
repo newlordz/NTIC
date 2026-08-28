@@ -13,6 +13,7 @@ import { NotificationService } from '../../services/notification.service';
 import { DialogService } from '../../services/dialog.service';
 import { ApiService } from '../../services/api.service';
 import { OtpService } from '../../services/otp.service';
+import { CurrentUserService } from '../../services/current-user.service';
 import { AppSelectComponent } from '../../components/app-select/app-select.component';
 import { ForgotPasswordComponent } from '../../components/forgot-password/forgot-password.component';
 import { SafePipe } from '../../pipes/safe.pipe';
@@ -1858,6 +1859,7 @@ setAuthValue('activeUserEmail', email);
     public dialogService: DialogService,
     private apiService: ApiService,
     private otpService: OtpService,
+    private currentUserService: CurrentUserService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -1995,6 +1997,7 @@ setAuthValue('activeUserEmail', email);
     if (user.token) {
       setAuthValue('activeUserToken', user.token);
     }
+    this.currentUserService.refresh().subscribe();
 
     // Save or clear remembered credentials without auto-logging in
     saveRememberedCredentials(credential, this.loginPassword.trim(), this.rememberDevice);

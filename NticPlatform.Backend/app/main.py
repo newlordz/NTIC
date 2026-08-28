@@ -1765,8 +1765,8 @@ try:
             cur = conn.cursor()
             # Try email first, then ticket (access pass), then phone
             cur.execute(
-                "SELECT id, email, full_name, role, ticket, password_hash, status, organization, "
-                "COALESCE(must_change_password, FALSE) FROM users "
+                "SELECT id, email, full_name, role, ticket, password_hash, status, organization, must_change_password, photo_file_id "
+                "FROM users "
                 "WHERE lower(email) = %s OR upper(ticket) = %s OR phone = %s",
                 (credential.lower(), credential.upper(), credential),
             )
@@ -1780,7 +1780,7 @@ try:
             # response time does not reveal whether the email/ticket exists.
             verify_password(payload.password, _DUMMY_PASSWORD_HASH)
             raise HTTPException(status_code=401, detail="Invalid credentials")
-        user_id, db_email, full_name, role, ticket, password_hash, status, organization, must_change_password = row
+        user_id, db_email, full_name, role, ticket, password_hash, status, organization, must_change_password, photo_file_id = row
         if not verify_password(payload.password, password_hash):
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -1834,6 +1834,7 @@ try:
             "ticket": ticket,
             "status": status,
             "organization": organization or "",
+            "photo_file_id": photo_file_id or "",
             # The client uses this to force the change-password prompt.
             "must_change_password": bool(must_change_password),
             # Lets the client run its inactivity countdown off the server's real

@@ -9,6 +9,7 @@ import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
 import { ApiService, PublicPartner } from '../../services/api.service';
 import { IdleTimeoutService } from '../../services/idle-timeout.service';
+import { CurrentUserService } from '../../services/current-user.service';
 import { ChatbotComponent } from '../../chatbot/chatbot.component';
 import { ForgotPasswordComponent } from '../../components/forgot-password/forgot-password.component';
 
@@ -1016,7 +1017,8 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     private cdr: ChangeDetectorRef,
     public dialogService: DialogService,
     private apiService: ApiService,
-    private idleTimeout: IdleTimeoutService
+    private idleTimeout: IdleTimeoutService,
+    private currentUserService: CurrentUserService
   ) {
     this.activeRoleId = '';
     const heroSlides = this.contentService.heroSlides.length > 0
@@ -1866,6 +1868,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     if (user.token) {
       setAuthValue('activeUserToken', user.token);
     }
+    this.currentUserService.refresh().subscribe();
 
     // Start the inactivity clock for this session and adopt the server's real
     // idle policy, so the client warning cannot drift from server enforcement.

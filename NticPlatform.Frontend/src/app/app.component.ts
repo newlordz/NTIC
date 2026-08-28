@@ -329,6 +329,19 @@ export class AppComponent implements OnInit, OnDestroy {
       }, 15000);
     }
 
+    // Listen to route changes to always keep currentUser in sync upon login/navigation
+    this.idleSubs.push(
+      this.router.events
+        .pipe(filter(e => e instanceof NavigationEnd))
+        .subscribe(() => {
+          this.loadUserProfile();
+          this.recalculateNotifications();
+        }),
+      this.currentUserService.profile$.subscribe(() => {
+        this.loadUserProfile();
+      })
+    );
+
     // ── Inactivity sign-out ──────────────────────────────────────────
     // Runs for the whole app lifetime and no-ops while signed out, so it
     // covers reloads and logging in from any route.
@@ -694,7 +707,7 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'competitions': return ['student', 'instructor', 'school_admin', 'judge', 'super_admin', 'admin', 'content_manager', 'competition_manager'].includes(role);
       case 'leaderboard':  return ['student', 'instructor', 'school_admin', 'judge', 'sponsor', ...adminRoles].includes(role);
       case 'talent':       return ['instructor', 'sponsor'].includes(role);
-      case 'sponsors':     return ['sponsor', 'super_admin', 'admin'].includes(role);
+      case 'sponsors':     return ['sponsor'].includes(role);
       // Judging workspace. Mirrors the backend's GRADING_ROLES and the
       // 'judge' entry in the auth guard's ROLE_ACCESS map.
       case 'judging':      return ['judge', 'reviewer', 'instructor', 'super_admin', 'admin'].includes(role);
