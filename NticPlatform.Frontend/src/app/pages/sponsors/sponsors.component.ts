@@ -15,6 +15,8 @@ import { CurrentUserService } from '../../services/current-user.service';
   styleUrl: './sponsors.component.scss'
 })
 export class SponsorsComponent implements OnInit {
+  sponsorAvatar$ = this.currentUser.avatar$();
+
   constructor(
     public contentService: ContentService,
     public dialogService: DialogService,
@@ -120,7 +122,8 @@ export class SponsorsComponent implements OnInit {
         phone: profile.phone || '',
         tier: profile.tier || 'Gold Partner (GH₵ 20k-100k)',
         track: profile.track || 'All Tracks',
-        registeredAt: (profile as any).created_at || 'Active'
+        registeredAt: (profile as any).created_at || 'Active',
+        photo_file_id: profile.photo_file_id || ''
       };
     }
 

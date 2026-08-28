@@ -54,6 +54,10 @@
         <span class="material-symbols-outlined">visibility</span>
         Observatory
       </a>
+      <a class="nav-item" *ngIf="hasAccess('sponsors')" routerLink="/sponsors" routerLinkActive="active" (click)="closeMobileSidebar()">
+        <span class="material-symbols-outlined">handshake</span>
+        Executive Portal
+      </a>
       <a class="nav-item" *ngIf="hasAccess('competitions')" [routerLink]="competitionsNavRoute" [routerLinkActiveOptions]="{exact: true}" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">emoji_events</span>
         Competitions
@@ -203,6 +207,10 @@
               <a *ngIf="hasAccess('competitions')" [routerLink]="competitionsNavRoute" class="app-item" (click)="showAppsDropdown = false">
                 <div class="app-icon warn"><span class="material-symbols-outlined">emoji_events</span></div>
                 <span>Competitions</span>
+              </a>
+              <a *ngIf="hasAccess('sponsors')" routerLink="/sponsors" class="app-item" (click)="showAppsDropdown = false">
+                <div class="app-icon primary"><span class="material-symbols-outlined">handshake</span></div>
+                <span>Executive Portal</span>
               </a>
               <a *ngIf="hasAccess('leaderboard')" routerLink="/leaderboard" class="app-item" (click)="showAppsDropdown = false">
                 <div class="app-icon success"><span class="material-symbols-outlined">leaderboard</span></div>

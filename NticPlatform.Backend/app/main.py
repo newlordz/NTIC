@@ -39,7 +39,7 @@ from app.lifecycle import (
 try:
     import httpx
     from httpx import AsyncClient
-    from fastapi import FastAPI, HTTPException, status, Request, Depends, WebSocket
+    from fastapi import FastAPI, HTTPException, status, Request, Depends, WebSocket, BackgroundTasks
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.staticfiles import StaticFiles
     from fastapi.responses import FileResponse, JSONResponse, Response
@@ -922,11 +922,29 @@ try:
         application_type: str = Field(default="Application", max_length=80)
         application_code: str = Field(default="", max_length=50)
 
-    @app.post("/api/notify/registration-received")
-    def notify_registration_received(payload: RegistrationNoticePayload, request: Request):
-        """Public 'we received your application' email with Application Tracking Code."""
-        if not settings.BREVO_API_KEY and not settings.SMTP_HOST and not os.getenv("NTIC_DEV_RELOAD"):
-            raise HTTPException(status_code=503, detail="Email service not configured")
+    @app.post("/api/notify/registration-received", status_code=status.HTTP_202_ACCEPTED)
+    def notify_registration_received(
+        payload: RegistrationNoticePayload,
+        request: Request,
+        background_tasks: BackgroundTasks,
+    ):
+        """Public 'we received your application' email with Application Tracking Code.
+
+        Answers 202 as soon as the request is validated and hands the send to a
+        background task. The applicant's application has ALREADY been stored by the
+        time the browser calls this, so a Brevo outage or a missing API key must not
+        surface as "Your change was not saved" -- which is exactly what the previous
+        503/502 did, because the global HTTP error interceptor cannot tell a
+        fire-and-forget notification apart from the write it follows.
+        """
+        email_configured = bool(
+            settings.BREVO_API_KEY or settings.SMTP_HOST or os.getenv("NTIC_DEV_RELOAD")
+        )
+        if not email_configured:
+            logger.warning(
+                "Email service not configured -- registration notice for %s was not sent",
+                payload.to_email.strip(),
+            )
 
         client_ip = extract_client_ip(request)
         check_rate_limit(f"notify:{client_ip}", max_attempts=5, window_seconds=300)
@@ -969,9 +987,19 @@ try:
             "</div></div>"
         )
 
-        if not _send_brevo_email(to_email, to_name, f"{app_type} Received - NTIC Ghana Championship", html):
-            raise HTTPException(status_code=502, detail="Failed to send email")
-        return {"status": "sent"}
+        subject = f"{app_type} Received - NTIC Ghana Championship"
+
+        def _deliver() -> None:
+            if not email_configured:
+                return
+            try:
+                if not _send_brevo_email(to_email, to_name, subject, html):
+                    logger.error("Registration notice to %s was rejected by the mail provider", to_email)
+            except Exception as exc:
+                logger.error("Registration notice to %s failed: %s", to_email, exc)
+
+        background_tasks.add_task(_deliver)
+        return {"status": "queued", "delivered": email_configured}
 
     # ─── SERVER-SIDE ONE-TIME PASSCODES ──────────────────────────────
     # The code is generated here with a CSPRNG, stored only as a hash, and
@@ -6798,7 +6826,7 @@ try:
             cur = conn.cursor()
             cur.execute(
                 "SELECT id, email, full_name, role, ticket, status, phone, organization, "
-                "created_at, bio, expertise, sector, rep_name, tier, experience_level, track "
+                "created_at, bio, expertise, sector, rep_name, tier, experience_level, track, photo_file_id, doc_file_id "
                 "FROM users WHERE id = %s",
                 (user_id,),
             )
@@ -6815,6 +6843,8 @@ try:
                 "bio": u[9] or "", "expertise": u[10] or "", "sector": u[11] or "",
                 "rep_name": u[12] or "", "tier": u[13] or "",
                 "experience_level": u[14] or "", "track": u[15] or "",
+                "photo_file_id": u[16] or "", "doc_file_id": u[17] or "",
+                "has_photo": bool(u[16]), "has_document": bool(u[17]),
                 "courses": [], "enrolments": [], "submissions": [],
                 "pledges": [], "payments": [], "recent_grading": [],
             }
@@ -8363,14 +8393,23 @@ try:
         temp_password = _generate_temp_password()
         user_id = "USR-" + str(uuid.uuid4())[:8]
         ticket = _allocate_unique_ticket(cur, role)
+        photo_file_id = (
+            details.get("photo_file_id")
+            or details.get("photoFileId")
+            or details.get("logoFileId")
+            or details.get("logo_file_id")
+            or None
+        )
+        doc_file_id = details.get("docFileId") or details.get("doc_file_id") or None
         cur.execute(
             "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, "
-            "organization, must_change_password) "
-            "VALUES (%s, %s, %s, %s, %s, %s, 'active', %s, true)",
+            "organization, photo_file_id, doc_file_id, must_change_password) "
+            "VALUES (%s, %s, %s, %s, %s, %s, 'active', %s, %s, %s, true)",
             (
                 user_id, email, full_name, role, ticket,
                 hash_password(temp_password),
                 details.get("schoolName") or approval_row["entity"] or None,
+                photo_file_id, doc_file_id,
             ),
         )
         return {

@@ -2988,7 +2988,7 @@
 
 .cc-audit-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   padding: 10px 12px;
   border-radius: 9px;
@@ -2997,6 +2997,7 @@
   background: #ffffff;
   transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   cursor: pointer;
+  overflow: hidden;
 
   &:hover {
     background: #f8fafc;
@@ -3040,7 +3041,11 @@
   .material-symbols-outlined { font-size: 15px; color: var(--cc-primary); }
 }
 
-.cc-audit-body { flex: 1; min-width: 0; }
+.cc-audit-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
 
 .cc-audit-action {
   font-size: 12px;
@@ -3055,6 +3060,9 @@
 .cc-audit-meta {
   font-size: 10px;
   color: var(--cc-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cc-audit-empty {
@@ -10009,6 +10017,37 @@
         border-color: #21404c !important;
         color: #bfc8cc !important;
       }
+      &.lat-badge-cat {
+        &.badge-system   { background: rgba(2, 132, 199, 0.22) !important; color: #7dd3fc !important; border: 1px solid rgba(2, 132, 199, 0.4) !important; }
+        &.badge-auth     { background: rgba(217, 119, 6, 0.22) !important; color: #fde047 !important; border: 1px solid rgba(217, 119, 6, 0.4) !important; }
+        &.badge-approval { background: rgba(22, 163, 74, 0.22) !important; color: #4ade80 !important; border: 1px solid rgba(22, 163, 74, 0.4) !important; }
+        &.badge-content  { background: rgba(124, 58, 237, 0.22) !important; color: #c084fc !important; border: 1px solid rgba(124, 58, 237, 0.4) !important; }
+        &.badge-ticket   { background: rgba(67, 56, 202, 0.22) !important; color: #a5b4fc !important; border: 1px solid rgba(67, 56, 202, 0.4) !important; }
+        &.badge-revoked  { background: rgba(225, 29, 72, 0.22) !important; color: #fda4af !important; border: 1px solid rgba(225, 29, 72, 0.4) !important; }
+      }
+    }
+  }
+
+  .cc-audit-item {
+    background: #132c37 !important;
+    border-color: #21404c !important;
+
+    &:hover {
+      background: #183440 !important;
+      border-color: #3f484c !important;
+    }
+
+    .cc-audit-action {
+      color: #ffffff !important;
+    }
+
+    .cc-audit-meta {
+      color: #bfc8cc !important;
+    }
+
+    .cc-audit-icon {
+      background: rgba(56, 189, 248, 0.12) !important;
+      .material-symbols-outlined { color: #38bdf8 !important; }
     }
   }
 

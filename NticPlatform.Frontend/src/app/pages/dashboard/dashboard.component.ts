@@ -842,11 +842,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.generatePreviewTicket();
   }
 
+  private emailValidationTimer: any = null;
+  private phoneValidationTimer: any = null;
+
   clearValidation(): void {
     this.emailValid = null;
     this.emailMessage = '';
     this.phoneValid = null;
     this.phoneMessage = '';
+    this.regError = '';
   }
 
   generatePreviewTicket(): void {
@@ -854,32 +858,79 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   validateEmail(): void {
-    const email = this.regForm.email.trim();
-    if (!email) { this.emailValid = null; this.emailMessage = ''; return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    clearTimeout(this.emailValidationTimer);
+    const email = (this.regForm.email || '').trim().toLowerCase();
+    if (!email) {
+      this.emailValid = null;
+      this.emailMessage = '';
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
       this.emailValid = false;
       this.emailMessage = 'Invalid email format';
+      this.regError = 'Please enter a valid email address.';
       return;
     }
-    if (this.contentService.users.some(u => u.email?.trim().toLowerCase() === email.toLowerCase())) {
-      this.emailValid = false;
-      this.emailMessage = 'Email already registered';
-      return;
-    }
-    this.emailValid = true;
-    this.emailMessage = '';
+    this.emailValidationTimer = setTimeout(() => {
+      this.apiService.checkAvailability(email, '').subscribe({
+        next: (res) => {
+          if (res && res.email_taken) {
+            this.emailValid = false;
+            this.emailMessage = 'Email already registered';
+            this.regError = `Email "${email}" is already registered.`;
+          } else {
+            this.emailValid = true;
+            this.emailMessage = '';
+            if (this.regError.includes('email') || this.regError.includes('Email')) {
+              this.regError = '';
+            }
+          }
+        },
+        error: () => {
+          this.emailValid = true;
+          this.emailMessage = '';
+        }
+      });
+    }, 350);
   }
 
   validatePhone(): void {
-    const phone = this.regForm.phone.trim();
-    if (!phone) { this.phoneValid = null; this.phoneMessage = ''; return; }
-    if (/^\+?[0-9]{8,15}$/.test(phone.replace(/[\s\-\(\)]/g, ''))) {
-      this.phoneValid = true;
-      this.phoneMessage = 'Valid phone number';
-    } else {
+    clearTimeout(this.phoneValidationTimer);
+    const phone = (this.regForm.phone || '').trim();
+    if (!phone) {
+      this.phoneValid = null;
+      this.phoneMessage = '';
+      return;
+    }
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 8) {
       this.phoneValid = false;
       this.phoneMessage = 'Invalid phone number (8-15 digits)';
+      this.regError = 'Phone number is too short.';
+      return;
     }
+    this.phoneValidationTimer = setTimeout(() => {
+      this.apiService.checkAvailability('', phone).subscribe({
+        next: (res) => {
+          if (res && res.phone_taken) {
+            this.phoneValid = false;
+            this.phoneMessage = 'Phone number already registered';
+            this.regError = `Phone number "${phone}" is already registered.`;
+          } else {
+            this.phoneValid = true;
+            this.phoneMessage = '';
+            if (this.regError.includes('phone') || this.regError.includes('Phone')) {
+              this.regError = '';
+            }
+          }
+        },
+        error: () => {
+          this.phoneValid = true;
+          this.phoneMessage = '';
+        }
+      });
+    }, 350);
   }
   ticketFilter: 'all' | 'judge' | 'sponsor' = 'all';
   isRegModalOpen = false;
@@ -4138,7 +4189,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.adminRegLogoUrl = null;
   }
 
-  submitRegistration(): void {
+
+
+  async submitRegistration(): Promise<void> {
     if (!this.regForm.fullName || !this.regForm.email || !this.regForm.organization) {
       this.regError = 'Please fill in all required fields.';
       return;
@@ -4147,106 +4200,160 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.regError = 'Please select at least one assigned track.';
       return;
     }
-    // Check for duplicate email
-    const existing = this.contentService.users.find(u =>
-      u.email?.trim().toLowerCase() === this.regForm.email.trim().toLowerCase()
-    );
-    if (existing) {
-      this.regError = `A user with email "${this.regForm.email}" already exists.`;
-      return;
-    }
+    const email = this.regForm.email.trim().toLowerCase();
+    const phone = (this.regForm.phone || '').trim();
+
     this.regError = '';
     this.regSubmitting = true;
 
-setTimeout(async () => {
-      const ticket = await this.generateTicket(this.registerRole);
-      const userId = 'USR-' + Date.now().toString(36).toUpperCase();
-      const newUser: any = {
-        id: userId,
-        role: this.registerRole,
-        fullName: this.regForm.fullName,
-        email: this.regForm.email,
-        phone: this.regForm.phone || '',
-        organization: this.regForm.organization,
-        track: this.registerRole === 'judge' ? (this.regForm.tracks?.join(', ')) : undefined,
-        package: this.registerRole === 'sponsor' ? this.regForm.tier : undefined,
-        ticket,
-        status: 'Active',
-        registeredAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, ' '),
-        lastLogin: 'Never'
-      };
-      if (this.adminRegLogoFileId) newUser.logoFileId = this.adminRegLogoFileId;
-
-      // Save locally only after backend confirms
-      let otp = '';
-      try {
-        const apiPayload: any = {
-          email: newUser.email,
-          full_name: newUser.fullName,
-          role: newUser.role,
-          ticket: newUser.ticket,
-          // No password is sent: the server mints a strong one with a CSPRNG and
-          // returns it once. Generating it here with Math.random() produced a
-          // predictable 6-digit account password.
-          organization: newUser.organization || '',
-          status: 'Active'
-        };
-        if (newUser.phone) apiPayload.phone = newUser.phone;
-        const created: any = await firstValueFrom(this.apiService.createUser(apiPayload));
-        otp = created?.temporary_password || '';
-        newUser.otp = otp;
-        const currentUsers = [...this.contentService.users];
-        currentUsers.unshift(newUser);
-        this.contentService.saveUsers(currentUsers);
-      } catch (_) {
+    // Check live availability on server before submission
+    try {
+      const avail = await firstValueFrom(this.apiService.checkAvailability(email, phone));
+      if (avail?.email_taken) {
+        this.emailValid = false;
+        this.regError = `A user with email "${email}" is already registered.`;
         this.regSubmitting = false;
-        this.dialogService.toast('Failed to save account to server. Please try again.', 'error');
         return;
       }
+      if (phone && avail?.phone_taken) {
+        this.phoneValid = false;
+        this.regError = `A user with phone number "${phone}" is already registered.`;
+        this.regSubmitting = false;
+        return;
+      }
+    } catch (_) {}
 
-      const currentAudit = [...this.contentService.auditLogs];
-      currentAudit.unshift({
-        action: `${this.registerRole === 'judge' ? 'Judge' : 'Sponsor'} token ${ticket} generated for ${this.regForm.fullName}`,
-        user: 'admin@ntic.org.gh',
-        time: new Date().toISOString(),
-        type: 'ticket'
-      });
-      this.contentService.saveAuditLogs(currentAudit);
-      // Update stat
-      this.stats = this.stats.map(s =>
-        s.icon === 'groups'
-          ? { ...s, value: String(this.registeredUsers.length), meta: this.activeSessionsMeta }
-          : s
-      );
+    const ticket = await this.generateTicket(this.registerRole);
+    const userId = 'USR-' + Date.now().toString(36).toUpperCase();
+    const newUser: any = {
+      id: userId,
+      role: this.registerRole,
+      fullName: this.regForm.fullName,
+      email: email,
+      phone: phone || '',
+      organization: this.regForm.organization,
+      track: this.registerRole === 'judge' ? (this.regForm.tracks?.join(', ')) : undefined,
+      package: this.registerRole === 'sponsor' ? this.regForm.tier : undefined,
+      ticket,
+      status: 'Active',
+      registeredAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      lastLogin: 'Never'
+    };
+    if (this.adminRegLogoFileId) {
+      newUser.logoFileId = this.adminRegLogoFileId;
+      newUser.photoFileId = this.adminRegLogoFileId;
+      newUser.photo_file_id = this.adminRegLogoFileId;
+    }
 
-      const roleLabel = this.registerRole === 'judge' ? 'Judge' : 'Sponsor';
-      this.emailService.sendApprovalEmail(
-        this.regForm.email,
-        this.regForm.fullName,
-        this.regForm.organization || 'NTIC Competition',
-        roleLabel + ' Access',
-        ticket,
-        otp
-      );
-
+    let otp = '';
+    try {
+      const apiPayload: any = {
+        email: newUser.email,
+        full_name: newUser.fullName,
+        role: newUser.role,
+        ticket: newUser.ticket,
+        organization: newUser.organization || '',
+        status: 'Active'
+      };
+      if (newUser.phone) apiPayload.phone = newUser.phone;
+      if (this.adminRegLogoFileId) apiPayload.photo_file_id = this.adminRegLogoFileId;
+      const created: any = await firstValueFrom(this.apiService.createUser(apiPayload));
+      otp = created?.temporary_password || '';
+      newUser.otp = otp;
+      if (created?.ticket) {
+        newUser.ticket = created.ticket;
+      }
+      const currentUsers = [...this.contentService.users];
+      currentUsers.unshift(newUser);
+      this.contentService.saveUsers(currentUsers);
+    } catch (err: any) {
       this.regSubmitting = false;
-      this.regSuccess = true;
-      this.isRegModalOpen = false;
-      this.showTicketModal(newUser);
+      const errMsg = err?.error?.detail || err?.message || 'Failed to save account to server. Please try again.';
+      this.regError = errMsg;
+      this.dialogService.toast(errMsg, 'error');
+      return;
+    }
 
-      this.regForm = { fullName: '', email: '', organization: '', phone: '', track: '', tracks: [], tier: '', notes: '' };
-      this.selectedAdminPackages = [];
-      this.removeAdminRegLogo();
-      this.generatePreviewTicket();
+    const currentAudit = [...this.contentService.auditLogs];
+    currentAudit.unshift({
+      action: `${this.registerRole === 'judge' ? 'Judge' : 'Sponsor'} token ${newUser.ticket} generated for ${this.regForm.fullName}`,
+      user: 'admin@ntic.org.gh',
+      time: new Date().toISOString(),
+      type: 'ticket'
+    });
+    this.contentService.saveAuditLogs(currentAudit);
 
-      this.router.navigate([], {
-        relativeTo: this.route,
-        queryParams: { openRegModal: null },
-        queryParamsHandling: 'merge'
-      });
+    this.stats = this.stats.map(s =>
+      s.icon === 'groups'
+        ? { ...s, value: String(this.registeredUsers.length), meta: this.activeSessionsMeta }
+        : s
+    );
 
-      setTimeout(() => { this.regSuccess = false; }, 4000);
-    }, 1200);
+    const roleLabel = this.registerRole === 'judge' ? 'Judge' : 'Sponsor';
+    this.emailService.sendApprovalEmail(
+      this.regForm.email,
+      this.regForm.fullName,
+      this.regForm.organization || 'NTIC Competition',
+      roleLabel + ' Access',
+      newUser.ticket,
+      otp
+    );
+
+    this.regSubmitting = false;
+    this.regSuccess = true;
+    this.isRegModalOpen = false;
+    const userToShow = {
+      ...newUser,
+      photoUrl: this.adminRegLogoUrl,
+      logoUrl: this.adminRegLogoUrl,
+      photo_file_id: this.adminRegLogoFileId
+    };
+    this.showTicketModal(userToShow);
+
+    this.regForm = { fullName: '', email: '', organization: '', phone: '', track: '', tracks: [], tier: '', notes: '' };
+    this.selectedAdminPackages = [];
+    this.removeAdminRegLogo();
+    this.generatePreviewTicket();
+    this.clearValidation();
+
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { openRegModal: null },
+      queryParamsHandling: 'merge'
+    });
+
+    setTimeout(() => { this.regSuccess = false; }, 4000);
+  }
+
+  viewTicketUserPhotoUrl: string | null = null;
+
+  closeTicketModal(): void {
+    if (this.viewTicketUserPhotoUrl && this.viewTicketUserPhotoUrl.startsWith('blob:')) {
+      this.fileStorage.revokeUrl(this.viewTicketUserPhotoUrl);
+    }
+    this.viewTicketUserPhotoUrl = null;
+    this.viewTicketUser = null;
+  }
+
+  async showTicketModal(user: any): Promise<void> {
+    this.viewTicketUser = user;
+    this.viewTicketUserPhotoUrl = null;
+    const fileId = user?.photo_file_id || user?.photoFileId || user?.logoFileId;
+    if (fileId) {
+      try {
+        this.viewTicketUserPhotoUrl = await this.fileStorage.getUrl(fileId);
+      } catch (_) {}
+    } else if (user?.photoUrl || user?.logoUrl) {
+      this.viewTicketUserPhotoUrl = user.photoUrl || user.logoUrl;
+    }
+    setTimeout(() => {
+      if (typeof document !== 'undefined') {
+        const modal = document.querySelector('.ticket-modal');
+        if (modal) {
+          modal.scrollTop = 0;
+        }
+      }
+    }, 50);
   }
 
   copyTicket(ticket: string): void {
@@ -4282,18 +4389,6 @@ setTimeout(async () => {
       }
       document.body.removeChild(textArea);
     }
-  }
-
-  showTicketModal(user: any): void {
-    this.viewTicketUser = user;
-    setTimeout(() => {
-      if (typeof document !== 'undefined') {
-        const modal = document.querySelector('.ticket-modal');
-        if (modal) {
-          modal.scrollTop = 0;
-        }
-      }
-    }, 50);
   }
 
   viewUserDetails(user: any): void {
@@ -4682,10 +4777,6 @@ setTimeout(async () => {
   closeDocument(): void {
     this.activeDocumentName = null;
     this.activeDocumentType = null;
-  }
-
-  closeTicketModal(): void {
-    this.viewTicketUser = null;
   }
 
   /* ── Admin Management ────────────────────────────────── */

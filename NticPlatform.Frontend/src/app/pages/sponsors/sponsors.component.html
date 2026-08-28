@@ -8,7 +8,12 @@
     <!-- Identity Banner -->
     <div class="sponsor-hero-banner">
       <div class="sponsor-hero-left">
-        <div class="sponsor-avatar">{{ getSponsorName(loggedInSponsor).charAt(0).toUpperCase() }}</div>
+        <div class="sponsor-avatar">
+          <ng-container *ngIf="sponsorAvatar$ | async as av">
+            <img *ngIf="av.url" [src]="av.url" style="width:100%;height:100%;border-radius:inherit;object-fit:cover;" alt="Logo" />
+            <span *ngIf="!av.url">{{ av.initials || getSponsorName(loggedInSponsor).charAt(0).toUpperCase() }}</span>
+          </ng-container>
+        </div>
         <div>
           <div class="sponsor-hero-badges">
             <span class="badge primary">VIP EXECUTIVE PORTAL</span>
