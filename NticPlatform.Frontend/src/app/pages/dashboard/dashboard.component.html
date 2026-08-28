@@ -580,25 +580,25 @@
   =Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â=Â -->
   <ng-container *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager' || activeRoleId === 'reviewer' || activeRoleId === 'competition_manager'">
 
-    <!-- â•â• DYNAMIC COSMIC SKY LAYER (Twinkling Stars + Slow Shooting Comets - Admin Only) â•â• -->
+    <!-- ══ DYNAMIC COSMIC SKY LAYER (Twinkling Stars + Slow Shooting Comets - Admin Only) ══ -->
     <div class="atmospheric-sky-layer" aria-hidden="true">
       <div class="cosmic-starfield">
         <div class="star-layer star-layer-1"></div>
         <div class="star-layer star-layer-2"></div>
         <div class="star-layer star-layer-3"></div>
         <div class="sparkle-stars">
-          <span class="star-sparkle s-1">âœ¦</span>
-          <span class="star-sparkle s-2">âœ¦</span>
-          <span class="star-sparkle s-3">âœ¦</span>
-          <span class="star-sparkle s-4">âœ¦</span>
-          <span class="star-sparkle s-5">âœ¦</span>
-          <span class="star-sparkle s-6">âœ¦</span>
-          <span class="star-sparkle s-7">âœ¦</span>
-          <span class="star-sparkle s-8">âœ¦</span>
-          <span class="star-sparkle s-9">âœ¦</span>
-          <span class="star-sparkle s-10">âœ¦</span>
-          <span class="star-sparkle s-11">âœ¦</span>
-          <span class="star-sparkle s-12">âœ¦</span>
+          <span class="star-sparkle s-1">✦</span>
+          <span class="star-sparkle s-2">✦</span>
+          <span class="star-sparkle s-3">✦</span>
+          <span class="star-sparkle s-4">✦</span>
+          <span class="star-sparkle s-5">✦</span>
+          <span class="star-sparkle s-6">✦</span>
+          <span class="star-sparkle s-7">✦</span>
+          <span class="star-sparkle s-8">✦</span>
+          <span class="star-sparkle s-9">✦</span>
+          <span class="star-sparkle s-10">✦</span>
+          <span class="star-sparkle s-11">✦</span>
+          <span class="star-sparkle s-12">✦</span>
         </div>
       </div>
       <div class="comet-space">
@@ -608,7 +608,7 @@
       </div>
     </div>
 
-    <!-- â•â• COMMAND CENTER MASTHEAD â•â• -->
+    <!-- ══ COMMAND CENTER MASTHEAD ══ -->
     <div class="cc-masthead" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
       <div class="cc-scanline"></div>
       <div class="cc-masthead-left">
@@ -634,7 +634,7 @@
       </div>
     </div>
 
-    <!-- â•â• COMMAND CENTER KPI CARDS â•â• -->
+    <!-- ══ COMMAND CENTER KPI CARDS ══ -->
     <div class="cc-kpi-grid" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
       <div *ngFor="let stat of stats; trackBy: trackByStatLabel; let i = index"
            class="cc-kpi-card"
@@ -659,10 +659,10 @@
       </div>
     </div>
 
-    <!-- â•â• SINGLE-SCREEN COMMAND CENTER DASHBOARD â•â• -->
+    <!-- ══ SINGLE-SCREEN COMMAND CENTER DASHBOARD ══ -->
     <div class="cc-viewport-container" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
 
-      <!-- â”€â”€ VISUAL ANALYTICS: SYSTEM TELEMETRY & INFRASTRUCTURE NODES GRID â”€â”€ -->
+      <!-- ── VISUAL ANALYTICS: SYSTEM TELEMETRY & INFRASTRUCTURE NODES GRID ── -->
       <div class="cc-middle-visual-grid cc-mb-16">
 
         <!-- LEFT: RESOURCE TELEMETRY METERS & LIVE THROUGHPUT -->
@@ -938,7 +938,7 @@
 
       </div>
 
-      <!-- â”€â”€ PLATFORM OVERVIEW & SITE SECTIONS MONITORING GRID â”€â”€ -->
+      <!-- ── PLATFORM OVERVIEW & SITE SECTIONS MONITORING GRID ── -->
       <div class="cc-bottom-services-section">
         <div class="cc-services-header">
           <div>
@@ -1071,7 +1071,7 @@
         </div>
       </div>
 
-      <!-- â”€â”€ MOVED SECTION: SCHOOL & REGIONAL NETWORK (WITH REGIONAL SCHOOL PARTICIPATION BREAKDOWN) â”€â”€ -->
+      <!-- ── MOVED SECTION: SCHOOL & REGIONAL NETWORK (WITH REGIONAL SCHOOL PARTICIPATION BREAKDOWN) ── -->
       <div class="cc-panel cc-mt-16">
         <div class="cc-panel-header">
           <div class="cc-panel-label">
@@ -1124,7 +1124,7 @@
         </div>
       </div>
 
-      <!-- â”€â”€ EXECUTIVE SECTION: CHAMPIONSHIP ARENA & COMPETITION DESK â”€â”€ -->
+      <!-- ── EXECUTIVE SECTION: CHAMPIONSHIP ARENA & COMPETITION DESK ── -->
       <div class="cc-panel cc-comp-desk-panel cc-mt-16">
         <div class="cc-panel-header">
           <div class="cc-panel-label cc-panel-title-bold">
@@ -1272,7 +1272,7 @@
         </div>
       </div>
 
-      <!-- â”€â”€ EXECUTIVE SECTION: LMS LEARNING PLATFORM & CURRICULUM DESK â”€â”€ -->
+      <!-- ── EXECUTIVE SECTION: LMS LEARNING PLATFORM & CURRICULUM DESK ── -->
       <div class="cc-panel cc-lms-desk-panel cc-mt-16">
         <div class="cc-panel-header">
           <div class="cc-panel-label cc-panel-title-bold">
@@ -1369,7 +1369,7 @@
         </div>
       </div>
 
-      <!-- â”€â”€ EXECUTIVE SECTION: DOCUMENT & ENTITY RECORDS ARCHIVE â”€â”€ -->
+      <!-- ── EXECUTIVE SECTION: DOCUMENT & ENTITY RECORDS ARCHIVE ── -->
       <div class="cc-panel cc-records-panel cc-mt-16">
         <div class="cc-panel-header">
           <div class="cc-panel-label cc-panel-title-bold">
@@ -1575,7 +1575,7 @@
         </div>
       </div>
     </div>
-    <!-- â”€â”€ TAB: MENTOR & INSTRUCTOR ALLOCATION PORTAL â”€â”€ -->
+    <!-- ── TAB: MENTOR & INSTRUCTOR ALLOCATION PORTAL ── -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'mentors'" class="admin-tab-body mentor-portal-wrapper" [class.ac-expanded]="expandedSection">
       <!-- Top Navigation & Action Header -->
       <div class="ac-top-bar">
@@ -1875,7 +1875,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ TAB: USERS FULL (User Management) â”€â”€ -->
+    <!-- ── TAB: USERS FULL (User Management) ── -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'users_full'" class="admin-tab-body" [class.ac-expanded]="expandedSection">
       <div class="ac-top-bar">
         <button class="ac-back-btn" (click)="goToTab('control'); expandedSection = false">
@@ -1889,7 +1889,7 @@
       <app-user-management></app-user-management>
     </div>
 
-    <!-- â”€â”€ TAB: PERSONNEL MONITOR (sponsors / judges / instructors) â”€â”€
+    <!-- ── TAB: PERSONNEL MONITOR (sponsors / judges / instructors) ──
          Read-only by design. Editing accounts stays in User Management so the
          two panels cannot drift apart. Only fields the backend can prove are
          shown -- no sponsor tier, judge expertise or instructor portfolio,
@@ -2232,11 +2232,11 @@
       </aside>
     </div>
 
-    <!-- â”€â”€ TAB: OVERVIEW (COMMAND CENTER) â”€â”€ -->
+    <!-- ── TAB: OVERVIEW (COMMAND CENTER) ── -->
     <div *ngIf="adminTab === 'overview'" class="admin-tab-body">
       <div class="cc-overview-grid">
 
-        <!-- â”€â”€ INFRASTRUCTURE NODES â”€â”€ -->
+        <!-- ── INFRASTRUCTURE NODES ── -->
         <div class="cc-panel">
           <div class="cc-panel-header">
             <div class="cc-panel-label">
@@ -2289,7 +2289,7 @@
           </div>
         </div>
 
-        <!-- â”€â”€ LIVE AUDIT TRAIL â”€â”€ -->
+        <!-- ── LIVE AUDIT TRAIL ── -->
         <div class="cc-panel">
           <div class="cc-panel-header" style="cursor:pointer;" (click)="goToSubTab('audit')">
             <div class="cc-panel-label">
@@ -2591,7 +2591,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ TAB: LIVE AUDIT TRAIL â”€â”€ -->
+    <!-- ── TAB: LIVE AUDIT TRAIL ── -->
     <div *ngIf="adminTab === 'control' && adminSubTab === 'audit'" class="admin-tab-body lat-page-container" [class.ac-expanded]="expandedSection">
       <!-- Top Navigation & Controls Bar -->
       <div class="ac-top-bar lat-top-bar">
@@ -3100,7 +3100,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ AUDIT EVENT INSPECTOR MODAL / DRAWER â”€â”€ -->
+    <!-- ── AUDIT EVENT INSPECTOR MODAL / DRAWER ── -->
     <div class="lat-modal-overlay" *ngIf="auditSelectedLog" (click)="closeAuditInspector()">
       <div class="lat-inspector-modal" (click)="$event.stopPropagation()">
         <!-- Modal Header -->
@@ -3559,7 +3559,7 @@
       </div>
     </div>
 
-  <!-- â”€â”€ TAB: CONTENT MANAGER â”€â”€ -->
+  <!-- ── TAB: CONTENT MANAGER ── -->
   <div *ngIf="(adminTab === 'control' && adminSubTab === 'content') || maximizedContentTab" class="admin-tab-body cms-studio-container" [class.ac-expanded]="expandedSection" [style.padding]="maximizedContentTab ? '0' : ''">
     
     <!-- Top Action Bar -->
@@ -3665,7 +3665,7 @@
       </button>
     </div>
 
-    <!-- â”€â”€ PAGE MANAGER PANEL â”€â”€ -->
+    <!-- ── PAGE MANAGER PANEL ── -->
     <div *ngIf="contentTab === 'pagecopy'" class="cms-panel">
       <div class="cms-panel-header">
         <div class="cms-panel-info">
@@ -3694,7 +3694,7 @@
 
       <div class="cms-form-error" *ngIf="landingCopySaveState === 'error'">Failed to publish. Please try again.</div>
 
-      <!-- â”€â”€ Copy Search & Quick Filters â”€â”€ -->
+      <!-- ── Copy Search & Quick Filters ── -->
       <div class="cms-copy-search-bar">
         <div class="cms-copy-search-top">
           <div class="cms-search-input-wrap">
@@ -3774,7 +3774,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ 1. STORIES PANEL â”€â”€ -->
+    <!-- ── 1. STORIES PANEL ── -->
     <div *ngIf="contentTab === 'stories'" class="cms-panel">
       <div class="cms-panel-header">
         <div class="cms-panel-info">
@@ -3910,7 +3910,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ 2. HALL OF FAME PANEL â”€â”€ -->
+    <!-- ── 2. HALL OF FAME PANEL ── -->
     <div *ngIf="contentTab === 'hof'" class="cms-panel">
       <div class="cms-panel-header">
         <div class="cms-panel-info">
@@ -4004,7 +4004,7 @@
           </div>
           <div class="cms-field">
             <label>Award / Honour Badge <span class="req">*</span></label>
-            <input type="text" [(ngModel)]="hofForm.badge" placeholder="ðŸ† Cybersecurity Grand Champions">
+            <input type="text" [(ngModel)]="hofForm.badge" placeholder="🏆 Cybersecurity Grand Champions">
           </div>
           <div class="cms-field">
             <label>Track Category</label>
@@ -4080,7 +4080,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ 3. LEADERBOARD PANEL â”€â”€ -->
+        <!-- ── 3. LEADERBOARD PANEL ── -->
     <div *ngIf="contentTab === 'leaderboard'" class="cms-panel">
       <div class="cms-panel-header">
         <div class="cms-panel-info">
@@ -4130,23 +4130,23 @@
             <label style="margin-bottom:8px;display:block;">Track Points (Total auto-sums in real-time)</label>
             <div class="cms-lb-points-row">
               <div class="cms-lb-point-field">
-                <span>ðŸ’» Coding</span>
+                <span>💻 Coding</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.coding" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field">
-                <span>ðŸ¤– Robotics</span>
+                <span>🤖 Robotics</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.robotics" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field">
-                <span>ðŸ§  AI</span>
+                <span>🧠 AI</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.ai" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field">
-                <span>ðŸ”’ Cyber</span>
+                <span>🔒 Cyber</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.cyber" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field total">
-                <span>ðŸ† Total</span>
+                <span>🏆 Total</span>
                 <input type="number" [ngModel]="lbForm.trackPoints.all" readonly>
               </div>
             </div>
@@ -4160,7 +4160,7 @@
         </div>
       </div>
 
-      <!-- Leaderboard Table -->
+<!-- Leaderboard Table -->
       <div class="cms-lb-table-wrap">
         <table class="cms-modern-table">
           <thead>
@@ -4219,7 +4219,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ 4. TALENT DISCOVERY PANEL â”€â”€ -->
+    <!-- ── 4. TALENT DISCOVERY PANEL ── -->
     <div *ngIf="contentTab === 'talent'" class="cms-panel">
       <div class="cms-panel-header">
         <div class="cms-panel-info">
@@ -4322,7 +4322,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ 5. NEWS FEED PANEL â”€â”€ -->
+    <!-- ── 5. NEWS FEED PANEL ── -->
     <div *ngIf="contentTab === 'news'" class="cms-panel">
       <div class="cms-panel-header">
         <div class="cms-panel-info">
@@ -4423,7 +4423,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ 6. PLATFORM STATS PANEL â”€â”€ -->
+    <!-- ── 6. PLATFORM STATS PANEL ── -->
     <div *ngIf="contentTab === 'stats'" class="cms-panel">
       <div class="cms-panel-header">
         <div class="cms-panel-info">
@@ -4472,7 +4472,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ 7. COUNTDOWN TIMER PANEL â”€â”€ -->
+    <!-- ── 7. COUNTDOWN TIMER PANEL ── -->
     <div *ngIf="contentTab === 'countdown'" class="cms-panel">
       <div class="cms-panel-header">
         <div class="cms-panel-info">
@@ -4539,7 +4539,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ 8. SLIDESHOW PANEL â”€â”€ -->
+    <!-- ── 8. SLIDESHOW PANEL ── -->
     <div *ngIf="contentTab === 'slideshow'" class="cms-panel">
       <div class="cms-panel-header">
         <div class="cms-panel-info">
@@ -4704,7 +4704,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ 9. PHILOSOPHY CARDS PANEL â”€â”€ -->
+    <!-- ── 9. PHILOSOPHY CARDS PANEL ── -->
     <div *ngIf="contentTab === 'philosophy'" class="cms-panel">
       <div class="cms-panel-header">
         <div class="cms-panel-info">
@@ -4799,7 +4799,7 @@
       </div>
     </div>
 
-    <!-- â”€â”€ 10. UPCOMING EVENTS PANEL â”€â”€ -->
+    <!-- ── 10. UPCOMING EVENTS PANEL ── -->
     <div *ngIf="contentTab === 'events'" class="cms-panel">
       <div class="cms-panel-header">
         <div class="cms-panel-info">
@@ -5026,7 +5026,7 @@
                 <span class="material-symbols-outlined">{{ registerRole === 'judge' ? 'gavel' : 'handshake' }}</span>
               </div>
               <div>
-                <h3>{{ registerRole === 'judge' ? 'Register Competition Judge' : 'Register Platform Sponsor' }}</h3>
+                <h3>{{ registerRole === 'judge' ? '⚖ Competition Judge' : '🤝 Platform Sponsor' }}</h3>
                 <p>{{ registerRole === 'judge' ? 'A unique access token will be generated upon registration.' : 'The sponsor will receive a dedicated portal token for their CSR dashboard.' }}</p>
               </div>
             </div>
@@ -5208,7 +5208,7 @@
               <div>
                 <div class="preview-ticket-platform">National NTIC Platform</div>
                 <div class="preview-ticket-type">
-                  {{ registerRole === 'judge' ? 'âš– Competition Judge' : 'ðŸ¤Â¤Â Platform Sponsor' }}
+                  {{ registerRole === 'judge' ? '⚖ Competition Judge' : '🤝 Platform Sponsor' }}
                 </div>
               </div>
               <div class="preview-ticket-year">2026</div>
@@ -5262,7 +5262,7 @@
                   <span *ngIf="regSuccess && viewTicketUser">{{ viewTicketUser.ticket }}</span>
                 </div>
                 <div class="preview-code-hint" [class.success]="regSuccess">
-                  {{ regSuccess ? 'âœ“ Token generated and active' : 'Will be generated upon registration' }}
+                  {{ regSuccess ? '✓ Token generated and active' : 'Will be generated upon registration' }}
                 </div>
               </div>
             </div>
@@ -5338,7 +5338,7 @@
             <span style="font-size:11px;color:var(--on-surface-variant);">GHS</span>
           </div>
           <div style="position:relative;">
-            <span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:700;color:var(--on-surface-variant);">GHâ‚µ</span>
+            <span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:700;color:var(--on-surface-variant);">GH₵</span>
             <input type="number" [(ngModel)]="settleAmount" placeholder="0.00" min="1"
                    style="width:100%;padding:18px 18px 18px 72px;font-size:28px;font-weight:800;text-align:left;border:2px solid var(--outline-variant);border-radius:14px;background:var(--surface-container-lowest);color:var(--on-surface);outline:none;transition:border-color 0.2s;box-sizing:border-box;"
                    (focus)="$any($event.target).style.borderColor='var(--primary)'"
@@ -6135,9 +6135,9 @@
     </div>
   </div>
 
-  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  <!-- ══════════════════════════════════════════════════════════════════
        SPONSORSHIP TIER BREAKDOWN POPUP MODAL (ROOT VIEWPORT OVERLAY)
-  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+  ══════════════════════════════════════════════════════════════════ -->
   <app-sponsor-tier-modal
     *ngIf="sponsorTierModalOpen && selectedSponsorTier"
     [tier]="selectedSponsorTier"
