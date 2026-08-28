@@ -1648,8 +1648,14 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     }
     const lookup = credential.trim().toLowerCase();
 
-    // Security Hardening: Never expose or identify Super Admin / Administrator role to prevent user enumeration
-    if (lookup === 'admin@ntic.org.gh' || lookup.includes('admin@')) {
+    // Security Hardening: Never expose or identify Super Admin / Administrator role to prevent user enumeration.
+    // Covers email (admin@...), token prefixes (NTIC-ADM-*, ADMIN-*), and any credential containing the admin marker.
+    const isAdminLookup =
+      lookup === 'admin@ntic.org.gh' ||
+      lookup.includes('admin@') ||
+      /^ntic-adm-/i.test(lookup) ||
+      /^admin-/i.test(lookup);
+    if (isAdminLookup) {
       if (this.detectedRoleName) {
         this.detectedRoleName = '';
         this.telemetryLogs = [
