@@ -4438,28 +4438,48 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.approvingIds.add(req.id);
 
     try {
+      // The server PATCH goes FIRST and is the authoritative decision: it is the
+      // only thing that provisions the account, the teams and the access pass.
+      //
+      // saveApprovedApprovals() below bulk-syncs the row with status='approved'.
+      // When that landed before this PATCH, the server saw an already-approved
+      // row, skipped provisioning entirely and reported "Not an approval
+      // transition" -- so the reviewer got no pass, no PIN and no error, and the
+      // applicant ended up with an approved application and no account.
+      let updateRes: any = null;
+      let updateFailed = false;
+      try {
+        updateRes = await firstValueFrom(this.apiService.updateApproval(req.id, {
+          status: 'approved',
+          reviewed_at: new Date().toLocaleString('en-GB'),
+          reviewer: getAuthValue('activeUserEmail') || 'admin@ntic.org.gh'
+        }));
+      } catch (err: any) {
+        updateFailed = true;
+        console.error('Approval update failed on server:', err);
+        this.dialogService.toast(
+          err?.error?.detail || 'The approval could not be recorded on the server. Nothing was changed.',
+          'error'
+        );
+      }
+
+      // Only move it into the approved list once the server has accepted the
+      // decision, so a failed PATCH cannot leave the UI claiming an approval the
+      // database never recorded.
+      if (updateFailed) {
+        return;
+      }
+
       const approved = {
         ...req,
         reviewedAt: new Date().toLocaleString('en-GB'),
-        reviewer: 'admin@ntic.org.gh'
+        reviewer: getAuthValue('activeUserEmail') || 'admin@ntic.org.gh'
       };
       const currentApproved = [...this.contentService.approvedApprovals];
       currentApproved.unshift(approved);
       this.contentService.saveApprovedApprovals(currentApproved);
 
       this.pendingApprovals = this.pendingApprovals.filter(r => r.id !== req.id);
-
-      // Persist to backend and obtain server-provisioned credentials in a single source of truth
-      let updateRes: any = null;
-      try {
-        updateRes = await firstValueFrom(this.apiService.updateApproval(req.id, {
-          status: 'approved',
-          reviewed_at: new Date().toLocaleString('en-GB'),
-          reviewer: 'admin@ntic.org.gh'
-        }));
-      } catch (err: any) {
-        console.error('Approval update failed on server:', err);
-      }
 
       const account = updateRes?.account;
       // Only show/send credentials the server actually minted. Previously a
@@ -4470,8 +4490,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const ticket = provisioned ? (account.ticket || '') : '';
       const otp = provisioned ? (account.temporary_password || '') : '';
 
+      // Surface every non-provisioning reason. "Not an approval transition" used
+      // to be swallowed here, which is precisely what hid the race above: the
+      // reviewer had no way to tell that approving had produced no account.
       if (account && account.provisioned === false && account.reason
-          && account.reason !== 'Not an approval transition'
           && !String(account.reason).startsWith('No role mapping')) {
         this.dialogService.toast(
           `Approved, but no account was created: ${account.reason}`,

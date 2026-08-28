@@ -2242,6 +2242,8 @@ class TestPublicSurface:
         # applications only went to the admin-only POST /api/bulk-sync, so every
         # anonymous application 401'd and no reviewer ever saw it.
         ("POST", "/api/approvals/public"),
+        # File/photo upload with IP rate limit and DB storage.
+        ("POST", "/api/files/upload"),
     }
 
     def test_no_unexpected_anonymous_write_endpoints(self):

@@ -414,6 +414,16 @@ def _create_tables(conn):
     cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS competition_id VARCHAR(100);")
     cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_file_id VARCHAR(255);")
     cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS doc_file_id VARCHAR(255);")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS stored_files (
+            id VARCHAR(100) PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            mime_type VARCHAR(100) NOT NULL,
+            size INTEGER DEFAULT 0,
+            data_base64 TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
     cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS comp_type VARCHAR(50) DEFAULT 'qualifier';")
     cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS max_teams INTEGER DEFAULT 50;")
     cur.execute("ALTER TABLE competitions ADD COLUMN IF NOT EXISTS teams INTEGER DEFAULT 0;")

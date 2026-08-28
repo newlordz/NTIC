@@ -775,7 +775,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   readonly baseNotifications = [
-    { id: 'notif-system', title: 'System active', time: '', icon: 'system', category: 'System', route: '/dashboard' },
+    { id: 'notif-system', title: 'System active', time: '', icon: 'dns', category: 'System', route: '/dashboard' },
     { id: 'notif-stats', title: 'Platform stats updated', time: '', icon: 'dashboard', category: 'System', route: '/reporting' }
   ];
 

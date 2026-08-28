@@ -8374,20 +8374,56 @@ try:
             or email
         )
 
-        # If an account already exists for this email the application is stale:
-        # approving it must not touch the existing account. Overwriting the
-        # password here would let an (auto-generated or duplicate) application
-        # silently reset a real user's credentials, and forcing status='active'
-        # would un-suspend an account an admin had disabled. Return the existing
-        # account untouched and let the reviewer surface the reason instead.
-        cur.execute("SELECT id, role FROM users WHERE lower(email) = %s", (email,))
+        # If an account already exists for this email, decide by its status.
+        #
+        # Only an account still AWAITING REVIEW ('pending', or a blank status) is
+        # activated here. Judge and sponsor sign-up create the users row first and
+        # the server forces it to 'pending', so refusing to touch it meant
+        # approving the application never let the applicant in and never issued a
+        # pass -- the reviewer's decision had no effect at all.
+        #
+        # Every other status is left strictly alone: an 'active' account means the
+        # application is stale and overwriting the password would let a duplicate
+        # application reset a real user's credentials, while 'suspended',
+        # 'banned', 'revoked' and friends are deliberate admin actions that an
+        # approval must never quietly undo.
+        _AWAITING_REVIEW = {"", "pending"}
+        cur.execute(
+            "SELECT id, role, COALESCE(status, ''), COALESCE(ticket, '') FROM users WHERE lower(email) = %s",
+            (email,),
+        )
         existing = cur.fetchone()
         if existing:
+            existing_id, existing_role, existing_status, existing_ticket = existing
+            if (existing_status or "").strip().lower() not in _AWAITING_REVIEW:
+                return {
+                    "provisioned": False,
+                    "reason": (
+                        "An account already exists for this email"
+                        if not account_is_disabled(existing_status)
+                        else f"An account already exists for this email and is {existing_status}"
+                    ),
+                    "user_id": existing_id,
+                    "role": existing_role,
+                }
+
+            # Awaiting review: activate it and issue credentials that actually work.
+            temp_password = _generate_temp_password()
+            ticket = existing_ticket or _allocate_unique_ticket(cur, existing_role or role)
+            cur.execute(
+                "UPDATE users SET status = 'active', ticket = %s, password_hash = %s, "
+                "must_change_password = true WHERE id = %s",
+                (ticket, hash_password(temp_password), existing_id),
+            )
             return {
-                "provisioned": False,
-                "reason": "An account already exists for this email",
-                "user_id": existing[0],
-                "role": existing[1],
+                "provisioned": True,
+                "activated_existing": True,
+                "user_id": existing_id,
+                "email": email,
+                "full_name": full_name,
+                "role": existing_role or role,
+                "ticket": ticket,
+                "temporary_password": temp_password,
             }
 
         temp_password = _generate_temp_password()
@@ -8445,7 +8481,6 @@ try:
                 release_db_connection(conn)
                 raise HTTPException(status_code=404, detail="Approval not found")
 
-            was_approved = (before[4] or "").strip().lower() == "approved"
             now_approved = target_status == "approved"
 
             cur.execute(
@@ -8461,7 +8496,23 @@ try:
             account: dict = {"provisioned": False, "reason": "Not an approval transition"}
             team_change: dict = {"applied": False, "reason": "Not an approval transition"}
             teams: dict = {"applied": False, "reason": "Not an approval transition"}
-            if now_approved and not was_approved:
+            # Provision whenever the decision IS 'approved', not only on the
+            # pending->approved edge.
+            #
+            # The dashboard calls saveApprovedApprovals() before this PATCH, and
+            # that helper bulk-syncs the row with status='approved'. When the
+            # bulk-sync landed first the row was already approved here, so
+            # `was_approved` was true, provisioning was skipped, and the endpoint
+            # returned reason "Not an approval transition" -- which the dashboard
+            # deliberately does not surface. The reviewer saw no credentials and no
+            # error, and no account was ever created even though the application
+            # read as approved forever after.
+            #
+            # Every provisioning helper below is idempotent (an existing active
+            # account is returned untouched, teams upsert on their natural key), so
+            # running them on a repeat approval is safe and lets a reviewer heal a
+            # record stuck in exactly that state by simply approving it again.
+            if now_approved:
                 approval_row = {
                     "type": before[0],
                     "entity": before[1],
@@ -8623,6 +8674,71 @@ try:
         release_db_connection(conn)
         broadcast_async()
         return {"status": "synced", "collection": payload.collection, "count": len(payload.items)}
+
+    class FileUploadPayload(BaseModel):
+        file_id: str
+        name: str = "file"
+        mime_type: str = "image/png"
+        data_base64: str
+        size: int = 0
+
+    @app.post("/api/files/upload")
+    def upload_file(payload: FileUploadPayload, request: Request):
+        if not payload.file_id or not payload.data_base64:
+            raise HTTPException(status_code=400, detail="Missing file_id or data_base64")
+        client_ip = extract_client_ip(request)
+        check_rate_limit(f"file-upload:{client_ip}", max_attempts=60, window_seconds=300)
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            data_b64 = payload.data_base64
+            if "," in data_b64 and "base64" in data_b64:
+                data_b64 = data_b64.split(",", 1)[1]
+
+            cur.execute("""
+                INSERT INTO stored_files (id, name, mime_type, size, data_base64)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    mime_type = EXCLUDED.mime_type,
+                    size = EXCLUDED.size,
+                    data_base64 = EXCLUDED.data_base64
+            """, (payload.file_id, payload.name, payload.mime_type, payload.size or len(data_b64), data_b64))
+            conn.commit()
+            cur.close()
+            return {"status": "success", "file_id": payload.file_id}
+        finally:
+            release_db_connection(conn)
+
+    @app.get("/api/files/{file_id}")
+    def get_file(file_id: str):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT name, mime_type, data_base64 FROM stored_files WHERE id = %s", (file_id,))
+            row = cur.fetchone()
+            cur.close()
+            if not row:
+                raise HTTPException(status_code=404, detail="File not found")
+            import base64
+            try:
+                raw_bytes = base64.b64decode(row[2])
+            except Exception:
+                raise HTTPException(status_code=500, detail="Corrupt file data")
+            return Response(
+                content=raw_bytes,
+                media_type=row[1] or "image/png",
+                headers={
+                    "Cache-Control": "public, max-age=86400, immutable",
+                    "Content-Disposition": f'inline; filename="{row[0]}"',
+                }
+            )
+        finally:
+            release_db_connection(conn)
 
     # Mount static files
     frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "NticPlatform.Frontend", "dist", "ntic-frontend", "browser")

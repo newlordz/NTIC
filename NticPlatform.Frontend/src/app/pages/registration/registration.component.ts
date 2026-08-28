@@ -3961,7 +3961,8 @@ setAuthValue('activeUserEmail', email);
           full_name: newJudge.fullName,
           role: newJudge.role,
           ticket: newJudge.ticket,
-          phone: newJudge.phone || ''
+          phone: newJudge.phone || '',
+          photo_file_id: judgeLogoId || undefined
         } as any).subscribe({
           next: (created: any) => {
             otp = created?.temporary_password || '';
@@ -4024,7 +4025,9 @@ setAuthValue('activeUserEmail', email);
           full_name: newSponsor.fullName,
           role: newSponsor.role,
           ticket: newSponsor.ticket,
-          phone: newSponsor.phone || ''
+          phone: newSponsor.phone || '',
+          organization: newSponsor.organization || '',
+          photo_file_id: logoFileId || undefined
         } as any).subscribe({
           next: (created: any) => {
             otp = created?.temporary_password || '';

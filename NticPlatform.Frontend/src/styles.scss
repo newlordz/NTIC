@@ -1284,7 +1284,8 @@ body.ac-expanded .main-content {
         color: var(--primary);
         display: flex; align-items: center; justify-content: center;
         flex-shrink: 0;
-        .material-symbols-outlined { font-size: 18px; }
+        overflow: hidden;
+        .material-symbols-outlined { font-size: 18px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
       }
 
       .notif-body {
