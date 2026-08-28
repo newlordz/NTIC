@@ -487,70 +487,32 @@ export class ContentService {
   lmsSubmissions: LmsSubmission[] = [];
   lmsEnrollments: LmsEnrollment[] = [];
 
-  // ── Initial Mock Data backups for restoration ──────────────────
+  // ── Empty fallbacks for collections not yet populated by the API ──
+  // No mock/fixture content lives here: every value is empty until the backend
+  // responds, so the dashboard always renders live data (or a neutral blank).
   private readonly defaultCompetitions: Competition[] = [];
-  private readonly defaultPhilosophyCards: PhilosophyCard[] = [
-    { id: 'phil-1', title: 'Learn', description: 'Pushing the boundaries of what is known to uncover new possibilities.', image: 'assets/ntic_image_14.jpeg' },
-    { id: 'phil-2', title: 'Innovate', description: 'Designing intelligent, creative solutions for tomorrow\'s challenges.', image: 'assets/ntic_image_25.jpeg' },
-    { id: 'phil-3', title: 'Build', description: 'Turning abstract ideas into concrete reality through engineering.', image: 'assets/ntic_image_33.jpeg' },
-  ];
-
-private readonly defaultLmsCourses: LmsCourse[] = [];
-
-private readonly defaultLmsModules: LmsModule[] = [];
-
+  private readonly defaultPhilosophyCards: PhilosophyCard[] = [];
+  private readonly defaultLmsCourses: LmsCourse[] = [];
+  private readonly defaultLmsModules: LmsModule[] = [];
   private readonly defaultLmsMaterials: LmsMaterial[] = [];
-
-private readonly defaultLmsAssignments: LmsAssignment[] = [];
-
+  private readonly defaultLmsAssignments: LmsAssignment[] = [];
   private readonly defaultLmsSubmissions: LmsSubmission[] = [];
-
   private readonly defaultLmsEnrollments: LmsEnrollment[] = [];
   private readonly defaultEvents: UpcomingEvent[] = [];
   private readonly defaultStories: ChampionshipStory[] = [];
-
   private readonly defaultHof: HallOfFameEntry[] = [];
-
   private readonly defaultLeaderboard: LeaderboardEntry[] = [];
-
   private readonly defaultTalentDiscovery: TalentDiscovery[] = [];
-
   private readonly defaultStats: PlatformStats = { regions: 0, mentors: 0, schools: 0, students: 0, projects: 0, grants: 0 };
-
-  private readonly defaultHero: HeroSlide[] = [
-    { id: 'slide-1', tag: 'Ghana\'s Premier Tech Championship', title: 'National Tech Innovation Championship 2026', description: 'Empowering the next generation of Ghanaian innovators through Coding, Robotics, AI, Networking & Cybersecurity, and Open Innovation.', image: 'assets/ntic_image_1.jpeg', ctaText: 'Enter Portal', ctaLink: '#portal' },
-    { id: 'slide-2', tag: '500+ Schools Registered', title: 'Over 16 Regions Represented', description: 'From Accra to Tamale, young minds are competing to solve real-world problems with technology.', image: 'assets/ntic_image_4.jpeg', ctaText: 'Enter Portal', ctaLink: '#portal' },
-    { id: 'slide-3', tag: 'Innovate. Build. Lead.', title: 'Ready to Make an Impact?', description: 'Join Ghana\'s largest high school tech competition. Registration is open for all tracks.', image: 'assets/ntic_image_7.jpeg', ctaText: 'Enter Portal', ctaLink: '#portal' }
-  ];
-
+  private readonly defaultHero: HeroSlide[] = [];
   private readonly defaultNews: NewsFeedItem[] = [];
-
-  private readonly defaultUsers: User[] = [
-    {
-      id: 'USR-000',
-      role: 'super_admin',
-      fullName: 'Admin',
-      email: 'admin@ntic.org.gh',
-      phone: '+233 20 000 0000',
-      otp: '',
-      organization: 'NTIC',
-      ticket: 'NTIC-ADM-0000',
-      status: 'Active',
-      registeredAt: 'Jan 1, 2026',
-      lastLogin: 'Just now'
-    }
-  ];
-
+  private readonly defaultUsers: User[] = [];
   private readonly defaultPendingApprovals: ApprovalRequest[] = [];
   private readonly defaultRejectedApprovals: ApprovalRequest[] = [];
   private readonly defaultApprovedApprovals: ApprovalRequest[] = [];
-
-private readonly defaultTeams: Team[] = [];
-
+  private readonly defaultTeams: Team[] = [];
   private readonly defaultSubmissions: Submission[] = [];
-
   private readonly defaultAuditLogs = [];
-
   private readonly defaultCsrUpdates = [];
 
   private storageReady = false;

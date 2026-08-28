@@ -209,27 +209,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   recomputeTournamentTracks(): void {
     const list = this.contentService.competitions?.filter(c => c.status !== 'archived' && c.status !== 'draft') || [];
-    if (list.length > 0) {
-      this.tournamentTickerTracks = list.slice(0, 4).map((c, idx) => ({
-        id: c.id || idx + 1,
-        title: c.title || 'Championship Track',
-        track: c.track || 'AI & Robotics',
-        category: c.category || 'National Stage',
-        teamsCount: (c as any).teamsCount || 12 + (idx * 3),
-        leaderName: idx === 0 ? 'Prempeh College Alpha' : idx === 1 ? 'St. Peter\'s CyberBots' : idx === 2 ? 'Achimota SecOps' : 'Wesley Girls Tech',
-        score: (96.8 - idx * 1.6).toFixed(1),
-        icon: idx === 0 ? 'psychology' : idx === 1 ? 'precision_manufacturing' : idx === 2 ? 'security' : 'code',
-        badge: c.status === 'active' ? 'Scoring Open' : 'Active Heats',
-        badgeClass: 'cc-tbadge-live'
-      }));
-      return;
-    }
-    this.tournamentTickerTracks = [
-      { id: 1, title: 'AI & Machine Learning', track: 'Artificial Intelligence', teamsCount: 18, leaderName: 'Prempeh College Alpha', score: '96.8', icon: 'psychology', badge: 'Scoring Open', badgeClass: 'cc-tbadge-live' },
-      { id: 2, title: 'Robotics & IoT Systems', track: 'Hardware & Embedded', teamsCount: 14, leaderName: 'St. Peter\'s CyberBots', score: '95.2', icon: 'precision_manufacturing', badge: 'Live Heats', badgeClass: 'cc-tbadge-live' },
-      { id: 3, title: 'Cybersecurity Defense', track: 'SecOps & Cryptography', teamsCount: 12, leaderName: 'Achimota SecOps', score: '93.6', icon: 'security', badge: 'Active Lab', badgeClass: 'cc-tbadge-live' },
-      { id: 4, title: 'Software & Web Innovation', track: 'Full Stack Engineering', teamsCount: 16, leaderName: 'Wesley Girls Tech', score: '94.4', icon: 'code', badge: 'Judging Phase', badgeClass: 'cc-tbadge-live' }
-    ];
+    this.tournamentTickerTracks = list.slice(0, 4).map((c, idx) => ({
+      id: c.id || idx + 1,
+      title: c.title || 'Championship Track',
+      track: c.track || '',
+      category: c.category || 'National Stage',
+      teamsCount: c.teams || 0,
+      icon: c.icon || this._trackIcon(c.track),
+      badge: c.status === 'active' ? 'Scoring Open' : 'Active Heats',
+      badgeClass: 'cc-tbadge-live'
+    }));
   }
 
   trackByTournamentId(_index: number, item: any): any {
@@ -332,6 +321,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
       : `${status} (${healthy}/${total} healthy)`;
   }
 
+  /** API process uptime, from the live telemetry response (not a fixed 99.98%). */
+  get coreUptimeLabel(): string {
+    const s = this._telemetry?.api?.uptimeSeconds;
+    return typeof s === 'number' ? this.formatUptime(s) : '--';
+  }
+
+  /** Measured database latency, from the live telemetry response. */
+  get dbLatencyLabel(): string {
+    const ms = this._telemetry?.database?.latencyMs;
+    return typeof ms === 'number' ? `${ms}ms` : '--';
+  }
+
+  /** Connected WebSocket clients, from the live telemetry response. */
+  get liveClientsLabel(): string {
+    const n = this._telemetry?.realtime?.connectedClients;
+    return typeof n === 'number' ? `${n}` : '--';
+  }
+
   /** Status dot colour, driven by the server's reported state. */
   nodeDotClass(status: string): string {
     const s = (status || '').toLowerCase();
@@ -341,27 +348,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return 'cc-dot-grey';
   }
 
-  // ─── VISUAL ANALYTICS & TELEMETRY DATA ───────
-  weeklyActivityTrend = [
-    { day: 'Mon', submissions: 24, registrations: 12, logins: 85 },
-    { day: 'Tue', submissions: 42, registrations: 18, logins: 120 },
-    { day: 'Wed', submissions: 35, registrations: 15, logins: 110 },
-    { day: 'Thu', submissions: 58, registrations: 22, logins: 145 },
-    { day: 'Fri', submissions: 64, registrations: 30, logins: 190 },
-    { day: 'Sat', submissions: 82, registrations: 45, logins: 230 },
-    { day: 'Sun', submissions: 95, registrations: 52, logins: 280 }
-  ];
-
   /**
    * Measured platform figures, populated from GET /api/system/telemetry.
    *
-   * Empty until the server answers. These used to be hardcoded CPU/memory/
-   * bandwidth percentages that were shown as if they were live readings; the
-   * backend cannot observe host resources, so those gauges have been removed
-   * rather than faked.
+   * Empty until the server answers. The backend cannot observe host resources,
+   * so those gauges have been removed rather than faked.
    */
   systemGauges: { label: string; value: number | string; color: string; unit: string }[] = [];
   telemetryError = '';
+  private _telemetry: any = null;
 
   private readonly trackColors = ['#3b82f6','#10b981','#6366f1','#f59e0b','#ec4899','#8b5cf6','#14b8a6','#f97316'];
   private readonly trackIcons: Record<string, string> = {
@@ -474,6 +469,46 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return regions.size;
   }
 
+  get superAdminCount(): number {
+    return (this.contentService.users || []).filter(u => u.role === 'super_admin').length;
+  }
+
+  get schoolAdminCount(): number {
+    return (this.contentService.users || []).filter(u => u.role === 'school_admin').length;
+  }
+
+  get publishedModulesCount(): number {
+    return (this.contentService.lmsModules || []).length;
+  }
+
+  get lmsSubmissionsCount(): number {
+    return (this.contentService.lmsSubmissions || []).length;
+  }
+
+  get lmsEnrollmentCount(): number {
+    return (this.contentService.lmsEnrollments || []).length;
+  }
+
+  /** Count of submissions in a given track (case-insensitive keyword match). */
+  trackSubmissionsCount(keyword: string): number {
+    const subs = this.contentService.submissions || [];
+    const k = keyword.toLowerCase();
+    return subs.filter(s => (s.track || '').toLowerCase().includes(k)).length;
+  }
+
+  /** Live evaluation-queue status: either "All scored" or the pending count. */
+  get evaluationQueueLabel(): string {
+    const pending = this.pendingCompetitionScoringCount;
+    return pending === 0 ? 'All scored' : `${pending} pending`;
+  }
+
+  /** Percentage of competition submissions that have been scored. */
+  get competitionScoringPct(): number {
+    const total = this.totalCompetitionSubmissionsCount;
+    if (!total) return 0;
+    return Math.round((this.scoredCompetitionSubmissionsCount / total) * 100);
+  }
+
   /**
    * Component health, populated from GET /api/system/nodes-health.
    *
@@ -486,23 +521,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     id: string; name: string; status: string;
     latencyMs: number | null; detail: string; measured: boolean;
   }[] = [];
-
-  getChartPath(key: 'submissions' | 'registrations' | 'logins'): string {
-    const data = this.weeklyActivityTrend;
-    const max = 300;
-    const points = data.map((d, idx) => {
-      const x = (idx / (data.length - 1)) * 500;
-      const val = d[key];
-      const y = 150 - (val / max) * 130;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    });
-    return 'M ' + points.join(' L ');
-  }
-
-  getChartAreaPath(key: 'submissions' | 'registrations' | 'logins'): string {
-    const linePath = this.getChartPath(key);
-    return `${linePath} L 500,160 L 0,160 Z`;
-  }
 
   // ─── SUPER ADMIN STATE ─────────────────────────
   adminTab: 'overview' | 'control' | 'dashboard' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'dashboard';
@@ -3658,6 +3676,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!['super_admin', 'admin'].includes(this.activeRoleId)) return;
     this.apiService.getSystemTelemetry().subscribe({
       next: (res: any) => {
+        this._telemetry = res;
         this.telemetryError = res?.rowCountsError || res?.database?.error || '';
 
         // Only values the server actually measured.

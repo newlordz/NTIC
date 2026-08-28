@@ -739,19 +739,19 @@
             <div class="cc-tchart-footer-metrics cc-telemetry-footer-metrics">
               <div class="cc-tf-stat">
                 <span class="cc-tf-lbl">CORE UPTIME</span>
-                <span class="cc-tf-val cc-green">99.98%</span>
+                <span class="cc-tf-val cc-green">{{ coreUptimeLabel }}</span>
               </div>
               <div class="cc-tf-stat">
-                <span class="cc-tf-lbl">GATEWAY LATENCY</span>
-                <span class="cc-tf-val cc-green">&lt; 30ms</span>
+                <span class="cc-tf-lbl">DB LATENCY</span>
+                <span class="cc-tf-val cc-green">{{ dbLatencyLabel }}</span>
               </div>
               <div class="cc-tf-stat">
-                <span class="cc-tf-lbl">THROUGHPUT</span>
-                <span class="cc-tf-val">1.4k <small>req/m</small></span>
+                <span class="cc-tf-lbl">LIVE CLIENTS</span>
+                <span class="cc-tf-val">{{ liveClientsLabel }} <small>connected</small></span>
               </div>
               <div class="cc-tf-stat">
                 <span class="cc-tf-lbl">HEALTH STATUS</span>
-                <span class="cc-tf-val cc-green">100% OK</span>
+                <span class="cc-tf-val cc-green">{{ overallSystemLabel }}</span>
               </div>
             </div>
           </div>
@@ -967,18 +967,18 @@
                   <path class="cc-ring-fill" stroke="#10b981" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
                 </svg>
                 <div class="cc-mini-ring-center">
-                  <span class="cc-mring-sub">Status</span>
-                  <span class="cc-mring-val" style="color: #10b981;">100%</span>
+                  <span class="cc-mring-sub">Accounts</span>
+                  <span class="cc-mring-val" style="color: #10b981;">{{ registeredUsers.length }}</span>
                 </div>
               </div>
               <div class="cc-scard-details">
                 <div class="cc-sdetail-row">
                   <span class="material-symbols-outlined cc-ic-dot">admin_panel_settings</span>
-                  <span class="cc-sdetail-text">Super Admins: <strong>4 active</strong></span>
+                  <span class="cc-sdetail-text">Super Admins: <strong>{{ superAdminCount }} active</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
                   <span class="material-symbols-outlined cc-ic-dot">domain</span>
-                  <span class="cc-sdetail-text">School Admins: <strong>180 registered</strong></span>
+                  <span class="cc-sdetail-text">School Admins: <strong>{{ schoolAdminCount }} registered</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
                   <span class="material-symbols-outlined cc-ic-dot">shield</span>
@@ -996,31 +996,31 @@
           <div class="cc-service-card" (click)="goToSubTab('content')" role="button" tabindex="0">
             <div class="cc-scard-header">
               <span class="cc-scard-name">Live Competition Pipeline</span>
-              <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>5 Tracks</span>
+              <span class="cc-live-badge"><span class="cc-live-dot cc-dot-green"></span>{{ competitionTracksCount }} Tracks</span>
             </div>
             <div class="cc-scard-body">
               <div class="cc-scard-ring-wrap">
                 <svg viewBox="0 0 36 36" class="cc-mini-ring-svg">
                   <path class="cc-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/>
-                  <path class="cc-ring-fill" stroke="#3b82f6" stroke-dasharray="88, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
+                  <path class="cc-ring-fill" stroke="#3b82f6" [attr.stroke-dasharray]="competitionScoringPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
                 </svg>
                 <div class="cc-mini-ring-center">
                   <span class="cc-mring-sub">Projects</span>
-                  <span class="cc-mring-val" style="color: #3b82f6;">128</span>
+                  <span class="cc-mring-val" style="color: #3b82f6;">{{ totalCompetitionSubmissionsCount }}</span>
                 </div>
               </div>
               <div class="cc-scard-details">
                 <div class="cc-sdetail-row">
                   <span class="material-symbols-outlined cc-ic-dot">code</span>
-                  <span class="cc-sdetail-text">Coding: <strong>48 submissions</strong></span>
+                  <span class="cc-sdetail-text">Coding: <strong>{{ trackSubmissionsCount('cod') }} submissions</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
                   <span class="material-symbols-outlined cc-ic-dot">smart_toy</span>
-                  <span class="cc-sdetail-text">Robotics & AI: <strong>80 projects</strong></span>
+                  <span class="cc-sdetail-text">Robotics & AI: <strong>{{ trackSubmissionsCount('robot') + trackSubmissionsCount('ai') }} projects</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
                   <span class="material-symbols-outlined cc-ic-dot">gavel</span>
-                  <span class="cc-sdetail-text">Evaluation Queue: <strong>All scored</strong></span>
+                  <span class="cc-sdetail-text">Evaluation Queue: <strong>{{ evaluationQueueLabel }}</strong></span>
                 </div>
               </div>
             </div>
@@ -1043,22 +1043,22 @@
                   <path class="cc-ring-fill" stroke="#f59e0b" stroke-dasharray="94, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke-width="3" stroke-linecap="round"/>
                 </svg>
                 <div class="cc-mini-ring-center">
-                  <span class="cc-mring-sub">Active</span>
-                  <span class="cc-mring-val" style="color: #f59e0b;">94%</span>
+                  <span class="cc-mring-sub">Courses</span>
+                  <span class="cc-mring-val" style="color: #f59e0b;">{{ contentService.lmsCourses.length }}</span>
                 </div>
               </div>
               <div class="cc-scard-details">
                 <div class="cc-sdetail-row">
                   <span class="material-symbols-outlined cc-ic-dot">menu_book</span>
-                  <span class="cc-sdetail-text">Modules: <strong>24 published</strong></span>
+                  <span class="cc-sdetail-text">Modules: <strong>{{ publishedModulesCount }} published</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
                   <span class="material-symbols-outlined cc-ic-dot">assignment_turned_in</span>
-                  <span class="cc-sdetail-text">Quizzes Taken: <strong>3,420</strong></span>
+                  <span class="cc-sdetail-text">Submissions: <strong>{{ lmsSubmissionsCount }}</strong></span>
                 </div>
                 <div class="cc-sdetail-row">
                   <span class="material-symbols-outlined cc-ic-dot">workspace_premium</span>
-                  <span class="cc-sdetail-text">Certificates Issued: <strong>1,120</strong></span>
+                  <span class="cc-sdetail-text">Enrolments: <strong>{{ lmsEnrollmentCount }}</strong></span>
                 </div>
               </div>
             </div>
@@ -1198,7 +1198,7 @@
               </div>
               <div class="cc-comp-kpi-info">
                 <span class="cc-comp-kpi-val">{{ scoredCompetitionSubmissionsCount }}</span>
-                <span class="cc-comp-kpi-lbl">Scored &amp; Evaluated (89%)</span>
+                <span class="cc-comp-kpi-lbl">Scored &amp; Evaluated ({{ competitionScoringPct }}%)</span>
               </div>
             </div>
 
