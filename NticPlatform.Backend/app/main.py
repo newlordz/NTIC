@@ -6905,18 +6905,23 @@ try:
 
     @app.get("/api/users/lookup")
     def lookup_user(email: str = ""):
-        """Look up whether an email is registered. Safe for public use - returns only existence and status."""
+        """Look up whether an email is registered. Safe for public use - returns only existence and status.
+
+        Deliberately does NOT return the account's role or full name: exposing
+        either lets anyone probe which addresses belong to administrators
+        (super_admin/admin) or harvest names by email.
+        """
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, email, full_name, role, status FROM users WHERE lower(email) = %s", (email.strip().lower(),))
+        cur.execute("SELECT email, status FROM users WHERE lower(email) = %s", (email.strip().lower(),))
         row = cur.fetchone()
         cur.close()
         release_db_connection(conn)
         if not row:
             return {"found": False, "email": email}
-        return {"found": True, "email": row[1], "full_name": row[2], "role": row[3], "status": row[4]}
+        return {"found": True, "email": row[0], "status": row[1]}
 
     class UserCreate(BaseModel):
         email: str

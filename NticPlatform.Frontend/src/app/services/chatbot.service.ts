@@ -668,10 +668,9 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
       let msg: ChatMessage;
       if (result.found) {
         const status = result.status === 'Active' ? '✅ Active' : `⏳ ${result.status}`;
-        const role = result.role ? ` (${result.role})` : '';
         msg = {
           role: 'model',
-          text: `✅ **Account Found!**\n\nName: ${result.full_name || 'N/A'}\nEmail: ${result.email}\nStatus: ${status}${role}\n\nYour account is ready to use. Just log in with your email and password!`,
+          text: `✅ **Account Found!**\n\nEmail: ${result.email}\nStatus: ${status}\n\nYour account is ready to use. Just log in with your email and password!`,
           timestamp: new Date()
         };
       } else {

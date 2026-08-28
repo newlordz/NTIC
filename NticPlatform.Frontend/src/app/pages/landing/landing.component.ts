@@ -1827,9 +1827,11 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         if (err.status === 0 || err.status === 502 || err.status === 503 || err.name === 'TimeoutError') {
           this.loginError = 'Server is warming up after deployment. Try again in 20-30 seconds.';
         } else if (err.status === 401) {
-          this.loginError = 'Incorrect email or password. Please try again.';
+          this.loginError = err.error?.detail || 'Incorrect email or password. Please try again.';
+        } else if (err.status === 403) {
+          this.loginError = err.error?.detail || 'This account is pending review or has been disabled.';
         } else {
-          this.loginError = 'Login is unavailable right now. Please try again later.';
+          this.loginError = err.error?.detail || 'Login is unavailable right now. Please try again later.';
         }
       }
     });

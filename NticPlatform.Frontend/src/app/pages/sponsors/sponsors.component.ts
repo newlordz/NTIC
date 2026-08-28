@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ContentService, SponsorPayment, User } from '../../services/content.service';
 import { DialogService } from '../../services/dialog.service';
 import { ApiService, Sponsorship, SponsorPayment as ApiSponsorPayment } from '../../services/api.service';
+import { CurrentUserService } from '../../services/current-user.service';
 
 @Component({
   selector: 'app-sponsors',
@@ -18,6 +19,7 @@ export class SponsorsComponent implements OnInit {
     public contentService: ContentService,
     public dialogService: DialogService,
     public apiService: ApiService,
+    public currentUser: CurrentUserService,
   ) {}
   isEditProfileModalOpen = false;
   profileEditForm = {
@@ -37,12 +39,6 @@ export class SponsorsComponent implements OnInit {
     amount: '',
     refNo: '',
     notes: '',
-    // Card fields (cardName / cardNumber / cardExpiry / cardCvv) were removed.
-    // Nothing in this app processes a card: submitPayment() only records a
-    // reference number for an admin to verify against the real bank/MoMo
-    // statement. Collecting a PAN and CVV to then discard them added genuine
-    // cardholder-data risk for no function. Real card capture must go through a
-    // payment provider's hosted fields so the data never enters this app.
     bankName: 'Ecobank Ghana',
     momoNetwork: 'MTN Mobile Money',
     momoNumber: '',
@@ -54,7 +50,9 @@ export class SponsorsComponent implements OnInit {
   paymentSuccessMessage = '';
 
   ngOnInit(): void {
-    this.loadSponsorData();
+    this.currentUser.ensureLoaded().subscribe(() => {
+      this.loadSponsorData();
+    });
   }
 
   openEditProfileModal(): void {
@@ -82,52 +80,76 @@ export class SponsorsComponent implements OnInit {
 
     this.isSavingProfile = true;
 
-    setTimeout(() => {
-      this.isSavingProfile = false;
-      const updatedUsers = this.contentService.users.map(u => {
-        if (u.id === sponsor.id) {
-          return {
-            ...u,
-            organization: this.profileEditForm.organization.trim() || u.fullName || 'Corporate Sponsor',
-            fullName: this.profileEditForm.fullName.trim() || u.fullName,
-            phone: this.profileEditForm.phone.trim() || u.phone,
-            tier: this.profileEditForm.tier || u.tier,
-            track: this.profileEditForm.track || u.track
-          };
-        }
-        return u;
-      });
-
-      this.contentService.saveUsers(updatedUsers);
-      this.contentService.saveAuditLogs([
-        { action: `Sponsor profile updated for ${this.profileEditForm.organization || sponsor.email}`, user: sponsor.email, time: new Date().toISOString(), type: 'system' },
-        ...this.contentService.auditLogs
-      ]);
-
-      this.profileSuccessMessage = 'Profile details updated successfully!';
-      setTimeout(() => {
-        this.closeEditProfileModal();
-      }, 1000);
-    }, 400);
+    this.apiService.updateMyProfile({
+      organization: this.profileEditForm.organization.trim() || undefined,
+      full_name: this.profileEditForm.fullName.trim() || undefined,
+      phone: this.profileEditForm.phone.trim() || undefined,
+      tier: this.profileEditForm.tier || undefined,
+      track: this.profileEditForm.track || undefined
+    }).subscribe({
+      next: () => {
+        this.currentUser.refresh().subscribe(() => {
+          this.isSavingProfile = false;
+          this.profileSuccessMessage = 'Profile details updated successfully!';
+          setTimeout(() => {
+            this.closeEditProfileModal();
+          }, 1000);
+        });
+      },
+      error: () => {
+        this.isSavingProfile = false;
+        this.dialogService.toast('Failed to save profile changes. Please try again.', 'error');
+      }
+    });
   }
 
-  get loggedInSponsor(): User | null {
+  get loggedInSponsor(): any {
     const activeRole = getAuthValue('activeRoleId');
     if (activeRole !== 'sponsor') return null;
 
+    const profile = this.currentUser.profile();
+    if (profile) {
+      return {
+        id: profile.id,
+        email: profile.email,
+        fullName: profile.full_name,
+        role: profile.role,
+        ticket: profile.ticket,
+        status: profile.status,
+        organization: profile.organization,
+        phone: profile.phone || '',
+        tier: profile.tier || 'Gold Partner (GH₵ 20k-100k)',
+        track: profile.track || 'All Tracks',
+        registeredAt: (profile as any).created_at || 'Active'
+      };
+    }
+
     const email = getAuthValue('activeUserEmail') || '';
     const ticket = getAuthValue('activeUserTicket') || '';
+    const name = getAuthValue('activeUserName') || '';
 
-    return this.contentService.users.find(u =>
-      u.role === 'sponsor' && (
-        (email && u.email?.toLowerCase() === email.toLowerCase()) ||
-        (ticket && u.ticket?.toLowerCase() === ticket.toLowerCase())
-      )
-    ) || null;
+    if (email || ticket) {
+      return {
+        id: ticket || email,
+        email: email,
+        fullName: name || 'Corporate Sponsor',
+        role: 'sponsor',
+        ticket: ticket,
+        status: 'Active',
+        organization: name || '',
+        phone: '',
+        tier: 'Gold Partner (GH₵ 20k-100k)',
+        track: 'All Tracks',
+        registeredAt: 'Active'
+      };
+    }
+
+    return null;
   }
 
   get isSponsorLoggedIn(): boolean {
-    return !!this.loggedInSponsor;
+    const activeRole = getAuthValue('activeRoleId');
+    return activeRole === 'sponsor' || !!this.loggedInSponsor;
   }
 
   getSponsorName(s: any): string {
@@ -501,7 +523,7 @@ export class SponsorsComponent implements OnInit {
 
     let paymentRowsHtml = '';
     if (payments.length > 0) {
-      paymentRowsHtml = payments.map((p, idx) => `
+      paymentRowsHtml = payments.map((p: any, idx: number) => `
         <tr>
           <td style="padding:10px;border-bottom:1px solid #e2e8f0;">${idx + 1}</td>
           <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-family:monospace;">${p.refNo}</td>
