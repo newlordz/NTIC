@@ -54,7 +54,7 @@
         <span class="material-symbols-outlined">visibility</span>
         Observatory
       </a>
-      <a class="nav-item" *ngIf="hasAccess('competitions')" [routerLink]="currentUser?.roleId === 'super_admin' || currentUser?.roleId === 'competition_manager' ? '/admin/competitions' : '/competitions'" [routerLinkActiveOptions]="{exact: true}" routerLinkActive="active" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('competitions')" [routerLink]="competitionsNavRoute" [routerLinkActiveOptions]="{exact: true}" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">emoji_events</span>
         Competitions
       </a>
@@ -200,7 +200,7 @@
                 <div class="app-icon tertiary"><span class="material-symbols-outlined">school</span></div>
                 <span>LMS</span>
               </a>
-              <a *ngIf="hasAccess('competitions')" [routerLink]="currentUser?.roleId === 'super_admin' || currentUser?.roleId === 'competition_manager' ? '/admin/competitions' : '/competitions'" class="app-item" (click)="showAppsDropdown = false">
+              <a *ngIf="hasAccess('competitions')" [routerLink]="competitionsNavRoute" class="app-item" (click)="showAppsDropdown = false">
                 <div class="app-icon warn"><span class="material-symbols-outlined">emoji_events</span></div>
                 <span>Competitions</span>
               </a>

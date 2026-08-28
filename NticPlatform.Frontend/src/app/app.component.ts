@@ -702,6 +702,22 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Where the sidebar "Competitions" item routes to, per role.
+   *
+   * Cycle managers get the management console; judges/reviewers get their
+   * observatory's "Competitions & Impact" workspace (evaluation queue + scoring
+   * calibration), and everyone else gets the public browse page. This used to
+   * send judges to the same public page students see, so the "Competitions"
+   * link looked identical regardless of role.
+   */
+  get competitionsNavRoute(): string {
+    const role = this.currentUser?.roleId;
+    if (role === 'super_admin' || role === 'admin' || role === 'competition_manager') return '/admin/competitions';
+    if (role === 'judge' || role === 'reviewer') return '/judge';
+    return '/competitions';
+  }
+
+  /**
    * The header title for the current page.
    *
    * This read `window.location.hash`, but the app uses PATH routing, so the hash is
