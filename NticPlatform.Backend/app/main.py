@@ -7552,6 +7552,11 @@ try:
 
     # PENDING APPROVALS (cross-machine sync)
     class ApprovalCreate(BaseModel):
+        # `status` is intentionally ignored on create: an approval is always
+        # created 'pending' and only the Reviewer/Access decision endpoint
+        # (PATCH /api/approvals/{id}) may move it to approved/rejected. Allowing
+        # a client to stash a status here was another blind writer that could put
+        # a row straight into 'approved' with no provisioning.
         id: str
         type: str
         entity: str
@@ -7559,7 +7564,6 @@ try:
         submitted: str = ""
         details: dict = {}
         status: str = "pending"
-
     class ApprovalUpdate(BaseModel):
         status: str = ""
         reviewed_at: str = ""
@@ -7651,9 +7655,17 @@ try:
         import json as _json
         cur = conn.cursor()
         try:
+            # Created 'pending' always; on conflict we refresh the content fields
+            # but NEVER the status or decision columns. A row that has already
+            # been reviewed (approved/rejected with a reviewer + timestamp) is
+            # the reviewer's decision, and local/creator state does not override
+            # it -- otherwise approving could silently be undone by a re-save.
             cur.execute(
-                "INSERT INTO pending_approvals (id, type, entity, contact, submitted, details, status) VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET type = EXCLUDED.type, entity = EXCLUDED.entity, contact = EXCLUDED.contact, submitted = EXCLUDED.submitted, details = EXCLUDED.details, status = EXCLUDED.status",
-                (payload.id, payload.type, payload.entity, payload.contact, payload.submitted, _json.dumps(payload.details), payload.status)
+                "INSERT INTO pending_approvals (id, type, entity, contact, submitted, details, status) "
+                "VALUES (%s, %s, %s, %s, %s, %s, 'pending') "
+                "ON CONFLICT (id) DO UPDATE SET type = EXCLUDED.type, entity = EXCLUDED.entity, "
+                "contact = EXCLUDED.contact, submitted = EXCLUDED.submitted, details = EXCLUDED.details",
+                (payload.id, payload.type, payload.entity, payload.contact, payload.submitted, _json.dumps(payload.details))
             )
             conn.commit()
         except Exception as e:
@@ -8657,9 +8669,34 @@ try:
                     """, (uid, email, item.get("fullName",""), item.get("role","student"), ticket,
                           hash_password(secrets.token_urlsafe(24)), item.get("status","Active"), phone))
         elif payload.collection == "approvals":
+            # bulk-sync is a create/seed helper, NOT a decision writer. The only
+            # way an approval changes status is the Reviewer/Access decision on
+            # PATCH /api/approvals/{id}, which is where accounts, passes and
+            # teams are provisioned. Previously this upsert let a reviewer's
+            # browser re-upload its local copy of the whole list with whatever
+            # status it happened to hold, so a client bulk-sync racing the PATCH
+            # could mark a row 'approved' while the PATCH then skipped
+            # provisioning entirely -- an application read as approved forever
+            # but never created the account or the pass it entitled.
+            #
+            # Permanent rule: bulk-sync may CREATE a fresh 'pending' row (so a
+            # public submission survives the page reloading), but it must never
+            # OVERWRITE an existing row. A reviewed row's status, reviewer and
+            # timestamps always come from the PATCH -- never from local state.
             for item in payload.items:
-                cur.execute("INSERT INTO pending_approvals (id, type, entity, contact, submitted, details, status, reviewed_at, reviewer, rejection_reasons, rejection_notes) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (id) DO UPDATE SET status=EXCLUDED.status",
-                            (item.get("id"), item.get("type",""), item.get("entity",""), item.get("contact",""), item.get("submitted",""), _json.dumps(item.get("details",{})), item.get("status","pending"), item.get("reviewed_at"), item.get("reviewer"), item.get("rejection_reasons"), item.get("rejection_notes")))
+                cur.execute(
+                    """SELECT id FROM pending_approvals WHERE id = %s""",
+                    (item.get("id"),),
+                )
+                if cur.fetchone() is None:
+                    cur.execute(
+                        "INSERT INTO pending_approvals (id, type, entity, contact, submitted, details, status, competition_id) "
+                        "VALUES (%s,%s,%s,%s,%s,%s,'pending',%s)",
+                        (item.get("id"), item.get("type",""), item.get("entity",""), item.get("contact",""),
+                         item.get("submitted",""), _json.dumps(item.get("details",{})), item.get("competitionId","")),
+                    )
+                # else: already exists; leave every column (status, reviewer,
+                # reviewed_at, ...) untouched -- local state is not authoritative.
         elif payload.collection == "submissions":
             for item in payload.items:
                 cur.execute("INSERT INTO assignment_submissions (id, tenant_id, student_id, source_code_path, video_url, status, score, feedback) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, score = EXCLUDED.score, feedback = EXCLUDED.feedback",

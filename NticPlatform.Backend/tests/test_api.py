@@ -5714,18 +5714,25 @@ class TestApprovalProvisioning:
         assert lead_email in emails and member_email in emails, \
             "team member accounts were not provisioned server-side"
 
-    def test_provisions_even_when_row_was_already_marked_approved(self, client, admin_token):
-        """The dashboard bulk-syncs status='approved' before it PATCHes.
+    def test_bulk_sync_cannot_mark_an_approval_approved(self, client, admin_token):
+        """bulk-sync was a client-controlled writer for approval status.
 
-        When that sync landed first, the PATCH saw an already-approved row, took
-        the "not an approval transition" path and provisioned nothing -- so the
-        application read as approved forever while no account existed and the
-        reviewer was shown no pass, no PIN and no error.
+        The dashboard used to fire POST /api/bulk-sync (a non-authoritative
+        local-state sync) alongside the real decision PATCH. Because bulk-sync
+        blindly upserted whatever status the browser sent, a bulk-sync racing the
+        PATCH could mark the row 'approved' before the PATCH ran, which skipped
+        provisioning entirely -- an application that read as approved forever
+        while no account or pass was ever created.
+
+        Permanent contract: bulk-sync may only CREATE a pending row. It must
+        never change the status of an existing row, so it is structurally
+        impossible for it to interfere with a reviewer's decision. The PATCH is
+        the single writer of approved/rejected status.
         """
-        email = f"race-{uuid.uuid4().hex[:8]}@example.com"
+        email = f"bulk-{uuid.uuid4().hex[:8]}@example.com"
         approval_id = self._submit(client, admin_token, "Instructor Access", email)
 
-        # Reproduce the racing write: flip the row to approved via bulk-sync.
+        # Try to clobber the row to 'approved' exactly as the old dashboard did.
         resp = client.post("/api/bulk-sync",
                            headers={"Authorization": f"Bearer {admin_token}"},
                            json={"collection": "approvals", "items": [
@@ -5734,16 +5741,55 @@ class TestApprovalProvisioning:
                                 "details": {}, "status": "approved"}]})
         assert resp.status_code == 200, resp.text
 
-        account = self._approve(client, admin_token, approval_id)["account"]
-        assert account["provisioned"] is True, \
-            "approving a row already flipped to approved provisioned nothing"
-        assert account["temporary_password"] and account["ticket"]
+        # The row is STILL pending: bulk-sync could not hijack the decision.
+        rows = client.get("/api/approvals", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        row = next(r for r in rows if r["id"] == approval_id)
+        assert row["status"] == "pending", \
+            "bulk-sync overrode an existing approval's status; it must not be a decision writer"
 
-        # And the credentials the reviewer was handed must actually work.
+        # The PATCH is the sole writer and provisions as normal.
+        account = self._approve(client, admin_token, approval_id)["account"]
+        assert account["provisioned"] is True
+        assert account["temporary_password"] and account["ticket"]
         login = client.post("/api/login", json={
             "email": email, "password": account["temporary_password"]})
         assert login.status_code == 200, login.text
         assert login.json()["role"] == "instructor"
+
+    def test_bulk_sync_creates_missing_pending_row_but_never_creates_approved(self, client, admin_token):
+        """bulk-sync seeds a brand-new approval as 'pending' regardless of the
+        status a caller supplies, so even a fresh row cannot bypass review."""
+        email = f"seed-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = f"APR-{uuid.uuid4().hex[:10]}"
+        resp = client.post("/api/bulk-sync",
+                           headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"collection": "approvals", "items": [
+                               {"id": approval_id, "type": "Instructor Access",
+                                "entity": "Seeded Entity", "contact": email,
+                                "details": {}, "status": "approved"}]})
+        assert resp.status_code == 200, resp.text
+        rows = client.get("/api/approvals", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        row = next(r for r in rows if r["id"] == approval_id)
+        assert row["status"] == "pending", \
+            "bulk-sync created a row outside 'pending'; every new approval must start pending"
+
+    def test_post_approvals_cannot_force_an_approved_status(self, client, admin_token):
+        """POST /api/approvals is a create/seed helper; the reviewer decision is
+        exclusively the PATCH. A payload that claims status='approved' must be
+        ignored so an approval can never be minted as approved without
+        provisioning."""
+        email = f"post-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = f"APR-{uuid.uuid4().hex[:10]}"
+        resp = client.post("/api/approvals",
+                           headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"id": approval_id, "type": "Instructor Access",
+                                 "entity": "Test Entity", "contact": email,
+                                 "details": {}, "status": "approved"})
+        assert resp.status_code in (200, 201), resp.text
+        rows = client.get("/api/approvals", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        row = next(r for r in rows if r["id"] == approval_id)
+        assert row["status"] == "pending", \
+            "POST /api/approvals honoured a client-supplied approved status; status must be pending here"
 
     def test_approving_activates_an_account_left_pending_by_signup(self, client, admin_token):
         """Judge/sponsor sign-up creates the users row first, forced to 'pending'.

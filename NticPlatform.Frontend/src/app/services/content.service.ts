@@ -1727,33 +1727,28 @@ export class ContentService {
   saveApprovals(approvalsList: ApprovalRequest[]): void {
     this.pendingApprovals = approvalsList;
     this.saveState('pendingApprovals', this.pendingApprovals);
+    // Create/seed only. status is deliberately NOT sent: an approval is always
+    // 'pending' on create, and the Reviewer/Access PATCH is the single writer
+    // of decisions. See the backend bulk-sync + POST handles.
     this.syncToBackend('approvals', approvalsList.map(a => ({
       id: a.id, type: a.type, entity: a.entity, contact: a.contact,
-      submitted: a.submitted, details: a.details || {},
-      status: 'pending'
+      submitted: a.submitted, details: a.details || {}
     })));
   }
 
   saveRejectedApprovals(list: ApprovalRequest[]): void {
     this.rejectedApprovals = list;
     this.saveState('rejectedApprovals', this.rejectedApprovals);
-    this.syncToBackend('approvals', list.map(a => ({
-      id: a.id, type: a.type, entity: a.entity, contact: a.contact,
-      submitted: a.submitted, details: a.details || {},
-      reviewed_at: a.reviewedAt, reviewer: a.reviewer,
-      rejection_reasons: a.rejectionReasons, rejection_notes: a.rejectionNotes,
-      status: 'rejected'
-    })));
+    // This local list is a read-only reflection of the authoritative backend.
+    // It is NOT synced back: rejected status, reasons and reviewer are decided
+    // by the server on PATCH /api/approvals/{id}, never by local state.
   }
 
   saveApprovedApprovals(list: ApprovalRequest[]): void {
     this.approvedApprovals = list;
     this.saveState('approvedApprovals', this.approvedApprovals);
-    this.syncToBackend('approvals', list.map(a => ({
-      id: a.id, type: a.type, entity: a.entity, contact: a.contact,
-      submitted: a.submitted, details: a.details || {},
-      reviewed_at: a.reviewedAt, reviewer: a.reviewer, status: 'approved'
-    })));
+    // Read-only cache (see saveRejectedApprovals). The approved decision is
+    // recorded server-side by the PATCH that provisions the account/pass.
   }
 
   saveHeroSlides(slidesList: HeroSlide[]): void {
