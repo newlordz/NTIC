@@ -297,9 +297,9 @@ export class CompetitionsComponent implements OnInit {
     if (this.searchQuery.trim()) {
       const q = this.searchQuery.toLowerCase();
       filtered = filtered.filter(c =>
-        c.title.toLowerCase().includes(q) ||
-        c.track.toLowerCase().includes(q) ||
-        c.category.toLowerCase().includes(q)
+        (c.title || '').toLowerCase().includes(q) ||
+        (c.track || '').toLowerCase().includes(q) ||
+        (c.category || '').toLowerCase().includes(q)
       );
     }
 

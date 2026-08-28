@@ -190,7 +190,7 @@ export class JudgeComponent implements OnInit {
         } else if (this.contentService.competitions && this.contentService.competitions.length > 0) {
           this.competitions = this.contentService.competitions;
         } else {
-          this.competitions = this.getDefaultObservatoryCompetitions();
+          this.competitions = [];
         }
         this.cdr.detectChanges();
       },
@@ -198,107 +198,32 @@ export class JudgeComponent implements OnInit {
         if (this.contentService.competitions && this.contentService.competitions.length > 0) {
           this.competitions = this.contentService.competitions;
         } else {
-          this.competitions = this.getDefaultObservatoryCompetitions();
+          this.competitions = [];
         }
         this.cdr.detectChanges();
       }
     });
   }
 
-  private getDefaultObservatoryCompetitions(): Competition[] {
-    return [
-      {
-        id: 'comp-coding-2026',
-        title: 'National Software & Algorithm Championship',
-        description: 'Elite coding challenges, systems architecture, algorithmic problem-solving and full-stack software development.',
-        track: 'coding',
-        icon: 'code',
-        category: 'Software Engineering',
-        teams: 142,
-        maxTeams: 200,
-        deadline: '2026-09-30',
-        prize: 'GH₵ 30,000',
-        status: 'active',
-        progress: 74,
-        type: 'championship'
-      },
-      {
-        id: 'comp-robotics-2026',
-        title: 'Autonomous Robotics & Embedded Systems Sprint',
-        description: 'Autonomous robotics navigation, sensor telemetry, edge computing, and real-time mechatronic tasks.',
-        track: 'robotics',
-        icon: 'smart_toy',
-        category: 'Hardware & Robotics',
-        teams: 98,
-        maxTeams: 150,
-        deadline: '2026-10-15',
-        prize: 'GH₵ 25,000',
-        status: 'active',
-        progress: 60,
-        type: 'championship'
-      },
-      {
-        id: 'comp-ai-2026',
-        title: 'National AI & Machine Learning Innovation Challenge',
-        description: 'Applied machine learning models, computer vision for agriculture and healthcare, and intelligent local agent systems.',
-        track: 'ai',
-        icon: 'psychology',
-        category: 'Artificial Intelligence',
-        teams: 116,
-        maxTeams: 160,
-        deadline: '2026-10-05',
-        prize: 'GH₵ 25,000',
-        status: 'active',
-        progress: 82,
-        type: 'championship'
-      },
-      {
-        id: 'comp-cyber-2026',
-        title: 'Cybersecurity Defense & Network CTF Arena',
-        description: 'Defensive threat mitigation, vulnerability inspection, cryptography, and secure infrastructure forensics.',
-        track: 'cyber',
-        icon: 'security',
-        category: 'Network & Cyber',
-        teams: 84,
-        maxTeams: 120,
-        deadline: '2026-10-20',
-        prize: 'GH₵ 20,000',
-        status: 'active',
-        progress: 45,
-        type: 'qualifier'
-      },
-      {
-        id: 'comp-iot-2026',
-        title: 'Smart IoT, Renewable Tech & Open Innovation',
-        description: 'Clean energy monitoring, smart grid IoT devices, agritech telemetry sensors, and open sustainable hardware.',
-        track: 'iot',
-        icon: 'sensors',
-        category: 'IoT & CleanTech',
-        teams: 76,
-        maxTeams: 100,
-        deadline: '2026-11-01',
-        prize: 'GH₵ 20,000',
-        status: 'registration',
-        progress: 30,
-        type: 'qualifier'
-      }
-    ];
-  }
-
   // ── Metrics & Statistical Aggregations ───────────────────────────────
 
   get filteredCompetitions(): Competition[] {
     return this.competitions.filter(c => {
+      const title = (c.title || '').toLowerCase();
+      const track = (c.track || '').toLowerCase();
+      const description = (c.description || '').toLowerCase();
+      const status = (c.status || '').toLowerCase();
+
       const matchesSearch = !this.searchQuery.trim() ||
-        c.title.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        (c.description && c.description.toLowerCase().includes(this.searchQuery.toLowerCase())) ||
-        c.track.toLowerCase().includes(this.searchQuery.toLowerCase());
+        title.includes(this.searchQuery.toLowerCase()) ||
+        description.includes(this.searchQuery.toLowerCase()) ||
+        track.includes(this.searchQuery.toLowerCase());
 
       const matchesTrack = !this.selectedTrackFilter ||
-        c.track.toLowerCase() === this.selectedTrackFilter.toLowerCase();
+        track === this.selectedTrackFilter.toLowerCase();
 
       const matchesStatus = !this.selectedStatusFilter ||
-        c.status.toLowerCase() === this.selectedStatusFilter.toLowerCase();
+        status === this.selectedStatusFilter.toLowerCase();
 
       return matchesSearch && matchesTrack && matchesStatus;
     });
@@ -340,10 +265,10 @@ export class JudgeComponent implements OnInit {
     ];
 
     return canonicalTracks.map(t => {
-      const comps = this.competitions.filter(c => c.track.toLowerCase() === t.key);
+      const comps = this.competitions.filter(c => (c.track || '').toLowerCase() === t.key);
       const teams = comps.reduce((acc, c) => acc + (c.teams || 0), 0);
       
-      const trackQueuePending = this.queue?.by_track.find(b => b.track.toLowerCase() === t.key)?.pending || 0;
+      const trackQueuePending = this.queue?.by_track.find(b => (b.track || '').toLowerCase() === t.key)?.pending || 0;
       const gradedInTrack = this.history?.graded.filter(g => (g.track || '').toLowerCase() === t.key) || [];
       const gradedCount = gradedInTrack.length;
       const scores = gradedInTrack.map(g => g.score || 0);
