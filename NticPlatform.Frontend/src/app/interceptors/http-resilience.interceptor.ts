@@ -31,6 +31,11 @@ const QUIET_ON_FAILURE = [
   '/api/audit-logs',    // client-side audit event, best-effort and non-blocking for public applicants
   '/api/bulk-sync',     // background sync, unauthenticated visitors safely ignore
   '/api/otp',           // OTP requests have dedicated inline failure handling and alerts
+  // Courtesy "we received your application" mail, sent AFTER the application is
+  // already stored. It is fire-and-forget (BrevoEmailService logs its own
+  // failure), so a mail-provider outage must not tell the applicant their
+  // submission "was not saved" -- it was.
+  '/api/notify/',
 ];
 
 export const httpResilienceInterceptor: HttpInterceptorFn = (req, next) => {
