@@ -89,7 +89,7 @@
       <div class="divider"></div>
       <div class="user-profile-chip" (click)="toggleProfile($event)" style="cursor: pointer;">
         <div class="avatar" *ngIf="!currentUser?.photoUrl">{{ currentUser?.avatar || 'SA' }}</div>
-        <img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" class="avatar" alt="Profile" />
+        <img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" (error)="onAvatarLoadError()" class="avatar" alt="Profile" />
         <div class="user-info">
           <div class="user-name">{{ currentUser?.name || 'Super Admin' }}</div>
           <div class="user-role" *ngIf="!isAdminRole(currentUser?.roleId)">{{ currentUser?.roleName || 'Administrator' }}</div>
@@ -226,7 +226,7 @@
             <div class="avatar-gradient-ring">
               <div class="avatar-core">
                 <span *ngIf="!currentUser?.photoUrl" class="avatar-initials">{{ currentUser?.avatar || 'SA' }}</span>
-                <img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" class="avatar-img" alt="Profile" />
+                <img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" (error)="onAvatarLoadError()" class="avatar-img" alt="Profile" />
               </div>
             </div>
             <span class="presence-badge online" title="Active"></span>
@@ -235,7 +235,7 @@
           <div class="header-dropdown profile-dropdown" *ngIf="showProfileDropdown" (click)="$event.stopPropagation()">
             <div class="profile-header-card">
               <div class="profile-avatar-lg" *ngIf="!currentUser?.photoUrl">{{ currentUser?.avatar || 'SA' }}</div>
-              <img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" class="profile-avatar-lg" alt="Profile" />
+              <img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" (error)="onAvatarLoadError()" class="profile-avatar-lg" alt="Profile" />
               <div class="profile-meta">
                 <div class="profile-name">{{ currentUser?.name || 'Super Admin' }}</div>
                 <div class="profile-role" *ngIf="!isAdminRole(currentUser?.roleId)">{{ currentUser?.roleName || 'System Administrator' }}</div>

@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { environment } from '../../environments/environment';
 
 export interface StoredFile {
   id: string;
@@ -42,8 +43,8 @@ export class FileStorageService {
       tx.onerror = () => reject(tx.error);
     });
 
-    // Also sync to server-side Postgres storage asynchronously
-    this.uploadToServer(id, file).catch(() => {});
+    // Also sync to server-side Postgres storage immediately
+    await this.uploadToServer(id, file).catch(() => {});
 
     return id;
   }
@@ -58,7 +59,8 @@ export class FileStorageService {
       reader.readAsDataURL(file);
       const dataUrl = await base64Promise;
 
-      await fetch('/api/files/upload', {
+      const apiUrl = (environment.apiUrl || '/api').replace(/\/+$/, '');
+      await fetch(`${apiUrl}/files/upload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -89,7 +91,8 @@ export class FileStorageService {
 
     // Fallback: fetch from server
     try {
-      const res = await fetch(`/api/files/${encodeURIComponent(id)}`);
+      const apiUrl = (environment.apiUrl || '/api').replace(/\/+$/, '');
+      const res = await fetch(`${apiUrl}/files/${encodeURIComponent(id)}`);
       if (res.ok) {
         const blob = await res.blob();
         const metadata: StoredFile = {
@@ -121,7 +124,7 @@ export class FileStorageService {
     if (file && file.blob) {
       return URL.createObjectURL(file.blob);
     }
-    return `/api/files/${encodeURIComponent(id)}`;
+    return null;
   }
 
   async remove(id: string): Promise<void> {

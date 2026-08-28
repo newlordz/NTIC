@@ -569,6 +569,12 @@ export class AppComponent implements OnInit, OnDestroy {
     });
   }
 
+  onAvatarLoadError(): void {
+    if (this.currentUser) {
+      this.currentUser.photoUrl = null;
+    }
+  }
+
   // ── Password Setup / Change Flow ──
   showPasswordSetupModal = false;
   currentPasswordInput = '';
