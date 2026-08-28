@@ -5714,6 +5714,86 @@ class TestApprovalProvisioning:
         assert lead_email in emails and member_email in emails, \
             "team member accounts were not provisioned server-side"
 
+    def test_provisions_even_when_row_was_already_marked_approved(self, client, admin_token):
+        """The dashboard bulk-syncs status='approved' before it PATCHes.
+
+        When that sync landed first, the PATCH saw an already-approved row, took
+        the "not an approval transition" path and provisioned nothing -- so the
+        application read as approved forever while no account existed and the
+        reviewer was shown no pass, no PIN and no error.
+        """
+        email = f"race-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = self._submit(client, admin_token, "Instructor Access", email)
+
+        # Reproduce the racing write: flip the row to approved via bulk-sync.
+        resp = client.post("/api/bulk-sync",
+                           headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"collection": "approvals", "items": [
+                               {"id": approval_id, "type": "Instructor Access",
+                                "entity": "Test Entity", "contact": email,
+                                "details": {}, "status": "approved"}]})
+        assert resp.status_code == 200, resp.text
+
+        account = self._approve(client, admin_token, approval_id)["account"]
+        assert account["provisioned"] is True, \
+            "approving a row already flipped to approved provisioned nothing"
+        assert account["temporary_password"] and account["ticket"]
+
+        # And the credentials the reviewer was handed must actually work.
+        login = client.post("/api/login", json={
+            "email": email, "password": account["temporary_password"]})
+        assert login.status_code == 200, login.text
+        assert login.json()["role"] == "instructor"
+
+    def test_approving_activates_an_account_left_pending_by_signup(self, client, admin_token):
+        """Judge/sponsor sign-up creates the users row first, forced to 'pending'.
+
+        Refusing to touch an existing row meant the reviewer's approval had no
+        effect: the applicant stayed unable to sign in and was never issued a pass.
+        """
+        email = f"pendact-{uuid.uuid4().hex[:8]}@example.com"
+        created = client.post("/api/users/register", json={
+            "email": email, "full_name": "Pending Judge", "role": "judge"})
+        assert created.status_code == 201, created.text
+
+        # Forced pending, so it cannot sign in yet.
+        assert client.post("/api/login", json={
+            "email": email,
+            "password": created.json().get("temporary_password") or "x"}).status_code in (401, 403)
+
+        approval_id = self._submit(client, admin_token, "Judge Access", email)
+        account = self._approve(client, admin_token, approval_id)["account"]
+        assert account["provisioned"] is True, \
+            "approving did not activate the account left pending by sign-up"
+        assert account.get("activated_existing") is True
+        assert account["role"] == "judge"
+
+        login = client.post("/api/login", json={
+            "email": email, "password": account["temporary_password"]})
+        assert login.status_code == 200, login.text
+
+    def test_approving_does_not_reactivate_a_suspended_account(self, client, admin_token):
+        """A suspension is a deliberate admin action, not something an approval
+        may quietly undo."""
+        email = f"susp-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = self._submit(client, admin_token, "Instructor Access", email)
+        first = self._approve(client, admin_token, approval_id)["account"]
+        assert first["provisioned"] is True
+
+        users = client.get("/api/users", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        user_id = next(u["id"] for u in users if u["email"].lower() == email)
+        suspended = client.patch(f"/api/users/{user_id}",
+                                 headers={"Authorization": f"Bearer {admin_token}"},
+                                 json={"email": email, "full_name": "Suspended One",
+                                       "role": "instructor", "status": "suspended"})
+        assert suspended.status_code == 200, suspended.text
+
+        again = self._approve(client, admin_token, approval_id)["account"]
+        assert again["provisioned"] is False, \
+            "approving an application re-activated a suspended account"
+        assert client.post("/api/login", json={
+            "email": email, "password": first["temporary_password"]}).status_code in (401, 403)
+
 
 class TestPublicRegistrationCannotSelfActivate:
     def test_public_signup_is_forced_pending(self, client, admin_token):
