@@ -8306,13 +8306,19 @@ try:
         return {"applied": True, "team_id": team_id}
 
     def _upsert_team(cur, name, track, lead, members, status, school_name,
-                      competition_id, mentor, motto, roster_list, lead_email, member_emails) -> str:
+                      competition_id, mentor, motto, roster_list, lead_email, member_emails,
+                     member_credentials: list | None = None) -> str:
         """Create or update a team and sync its members + member accounts.
 
         Idempotent by (name, school_name) and shared by the team endpoints and
         the approval-provisioning path, so approving a school/team application
         materialises the team in the SAME transaction rather than relying on the
         reviewer's browser to do it later.
+
+        When `member_credentials` is supplied, the one-time credentials for any
+        freshly-created student accounts are appended to it so the caller can
+        surface them to the institution. (The school/team approval path uses this
+        to hand the school the students' initial passwords.)
         """
         cur.execute(
             "SELECT id FROM teams WHERE lower(name) = %s AND lower(COALESCE(school_name, '')) = %s",
@@ -8337,7 +8343,11 @@ try:
                  competition_id or None, mentor, motto, json.dumps(roster_list or [])),
             )
         _sync_team_members(cur, team_id, lead, roster_list or [], lead_email or "", member_emails or [])
-        _provision_team_member_accounts(cur, team_id, school_name or None)
+        created_members = _provision_team_member_accounts(cur, team_id, school_name or None)
+        if member_credentials is not None:
+            for cred in (created_members or []):
+                cred["team_id"] = team_id
+                member_credentials.append(cred)
         if competition_id:
             _auto_enroll_team_members(cur, team_id, competition_id)
         return team_id
@@ -8364,6 +8374,7 @@ try:
         entity = (approval_row["entity"] or "").strip()
         competition_id = (approval_row.get("competition_id") or "").strip()
         created: list = []
+        member_credentials: list = []
 
         def _names(raw):
             if isinstance(raw, str):
@@ -8396,7 +8407,8 @@ try:
                 track = (t.get("track") or "Coding").strip()
                 team_id = _upsert_team(cur, name, track, lead, max(len(roster), 1), "In Competition",
                                        entity, competition_id, "", "", roster,
-                                       (emails[0] if emails else ""), emails)
+                                       (emails[0] if emails else ""), emails,
+                                       member_credentials)
                 created.append(team_id)
         elif approval_type == "team addition":
             name = entity
@@ -8412,7 +8424,7 @@ try:
             member_emails = _names(details.get("memberEmails"))
             team_id = _upsert_team(cur, name, track, lead, max(len(roster), 1), "In Competition",
                                    school, competition_id, mentor, motto, roster,
-                                   lead_email, member_emails)
+                                   lead_email, member_emails, member_credentials)
             created.append(team_id)
         elif approval_type == "team modification":
             team_id = (details.get("teamId") or "").strip()
@@ -8434,14 +8446,18 @@ try:
                  json.dumps(roster), team_id),
             )
             _sync_team_members(cur, team_id, lead, roster, lead_email, member_emails)
-            _provision_team_member_accounts(cur, team_id, school or None)
+            created_members = _provision_team_member_accounts(cur, team_id, school or None)
+            for cred in (created_members or []):
+                cred["team_id"] = team_id
+                member_credentials.append(cred)
             if competition_id:
                 _auto_enroll_team_members(cur, team_id, competition_id)
             created.append(team_id)
         else:
             return {"applied": False, "reason": "Not a team-provisioning approval type"}
 
-        return {"applied": True, "teams": created}
+        return {"applied": True, "teams": created,
+                "member_credentials": member_credentials}
 
     def _provision_approved_account(cur, approval_row) -> dict:
         """Create the account an approved application entitles the applicant to.

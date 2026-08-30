@@ -5714,6 +5714,50 @@ class TestApprovalProvisioning:
         assert lead_email in emails and member_email in emails, \
             "team member accounts were not provisioned server-side"
 
+    def test_approving_school_registration_surfaces_member_credentials(self, client, admin_token):
+        """School/team approvals mint student accounts whose one-time passwords
+        must reach the institution. Previously _provision_team_member_accounts
+        returned them but the caller discarded the result, so the school had the
+        logins without ever learning the initial passwords."""
+        email = f"surf-{uuid.uuid4().hex[:8]}@example.com"
+        lead_email = f"surflead-{uuid.uuid4().hex[:8]}@example.com"
+        member_emails = {
+            "member2": f"surfm2-{uuid.uuid4().hex[:8]}@example.com",
+            "member3": f"surfm3-{uuid.uuid4().hex[:8]}@example.com",
+        }
+        approval_id = f"APR-{uuid.uuid4().hex[:10]}"
+        resp = client.post("/api/approvals",
+                           headers={"Authorization": f"Bearer {admin_token}"},
+                           json={"id": approval_id, "type": "School Registration",
+                                 "entity": "Credential School", "contact": email,
+                                 "details": {"teamsList": [
+                                     {"name": "Surf Squad", "track": "Coding",
+                                      "leadName": "Lead A", "leadEmail": lead_email,
+                                      "member2Name": "Member B",
+                                      "member2Email": member_emails["member2"],
+                                      "member3Name": "Member C",
+                                      "member3Email": member_emails["member3"]}
+                                 ]}, "status": "pending"})
+        assert resp.status_code in (200, 201), resp.text
+        result = self._approve(client, admin_token, approval_id)
+        assert result["teams"]["applied"] is True
+        creds = result["teams"].get("member_credentials") or []
+        assert len(creds) >= 1, \
+            f"expected member credentials in the approval response, got {creds}"
+        by_email = {c.get("email"): c for c in creds}
+        for mem_email in member_emails.values():
+            assert mem_email in by_email, f"missing credential for {mem_email}"
+            assert by_email[mem_email].get("temporary_password"), \
+                "member credential has no one-time password"
+            assert by_email[mem_email].get("ticket", "").startswith("NTIC-"), \
+                "member credential has no official ticket"
+        # The minted login is real and usable.
+        first = creds[0]
+        login = client.post("/api/login", json={
+            "email": first["email"], "password": first["temporary_password"]})
+        assert login.status_code == 200, login.text
+        assert login.json().get("role") == "student"
+
     def test_bulk_sync_cannot_mark_an_approval_approved(self, client, admin_token):
         """bulk-sync was a client-controlled writer for approval status.
 
