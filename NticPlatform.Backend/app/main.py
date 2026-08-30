@@ -3,6 +3,7 @@ import re
 import json
 import time
 import uuid
+import base64
 import ipaddress
 from decimal import Decimal
 import random
@@ -2029,6 +2030,86 @@ try:
             raise HTTPException(status_code=404, detail="User not found")
         broadcast_async({"type": "data_changed", "collection": "users"})
         return {"status": "saved", "updated": sorted(provided.keys())}
+
+    # ─── FILE STORAGE ENDPOINTS ──────────────────────────────────────
+    class FileUploadPayload(BaseModel):
+        file_id: str = Field(min_length=1, max_length=100)
+        name: str = Field(default="file", max_length=255)
+        mime_type: str = Field(default="image/png", max_length=100)
+        size: int = Field(default=0, ge=0)
+        data_base64: str
+
+    @app.post("/api/files/upload")
+    def upload_file(payload: FileUploadPayload):
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                INSERT INTO stored_files (id, name, mime_type, size, data_base64)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    mime_type = EXCLUDED.mime_type,
+                    size = EXCLUDED.size,
+                    data_base64 = EXCLUDED.data_base64
+                """,
+                (payload.file_id, payload.name, payload.mime_type, payload.size, payload.data_base64),
+            )
+            conn.commit()
+            cur.close()
+        except Exception as e:
+            conn.rollback()
+            logger.error(f"File upload failed: {e}")
+            raise HTTPException(status_code=500, detail="Could not save file")
+        finally:
+            release_db_connection(conn)
+        return {"status": "stored", "id": payload.file_id}
+
+    @app.get("/api/files/{file_id}")
+    def get_file(file_id: str):
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT name, mime_type, data_base64 FROM stored_files WHERE id = %s", (file_id,))
+            row = cur.fetchone()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+
+        if not row:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        name, mime_type, data_b64 = row
+        try:
+            raw_b64 = data_b64
+            if "," in raw_b64 and raw_b64.startswith("data:"):
+                raw_b64 = raw_b64.split(",", 1)[1]
+            file_bytes = base64.b64decode(raw_b64)
+        except Exception as e:
+            logger.error(f"Failed to decode base64 file {file_id}: {e}")
+            raise HTTPException(status_code=500, detail="File content corrupted")
+
+        return Response(
+            content=file_bytes,
+            media_type=mime_type or "application/octet-stream",
+            headers={
+                "Cache-Control": "public, max-age=86400",
+                "Content-Disposition": f'inline; filename="{name or file_id}"',
+            }
+        )
+
+    # ─── SELF-SERVICE ONBOARDING APPROVALS ────────────────────────────
+    # NOTE: /api/approvals/mine is intentionally NOT registered here. A stale
+    # first registration of this route lived at this spot and SHADOWED the real
+    # handler further down the file (Starlette serves the first matching route),
+    # so all three self-onboarding roles (judge/sponsor/instructor) hit the old
+    # one. The old handler typed the approval with the raw role name ("judge",
+    # "sponsor", "instructor") instead of the mapped "Judge Access" /
+    # "Sponsor Access" / "Instructor Access", so _provision_approved_account
+    # returned "No role mapping ..." on approval and NEVER activated the account.
+    # The single authoritative handler is defined with the other approval
+    # endpoints. Removing this duplicate un-shadows it.
 
     class ChangePasswordPayload(BaseModel):
         # Not required when the account is flagged must_change_password: holding a
@@ -7030,9 +7111,21 @@ try:
         check_rate_limit(f"public-register-hourly:{client_ip}", max_attempts=20, window_seconds=3600)
         # Status is NOT taken from the request. This endpoint is unauthenticated,
         # so honouring a client-supplied status let anyone self-register as
-        # 'active' and skip review entirely. Public sign-ups always start pending
-        # and are activated by a reviewer.
-        new_status = "pending"
+        # 'active' and skip review entirely.
+        #
+        # Product decision: Judges and Sponsors are SELF-SERVICE and get instant
+        # access -- active -- because they reach their portal immediately on
+        # registration (the frontend shows them working credentials and routes
+        # them straight to /judge or the sponsor portal). Keeping them 'pending'
+        # blocked login, which strangled the whole onboarding: a pending account
+        # cannot sign in, and profile-completion (which files the onboarding
+        # approval) requires login, so a judge/sponsor could never be activated.
+        #
+        # Students (open registration) are NOT self-service: they are minimal-
+        # privilege and stay 'pending' until a reviewer approves their
+        # application, preserving the review gate for the education side.
+        self_service_roles = {"judge", "sponsor"}
+        new_status = "active" if payload.role in self_service_roles else "pending"
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")

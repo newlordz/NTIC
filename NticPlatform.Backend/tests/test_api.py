@@ -5792,31 +5792,138 @@ class TestApprovalProvisioning:
             "POST /api/approvals honoured a client-supplied approved status; status must be pending here"
 
     def test_approving_activates_an_account_left_pending_by_signup(self, client, admin_token):
-        """Judge/sponsor sign-up creates the users row first, forced to 'pending'.
+        """A pending account created by public sign-up is activated by approval.
 
-        Refusing to touch an existing row meant the reviewer's approval had no
-        effect: the applicant stayed unable to sign in and was never issued a pass.
+        Students (open registration) are the reviewer-gated self-service role:
+        they register 'pending' and cannot sign in until a reviewer approves.
+        Refusing to touch the existing pending row meant the reviewer's approval
+        had no effect -- the applicant stayed unable to sign in and was never
+        issued a working pass.
         """
         email = f"pendact-{uuid.uuid4().hex[:8]}@example.com"
         created = client.post("/api/users/register", json={
-            "email": email, "full_name": "Pending Judge", "role": "judge"})
+            "email": email, "full_name": "Pending Student", "role": "student"})
         assert created.status_code == 201, created.text
 
-        # Forced pending, so it cannot sign in yet.
+        # Pending, so it cannot sign in yet.
         assert client.post("/api/login", json={
             "email": email,
             "password": created.json().get("temporary_password") or "x"}).status_code in (401, 403)
 
-        approval_id = self._submit(client, admin_token, "Judge Access", email)
+        approval_id = self._submit(client, admin_token, "Student Registration", email)
         account = self._approve(client, admin_token, approval_id)["account"]
         assert account["provisioned"] is True, \
             "approving did not activate the account left pending by sign-up"
         assert account.get("activated_existing") is True
-        assert account["role"] == "judge"
+        assert account["role"] == "student"
 
         login = client.post("/api/login", json={
             "email": email, "password": account["temporary_password"]})
         assert login.status_code == 200, login.text
+        assert login.json()["role"] == "student"
+
+    def test_mine_route_is_unshadowed(self, client, admin_token):
+        """POST /api/approvals/mine used to be registered twice; the earlier
+        stale handler shadowed the real one and typed every approval with the raw
+        role name, which _provision_approved_account could never map ('No role
+        mapping ...' -> account never activated). Removing the duplicate means the
+        real handler dispatches, so an actor with no onboarding form is rejected
+        loudly instead of silently writing a mistyped row."""
+        # A user with no onboarding form (student) must get a clear 400 from the
+        # real handler, not a 200 that writes a raw-role approval row.
+        from app.security import clear_all_rate_limits
+        email = f"shadow-{uuid.uuid4().hex[:8]}@example.com"
+        created = client.post("/api/users/register", json={
+            "email": email, "full_name": "Shadow Check", "role": "student"})
+        assert created.status_code == 201, created.text
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={
+            "email": email, "password": created.json()["temporary_password"]})
+        assert login.status_code in (401, 403), "student must stay pending"
+
+        clear_all_rate_limits()
+        # Activate the student (admin) so they can call the endpoint as any user.
+        users = client.get("/api/users", headers={
+            "Authorization": f"Bearer {admin_token}"}).json()
+        sid = next(u["id"] for u in users if u["email"].lower() == email)
+        assert client.patch(f"/api/users/{sid}",
+                            headers={"Authorization": f"Bearer {admin_token}"},
+                            json={"email": email, "full_name": "Shadow Check",
+                                  "role": "student", "status": "active"}).status_code == 200
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={
+            "email": email, "password": created.json()["temporary_password"]})
+        assert login.status_code == 200, login.text
+        stoken = login.json()["token"]
+
+        resp = client.post("/api/approvals/mine", headers={
+            "Authorization": f"Bearer {stoken}"}, json={})
+        # The real handler 400s roles without an onboarding form; the shadowed
+        # one would have returned 200 and written a row typed 'student'.
+        assert resp.status_code == 400, resp.text
+        assert "does not require onboarding" in resp.json()["detail"]
+
+    def test_self_service_judge_can_file_onboarding_typed_judge_access(self, client, admin_token):
+        """Judges/sponsors are self-service (active on registration), but they
+        can still file a profile-onboarding approval via /api/approvals/mine.
+        The handler must type it 'Judge Access' (which _provision understands)
+        rather than the raw role name the shadowed handler wrote. Because the
+        account is ALREADY active, approving is an idempotent no-op that must NOT
+        error or re-provision."""
+        from app.security import clear_all_rate_limits
+
+        email = f"live-onboard-{uuid.uuid4().hex[:8]}@example.com"
+        created = client.post("/api/users/register", json={
+            "email": email, "full_name": "Live Onboard Judge", "role": "judge"})
+        assert created.status_code == 201, created.text
+
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={
+            "email": email, "password": created.json()["temporary_password"]})
+        assert login.status_code == 200, login.text
+        token = login.json()["token"]
+
+        mine = client.post("/api/approvals/mine", headers={
+            "Authorization": f"Bearer {token}"}, json={})
+        assert mine.status_code == 201, mine.text
+
+        rows = client.get("/api/approvals", headers={
+            "Authorization": f"Bearer {admin_token}"}).json()
+        mine_row = next(r for r in rows if r["id"] == mine.json()["id"])
+        assert mine_row["type"] == "Judge Access", mine_row["type"]
+
+        # Approving is idempotent for a self-service (already-active) account.
+        result = self._approve(client, admin_token, mine.json()["id"])
+        assert result["account"]["provisioned"] is False
+        assert "already exists" in result["account"]["reason"].lower()
+
+    def test_self_service_sponsor_can_file_onboarding_typed_sponsor_access(self, client, admin_token):
+        """Mirror of the judge case for the sponsor role."""
+        from app.security import clear_all_rate_limits
+
+        email = f"live-sponsor-{uuid.uuid4().hex[:8]}@example.com"
+        created = client.post("/api/users/register", json={
+            "email": email, "full_name": "Live Sponsor", "role": "sponsor"})
+        assert created.status_code == 201, created.text
+
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={
+            "email": email, "password": created.json()["temporary_password"]})
+        assert login.status_code == 200, login.text
+        token = login.json()["token"]
+
+        mine = client.post("/api/approvals/mine", headers={
+            "Authorization": f"Bearer {token}"}, json={})
+        assert mine.status_code == 201, mine.text
+
+        rows = client.get("/api/approvals", headers={
+            "Authorization": f"Bearer {admin_token}"}).json()
+        mine_row = next(r for r in rows if r["id"] == mine.json()["id"])
+        assert mine_row["type"] == "Sponsor Access", mine_row["type"]
+
+        result = self._approve(client, admin_token, mine.json()["id"])
+        assert result["account"]["provisioned"] is False
+        assert "already exists" in result["account"]["reason"].lower()
 
     def test_approving_does_not_reactivate_a_suspended_account(self, client, admin_token):
         """A suspension is a deliberate admin action, not something an approval
@@ -5842,18 +5949,56 @@ class TestApprovalProvisioning:
 
 
 class TestPublicRegistrationCannotSelfActivate:
-    def test_public_signup_is_forced_pending(self, client, admin_token):
+    def test_student_signup_is_forced_pending(self, client, admin_token):
         # This endpoint is unauthenticated; honouring a client-sent status let
-        # anyone self-register as active and skip review.
+        # anyone self-register as active and skip review. The education side
+        # (students) is NOT self-service, so it must stay pending.
         email = f"selfact-{uuid.uuid4().hex[:8]}@example.com"
         resp = client.post("/api/users/register", json={
             "email": email, "full_name": "Self Activator",
-            "role": "judge", "status": "active"})
+            "role": "student", "status": "active"})
         assert resp.status_code == 201, resp.text
         users = client.get("/api/users", headers={"Authorization": f"Bearer {admin_token}"}).json()
         created = [u for u in users if u["email"].lower() == email]
         assert created, "user was not created"
         assert created[0]["status"] == "pending"
+
+    def test_judge_signup_is_self_service_active(self, client, admin_token):
+        # Product decision: judges and sponsors are self-service. Their account
+        # must be active immediately, otherwise they cannot log in to reach their
+        # portal / complete their profile -- the pending gate strangled the flow.
+        from app.security import clear_all_rate_limits
+        email = f"judgeaut-{uuid.uuid4().hex[:8]}@example.com"
+        resp = client.post("/api/users/register", json={
+            "email": email, "full_name": "Instant Judge",
+            "role": "judge", "status": "pending"})
+        assert resp.status_code == 201, resp.text
+        users = client.get("/api/users", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        created = [u for u in users if u["email"].lower() == email]
+        assert created and created[0]["status"] == "active", \
+            "a judge self-registered but did not get instant active access"
+        # And they can sign in right away with the server-minted pass.
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={
+            "email": email, "password": resp.json()["temporary_password"]})
+        assert login.status_code == 200, login.text
+        assert login.json()["role"] == "judge"
+
+    def test_sponsor_signup_is_self_service_active(self, client, admin_token):
+        from app.security import clear_all_rate_limits
+        email = f"sponsoraut-{uuid.uuid4().hex[:8]}@example.com"
+        resp = client.post("/api/users/register", json={
+            "email": email, "full_name": "Instant Sponsor",
+            "role": "sponsor", "status": "pending"})
+        assert resp.status_code == 201, resp.text
+        users = client.get("/api/users", headers={"Authorization": f"Bearer {admin_token}"}).json()
+        created = [u for u in users if u["email"].lower() == email]
+        assert created and created[0]["status"] == "active"
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={
+            "email": email, "password": resp.json()["temporary_password"]})
+        assert login.status_code == 200, login.text
+        assert login.json()["role"] == "sponsor"
 
     def test_public_signup_cannot_choose_a_privileged_role(self, client):
         resp = client.post("/api/users/register", json={
