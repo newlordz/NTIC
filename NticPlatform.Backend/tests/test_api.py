@@ -1345,6 +1345,24 @@ class TestUserCrud:
         assert data["email"] == email
         assert data["role"] == "reviewer"
 
+    def test_admin_created_user_with_minted_password_can_sign_in(self, client, admin_token):
+        # An admin can create a user without choosing a password; the server mints
+        # one and returns it once. That credential must actually work.
+        from app.security import clear_all_rate_limits
+        email = f"minted_{str(uuid.uuid4())[:8]}@test.com"
+        resp = client.post("/api/users", json={
+            "email": email,
+            "full_name": "Minted User",
+            "role": "student"
+        }, headers={"Authorization": f"Bearer {admin_token}"})
+        assert resp.status_code == 201, resp.text
+        temp = resp.json().get("temporary_password")
+        assert temp, "expected a server-minted temporary password"
+        clear_all_rate_limits()
+        login = client.post("/api/login", json={"email": email, "password": temp})
+        assert login.status_code == 200, login.text
+        assert login.json()["role"] == "student"
+
     def test_update_user(self, client, admin_token):
         email = f"update_{str(uuid.uuid4())[:8]}@test.com"
         create_resp = client.post("/api/users", json={
