@@ -6621,6 +6621,32 @@ class TestPublicApplicationReachesTheQueue:
         assert created, "participant was not created"
         # Still pending: public sign-up must not self-activate.
         assert created[0]["status"] == "pending"
+        # The pending student must have an 'Open Registration' approval in the
+        # queue, or there is no reviewer action that can ever activate them.
+        h = {"Authorization": f"Bearer {admin_token}"}
+        queue = client.get("/api/approvals", headers=h).json()
+        mine = [a for a in queue
+                if (a.get("contact") or "").lower() == email
+                and a.get("type") == "Open Registration"]
+        assert mine, "open registration filed no approval, so the pending student can never be activated"
+        approval_id = mine[0]["id"]
+        # Approving activates the pending student account and issues a working pass.
+        patch = client.patch(f"/api/approvals/{approval_id}", headers=h,
+                             json={"status": "approved", "reviewer": "admin@ntic.org.gh"})
+        assert patch.status_code == 200, patch.text
+        account = patch.json().get("account") or {}
+        assert account.get("activated_existing") is True, \
+            f"expected to activate the pending student account, got {account}"
+        assert account.get("temporary_password") and account.get("ticket")
+        users = client.get("/api/users", headers=h).json()
+        activated = [u for u in users if u["email"].lower() == email]
+        assert activated and activated[0]["status"] == "active", \
+            "approving the open registration did not activate the pending student"
+        self._clear_limits()
+        login = client.post("/api/login", json={
+            "email": email, "password": account["temporary_password"]})
+        assert login.status_code == 200, login.text
+        assert login.json()["role"] == "student"
 
     def test_public_registration_still_cannot_take_a_privileged_role(self, client):
         self._clear_limits()

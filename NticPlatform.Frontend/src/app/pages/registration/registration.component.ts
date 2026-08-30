@@ -4125,12 +4125,12 @@ setAuthValue('activeUserEmail', email);
             });
             this.contentService.saveAuditLogs(currentAudit);
             this.openCredentialsModal(
-              'Open Registration Successful!',
-              `You're registered for "${selectedComp.title}". Copy your credentials below:`,
+              'Open Registration Submitted!',
+              `Your registration for "${selectedComp.title}" has been received. Your account awaits review before you can sign in.`,
               ticket,
               otp,
-              'Use these credentials to log in and start competing.',
-              '/dashboard',
+              'Save these credentials. Once a reviewer approves your application, use them to log in and start competing.',
+              '/registration',
               newUser.email,
               'student'
             );

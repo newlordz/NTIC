@@ -7180,6 +7180,40 @@ try:
                 "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone, organization, age_group, experience_level, competition_id, photo_file_id, doc_file_id, must_change_password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, new_status, phone, payload.organization or None, payload.age_group or None, payload.experience_level or None, payload.competition_id or None, payload.photo_file_id or None, payload.doc_file_id or None, bool(generated_password))
             )
+            # A student is created 'pending', but without an approval row the
+            # reviewer queue is empty and nothing can ever activate them -- a
+            # dead end. File the 'Open Registration' approval in the SAME
+            # transaction so it appears in the reviewer queue and, when
+            # approved, _provision_approved_account finds this pending account
+            # and activates it (activated_existing). The approval must not fail
+            # the whole sign-up, so it is best-effort.
+            if new_status == "pending":
+                try:
+                    import json as _json_local
+                    approval_id = "apr-" + str(uuid.uuid4())[:8]
+                    cur.execute(
+                        "INSERT INTO pending_approvals (id, type, entity, contact, submitted, "
+                        "details, status, competition_id) "
+                        "VALUES (%s, %s, %s, %s, %s, %s, 'pending', %s) "
+                        "ON CONFLICT (id) DO UPDATE SET entity = EXCLUDED.entity, "
+                        "submitted = EXCLUDED.submitted, status = 'pending'",
+                        (
+                            approval_id,
+                            "Open Registration",
+                            payload.full_name or payload.email,
+                            payload.email.strip().lower(),
+                            datetime.datetime.now(datetime.UTC).isoformat(),
+                            _json_local.dumps({
+                                "track": "",
+                                "school": payload.organization or "",
+                                "competition_id": payload.competition_id or "",
+                            }),
+                            payload.competition_id or None,
+                        ),
+                    )
+                except Exception as _approval_err:
+                    # Never let the approval costing fail the sign-up itself.
+                    logger.warning(f"register_user_public: could not file Open Registration approval: {_approval_err}")
             conn.commit()
         except Exception as e:
             conn.rollback()
@@ -7189,6 +7223,7 @@ try:
         cur.close()
         release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "users"})
+        broadcast_async({"type": "data_changed", "collection": "approvals"})
         response = {"id": user_id, "email": payload.email, "role": payload.role, "ticket": ticket}
         if generated_password:
             response["temporary_password"] = generated_password
