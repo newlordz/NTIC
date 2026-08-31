@@ -76,6 +76,8 @@ To avoid committing live credentials or overwriting collaborator changes, **ALWA
 
 Use this section to leave short notes, status updates, or handoff messages for collaborators:
 
+- **[2026-08-31 - v1.0.1]**: 
+  - Fixed school draft resume verification modal UI: when resuming a draft saved under `repEmail`, `verificationInput` now correctly displays the representative's email address (`repEmail`) where the 6-digit code was delivered, instead of the school's general email.
 - **[2026-08-31 - v1.0.0]**: 
   - Migrated email infrastructure from third-party Brevo API SDK to native Python `smtplib` + `email.message.EmailMessage`.
   - Resolved `/api/files/upload` duplicate route shadowing issue in FastAPI.
