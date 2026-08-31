@@ -169,6 +169,19 @@ def _check_rate_limit_shared(key: str, max_attempts: int, window_seconds: int) -
 
 def check_rate_limit(key: str, max_attempts: int = 5, window_seconds: int = 60):
     """Enforce a rate limit per IP or identifier. Raises HTTP 429 if exceeded."""
+    if os.getenv("DISABLE_RATE_LIMITS", "").strip().lower() in ("1", "true", "yes"):
+        return
+
+    # In local development mode (NTIC_DEV_RELOAD / NTIC_DEV_MODE), extend limits by 100x
+    # so developers testing OTPs/forms locally are not blocked by 429 throttling.
+    if (
+        os.getenv("NTIC_DEV_RELOAD", "").strip().lower() in ("1", "true", "yes")
+        or os.getenv("NTIC_DEV_MODE", "").strip().lower() in ("1", "true", "yes")
+        or os.getenv("ENVIRONMENT", "").strip().lower() in ("dev", "development", "local")
+    ):
+        multiplier = int(os.getenv("DEV_RATE_LIMIT_MULTIPLIER", "100") or "100")
+        max_attempts = max_attempts * multiplier
+
     if USE_SHARED_RATE_LIMIT:
         if _check_rate_limit_shared(key, max_attempts, window_seconds):
             return

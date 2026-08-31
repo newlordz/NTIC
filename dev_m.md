@@ -76,6 +76,8 @@ To avoid committing live credentials or overwriting collaborator changes, **ALWA
 
 Use this section to leave short notes, status updates, or handoff messages for collaborators:
 
+- **[2026-08-31 - v1.0.2]**: 
+  - Extended development rate limits in `app/security.py`: during local development (`NTIC_DEV_RELOAD=true`), `check_rate_limit` automatically applies a `100x` attempt multiplier (`DEV_RATE_LIMIT_MULTIPLIER=100`) or can be bypassed entirely with `DISABLE_RATE_LIMITS=true` in `.env`. Prevents `HTTP 429` throttling during rapid local dev testing.
 - **[2026-08-31 - v1.0.1]**: 
   - Fixed school draft resume verification modal UI: when resuming a draft saved under `repEmail`, `verificationInput` now correctly displays the representative's email address (`repEmail`) where the 6-digit code was delivered, instead of the school's general email.
 - **[2026-08-31 - v1.0.0]**: 
