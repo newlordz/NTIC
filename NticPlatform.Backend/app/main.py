@@ -25,10 +25,11 @@ from app.security import (
     check_rate_limit, reset_rate_limit, account_is_disabled, hash_password,
     validate_password_strength, MIN_PASSWORD_LENGTH,
     ADMIN_ROLES, CONTENT_ROLES, COMPETITION_ROLES, GRADING_ROLES,
-    APPROVAL_ROLES, STUDENT_ADMIN_ROLES, SUPPORT_ROLES, LMS_ROLES,
+    APPROVAL_ROLES, STUDENT_ADMIN_ROLES, SUPPORT_ROLES, LMS_ROLES, GOVERNANCE_ROLES,
     touch_session, SESSION_IDLE_MINUTES, SESSION_ABSOLUTE_DAYS,
     ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_SPONSOR, ROLE_JUDGE, ROLE_INSTRUCTOR,
-    ROLE_STUDENT, ROLE_SCHOOL_ADMIN,
+    ROLE_STUDENT, ROLE_SCHOOL_ADMIN, ROLE_SUPPORT_ADMIN, ROLE_CONTENT_MANAGER,
+    ROLE_COMPETITION_MANAGER, ROLE_REVIEWER, ROLE_MENTOR,
 )
 from app.ws_manager import ws_manager, broadcast_async
 from app.lifecycle import (
@@ -6088,12 +6089,26 @@ try:
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, name, region, teams, score, rank, status, coding_score, robotics_score, ai_score, cyber_score FROM schools ORDER BY rank ASC")
+        # `students` is a real per-school count of active student accounts whose
+        # organisation matches this school directory entry (case/space-insensitive).
+        cur.execute(
+            "SELECT s.id, s.name, s.region, s.teams, s.score, s.rank, s.status, "
+            "s.coding_score, s.robotics_score, s.ai_score, s.cyber_score, "
+            "COUNT(u.id) AS students "
+            "FROM schools s "
+            "LEFT JOIN users u "
+            "  ON u.role = 'student' AND u.status <> 'banned' "
+            " AND LOWER(TRIM(COALESCE(u.organization,''))) = LOWER(TRIM(s.name)) "
+            "GROUP BY s.id, s.name, s.region, s.teams, s.score, s.rank, s.status, "
+            "s.coding_score, s.robotics_score, s.ai_score, s.cyber_score "
+            "ORDER BY s.rank ASC"
+        )
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)
         return [{"id": r[0], "name": r[1], "region": r[2], "teams": r[3], "score": r[4], "rank": r[5], "status": r[6],
-                 "coding_score": r[7], "robotics_score": r[8], "ai_score": r[9], "cyber_score": r[10]} for r in rows]
+                 "coding_score": r[7], "robotics_score": r[8], "ai_score": r[9], "cyber_score": r[10],
+                 "students": r[11] or 0} for r in rows]
 
     @app.post("/api/schools", status_code=status.HTTP_201_CREATED)
     def create_school(payload: SchoolCreate, _actor: dict = Depends(require_role(COMPETITION_ROLES))):
@@ -6499,7 +6514,7 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
 
-        roles = (ROLE_STUDENT, ROLE_SPONSOR, ROLE_JUDGE, ROLE_INSTRUCTOR)
+        roles = tuple(GOVERNANCE_ROLES | {ROLE_MENTOR, ROLE_SPONSOR, ROLE_JUDGE, ROLE_INSTRUCTOR, ROLE_STUDENT})
         cur.execute(
             "SELECT id, email, full_name, role, ticket, status, phone, organization, "
             "created_at, photo_file_id, doc_file_id, "
@@ -6699,8 +6714,11 @@ try:
 
             people.append(person)
 
-        def _summarise(role_name):
-            group = [p for p in people if p["role"] == role_name]
+        def _summarise(role_or_roles):
+            if isinstance(role_or_roles, (list, tuple, set, frozenset)):
+                group = [p for p in people if p["role"] in role_or_roles]
+            else:
+                group = [p for p in people if p["role"] == role_or_roles]
             return {
                 "total": len(group),
                 "active": sum(1 for p in group if (p["status"] or "").lower() == "active"),
@@ -6719,10 +6737,12 @@ try:
             "courses_matched_by_name": False,
             "people": people,
             "summary": {
-                "student": _summarise(ROLE_STUDENT),
+                "governance": _summarise(GOVERNANCE_ROLES),
+                "mentor": _summarise(ROLE_MENTOR),
                 "sponsor": _summarise(ROLE_SPONSOR),
                 "judge": _summarise(ROLE_JUDGE),
                 "instructor": _summarise(ROLE_INSTRUCTOR),
+                "student": _summarise(ROLE_STUDENT),
             },
         }
 

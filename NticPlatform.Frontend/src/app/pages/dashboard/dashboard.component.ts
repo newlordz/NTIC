@@ -49,10 +49,7 @@ export interface SponsorInfographic {
 interface LandingCopyField { key: string; label: string; multiline?: boolean; }
 interface LandingCopySection { title: string; icon: string; fields: LandingCopyField[]; }
 
-/** Roles the Personnel Monitor manages. Privileged roles are excluded: those are
- *  administered in User Management, and listing them here would conflate
- *  operational monitoring with privilege administration. */
-type PersonnelRole = 'student' | 'sponsor' | 'judge' | 'instructor';
+type PersonnelRole = 'governance' | 'mentor' | 'sponsor' | 'judge' | 'instructor';
 
 @Component({
   selector: 'app-dashboard',
@@ -635,7 +632,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // the database can prove. Role detail the old UI implied for these people
   // (judge expertise, sponsor tier/payments, instructor portfolio) has no
   // column in `users` and is intentionally not shown.
-  personnelTab: PersonnelRole = 'student';
+  personnelTab: PersonnelRole = 'governance';
   personnelRoster: PersonnelRoster | null = null;
   personnelLoading = false;
   personnelError = '';
@@ -651,8 +648,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   personActionNotice = '';
 
   readonly personnelTabs: { id: PersonnelRole; label: string; icon: string }[] = [
-    // Students were added so an administrator can manage every role from one place.
-    { id: 'student', label: 'Students', icon: 'school' },
+    { id: 'governance', label: 'Governance', icon: 'admin_panel_settings' },
+    { id: 'mentor', label: 'Mentors', icon: 'psychology' },
     { id: 'sponsor', label: 'Sponsors', icon: 'handshake' },
     { id: 'judge', label: 'Judges', icon: 'gavel' },
     { id: 'instructor', label: 'Instructors', icon: 'badge' },
@@ -827,14 +824,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /** Everyone in the active role tab, before search/filter. */
   get personnelInTab(): PersonnelPerson[] {
-    return (this.personnelRoster?.people || []).filter(p => p.role === this.personnelTab);
+    if (!this.personnelRoster?.people) return [];
+    if (this.personnelTab === 'governance') {
+      const govRoles = ['super_admin', 'admin', 'support_admin', 'content_manager', 'competition_manager', 'reviewer', 'school_admin', 'governance'];
+      return this.personnelRoster.people.filter(p => govRoles.includes(p.role));
+    }
+    if (this.personnelTab === 'mentor') {
+      return this.personnelRoster.people.filter(p => p.role === 'mentor' || p.role === 'lead_mentor');
+    }
+    return this.personnelRoster.people.filter(p => p.role === this.personnelTab);
   }
 
   get personnelList(): PersonnelPerson[] {
     const term = this.personnelSearch.trim().toLowerCase();
     return this.personnelInTab.filter(p => {
       if (term) {
-        const haystack = `${p.full_name} ${p.email} ${p.organization} ${p.ticket}`.toLowerCase();
+        const haystack = `${p.full_name} ${p.email} ${p.organization} ${p.ticket} ${p.role}`.toLowerCase();
         if (!haystack.includes(term)) return false;
       }
       switch (this.personnelFilter) {
@@ -854,11 +859,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.personnelRoster?.summary?.[role]?.total ?? 0;
   }
 
+  formatGovernanceRole(role: string): string {
+    const map: Record<string, string> = {
+      super_admin: 'Super Admin',
+      admin: 'Administrator',
+      support_admin: 'Support Admin',
+      content_manager: 'Content Manager',
+      competition_manager: 'Competition Manager',
+      reviewer: 'Reviewer / Auditor',
+      school_admin: 'School Lead / Admin',
+      mentor: 'Mentor',
+      lead_mentor: 'Lead Mentor'
+    };
+    return map[role] || (role ? role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Governance');
+  }
+
   /** Card badge. Read from the already-loaded user list so the count is real
    *  before the roster endpoint has been called. */
   get personnelCount(): number {
     return this.contentService.users.filter(u =>
-      ['student', 'sponsor', 'judge', 'instructor'].includes((u as any).role)
+      ['super_admin', 'admin', 'support_admin', 'content_manager', 'competition_manager', 'reviewer', 'school_admin', 'mentor', 'sponsor', 'judge', 'instructor'].includes((u as any).role)
     ).length;
   }
 
@@ -908,6 +928,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
   managePersonInUserAdmin(): void {
     this.selectedPerson = null;
     this.goToSubTab('users_full');
+  }
+
+  copyText(text: string, label: string = 'Copied'): void {
+    if (!text) return;
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.dialogService.toast(`${label}: ${text}`, 'info');
+      }).catch(() => {
+        this.fallbackCopyText(text);
+        this.dialogService.toast(`${label}: ${text}`, 'info');
+      });
+    } else {
+      this.fallbackCopyText(text);
+      this.dialogService.toast(`${label}: ${text}`, 'info');
+    }
   }
   private _expandedSection = false;
   get expandedSection(): boolean { return this._expandedSection; }

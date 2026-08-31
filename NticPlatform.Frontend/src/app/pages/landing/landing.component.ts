@@ -830,26 +830,21 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
   private problemTypeInterval: any;
 
   // ── GHANA REGION MAP ──────────────────────────────────────────
-  private _lastUsersJson = '';
-  private _lastStatsSchools = -1;
+  private _lastSchoolsJson = '';
   private _cachedRegionDataList: any[] = [];
+  private _mapColorTimers: any[] = [];
 
   hoveredRegionData: any = null;
   selectedRegion: string | null = null;
 
   get regionDataList(): any[] {
-    const isWiped = this.contentService.platformStats.schools === 0;
-    const usersJson = JSON.stringify(this.contentService.users);
-    const statsSchools = this.contentService.platformStats.schools;
+    const schools = this.contentService.schools || [];
+    const schoolsJson = JSON.stringify(schools);
 
-    if (this._cachedRegionDataList.length > 0 && 
-        this._lastStatsSchools === statsSchools && 
-        this._lastUsersJson === usersJson) {
+    if (this._cachedRegionDataList.length > 0 && this._lastSchoolsJson === schoolsJson) {
       return this._cachedRegionDataList;
     }
-
-    this._lastStatsSchools = statsSchools;
-    this._lastUsersJson = usersJson;
+    this._lastSchoolsJson = schoolsJson;
 
     const regions = [
       { id: 'greater-accra', name: 'Greater Accra', defaultCount: 42, topSchool: 'PRESEC Legon', specialty: 'Coding & AI' },
@@ -870,61 +865,28 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       { id: 'upper-east',    name: 'Upper East',    defaultCount: 6,  topSchool: 'Navrongo SHS',           specialty: 'Networking & Cybersecurity' },
     ];
 
-    if (isWiped) {
-      this._cachedRegionDataList = regions.map(r => ({
+    this._cachedRegionDataList = regions.map(r => {
+      const regionId = r.id;
+      const regionSchools = schools
+        .filter(s => String(s.region || '').toLowerCase().replace(/\s+/g, '-') === regionId)
+        .sort((a, b) => (Number(a.rank) || 999) - (Number(b.rank) || 999));
+      const schoolNames = regionSchools.map(s => String(s.name || '')).filter(Boolean);
+      const top = regionSchools[0];
+
+      return {
         id: r.id,
         name: r.name,
-        schools: 0,
-        students: 0,
-        teams: 0,
+        schools: regionSchools.length,
+        students: regionSchools.reduce((sum, s) => sum + (Number(s.students) || 0), 0),
+        teams: regionSchools.reduce((sum, s) => sum + (Number(s.teams) || 0), 0),
         target: r.defaultCount,
-        topSchool: 'None',
-        specialty: 'Not assigned'
-      }));
-    } else {
-      this._cachedRegionDataList = regions.map(r => {
-        const regionId = r.id;
-        const regionUsers = this.contentService.users.filter(u => {
-          const userRegion = u.region || this.getRegionForSchool(u.organization || '');
-          return userRegion.toLowerCase().replace(/\s+/g, '-') === regionId;
-        });
-        const studentCount = regionUsers.filter(u => u.role === 'student').length;
-        const schoolAdmins = regionUsers.filter(u => u.role === 'school_admin');
-        const realSchools = schoolAdmins.length;
-        const teamCount = this.contentService.teams.filter(t =>
-          t.region &&
-          t.region.toLowerCase().replace(/\s+/g, '-') === regionId
-        ).length;
-        const schoolNames = [...new Set(schoolAdmins.map(u => u.organization).filter(Boolean))];
-
-        return {
-          id: r.id,
-          name: r.name,
-          schools: realSchools,
-          students: studentCount,
-          teams: teamCount,
-          target: r.defaultCount,
-          topSchool: schoolNames.length > 0 ? schoolNames[0] : (studentCount > 0 ? 'Independent Competitors' : 'None'),
-          schoolList: schoolNames,
-          specialty: r.specialty
-        };
-      });
-    }
+        topSchool: top ? String(top.name) : 'None',
+        schoolList: schoolNames,
+        specialty: r.specialty
+      };
+    });
 
     return this._cachedRegionDataList;
-  }
-
-  private getRegionForSchool(schoolName: string): string {
-    const name = schoolName.toLowerCase();
-    if (name.includes('presec') || name.includes('achimota') || name.includes('legon')) return 'greater-accra';
-    if (name.includes('prempeh') || name.includes('knust') || name.includes('ashanti')) return 'ashanti';
-    if (name.includes('wesley') || name.includes('holy child') || name.includes('central')) return 'central';
-    if (name.includes('koforidua') || name.includes('eastern')) return 'eastern';
-    if (name.includes('fijai') || name.includes('western')) return 'western';
-    if (name.includes('ho ') || name.includes('volta')) return 'volta';
-    if (name.includes('tamale') || name.includes('northern')) return 'northern';
-    if (name.includes('sunyani') || name.includes('bono')) return 'bono';
-    return 'greater-accra';
   }
 
   trackByRegionId(index: number, item: any): string {
@@ -1197,6 +1159,14 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     this.setupConceptObserver();
     this.setupSupportObserver();
     this.applyRegionColors();
+    // Schools load from the backend asynchronously, so on a cold (uncached)
+    // first visit the real per-region data may not be present at view-init.
+    // Re-apply the SVG fills once the data has landed.
+    this.ngZone.runOutsideAngular(() => {
+      [800, 2000, 4000].forEach(delay => {
+        this._mapColorTimers.push(setTimeout(() => this.applyRegionColors(), delay));
+      });
+    });
     this.setupScrollAnimations();
     this.ngZone.runOutsideAngular(() => {
       this.storyTimer = setInterval(() => {
@@ -1216,6 +1186,8 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     if (typeof document !== 'undefined') {
       document.body.style.overflow = '';
     }
+    this._mapColorTimers.forEach(t => clearTimeout(t));
+    this._mapColorTimers = [];
     this.stopSlideShow();
     this.stopCompSlideshow();
     this.stopVideoEditLoop();
@@ -4170,7 +4142,7 @@ for (let i = people.length - 1; i > 0; i--) {
   }
 
   getRegionTeams(rd: any): number {
-    return rd ? rd.schools * 4 : 0;
+    return rd ? (rd.teams || 0) : 0;
   }
 
   getRegionQualifiedPct(rd: any): number {

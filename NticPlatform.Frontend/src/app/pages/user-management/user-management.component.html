@@ -345,12 +345,6 @@
             <button class="status-pill pill-active" [class.active]="teamStatusFilter === 'active'" (click)="teamStatusFilter='active'; applyTeamFilters()">Active</button>
             <button class="status-pill pill-pending" [class.active]="teamStatusFilter === 'pending'" (click)="teamStatusFilter='pending'; applyTeamFilters()">Pending</button>
           </div>
-
-          <!-- Add Team Button -->
-          <button class="cmd-btn cmd-btn-primary" (click)="openAddTeamModal()" style="height:36px;">
-            <span class="material-symbols-outlined">group_add</span>
-            <span>+ Create Squad</span>
-          </button>
         </div>
       </div>
 
@@ -1064,73 +1058,6 @@
         <button class="cmd-btn cmd-btn-ghost" (click)="closeEditTeamModal()">Cancel</button>
         <button class="cmd-btn cmd-btn-primary" (click)="saveEditTeam()" [disabled]="!editTeamForm.name?.trim()">
           Save Changes
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════
-       MODAL: CREATE TEAM
-  ══════════════════════════════════════════ -->
-  <div class="um-modal-backdrop" *ngIf="isAddTeamOpen" (click)="closeAddTeamModal()">
-    <div class="um-modal" (click)="$event.stopPropagation()">
-      <div class="um-modal-header">
-        <div class="um-modal-title-row">
-          <div class="um-avatar large" style="background:linear-gradient(135deg,var(--primary),#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;">
-            <span class="material-symbols-outlined">group_add</span>
-          </div>
-          <div>
-            <h3>Register New Squad</h3>
-            <span style="font-size:12px;color:var(--on-surface-variant);">Register competition entrant team</span>
-          </div>
-        </div>
-        <button class="um-modal-close" (click)="closeAddTeamModal()">&times;</button>
-      </div>
-      <div class="um-modal-body">
-        <div class="ca-form-grid">
-          <div class="ca-field">
-            <label class="ca-label">Team / Squad Name <span class="ca-required">*</span></label>
-            <input type="text" [(ngModel)]="newTeamForm.name" placeholder="e.g. CyberKnights" class="ca-input" style="padding-left:12px;" />
-          </div>
-          <div class="ca-field">
-            <label class="ca-label">Competition Track</label>
-            <select [(ngModel)]="newTeamForm.track" class="ca-input" style="padding-left:12px;">
-              <option value="Coding">Coding &amp; Software</option>
-              <option value="Robotics">Robotics &amp; IoT</option>
-              <option value="AI">AI &amp; Machine Learning</option>
-              <option value="Cybersecurity">Cybersecurity</option>
-              <option value="Innovation">Open Innovation</option>
-            </select>
-          </div>
-          <div class="ca-field">
-            <label class="ca-label">Organization / School</label>
-            <input type="text" [(ngModel)]="newTeamForm.school_name" placeholder="e.g. Accra Academy" class="ca-input" style="padding-left:12px;" />
-          </div>
-          <div class="ca-field">
-            <label class="ca-label">Team Lead Name</label>
-            <input type="text" [(ngModel)]="newTeamForm.lead" placeholder="e.g. Kwame Mensah" class="ca-input" style="padding-left:12px;" />
-          </div>
-          <div class="ca-field">
-            <label class="ca-label">Members Count</label>
-            <input type="number" min="1" max="10" [(ngModel)]="newTeamForm.members" class="ca-input" style="padding-left:12px;" />
-          </div>
-          <div class="ca-field">
-            <label class="ca-label">Status</label>
-            <select [(ngModel)]="newTeamForm.status" class="ca-input" style="padding-left:12px;">
-              <option value="Active">Active</option>
-              <option value="Pending">Pending</option>
-            </select>
-          </div>
-          <div class="ca-field" style="grid-column:1/-1;">
-            <label class="ca-label">Team Motto / Slogan</label>
-            <input type="text" [(ngModel)]="newTeamForm.motto" placeholder="e.g. Innovate beyond limits" class="ca-input" style="padding-left:12px;" />
-          </div>
-        </div>
-      </div>
-      <div class="um-modal-footer">
-        <button class="cmd-btn cmd-btn-ghost" (click)="closeAddTeamModal()">Cancel</button>
-        <button class="cmd-btn cmd-btn-primary" (click)="saveNewTeam()" [disabled]="!newTeamForm.name?.trim()">
-          Create Squad
         </button>
       </div>
     </div>

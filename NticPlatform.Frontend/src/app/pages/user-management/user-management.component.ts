@@ -76,16 +76,6 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   isDeleteTeamLoading: boolean = false;
   isEditTeamOpen: boolean = false;
   editTeamForm: any = {};
-  isAddTeamOpen: boolean = false;
-  newTeamForm: any = {
-    name: '',
-    track: 'Coding',
-    lead: '',
-    members: 3,
-    school_name: '',
-    status: 'Active',
-    motto: ''
-  };
 
   roleTabs = [
     { id: 'all', label: 'All Users', icon: 'group' },
@@ -1051,53 +1041,6 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.showToast('Update Failed', err?.error?.detail || 'Could not update squad.', 5000);
-      }
-    });
-  }
-
-  openAddTeamModal(): void {
-    this.newTeamForm = {
-      name: '',
-      track: 'Coding',
-      lead: '',
-      members: 3,
-      school_name: '',
-      status: 'Active',
-      motto: ''
-    };
-    this.isAddTeamOpen = true;
-  }
-
-  closeAddTeamModal(): void {
-    this.isAddTeamOpen = false;
-  }
-
-  saveNewTeam(): void {
-    if (!this.newTeamForm.name.trim()) return;
-    const payload = {
-      name: this.newTeamForm.name.trim(),
-      track: this.newTeamForm.track,
-      lead: this.newTeamForm.lead || 'Team Lead',
-      members: Number(this.newTeamForm.members) || 3,
-      school_name: this.newTeamForm.school_name || 'Independent',
-      status: this.newTeamForm.status || 'Active',
-      motto: this.newTeamForm.motto || ''
-    };
-
-    this.apiService.createTeam(payload).subscribe({
-      next: (res: any) => {
-        const newTeam: Team = {
-          id: res.id || 'team-' + Date.now(),
-          ...payload,
-          schoolName: payload.school_name
-        };
-        this.teams.unshift(newTeam);
-        this.applyTeamFilters();
-        this.closeAddTeamModal();
-        this.showToast('Squad Registered', `Squad "${newTeam.name}" has been registered.`);
-      },
-      error: (err) => {
-        this.showToast('Registration Failed', err?.error?.detail || 'Could not register squad.', 5000);
       }
     });
   }

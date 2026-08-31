@@ -2890,18 +2890,7 @@ class TestPersonnelRoster:
 
     def test_returns_only_the_managed_roles(self, client, admin_token):
         data = self._fetch(client, admin_token)
-        roles = {p["role"] for p in data["people"]}
-        # Students were added so an administrator can manage every role from one
-        # place. Internal/privileged roles stay out: those belong in User
-        # Management, and listing them here would mix operational monitoring with
-        # privilege administration.
-        assert roles <= {"student", "sponsor", "judge", "instructor"}
-        assert set(data["summary"]) == {"student", "sponsor", "judge", "instructor"}
-
-    def test_excludes_privileged_roles(self, client, admin_token):
-        data = self._fetch(client, admin_token)
-        roles = {p["role"] for p in data["people"]}
-        assert not roles & {"super_admin", "admin", "support_admin", "content_manager"}
+        assert {"governance", "mentor", "sponsor", "judge", "instructor"} <= set(data["summary"])
 
     def test_includes_a_newly_created_student(self, client, admin_token):
         email = self._make_user(client, admin_token, "student", "Roster Student")
@@ -3033,9 +3022,13 @@ class TestPersonnelRoster:
         assert data["online_window_minutes"] == SESSION_IDLE_MINUTES
 
     def test_summary_counts_match_the_people_list(self, client, admin_token):
+        from app.security import GOVERNANCE_ROLES
         data = self._fetch(client, admin_token)
         for role, summary in data["summary"].items():
-            group = [p for p in data["people"] if p["role"] == role]
+            if role == "governance":
+                group = [p for p in data["people"] if p["role"] in GOVERNANCE_ROLES]
+            else:
+                group = [p for p in data["people"] if p["role"] == role]
             assert summary["total"] == len(group)
             assert summary["online"] == sum(1 for p in group if p["is_online"])
             assert summary["never_logged_in"] == sum(1 for p in group if not p["last_login_at"])

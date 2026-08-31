@@ -306,7 +306,7 @@ export interface PersonnelPerson {
   id: string;
   email: string;
   full_name: string;
-  role: 'student' | 'sponsor' | 'judge' | 'instructor';
+  role: 'super_admin' | 'admin' | 'support_admin' | 'content_manager' | 'competition_manager' | 'reviewer' | 'school_admin' | 'mentor' | 'lead_mentor' | 'student' | 'sponsor' | 'judge' | 'instructor' | string;
   ticket: string;
   status: string;
   phone: string;
@@ -398,7 +398,7 @@ export interface PersonnelRoster {
    *  course created in the LMS Manager, which hardcoded it to the literal 'Admin'. */
   courses_matched_by_name: boolean;
   people: PersonnelPerson[];
-  summary: Record<'student' | 'sponsor' | 'judge' | 'instructor', PersonnelSummary>;
+  summary: Record<string, PersonnelSummary>;
 }
 
 /** One competition submission as seen from the judging workspace. */

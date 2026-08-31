@@ -479,6 +479,9 @@ export class ContentService {
   // ── Landing Page Copy (key/value editable marketing text) ──
   landingCopy: Record<string, string> = {};
 
+  // ── School Directory (per-region data for the National Reach map) ──
+  schools: any[] = [];
+
   // ── LMS Data ──────────────────────────────────────────────
   lmsCourses: LmsCourse[] = [];
   lmsModules: LmsModule[] = [];
@@ -826,6 +829,8 @@ export class ContentService {
     this.apiService.getSchools().subscribe({
       next: (schools: any[]) => {
         if (schools && schools.length > 0) {
+          this.schools = schools;
+          this.saveState('schools', schools);
           const merged = this.mergeLeaderboardFromSchools(schools);
           if (merged.length > 0) {
             this.leaderboardData = merged;
@@ -1003,6 +1008,8 @@ export class ContentService {
         this.apiService.getSchools().subscribe({
           next: (schools: any[]) => {
             if (schools && schools.length > 0) {
+              this.schools = schools;
+              this.saveState('schools', schools);
               const merged = this.mergeLeaderboardFromSchools(schools);
               if (merged.length > 0) {
                 this.leaderboardData = merged;
@@ -1244,7 +1251,7 @@ export class ContentService {
           'users','ntic_users','pendingApprovals','rejectedApprovals','approvedApprovals',
           'teams','submissions','auditLogs','csrUpdates','competitions',
           'philosophyCards','lmsCourses','lmsModules','lmsMaterials','lmsAssignments',
-          'lmsSubmissions','lmsEnrollments','landingCopy'
+          'lmsSubmissions','lmsEnrollments','landingCopy','schools'
         ];
         keysToClear.forEach(k => {
           try { localStorage.removeItem(k); } catch { /* ignore */ }
@@ -1285,6 +1292,7 @@ export class ContentService {
       this.lmsSubmissions = this.loadKeySync('lmsSubmissions', this.defaultLmsSubmissions);
       this.lmsEnrollments = this.loadKeySync('lmsEnrollments', this.defaultLmsEnrollments);
       this.landingCopy = this.loadKeySync('landingCopy', {});
+      this.schools = this.loadKeySync('schools', []);
     } else {
       this.championshipStories = [...this.defaultStories];
       this.hallOfFameEntries = [...this.defaultHof];
