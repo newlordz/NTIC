@@ -20,44 +20,38 @@ After providing the direct, flawless answer, apply lateral thinking to deliver a
 - Flawless Execution: Structure content cleanly using bullet points, bold emphasis, or logical steps for maximum clarity.
 - Beyond-the-Box Insights: Conclude with a dedicated section featuring non-obvious recommendations, hidden risks, or lateral strategies.
 
-### GIT SYNC WORKFLOW
+### ALL-IN-ONE "SYNC TO GIT" WORKFLOW
 
-Run this **only** when the user explicitly says "sync to git". Never on your own
-initiative, and never as a background or periodic action.
+Whenever the user says **"sync to git"**, perform the complete bidirectional sync:
 
 ```sh
 # 0. One-time per clone: enable the credential guard.
 git config core.hooksPath .githooks
 
-# 1. See exactly what is here. More than one agent works in this repo, so the
-#    working tree may contain someone else's half-finished edits.
+# 1. First, pull latest updates from remote (incorporate collaborator work).
+git pull --rebase origin main
+
+# 2. Check if you have local changes to commit.
 git status
 git diff
 
-# 2. Stage ONLY the files belonging to the work you were asked to sync.
+# 3. If there are local changes for your task:
+#    - Stage ONLY the explicit files belonging to your task (never git add .):
 git add <explicit/path/one> <explicit/path/two>
-
-# 3. Confirm the staged set is exactly what you intend to commit.
 git diff --cached --stat
 
-# 4. Verify before recording anything.
+#    - Verify before recording anything:
 cd NticPlatform.Backend && python -m pytest tests/ -q && cd ..
 cd NticPlatform.Frontend && npx tsc --noEmit -p tsconfig.app.json && cd ..
 
-# 5. Commit with a message that describes the change.
+#    - Commit and push to origin main:
 git commit -m "<type>: <what changed and why>"
-
-# 6. Rebase onto remote, then push.
 git pull --rebase origin main
 git push origin main
+
+# 4. If there are NO local changes:
+#    - You are done! Report that the repository is freshly pulled and up to date.
 ```
-
-### MULTI-AGENT SYNCHRONIZATION RULES
-
-1. **Pull on Task Start / Agent Session Startup**:
-   - Whenever an agent begins work in this repository, check `git status` and pull the latest changes from `origin main` via `git pull --rebase origin main` so work builds on top of the latest synced commits from other collaborators/agents.
-2. **Post-Sync Push Notification**:
-   - After pushing to `origin main`, remember that remote repositories require other agents / local collaborator terminals to run `git pull origin main` to receive the updates into their active workspace.
 
 **`git add .` is forbidden in this repo.** It caused real damage:
 
