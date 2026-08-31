@@ -2201,11 +2201,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   get activeSessionsMeta(): string {
-    const judgeCount = this.registeredUsers.filter(u => u.role === 'judge').length;
-    const sponsorCount = this.registeredUsers.filter(u => u.role === 'sponsor').length;
-    const judgeStr = `${judgeCount} ${judgeCount === 1 ? 'Judge' : 'Judges'}`;
-    const sponsorStr = `${sponsorCount} ${sponsorCount === 1 ? 'Sponsor' : 'Sponsors'}`;
-    return `${judgeStr} · ${sponsorStr}`;
+    return '';
   }
 
   get recentScoredJudgeSubmissions(): any[] {

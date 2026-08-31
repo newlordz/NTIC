@@ -655,7 +655,7 @@
         </div>
         <div class="cc-kpi-value">{{ stat.value }}</div>
         <div class="cc-kpi-label">{{ stat.label }}</div>
-        <div class="cc-kpi-meta">{{ stat.meta }}</div>
+        <div class="cc-kpi-meta" *ngIf="stat.meta">{{ stat.meta }}</div>
         <div class="cc-kpi-glow"></div>
       </div>
     </div>
