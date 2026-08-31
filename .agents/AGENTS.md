@@ -52,6 +52,13 @@ git pull --rebase origin main
 git push origin main
 ```
 
+### MULTI-AGENT SYNCHRONIZATION RULES
+
+1. **Pull on Task Start / Agent Session Startup**:
+   - Whenever an agent begins work in this repository, check `git status` and pull the latest changes from `origin main` via `git pull --rebase origin main` so work builds on top of the latest synced commits from other collaborators/agents.
+2. **Post-Sync Push Notification**:
+   - After pushing to `origin main`, remember that remote repositories require other agents / local collaborator terminals to run `git pull origin main` to receive the updates into their active workspace.
+
 **`git add .` is forbidden in this repo.** It caused real damage:
 
 - `build-with-env.js` injects the live Brevo / SMSMode / Gemini keys into
