@@ -27,6 +27,25 @@ import { UserManagementComponent } from '../user-management/user-management.comp
 import { ApplicationPreviewModalComponent } from './application-preview-modal/application-preview-modal.component';
 import { SponsorTierModalComponent } from './sponsor-tier-modal/sponsor-tier-modal.component';
 
+export interface SponsorInfographic {
+  partnerCount: number;
+  totalCommitted: number;
+  totalCommittedFormatted: string;
+  disbursedFunds: number;
+  disbursedFundsFormatted: string;
+  awaitingVerificationFormatted: string;
+  awaitingVerificationCount: number;
+  pendingPledges: number;
+  receivedPct: number;
+  sponsoredTeamsCount: number;
+  studentsReached: number;
+  groupsReached: number;
+  totalBeneficiaries: number;
+  tiers: any[];
+  sectors: any[];
+  hasData: boolean;
+}
+
 interface LandingCopyField { key: string; label: string; multiline?: boolean; }
 interface LandingCopySection { title: string; icon: string; fields: LandingCopyField[]; }
 
@@ -529,12 +548,85 @@ export class DashboardComponent implements OnInit, OnDestroy {
   goToTab(tab: string): void {
     this.adminTab = tab as any;
     this.adminSubTab = '';
-    this.router.navigate([], { relativeTo: this.route, queryParams: { tab } });
+    this.persistNavState();
   }
 
   goToSubTab(sub: string): void {
     this.adminSubTab = sub as any;
-    this.router.navigate([], { relativeTo: this.route, queryParams: { tab: 'control', subtab: sub } });
+    if (sub === 'content' && this.contentTab === 'pagecopy') {
+      this.loadLandingCopyForm();
+    }
+    if (sub === 'personnel') {
+      this.loadPersonnel();
+    }
+    if (sub === 'approvals') {
+      this.loadApprovalsFromBackend();
+    }
+    this.persistNavState();
+  }
+
+  persistNavState(): void {
+    try {
+      const state = {
+        adminTab: this.adminTab,
+        adminSubTab: this.adminSubTab,
+        contentTab: this.contentTab,
+        cmsCategoryFilter: this.cmsCategoryFilter,
+        personnelTab: this.personnelTab,
+        maximizedContentTab: this.maximizedContentTab
+      };
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('ntic_admin_nav_state', JSON.stringify(state));
+      }
+    } catch { /* ignore */ }
+
+    // Sync query parameters without polluting history stack
+    const qp: Record<string, any> = {
+      tab: this.adminTab,
+      subtab: this.adminSubTab || null,
+      contentTab: (this.adminSubTab === 'content' || this.maximizedContentTab) ? this.contentTab : null,
+      category: this.cmsCategoryFilter !== 'all' ? this.cmsCategoryFilter : null,
+      personnelRole: this.adminSubTab === 'personnel' ? this.personnelTab : null
+    };
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: qp,
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    }).catch(() => {});
+  }
+
+  restoreNavStateFromStorage(): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const raw = localStorage.getItem('ntic_admin_nav_state');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.adminTab && ['overview', 'control', 'dashboard', 'register', 'tickets', 'approvals', 'content', 'users', 'admins', 'lms', 'database'].includes(parsed.adminTab)) {
+            this.adminTab = parsed.adminTab;
+          }
+          if (parsed.adminSubTab !== undefined) {
+            this.adminSubTab = parsed.adminSubTab;
+          }
+          if (parsed.contentTab && ['stories', 'hof', 'leaderboard', 'talent', 'stats', 'news', 'countdown', 'slideshow', 'philosophy', 'events', 'pagecopy'].includes(parsed.contentTab)) {
+            this.contentTab = parsed.contentTab;
+          }
+          if (parsed.cmsCategoryFilter) {
+            this.cmsCategoryFilter = parsed.cmsCategoryFilter;
+          }
+          if (parsed.personnelTab) {
+            this.personnelTab = parsed.personnelTab;
+          }
+          if (parsed.maximizedContentTab) {
+            this.maximizedContentTab = parsed.maximizedContentTab;
+            this.expandedSection = true;
+          }
+          if (this.contentTab === 'pagecopy') {
+            this.loadLandingCopyForm();
+          }
+        }
+      }
+    } catch { /* ignore */ }
   }
 
   // ─── PERSONNEL (SPONSORS / JUDGES / INSTRUCTORS) ─────────────
@@ -602,6 +694,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.personDetail = null;
     this.personnelSearch = '';
     this.personnelFilter = 'all';
+    this.persistNavState();
   }
 
   /** Opens the drawer and loads the person's full record. */
@@ -1401,9 +1494,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.totalMatchingCopyFieldsCount = results.reduce((sum, item) => sum + item.fields.length, 0);
   }
 
+  setContentTab(tab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' | 'philosophy' | 'events' | 'pagecopy', updateUrl = true): void {
+    this.contentTab = tab;
+    if (tab === 'pagecopy') {
+      this.loadLandingCopyForm();
+    }
+    if (updateUrl) {
+      this.persistNavState();
+    }
+  }
+
   showPageCopy(): void {
-    this.contentTab = 'pagecopy';
-    this.loadLandingCopyForm();
+    this.setContentTab('pagecopy');
   }
 
   isReloadingCopy = false;
@@ -1586,6 +1688,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     } else if (category === 'broadcast' && !['news', 'events'].includes(this.contentTab)) {
       this.contentTab = 'news';
     }
+    this.persistNavState();
   }
 
   isCmsTabVisible(tab: string): boolean {
@@ -2421,7 +2524,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return 'GH\u20B5 ' + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
   }
 
-  get sponsorInfographic() {
+  get sponsorInfographic(): SponsorInfographic {
     const s = this.sponsorSummary;
     const tiers = (s?.tiers || []).map(t => ({
       key: (t.tier || '').toLowerCase().replace(/[^a-z]/g, '') || 'other',
@@ -2473,10 +2576,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       pendingPledges: s?.pending_pledges ?? 0,
       receivedPct: s?.received_pct ?? 0,
       sponsoredTeamsCount: this.contentService.teams?.length ?? 0,
-      // studentsReached was teams.length * 25 (or 48 * 25). There is no
-      // sponsor-to-student link in the schema, so the real student count is used
-      // and the multiplier is gone.
       studentsReached: this.registeredUsers.filter(u => u.role === 'student').length,
+      groupsReached: (this.dashboardRecords?.filter(r => r.type === 'school').length ?? 0) || (this.contentService.platformStats?.schools ?? 0) || (new Set((this.contentService.teams || []).map(t => t.schoolName).filter(Boolean))).size,
+      totalBeneficiaries: (this.registeredUsers.filter(u => u.role === 'student').length) + ((this.contentService.teams || []).reduce((acc, t) => acc + (typeof t.members === 'number' ? t.members : (Array.isArray(t.members) ? (t.members as any).length : 0)), 0)),
       tiers,
       sectors: s?.sectors || [],
       hasData: !!s && (s.partner_count > 0 || Number(s.total_committed) > 0),
@@ -2510,17 +2612,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const awaiting = info.awaitingVerificationCount || 0;
     const partners = info.partnerCount || 0;
     const students = info.studentsReached || 0;
-    // Reference scale for the Students Reached bar. There is no target field in
-    // the schema, so this uses the historical program baseline this panel
-    // predates (48 teams x 25 students). The bar fills proportionally: empty at
-    // 0, and full only at the capacity figure.
+    const teams = info.sponsoredTeamsCount || 0;
+    const groups = info.groupsReached || 0;
     const studentsTarget = 1200;
-    const studentsPct = students > 0 ? Math.max(4, Math.min(100, Math.round((students / studentsTarget) * 100))) : 0;
+    const studentsPct = students > 0 ? Math.max(4, Math.min(100, Math.round((students / studentsTarget) * 100))) : (teams > 0 ? Math.max(4, Math.min(100, Math.round((teams / 48) * 100))) : 0);
     return [
       { label: 'Total Committed', value: info.totalCommittedFormatted, pct: total > 0 ? 100 : 0, cls: 'cc-bar-blue' },
       { label: 'Disbursed Funds', value: info.disbursedFundsFormatted, pct: disbursed > 0 ? Math.max(4, Math.round((disbursed / (total || 1)) * 100)) : 0, cls: 'cc-bar-teal' },
       { label: 'Awaiting Verification', value: info.awaitingVerificationFormatted, pct: awaiting > 0 ? Math.max(4, Math.round((awaiting / Math.max(1, partners)) * 100)) : 0, cls: 'cc-bar-amber' },
-      { label: 'Students Reached', value: `${info.studentsReached}`, pct: studentsPct, cls: 'cc-bar-purple' }
+      { label: 'Students, Teams & Groups', value: `${students} Students · ${teams} Teams · ${groups} Groups`, pct: studentsPct, cls: 'cc-bar-purple' }
     ];
   }
 
@@ -2743,12 +2843,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private ngZone: NgZone,
     public currentUserService: CurrentUserService
   ) {
-    this.route.queryParams.subscribe(params => {
-      if (params['tab']) {
-        this.adminTab = params['tab'];
-        if (this.adminTab === 'control') { this.adminSubTab = params['subtab'] || ''; }
-      }
-    });
+    this.restoreNavStateFromStorage();
   }
 
   ngOnInit(): void {
@@ -2782,7 +2877,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     // Read query params to set active tab & modal state reactively
     this.route.queryParams.subscribe(params => {
-      if (params['tab'] && ['dashboard', 'overview', 'control', 'register', 'tickets', 'approvals', 'content', 'users', 'admins'].includes(params['tab'])) {
+      let hasExplicitTab = false;
+      if (params['tab'] && ['dashboard', 'overview', 'control', 'register', 'tickets', 'approvals', 'content', 'users', 'admins', 'lms', 'database'].includes(params['tab'])) {
+        hasExplicitTab = true;
         this.adminTab = params['tab'] as any;
         if (this.adminTab === 'control') {
           this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins','audit','users_full','personnel','mentors'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
@@ -2794,6 +2891,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.loadApprovalsFromBackend();
         }
       }
+
+      if (params['contentTab'] && ['stories', 'hof', 'leaderboard', 'talent', 'stats', 'news', 'countdown', 'slideshow', 'philosophy', 'events', 'pagecopy'].includes(params['contentTab'])) {
+        hasExplicitTab = true;
+        this.contentTab = params['contentTab'] as any;
+        if (this.contentTab === 'pagecopy') {
+          this.loadLandingCopyForm();
+        }
+      }
+
+      if (params['category'] && ['all', 'landing', 'competitions', 'broadcast'].includes(params['category'])) {
+        this.cmsCategoryFilter = params['category'] as any;
+      }
+
+      if (params['personnelRole']) {
+        this.personnelTab = params['personnelRole'] as any;
+      }
+
+      if (!hasExplicitTab) {
+        this.restoreNavStateFromStorage();
+      } else {
+        this.persistNavState();
+      }
+
       this.isRegModalOpen = params['openRegModal'] === 'true';
       if (params['tab'] === 'roster') {
         setTimeout(() => {
@@ -5214,11 +5334,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.contentTab = tab as any;
     this.maximizedContentTab = tab;
     this.expandedSection = true;
+    if (tab === 'pagecopy') {
+      this.loadLandingCopyForm();
+    }
+    this.persistNavState();
   }
 
   exitMaximize(): void {
     this.maximizedContentTab = null;
     this.expandedSection = false;
+    this.persistNavState();
   }
 
   async onSlideVideoSelected(event: Event): Promise<void> {

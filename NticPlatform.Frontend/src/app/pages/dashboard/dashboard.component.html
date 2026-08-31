@@ -828,10 +828,15 @@
                 <span class="cc-eco-node-lbl">Disbursed</span>
               </div>
               <span class="cc-eco-arrow">&rarr;</span>
-              <div class="cc-eco-node">
-                <span class="material-symbols-outlined cc-eco-node-ic">school</span>
-                <span class="cc-eco-node-val">{{ sponsorInfographic.studentsReached }}</span>
-                <span class="cc-eco-node-lbl">Students Reached</span>
+              <div class="cc-eco-node" [title]="sponsorInfographic.studentsReached + ' Individual Students, ' + sponsorInfographic.sponsoredTeamsCount + ' Teams & Squads, ' + (sponsorInfographic.groupsReached || 0) + ' Groups & Schools'">
+                <span class="material-symbols-outlined cc-eco-node-ic">groups</span>
+                <span class="cc-eco-node-val">{{ sponsorInfographic.totalBeneficiaries || sponsorInfographic.studentsReached }}</span>
+                <span class="cc-eco-node-lbl">Students &amp; Teams</span>
+                <div class="cc-eco-sub-breakdown">
+                  <span class="cc-eco-chip">{{ sponsorInfographic.studentsReached }} Students</span>
+                  <span class="cc-eco-chip" *ngIf="sponsorInfographic.sponsoredTeamsCount > 0">{{ sponsorInfographic.sponsoredTeamsCount }} Teams</span>
+                  <span class="cc-eco-chip" *ngIf="sponsorInfographic.groupsReached > 0">{{ sponsorInfographic.groupsReached }} Groups</span>
+                </div>
               </div>
             </div>
           </div>
@@ -3623,45 +3628,45 @@
 
     <!-- Sub-Tab Navigation Bar -->
     <div class="cms-sub-tabs" [style.border-bottom]="maximizedContentTab ? '2px solid var(--outline-variant)' : ''" [style.margin-bottom]="maximizedContentTab ? '24px' : ''">
-      <button *ngIf="isCmsTabVisible('stories')" class="cms-sub-tab" [class.active]="contentTab === 'stories'" (click)="contentTab = 'stories'">
+      <button *ngIf="isCmsTabVisible('stories')" class="cms-sub-tab" [class.active]="contentTab === 'stories'" (click)="setContentTab('stories')">
         <span class="material-symbols-outlined">newspaper</span>Championship Stories
         <span class="cms-count-badge">{{ contentService.championshipStories.length }}</span>
       </button>
-      <button *ngIf="isCmsTabVisible('slideshow')" class="cms-sub-tab" [class.active]="contentTab === 'slideshow'" (click)="contentTab = 'slideshow'">
+      <button *ngIf="isCmsTabVisible('slideshow')" class="cms-sub-tab" [class.active]="contentTab === 'slideshow'" (click)="setContentTab('slideshow')">
         <span class="material-symbols-outlined">slideshow</span>Hero Slideshow
         <span class="cms-count-badge">{{ contentService.heroSlides.length }}</span>
       </button>
-      <button *ngIf="isCmsTabVisible('philosophy')" class="cms-sub-tab" [class.active]="contentTab === 'philosophy'" (click)="contentTab = 'philosophy'">
+      <button *ngIf="isCmsTabVisible('philosophy')" class="cms-sub-tab" [class.active]="contentTab === 'philosophy'" (click)="setContentTab('philosophy')">
         <span class="material-symbols-outlined">lightbulb</span>Philosophy Cards
         <span class="cms-count-badge">{{ contentService.philosophyCards.length }}</span>
       </button>
-      <button *ngIf="isCmsTabVisible('stats')" class="cms-sub-tab" [class.active]="contentTab === 'stats'" (click)="contentTab = 'stats'">
+      <button *ngIf="isCmsTabVisible('stats')" class="cms-sub-tab" [class.active]="contentTab === 'stats'" (click)="setContentTab('stats')">
         <span class="material-symbols-outlined">analytics</span>Platform Stats
       </button>
-      <button *ngIf="isCmsTabVisible('countdown')" class="cms-sub-tab" [class.active]="contentTab === 'countdown'" (click)="contentTab = 'countdown'">
+      <button *ngIf="isCmsTabVisible('countdown')" class="cms-sub-tab" [class.active]="contentTab === 'countdown'" (click)="setContentTab('countdown')">
         <span class="material-symbols-outlined">alarm</span>Countdown Timer
       </button>
-      <button *ngIf="isCmsTabVisible('leaderboard')" class="cms-sub-tab" [class.active]="contentTab === 'leaderboard'" (click)="contentTab = 'leaderboard'">
+      <button *ngIf="isCmsTabVisible('leaderboard')" class="cms-sub-tab" [class.active]="contentTab === 'leaderboard'" (click)="setContentTab('leaderboard')">
         <span class="material-symbols-outlined">leaderboard</span>Leaderboard
         <span class="cms-count-badge">{{ contentService.leaderboardData.length }}</span>
       </button>
-      <button *ngIf="isCmsTabVisible('hof')" class="cms-sub-tab" [class.active]="contentTab === 'hof'" (click)="contentTab = 'hof'">
+      <button *ngIf="isCmsTabVisible('hof')" class="cms-sub-tab" [class.active]="contentTab === 'hof'" (click)="setContentTab('hof')">
         <span class="material-symbols-outlined">workspace_premium</span>Hall of Fame
         <span class="cms-count-badge">{{ contentService.hallOfFameEntries.length }}</span>
       </button>
-      <button *ngIf="isCmsTabVisible('talent')" class="cms-sub-tab" [class.active]="contentTab === 'talent'" (click)="contentTab = 'talent'">
+      <button *ngIf="isCmsTabVisible('talent')" class="cms-sub-tab" [class.active]="contentTab === 'talent'" (click)="setContentTab('talent')">
         <span class="material-symbols-outlined">stars</span>Talent Discovery
         <span class="cms-count-badge">{{ contentService.talentDiscovery.length }}</span>
       </button>
-      <button *ngIf="isCmsTabVisible('news')" class="cms-sub-tab" [class.active]="contentTab === 'news'" (click)="contentTab = 'news'">
+      <button *ngIf="isCmsTabVisible('news')" class="cms-sub-tab" [class.active]="contentTab === 'news'" (click)="setContentTab('news')">
         <span class="material-symbols-outlined">campaign</span>News Feed
         <span class="cms-count-badge">{{ contentService.newsFeedItems.length }}</span>
       </button>
-      <button *ngIf="isCmsTabVisible('events')" class="cms-sub-tab" [class.active]="contentTab === 'events'" (click)="contentTab = 'events'">
+      <button *ngIf="isCmsTabVisible('events')" class="cms-sub-tab" [class.active]="contentTab === 'events'" (click)="setContentTab('events')">
         <span class="material-symbols-outlined">event</span>Upcoming Events
         <span class="cms-count-badge">{{ contentService.upcomingEvents.length }}</span>
       </button>
-      <button *ngIf="isCmsTabVisible('pagecopy')" class="cms-sub-tab" [class.active]="contentTab === 'pagecopy'" (click)="showPageCopy()">
+      <button *ngIf="isCmsTabVisible('pagecopy')" class="cms-sub-tab" [class.active]="contentTab === 'pagecopy'" (click)="setContentTab('pagecopy')">
         <span class="material-symbols-outlined">edit_note</span>Page Manager
       </button>
     </div>
@@ -4539,7 +4544,7 @@
         </div>
         <div class="cms-stat-card">
           <div class="cms-stat-icon-wrap"><span class="material-symbols-outlined">groups</span></div>
-          <div class="cms-stat-label">Students Reached</div>
+          <div class="cms-stat-label">Students &amp; Teams Reached</div>
           <div class="cms-stat-value">{{ contentService.platformStats.students }}</div>
         </div>
         <div class="cms-stat-card">
