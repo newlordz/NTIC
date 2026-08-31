@@ -61,6 +61,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
 
   verificationMethod = 'email'; // 'email' | 'mobile'
   verificationInput = '';
+  otpTargetMasked = '';
   otpCode = '';
   otpError = '';
   otpBusy = false;
@@ -909,8 +910,10 @@ setAuthValue('activeUserEmail', email);
     try {
       this.purgeExpiredDrafts();
       const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
-      const key = contact?.trim().toLowerCase();
-      const draft = drafts[key] || drafts[contact];
+      const rawInput = (contact || '').trim();
+      const inputKey = rawInput.toLowerCase();
+      const draftKey = this.resolveDraftKey(drafts, rawInput, inputKey) || inputKey;
+      const draft = drafts[draftKey] || drafts[contact];
       if (!draft) return '';
 
       const now = Date.now();
@@ -935,14 +938,21 @@ setAuthValue('activeUserEmail', email);
     if (!contact || !contact.trim()) return false;
     this.purgeExpiredDrafts();
     const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
-    const key = contact.trim().toLowerCase();
-    return !!(drafts[key] || drafts[contact]);
+    const rawInput = contact.trim();
+    const inputKey = rawInput.toLowerCase();
+    const draftKey = this.resolveDraftKey(drafts, rawInput, inputKey);
+    return !!(draftKey || drafts[inputKey] || drafts[contact]);
   }
 
   resumeDraftFromField(contact: string): void {
     if (!contact || !contact.trim()) return;
-    this.verificationMethod = contact.includes('@') ? 'email' : 'mobile';
-    this.verificationInput = contact.trim();
+    const rawInput = contact.trim();
+    const inputKey = rawInput.toLowerCase();
+    const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
+    const draftKey = this.resolveDraftKey(drafts, rawInput, inputKey) || rawInput;
+
+    this.verificationMethod = draftKey.includes('@') ? 'email' : 'mobile';
+    this.verificationInput = draftKey;
     this.sendOTP();
   }
 
@@ -2415,16 +2425,17 @@ setAuthValue('activeUserEmail', email);
     }
 
     // Codes are minted and checked by the server. The draft owner's email is
-    // always the delivery target, so someone who guesses another person's email
-    // still cannot read the code.
+    // always the delivery target (e.g. representative email).
     this.otpError = '';
     this.otpCode = '';
     this.otpBusy = true;
     this.resumeDraftKey = draftKey;
+    this.verificationInput = draftKey;
 
     this.otpService.request('draft_resume', 'email', draftKey).subscribe({
       next: challenge => {
         this.otpChallengeId = challenge.challengeId;
+        this.otpTargetMasked = challenge.targetMasked || '';
         this.otpBusy = false;
         this.regState = 'otp_verification';
         this.startResendTimer();
@@ -2480,6 +2491,7 @@ setAuthValue('activeUserEmail', email);
     this.otpService.request('draft_resume', 'email', this.resumeDraftKey).subscribe({
       next: challenge => {
         this.otpChallengeId = challenge.challengeId;
+        this.otpTargetMasked = challenge.targetMasked || '';
         this.otpBusy = false;
         this.showCustomAlert('New verification code sent.', 'Code Resent', 'info');
         this.startResendTimer();
