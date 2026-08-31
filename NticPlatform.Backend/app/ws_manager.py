@@ -159,20 +159,24 @@ class WsManager:
         self._listener_stop.set()
 
     def _listen_loop(self) -> None:
-        import psycopg2
-        import psycopg2.extensions
+        import psycopg2  # type: ignore
+        import psycopg2.extensions  # type: ignore
         from app.config import settings
 
         conn = None
         try:
             db_url = os.getenv("DATABASE_PRIVATE_URL", "") or os.getenv("DATABASE_URL", "")
+            connect_fn = getattr(psycopg2, "connect", None)
+            if not connect_fn:
+                logger.warning("psycopg2.connect not available")
+                return
             if db_url.strip():
-                conn = psycopg2.connect(db_url.strip(), connect_timeout=10)
+                conn = connect_fn(db_url.strip(), connect_timeout=10)
             else:
                 host = settings.POSTGRES_HOST
                 if host in ("localhost", ""):
                     host = "127.0.0.1"
-                conn = psycopg2.connect(
+                conn = connect_fn(
                     host=host,
                     port=settings.POSTGRES_PORT,
                     user=settings.POSTGRES_USER,
@@ -225,7 +229,7 @@ class WsManager:
 ws_manager = WsManager()
 
 
-def broadcast_async(payload: dict = None):
+def broadcast_async(payload: dict | None = None):
     """Fire-and-forget broadcast, safe to call from sync or async endpoints.
 
     Most endpoints in this app are plain `def`, which Starlette runs in a thread

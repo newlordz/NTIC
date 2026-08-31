@@ -753,16 +753,8 @@ try:
         ai_score: int = 0
         cyber_score: int = 0
 
-    @app.get("/api/health")
-    def health_check():
-        conn = get_db_connection()
-        db_status = "connected" if conn else "disconnected"
-        if conn:
-            release_db_connection(conn)
-        return {
-            "status": "ok",
-            "database": db_status
-        }
+    # NOTE: /api/health is intentionally NOT registered here. The comprehensive
+    # handler is defined above at line 455 with database latency and process uptime.
 
     # EMAIL PROXY - sends via Brevo from the backend (avoids CORS + exposed API key)
     #
@@ -1474,7 +1466,7 @@ try:
         return {"status": "reset", "email": email}
 
     @app.get("/api/auth/check-availability")
-    def check_availability(email: str = "", phone: str = "", request: Request = None):
+    def check_availability(request: Request, email: str = "", phone: str = ""):
         """Check if an email or phone number is already in the database.
 
         This is an existence oracle, so it is rate-limited like every other
@@ -1719,11 +1711,11 @@ try:
             # These values originate from a client-supplied audit payload, so
             # they must be HTML-escaped before interpolation - otherwise an
             # attacker can inject markup into an alert the SuperAdmin trusts.
-            event_type_s = html_escape(str(event_type))
-            action_s = html_escape(str(action))
-            actor_s = html_escape(str(actor))
-            ip_s = html_escape(str(ip))
-            client_s = html_escape(str(client))
+            event_type_s = html_escape(event_type)
+            action_s = html_escape(action)
+            actor_s = html_escape(actor)
+            ip_s = html_escape(ip)
+            client_s = html_escape(client)
             html = f"""
             <div style="font-family: Arial, sans-serif; padding: 24px; background: #0f172a; color: #f8fafc; border-radius: 8px;">
                 <h2 style="color: #ef4444; margin-top: 0;">NTIC Security Alert: Critical Event Logged</h2>
@@ -1950,17 +1942,17 @@ try:
         Because it is a Pydantic model with these fields only, anything else in
         the request body is ignored rather than silently applied.
         """
-        full_name: str = Field(default=None, max_length=200)
-        phone: str = Field(default=None, max_length=50)
-        organization: str = Field(default=None, max_length=200)
-        bio: str = Field(default=None, max_length=2000)
-        expertise: str = Field(default=None, max_length=100)
-        sector: str = Field(default=None, max_length=100)
-        rep_name: str = Field(default=None, max_length=200)
-        tier: str = Field(default=None, max_length=50)
-        experience_level: str = Field(default=None, max_length=50)
-        track: str = Field(default=None, max_length=100)
-        photo_file_id: str = Field(default=None, max_length=255)
+        full_name: str | None = Field(default=None, max_length=200)
+        phone: str | None = Field(default=None, max_length=50)
+        organization: str | None = Field(default=None, max_length=200)
+        bio: str | None = Field(default=None, max_length=2000)
+        expertise: str | None = Field(default=None, max_length=100)
+        sector: str | None = Field(default=None, max_length=100)
+        rep_name: str | None = Field(default=None, max_length=200)
+        tier: str | None = Field(default=None, max_length=50)
+        experience_level: str | None = Field(default=None, max_length=50)
+        track: str | None = Field(default=None, max_length=100)
+        photo_file_id: str | None = Field(default=None, max_length=255)
 
     @app.patch("/api/users/me")
     def update_my_profile(payload: UpdateMyProfilePayload, actor: dict = Depends(require_auth)):
@@ -1989,11 +1981,11 @@ try:
         }
         # Only touch what was actually sent. Absent (None) means "leave alone";
         # an explicit "" means "clear it".
-        provided = {k: v for k, v in fields.items() if v is not None}
+        provided: dict[str, str | None] = {k: v for k, v in fields.items() if v is not None}
         if not provided:
             raise HTTPException(status_code=400, detail="No profile fields were supplied")
 
-        if "full_name" in provided and not provided["full_name"].strip():
+        if "full_name" in provided and not (provided["full_name"] or "").strip():
             raise HTTPException(status_code=422, detail="Your name cannot be empty")
 
         conn = _get_db()
@@ -2001,7 +1993,7 @@ try:
             cur = conn.cursor()
             # A blank phone must be stored as NULL, not '': the column has a
             # UNIQUE constraint, and a second empty string would collide.
-            if "phone" in provided and not provided["phone"].strip():
+            if "phone" in provided and not (provided["phone"] or "").strip():
                 provided["phone"] = None
             assignments = ", ".join(f"{col} = %s" for col in provided)
             values = list(provided.values()) + [actor["id"]]
@@ -2032,72 +2024,10 @@ try:
         return {"status": "saved", "updated": sorted(provided.keys())}
 
     # ─── FILE STORAGE ENDPOINTS ──────────────────────────────────────
-    class FileUploadPayload(BaseModel):
-        file_id: str = Field(min_length=1, max_length=100)
-        name: str = Field(default="file", max_length=255)
-        mime_type: str = Field(default="image/png", max_length=100)
-        size: int = Field(default=0, ge=0)
-        data_base64: str
+    # NOTE: /api/files/upload and /api/files/{file_id} are intentionally NOT
+    # registered here. A stale first registration of these routes lived at this spot
+    # and SHADOWED the authoritative handlers near the end of the file.
 
-    @app.post("/api/files/upload")
-    def upload_file(payload: FileUploadPayload):
-        conn = _get_db()
-        try:
-            cur = conn.cursor()
-            cur.execute(
-                """
-                INSERT INTO stored_files (id, name, mime_type, size, data_base64)
-                VALUES (%s, %s, %s, %s, %s)
-                ON CONFLICT (id) DO UPDATE SET
-                    name = EXCLUDED.name,
-                    mime_type = EXCLUDED.mime_type,
-                    size = EXCLUDED.size,
-                    data_base64 = EXCLUDED.data_base64
-                """,
-                (payload.file_id, payload.name, payload.mime_type, payload.size, payload.data_base64),
-            )
-            conn.commit()
-            cur.close()
-        except Exception as e:
-            conn.rollback()
-            logger.error(f"File upload failed: {e}")
-            raise HTTPException(status_code=500, detail="Could not save file")
-        finally:
-            release_db_connection(conn)
-        return {"status": "stored", "id": payload.file_id}
-
-    @app.get("/api/files/{file_id}")
-    def get_file(file_id: str):
-        conn = _get_db()
-        try:
-            cur = conn.cursor()
-            cur.execute("SELECT name, mime_type, data_base64 FROM stored_files WHERE id = %s", (file_id,))
-            row = cur.fetchone()
-            cur.close()
-        finally:
-            release_db_connection(conn)
-
-        if not row:
-            raise HTTPException(status_code=404, detail="File not found")
-
-        name, mime_type, data_b64 = row
-        try:
-            raw_b64 = data_b64
-            if "," in raw_b64 and raw_b64.startswith("data:"):
-                raw_b64 = raw_b64.split(",", 1)[1]
-            file_bytes = base64.b64decode(raw_b64)
-        except Exception as e:
-            logger.error(f"Failed to decode base64 file {file_id}: {e}")
-            raise HTTPException(status_code=500, detail="File content corrupted")
-
-        return Response(
-            content=file_bytes,
-            media_type=mime_type or "application/octet-stream",
-            headers={
-                "Cache-Control": "public, max-age=86400",
-                "Content-Disposition": f'inline; filename="{name or file_id}"',
-            }
-        )
 
     # ─── SELF-SERVICE ONBOARDING APPROVALS ────────────────────────────
     # NOTE: /api/approvals/mine is intentionally NOT registered here. A stale
@@ -2200,7 +2130,7 @@ try:
         return {"status": "changed", "other_sessions_revoked": revoked}
 
     @app.post("/api/logout")
-    def logout(request: Request = None, payload: dict = None):
+    def logout(request: Request, payload: dict | None = None):
         payload = payload or {}
         token = payload.get("token", "")
         if not token and request and request.headers.get("Authorization"):
@@ -2297,7 +2227,7 @@ try:
         return {"status": "ok", "revoked": deleted}
 
     @app.post("/api/auth/verify-contact")
-    def verify_contact(request: Request, payload: dict = None):
+    def verify_contact(request: Request, payload: dict | None = None):
         """Check if email or phone is already registered or reserved by a draft.
 
         Unavoidably an account-existence oracle, so it is rate limited to stop
@@ -2340,7 +2270,7 @@ try:
         return result
 
     @app.post("/api/drafts")
-    def save_draft(request: Request, payload: dict = None):
+    def save_draft(request: Request, payload: dict | None = None):
         """Save a registration draft."""
         if not payload or not isinstance(payload.get("email"), str) or not payload["email"].strip():
             raise HTTPException(status_code=400, detail="Email required")
@@ -2844,7 +2774,7 @@ try:
         ]
 
     @app.post("/api/lms/progress")
-    def save_lms_progress(payload: dict = None, actor: dict = Depends(require_auth)):
+    def save_lms_progress(payload: dict | None = None, actor: dict = Depends(require_auth)):
         """Save the signed-in student's course progress.
 
         `student_id` used to be read from the REQUEST BODY, so any authenticated
@@ -3842,7 +3772,7 @@ try:
     class SponsorshipPayload(BaseModel):
         tier: str = Field(default="", max_length=50)
         sector: str = Field(default="", max_length=100)
-        amount_pledged: Decimal = Field(default=Decimal("0"), ge=0, le=Decimal("100000000"))
+        amount_pledged: Decimal = Field(default=Decimal("0"), ge=Decimal("0"), le=Decimal("100000000"))
         competition_id: str = Field(default="", max_length=64)
         notes: str = Field(default="", max_length=2000)
 
@@ -3981,7 +3911,7 @@ try:
     # ── Payments ──────────────────────────────────────────────────────
 
     class SponsorPaymentPayload(BaseModel):
-        amount: Decimal = Field(gt=0, le=Decimal("100000000"))
+        amount: Decimal = Field(gt=Decimal("0"), le=Decimal("100000000"))
         method: str = Field(default="bank_transfer", max_length=40)
         reference: str = Field(min_length=1, max_length=120)
         notes: str = Field(default="", max_length=2000)
@@ -4306,7 +4236,7 @@ try:
         return {"total": len(partners), "partners": partners}
 
     @app.post("/api/auth/token/generate")
-    def generate_access_token(payload: dict = None, _admin: dict = Depends(require_admin)):
+    def generate_access_token(payload: dict | None = None, _admin: dict = Depends(require_admin)):
         payload = payload or {}
         role = payload.get("role", "student").lower()
         conn = _get_db()
@@ -4458,7 +4388,7 @@ try:
         return {"id": ticket_id, "status": "open"}
 
     @app.get("/api/tickets")
-    def list_tickets(user_id: str = None, recycled: bool = False, _auth: dict = Depends(require_auth)):
+    def list_tickets(user_id: str | None = None, recycled: bool = False, _auth: dict = Depends(require_auth)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
@@ -4778,9 +4708,9 @@ try:
     class GradeSubmissionRequest(BaseModel):
         # Bounded deliberately: this was an unbounded `int`, so a judge could file a
         # score of 9999 (or a negative one) and skew every average on the platform.
-        score: int = Field(default=None, ge=0, le=MAX_SUBMISSION_SCORE)
+        score: int | None = Field(default=None, ge=0, le=MAX_SUBMISSION_SCORE)
         feedback: str = ""
-        status: str = None
+        status: str | None = None
 
     @app.patch("/api/submissions/{item_id}/grade")
     def grade_submission(item_id: str, payload: GradeSubmissionRequest, actor: dict = Depends(require_role(GRADING_ROLES))):
@@ -5312,7 +5242,7 @@ try:
             count += 1
         return count
 
-    def _provision_team_member_accounts(cur, team_id: str, school_name: str) -> list:
+    def _provision_team_member_accounts(cur, team_id: str, school_name: str | None = None) -> list:
         """Create student accounts for team members who have an email but no account.
 
         This is what makes "all students under an institution get a student
@@ -8204,7 +8134,7 @@ try:
         return {"id": approval_id, "type": req_type, "status": "pending", "competitionId": comp_ref}
 
     @app.get("/api/approvals/status")
-    def lookup_public_approval_status(query: str = "", request: Request = None):
+    def lookup_public_approval_status(request: Request, query: str = ""):
         """Public applicants check their status by application code, contact
         email, or entity name.
 
