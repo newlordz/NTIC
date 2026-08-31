@@ -1406,6 +1406,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadLandingCopyForm();
   }
 
+  isReloadingCopy = false;
+
+  reloadLandingCopy(): void {
+    this.isReloadingCopy = true;
+    this.apiService.getLandingCopy().subscribe({
+      next: (copy: Record<string, string>) => {
+        if (copy && Object.keys(copy).length > 0) {
+          this.contentService.updateLandingCopy(copy);
+        }
+        this.loadLandingCopyForm();
+        this.isReloadingCopy = false;
+        this.dialogService.toast('Landing page copy reloaded from server!', 'success');
+      },
+      error: (err) => {
+        console.error('Failed to reload landing copy from server:', err);
+        this.loadLandingCopyForm();
+        this.isReloadingCopy = false;
+        this.dialogService.toast('Could not reach server. Loaded local copy.', 'warning');
+      }
+    });
+  }
+
   loadLandingCopyForm(): void {
     const form: Record<string, string> = {};
     for (const section of this.landingCopySections) {

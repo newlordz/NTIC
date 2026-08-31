@@ -6607,6 +6607,16 @@
   }
 }
 
+.cms-spin-icon {
+  animation: cmsSpin 0.75s linear infinite;
+  display: inline-block;
+}
+
+@keyframes cmsSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 /* ── Page Manager Copy Search & Filters ── */
 .cms-copy-search-bar {
   background: var(--surface-container-lowest);

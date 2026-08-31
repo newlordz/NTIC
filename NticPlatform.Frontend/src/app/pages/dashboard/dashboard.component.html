@@ -3683,8 +3683,11 @@
             <span class="material-symbols-outlined" style="font-size:15px;">check_circle</span>
             Saved {{ landingCopyLastSaved }}
           </span>
-          <button class="btn btn-subtle btn-sm" (click)="loadLandingCopyForm()">
-            <span class="material-symbols-outlined" style="font-size:16px;">restart_alt</span>Reload
+          <button class="btn btn-subtle btn-sm" (click)="reloadLandingCopy()" [disabled]="isReloadingCopy" title="Reload fresh copy from server">
+            <span class="material-symbols-outlined" [class.cms-spin-icon]="isReloadingCopy" style="font-size:16px;">
+              {{ isReloadingCopy ? 'sync' : 'restart_alt' }}
+            </span>
+            {{ isReloadingCopy ? 'Reloading...' : 'Reload' }}
           </button>
           <button class="btn btn-primary btn-sm" (click)="saveLandingCopy()" [disabled]="landingCopySaveState === 'saving'">
             <span class="material-symbols-outlined">{{ landingCopySaveState === 'saving' ? 'hourglass_top' : 'publish' }}</span>
