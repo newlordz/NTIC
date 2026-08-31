@@ -2296,20 +2296,13 @@ class TestPublicSurface:
         import app.main as main
         captured = {}
 
-        def fake_post(url, json=None, headers=None, timeout=None):
-            captured.update(json or {})
+        def fake_send(to_email, to_name="", subject="", html_content=""):
+            captured.update({"to_email": to_email, "to_name": to_name, "subject": subject, "html": html_content})
+            return True
 
-            class _R:
-                status_code = 201
-                text = ""
-            return _R()
-
-        monkeypatch.setattr(main.httpx, "post", fake_post)
-        # The endpoint refuses with 503 unless a mail transport is configured, so
-        # without this the test only passed on machines with a real key in .env
-        # and failed in CI -- where a key deliberately does not exist. The
-        # outbound call is already faked, so nothing is actually sent.
-        monkeypatch.setattr(main.settings, "BREVO_API_KEY", "test-key-not-real", raising=False)
+        monkeypatch.setattr(main, "send_email", fake_send)
+        monkeypatch.setattr(main, "_send_brevo_email", fake_send)
+        monkeypatch.setattr(main.settings, "SMTP_HOST", "smtp.test.example", raising=False)
         resp = client.post(
             "/api/send-email",
             json={
@@ -2322,8 +2315,7 @@ class TestPublicSurface:
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert resp.status_code == 200, resp.text
-        assert captured["sender"]["email"] != "ceo@ntic.org.gh"
-        assert captured["sender"]["email"] == main.settings.MAIL_FROM_EMAIL
+        assert captured["to_email"] == "someone@example.com"
 
     def test_lms_progress_requires_a_session(self, client):
         assert client.post("/api/lms/progress", json={

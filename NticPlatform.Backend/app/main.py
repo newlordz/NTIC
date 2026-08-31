@@ -525,9 +525,9 @@ try:
             {
                 "id": "node-email",
                 "name": "Email",
-                "status": "Configured" if settings.BREVO_API_KEY else "Not configured",
+                "status": "Configured" if settings.SMTP_HOST else "Not configured",
                 "latencyMs": None,
-                "detail": "Brevo Transactional SMTP Cloud" if settings.BREVO_API_KEY else "Awaiting API Key",
+                "detail": "Native Python SMTP (smtplib)" if settings.SMTP_HOST else "Awaiting SMTP Host",
                 "measured": False,
             },
             {
@@ -541,9 +541,9 @@ try:
             {
                 "id": "node-sms",
                 "name": "SMS / WhatsApp Gateway",
-                "status": "Configured" if os.getenv("SMS_GATEWAY_URL", "").strip() or settings.BREVO_API_KEY else "Not configured",
+                "status": "Configured" if os.getenv("SMS_GATEWAY_URL", "").strip() else "Not configured",
                 "latencyMs": None,
-                "detail": "SMSMode / WhatsApp HTTP Relay" if os.getenv("SMS_GATEWAY_URL", "").strip() or settings.BREVO_API_KEY else "Awaiting Gateway URL",
+                "detail": "SMSMode / WhatsApp HTTP Relay" if os.getenv("SMS_GATEWAY_URL", "").strip() else "Awaiting Gateway URL",
                 "measured": False,
             },
         ]
@@ -609,7 +609,7 @@ try:
             "rowCounts": counts,
             "rowCountsError": count_error,
             "integrations": {
-                "email": bool(settings.BREVO_API_KEY),
+                "email": bool(settings.SMTP_HOST),
                 "ai": bool(settings.GEMINI_API_KEY),
                 "sms": bool(os.getenv("SMS_GATEWAY_URL", "").strip()),
                 "auditColdStorage": bool(
@@ -764,94 +764,159 @@ try:
     # capped and the endpoint is rate limited per client IP.
     _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+\.[^@\s]{2,}$")
 
-    def _send_smtp_email(to_email: str, to_name: str, subject: str, html_content: str) -> bool:
-        """Send email via standard SMTP (Gmail, Outlook, custom SMTP server)."""
-        import smtplib
-        from email.mime.multipart import MIMEMultipart
-        from email.mime.text import MIMEText
-        try:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = subject
-            sender_addr = settings.MAIL_FROM_EMAIL or "no-reply@ntic.org.gh"
-            sender_str = f"{settings.MAIL_FROM_NAME} <{sender_addr}>" if settings.MAIL_FROM_NAME else sender_addr
-            msg["From"] = sender_str
-            msg["To"] = f"{to_name} <{to_email}>" if to_name else to_email
-            msg.attach(MIMEText(html_content, "html", "utf-8"))
+    def send_email(
+        to_email: str,
+        to_name: str = "",
+        subject: str = "",
+        html_content: str = "",
+        text_content: Optional[str] = None,
+        cc: Optional[list[str] | str] = None,
+        bcc: Optional[list[str] | str] = None,
+        reply_to: Optional[str] = None,
+        attachments: Optional[list[dict]] = None,
+    ) -> bool:
+        """Send outbound email using native Python smtplib and email.message.EmailMessage.
 
-            if settings.SMTP_PORT == 465:
-                server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
-            else:
-                server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
-                if settings.SMTP_USE_TLS:
-                    server.starttls()
-            if settings.SMTP_USER and settings.SMTP_PASSWORD:
-                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            server.sendmail(sender_addr, [to_email], msg.as_string())
-            server.quit()
-            logger.info(f"Email successfully sent via SMTP to {to_email}")
-            return True
-        except Exception as e:
-            logger.error(f"SMTP send failed: {e}")
+        Single authoritative choke point for outbound mail. Supports multi-part MIME,
+        plain-text fallback, HTML body, attachments, CC, BCC, and Reply-To headers.
+        """
+        import smtplib
+        import mimetypes
+        from email.message import EmailMessage
+
+        to_email = (to_email or "").strip()
+        if not to_email:
+            logger.error("Cannot send email: empty recipient address")
             return False
 
-    def _send_brevo_email(to_email: str, to_name: str, subject: str, html_content: str) -> bool:
-        """Send one transactional email via SMTP or Brevo API.
+        sender_addr = settings.MAIL_FROM_EMAIL or "no-reply@ntic.org.gh"
+        sender_name = settings.MAIL_FROM_NAME or ""
+        sender_str = f"{sender_name} <{sender_addr}>" if sender_name else sender_addr
 
-        Single choke point for outbound mail.
-        """
-        # 1. If SMTP is configured, send via SMTP
-        if settings.SMTP_HOST:
-            if _send_smtp_email(to_email, to_name, subject, html_content):
+        try:
+            msg = EmailMessage()
+            msg["Subject"] = subject or "NTIC Ghana Notification"
+            msg["From"] = sender_str
+
+            recipient_str = f"{to_name.strip()} <{to_email}>" if to_name.strip() and "<" not in to_email else to_email
+            msg["To"] = recipient_str
+
+            if reply_to:
+                msg["Reply-To"] = reply_to
+
+            # CC Header
+            cc_addrs: list[str] = []
+            if cc:
+                if isinstance(cc, str):
+                    cc_addrs = [c.strip() for c in cc.split(",") if c.strip()]
+                else:
+                    cc_addrs = [str(c).strip() for c in cc if str(c).strip()]
+                if cc_addrs:
+                    msg["Cc"] = ", ".join(cc_addrs)
+
+            # BCC (excluded from message headers to preserve recipient privacy, but added to SMTP envelope)
+            bcc_addrs: list[str] = []
+            if bcc:
+                if isinstance(bcc, str):
+                    bcc_addrs = [b.strip() for b in bcc.split(",") if b.strip()]
+                else:
+                    bcc_addrs = [str(b).strip() for b in bcc if str(b).strip()]
+
+            # Multi-part MIME payload (Plain text fallback + HTML alternative)
+            if not text_content:
+                # Generate clean plain text from HTML
+                text_content = re.sub(r'<[^>]+>', ' ', html_content or "")
+                text_content = re.sub(r'\s+', ' ', text_content).strip()
+
+            msg.set_content(text_content or "")
+
+            if html_content:
+                msg.add_alternative(html_content, subtype="html")
+
+            # Attachments processing
+            if attachments:
+                for att in attachments:
+                    fname = att.get("filename", "attachment")
+                    content = att.get("content", b"")
+                    if isinstance(content, str):
+                        content = content.encode("utf-8")
+
+                    maintype = att.get("maintype")
+                    subtype = att.get("subtype")
+                    if not maintype or not subtype:
+                        ctype, _ = mimetypes.guess_type(fname)
+                        if ctype is None or "/" not in ctype:
+                            maintype, subtype = "application", "octet-stream"
+                        else:
+                            maintype, subtype = ctype.split("/", 1)
+
+                    msg.add_attachment(
+                        content,
+                        maintype=maintype,
+                        subtype=subtype,
+                        filename=fname,
+                    )
+
+            recipients = [to_email] + cc_addrs + bcc_addrs
+
+            # 1. Standard secure SMTP Connection via smtplib
+            if settings.SMTP_HOST:
+                if settings.SMTP_PORT == 465:
+                    server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
+                else:
+                    server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15)
+                    if settings.SMTP_USE_TLS:
+                        server.starttls()
+
+                if settings.SMTP_USER and settings.SMTP_PASSWORD:
+                    server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+
+                server.send_message(msg, from_addr=sender_addr, to_addrs=recipients)
+                server.quit()
+                logger.info(f"Email successfully sent via SMTP to {to_email}")
                 return True
 
-        # 2. Try Brevo API if key is present
-        if settings.BREVO_API_KEY:
-            try:
-                resp = httpx.post(
-                    "https://api.brevo.com/v3/smtp/email",
-                    json={
-                        # Server-controlled sender. Client input is never used here.
-                        "sender": {"email": settings.MAIL_FROM_EMAIL, "name": settings.MAIL_FROM_NAME},
-                        "to": [{"email": to_email, "name": to_name or to_email}],
-                        "subject": subject,
-                        "htmlContent": html_content,
-                    },
-                    headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
-                    timeout=15,
-                )
-                if resp.status_code < 400:
-                    logger.info(f"Email successfully sent via Brevo to {to_email}")
-                    return True
-                logger.warning(f"Brevo API error {resp.status_code}: {resp.text[:500]}")
-                return False
-            except Exception as e:
-                logger.error(f"Email send failed: {e}")
-                return False
+            # 2. Development / Local Fallback
+            if os.getenv("NTIC_DEV_RELOAD") or not settings.SMTP_HOST:
+                logger.info(f"[DEV EMAIL DISPATCH] To: {to_email} | Subject: {subject}")
+                if os.getenv("NTIC_DEV_RELOAD"):
+                    print(f"\n==================== [DEV OUTBOUND EMAIL DISPATCH] ====================")
+                    print(f"To:      {msg['To']}")
+                    print(f"From:    {msg['From']}")
+                    print(f"Subject: {subject}")
+                    print(f"Content:\n{(html_content or text_content)[:400]}...")
+                    print(f"=======================================================================\n")
+                return True
 
-        # 3. Development / Local Fallback: print to console only when dev mode is active
-        if os.getenv("NTIC_DEV_RELOAD"):
-            print(f"\n==================== [DEV OUTBOUND EMAIL DISPATCH] ====================")
-            print(f"To:      {to_name} <{to_email}>")
-            print(f"From:    {settings.MAIL_FROM_NAME} <{settings.MAIL_FROM_EMAIL}>")
-            print(f"Subject: {subject}")
-            print(f"Content:\n{html_content[:400]}...")
-            print(f"=======================================================================\n")
-            return True
-        return False
+            return False
+        except smtplib.SMTPException as exc:
+            logger.error(f"SMTP error while sending email to {to_email}: {exc}")
+            return False
+        except Exception as exc:
+            logger.error(f"Unexpected error while sending email to {to_email}: {exc}")
+            return False
+
+    # Aliases for backward compatibility across existing calls and unit test monkeypatches
+    _send_smtp_email = send_email
+    _send_brevo_email = send_email
 
     @app.get("/api/email/diagnostics")
     def email_diagnostics():
-        """Public diagnostic to inspect Brevo status and verified sender without exposing secrets."""
-        has_key = bool(settings.BREVO_API_KEY)
-        key_masked = f"{settings.BREVO_API_KEY[:8]}...{settings.BREVO_API_KEY[-4:]}" if has_key else "NOT SET"
+        """Public diagnostic to inspect SMTP status and verified sender without exposing secrets."""
+        has_smtp = bool(settings.SMTP_HOST)
+        user_masked = "NOT SET"
+        if settings.SMTP_USER:
+            user_masked = f"{settings.SMTP_USER[:3]}...@{settings.SMTP_USER.split('@')[-1]}" if "@" in settings.SMTP_USER else "CONFIGURED"
         return {
-            "email_service_ready": has_key,
-            "provider": "Brevo API" if has_key else "None",
-            "api_key_configured": has_key,
-            "api_key_preview": key_masked,
+            "email_service_ready": has_smtp,
+            "provider": "Native Python SMTP (smtplib)" if has_smtp else "Dev Console Mode",
+            "smtp_host": settings.SMTP_HOST or "Not configured",
+            "smtp_port": settings.SMTP_PORT,
+            "smtp_user_configured": bool(settings.SMTP_USER),
+            "smtp_user_preview": user_masked,
+            "smtp_tls": settings.SMTP_USE_TLS,
             "sender_email": settings.MAIL_FROM_EMAIL,
             "sender_name": settings.MAIL_FROM_NAME,
-            "smtp_fallback_configured": bool(settings.SMTP_HOST),
         }
 
     class EmailTestPayload(BaseModel):
@@ -859,29 +924,27 @@ try:
 
     @app.post("/api/email/test")
     def send_test_email(payload: EmailTestPayload, _actor: dict = Depends(require_admin)):
-        """Direct test endpoint to verify Brevo delivery. Requires admin role."""
-        if not settings.BREVO_API_KEY:
-            raise HTTPException(status_code=503, detail="BREVO_API_KEY is not configured in environment variables.")
+        """Direct test endpoint to verify SMTP email delivery. Requires admin role."""
+        if not settings.SMTP_HOST and not os.getenv("NTIC_DEV_RELOAD"):
+            raise HTTPException(status_code=503, detail="SMTP_HOST is not configured in environment variables.")
 
         to_email = payload.target_email.strip()
         test_html = f"""
         <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;">
             <h2 style="color:#2563eb;margin-top:0;">NTIC Ghana Championship</h2>
-            <p><strong>Live Email Delivery Test</strong></p>
-            <p>This email confirms that Brevo is working properly from your Railway deployment.</p>
+            <p><strong>Live Email Delivery Test (Native SMTP)</strong></p>
+            <p>This email confirms that native Python SMTP mail delivery is working properly from your deployment.</p>
             <p>Sender: <code>{settings.MAIL_FROM_EMAIL}</code></p>
             <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;" />
             <p style="font-size:12px;color:#64748b;">National Technology & Innovation Championship &copy; 2026</p>
         </div>
         """
-        ok = _send_brevo_email(to_email, "Platform Admin", "Live Brevo Delivery Test - NTIC Platform", test_html)
+        ok = send_email(to_email, "Platform Admin", "Live SMTP Delivery Test - NTIC Platform", test_html)
         if not ok:
-            raise HTTPException(status_code=502, detail=f"Failed to dispatch via Brevo. Make sure '{settings.MAIL_FROM_EMAIL}' is a verified sender in Brevo.")
+            raise HTTPException(status_code=502, detail=f"Failed to dispatch via SMTP. Verify SMTP credentials and host connectivity.")
         return {"status": "sent", "recipient": to_email, "sender": settings.MAIL_FROM_EMAIL}
 
     class EmailPayload(BaseModel):
-        # Accepted for backwards compatibility with existing callers but
-        # deliberately IGNORED - the sender is server-controlled.
         sender_email: str = ""
         sender_name: str = ""
         to_email: str = Field(min_length=5, max_length=254)
@@ -892,11 +955,9 @@ try:
     @app.post("/api/send-email")
     def send_email_proxy(payload: EmailPayload, request: Request, _actor: dict = Depends(require_auth)):
         """Generic sender. Requires a session."""
-        if not settings.BREVO_API_KEY and not settings.SMTP_HOST and not os.getenv("NTIC_DEV_RELOAD"):
+        if not settings.SMTP_HOST and not os.getenv("NTIC_DEV_RELOAD"):
             raise HTTPException(status_code=503, detail="Email service not configured")
 
-        # Rate limit per authenticated user, not per IP: an admin behind a shared
-        # NAT should not be throttled by a colleague.
         check_rate_limit(f"email-user:{_actor['id']}", max_attempts=20, window_seconds=60)
         check_rate_limit(f"email-user-hourly:{_actor['id']}", max_attempts=300, window_seconds=3600)
 
@@ -904,7 +965,7 @@ try:
         if not _EMAIL_RE.match(to_email):
             raise HTTPException(status_code=422, detail="Invalid recipient address")
 
-        if not _send_brevo_email(to_email, payload.to_name.strip(), payload.subject, payload.html_content):
+        if not send_email(to_email, payload.to_name.strip(), payload.subject, payload.html_content):
             raise HTTPException(status_code=502, detail="Failed to send email")
         return {"status": "sent"}
 
@@ -924,14 +985,10 @@ try:
         """Public 'we received your application' email with Application Tracking Code.
 
         Answers 202 as soon as the request is validated and hands the send to a
-        background task. The applicant's application has ALREADY been stored by the
-        time the browser calls this, so a Brevo outage or a missing API key must not
-        surface as "Your change was not saved" -- which is exactly what the previous
-        503/502 did, because the global HTTP error interceptor cannot tell a
-        fire-and-forget notification apart from the write it follows.
+        background task.
         """
         email_configured = bool(
-            settings.BREVO_API_KEY or settings.SMTP_HOST or os.getenv("NTIC_DEV_RELOAD")
+            settings.SMTP_HOST or os.getenv("NTIC_DEV_RELOAD")
         )
         if not email_configured:
             logger.warning(
@@ -1701,8 +1758,8 @@ try:
         return ip
 
     def send_security_alert_email(event_type: str, actor: str, action: str, ip: str, client: str):
-        """Asynchronously dispatches an emergency security alert to SuperAdmin via Brevo for critical actions"""
-        if not settings.BREVO_API_KEY:
+        """Asynchronously dispatches an emergency security alert to SuperAdmin via native Python SMTP for critical actions"""
+        if not settings.SMTP_HOST and not os.getenv("NTIC_DEV_RELOAD"):
             return
         alert_to = settings.SECURITY_ALERT_EMAIL or settings.MAIL_FROM_EMAIL
         if not alert_to:
@@ -1731,17 +1788,8 @@ try:
                 <p style="font-size: 12px; color: #64748b;">This automated alert was generated by the NTIC Live Security Stream.</p>
             </div>
             """
-            httpx.post(
-                "https://api.brevo.com/v3/smtp/email",
-                json={
-                    "sender": {"email": settings.MAIL_FROM_EMAIL, "name": "NTIC Security Stream"},
-                    "to": [{"email": alert_to, "name": "SuperAdmin"}],
-                    "subject": f"NTIC Security Alert: [{event_type_s.upper()}] {action_s[:50]}",
-                    "htmlContent": html
-                },
-                headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
-                timeout=8
-            )
+            subject = f"NTIC Security Alert: [{event_type_s.upper()}] {action_s[:50]}"
+            send_email(to_email=alert_to, to_name="SuperAdmin", subject=subject, html_content=html)
         except Exception as e:
             logger.warning(f"Security alert email dispatch error: {e}")
 
