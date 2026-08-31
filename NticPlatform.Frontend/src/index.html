@@ -321,6 +321,26 @@
     </div>
   </div>
 
+  <!-- Pre-Bootstrap Dynamic Copy Hydration (0ms) -->
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem('landingCopy');
+        if (raw) {
+          var copy = JSON.parse(raw);
+          if (copy && copy['splash.wordmark']) {
+            var t = document.querySelector('#ntic-splash .sp-title');
+            if (t) t.textContent = copy['splash.wordmark'];
+          }
+          if (copy && copy['splash.status']) {
+            var s = document.querySelector('#ntic-splash .sp-chip span:last-child');
+            if (s) s.textContent = copy['splash.status'];
+          }
+        }
+      } catch (e) {}
+    })();
+  </script>
+
   <app-root></app-root>
 
   <script>

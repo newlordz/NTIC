@@ -5493,6 +5493,29 @@ class TestGatewayCopyIsEditable:
         assert client.get("/api/landing-copy").json()["gateway.heading"] == "National Finals Entry Portal"
 
 
+class TestSplashCopyIsEditable:
+    """The Loading Screen / Splash screen title and status copy are editable via Page Manager."""
+
+    def test_splash_copy_keys_are_seeded(self, client):
+        copy = client.get("/api/landing-copy").json()
+        for key in ("splash.wordmark", "splash.status"):
+            assert key in copy, f"{key} missing -- page manager cannot edit it"
+
+    def test_splash_defaults_match_the_original_wording(self, client):
+        copy = client.get("/api/landing-copy").json()
+        assert copy["splash.wordmark"] == "NTIC Championship"
+        assert copy["splash.status"] == "Initializing Secure Workspace"
+
+    def test_a_content_manager_can_edit_splash_copy(self, client, admin_token):
+        resp = client.put("/api/landing-copy",
+                          headers={"Authorization": f"Bearer {admin_token}"},
+                          json={"splash.wordmark": "NTIC Grand Finals", "splash.status": "Loading Arena Engine"})
+        assert resp.status_code == 200, resp.text
+        updated = client.get("/api/landing-copy").json()
+        assert updated["splash.wordmark"] == "NTIC Grand Finals"
+        assert updated["splash.status"] == "Loading Arena Engine"
+
+
 class TestCycleLifecycle:
     """The competition cycle state machine (app/lifecycle.py).
 

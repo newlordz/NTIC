@@ -278,8 +278,23 @@ export class AppComponent implements OnInit, OnDestroy {
       });
 
       // ── Universal Dissolution of Splash Screen ──
+      const applySplashCopy = () => {
+        const wordmark = this.contentService?.copy('splash.wordmark', 'NTIC Championship');
+        const statusChip = this.contentService?.copy('splash.status', 'Initializing Secure Workspace');
+        const splashHost = document.getElementById('ntic-splash');
+        if (splashHost) {
+          const titleEl = splashHost.querySelector('.sp-title');
+          if (titleEl && wordmark) titleEl.textContent = wordmark;
+          const chipEl = splashHost.querySelector('.sp-chip span:last-child');
+          if (chipEl && statusChip) chipEl.textContent = statusChip;
+        }
+      };
+      applySplashCopy();
+
       const dismissSplash = () => {
         (window as any).__nticAppReady = true;
+        applySplashCopy();
+
         if (typeof (window as any)?.__dismissNticSplash === 'function') {
           (window as any).__dismissNticSplash();
         }

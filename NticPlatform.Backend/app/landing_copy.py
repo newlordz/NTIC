@@ -187,6 +187,10 @@ LANDING_COPY_DEFAULTS = [
     ("Entry Gateway", "gateway.card2.btnResume", "Resume Application"),
     ("Entry Gateway", "gateway.card2.btnTrack", "Track / Edit Submitted Application"),
 
+    # ── Loading Screen ──────────────────────────────────────────────
+    ("Loading Screen", "splash.wordmark", "NTIC Championship"),
+    ("Loading Screen", "splash.status", "Initializing Secure Workspace"),
+
     # ── Footer ──────────────────────────────────────────────────────
     ("Footer", "footer.heading", "National Technology and Innovation Championship"),
     ("Footer", "footer.sub", "Accredited School Competition Platform of the Republic of Ghana"),

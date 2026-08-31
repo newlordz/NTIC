@@ -3764,6 +3764,85 @@
             <input *ngIf="!field.multiline" type="text" [(ngModel)]="landingCopyForm[field.key]" [placeholder]="'Enter ' + field.label.toLowerCase() + '...'">
           </div>
         </div>
+
+        <!-- ── Mini Live Preview for Loading Screen ── -->
+        <div *ngIf="item.section.title === 'Loading Screen'" class="cms-splash-preview-container">
+          <div class="cms-splash-preview-bar">
+            <div class="cms-splash-preview-title">
+              <span class="material-symbols-outlined">visibility</span>
+              <span>Live Visual Preview</span>
+            </div>
+            <button type="button" class="btn btn-subtle btn-xs cms-splash-test-btn" (click)="previewSplash()">
+              <span class="material-symbols-outlined">play_circle</span>
+              Test Full Animation
+            </button>
+          </div>
+          <div class="cms-splash-card-mini">
+            <div class="sp-icon-wrap-mini">
+              <div class="sp-badge-mini">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="22" height="22">
+                  <path d="M12 2L3 6.5v5C3 16.64 7.02 21.21 12 22c4.98-.79 9-5.36 9-10.5v-5L12 2z" fill="#2563eb" stroke="rgba(212,175,55,0.7)" stroke-width="0.8"/>
+                  <path d="M9.5 12.5l2 2 3.5-4" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <div class="sp-flag-mini">
+              <span style="background:#006b3f"></span>
+              <span style="background:#fcd116"></span>
+              <span style="background:#ce1126"></span>
+            </div>
+            <div class="sp-title-mini">{{ landingCopyForm['splash.wordmark'] || 'NTIC Championship' }}</div>
+            <div class="sp-bar-mini"><div class="sp-bar-fill-mini"></div></div>
+            <div class="sp-chip-mini">
+              <span class="sp-dot-mini"></span>
+              <span>{{ landingCopyForm['splash.status'] || 'Initializing Secure Workspace' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Fullscreen Cinematic Splash Preview Modal ── -->
+      <div *ngIf="isSplashPreviewActive" class="cms-splash-fullscreen-overlay" (click)="closeSplashPreview()">
+        <div class="sp-glow sp-glow-blue"></div>
+        <div class="sp-glow sp-glow-gold"></div>
+        <div class="sp-card" (click)="$event.stopPropagation()">
+          <button type="button" class="sp-preview-close-btn" (click)="closeSplashPreview()" title="Close Preview">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+          <div class="sp-icon-wrap">
+            <div class="sp-orbit"></div>
+            <div class="sp-ring"></div>
+            <div class="sp-badge">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="shieldGradModal" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#2563eb"/>
+                    <stop offset="100%" stop-color="#0f172a"/>
+                  </linearGradient>
+                </defs>
+                <path d="M12 2L3 6.5v5C3 16.64 7.02 21.21 12 22c4.98-.79 9-5.36 9-10.5v-5L12 2z"
+                  fill="url(#shieldGradModal)" stroke="rgba(212,175,55,0.5)" stroke-width="0.4"/>
+                <path d="M9.5 12.5l2 2 3.5-4" stroke="#f59e0b" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+          <div class="sp-flag">
+            <span class="f1"></span>
+            <span class="f2"></span>
+            <span class="f3"></span>
+          </div>
+          <div class="sp-title">{{ landingCopyForm['splash.wordmark'] || 'NTIC Championship' }}</div>
+          <div class="sp-sep"></div>
+          <div class="sp-bar"><div class="sp-bar-fill"></div></div>
+          <div class="sp-chip">
+            <span class="sp-dot"></span>
+            <span>{{ landingCopyForm['splash.status'] || 'Initializing Secure Workspace' }}</span>
+          </div>
+          <div class="sp-preview-hint">
+            Preview Mode · Click anywhere outside or the X to close
+          </div>
+        </div>
       </div>
 
       <div class="cms-form-actions" style="margin-top:16px;">
@@ -5500,11 +5579,11 @@
             </div>
             <div class="ticket-field">
               <span class="ticket-field-label">Phone</span>
-              <span class="ticket-field-value">{{ viewTicketUser?.phone || '+233 24 555 0192' }}</span>
+              <span class="ticket-field-value">{{ viewTicketUser?.phone || 'Not Provided' }}</span>
             </div>
             <div class="ticket-field">
               <span class="ticket-field-label">Organization</span>
-              <span class="ticket-field-value">{{ viewTicketUser?.organization }}</span>
+              <span class="ticket-field-value">{{ viewTicketUser?.organization || 'NTIC Competition' }}</span>
             </div>
             <div class="ticket-field" *ngIf="viewTicketUser?.track">
               <span class="ticket-field-label">Track</span>
@@ -5526,34 +5605,40 @@
       <div class="dispatch-status-container animate-fade-in" style="margin-top: 16px; padding: 12px 16px; background: rgba(16, 185, 129, 0.08); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.2); text-align: left; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
         <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #059669; margin-bottom: 10px; font-size: 14px;">
           <span class="material-symbols-outlined" style="font-size: 18px; color: #059669;">verified</span>
-          <span>Security Token &amp; OTP Dispatched</span>
+          <span>Security Token &amp; Credentials Status</span>
         </div>
         <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; justify-content: space-between; align-items: center;" *ngIf="viewTicketUser?.email">
             <span style="color: var(--on-surface-variant); display: flex; align-items: center; gap: 6px;">
               <span class="material-symbols-outlined" style="font-size: 15px; color: #10b981;">mail</span>
               <span>Email:</span>
             </span>
-            <span style="font-weight: 600; color: var(--on-surface);">Token sent to {{ viewTicketUser?.email }}</span>
+            <span style="font-weight: 600; color: var(--on-surface);">Token dispatched to {{ viewTicketUser?.email }}</span>
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; justify-content: space-between; align-items: center;" *ngIf="viewTicketUser?.phone">
             <span style="color: var(--on-surface-variant); display: flex; align-items: center; gap: 6px;">
               <span class="material-symbols-outlined" style="font-size: 15px; color: #10b981;">sms</span>
               <span>SMS OTP:</span>
             </span>
-            <span style="font-weight: 600; color: var(--on-surface);">Sent to {{ viewTicketUser?.phone || '+233 24 555 0192' }}</span>
+            <span style="font-weight: 600; color: var(--on-surface);">Sent to {{ viewTicketUser?.phone }}</span>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px dashed rgba(16, 185, 129, 0.2); margin-top: 4px;">
             <span style="color: var(--on-surface-variant); font-weight: 600;">Activation OTP:</span>
-            <span style="font-family: monospace; font-size: 14px; background: var(--surface); border: 1px solid rgba(16, 185, 129, 0.3); padding: 1px 6px; border-radius: 4px; color: #059669; font-weight: 700; letter-spacing: 1px;">{{ isMainAdmin(viewTicketUser) ? '••••••' : (viewTicketUser?.otp || '482019') }}</span>
+            <span style="font-family: monospace; font-size: 13.5px; background: var(--surface); border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; color: #059669; font-weight: 700; letter-spacing: 0.5px;">
+              {{ isMainAdmin(viewTicketUser) ? '••••••' : (viewTicketUser?.otp || viewTicketUser?.temporary_password || viewTicketUser?.password || 'Already Activated') }}
+            </span>
           </div>
         </div>
       </div>
 
-      <div class="ticket-modal-actions">
+      <div class="ticket-modal-actions" style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 16px;">
         <button class="btn btn-subtle" *ngIf="!isMainAdmin(viewTicketUser)" (click)="copyTicket(viewTicketUser?.ticket)">
           <span class="material-symbols-outlined">{{ copiedTicket === viewTicketUser?.ticket ? 'check' : 'content_copy' }}</span>
-          {{ copiedTicket === viewTicketUser?.ticket ? 'Copied!' : 'Copy Token' }}
+          {{ copiedTicket === viewTicketUser?.ticket ? 'Copied!' : 'Copy Credentials' }}
+        </button>
+        <button class="btn btn-subtle" *ngIf="!isMainAdmin(viewTicketUser) && viewTicketUser?.id" (click)="resetUserPasswordFromModal(viewTicketUser)" title="Regenerate dynamic temporary OTP for user">
+          <span class="material-symbols-outlined">restart_alt</span>
+          Reset OTP
         </button>
         <button class="btn btn-primary" (click)="closeTicketModal()">Done</button>
       </div>
@@ -5895,6 +5980,30 @@
           <span class="material-symbols-outlined">{{ credentialsModal?.copiedAll ? 'done_all' : 'inventory_2' }}</span>
           <span>{{ credentialsModal?.copiedAll ? 'All Credentials Copied to Clipboard!' : 'Copy Both Credentials (Pass + Code)' }}</span>
         </button>
+      </div>
+
+      <div class="cred-member-list" *ngIf="credentialsModal?.memberCredentials?.length">
+        <div class="cred-member-header">
+          <span class="material-symbols-outlined">group</span>
+          <strong>Student Member Credentials</strong>
+        </div>
+        <div class="cred-member-note">Share these one-time logins with the team members below. Each must change their password on first sign-in.</div>
+        <div class="cred-member-row" *ngFor="let m of credentialsModal?.memberCredentials">
+          <div class="cred-member-id">
+            <span class="cred-member-name">{{ m.name || m.email }}</span>
+            <span class="cred-member-email">{{ m.email }}</span>
+          </div>
+          <code class="cred-code-text cred-member-ticket">{{ m.ticket }}</code>
+          <div class="cred-member-pin">
+            <code class="cred-code-text pin-code">{{ m.temporary_password }}</code>
+          </div>
+        </div>
+        <div class="cred-member-actions">
+          <button class="btn-cred-copy" (click)="copyMemberCredentials()">
+            <span class="material-symbols-outlined icon">content_copy</span>
+            <span>Copy All Member Logins</span>
+          </button>
+        </div>
       </div>
 
       <div class="cred-info-banner" *ngIf="credentialsModal?.extraInfo">

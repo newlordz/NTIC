@@ -1,6 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 import type { JudgeQueue, JudgeHistory, JudgeSubmission } from '../../services/api.service';
 import { ContentService, Competition } from '../../services/content.service';
@@ -44,7 +45,7 @@ export interface TrackImpactMetric {
 @Component({
   selector: 'app-judge',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './judge.component.html',
   styleUrl: './judge.component.scss'
 })

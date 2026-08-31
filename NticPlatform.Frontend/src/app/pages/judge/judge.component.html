@@ -9,9 +9,14 @@
       <h1>Observatory</h1>
       <p>Monitor active competitions, evaluate submission queues, and analyze judges' impact across all championship tracks.</p>
     </div>
-    <button class="jw-btn jw-btn-ghost" (click)="refresh()" [disabled]="loading">
-      <span class="material-symbols-outlined" [class.jw-spin]="loading">refresh</span>{{ loading ? 'Refreshing…' : 'Refresh' }}
-    </button>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <a class="jw-btn jw-btn-ghost" routerLink="/profile-completion" style="text-decoration:none;">
+        <span class="material-symbols-outlined">manage_accounts</span>Profile Settings
+      </a>
+      <button class="jw-btn jw-btn-ghost" (click)="refresh()" [disabled]="loading">
+        <span class="material-symbols-outlined" [class.jw-spin]="loading">refresh</span>{{ loading ? 'Refreshing…' : 'Refresh' }}
+      </button>
+    </div>
   </header>
 
   <!-- Alerts -->

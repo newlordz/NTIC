@@ -8,6 +8,7 @@ import { ThemeService } from '../../services/theme.service';
 import { CurrentUserService } from '../../services/current-user.service';
 import { ApiService } from '../../services/api.service';
 import { FileStorageService } from '../../services/file-storage.service';
+import { DialogService } from '../../services/dialog.service';
 
 @Component({
   selector: 'app-profile-completion',
@@ -25,6 +26,7 @@ export class ProfileCompletionComponent implements OnInit {
   isSaved = false;
   isDraftResumed = false;
   saveError = '';
+  photoError = '';
 
   fieldValidation: Record<string, { status: 'idle' | 'checking' | 'valid' | 'taken' | 'invalid'; message: string }> = {};
   private validationTimers: Record<string, any> = {};
@@ -35,6 +37,7 @@ export class ProfileCompletionComponent implements OnInit {
     public themeService: ThemeService,
     private apiService: ApiService,
     private currentUserService: CurrentUserService,
+    public dialogService: DialogService,
     private fileStorage: FileStorageService
   ) {}
 
@@ -123,31 +126,16 @@ export class ProfileCompletionComponent implements OnInit {
       email: user.email,
       phone: user.phone || '',
       // Judge-specific
-      expertise: resolvedExpertise,
-      experience: '4-7',
-      bio: '',
+      expertise: user.expertise || resolvedExpertise,
+      experience: user.experience || user.experience_level || '4-7',
+      bio: user.bio || '',
       // Sponsor-specific
-      sector: resolvedSector,
-      repName: user.fullName || '',
-      tier: resolvedTier,
+      sector: user.sector || resolvedSector,
+      repName: user.repName || user.fullName || '',
+      tier: user.tier || resolvedTier,
       billingDept: '',
       billingRef: (user as any).billingRef || '',
       billingEmail: user.email || '',
-      // NOTE: cardName / cardNumber / cardExpiry / cardCvv, and the
-      // paymentMethod / bankName / momoNetwork / accountHolderName / chequeNo /
-      // issuingBank / amount fields, used to live here.
-      //
-      // They were removed deliberately. `saveDraft()` spreads this whole object
-      // into localStorage['ntic_drafts'], so a full card number and CVV were
-      // being written to disk in cleartext, readable by any XSS and never
-      // cleared on logout. Storing a CVV is prohibited outright, and none of it
-      // was ever sent anywhere -- no processor, no API -- so the form carried
-      // real cardholder-data risk for zero function.
-      //
-      // If sponsorship payments are needed later, they must go through a
-      // payment provider's hosted fields/redirect so card data never touches
-      // this app, and the amount belongs on a sponsorship record, not on the
-      // user row.
       arenas: {
         'Coding Arena': true,
         'Robotics Arena': true,
@@ -158,31 +146,16 @@ export class ProfileCompletionComponent implements OnInit {
       } as { [key: string]: boolean }
     };
 
-    // Try to restore draft
+    // Try to restore draft ONLY IF the draft exists
     const drafts = JSON.parse(localStorage.getItem('ntic_drafts') || '{}');
     const draft = user.email ? drafts[user.email] : null;
-    if (draft) {
+    if (draft && draft.data) {
       this.isDraftResumed = true;
       this.profileForm = { ...this.profileForm, ...draft.data };
     }
 
-    const rawTier = this.profileForm.tier || user.tier || (user as any).package || '';
-    if (rawTier.includes('Platinum')) this.profileForm.tier = 'Platinum Partner';
-    else if (rawTier.includes('Gold')) this.profileForm.tier = 'Gold Partner';
-    else if (rawTier.includes('Silver')) this.profileForm.tier = 'Silver Partner';
-    else if (rawTier.includes('Bronze')) this.profileForm.tier = 'Bronze Partner';
-    else this.profileForm.tier = 'Gold Partner';
-
-    const rawSector = this.profileForm.sector || (this.currentUser as any).sector || '';
-    if (rawSector.includes('Telecommunication') || rawSector.includes('Telecom')) this.profileForm.sector = 'Telecommunications';
-    else if (rawSector.includes('Energy') || rawSector.includes('Mining')) this.profileForm.sector = 'Energy & Mining';
-    else if (rawSector.includes('Banking') || rawSector.includes('Finance')) this.profileForm.sector = 'Banking & Finance';
-    else if (rawSector.includes('Tech')) this.profileForm.sector = 'Technology';
-    else if (rawSector.includes('Manufacturing')) this.profileForm.sector = 'Manufacturing';
-    else if (rawSector.includes('Education')) this.profileForm.sector = 'Education';
-    else if (rawSector.includes('Health')) this.profileForm.sector = 'Healthcare';
-    else if (rawSector.includes('NGO')) this.profileForm.sector = 'NGO / Development';
-    else this.profileForm.sector = 'Technology';
+    if (user.tier) this.profileForm.tier = user.tier;
+    if (user.sector) this.profileForm.sector = user.sector;
   }
 
   goBack(): void {
@@ -323,6 +296,7 @@ export class ProfileCompletionComponent implements OnInit {
         // Re-read the profile instead so the sidebar, greeting and avatar pick up
         // the new name straight away.
         this.currentUserService.refresh().subscribe();
+        this.dialogService.toast('Profile updated successfully!', 'success');
         this.queueApprovalForReview();
         this.clearDraft();
         this.isSubmitting = false;
@@ -344,30 +318,18 @@ export class ProfileCompletionComponent implements OnInit {
   }
 
   /**
-   * Files the completed profile for admin review.
-   *
-   * Previously this pushed a row into `contentService.pendingApprovals` and called
-   * `saveApprovals()`, which syncs via POST /api/bulk-sync -- an admin-only
-   * endpoint. A judge or sponsor completing onboarding therefore 403'd silently:
-   * the request never reached the admin queue, so nobody knew they had applied.
-   *
-   * POST /api/approvals/mine builds the record server-side from the verified
-   * session, so the applicant's identity and role cannot be forged, and
-   * re-submitting updates the existing pending row instead of stacking
-   * duplicates.
+   * Files the completed profile for admin review only if the user is in pending onboarding.
    */
   private queueApprovalForReview(): void {
     const role = this.currentUser?.role;
     if (role !== 'judge' && role !== 'sponsor' && role !== 'instructor') return;
+    const isPendingOnboarding = this.currentUser?.status === 'pending' || this.currentUser?.organization === '_pending_profile';
+    if (!isPendingOnboarding) return;
 
     this.apiService.submitMyOnboarding().subscribe({
       next: () => { /* queued for review */ },
-      error: (err: any) => {
-        // The profile itself saved fine; only the review request failed. Say so
-        // rather than implying the whole save was lost.
-        this.saveError = err?.status === 400
-          ? ''
-          : 'Your profile was saved, but we could not notify an administrator for review. Please contact support if your account is not activated.';
+      error: () => {
+        // Non-blocking on active accounts
       },
     });
   }
@@ -384,14 +346,14 @@ export class ProfileCompletionComponent implements OnInit {
     if (!files?.length) return;
     const file = files[0];
     if (!file.type.startsWith('image/')) {
-      this.saveError = 'Please select an image file.';
+      this.photoError = 'Please select an image file.';
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      this.saveError = 'Image must be smaller than 5MB.';
+      this.photoError = 'Image must be smaller than 5MB.';
       return;
     }
-    this.saveError = '';
+    this.photoError = '';
     const id = this.fileStorage.generateId();
     await this.fileStorage.store(id, file);
     this.profilePhotoFileId = id;
@@ -403,6 +365,7 @@ export class ProfileCompletionComponent implements OnInit {
       this.fileStorage.remove(this.profilePhotoFileId).catch(() => {});
       this.profilePhotoFileId = null;
       this.profilePhotoPreviewUrl = null;
+      this.photoError = '';
     }
   }
 }

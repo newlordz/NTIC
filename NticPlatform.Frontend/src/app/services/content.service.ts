@@ -612,6 +612,16 @@ export class ContentService {
   }
 
   /**
+   * Merge an edited slice of landing-page copy into the in-memory map and
+   * persist it to durable storage so a cold boot (splash included) can read the
+   * latest values synchronously before the backend fetch resolves.
+   */
+  updateLandingCopy(partial: Record<string, string>): void {
+    this.landingCopy = { ...(this.landingCopy || {}), ...partial };
+    this.saveState('landingCopy', this.landingCopy);
+  }
+
+  /**
    * Stop the background sync channels. Intended for tests and any future teardown
    * of the root service; not called on logout because a later login in the same
    * tab must resume syncing.
@@ -774,6 +784,7 @@ export class ContentService {
       next: (copy: Record<string, string>) => {
         if (copy && Object.keys(copy).length > 0) {
           this.landingCopy = copy;
+          this.saveState('landingCopy', copy);
         }
       },
       error: () => {}
@@ -1033,7 +1044,10 @@ export class ContentService {
       case 'landing_copy':
         this.apiService.getLandingCopy().subscribe({
           next: (copy: Record<string, string>) => {
-            if (copy && Object.keys(copy).length > 0) this.landingCopy = copy;
+            if (copy && Object.keys(copy).length > 0) {
+              this.landingCopy = copy;
+              this.saveState('landingCopy', copy);
+            }
           },
           error: () => {}
         });
@@ -1230,7 +1244,7 @@ export class ContentService {
           'users','ntic_users','pendingApprovals','rejectedApprovals','approvedApprovals',
           'teams','submissions','auditLogs','csrUpdates','competitions',
           'philosophyCards','lmsCourses','lmsModules','lmsMaterials','lmsAssignments',
-          'lmsSubmissions','lmsEnrollments'
+          'lmsSubmissions','lmsEnrollments','landingCopy'
         ];
         keysToClear.forEach(k => {
           try { localStorage.removeItem(k); } catch { /* ignore */ }
@@ -1270,6 +1284,7 @@ export class ContentService {
       this.lmsAssignments = this.loadKeySync('lmsAssignments', this.defaultLmsAssignments);
       this.lmsSubmissions = this.loadKeySync('lmsSubmissions', this.defaultLmsSubmissions);
       this.lmsEnrollments = this.loadKeySync('lmsEnrollments', this.defaultLmsEnrollments);
+      this.landingCopy = this.loadKeySync('landingCopy', {});
     } else {
       this.championshipStories = [...this.defaultStories];
       this.hallOfFameEntries = [...this.defaultHof];

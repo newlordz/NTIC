@@ -954,6 +954,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     pin: string;
     extraInfo?: string;
     nextRoute?: string;
+    memberCredentials?: { name: string; email: string; ticket: string; temporary_password: string }[];
     copiedPass: boolean;
     copiedPin: boolean;
     copiedAll: boolean;
@@ -966,7 +967,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     type: 'success' | 'warning' | 'info' | 'error';
   } | null = null;
 
-  openCredentialsModal(title: string, subtitle: string, accessPass: string, pin: string, extraInfo?: string, nextRoute?: string) {
+  openCredentialsModal(title: string, subtitle: string, accessPass: string, pin: string, extraInfo?: string, nextRoute?: string, memberCredentials?: { name: string; email: string; ticket: string; temporary_password: string }[]) {
     this.credentialsModal = {
       isOpen: true,
       title,
@@ -975,6 +976,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       pin,
       extraInfo,
       nextRoute,
+      memberCredentials,
       copiedPass: false,
       copiedPin: false,
       copiedAll: false
@@ -1012,6 +1014,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
         } catch {}
       });
     }
+  }
+
+  copyMemberCredentials() {
+    if (!this.credentialsModal?.memberCredentials?.length) return;
+    const lines = (this.credentialsModal?.memberCredentials || [])
+      .map(m => {
+        const name = m.name || m.email || 'Member';
+        const otp = m.temporary_password || '';
+        const ticket = m.ticket || '';
+        return `${name} | ${m.email || ''} | Pass: ${ticket} | OTP: ${otp}`;
+      })
+      .join('\n');
+    if (typeof navigator !== 'undefined' && navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(lines).catch(() => {});
+    }
+    this.dialogService.toast('All member logins copied to clipboard', 'success');
   }
 
   proceedFromCredentialsModal() {
@@ -1261,6 +1279,38 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ],
     },
     {
+      title: 'Championship Gateway', icon: 'login',
+      fields: [
+        { key: 'gateway.backHome', label: 'Back Link — Return to Homepage' },
+        { key: 'gateway.accountLogin', label: 'Top Action — Account Login' },
+        { key: 'gateway.brandName', label: 'Brand Name' },
+        { key: 'gateway.brandSub', label: 'Brand Subtitle' },
+        { key: 'gateway.sub', label: 'Section Eyebrow' },
+        { key: 'gateway.heading', label: 'Heading' },
+        { key: 'gateway.lead', label: 'Intro Paragraph', multiline: true },
+        { key: 'gateway.card1.title', label: 'Card 1 (New Registration) — Title' },
+        { key: 'gateway.card1.body', label: 'Card 1 — Body', multiline: true },
+        { key: 'gateway.card1.f1', label: 'Card 1 — Feature 1' },
+        { key: 'gateway.card1.f2', label: 'Card 1 — Feature 2' },
+        { key: 'gateway.card1.f3', label: 'Card 1 — Feature 3' },
+        { key: 'gateway.card1.btn', label: 'Card 1 — Button' },
+        { key: 'gateway.card2.title', label: 'Card 2 (Resume) — Title' },
+        { key: 'gateway.card2.body', label: 'Card 2 — Body', multiline: true },
+        { key: 'gateway.card2.f1', label: 'Card 2 — Feature 1' },
+        { key: 'gateway.card2.f2', label: 'Card 2 — Feature 2' },
+        { key: 'gateway.card2.f3', label: 'Card 2 — Feature 3' },
+        { key: 'gateway.card2.btnResume', label: 'Card 2 — Resume Button' },
+        { key: 'gateway.card2.btnTrack', label: 'Card 2 — Track / Edit Button' },
+      ],
+    },
+    {
+      title: 'Loading Screen', icon: 'progress_activity',
+      fields: [
+        { key: 'splash.wordmark', label: 'Loading Screen Title' },
+        { key: 'splash.status', label: 'Loading Screen Status Text' },
+      ],
+    },
+    {
       title: 'Footer', icon: 'copyright',
       fields: [
         { key: 'footer.heading', label: 'Heading' },
@@ -1385,7 +1435,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.landingCopySaveState = 'saving';
     this.apiService.saveLandingCopy(this.landingCopyForm).subscribe({
       next: () => {
-        this.contentService.landingCopy = { ...this.contentService.landingCopy, ...this.landingCopyForm };
+        this.contentService.updateLandingCopy(this.landingCopyForm);
         this.landingCopySaveState = 'saved';
         this.landingCopyLastSaved = new Date().toLocaleTimeString();
         this.dialogService.toast('Landing page copy published successfully!', 'success');
@@ -1408,7 +1458,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.landingCopySavingSection = section.title;
     this.apiService.saveLandingCopy(payload).subscribe({
       next: () => {
-        this.contentService.landingCopy = { ...this.contentService.landingCopy, ...payload };
+        this.contentService.updateLandingCopy(payload);
         this.landingCopySavingSection = null;
         this.landingCopyLastSaved = new Date().toLocaleTimeString();
         this.dialogService.toast(`"${section.title}" saved successfully!`, 'success');
@@ -1420,6 +1470,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.dialogService.toast(`Failed to save "${section.title}".`, 'error');
       }
     });
+  }
+
+  isSplashPreviewActive = false;
+
+  previewSplash(): void {
+    this.isSplashPreviewActive = true;
+  }
+
+  closeSplashPreview(): void {
+    this.isSplashPreviewActive = false;
   }
 
   get filteredStories(): ChampionshipStory[] {
@@ -4357,18 +4417,43 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   copyTicket(ticket: string): void {
+    if (!ticket) return;
+    const otp = this.viewTicketUser?.otp || this.viewTicketUser?.temporary_password || '';
+    const textToCopy = otp ? `Ticket: ${ticket}\nActivation OTP: ${otp}` : `Ticket: ${ticket}`;
     if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(ticket)
+      navigator.clipboard.writeText(textToCopy)
         .then(() => {
           this.copiedTicket = ticket;
           setTimeout(() => { if (this.copiedTicket === ticket) this.copiedTicket = null; }, 2000);
         })
         .catch(() => {
-          this.fallbackCopyText(ticket);
+          this.fallbackCopyText(textToCopy);
         });
     } else {
-      this.fallbackCopyText(ticket);
+      this.fallbackCopyText(textToCopy);
     }
+  }
+
+  resetUserPasswordFromModal(user: any): void {
+    if (!user || this.isMainAdmin(user)) return;
+    this.apiService.resetUserPassword(user.id).subscribe({
+      next: (res) => {
+        const newOtp = res.otp;
+        if (this.viewTicketUser) {
+          this.viewTicketUser.otp = newOtp;
+          this.viewTicketUser.temporary_password = newOtp;
+        }
+        const users = this.contentService.users.map(u => {
+          if (u.id === user.id) {
+            return { ...u, otp: newOtp, password: newOtp, mustSetPassword: true, passwordChanged: false };
+          }
+          return u;
+        });
+        this.contentService.saveUsers(users);
+        this.dialogService.toast('New Activation OTP generated successfully!', 'success');
+      },
+      error: () => this.dialogService.toast('Failed to generate new OTP.', 'error')
+    });
   }
 
   private fallbackCopyText(text: string): void {
@@ -4513,7 +4598,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.openCredentialsModal(
           `${req.type} Approved!`,
           `Account generated for ${req.entity}. Official credentials ready below:`,
-          ticket, otp, `Access credentials sent to ${req.contact}`
+          ticket, otp, `Access credentials sent to ${req.contact}`,
+          undefined,
+          updateRes?.teams?.member_credentials || []
         );
       } else {
         this.emailService.sendApprovalEmail(req.contact, req.entity, req.entity, req.type, 'N/A', 'N/A');

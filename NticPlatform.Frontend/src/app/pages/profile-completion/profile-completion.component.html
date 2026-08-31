@@ -17,8 +17,8 @@
     <div class="pc-photo-section">
       <label class="photo-label">Profile Photo</label>
       <div class="photo-preview-wrapper">
-        <div class="photo-preview" [style.background-image]="profilePhotoPreviewUrl ? ('url(' + profilePhotoPreviewUrl + ')') : 'none'">
-          <span class="material-symbols-outlined" *ngIf="!profilePhotoFileId">person</span>
+        <div class="photo-preview" [style.backgroundImage]="profilePhotoPreviewUrl ? ('url(' + profilePhotoPreviewUrl + ')') : 'none'">
+          <span class="material-symbols-outlined" *ngIf="!profilePhotoPreviewUrl">person</span>
         </div>
         <div class="photo-actions">
           <input type="file" accept="image/*" (change)="onPhotoSelected($event)" #photoInput hidden>
@@ -29,7 +29,7 @@
             <span class="material-symbols-outlined">delete</span> Remove
           </button>
         </div>
-        <p class="photo-hint" *ngIf="saveError && saveError.includes('image')">{{ saveError }}</p>
+        <p class="photo-hint" *ngIf="photoError">{{ photoError }}</p>
       </div>
     </div>
 
