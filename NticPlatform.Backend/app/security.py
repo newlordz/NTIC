@@ -2,6 +2,7 @@ import hashlib
 import logging
 import os
 import secrets
+import sys
 import time
 from collections import defaultdict
 from fastapi import HTTPException, status, Request
@@ -90,8 +91,8 @@ DISABLED_STATUSES = frozenset({
 # unreachable, so a database outage cannot remove rate limiting entirely.
 _RATE_LIMITS = defaultdict(list)
 
-# Set to False to force the in-process limiter (used by the test suite for speed).
-USE_SHARED_RATE_LIMIT = True
+# Set to False to force the in-process limiter (used by the test suite for speed & isolation).
+USE_SHARED_RATE_LIMIT = False if (os.getenv("POSTGRES_DB", "").endswith("_test") or "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST")) else True
 
 logger = logging.getLogger("ntic.security")
 
