@@ -1784,6 +1784,7 @@ setAuthValue('activeUserEmail', email);
     const id = this.selectedFileIds['schoolLogo']?.[0];
     if (id) {
       this.schoolLogoUrl = await this.fileStorage.getUrl(id);
+      this.cdr?.markForCheck?.();
     }
   }
 
@@ -1791,6 +1792,7 @@ setAuthValue('activeUserEmail', email);
     const id = this.selectedFileIds['judgeLogo']?.[0];
     if (id) {
       this.judgeLogoUrl = await this.fileStorage.getUrl(id);
+      this.cdr?.markForCheck?.();
     }
   }
 
@@ -1798,6 +1800,7 @@ setAuthValue('activeUserEmail', email);
     const id = this.selectedFileIds['sponsorLogo']?.[0];
     if (id) {
       this.sponsorLogoUrl = await this.fileStorage.getUrl(id);
+      this.cdr?.markForCheck?.();
     }
   }
 
@@ -1805,6 +1808,7 @@ setAuthValue('activeUserEmail', email);
     const id = this.selectedFileIds['studentPhoto']?.[0];
     if (id) {
       this.studentPhotoUrl = await this.fileStorage.getUrl(id);
+      this.cdr?.markForCheck?.();
     }
   }
 
@@ -1812,6 +1816,7 @@ setAuthValue('activeUserEmail', email);
     const id = this.selectedFileIds['groupPhoto']?.[0];
     if (id) {
       this.groupPhotoUrl = await this.fileStorage.getUrl(id);
+      this.cdr?.markForCheck?.();
     }
   }
 
@@ -1819,6 +1824,7 @@ setAuthValue('activeUserEmail', email);
     const id = this.selectedFileIds['groupLogo']?.[0];
     if (id) {
       this.groupLogoUrl = await this.fileStorage.getUrl(id);
+      this.cdr?.markForCheck?.();
     }
   }
 
@@ -1828,6 +1834,7 @@ setAuthValue('activeUserEmail', email);
       const memberKeyMap: Record<string, string> = { memberLeadPhoto: 'lead', member2Photo: 'm2', member3Photo: 'm3', member4Photo: 'm4', member5Photo: 'm5' };
       const key = memberKeyMap[field] || 'lead';
       this.memberPhotoUrls[key] = await this.fileStorage.getUrl(id);
+      this.cdr?.markForCheck?.();
     }
   }
 

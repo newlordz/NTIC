@@ -33,30 +33,90 @@ export class FileStorageService {
     });
   }
 
+  private async optimizeImageIfNeeded(file: File): Promise<{ blob: Blob; size: number; mimeType: string }> {
+    if (!file.type || !file.type.startsWith('image/') || file.type.includes('svg')) {
+      return { blob: file, size: file.size, mimeType: file.type || 'application/octet-stream' };
+    }
+
+    // Small files under 150KB don't need downscaling
+    if (file.size <= 150 * 1024) {
+      return { blob: file, size: file.size, mimeType: file.type };
+    }
+
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const maxDim = 1280;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve({ blob: file, size: file.size, mimeType: file.type });
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob && blob.size < file.size) {
+              resolve({ blob, size: blob.size, mimeType: 'image/jpeg' });
+            } else {
+              resolve({ blob: file, size: file.size, mimeType: file.type });
+            }
+          },
+          'image/jpeg',
+          0.82
+        );
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve({ blob: file, size: file.size, mimeType: file.type });
+      };
+      img.src = url;
+    });
+  }
+
   async store(id: string, file: File): Promise<string> {
+    const { blob, size, mimeType } = await this.optimizeImageIfNeeded(file);
     const db = await this.openDb();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(this.storeName, 'readwrite');
       const store = tx.objectStore(this.storeName);
-      store.put({ id, blob: file, name: file.name, type: file.type, size: file.size, uploadedAt: new Date().toISOString() });
+      store.put({ id, blob, name: file.name, type: mimeType, size, uploadedAt: new Date().toISOString() });
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
 
-    // Also sync to server-side Postgres storage immediately
-    await this.uploadToServer(id, file).catch(() => {});
+    // Optimistic non-blocking background server sync: returns ID immediately for instant UI preview!
+    this.uploadToServer(id, file.name, mimeType, size, blob).catch(() => {});
 
     return id;
   }
 
-  private async uploadToServer(id: string, file: File): Promise<void> {
+  private async uploadToServer(id: string, fileName: string, mimeType: string, size: number, blob: Blob): Promise<void> {
     try {
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve, reject) => {
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = reject;
       });
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(blob);
       const dataUrl = await base64Promise;
 
       const apiUrl = (environment.apiUrl || '/api').replace(/\/+$/, '');
@@ -65,9 +125,9 @@ export class FileStorageService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           file_id: id,
-          name: file.name || 'file',
-          mime_type: file.type || 'image/png',
-          size: file.size || 0,
+          name: fileName || 'file',
+          mime_type: mimeType || 'image/jpeg',
+          size: size || 0,
           data_base64: dataUrl
         })
       });
