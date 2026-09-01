@@ -76,6 +76,13 @@ To avoid committing live credentials or overwriting collaborator changes, **ALWA
 
 Use this section to leave short notes, status updates, or handoff messages for collaborators:
 
+- **[2026-09-01 - v1.0.4]**:
+  - **Registration & Team Auto-Staging:** Implemented `autoStageCurrentTeam()` to auto-add in-progress team drafts in Step 3 upon clicking Next, Preview, or Submit. Added real-time Live Preview roster card reflection for draft teams and formatted member summaries.
+  - **Application Editing & Duplicate Availability:** Added `exclude_code` parameter to `GET /api/auth/check-availability` so editing a pending application ignores the applicant's own existing record. Bypassed OTP re-verification for loaded/resumed approvals.
+  - **Public File Uploads & Upload State Feedback:** Whitelisted `/api/files/upload` in public API middleware for anonymous registration uploads. Added reactive `isUploadingFile` state with animated spinning loaders across team member photo uploads, school logos, and accreditation/instructor document cards.
+  - **Instructor Form Document Retention:** Enhanced `loadApprovalIntoForm` to reliably preserve and display attached instructor CVs/certificates/IDs and email verification states across edits.
+  - **Forgot Password Modal Fix:** Injected `ChangeDetectorRef` in `ForgotPasswordComponent` and added `markForCheck()` on async request callbacks to ensure immediate UI transition out of the loading spinner under `OnPush` change detection.
+  - All 508 backend unit tests (`pytest`) and frontend TypeScript typechecks (`tsc`) passing cleanly.
 - **[2026-09-01 - v1.0.3]**:
   - Implemented comprehensive performance optimizations across the full stack:
     - **Frontend:** Applied `ChangeDetectionStrategy.OnPush` across all 16 page components, debounced `saveState()` writes (300ms) with IndexedDB coalescing, removed wasteful `localStorage` dual-write for large collections, enhanced `WsSyncService` with ping/pong timeout handling and visibility auto-reconnect.
