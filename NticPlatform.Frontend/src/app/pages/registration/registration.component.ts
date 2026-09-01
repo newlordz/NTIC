@@ -1385,14 +1385,20 @@ setAuthValue('activeUserEmail', email);
   private verifyChallengeId = '';
 
   isFieldVerified(fieldName: string, currentValue?: string): boolean {
-    if (this.editingApprovalId || this.isDraftResumed) return true;
-    if (!currentValue || !currentValue.trim()) return false;
+    if (this.editingApprovalId && (!currentValue || !currentValue.trim())) {
+      return true;
+    }
+    const cleanCurrent = (currentValue || '').trim();
+    if (!cleanCurrent) return false;
+
     const verifiedVal = this.verifiedValues[fieldName];
-    if (!verifiedVal) return false;
-    const cleanCurrent = (fieldName.toLowerCase().includes('phone') || fieldName.toLowerCase().includes('tel') || fieldName.toLowerCase().includes('contact'))
-      ? this.normalizePhone(currentValue)
-      : currentValue.trim().toLowerCase();
-    return verifiedVal === cleanCurrent;
+    if (!verifiedVal) {
+      return !!this.editingApprovalId;
+    }
+    const normalized = (fieldName.toLowerCase().includes('phone') || fieldName.toLowerCase().includes('tel') || fieldName.toLowerCase().includes('contact'))
+      ? this.normalizePhone(cleanCurrent)
+      : cleanCurrent.toLowerCase();
+    return verifiedVal === normalized;
   }
 
   /** The primary contact email for the active tab, and the field whose OTP
@@ -2624,7 +2630,7 @@ setAuthValue('activeUserEmail', email);
     if (this.activeTab !== 'school') return;
     if (this.teamForm.name?.trim() && this.teamForm.leadName?.trim() && this.teamForm.leadEmail?.trim()) {
       if (this.contentService.isValidEmail(this.teamForm.leadEmail.trim())) {
-        this.addTeam();
+        this.addTeam(true);
       }
     }
   }
@@ -2799,13 +2805,17 @@ setAuthValue('activeUserEmail', email);
     this.memberPhotoUrls = { lead: null, m2: null, m3: null, m4: null, m5: null };
   }
 
-  addTeam(): void {
+  addTeam(silent: boolean = false): void {
     if (!this.teamForm.name?.trim() || !this.teamForm.leadName?.trim() || !this.teamForm.leadEmail?.trim()) {
-      this.showCustomAlert('Please enter team name, Team Lead full name, and Team Lead email address.', 'Validation Error', 'warning');
+      if (!silent) {
+        this.showCustomAlert('Please enter team name, Team Lead full name, and Team Lead email address.', 'Validation Error', 'warning');
+      }
       return;
     }
     if (!this.contentService.isValidEmail(this.teamForm.leadEmail.trim())) {
-      this.showCustomAlert('Please provide a valid email address for the Team Lead.', 'Invalid Email', 'warning');
+      if (!silent) {
+        this.showCustomAlert('Please provide a valid email address for the Team Lead.', 'Invalid Email', 'warning');
+      }
       return;
     }
     const memberPhotoIds: string[] = [];
@@ -2841,13 +2851,16 @@ setAuthValue('activeUserEmail', email);
 
     if (this.editingSchoolTeamIndex !== null && this.editingSchoolTeamIndex >= 0 && this.editingSchoolTeamIndex < this.schoolForm.teams.length) {
       this.schoolForm.teams[this.editingSchoolTeamIndex] = teamData;
-      this.showCustomAlert(`Team "${teamData.name}" has been updated successfully!`, 'Team Updated', 'info');
+      if (!silent) {
+        this.showCustomAlert(`Team "${teamData.name}" has been updated successfully!`, 'Team Updated', 'info');
+      }
       this.editingSchoolTeamIndex = null;
     } else {
       this.schoolForm.teams.push(teamData);
     }
 
     this.clearTeamForm();
+    this.cdr?.markForCheck?.();
   }
 
   removeTeam(index: number): void {

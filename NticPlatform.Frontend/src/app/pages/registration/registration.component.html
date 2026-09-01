@@ -1279,7 +1279,7 @@
                       <span class="roster-track" [class]="t.track?.toLowerCase()">{{ t.track }}</span>
                     </div>
                     <!-- Live Draft Team Preview when user is typing in Step 3 but hasn't clicked Add Team yet -->
-                    <div class="roster-entry" *ngIf="schoolForm.teams.length === 0 && hasDraftTeam()" style="border: 1px dashed var(--primary); background: rgba(0, 63, 135, 0.04);">
+                    <div class="roster-entry" *ngIf="hasDraftTeam() && editingSchoolTeamIndex === null" style="border: 1px dashed var(--primary); background: rgba(0, 63, 135, 0.04);">
                       <div class="roster-avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">
                         <span class="material-symbols-outlined" style="font-size:14px;color:#fff">groups</span>
                       </div>
