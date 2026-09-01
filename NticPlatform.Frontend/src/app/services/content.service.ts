@@ -575,10 +575,15 @@ export class ContentService {
     // times a minute per open admin tab.
     this._syncInterval = setInterval(tick, this.SYNC_INTERVAL_MS);
 
-    // Refresh when the user switches back to this tab
+    // Refresh when the user switches back to this tab (throttled to at most once per 60 seconds)
     if (typeof document !== 'undefined') {
+      let lastVisibilityTick = 0;
       this._visibilityHandler = () => {
-        if (document.visibilityState === 'visible') tick();
+        const now = Date.now();
+        if (document.visibilityState === 'visible' && now - lastVisibilityTick > 60000) {
+          lastVisibilityTick = now;
+          tick();
+        }
       };
       document.addEventListener('visibilitychange', this._visibilityHandler);
     }
