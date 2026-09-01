@@ -75,6 +75,7 @@ export class RegistrationComponent implements OnInit, OnDestroy {
   resendTimer = 0;
   resendInterval: any;
   isDraftResumed = false;
+  isUploadingFile: Record<string, boolean> = {};
 
   rightPanelMode = 'preview'; // 'preview' | 'list'
 
@@ -1703,67 +1704,10 @@ setAuthValue('activeUserEmail', email);
   }
 
   private async processFiles(files: FileList, field: string): Promise<void> {
-    const sizeLimits: Record<string, number> = {
-      schoolLogo: 5 * 1024 * 1024,
-      accredDocs: 10 * 1024 * 1024,
-      instructorDocs: 10 * 1024 * 1024,
-      sponsorLogo: 3 * 1024 * 1024,
-      judgeLogo: 3 * 1024 * 1024,
-      studentPhoto: 10 * 1024 * 1024,
-      groupPhoto: 10 * 1024 * 1024,
-      groupLogo: 10 * 1024 * 1024,
-      memberLeadPhoto: 10 * 1024 * 1024,
-      member2Photo: 10 * 1024 * 1024,
-      member3Photo: 10 * 1024 * 1024,
-      member4Photo: 10 * 1024 * 1024,
-      member5Photo: 10 * 1024 * 1024,
-      openRegPhoto: 2 * 1024 * 1024,
-      openRegDocs: 5 * 1024 * 1024
-    };
-    const maxSize = sizeLimits[field] || 10 * 1024 * 1024;
-    const ids: string[] = [];
-    const names: string[] = [];
-    for (const file of Array.from(files)) {
-      if (file.size > maxSize) {
-        console.warn(`[FileUpload] "${file.name}" size=${file.size} bytes (${(file.size / 1024).toFixed(1)} KB), limit=${maxSize} bytes (${Math.round(maxSize / (1024 * 1024))} MB)`);
-        this.dialogService.toast(`"${file.name}" exceeds the maximum size of ${Math.round(maxSize / (1024 * 1024))}MB.`, 'warning');
-        continue;
-      }
-      const id = this.fileStorage.generateId();
-      await this.fileStorage.store(id, file);
-      ids.push(id);
-      names.push(file.name);
-    }
-    if (ids.length) {
-      this.selectedFileIds[field] = [...(this.selectedFileIds[field] || []), ...ids];
-      this.selectedFileNames[field] = [...(this.selectedFileNames[field] || []), ...names];
-    }
-    this.missingDocsError = '';
-
-    if (field === 'schoolLogo') {
-      this.loadSchoolLogo();
-    } else if (field === 'judgeLogo') {
-      this.loadJudgeLogo();
-    } else if (field === 'sponsorLogo') {
-      this.loadSponsorLogo();
-    } else if (field === 'studentPhoto') {
-      this.loadStudentPhoto();
-    } else if (field === 'groupPhoto') {
-      this.loadGroupPhoto();
-    } else if (field === 'groupLogo') {
-      this.loadGroupLogo();
-    } else if (field.startsWith('member') && field.endsWith('Photo')) {
-      this.loadMemberPhoto(field);
-    } else if (field === 'openRegPhoto') {
-      this.loadOpenRegPhoto();
-    } else if (field === 'openRegDocs') {
-      this.loadOpenRegDoc();
-    }
-  }
-
-  async onFileSelected(event: any, field: string): Promise<void> {
-    const files: FileList = event.target.files;
-    if (files?.length) {
+    if (!files?.length) return;
+    this.isUploadingFile[field] = true;
+    this.cdr?.markForCheck?.();
+    try {
       const sizeLimits: Record<string, number> = {
         schoolLogo: 5 * 1024 * 1024,
         accredDocs: 10 * 1024 * 1024,
@@ -1777,7 +1721,9 @@ setAuthValue('activeUserEmail', email);
         member2Photo: 10 * 1024 * 1024,
         member3Photo: 10 * 1024 * 1024,
         member4Photo: 10 * 1024 * 1024,
-        member5Photo: 10 * 1024 * 1024
+        member5Photo: 10 * 1024 * 1024,
+        openRegPhoto: 2 * 1024 * 1024,
+        openRegDocs: 5 * 1024 * 1024
       };
       const maxSize = sizeLimits[field] || 10 * 1024 * 1024;
       const ids: string[] = [];
@@ -1800,20 +1746,36 @@ setAuthValue('activeUserEmail', email);
       this.missingDocsError = '';
 
       if (field === 'schoolLogo') {
-        this.loadSchoolLogo();
+        await this.loadSchoolLogo();
       } else if (field === 'judgeLogo') {
-        this.loadJudgeLogo();
+        await this.loadJudgeLogo();
       } else if (field === 'sponsorLogo') {
-        this.loadSponsorLogo();
+        await this.loadSponsorLogo();
       } else if (field === 'studentPhoto') {
-        this.loadStudentPhoto();
+        await this.loadStudentPhoto();
       } else if (field === 'groupPhoto') {
-        this.loadGroupPhoto();
+        await this.loadGroupPhoto();
       } else if (field === 'groupLogo') {
-        this.loadGroupLogo();
+        await this.loadGroupLogo();
       } else if (field.startsWith('member') && field.endsWith('Photo')) {
-        this.loadMemberPhoto(field);
+        await this.loadMemberPhoto(field);
+      } else if (field === 'openRegPhoto') {
+        this.loadOpenRegPhoto();
+      } else if (field === 'openRegDocs') {
+        this.loadOpenRegDoc();
       }
+    } catch (err: any) {
+      console.error('[FileUpload] Error processing file:', err);
+    } finally {
+      this.isUploadingFile[field] = false;
+      this.cdr?.markForCheck?.();
+    }
+  }
+
+  async onFileSelected(event: any, field: string): Promise<void> {
+    const files: FileList = event.target.files;
+    if (files?.length) {
+      await this.processFiles(files, field);
     }
     event.target.value = '';
   }
@@ -2308,7 +2270,7 @@ setAuthValue('activeUserEmail', email);
     this.justUpdatedApplication = false;
     this.loadApprovalIntoForm(app);
     this.regState = 'new';
-    this.isDraftResumed = false;
+    this.isDraftResumed = true;
     this.saveRegState();
   }
 
@@ -2318,12 +2280,12 @@ setAuthValue('activeUserEmail', email);
     if (app.type === 'School Registration') {
       this.activeTab = 'school';
       this.schoolForm = {
-        name: app.entity || '',
+        name: d.name || app.entity || '',
         category: d.category || 'Public High School',
         region: d.region || 'Greater Accra',
         district: d.district || '',
-        tel: d.phone || '',
-        email: d.email || '',
+        tel: d.phone || d.tel || '',
+        email: d.email || app.contact || '',
         gps: d.gps || '',
         repName: d.repName || '',
         repEmail: d.repEmail || '',
@@ -2337,18 +2299,20 @@ setAuthValue('activeUserEmail', email);
       this.isDraftResumed = true;
       if (d.email || app.contact) this.verifiedValues['schoolEmail'] = (d.email || app.contact || '').trim().toLowerCase();
       if (d.repEmail) this.verifiedValues['schoolRepEmail'] = d.repEmail.trim().toLowerCase();
-      if (d.phone) this.verifiedValues['schoolTel'] = this.normalizePhone(d.phone);
+      if (d.phone || d.tel) this.verifiedValues['schoolTel'] = this.normalizePhone(d.phone || d.tel);
       if (d.repTel) this.verifiedValues['schoolRepTel'] = this.normalizePhone(d.repTel);
-      this.gpsAddress = d.gpsAddress || '';
+      this.gpsAddress = d.gpsAddress || d.gps || '';
       this.schoolStep = 1;
       this.maxSchoolStepReached = 4;
-      if (d.docs?.length) {
-        this.selectedFileIds['accredDocs'] = d.docs.map((x: string) => x.split('::')[0]);
-        this.selectedFileNames['accredDocs'] = d.docs.map((x: string) => x.split('::')[1] || 'document.pdf');
+      const docs = d.docs || d.accredDocs || d.documents || [];
+      if (docs.length) {
+        this.selectedFileIds['accredDocs'] = docs.map((x: any) => typeof x === 'string' && x.includes('::') ? x.split('::')[0] : (typeof x === 'string' ? x : x.id || 'doc'));
+        this.selectedFileNames['accredDocs'] = docs.map((x: any) => typeof x === 'string' && x.includes('::') ? x.split('::')[1] : (typeof x === 'string' ? x : x.name || 'Accreditation Document'));
       }
-      if (d.logoFileId) {
-        this.selectedFileIds['schoolLogo'] = [d.logoFileId];
-        this.selectedFileNames['schoolLogo'] = ['School Logo'];
+      const logoId = d.logoFileId || d.logo || d.schoolLogo;
+      if (logoId) {
+        this.selectedFileIds['schoolLogo'] = [logoId];
+        this.selectedFileNames['schoolLogo'] = [d.logoFileName || 'School Logo'];
         this.loadSchoolLogo();
       }
     } else if (app.type === 'Team Addition') {

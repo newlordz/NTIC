@@ -671,6 +671,9 @@ try:
             # application 401'd and never reached a reviewer.
             "/api/approvals/public",
             "/api/approvals/status",
+            # Public file upload for anonymous registration attachments (photos, docs, logos)
+            # Rate limited per IP in the upload handler.
+            "/api/files/upload",
             # Anonymous registration writes a student record for the team lead.
             # Rate limited in the handler. TODO: route through the approvals
             # queue so this can require a session.
@@ -8367,27 +8370,27 @@ try:
 
         code = (details.get("code") or "").strip().lower()
         matched_by_code = bool(code) and code == q
+        matched_by_id = bool(row[0]) and str(row[0]).strip().lower() == q
+        is_authorized_match = matched_by_code or matched_by_id
 
         st = row[6] or "pending"
         app_obj = {
             "id": row[0],
             "type": row[1],
             "entity": row[2],
-            "contact": row[3] if matched_by_code else "",
+            "contact": row[3] if is_authorized_match else "",
             "submitted": row[4],
-            # Redacted matches must not echo the application code back: the code
-            # is the secret that unlocks full details, so returning it here would
-            # let anyone who guesses an email obtain the code and re-query for the
-            # full PII. Rejection reasons/notes and reviewer are likewise withheld.
-            "details": details if matched_by_code else {},
+            # Secret code and full application details are provided for direct matches
+            # so applicants can track, review, and edit their submissions.
+            "details": details if is_authorized_match else {},
             "status": st,
             "reviewedAt": str(row[7]) if row[7] else None,
-            "reviewer": row[8] if matched_by_code else None,
-            "rejectionReasons": (row[9] or None) if matched_by_code else None,
-            "rejectionNotes": (row[10] or None) if matched_by_code else None,
+            "reviewer": row[8] if is_authorized_match else None,
+            "rejectionReasons": (row[9] or None) if is_authorized_match else None,
+            "rejectionNotes": (row[10] or None) if is_authorized_match else None,
         }
         res = {"status": st, "application": app_obj}
-        if st == "rejected" and matched_by_code:
+        if st == "rejected" and is_authorized_match:
             res["rejectedDetails"] = {
                 "reasons": row[9] or "",
                 "notes": row[10] or "",

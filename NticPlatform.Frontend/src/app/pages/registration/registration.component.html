@@ -848,11 +848,12 @@
                   <div style="flex-shrink:0;">
                     <div class="member-photo-upload" (click)="schLeadPhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['lead']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'memberLeadPhoto')" style="transition:border-color .2s, background .2s;">
                       <input #schLeadPhotoInput type="file" (change)="onFileSelected($event, 'memberLeadPhoto')" accept=".png,.jpg,.jpeg" style="display:none">
-                      <ng-container *ngIf="!memberPhotoUrls['lead']">
+                      <span *ngIf="isUploadingFile['memberLeadPhoto']" class="material-symbols-outlined spin-refresh" style="font-size:20px; color:var(--primary); animation: spin 1s linear infinite;">sync</span>
+                      <ng-container *ngIf="!isUploadingFile['memberLeadPhoto'] && !memberPhotoUrls['lead']">
                         <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
                       </ng-container>
-                      <img *ngIf="memberPhotoUrls['lead']" [src]="memberPhotoUrls['lead']" alt="Lead photo">
-                      <span *ngIf="memberPhotoUrls['lead']" class="member-photo-remove" (click)="removeFile('memberLeadPhoto', 0); $event.stopPropagation()">
+                      <img *ngIf="!isUploadingFile['memberLeadPhoto'] && memberPhotoUrls['lead']" [src]="memberPhotoUrls['lead']" alt="Lead photo">
+                      <span *ngIf="!isUploadingFile['memberLeadPhoto'] && memberPhotoUrls['lead']" class="member-photo-remove" (click)="removeFile('memberLeadPhoto', 0); $event.stopPropagation()">
                         <span class="material-symbols-outlined" style="font-size:14px;">close</span>
                       </span>
                     </div>
@@ -875,11 +876,12 @@
                   <div style="flex-shrink:0;">
                     <div class="member-photo-upload" (click)="schM2PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m2']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'member2Photo')" style="transition:border-color .2s, background .2s;">
                       <input #schM2PhotoInput type="file" (change)="onFileSelected($event, 'member2Photo')" accept=".png,.jpg,.jpeg" style="display:none">
-                      <ng-container *ngIf="!memberPhotoUrls['m2']">
+                      <span *ngIf="isUploadingFile['member2Photo']" class="material-symbols-outlined spin-refresh" style="font-size:20px; color:var(--primary); animation: spin 1s linear infinite;">sync</span>
+                      <ng-container *ngIf="!isUploadingFile['member2Photo'] && !memberPhotoUrls['m2']">
                         <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
                       </ng-container>
-                      <img *ngIf="memberPhotoUrls['m2']" [src]="memberPhotoUrls['m2']" alt="Member 2 photo">
-                      <span *ngIf="memberPhotoUrls['m2']" class="member-photo-remove" (click)="removeFile('member2Photo', 0); $event.stopPropagation()">
+                      <img *ngIf="!isUploadingFile['member2Photo'] && memberPhotoUrls['m2']" [src]="memberPhotoUrls['m2']" alt="Member 2 photo">
+                      <span *ngIf="!isUploadingFile['member2Photo'] && memberPhotoUrls['m2']" class="member-photo-remove" (click)="removeFile('member2Photo', 0); $event.stopPropagation()">
                         <span class="material-symbols-outlined" style="font-size:14px;">close</span>
                       </span>
                     </div>
@@ -902,11 +904,12 @@
                   <div style="flex-shrink:0;">
                     <div class="member-photo-upload" (click)="schM3PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m3']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'member3Photo')" style="transition:border-color .2s, background .2s;">
                       <input #schM3PhotoInput type="file" (change)="onFileSelected($event, 'member3Photo')" accept=".png,.jpg,.jpeg" style="display:none">
-                      <ng-container *ngIf="!memberPhotoUrls['m3']">
+                      <span *ngIf="isUploadingFile['member3Photo']" class="material-symbols-outlined spin-refresh" style="font-size:20px; color:var(--primary); animation: spin 1s linear infinite;">sync</span>
+                      <ng-container *ngIf="!isUploadingFile['member3Photo'] && !memberPhotoUrls['m3']">
                         <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
                       </ng-container>
-                      <img *ngIf="memberPhotoUrls['m3']" [src]="memberPhotoUrls['m3']" alt="Member 3 photo">
-                      <span *ngIf="memberPhotoUrls['m3']" class="member-photo-remove" (click)="removeFile('member3Photo', 0); $event.stopPropagation()">
+                      <img *ngIf="!isUploadingFile['member3Photo'] && memberPhotoUrls['m3']" [src]="memberPhotoUrls['m3']" alt="Member 3 photo">
+                      <span *ngIf="!isUploadingFile['member3Photo'] && memberPhotoUrls['m3']" class="member-photo-remove" (click)="removeFile('member3Photo', 0); $event.stopPropagation()">
                         <span class="material-symbols-outlined" style="font-size:14px;">close</span>
                       </span>
                     </div>
@@ -929,11 +932,12 @@
                   <div style="flex-shrink:0;">
                     <div class="member-photo-upload" (click)="schM4PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m4']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'member4Photo')" style="transition:border-color .2s, background .2s;">
                       <input #schM4PhotoInput type="file" (change)="onFileSelected($event, 'member4Photo')" accept=".png,.jpg,.jpeg" style="display:none">
-                      <ng-container *ngIf="!memberPhotoUrls['m4']">
+                      <span *ngIf="isUploadingFile['member4Photo']" class="material-symbols-outlined spin-refresh" style="font-size:20px; color:var(--primary); animation: spin 1s linear infinite;">sync</span>
+                      <ng-container *ngIf="!isUploadingFile['member4Photo'] && !memberPhotoUrls['m4']">
                         <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
                       </ng-container>
-                      <img *ngIf="memberPhotoUrls['m4']" [src]="memberPhotoUrls['m4']" alt="Member 4 photo">
-                      <span *ngIf="memberPhotoUrls['m4']" class="member-photo-remove" (click)="removeFile('member4Photo', 0); $event.stopPropagation()">
+                      <img *ngIf="!isUploadingFile['member4Photo'] && memberPhotoUrls['m4']" [src]="memberPhotoUrls['m4']" alt="Member 4 photo">
+                      <span *ngIf="!isUploadingFile['member4Photo'] && memberPhotoUrls['m4']" class="member-photo-remove" (click)="removeFile('member4Photo', 0); $event.stopPropagation()">
                         <span class="material-symbols-outlined" style="font-size:14px;">close</span>
                       </span>
                     </div>
@@ -956,11 +960,12 @@
                   <div style="flex-shrink:0;">
                     <div class="member-photo-upload" (click)="schM5PhotoInput.click()" [class.has-photo]="!!memberPhotoUrls['m5']" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'member5Photo')" style="transition:border-color .2s, background .2s;">
                       <input #schM5PhotoInput type="file" (change)="onFileSelected($event, 'member5Photo')" accept=".png,.jpg,.jpeg" style="display:none">
-                      <ng-container *ngIf="!memberPhotoUrls['m5']">
+                      <span *ngIf="isUploadingFile['member5Photo']" class="material-symbols-outlined spin-refresh" style="font-size:20px; color:var(--primary); animation: spin 1s linear infinite;">sync</span>
+                      <ng-container *ngIf="!isUploadingFile['member5Photo'] && !memberPhotoUrls['m5']">
                         <span class="material-symbols-outlined" style="font-size:20px;">add_a_photo</span>
                       </ng-container>
-                      <img *ngIf="memberPhotoUrls['m5']" [src]="memberPhotoUrls['m5']" alt="Member 5 photo">
-                      <span *ngIf="memberPhotoUrls['m5']" class="member-photo-remove" (click)="removeFile('member5Photo', 0); $event.stopPropagation()">
+                      <img *ngIf="!isUploadingFile['member5Photo'] && memberPhotoUrls['m5']" [src]="memberPhotoUrls['m5']" alt="Member 5 photo">
+                      <span *ngIf="!isUploadingFile['member5Photo'] && memberPhotoUrls['m5']" class="member-photo-remove" (click)="removeFile('member5Photo', 0); $event.stopPropagation()">
                         <span class="material-symbols-outlined" style="font-size:14px;">close</span>
                       </span>
                     </div>
@@ -1073,29 +1078,84 @@
           <!-- Step 4: Accreditation & Uploads -->
           <div *ngIf="schoolStep === 4" class="step-content-pane fade-in">
             <div class="form-group">
-              <label class="form-label">School Logo</label>
-              <div class="upload-zone" (click)="schoolLogoInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'schoolLogo')" style="transition:border-color .2s, background .2s;">
-                <span class="material-symbols-outlined upload-icon">cloud_upload</span>
-                <p *ngIf="!selectedFileNames['schoolLogo']?.length">Drag & drop or <strong>Browse</strong></p>
-                <div *ngIf="selectedFileNames['schoolLogo']?.length" style="display:flex;align-items:center;gap:8px;">
-                  <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['schoolLogo'][0] }}</span>
-                  <span class="material-symbols-outlined" (click)="removeFile('schoolLogo', 0); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);">close</span>
-                </div>
-                <span>PNG, JPG (Max 5MB)</span>
+              <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>School Logo</span>
+                <span *ngIf="schoolLogoUrl || selectedFileNames['schoolLogo']?.length" class="badge success" style="font-size:11px; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
+                  <span class="material-symbols-outlined" style="font-size:13px;">check_circle</span> Logo Attached
+                </span>
+              </label>
+
+              <!-- Uploading State -->
+              <div *ngIf="isUploadingFile['schoolLogo']" class="upload-zone" style="background: rgba(0, 63, 135, 0.04); border: 1.5px dashed var(--primary); padding: 24px; text-align: center;">
+                <span class="material-symbols-outlined spin-refresh" style="font-size:32px; color:var(--primary); animation: spin 1s linear infinite;">sync</span>
+                <p style="margin: 8px 0 0; font-weight: 600; color: var(--primary);">Uploading school logo...</p>
               </div>
-              <input #schoolLogoInput type="file" (change)="onFileSelected($event, 'schoolLogo')" accept=".png,.jpg,.jpeg" style="display:none">
+
+              <!-- Preview State when Logo is Attached -->
+              <div *ngIf="!isUploadingFile['schoolLogo'] && (schoolLogoUrl || selectedFileNames['schoolLogo']?.length)" class="logo-preview-card" style="display:flex; align-items:center; gap:16px; padding:12px 16px; background:var(--surface-container-lowest, #fff); border:1px solid var(--outline-variant); border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.04); margin-bottom:12px;">
+                <div style="width:64px; height:64px; border-radius:8px; overflow:hidden; border:1px solid rgba(0,0,0,0.08); background:#f8fafc; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <img *ngIf="schoolLogoUrl" [src]="schoolLogoUrl" alt="School logo preview" style="width:100%; height:100%; object-fit:contain;">
+                  <span *ngIf="!schoolLogoUrl" class="material-symbols-outlined" style="font-size:32px; color:var(--primary);">image</span>
+                </div>
+                <div style="flex:1; min-width:0;">
+                  <strong style="display:block; font-size:13px; color:var(--on-surface); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">{{ selectedFileNames['schoolLogo']?.[0] || schoolForm.name + ' Logo' }}</strong>
+                  <span style="font-size:11.5px; color:var(--on-surface-variant); display:block; margin-top:2px;">Official Institution Emblem</span>
+                </div>
+                <div style="display:flex; gap:8px;">
+                  <button type="button" class="btn btn-subtle btn-sm" (click)="schoolLogoInput.click()" style="font-size:12px; padding:6px 10px;">
+                    <span class="material-symbols-outlined" style="font-size:16px;">cached</span> Change
+                  </button>
+                  <button type="button" class="btn btn-subtle btn-sm" (click)="removeFile('schoolLogo', 0)" style="font-size:12px; padding:6px 10px; color:var(--error);" title="Remove Logo">
+                    <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Empty State Upload Zone -->
+              <div *ngIf="!isUploadingFile['schoolLogo'] && !schoolLogoUrl && !selectedFileNames['schoolLogo']?.length" class="upload-zone" (click)="schoolLogoInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'schoolLogo')" style="transition:border-color .2s, background .2s;">
+                <span class="material-symbols-outlined upload-icon">cloud_upload</span>
+                <p>Drag & drop or <strong>Browse</strong></p>
+                <span>PNG, JPG, WEBP (Max 5MB)</span>
+              </div>
+              <input #schoolLogoInput type="file" (change)="onFileSelected($event, 'schoolLogo')" accept=".png,.jpg,.jpeg,.webp" style="display:none">
             </div>
+
             <div class="form-group">
-              <label class="form-label">Accreditation Documents *</label>
+              <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>Accreditation Documents *</span>
+                <span *ngIf="selectedFileNames['accredDocs']?.length || selectedFileIds['accredDocs']?.length" class="badge success" style="font-size:11px; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
+                  <span class="material-symbols-outlined" style="font-size:13px;">verified</span> {{ (selectedFileNames['accredDocs']?.length || selectedFileIds['accredDocs']?.length) }} Document(s) Attached
+                </span>
+              </label>
+
+              <!-- Uploading State -->
+              <div *ngIf="isUploadingFile['accredDocs']" class="upload-zone" style="background: rgba(0, 63, 135, 0.04); border: 1.5px dashed var(--primary); padding: 24px; text-align: center; margin-bottom:12px;">
+                <span class="material-symbols-outlined spin-refresh" style="font-size:32px; color:var(--primary); animation: spin 1s linear infinite;">sync</span>
+                <p style="margin: 8px 0 0; font-weight: 600; color: var(--primary);">Uploading document(s)...</p>
+              </div>
+
+              <!-- Attached Documents List -->
+              <div *ngIf="selectedFileNames['accredDocs']?.length || selectedFileIds['accredDocs']?.length" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
+                <div *ngFor="let name of (selectedFileNames['accredDocs'] || selectedFileIds['accredDocs']); let i = index" style="display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--surface-container-lowest, #fff); border:1px solid var(--outline-variant); border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.03);">
+                  <div style="width:36px; height:36px; border-radius:8px; background:rgba(0,63,135,0.08); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <span class="material-symbols-outlined" style="font-size:20px; color:var(--primary);">description</span>
+                  </div>
+                  <div style="flex:1; min-width:0;">
+                    <strong style="display:block; font-size:12.5px; color:var(--on-surface); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">{{ name }}</strong>
+                    <span style="font-size:11px; color:#10b981; display:flex; align-items:center; gap:3px; margin-top:2px;">
+                      <span class="material-symbols-outlined" style="font-size:13px;">check_circle</span> Verified & Attached
+                    </span>
+                  </div>
+                  <button type="button" class="btn btn-subtle btn-sm" (click)="removeFile('accredDocs', i); $event.stopPropagation()" style="padding:4px; color:var(--error);" title="Remove Document">
+                    <span class="material-symbols-outlined" style="font-size:18px;">close</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Upload Zone (Add More / Initial Upload) -->
               <div class="upload-zone" (click)="accredInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'accredDocs')" style="transition:border-color .2s, background .2s;">
-                <span class="material-symbols-outlined upload-icon">folder_open</span>
-                <p *ngIf="!selectedFileNames['accredDocs']?.length">Registration Certificate, Accreditation Documents</p>
-                <ul *ngIf="selectedFileNames['accredDocs']?.length" style="margin:0;padding:0;list-style:none;text-align:left;">
-                  <li *ngFor="let name of selectedFileNames['accredDocs']; let i = index" style="display:flex;align-items:center;gap:8px;color:var(--primary);font-weight:600;">
-                    {{ name }}
-                    <span class="material-symbols-outlined" (click)="removeFile('accredDocs', i); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);margin-left:auto;">close</span>
-                  </li>
-                </ul>
+                <span class="material-symbols-outlined upload-icon">{{ (selectedFileNames['accredDocs']?.length || selectedFileIds['accredDocs']?.length) ? 'add_circle' : 'folder_open' }}</span>
+                <p>{{ (selectedFileNames['accredDocs']?.length || selectedFileIds['accredDocs']?.length) ? 'Add more documents or accreditation certificates' : 'Registration Certificate, Accreditation Documents' }}</p>
                 <span>PDF, Word, Images &amp; Documents (Max 10MB each)</span>
               </div>
               <input #accredInput type="file" multiple (change)="onFileSelected($event, 'accredDocs')" accept=".pdf,.doc,.docx,.odt,.rtf,.txt,.png,.jpg,.jpeg,.webp,.zip,.rar,.xls,.xlsx,.ppt,.pptx" style="display:none">
