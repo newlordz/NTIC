@@ -1150,8 +1150,12 @@ login(email: string, password: string): Observable<any> {
     return this.http.patch(this.apiUrl + '/schools/' + id, payload);
   }
 
-  getUsers(): Observable<any[]> {
-    return this.http.get<any[]>(this.apiUrl + '/users');
+  getUsers(updatedSince?: string): Observable<any[]> {
+    let url = this.apiUrl + '/users';
+    if (updatedSince) {
+      url += '?updated_since=' + encodeURIComponent(updatedSince);
+    }
+    return this.http.get<any[]>(url);
   }
 
   getUsersCount(): Observable<{ total: number }> {
@@ -1329,13 +1333,14 @@ login(email: string, password: string): Observable<any> {
     return this.http.delete(this.apiUrl + '/news/' + id);
   }
 
-  getAuditLogs(params?: { limit?: number; category?: string; usr?: string; q?: string }): Observable<any[]> {
+  getAuditLogs(params?: { limit?: number; category?: string; usr?: string; q?: string; before_id?: number }): Observable<any[]> {
     let url = this.apiUrl + '/audit-logs';
     if (params) {
       const q = new URLSearchParams();
       if (params.limit) q.set('limit', String(params.limit));
       if (params.category && params.category !== 'all') q.set('category', params.category);
       if (params.usr && params.usr !== 'all') q.set('usr', params.usr);
+      if (params.before_id) q.set('before_id', String(params.before_id));
       if (params.q && params.q.trim()) q.set('q', params.q.trim());
       const str = q.toString();
       if (str) url += '?' + str;

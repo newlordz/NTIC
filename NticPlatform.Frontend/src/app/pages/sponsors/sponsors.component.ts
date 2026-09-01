@@ -1,5 +1,5 @@
 import { getAuthValue } from '../../services/session.util';
-import { Component, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService, SponsorPayment, User } from '../../services/content.service';
@@ -12,7 +12,8 @@ import { CurrentUserService } from '../../services/current-user.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './sponsors.component.html',
-  styleUrl: './sponsors.component.scss'
+  styleUrl: './sponsors.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SponsorsComponent implements OnInit {
   sponsorAvatar$ = this.currentUser.avatar$();
@@ -22,7 +23,7 @@ export class SponsorsComponent implements OnInit {
     public dialogService: DialogService,
     public apiService: ApiService,
     public currentUser: CurrentUserService,
-  ) {}
+  private cdr: ChangeDetectorRef) {}
   isEditProfileModalOpen = false;
   profileEditForm = {
     organization: '',
@@ -55,6 +56,7 @@ export class SponsorsComponent implements OnInit {
     this.currentUser.ensureLoaded().subscribe(() => {
       this.loadSponsorData();
     });
+    this.cdr.markForCheck();
   }
 
   openEditProfileModal(): void {

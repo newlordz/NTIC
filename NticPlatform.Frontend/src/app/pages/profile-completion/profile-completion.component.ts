@@ -1,5 +1,5 @@
 import { getAuthValue } from '../../services/session.util';
-import { Component, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -15,7 +15,8 @@ import { DialogService } from '../../services/dialog.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './profile-completion.component.html',
-  styleUrls: ['./profile-completion.component.scss']
+  styleUrls: ['./profile-completion.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProfileCompletionComponent implements OnInit {
   currentUser: User | null = null;
@@ -39,7 +40,7 @@ export class ProfileCompletionComponent implements OnInit {
     private currentUserService: CurrentUserService,
     public dialogService: DialogService,
     private fileStorage: FileStorageService
-  ) {}
+  , private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     if (!getAuthValue('activeRoleId')) {
@@ -90,6 +91,7 @@ export class ProfileCompletionComponent implements OnInit {
         } as any);
       }
     });
+    this.cdr.markForCheck();
   }
 
   private applyProfile(user: any): void {

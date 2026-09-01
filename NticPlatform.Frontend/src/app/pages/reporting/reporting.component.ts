@@ -1,5 +1,5 @@
 import { getAuthValue } from '../../services/session.util';
-import { Component, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService, Competition, Team } from '../../services/content.service';
@@ -10,7 +10,8 @@ import { TimeAgoPipe } from '../../services/time-ago.pipe';
   standalone: true,
   imports: [CommonModule, TitleCasePipe, FormsModule, TimeAgoPipe],
   templateUrl: './reporting.component.html',
-  styleUrl: './reporting.component.scss'
+  styleUrl: './reporting.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReportingComponent implements OnInit {
   activeTab = 'overview';
@@ -38,7 +39,7 @@ export class ReportingComponent implements OnInit {
    */
   selectedCycleId = '';
 
-  constructor(public contentService: ContentService) {}
+  constructor(public contentService: ContentService, private cdr: ChangeDetectorRef) {}
 
   /** Cycles offered in the scope picker, newest first. */
   get cycleOptions(): Competition[] {
@@ -79,6 +80,7 @@ export class ReportingComponent implements OnInit {
     }
 
     this.loadRoleData();
+    this.cdr.markForCheck();
   }
 
   loadRoleData(): void {

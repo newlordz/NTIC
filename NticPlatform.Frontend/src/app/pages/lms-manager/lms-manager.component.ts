@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -27,7 +27,8 @@ export interface PendingModerationItem {
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './lms-manager.component.html',
-  styleUrls: ['./lms-manager.component.scss']
+  styleUrls: ['./lms-manager.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LmsManagerComponent implements OnInit {
   activeTab: 'approvals' | 'courses' | 'modules' | 'materials' | 'assignments' | 'students' = 'courses';
@@ -90,10 +91,11 @@ export class LmsManagerComponent implements OnInit {
     public contentService: ContentService,
     private dialogService: DialogService,
     private apiService: ApiService
-  ) {}
+  , private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.reload();
+    this.cdr.markForCheck();
   }
 
   /** Reloads everything this page shows from the server. */

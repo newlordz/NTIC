@@ -427,6 +427,8 @@ export class ContentService {
    * this is only a slow safety net for when the socket silently drops.
    */
   private readonly SYNC_INTERVAL_MS = 5 * 60 * 1000;
+  // Debounce timers for large-collection IndexedDB writes (avoids blocking main thread)
+  private readonly _saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
   // ── Championship Stories ─────────────────────────────────────
   championshipStories: ChampionshipStory[] = [];
   
@@ -689,32 +691,113 @@ export class ContentService {
       return;
     }
 
-    // Users -- replace entirely from backend (source of truth)
-    this.apiService.getUsers().subscribe({
-      next: (backendUsers: any[]) => {
-        const total = backendUsers ? backendUsers.length : 0;
-        if (total > 0) {
-          const mapped: User[] = backendUsers.map((u: any) => ({
-            id: u.id,
-            email: u.email,
-            fullName: u.full_name || 'Unknown',
-            phone: u.phone || '',
-            otp: '',
-            organization: u.organization || '',
-            role: u.role || 'student',
-            ticket: u.ticket || '',
-            status: u.status || 'Active',
-            registeredAt: u.created_at || '',
-            lastLogin: ''
-          }));
-          this.users = mapped;
-          this.saveState('users', mapped);
-        }
-        this.userCount = total;
-        this.saveState('userCount', total);
-      },
-      error: () => console.log('Backend users fallback to local cache')
-    });
+    const token = getAuthValue('activeUserToken');
+    const role = (getAuthValue('activeRoleId') || '').toLowerCase();
+    const isAdmin = role === 'admin' || role === 'super_admin';
+    const canViewApprovals = isAdmin || ['support_admin', 'school_admin', 'reviewer'].includes(role);
+
+    // ── 1. Protected Admin collections (Admin/Super Admin only) ──
+    if (token && isAdmin) {
+      // Users -- replace entirely from backend (source of truth)
+      this.apiService.getUsers().subscribe({
+        next: (backendUsers: any[]) => {
+          const total = backendUsers ? backendUsers.length : 0;
+          if (total > 0) {
+            const mapped: User[] = backendUsers.map((u: any) => ({
+              id: u.id,
+              email: u.email,
+              fullName: u.full_name || 'Unknown',
+              phone: u.phone || '',
+              otp: '',
+              organization: u.organization || '',
+              role: u.role || 'student',
+              ticket: u.ticket || '',
+              status: u.status || 'Active',
+              registeredAt: u.created_at || '',
+              lastLogin: ''
+            }));
+            this.users = mapped;
+            this.saveState('users', mapped);
+          }
+          this.userCount = total;
+          this.saveState('userCount', total);
+        },
+        error: () => console.log('Backend users fallback to local cache')
+      });
+
+      this.fetchAuditLogsFromBackend();
+    }
+
+    // ── 2. Approval collections (Admin & Reviewer/Support/SchoolAdmin) ──
+    if (token && canViewApprovals) {
+      this.apiService.getApprovals().subscribe({
+        next: (backendApprovals: any[]) => {
+          if (backendApprovals) {
+            const pending: any[] = [];
+            const approved: any[] = [];
+            const rejected: any[] = [];
+            backendApprovals.forEach((a: any) => {
+              const mapped = {
+                id: a.id, type: a.type, entity: a.entity, contact: a.contact,
+                submitted: a.submitted, details: a.details || {},
+                reviewedAt: a.reviewedAt, reviewer: a.reviewer,
+                rejectionReasons: a.rejectionReasons, rejectionNotes: a.rejectionNotes
+              };
+              if (a.status === 'pending') pending.push(mapped);
+              else if (a.status === 'approved') approved.push(mapped);
+              else if (a.status === 'rejected') rejected.push(mapped);
+            });
+            this.pendingApprovals = pending;
+            this.saveState('pendingApprovals', pending);
+            this.approvedApprovals = approved;
+            this.saveState('approvedApprovals', approved);
+            this.rejectedApprovals = rejected;
+            this.saveState('rejectedApprovals', rejected);
+          }
+        },
+        error: () => {}
+      });
+    }
+
+    // ── 3. Authenticated User collections (Any logged-in user) ──
+    if (token) {
+      this.apiService.getTeams().subscribe({
+        next: (teams: any[]) => {
+          if (Array.isArray(teams)) {
+            const merged = this.mergeTeams(teams);
+            this.teams = merged;
+            this.saveState('teams', merged);
+          }
+        },
+        error: (e: any) => console.log('Backend teams fallback to local cache')
+      });
+
+      this.apiService.getSubmissions().subscribe({
+        next: (subs: any[]) => {
+          if (Array.isArray(subs)) {
+            const merged = this.mergeSubmissions(subs);
+            this.submissions = merged;
+            this.saveState('submissions', merged);
+          }
+        },
+        error: (e: any) => console.log('Backend submissions fallback to local cache')
+      });
+
+      this.apiService.getLmsCourses().subscribe({
+        next: (courses: any[]) => {
+          if (courses && courses.length > 0) {
+            const merged = this.mergeLmsCourses(courses);
+            if (merged.length > 0) {
+              this.lmsCourses = merged;
+              this.saveState('lmsCourses', merged);
+            }
+          }
+        },
+        error: (e: any) => console.log('Backend LMS fallback to local cache')
+      });
+    }
+
+    // ── 4. Public collections (Always fetched) ──
     this.apiService.getEvents().subscribe({
       next: (events: any) => {
         if (events && events.length > 0) this.upcomingEvents = events;
@@ -804,28 +887,6 @@ export class ContentService {
       error: (e: any) => console.log('Backend competitions fallback to local cache')
     });
 
-    this.apiService.getTeams().subscribe({
-      next: (teams: any[]) => {
-        if (Array.isArray(teams)) {
-          const merged = this.mergeTeams(teams);
-          this.teams = merged;
-          this.saveState('teams', merged);
-        }
-      },
-      error: (e: any) => console.log('Backend teams fallback to local cache')
-    });
-
-    this.apiService.getSubmissions().subscribe({
-      next: (subs: any[]) => {
-        if (Array.isArray(subs)) {
-          const merged = this.mergeSubmissions(subs);
-          this.submissions = merged;
-          this.saveState('submissions', merged);
-        }
-      },
-      error: (e: any) => console.log('Backend submissions fallback to local cache')
-    });
-
     this.apiService.getSchools().subscribe({
       next: (schools: any[]) => {
         if (schools && schools.length > 0) {
@@ -877,55 +938,6 @@ export class ContentService {
       },
       error: (e: any) => console.log('Backend news fallback to local cache')
     });
-
-    this.fetchAuditLogsFromBackend();
-
-    this.apiService.getLmsCourses().subscribe({
-      next: (courses: any[]) => {
-        if (courses && courses.length > 0) {
-          const merged = this.mergeLmsCourses(courses);
-          if (merged.length > 0) {
-            this.lmsCourses = merged;
-            this.saveState('lmsCourses', merged);
-          }
-        }
-      },
-      error: (e: any) => console.log('Backend LMS fallback to local cache')
-    });
-
-    this.apiService.getApprovals().subscribe({
-      next: (backendApprovals: any[]) => {
-        if (backendApprovals) {
-          const pending: any[] = [];
-          const approved: any[] = [];
-          const rejected: any[] = [];
-          backendApprovals.forEach((a: any) => {
-            const mapped = {
-              id: a.id, type: a.type, entity: a.entity, contact: a.contact,
-              submitted: a.submitted, details: a.details || {},
-              reviewedAt: a.reviewedAt, reviewer: a.reviewer,
-              rejectionReasons: a.rejectionReasons, rejectionNotes: a.rejectionNotes
-            };
-            if (a.status === 'pending') pending.push(mapped);
-            else if (a.status === 'approved') approved.push(mapped);
-            else if (a.status === 'rejected') rejected.push(mapped);
-          });
-          this.pendingApprovals = pending;
-          this.saveState('pendingApprovals', pending);
-          this.approvedApprovals = approved;
-          this.saveState('approvedApprovals', approved);
-          this.rejectedApprovals = rejected;
-          this.saveState('rejectedApprovals', rejected);
-        }
-      },
-      error: () => {}
-    });
-
-    // NOTE: a second getUsers() call lived here. It re-fetched the full user
-    // list and appended any ids missing from `this.users` - but the first
-    // getUsers() above already REPLACES `this.users` with the complete backend
-    // list, so this second request was both redundant and had conflicting merge
-    // semantics. Removed.
   }
 
   /**
@@ -936,8 +948,14 @@ export class ContentService {
    * full reload so a future backend addition cannot leave the UI stale.
    */
   private reloadCollection(collection: string): void {
+    const token = getAuthValue('activeUserToken');
+    const role = (getAuthValue('activeRoleId') || '').toLowerCase();
+    const isAdmin = role === 'admin' || role === 'super_admin';
+    const canViewApprovals = isAdmin || ['support_admin', 'school_admin', 'reviewer'].includes(role);
+
     switch (collection) {
       case 'users': {
+        if (!token || !isAdmin) return;
         this.apiService.getUsers().subscribe({
           next: (backendUsers: any[]) => {
             const total = backendUsers ? backendUsers.length : 0;
@@ -966,6 +984,7 @@ export class ContentService {
         return;
       }
       case 'audit_logs':
+        if (!token || !isAdmin) return;
         this.fetchAuditLogsFromBackend();
         return;
       case 'competitions':
@@ -981,6 +1000,7 @@ export class ContentService {
         });
         return;
       case 'teams':
+        if (!token) return;
         this.apiService.getTeams().subscribe({
           next: (teams: any[]) => {
             if (Array.isArray(teams)) {
@@ -993,6 +1013,7 @@ export class ContentService {
         });
         return;
       case 'submissions':
+        if (!token) return;
         this.apiService.getSubmissions().subscribe({
           next: (subs: any[]) => {
             if (Array.isArray(subs)) {
@@ -1021,6 +1042,7 @@ export class ContentService {
         });
         return;
       case 'approvals':
+        if (!token || !canViewApprovals) return;
         this.apiService.getApprovals().subscribe({
           next: (backendApprovals: any[]) => {
             if (!backendApprovals) return;
@@ -1381,18 +1403,22 @@ export class ContentService {
   }
 
   private saveState(key: string, data: any): void {
-    const json = JSON.stringify(data);
-    const isLargeCollection = ['users', 'pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs'].includes(key);
+    const LARGE_KEYS = ['users', 'pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs'];
 
-    if (isLargeCollection) {
-      // Use IndexedDB for large collections -- no size limit
-      this.dataStorage.set(key, data).catch(() => {});
-      // Also write to localStorage as fallback (may fail silently for large data)
-      try { localStorage.setItem(key, json); } catch { /* quota exceeded, IndexedDB has it */ }
+    if (LARGE_KEYS.includes(key)) {
+      // Debounce IndexedDB writes — large collections can be 200KB+.
+      // Serialising synchronously on the main thread causes frame drops; batching
+      // within a 300 ms window collapses rapid successive updates into one write.
+      clearTimeout(this._saveTimers.get(key));
+      this._saveTimers.set(key, setTimeout(() => {
+        this.dataStorage.set(key, data).catch(() => {});
+        // ← localStorage fallback removed: QuotaExceededError fires silently every time
+        //   for these payload sizes, wasting a full JSON.stringify for nothing.
+      }, 300));
     } else {
-      // Small data -- localStorage is fine
+      // Small data — localStorage is fine, write immediately
       if (typeof window !== 'undefined' && window.localStorage) {
-        try { localStorage.setItem(key, json); } catch { /* ignore */ }
+        try { localStorage.setItem(key, JSON.stringify(data)); } catch { /* ignore */ }
       }
     }
   }
@@ -1948,8 +1974,16 @@ export class ContentService {
     }).subscribe({ error: () => {} });
   }
 
-  fetchAuditLogsFromBackend(): void {
-    this.apiService.getAuditLogs().subscribe({
+  fetchAuditLogsFromBackend(params?: { limit?: number; before_id?: number; append?: boolean }): void {
+    const token = getAuthValue('activeUserToken');
+    const role = (getAuthValue('activeRoleId') || '').toLowerCase();
+    if (!token || (role !== 'admin' && role !== 'super_admin')) {
+      return;
+    }
+    const limit = params?.limit || 200;
+    const before_id = params?.before_id;
+    const append = params?.append ?? false;
+    this.apiService.getAuditLogs({ limit, before_id }).subscribe({
       next: (logs: any[]) => {
         if (Array.isArray(logs)) {
           const mapped = logs.map(l => ({
@@ -1961,7 +1995,11 @@ export class ContentService {
             ip: l.ip || '',
             client: l.client || ''
           }));
-          this.auditLogs = this.mergeAndSortAuditLogs(mapped);
+          if (append) {
+            this.auditLogs = this.mergeAndSortAuditLogs([...this.auditLogs, ...mapped]);
+          } else {
+            this.auditLogs = this.mergeAndSortAuditLogs(mapped);
+          }
           this.saveState('auditLogs', this.auditLogs);
           this.auditLogs$.next(this.auditLogs);
         }

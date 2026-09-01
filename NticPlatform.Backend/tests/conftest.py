@@ -27,6 +27,7 @@ os.environ["NTIC_ADMIN_PASSWORD"] = ADMIN_PASSWORD
 
 import pytest
 import psycopg2
+import psycopg2.extensions
 from fastapi.testclient import TestClient
 
 from app.config import settings
@@ -81,6 +82,7 @@ def _reset_rate_limits():
 
 @pytest.fixture(scope="session")
 def client():
+    assert app is not None, "FastAPI app instance is None"
     with TestClient(app) as c:
         yield c
 

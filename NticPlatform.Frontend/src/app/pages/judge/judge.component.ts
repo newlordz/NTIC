@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -47,7 +47,8 @@ export interface TrackImpactMetric {
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './judge.component.html',
-  styleUrl: './judge.component.scss'
+  styleUrl: './judge.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class JudgeComponent implements OnInit {
   queue: JudgeQueue | null = null;
@@ -141,6 +142,7 @@ export class JudgeComponent implements OnInit {
 
   ngOnInit(): void {
     this.refresh();
+    this.cdr.markForCheck();
   }
 
   get judgeName(): string {

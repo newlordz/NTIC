@@ -1,5 +1,5 @@
 import { getAuthValue } from '../../services/session.util';
-import { Component, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -12,7 +12,8 @@ import { CYCLE_STATUSES, advanceLabel, advanceIcon } from '../../services/compet
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './admin-competitions.component.html',
-  styleUrl: './admin-competitions.component.scss'
+  styleUrl: './admin-competitions.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminCompetitionsComponent implements OnInit {
   competitions: Competition[] = [];
@@ -140,7 +141,7 @@ export class AdminCompetitionsComponent implements OnInit {
     return !!comp.deadline && (comp.status === 'active' || comp.status === 'registration');
   }
 
-  constructor(public contentService: ContentService, public themeService: ThemeService, private router: Router) {}
+  constructor(public contentService: ContentService, public themeService: ThemeService, private router: Router, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     const role = getAuthValue('activeRoleId') || '';
@@ -149,6 +150,7 @@ export class AdminCompetitionsComponent implements OnInit {
       return;
     }
     this.loadCompetitions();
+    this.cdr.markForCheck();
   }
 
   loadCompetitions(): void {

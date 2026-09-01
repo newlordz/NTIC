@@ -7,10 +7,29 @@ export class WsSyncService {
   private ws: WebSocket | null = null;
   private reconnectHandle: any = null;
   private pingHandle: any = null;
+  private pongTimeoutHandle: any = null;
   private connected = false;
+  private visibilityListenerAttached = false;
 
   private readonly _dataChanged = new Subject<string | undefined>();
   readonly dataChanged$ = this._dataChanged.asObservable();
+
+  constructor() {
+    this.initVisibilityListener();
+  }
+
+  private initVisibilityListener(): void {
+    if (this.visibilityListenerAttached || typeof document === 'undefined') return;
+    this.visibilityListenerAttached = true;
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        const token = getAuthValue('activeUserToken');
+        if (token && (!this.ws || this.ws.readyState !== WebSocket.OPEN)) {
+          this.connect();
+        }
+      }
+    });
+  }
 
   connect(): void {
     const token = getAuthValue('activeUserToken');
@@ -32,16 +51,15 @@ export class WsSyncService {
 
     this.ws.onopen = () => {
       this.connected = true;
-      this.pingHandle = setInterval(() => {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          this.ws.send('ping');
-        } else {
-          clearInterval(this.pingHandle);
-        }
-      }, 25000);
+      this.startHeartbeat();
     };
 
     this.ws.onmessage = (event) => {
+      if (event.data === 'pong') {
+        this.clearPongTimeout();
+        return;
+      }
+
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === 'data_changed') {
@@ -53,28 +71,71 @@ export class WsSyncService {
     };
 
     this.ws.onclose = () => {
-      this.connected = false;
-      this.ws = null;
+      this.cleanupSocket();
       this.scheduleReconnect();
     };
 
     this.ws.onerror = () => {
-      this.connected = false;
-      this.ws = null;
+      this.cleanupSocket();
       this.scheduleReconnect();
     };
   }
 
-  disconnect(): void {
+  private startHeartbeat(): void {
+    this.clearHeartbeat();
+    this.pingHandle = setInterval(() => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        try {
+          this.ws.send('ping');
+          // If no pong arrives within 10 seconds, force close and reconnect
+          this.pongTimeoutHandle = setTimeout(() => {
+            if (this.ws) {
+              try { this.ws.close(); } catch { /* ignore */ }
+            }
+          }, 10000);
+        } catch {
+          this.cleanupSocket();
+          this.scheduleReconnect();
+        }
+      } else {
+        this.clearHeartbeat();
+      }
+    }, 25000);
+  }
+
+  private clearPongTimeout(): void {
+    if (this.pongTimeoutHandle) {
+      clearTimeout(this.pongTimeoutHandle);
+      this.pongTimeoutHandle = null;
+    }
+  }
+
+  private clearHeartbeat(): void {
+    if (this.pingHandle) {
+      clearInterval(this.pingHandle);
+      this.pingHandle = null;
+    }
+    this.clearPongTimeout();
+  }
+
+  private cleanupSocket(): void {
     this.connected = false;
-    if (this.reconnectHandle) { clearTimeout(this.reconnectHandle); this.reconnectHandle = null; }
-    if (this.pingHandle) { clearInterval(this.pingHandle); this.pingHandle = null; }
+    this.clearHeartbeat();
     if (this.ws) {
       this.ws.onclose = null;
       this.ws.onerror = null;
-      this.ws.close();
+      this.ws.onmessage = null;
+      this.ws.onopen = null;
       this.ws = null;
     }
+  }
+
+  disconnect(): void {
+    if (this.reconnectHandle) {
+      clearTimeout(this.reconnectHandle);
+      this.reconnectHandle = null;
+    }
+    this.cleanupSocket();
   }
 
   private scheduleReconnect(): void {
@@ -85,3 +146,4 @@ export class WsSyncService {
     }, 5000);
   }
 }
+

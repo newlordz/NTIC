@@ -1,5 +1,5 @@
 import { getAuthValue, setAuthValue, clearAuthValue, getRememberedCredentials, saveRememberedCredentials, hasRememberedDevice, forgetRememberedCredentials } from '../../services/session.util';
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -23,7 +23,8 @@ import { SafePipe } from '../../pipes/safe.pipe';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, AppSelectComponent, SafePipe, ForgotPasswordComponent],
   templateUrl: './registration.component.html',
-  styleUrl: './registration.component.scss'
+  styleUrl: './registration.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RegistrationComponent implements OnInit, OnDestroy {
   readonly ghanaRegions = [

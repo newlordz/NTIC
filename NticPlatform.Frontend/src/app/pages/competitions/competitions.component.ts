@@ -1,5 +1,5 @@
 import { getAuthValue } from '../../services/session.util';
-import { Component, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -14,7 +14,9 @@ import { CYCLE_STATUSES, advanceLabel, advanceIcon, isRegistrationOpen } from '.
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule, PublicNavComponent],
   templateUrl: './competitions.component.html',
-  styleUrl: './competitions.component.scss'
+  styleUrl: './competitions.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+
 })
 export class CompetitionsComponent implements OnInit {
   competitions: Competition[] = [];
@@ -246,13 +248,14 @@ export class CompetitionsComponent implements OnInit {
     public contentService: ContentService,
     public themeService: ThemeService,
     private apiService: ApiService
-  ) {}
+  , private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.contentService.refreshBackendData();
     this.loadCompetitions();
     // Registration state comes from the server now, so a refresh no longer wipes it.
     this.loadMyRegistrations();
+    this.cdr.markForCheck();
   }
 
   loadCompetitions(): void {

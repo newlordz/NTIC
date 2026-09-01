@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService, ApprovalRequest } from '../../services/content.service';
@@ -38,7 +38,8 @@ interface Record {
   standalone: true,
   imports: [CommonModule, FormsModule, AppSelectComponent],
   templateUrl: './records.component.html',
-  styleUrl: './records.component.scss'
+  styleUrl: './records.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RecordsComponent implements OnInit {
   readonly sortOptions = [
@@ -117,7 +118,7 @@ export class RecordsComponent implements OnInit {
     public fileStorage: FileStorageService,
     private apiService: ApiService,
     private route: ActivatedRoute
-  ) {}
+  , private cdr: ChangeDetectorRef) {}
 
     // --- LIVE DATABASE MANAGER ---
   activeDbTable: 'events' | 'stories' | 'schools' | 'philosophy' | 'students' | 'submissions' = 'events';
@@ -213,6 +214,7 @@ export class RecordsComponent implements OnInit {
     this.loadTrashState();
     this.loadRecords();
     this.contentService.refreshBackendData();
+    this.cdr.markForCheck();
   }
 
 

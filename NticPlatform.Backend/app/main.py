@@ -49,6 +49,34 @@ try:
 
     _AUDIT_LOCK_ID = 843001
 
+    # ── In-Memory TTL Cache ────────────────────────────────────────────────────
+    # Lightweight per-key cache for stable public endpoints (hero slides, stats,
+    # philosophy, talent, CSR, landing copy). Data only changes on admin edit, so
+    # serving a cached response for up to 120 s eliminates 6 DB round-trips per
+    # anonymous page load.  Each write/delete handler must call _cache_bust() to
+    # invalidate its key so admins see their changes promptly.
+    from threading import Lock as _Lock
+    _app_cache: dict[str, tuple[object, float]] = {}
+    _app_cache_lock = _Lock()
+
+    def _cache_get(key: str, ttl: int = 120) -> object | None:
+        """Return cached value if younger than *ttl* seconds, else None."""
+        with _app_cache_lock:
+            entry = _app_cache.get(key)
+            if entry and (time.time() - entry[1]) < ttl:
+                return entry[0]
+        return None
+
+    def _cache_set(key: str, value: object) -> None:
+        """Store *value* in the cache with the current timestamp."""
+        with _app_cache_lock:
+            _app_cache[key] = (value, time.time())
+
+    def _cache_bust(key: str) -> None:
+        """Invalidate a single cache entry (call on POST/PATCH/DELETE)."""
+        with _app_cache_lock:
+            _app_cache.pop(key, None)
+
     def _audit_archive_dir() -> str:
         configured = os.getenv("AUDIT_ARCHIVE_DIR", "").strip()
         if configured:
@@ -811,7 +839,7 @@ try:
                 if isinstance(cc, str):
                     cc_addrs = [c.strip() for c in cc.split(",") if c.strip()]
                 else:
-                    cc_addrs = [str(c).strip() for c in cc if str(c).strip()]
+                    cc_addrs = [c.strip() for c in cc if c.strip()]
                 if cc_addrs:
                     msg["Cc"] = ", ".join(cc_addrs)
 
@@ -821,7 +849,7 @@ try:
                 if isinstance(bcc, str):
                     bcc_addrs = [b.strip() for b in bcc.split(",") if b.strip()]
                 else:
-                    bcc_addrs = [str(b).strip() for b in bcc if str(b).strip()]
+                    bcc_addrs = [b.strip() for b in bcc if b.strip()]
 
             # Multi-part MIME payload (Plain text fallback + HTML alternative)
             if not text_content:
@@ -6168,6 +6196,9 @@ try:
     # PHILOSOPHY
     @app.get("/api/philosophy")
     def list_philosophy():
+        cached = _cache_get("philosophy")
+        if cached is not None:
+            return cached
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
@@ -6176,7 +6207,9 @@ try:
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)
-        return [{"id": r[0], "title": r[1], "description": r[2], "image": r[3]} for r in rows]
+        result = [{"id": r[0], "title": r[1], "description": r[2], "image": r[3]} for r in rows]
+        _cache_set("philosophy", result)
+        return result
 
     class PhilCardCreate(BaseModel):
         title: str
@@ -6191,6 +6224,7 @@ try:
         cur = conn.cursor()
         cur.execute("INSERT INTO philosophy_cards (id, title, description, image) VALUES (%s, %s, %s, %s)", (pid, payload.title, payload.description, payload.image))
         conn.commit(); cur.close(); release_db_connection(conn)
+        _cache_bust("philosophy")
         broadcast_async({"type": "data_changed", "collection": "philosophy"})
         return {"id": pid, "title": payload.title}
 
@@ -6202,6 +6236,7 @@ try:
         cur.execute("UPDATE philosophy_cards SET title=%s, description=%s, image=%s WHERE id=%s RETURNING id", (payload.title, payload.description, payload.image, item_id))
         row = cur.fetchone(); conn.commit(); cur.close(); release_db_connection(conn)
         if not row: raise HTTPException(status_code=404, detail="Card not found")
+        _cache_bust("philosophy")
         broadcast_async({"type": "data_changed", "collection": "philosophy"})
         return {"id": item_id, "status": "updated"}
 
@@ -6211,6 +6246,7 @@ try:
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         cur.execute("DELETE FROM philosophy_cards WHERE id=%s", (item_id,)); conn.commit(); cur.close(); release_db_connection(conn)
+        _cache_bust("philosophy")
         broadcast_async({"type": "data_changed", "collection": "philosophy"})
         return {"status": "deleted", "id": item_id}
 
@@ -6227,12 +6263,17 @@ try:
 
     @app.get("/api/hero-slides")
     def list_hero_slides():
+        cached = _cache_get("hero_slides")
+        if cached is not None:
+            return cached
         conn = get_db_connection()
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         cur.execute("SELECT id, tag, title, description, image, image_file_id, video_file_id, video_url, sort_order FROM hero_slides ORDER BY sort_order")
         rows = cur.fetchall(); cur.close(); release_db_connection(conn)
-        return [{"id": r[0], "tag": r[1], "title": r[2], "description": r[3], "image": r[4], "imageFileId": r[5], "videoFileId": r[6], "videoUrl": r[7], "sortOrder": r[8]} for r in rows]
+        result = [{"id": r[0], "tag": r[1], "title": r[2], "description": r[3], "image": r[4], "imageFileId": r[5], "videoFileId": r[6], "videoUrl": r[7], "sortOrder": r[8]} for r in rows]
+        _cache_set("hero_slides", result)
+        return result
 
     @app.post("/api/hero-slides", status_code=status.HTTP_201_CREATED)
     def create_hero_slide(payload: HeroSlideCreate, _actor: dict = Depends(require_role(CONTENT_ROLES))):
@@ -6242,6 +6283,7 @@ try:
         cur = conn.cursor()
         cur.execute("INSERT INTO hero_slides (id, tag, title, description, image, image_file_id, video_file_id, video_url, sort_order) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)", (sid, payload.tag, payload.title, payload.description, payload.image, payload.image_file_id, payload.video_file_id, payload.video_url, payload.sort_order))
         conn.commit(); cur.close(); release_db_connection(conn)
+        _cache_bust("hero_slides")
         broadcast_async({"type": "data_changed", "collection": "hero_slides"})
         return {"id": sid, "title": payload.title}
 
@@ -6251,6 +6293,7 @@ try:
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         cur.execute("DELETE FROM hero_slides WHERE id=%s", (item_id,)); conn.commit(); cur.close(); release_db_connection(conn)
+        _cache_bust("hero_slides")
         broadcast_async({"type": "data_changed", "collection": "hero_slides"})
         return {"status": "deleted", "id": item_id}
 
@@ -6267,12 +6310,17 @@ try:
 
     @app.get("/api/talent")
     def list_talent():
+        cached = _cache_get("talent")
+        if cached is not None:
+            return cached
         conn = get_db_connection()
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         cur.execute("SELECT id, student_name, school, track, project_title, talent_tags, description, mentor, status FROM talent_discovery ORDER BY created_at DESC")
         rows = cur.fetchall(); cur.close(); release_db_connection(conn)
-        return [{"id": r[0], "studentName": r[1], "school": r[2], "track": r[3], "projectTitle": r[4], "talentTags": r[5], "description": r[6], "mentor": r[7], "status": r[8]} for r in rows]
+        result = [{"id": r[0], "studentName": r[1], "school": r[2], "track": r[3], "projectTitle": r[4], "talentTags": r[5], "description": r[6], "mentor": r[7], "status": r[8]} for r in rows]
+        _cache_set("talent", result)
+        return result
 
     @app.post("/api/talent", status_code=status.HTTP_201_CREATED)
     def create_talent(payload: TalentCreate, _actor: dict = Depends(require_role(CONTENT_ROLES))):
@@ -6314,6 +6362,9 @@ try:
     # the countdown target date is configurable.
     @app.get("/api/platform-stats")
     def get_platform_stats():
+        cached = _cache_get("platform_stats", ttl=60)
+        if cached is not None:
+            return cached
         conn = get_db_connection()
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
@@ -6358,11 +6409,13 @@ try:
         finally:
             release_db_connection(conn)
 
-        return {
+        result = {
             "regions": regions, "mentors": mentors, "schools": schools,
             "students": students, "projects": projects, "grants": grants,
             "countdownDate": countdown,
         }
+        _cache_set("platform_stats", result)
+        return result
 
     class StatsUpdate(BaseModel):
         regions: Optional[int] = None
@@ -6395,6 +6448,7 @@ try:
         finally:
             release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "platform_stats"})
+        _cache_bust("platform_stats")
         return {"status": "updated"}
 
     # CSR UPDATES
@@ -6406,12 +6460,17 @@ try:
 
     @app.get("/api/csr")
     def list_csr():
+        cached = _cache_get("csr")
+        if cached is not None:
+            return cached
         conn = get_db_connection()
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         cur.execute("SELECT id, title, description, date, icon FROM csr_updates ORDER BY created_at DESC")
         rows = cur.fetchall(); cur.close(); release_db_connection(conn)
-        return [{"id": r[0], "title": r[1], "description": r[2], "date": r[3], "icon": r[4]} for r in rows]
+        result = [{"id": r[0], "title": r[1], "description": r[2], "date": r[3], "icon": r[4]} for r in rows]
+        _cache_set("csr", result)
+        return result
 
     @app.post("/api/csr", status_code=status.HTTP_201_CREATED)
     def create_csr(payload: CsrCreate, _actor: dict = Depends(require_role(CONTENT_ROLES))):
@@ -6421,6 +6480,7 @@ try:
         cur = conn.cursor()
         cur.execute("INSERT INTO csr_updates (id, title, description, date, icon) VALUES (%s,%s,%s,%s,%s)", (cid, payload.title, payload.description, payload.date, payload.icon))
         conn.commit(); cur.close(); release_db_connection(conn)
+        _cache_bust("csr")
         broadcast_async({"type": "data_changed", "collection": "csr"})
         return {"id": cid, "title": payload.title}
 
@@ -6430,18 +6490,24 @@ try:
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         cur.execute("DELETE FROM csr_updates WHERE id=%s", (item_id,)); conn.commit(); cur.close(); release_db_connection(conn)
+        _cache_bust("csr")
         broadcast_async({"type": "data_changed", "collection": "csr"})
         return {"status": "deleted", "id": item_id}
 
     # LANDING PAGE COPY (key/value store of editable marketing text)
     @app.get("/api/landing-copy")
     def get_landing_copy():
+        cached = _cache_get("landing_copy")
+        if cached is not None:
+            return cached
         conn = get_db_connection()
         if not conn: raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         cur.execute("SELECT key, value FROM landing_copy")
         rows = cur.fetchall(); cur.close(); release_db_connection(conn)
-        return {r[0]: r[1] for r in rows}
+        result = {r[0]: r[1] for r in rows}
+        _cache_set("landing_copy", result)
+        return result
 
     @app.put("/api/landing-copy")
     def update_landing_copy(payload: dict, _actor: dict = Depends(require_role(CONTENT_ROLES))):
@@ -6460,17 +6526,28 @@ try:
             conn.rollback(); cur.close(); release_db_connection(conn)
             raise HTTPException(status_code=400, detail=str(e))
         cur.close(); release_db_connection(conn)
+        _cache_bust("landing_copy")
         broadcast_async({"type": "data_changed", "collection": "landing_copy"})
         return {"status": "updated", "count": len(payload)}
 
     # USERS
     @app.get("/api/users")
-    def list_users(_admin: dict = Depends(require_admin)):
+    def list_users(updated_since: Optional[str] = None, _admin: dict = Depends(require_admin)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
-        cur.execute("SELECT id, email, full_name, role, ticket, status, created_at, phone, organization, age_group, experience_level, competition_id, photo_file_id, doc_file_id FROM users ORDER BY created_at DESC")
+        query = (
+            "SELECT id, email, full_name, role, ticket, status, created_at, phone, "
+            "organization, age_group, experience_level, competition_id, photo_file_id, doc_file_id "
+            "FROM users"
+        )
+        params = []
+        if updated_since and updated_since.strip():
+            query += " WHERE COALESCE(updated_at, created_at) >= %s"
+            params.append(updated_since.strip())
+        query += " ORDER BY created_at DESC"
+        cur.execute(query, tuple(params))
         rows = cur.fetchall()
         cur.close()
         release_db_connection(conn)
@@ -7495,6 +7572,7 @@ try:
         category: str = "",
         usr: str = "",
         q: str = "",
+        before_id: int = 0,
         _admin: dict = Depends(require_admin)
     ):
         conn = get_db_connection()
@@ -7510,6 +7588,9 @@ try:
         if usr and usr != "all":
             conditions.append("lower(usr) = lower(%s)")
             params.append(usr)
+        if before_id and before_id > 0:
+            conditions.append("id < %s")
+            params.append(before_id)
         if q and q.strip():
             conditions.append("(lower(action) LIKE %s OR lower(usr) LIKE %s OR lower(ip) LIKE %s)")
             q_term = f"%{q.strip().lower()}%"
@@ -7526,7 +7607,14 @@ try:
             release_db_connection(conn)
             return [{"id": r[0], "action": r[1], "user": r[2], "time": r[3], "type": r[4], "ip": r[5], "client": r[6]} for r in rows]
         except Exception:
-            cur.execute("SELECT id, action, usr, time, type FROM audit_logs ORDER BY id DESC LIMIT %s", (max(1, min(limit, 1000)),))
+            fb_query = "SELECT id, action, usr, time, type FROM audit_logs"
+            fb_params = []
+            if before_id and before_id > 0:
+                fb_query += " WHERE id < %s"
+                fb_params.append(before_id)
+            fb_query += " ORDER BY id DESC LIMIT %s"
+            fb_params.append(max(1, min(limit, 1000)))
+            cur.execute(fb_query, tuple(fb_params))
             rows = cur.fetchall()
             cur.close()
             release_db_connection(conn)

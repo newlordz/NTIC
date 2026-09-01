@@ -1,5 +1,5 @@
-﻿import { getAuthValue } from '../../services/session.util';
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { getAuthValue } from '../../services/session.util';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ContentService, ChampionshipStory, NewsFeedItem, UpcomingEvent } from '../../services/content.service';
@@ -10,7 +10,8 @@ import { PublicNavComponent } from '../../components/public-nav/public-nav.compo
   standalone: true,
   imports: [CommonModule, RouterLink, PublicNavComponent],
   templateUrl: './news.component.html',
-  styleUrl: './news.component.scss'
+  styleUrl: './news.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NewsComponent implements OnInit, OnDestroy {
   activeTag = 'all';
@@ -24,6 +25,7 @@ export class NewsComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.liveTimer = setInterval(() => this.cdr.detectChanges(), 30_000);
+    this.cdr.markForCheck();
   }
 
   ngOnDestroy(): void {

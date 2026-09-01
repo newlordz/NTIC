@@ -1,5 +1,5 @@
 import { getAuthValue } from '../../services/session.util';
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy , ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -20,7 +20,8 @@ import { BrevoEmailService } from '../../services/brevo-email.service';
   standalone: true,
   imports: [CommonModule, FormsModule, FilterTicketsPipe],
   templateUrl: './user-management.component.html',
-  styleUrl: './user-management.component.scss'
+  styleUrl: './user-management.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class UserManagementComponent implements OnInit, OnDestroy {
   users: User[] = [];
@@ -101,7 +102,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     private fileStorage: FileStorageService,
     public smsService: SmsService,
     public emailService: BrevoEmailService
-  ) {}
+  , private cdr: ChangeDetectorRef) {}
 
   get canManageUsers(): boolean {
     const role = (getAuthValue('activeRoleId') || '').toLowerCase();
@@ -144,6 +145,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         }
       }
     });
+    this.cdr.markForCheck();
   }
 
   loadTickets(): void {

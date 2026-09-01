@@ -844,6 +844,16 @@ def _create_tables(conn):
         "CREATE INDEX IF NOT EXISTS idx_pending_approvals_status "
         "ON pending_approvals (status);"
     )
+    # Composite index: most approval queries filter by BOTH status AND type simultaneously.
+    # The single-column indexes above are redundant for those queries; this covering index
+    # handles them in a single index scan.
+    cur.execute(
+        "CREATE INDEX IF NOT EXISTS idx_pending_approvals_status_type "
+        "ON pending_approvals (status, type);"
+    )
+    # Delta sync: support ?updated_since queries on users roster
+    cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_users_updated_at ON users (updated_at);")
     conn.commit()
 
     # Access passes (tickets) are login identifiers alongside email, so two users

@@ -1,5 +1,5 @@
 import { getAuthValue } from '../../services/session.util';
-import { Component, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService, LmsSubmission } from '../../services/content.service';
@@ -12,12 +12,13 @@ import { CurrentUserService } from '../../services/current-user.service';
   standalone: true,
   imports: [CommonModule, TitleCasePipe, FormsModule],
   templateUrl: './lms.component.html',
-  styleUrl: './lms.component.scss'
+  styleUrl: './lms.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LmsComponent implements OnInit {
   selectedUploadFiles: { id: string; name: string }[] = [];
 
-  constructor(public contentService: ContentService, public fileStorage: FileStorageService, private apiService: ApiService, public currentUserService: CurrentUserService) {}
+  constructor(public contentService: ContentService, public fileStorage: FileStorageService, private apiService: ApiService, public currentUserService: CurrentUserService, private cdr: ChangeDetectorRef) {}
 
   activeRoleId = 'student';
 
@@ -599,6 +600,7 @@ export class LmsComponent implements OnInit {
     // studentProfile depends on this; without it the page would render blank
     // identity fields on a cold load.
     this.currentUserService.ensureLoaded().subscribe(() => this.loadStudentData());
+    this.cdr.markForCheck();
   }
 
   /**

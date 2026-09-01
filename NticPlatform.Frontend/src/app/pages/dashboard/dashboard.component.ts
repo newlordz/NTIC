@@ -1,5 +1,5 @@
 import { getAuthValue } from '../../services/session.util';
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, NgZone } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, NgZone, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -56,8 +56,10 @@ type PersonnelRole = 'governance' | 'mentor' | 'sponsor' | 'judge' | 'instructor
   standalone: true,
   imports: [CommonModule, RouterLink, FormsModule, TimeAgoPipe, LmsManagerComponent, UserManagementComponent, ApplicationPreviewModalComponent, SponsorTierModalComponent],
   templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.scss'
+  styleUrl: './dashboard.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
+
 export class DashboardComponent implements OnInit, OnDestroy {
   Math = Math;
   activeRoleId = '';
@@ -3236,6 +3238,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   loadApprovalsFromBackend(): void {
+    const token = getAuthValue('activeUserToken');
+    const role = (getAuthValue('activeRoleId') || '').toLowerCase();
+    const canView = ['admin', 'super_admin', 'support_admin', 'school_admin', 'reviewer'].includes(role);
+    if (!token || !canView) return;
+
     this.apiService.getApprovals().subscribe({
       next: (backendApprovals: any[]) => {
         const pending: any[] = [];

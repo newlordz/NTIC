@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -11,7 +11,8 @@ import { getAuthValue } from '../../services/session.util';
   standalone: true,
   imports: [CommonModule, DecimalPipe, RouterModule, FormsModule, PublicNavComponent],
   templateUrl: './leaderboard.component.html',
-  styleUrl: './leaderboard.component.scss'
+  styleUrl: './leaderboard.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LeaderboardComponent implements OnInit {
   isLoggedIn = false;
@@ -27,12 +28,13 @@ export class LeaderboardComponent implements OnInit {
     trackPoints: { all: 0, coding: 0, robotics: 0, ai: 0, cyber: 0 }
   };
 
-  constructor(public contentService: ContentService) {}
+  constructor(public contentService: ContentService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     const role = getAuthValue('activeRoleId');
     this.isLoggedIn = !!role;
     this.isAdmin = role === 'super_admin' || role === 'admin';
+    this.cdr.markForCheck();
   }
 
   get firstPlace(): LeaderboardEntry | null {
@@ -60,6 +62,10 @@ export class LeaderboardComponent implements OnInit {
       region: entry.region || 'Ghana',
       pts: entry.points
     }));
+  }
+
+  trackBySchool(index: number, item: any): string {
+    return item.school || String(index);
   }
 
   openAddForm(): void {
