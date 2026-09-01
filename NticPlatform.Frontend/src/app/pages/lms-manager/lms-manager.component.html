@@ -22,13 +22,23 @@
 
   <!-- Metric KPI Cards -->
   <div class="stats-grid">
-    <div class="stat-card" [class.highlight-card]="pendingApprovalsCount > 0">
+    <div class="stat-card" *ngIf="isStaffReviewer" [class.highlight-card]="pendingApprovalsCount > 0">
       <div class="stat-icon approval-theme">
         <span class="material-symbols-outlined">rule</span>
       </div>
       <div class="stat-details">
         <span class="stat-value">{{ pendingApprovalsCount }}</span>
-        <span class="stat-label">Pending Instructor Approvals</span>
+        <span class="stat-label">Pending Content Approvals</span>
+      </div>
+    </div>
+
+    <div class="stat-card" *ngIf="!isStaffReviewer" [class.highlight-card]="pendingReviewCount > 0">
+      <div class="stat-icon approval-theme">
+        <span class="material-symbols-outlined">hourglass_top</span>
+      </div>
+      <div class="stat-details">
+        <span class="stat-value">{{ pendingReviewCount }}</span>
+        <span class="stat-label">My Submissions in Review</span>
       </div>
     </div>
 
@@ -75,7 +85,7 @@
 
   <!-- Navigation Workspace Tabs -->
   <div class="workspace-tabs">
-    <button class="tab-btn" [class.active]="activeTab === 'approvals'" (click)="activeTab = 'approvals'">
+    <button class="tab-btn" *ngIf="isStaffReviewer" [class.active]="activeTab === 'approvals'" (click)="activeTab = 'approvals'">
       <span class="material-symbols-outlined">verified</span> Content Approvals Queue
       <span class="badge-count warn-badge" *ngIf="pendingApprovalsCount > 0">{{ pendingApprovalsCount }}</span>
     </button>
@@ -633,8 +643,12 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-outline" (click)="closeCourseModal()">Cancel</button>
-        <button class="btn btn-primary" (click)="saveCourse()">Save Course</button>
+        <p class="error-msg" *ngIf="saveError" style="color:var(--error, #ef4444); font-size:12px; margin:0 auto 0 0;">{{ saveError }}</p>
+        <button class="btn btn-outline" (click)="closeCourseModal()" [disabled]="isSaving">Cancel</button>
+        <button class="btn btn-primary" (click)="saveCourse()" [disabled]="isSaving || !courseForm.title.trim()">
+          <span *ngIf="!isSaving">{{ formMode === 'edit' ? 'Update Course' : 'Save Course' }}</span>
+          <span *ngIf="isSaving" class="spinner-inline"></span>
+        </button>
       </div>
     </div>
   </div>
@@ -678,8 +692,12 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-outline" (click)="closeModuleModal()">Cancel</button>
-        <button class="btn btn-primary" (click)="saveModule()">Save Module</button>
+        <p class="error-msg" *ngIf="saveError" style="color:var(--error, #ef4444); font-size:12px; margin:0 auto 0 0;">{{ saveError }}</p>
+        <button class="btn btn-outline" (click)="closeModuleModal()" [disabled]="isSaving">Cancel</button>
+        <button class="btn btn-primary" (click)="saveModule()" [disabled]="isSaving || !moduleForm.title.trim() || !moduleForm.courseId">
+          <span *ngIf="!isSaving">{{ formMode === 'edit' ? 'Update Module' : 'Save Module' }}</span>
+          <span *ngIf="isSaving" class="spinner-inline"></span>
+        </button>
       </div>
     </div>
   </div>
@@ -738,8 +756,12 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-outline" (click)="closeMaterialModal()">Cancel</button>
-        <button class="btn btn-primary" (click)="saveMaterial()">Save Asset</button>
+        <p class="error-msg" *ngIf="saveError" style="color:var(--error, #ef4444); font-size:12px; margin:0 auto 0 0;">{{ saveError }}</p>
+        <button class="btn btn-outline" (click)="closeMaterialModal()" [disabled]="isSaving">Cancel</button>
+        <button class="btn btn-primary" (click)="saveMaterial()" [disabled]="isSaving || !materialForm.title.trim() || !materialForm.courseId">
+          <span *ngIf="!isSaving">{{ formMode === 'edit' ? 'Update Asset' : 'Save Asset' }}</span>
+          <span *ngIf="isSaving" class="spinner-inline"></span>
+        </button>
       </div>
     </div>
   </div>
@@ -805,8 +827,12 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-outline" (click)="closeAssignmentModal()">Cancel</button>
-        <button class="btn btn-primary" (click)="saveAssignment()">Save Assignment</button>
+        <p class="error-msg" *ngIf="saveError" style="color:var(--error, #ef4444); font-size:12px; margin:0 auto 0 0;">{{ saveError }}</p>
+        <button class="btn btn-outline" (click)="closeAssignmentModal()" [disabled]="isSaving">Cancel</button>
+        <button class="btn btn-primary" (click)="saveAssignment()" [disabled]="isSaving || !assignmentForm.title.trim() || !assignmentForm.courseId">
+          <span *ngIf="!isSaving">{{ formMode === 'edit' ? 'Update Assignment' : 'Save Assignment' }}</span>
+          <span *ngIf="isSaving" class="spinner-inline"></span>
+        </button>
       </div>
     </div>
   </div>
@@ -855,15 +881,19 @@
         </div>
       </div>
       <div class="modal-footer" style="gap: 8px;">
-        <button class="btn btn-outline" (click)="closeGradingModal()">Close</button>
-        <button class="btn btn-success" (click)="gradeSubmission()" [disabled]="gradeScore === null || gradeScore < 0 || gradeScore > 100">
-          <span class="material-symbols-outlined">task_alt</span> Grade &amp; Score
+        <p class="error-msg" *ngIf="saveError" style="color:var(--error, #ef4444); font-size:12px; margin:0 auto 0 0;">{{ saveError }}</p>
+        <button class="btn btn-outline" (click)="closeGradingModal()" [disabled]="isSaving">Close</button>
+        <button class="btn btn-success" (click)="gradeSubmission()" [disabled]="isSaving || gradeScore === null || gradeScore < 0 || gradeScore > 100">
+          <span *ngIf="!isSaving" style="display:flex; align-items:center; gap:4px;"><span class="material-symbols-outlined">task_alt</span> Grade &amp; Score</span>
+          <span *ngIf="isSaving" class="spinner-inline"></span>
         </button>
-        <button class="btn btn-danger" (click)="rejectSubmissionToStudent()" [disabled]="!adminRevisionNotes.trim()">
-          <span class="material-symbols-outlined">undo</span> Reject &mdash; Return to Student
+        <button class="btn btn-danger" (click)="rejectSubmissionToStudent()" [disabled]="isSaving || !adminRevisionNotes.trim()">
+          <span *ngIf="!isSaving" style="display:flex; align-items:center; gap:4px;"><span class="material-symbols-outlined">undo</span> Reject &mdash; Return to Student</span>
+          <span *ngIf="isSaving" class="spinner-inline"></span>
         </button>
-        <button class="btn btn-primary" (click)="submitInstructorRegradeRequest()" [disabled]="!adminRevisionNotes.trim()">
-          <span class="material-symbols-outlined">rate_review</span> Request Instructor Revision
+        <button class="btn btn-primary" (click)="submitInstructorRegradeRequest()" [disabled]="isSaving || !adminRevisionNotes.trim()">
+          <span *ngIf="!isSaving" style="display:flex; align-items:center; gap:4px;"><span class="material-symbols-outlined">rate_review</span> Request Instructor Revision</span>
+          <span *ngIf="isSaving" class="spinner-inline"></span>
         </button>
       </div>
     </div>

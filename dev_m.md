@@ -81,7 +81,11 @@ Use this section to leave short notes, status updates, or handoff messages for c
   - **Application Editing & Duplicate Availability:** Added `exclude_code` parameter to `GET /api/auth/check-availability` so editing a pending application ignores the applicant's own existing record. Bypassed OTP re-verification for loaded/resumed approvals.
   - **Public File Uploads & Upload State Feedback:** Whitelisted `/api/files/upload` in public API middleware for anonymous registration uploads. Added reactive `isUploadingFile` state with animated spinning loaders across team member photo uploads, school logos, and accreditation/instructor document cards.
   - **Instructor Form Document Retention:** Enhanced `loadApprovalIntoForm` to reliably preserve and display attached instructor CVs/certificates/IDs and email verification states across edits.
-  - **Forgot Password Modal Fix:** Injected `ChangeDetectorRef` in `ForgotPasswordComponent` and added `markForCheck()` on async request callbacks to ensure immediate UI transition out of the loading spinner under `OnPush` change detection.
+  - **Instructor LMS Management & Course Creation Feedback:**
+    - Fixed duplicate course creation by adding `isSaving` guards and double-click protection to course, module, material, assignment, and grading action handlers.
+    - Added spinning loaders (`spinner-inline`) and disabled states (`[disabled]="isSaving"`) to modal action buttons in LMS Manager.
+    - Resolved `GET /api/lms/moderation-queue` 403 Forbidden error for instructors by scoping the moderation queue endpoint request and the "Content Approvals Queue" tab exclusively to staff reviewers (`admin`, `super_admin`, `content_manager`, `reviewer`) via `CurrentUserService`.
+    - Added dedicated "My Submissions in Review" KPI metric card for instructor authors.
   - All 508 backend unit tests (`pytest`) and frontend TypeScript typechecks (`tsc`) passing cleanly.
 - **[2026-09-01 - v1.0.3]**:
   - Implemented comprehensive performance optimizations across the full stack:

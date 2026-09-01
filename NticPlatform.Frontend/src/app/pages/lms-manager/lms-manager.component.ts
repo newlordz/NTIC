@@ -10,6 +10,8 @@ import {
   LmsAssignment as LmsAssignmentApi,
 } from '../../services/api.service';
 
+import { CurrentUserService } from '../../services/current-user.service';
+
 export interface PendingModerationItem {
   id: string;
   type: 'course' | 'module' | 'material' | 'assignment';
@@ -90,18 +92,28 @@ export class LmsManagerComponent implements OnInit {
   constructor(
     public contentService: ContentService,
     private dialogService: DialogService,
-    private apiService: ApiService
-  , private cdr: ChangeDetectorRef) {}
+    private apiService: ApiService,
+    private currentUserService: CurrentUserService,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+  get isStaffReviewer(): boolean {
+    const role = (this.currentUserService.profile()?.role || '').toLowerCase();
+    return ['admin', 'super_admin', 'content_manager', 'reviewer'].includes(role);
+  }
 
   ngOnInit(): void {
-    this.reload();
-    this.cdr.markForCheck();
+    this.currentUserService.ensureLoaded().subscribe(() => {
+      this.reload();
+      this.cdr.markForCheck();
+    });
   }
 
   /** Reloads everything this page shows from the server. */
   reload(): void {
     this.isLoading = true;
     this.loadError = '';
+    this.cdr.markForCheck();
 
     // Cycles are needed to label and filter courses. A failure here must not
     // take the page down, so it is tolerated.
@@ -110,8 +122,12 @@ export class LmsManagerComponent implements OnInit {
         this.competitions = (rows || [])
           .map(c => ({ id: c.id, title: c.title }))
           .sort((a, b) => a.title.localeCompare(b.title));
+        this.cdr.markForCheck();
       },
-      error: () => { this.competitions = []; }
+      error: () => {
+        this.competitions = [];
+        this.cdr.markForCheck();
+      }
     });
 
     this.apiService.getMyAuthoredCourses(this.selectedCycle === 'all' ? undefined : this.selectedCycle).subscribe({
@@ -124,37 +140,65 @@ export class LmsManagerComponent implements OnInit {
         this.serverAssignments = [];
         for (const c of this.authoredCourses) {
           this.apiService.getModules(c.id).subscribe({
-            next: mods => (this.serverModules = [...this.serverModules, ...(mods || [])]),
+            next: mods => {
+              this.serverModules = [...this.serverModules, ...(mods || [])];
+              this.cdr.markForCheck();
+            },
             error: () => { /* per-course failure is not fatal */ },
           });
           this.apiService.getMaterials(c.id).subscribe({
-            next: mats => (this.serverMaterials = [...this.serverMaterials, ...(mats || [])]),
+            next: mats => {
+              this.serverMaterials = [...this.serverMaterials, ...(mats || [])];
+              this.cdr.markForCheck();
+            },
             error: () => { /* per-course failure is not fatal */ },
           });
           this.apiService.getLmsAssignments(c.id).subscribe({
-            next: asgns => (this.serverAssignments = [...this.serverAssignments, ...(asgns || [])]),
+            next: asgns => {
+              this.serverAssignments = [...this.serverAssignments, ...(asgns || [])];
+              this.cdr.markForCheck();
+            },
             error: () => { /* per-course failure is not fatal */ },
           });
         }
+        this.cdr.markForCheck();
       },
       error: err => {
         this.isLoading = false;
         this.loadError = err?.status === 403
           ? 'Your account is not permitted to author LMS content.'
           : 'Could not load your courses. Check your connection and try again.';
+        this.cdr.markForCheck();
       },
     });
 
     this.apiService.getGradingQueue().subscribe({
-      next: rows => (this.gradingQueue = rows || []),
+      next: rows => {
+        this.gradingQueue = rows || [];
+        this.cdr.markForCheck();
+      },
       error: () => { /* surfaced by the course load above */ },
     });
 
-    this.apiService.getModerationQueue().subscribe({
-      next: rows => (this.moderationQueue = rows || []),
-      // Instructors are not reviewers, so a 403 here is expected and not an error.
-      error: () => (this.moderationQueue = []),
-    });
+    if (this.isStaffReviewer) {
+      this.apiService.getModerationQueue().subscribe({
+        next: rows => {
+          this.moderationQueue = rows || [];
+          this.cdr.markForCheck();
+        },
+        // Instructors are not reviewers, so a 403 here is expected and not an error.
+        error: () => {
+          this.moderationQueue = [];
+          this.cdr.markForCheck();
+        },
+      });
+    } else {
+      this.moderationQueue = [];
+      if (this.activeTab === 'approvals') {
+        this.activeTab = 'courses';
+      }
+      this.cdr.markForCheck();
+    }
 
     if (this.selectedCourseId && this.selectedCourseId !== 'all') {
       this.loadRoster(this.selectedCourseId);
@@ -443,6 +487,7 @@ export class LmsManagerComponent implements OnInit {
 
   // ── Course Actions ──────────────────────────────────────────
   openCourseModal(course?: LmsCourse): void {
+    this.saveError = '';
     if (course) {
       this.formMode = 'edit';
       this.courseForm = { ...course };
@@ -451,10 +496,13 @@ export class LmsManagerComponent implements OnInit {
       this.courseForm = this.emptyCourse();
     }
     this.isCourseModalOpen = true;
+    this.cdr.markForCheck();
   }
 
   closeCourseModal(): void {
     this.isCourseModalOpen = false;
+    this.saveError = '';
+    this.cdr.markForCheck();
   }
 
   /**
@@ -470,9 +518,11 @@ export class LmsManagerComponent implements OnInit {
    * Courses" filter; the second self-published it. The server now decides both.
    */
   saveCourse(): void {
+    if (this.isSaving) return;
     if (!this.courseForm.title.trim()) return;
     this.isSaving = true;
     this.saveError = '';
+    this.cdr.markForCheck();
 
     const payload = {
       title: this.courseForm.title.trim(),
@@ -493,10 +543,12 @@ export class LmsManagerComponent implements OnInit {
         this.isSaving = false;
         this.closeCourseModal();
         this.reload();
+        this.cdr.markForCheck();
       },
       error: (err: any) => {
         this.isSaving = false;
         this.saveError = this.describeWriteError(err, 'course');
+        this.cdr.markForCheck();
       },
     });
   }
@@ -514,6 +566,7 @@ export class LmsManagerComponent implements OnInit {
       error: (err: any) => {
         // 409 means students are enrolled -- deleting would orphan their work.
         this.saveError = this.describeWriteError(err, 'course');
+        this.cdr.markForCheck();
       },
     });
   }
@@ -545,10 +598,12 @@ export class LmsManagerComponent implements OnInit {
       createdAt: new Date().toISOString().split('T')[0]
     };
     this.contentService.saveLmsCourse(duplicated);
+    this.cdr.markForCheck();
   }
 
   // ── Module Actions ──────────────────────────────────────────
   openModuleModal(mod?: LmsModule): void {
+    this.saveError = '';
     if (mod) {
       this.formMode = 'edit';
       this.moduleForm = { ...mod };
@@ -560,16 +615,21 @@ export class LmsManagerComponent implements OnInit {
       }
     }
     this.isModuleModalOpen = true;
+    this.cdr.markForCheck();
   }
 
   closeModuleModal(): void {
     this.isModuleModalOpen = false;
+    this.saveError = '';
+    this.cdr.markForCheck();
   }
 
   saveModule(): void {
+    if (this.isSaving) return;
     if (!this.moduleForm.title.trim() || !this.moduleForm.courseId) return;
     this.isSaving = true;
     this.saveError = '';
+    this.cdr.markForCheck();
     // Was contentService.saveLmsModule() -> admin-only bulk-sync -> 403 for an
     // instructor, discarded. There was also NO module endpoint of any kind.
     this.apiService.createModule({
@@ -579,10 +639,16 @@ export class LmsManagerComponent implements OnInit {
       order_num: this.moduleForm.order || 1,
       icon: this.moduleForm.icon || 'menu_book',
     }).subscribe({
-      next: () => { this.isSaving = false; this.closeModuleModal(); this.reload(); },
+      next: () => {
+        this.isSaving = false;
+        this.closeModuleModal();
+        this.reload();
+        this.cdr.markForCheck();
+      },
       error: (err: any) => {
         this.isSaving = false;
         this.saveError = this.describeWriteError(err, 'module');
+        this.cdr.markForCheck();
       },
     });
   }
@@ -597,12 +663,16 @@ export class LmsManagerComponent implements OnInit {
     if (!ok) return;
     this.apiService.deleteModule(id).subscribe({
       next: () => this.reload(),
-      error: (err: any) => { this.saveError = this.describeWriteError(err, 'module'); },
+      error: (err: any) => {
+        this.saveError = this.describeWriteError(err, 'module');
+        this.cdr.markForCheck();
+      },
     });
   }
 
   // ── Material Actions ──────────────────────────────────────────
   openMaterialModal(mat?: LmsMaterial): void {
+    this.saveError = '';
     if (mat) {
       this.formMode = 'edit';
       this.materialForm = { ...mat };
@@ -614,16 +684,21 @@ export class LmsManagerComponent implements OnInit {
       }
     }
     this.isMaterialModalOpen = true;
+    this.cdr.markForCheck();
   }
 
   closeMaterialModal(): void {
     this.isMaterialModalOpen = false;
+    this.saveError = '';
+    this.cdr.markForCheck();
   }
 
   saveMaterial(): void {
+    if (this.isSaving) return;
     if (!this.materialForm.title.trim() || !this.materialForm.courseId) return;
     this.isSaving = true;
     this.saveError = '';
+    this.cdr.markForCheck();
     this.apiService.createMaterial({
       course_id: this.materialForm.courseId,
       module_id: this.materialForm.moduleId || '',
@@ -632,10 +707,16 @@ export class LmsManagerComponent implements OnInit {
       url: this.materialForm.url || '',
       description: this.materialForm.description || '',
     }).subscribe({
-      next: () => { this.isSaving = false; this.closeMaterialModal(); this.reload(); },
+      next: () => {
+        this.isSaving = false;
+        this.closeMaterialModal();
+        this.reload();
+        this.cdr.markForCheck();
+      },
       error: (err: any) => {
         this.isSaving = false;
         this.saveError = this.describeWriteError(err, 'material');
+        this.cdr.markForCheck();
       },
     });
   }
@@ -650,12 +731,16 @@ export class LmsManagerComponent implements OnInit {
     if (!ok) return;
     this.apiService.deleteMaterial(id).subscribe({
       next: () => this.reload(),
-      error: (err: any) => { this.saveError = this.describeWriteError(err, 'material'); },
+      error: (err: any) => {
+        this.saveError = this.describeWriteError(err, 'material');
+        this.cdr.markForCheck();
+      },
     });
   }
 
   // ── Assignment Actions ──────────────────────────────────────────
   openAssignmentModal(asgn?: LmsAssignment): void {
+    this.saveError = '';
     if (asgn) {
       this.formMode = 'edit';
       this.assignmentForm = { ...asgn };
@@ -667,16 +752,21 @@ export class LmsManagerComponent implements OnInit {
       }
     }
     this.isAssignmentModalOpen = true;
+    this.cdr.markForCheck();
   }
 
   closeAssignmentModal(): void {
     this.isAssignmentModalOpen = false;
+    this.saveError = '';
+    this.cdr.markForCheck();
   }
 
   saveAssignment(): void {
+    if (this.isSaving) return;
     if (!this.assignmentForm.title.trim() || !this.assignmentForm.courseId) return;
     this.isSaving = true;
     this.saveError = '';
+    this.cdr.markForCheck();
     this.apiService.createAssignment({
       course_id: this.assignmentForm.courseId,
       title: this.assignmentForm.title.trim(),
@@ -685,10 +775,16 @@ export class LmsManagerComponent implements OnInit {
       max_score: this.assignmentForm.maxScore || 100,
       track: this.assignmentForm.track || '',
     }).subscribe({
-      next: () => { this.isSaving = false; this.closeAssignmentModal(); this.reload(); },
+      next: () => {
+        this.isSaving = false;
+        this.closeAssignmentModal();
+        this.reload();
+        this.cdr.markForCheck();
+      },
       error: (err: any) => {
         this.isSaving = false;
         this.saveError = this.describeWriteError(err, 'assignment');
+        this.cdr.markForCheck();
       },
     });
   }
@@ -706,6 +802,7 @@ export class LmsManagerComponent implements OnInit {
       error: (err: any) => {
         // 409 means students have already submitted work against it.
         this.saveError = this.describeWriteError(err, 'assignment');
+        this.cdr.markForCheck();
       },
     });
   }
@@ -719,6 +816,7 @@ export class LmsManagerComponent implements OnInit {
     this.adminRevisionNotes = submission?.feedback || '';
     this.gradeScore = submission?.score ?? null;
     this.isGradingModalOpen = true;
+    this.cdr.markForCheck();
   }
 
   closeGradingModal(): void {
@@ -726,6 +824,7 @@ export class LmsManagerComponent implements OnInit {
     this.activeSubmission = null;
     this.adminRevisionNotes = '';
     this.gradeScore = null;
+    this.cdr.markForCheck();
   }
 
   /**
@@ -739,23 +838,32 @@ export class LmsManagerComponent implements OnInit {
    * The 0-100 bound below was also wrong: assignments carry their own max_score.
    */
   gradeSubmission(): void {
+    if (this.isSaving) return;
     if (!this.activeSubmission || this.gradeScore === null) return;
     const max = this.activeSubmission.max_score ?? 100;
     if (this.gradeScore < 0 || this.gradeScore > max) {
       this.saveError = `Score must be between 0 and ${max}.`;
+      this.cdr.markForCheck();
       return;
     }
     this.isSaving = true;
     this.saveError = '';
+    this.cdr.markForCheck();
     this.apiService.gradeLmsSubmission(
       this.activeSubmission.id, this.gradeScore, this.adminRevisionNotes || '',
     ).subscribe({
-      next: () => { this.isSaving = false; this.closeGradingModal(); this.reload(); },
+      next: () => {
+        this.isSaving = false;
+        this.closeGradingModal();
+        this.reload();
+        this.cdr.markForCheck();
+      },
       error: (err: any) => {
         this.isSaving = false;
         this.saveError = err?.status === 403
           ? 'You can only grade work submitted on your own courses.'
           : this.describeWriteError(err, 'grade');
+        this.cdr.markForCheck();
       },
     });
   }
@@ -772,21 +880,30 @@ export class LmsManagerComponent implements OnInit {
    * No score is recorded, so the submission correctly remains outstanding.
    */
   returnForRevision(): void {
+    if (this.isSaving) return;
     if (!this.activeSubmission || !this.adminRevisionNotes.trim()) {
       this.saveError = 'Explain what needs changing before sending it back.';
+      this.cdr.markForCheck();
       return;
     }
     this.isSaving = true;
     this.saveError = '';
+    this.cdr.markForCheck();
     this.apiService.returnLmsSubmission(
       this.activeSubmission.id, this.adminRevisionNotes.trim(),
     ).subscribe({
-      next: () => { this.isSaving = false; this.closeGradingModal(); this.reload(); },
+      next: () => {
+        this.isSaving = false;
+        this.closeGradingModal();
+        this.reload();
+        this.cdr.markForCheck();
+      },
       error: (err: any) => {
         this.isSaving = false;
         this.saveError = err?.status === 403
           ? 'You can only review work submitted on your own courses.'
           : this.describeWriteError(err, 'revision request');
+        this.cdr.markForCheck();
       },
     });
   }
