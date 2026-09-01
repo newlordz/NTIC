@@ -1630,8 +1630,8 @@ setAuthValue('activeUserEmail', email);
   isSuccessModalOpen = false;
   isSubmitting = false;
 
-  selectedFileIds: { [key: string]: string[] } = {};
-  selectedFileNames: { [key: string]: string[] } = {};
+  selectedFileIds: { [key: string]: string[] | undefined } = {};
+  selectedFileNames: { [key: string]: string[] | undefined } = {};
   schoolLogoUrl: string | null = null;
   judgeLogoUrl: string | null = null;
   sponsorLogoUrl: string | null = null;
@@ -2374,21 +2374,25 @@ setAuthValue('activeUserEmail', email);
         if (k in expertiseMap) expertiseMap[k] = true;
       });
       this.instructorForm = {
-        name: app.entity || '',
-        tel: d.phone || '',
-        email: app.contact || '',
+        name: d.name || app.entity || '',
+        tel: d.phone || d.tel || '',
+        email: d.email || app.contact || '',
         address: d.address || '',
         region: d.region || 'Greater Accra',
-        qualification: d.credentials || 'BSc',
+        qualification: d.credentials || d.qualification || 'BSc',
         institution: d.institution === 'Independent Mentor' ? '' : (d.institution || ''),
         isIndependent: !!d.isIndependent,
         acceptedTerms: true,
         portfolio: d.portfolio || '',
         expertise: expertiseMap
       };
-      if (d.docs?.length) {
-        this.selectedFileIds['instructorDocs'] = d.docs.map((x: string) => x.split('::')[0]);
-        this.selectedFileNames['instructorDocs'] = d.docs.map((x: string) => x.split('::')[1] || 'document.pdf');
+      this.isDraftResumed = true;
+      if (d.email || app.contact) this.verifiedValues['instEmail'] = (d.email || app.contact || '').trim().toLowerCase();
+      if (d.phone || d.tel) this.verifiedValues['instTel'] = this.normalizePhone(d.phone || d.tel);
+      const docs = d.docs || d.instructorDocs || d.documents || [];
+      if (docs?.length) {
+        this.selectedFileIds['instructorDocs'] = docs.map((x: any) => typeof x === 'string' && x.includes('::') ? x.split('::')[0] : (typeof x === 'string' ? x : x.id || 'doc'));
+        this.selectedFileNames['instructorDocs'] = docs.map((x: any) => typeof x === 'string' && x.includes('::') ? x.split('::')[1] : (typeof x === 'string' ? x : x.name || 'document.pdf'));
       }
     } else if (app.type === 'Judge Registration' || app.type === 'Judge') {
       this.activeTab = 'judge';

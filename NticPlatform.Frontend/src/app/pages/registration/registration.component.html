@@ -1542,16 +1542,41 @@
           </div>
 
           <div style="margin-bottom: 20px;">
-            <label class="form-label">Documents (CV, Certificates, National ID) *</label>
+            <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Documents (CV, Certificates, National ID) *</span>
+              <span *ngIf="selectedFileNames['instructorDocs']?.length || selectedFileIds['instructorDocs']?.length" class="badge success" style="font-size:11px; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
+                <span class="material-symbols-outlined" style="font-size:13px;">verified</span> {{ (selectedFileNames['instructorDocs']?.length || selectedFileIds['instructorDocs']?.length) }} Document(s) Attached
+              </span>
+            </label>
+
+            <!-- Uploading State -->
+            <div *ngIf="isUploadingFile['instructorDocs']" class="upload-zone" style="background: rgba(0, 63, 135, 0.04); border: 1.5px dashed var(--primary); padding: 24px; text-align: center; margin-bottom:12px;">
+              <span class="material-symbols-outlined spin-refresh" style="font-size:32px; color:var(--primary); animation: spin 1s linear infinite;">sync</span>
+              <p style="margin: 8px 0 0; font-weight: 600; color: var(--primary);">Uploading document(s)...</p>
+            </div>
+
+            <!-- Attached Documents List -->
+            <div *ngIf="selectedFileNames['instructorDocs']?.length || selectedFileIds['instructorDocs']?.length" style="display:flex; flex-direction:column; gap:8px; margin-bottom:12px;">
+              <div *ngFor="let name of (selectedFileNames['instructorDocs'] || selectedFileIds['instructorDocs']); let i = index" style="display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--surface-container-lowest, #fff); border:1px solid var(--outline-variant); border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,0.03);">
+                <div style="width:36px; height:36px; border-radius:8px; background:rgba(0,63,135,0.08); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <span class="material-symbols-outlined" style="font-size:20px; color:var(--primary);">description</span>
+                </div>
+                <div style="flex:1; min-width:0;">
+                  <strong style="display:block; font-size:12.5px; color:var(--on-surface); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">{{ name }}</strong>
+                  <span style="font-size:11px; color:#10b981; display:flex; align-items:center; gap:3px; margin-top:2px;">
+                    <span class="material-symbols-outlined" style="font-size:13px;">check_circle</span> Verified & Attached
+                  </span>
+                </div>
+                <button type="button" class="btn btn-subtle btn-sm" (click)="removeFile('instructorDocs', i); $event.stopPropagation()" style="padding:4px; color:var(--error);" title="Remove Document">
+                  <span class="material-symbols-outlined" style="font-size:18px;">close</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Upload Zone (Add More / Initial Upload) -->
             <div class="upload-zone" (click)="instructorDocsInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'instructorDocs')" style="transition:border-color .2s, background .2s;">
-              <span class="material-symbols-outlined upload-icon">upload_file</span>
-              <p *ngIf="!selectedFileNames['instructorDocs']?.length">Drag &amp; drop or <strong>Browse</strong></p>
-              <ul *ngIf="selectedFileNames['instructorDocs']?.length" style="margin:0;padding:0;list-style:none;text-align:left;">
-                <li *ngFor="let name of selectedFileNames['instructorDocs']; let i = index" style="display:flex;align-items:center;gap:8px;color:var(--primary);font-weight:600;">
-                  {{ name }}
-                  <span class="material-symbols-outlined" (click)="removeFile('instructorDocs', i); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);margin-left:auto;">close</span>
-                </li>
-              </ul>
+              <span class="material-symbols-outlined upload-icon">{{ (selectedFileNames['instructorDocs']?.length || selectedFileIds['instructorDocs']?.length) ? 'add_circle' : 'upload_file' }}</span>
+              <p>{{ (selectedFileNames['instructorDocs']?.length || selectedFileIds['instructorDocs']?.length) ? 'Add more documents (CV, Certificates, ID)' : 'Drag & drop or Browse (CV, Certificates, National ID)' }}</p>
               <span>PDF, Word, Images &amp; Documents (Max 10MB each)</span>
             </div>
             <input #instructorDocsInput type="file" multiple (change)="onFileSelected($event, 'instructorDocs')" accept=".pdf,.doc,.docx,.odt,.rtf,.txt,.png,.jpg,.jpeg,.webp,.zip,.rar,.xls,.xlsx,.ppt,.pptx" style="display:none">
@@ -1751,7 +1776,7 @@
                 <span class="material-symbols-outlined upload-icon">cloud_upload</span>
                 <p *ngIf="!selectedFileNames['studentPhoto']?.length">Drag & drop or <strong>Browse</strong></p>
                 <div *ngIf="selectedFileNames['studentPhoto']?.length" style="display:flex;align-items:center;gap:8px;">
-                  <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['studentPhoto'][0] }}</span>
+                  <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['studentPhoto']?.[0] }}</span>
                   <span class="material-symbols-outlined" (click)="removeFile('studentPhoto', 0); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);">close</span>
                 </div>
                 <span>PNG, JPG (Max 5MB)</span>
@@ -1866,7 +1891,7 @@
                   <span class="material-symbols-outlined upload-icon">cloud_upload</span>
                   <p *ngIf="!selectedFileNames['groupPhoto']?.length">Drag & drop or <strong>Browse</strong></p>
                   <div *ngIf="selectedFileNames['groupPhoto']?.length" style="display:flex;align-items:center;gap:8px;">
-                    <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['groupPhoto'][0] }}</span>
+                    <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['groupPhoto']?.[0] }}</span>
                     <span class="material-symbols-outlined" (click)="removeFile('groupPhoto', 0); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);">close</span>
                   </div>
                   <span>PNG, JPG (Max 10MB)</span>
@@ -1882,7 +1907,7 @@
                   <span class="material-symbols-outlined upload-icon">cloud_upload</span>
                   <p *ngIf="!selectedFileNames['groupLogo']?.length">Drag & drop or <strong>Browse</strong></p>
                   <div *ngIf="selectedFileNames['groupLogo']?.length" style="display:flex;align-items:center;gap:8px;">
-                    <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['groupLogo'][0] }}</span>
+                    <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['groupLogo']?.[0] }}</span>
                     <span class="material-symbols-outlined" (click)="removeFile('groupLogo', 0); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);">close</span>
                   </div>
                   <span>PNG, JPG (Max 10MB)</span>
@@ -2535,7 +2560,7 @@
               <span class="material-symbols-outlined upload-icon">cloud_upload</span>
               <p *ngIf="!selectedFileNames['judgeLogo']?.length">Upload a professional logo or headshot for your judge profile</p>
               <div *ngIf="selectedFileNames['judgeLogo']?.length" style="display:flex;align-items:center;gap:8px;">
-                <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['judgeLogo'][0] }}</span>
+                <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['judgeLogo']?.[0] }}</span>
                 <span class="material-symbols-outlined" (click)="removeFile('judgeLogo', 0); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);">close</span>
               </div>
               <span>PNG, SVG (Max 3MB)</span>
