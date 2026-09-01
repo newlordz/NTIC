@@ -1287,7 +1287,7 @@
                         <span class="roster-name">{{ teamForm.name }} <em style="font-size:10px; font-weight:normal; opacity:0.8;">(Drafting)</em></span>
                         <span class="roster-email">Lead: {{ teamForm.leadName }} {{ teamForm.leadEmail ? '(' + teamForm.leadEmail + ')' : '' }}</span>
                       </div>
-                      <span class="roster-track" [class]="teamForm.track?.toLowerCase()">{{ teamForm.track }}</span>
+                      <span class="roster-track" [class]="(teamForm.track || '').toLowerCase()">{{ teamForm.track }}</span>
                     </div>
                   </div>
                   <ng-template #rosterEmpty>
