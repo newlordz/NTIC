@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { HANDLES_OWN_WRITE_ERRORS } from '../interceptors/http-resilience.interceptor';
-import { Observable, timeout } from 'rxjs';
+import { Observable, of, timeout, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface BackendStudent {
@@ -1292,13 +1292,32 @@ login(email: string, password: string): Observable<any> {
      );
    }
 
+   private availabilityCache = new Map<string, { res: { email_taken: boolean; phone_taken: boolean }; exp: number }>();
+
    checkAvailability(email?: string, phone?: string, excludeCode?: string): Observable<{ email_taken: boolean; phone_taken: boolean }> {
+     const em = (email || '').trim().toLowerCase();
+     const ph = (phone || '').trim();
+     const exc = (excludeCode || '').trim();
+     const cacheKey = `${em}|${ph}|${exc}`;
+     const cached = this.availabilityCache.get(cacheKey);
+     const now = Date.now();
+     if (cached && cached.exp > now) {
+       return of(cached.res);
+     }
+
      const params = new URLSearchParams();
-     if (email) params.set('email', email);
-     if (phone) params.set('phone', phone);
-     if (excludeCode) params.set('exclude_code', excludeCode);
+     if (em) params.set('email', em);
+     if (ph) params.set('phone', ph);
+     if (exc) params.set('exclude_code', exc);
      return this.http.get<{ email_taken: boolean; phone_taken: boolean }>(
        `${this.apiUrl}/auth/check-availability?${params.toString()}`
+     ).pipe(
+       tap(res => {
+         if (this.availabilityCache.size > 200) {
+           this.availabilityCache.clear();
+         }
+         this.availabilityCache.set(cacheKey, { res, exp: Date.now() + 20000 });
+       })
      );
    }
 

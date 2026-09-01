@@ -912,6 +912,8 @@ def _create_indexes(cur):
         "CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions (expires_at);",
         "CREATE INDEX IF NOT EXISTS idx_otp_expires_at ON otp_challenges (expires_at);",
         "CREATE INDEX IF NOT EXISTS idx_otp_target_purpose ON otp_challenges (target, purpose);",
+        "CREATE INDEX IF NOT EXISTS idx_pending_approvals_contact_lower ON pending_approvals (lower(contact));",
+        "CREATE INDEX IF NOT EXISTS idx_students_email_lower ON students (lower(email));",
         # Every rate-limit check filters on (bucket, hit_at); without this the
         # check degrades into a full scan of a hot, high-churn table.
         "CREATE INDEX IF NOT EXISTS idx_rate_limit_bucket_time ON rate_limit_hits (bucket, hit_at);",

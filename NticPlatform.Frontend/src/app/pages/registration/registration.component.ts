@@ -1018,50 +1018,58 @@ setAuthValue('activeUserEmail', email);
 
   validateEmailLive(fieldName: string, value: string): void {
     if (this.validationTimers[fieldName]) clearTimeout(this.validationTimers[fieldName]);
-    if (!value || !value.trim()) {
+    const cleanVal = (value || '').trim().toLowerCase();
+    if (!cleanVal) {
       this.fieldValidation[fieldName] = { status: 'idle', message: '' };
       delete this.verifiedValues[fieldName];
+      this.revalidateSiblingFields(fieldName, 'email');
+      this.cdr?.markForCheck?.();
       return;
     }
-    const cleanVal = value.trim().toLowerCase();
     if (this.verifiedValues[fieldName] && this.verifiedValues[fieldName] !== cleanVal) {
       delete this.verifiedValues[fieldName];
     }
-    this.fieldValidation[fieldName] = { status: 'checking', message: 'Checking...' };
-    this.validationTimers[fieldName] = setTimeout(() => {
-      if (!value || !value.trim()) {
-        this.fieldValidation[fieldName] = { status: 'idle', message: '' };
-        delete this.verifiedValues[fieldName];
-        this.revalidateSiblingFields(fieldName, 'email');
-        return;
-      }
-      if (!this.contentService.isValidEmail(value)) {
-        this.fieldValidation[fieldName] = { status: 'invalid', message: 'Invalid email format' };
-        this.revalidateSiblingFields(fieldName, 'email');
-        return;
-      }
-      if (this.isDuplicateInForm(fieldName, value)) {
-        const msg = this.activeTab === 'school' && (fieldName === 'schoolEmail' || fieldName === 'schoolRepEmail')
-          ? 'School email and representative email cannot be the same'
-          : 'This email is already in use by another role or member in your form';
-        this.fieldValidation[fieldName] = { status: 'taken', message: msg };
-        this.revalidateSiblingFields(fieldName, 'email');
-        return;
-      }
-      if (this.hasSavedDraft(value) && !this.isDraftResumed && !this.editingApprovalId) {
-        const timeRemaining = this.getDraftTimeRemaining(value);
-        const timeText = timeRemaining ? ` (${timeRemaining})` : '';
-        this.fieldValidation[fieldName] = { status: 'draft_found', message: `This email is reserved by a saved draft${timeText}. Resume the draft or wait for expiry.` };
-        this.revalidateSiblingFields(fieldName, 'email');
-        return;
-      }
-      if (this.contentService.isEmailTaken(value, this.editingApprovalId || undefined)) {
-        this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered to an account' };
-        this.revalidateSiblingFields(fieldName, 'email');
-        return;
-      }
 
-      // Check PostgreSQL backend database in real time
+    // Instant local duplicate check (0ms)
+    if (this.isDuplicateInForm(fieldName, cleanVal)) {
+      const msg = this.activeTab === 'school' && (fieldName === 'schoolEmail' || fieldName === 'schoolRepEmail')
+        ? 'School email and representative email cannot be the same'
+        : 'This email is already in use by another role or member in your form';
+      this.fieldValidation[fieldName] = { status: 'taken', message: msg };
+      this.revalidateSiblingFields(fieldName, 'email');
+      this.cdr?.markForCheck?.();
+      return;
+    }
+
+    // Incomplete email format - don't show spinner or query server while user is midway typing
+    if (!this.contentService.isValidEmail(cleanVal)) {
+      this.fieldValidation[fieldName] = { status: 'invalid', message: 'Invalid email format' };
+      this.revalidateSiblingFields(fieldName, 'email');
+      this.cdr?.markForCheck?.();
+      return;
+    }
+
+    // Fast local checks
+    if (this.hasSavedDraft(cleanVal) && !this.isDraftResumed && !this.editingApprovalId) {
+      const timeRemaining = this.getDraftTimeRemaining(cleanVal);
+      const timeText = timeRemaining ? ` (${timeRemaining})` : '';
+      this.fieldValidation[fieldName] = { status: 'draft_found', message: `This email is reserved by a saved draft${timeText}. Resume the draft or wait for expiry.` };
+      this.revalidateSiblingFields(fieldName, 'email');
+      this.cdr?.markForCheck?.();
+      return;
+    }
+    if (this.contentService.isEmailTaken(cleanVal, this.editingApprovalId || undefined)) {
+      this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered to an account' };
+      this.revalidateSiblingFields(fieldName, 'email');
+      this.cdr?.markForCheck?.();
+      return;
+    }
+
+    // Valid format reached -> Fast 150ms debounce for authoritative server check
+    this.fieldValidation[fieldName] = { status: 'checking', message: 'Checking...' };
+    this.cdr?.markForCheck?.();
+
+    this.validationTimers[fieldName] = setTimeout(() => {
       this.apiService.checkAvailability(cleanVal, '', this.editingApprovalId || undefined).subscribe({
         next: (res) => {
           if (res && res.email_taken) {
@@ -1070,13 +1078,15 @@ setAuthValue('activeUserEmail', email);
             this.fieldValidation[fieldName] = { status: 'valid', message: '' };
           }
           this.revalidateSiblingFields(fieldName, 'email');
+          this.cdr?.markForCheck?.();
         },
         error: () => {
           this.fieldValidation[fieldName] = { status: 'valid', message: '' };
           this.revalidateSiblingFields(fieldName, 'email');
+          this.cdr?.markForCheck?.();
         }
       });
-    }, 350);
+    }, 150);
   }
 
   private isDuplicateInForm(fieldName: string, value: string): boolean {
@@ -1197,45 +1207,53 @@ setAuthValue('activeUserEmail', email);
 
   validatePhoneLive(fieldName: string, value: string): void {
     if (this.validationTimers[fieldName]) clearTimeout(this.validationTimers[fieldName]);
-    if (!value || !value.trim()) {
+    const cleanVal = (value || '').trim();
+    if (!cleanVal) {
       this.fieldValidation[fieldName] = { status: 'idle', message: '' };
       delete this.fieldVerified[fieldName];
       this.revalidateSiblingFields(fieldName, 'phone');
+      this.cdr?.markForCheck?.();
       return;
     }
-    this.fieldValidation[fieldName] = { status: 'checking', message: 'Checking...' };
-    this.validationTimers[fieldName] = setTimeout(() => {
-      if (!value || !value.trim()) {
-        this.fieldValidation[fieldName] = { status: 'idle', message: '' };
-        delete this.fieldVerified[fieldName];
-        this.revalidateSiblingFields(fieldName, 'phone');
-        return;
-      }
-      if (!this.contentService.isValidGhanaPhone(value)) {
-        this.fieldValidation[fieldName] = { status: 'invalid', message: 'Enter a valid Ghana number (0XX XXX XXXX or +233...)' };
-        this.revalidateSiblingFields(fieldName, 'phone');
-        return;
-      }
-      if (this.isDuplicatePhoneInForm(fieldName, value)) {
-        this.fieldValidation[fieldName] = { status: 'taken', message: 'School telephone and representative telephone cannot be the same' };
-        this.revalidateSiblingFields(fieldName, 'phone');
-        return;
-      }
-      if (this.hasSavedDraft(value) && !this.isDraftResumed && !this.editingApprovalId) {
-        const timeRemaining = this.getDraftTimeRemaining(value);
-        const timeText = timeRemaining ? ` (${timeRemaining})` : '';
-        this.fieldValidation[fieldName] = { status: 'draft_found', message: `This number is reserved by a saved draft${timeText}. Resume the draft or wait for expiry.` };
-        this.revalidateSiblingFields(fieldName, 'phone');
-        return;
-      }
-      if (this.contentService.isPhoneTaken(value, this.editingApprovalId || undefined)) {
-        this.fieldValidation[fieldName] = { status: 'taken', message: 'This number is already registered' };
-        this.revalidateSiblingFields(fieldName, 'phone');
-        return;
-      }
 
-      // Check PostgreSQL backend database in real time
-      this.apiService.checkAvailability('', value, this.editingApprovalId || undefined).subscribe({
+    // Instant local duplicate check (0ms)
+    if (this.isDuplicatePhoneInForm(fieldName, cleanVal)) {
+      this.fieldValidation[fieldName] = { status: 'taken', message: 'School telephone and representative telephone cannot be the same' };
+      this.revalidateSiblingFields(fieldName, 'phone');
+      this.cdr?.markForCheck?.();
+      return;
+    }
+
+    // Incomplete phone number format - don't show spinner or query server while user is midway typing
+    if (!this.contentService.isValidGhanaPhone(cleanVal)) {
+      this.fieldValidation[fieldName] = { status: 'invalid', message: 'Enter a valid Ghana number (0XX XXX XXXX or +233...)' };
+      this.revalidateSiblingFields(fieldName, 'phone');
+      this.cdr?.markForCheck?.();
+      return;
+    }
+
+    // Fast local draft/roster checks
+    if (this.hasSavedDraft(cleanVal) && !this.isDraftResumed && !this.editingApprovalId) {
+      const timeRemaining = this.getDraftTimeRemaining(cleanVal);
+      const timeText = timeRemaining ? ` (${timeRemaining})` : '';
+      this.fieldValidation[fieldName] = { status: 'draft_found', message: `This number is reserved by a saved draft${timeText}. Resume the draft or wait for expiry.` };
+      this.revalidateSiblingFields(fieldName, 'phone');
+      this.cdr?.markForCheck?.();
+      return;
+    }
+    if (this.contentService.isPhoneTaken(cleanVal, this.editingApprovalId || undefined)) {
+      this.fieldValidation[fieldName] = { status: 'taken', message: 'This number is already registered' };
+      this.revalidateSiblingFields(fieldName, 'phone');
+      this.cdr?.markForCheck?.();
+      return;
+    }
+
+    // Valid format reached -> Fast 150ms debounce for authoritative server check
+    this.fieldValidation[fieldName] = { status: 'checking', message: 'Checking...' };
+    this.cdr?.markForCheck?.();
+
+    this.validationTimers[fieldName] = setTimeout(() => {
+      this.apiService.checkAvailability('', cleanVal, this.editingApprovalId || undefined).subscribe({
         next: (res) => {
           if (res && res.phone_taken) {
             this.fieldValidation[fieldName] = { status: 'taken', message: 'This number is already registered', serverConfirmed: true };
@@ -1243,13 +1261,15 @@ setAuthValue('activeUserEmail', email);
             this.fieldValidation[fieldName] = { status: 'valid', message: '' };
           }
           this.revalidateSiblingFields(fieldName, 'phone');
+          this.cdr?.markForCheck?.();
         },
         error: () => {
           this.fieldValidation[fieldName] = { status: 'valid', message: '' };
           this.revalidateSiblingFields(fieldName, 'phone');
+          this.cdr?.markForCheck?.();
         }
       });
-    }, 400);
+    }, 150);
   }
 
   hasValidationErrors(): boolean {
