@@ -80,7 +80,7 @@ Use this section to leave short notes, status updates, or handoff messages for c
   - Implemented comprehensive performance optimizations across the full stack:
     - **Frontend:** Applied `ChangeDetectionStrategy.OnPush` across all 16 page components, debounced `saveState()` writes (300ms) with IndexedDB coalescing, removed wasteful `localStorage` dual-write for large collections, enhanced `WsSyncService` with ping/pong timeout handling and visibility auto-reconnect.
     - **Backend:** Added `GZipMiddleware` payload compression (>1KB responses), real-time `Server-Timing` headers, in-memory TTL caching with write invalidation for 6 public marketing/landing GET endpoints, `before_id` cursor pagination for audit logs, `updated_at` column and `?updated_since` delta sync for `/api/users`.
-    - **Database & SMTP:** Added composite index `idx_pending_approvals_status_type` on `pending_approvals (status, type)` and `idx_users_updated_at` on `users (updated_at)`. Verified native Google SMTP TLS/SSL delivery.
+    - **Database & SMTP:** Added composite index `idx_pending_approvals_status_type` on `pending_approvals (status, type)` and `idx_users_updated_at` on `users (updated_at)`. Verified native Google SMTP TLS/1SSL delivery.
     - All 509 backend unit tests (`pytest`) and frontend TypeScript checks (`tsc`) passing cleanly.
 - **[2026-08-31 - v1.0.2]**:
   - Extended development rate limits in `app/security.py`: during local development (`NTIC_DEV_RELOAD=true`), `check_rate_limit` automatically applies a `100x` attempt multiplier (`DEV_RATE_LIMIT_MULTIPLIER=100`) or can be bypassed entirely with `DISABLE_RATE_LIMITS=true` in `.env`. Prevents `HTTP 429` throttling during rapid local dev testing.
