@@ -1257,7 +1257,7 @@
 
                 <!-- Pane 2: Roster -->
                 <div class="card-pane fade-in" *ngIf="cardSubTab === 'roster'">
-                  <div class="roster-list" *ngIf="schoolForm.students.length > 0 || schoolForm.teams.length > 0; else rosterEmpty">
+                  <div class="roster-list" *ngIf="schoolForm.students.length > 0 || schoolForm.teams.length > 0 || hasDraftTeam(); else rosterEmpty">
                     <div class="roster-entry" *ngFor="let s of schoolForm.students">
                       <div class="roster-avatar" [style.background]="'var(--primary)'">
                         <span>{{ getInitials(s.name, 'ST') }}</span>
@@ -1274,9 +1274,20 @@
                       </div>
                       <div class="roster-info">
                         <span class="roster-name">{{ t.name }}</span>
-                        <span class="roster-email">{{ t.members || t.leadName || 'Team' }}</span>
+                        <span class="roster-email">{{ getTeamMembersSummary(t) }}</span>
                       </div>
                       <span class="roster-track" [class]="t.track?.toLowerCase()">{{ t.track }}</span>
+                    </div>
+                    <!-- Live Draft Team Preview when user is typing in Step 3 but hasn't clicked Add Team yet -->
+                    <div class="roster-entry" *ngIf="schoolForm.teams.length === 0 && hasDraftTeam()" style="border: 1px dashed var(--primary); background: rgba(0, 63, 135, 0.04);">
+                      <div class="roster-avatar" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">
+                        <span class="material-symbols-outlined" style="font-size:14px;color:#fff">groups</span>
+                      </div>
+                      <div class="roster-info">
+                        <span class="roster-name">{{ teamForm.name }} <em style="font-size:10px; font-weight:normal; opacity:0.8;">(Drafting)</em></span>
+                        <span class="roster-email">Lead: {{ teamForm.leadName }} {{ teamForm.leadEmail ? '(' + teamForm.leadEmail + ')' : '' }}</span>
+                      </div>
+                      <span class="roster-track" [class]="teamForm.track?.toLowerCase()">{{ teamForm.track }}</span>
                     </div>
                   </div>
                   <ng-template #rosterEmpty>

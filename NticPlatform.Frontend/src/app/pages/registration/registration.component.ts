@@ -1048,7 +1048,7 @@ setAuthValue('activeUserEmail', email);
         this.revalidateSiblingFields(fieldName, 'email');
         return;
       }
-      if (this.hasSavedDraft(value) && !this.isDraftResumed) {
+      if (this.hasSavedDraft(value) && !this.isDraftResumed && !this.editingApprovalId) {
         const timeRemaining = this.getDraftTimeRemaining(value);
         const timeText = timeRemaining ? ` (${timeRemaining})` : '';
         this.fieldValidation[fieldName] = { status: 'draft_found', message: `This email is reserved by a saved draft${timeText}. Resume the draft or wait for expiry.` };
@@ -1062,7 +1062,7 @@ setAuthValue('activeUserEmail', email);
       }
 
       // Check PostgreSQL backend database in real time
-      this.apiService.checkAvailability(cleanVal, '').subscribe({
+      this.apiService.checkAvailability(cleanVal, '', this.editingApprovalId || undefined).subscribe({
         next: (res) => {
           if (res && res.email_taken) {
             this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered to an account', serverConfirmed: true };
@@ -1221,7 +1221,7 @@ setAuthValue('activeUserEmail', email);
         this.revalidateSiblingFields(fieldName, 'phone');
         return;
       }
-      if (this.hasSavedDraft(value) && !this.isDraftResumed) {
+      if (this.hasSavedDraft(value) && !this.isDraftResumed && !this.editingApprovalId) {
         const timeRemaining = this.getDraftTimeRemaining(value);
         const timeText = timeRemaining ? ` (${timeRemaining})` : '';
         this.fieldValidation[fieldName] = { status: 'draft_found', message: `This number is reserved by a saved draft${timeText}. Resume the draft or wait for expiry.` };
@@ -1235,7 +1235,7 @@ setAuthValue('activeUserEmail', email);
       }
 
       // Check PostgreSQL backend database in real time
-      this.apiService.checkAvailability('', value).subscribe({
+      this.apiService.checkAvailability('', value, this.editingApprovalId || undefined).subscribe({
         next: (res) => {
           if (res && res.phone_taken) {
             this.fieldValidation[fieldName] = { status: 'taken', message: 'This number is already registered', serverConfirmed: true };
@@ -1385,6 +1385,7 @@ setAuthValue('activeUserEmail', email);
   private verifyChallengeId = '';
 
   isFieldVerified(fieldName: string, currentValue?: string): boolean {
+    if (this.editingApprovalId || this.isDraftResumed) return true;
     if (!currentValue || !currentValue.trim()) return false;
     const verifiedVal = this.verifiedValues[fieldName];
     if (!verifiedVal) return false;
@@ -2302,11 +2303,16 @@ setAuthValue('activeUserEmail', email);
         repEmail: d.repEmail || '',
         repTel: d.repTel || '',
         students: d.students || [],
-        teams: d.teamsList || [],
+        teams: d.teamsList || d.teams || d.schoolTeams || [],
         acceptedTerms: true,
         gdpaConsent: d.gdpaConsent ?? true,
         gdpaConsentTimestamp: d.gdpaConsentTimestamp || ''
       };
+      this.isDraftResumed = true;
+      if (d.email || app.contact) this.verifiedValues['schoolEmail'] = (d.email || app.contact || '').trim().toLowerCase();
+      if (d.repEmail) this.verifiedValues['schoolRepEmail'] = d.repEmail.trim().toLowerCase();
+      if (d.phone) this.verifiedValues['schoolTel'] = this.normalizePhone(d.phone);
+      if (d.repTel) this.verifiedValues['schoolRepTel'] = this.normalizePhone(d.repTel);
       this.gpsAddress = d.gpsAddress || '';
       this.schoolStep = 1;
       this.maxSchoolStepReached = 4;
@@ -2614,7 +2620,42 @@ setAuthValue('activeUserEmail', email);
     }
   }
 
+  autoStageCurrentTeam(): void {
+    if (this.activeTab !== 'school') return;
+    if (this.teamForm.name?.trim() && this.teamForm.leadName?.trim() && this.teamForm.leadEmail?.trim()) {
+      if (this.contentService.isValidEmail(this.teamForm.leadEmail.trim())) {
+        this.addTeam();
+      }
+    }
+  }
+
+  hasDraftTeam(): boolean {
+    return !!(this.teamForm.name?.trim() && this.teamForm.leadName?.trim());
+  }
+
+  getTeamMembersSummary(t: any): string {
+    if (!t) return 'Team';
+    const lead = t.leadName ? `${t.leadName}${t.leadEmail ? ' (' + t.leadEmail + ')' : ''}` : '';
+    const rawMembers = t.rosterList || t.members;
+    let otherMembers = '';
+    if (Array.isArray(rawMembers)) {
+      otherMembers = rawMembers
+        .filter((m: any) => typeof m === 'string' && m.trim() && m.trim().toLowerCase() !== (t.leadName || '').trim().toLowerCase())
+        .join(', ');
+    } else {
+      const parts = [t.member2Name, t.member3Name, t.member4Name, t.member5Name].filter((n: string) => n && n.trim());
+      otherMembers = parts.join(', ');
+    }
+    if (lead && otherMembers) return `Lead: ${lead} • Members: ${otherMembers}`;
+    if (lead) return `Lead: ${lead}`;
+    if (otherMembers) return `Members: ${otherMembers}`;
+    return 'Team';
+  }
+
   nextStep(step: number): void {
+    if (this.schoolStep === 3) {
+      this.autoStageCurrentTeam();
+    }
     if (this.schoolStep === 3 && step === 4 && !this.schoolForm.gdpaConsent) {
       this.notificationService.warning('Please check the Ghana Data Protection Act (Act 843) consent box to proceed.', 'Consent Required');
       return;
@@ -3777,6 +3818,7 @@ setAuthValue('activeUserEmail', email);
   }
 
   openPreviewModal(): void {
+    this.autoStageCurrentTeam();
     if (!this.schoolForm.name) {
       this.showCustomAlert('Please fill out the form (at least the School Name) before previewing.', 'Form Incomplete', 'warning');
       return;
@@ -3790,6 +3832,7 @@ setAuthValue('activeUserEmail', email);
 
   async submitRegistration(): Promise<void> {
     if (this.isSubmitting) return;
+    this.autoStageCurrentTeam();
     if (!this.validateCurrentTab()) return;
 
     // Require the primary contact email to be OTP-verified before filing. The

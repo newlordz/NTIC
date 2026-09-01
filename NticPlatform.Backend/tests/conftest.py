@@ -24,6 +24,10 @@ for _url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
 # one explicitly. This value only ever exists inside the throwaway test DB.
 ADMIN_PASSWORD = "test-only-admin-pw-4f3a91"
 os.environ["NTIC_ADMIN_PASSWORD"] = ADMIN_PASSWORD
+os.environ["NTIC_DEV_RELOAD"] = "false"
+os.environ["NTIC_DEV_MODE"] = "false"
+os.environ["ENVIRONMENT"] = "test"
+os.environ["DISABLE_RATE_LIMITS"] = "false"
 
 import pytest
 import psycopg2

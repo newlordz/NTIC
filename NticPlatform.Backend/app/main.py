@@ -1559,7 +1559,7 @@ try:
         return {"status": "reset", "email": email}
 
     @app.get("/api/auth/check-availability")
-    def check_availability(request: Request, email: str = "", phone: str = ""):
+    def check_availability(request: Request, email: str = "", phone: str = "", exclude_code: str = ""):
         """Check if an email or phone number is already in the database.
 
         This is an existence oracle, so it is rate-limited like every other
@@ -1568,6 +1568,7 @@ try:
         """
         em = (email or "").strip().lower()
         ph = (phone or "").strip()
+        exc = (exclude_code or "").strip()
 
         if request is not None:
             client_ip = extract_client_ip(request)
@@ -1589,16 +1590,30 @@ try:
                     email_taken = True
                 else:
                     # 2. Check pending_approvals table for in-flight pending applications
-                    cur.execute("""
-                        SELECT 1 FROM pending_approvals 
-                        WHERE status = 'pending'
-                          AND (lower(COALESCE(contact, '')) = %s 
-                           OR lower(COALESCE(details->>'schoolEmail', '')) = %s
-                           OR lower(COALESCE(details->>'repEmail', '')) = %s
-                           OR lower(COALESCE(details->>'leadEmail', '')) = %s
-                           OR lower(COALESCE(details->>'email', '')) = %s)
-                        LIMIT 1
-                    """, (em, em, em, em, em))
+                    if exc:
+                        cur.execute("""
+                            SELECT 1 FROM pending_approvals 
+                            WHERE status = 'pending'
+                              AND id != %s
+                              AND lower(COALESCE(details->>'code', '')) != lower(%s)
+                              AND (lower(COALESCE(contact, '')) = %s 
+                               OR lower(COALESCE(details->>'schoolEmail', '')) = %s
+                               OR lower(COALESCE(details->>'repEmail', '')) = %s
+                               OR lower(COALESCE(details->>'leadEmail', '')) = %s
+                               OR lower(COALESCE(details->>'email', '')) = %s)
+                            LIMIT 1
+                        """, (exc, exc, em, em, em, em, em))
+                    else:
+                        cur.execute("""
+                            SELECT 1 FROM pending_approvals 
+                            WHERE status = 'pending'
+                              AND (lower(COALESCE(contact, '')) = %s 
+                               OR lower(COALESCE(details->>'schoolEmail', '')) = %s
+                               OR lower(COALESCE(details->>'repEmail', '')) = %s
+                               OR lower(COALESCE(details->>'leadEmail', '')) = %s
+                               OR lower(COALESCE(details->>'email', '')) = %s)
+                            LIMIT 1
+                        """, (em, em, em, em, em))
                     if cur.fetchone():
                         email_taken = True
                     else:
@@ -1630,15 +1645,28 @@ try:
                         phone_taken = True
                     else:
                         # Check pending_approvals table for in-flight pending applications
-                        cur.execute("""
-                            SELECT 1 FROM pending_approvals 
-                            WHERE status = 'pending'
-                              AND (right(regexp_replace(COALESCE(contact, ''), '\\D', '', 'g'), 9) = %s 
-                               OR right(regexp_replace(COALESCE(details->>'tel', ''), '\\D', '', 'g'), 9) = %s
-                               OR right(regexp_replace(COALESCE(details->>'repTel', ''), '\\D', '', 'g'), 9) = %s
-                               OR right(regexp_replace(COALESCE(details->>'phone', ''), '\\D', '', 'g'), 9) = %s)
-                            LIMIT 1
-                        """, (suffix, suffix, suffix, suffix))
+                        if exc:
+                            cur.execute("""
+                                SELECT 1 FROM pending_approvals 
+                                WHERE status = 'pending'
+                                  AND id != %s
+                                  AND lower(COALESCE(details->>'code', '')) != lower(%s)
+                                  AND (right(regexp_replace(COALESCE(contact, ''), '\\D', '', 'g'), 9) = %s 
+                                   OR right(regexp_replace(COALESCE(details->>'tel', ''), '\\D', '', 'g'), 9) = %s
+                                   OR right(regexp_replace(COALESCE(details->>'repTel', ''), '\\D', '', 'g'), 9) = %s
+                                   OR right(regexp_replace(COALESCE(details->>'phone', ''), '\\D', '', 'g'), 9) = %s)
+                                LIMIT 1
+                            """, (exc, exc, suffix, suffix, suffix, suffix))
+                        else:
+                            cur.execute("""
+                                SELECT 1 FROM pending_approvals 
+                                WHERE status = 'pending'
+                                  AND (right(regexp_replace(COALESCE(contact, ''), '\\D', '', 'g'), 9) = %s 
+                                   OR right(regexp_replace(COALESCE(details->>'tel', ''), '\\D', '', 'g'), 9) = %s
+                                   OR right(regexp_replace(COALESCE(details->>'repTel', ''), '\\D', '', 'g'), 9) = %s
+                                   OR right(regexp_replace(COALESCE(details->>'phone', ''), '\\D', '', 'g'), 9) = %s)
+                                LIMIT 1
+                            """, (suffix, suffix, suffix, suffix))
                         if cur.fetchone():
                             phone_taken = True
             cur.close()
