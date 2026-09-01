@@ -43,6 +43,7 @@ try:
     from httpx import AsyncClient
     from fastapi import FastAPI, HTTPException, status, Request, Depends, WebSocket, BackgroundTasks
     from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.middleware.gzip import GZipMiddleware
     from fastapi.staticfiles import StaticFiles
     from fastapi.responses import FileResponse, JSONResponse, Response
     from pydantic import BaseModel, Field
@@ -397,6 +398,9 @@ try:
         openapi_url="/openapi.json" if _docs_enabled else None,
     )
 
+    # High-Performance Compression: automatically Gzip compresses JSON / HTML payloads > 1KB
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.ALLOWED_ORIGINS,
@@ -406,17 +410,20 @@ try:
     )
 
     @app.middleware("http")
-    async def add_security_headers(request: Request, call_next):
+    async def add_security_and_telemetry_headers(request: Request, call_next):
         # CORS is handled by CORSMiddleware above against the configured
         # allow-list. This middleware only adds non-CORS security headers; it
         # must not reflect the Origin header, otherwise any site could read
         # credentialed responses regardless of ALLOWED_ORIGINS.
+        _req_start = time.perf_counter()
         response = await call_next(request)
+        _dur_ms = round((time.perf_counter() - _req_start) * 1000, 2)
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "0"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Server-Timing"] = f"total;dur={_dur_ms}"
         return response
 
     # ─── HEALTH & MONITORING ─────────────────────────────────────────
