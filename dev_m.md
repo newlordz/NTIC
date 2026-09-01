@@ -81,11 +81,11 @@ Use this section to leave short notes, status updates, or handoff messages for c
   - **Application Editing & Duplicate Availability:** Added `exclude_code` parameter to `GET /api/auth/check-availability` so editing a pending application ignores the applicant's own existing record. Bypassed OTP re-verification for loaded/resumed approvals.
   - **Public File Uploads & Upload State Feedback:** Whitelisted `/api/files/upload` in public API middleware for anonymous registration uploads. Added reactive `isUploadingFile` state with animated spinning loaders across team member photo uploads, school logos, and accreditation/instructor document cards.
   - **Instructor Form Document Retention:** Enhanced `loadApprovalIntoForm` to reliably preserve and display attached instructor CVs/certificates/IDs and email verification states across edits.
-  - **Instructor LMS Management & Course Creation Feedback:**
-    - Fixed duplicate course creation by adding `isSaving` guards and double-click protection to course, module, material, assignment, and grading action handlers.
-    - Added spinning loaders (`spinner-inline`) and disabled states (`[disabled]="isSaving"`) to modal action buttons in LMS Manager.
-    - Resolved `GET /api/lms/moderation-queue` 403 Forbidden error for instructors by scoping the moderation queue endpoint request and the "Content Approvals Queue" tab exclusively to staff reviewers (`admin`, `super_admin`, `content_manager`, `reviewer`) via `CurrentUserService`.
-    - Added dedicated "My Submissions in Review" KPI metric card for instructor authors.
+  - **Instructor LMS Management & Course Visibility:**
+    - **Admin Course View Across Authors:** Updated `GET /api/lms/my-courses` so administrators and staff reviewers can see all approved and active courses across all authors on the platform in Courses Hub and detail tabs, while authors see their own authored courses.
+    - **Module, Material, & Assignment Editing (PATCH Endpoints):** Added backend routes `PATCH /api/lms/modules/{module_id}`, `PATCH /api/lms/materials/{material_id}`, and `PATCH /api/lms/assignments/{assignment_id}`. Fixed `saveModule()`, `saveMaterial()`, and `saveAssignment()` to update existing entities when in edit mode instead of re-creating duplicates.
+    - **Smart Order Index Suggestion:** When creating new curriculum modules, automatically calculates the highest existing module order index for the selected course and suggests the next sequential order number (`max(order) + 1`).
+    - **Course Dropdown Options in Modals:** Bound module, material, and assignment modals to live server-loaded `coursesList`.
   - All 508 backend unit tests (`pytest`) and frontend TypeScript typechecks (`tsc`) passing cleanly.
 - **[2026-09-01 - v1.0.3]**:
   - Implemented comprehensive performance optimizations across the full stack:

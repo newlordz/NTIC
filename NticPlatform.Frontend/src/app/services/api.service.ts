@@ -613,6 +613,12 @@ export class ApiService {
     return this.http.post(this.apiUrl + '/lms/modules', payload);
   }
 
+  updateModule(moduleId: string, payload: {
+    title: string; description?: string; order_num?: number; icon?: string;
+  }): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/lms/modules/${encodeURIComponent(moduleId)}`, payload);
+  }
+
   getModules(courseId: string = ''): Observable<LmsModule[]> {
     const q = courseId ? `?course_id=${encodeURIComponent(courseId)}` : '';
     return this.http.get<LmsModule[]>(this.apiUrl + '/lms/modules' + q);
@@ -629,6 +635,12 @@ export class ApiService {
     return this.http.post(this.apiUrl + '/lms/materials', payload);
   }
 
+  updateMaterial(materialId: string, payload: {
+    title: string; module_id?: string; type?: string; url?: string; description?: string;
+  }): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/lms/materials/${encodeURIComponent(materialId)}`, payload);
+  }
+
   getMaterials(courseId: string = ''): Observable<LmsMaterial[]> {
     const q = courseId ? `?course_id=${encodeURIComponent(courseId)}` : '';
     return this.http.get<LmsMaterial[]>(this.apiUrl + '/lms/materials' + q);
@@ -643,6 +655,12 @@ export class ApiService {
     due_date?: string; max_score?: number; track?: string;
   }): Observable<any> {
     return this.http.post(this.apiUrl + '/lms/assignments', payload);
+  }
+
+  updateAssignment(assignmentId: string, payload: {
+    title: string; description?: string; due_date?: string; max_score?: number; track?: string;
+  }): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/lms/assignments/${encodeURIComponent(assignmentId)}`, payload);
   }
 
   deleteAssignment(assignmentId: string): Observable<any> {

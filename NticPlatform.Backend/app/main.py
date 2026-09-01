@@ -3298,18 +3298,26 @@ try:
 
     @app.get("/api/lms/my-courses")
     def list_my_courses(competition_id: str = "", actor: dict = Depends(require_role(LMS_ROLES))):
-        """Courses the caller authored, with live roster and grading counts.
+        """Courses the caller authored, or all courses across authors if caller is LMS staff/admin.
 
-        competition_id scopes the list to one cycle. The LMS previously had no
-        notion of cycles at all -- courses were organised only by `track` -- so an
-        instructor preparing for a specific competition had no way to see just
-        that material.
+        competition_id scopes the list to one cycle.
         """
         conn = _get_db()
         try:
             cur = conn.cursor()
-            clause = " AND c.competition_id = %s" if competition_id else ""
-            params = (actor["id"],) if not competition_id else (actor["id"], competition_id)
+            if _is_lms_staff(actor):
+                clause = " WHERE 1=1"
+                params: list = []
+                if competition_id:
+                    clause += " AND c.competition_id = %s"
+                    params.append(competition_id)
+            else:
+                clause = " WHERE c.owner_id = %s"
+                params = [actor["id"]]
+                if competition_id:
+                    clause += " AND c.competition_id = %s"
+                    params.append(competition_id)
+
             cur.execute(
                 "SELECT c.id, c.title, c.track, c.icon, c.level, c.description, c.modules, "
                 "c.status, c.approval_status, c.rejection_reason, c.created_at, c.competition_id, "
@@ -3317,7 +3325,7 @@ try:
                 "(SELECT COUNT(*) FROM lms_assignments a WHERE a.course_id=c.id), "
                 "(SELECT COUNT(*) FROM lms_submissions s WHERE s.course_id=c.id AND s.score IS NULL), "
                 "(SELECT ROUND(AVG(e.progress_pct)) FROM lms_enrollments e WHERE e.course_id=c.id AND e.status='active') "
-                "FROM lms_courses c WHERE c.owner_id = %s" + clause + " ORDER BY c.created_at DESC NULLS LAST",
+                "FROM lms_courses c" + clause + " ORDER BY c.created_at DESC NULLS LAST",
                 params,
             )
             rows = cur.fetchall()
@@ -3340,12 +3348,7 @@ try:
 
     @app.get("/api/lms/courses/{course_id}/students")
     def list_course_students(course_id: str, actor: dict = Depends(require_role(LMS_ROLES))):
-        """The enrolled roster for one course, with progress and submission counts.
-
-        The LMS Manager "Students" tab read `lmsEnrollments`, which defaults to []
-        and had no backend GET -- so it was permanently empty unless an admin had
-        bulk-synced data into that same browser.
-        """
+        """The enrolled roster for one course, with progress and submission counts."""
         conn = _get_db()
         try:
             cur = conn.cursor()
@@ -3378,8 +3381,6 @@ try:
         ]
 
     # ── Modules / materials / assignments (owner-scoped) ──────────────
-    # None of these had ANY endpoint: the five tables existed and were indexed but
-    # were writable only through admin bulk-sync and readable through nothing.
 
     class LmsModulePayload(BaseModel):
         course_id: str = Field(min_length=1, max_length=64)
@@ -3394,11 +3395,6 @@ try:
         try:
             cur = conn.cursor()
             course = _load_owned_course(cur, payload.course_id, actor)
-            # The course is the unit of review, so child content inherits its state.
-            # On a pending course it stays pending and is published by the cascade in
-            # moderate_course(); on an already-approved course the author can add
-            # material without it being stranded, since there is no per-item review
-            # route to rescue it.
             inherited = course[3] or "approved"
             module_id = "mod-" + str(uuid.uuid4())[:8]
             cur.execute(
@@ -3417,20 +3413,55 @@ try:
         broadcast_async({"type": "data_changed", "collection": "lms_modules"})
         return {"id": module_id, "title": payload.title}
 
-    @app.get("/api/lms/modules")
-    def list_modules(course_id: str = "", _actor: dict = Depends(require_auth)):
-        """Modules for a course. Students need this for a real syllabus -- the
-        student view previously synthesised `Module 1..n` placeholders because there
-        was no way to read the real titles."""
+    @app.patch("/api/lms/modules/{module_id}")
+    def update_module(module_id: str, payload: dict, actor: dict = Depends(require_role(LMS_ROLES))):
         conn = _get_db()
         try:
             cur = conn.cursor()
-            sql = ("SELECT id, course_id, title, description, order_num, icon, status "
-                   "FROM lms_modules WHERE COALESCE(approval_status,'approved')='approved'")
-            params: list = []
-            if course_id:
-                sql += " AND course_id = %s"
-                params.append(course_id)
+            cur.execute("SELECT course_id FROM lms_modules WHERE id=%s", (module_id,))
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Module not found")
+            _load_owned_course(cur, row[0], actor)
+
+            title = str(payload.get("title", "")).strip()
+            if not title:
+                raise HTTPException(status_code=422, detail="Title is required")
+            description = str(payload.get("description", ""))
+            order_num = int(payload.get("order_num", 1) or 1)
+            icon = str(payload.get("icon", "menu_book"))
+
+            cur.execute(
+                "UPDATE lms_modules SET title=%s, description=%s, order_num=%s, icon=%s WHERE id=%s",
+                (title, description, order_num, icon, module_id),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_modules"})
+        return {"status": "updated", "id": module_id, "title": title}
+
+    @app.get("/api/lms/modules")
+    def list_modules(course_id: str = "", _actor: dict = Depends(require_auth)):
+        """Modules for a course."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            if _is_lms_staff(_actor):
+                sql = "SELECT id, course_id, title, description, order_num, icon, status FROM lms_modules WHERE 1=1"
+                params: list = []
+                if course_id:
+                    sql += " AND course_id = %s"
+                    params.append(course_id)
+            else:
+                sql = ("SELECT id, course_id, title, description, order_num, icon, status "
+                       "FROM lms_modules WHERE (COALESCE(approval_status,'approved')='approved' OR owner_id=%s)")
+                params = [_actor["id"]]
+                if course_id:
+                    sql += " AND course_id = %s"
+                    params.append(course_id)
             sql += " ORDER BY order_num, title"
             cur.execute(sql, params)
             rows = cur.fetchall()
@@ -3495,17 +3526,55 @@ try:
         broadcast_async({"type": "data_changed", "collection": "lms_materials"})
         return {"id": material_id, "title": payload.title}
 
+    @app.patch("/api/lms/materials/{material_id}")
+    def update_material(material_id: str, payload: dict, actor: dict = Depends(require_role(LMS_ROLES))):
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT course_id FROM lms_materials WHERE id=%s", (material_id,))
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Material not found")
+            _load_owned_course(cur, row[0], actor)
+
+            title = str(payload.get("title", "")).strip()
+            if not title:
+                raise HTTPException(status_code=422, detail="Title is required")
+            module_id = str(payload.get("module_id", "") or "")
+            mat_type = str(payload.get("type", "link"))
+            url = str(payload.get("url", ""))
+            description = str(payload.get("description", ""))
+
+            cur.execute(
+                "UPDATE lms_materials SET title=%s, module_id=%s, type=%s, url=%s, description=%s WHERE id=%s",
+                (title, module_id or None, mat_type, url, description, material_id),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_materials"})
+        return {"status": "updated", "id": material_id, "title": title}
+
     @app.get("/api/lms/materials")
     def list_materials(course_id: str = "", _actor: dict = Depends(require_auth)):
         conn = _get_db()
         try:
             cur = conn.cursor()
-            sql = ("SELECT id, course_id, module_id, title, type, url, description "
-                   "FROM lms_materials WHERE COALESCE(approval_status,'approved')='approved'")
-            params: list = []
-            if course_id:
-                sql += " AND course_id = %s"
-                params.append(course_id)
+            if _is_lms_staff(_actor):
+                sql = "SELECT id, course_id, module_id, title, type, url, description FROM lms_materials WHERE 1=1"
+                params: list = []
+                if course_id:
+                    sql += " AND course_id = %s"
+                    params.append(course_id)
+            else:
+                sql = ("SELECT id, course_id, module_id, title, type, url, description "
+                       "FROM lms_materials WHERE (COALESCE(approval_status,'approved')='approved' OR owner_id=%s)")
+                params = [_actor["id"]]
+                if course_id:
+                    sql += " AND course_id = %s"
+                    params.append(course_id)
             sql += " ORDER BY title"
             cur.execute(sql, params)
             rows = cur.fetchall()
@@ -3569,6 +3638,37 @@ try:
             release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "lms_assignments"})
         return {"id": assignment_id, "title": payload.title}
+
+    @app.patch("/api/lms/assignments/{assignment_id}")
+    def update_assignment(assignment_id: str, payload: dict, actor: dict = Depends(require_role(LMS_ROLES))):
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT course_id FROM lms_assignments WHERE id=%s", (assignment_id,))
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Assignment not found")
+            _load_owned_course(cur, row[0], actor)
+
+            title = str(payload.get("title", "")).strip()
+            if not title:
+                raise HTTPException(status_code=422, detail="Title is required")
+            description = str(payload.get("description", ""))
+            due_date = str(payload.get("due_date", ""))
+            max_score = int(payload.get("max_score", 100) or 100)
+            track = str(payload.get("track", ""))
+
+            cur.execute(
+                "UPDATE lms_assignments SET title=%s, description=%s, due_date=%s, max_score=%s, track=%s WHERE id=%s",
+                (title, description, due_date or None, max_score, track, assignment_id),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_assignments"})
+        return {"status": "updated", "id": assignment_id, "title": title}
 
     @app.delete("/api/lms/assignments/{assignment_id}")
     def delete_assignment(assignment_id: str, actor: dict = Depends(require_role(LMS_ROLES))):

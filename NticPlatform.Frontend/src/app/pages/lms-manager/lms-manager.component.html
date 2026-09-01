@@ -126,7 +126,7 @@
       <!-- Course Selector -->
       <select [(ngModel)]="selectedCourseId" (ngModelChange)="loadRoster($event)" *ngIf="activeTab !== 'courses' && activeTab !== 'approvals'">
         <option value="all">All Courses</option>
-        <option *ngFor="let course of contentService.lmsCourses" [value]="course.id">{{ course.title }}</option>
+        <option *ngFor="let course of coursesList" [value]="course.id">{{ course.title }}</option>
       </select>
 
       <!-- Track Selector -->
@@ -663,9 +663,9 @@
       <div class="modal-body">
         <div class="form-group">
           <label>Course *</label>
-          <select [(ngModel)]="moduleForm.courseId">
+          <select [(ngModel)]="moduleForm.courseId" (ngModelChange)="suggestNextModuleOrder()">
             <option value="">Select course...</option>
-            <option *ngFor="let course of contentService.lmsCourses" [value]="course.id">{{ course.title }}</option>
+            <option *ngFor="let course of coursesList" [value]="course.id">{{ course.title }}</option>
           </select>
         </div>
 
@@ -720,7 +720,7 @@
             <label>Course *</label>
             <select [(ngModel)]="materialForm.courseId" (change)="materialForm.moduleId = ''">
               <option value="">Select course...</option>
-              <option *ngFor="let course of contentService.lmsCourses" [value]="course.id">{{ course.title }}</option>
+              <option *ngFor="let course of coursesList" [value]="course.id">{{ course.title }}</option>
             </select>
           </div>
 
@@ -783,7 +783,7 @@
           <label>Course *</label>
           <select [(ngModel)]="assignmentForm.courseId">
             <option value="">Select course...</option>
-            <option *ngFor="let course of contentService.lmsCourses" [value]="course.id">{{ course.title }}</option>
+            <option *ngFor="let course of coursesList" [value]="course.id">{{ course.title }}</option>
           </select>
         </div>
 

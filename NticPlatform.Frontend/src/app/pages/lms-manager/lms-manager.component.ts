@@ -341,6 +341,10 @@ export class LmsManagerComponent implements OnInit {
   // Each getter maps the API's snake_case into the camelCase shape this page's
   // template already binds to. Mapping here rather than renaming ~850 lines of
   // template keeps the change contained and avoids silently blank cells.
+  get coursesList(): any[] {
+    return this.authoredCourses.length ? this.authoredCourses : this.contentService.lmsCourses;
+  }
+
   get filteredCourses(): any[] {
     const q = this.searchQuery.toLowerCase();
     return this.authoredCourses
@@ -612,9 +616,20 @@ export class LmsManagerComponent implements OnInit {
       this.moduleForm = this.emptyModule();
       if (this.selectedCourseId !== 'all') {
         this.moduleForm.courseId = this.selectedCourseId;
+      } else if (this.authoredCourses.length) {
+        this.moduleForm.courseId = this.authoredCourses[0].id;
       }
+      this.suggestNextModuleOrder();
     }
     this.isModuleModalOpen = true;
+    this.cdr.markForCheck();
+  }
+
+  suggestNextModuleOrder(): void {
+    if (this.formMode !== 'create' || !this.moduleForm.courseId) return;
+    const existingMods = this.getModulesForCourse(this.moduleForm.courseId);
+    const nextOrder = existingMods.length ? Math.max(...existingMods.map(m => m.order_num || 0)) + 1 : 1;
+    this.moduleForm.order = nextOrder;
     this.cdr.markForCheck();
   }
 
@@ -630,15 +645,20 @@ export class LmsManagerComponent implements OnInit {
     this.isSaving = true;
     this.saveError = '';
     this.cdr.markForCheck();
-    // Was contentService.saveLmsModule() -> admin-only bulk-sync -> 403 for an
-    // instructor, discarded. There was also NO module endpoint of any kind.
-    this.apiService.createModule({
+
+    const payload = {
       course_id: this.moduleForm.courseId,
       title: this.moduleForm.title.trim(),
       description: this.moduleForm.description || '',
       order_num: this.moduleForm.order || 1,
       icon: this.moduleForm.icon || 'menu_book',
-    }).subscribe({
+    };
+
+    const request = this.formMode === 'create'
+      ? this.apiService.createModule(payload)
+      : this.apiService.updateModule(this.moduleForm.id, payload);
+
+    request.subscribe({
       next: () => {
         this.isSaving = false;
         this.closeModuleModal();
@@ -681,6 +701,8 @@ export class LmsManagerComponent implements OnInit {
       this.materialForm = this.emptyMaterial();
       if (this.selectedCourseId !== 'all') {
         this.materialForm.courseId = this.selectedCourseId;
+      } else if (this.authoredCourses.length) {
+        this.materialForm.courseId = this.authoredCourses[0].id;
       }
     }
     this.isMaterialModalOpen = true;
@@ -699,14 +721,21 @@ export class LmsManagerComponent implements OnInit {
     this.isSaving = true;
     this.saveError = '';
     this.cdr.markForCheck();
-    this.apiService.createMaterial({
+
+    const payload = {
       course_id: this.materialForm.courseId,
       module_id: this.materialForm.moduleId || '',
       title: this.materialForm.title.trim(),
       type: this.materialForm.type || 'link',
       url: this.materialForm.url || '',
       description: this.materialForm.description || '',
-    }).subscribe({
+    };
+
+    const request = this.formMode === 'create'
+      ? this.apiService.createMaterial(payload)
+      : this.apiService.updateMaterial(this.materialForm.id, payload);
+
+    request.subscribe({
       next: () => {
         this.isSaving = false;
         this.closeMaterialModal();
@@ -749,6 +778,8 @@ export class LmsManagerComponent implements OnInit {
       this.assignmentForm = this.emptyAssignment();
       if (this.selectedCourseId !== 'all') {
         this.assignmentForm.courseId = this.selectedCourseId;
+      } else if (this.authoredCourses.length) {
+        this.assignmentForm.courseId = this.authoredCourses[0].id;
       }
     }
     this.isAssignmentModalOpen = true;
@@ -767,14 +798,21 @@ export class LmsManagerComponent implements OnInit {
     this.isSaving = true;
     this.saveError = '';
     this.cdr.markForCheck();
-    this.apiService.createAssignment({
+
+    const payload = {
       course_id: this.assignmentForm.courseId,
       title: this.assignmentForm.title.trim(),
       description: this.assignmentForm.description || '',
       due_date: this.assignmentForm.dueDate || '',
       max_score: this.assignmentForm.maxScore || 100,
       track: this.assignmentForm.track || '',
-    }).subscribe({
+    };
+
+    const request = this.formMode === 'create'
+      ? this.apiService.createAssignment(payload)
+      : this.apiService.updateAssignment(this.assignmentForm.id, payload);
+
+    request.subscribe({
       next: () => {
         this.isSaving = false;
         this.closeAssignmentModal();
