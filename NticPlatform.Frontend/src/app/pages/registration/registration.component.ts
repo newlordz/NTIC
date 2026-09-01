@@ -239,20 +239,17 @@ setAuthValue('activeUserEmail', email);
   private gpsSearchSeq = 0;
 
   getMapPreviewUrl(lat: string, lng: string, name?: string): string {
-    const latStr = encodeURIComponent(lat.trim());
-    const lngStr = encodeURIComponent(lng.trim());
-    if (name && !name.toLowerCase().includes('custom')) {
-      const qStr = encodeURIComponent(`${name.trim()}, ${lat.trim()},${lng.trim()}`);
-      return `https://maps.google.com/maps?q=${qStr}&hl=en&z=19&output=embed`;
-    }
-    return `https://maps.google.com/maps?q=${latStr},${lngStr}&hl=en&z=19&output=embed`;
+    const latStr = encodeURIComponent((lat || '').trim());
+    const lngStr = encodeURIComponent((lng || '').trim());
+    // Direct coordinate embed: places pinpoint marker precisely without Google search query ambiguities
+    return `https://maps.google.com/maps?q=${latStr},${lngStr}&hl=en&z=17&output=embed`;
   }
 
   getMapLinkUrl(lat: string, lng: string, name?: string): string {
     if (name && !name.toLowerCase().includes('custom')) {
       return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name.trim() + ' ' + lat + ',' + lng)}`;
     }
-    return `https://www.google.com/maps?q=${lat},${lng}&z=19`;
+    return `https://www.google.com/maps?q=${lat},${lng}&z=17`;
   }
 
   private ghanaSchoolsGpsDb: Array<{ name: string; address: string; lat: string; lng: string; aliases?: string[] }> = [
@@ -342,7 +339,9 @@ setAuthValue('activeUserEmail', email);
     { name: 'Galaxy International School', address: 'Ashaley Botwe, Accra, Greater Accra Region', lat: '5.678900', lng: '-0.141200', aliases: ['galaxy'] },
     { name: 'Morning Star School', address: 'Cantonments, Accra, Greater Accra Region', lat: '5.574500', lng: '-0.178900', aliases: ['morning star'] },
     { name: 'Faith Montessori School', address: 'Airport West, Accra, Greater Accra Region', lat: '5.602100', lng: '-0.188400', aliases: ['faith montessori'] },
-    { name: 'The Roman Ridge School', address: 'Roman Ridge, Accra, Greater Accra Region', lat: '5.594500', lng: '-0.191200', aliases: ['roman ridge'] },
+    { name: 'The Roman Ridge School', address: 'Roman Ridge, Accra, Greater Accra Region', lat: '5.594500', lng: '-0.191200', aliases: ['roman ridge', 'ridge school accra'] },
+    { name: 'The Ridge School', address: 'Ridge / Danyame, Kumasi, Ashanti Region', lat: '6.685300', lng: '-1.631200', aliases: ['the ridge school', 'ridge school', 'ridge kumasi', 'the ridge school kumasi'] },
+    { name: 'Ridge Church School', address: 'Gamel Abdul Nasser Ave, Ridge, Accra, Greater Accra Region', lat: '5.561200', lng: '-0.198900', aliases: ['ridge church', 'ridge church school', 'rcs'] },
     { name: 'Alpha Beta Education Centres', address: 'Dansoman, Accra, Greater Accra Region', lat: '5.548900', lng: '-0.271200', aliases: ['alpha beta'] },
     { name: 'British International School (BIS)', address: 'East Legon, Accra, Greater Accra Region', lat: '5.641200', lng: '-0.148900', aliases: ['bis', 'british international'] },
     { name: 'Soul Clinic International School', address: 'East Cantonments, Accra, Greater Accra Region', lat: '5.586200', lng: '-0.161200', aliases: ['soul clinic'] },
@@ -352,6 +351,8 @@ setAuthValue('activeUserEmail', email);
     { name: 'Delhi Public School International (DPSI Ghana)', address: 'Tema Community 25, Greater Accra Region', lat: '5.731200', lng: '0.041200', aliases: ['dpsi', 'delhi public school'] },
     { name: 'Alsyd Academy', address: 'Dzorwulu, Accra, Greater Accra Region', lat: '5.604500', lng: '-0.198900', aliases: ['alsyd'] }
   ];
+
+  private gpsDebounceTimer: any = null;
 
   openSchoolGpsModal(): void {
     this.isGpsSearchModalOpen = true;
@@ -363,6 +364,64 @@ setAuthValue('activeUserEmail', email);
   closeSchoolGpsModal(): void {
     this.isGpsSearchModalOpen = false;
     this.gpsSelectedPreview = null;
+    if (this.gpsDebounceTimer) {
+      clearTimeout(this.gpsDebounceTimer);
+      this.gpsDebounceTimer = null;
+    }
+  }
+
+  clearGpsSearch(): void {
+    this.gpsSearchQuery = '';
+    this.gpsSearchResults = this.ghanaSchoolsGpsDb.slice(0, 15);
+    this.gpsSelectedPreview = this.gpsSearchResults[0] || null;
+    this.gpsSearchError = '';
+    this.gpsSearching = false;
+    this.cdr?.markForCheck?.();
+  }
+
+  onGpsSearchInput(): void {
+    const rawQuery = (this.gpsSearchQuery || '').trim();
+    if (!rawQuery) {
+      this.clearGpsSearch();
+      return;
+    }
+
+    // 1. Instant 0ms local search & live suggestions for immediate UI response
+    this.filterLocalGpsCandidates(rawQuery);
+    this.cdr?.markForCheck?.();
+
+    // 2. Debounced 300ms background query to online geocoders (Photon/OSM)
+    if (this.gpsDebounceTimer) {
+      clearTimeout(this.gpsDebounceTimer);
+    }
+    this.gpsDebounceTimer = setTimeout(() => {
+      this.searchSchoolGps();
+    }, 300);
+  }
+
+  private filterLocalGpsCandidates(rawQuery: string): void {
+    const queryNorm = this.normalizeGpsText(rawQuery);
+    const tokens = this.gpsTokens(queryNorm);
+    const merged: Array<{ item: { name: string; address: string; lat: string; lng: string }; score: number }> = [];
+
+    for (const s of this.ghanaSchoolsGpsDb) {
+      const { score, strong } = this.scoreGpsCandidate(
+        this.normalizeGpsText(s.name),
+        this.normalizeGpsText(s.address),
+        (s.aliases || []).map(a => this.normalizeGpsText(a)),
+        queryNorm,
+        tokens
+      );
+      if (!strong && score < 14) continue;
+      merged.push({ item: { name: s.name, address: s.address, lat: s.lat, lng: s.lng }, score: strong ? score : Math.min(score, 30) });
+    }
+
+    merged.sort((a, b) => b.score - a.score);
+    if (merged.length > 0) {
+      this.gpsSearchResults = merged.slice(0, 12).map(m => m.item);
+      this.gpsSelectedPreview = this.gpsSearchResults[0] || null;
+      this.gpsSearchError = '';
+    }
   }
 
   /** Tokens that carry no discriminating power on their own; nearly every

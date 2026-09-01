@@ -3007,12 +3007,13 @@
         <input
           class="gps-search-field"
           type="text"
-          placeholder="Try: Achimota, PRESEC, Prempeh, GSTS, Legon …"
+          placeholder="Try: Ridge, Achimota, PRESEC, Prempeh, GSTS, Legon …"
           [(ngModel)]="gpsSearchQuery"
+          (ngModelChange)="onGpsSearchInput()"
           (keyup.enter)="searchSchoolGps()"
           autocomplete="off"
         />
-        <button class="gps-clear-btn" *ngIf="gpsSearchQuery" (click)="gpsSearchQuery=''; gpsSearchResults=[]; gpsSelectedPreview=null" type="button">
+        <button class="gps-clear-btn" *ngIf="gpsSearchQuery" (click)="clearGpsSearch()" type="button">
           <span class="material-symbols-outlined" style="font-size:16px;">close</span>
         </button>
       </div>
