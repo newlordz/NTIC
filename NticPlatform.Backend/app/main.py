@@ -8970,12 +8970,24 @@ try:
         try:
             if course_id:
                 cur.execute(
-                    "SELECT id, course_id, author_id, author_name, title, content, is_urgent, created_at FROM lms_announcements WHERE course_id = %s ORDER BY is_urgent DESC, created_at DESC",
+                    "SELECT a.id, a.course_id, a.author_id, a.author_name, a.title, a.content, a.is_urgent, a.created_at "
+                    "FROM lms_announcements a WHERE a.course_id = %s ORDER BY a.is_urgent DESC, a.created_at DESC",
                     (course_id,)
+                )
+            elif _is_lms_staff(_actor):
+                cur.execute(
+                    "SELECT a.id, a.course_id, a.author_id, a.author_name, a.title, a.content, a.is_urgent, a.created_at "
+                    "FROM lms_announcements a ORDER BY a.is_urgent DESC, a.created_at DESC"
                 )
             else:
                 cur.execute(
-                    "SELECT id, course_id, author_id, author_name, title, content, is_urgent, created_at FROM lms_announcements ORDER BY is_urgent DESC, created_at DESC"
+                    "SELECT a.id, a.course_id, a.author_id, a.author_name, a.title, a.content, a.is_urgent, a.created_at "
+                    "FROM lms_announcements a "
+                    "LEFT JOIN lms_courses c ON c.id = a.course_id "
+                    "WHERE a.author_id = %s OR c.owner_id = %s "
+                    "OR a.course_id IN (SELECT course_id FROM lms_enrollments WHERE student_id = %s AND status = 'active') "
+                    "ORDER BY a.is_urgent DESC, a.created_at DESC",
+                    (_actor["id"], _actor["id"], _actor["id"])
                 )
             rows = cur.fetchall()
             return [
@@ -9062,21 +9074,36 @@ try:
         parent_id: Optional[str] = None
 
     @app.get("/api/lms/qa")
-    def get_lms_qa(course_id: str, module_id: Optional[str] = None, _actor: dict = Depends(require_auth)):
+    def get_lms_qa(course_id: Optional[str] = None, module_id: Optional[str] = None, _actor: dict = Depends(require_auth)):
         conn = get_db_connection()
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         try:
-            if module_id:
+            if course_id:
+                if module_id:
+                    cur.execute(
+                        "SELECT id, course_id, module_id, user_id, user_name, user_role, title, content, parent_id, created_at FROM lms_qa WHERE course_id = %s AND (module_id = %s OR parent_id IS NOT NULL) ORDER BY created_at ASC",
+                        (course_id, module_id)
+                    )
+                else:
+                    cur.execute(
+                        "SELECT id, course_id, module_id, user_id, user_name, user_role, title, content, parent_id, created_at FROM lms_qa WHERE course_id = %s ORDER BY created_at ASC",
+                        (course_id,)
+                    )
+            elif _is_lms_staff(_actor):
                 cur.execute(
-                    "SELECT id, course_id, module_id, user_id, user_name, user_role, title, content, parent_id, created_at FROM lms_qa WHERE course_id = %s AND (module_id = %s OR parent_id IS NOT NULL) ORDER BY created_at ASC",
-                    (course_id, module_id)
+                    "SELECT id, course_id, module_id, user_id, user_name, user_role, title, content, parent_id, created_at FROM lms_qa ORDER BY created_at ASC"
                 )
             else:
                 cur.execute(
-                    "SELECT id, course_id, module_id, user_id, user_name, user_role, title, content, parent_id, created_at FROM lms_qa WHERE course_id = %s ORDER BY created_at ASC",
-                    (course_id,)
+                    "SELECT q.id, q.course_id, q.module_id, q.user_id, q.user_name, q.user_role, q.title, q.content, q.parent_id, q.created_at "
+                    "FROM lms_qa q "
+                    "LEFT JOIN lms_courses c ON c.id = q.course_id "
+                    "WHERE c.owner_id = %s OR q.user_id = %s "
+                    "OR q.course_id IN (SELECT course_id FROM lms_enrollments WHERE student_id = %s AND status = 'active') "
+                    "ORDER BY q.created_at ASC",
+                    (_actor["id"], _actor["id"], _actor["id"])
                 )
             rows = cur.fetchall()
             return [

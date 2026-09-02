@@ -255,24 +255,8 @@ export class LmsManagerComponent implements OnInit {
       this.cdr.markForCheck();
     }
 
-    this.apiService.getLmsAnnouncements().subscribe({
-      next: rows => {
-        this.serverAnnouncements = rows || [];
-        this.cdr.markForCheck();
-      },
-      error: () => { this.serverAnnouncements = []; }
-    });
-
-    if (this.authoredCourses.length > 0) {
-      const firstCourseId = this.authoredCourses[0].id;
-      this.apiService.getLmsQA(firstCourseId).subscribe({
-        next: rows => {
-          this.serverQA = rows || [];
-          this.cdr.markForCheck();
-        },
-        error: () => { this.serverQA = []; }
-      });
-    }
+    this.loadAnnouncementsForCourse(this.selectedCourseId);
+    this.loadQAForCourse(this.selectedCourseId);
 
     if (this.selectedCourseId && this.selectedCourseId !== 'all') {
       this.loadRoster(this.selectedCourseId);
@@ -291,23 +275,63 @@ export class LmsManagerComponent implements OnInit {
   qaReplyDraft: { [qaId: string]: string } = {};
   isPostingReply: { [qaId: string]: boolean } = {};
 
+  onCourseFilterChange(courseId: string): void {
+    this.selectedCourseId = courseId;
+    this.loadRoster(courseId);
+    this.loadQAForCourse(courseId);
+    this.loadAnnouncementsForCourse(courseId);
+  }
+
+  loadAnnouncementsForCourse(courseId: string = 'all'): void {
+    const targetCourse = courseId === 'all' ? undefined : courseId;
+    this.apiService.getLmsAnnouncements(targetCourse).subscribe({
+      next: rows => {
+        this.serverAnnouncements = rows || [];
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.serverAnnouncements = [];
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  loadQAForCourse(courseId: string = 'all'): void {
+    const targetCourse = courseId === 'all' ? undefined : courseId;
+    this.apiService.getLmsQA(targetCourse).subscribe({
+      next: rows => {
+        this.serverQA = rows || [];
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.serverQA = [];
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   openAnnouncementModal(courseId?: string): void {
+    const preselected = courseId || (this.selectedCourseId !== 'all' ? this.selectedCourseId : (this.authoredCourses[0]?.id || ''));
     this.announcementForm = {
-      course_id: courseId || (this.authoredCourses[0]?.id || ''),
+      course_id: preselected,
       title: '',
       content: '',
       is_urgent: false
     };
     this.isAnnouncementModalOpen = true;
+    this.cdr.markForCheck();
   }
 
   closeAnnouncementModal(): void {
     this.isAnnouncementModalOpen = false;
+    this.cdr.markForCheck();
   }
 
   saveAnnouncement(): void {
-    if (!this.announcementForm.title.trim() || !this.announcementForm.content.trim() || !this.announcementForm.course_id) return;
+    if (!this.announcementForm.title.trim() || !this.announcementForm.content.trim() || !this.announcementForm.course_id || this.isSaving) return;
     this.isSaving = true;
+    this.saveError = '';
+    this.cdr.markForCheck();
     this.apiService.createLmsAnnouncement(this.announcementForm).subscribe({
       next: ann => {
         this.serverAnnouncements.unshift(ann);
@@ -327,16 +351,6 @@ export class LmsManagerComponent implements OnInit {
     this.apiService.deleteLmsAnnouncement(id).subscribe({
       next: () => {
         this.serverAnnouncements = this.serverAnnouncements.filter(a => a.id !== id);
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
-  loadQAForCourse(courseId: string): void {
-    if (!courseId || courseId === 'all') return;
-    this.apiService.getLmsQA(courseId).subscribe({
-      next: rows => {
-        this.serverQA = rows || [];
         this.cdr.markForCheck();
       }
     });

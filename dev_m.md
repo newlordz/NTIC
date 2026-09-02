@@ -76,6 +76,14 @@ To avoid committing live credentials or overwriting collaborator changes, **ALWA
 
 Use this section to leave short notes, status updates, or handoff messages for collaborators:
 
+- **[2026-09-02 - v1.0.5]**:
+  - **Instructor Portal & LMS Audit Fixes:**
+    - **Multi-Course Q&A Aggregation:** Upgraded `GET /api/lms/qa` so `course_id` is optional. When omitted, instructors retrieve all discussion threads across their authored courses, and admins retrieve platform-wide threads.
+    - **Cross-Course Announcement Scoping:** Upgraded `GET /api/lms/announcements` so instructors retrieve announcements for all their authored courses or enrollments when no single course filter is applied.
+    - **Reactive Toolbar Course Switcher:** Linked toolbar `selectedCourseId` to dynamically refresh both Q&A threads and announcements via `onCourseFilterChange()`.
+    - **Grading Desk Consolidation & Dynamic Score Validation:** Replaced duplicate revision buttons in the grading modal with a single "Request Revision (Return to Student)" action. Dynamically bound score input validation to `activeSubmission.max_score` with informative score point indicators.
+    - **UI/UX Directives Applied:** Enforced strict palette discipline (monochrome foundation with primary indigo accent and functional semantic indicators) and 8px baseline spatial rhythm.
+  - All 508 backend unit tests (`pytest`) and frontend TypeScript typechecks (`tsc`) passing cleanly.
 - **[2026-09-01 - v1.0.4]**:
   - **Registration & Team Auto-Staging:** Implemented `autoStageCurrentTeam()` to auto-add in-progress team drafts in Step 3 upon clicking Next, Preview, or Submit. Added real-time Live Preview roster card reflection for draft teams and formatted member summaries.
   - **Application Editing & Duplicate Availability:** Added `exclude_code` parameter to `GET /api/auth/check-availability` so editing a pending application ignores the applicant's own existing record. Bypassed OTP re-verification for loaded/resumed approvals.

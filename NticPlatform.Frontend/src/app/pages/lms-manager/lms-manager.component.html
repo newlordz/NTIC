@@ -136,7 +136,7 @@
       </select>
 
       <!-- Course Selector -->
-      <select [(ngModel)]="selectedCourseId" (ngModelChange)="loadRoster($event)" *ngIf="activeTab !== 'courses' && activeTab !== 'approvals'">
+      <select [(ngModel)]="selectedCourseId" (ngModelChange)="onCourseFilterChange($event)" *ngIf="activeTab !== 'courses' && activeTab !== 'approvals'">
         <option value="all">All Courses</option>
         <option *ngFor="let course of coursesList" [value]="course.id">{{ course.title }}</option>
       </select>
@@ -1107,28 +1107,24 @@
         <hr style="margin: 20px 0; border-color: var(--border-color);">
 
         <div class="form-group">
-          <label>Score (0 - 100)</label>
-          <input class="form-control" type="number" min="0" max="100" [(ngModel)]="gradeScore" placeholder="Enter score">
+          <label>Score (0 &ndash; {{ activeSubmission.max_score || 100 }} pts) *</label>
+          <input class="form-control" type="number" min="0" [max]="activeSubmission.max_score || 100" [(ngModel)]="gradeScore" placeholder="Enter score">
         </div>
 
         <div class="form-group">
-          <label>Admin Notes / Feedback *</label>
-          <textarea [(ngModel)]="adminRevisionNotes" rows="3" placeholder="Enter your instructions for the instructor or student..."></textarea>
+          <label>Instructor Notes / Feedback</label>
+          <textarea [(ngModel)]="adminRevisionNotes" rows="3" placeholder="Enter grading comments, rubrics, or revision instructions for the student..."></textarea>
         </div>
       </div>
       <div class="modal-footer" style="gap: 8px;">
         <p class="error-msg" *ngIf="saveError" style="color:var(--error, #ef4444); font-size:12px; margin:0 auto 0 0;">{{ saveError }}</p>
         <button class="btn btn-outline" (click)="closeGradingModal()" [disabled]="isSaving">Close</button>
-        <button class="btn btn-success" (click)="gradeSubmission()" [disabled]="isSaving || gradeScore === null || gradeScore < 0 || gradeScore > 100">
+        <button class="btn btn-warning" (click)="returnForRevision()" [disabled]="isSaving || !adminRevisionNotes.trim()">
+          <span *ngIf="!isSaving" style="display:flex; align-items:center; gap:4px;"><span class="material-symbols-outlined">undo</span> Request Revision (Return to Student)</span>
+          <span *ngIf="isSaving" class="spinner-inline"></span>
+        </button>
+        <button class="btn btn-success" (click)="gradeSubmission()" [disabled]="isSaving || gradeScore === null || gradeScore < 0 || gradeScore > (activeSubmission.max_score || 100)">
           <span *ngIf="!isSaving" style="display:flex; align-items:center; gap:4px;"><span class="material-symbols-outlined">task_alt</span> Grade &amp; Score</span>
-          <span *ngIf="isSaving" class="spinner-inline"></span>
-        </button>
-        <button class="btn btn-danger" (click)="rejectSubmissionToStudent()" [disabled]="isSaving || !adminRevisionNotes.trim()">
-          <span *ngIf="!isSaving" style="display:flex; align-items:center; gap:4px;"><span class="material-symbols-outlined">undo</span> Reject &mdash; Return to Student</span>
-          <span *ngIf="isSaving" class="spinner-inline"></span>
-        </button>
-        <button class="btn btn-primary" (click)="submitInstructorRegradeRequest()" [disabled]="isSaving || !adminRevisionNotes.trim()">
-          <span *ngIf="!isSaving" style="display:flex; align-items:center; gap:4px;"><span class="material-symbols-outlined">rate_review</span> Request Instructor Revision</span>
           <span *ngIf="isSaving" class="spinner-inline"></span>
         </button>
       </div>

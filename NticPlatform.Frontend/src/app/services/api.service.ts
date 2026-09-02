@@ -1459,10 +1459,12 @@ login(email: string, password: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/lms/announcements/${id}`);
   }
 
-  getLmsQA(courseId: string, moduleId?: string): Observable<LmsQA[]> {
-    let url = `${this.apiUrl}/lms/qa?course_id=${courseId}`;
-    if (moduleId) url += `&module_id=${moduleId}`;
-    return this.http.get<LmsQA[]>(url);
+  getLmsQA(courseId?: string, moduleId?: string): Observable<LmsQA[]> {
+    const params: string[] = [];
+    if (courseId && courseId !== 'all') params.push(`course_id=${encodeURIComponent(courseId)}`);
+    if (moduleId) params.push(`module_id=${encodeURIComponent(moduleId)}`);
+    const qs = params.length ? `?${params.join('&')}` : '';
+    return this.http.get<LmsQA[]>(`${this.apiUrl}/lms/qa${qs}`);
   }
 
   createLmsQA(payload: { course_id: string; module_id?: string; title?: string; content: string; parent_id?: string }): Observable<LmsQA> {
