@@ -1,5 +1,5 @@
 import { getAuthValue } from '../../services/session.util';
-import { Component, ChangeDetectionStrategy, OnInit, OnDestroy , ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -193,67 +193,29 @@ export class UserManagementComponent implements OnInit, OnDestroy {
             organization: u.organization || '',
             role: u.role || 'student',
             ticket: u.ticket || '',
-            status: u.status || 'Active',
+            status: (u.status || 'active').toLowerCase() === 'suspended' ? 'Suspended' : ((u.status || 'active').toLowerCase() === 'pending' ? 'Pending' : 'Active'),
             registeredAt: u.created_at || '',
             lastLogin: existing?.lastLogin || ''
           };
         });
 
-        // Also merge team squad accounts into users list so they appear under All Users
-        for (const t of this.teams) {
-          const matchingIdx = mapped.findIndex(u => u.id === t.id || (t.name && u.fullName.includes(t.name)));
-          if (matchingIdx === -1) {
-            mapped.push({
-              id: t.id || `squad-${Date.now()}`,
-              email: `${(t.name || 'squad').toLowerCase().replace(/[^a-z0-9]/g, '')}@squad.ntic.org.gh`,
-              fullName: t.lead ? `${t.lead} (${t.name})` : t.name,
-              phone: '',
-              otp: t.motto || '',
-              password: '',
-              mustSetPassword: false,
-              organization: t.schoolName || t.school_name || 'Independent',
-              role: 'student',
-              ticket: `NTIC-SQD-${(t.id || '0000').slice(-4).toUpperCase()}`,
-              status: t.status || 'Active',
-              registeredAt: '',
-              lastLogin: ''
-            });
-          }
-        }
+        // Filter out any stale synthetic squad ghost entries
+        const cleanUsers = mapped.filter(u => !u.email?.endsWith('@squad.ntic.org.gh') && !u.ticket?.startsWith('NTIC-SQD-'));
 
-        this.contentService.users = mapped;
+        this.contentService.users = cleanUsers;
         try {
-          localStorage.setItem('ntic_users', JSON.stringify(mapped));
+          localStorage.setItem('ntic_users', JSON.stringify(cleanUsers));
         } catch {}
-        this.users = [...mapped];
+        this.users = [...cleanUsers];
         this.applyFilters();
         this.loadAvatars();
         this.isSyncing = false;
         if (showToastNotice) {
-          this.showToast('Accounts Synced', `Successfully synchronized ${mapped.length} accounts from backend database.`);
+          this.showToast('Accounts Synced', `Successfully synchronized ${cleanUsers.length} accounts from backend database.`);
         }
       },
       error: () => {
-        const fallback = [...this.contentService.users];
-        for (const t of this.teams) {
-          if (!fallback.some(u => u.id === t.id || (t.name && u.fullName.includes(t.name)))) {
-            fallback.push({
-              id: t.id || `squad-${Date.now()}`,
-              email: `${(t.name || 'squad').toLowerCase().replace(/[^a-z0-9]/g, '')}@squad.ntic.org.gh`,
-              fullName: t.lead ? `${t.lead} (${t.name})` : t.name,
-              phone: '',
-              otp: '',
-              password: '',
-              mustSetPassword: false,
-              organization: t.schoolName || t.school_name || 'Independent',
-              role: 'student',
-              ticket: `NTIC-SQD-${(t.id || '0000').slice(-4).toUpperCase()}`,
-              status: t.status || 'Active',
-              registeredAt: '',
-              lastLogin: ''
-            });
-          }
-        }
+        const fallback = [...this.contentService.users].filter(u => !u.email?.endsWith('@squad.ntic.org.gh') && !u.ticket?.startsWith('NTIC-SQD-'));
         this.users = fallback;
         this.applyFilters();
         this.loadAvatars();
@@ -423,11 +385,11 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   getActiveCount(): number {
-    return this.users.filter(u => u.status === 'Active').length;
+    return this.users.filter(u => (u.status || '').toLowerCase() === 'active').length;
   }
 
   getSuspendedCount(): number {
-    return this.users.filter(u => u.status === 'Suspended').length;
+    return this.users.filter(u => (u.status || '').toLowerCase() === 'suspended').length;
   }
 
   setNewUserRole(role: string): void {
@@ -459,6 +421,98 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     return Array.from(bytes, b => alphabet[b % alphabet.length]).join('');
   }
 
+  // ── Modal Keyboard Accessibility & Focus Trapping ────
+  @HostListener('document:keydown.escape', ['$event'])
+  handleEscapeKey(event: KeyboardEvent): void {
+    if (this.createdUserModal?.isOpen) {
+      this.closeCreatedUserModal();
+      event.preventDefault();
+      return;
+    }
+    if (this.isAddUserModalOpen) {
+      this.closeAddUserModal();
+      event.preventDefault();
+      return;
+    }
+    if (this.isDetailOpen) {
+      this.closeDetail();
+      event.preventDefault();
+      return;
+    }
+    if (this.deleteUserConfirm) {
+      this.cancelDelete();
+      event.preventDefault();
+      return;
+    }
+    if (this.isEditOpen) {
+      this.closeEdit();
+      event.preventDefault();
+      return;
+    }
+    if (this.deleteTeamConfirm) {
+      this.closeDeleteTeamModal();
+      event.preventDefault();
+      return;
+    }
+    if (this.isEditTeamOpen) {
+      this.closeEditTeamModal();
+      event.preventDefault();
+      return;
+    }
+  }
+
+  @HostListener('document:keydown.tab', ['$event'])
+  handleTabFocusTrap(event: KeyboardEvent): void {
+    const activeModal = document.querySelector(
+      '.um-modal-backdrop:not([style*="display: none"]) .um-modal, .ca-backdrop:not([style*="display: none"]) .ca-panel'
+    ) as HTMLElement;
+    if (!activeModal) return;
+
+    const focusable = activeModal.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable || focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey) {
+      if (document.activeElement === first || !activeModal.contains(document.activeElement)) {
+        last.focus();
+        event.preventDefault();
+      }
+    } else {
+      if (document.activeElement === last || !activeModal.contains(document.activeElement)) {
+        first.focus();
+        event.preventDefault();
+      }
+    }
+  }
+
+  private autoFocusModal(preferredSelector?: string): void {
+    setTimeout(() => {
+      const activeModal = document.querySelector(
+        '.um-modal-backdrop:not([style*="display: none"]) .um-modal, .ca-backdrop:not([style*="display: none"]) .ca-panel'
+      ) as HTMLElement;
+      if (!activeModal) return;
+
+      if (preferredSelector) {
+        const target = activeModal.querySelector<HTMLElement>(preferredSelector);
+        if (target) {
+          target.focus();
+          return;
+        }
+      }
+
+      const firstInputOrBtn = activeModal.querySelector<HTMLElement>(
+        'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button.cmd-btn-primary, button.ca-btn-submit, button:not([disabled])'
+      );
+      if (firstInputOrBtn) {
+        firstInputOrBtn.focus();
+      }
+    }, 60);
+  }
+
   openAddUserModal(defaultRole = 'judge'): void {
     this.formError = '';
     this.newUserForm = {
@@ -473,6 +527,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     };
     this.setNewUserRole(defaultRole);
     this.isAddUserModalOpen = true;
+    this.autoFocusModal('input[type="text"]');
   }
 
   closeAddUserModal(): void {
@@ -487,6 +542,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       copiedTicket: false,
       copiedPin: false
     };
+    this.autoFocusModal('.cmd-btn-primary, .btn-cred-copy');
   }
 
   closeCreatedUserModal(): void {
@@ -598,6 +654,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   viewUser(user: User): void {
     this.selectedUser = user;
     this.isDetailOpen = true;
+    this.autoFocusModal('.cmd-btn-ghost');
   }
 
   closeDetail(): void {
@@ -662,25 +719,22 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   toggleStatus(user: User): void {
     if (this.isMainAdmin(user)) return;
-    const newStatus = user.status === 'Active' ? 'Suspended' : 'Active';
+    const prevStatus = user.status;
+    const isActive = (user.status || '').toLowerCase() === 'active';
+    const newStatus = isActive ? 'Suspended' : 'Active';
 
-    // Check if this user represents a team squad
-    const matchingTeam = this.teams.find(t => t.id === user.id || (t.name && user.fullName.includes(t.name)));
-    if (matchingTeam && matchingTeam.id) {
-      this.apiService.updateTeam(matchingTeam.id, { status: newStatus }).subscribe({
-        next: () => {
-          matchingTeam.status = newStatus;
-          user.status = newStatus;
-          this.showToast('Status Changed', `${user.fullName} is now ${newStatus}.`);
-          this.loadUsers();
-        },
-        error: (err) => {
-          this.showToast('Error', err?.error?.detail || 'Failed to update squad status.', 4000);
-        }
-      });
-      return;
+    // 1. Instant Optimistic UI Update (0ms)
+    user.status = newStatus;
+    const localIdx = this.contentService.users.findIndex(u => u.id === user.id);
+    if (localIdx > -1) {
+      this.contentService.users[localIdx].status = newStatus;
+      this.contentService.saveUsers(this.contentService.users);
     }
+    this.applyFilters();
+    this.cdr?.markForCheck?.();
+    this.showToast('Status Changed', `${user.fullName} is now ${newStatus}.`);
 
+    // 2. Background Persistence to Backend Database
     this.http.patch(`${environment.apiUrl}/users/${user.id}`, {
       email: user.email,
       full_name: user.fullName,
@@ -690,16 +744,17 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       phone: user.phone || ''
     }).subscribe({
       next: () => {
-        const users = [...this.contentService.users];
-        const idx = users.findIndex(u => u.id === user.id);
-        if (idx > -1) {
-          users[idx].status = newStatus;
-          this.contentService.saveUsers(users);
-        }
-        this.showToast('Status Changed', `${user.fullName} is now ${newStatus}.`);
-        this.loadUsers();
+        // Successfully persisted in PostgreSQL
       },
       error: (err) => {
+        // Rollback optimistic update on error
+        user.status = prevStatus;
+        if (localIdx > -1) {
+          this.contentService.users[localIdx].status = prevStatus;
+          this.contentService.saveUsers(this.contentService.users);
+        }
+        this.applyFilters();
+        this.cdr?.markForCheck?.();
         console.error('Failed to change user status in backend:', err);
         this.showToast('Error', 'Failed to update user status in backend database.', 4000);
       }
@@ -712,6 +767,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       return;
     }
     this.deleteUserConfirm = user;
+    this.autoFocusModal('.cmd-btn-danger, .cmd-btn-ghost');
   }
 
   confirmDelete(): void {
@@ -794,19 +850,25 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   toggleTeamStatus(team: Team): void {
-    const newStatus = team.status === 'Active' ? 'Suspended' : 'Active';
+    const prevStatus = team.status;
+    const isActive = (team.status || '').toLowerCase() === 'active';
+    const newStatus = isActive ? 'Suspended' : 'Active';
+
+    // 1. Instant Optimistic UI Update (0ms)
+    team.status = newStatus;
+    this.applyTeamFilters();
+    this.cdr?.markForCheck?.();
+    this.showToast('Squad Status Changed', `${team.name} is now ${newStatus}.`);
+
+    // 2. Background Persistence
     this.apiService.updateTeam(team.id || '', { status: newStatus }).subscribe({
       next: () => {
-        team.status = newStatus;
-        const uIdx = this.users.findIndex(u => u.id === team.id || (team.name && u.fullName.includes(team.name)));
-        if (uIdx > -1) {
-          this.users[uIdx].status = newStatus;
-        }
-        this.applyTeamFilters();
-        this.applyFilters();
-        this.showToast('Squad Status Changed', `${team.name} is now ${newStatus}.`);
+        // Persisted
       },
       error: (err) => {
+        team.status = prevStatus;
+        this.applyTeamFilters();
+        this.cdr?.markForCheck?.();
         this.showToast('Error', err?.error?.detail || 'Failed to update squad status.', 4000);
       }
     });
@@ -967,6 +1029,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   openDeleteTeamModal(team: Team): void {
     this.deleteTeamConfirm = team;
+    this.autoFocusModal('button.cmd-btn:not(.cmd-btn-ghost)');
   }
 
   closeDeleteTeamModal(): void {
@@ -1008,6 +1071,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       mentorId: team.mentorId || ''
     };
     this.isEditTeamOpen = true;
+    this.autoFocusModal('input.ca-input');
   }
 
   closeEditTeamModal(): void {

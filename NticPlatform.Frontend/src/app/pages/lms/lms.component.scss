@@ -184,21 +184,31 @@
 
       .skill-bar-fill {
         height: 100%;
-        width: 0;
         background: var(--primary);
         border-radius: 3px;
         transition: width 0.6s ease;
 
-        &.novice { width: 33%; }
-        &.intermediate { width: 66%; }
-        &.advanced { width: 100%; }
+        &.unranked {
+          background: #cbd5e1;
+          opacity: 0.4;
+          min-width: 4px;
+        }
+        &.novice, &.beginner {
+          background: #6366f1;
+        }
+        &.intermediate {
+          background: #0ea5e9;
+        }
+        &.advanced {
+          background: #10b981;
+        }
       }
 
       .skill-val {
-        font-size: 9px;
+        font-size: 8.5px;
         font-weight: 700;
         color: #475569;
-        width: 60px;
+        width: 65px;
         text-align: right;
       }
     }

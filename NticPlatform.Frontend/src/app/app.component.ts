@@ -553,6 +553,43 @@ export class AppComponent implements OnInit, OnDestroy {
     admin: 'Administrator', support_admin: 'Support Admin',
   };
 
+  get brandTitle(): string {
+    const role = (this.currentUser?.roleId || '').toLowerCase();
+    switch (role) {
+      case 'school_admin': return 'Institution Hub';
+      case 'student': return 'Student Hub';
+      case 'instructor': return 'Mentor Studio';
+      case 'judge': return 'Evaluation Panel';
+      case 'sponsor': return 'Sponsor Portal';
+      case 'super_admin':
+      case 'admin':
+      case 'support_admin': return 'Control Center';
+      case 'competition_manager':
+      case 'content_manager':
+      case 'reviewer': return 'Command Center';
+      default: return 'Control Center';
+    }
+  }
+
+  get brandSubtitle(): string {
+    const role = (this.currentUser?.roleId || '').toLowerCase();
+    const profile = this.currentUserService.profile();
+    const org = profile?.organization || '';
+    switch (role) {
+      case 'school_admin': return org ? `${org}` : 'Institution Admin';
+      case 'student': return 'Competitor Workspace';
+      case 'instructor': return 'Instructor & Mentor';
+      case 'judge': return 'Judge Workspace';
+      case 'sponsor': return 'Partner Workspace';
+      case 'super_admin': return 'Super Admin';
+      case 'admin': return 'Administrator';
+      case 'competition_manager': return 'Competition Manager';
+      case 'content_manager': return 'Content Manager';
+      case 'reviewer': return 'Reviewer Workspace';
+      default: return this.roleLabels[role] || 'NTIC Workspace';
+    }
+  }
+
   loadUserProfile(): void {
     const roleId = getAuthValue('activeRoleId');
     const activeEmail = getAuthValue('activeUserEmail') || '';

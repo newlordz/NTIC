@@ -228,8 +228,8 @@
                 </td>
                 <td class="td-actions" (click)="$event.stopPropagation()">
                   <div class="row-actions" *ngIf="!isMainAdmin(u)">
-                    <button class="ra-btn ra-status" (click)="toggleStatus(u)" [title]="u.status === 'Active' ? 'Suspend Account' : 'Activate Account'">
-                      <span class="material-symbols-outlined">{{ u.status === 'Active' ? 'block' : 'check_circle' }}</span>
+                    <button class="ra-btn ra-status" (click)="toggleStatus(u)" [title]="(u.status || '').toLowerCase() === 'active' ? 'Suspend Account' : 'Activate Account'">
+                      <span class="material-symbols-outlined">{{ (u.status || '').toLowerCase() === 'active' ? 'block' : 'check_circle' }}</span>
                     </button>
                     <button class="ra-btn ra-reset" (click)="regenerateOTP(u)" title="Reset Password / Regenerate Credentials">
                       <span class="material-symbols-outlined">lock_reset</span>
@@ -406,8 +406,8 @@
                 </td>
                 <td class="td-actions" (click)="$event.stopPropagation()">
                   <div class="row-actions">
-                    <button class="ra-btn ra-status" (click)="toggleTeamStatus(t)" [title]="t.status === 'Active' ? 'Suspend Squad Account' : 'Activate Squad Account'">
-                      <span class="material-symbols-outlined">{{ t.status === 'Active' ? 'block' : 'check_circle' }}</span>
+                    <button class="ra-btn ra-status" (click)="toggleTeamStatus(t)" [title]="(t.status || '').toLowerCase() === 'active' ? 'Suspend Squad Account' : 'Activate Squad Account'">
+                      <span class="material-symbols-outlined">{{ (t.status || '').toLowerCase() === 'active' ? 'block' : 'check_circle' }}</span>
                     </button>
                     <button class="ra-btn ra-reset" (click)="regenerateTeamOTP(t)" title="Reset Password / Regenerate Access Pass">
                       <span class="material-symbols-outlined">lock_reset</span>
@@ -697,7 +697,9 @@
             <span class="role-pill" [class]="'rp-' + selectedUser.role">{{ getUserRoleLabel(selectedUser) }}</span>
           </div>
         </div>
-        <button class="um-modal-close" (click)="closeDetail()">&times;</button>
+        <button class="um-modal-close" (click)="closeDetail()" title="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
       </div>
       <div class="um-modal-body">
         <div class="um-info-grid">
@@ -745,7 +747,9 @@
           <span class="material-symbols-outlined">warning</span>
           Confirm Deletion
         </h3>
-        <button class="um-modal-close" (click)="cancelDelete()">&times;</button>
+        <button class="um-modal-close" (click)="cancelDelete()" title="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
       </div>
       <div class="um-modal-body">
         <p>You are about to permanently delete the account for <strong>{{ deleteUserConfirm.fullName }}</strong> <span class="um-email">({{ deleteUserConfirm.email }})</span>.</p>
@@ -914,7 +918,9 @@
             <span style="font-size:11px;opacity:0.85;">Credentials generated and dispatched via Email</span>
           </div>
         </div>
-        <button class="um-modal-close" (click)="closeCreatedUserModal()" style="color:#fff;">&times;</button>
+        <button class="um-modal-close on-dark" (click)="closeCreatedUserModal()" title="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
       </div>
       <div class="um-modal-body" style="padding:20px;">
         <p style="font-size:13.5px;color:var(--on-surface);margin:0 0 16px 0;line-height:1.5;">
@@ -968,7 +974,9 @@
             <span style="font-size:12px;color:var(--on-surface-variant);">Permanent removal from PostgreSQL</span>
           </div>
         </div>
-        <button class="um-modal-close" (click)="closeDeleteTeamModal()">&times;</button>
+        <button class="um-modal-close" (click)="closeDeleteTeamModal()" title="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
       </div>
       <div class="um-modal-body">
         <p style="font-size:13.5px;line-height:1.5;color:var(--on-surface);margin:0 0 14px 0;">
@@ -1010,7 +1018,9 @@
             <span class="role-pill rp-student">{{ editTeamForm.name }}</span>
           </div>
         </div>
-        <button class="um-modal-close" (click)="closeEditTeamModal()">&times;</button>
+        <button class="um-modal-close" (click)="closeEditTeamModal()" title="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
       </div>
       <div class="um-modal-body">
         <div class="ca-form-grid">

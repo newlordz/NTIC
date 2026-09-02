@@ -9,6 +9,7 @@ from decimal import Decimal
 import random
 import secrets
 import datetime
+from datetime import datetime, timezone
 import logging
 import platform
 from pathlib import Path
@@ -5453,12 +5454,25 @@ try:
         names = [n for n in roster if isinstance(n, str) and n.strip()]
         emails = [e for e in member_emails if isinstance(e, str) and e.strip()]
 
-        # Lead first, then the rest, then any emails without a matching name slot.
+        # Lead first, then the rest (avoiding duplicate rows for lead).
         rows = []
-        if lead and lead.strip():
-            rows.append((True, lead.strip(), (lead_email or "").strip()))
+        lead_name_clean = (lead or "").strip()
+        lead_email_clean = (lead_email or "").strip().lower()
+
+        if lead_name_clean:
+            rows.append((True, lead_name_clean, (lead_email or "").strip()))
+
         for idx, name in enumerate(names):
-            rows.append((False, name, emails[idx] if idx < len(emails) else ""))
+            clean_name = (name or "").strip()
+            clean_email = (emails[idx] if idx < len(emails) else "").strip()
+            if not clean_name:
+                continue
+            # Skip if this member entry is identical to the already-added lead
+            if lead_name_clean and clean_name.lower() == lead_name_clean.lower():
+                continue
+            if lead_email_clean and clean_email and clean_email.lower() == lead_email_clean:
+                continue
+            rows.append((False, clean_name, clean_email))
 
         cur.execute("DELETE FROM team_members WHERE team_id = %s", (team_id,))
         count = 0
@@ -5696,11 +5710,11 @@ try:
         try:
             cur = conn.cursor()
             cur.execute(
-                "SELECT t.id, t.name, t.track, t.competition_id, t.mentor_id, "
+                "SELECT DISTINCT ON (t.id) t.id, t.name, t.track, t.competition_id, t.mentor_id, "
                 "COALESCE(t.mentor_status, 'none'), COALESCE(t.is_solo, FALSE), "
                 "m.is_lead "
                 "FROM teams t JOIN team_members m ON m.team_id = t.id "
-                "WHERE m.student_id = %s ORDER BY t.name",
+                "WHERE m.student_id = %s ORDER BY t.id, m.is_lead DESC",
                 (actor["id"],),
             )
             rows = cur.fetchall()

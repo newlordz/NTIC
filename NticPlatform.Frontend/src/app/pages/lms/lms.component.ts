@@ -3,7 +3,7 @@ import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterModule } from '@angular/router';
-import { ContentService, LmsSubmission } from '../../services/content.service';
+import { ContentService, LmsSubmission, UpcomingEvent } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import {
   ApiService, MyEnrolledCourse, LmsAssignment, MySubmission,
@@ -289,6 +289,76 @@ export class LmsComponent implements OnInit {
     };
   }
 
+  get studentSkills(): { label: string; pct: number; level: string; levelClass: string }[] {
+    const defaultTracks = [
+      { key: 'coding', label: 'Algorithm Design' },
+      { key: 'robotics', label: 'Hardware / IoT' },
+      { key: 'ai', label: 'Data & AI' },
+      { key: 'cyber', label: 'Cybersecurity' }
+    ];
+
+    const studentTrack = (this.studentProfile?.trackId || this.studentProfile?.track || '').toLowerCase();
+
+    return defaultTracks.map(t => {
+      const matchingCourses = this.myEnrolments.filter(e =>
+        (e.track || '').toLowerCase().includes(t.key) ||
+        (e.title || '').toLowerCase().includes(t.key) ||
+        (t.key === 'coding' && (e.track || '').toLowerCase().includes('soft'))
+      );
+
+      let pct = 0;
+      if (matchingCourses.length > 0) {
+        const totalProgress = matchingCourses.reduce((sum, c) => sum + (c.progress_pct || 0), 0);
+        pct = Math.round(totalProgress / matchingCourses.length);
+      } else {
+        pct = 0;
+      }
+
+      let level = 'Unranked';
+      let levelClass = 'unranked';
+      if (pct >= 75) {
+        level = 'Advanced';
+        levelClass = 'advanced';
+      } else if (pct >= 40) {
+        level = 'Intermediate';
+        levelClass = 'intermediate';
+      } else if (pct > 0) {
+        level = 'Beginner';
+        levelClass = 'beginner';
+      } else {
+        level = studentTrack.includes(t.key) ? 'Enrolled' : 'Unranked';
+        levelClass = studentTrack.includes(t.key) ? 'novice' : 'unranked';
+      }
+
+      return {
+        label: t.label,
+        pct: Math.min(100, Math.max(pct, 0)),
+        level,
+        levelClass
+      };
+    });
+  }
+
+  get nextTrackHeat(): UpcomingEvent | null {
+    const events = this.contentService.upcomingEvents || [];
+    if (events.length === 0) return null;
+
+    const studentTrack = (this.studentProfile?.trackId || this.studentProfile?.track || '').toLowerCase();
+
+    // 1. Check for event matching the student's registered track
+    const matching = events.find(e => {
+      const fullText = `${e.title || ''} ${e.description || ''}`.toLowerCase();
+      if (studentTrack.includes('cod') && (fullText.includes('cod') || fullText.includes('soft') || fullText.includes('algorithm') || fullText.includes('hackathon'))) return true;
+      if (studentTrack.includes('robot') && (fullText.includes('robot') || fullText.includes('iot') || fullText.includes('hardware'))) return true;
+      if ((studentTrack.includes('ai') || studentTrack.includes('data')) && (fullText.includes('ai') || fullText.includes('data') || fullText.includes('machine') || fullText.includes('model'))) return true;
+      if (studentTrack.includes('cyber') && (fullText.includes('cyber') || fullText.includes('secur') || fullText.includes('network') || fullText.includes('flag'))) return true;
+      if (studentTrack.includes('innovat') && (fullText.includes('innovat') || fullText.includes('project') || fullText.includes('open'))) return true;
+      return fullText.includes('all tracks') || fullText.includes('national championship');
+    });
+
+    return matching || null;
+  }
+
   // ── Server-backed student state ───────────────────────────────────────
   // These replace derived-from-localStorage getters. Enrolment, progress, grades
   // and the assignment catalogue are all server state now.
@@ -310,7 +380,35 @@ export class LmsComponent implements OnInit {
       next: rows => {
         this.myEnrolments = rows || [];
         this.isLoadingStudentData = false;
-        this.recomputeAvailableCourses();
+        this.apiService.getLmsCourses().subscribe({
+          next: courses => {
+            if (Array.isArray(courses)) {
+              this.contentService.lmsCourses = courses.map((b: any) => ({
+                id: b.id,
+                title: b.title || '',
+                track: b.track || '',
+                icon: b.icon || '',
+                level: b.level || '',
+                description: b.description || '',
+                modules: b.modules || 0,
+                enrolled: b.enrolled || 0,
+                completion: b.completion || 0,
+                status: b.status || 'active',
+                createdAt: b.created_at || '',
+                submittedBy: b.submitted_by || '',
+                approvalStatus: b.approval_status || 'approved',
+                rejectionReason: b.rejection_reason || ''
+              }));
+              this.contentService.saveLmsCourses(this.contentService.lmsCourses);
+            }
+            this.recomputeAvailableCourses();
+            this.cdr.markForCheck();
+          },
+          error: () => {
+            this.recomputeAvailableCourses();
+            this.cdr.markForCheck();
+          }
+        });
         this.loadAssignmentsForMyCourses();
       },
       error: err => {
@@ -340,6 +438,16 @@ export class LmsComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: () => { this.myCertificates = []; }
+    });
+
+    this.apiService.getEvents().subscribe({
+      next: events => {
+        if (Array.isArray(events) && events.length > 0) {
+          this.contentService.upcomingEvents = events;
+          this.cdr.markForCheck();
+        }
+      },
+      error: () => {}
     });
   }
 

@@ -1050,7 +1050,18 @@ setAuthValue('activeUserEmail', email);
       return;
     }
 
-    // Fast local checks
+    // Instant local duplicate check across the entire form (0ms)
+    if (this.isDuplicateInForm(fieldName, cleanVal)) {
+      this.fieldValidation[fieldName] = {
+        status: 'taken',
+        message: this.getDuplicateEmailMessage(fieldName, cleanVal)
+      };
+      this.revalidateSiblingFields(fieldName, 'email');
+      this.cdr?.markForCheck?.();
+      return;
+    }
+
+    // Fast local draft/roster checks
     if (this.hasSavedDraft(cleanVal) && !this.isDraftResumed && !this.editingApprovalId) {
       const timeRemaining = this.getDraftTimeRemaining(cleanVal);
       const timeText = timeRemaining ? ` (${timeRemaining})` : '';
@@ -1075,6 +1086,8 @@ setAuthValue('activeUserEmail', email);
         next: (res) => {
           if (res && res.email_taken) {
             this.fieldValidation[fieldName] = { status: 'taken', message: 'This email is already registered to an account', serverConfirmed: true };
+          } else if (this.isDuplicateInForm(fieldName, cleanVal)) {
+            this.fieldValidation[fieldName] = { status: 'taken', message: this.getDuplicateEmailMessage(fieldName, cleanVal) };
           } else {
             this.fieldValidation[fieldName] = { status: 'valid', message: '' };
           }
@@ -1082,7 +1095,11 @@ setAuthValue('activeUserEmail', email);
           this.cdr?.markForCheck?.();
         },
         error: () => {
-          this.fieldValidation[fieldName] = { status: 'valid', message: '' };
+          if (this.isDuplicateInForm(fieldName, cleanVal)) {
+            this.fieldValidation[fieldName] = { status: 'taken', message: this.getDuplicateEmailMessage(fieldName, cleanVal) };
+          } else {
+            this.fieldValidation[fieldName] = { status: 'valid', message: '' };
+          }
           this.revalidateSiblingFields(fieldName, 'email');
           this.cdr?.markForCheck?.();
         }
@@ -1094,25 +1111,65 @@ setAuthValue('activeUserEmail', email);
     const v = value.trim().toLowerCase();
     if (!v) return false;
 
-    // Direct school sibling check
+    const currentEmails: { name: string; value: string }[] = [];
+
     if (this.activeTab === 'school') {
-      if (fieldName === 'schoolEmail') return (this.schoolForm.repEmail || '').trim().toLowerCase() === v;
-      if (fieldName === 'schoolRepEmail') return (this.schoolForm.email || '').trim().toLowerCase() === v;
+      currentEmails.push(
+        { name: 'schoolEmail', value: this.schoolForm.email || '' },
+        { name: 'schoolRepEmail', value: this.schoolForm.repEmail || '' },
+        { name: 'squadLeadEmail', value: this.teamForm.leadEmail || '' },
+        { name: 'squadM2Email', value: this.teamForm.member2Email || '' },
+        { name: 'squadM3Email', value: this.teamForm.member3Email || '' },
+        { name: 'squadM4Email', value: this.teamForm.member4Email || '' },
+        { name: 'squadM5Email', value: this.teamForm.member5Email || '' }
+      );
+
+      // Check against any previously added teams in this school
+      if (this.schoolForm.teams && Array.isArray(this.schoolForm.teams)) {
+        this.schoolForm.teams.forEach((t: any, idx: number) => {
+          if (t.leadEmail) currentEmails.push({ name: `staged_team_${idx}_lead`, value: t.leadEmail });
+          if (t.member2Email) currentEmails.push({ name: `staged_team_${idx}_m2`, value: t.member2Email });
+          if (t.member3Email) currentEmails.push({ name: `staged_team_${idx}_m3`, value: t.member3Email });
+          if (t.member4Email) currentEmails.push({ name: `staged_team_${idx}_m4`, value: t.member4Email });
+          if (t.member5Email) currentEmails.push({ name: `staged_team_${idx}_m5`, value: t.member5Email });
+        });
+      }
+    } else if (this.activeTab === 'team' || (this.activeTab === 'student' && this.competitorMode === 'group')) {
+      currentEmails.push(
+        { name: 'squadLeadEmail', value: this.teamForm.leadEmail || '' },
+        { name: 'squadM2Email', value: this.teamForm.member2Email || '' },
+        { name: 'squadM3Email', value: this.teamForm.member3Email || '' },
+        { name: 'squadM4Email', value: this.teamForm.member4Email || '' },
+        { name: 'squadM5Email', value: this.teamForm.member5Email || '' }
+      );
     }
 
-    // Direct squad roster check
-    if (this.activeTab === 'team' || (this.activeTab === 'student' && this.competitorMode === 'group')) {
-      const squadEmails: { name: string; value: string }[] = [
-        { name: 'squadLeadEmail', value: this.teamForm.leadEmail },
-        { name: 'squadM2Email', value: this.teamForm.member2Email },
-        { name: 'squadM3Email', value: this.teamForm.member3Email },
-        { name: 'squadM4Email', value: this.teamForm.member4Email },
-        { name: 'squadM5Email', value: this.teamForm.member5Email },
-      ];
-      return squadEmails.some(e => e.name !== fieldName && e.value?.trim().toLowerCase() === v);
+    return currentEmails.some(e => e.name !== fieldName && e.value.trim().toLowerCase() === v);
+  }
+
+  private getDuplicateEmailMessage(fieldName: string, value: string): string {
+    const v = value.trim().toLowerCase();
+    if (!v) return 'This email is already in use in your form';
+
+    if (this.activeTab === 'school') {
+      const sch = (this.schoolForm.email || '').trim().toLowerCase();
+      const rep = (this.schoolForm.repEmail || '').trim().toLowerCase();
+      if (fieldName === 'squadLeadEmail' || fieldName.startsWith('squadM')) {
+        if (v === sch) return 'Team member email cannot be the same as the School official email';
+        if (v === rep) return 'Team member email cannot be the same as the School representative email';
+        return 'Duplicate email used by another squad member';
+      }
+      if (fieldName === 'schoolEmail') {
+        if (v === rep) return 'School official email and representative email cannot be the same';
+        return 'School official email is already entered for a team member';
+      }
+      if (fieldName === 'schoolRepEmail') {
+        if (v === sch) return 'School representative email and official email cannot be the same';
+        return 'School representative email is already entered for a team member';
+      }
     }
 
-    return false;
+    return 'Duplicate email used by another member in this registration';
   }
 
   private normalizePhone(phone: string): string {
@@ -1138,66 +1195,48 @@ setAuthValue('activeUserEmail', email);
   }
 
   private revalidateSiblingFields(currentFieldName: string, type: 'email' | 'phone'): void {
-    // Never downgrade a server-confirmed 'taken' to 'valid'. The local
-    // isEmailTaken/isPhoneTaken fall back to an admin-only roster, so for a
-    // public registrant they always say "free" -- which used to silently erase a
-    // genuine "already registered" warning on the sibling field.
     const serverSaysTaken = (field: string) =>
       this.fieldValidation[field]?.status === 'taken' && this.fieldValidation[field]?.serverConfirmed === true;
 
-    if (this.activeTab === 'school') {
-      if (type === 'email') {
-        const sibling = currentFieldName === 'schoolEmail' ? 'schoolRepEmail' : currentFieldName === 'schoolRepEmail' ? 'schoolEmail' : null;
-        if (sibling && this.fieldValidation[sibling] && this.fieldValidation[sibling].status !== 'idle') {
-          const val = sibling === 'schoolEmail' ? this.schoolForm.email : this.schoolForm.repEmail;
-          if (val && val.trim()) {
-            if (!this.contentService.isValidEmail(val)) {
-              this.fieldValidation[sibling] = { status: 'invalid', message: 'Invalid email format' };
-            } else if (this.isDuplicateInForm(sibling, val)) {
-              this.fieldValidation[sibling] = { status: 'taken', message: 'School email and representative email cannot be the same' };
-            } else if (!serverSaysTaken(sibling) && !this.contentService.isEmailTaken(val, this.editingApprovalId || undefined)) {
-              this.fieldValidation[sibling] = { status: 'valid', message: '' };
-            }
-          }
-        }
-      } else if (type === 'phone') {
-        const sibling = currentFieldName === 'schoolTel' ? 'schoolRepTel' : currentFieldName === 'schoolRepTel' ? 'schoolTel' : null;
-        if (sibling && this.fieldValidation[sibling] && this.fieldValidation[sibling].status !== 'idle') {
-          const val = sibling === 'schoolTel' ? this.schoolForm.tel : this.schoolForm.repTel;
-          if (val && val.trim()) {
-            if (!this.contentService.isValidGhanaPhone(val)) {
-              this.fieldValidation[sibling] = { status: 'invalid', message: 'Enter a valid Ghana number (0XX XXX XXXX or +233...)' };
-            } else if (this.isDuplicatePhoneInForm(sibling, val)) {
-              this.fieldValidation[sibling] = { status: 'taken', message: 'School telephone and representative telephone cannot be the same' };
-            } else if (!serverSaysTaken(sibling) && !this.contentService.isPhoneTaken(val, this.editingApprovalId || undefined)) {
-              this.fieldValidation[sibling] = { status: 'valid', message: '' };
-            }
-          }
-        }
-      }
-    } else if (type === 'email') {
-      this.revalidateOtherSquadEmails(currentFieldName);
-    }
-  }
+    if (type === 'email') {
+      const emailFields = this.activeTab === 'school'
+        ? ['schoolEmail', 'schoolRepEmail', 'squadLeadEmail', 'squadM2Email', 'squadM3Email', 'squadM4Email', 'squadM5Email']
+        : ['squadLeadEmail', 'squadM2Email', 'squadM3Email', 'squadM4Email', 'squadM5Email'];
 
-  private revalidateOtherSquadEmails(currentFieldName: string): void {
-    if (this.activeTab === 'team' || (this.activeTab === 'student' && this.competitorMode === 'group')) {
-      const fields = ['squadLeadEmail', 'squadM2Email', 'squadM3Email', 'squadM4Email', 'squadM5Email'];
-      fields.filter(f => f !== currentFieldName).forEach(f => {
-        const val = this.getSquadEmailValue(f);
-        if (val && this.fieldValidation[f] && (this.fieldValidation[f].status === 'valid' || this.fieldValidation[f].status === 'taken')) {
-          const serverTaken = this.fieldValidation[f].status === 'taken' && this.fieldValidation[f].serverConfirmed === true;
-          if (this.isDuplicateInForm(f, val)) {
-            this.fieldValidation[f] = { status: 'taken', message: 'Duplicate email used by another squad member' };
-          } else if (!serverTaken && !this.contentService.isEmailTaken(val, this.editingApprovalId || undefined)) {
+      emailFields.filter(f => f !== currentFieldName).forEach(f => {
+        const val = this.getEmailFieldValue(f);
+        if (!val || !val.trim()) return;
+
+        if (this.fieldValidation[f] && this.fieldValidation[f].status !== 'idle') {
+          if (!this.contentService.isValidEmail(val)) {
+            this.fieldValidation[f] = { status: 'invalid', message: 'Invalid email format' };
+          } else if (this.isDuplicateInForm(f, val)) {
+            this.fieldValidation[f] = { status: 'taken', message: this.getDuplicateEmailMessage(f, val) };
+          } else if (!serverSaysTaken(f) && !this.contentService.isEmailTaken(val, this.editingApprovalId || undefined)) {
             this.fieldValidation[f] = { status: 'valid', message: '' };
           }
         }
       });
+    } else if (type === 'phone' && this.activeTab === 'school') {
+      const sibling = currentFieldName === 'schoolTel' ? 'schoolRepTel' : currentFieldName === 'schoolRepTel' ? 'schoolTel' : null;
+      if (sibling && this.fieldValidation[sibling] && this.fieldValidation[sibling].status !== 'idle') {
+        const val = sibling === 'schoolTel' ? this.schoolForm.tel : this.schoolForm.repTel;
+        if (val && val.trim()) {
+          if (!this.contentService.isValidGhanaPhone(val)) {
+            this.fieldValidation[sibling] = { status: 'invalid', message: 'Enter a valid Ghana number (0XX XXX XXXX or +233...)' };
+          } else if (this.isDuplicatePhoneInForm(sibling, val)) {
+            this.fieldValidation[sibling] = { status: 'taken', message: 'School telephone and representative telephone cannot be the same' };
+          } else if (!serverSaysTaken(sibling) && !this.contentService.isPhoneTaken(val, this.editingApprovalId || undefined)) {
+            this.fieldValidation[sibling] = { status: 'valid', message: '' };
+          }
+        }
+      }
     }
   }
 
-  private getSquadEmailValue(fieldName: string): string {
+  private getEmailFieldValue(fieldName: string): string {
+    if (fieldName === 'schoolEmail') return this.schoolForm.email || '';
+    if (fieldName === 'schoolRepEmail') return this.schoolForm.repEmail || '';
     if (fieldName === 'squadLeadEmail') return this.teamForm.leadEmail || '';
     if (fieldName === 'squadM2Email') return this.teamForm.member2Email || '';
     if (fieldName === 'squadM3Email') return this.teamForm.member3Email || '';
@@ -1496,6 +1535,8 @@ setAuthValue('activeUserEmail', email);
     this.verifyOtpSent = false;
     this.verifyChallengeId = '';
     this.verifyOtpBusy = true;
+    this.verifyOtpModalOpen = true;
+    this.cdr?.markForCheck?.();
 
     // The server generates, stores (hashed) and later checks the code. The
     // browser only receives an opaque challenge id.
@@ -1503,7 +1544,6 @@ setAuthValue('activeUserEmail', email);
       next: challenge => {
         this.verifyChallengeId = challenge.challengeId;
         this.verifyOtpSent = true;
-        this.verifyOtpModalOpen = true;
         this.verifyOtpBusy = false;
         this.startVerifyOtpTimer(challenge.expiresIn || 60);
         this.notificationService.info(
@@ -1539,12 +1579,13 @@ setAuthValue('activeUserEmail', email);
   }
 
   resendVerifyOtp(): void {
-    if (this.verifyOtpCountdown > 0 || this.verifyOtpBusy || !this.verifyTargetValue) return;
+    if (!this.verifyTargetField || !this.verifyTargetValue || this.verifyOtpBusy) return;
     this.sendVerifyOtp(this.verifyTargetField, this.verifyTargetType, this.verifyTargetValue);
   }
 
   onVerifyOtpInputChange(): void {
-    if (this.verifyOtpInput && this.verifyOtpInput.length === 6) {
+    this.verifyOtpError = '';
+    if (this.verifyOtpInput.length === 6) {
       this.confirmVerifyOtp();
     }
   }
@@ -2232,7 +2273,12 @@ setAuthValue('activeUserEmail', email);
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(this.lastApplicationCode).then(() => {
         this.copiedApplicationCode = true;
-        setTimeout(() => this.copiedApplicationCode = false, 2000);
+        this.dialogService.toast('Application code copied to clipboard!', 'success');
+        this.cdr?.markForCheck?.();
+        setTimeout(() => {
+          this.copiedApplicationCode = false;
+          this.cdr?.markForCheck?.();
+        }, 2500);
       }).catch(() => this.fallbackCopy(this.lastApplicationCode!));
     } else {
       this.fallbackCopy(this.lastApplicationCode);
@@ -2249,7 +2295,12 @@ setAuthValue('activeUserEmail', email);
     try { document.execCommand('copy'); } catch (e) {}
     document.body.removeChild(ta);
     this.copiedApplicationCode = true;
-    setTimeout(() => this.copiedApplicationCode = false, 2000);
+    this.dialogService.toast('Application code copied to clipboard!', 'success');
+    this.cdr?.markForCheck?.();
+    setTimeout(() => {
+      this.copiedApplicationCode = false;
+      this.cdr?.markForCheck?.();
+    }, 2500);
   }
 
   searchApplication(): void {
@@ -3403,36 +3454,36 @@ setAuthValue('activeUserEmail', email);
     switch (this.activeTab) {
       case 'school':
         contact = this.schoolForm.repEmail || this.schoolForm.email;
-        formData = { ...this.schoolForm, selectedFileIds: this.selectedFileIds, selectedFileNames: this.selectedFileNames };
+        formData = { ...this.schoolForm, selectedFileIds: this.selectedFileIds, selectedFileNames: this.selectedFileNames, verifiedValues: this.verifiedValues };
         break;
       case 'instructor':
         contact = this.instructorForm.email;
-        formData = { ...this.instructorForm };
+        formData = { ...this.instructorForm, selectedFileIds: this.selectedFileIds, selectedFileNames: this.selectedFileNames, verifiedValues: this.verifiedValues };
         break;
       case 'student':
         if (this.competitorMode === 'group') {
           contact = this.teamForm.leadEmail || '';
-          formData = { ...this.teamForm, competitorMode: 'group' };
+          formData = { ...this.teamForm, competitorMode: 'group', selectedFileIds: this.selectedFileIds, selectedFileNames: this.selectedFileNames, verifiedValues: this.verifiedValues };
         } else {
           contact = this.studentForm.email;
-          formData = { ...this.studentForm, selectedTrack: this.selectedTrack };
+          formData = { ...this.studentForm, selectedTrack: this.selectedTrack, selectedFileIds: this.selectedFileIds, selectedFileNames: this.selectedFileNames, verifiedValues: this.verifiedValues };
         }
         break;
       case 'judge':
         contact = this.judgeForm.email;
-        formData = { ...this.judgeForm, selectedFileIds: this.selectedFileIds, selectedFileNames: this.selectedFileNames };
+        formData = { ...this.judgeForm, selectedFileIds: this.selectedFileIds, selectedFileNames: this.selectedFileNames, verifiedValues: this.verifiedValues };
         break;
       case 'sponsor':
         contact = this.sponsorForm.email;
-        formData = { ...this.sponsorForm, selectedFileIds: this.selectedFileIds, selectedFileNames: this.selectedFileNames };
+        formData = { ...this.sponsorForm, selectedFileIds: this.selectedFileIds, selectedFileNames: this.selectedFileNames, verifiedValues: this.verifiedValues };
         break;
       case 'team':
         contact = this.teamForm.leadEmail;
-        formData = { ...this.teamForm };
+        formData = { ...this.teamForm, selectedFileIds: this.selectedFileIds, selectedFileNames: this.selectedFileNames, verifiedValues: this.verifiedValues };
         break;
       case 'open':
         contact = this.openRegForm.email;
-        formData = { ...this.openRegForm };
+        formData = { ...this.openRegForm, selectedFileIds: this.selectedFileIds, selectedFileNames: this.selectedFileNames, verifiedValues: this.verifiedValues };
         break;
     }
 
@@ -3807,13 +3858,9 @@ setAuthValue('activeUserEmail', email);
         this.schoolStep = 1;
         this.maxSchoolStepReached = 4;
         this.schoolForm = { ...this.schoolForm, ...draft.data };
-        if (draft.data?.selectedFileIds) this.selectedFileIds = { ...draft.data.selectedFileIds };
-        if (draft.data?.selectedFileNames) this.selectedFileNames = { ...draft.data.selectedFileNames };
         break;
       case 'instructor':
         this.instructorForm = { ...this.instructorForm, ...draft.data };
-        if (draft.data?.selectedFileIds) this.selectedFileIds = { ...draft.data.selectedFileIds };
-        if (draft.data?.selectedFileNames) this.selectedFileNames = { ...draft.data.selectedFileNames };
         break;
       case 'student':
         if (draft.data?.competitorMode === 'group') {
@@ -3827,14 +3874,10 @@ setAuthValue('activeUserEmail', email);
         break;
       case 'judge':
         this.judgeForm = { ...this.judgeForm, ...draft.data };
-        if (draft.data?.selectedFileIds) this.selectedFileIds = { ...draft.data.selectedFileIds };
-        if (draft.data?.selectedFileNames) this.selectedFileNames = { ...draft.data.selectedFileNames };
         if (this.selectedFileIds['judgeLogo']?.length) this.loadJudgeLogo();
         break;
       case 'sponsor':
         this.sponsorForm = { ...this.sponsorForm, ...draft.data };
-        if (draft.data?.selectedFileIds) this.selectedFileIds = { ...draft.data.selectedFileIds };
-        if (draft.data?.selectedFileNames) this.selectedFileNames = { ...draft.data.selectedFileNames };
         if (this.selectedFileIds['sponsorLogo']?.length) this.loadSponsorLogo();
         break;
       case 'team':
@@ -3843,6 +3886,19 @@ setAuthValue('activeUserEmail', email);
       case 'open':
         this.openRegForm = { ...this.openRegForm, ...draft.data };
         break;
+    }
+
+    if (draft.data?.selectedFileIds) this.selectedFileIds = { ...this.selectedFileIds, ...draft.data.selectedFileIds };
+    if (draft.data?.selectedFileNames) this.selectedFileNames = { ...this.selectedFileNames, ...draft.data.selectedFileNames };
+    if (draft.data?.verifiedValues) {
+      this.verifiedValues = { ...this.verifiedValues, ...draft.data.verifiedValues };
+    }
+    // Also auto-verify contact fields that were validated during the draft save or resume OTP flow
+    if (this.activeTab === 'instructor' && this.instructorForm.email) {
+      this.verifiedValues['instEmail'] = this.instructorForm.email.trim().toLowerCase();
+    } else if (this.activeTab === 'school') {
+      if (this.schoolForm.email) this.verifiedValues['schoolEmail'] = this.schoolForm.email.trim().toLowerCase();
+      if (this.schoolForm.repEmail) this.verifiedValues['schoolRepEmail'] = this.schoolForm.repEmail.trim().toLowerCase();
     }
   }
 
@@ -3880,44 +3936,78 @@ setAuthValue('activeUserEmail', email);
     }
 
     // Final pre-submit guard against duplicate emails & phones across PostgreSQL database
-    let targetEmail = '';
-    let targetPhone = '';
+    const emailsToCheck = new Set<string>();
+    const phonesToCheck = new Set<string>();
+
     if (this.activeTab === 'school') {
-      targetEmail = this.schoolForm.repEmail || this.schoolForm.email;
-      targetPhone = this.schoolForm.repTel || this.schoolForm.tel;
+      if (this.schoolForm.email) emailsToCheck.add(this.schoolForm.email.trim());
+      if (this.schoolForm.repEmail) emailsToCheck.add(this.schoolForm.repEmail.trim());
+      if (this.schoolForm.tel) phonesToCheck.add(this.schoolForm.tel.trim());
+      if (this.schoolForm.repTel) phonesToCheck.add(this.schoolForm.repTel.trim());
+      (this.schoolForm.teams || []).forEach((t: any) => {
+        if (t.leadEmail) emailsToCheck.add(t.leadEmail.trim());
+        if (t.member2Email) emailsToCheck.add(t.member2Email.trim());
+        if (t.member3Email) emailsToCheck.add(t.member3Email.trim());
+        if (t.member4Email) emailsToCheck.add(t.member4Email.trim());
+        if (t.member5Email) emailsToCheck.add(t.member5Email.trim());
+      });
+      if (this.teamForm.leadEmail) emailsToCheck.add(this.teamForm.leadEmail.trim());
+      if (this.teamForm.member2Email) emailsToCheck.add(this.teamForm.member2Email.trim());
+      if (this.teamForm.member3Email) emailsToCheck.add(this.teamForm.member3Email.trim());
+      if (this.teamForm.member4Email) emailsToCheck.add(this.teamForm.member4Email.trim());
+      if (this.teamForm.member5Email) emailsToCheck.add(this.teamForm.member5Email.trim());
     } else if (this.activeTab === 'instructor') {
-      targetEmail = this.instructorForm.email;
-      targetPhone = this.instructorForm.tel;
+      if (this.instructorForm.email) emailsToCheck.add(this.instructorForm.email.trim());
+      if (this.instructorForm.tel) phonesToCheck.add(this.instructorForm.tel.trim());
     } else if (this.activeTab === 'judge') {
-      targetEmail = this.judgeForm.email;
-      targetPhone = this.judgeForm.tel;
+      if (this.judgeForm.email) emailsToCheck.add(this.judgeForm.email.trim());
+      if (this.judgeForm.tel) phonesToCheck.add(this.judgeForm.tel.trim());
     } else if (this.activeTab === 'sponsor') {
-      targetEmail = this.sponsorForm.email;
-      targetPhone = this.sponsorForm.repContact;
+      if (this.sponsorForm.email) emailsToCheck.add(this.sponsorForm.email.trim());
+      if (this.sponsorForm.repContact) phonesToCheck.add(this.sponsorForm.repContact.trim());
     } else if (this.activeTab === 'team') {
-      targetEmail = this.teamForm.leadEmail;
+      if (this.teamForm.leadEmail) emailsToCheck.add(this.teamForm.leadEmail.trim());
+      if (this.teamForm.member2Email) emailsToCheck.add(this.teamForm.member2Email.trim());
+      if (this.teamForm.member3Email) emailsToCheck.add(this.teamForm.member3Email.trim());
+      if (this.teamForm.member4Email) emailsToCheck.add(this.teamForm.member4Email.trim());
+      if (this.teamForm.member5Email) emailsToCheck.add(this.teamForm.member5Email.trim());
     }
 
-    if (targetEmail || targetPhone) {
+    for (const em of Array.from(emailsToCheck)) {
+      if (!em) continue;
       try {
-        const avail = await firstValueFrom(this.apiService.checkAvailability(targetEmail, targetPhone));
+        const avail = await firstValueFrom(this.apiService.checkAvailability(em, '', this.editingApprovalId || undefined));
         if (avail && avail.email_taken && !this.editingApprovalId) {
           this.isSubmitting = false;
           this.isPreviewModalOpen = false;
-          this.showCustomAlert(`The email address "${targetEmail}" is already registered in the system. Please use a different email address or sign in.`, 'Email Already Registered', 'warning');
-          return;
-        }
-        if (avail && avail.phone_taken && !this.editingApprovalId) {
-          this.isSubmitting = false;
-          this.isPreviewModalOpen = false;
-          this.showCustomAlert(`The phone number "${targetPhone}" is already registered in the system. Please use a different phone number.`, 'Phone Already Registered', 'warning');
+          this.showCustomAlert(`The email address "${em}" is already registered in the system. Please use a distinct email address.`, 'Email Already Registered', 'warning');
           return;
         }
       } catch {
-        if (targetEmail && this.contentService.isEmailTaken(targetEmail, this.editingApprovalId || undefined)) {
+        if (this.contentService.isEmailTaken(em, this.editingApprovalId || undefined)) {
           this.isSubmitting = false;
           this.isPreviewModalOpen = false;
-          this.showCustomAlert(`The email address "${targetEmail}" is already registered.`, 'Email Already Registered', 'warning');
+          this.showCustomAlert(`The email address "${em}" is already registered.`, 'Email Already Registered', 'warning');
+          return;
+        }
+      }
+    }
+
+    for (const ph of Array.from(phonesToCheck)) {
+      if (!ph) continue;
+      try {
+        const avail = await firstValueFrom(this.apiService.checkAvailability('', ph, this.editingApprovalId || undefined));
+        if (avail && avail.phone_taken && !this.editingApprovalId) {
+          this.isSubmitting = false;
+          this.isPreviewModalOpen = false;
+          this.showCustomAlert(`The phone number "${ph}" is already registered in the system. Please use a different phone number.`, 'Phone Already Registered', 'warning');
+          return;
+        }
+      } catch {
+        if (this.contentService.isPhoneTaken(ph, this.editingApprovalId || undefined)) {
+          this.isSubmitting = false;
+          this.isPreviewModalOpen = false;
+          this.showCustomAlert(`The phone number "${ph}" is already registered.`, 'Phone Already Registered', 'warning');
           return;
         }
       }

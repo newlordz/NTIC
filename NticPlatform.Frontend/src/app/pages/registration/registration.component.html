@@ -2877,7 +2877,7 @@
             </div>
             <div class="app-code-value">{{ lastApplicationCode }}</div>
           </div>
-          <button class="app-code-copy-btn" (click)="copyApplicationCode()">
+          <button class="app-code-copy-btn" [class.copied]="copiedApplicationCode" (click)="copyApplicationCode()" [style.background]="copiedApplicationCode ? '#10b981' : ''" [style.color]="copiedApplicationCode ? '#ffffff' : ''" style="transition: all 0.25s ease;">
             <span class="material-symbols-outlined">{{ copiedApplicationCode ? 'check' : 'content_copy' }}</span>
             {{ copiedApplicationCode ? 'Copied!' : 'Copy Code' }}
           </button>
@@ -3077,7 +3077,12 @@
       <h4 class="custom-alert-title">
         Verify {{ verifyTargetType === 'email' ? 'Email Address' : 'Phone Number' }}
       </h4>
-      <p class="custom-alert-message" style="font-size:13px; line-height: 1.5;">
+      <p class="custom-alert-message" style="font-size:13px; line-height: 1.5;" *ngIf="verifyOtpBusy && !verifyOtpSent">
+        <span class="material-symbols-outlined spinning" style="font-size:16px; vertical-align:middle; margin-right:4px;">sync</span>
+        Sending 6-digit verification code to<br>
+        <span style="display:inline-block; font-weight:700; color:var(--primary); background:rgba(0,63,135,0.08); padding:2px 8px; border-radius:6px; margin-top:4px;">{{ verifyTargetValue }}</span>...
+      </p>
+      <p class="custom-alert-message" style="font-size:13px; line-height: 1.5;" *ngIf="!verifyOtpBusy || verifyOtpSent">
         A 6-digit code was dispatched via <strong>{{ verifyTargetType === 'email' ? 'Email' : 'WhatsApp / SMS' }}</strong> to<br>
         <span style="display:inline-block; font-weight:700; color:var(--primary); background:rgba(0,63,135,0.08); padding:2px 8px; border-radius:6px; margin-top:4px;">{{ verifyTargetValue }}</span>
       </p>

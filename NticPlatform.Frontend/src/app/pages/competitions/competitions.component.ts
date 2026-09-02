@@ -7,6 +7,7 @@ import { ContentService, Competition, CompetitionPhase } from '../../services/co
 import { ThemeService } from '../../services/theme.service';
 import { ApiService } from '../../services/api.service';
 import { PublicNavComponent } from '../../components/public-nav/public-nav.component';
+import { CurrentUserService } from '../../services/current-user.service';
 import { CYCLE_STATUSES, advanceLabel, advanceIcon, isRegistrationOpen } from '../../services/competition-lifecycle';
 
 @Component({
@@ -120,11 +121,37 @@ export class CompetitionsComponent implements OnInit {
     return ['super_admin', 'admin', 'support_admin', 'school_admin', 'instructor', 'competition_manager', 'content_manager'].includes(this.activeRoleId);
   }
 
-  get visibleCompetitions(): Competition[] {
-    if (!this.canManageCompetitions) {
-      return this.competitions.filter(c => c.status !== 'draft');
+  get studentTrackKey(): string {
+    const profile = this.currentUserService.profile();
+    const raw = (profile?.track || (typeof localStorage !== 'undefined' ? localStorage.getItem('activeUserTrack') : '') || '').toLowerCase();
+    if (raw.includes('cod') || raw.includes('soft') || raw.includes('algo')) return 'coding';
+    if (raw.includes('robot') || raw.includes('iot') || raw.includes('hardw')) return 'robotics';
+    if (raw.includes('ai') || raw.includes('data') || raw.includes('mach')) return 'ai';
+    if (raw.includes('cyber') || raw.includes('secur') || raw.includes('netw')) return 'cyber';
+    if (raw.includes('innovat') || raw.includes('proj')) return 'innovation';
+    return raw || 'coding';
+  }
+
+  get displayTracks(): string[] {
+    if (this.isStudent && this.studentTrackKey) {
+      return ['all', this.studentTrackKey];
     }
-    return this.competitions;
+    return this.tracks;
+  }
+
+  get visibleCompetitions(): Competition[] {
+    let list = this.competitions;
+    if (!this.canManageCompetitions) {
+      list = list.filter(c => c.status !== 'draft');
+    }
+    if (this.isStudent) {
+      const trackKey = this.studentTrackKey;
+      list = list.filter(c => {
+        const cTrack = (c.track || '').toLowerCase();
+        return cTrack === 'all' || cTrack === trackKey || cTrack.includes(trackKey);
+      });
+    }
+    return list;
   }
 
   get totalCycles(): number { return this.visibleCompetitions.length; }
@@ -247,13 +274,19 @@ export class CompetitionsComponent implements OnInit {
   constructor(
     public contentService: ContentService,
     public themeService: ThemeService,
-    private apiService: ApiService
-  , private cdr: ChangeDetectorRef) {}
+    private apiService: ApiService,
+    public currentUserService: CurrentUserService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
+    this.currentUserService.ensureLoaded().subscribe(() => {
+      this.loadCompetitions();
+      this.loadMyRegistrations();
+      this.cdr.markForCheck();
+    });
     this.contentService.refreshBackendData();
     this.loadCompetitions();
-    // Registration state comes from the server now, so a refresh no longer wipes it.
     this.loadMyRegistrations();
     this.cdr.markForCheck();
   }

@@ -214,14 +214,18 @@
           <h1>{{ slide.title }}</h1>
           <p>{{ slide.description }}</p>
           <div class="card-actions">
-            <a [href]="(slide.ctaLink && slide.ctaLink.startsWith('#')) ? 'javascript:void(0)' : slide.ctaLink"
-              (click)="(slide.ctaLink && slide.ctaLink.startsWith('#')) ? openLoginModal($event) : null"
-              class="btn btn-gold btn-lg">
-              <span>{{ slide.ctaText }}</span>
+            <a [href]="getSlideCtaLink(slide).startsWith('#') ? 'javascript:void(0)' : getSlideCtaLink(slide)"
+              (click)="getSlideCtaLink(slide).startsWith('#') ? openLoginModal($event) : null"
+              class="btn btn-gold btn-lg"
+              *ngIf="slide.ctaText !== ''">
+              <span>{{ getSlideCtaText(slide) }}</span>
               <span class="material-symbols-outlined">arrow_right_alt</span>
             </a>
-            <a routerLink="/registration" class="btn btn-white-trans btn-lg">
-              <span>Apply now</span>
+            <a *ngIf="slide.secondaryCtaText !== ''"
+               [routerLink]="isInternalLink(getSlideSecondaryLink(slide)) ? getSlideSecondaryLink(slide) : null"
+               [href]="!isInternalLink(getSlideSecondaryLink(slide)) ? getSlideSecondaryLink(slide) : null"
+               class="btn btn-white-trans btn-lg">
+              <span>{{ getSlideSecondaryText(slide) }}</span>
             </a>
           </div>
         </div>

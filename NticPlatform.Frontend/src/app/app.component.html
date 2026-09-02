@@ -14,8 +14,8 @@
         <span class="material-symbols-outlined fill" style="font-size:22px;">rocket_launch</span>
       </div>
       <div class="brand-text">
-        <div class="brand-name">Control Center</div>
-        <div class="brand-sub">{{ currentUser?.roleId === 'student' ? 'Student Workspace' : currentUser?.roleId === 'instructor' ? 'Mentor Workspace' : currentUser?.roleId === 'super_admin' ? 'Admin' : currentUser?.roleId === 'content_manager' || currentUser?.roleId === 'reviewer' || currentUser?.roleId === 'competition_manager' ? 'Command Center' : 'Competition Manager' }}</div>
+        <div class="brand-name">{{ brandTitle }}</div>
+        <div class="brand-sub">{{ brandSubtitle }}</div>
       </div>
     </div>
 

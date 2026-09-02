@@ -21,7 +21,7 @@ interface UserRole {
   defaultEmail: string;
 }
 
-interface Slide {
+export interface Slide {
   tag: string;
   title: string;
   description: string;
@@ -31,6 +31,8 @@ interface Slide {
   videoEditImages?: string[];
   ctaText: string;
   ctaLink: string;
+  secondaryCtaText?: string;
+  secondaryCtaLink?: string;
   _heroSlide?: any;
 }
 
@@ -1005,6 +1007,8 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       videoEditImages: [],
       ctaText: hs.ctaText || 'Enter Portal',
       ctaLink: hs.ctaLink || '#portal',
+      secondaryCtaText: hs.secondaryCtaText !== undefined ? hs.secondaryCtaText : 'Apply Now',
+      secondaryCtaLink: hs.secondaryCtaLink || '/registration',
       _heroSlide: hs
     }));
     this.loadSlideMedia();
@@ -1018,6 +1022,26 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       paths.sort(() => Math.random() - 0.5);
       firstSlide.videoEditImages = paths;
     }
+  }
+
+  getSlideCtaText(slide: Slide): string {
+    return slide.ctaText || this.contentService.copy('hero.defaultCtaText', 'Enter Portal');
+  }
+
+  getSlideCtaLink(slide: Slide): string {
+    return slide.ctaLink || '#portal';
+  }
+
+  getSlideSecondaryText(slide: Slide): string {
+    return slide.secondaryCtaText || this.contentService.copy('hero.applyBtn', 'Apply now');
+  }
+
+  getSlideSecondaryLink(slide: Slide): string {
+    return slide.secondaryCtaLink || '/registration';
+  }
+
+  isInternalLink(link: string): boolean {
+    return !!link && link.startsWith('/') && !link.startsWith('//');
   }
 
   async clearAllData(): Promise<void> {

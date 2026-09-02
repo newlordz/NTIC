@@ -4826,9 +4826,9 @@ body.dark-theme {
 }
 
 /* ── Dynamic Stacking Rule: When Any Modal is Open, Main Content Rises & Shell Chrome Drops ── */
-body:has([class*="-backdrop"], [class*="-overlay"]),
-html:has([class*="-backdrop"], [class*="-overlay"]),
-.app-shell:has([class*="-backdrop"], [class*="-overlay"]) {
+body:has(.modal-backdrop, .dialog-backdrop, .preview-modal-backdrop, .pass-modal-overlay, .global-dialog-overlay, .app-modal-backdrop, .school-lookup-backdrop, .custom-alert-backdrop, .review-dialog-backdrop, .modal-open),
+html:has(.modal-backdrop, .dialog-backdrop, .preview-modal-backdrop, .pass-modal-overlay, .global-dialog-overlay, .app-modal-backdrop, .school-lookup-backdrop, .custom-alert-backdrop, .review-dialog-backdrop, .modal-open),
+.app-shell:has(.modal-backdrop, .dialog-backdrop, .preview-modal-backdrop, .pass-modal-overlay, .global-dialog-overlay, .app-modal-backdrop, .school-lookup-backdrop, .custom-alert-backdrop, .review-dialog-backdrop, .modal-open) {
   overflow: hidden !important;
   overscroll-behavior: none !important;
 
@@ -4856,8 +4856,10 @@ html:has([class*="-backdrop"], [class*="-overlay"]),
   }
 }
 
-
-
-
-
-
+/* ── Absolute Top Stacking for All System Toasts & Notifications ── */
+.global-toast-container,
+.toast-viewport,
+app-toast-container {
+  z-index: 2147483647 !important;
+  position: fixed !important;
+}

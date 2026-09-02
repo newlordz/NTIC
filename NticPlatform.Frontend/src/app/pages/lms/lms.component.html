@@ -574,26 +574,12 @@
             {{ studentProfile.track }}
           </div>
           <div class="pass-skills">
-            <div class="skill-row">
-              <span class="skill-label">Algorithm Design</span>
+            <div class="skill-row" *ngFor="let skill of studentSkills">
+              <span class="skill-label">{{ skill.label }}</span>
               <div class="skill-bar-wrap">
-                <div class="skill-bar-fill advanced"></div>
+                <div class="skill-bar-fill" [class]="skill.levelClass" [style.width.%]="skill.pct"></div>
               </div>
-              <span class="skill-val">Advanced</span>
-            </div>
-            <div class="skill-row">
-              <span class="skill-label">Hardware / IoT</span>
-              <div class="skill-bar-wrap">
-                <div class="skill-bar-fill intermediate"></div>
-              </div>
-              <span class="skill-val">Intermediate</span>
-            </div>
-            <div class="skill-row">
-              <span class="skill-label">Data & AI</span>
-              <div class="skill-bar-wrap">
-                <div class="skill-bar-fill novice"></div>
-              </div>
-              <span class="skill-val">Novice</span>
+              <span class="skill-val">{{ skill.level }}</span>
             </div>
           </div>
           <div class="pass-barcode-wrap">
@@ -639,18 +625,28 @@
 
       <div class="sidebar-panel-card">
         <h3><span class="material-symbols-outlined">event</span> Next Track Heat</h3>
-        <div class="heat-info-box">
-          <div class="heat-title">Regional Coding Qualifier</div>
+        <div class="heat-info-box" *ngIf="nextTrackHeat; else noHeatsTpl">
+          <div class="heat-title">{{ nextTrackHeat.title }}</div>
           <div class="heat-detail">
             <span class="material-symbols-outlined">calendar_month</span>
-            <span>July 15, 2026 · 9:00 GMT</span>
+            <span>{{ nextTrackHeat.month }} {{ nextTrackHeat.day }}, 2026</span>
           </div>
-          <div class="heat-detail">
+          <div class="heat-detail" *ngIf="nextTrackHeat.location">
             <span class="material-symbols-outlined">location_on</span>
-            <span>Accra Tech Center Arena</span>
+            <span>{{ nextTrackHeat.location }}</span>
           </div>
           <div class="heat-status">CONFIRMED APPLICANT</div>
         </div>
+
+        <ng-template #noHeatsTpl>
+          <div class="heat-info-box" style="border-left-color: var(--outline-variant); background: var(--surface-container-low); padding: 14px 12px; text-align: center;">
+            <span class="material-symbols-outlined" style="font-size: 22px; color: var(--on-surface-variant); opacity: 0.6; margin-bottom: 4px;">event_busy</span>
+            <div style="font-size: 12px; font-weight: 700; color: var(--on-surface);">No Upcoming Heats Scheduled</div>
+            <p style="font-size: 11px; color: var(--on-surface-variant); margin: 3px 0 0; line-height: 1.4;">
+              Qualifier dates and heat allocations for your track will appear here once published.
+            </p>
+          </div>
+        </ng-template>
       </div>
     </div>
   </div>

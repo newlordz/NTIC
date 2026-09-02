@@ -1088,6 +1088,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     copiedPass: boolean;
     copiedPin: boolean;
     copiedAll: boolean;
+    copiedMembers?: boolean;
   } | null = null;
 
   customAlertModal: {
@@ -1109,7 +1110,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       memberCredentials,
       copiedPass: false,
       copiedPin: false,
-      copiedAll: false
+      copiedAll: false,
+      copiedMembers: false
     };
   }
 
@@ -1157,9 +1159,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
       })
       .join('\n');
     if (typeof navigator !== 'undefined' && navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(lines).catch(() => {});
+      navigator.clipboard.writeText(lines).catch(() => {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = lines;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        } catch {}
+      });
     }
+    this.credentialsModal.copiedMembers = true;
     this.dialogService.toast('All member logins copied to clipboard', 'success');
+    this.cdr?.markForCheck?.();
+    setTimeout(() => {
+      if (this.credentialsModal) {
+        this.credentialsModal.copiedMembers = false;
+        this.cdr?.markForCheck?.();
+      }
+    }, 2500);
   }
 
   proceedFromCredentialsModal() {
@@ -1214,6 +1235,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ── Landing Page Copy editor ──────────────────────────────────
   landingCopySections: LandingCopySection[] = [
+    {
+      title: 'Hero Banner & Global CTAs', icon: 'view_carousel',
+      fields: [
+        { key: 'hero.defaultCtaText', label: 'Primary CTA Button (e.g. Enter Portal)' },
+        { key: 'hero.defaultCtaLink', label: 'Primary CTA Link (e.g. #portal)' },
+        { key: 'hero.applyBtn', label: 'Secondary CTA Button (e.g. Apply Now)' },
+        { key: 'hero.applyLink', label: 'Secondary CTA Link (e.g. /registration)' },
+      ],
+    },
     {
       title: 'Header & Navigation', icon: 'view_headline',
       fields: [
@@ -1835,6 +1865,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // School Admin Portal Specific Flow
   schoolName = '';
+  schoolAvatarUrl: string | null = null;
+  schoolAvatarInitials = '';
   isAddTeamModalOpen = false;
   teamForm = { id: undefined as string | undefined, name: '', track: 'Coding', lead: '', members: 4, mentor: '', motto: '', memberNames: ['', '', '', '', '', '', '', ''], leadEmail: '', memberEmails: ['', '', '', '', '', '', '', ''] };
 
@@ -1978,8 +2010,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   loadMyTeams(): void {
     this.apiService.getMyTeams().subscribe({
-      next: rows => { this.myTeams = rows || []; },
-      error: () => { this.myTeams = []; }
+      next: rows => {
+        const seen = new Set<string>();
+        this.myTeams = (rows || []).filter(t => {
+          if (!t.id || seen.has(t.id)) return false;
+          seen.add(t.id);
+          return true;
+        });
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.myTeams = [];
+        this.cdr.markForCheck();
+      }
     });
   }
 
@@ -3107,6 +3150,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // other panels still read extra fields off it.
     this.currentUser = cachedUser || (me as any) || null;
 
+    this.currentUserService.avatar$().subscribe(avatar => {
+      this.schoolAvatarUrl = avatar.url;
+      this.schoolAvatarInitials = avatar.initials;
+      this.cdr.markForCheck();
+    });
+
     if (me) {
       this.schoolName = me.organization || (me.role === 'school_admin' ? me.full_name : '');
     } else if (cachedUser) {
@@ -3119,8 +3168,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // load them up front rather than only when the portal opens.
     if (this.activeRoleId === 'school_admin') {
       this.apiService.getInstitutionInstructors().subscribe({
-        next: rows => { this.institutionInstructors = rows || []; },
-        error: () => { this.institutionInstructors = []; }
+        next: rows => { this.institutionInstructors = rows || []; this.cdr.markForCheck(); },
+        error: () => { this.institutionInstructors = []; this.cdr.markForCheck(); }
       });
     }
 
@@ -5392,14 +5441,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
       tag: 'National Championship',
       description: 'Bringing together high school teams from all 16 regions to solve real-world problems through Coding, Robotics, AI, Networking & Cybersecurity, and Open Innovation.',
       ctaText: 'Enter Portal',
-      ctaLink: '#portal'
+      ctaLink: '#portal',
+      secondaryCtaText: 'Apply Now',
+      secondaryCtaLink: '/registration'
     };
     this.slideFormOpen = true;
   }
 
   editSlide(slide: any): void {
     this.editingSlideId = slide.id;
-    this.slideForm = { ...slide };
+    this.slideForm = {
+      secondaryCtaText: 'Apply Now',
+      secondaryCtaLink: '/registration',
+      ...slide
+    };
     this.slideFormOpen = true;
   }
 
@@ -5475,7 +5530,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const saved = {
       ...this.slideForm, tag: this.slideForm.tag || 'National Championship',
       description: this.slideForm.description || '',
-      ctaText: this.slideForm.ctaText || 'Enter Portal', ctaLink: this.slideForm.ctaLink || '#portal'
+      ctaText: this.slideForm.ctaText || 'Enter Portal', ctaLink: this.slideForm.ctaLink || '#portal',
+      secondaryCtaText: this.slideForm.secondaryCtaText !== undefined ? this.slideForm.secondaryCtaText : 'Apply Now',
+      secondaryCtaLink: this.slideForm.secondaryCtaLink || '/registration'
     };
     const slideId = this.editingSlideId || `slide-${Date.now()}`;
     if (this.editingSlideId) {
@@ -5501,7 +5558,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (idx === -1) return;
     slides[idx] = { ...slides[idx], [field]: this.slideForm[field] };
     this.contentService.saveHeroSlides(slides);
-    const fieldNames: Record<string, string> = { title: 'Title', description: 'Description', tag: 'Tag', ctaText: 'CTA Text', ctaLink: 'CTA Link' };
+    const fieldNames: Record<string, string> = {
+      title: 'Title', description: 'Description', tag: 'Tag',
+      ctaText: 'Primary CTA Text', ctaLink: 'Primary CTA Link',
+      secondaryCtaText: 'Secondary CTA Text', secondaryCtaLink: 'Secondary CTA Link'
+    };
     this.slideSavedFields[field] = true;
     setTimeout(() => { this.slideSavedFields[field] = false; }, 1500);
     this.addAuditLog({ action: `Slide field saved: ${fieldNames[field] || field}`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
@@ -6226,22 +6287,39 @@ export class DashboardComponent implements OnInit, OnDestroy {
   openInstitutionPortal(): void {
     this.isPortalOpen = true;
     this.loadInstitutionPortal();
+    this.cdr.markForCheck();
   }
 
   closeInstitutionPortal(): void {
     this.isPortalOpen = false;
     this.issuedCredentials = null;
+    this.cdr.markForCheck();
   }
 
   loadInstitutionPortal(): void {
     this.institutionLoading = true;
+    this.cdr.markForCheck();
     this.apiService.getInstitutionStudents().subscribe({
-      next: rows => { this.institutionStudents = rows || []; this.institutionLoading = false; },
-      error: () => { this.institutionStudents = []; this.institutionLoading = false; }
+      next: rows => {
+        this.institutionStudents = rows || [];
+        this.institutionLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.institutionStudents = [];
+        this.institutionLoading = false;
+        this.cdr.markForCheck();
+      }
     });
     this.apiService.getInstitutionInstructors().subscribe({
-      next: rows => { this.institutionInstructors = rows || []; },
-      error: () => { this.institutionInstructors = []; }
+      next: rows => {
+        this.institutionInstructors = rows || [];
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.institutionInstructors = [];
+        this.cdr.markForCheck();
+      }
     });
   }
 
@@ -6258,16 +6336,43 @@ export class DashboardComponent implements OnInit, OnDestroy {
         // Shown once. The password is not retrievable again after this.
         this.issuedCredentials = { full_name: res.full_name, email: res.email, temporary_password: res.temporary_password };
         this.loadInstitutionPortal();
+        this.cdr.markForCheck();
       },
       error: (err: any) => {
         const detail = err?.error?.detail || 'Could not issue credentials.';
         this.dialogService.toast(detail, 'error');
+        this.cdr.markForCheck();
       }
     });
   }
 
   dismissIssuedCredentials(): void {
     this.issuedCredentials = null;
+    this.cdr.markForCheck();
+  }
+
+  async onSchoolCrestSelected(event: any): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    if (!file.type.startsWith('image/')) {
+      this.dialogService.toast('Please select an image file.', 'error');
+      return;
+    }
+    const id = `profile-photo-${Date.now()}`;
+    await this.fileStorage.store(id, file);
+    this.apiService.updateMyProfile({ photo_file_id: id }).subscribe({
+      next: () => {
+        this.currentUserService.refresh().subscribe(() => {
+          this.loadDashboardData();
+          this.dialogService.toast('School crest updated successfully!', 'success');
+          this.cdr.markForCheck();
+        });
+      },
+      error: () => {
+        this.dialogService.toast('Could not save school crest.', 'error');
+      }
+    });
   }
 
   /** Assign one of this institution's instructors as a team's mentor. */

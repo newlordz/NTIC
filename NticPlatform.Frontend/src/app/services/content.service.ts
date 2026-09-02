@@ -234,6 +234,8 @@ export interface HeroSlide {
   videoThumbnail?: string;
   ctaText: string;
   ctaLink: string;
+  secondaryCtaText?: string;
+  secondaryCtaLink?: string;
 }
 
 export interface NewsFeedItem {
@@ -800,12 +802,25 @@ export class ContentService {
 
       this.apiService.getLmsCourses().subscribe({
         next: (courses: any[]) => {
-          if (courses && courses.length > 0) {
-            const merged = this.mergeLmsCourses(courses);
-            if (merged.length > 0) {
-              this.lmsCourses = merged;
-              this.saveState('lmsCourses', merged);
-            }
+          if (Array.isArray(courses)) {
+            const mapped: LmsCourse[] = courses.map((b: any) => ({
+              id: b.id,
+              title: b.title || '',
+              track: b.track || '',
+              icon: b.icon || '',
+              level: b.level || '',
+              description: b.description || '',
+              modules: b.modules || 0,
+              enrolled: b.enrolled || 0,
+              completion: b.completion || 0,
+              status: b.status || 'active',
+              createdAt: b.created_at || '',
+              submittedBy: b.submitted_by || '',
+              approvalStatus: b.approval_status || 'approved',
+              rejectionReason: b.rejection_reason || ''
+            }));
+            this.lmsCourses = mapped;
+            this.saveState('lmsCourses', mapped);
           }
         },
         error: (e: any) => console.log('Backend LMS fallback to local cache')
@@ -2310,6 +2325,10 @@ export class ContentService {
     this.saveLmsModules(this.lmsModules);
     this.saveLmsMaterials(this.lmsMaterials);
     this.saveLmsAssignments(this.lmsAssignments);
+    this.apiService.deleteAuthoredCourse(id).subscribe({
+      next: () => {},
+      error: (err) => console.warn('[LMS] Backend delete failed:', err?.error?.detail || err?.message)
+    });
   }
 
   saveLmsModules(list: LmsModule[]): void {

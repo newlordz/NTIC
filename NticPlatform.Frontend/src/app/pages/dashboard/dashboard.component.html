@@ -381,9 +381,15 @@
         <div *ngIf="activeRoleId === 'school_admin'">
           <!-- School Profile Crest / Name Header -->
           <div class="school-profile-banner" id="school-roster-section">
-            <div class="school-crest-avatar">
-              <span class="material-symbols-outlined">account_balance</span>
-            </div>
+            <label class="school-crest-avatar" [class.has-img]="!!schoolAvatarUrl" title="Click to upload/change school crest" style="cursor: pointer; position: relative;">
+              <input type="file" accept="image/*" (change)="onSchoolCrestSelected($event)" style="display:none;">
+              <img *ngIf="schoolAvatarUrl" [src]="schoolAvatarUrl" [alt]="schoolName" class="school-crest-img">
+              <span *ngIf="!schoolAvatarUrl && schoolAvatarInitials" class="school-crest-initials">{{ schoolAvatarInitials }}</span>
+              <span *ngIf="!schoolAvatarUrl && !schoolAvatarInitials" class="material-symbols-outlined">account_balance</span>
+              <div class="school-crest-hover-overlay">
+                <span class="material-symbols-outlined" style="font-size:16px;">photo_camera</span>
+              </div>
+            </label>
             <div class="school-profile-details">
               <h2>{{ schoolName }}</h2>
               <span class="school-badge-status">ACCREDITED NTIC MEMBER</span>
@@ -1561,249 +1567,125 @@
 
     </div>
     <div *ngIf="adminTab === 'control' && !adminSubTab" class="admin-tab-body">
-      <!-- Header -->
-      <div class="page-header with-action" style="margin-bottom:20px;">
-        <div>
-          <h1 class="page-title-main" style="font-size:24px;font-weight:800;color:var(--on-surface,#0f172a);margin:0 0 6px;">Administration Center</h1>
-          <p class="page-subtitle" style="margin:0;font-size:13.5px;color:var(--on-surface-variant,#64748b);">
-            Welcome back, Administrator. Manage platform users, access tokens, content moderation, and system resources.
-          </p>
-        </div>
-        <div style="display:flex;gap:10px;align-items:center;">
-          <button class="btn btn-subtle btn-sm" (click)="openCreateAccountModal()">
-            <span class="material-symbols-outlined">person_add</span>+ CREATE ACCOUNT
-          </button>
-          <button class="btn btn-primary btn-sm" (click)="goToSubTab('audit')">
-            <span class="material-symbols-outlined">receipt_long</span>LIVE AUDIT LOGS
-          </button>
-        </div>
-      </div>
-
-      <!-- 4 Top KPI Stat Cards -->
-      <div class="stat-grid stagger" style="margin-bottom:24px;">
-        <div class="stat-card" style="cursor:pointer;" (click)="goToSubTab('tickets')">
-          <div class="stat-bg-icon material-symbols-outlined">groups</div>
-          <div class="stat-label"><span class="material-symbols-outlined">groups</span>REGISTERED USERS</div>
-          <div class="stat-value">{{ registeredUsers.length || 2 }}</div>
-          <div class="stat-meta">
-            <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">trending_up</span>
-            {{ registeredUsers.length || 2 }} Active accounts
+      <div class="cc-control-landing">
+        <div class="cc-control-header">
+          <div class="cc-control-header-icon">
+            <span class="material-symbols-outlined">settings_suggest</span>
+          </div>
+          <div>
+            <h2 class="cc-control-title">Administration Center</h2>
+            <p class="cc-control-sub">Manage platform users, registrations, content, and access tokens from one place.</p>
           </div>
         </div>
 
-        <div class="stat-card" style="cursor:pointer;" (click)="goToSubTab('approvals')">
-          <div class="stat-bg-icon material-symbols-outlined">verified_user</div>
-          <div class="stat-label"><span class="material-symbols-outlined">verified_user</span>PENDING APPROVALS</div>
-          <div class="stat-value" [style.color]="pendingApprovals.length > 0 ? '#dc2626' : '#059669'">{{ pendingApprovals.length }}</div>
-          <div class="stat-meta">
-            <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">check_circle</span>
-            {{ pendingApprovals.length ? pendingApprovals.length + ' pending action' : 'All clear' }}
-          </div>
-        </div>
-
-        <div class="stat-card" style="cursor:pointer;" (click)="goToSubTab('content')">
-          <div class="stat-bg-icon material-symbols-outlined">edit_note</div>
-          <div class="stat-label"><span class="material-symbols-outlined">edit_note</span>CONTENT &amp; LMS</div>
-          <div class="stat-value">{{ contentService.championshipStories.length + contentService.hallOfFameEntries.length + contentService.upcomingEvents.length || 14 }}</div>
-          <div class="stat-meta">
-            <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">trending_up</span>
-            Stories, events &amp; assets
-          </div>
-        </div>
-
-        <div class="stat-card" style="cursor:pointer;" (click)="goToSubTab('personnel')">
-          <div class="stat-bg-icon material-symbols-outlined">badge</div>
-          <div class="stat-label"><span class="material-symbols-outlined">badge</span>PERSONNEL ROSTER</div>
-          <div class="stat-value">{{ judges.length + sponsors.length + instructors.length || 2 }}</div>
-          <div class="stat-meta">
-            <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">trending_up</span>
-            Judges, sponsors &amp; instructors
-          </div>
-        </div>
-      </div>
-
-      <!-- Two-Column Layout -->
-      <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;">
-
-        <!-- LEFT COLUMN: Administration Modules -->
-        <div>
-          <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;font-size:15px;font-weight:700;">
-            <span>Administration Modules</span>
-            <button class="btn btn-ghost btn-sm" (click)="goToSubTab(canManageUsers ? 'users_full' : 'users')">OPEN USER MANAGEMENT</button>
+        <div class="cc-control-grid">
+          <div class="cc-control-card" (click)="goToSubTab('tickets')">
+            <div class="cc-control-card-icon cc-icon-tokens">
+              <span class="material-symbols-outlined">confirmation_number</span>
+            </div>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">Access Tokens</div>
+              <div class="cc-control-card-desc">Registered users, judge tokens, sponsor passes, and active sessions.</div>
+              <div class="cc-control-card-count">{{ registeredUsers.length }} registered</div>
+            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
 
-          <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:14px;">
-            <!-- Access Tokens -->
-            <div class="cc-control-card" (click)="goToSubTab('tickets')">
-              <div class="cc-control-card-icon cc-icon-tokens">
-                <span class="material-symbols-outlined">confirmation_number</span>
-              </div>
-              <div class="cc-control-card-body">
-                <div class="cc-control-card-label">Access Tokens</div>
-                <div class="cc-control-card-desc">Registered users, judge tokens, sponsor passes, and active sessions.</div>
-                <div class="cc-control-card-count">{{ registeredUsers.length }} registered</div>
-              </div>
-              <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+          <div class="cc-control-card" (click)="goToSubTab('approvals')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
+            <div class="cc-control-card-icon cc-icon-approvals">
+              <span class="material-symbols-outlined">verified_user</span>
             </div>
-
-            <!-- Pending Approvals -->
-            <div class="cc-control-card" (click)="goToSubTab('approvals')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
-              <div class="cc-control-card-icon cc-icon-approvals">
-                <span class="material-symbols-outlined">verified_user</span>
-              </div>
-              <div class="cc-control-card-body">
-                <div class="cc-control-card-label">Pending Approvals</div>
-                <div class="cc-control-card-desc">Review and approve registrations from schools, teams, students, and instructors.</div>
-                <div class="cc-control-card-count" *ngIf="pendingApprovals.length > 0">{{ pendingApprovals.length }} pending action</div>
-                <div class="cc-control-card-count cc-count-clear" *ngIf="pendingApprovals.length === 0">All clear</div>
-              </div>
-              <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">Pending Approvals</div>
+              <div class="cc-control-card-desc">Review and approve registrations from schools, teams, students, and instructors.</div>
+              <div class="cc-control-card-count" *ngIf="pendingApprovals.length > 0">{{ pendingApprovals.length }} pending action</div>
+              <div class="cc-control-card-count cc-count-clear" *ngIf="pendingApprovals.length === 0">All clear</div>
             </div>
-
-            <!-- Content Manager -->
-            <div class="cc-control-card" (click)="goToSubTab('content')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager'">
-              <div class="cc-control-card-icon cc-icon-content">
-                <span class="material-symbols-outlined">edit_note</span>
-              </div>
-              <div class="cc-control-card-body">
-                <div class="cc-control-card-label">Content Manager</div>
-                <div class="cc-control-card-desc">Stories, hall of fame, leaderboard, events, news feed, and stats.</div>
-                <div class="cc-control-card-count">{{ contentService.championshipStories.length + contentService.hallOfFameEntries.length + contentService.upcomingEvents.length }} items managed</div>
-              </div>
-              <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
-            </div>
-
-            <!-- User Management -->
-            <div class="cc-control-card" (click)="goToSubTab(canManageUsers ? 'users_full' : 'users')" *ngIf="canManageUsers || activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
-              <div class="cc-control-card-icon cc-icon-users">
-                <span class="material-symbols-outlined">manage_accounts</span>
-              </div>
-              <div class="cc-control-card-body">
-                <div class="cc-control-card-label">User Management</div>
-                <div class="cc-control-card-desc">Manage all platform users, roles, permissions, and support tickets.</div>
-                <div class="cc-control-card-count">{{ registeredUsers.length }} users on platform</div>
-              </div>
-              <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
-            </div>
-
-            <!-- Manage Admins -->
-            <div class="cc-control-card" (click)="goToSubTab('admins')" *ngIf="activeRoleId === 'super_admin'">
-              <div class="cc-control-card-icon cc-icon-admins">
-                <span class="material-symbols-outlined">admin_panel_settings</span>
-              </div>
-              <div class="cc-control-card-body">
-                <div class="cc-control-card-label">Manage Admins</div>
-                <div class="cc-control-card-desc">Create, edit, and manage administrator accounts and their permissions.</div>
-                <div class="cc-control-card-count">{{ adminUsers.length }} admins active</div>
-              </div>
-              <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
-            </div>
-
-            <!-- Mentor & Instructor Assignment -->
-            <div class="cc-control-card" (click)="goToSubTab('mentors')" *ngIf="canManageUsers || activeRoleId === 'competition_manager'">
-              <div class="cc-control-card-icon cc-icon-admins">
-                <span class="material-symbols-outlined">co_present</span>
-              </div>
-              <div class="cc-control-card-body">
-                <div class="cc-control-card-label">Mentor &amp; Instructor Allocation</div>
-                <div class="cc-control-card-desc">Allocate instructors to squads and solo entrants, match by track, or auto-allocate.</div>
-                <div class="cc-control-card-count">{{ mentorAllocationStats.unassigned }} needing mentor &bull; {{ mentorAllocationStats.requested }} requested</div>
-              </div>
-              <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
-            </div>
-
-            <!-- Live Audit Trail -->
-            <div class="cc-control-card" (click)="goToSubTab('audit')">
-              <div class="cc-control-card-icon cc-icon-audit">
-                <span class="material-symbols-outlined">receipt_long</span>
-              </div>
-              <div class="cc-control-card-body">
-                <div class="cc-control-card-label">Live Audit Trail</div>
-                <div class="cc-control-card-desc">Real-time log of logins, tokens, approvals, and system changes.</div>
-                <div class="cc-control-card-count">{{ auditLogs.length }} events logged</div>
-              </div>
-              <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
-            </div>
-
-            <!-- Personnel Monitor -->
-            <div class="cc-control-card" (click)="goToSubTab('personnel')" *ngIf="canManageUsers">
-              <div class="cc-control-card-icon cc-icon-personnel">
-                <span class="material-symbols-outlined">groups</span>
-              </div>
-              <div class="cc-control-card-body">
-                <div class="cc-control-card-label">Personnel Monitor</div>
-                <div class="cc-control-card-desc">Track sponsors, judges, and instructors &mdash; activity and account health.</div>
-                <div class="cc-control-card-count">{{ personnelCount }} being monitored</div>
-              </div>
-              <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
-            </div>
-
-            <!-- Document Archive -->
-            <div class="cc-control-card" (click)="openFullRecordsArchive()">
-              <div class="cc-control-card-icon cc-icon-records">
-                <span class="material-symbols-outlined">folder_open</span>
-              </div>
-              <div class="cc-control-card-body">
-                <div class="cc-control-card-label">Document &amp; Entity Archive</div>
-                <div class="cc-control-card-desc">Centralized repository for schools, instructors, judges, sponsors, and credentials.</div>
-                <div class="cc-control-card-count">{{ dashboardTotalRecordsCount }} archived records</div>
-              </div>
-              <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- RIGHT COLUMN: Security & System Health + Admin Toolkit -->
-        <div style="display:flex;flex-direction:column;gap:16px;">
-          <!-- Card 1: Security & System Health -->
-          <div class="card" style="padding:18px;background:var(--surface,#ffffff);border:1px solid var(--outline-variant,#e2e8f0);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.02);">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-              <span class="material-symbols-outlined" style="font-size:20px;color:var(--primary,#003f87);">verified_user</span>
-              <h3 style="margin:0;font-size:14px;font-weight:700;color:var(--on-surface,#0f172a);">Security &amp; System Health</h3>
-            </div>
-            <div style="text-align:center;padding:12px 0 16px;">
-              <div style="width:48px;height:48px;border-radius:50%;background:#ecfdf5;color:#059669;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
-                <span class="material-symbols-outlined" style="font-size:28px;">check_circle</span>
-              </div>
-              <div style="font-size:14px;font-weight:700;color:var(--on-surface,#0f172a);">All Systems Operational</div>
-              <div style="font-size:12px;color:var(--on-surface-variant,#64748b);margin-top:2px;">Super Admin session active and verified.</div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--outline-variant,#e2e8f0);padding-top:12px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface-container-lowest,#f8fafc);border-radius:8px;font-size:12px;">
-                <span style="color:var(--on-surface-variant,#64748b);">Active Sessions</span>
-                <span style="font-weight:700;color:var(--on-surface,#0f172a);">{{ authSessions.length || 1 }}</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface-container-lowest,#f8fafc);border-radius:8px;font-size:12px;">
-                <span style="color:var(--on-surface-variant,#64748b);">Live Telemetry</span>
-                <span style="font-weight:700;color:#059669;">{{ coreUptimeLabel !== '--' ? coreUptimeLabel : '99.98%' }}</span>
-              </div>
-            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
 
-          <!-- Card 2: Admin Quick Toolkit -->
-          <div class="card" style="padding:18px;background:var(--surface,#ffffff);border:1px solid var(--outline-variant,#e2e8f0);border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.02);">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
-              <span class="material-symbols-outlined" style="font-size:20px;color:var(--primary,#003f87);">build</span>
-              <h3 style="margin:0;font-size:14px;font-weight:700;color:var(--on-surface,#0f172a);">Admin Toolkit</h3>
+          <div class="cc-control-card" (click)="goToSubTab('content')" *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager'">
+            <div class="cc-control-card-icon cc-icon-content">
+              <span class="material-symbols-outlined">edit_note</span>
             </div>
-            <div style="display:flex;flex-direction:column;gap:10px;">
-              <button class="btn btn-subtle btn-sm" style="width:100%;justify-content:flex-start;text-align:left;padding:10px 12px;font-size:12px;font-weight:600;gap:8px;" (click)="goToSubTab(canManageUsers ? 'users_full' : 'users')">
-                <span class="material-symbols-outlined" style="font-size:18px;">manage_accounts</span>
-                <span>USER MANAGEMENT CONTROL</span>
-              </button>
-              <button class="btn btn-subtle btn-sm" style="width:100%;justify-content:flex-start;text-align:left;padding:10px 12px;font-size:12px;font-weight:600;gap:8px;" (click)="goToSubTab('approvals')">
-                <span class="material-symbols-outlined" style="font-size:18px;">rule</span>
-                <span>APPROVALS MODERATION QUEUE</span>
-              </button>
-              <button class="btn btn-subtle btn-sm" style="width:100%;justify-content:flex-start;text-align:left;padding:10px 12px;font-size:12px;font-weight:600;gap:8px;" (click)="goToSubTab('content')">
-                <span class="material-symbols-outlined" style="font-size:18px;">edit_note</span>
-                <span>CONTENT &amp; EVENT STUDIO</span>
-              </button>
-              <button class="btn btn-subtle btn-sm" style="width:100%;justify-content:flex-start;text-align:left;padding:10px 12px;font-size:12px;font-weight:600;gap:8px;" (click)="goToSubTab('audit')">
-                <span class="material-symbols-outlined" style="font-size:18px;">receipt_long</span>
-                <span>IMMUTABLE AUDIT STREAM</span>
-              </button>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">Content Manager</div>
+              <div class="cc-control-card-desc">Stories, hall of fame, leaderboard, events, news feed, and stats.</div>
+              <div class="cc-control-card-count">{{ contentService.championshipStories.length + contentService.hallOfFameEntries.length + contentService.upcomingEvents.length }} items managed</div>
             </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+          </div>
+
+          <div class="cc-control-card" (click)="goToSubTab(canManageUsers ? 'users_full' : 'users')" *ngIf="canManageUsers || activeRoleId === 'super_admin' || activeRoleId === 'reviewer'">
+            <div class="cc-control-card-icon cc-icon-users">
+              <span class="material-symbols-outlined">manage_accounts</span>
+            </div>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">User Management</div>
+              <div class="cc-control-card-desc">Manage all platform users, roles, permissions, and support tickets.</div>
+              <div class="cc-control-card-count">{{ registeredUsers.length }} users on platform</div>
+            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+          </div>
+
+          <div class="cc-control-card" (click)="goToSubTab('admins')" *ngIf="activeRoleId === 'super_admin'">
+            <div class="cc-control-card-icon cc-icon-admins">
+              <span class="material-symbols-outlined">admin_panel_settings</span>
+            </div>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">Manage Admins</div>
+              <div class="cc-control-card-desc">Create, edit, and manage administrator accounts and their permissions.</div>
+              <div class="cc-control-card-count">{{ adminUsers.length }} admins active</div>
+            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+          </div>
+
+          <div class="cc-control-card" (click)="goToSubTab('mentors')" *ngIf="canManageUsers || activeRoleId === 'competition_manager'">
+            <div class="cc-control-card-icon cc-icon-admins">
+              <span class="material-symbols-outlined">co_present</span>
+            </div>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">Mentor &amp; Instructor Assignment</div>
+              <div class="cc-control-card-desc">Allocate instructors to squads and solo entrants, match by technical track, balance workloads, or run smart auto-allocation.</div>
+              <div class="cc-control-card-count">{{ mentorAllocationStats.unassigned }} needing mentor &bull; {{ mentorAllocationStats.requested }} requested</div>
+            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+          </div>
+
+          <div class="cc-control-card" (click)="goToSubTab('audit')">
+            <div class="cc-control-card-icon cc-icon-audit">
+              <span class="material-symbols-outlined">receipt_long</span>
+            </div>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">Live Audit Trail</div>
+              <div class="cc-control-card-desc">Real-time log of logins, tokens, approvals, and system changes.</div>
+              <div class="cc-control-card-count">{{ auditLogs.length }} events logged</div>
+            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+          </div>
+
+          <div class="cc-control-card" (click)="goToSubTab('personnel')" *ngIf="canManageUsers">
+            <div class="cc-control-card-icon cc-icon-personnel">
+              <span class="material-symbols-outlined">groups</span>
+            </div>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">Personnel Monitor</div>
+              <div class="cc-control-card-desc">Track sponsors, judges, and instructors &mdash; activity, engagement, and account health.</div>
+              <div class="cc-control-card-count">{{ personnelCount }} being monitored</div>
+            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+          </div>
+
+          <div class="cc-control-card" (click)="openFullRecordsArchive()">
+            <div class="cc-control-card-icon cc-icon-records">
+              <span class="material-symbols-outlined">folder_open</span>
+            </div>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">Document &amp; Entity Archive</div>
+              <div class="cc-control-card-desc">Centralized repository for schools, instructors, judges, sponsors, and credentials.</div>
+              <div class="cc-control-card-count">{{ dashboardTotalRecordsCount }} archived records</div>
+            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
         </div>
       </div>
@@ -4158,7 +4040,6 @@
           <div class="cms-field" *ngFor="let field of item.fields; trackBy: trackByFieldKey" [ngClass]="{ 'cms-field-full': field.multiline }">
             <div class="cms-field-label-row">
               <label>{{ field.label }}</label>
-              <span class="cms-field-key">{{ field.key }}</span>
             </div>
             <textarea *ngIf="field.multiline" rows="2" [(ngModel)]="landingCopyForm[field.key]" [placeholder]="'Enter ' + field.label.toLowerCase() + '...'"></textarea>
             <input *ngIf="!field.multiline" type="text" [(ngModel)]="landingCopyForm[field.key]" [placeholder]="'Enter ' + field.label.toLowerCase() + '...'">
@@ -5080,20 +4961,38 @@
             </div>
           </div>
           <div class="cms-field">
-            <label>CTA Button Text</label>
+            <label>Primary CTA Button Text</label>
             <div style="display:flex;gap:8px;align-items:flex-start;">
               <input type="text" [(ngModel)]="slideForm.ctaText" placeholder="Enter Portal" style="flex:1;">
-              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['ctaText'] ? '#16a34a' : ''" title="Save CTA text" (click)="saveSlideField('ctaText')">
+              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['ctaText'] ? '#16a34a' : ''" title="Save Primary CTA text" (click)="saveSlideField('ctaText')">
                 <span class="material-symbols-outlined" style="font-size:16px;">{{ slideSavedFields['ctaText'] ? 'check' : 'save' }}</span>
               </button>
             </div>
           </div>
           <div class="cms-field">
-            <label>CTA Button Link</label>
+            <label>Primary CTA Button Link</label>
             <div style="display:flex;gap:8px;align-items:flex-start;">
               <input type="text" [(ngModel)]="slideForm.ctaLink" placeholder="#portal or /registration" style="flex:1;">
-              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['ctaLink'] ? '#16a34a' : ''" title="Save CTA link" (click)="saveSlideField('ctaLink')">
+              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['ctaLink'] ? '#16a34a' : ''" title="Save Primary CTA link" (click)="saveSlideField('ctaLink')">
                 <span class="material-symbols-outlined" style="font-size:16px;">{{ slideSavedFields['ctaLink'] ? 'check' : 'save' }}</span>
+              </button>
+            </div>
+          </div>
+          <div class="cms-field">
+            <label>Secondary CTA Button Text</label>
+            <div style="display:flex;gap:8px;align-items:flex-start;">
+              <input type="text" [(ngModel)]="slideForm.secondaryCtaText" placeholder="Apply Now" style="flex:1;">
+              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['secondaryCtaText'] ? '#16a34a' : ''" title="Save Secondary CTA text" (click)="saveSlideField('secondaryCtaText')">
+                <span class="material-symbols-outlined" style="font-size:16px;">{{ slideSavedFields['secondaryCtaText'] ? 'check' : 'save' }}</span>
+              </button>
+            </div>
+          </div>
+          <div class="cms-field">
+            <label>Secondary CTA Button Link</label>
+            <div style="display:flex;gap:8px;align-items:flex-start;">
+              <input type="text" [(ngModel)]="slideForm.secondaryCtaLink" placeholder="/registration" style="flex:1;">
+              <button *ngIf="editingSlideId" class="cms-edit-btn" style="flex-shrink:0;margin-top:2px;" [style.color]="slideSavedFields['secondaryCtaLink'] ? '#16a34a' : ''" title="Save Secondary CTA link" (click)="saveSlideField('secondaryCtaLink')">
+                <span class="material-symbols-outlined" style="font-size:16px;">{{ slideSavedFields['secondaryCtaLink'] ? 'check' : 'save' }}</span>
               </button>
             </div>
           </div>
@@ -6399,9 +6298,9 @@
           </div>
         </div>
         <div class="cred-member-actions">
-          <button class="btn-cred-copy" (click)="copyMemberCredentials()">
-            <span class="material-symbols-outlined icon">content_copy</span>
-            <span>Copy All Member Logins</span>
+          <button class="btn-cred-copy" (click)="copyMemberCredentials()" [style.background]="credentialsModal?.copiedMembers ? '#10b981' : ''" [style.color]="credentialsModal?.copiedMembers ? '#ffffff' : ''" style="transition: all 0.25s ease;">
+            <span class="material-symbols-outlined icon">{{ credentialsModal?.copiedMembers ? 'check' : 'content_copy' }}</span>
+            <span>{{ credentialsModal?.copiedMembers ? 'Copied All Member Logins!' : 'Copy All Member Logins' }}</span>
           </button>
         </div>
       </div>
