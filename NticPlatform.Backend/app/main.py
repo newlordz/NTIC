@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import re
 import json
@@ -9,7 +10,6 @@ from decimal import Decimal
 import random
 import secrets
 import datetime
-from datetime import datetime, timezone
 import logging
 import platform
 from pathlib import Path
@@ -42,7 +42,7 @@ from app.lifecycle import (
 try:
     import httpx
     from httpx import AsyncClient
-    from fastapi import FastAPI, HTTPException, status, Request, Depends, WebSocket, BackgroundTasks
+    from fastapi import FastAPI, HTTPException, status, Request, Depends, WebSocket, BackgroundTasks, Body
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.middleware.gzip import GZipMiddleware
     from fastapi.staticfiles import StaticFiles
@@ -5457,17 +5457,20 @@ try:
         if lead_name_clean:
             rows.append((True, lead_name_clean, (lead_email or "").strip()))
 
-        for idx, name in enumerate(names):
-            clean_name = (name or "").strip()
-            clean_email = (emails[idx] if idx < len(emails) else "").strip()
-            if not clean_name:
+        # Separate non-lead roster members and their emails
+        non_lead_names = []
+        for n in names:
+            c_name = (n or "").strip()
+            if not c_name:
                 continue
-            # Skip if this member entry is identical to the already-added lead
-            if lead_name_clean and clean_name.lower() == lead_name_clean.lower():
+            if lead_name_clean and c_name.lower() == lead_name_clean.lower():
                 continue
-            if lead_email_clean and clean_email and clean_email.lower() == lead_email_clean:
-                continue
-            rows.append((False, clean_name, clean_email))
+            non_lead_names.append(c_name)
+
+        non_lead_emails = [e for e in emails if not (lead_email_clean and e.strip().lower() == lead_email_clean)]
+        for idx, name in enumerate(non_lead_names):
+            clean_email = (non_lead_emails[idx] if idx < len(non_lead_emails) else "").strip()
+            rows.append((False, name, clean_email))
 
         cur.execute("DELETE FROM team_members WHERE team_id = %s", (team_id,))
         count = 0
@@ -6031,47 +6034,117 @@ try:
         broadcast_async({"type": "data_changed", "collection": "teams"})
         return {"team_id": team_id, "mentor_id": target_mentor, "mentor_status": "assigned"}
 
-    @app.post("/api/teams/{team_id}/request-mentor")
-    def request_team_mentor(team_id: str, actor: dict = Depends(require_auth)):
-        """A team with no institution asks to be given a mentor.
+    class MentorRequestPayload(BaseModel):
+        mode: str = "auto_track"  # "auto_track" | "existing" | "suggested"
+        mentor_id: Optional[str] = None
+        suggested_name: Optional[str] = None
+        suggested_email: Optional[str] = None
+        suggested_phone: Optional[str] = None
+        suggested_org: Optional[str] = None
+        suggested_expertise: Optional[str] = None
+        suggested_bio: Optional[str] = None
 
-        For groups, open and single entrants who are not under an institution:
-        after approval they request a mentor. If they never do, the nightly/admin
-        auto-assign covers them. Requesting only flags intent; an admin or the
-        auto-assign then attaches an actual instructor.
+    @app.post("/api/teams/{team_id}/request-mentor")
+    def request_team_mentor(team_id: str, payload: Optional[MentorRequestPayload] = Body(default=None), actor: dict = Depends(require_auth)):
+        """A team requests a mentor.
+
+        If the team is under an institution/school, it requires school_admin approval first
+        (status: pending_institution), then Super Admin approval.
+        If independent/open, it goes directly to platform admin approval (status: pending).
         """
+        payload = payload or MentorRequestPayload()
         conn = _get_db()
         try:
             cur = conn.cursor()
-            cur.execute("SELECT mentor_id FROM teams WHERE id = %s", (team_id,))
+            cur.execute("SELECT id, name, track, school_name, competition_id, mentor_id, COALESCE(mentor_status, 'none') FROM teams WHERE id = %s", (team_id,))
             team = cur.fetchone()
             if not team:
                 cur.close()
                 raise HTTPException(status_code=404, detail="Team not found")
-            # Only a member of the team (or an admin) may request its mentor, so
-            # one entrant cannot flag another's team.
+
             is_admin = (actor.get("role") or "") in ("super_admin", "admin")
             if not is_admin:
+                # Verify caller is a member of the team
                 cur.execute(
-                    "SELECT 1 FROM team_members WHERE team_id = %s AND student_id = %s LIMIT 1",
+                    "SELECT is_lead FROM team_members WHERE team_id = %s AND student_id = %s LIMIT 1",
                     (team_id, actor["id"]),
                 )
-                if not cur.fetchone():
+                mem = cur.fetchone()
+                if not mem:
                     cur.close()
                     raise HTTPException(status_code=404, detail="Team not found")
-            if team[0]:
+                # Group lead check: if this member is not marked as lead, check if a designated lead exists
+                if not mem[0]:
+                    cur.execute("SELECT COUNT(*) FROM team_members WHERE team_id = %s AND is_lead = TRUE", (team_id,))
+                    has_lead = (cur.fetchone()[0] or 0) > 0
+                    if has_lead:
+                        cur.close()
+                        raise HTTPException(
+                            status_code=403,
+                            detail="Only the designated Group Lead can submit mentor requests for this team."
+                        )
+
+            if team[5] and team[6] == 'assigned':
                 cur.close()
                 return {"team_id": team_id, "mentor_status": "assigned",
                         "detail": "A mentor is already assigned"}
+
+            school_name = (team[3] or "").strip()
+            now_iso = datetime.datetime.now(datetime.UTC).isoformat()
+            target_status = "pending_institution" if school_name else "pending"
+            mentor_status = "pending_school" if school_name else "requested"
+
+            suggested_info = None
+            if payload.mode == "suggested":
+                suggested_info = {
+                    "name": (payload.suggested_name or "").strip(),
+                    "email": (payload.suggested_email or "").strip().lower(),
+                    "phone": (payload.suggested_phone or "").strip(),
+                    "organization": (payload.suggested_org or "").strip(),
+                    "expertise": (payload.suggested_expertise or "").strip(),
+                    "bio": (payload.suggested_bio or "").strip(),
+                }
+
+            details = {
+                "team_id": team_id,
+                "team_name": team[1],
+                "school_name": school_name,
+                "track": team[2] or "",
+                "lead_name": actor.get("full_name") or "Student Lead",
+                "lead_email": actor.get("email") or "",
+                "mode": payload.mode or "auto_track",
+                "suggested_mentor": suggested_info,
+                "existing_mentor_id": payload.mentor_id if payload.mode == "existing" else None,
+                "competition_id": team[4] or "",
+            }
+
+            # Clear any prior in-flight mentor request for this team
             cur.execute(
-                "UPDATE teams SET mentor_status = 'requested' WHERE id = %s", (team_id,)
+                "DELETE FROM pending_approvals WHERE type = 'Mentor Request' AND details->>'team_id' = %s AND status IN ('pending', 'pending_institution', 'requested')",
+                (team_id,)
+            )
+
+            approval_id = "app-" + str(uuid.uuid4())[:8]
+            contact_email = suggested_info["email"] if (suggested_info and suggested_info["email"]) else actor.get("email", "")
+
+            cur.execute(
+                """
+                INSERT INTO pending_approvals (id, type, entity, contact, submitted, details, status, competition_id)
+                VALUES (%s, 'Mentor Request', %s, %s, %s, %s, %s, %s)
+                """,
+                (approval_id, f"{team[1]} ({school_name})" if school_name else team[1], contact_email, now_iso, json.dumps(details), target_status, team[4] or "")
+            )
+
+            cur.execute(
+                "UPDATE teams SET mentor_status = %s WHERE id = %s", (mentor_status, team_id)
             )
             conn.commit()
             cur.close()
         finally:
             release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "teams"})
-        return {"team_id": team_id, "mentor_status": "requested"}
+        broadcast_async({"type": "data_changed", "collection": "pending_approvals"})
+        return {"team_id": team_id, "mentor_status": mentor_status, "approval_id": approval_id, "stage": target_status}
 
     def _auto_assign_mentors(cur, competition_id: str = "") -> int:
         """Give mentor-less teams an instructor, optionally scoped to one cycle.
@@ -7949,6 +8022,21 @@ try:
         rejection_reasons: str = ""
         rejection_notes: str = ""
 
+    class MentorRequestPayload(BaseModel):
+        mode: str = "auto_track"  # 'auto_track', 'existing', 'suggested'
+        mentor_id: Optional[str] = None
+        suggested_name: Optional[str] = None
+        suggested_email: Optional[str] = None
+        suggested_phone: Optional[str] = None
+        suggested_org: Optional[str] = None
+        suggested_expertise: Optional[str] = None
+        suggested_bio: Optional[str] = None
+
+    class InstitutionApprovalDecision(BaseModel):
+        action: str  # 'approve', 'reject'
+        notes: Optional[str] = ""
+        reasons: Optional[str] = ""
+
     @app.get("/api/approvals")
     def list_approvals(status: str = "", competition_id: str = "", _admin: dict = Depends(require_admin)):
         conn = get_db_connection()
@@ -8589,6 +8677,207 @@ try:
         cur.execute("DELETE FROM teams WHERE id = %s", (team_id,))
         return {"applied": True, "team_id": team_id}
 
+    def _send_mentor_invitation_email(
+        mentor_email: str,
+        mentor_name: str,
+        team_name: str,
+        school_name: str,
+        track: str,
+        lead_name: str,
+        ticket: str,
+        temporary_password: str
+    ) -> bool:
+        """Send an official NTIC Mentorship Invitation with portal credentials and studio link."""
+        subject = f"Official NTIC Mentorship Invitation: {team_name} ({school_name or 'Ghana Championship'})"
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="margin:0;padding:0;background-color:#0f172a;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f8fafc;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;padding:40px 20px;">
+            <tr>
+              <td align="center">
+                <table role="presentation" width="100%" style="max-width:600px;background:#1e293b;border-radius:16px;border:1px solid #334155;overflow:hidden;box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+                  <tr>
+                    <td style="padding:32px 32px 24px;background:linear-gradient(135deg, #0055cc 0%, #002b66 100%);text-align:center;">
+                      <h1 style="color:#ffffff;margin:0;font-size:22px;font-weight:800;letter-spacing:-0.5px;">National Technology &amp; Innovation Competition</h1>
+                      <p style="color:#93c5fd;margin:6px 0 0;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Official Mentorship Appointment</p>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:32px;">
+                      <p style="font-size:16px;line-height:1.6;color:#e2e8f0;margin:0 0 16px;">Dear <strong>{html_escape(mentor_name)}</strong>,</p>
+                      <p style="font-size:15px;line-height:1.6;color:#cbd5e1;margin:0 0 20px;">
+                        You have been officially invited and appointed to mentor student team <strong>{html_escape(team_name)}</strong> 
+                        {"from " + html_escape(school_name) if school_name else ""} in the <strong>{html_escape(track or 'Innovation')}</strong> track.
+                      </p>
+                      
+                      <div style="background:#0f172a;border:1px solid #334155;border-radius:12px;padding:20px;margin:0 0 24px;">
+                        <div style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Your Mentor Portal Credentials</div>
+                        <table style="width:100%;font-size:14px;color:#f8fafc;border-collapse:collapse;">
+                          <tr><td style="padding:6px 0;color:#94a3b8;width:120px;">Portal Login:</td><td style="padding:6px 0;font-weight:600;">{html_escape(mentor_email)}</td></tr>
+                          <tr><td style="padding:6px 0;color:#94a3b8;">Temp Password:</td><td style="padding:6px 0;font-family:monospace;font-weight:700;color:#38bdf8;">{html_escape(temporary_password)}</td></tr>
+                          <tr><td style="padding:6px 0;color:#94a3b8;">Access Ticket:</td><td style="padding:6px 0;font-family:monospace;font-weight:700;color:#fbbf24;">{html_escape(ticket)}</td></tr>
+                        </table>
+                      </div>
+
+                      <p style="font-size:14px;line-height:1.6;color:#94a3b8;margin:0 0 24px;">
+                        As an appointed mentor, you can guide your assigned students, monitor their project progress, and review competition milestones inside your dedicated advisory <strong>Mentor Studio</strong>.
+                      </p>
+
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td align="center">
+                            <a href="https://ntic.org.gh/auth/login" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg, #0055cc 0%, #0044aa 100%);color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:10px;box-shadow:0 4px 15px rgba(0,85,204,0.4);">Access Mentor Studio &rarr;</a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:20px 32px;background:#0f172a;border-top:1px solid #334155;text-align:center;font-size:12px;color:#64748b;">
+                      National Technology &amp; Innovation Competition (NTIC Ghana)<br>
+                      Empowering the Next Generation of Innovators
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+        """
+        return _send_brevo_email(to_email=mentor_email, to_name=mentor_name, subject=subject, html_content=html_body)
+
+    def _apply_approved_mentor_request(cur, approval_row) -> dict:
+        """Assigns mentor and provisions mentor instructor account on Super Admin approval."""
+        approval_type = (approval_row.get("type") or "").strip().lower()
+        if approval_type != "mentor request":
+            return {"applied": False, "reason": "Not a mentor request approval type"}
+
+        details = approval_row.get("details") or {}
+        if isinstance(details, str):
+            try:
+                import json as _j
+                details = _j.loads(details)
+            except Exception:
+                details = {}
+        if not isinstance(details, dict):
+            details = {}
+
+        team_id = details.get("team_id")
+        mode = details.get("mode") or "auto_track"
+        team_name = details.get("team_name") or approval_row.get("entity") or ""
+        school_name = details.get("school_name") or ""
+        track = details.get("track") or ""
+        lead_name = details.get("lead_name") or "Student Lead"
+
+        mentor_uid = None
+        mentor_name = ""
+        mentor_email = ""
+        temp_password = None
+        ticket = None
+        created_account = False
+
+        if mode == "suggested" and details.get("suggested_mentor"):
+            s = details["suggested_mentor"]
+            mentor_name = (s.get("name") or "Mentor").strip()
+            mentor_email = (s.get("email") or "").strip().lower()
+            mentor_phone = (s.get("phone") or "").strip()
+            mentor_org = (s.get("organization") or school_name or "").strip()
+            mentor_track = (s.get("expertise") or track or "").strip()
+
+            if mentor_email:
+                cur.execute("SELECT id, full_name, ticket FROM users WHERE lower(email) = %s", (mentor_email,))
+                ex = cur.fetchone()
+                if ex:
+                    mentor_uid = ex[0]
+                    mentor_name = ex[1] or mentor_name
+                    ticket = ex[2]
+                else:
+                    mentor_uid = "USR-" + str(uuid.uuid4())[:8]
+                    temp_password = _generate_temp_password()
+                    ticket = _allocate_unique_ticket(cur, ROLE_INSTRUCTOR)
+                    if mentor_phone:
+                        cur.execute("SELECT id FROM users WHERE phone = %s", (mentor_phone,))
+                        if cur.fetchone():
+                            mentor_phone = ""
+                    cur.execute(
+                        """
+                        INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone, organization, track, must_change_password)
+                        VALUES (%s, %s, %s, 'instructor', %s, %s, 'active', %s, %s, %s, TRUE)
+                        """,
+                        (mentor_uid, mentor_email, mentor_name, ticket, hash_password(temp_password),
+                         mentor_phone or None, mentor_org or None, mentor_track or None)
+                    )
+                    created_account = True
+                    _send_mentor_invitation_email(
+                        mentor_email=mentor_email,
+                        mentor_name=mentor_name,
+                        team_name=team_name,
+                        school_name=school_name,
+                        track=mentor_track or track,
+                        lead_name=lead_name,
+                        ticket=ticket,
+                        temporary_password=temp_password
+                    )
+
+        elif mode == "existing" and details.get("existing_mentor_id"):
+            mentor_uid = details["existing_mentor_id"]
+            cur.execute("SELECT full_name, email FROM users WHERE id = %s", (mentor_uid,))
+            m_row = cur.fetchone()
+            if m_row:
+                mentor_name = m_row[0] or "Mentor"
+                mentor_email = m_row[1] or ""
+                _send_brevo_email(
+                    mentor_email,
+                    mentor_name,
+                    f"New Mentorship Assignment: {team_name} ({school_name})",
+                    f"<p>Dear {html_escape(mentor_name)},</p><p>You have been assigned as the official mentor for team <strong>{html_escape(team_name)}</strong> ({html_escape(school_name)}) in the <strong>{html_escape(track)}</strong> track.</p><p><a href='https://ntic.org.gh/auth/login'>Log in to Mentor Studio</a> to view your students.</p>"
+                )
+
+        elif mode == "auto_track":
+            cur.execute(
+                """
+                SELECT id, full_name, email FROM users 
+                WHERE role IN ('instructor', 'mentor') AND status = 'active'
+                AND (track ILIKE %s OR track IS NULL OR track = '')
+                ORDER BY random() LIMIT 1
+                """,
+                (f"%{track}%",)
+            )
+            m_row = cur.fetchone()
+            if m_row:
+                mentor_uid = m_row[0]
+                mentor_name = m_row[1] or "Mentor"
+                mentor_email = m_row[2] or ""
+                _send_brevo_email(
+                    mentor_email,
+                    mentor_name,
+                    f"New Mentorship Assignment: {team_name} ({school_name})",
+                    f"<p>Dear {html_escape(mentor_name)},</p><p>You have been assigned as the official mentor for team <strong>{html_escape(team_name)}</strong> ({html_escape(school_name)}) in the <strong>{html_escape(track)}</strong> track.</p><p><a href='https://ntic.org.gh/auth/login'>Log in to Mentor Studio</a> to view your students.</p>"
+                )
+
+        if team_id and mentor_uid:
+            cur.execute(
+                """
+                UPDATE teams 
+                SET mentor_id = %s, mentor = %s, mentor_status = 'assigned' 
+                WHERE id = %s
+                """,
+                (mentor_uid, mentor_name, team_id)
+            )
+
+        return {
+            "applied": True,
+            "mentor_id": mentor_uid,
+            "mentor_name": mentor_name,
+            "mentor_email": mentor_email,
+            "created_account": created_account,
+            "ticket": ticket,
+            "temporary_password": temp_password
+        }
+
     def _upsert_team(cur, name, track, lead, members, status, school_name,
                       competition_id, mentor, motto, roster_list, lead_email, member_emails,
                      member_credentials: list | None = None) -> str:
@@ -8902,6 +9191,7 @@ try:
             account: dict = {"provisioned": False, "reason": "Not an approval transition"}
             team_change: dict = {"applied": False, "reason": "Not an approval transition"}
             teams: dict = {"applied": False, "reason": "Not an approval transition"}
+            mentor_assignment: dict = {"applied": False, "reason": "Not an approval transition"}
             # Provision whenever the decision IS 'approved', not only on the
             # pending->approved edge.
             #
@@ -8934,6 +9224,8 @@ try:
                 # school/team application is recorded without its teams whenever
                 # the reviewer's browser is not the one to materialise them.
                 teams = _provision_approved_teams(cur, approval_row)
+                # Mentor requests provision instructor credentials and assign teams server-side
+                mentor_assignment = _apply_approved_mentor_request(cur, approval_row)
 
             conn.commit()
         except HTTPException:
@@ -8957,14 +9249,140 @@ try:
         cur.close()
         release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "approvals"})
-        if account.get("provisioned"):
+        if account.get("provisioned") or mentor_assignment.get("created_account"):
             broadcast_async({"type": "data_changed", "collection": "users"})
-        if team_change.get("applied") or teams.get("applied"):
+        if team_change.get("applied") or teams.get("applied") or mentor_assignment.get("applied"):
             broadcast_async({"type": "data_changed", "collection": "teams"})
             if teams.get("applied"):
                 broadcast_async({"type": "data_changed", "collection": "users"})
         return {"id": item_id, "status": "updated", "account": account,
-                "team_change": team_change, "teams": teams}
+                "team_change": team_change, "teams": teams, "mentor_assignment": mentor_assignment}
+
+    @app.get("/api/approvals/institution/mine")
+    def list_institution_approvals(actor: dict = Depends(require_auth)):
+        """Approvals relevant to the signed-in institution (school_admin).
+        Lets school admins view pending mentor requests, team changes, and student additions for their institution.
+        """
+        school = (actor.get("organization") or "").strip()
+        if not school and actor.get("role") not in ("super_admin", "admin"):
+            conn = _get_db()
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT organization FROM users WHERE id = %s", (actor["id"],))
+                u = cur.fetchone()
+                school = (u[0] or "").strip() if u else ""
+                cur.close()
+            finally:
+                release_db_connection(conn)
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT id, type, entity, contact, submitted, details, status, reviewed_at,
+                       reviewer, rejection_reasons, rejection_notes, created_at, competition_id
+                FROM pending_approvals
+                WHERE (
+                    details->>'school_name' ILIKE %s
+                    OR details->>'schoolName' ILIKE %s
+                    OR entity ILIKE %s
+                    OR lower(contact) = lower(%s)
+                )
+                ORDER BY submitted DESC
+                """,
+                (f"%{school}%" if school else "__none__", f"%{school}%" if school else "__none__",
+                 f"%{school}%" if school else "__none__", actor.get("email", ""))
+            )
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+
+        return [
+            {
+                "id": r[0],
+                "type": r[1],
+                "entity": r[2],
+                "contact": r[3],
+                "submitted": r[4],
+                "details": json.loads(r[5]) if isinstance(r[5], str) else (r[5] or {}),
+                "status": r[6],
+                "reviewed_at": r[7],
+                "reviewer": r[8],
+                "rejection_reasons": r[9],
+                "rejection_notes": r[10],
+                "created_at": r[11].isoformat() if r[11] else None,
+                "competition_id": r[12] or "",
+            }
+            for r in rows
+        ]
+
+    @app.patch("/api/approvals/{item_id}/institution-decision")
+    def institution_approval_decision(item_id: str, payload: InstitutionApprovalDecision, actor: dict = Depends(require_auth)):
+        """School Admin reviews a request from their student team (e.g. Mentor Request).
+        If approved: escalates status to 'pending' (ready for Platform Super Admin approval).
+        If rejected: marks status as 'rejected'.
+        """
+        action = (payload.action or "").strip().lower()
+        if action not in ("approve", "reject"):
+            raise HTTPException(status_code=422, detail="Action must be 'approve' or 'reject'")
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT id, type, details, status FROM pending_approvals WHERE id = %s", (item_id,))
+            row = cur.fetchone()
+            if not row:
+                cur.close()
+                raise HTTPException(status_code=404, detail="Approval not found")
+
+            app_id, app_type, details_raw, curr_status = row
+            details = json.loads(details_raw) if isinstance(details_raw, str) else (details_raw or {})
+            team_id = details.get("team_id")
+
+            now_iso = datetime.datetime.now(datetime.UTC).isoformat()
+            reviewer_id = actor.get("email") or actor.get("full_name") or "School Admin"
+
+            if action == "approve":
+                new_status = "pending"
+                cur.execute(
+                    """
+                    UPDATE pending_approvals 
+                    SET status = %s, reviewed_at = %s, reviewer = %s 
+                    WHERE id = %s
+                    """,
+                    (new_status, now_iso, reviewer_id, item_id)
+                )
+                if team_id:
+                    cur.execute(
+                        "UPDATE teams SET mentor_status = 'pending_admin' WHERE id = %s",
+                        (team_id,)
+                    )
+            else:
+                new_status = "rejected"
+                cur.execute(
+                    """
+                    UPDATE pending_approvals 
+                    SET status = %s, reviewed_at = %s, reviewer = %s, rejection_notes = %s 
+                    WHERE id = %s
+                    """,
+                    (new_status, now_iso, reviewer_id, payload.notes or "", item_id)
+                )
+                if team_id:
+                    cur.execute(
+                        "UPDATE teams SET mentor_status = 'none' WHERE id = %s",
+                        (team_id,)
+                    )
+
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "teams"})
+        broadcast_async({"type": "data_changed", "collection": "pending_approvals"})
+        broadcast_async({"type": "data_changed", "collection": "approvals"})
+        return {"id": item_id, "status": new_status, "action": action, "reviewer": reviewer_id}
 
     @app.delete("/api/approvals/{item_id}")
     def delete_approval(item_id: str, _actor: dict = Depends(require_role(APPROVAL_ROLES))):
@@ -9043,7 +9461,7 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         ann_id = f"ann-{uuid.uuid4().hex[:10]}"
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.datetime.now(datetime.UTC).isoformat()
         author_name = actor.get("full_name") or actor.get("email") or "Instructor"
         try:
             cur.execute(
@@ -9159,7 +9577,7 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         qa_id = f"qa-{uuid.uuid4().hex[:10]}"
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.datetime.now(datetime.UTC).isoformat()
         user_name = actor.get("full_name") or actor.get("email") or "User"
         try:
             cur.execute(
@@ -9277,9 +9695,9 @@ try:
             student_name = (u_row[0] if u_row and u_row[0] else None) or (u_row[1] if u_row else None) or "Student Graduate"
 
             cert_id = f"cert-{uuid.uuid4().hex[:10]}"
-            year = datetime.now(timezone.utc).year
+            year = datetime.datetime.now(datetime.UTC).year
             cert_number = f"NTIC-CERT-{year}-{secrets.token_hex(4).upper()}"
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.datetime.now(datetime.UTC).isoformat()
 
             cur.execute(
                 """

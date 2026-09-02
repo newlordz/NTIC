@@ -1172,10 +1172,33 @@ login(email: string, password: string): Observable<any> {
     );
   }
 
-  /** A team with no institution asks to be given a mentor. */
-  requestTeamMentor(teamId: string): Observable<any> {
+  /** Request a mentor for a team with optional custom payload (auto_track, existing, suggested). */
+  requestTeamMentor(teamId: string, payload?: {
+    mode?: string;
+    mentor_id?: string;
+    suggested_name?: string;
+    suggested_email?: string;
+    suggested_phone?: string;
+    suggested_org?: string;
+    suggested_expertise?: string;
+    suggested_bio?: string;
+  }): Observable<any> {
     return this.http.post(
-      this.apiUrl + '/teams/' + encodeURIComponent(teamId) + '/request-mentor', {}
+      this.apiUrl + '/teams/' + encodeURIComponent(teamId) + '/request-mentor',
+      payload || {}
+    );
+  }
+
+  /** Approvals relevant to the signed-in institution (school_admin). */
+  getInstitutionApprovals(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl + '/approvals/institution/mine');
+  }
+
+  /** School Admin reviews a pending student team request for their school. */
+  institutionApprovalDecision(id: string, action: 'approve' | 'reject', notes?: string): Observable<any> {
+    return this.http.patch(
+      `${this.apiUrl}/approvals/${encodeURIComponent(id)}/institution-decision`,
+      { action, notes }
     );
   }
 

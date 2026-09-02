@@ -696,7 +696,8 @@ def _create_tables(conn):
     # flow. Nullable: unaffiliated groups, open and single entrants request or are
     # auto-assigned a mentor after approval, and may not have one yet.
     cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS mentor_id VARCHAR(64);")
-    cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS mentor_status VARCHAR(20) DEFAULT 'none';")
+    cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS mentor_status VARCHAR(50) DEFAULT 'none';")
+    cur.execute("ALTER TABLE teams ALTER COLUMN mentor_status TYPE VARCHAR(50);")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_teams_mentor ON teams (mentor_id);")
 
     # A solo/open-registration entrant is modelled as a "team of one" so that the

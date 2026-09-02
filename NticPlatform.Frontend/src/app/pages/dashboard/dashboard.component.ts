@@ -26,6 +26,8 @@ import { LmsManagerComponent } from '../lms-manager/lms-manager.component';
 import { UserManagementComponent } from '../user-management/user-management.component';
 import { ApplicationPreviewModalComponent } from './application-preview-modal/application-preview-modal.component';
 import { SponsorTierModalComponent } from './sponsor-tier-modal/sponsor-tier-modal.component';
+import { MentorRequestModalComponent } from './mentor-request-modal/mentor-request-modal.component';
+import { InstitutionDecisionModalComponent } from './institution-decision-modal/institution-decision-modal.component';
 
 export interface SponsorInfographic {
   partnerCount: number;
@@ -54,7 +56,12 @@ type PersonnelRole = 'governance' | 'mentor' | 'sponsor' | 'judge' | 'instructor
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, TimeAgoPipe, LmsManagerComponent, UserManagementComponent, ApplicationPreviewModalComponent, SponsorTierModalComponent],
+  imports: [
+    CommonModule, RouterLink, FormsModule, TimeAgoPipe,
+    LmsManagerComponent, UserManagementComponent,
+    ApplicationPreviewModalComponent, SponsorTierModalComponent,
+    MentorRequestModalComponent, InstitutionDecisionModalComponent
+  ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -2026,15 +2033,207 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  requestMentor(teamId: string): void {
-    this.apiService.requestTeamMentor(teamId).subscribe({
-      next: () => {
-        this.dialogService.toast('Mentor requested. An instructor will be assigned.', 'success');
+  // ─── STUDENT MENTOR REQUEST MODAL STATE ─────────────────────────
+  requestMentorModalOpen: boolean = false;
+  requestMentorTeam: any = null;
+  requestMentorTab: 'pool' | 'suggest' = 'pool';
+  requestMentorMode: 'auto_track' | 'existing' = 'auto_track';
+  requestMentorSelectedInstructorId: string = '';
+  requestMentorSuggestedForm = {
+    name: '',
+    email: '',
+    phone: '',
+    organization: '',
+    expertise: '',
+    bio: ''
+  };
+  isSubmittingMentorRequest: boolean = false;
+
+  openRequestMentorModal(team: any): void {
+    this.requestMentorTeam = team;
+    this.requestMentorModalOpen = true;
+    this.requestMentorTab = 'pool';
+    this.requestMentorMode = 'auto_track';
+    this.requestMentorSelectedInstructorId = '';
+    this.requestMentorSuggestedForm = {
+      name: '',
+      email: '',
+      phone: '',
+      organization: '',
+      expertise: team?.track || '',
+      bio: ''
+    };
+    this.cdr.markForCheck();
+  }
+
+  closeRequestMentorModal(): void {
+    this.requestMentorModalOpen = false;
+    this.requestMentorTeam = null;
+    this.isSubmittingMentorRequest = false;
+    this.cdr.markForCheck();
+  }
+
+  submitStudentMentorRequest(payload?: any): void {
+    if (!this.requestMentorTeam?.id) return;
+    this.isSubmittingMentorRequest = true;
+
+    if (!payload) {
+      payload = { mode: this.requestMentorMode };
+      if (this.requestMentorTab === 'pool') {
+        if (this.requestMentorMode === 'existing') {
+          if (!this.requestMentorSelectedInstructorId) {
+            this.dialogService.toast('Please select an instructor from the pool.', 'warning');
+            this.isSubmittingMentorRequest = false;
+            return;
+          }
+          payload = { mode: 'existing', mentor_id: this.requestMentorSelectedInstructorId };
+        } else {
+          payload = { mode: 'auto_track' };
+        }
+      } else {
+        const f = this.requestMentorSuggestedForm;
+        if (!f.name.trim()) {
+          this.dialogService.toast('Please enter the nominee mentor\'s full name.', 'warning');
+          this.isSubmittingMentorRequest = false;
+          return;
+        }
+        if (!f.email.trim() || !f.email.includes('@')) {
+          this.dialogService.toast('Please enter a valid official email address.', 'warning');
+          this.isSubmittingMentorRequest = false;
+          return;
+        }
+        payload = {
+          mode: 'suggested',
+          suggested_name: f.name.trim(),
+          suggested_email: f.email.trim(),
+          suggested_phone: f.phone.trim(),
+          suggested_org: f.organization.trim(),
+          suggested_expertise: f.expertise.trim(),
+          suggested_bio: f.bio.trim()
+        };
+      }
+    } else if (payload.mode === 'suggested') {
+      if (!payload.suggested_name?.trim()) {
+        this.dialogService.toast('Please enter the nominee mentor\'s full name.', 'warning');
+        this.isSubmittingMentorRequest = false;
+        return;
+      }
+      if (!payload.suggested_email?.trim() || !payload.suggested_email.includes('@')) {
+        this.dialogService.toast('Please enter a valid official email address.', 'warning');
+        this.isSubmittingMentorRequest = false;
+        return;
+      }
+    } else if (payload.mode === 'existing' && !payload.mentor_id) {
+      this.dialogService.toast('Please select an instructor from the pool.', 'warning');
+      this.isSubmittingMentorRequest = false;
+      return;
+    }
+
+    this.apiService.requestTeamMentor(this.requestMentorTeam.id, payload).subscribe({
+      next: (res: any) => {
+        this.isSubmittingMentorRequest = false;
+        const msg = res?.mentor_status === 'pending_school'
+          ? 'Mentor request submitted! Forwarded to your school administration for review.'
+          : 'Mentor request submitted! Awaiting platform review.';
+        this.dialogService.toast(msg, 'success');
+        this.closeRequestMentorModal();
         this.loadMyTeams();
       },
       error: (err: any) => {
-        const detail = err?.error?.detail || 'Could not request a mentor.';
+        this.isSubmittingMentorRequest = false;
+        const detail = err?.error?.detail || 'Could not submit mentor request.';
         this.dialogService.toast(detail, 'error');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  requestMentor(teamId: string): void {
+    const team = this.myTeams.find(t => t.id === teamId);
+    if (team) {
+      this.openRequestMentorModal(team);
+    } else {
+      this.apiService.requestTeamMentor(teamId).subscribe({
+        next: () => {
+          this.dialogService.toast('Mentor requested.', 'success');
+          this.loadMyTeams();
+        },
+        error: (err: any) => {
+          const detail = err?.error?.detail || 'Could not request a mentor.';
+          this.dialogService.toast(detail, 'error');
+        }
+      });
+    }
+  }
+
+  // ─── INSTITUTION MENTOR APPROVALS (SCHOOL ADMIN) ─────────────
+  institutionMentorRequests: any[] = [];
+  isLoadingInstitutionApprovals: boolean = false;
+  selectedInstitutionApproval: any = null;
+  institutionDecisionModalOpen: boolean = false;
+  institutionDecisionAction: 'approve' | 'reject' = 'approve';
+  institutionDecisionNotes: string = '';
+  isProcessingInstitutionDecision: boolean = false;
+
+  loadInstitutionApprovals(): void {
+    this.isLoadingInstitutionApprovals = true;
+    this.apiService.getInstitutionApprovals().subscribe({
+      next: (list: any[]) => {
+        this.institutionMentorRequests = (list || []).filter(
+          item => item.type === 'Mentor Request' && item.status === 'pending_institution'
+        );
+        this.isLoadingInstitutionApprovals = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.institutionMentorRequests = [];
+        this.isLoadingInstitutionApprovals = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  openInstitutionDecisionModal(req: any, action: 'approve' | 'reject'): void {
+    this.selectedInstitutionApproval = req;
+    this.institutionDecisionAction = action;
+    this.institutionDecisionNotes = '';
+    this.institutionDecisionModalOpen = true;
+    this.cdr.markForCheck();
+  }
+
+  closeInstitutionDecisionModal(): void {
+    this.institutionDecisionModalOpen = false;
+    this.selectedInstitutionApproval = null;
+    this.isProcessingInstitutionDecision = false;
+    this.cdr.markForCheck();
+  }
+
+  submitInstitutionDecision(event?: { action: 'approve' | 'reject'; notes: string }): void {
+    if (!this.selectedInstitutionApproval?.id) return;
+    this.isProcessingInstitutionDecision = true;
+
+    const action = event?.action || this.institutionDecisionAction;
+    const notes = event?.notes !== undefined ? event.notes : this.institutionDecisionNotes;
+
+    this.apiService.institutionApprovalDecision(
+      this.selectedInstitutionApproval.id,
+      action,
+      notes
+    ).subscribe({
+      next: () => {
+        this.isProcessingInstitutionDecision = false;
+        const msg = action === 'approve'
+          ? 'Mentor request approved! Escalated to NTIC Super Admin for final provisioning.'
+          : 'Mentor request declined.';
+        this.dialogService.toast(msg, 'success');
+        this.closeInstitutionDecisionModal();
+        this.loadInstitutionApprovals();
+      },
+      error: (err: any) => {
+        this.isProcessingInstitutionDecision = false;
+        const detail = err?.error?.detail || 'Could not process institution decision.';
+        this.dialogService.toast(detail, 'error');
+        this.cdr.markForCheck();
       }
     });
   }
@@ -6321,6 +6520,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       }
     });
+    this.loadInstitutionApprovals();
   }
 
   async resetStudentCredentials(student: { id: string; full_name: string }): Promise<void> {

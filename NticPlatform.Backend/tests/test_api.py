@@ -1871,7 +1871,7 @@ class TestWebSocket:
         params = inspect.signature(route.endpoint).parameters
         assert params, "/api/ws endpoint takes no parameters"
         first = next(iter(params.values()))
-        assert first.annotation is WebSocket, (
+        assert first.annotation is WebSocket or first.annotation == "WebSocket", (
             f"/api/ws first parameter must be annotated `WebSocket`, got "
             f"{first.annotation!r}. Without the annotation FastAPI treats it as a "
             f"query parameter and rejects every connection with 403."
@@ -6820,4 +6820,135 @@ class TestPublicStatusLookupRedaction:
         app = resp.json()["application"]
         assert app["contact"].lower() == email
         assert app["details"].get("repName") == "Secret Rep"
+
+
+class TestInstitutionMentorTwoTierWorkflow:
+    def _create_school_and_team(self, client, admin_token, school_name: str):
+        from app.security import clear_all_rate_limits
+        h = {"Authorization": f"Bearer {admin_token}"}
+        # Create School Admin
+        school_admin_email = f"sa-{uuid.uuid4().hex[:6]}@school.test"
+        school_admin_pw = "Paga-Crocodile-88!"
+        client.post("/api/users", headers=h, json={
+            "email": school_admin_email, "full_name": "Head of School", "role": "school_admin",
+            "password": school_admin_pw, "organization": school_name, "status": "active"
+        })
+        clear_all_rate_limits()
+        sa_login = client.post("/api/login", json={"email": school_admin_email, "password": school_admin_pw}).json()
+        sa_token = sa_login["token"]
+
+        # Create Lead and Non-lead Students
+        lead_email = f"stlead-{uuid.uuid4().hex[:6]}@school.test"
+        member_email = f"stmember-{uuid.uuid4().hex[:6]}@school.test"
+        student_pw = "Paga-Crocodile-88!"
+        client.post("/api/users", headers=h, json={
+            "email": lead_email, "full_name": "Lead Student", "role": "student",
+            "password": student_pw, "organization": school_name, "status": "active"
+        })
+        client.post("/api/users", headers=h, json={
+            "email": member_email, "full_name": "Member Student", "role": "student",
+            "password": student_pw, "organization": school_name, "status": "active"
+        })
+        clear_all_rate_limits()
+        lead_token = client.post("/api/login", json={"email": lead_email, "password": student_pw}).json()["token"]
+        member_token = client.post("/api/login", json={"email": member_email, "password": student_pw}).json()["token"]
+
+        # Create Team under Institution (using admin token)
+        team_resp = client.post("/api/teams", headers=h, json={
+            "name": f"Robotics Team {uuid.uuid4().hex[:4]}",
+            "track": "Robotics & Embedded Systems",
+            "lead": "Lead Student",
+            "lead_email": lead_email,
+            "members": 2,
+            "roster_list": ["Lead Student", "Member Student"],
+            "member_emails": [member_email],
+            "school_name": school_name
+        })
+        assert team_resp.status_code == 201, team_resp.text
+        team_id = team_resp.json()["id"]
+        return {
+            "sa_token": sa_token,
+            "lead_token": lead_token,
+            "lead_email": lead_email,
+            "member_token": member_token,
+            "member_email": member_email,
+            "team_id": team_id,
+            "school_name": school_name,
+        }
+
+    def test_complete_institution_mentor_workflow(self, client, admin_token, monkeypatch):
+        emails_sent = []
+        import app.main as main_mod
+        monkeypatch.setattr(main_mod, "_send_brevo_email", lambda to_email, to_name, subject, html_content: (emails_sent.append({"to": to_email, "subject": subject, "html": html_content}), True)[1])
+
+        school_name = f"Institution {uuid.uuid4().hex[:6]}"
+        ctx = self._create_school_and_team(client, admin_token, school_name)
+
+        # 1. Non-lead student cannot request mentor for team
+        non_lead_h = {"Authorization": f"Bearer {ctx['member_token']}"}
+        nl_resp = client.post(f"/api/teams/{ctx['team_id']}/request-mentor", headers=non_lead_h, json={
+            "mode": "suggested", "suggested_name": "Dr. Mentor", "suggested_email": "dr.mentor@test.com"
+        })
+        assert nl_resp.status_code == 403
+
+        # 2. Group lead successfully requests suggested mentor
+        lead_h = {"Authorization": f"Bearer {ctx['lead_token']}"}
+        suggested_email = f"mentor-{uuid.uuid4().hex[:6]}@techcompany.com"
+        req_resp = client.post(f"/api/teams/{ctx['team_id']}/request-mentor", headers=lead_h, json={
+            "mode": "suggested",
+            "suggested_name": "Dr. Angela Mensah",
+            "suggested_email": suggested_email,
+            "suggested_phone": f"+23320{uuid.uuid4().int % 10000000:07d}",
+            "suggested_org": "Robotics Innovations Lab",
+            "suggested_expertise": "Robotics & Embedded Systems",
+            "suggested_bio": "Senior robotics researcher with 10+ years experience."
+        })
+        assert req_resp.status_code == 200, req_resp.text
+        req_data = req_resp.json()
+        assert req_data["mentor_status"] == "pending_school"
+        assert req_data["stage"] == "pending_institution"
+        approval_id = req_data["approval_id"]
+
+        # 3. School admin views the request under institution mine endpoint
+        sa_h = {"Authorization": f"Bearer {ctx['sa_token']}"}
+        inst_mine = client.get("/api/approvals/institution/mine", headers=sa_h)
+        assert inst_mine.status_code == 200
+        approvals = inst_mine.json()
+        match = next((a for a in approvals if a["id"] == approval_id), None)
+        assert match is not None
+        assert match["status"] == "pending_institution"
+        assert match["details"]["suggested_mentor"]["email"] == suggested_email
+
+        # 4. School admin approves the request (Stage 1 approved -> forwarded to platform admin)
+        dec_resp = client.patch(f"/api/approvals/{approval_id}/institution-decision", headers=sa_h, json={
+            "action": "approve"
+        })
+        assert dec_resp.status_code == 200
+        assert dec_resp.json()["status"] == "pending"
+
+        # 5. Super Admin performs final approval (Stage 2 approved -> account provisioned & email sent)
+        admin_h = {"Authorization": f"Bearer {admin_token}"}
+        app_resp = client.patch(f"/api/approvals/{approval_id}", headers=admin_h, json={
+            "status": "approved"
+        })
+        assert app_resp.status_code == 200, app_resp.text
+        app_data = app_resp.json()
+        mentor_res = app_data["mentor_assignment"]
+        assert mentor_res["applied"] is True
+        assert mentor_res["created_account"] is True
+        assert mentor_res["mentor_email"] == suggested_email
+        temp_pw = mentor_res["temporary_password"]
+
+        # 6. Verify invitation email was dispatched to suggested mentor
+        invite_email = next((e for e in emails_sent if e["to"] == suggested_email), None)
+        assert invite_email is not None
+        assert "Official NTIC Mentorship Invitation" in invite_email["subject"]
+        assert temp_pw in invite_email["html"]
+
+        mentor_login = client.post("/api/login", json={"email": suggested_email, "password": temp_pw})
+        assert mentor_login.status_code == 200
+        mentor_data = mentor_login.json()
+        assert mentor_data["role"] == "instructor"
+        assert mentor_data["must_change_password"] is True
+
 

@@ -1,0 +1,136 @@
+<div class="modal-backdrop" *ngIf="isOpen" (click)="onClose()">
+  <div class="modal-card" style="max-width:580px;width:100%;background:var(--surface-container);border:1px solid var(--outline-variant);border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,0.35);overflow:hidden;" (click)="$event.stopPropagation()">
+    <!-- Modal Header -->
+    <div style="padding:20px 24px;border-bottom:1px solid var(--outline-variant);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg, rgba(0,85,204,0.08) 0%, transparent 100%);">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:40px;height:40px;border-radius:10px;background:rgba(0,85,204,0.12);display:flex;align-items:center;justify-content:center;color:var(--primary);">
+          <span class="material-symbols-outlined" style="font-size:22px;">co_present</span>
+        </div>
+        <div>
+          <h3 style="margin:0;font-size:16px;font-weight:700;">Request Mentorship</h3>
+          <p style="margin:2px 0 0;font-size:12px;color:var(--on-surface-variant);">
+            Team: <strong>{{ team?.name }}</strong> &bull; Track: <strong>{{ team?.track || 'General' }}</strong>
+          </p>
+        </div>
+      </div>
+      <button type="button" class="btn-icon" (click)="onClose()" style="background:none;border:none;color:var(--on-surface-variant);cursor:pointer;">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Tab Switcher -->
+    <div style="display:flex;border-bottom:1px solid var(--outline-variant);background:var(--surface-container-low);">
+      <button type="button" 
+              (click)="tab = 'pool'"
+              [style.border-bottom]="tab === 'pool' ? '2px solid var(--primary)' : '2px solid transparent'"
+              [style.color]="tab === 'pool' ? 'var(--primary)' : 'var(--on-surface-variant)'"
+              style="flex:1;padding:12px;background:none;border:none;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <span class="material-symbols-outlined" style="font-size:16px;">diversity_3</span>
+        NTIC Mentor Pool / Auto-Match
+      </button>
+      <button type="button" 
+              (click)="tab = 'suggest'"
+              [style.border-bottom]="tab === 'suggest' ? '2px solid var(--primary)' : '2px solid transparent'"
+              [style.color]="tab === 'suggest' ? 'var(--primary)' : 'var(--on-surface-variant)'"
+              style="flex:1;padding:12px;background:none;border:none;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <span class="material-symbols-outlined" style="font-size:16px;">person_add</span>
+        Suggest an External Mentor
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div style="padding:20px 24px;max-height:65vh;overflow-y:auto;">
+      <!-- TAB 1: Pool / Auto-Match -->
+      <div *ngIf="tab === 'pool'" style="display:flex;flex-direction:column;gap:16px;">
+        <label style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid var(--outline-variant);border-radius:10px;cursor:pointer;background:var(--surface-container-lowest);" [style.border-color]="mode === 'auto_track' ? 'var(--primary)' : 'var(--outline-variant)'">
+          <input type="radio" name="modalMentorMode" value="auto_track" [(ngModel)]="mode" style="margin-top:3px;">
+          <div>
+            <div style="font-weight:700;font-size:13.5px;color:var(--on-surface);display:flex;align-items:center;gap:6px;">
+              <span>Auto-Match by Track (Recommended)</span>
+              <span class="badge primary" style="font-size:9.5px;">Smart Match</span>
+            </div>
+            <p style="margin:4px 0 0;font-size:12px;color:var(--on-surface-variant);line-height:1.4;">
+              Automatically assigns an accredited mentor specialized in the <strong>{{ team?.track || 'chosen' }}</strong> competition track upon institutional approval.
+            </p>
+          </div>
+        </label>
+
+        <label style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid var(--outline-variant);border-radius:10px;cursor:pointer;background:var(--surface-container-lowest);" [style.border-color]="mode === 'existing' ? 'var(--primary)' : 'var(--outline-variant)'">
+          <input type="radio" name="modalMentorMode" value="existing" [(ngModel)]="mode" style="margin-top:3px;">
+          <div style="flex:1;">
+            <div style="font-weight:700;font-size:13.5px;color:var(--on-surface);">Pick from Available Instructor Pool</div>
+            <p style="margin:4px 0 8px;font-size:12px;color:var(--on-surface-variant);line-height:1.4;">
+              Select a specific certified instructor currently active on the NTIC Platform.
+            </p>
+            <div *ngIf="mode === 'existing'" style="margin-top:10px;">
+              <select [(ngModel)]="selectedInstructorId" style="width:100%;padding:10px 12px;background:var(--surface-container);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+                <option value="" disabled selected>-- Select an Active Instructor --</option>
+                <option *ngFor="let inst of allInstructors" [value]="inst.id">
+                  {{ inst.name }} ({{ inst.track || 'General' }}) - {{ inst.organization || 'NTIC Academic' }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </label>
+      </div>
+
+      <!-- TAB 2: Suggest / Nominate External Mentor -->
+      <div *ngIf="tab === 'suggest'" style="display:flex;flex-direction:column;gap:14px;">
+        <div style="padding:10px 12px;background:rgba(0,85,204,0.06);border:1px solid rgba(0,85,204,0.18);border-radius:8px;font-size:12px;color:var(--on-surface-variant);line-height:1.5;">
+          <span class="material-symbols-outlined" style="font-size:15px;color:var(--primary);vertical-align:middle;margin-right:4px;">info</span>
+          Nominate an industry expert or external mentor. Once approved, the platform will automatically provision their account and send them an official invitation link.
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Mentor Full Name *</label>
+            <input type="text" [(ngModel)]="suggestedForm.name" placeholder="e.g. Dr. Kwame Mensah" style="width:100%;padding:9px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+          </div>
+          <div>
+            <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Official Email Address *</label>
+            <input type="email" [(ngModel)]="suggestedForm.email" placeholder="e.g. mentor@techcorp.com" style="width:100%;padding:9px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Phone Number (Optional)</label>
+            <input type="tel" [(ngModel)]="suggestedForm.phone" placeholder="+233 XX XXX XXXX" style="width:100%;padding:9px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+          </div>
+          <div>
+            <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Organization / Company</label>
+            <input type="text" [(ngModel)]="suggestedForm.organization" placeholder="e.g. AI Research Hub" style="width:100%;padding:9px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Field of Expertise / Track</label>
+          <input type="text" [(ngModel)]="suggestedForm.expertise" placeholder="e.g. Robotics &amp; Embedded Systems" style="width:100%;padding:9px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+        </div>
+
+        <div>
+          <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Brief Background / Statement (Optional)</label>
+          <textarea [(ngModel)]="suggestedForm.bio" rows="2" placeholder="Describe their experience and how they will assist your team..." style="width:100%;padding:9px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);resize:vertical;"></textarea>
+        </div>
+      </div>
+
+      <!-- Two-Tier Pathway Notice -->
+      <div style="margin-top:16px;padding:10px 14px;background:var(--surface-container-lowest);border:1px dashed var(--outline-variant);border-radius:8px;font-size:11.5px;color:var(--on-surface-variant);display:flex;align-items:center;gap:8px;">
+        <span class="material-symbols-outlined" style="font-size:16px;color:#d97706;">shield</span>
+        <span><strong>Approval Pathway:</strong> Sent to your Institution Admin first &rarr; then forwarded to NTIC Platform Super Admin.</span>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div style="padding:16px 24px;border-top:1px solid var(--outline-variant);display:flex;justify-content:flex-end;gap:10px;background:var(--surface-container-low);">
+      <button type="button" class="btn btn-subtle btn-sm" (click)="onClose()" [disabled]="isSubmitting">
+        Cancel
+      </button>
+      <button type="button" class="btn btn-primary btn-sm" (click)="onSubmit()" [disabled]="isSubmitting" style="display:flex;align-items:center;gap:6px;">
+        <span class="material-symbols-outlined" style="font-size:15px;" *ngIf="!isSubmitting">send</span>
+        <span class="material-symbols-outlined spin" style="font-size:15px;" *ngIf="isSubmitting">progress_activity</span>
+        <span>{{ isSubmitting ? 'Submitting Request...' : 'Submit Mentor Request' }}</span>
+      </button>
+    </div>
+  </div>
+</div>
