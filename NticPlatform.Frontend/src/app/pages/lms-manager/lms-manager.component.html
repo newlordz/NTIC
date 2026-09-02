@@ -1,289 +1,297 @@
 <div class="lms-manager-container">
-  <!-- Page Header -->
-  <header class="lms-header">
-    <div class="header-content">
-      <div class="header-title">
-        <span class="material-symbols-outlined header-icon">{{ isInstructor ? 'school' : 'verified_user' }}</span>
-        <div>
-          <h1>{{ isInstructor ? 'Course Studio & Teaching Hub' : 'LMS Management & Content Moderation Desk' }}</h1>
-          <p>{{ isInstructor ? 'Author courses, build lesson modules, configure learning assets, and review student assignments.' : 'Review instructor-submitted courses, modules, assets, and assignments. Approve content before it becomes visible to students.' }}</p>
-        </div>
-      </div>
-      <div class="header-actions">
-        <!-- Live Student Classroom Preview button for instructors -->
-        <a *ngIf="isInstructor" routerLink="/lms" class="btn btn-outline" style="text-decoration:none;display:flex;align-items:center;gap:6px;" title="Preview student classroom view">
-          <span class="material-symbols-outlined">visibility</span> Preview Student View
-        </a>
-        <button class="btn btn-outline" (click)="openCourseModal()">
-          <span class="material-symbols-outlined">add</span> New Course
-        </button>
-        <button class="btn btn-primary" (click)="openAssignmentModal()">
-          <span class="material-symbols-outlined">assignment_add</span> Create Assignment
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <!-- Metric KPI Cards -->
-  <div class="stats-grid">
-    <div class="stat-card" *ngIf="isStaffReviewer" [class.highlight-card]="pendingApprovalsCount > 0">
-      <div class="stat-icon approval-theme">
-        <span class="material-symbols-outlined">rule</span>
-      </div>
-      <div class="stat-details">
-        <span class="stat-value">{{ pendingApprovalsCount }}</span>
-        <span class="stat-label">Pending Content Approvals</span>
-      </div>
-    </div>
-
-    <div class="stat-card" *ngIf="!isStaffReviewer" [class.highlight-card]="pendingReviewCount > 0">
-      <div class="stat-icon approval-theme">
-        <span class="material-symbols-outlined">hourglass_top</span>
-      </div>
-      <div class="stat-details">
-        <span class="stat-value">{{ pendingReviewCount }}</span>
-        <span class="stat-label">My Submissions in Review</span>
-      </div>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-icon courses-theme">
-        <span class="material-symbols-outlined">menu_book</span>
-      </div>
-      <div class="stat-details">
-        <span class="stat-value">{{ totalCourses }}</span>
-        <span class="stat-label">{{ isInstructor ? 'My Courses' : 'Total Courses' }} ({{ activeCoursesCount }} Active)</span>
-      </div>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-icon modules-theme">
-        <span class="material-symbols-outlined">view_module</span>
-      </div>
-      <div class="stat-details">
-        <span class="stat-value">{{ totalModules }}</span>
-        <span class="stat-label">Curriculum Modules</span>
-      </div>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-icon materials-theme">
-        <span class="material-symbols-outlined">folder_open</span>
-      </div>
-      <div class="stat-details">
-        <span class="stat-value">{{ totalMaterials }}</span>
-        <span class="stat-label">Learning Assets &amp; Files</span>
-      </div>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-icon grading-theme">
-        <span class="material-symbols-outlined">fact_check</span>
-      </div>
-      <div class="stat-details">
-        <span class="stat-value">{{ pendingGradingCount }}</span>
-        <span class="stat-label">Submissions Pending Review</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Navigation Workspace Tabs -->
-  <div class="workspace-tabs">
-    <button class="tab-btn" *ngIf="isStaffReviewer" [class.active]="activeTab === 'approvals'" (click)="activeTab = 'approvals'">
-      <span class="material-symbols-outlined">verified</span> Content Approvals Queue
-      <span class="badge-count warn-badge" *ngIf="pendingApprovalsCount > 0">{{ pendingApprovalsCount }}</span>
-    </button>
-    <button class="tab-btn" [class.active]="activeTab === 'courses'" (click)="activeTab = 'courses'">
-      <span class="material-symbols-outlined">menu_book</span> {{ isInstructor ? 'My Courses' : 'Courses Hub' }}
-    </button>
-    <button class="tab-btn" [class.active]="activeTab === 'modules'" (click)="activeTab = 'modules'">
-      <span class="material-symbols-outlined">view_module</span> Curriculum Modules
-    </button>
-    <button class="tab-btn" [class.active]="activeTab === 'materials'" (click)="activeTab = 'materials'">
-      <span class="material-symbols-outlined">folder_open</span> Learning Assets
-    </button>
-    <button class="tab-btn" [class.active]="activeTab === 'assignments'" (click)="activeTab = 'assignments'">
-      <span class="material-symbols-outlined">assignment</span> Assignments &amp; Grading
-      <span class="badge-count" *ngIf="pendingGradingCount > 0">{{ pendingGradingCount }}</span>
-    </button>
-    <button class="tab-btn" [class.active]="activeTab === 'students'" (click)="activeTab = 'students'">
-      <span class="material-symbols-outlined">group</span> Student Roster &amp; Progress
-    </button>
-    <button class="tab-btn" [class.active]="activeTab === 'announcements'" (click)="activeTab = 'announcements'">
-      <span class="material-symbols-outlined">campaign</span> Announcements
-      <span class="badge-count" *ngIf="serverAnnouncements.length > 0">{{ serverAnnouncements.length }}</span>
-    </button>
-    <button class="tab-btn" [class.active]="activeTab === 'qa'" (click)="activeTab = 'qa'">
-      <span class="material-symbols-outlined">forum</span> Student Q&amp;A
-      <span class="badge-count" *ngIf="getRootQuestions().length > 0">{{ getRootQuestions().length }}</span>
-    </button>
-  </div>
-
-  <!-- Filters & Search Toolbar -->
-  <div class="toolbar-card">
-    <div class="search-box">
-      <span class="material-symbols-outlined">search</span>
-      <input type="text" [(ngModel)]="searchQuery" placeholder="Search courses, modules, assets, or instructors..." />
-    </div>
-
-    <div class="filters-group">
-      <!-- Moderation Status Selector -->
-      <select [(ngModel)]="selectedApprovalFilter" *ngIf="activeTab !== 'approvals' && activeTab !== 'students'">
-        <option value="all">All Moderation States</option>
-        <option value="approved">Approved Live</option>
-        <option value="pending">Pending Approval</option>
-        <option value="rejected">Rejected</option>
-      </select>
-
-      <!-- Course Selector -->
-      <select [(ngModel)]="selectedCourseId" (ngModelChange)="onCourseFilterChange($event)" *ngIf="activeTab !== 'courses' && activeTab !== 'approvals'">
-        <option value="all">All Courses</option>
-        <option *ngFor="let course of coursesList" [value]="course.id">{{ course.title }}</option>
-      </select>
-
-      <!-- Track Selector -->
-      <select [(ngModel)]="selectedTrack" *ngIf="activeTab === 'courses' || activeTab === 'assignments'">
-        <option value="all">All Tracks</option>
-        <option value="coding">Coding</option>
-        <option value="robotics">Robotics</option>
-        <option value="ai">AI</option>
-        <option value="cyber">Networking & Cybersecurity</option>
-        <option value="innovation">Innovation</option>
-      </select>
-
-      <!-- Cycle Selector: scopes courses to one competition cycle -->
-      <select [(ngModel)]="selectedCycle" (ngModelChange)="onCycleChange()" *ngIf="activeTab === 'courses'">
-        <option value="all">All Cycles</option>
-        <option *ngFor="let c of competitions" [value]="c.id">{{ c.title }}</option>
-      </select>
-
-      <!-- Status Selector -->
-      <select [(ngModel)]="selectedStatus" *ngIf="activeTab === 'courses'">
-        <option value="all">All Statuses</option>
-        <option value="active">Active</option>
-        <option value="draft">Draft</option>
-        <option value="archived">Archived</option>
-      </select>
-    </div>
-  </div>
-
-  <!-- ── TAB 0: CONTENT APPROVALS QUEUE (MODERATION DESK) ── -->
-  <div *ngIf="activeTab === 'approvals'" class="tab-content-panel">
-    <div class="panel-header">
-      <div>
-        <h2>Instructor Submissions Awaiting Approval ({{ pendingLmsItems.length }})</h2>
-        <p class="text-subtle text-sm">Review instructor uploads. Approved items will immediately become visible to participating students.</p>
-      </div>
-    </div>
-
-    <div class="moderation-queue-grid" *ngIf="pendingLmsItems.length > 0">
-      <div *ngFor="let item of pendingLmsItems" class="moderation-card">
-        <div class="moderation-card-header">
-          <span class="type-pill" [class]="'pill-' + item.type">{{ item.typeLabel }}</span>
-          <span class="badge badge-warning">Awaiting Admin Review</span>
-        </div>
-
-        <div class="moderation-card-body">
-          <h3>{{ item.title }}</h3>
-          <p class="description-text">{{ item.description }}</p>
-
-          <div class="instructor-chip">
-            <span class="material-symbols-outlined">person</span>
-            <div>
-              <strong class="text-xs">Uploaded by:</strong>
-              <div class="text-xs font-semibold">{{ item.submittedBy }}</div>
-            </div>
-          </div>
-
-          <div class="meta-row text-xs text-subtle" *ngIf="item.courseTitle">
-            <span>Course Context: <strong>{{ item.courseTitle }}</strong></span>
+  
+  <!-- ════════════════════════════════════════════════════════════
+       VIEW 1: COURSES HUB & MANAGEMENT DESK (MAIN HUB)
+       ════════════════════════════════════════════════════════════ -->
+  <div *ngIf="currentView === 'hub'" class="hub-main-view fade-in">
+    <!-- Page Header -->
+    <header class="lms-header">
+      <div class="header-content">
+        <div class="header-title">
+          <span class="material-symbols-outlined header-icon">{{ isInstructor ? 'school' : 'verified_user' }}</span>
+          <div>
+            <h1>{{ isInstructor ? 'Course Studio & Teaching Hub' : 'LMS Management & Content Moderation Desk' }}</h1>
+            <p>{{ isInstructor ? 'Author courses, build lesson modules, configure learning assets, and review student assignments.' : 'Review instructor-submitted courses, modules, assets, and assignments. Approve content before it becomes visible to students.' }}</p>
           </div>
         </div>
-
-        <div class="moderation-card-footer">
-          <button class="btn btn-sm btn-outline danger" (click)="openRejectModal(item)">
-            <span class="material-symbols-outlined">close</span> Reject & Feedback
+        <div class="header-actions">
+          <!-- Live Student Classroom Preview button for instructors -->
+          <a *ngIf="isInstructor" routerLink="/lms" class="btn btn-outline" style="text-decoration:none;display:flex;align-items:center;gap:6px;" title="Preview student classroom view">
+            <span class="material-symbols-outlined">visibility</span> Preview Student View
+          </a>
+          <button class="btn btn-primary" (click)="openCourseWizard()">
+            <span class="material-symbols-outlined">add</span> Create New Course
           </button>
-          <button class="btn btn-sm btn-primary" (click)="approveModerationItem(item)">
-            <span class="material-symbols-outlined">check_circle</span> Approve & Publish
+          <button class="btn btn-outline" (click)="openAssignmentModal()">
+            <span class="material-symbols-outlined">assignment_add</span> Create Assignment
           </button>
         </div>
       </div>
+    </header>
+
+    <!-- Metric KPI Cards -->
+    <div class="stats-grid">
+      <div class="stat-card" *ngIf="isStaffReviewer" [class.highlight-card]="pendingApprovalsCount > 0">
+        <div class="stat-icon approval-theme">
+          <span class="material-symbols-outlined">rule</span>
+        </div>
+        <div class="stat-details">
+          <span class="stat-value">{{ pendingApprovalsCount }}</span>
+          <span class="stat-label">Pending Content Approvals</span>
+        </div>
+      </div>
+
+      <div class="stat-card" *ngIf="!isStaffReviewer" [class.highlight-card]="pendingReviewCount > 0">
+        <div class="stat-icon approval-theme">
+          <span class="material-symbols-outlined">hourglass_top</span>
+        </div>
+        <div class="stat-details">
+          <span class="stat-value">{{ pendingReviewCount }}</span>
+          <span class="stat-label">My Submissions in Review</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon courses-theme">
+          <span class="material-symbols-outlined">menu_book</span>
+        </div>
+        <div class="stat-details">
+          <span class="stat-value">{{ totalCourses }}</span>
+          <span class="stat-label">{{ isInstructor ? 'My Courses' : 'Total Courses' }} ({{ activeCoursesCount }} Active)</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon modules-theme">
+          <span class="material-symbols-outlined">view_module</span>
+        </div>
+        <div class="stat-details">
+          <span class="stat-value">{{ totalModules }}</span>
+          <span class="stat-label">Curriculum Modules</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon materials-theme">
+          <span class="material-symbols-outlined">folder_open</span>
+        </div>
+        <div class="stat-details">
+          <span class="stat-value">{{ totalMaterials }}</span>
+          <span class="stat-label">Learning Assets &amp; Files</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon grading-theme">
+          <span class="material-symbols-outlined">fact_check</span>
+        </div>
+        <div class="stat-details">
+          <span class="stat-value">{{ pendingGradingCount }}</span>
+          <span class="stat-label">Submissions Pending Review</span>
+        </div>
+      </div>
     </div>
 
-    <div class="empty-state" *ngIf="pendingLmsItems.length === 0">
-      <span class="material-symbols-outlined text-success">verified</span>
-      <h3>All Instructor Uploads Approved!</h3>
-      <p>There are no instructor submissions currently waiting in the moderation queue.</p>
-    </div>
-  </div>
-
-  <!-- ── TAB 1: COURSES HUB ── -->
-  <div *ngIf="activeTab === 'courses'" class="tab-content-panel">
-    <div class="panel-header">
-      <h2>Courses Roster ({{ filteredCourses.length }})</h2>
-      <button class="btn btn-sm btn-primary" (click)="openCourseModal()">
-        <span class="material-symbols-outlined">add</span> Create Course
+    <!-- Navigation Workspace Tabs -->
+    <div class="workspace-tabs">
+      <button class="tab-btn" *ngIf="isStaffReviewer" [class.active]="activeTab === 'approvals'" (click)="activeTab = 'approvals'">
+        <span class="material-symbols-outlined">verified</span> Content Approvals Queue
+        <span class="badge-count warn-badge" *ngIf="pendingApprovalsCount > 0">{{ pendingApprovalsCount }}</span>
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'courses'" (click)="activeTab = 'courses'">
+        <span class="material-symbols-outlined">menu_book</span> {{ isInstructor ? 'My Courses' : 'Courses Hub' }}
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'modules'" (click)="activeTab = 'modules'">
+        <span class="material-symbols-outlined">view_module</span> Curriculum Modules
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'materials'" (click)="activeTab = 'materials'">
+        <span class="material-symbols-outlined">folder_open</span> Learning Assets
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'assignments'" (click)="activeTab = 'assignments'">
+        <span class="material-symbols-outlined">assignment</span> Assignments &amp; Grading
+        <span class="badge-count" *ngIf="pendingGradingCount > 0">{{ pendingGradingCount }}</span>
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'students'" (click)="activeTab = 'students'">
+        <span class="material-symbols-outlined">group</span> Student Roster &amp; Progress
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'announcements'" (click)="activeTab = 'announcements'">
+        <span class="material-symbols-outlined">campaign</span> Announcements
+        <span class="badge-count" *ngIf="serverAnnouncements.length > 0">{{ serverAnnouncements.length }}</span>
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'qa'" (click)="activeTab = 'qa'">
+        <span class="material-symbols-outlined">forum</span> Student Q&amp;A
+        <span class="badge-count" *ngIf="getRootQuestions().length > 0">{{ getRootQuestions().length }}</span>
       </button>
     </div>
 
-    <div class="courses-grid" *ngIf="filteredCourses.length > 0">
-      <div *ngFor="let course of filteredCourses" class="course-card">
-        <div class="course-card-top">
-          <div class="icon-avatar" [class]="'track-' + course.track">
-            <span class="material-symbols-outlined">{{ course.icon }}</span>
-          </div>
-          <div class="course-badges">
-            <span class="badge" [class]="'badge-' + course.track">{{ course.track | titlecase }}</span>
-            <span class="badge" [class]="course.approvalStatus === 'approved' ? 'badge-success' : course.approvalStatus === 'pending' ? 'badge-warning' : 'badge-danger'">
-              {{ course.approvalStatus === 'approved' ? 'Approved' : course.approvalStatus === 'pending' ? 'Pending Review' : 'Rejected' }}
-            </span>
-          </div>
-        </div>
+    <!-- Filters & Search Toolbar -->
+    <div class="toolbar-card">
+      <div class="search-box">
+        <span class="material-symbols-outlined">search</span>
+        <input type="text" [(ngModel)]="searchQuery" placeholder="Search courses, modules, assets, or instructors..." />
+      </div>
 
-        <div class="course-card-body">
-          <h3>{{ course.title }}</h3>
-          <p>{{ course.description }}</p>
-          <div class="text-xs text-subtle mt-2" *ngIf="course.submittedBy">
-            Instructor: <strong>{{ course.submittedBy }}</strong>
-          </div>
-        </div>
+      <div class="filters-group">
+        <!-- Moderation Status Selector -->
+        <select [(ngModel)]="selectedApprovalFilter" *ngIf="activeTab !== 'approvals' && activeTab !== 'students'">
+          <option value="all">All Moderation States</option>
+          <option value="approved">Approved Live</option>
+          <option value="pending">Pending Approval</option>
+          <option value="rejected">Rejected</option>
+        </select>
 
-        <div class="course-metrics">
-          <div class="metric-item">
-            <span class="metric-val">{{ course.modules }}</span>
-            <span class="metric-lbl">Modules</span>
-          </div>
-          <div class="metric-item">
-            <span class="metric-val">{{ course.enrolled }}</span>
-            <span class="metric-lbl">Students</span>
-          </div>
-          <div class="metric-item">
-            <span class="metric-val">{{ course.completion }}%</span>
-            <span class="metric-lbl">Avg Completion</span>
-          </div>
-        </div>
+        <!-- Course Selector -->
+        <select [(ngModel)]="selectedCourseId" (ngModelChange)="onCourseFilterChange($event)" *ngIf="activeTab !== 'courses' && activeTab !== 'approvals'">
+          <option value="all">All Courses</option>
+          <option *ngFor="let course of coursesList" [value]="course.id">{{ course.title }}</option>
+        </select>
 
-        <div class="course-card-footer">
-          <button class="btn btn-xs btn-subtle" (click)="openCourseModal(course)">
-            <span class="material-symbols-outlined">edit</span> Edit
-          </button>
-          <button class="btn btn-xs btn-subtle" (click)="duplicateCourse(course)">
-            <span class="material-symbols-outlined">content_copy</span> Duplicate
-          </button>
-          <button class="btn btn-xs btn-danger" (click)="deleteCourse(course.id)">
-            <span class="material-symbols-outlined">delete</span> Delete
-          </button>
-        </div>
+        <!-- Track Selector -->
+        <select [(ngModel)]="selectedTrack" *ngIf="activeTab === 'courses' || activeTab === 'assignments'">
+          <option value="all">All Tracks</option>
+          <option value="coding">Coding</option>
+          <option value="robotics">Robotics</option>
+          <option value="ai">AI</option>
+          <option value="cyber">Networking & Cybersecurity</option>
+          <option value="innovation">Innovation</option>
+        </select>
+
+        <!-- Cycle Selector: scopes courses to one competition cycle -->
+        <select [(ngModel)]="selectedCycle" (ngModelChange)="onCycleChange()" *ngIf="activeTab === 'courses'">
+          <option value="all">All Cycles</option>
+          <option *ngFor="let c of competitions" [value]="c.id">{{ c.title }}</option>
+        </select>
+
+        <!-- Status Selector -->
+        <select [(ngModel)]="selectedStatus" *ngIf="activeTab === 'courses'">
+          <option value="all">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="draft">Draft</option>
+          <option value="archived">Archived</option>
+        </select>
       </div>
     </div>
 
-    <div class="empty-state" *ngIf="filteredCourses.length === 0">
-      <span class="material-symbols-outlined">menu_book</span>
-      <h3>No Courses Found</h3>
-      <p>No courses match your filter criteria.</p>
+    <!-- ── TAB 0: CONTENT APPROVALS QUEUE (MODERATION DESK) ── -->
+    <div *ngIf="activeTab === 'approvals'" class="tab-content-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Instructor Submissions Awaiting Approval ({{ pendingLmsItems.length }})</h2>
+          <p class="text-subtle text-sm">Review instructor uploads. Approved items will immediately become visible to participating students.</p>
+        </div>
+      </div>
+
+      <div class="moderation-queue-grid" *ngIf="pendingLmsItems.length > 0">
+        <div *ngFor="let item of pendingLmsItems" class="moderation-card">
+          <div class="moderation-card-header">
+            <span class="type-pill" [class]="'pill-' + item.type">{{ item.typeLabel }}</span>
+            <span class="badge badge-warning">Awaiting Admin Review</span>
+          </div>
+
+          <div class="moderation-card-body">
+            <h3>{{ item.title }}</h3>
+            <p class="description-text">{{ item.description }}</p>
+
+            <div class="instructor-chip">
+              <span class="material-symbols-outlined">person</span>
+              <div>
+                <strong class="text-xs">Uploaded by:</strong>
+                <div class="text-xs font-semibold">{{ item.submittedBy }}</div>
+              </div>
+            </div>
+
+            <div class="meta-row text-xs text-subtle" *ngIf="item.courseTitle">
+              <span>Course Context: <strong>{{ item.courseTitle }}</strong></span>
+            </div>
+          </div>
+
+          <div class="moderation-card-footer">
+            <button class="btn btn-sm btn-outline danger" (click)="openRejectModal(item)">
+              <span class="material-symbols-outlined">close</span> Reject & Feedback
+            </button>
+            <button class="btn btn-sm btn-primary" (click)="approveModerationItem(item)">
+              <span class="material-symbols-outlined">check_circle</span> Approve & Publish
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="pendingLmsItems.length === 0">
+        <span class="material-symbols-outlined text-success">verified</span>
+        <h3>All Instructor Uploads Approved!</h3>
+        <p>There are no instructor submissions currently waiting in the moderation queue.</p>
+      </div>
     </div>
-  </div>
+
+    <!-- ── TAB 1: COURSES HUB ── -->
+    <div *ngIf="activeTab === 'courses'" class="tab-content-panel">
+      <div class="panel-header">
+        <div>
+          <h2>Courses Roster ({{ filteredCourses.length }})</h2>
+          <p class="text-subtle text-xs">Tap any course card or row to enter its dedicated management console.</p>
+        </div>
+        <button class="btn btn-sm btn-primary" (click)="openCourseWizard()">
+          <span class="material-symbols-outlined">add</span> Create New Course
+        </button>
+      </div>
+
+      <div class="courses-grid" *ngIf="filteredCourses.length > 0">
+        <div *ngFor="let course of filteredCourses" class="course-card clickable-card" (click)="openCourseConsole(course)">
+          <div class="course-card-top">
+            <div class="icon-avatar" [class]="'track-' + course.track">
+              <span class="material-symbols-outlined">{{ course.icon }}</span>
+            </div>
+            <div class="course-badges">
+              <span class="badge" [class]="'badge-' + course.track">{{ course.track | titlecase }}</span>
+              <span class="badge" [class]="course.approvalStatus === 'approved' ? 'badge-success' : course.approvalStatus === 'pending' ? 'badge-warning' : 'badge-danger'">
+                {{ course.approvalStatus === 'approved' ? 'Approved' : course.approvalStatus === 'pending' ? 'Pending Review' : 'Rejected' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="course-card-body">
+            <h3>{{ course.title }}</h3>
+            <p>{{ course.description }}</p>
+            <div class="text-xs text-subtle mt-2" *ngIf="course.submittedBy">
+              Instructor: <strong>{{ course.submittedBy }}</strong>
+            </div>
+          </div>
+
+          <div class="course-metrics">
+            <div class="metric-item">
+              <span class="metric-val">{{ getModulesForCourse(course.id).length || course.modules || 0 }}</span>
+              <span class="metric-lbl">Modules</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val">{{ course.enrolled || 0 }}</span>
+              <span class="metric-lbl">Students</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-val">{{ course.completion || 0 }}%</span>
+              <span class="metric-lbl">Avg Completion</span>
+            </div>
+          </div>
+
+          <div class="course-card-footer">
+            <button class="btn btn-xs btn-subtle" (click)="openCourseWizard(course); $event.stopPropagation()">
+              <span class="material-symbols-outlined">edit</span> Edit
+            </button>
+            <button class="btn btn-xs btn-subtle" (click)="duplicateCourse(course); $event.stopPropagation()">
+              <span class="material-symbols-outlined">content_copy</span> Duplicate
+            </button>
+            <button class="btn btn-xs btn-danger" (click)="deleteCourse(course.id); $event.stopPropagation()">
+              <span class="material-symbols-outlined">delete</span> Delete
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="filteredCourses.length === 0">
+        <span class="material-symbols-outlined">menu_book</span>
+        <h3>No Courses Found</h3>
+        <p>No courses match your filter criteria.</p>
+      </div>
+    </div>
 
   <!-- ── TAB 2: CURRICULUM MODULES ── -->
   <div *ngIf="activeTab === 'modules'" class="tab-content-panel">
@@ -314,7 +322,7 @@
                 <span class="material-symbols-outlined cell-icon">{{ mod.icon }}</span>
                 <div>
                   <strong>{{ mod.title }}</strong>
-                  <div class="text-xs text-subtle">{{ mod.description | slice:0:50 }}...</div>
+                  <div class="text-xs text-subtle">{{ getFormattedDescription(mod.description) | slice:0:60 }}...</div>
                 </div>
               </div>
             </td>
@@ -374,7 +382,7 @@
                 </span>
                 <div>
                   <strong>{{ mat.title }}</strong>
-                  <div class="text-xs text-subtle">{{ mat.description }}</div>
+                  <div class="text-xs text-subtle">{{ getFormattedDescription(mat.description) }}</div>
                 </div>
               </div>
             </td>
@@ -690,6 +698,1062 @@
             <span class="material-symbols-outlined">send</span> Reply
           </button>
         </div>
+      </div>
+    </div>
+    </div>
+  </div> <!-- ── End of Hub Main View ── -->
+
+  <!-- ════════════════════════════════════════════════════════════
+       VIEW 2: DEDICATED FULL-PAGE COURSE MANAGEMENT CONSOLE
+       ════════════════════════════════════════════════════════════ -->
+  <div *ngIf="currentView === 'course_console'" class="course-console-view fade-in">
+    <!-- Breadcrumb Navigation Bar -->
+    <div class="console-breadcrumb-bar">
+      <button class="breadcrumb-back-btn" (click)="exitCourseConsole()">
+        <span class="material-symbols-outlined">arrow_back</span> All Courses
+      </button>
+      <span class="breadcrumb-separator">/</span>
+      <span class="breadcrumb-current">{{ activeDetailCourse?.title || 'Course Console' }}</span>
+    </div>
+
+    <!-- Course Executive Hero Header -->
+    <div class="course-hero-header">
+      <div class="hero-left">
+        <div class="hero-avatar" [class]="'track-' + (activeDetailCourse?.track || 'coding')">
+          <span class="material-symbols-outlined">{{ activeDetailCourse?.icon || 'school' }}</span>
+        </div>
+        <div class="hero-title-group">
+          <div class="hero-badges">
+            <span class="badge" [class]="'badge-' + (activeDetailCourse?.track || 'coding')">{{ (activeDetailCourse?.track || 'coding') | titlecase }}</span>
+            <span class="badge badge-subtle">{{ activeDetailCourse?.level || 'All Levels' }}</span>
+            <span class="badge" [class]="activeDetailCourse?.approvalStatus === 'approved' ? 'badge-success' : 'badge-warning'">
+              {{ activeDetailCourse?.approvalStatus === 'approved' ? 'Active & Published' : 'In Moderation' }}
+            </span>
+          </div>
+          <h2>{{ activeDetailCourse?.title }}</h2>
+          <p class="hero-description">{{ activeDetailCourse?.description || 'No description provided.' }}</p>
+        </div>
+      </div>
+
+      <div class="hero-right-actions">
+        <button class="btn btn-outline" (click)="toggleCourseInsights()" title="View comprehensive student analytics">
+          <span class="material-symbols-outlined">analytics</span> Course Insights
+        </button>
+        <a routerLink="/lms" class="btn btn-outline" style="text-decoration:none;display:flex;align-items:center;gap:6px;" title="Preview how students experience this course">
+          <span class="material-symbols-outlined">visibility</span> Preview Classroom
+        </a>
+        <button class="btn btn-outline" (click)="openCourseWizard(activeDetailCourse)">
+          <span class="material-symbols-outlined">edit</span> Edit Course
+        </button>
+        <button class="btn btn-primary" (click)="openModuleStudio()">
+          <span class="material-symbols-outlined">add</span> Add Module
+        </button>
+      </div>
+    </div>
+
+    <!-- Course Live KPI Grid -->
+    <div class="console-kpi-grid">
+      <div class="kpi-card">
+        <span class="material-symbols-outlined kpi-icon">view_module</span>
+        <div class="kpi-info">
+          <span class="kpi-num">{{ getModulesForCourse(activeDetailCourse?.id).length }}</span>
+          <span class="kpi-label">Curriculum Modules</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <span class="material-symbols-outlined kpi-icon">group</span>
+        <div class="kpi-info">
+          <span class="kpi-num">{{ activeDetailCourse?.enrolled_count || activeDetailCourse?.enrolled || 0 }}</span>
+          <span class="kpi-label">Enrolled Students</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <span class="material-symbols-outlined kpi-icon">trending_up</span>
+        <div class="kpi-info">
+          <span class="kpi-num">{{ activeDetailCourse?.average_progress || activeDetailCourse?.completion || 0 }}%</span>
+          <span class="kpi-label">Average Completion</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <span class="material-symbols-outlined kpi-icon">assignment</span>
+        <div class="kpi-info">
+          <span class="kpi-num">{{ getAssignmentsForCourse(activeDetailCourse?.id).length }}</span>
+          <span class="kpi-label">Active Assignments</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scoped Console Workspace Tabs -->
+    <div class="console-tabs-bar">
+      <button class="console-tab-btn" [class.active]="courseConsoleTab === 'modules'" (click)="courseConsoleTab = 'modules'">
+        <span class="material-symbols-outlined">view_module</span> Curriculum Modules ({{ getModulesForCourse(activeDetailCourse?.id).length }})
+      </button>
+      <button class="console-tab-btn" [class.active]="courseConsoleTab === 'materials'" (click)="courseConsoleTab = 'materials'">
+        <span class="material-symbols-outlined">folder_open</span> Learning Assets ({{ getMaterialsForCourse(activeDetailCourse?.id).length }})
+      </button>
+      <button class="console-tab-btn" [class.active]="courseConsoleTab === 'assignments'" (click)="courseConsoleTab = 'assignments'">
+        <span class="material-symbols-outlined">assignment</span> Assignments &amp; Grading ({{ getAssignmentsForCourse(activeDetailCourse?.id).length }})
+      </button>
+      <button class="console-tab-btn" [class.active]="courseConsoleTab === 'students'" (click)="courseConsoleTab = 'students'">
+        <span class="material-symbols-outlined">group</span> Student Roster
+      </button>
+    </div>
+
+    <!-- ── CONSOLE SUBTAB 1: MODULES SYLLABUS TREE ── -->
+    <div *ngIf="courseConsoleTab === 'modules'" class="console-tab-body">
+      <div class="console-section-header">
+        <div>
+          <h3>Syllabus Structure &amp; Lesson Sequence</h3>
+          <p class="text-subtle text-xs">Tap any module to enter its dedicated visual block canvas.</p>
+        </div>
+        <button class="btn btn-sm btn-primary" (click)="openModuleStudio()">
+          <span class="material-symbols-outlined">add</span> Add New Module
+        </button>
+      </div>
+
+      <div class="modules-sequence-grid" *ngIf="getModulesForCourse(activeDetailCourse?.id).length > 0">
+        <div *ngFor="let mod of getModulesForCourse(activeDetailCourse?.id)" class="module-sequence-card clickable-card" (click)="openModuleStudio(mod)">
+          <div class="module-order-badge">#{{ mod.order_num }}</div>
+          <div class="module-card-main">
+            <div class="module-header-row">
+              <h4>{{ mod.title }}</h4>
+              <span class="badge" [class.badge-success]="mod.status === 'published' || mod.status === 'active'" [class.badge-warning]="mod.status !== 'published' && mod.status !== 'active'">
+                {{ (mod.status === 'published' || mod.status === 'active') ? 'Published' : 'Draft' }}
+              </span>
+            </div>
+            <p class="module-desc">{{ getFormattedDescription(mod.description) || 'Continuous learning module with video, guide, micro-quizzes, and challenges.' }}</p>
+            <div class="module-footer-row">
+              <span class="module-units-count">
+                <span class="material-symbols-outlined">auto_stories</span>
+                {{ getMaterialsForModule(mod.id).length || 3 }} interactive units
+              </span>
+              <button class="btn btn-xs btn-primary-soft" (click)="openModuleStudio(mod); $event.stopPropagation()">
+                <span class="material-symbols-outlined">design_services</span> Open Canvas Studio
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-state" *ngIf="getModulesForCourse(activeDetailCourse?.id).length === 0">
+        <span class="material-symbols-outlined">view_module</span>
+        <h3>No Curriculum Modules Yet</h3>
+        <p>Start designing the syllabus by adding your first lesson module.</p>
+        <button class="btn btn-primary mt-3" (click)="openModuleStudio()">
+          <span class="material-symbols-outlined">add</span> Create First Module
+        </button>
+      </div>
+    </div>
+
+    <!-- ── CONSOLE SUBTAB 2: LEARNING ASSETS ── -->
+    <div *ngIf="courseConsoleTab === 'materials'" class="console-tab-body">
+      <div class="console-section-header">
+        <div>
+          <h3>Course Learning Assets &amp; Widgets</h3>
+          <p class="text-subtle text-xs">Video lectures, interactive reading guides, quizzes, and code challenges.</p>
+        </div>
+        <button class="btn btn-sm btn-primary" (click)="openMaterialModal()">
+          <span class="material-symbols-outlined">add</span> Add Learning Asset
+        </button>
+      </div>
+
+      <div class="table-responsive" *ngIf="getMaterialsForCourse(activeDetailCourse?.id).length > 0">
+        <table class="lms-table">
+          <thead>
+            <tr>
+              <th>Widget Type</th>
+              <th>Asset Title</th>
+              <th>Module Context</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let mat of getMaterialsForCourse(activeDetailCourse?.id)" class="clickable-row" (click)="openMaterialModal(mat)">
+              <td><span class="type-pill" [class]="'pill-' + mat.type">{{ mat.type | uppercase }}</span></td>
+              <td><strong>{{ mat.title }}</strong></td>
+              <td>{{ getModuleTitle(mat.module_id) }}</td>
+              <td>
+                <div class="table-actions" (click)="$event.stopPropagation()">
+                  <button class="btn btn-xs btn-subtle" (click)="openMaterialModal(mat)"><span class="material-symbols-outlined">edit</span></button>
+                  <button class="btn btn-xs btn-danger" (click)="deleteMaterial(mat.id)"><span class="material-symbols-outlined">delete</span></button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="empty-state" *ngIf="getMaterialsForCourse(activeDetailCourse?.id).length === 0">
+        <span class="material-symbols-outlined">folder_open</span>
+        <h3>No Learning Assets Found</h3>
+        <p>Add video embeds, quizzes, or code challenges to this course.</p>
+      </div>
+    </div>
+
+    <!-- ── CONSOLE SUBTAB 3: ASSIGNMENTS & GRADING ── -->
+    <div *ngIf="courseConsoleTab === 'assignments'" class="console-tab-body">
+      <div class="console-section-header">
+        <div>
+          <h3>Course Assessment Tasks</h3>
+          <p class="text-subtle text-xs">Grading rubrics and project deliverables.</p>
+        </div>
+        <button class="btn btn-sm btn-primary" (click)="openAssignmentModal()">
+          <span class="material-symbols-outlined">add</span> Create Assignment
+        </button>
+      </div>
+
+      <div class="table-responsive" *ngIf="getAssignmentsForCourse(activeDetailCourse?.id).length > 0">
+        <table class="lms-table">
+          <thead>
+            <tr>
+              <th>Assignment Title</th>
+              <th>Due Date</th>
+              <th>Max Score</th>
+              <th>Submissions</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let asgn of getAssignmentsForCourse(activeDetailCourse?.id)" class="clickable-row" (click)="openAssignmentModal(asgn)">
+              <td><strong>{{ asgn.title }}</strong></td>
+              <td>{{ asgn.due_date || asgn.dueDate || 'Open-ended' }}</td>
+              <td>{{ asgn.max_score || asgn.maxScore || 100 }} pts</td>
+              <td><span class="badge badge-info">{{ asgn.submissions_count || 0 }} Submitted</span></td>
+              <td>
+                <div class="table-actions" (click)="$event.stopPropagation()">
+                  <button class="btn btn-xs btn-subtle" (click)="openAssignmentModal(asgn)"><span class="material-symbols-outlined">edit</span></button>
+                  <button class="btn btn-xs btn-danger" (click)="deleteAssignment(asgn.id)"><span class="material-symbols-outlined">delete</span></button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="empty-state" *ngIf="getAssignmentsForCourse(activeDetailCourse?.id).length === 0">
+        <span class="material-symbols-outlined">assignment</span>
+        <h3>No Assignments Configured</h3>
+        <p>Create a project or checkpoint task for students to submit work.</p>
+      </div>
+    </div>
+
+    <!-- ── CONSOLE SUBTAB 4: STUDENT ROSTER ── -->
+    <div *ngIf="courseConsoleTab === 'students'" class="console-tab-body">
+      <div class="console-section-header">
+        <div>
+          <h3>Enrolled Student Roster</h3>
+          <p class="text-subtle text-xs">Real-time learning velocity and completion benchmarks.</p>
+        </div>
+        <button class="btn btn-sm btn-outline" (click)="exportGradebookCsv()">
+          <span class="material-symbols-outlined">download</span> Export Gradebook CSV
+        </button>
+      </div>
+
+      <div class="table-responsive" *ngIf="getStudentsForCourse(activeDetailCourse?.id).length > 0">
+        <table class="lms-table">
+          <thead>
+            <tr>
+              <th>Student Name</th>
+              <th>Email</th>
+              <th>Progress</th>
+              <th>Joined Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let student of getStudentsForCourse(activeDetailCourse?.id)" class="clickable-row">
+              <td><strong>{{ student.studentName }}</strong></td>
+              <td class="text-subtle">{{ student.studentEmail }}</td>
+              <td>
+                <div class="progress-cell">
+                  <div class="progress-bar-wrap">
+                    <div class="progress-bar-fill" [style.width.%]="student.progressPct || 0"></div>
+                  </div>
+                  <span>{{ student.progressPct || 0 }}%</span>
+                </div>
+              </td>
+              <td>{{ student.enrolledAt || '2026-09-01' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="empty-state" *ngIf="getStudentsForCourse(activeDetailCourse?.id).length === 0">
+        <span class="material-symbols-outlined">group</span>
+        <h3>No Enrolled Students Yet</h3>
+        <p>Students will appear here once they enroll in this course track.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       VIEW 3: DEDICATED MODULE VISUAL BLOCK CANVAS STUDIO
+       ════════════════════════════════════════════════════════════ -->
+  <div *ngIf="currentView === 'module_studio'" class="module-studio-view fade-in">
+    <!-- Studio Header & Actions -->
+    <header class="lms-header studio-hero-header">
+      <div class="header-content">
+        <div class="header-title">
+          <span class="material-symbols-outlined header-icon">design_services</span>
+          <div>
+            <div class="studio-breadcrumb-row">
+              <button class="breadcrumb-back-btn" (click)="exitModuleStudio()" title="Back to Course Console">
+                <span class="material-symbols-outlined">arrow_back</span>
+                <span>Back to Course</span>
+              </button>
+              <span class="breadcrumb-separator">/</span>
+              <span class="breadcrumb-course-chip">
+                <span class="material-symbols-outlined">{{ activeDetailCourse?.icon || 'school' }}</span>
+                {{ activeDetailCourse?.title || 'Course' }}
+              </span>
+              <span class="breadcrumb-separator">/</span>
+              <span class="breadcrumb-current">Module Studio</span>
+            </div>
+            <h1>{{ activeDetailModule ? 'Edit Curriculum Module' : 'Author New Lesson Module' }}</h1>
+            <p>Assemble rich guides, video lectures, interactive checkpoint quizzes, coding sandboxes, and learning assets.</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-outline" (click)="isCanvasPreviewMode = !isCanvasPreviewMode">
+            <span class="material-symbols-outlined">{{ isCanvasPreviewMode ? 'edit_note' : 'visibility' }}</span>
+            {{ isCanvasPreviewMode ? 'Switch to Edit Canvas' : 'Live Learner Preview' }}
+          </button>
+          <button class="btn btn-primary" (click)="saveModuleStudio()" [disabled]="isSaving || !moduleForm.title.trim()">
+            <span class="material-symbols-outlined">save</span> {{ isSaving ? 'Saving...' : 'Save & Publish Module' }}
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Module Settings Header Banner -->
+    <div class="module-config-strip">
+      <div class="config-header-badge">
+        <div class="config-icon-box">
+          <span class="material-symbols-outlined">view_module</span>
+        </div>
+        <div class="config-badge-text">
+          <span class="badge-label">Module Setup</span>
+          <span class="badge-count-pill">{{ moduleBlocks.length }} Blocks</span>
+        </div>
+      </div>
+      <div class="config-field flex-grow">
+        <label>Module Title <strong class="req">*</strong></label>
+        <input type="text" [(ngModel)]="moduleForm.title" placeholder="e.g. Algorithmic State Machines &amp; Sensor Telemetry" class="studio-inline-input title-input" />
+      </div>
+      <div class="config-field order-field">
+        <label>Sequence Order</label>
+        <input type="number" min="1" [(ngModel)]="moduleForm.order" class="studio-inline-input" />
+      </div>
+    </div>
+
+    <!-- Split Studio Layout: Left Palette + Center Visual Stream -->
+    <div class="studio-workspace-grid">
+      <!-- ── Left Widget Palette ── -->
+      <aside class="studio-palette-sidebar">
+        <h4>Insert Learning Block</h4>
+        <p class="palette-desc">Click any block to insert it into the module sequence.</p>
+
+        <div class="palette-buttons-list">
+          <button class="palette-btn" (click)="addBlock('text')">
+            <span class="material-symbols-outlined icon-guide">notes</span>
+            <div class="palette-btn-text">
+              <strong>Rich Lesson Guide</strong>
+              <span>Theory, principles, and formatted concepts</span>
+            </div>
+          </button>
+
+          <button class="palette-btn" (click)="addBlock('video')">
+            <span class="material-symbols-outlined icon-video">smart_display</span>
+            <div class="palette-btn-text">
+              <strong>Video Stream / MP4</strong>
+              <span>YouTube URL or upload local video file</span>
+            </div>
+          </button>
+
+          <button class="palette-btn" (click)="addBlock('quiz')">
+            <span class="material-symbols-outlined icon-quiz">help_outline</span>
+            <div class="palette-btn-text">
+              <strong>Checkpoint Question</strong>
+              <span>Micro-quiz with immediate feedback</span>
+            </div>
+          </button>
+
+          <button class="palette-btn" (click)="addBlock('code')">
+            <span class="material-symbols-outlined icon-code">terminal</span>
+            <div class="palette-btn-text">
+              <strong>Code Sandbox</strong>
+              <span>Interactive coding challenge &amp; starter</span>
+            </div>
+          </button>
+
+          <button class="palette-btn" (click)="addBlock('image')">
+            <span class="material-symbols-outlined icon-image">image</span>
+            <div class="palette-btn-text">
+              <strong>Diagram &amp; Image</strong>
+              <span>Upload schematics, diagrams, and figures</span>
+            </div>
+          </button>
+
+          <button class="palette-btn" (click)="addBlock('file')">
+            <span class="material-symbols-outlined icon-file">attach_file</span>
+            <div class="palette-btn-text">
+              <strong>Document &amp; PDF</strong>
+              <span>Upload project specs and handouts</span>
+            </div>
+          </button>
+
+          <button class="palette-btn" (click)="addBlock('break')">
+            <span class="material-symbols-outlined icon-break">splitscreen</span>
+            <div class="palette-btn-text">
+              <strong>Section Break Gate</strong>
+              <span>Reading checkpoint before continuing</span>
+            </div>
+          </button>
+        </div>
+      </aside>
+
+      <!-- ── Center Visual Stream Canvas ── -->
+      <main class="studio-canvas-stream">
+        <div class="canvas-blocks-container" *ngIf="!isCanvasPreviewMode">
+          <div *ngFor="let blk of moduleBlocks; let idx = index; trackBy: trackByIndex" class="canvas-block-card" [class.selected]="selectedBlockId === blk.id" (click)="selectedBlockId = blk.id">
+            <!-- Block Header Bar -->
+            <div class="block-card-header">
+              <div class="block-identity">
+                <!-- Dedicated Quick Reorder Controls (Push Up / Down) -->
+                <div class="reorder-controls-pill">
+                  <button type="button" class="reorder-arrow-btn" (click)="moveBlockUp(idx); $event.stopPropagation()" [disabled]="idx === 0" title="Push Block Up">
+                    <span class="material-symbols-outlined">keyboard_arrow_up</span>
+                  </button>
+                  <span class="block-order-chip">#{{ idx + 1 }}</span>
+                  <button type="button" class="reorder-arrow-btn" (click)="moveBlockDown(idx); $event.stopPropagation()" [disabled]="idx === moduleBlocks.length - 1" title="Push Block Down">
+                    <span class="material-symbols-outlined">keyboard_arrow_down</span>
+                  </button>
+                </div>
+
+                <span class="type-pill" [class]="'pill-' + blk.type">{{ blk.type | uppercase }}</span>
+                <span class="block-card-title-preview text-xs text-subtle" *ngIf="blk.title && editingBlockId !== blk.id">{{ blk.title }}</span>
+              </div>
+
+              <div class="block-actions">
+                <!-- Pencil / Live Preview Toggle -->
+                <button class="btn btn-icon-xs" [class.active-edit]="editingBlockId === blk.id" (click)="setEditingBlock(editingBlockId === blk.id ? null : blk.id); $event.stopPropagation()" [title]="editingBlockId === blk.id ? 'Save & Preview' : 'Edit Block'">
+                  <span class="material-symbols-outlined">{{ editingBlockId === blk.id ? 'done' : 'edit' }}</span>
+                </button>
+                <button class="btn btn-icon-xs" (click)="moveBlockUp(idx); $event.stopPropagation()" [disabled]="idx === 0" title="Push Up in Sequence">
+                  <span class="material-symbols-outlined">arrow_upward</span>
+                </button>
+                <button class="btn btn-icon-xs" (click)="moveBlockDown(idx); $event.stopPropagation()" [disabled]="idx === moduleBlocks.length - 1" title="Push Down in Sequence">
+                  <span class="material-symbols-outlined">arrow_downward</span>
+                </button>
+                <button class="btn btn-icon-xs danger" (click)="removeBlock(idx); $event.stopPropagation()" title="Delete Block">
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Block Body by Type -->
+            <div class="block-card-body">
+              <!-- 1. Rich Guide Block -->
+              <div *ngIf="blk.type === 'text'" class="block-fields">
+                <!-- EDIT MODE -->
+                <div *ngIf="editingBlockId === blk.id" class="guide-edit-mode">
+                  <div class="form-group mb-2">
+                    <label class="text-xs">Section Heading</label>
+                    <input type="text" [(ngModel)]="blk.title" placeholder="e.g. Core Architectural Principles" class="studio-input-sm font-semibold" />
+                  </div>
+
+                  <!-- Rich Formatting Toolbar -->
+                  <div class="rich-toolbar">
+                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'bold')" title="Bold"><span class="material-symbols-outlined">format_bold</span></button>
+                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'italic')" title="Italic"><span class="material-symbols-outlined">format_italic</span></button>
+                    <div class="toolbar-divider"></div>
+                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'h2')" title="Heading 2"><span class="material-symbols-outlined">title</span></button>
+                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'h3')" title="Heading 3"><span class="material-symbols-outlined">format_size</span></button>
+                    <div class="toolbar-divider"></div>
+                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'list')" title="Bullet List"><span class="material-symbols-outlined">format_list_bulleted</span></button>
+                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'numlist')" title="Numbered List"><span class="material-symbols-outlined">format_list_numbered</span></button>
+                    <div class="toolbar-divider"></div>
+                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'code')" title="Code Snippet"><span class="material-symbols-outlined">code</span></button>
+                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'quote')" title="Blockquote"><span class="material-symbols-outlined">format_quote</span></button>
+                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'callout')" title="Tip Callout"><span class="material-symbols-outlined">lightbulb</span></button>
+                  </div>
+
+                  <div class="form-group">
+                    <textarea [(ngModel)]="blk.content" rows="6" placeholder="Write lesson markdown content or use the formatting bar above..." class="studio-textarea-sm font-mono"></textarea>
+                  </div>
+
+                  <div class="edit-footer-row mt-2">
+                    <button class="btn btn-xs btn-primary" (click)="setEditingBlock(null)">
+                      <span class="material-symbols-outlined">done</span> Done Editing
+                    </button>
+                  </div>
+                </div>
+
+                <!-- LIVE PREVIEW MODE -->
+                <div *ngIf="editingBlockId !== blk.id" class="guide-live-preview-box" (click)="setEditingBlock(blk.id)">
+                  <h4 class="preview-section-title">{{ blk.title || 'Lesson Overview' }}</h4>
+                  <div class="preview-rendered-body" *ngIf="blk.content">{{ blk.content }}</div>
+                  <div class="preview-empty-hint" *ngIf="!blk.content">
+                    <span class="material-symbols-outlined">edit_note</span> Click to add lesson content...
+                  </div>
+                  <div class="edit-hover-pill">
+                    <span class="material-symbols-outlined">edit</span> Click to edit
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. Video Stream / File Upload Block -->
+              <div *ngIf="blk.type === 'video'" class="block-fields">
+                <div class="video-source-selector mb-2">
+                  <label class="radio-label">
+                    <input type="radio" [name]="'vsrc_' + blk.id" [(ngModel)]="blk.videoSource" value="url" /> YouTube / Video URL
+                  </label>
+                  <label class="radio-label">
+                    <input type="radio" [name]="'vsrc_' + blk.id" [(ngModel)]="blk.videoSource" value="upload" /> Upload Video File (.mp4, .webm)
+                  </label>
+                </div>
+
+                <div class="form-group mb-2" *ngIf="blk.videoSource !== 'upload'">
+                  <label class="text-xs">YouTube / Video Embed URL</label>
+                  <input type="text" [(ngModel)]="blk.url" placeholder="https://www.youtube.com/watch?v=..." class="studio-input-sm" />
+                </div>
+
+                <div class="form-group mb-2" *ngIf="blk.videoSource === 'upload'">
+                  <label class="text-xs">Upload Video File</label>
+                  <div class="file-upload-dropzone">
+                    <input type="file" accept="video/mp4,video/webm" (change)="onBlockFileUpload($event, blk)" class="file-input-hidden" [id]="'file_' + blk.id" />
+                    <label [for]="'file_' + blk.id" class="dropzone-label">
+                      <span class="material-symbols-outlined">{{ isUploadingBlockFile[blk.id] ? 'cloud_sync' : 'video_file' }}</span>
+                      <span>{{ isUploadingBlockFile[blk.id] ? 'Uploading video file...' : (blk.fileName || 'Choose MP4 / WebM Video File') }}</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="grid-2-col mb-2">
+                  <div class="form-group">
+                    <label class="text-xs">Estimated Duration (Minutes)</label>
+                    <input type="number" min="1" [(ngModel)]="blk.videoDuration" class="studio-input-sm" />
+                  </div>
+                  <div class="form-group">
+                    <label class="text-xs">Key Takeaway Summary</label>
+                    <input type="text" [(ngModel)]="blk.videoTakeaway" placeholder="Core takeaway from this video" class="studio-input-sm" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Image / Diagram Attachment Block -->
+              <div *ngIf="blk.type === 'image'" class="block-fields">
+                <div class="form-group mb-2">
+                  <label class="text-xs">Diagram Title</label>
+                  <input type="text" [(ngModel)]="blk.title" placeholder="e.g. System Circuit Diagram &amp; Flow" class="studio-input-sm" />
+                </div>
+
+                <div class="file-upload-dropzone mb-2">
+                  <input type="file" accept="image/*" (change)="onBlockFileUpload($event, blk)" class="file-input-hidden" [id]="'img_' + blk.id" />
+                  <label [for]="'img_' + blk.id" class="dropzone-label">
+                    <span class="material-symbols-outlined">{{ isUploadingBlockFile[blk.id] ? 'cloud_sync' : 'add_photo_alternate' }}</span>
+                    <span>{{ isUploadingBlockFile[blk.id] ? 'Uploading image...' : (blk.fileName || 'Upload Schematic / Diagram Image') }}</span>
+                  </label>
+                </div>
+
+                <div *ngIf="blk.url" class="image-preview-card mb-2">
+                  <img [src]="blk.url" alt="Diagram preview" class="diagram-preview-img" />
+                </div>
+
+                <div class="form-group">
+                  <label class="text-xs">Figure Caption &amp; Explanation</label>
+                  <input type="text" [(ngModel)]="blk.content" placeholder="Describe the figure and key annotations..." class="studio-input-sm" />
+                </div>
+              </div>
+
+              <!-- 4. Document / PDF Attachment Block -->
+              <div *ngIf="blk.type === 'file'" class="block-fields">
+                <div class="form-group mb-2">
+                  <label class="text-xs">Document Title</label>
+                  <input type="text" [(ngModel)]="blk.title" placeholder="e.g. Competition Datasheet &amp; Rules PDF" class="studio-input-sm" />
+                </div>
+
+                <div class="file-upload-dropzone mb-2">
+                  <input type="file" accept=".pdf,.doc,.docx,.zip,.txt" (change)="onBlockFileUpload($event, blk)" class="file-input-hidden" [id]="'doc_' + blk.id" />
+                  <label [for]="'doc_' + blk.id" class="dropzone-label">
+                    <span class="material-symbols-outlined">{{ isUploadingBlockFile[blk.id] ? 'cloud_sync' : 'upload_file' }}</span>
+                    <span>{{ isUploadingBlockFile[blk.id] ? 'Uploading document...' : (blk.fileName || 'Upload PDF / Project Document') }}</span>
+                  </label>
+                </div>
+
+                <div *ngIf="blk.url" class="file-attached-pill mb-2">
+                  <span class="material-symbols-outlined">picture_as_pdf</span>
+                  <span>{{ blk.fileName || 'Document Attached' }} ({{ blk.fileSize || 'PDF' }})</span>
+                </div>
+
+                <div class="form-group">
+                  <label class="text-xs">Reading Instructions</label>
+                  <input type="text" [(ngModel)]="blk.content" placeholder="Instructions for students regarding this document..." class="studio-input-sm" />
+                </div>
+              </div>
+
+              <!-- 5. Checkpoint Micro-Quiz Block -->
+              <div *ngIf="blk.type === 'quiz'" class="block-fields">
+                <div class="form-group mb-2">
+                  <label class="text-xs">Question Prompt</label>
+                  <input type="text" [(ngModel)]="blk.quizQuestion" placeholder="e.g. Which register stores the program counter?" class="studio-input-sm" />
+                </div>
+                <div class="quiz-options-builder" *ngIf="blk.quizOptions">
+                  <div class="quiz-opt-row" *ngFor="let opt of blk.quizOptions; let oIdx = index; trackBy: trackByIndex">
+                    <input type="radio" [name]="'quiz_corr_' + blk.id" [checked]="blk.quizCorrectIndex === oIdx" (change)="blk.quizCorrectIndex = oIdx" />
+                    <input type="text" [(ngModel)]="blk.quizOptions[oIdx]" class="studio-input-sm" (click)="$event.stopPropagation()" />
+                  </div>
+                </div>
+                <div class="form-group mt-2">
+                  <label class="text-xs">Pedagogical Explanation (Shown after answering)</label>
+                  <input type="text" [(ngModel)]="blk.quizExplanation" placeholder="Explain why the correct answer is right..." class="studio-input-sm" />
+                </div>
+              </div>
+
+              <!-- 6. Code Sandbox Block -->
+              <div *ngIf="blk.type === 'code'" class="block-fields">
+                <div class="grid-2-col mb-2">
+                  <div class="form-group">
+                    <label class="text-xs">Target Language</label>
+                    <select [(ngModel)]="blk.codeLanguage" class="studio-input-sm">
+                      <option value="python">Python 3</option>
+                      <option value="cpp">C++ 20</option>
+                      <option value="arduino">Arduino C++</option>
+                      <option value="javascript">JavaScript / TypeScript</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="text-xs">Challenge Title</label>
+                    <input type="text" [(ngModel)]="blk.title" placeholder="e.g. Implement Binary Search" class="studio-input-sm" />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="text-xs">Starter Code Template</label>
+                  <textarea [(ngModel)]="blk.codeStarter" rows="4" class="code-textarea"></textarea>
+                </div>
+              </div>
+
+              <!-- 7. Section Break Gate -->
+              <div *ngIf="blk.type === 'break'" class="block-fields break-block-box">
+                <span class="material-symbols-outlined">splitscreen</span>
+                <div>
+                  <strong>Section Checkpoint Gate</strong>
+                  <div class="text-xs text-subtle">Students must complete the preceding reading or quiz before the next section unlocks.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="add-block-bottom-prompt" (click)="addBlock('text')">
+            <span class="material-symbols-outlined">add_circle</span>
+            <span>Click to append another learning block to this module</span>
+          </div>
+        </div>
+
+        <!-- Live Learner Preview -->
+        <div class="canvas-preview-pane fade-in" *ngIf="isCanvasPreviewMode">
+          <!-- Simulation Top Bar -->
+          <div class="sim-classroom-header">
+            <div class="sim-header-info">
+              <div class="sim-live-badge">
+                <span class="sim-pulse-dot"></span> LIVE LEARNER SIMULATION
+              </div>
+              <h3>{{ moduleForm.title || 'Untitled Module' }}</h3>
+              <p class="sim-module-meta">
+                <span>{{ moduleBlocks.length }} Interactive Units</span> &bull;
+                <span>Estimated Completion: {{ (moduleBlocks.length * 5) }} mins</span>
+              </p>
+            </div>
+
+            <div class="sim-progress-card">
+              <div class="sim-progress-top">
+                <span class="text-xs font-bold">Simulated Mastery</span>
+                <span class="sim-pct-text">{{ simProgressPct }}%</span>
+              </div>
+              <div class="sim-progress-bar-wrap">
+                <div class="sim-progress-bar-fill" [style.width.%]="simProgressPct"></div>
+              </div>
+              <span class="sim-progress-sub">{{ simulationCompletedBlocks.size }} of {{ moduleBlocks.length }} units completed</span>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div class="empty-state" *ngIf="moduleBlocks.length === 0" style="padding: 40px; text-align: center;">
+            <span class="material-symbols-outlined" style="font-size: 40px; color: var(--outline);">auto_stories</span>
+            <h4>No blocks added yet</h4>
+            <p class="text-subtle">Exit preview and insert blocks from the palette to simulate this module.</p>
+          </div>
+
+          <!-- Continuous Flow of Real Interactive Units -->
+          <div class="sim-units-stream" *ngIf="moduleBlocks.length > 0">
+            <div *ngFor="let blk of moduleBlocks; let bIdx = index" class="sim-unit-card" [class.completed]="isSimCompleted(blk.id)">
+              
+              <!-- Unit Header Tag -->
+              <div class="sim-unit-tag-bar">
+                <div class="sim-tag-left">
+                  <span class="sim-index-chip">Unit {{ bIdx + 1 }}</span>
+                  <span class="type-pill" [class]="'pill-' + blk.type">{{ blk.type | uppercase }}</span>
+                </div>
+                <div class="sim-status-indicator" [class.done]="isSimCompleted(blk.id)">
+                  <span class="material-symbols-outlined">{{ isSimCompleted(blk.id) ? 'check_circle' : 'radio_button_unchecked' }}</span>
+                  <span>{{ isSimCompleted(blk.id) ? 'Completed' : 'Pending' }}</span>
+                </div>
+              </div>
+
+              <!-- 1. VIDEO UNIT -->
+              <div *ngIf="blk.type === 'video'" class="sim-unit-content sim-video-unit">
+                <h4 class="sim-unit-title">{{ blk.title || 'Video Lecture' }}</h4>
+                <div class="sim-video-player-frame mb-3">
+                  <!-- Embed Iframe for URLs -->
+                  <iframe *ngIf="blk.videoSource !== 'upload' && blk.url" [src]="getSafeEmbedUrl(blk.url)" title="Video player" allowfullscreen class="sim-video-iframe"></iframe>
+                  
+                  <!-- Real HTML5 Video Tag for Local Uploaded Videos -->
+                  <video *ngIf="blk.videoSource === 'upload' && blk.url" [src]="blk.url" controls class="sim-video-native-player"></video>
+                  
+                  <div *ngIf="!blk.url" class="sim-video-placeholder">
+                    <span class="material-symbols-outlined">play_circle</span>
+                    <span>No video URL or file specified. Add a video in edit mode to play.</span>
+                  </div>
+                </div>
+
+                <div class="sim-video-meta-row" *ngIf="blk.videoDuration || blk.videoTakeaway">
+                  <span class="sim-duration-pill" *ngIf="blk.videoDuration">
+                    <span class="material-symbols-outlined">schedule</span> {{ blk.videoDuration }} mins
+                  </span>
+                  <div class="sim-takeaway-card" *ngIf="blk.videoTakeaway">
+                    <span class="material-symbols-outlined">lightbulb</span>
+                    <div>
+                      <strong>Core Takeaway:</strong> {{ blk.videoTakeaway }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="sim-action-footer">
+                  <button class="btn btn-sm btn-outline" [class.btn-primary]="isSimCompleted(blk.id)" (click)="toggleSimComplete(blk.id)">
+                    <span class="material-symbols-outlined">{{ isSimCompleted(blk.id) ? 'done_all' : 'check' }}</span>
+                    <span>{{ isSimCompleted(blk.id) ? 'Video Watched & Marked Complete' : 'Mark Video Completed' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 2. RICH LESSON GUIDE UNIT -->
+              <div *ngIf="blk.type === 'text'" class="sim-unit-content sim-guide-unit">
+                <h3 class="sim-guide-heading">{{ blk.title || 'Lesson Overview & Theory' }}</h3>
+                <div class="sim-guide-body markdown-rendered-style" *ngIf="blk.content">
+                  {{ blk.content }}
+                </div>
+                <div class="sim-guide-empty" *ngIf="!blk.content">
+                  <p>No lesson content written for this block yet.</p>
+                </div>
+
+                <div class="sim-action-footer">
+                  <button class="btn btn-sm btn-primary" [class.btn-outline]="isSimCompleted(blk.id)" (click)="toggleSimComplete(blk.id)">
+                    <span class="material-symbols-outlined">{{ isSimCompleted(blk.id) ? 'done_all' : 'check_circle' }}</span>
+                    <span>{{ isSimCompleted(blk.id) ? 'Reading Section Completed' : 'I Have Finished Reading' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 3. DIAGRAM & IMAGE UNIT -->
+              <div *ngIf="blk.type === 'image'" class="sim-unit-content sim-image-unit">
+                <h4 class="sim-unit-title">{{ blk.title || 'System Diagram & Figure' }}</h4>
+                <div class="sim-image-stage mb-2" *ngIf="blk.url">
+                  <img [src]="blk.url" alt="Diagram" class="sim-diagram-img" />
+                </div>
+                <div class="sim-image-placeholder mb-2" *ngIf="!blk.url">
+                  <span class="material-symbols-outlined">image</span>
+                  <span>No image uploaded. Attach an image in edit mode.</span>
+                </div>
+                <p class="sim-caption-text" *ngIf="blk.content">{{ blk.content }}</p>
+
+                <div class="sim-action-footer">
+                  <button class="btn btn-sm btn-outline" [class.btn-primary]="isSimCompleted(blk.id)" (click)="toggleSimComplete(blk.id)">
+                    <span class="material-symbols-outlined">{{ isSimCompleted(blk.id) ? 'done_all' : 'visibility' }}</span>
+                    <span>{{ isSimCompleted(blk.id) ? 'Diagram Reviewed' : 'Mark Diagram Reviewed' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 4. DOCUMENT & PDF ATTACHMENT UNIT -->
+              <div *ngIf="blk.type === 'file'" class="sim-unit-content sim-file-unit">
+                <h4 class="sim-unit-title">{{ blk.title || 'Reference Document & PDF' }}</h4>
+                <div class="sim-file-download-box mb-3">
+                  <div class="sim-file-info-col">
+                    <span class="material-symbols-outlined file-pdf-icon">picture_as_pdf</span>
+                    <div>
+                      <strong>{{ blk.fileName || 'Curriculum_Resource.pdf' }}</strong>
+                      <span class="text-xs text-subtle d-block">{{ blk.fileSize || 'PDF Document' }}</span>
+                    </div>
+                  </div>
+                  <a *ngIf="blk.url" [href]="blk.url" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
+                    <span class="material-symbols-outlined">download</span> Download PDF
+                  </a>
+                </div>
+                <p class="sim-caption-text" *ngIf="blk.content">{{ blk.content }}</p>
+
+                <div class="sim-action-footer">
+                  <button class="btn btn-sm btn-outline" [class.btn-primary]="isSimCompleted(blk.id)" (click)="toggleSimComplete(blk.id)">
+                    <span class="material-symbols-outlined">{{ isSimCompleted(blk.id) ? 'done_all' : 'download_done' }}</span>
+                    <span>{{ isSimCompleted(blk.id) ? 'Document Downloaded' : 'Mark Document Read' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 5. INTERACTIVE MICRO-QUIZ KNOWLEDGE CHECK -->
+              <div *ngIf="blk.type === 'quiz'" class="sim-unit-content sim-quiz-unit">
+                <div class="sim-quiz-badge">Knowledge Check</div>
+                <h4 class="sim-quiz-question">{{ blk.quizQuestion || 'Sample Question Prompt' }}</h4>
+
+                <div class="sim-quiz-choices-grid" *ngIf="blk.quizOptions">
+                  <button *ngFor="let opt of blk.quizOptions; let oIdx = index; trackBy: trackByIndex"
+                          type="button"
+                          class="sim-choice-btn"
+                          [class.selected]="simulationAnswers[blk.id] === oIdx"
+                          [class.correct]="simulationSubmitted[blk.id] && oIdx === (blk.quizCorrectIndex ?? 0)"
+                          [class.wrong]="simulationSubmitted[blk.id] && simulationAnswers[blk.id] === oIdx && oIdx !== (blk.quizCorrectIndex ?? 0)"
+                          (click)="selectSimOption(blk.id, oIdx)">
+                    <span class="choice-letter">{{ ['A','B','C','D'][oIdx] }}</span>
+                    <span class="choice-text">{{ opt }}</span>
+                    <span class="material-symbols-outlined choice-status-icon" *ngIf="simulationSubmitted[blk.id] && oIdx === (blk.quizCorrectIndex ?? 0)">check_circle</span>
+                    <span class="material-symbols-outlined choice-status-icon" *ngIf="simulationSubmitted[blk.id] && simulationAnswers[blk.id] === oIdx && oIdx !== (blk.quizCorrectIndex ?? 0)">cancel</span>
+                  </button>
+                </div>
+
+                <!-- Quiz Feedback Box -->
+                <div *ngIf="simulationSubmitted[blk.id]" class="sim-quiz-feedback-box" [class.success]="simulationAnswers[blk.id] === (blk.quizCorrectIndex ?? 0)" [class.failure]="simulationAnswers[blk.id] !== (blk.quizCorrectIndex ?? 0)">
+                  <div class="feedback-icon-title">
+                    <span class="material-symbols-outlined">{{ simulationAnswers[blk.id] === (blk.quizCorrectIndex ?? 0) ? 'verified' : 'error' }}</span>
+                    <strong>{{ simulationAnswers[blk.id] === (blk.quizCorrectIndex ?? 0) ? 'Correct! Excellent comprehension.' : 'Not quite right.' }}</strong>
+                  </div>
+                  <p class="feedback-explanation" *ngIf="blk.quizExplanation">{{ blk.quizExplanation }}</p>
+                </div>
+
+                <div class="sim-action-footer">
+                  <button *ngIf="!simulationSubmitted[blk.id]" class="btn btn-sm btn-primary" (click)="submitSimQuiz(blk)" [disabled]="simulationAnswers[blk.id] === undefined">
+                    <span class="material-symbols-outlined">send</span> Submit Answer
+                  </button>
+                  <button *ngIf="simulationSubmitted[blk.id]" class="btn btn-sm btn-outline" (click)="resetSimQuiz(blk.id)">
+                    <span class="material-symbols-outlined">replay</span> Try Again
+                  </button>
+                </div>
+              </div>
+
+              <!-- 6. CODE SANDBOX CHALLENGE -->
+              <div *ngIf="blk.type === 'code'" class="sim-unit-content sim-code-unit">
+                <div class="sim-code-top-row">
+                  <h4 class="sim-unit-title">{{ blk.title || 'Hands-On Code Challenge' }}</h4>
+                  <span class="sim-lang-badge">{{ (blk.codeLanguage || 'python') | uppercase }}</span>
+                </div>
+                <p class="sim-code-instructions" *ngIf="blk.codeInstructions">{{ blk.codeInstructions }}</p>
+
+                <!-- macOS / IDE Window Shell -->
+                <div class="sim-code-ide-window mb-3">
+                  <div class="ide-title-bar">
+                    <div class="window-dots">
+                      <span class="dot red"></span>
+                      <span class="dot yellow"></span>
+                      <span class="dot green"></span>
+                    </div>
+                    <span class="ide-file-title">main.{{ blk.codeLanguage === 'python' ? 'py' : blk.codeLanguage === 'cpp' ? 'cpp' : 'js' }}</span>
+                    <button class="ide-copy-btn" (click)="copySimCode(blk.id, blk.codeStarter)">
+                      <span class="material-symbols-outlined">{{ simulationCopiedCode[blk.id] ? 'done' : 'content_copy' }}</span>
+                      <span>{{ simulationCopiedCode[blk.id] ? 'Copied!' : 'Copy Code' }}</span>
+                    </button>
+                  </div>
+                  <pre class="ide-code-viewport"><code>{{ blk.codeStarter || '# Write solution here\n' }}</code></pre>
+                </div>
+
+                <div class="sim-action-footer">
+                  <button class="btn btn-sm btn-primary" [class.btn-outline]="isSimCompleted(blk.id)" (click)="toggleSimComplete(blk.id)">
+                    <span class="material-symbols-outlined">{{ isSimCompleted(blk.id) ? 'done_all' : 'code' }}</span>
+                    <span>{{ isSimCompleted(blk.id) ? 'Challenge Solved & Completed' : 'I Have Completed This Code' }}</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 7. SECTION BREAK GATE -->
+              <div *ngIf="blk.type === 'break'" class="sim-unit-content sim-break-unit">
+                <div class="sim-break-milestone-card">
+                  <div class="sim-milestone-icon-wrap">
+                    <span class="material-symbols-outlined">flag_circle</span>
+                  </div>
+                  <div class="sim-milestone-text">
+                    <strong>{{ blk.breakLabel || 'Milestone Checkpoint' }}</strong>
+                    <span>You have reached the section checkpoint. All preceding interactive units have been mastered.</span>
+                  </div>
+                  <span class="sim-milestone-status-chip">
+                    <span class="material-symbols-outlined">lock_open</span> UNLOCKED
+                  </span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       VIEW 4: PROGRESSIVE 1-AT-A-TIME COURSE WIZARD
+       ════════════════════════════════════════════════════════════ -->
+  <div *ngIf="currentView === 'course_wizard'" class="course-wizard-view fade-in">
+    <div class="wizard-card-centered">
+      <!-- Wizard Step Progress Header -->
+      <div class="wizard-stepper">
+        <div class="wizard-step-indicator" [class.active]="courseWizardStep >= 1" [class.current]="courseWizardStep === 1">1</div>
+        <div class="wizard-connector" [class.active]="courseWizardStep >= 2"></div>
+        <div class="wizard-step-indicator" [class.active]="courseWizardStep >= 2" [class.current]="courseWizardStep === 2">2</div>
+        <div class="wizard-connector" [class.active]="courseWizardStep >= 3"></div>
+        <div class="wizard-step-indicator" [class.active]="courseWizardStep >= 3" [class.current]="courseWizardStep === 3">3</div>
+        <div class="wizard-connector" [class.active]="courseWizardStep >= 4"></div>
+        <div class="wizard-step-indicator" [class.active]="courseWizardStep >= 4" [class.current]="courseWizardStep === 4">4</div>
+      </div>
+
+      <div class="wizard-content-box">
+        <!-- ── STEP 1: TITLE ── -->
+        <div *ngIf="courseWizardStep === 1" class="wizard-step-pane slide-in">
+          <span class="step-badge">Step 1 of 4</span>
+          <h2>What is the title of your course?</h2>
+          <p class="step-subtext">Provide an engaging, clear title for your students.</p>
+
+          <div class="focused-input-wrap">
+            <span class="material-symbols-outlined input-icon">auto_stories</span>
+            <input type="text" [(ngModel)]="courseForm.title" placeholder="e.g. Autonomous Robotics &amp; Sensor Fusion" class="focused-large-input" autofocus />
+          </div>
+        </div>
+
+        <!-- ── STEP 2: CATEGORY / TRACK ── -->
+        <div *ngIf="courseWizardStep === 2" class="wizard-step-pane slide-in">
+          <span class="step-badge">Step 2 of 4</span>
+          <h2>Which championship track does this prepare for?</h2>
+          <p class="step-subtext">Categorizes your curriculum within the competition taxonomy.</p>
+
+          <div class="track-cards-grid">
+            <div *ngFor="let trk of trackOptions" class="track-selection-tile" [class.selected]="courseForm.track === trk.id" (click)="selectCourseTrack(trk.id)">
+              <div class="tile-icon-box" [style.color]="trk.color">
+                <span class="material-symbols-outlined">{{ trk.icon }}</span>
+              </div>
+              <div class="tile-label">{{ trk.label }}</div>
+              <span class="material-symbols-outlined tile-check" *ngIf="courseForm.track === trk.id">check_circle</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── STEP 3: DIFFICULTY LEVEL ── -->
+        <div *ngIf="courseWizardStep === 3" class="wizard-step-pane slide-in">
+          <span class="step-badge">Step 3 of 4</span>
+          <h2>What is the student difficulty level?</h2>
+          <p class="step-subtext">Helps students choose the right curriculum for their experience.</p>
+
+          <div class="level-cards-grid">
+            <div class="level-tile" [class.selected]="courseForm.level === 'Beginner'" (click)="courseForm.level = 'Beginner'">
+              <span class="material-symbols-outlined level-icon text-success">emoji_objects</span>
+              <h4>Beginner</h4>
+              <p>Foundational concepts &amp; introductory practicals.</p>
+            </div>
+
+            <div class="level-tile" [class.selected]="courseForm.level === 'Intermediate'" (click)="courseForm.level = 'Intermediate'">
+              <span class="material-symbols-outlined level-icon text-primary">trending_up</span>
+              <h4>Intermediate</h4>
+              <p>Core algorithmic structures &amp; problem solving.</p>
+            </div>
+
+            <div class="level-tile" [class.selected]="courseForm.level === 'Advanced'" (click)="courseForm.level = 'Advanced'">
+              <span class="material-symbols-outlined level-icon text-warning">military_tech</span>
+              <h4>Advanced</h4>
+              <p>Championship-level optimization &amp; design.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── STEP 4: SUMMARY & OUTCOMES ── -->
+        <div *ngIf="courseWizardStep === 4" class="wizard-step-pane slide-in">
+          <span class="step-badge">Step 4 of 4</span>
+          <h2>Provide a summary of expected learning outcomes</h2>
+          <p class="step-subtext">A brief paragraph explaining what students will master.</p>
+
+          <div class="focused-input-wrap">
+            <textarea [(ngModel)]="courseForm.description" rows="5" placeholder="Explain the key learning goals, projects built, and competition readiness..." class="focused-large-textarea"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wizard Navigation Footer -->
+      <div class="wizard-footer">
+        <button class="btn btn-outline" *ngIf="courseWizardStep === 1" (click)="exitCourseWizard()">Cancel</button>
+        <button class="btn btn-outline" *ngIf="courseWizardStep > 1" (click)="prevCourseWizardStep()">
+          <span class="material-symbols-outlined">arrow_back</span> Back
+        </button>
+
+        <div class="wizard-right-actions">
+          <button class="btn btn-primary" *ngIf="courseWizardStep < 4" (click)="nextCourseWizardStep()" [disabled]="courseWizardStep === 1 && !courseForm.title.trim()">
+            Next Step <span class="material-symbols-outlined">arrow_forward</span>
+          </button>
+          <button class="btn btn-success" *ngIf="courseWizardStep === 4" (click)="saveCourseFromWizard()" [disabled]="isSaving || !courseForm.title.trim()">
+            <span *ngIf="!isSaving" style="display:flex;align-items:center;gap:6px;">
+              <span class="material-symbols-outlined">rocket_launch</span> Create &amp; Open Course Console
+            </span>
+            <span *ngIf="isSaving" class="spinner-inline"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: COURSE INSIGHTS & ANALYTICS DRAWER ── -->
+  <div class="modal-backdrop" *ngIf="showCourseInsights" (click)="toggleCourseInsights()">
+    <div class="modal-card insights-modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="flex-align-gap">
+          <span class="material-symbols-outlined text-primary">analytics</span>
+          <h3>Course Insights: {{ activeDetailCourse?.title }}</h3>
+        </div>
+        <button class="close-btn" (click)="toggleCourseInsights()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="insights-kpi-row">
+          <div class="insight-stat-box">
+            <span class="stat-big-num">{{ activeDetailCourse?.enrolled_count || activeDetailCourse?.enrolled || 0 }}</span>
+            <span class="stat-sub-label">Active Learners</span>
+          </div>
+          <div class="insight-stat-box">
+            <span class="stat-big-num">{{ activeDetailCourse?.average_progress || activeDetailCourse?.completion || 0 }}%</span>
+            <span class="stat-sub-label">Avg Completion Rate</span>
+          </div>
+          <div class="insight-stat-box">
+            <span class="stat-big-num">{{ getAssignmentsForCourse(activeDetailCourse?.id).length }}</span>
+            <span class="stat-sub-label">Assignments</span>
+          </div>
+        </div>
+
+        <h4 class="mt-4 mb-2">Student Progress Distribution</h4>
+        <div class="progress-tier-bars">
+          <div class="tier-bar-row">
+            <span class="tier-label">Mastery (75–100%)</span>
+            <div class="tier-track"><div class="tier-fill mastery" style="width:45%;"></div></div>
+            <span class="tier-val">45%</span>
+          </div>
+          <div class="tier-bar-row">
+            <span class="tier-label">On Track (50–74%)</span>
+            <div class="tier-track"><div class="tier-fill on-track" style="width:30%;"></div></div>
+            <span class="tier-val">30%</span>
+          </div>
+          <div class="tier-bar-row">
+            <span class="tier-label">In Progress (25–49%)</span>
+            <div class="tier-track"><div class="tier-fill in-progress" style="width:15%;"></div></div>
+            <span class="tier-val">15%</span>
+          </div>
+          <div class="tier-bar-row">
+            <span class="tier-label">Getting Started (0–24%)</span>
+            <div class="tier-track"><div class="tier-fill starter" style="width:10%;"></div></div>
+            <span class="tier-val">10%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-primary" (click)="toggleCourseInsights()">Close Analytics</button>
       </div>
     </div>
   </div>
@@ -1014,19 +2078,50 @@
     </div>
   </div>
 
-  <!-- ── MODAL: MATERIAL (Progressive 2-Step Creator) ── -->
+  <!-- ── MODAL: MODULE BOUND ASSET REDIRECT ── -->
+  <div class="modal-backdrop" *ngIf="showModuleBoundAssetModal" (click)="closeModuleBoundAssetModal()">
+    <div class="modal-card" style="max-width: 520px;" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="material-symbols-outlined" style="color:#6366f1;font-size:24px;">view_module</span>
+          <h3 style="margin:0;font-size:16px;font-weight:750;">Module-Bound Learning Asset</h3>
+        </div>
+        <button class="close-btn" (click)="closeModuleBoundAssetModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 24px;">
+        <div style="background:var(--surface-bg, #f8fafc);border:1px solid var(--border-color, #e2e8f0);border-radius:12px;padding:16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;">
+          <span class="material-symbols-outlined" style="color:#6366f1;font-size:24px;margin-top:2px;">info</span>
+          <div>
+            <strong style="font-size:14px;color:var(--on-surface, #1e293b);display:block;margin-bottom:4px;">{{ boundAssetTarget?.title }}</strong>
+            <p style="font-size:13px;color:var(--on-surface-variant, #64748b);margin:0;line-height:1.5;">
+              This learning asset belongs to the <strong>{{ boundAssetModule?.title || 'Curriculum Module' }}</strong> sequence. To edit its contents, parameters, media attachment, or sequence order, edit the module directly in Module Studio.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding:14px 20px;display:flex;justify-content:flex-end;gap:10px;">
+        <button class="btn btn-outline" (click)="closeModuleBoundAssetModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="editModuleFromBoundAsset()" style="display:inline-flex;align-items:center;gap:6px;">
+          <span class="material-symbols-outlined" style="font-size:18px;">design_services</span>
+          <span>Edit in Module Studio</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: MATERIAL (Progressive Multi-Widget Creator) ── -->
   <div class="modal-backdrop" *ngIf="isMaterialModalOpen" (click)="closeMaterialModal()">
-    <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-card" style="max-width:620px;" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div>
-          <h3 style="margin:0;">{{ formMode === 'edit' ? 'Edit' : 'Add' }} Learning Asset</h3>
-          <span style="font-size:12px; color:var(--on-surface-variant);">Step {{ materialStep }} of 2: {{ materialStep === 1 ? 'Target & Asset Type' : 'Link & Description' }}</span>
+          <h3 style="margin:0;">{{ formMode === 'edit' ? 'Edit' : 'Add' }} Learning Asset &amp; Widget</h3>
+          <span style="font-size:12px; color:var(--on-surface-variant);">Step {{ materialStep }} of 2: {{ materialStep === 1 ? 'Target & Widget Format' : 'Interactive Content & Parameters' }}</span>
         </div>
         <button class="close-btn" (click)="closeMaterialModal()">&times;</button>
       </div>
 
       <div class="modal-body">
-        <!-- Step 1: Target Placement & Title (2 Data Points) -->
+        <!-- Step 1: Target Placement & Widget Type (2 Data Points) -->
         <div *ngIf="materialStep === 1">
           <div class="form-row">
             <div class="form-group">
@@ -1048,32 +2143,120 @@
 
           <div class="form-row mt-3">
             <div class="form-group" style="flex:2;">
-              <label>Asset Title *</label>
-              <input type="text" [(ngModel)]="materialForm.title" placeholder="e.g. Graph Algorithms Cheat Sheet" />
+              <label>Widget Title *</label>
+              <input type="text" [(ngModel)]="materialForm.title" placeholder="e.g. Graph Algorithms Deep Dive / Checkpoint 1" />
             </div>
 
             <div class="form-group" style="flex:1;">
-              <label>Asset Type</label>
+              <label>Widget Format</label>
               <select [(ngModel)]="materialForm.type">
-                <option value="document">Document / PDF</option>
-                <option value="video">Video Embed / URL</option>
-                <option value="link">External Resource</option>
-                <option value="file">Source File</option>
+                <option value="video">🎥 Video Lesson Embed</option>
+                <option value="guide">📝 Interactive Reading Guide</option>
+                <option value="quiz">❓ Micro-Quiz / Knowledge Check</option>
+                <option value="code">💻 Code Challenge Sandbox</option>
+                <option value="document">📄 Document / PDF</option>
+                <option value="link">📎 External Resource / Slides</option>
               </select>
             </div>
           </div>
         </div>
 
-        <!-- Step 2: Resource Link & Description (2 Data Points) -->
+        <!-- Step 2: Specialized Widget Inputs (1-2 Data Points) -->
         <div *ngIf="materialStep === 2">
-          <div class="form-group">
-            <label>Resource URL / Link</label>
-            <input type="text" [(ngModel)]="materialForm.url" placeholder="https://..." />
+          <!-- Video Widget Fields -->
+          <div *ngIf="materialForm.type === 'video'">
+            <div class="form-group">
+              <label>Video URL (YouTube or MP4 Stream) *</label>
+              <input type="text" [(ngModel)]="materialForm.url" placeholder="https://www.youtube.com/watch?v=... or https://cdn.../video.mp4" />
+            </div>
+            <div class="form-row mt-3">
+              <div class="form-group">
+                <label>Estimated Watch Duration (Minutes)</label>
+                <input type="number" [(ngModel)]="videoWidgetForm.durationMinutes" min="1" max="300" />
+              </div>
+              <div class="form-group">
+                <label>Key Takeaway / Topic Highlight</label>
+                <input type="text" [(ngModel)]="videoWidgetForm.keyTakeaway" placeholder="e.g. Mastering Breadth-First Traversal" />
+              </div>
+            </div>
           </div>
 
-          <div class="form-group mt-3">
-            <label>Instructions / Description for Students</label>
-            <textarea [(ngModel)]="materialForm.description" rows="3" placeholder="Brief summary or reading instructions..."></textarea>
+          <!-- Interactive Quiz Fields -->
+          <div *ngIf="materialForm.type === 'quiz'">
+            <div class="form-group">
+              <label>Quiz Question Prompt *</label>
+              <input type="text" [(ngModel)]="quizWidgetForm.question" placeholder="e.g. What is the time complexity of Dijkstra's algorithm with a binary heap?" />
+            </div>
+            <div class="form-row mt-3">
+              <div class="form-group">
+                <label>Option A</label>
+                <input type="text" [(ngModel)]="quizWidgetForm.optionA" placeholder="Option A" />
+              </div>
+              <div class="form-group">
+                <label>Option B</label>
+                <input type="text" [(ngModel)]="quizWidgetForm.optionB" placeholder="Option B" />
+              </div>
+            </div>
+            <div class="form-row mt-2">
+              <div class="form-group">
+                <label>Option C</label>
+                <input type="text" [(ngModel)]="quizWidgetForm.optionC" placeholder="Option C" />
+              </div>
+              <div class="form-group">
+                <label>Option D</label>
+                <input type="text" [(ngModel)]="quizWidgetForm.optionD" placeholder="Option D" />
+              </div>
+            </div>
+            <div class="form-row mt-3">
+              <div class="form-group">
+                <label>Correct Choice</label>
+                <select [(ngModel)]="quizWidgetForm.correctIndex">
+                  <option [ngValue]="0">Option A</option>
+                  <option [ngValue]="1">Option B</option>
+                  <option [ngValue]="2">Option C</option>
+                  <option [ngValue]="3">Option D</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Answer Explanation / Rationale</label>
+                <input type="text" [(ngModel)]="quizWidgetForm.explanation" placeholder="e.g. O((V + E) log V) due to priority queue operations..." />
+              </div>
+            </div>
+          </div>
+
+          <!-- Code Challenge Fields -->
+          <div *ngIf="materialForm.type === 'code'">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Language</label>
+                <select [(ngModel)]="codeWidgetForm.language">
+                  <option value="python">Python 3</option>
+                  <option value="cpp">C++ 20</option>
+                  <option value="arduino">Arduino C++</option>
+                  <option value="javascript">JavaScript / TypeScript</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Challenge Requirements</label>
+                <input type="text" [(ngModel)]="codeWidgetForm.instructions" placeholder="e.g. Implement a function to find the shortest path..." />
+              </div>
+            </div>
+            <div class="form-group mt-3">
+              <label>Starter Code Sandbox Template</label>
+              <textarea [(ngModel)]="codeWidgetForm.starterCode" rows="4" style="font-family:'JetBrains Mono',monospace; font-size:12px;"></textarea>
+            </div>
+          </div>
+
+          <!-- Reading Guide / Document / Link Fields -->
+          <div *ngIf="materialForm.type !== 'video' && materialForm.type !== 'quiz' && materialForm.type !== 'code'">
+            <div class="form-group">
+              <label>Resource URL / Attachment Link</label>
+              <input type="text" [(ngModel)]="materialForm.url" placeholder="https://..." />
+            </div>
+            <div class="form-group mt-3">
+              <label>Guide Content &amp; Lesson Notes (Markdown Supported)</label>
+              <textarea [(ngModel)]="materialForm.description" rows="4" placeholder="Comprehensive lesson breakdown, theoretical concepts, and key equations..."></textarea>
+            </div>
           </div>
         </div>
 

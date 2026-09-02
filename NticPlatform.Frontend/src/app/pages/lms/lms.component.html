@@ -653,53 +653,286 @@
 </div>
 
 <!-- =========================================================
-     INTERACTIVE COURSE LESSON MODAL
+     IBM SKILLSBUILD-STYLE INTERACTIVE CLASSROOM PLAYER
      ========================================================= -->
-<div class="modal-backdrop fade-in" *ngIf="activeLessonCourse" style="position:fixed; inset:0; background:rgba(2,6,23,0.85); backdrop-filter:blur(10px); z-index:99999; display:flex; align-items:center; justify-content:center; padding:20px;">
-  <div class="modal-card" style="background:var(--surface); border:1px solid var(--outline-variant); border-radius:18px; max-width:680px; width:100%; box-shadow:0 25px 60px rgba(0,0,0,0.5); overflow:hidden;">
-    <div style="padding:22px 26px; border-bottom:1px solid var(--outline-variant); display:flex; justify-content:space-between; align-items:center; background:var(--surface-container-low);">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <div style="width:40px; height:40px; border-radius:10px; background:rgba(0,102,204,0.1); display:flex; align-items:center; justify-content:center; color:var(--primary);">
-          <span class="material-symbols-outlined">{{ activeLessonCourse.icon || 'play_lesson' }}</span>
+<div class="modal-backdrop classroom-backdrop fade-in" *ngIf="activeLessonCourse" (click)="closeLessonModal()">
+  <div class="modal-card classroom-modal" (click)="$event.stopPropagation()">
+    
+    <!-- Top Classroom Bar -->
+    <div class="classroom-top-bar">
+      <div class="classroom-brand">
+        <div class="course-mini-icon">
+          <span class="material-symbols-outlined">{{ activeLessonCourse.icon || 'smart_display' }}</span>
         </div>
-        <div>
-          <h3 style="font-size:16px; font-weight:750; color:var(--on-surface); margin:0;">{{ activeLessonCourse.title }}</h3>
-          <span style="font-size:11.5px; color:var(--on-surface-variant);">National Competitor Training Engine</span>
+        <div class="course-meta-text">
+          <div class="course-track-pill">{{ activeLessonCourse.track ? (activeLessonCourse.track | uppercase) : 'CHAMPIONSHIP SPRINT' }}</div>
+          <h3 class="course-headline">{{ activeLessonCourse.title }}</h3>
         </div>
       </div>
-      <button class="btn btn-ghost" (click)="closeLessonModal()" style="border:none; background:transparent; cursor:pointer;">
-        <span class="material-symbols-outlined" style="font-size:22px; color:var(--on-surface-variant);">close</span>
-      </button>
-    </div>
-    <div style="padding:26px;">
-      <div *ngIf="lessonSuccessMessage" style="background:rgba(16, 185, 129, 0.12); border:1px solid #10b981; color:#10b981; padding:14px 18px; border-radius:12px; margin-bottom:20px; font-weight:600; display:flex; align-items:center; gap:10px;">
-        <span class="material-symbols-outlined">check_circle</span>
-        <span>{{ lessonSuccessMessage }}</span>
-      </div>
-      <div style="background:var(--surface-container-low); border-radius:14px; padding:18px; margin-bottom:20px;">
-        <span class="badge primary" style="margin-bottom:10px; display:inline-block;">ACTIVE SPRINT LESSON</span>
-        <h4 style="font-size:15px; font-weight:700; color:var(--on-surface); margin:0 0 8px;">{{ activeLessonCourse.module }}</h4>
-        <p style="font-size:13px; color:var(--on-surface-variant); line-height:1.6; margin:0;">
-          In this interactive lesson sprint, you will study core algorithmic principles, hardware interface timing, and real-world system debugging required for the upcoming national qualifiers.
-        </p>
-      </div>
-      <div style="background:var(--surface-container-lowest); border:1px solid var(--outline-variant); border-radius:12px; padding:16px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--on-surface-variant); margin-bottom:24px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; color:var(--primary); font-weight:700;">
-          <span>// LESSON CHECKPOINT OBJECTIVES</span>
-          <span>TIME EST: 25 MIN</span>
+
+      <div class="classroom-top-actions">
+        <!-- Module Dropdown / Selector -->
+        <select class="module-quick-selector" [ngModel]="activeLessonModule?.id" (ngModelChange)="onModuleChange($event)">
+          <option *ngFor="let mod of classroomModules; let idx = index" [value]="mod.id">
+            Module {{ idx + 1 }}: {{ mod.title }}
+          </option>
+        </select>
+
+        <div class="progress-pill">
+          <span class="material-symbols-outlined check-icon">verified</span>
+          <span>{{ completedWidgetsCount }}/{{ activeModuleWidgets.length }} Units</span>
         </div>
-        <div>1. Analyze pin configurations and input sensor telemetry.</div>
-        <div>2. Validate edge-case inputs against competition runtime limits.</div>
-        <div>3. Submit functional verification code via the Assignments panel.</div>
-      </div>
-      <div style="display:flex; justify-content:flex-end; gap:12px;">
-        <button class="btn btn-subtle" (click)="closeLessonModal()">Close Preview</button>
-        <button class="btn btn-primary" (click)="completeActiveLesson()">
-          <span class="material-symbols-outlined">task_alt</span>
-          Complete Module & Continue →
+
+        <button class="classroom-close-btn" (click)="closeLessonModal()" title="Exit Classroom">
+          <span class="material-symbols-outlined">close</span>
         </button>
       </div>
     </div>
+
+    <!-- Success / Error Banners -->
+    <div *ngIf="lessonSuccessMessage" class="classroom-alert success-alert fade-in">
+      <span class="material-symbols-outlined">celebration</span>
+      <span>{{ lessonSuccessMessage }}</span>
+    </div>
+    <div *ngIf="lessonErrorMessage" class="classroom-alert error-alert fade-in">
+      <span class="material-symbols-outlined">error</span>
+      <span>{{ lessonErrorMessage }}</span>
+    </div>
+
+    <!-- Classroom Content Split Layout -->
+    <div class="classroom-body-grid">
+      
+      <!-- Left Column: Syllabus & Unit Sequence -->
+      <div class="classroom-syllabus-col">
+        <div class="syllabus-header">
+          <span class="material-symbols-outlined">menu_book</span>
+          <h4>{{ activeLessonModule?.title || 'Course Syllabus' }}</h4>
+        </div>
+
+        <div class="syllabus-units-list">
+          <div *ngFor="let widget of activeModuleWidgets; let idx = index"
+               class="syllabus-unit-item"
+               [class.active]="activeWidgetIndex === idx"
+               [class.completed]="isWidgetCompleted(widget.id)"
+               (click)="selectWidget(widget, idx)">
+            <div class="unit-status-indicator">
+              <span class="material-symbols-outlined" *ngIf="isWidgetCompleted(widget.id)">check_circle</span>
+              <span class="unit-index-dot" *ngIf="!isWidgetCompleted(widget.id)">{{ idx + 1 }}</span>
+            </div>
+            <div class="unit-info">
+              <span class="unit-type-tag">
+                <span class="material-symbols-outlined unit-icon">
+                  {{ widget.type === 'video' ? 'smart_display' : widget.type === 'quiz' ? 'quiz' : widget.type === 'code' ? 'terminal' : widget.type === 'guide' ? 'article' : 'attachment' }}
+                </span>
+                {{ widget.type | uppercase }}
+              </span>
+              <h5 class="unit-title">{{ widget.title }}</h5>
+            </div>
+          </div>
+        </div>
+
+        <!-- Syllabus Completion Gauge -->
+        <div class="syllabus-footer-gauge">
+          <div class="gauge-label">
+            <span>Module Mastery</span>
+            <strong>{{ moduleProgressPercent }}%</strong>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill" [style.width.%]="moduleProgressPercent"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Interactive Stage -->
+      <div class="classroom-stage-col">
+        
+        <div class="stage-container" *ngIf="activeWidget">
+          
+          <!-- Widget Header -->
+          <div class="widget-stage-header">
+            <div class="widget-type-badge" [class]="'badge-' + activeWidget.type">
+              <span class="material-symbols-outlined">
+                {{ activeWidget.type === 'video' ? 'smart_display' : activeWidget.type === 'quiz' ? 'quiz' : activeWidget.type === 'code' ? 'terminal' : 'article' }}
+              </span>
+              <span>Unit {{ activeWidgetIndex + 1 }} &bull; {{ activeWidget.type | titlecase }}</span>
+            </div>
+            <h2 class="widget-main-title">{{ activeWidget.title }}</h2>
+          </div>
+
+          <!-- 🎥 WIDGET 1: VIDEO LESSON PLAYER -->
+          <div *ngIf="activeWidget.type === 'video'" class="widget-view video-view fade-in">
+            <div class="video-embed-wrapper" *ngIf="activeWidget.embedUrl">
+              <iframe [src]="activeWidget.embedUrl" 
+                      title="Lesson Video Stream" 
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                      allowfullscreen>
+              </iframe>
+            </div>
+
+            <div class="video-details-card">
+              <div class="details-top">
+                <div class="duration-badge">
+                  <span class="material-symbols-outlined">schedule</span>
+                  <span>{{ activeWidget.parsedVideo?.durationMinutes || 15 }} Minutes</span>
+                </div>
+                <button class="btn btn-sm btn-outline" 
+                        [class.btn-primary]="isWidgetCompleted(activeWidget.id)"
+                        (click)="markVideoCompleted()">
+                  <span class="material-symbols-outlined">{{ isWidgetCompleted(activeWidget.id) ? 'check_circle' : 'task_alt' }}</span>
+                  <span>{{ isWidgetCompleted(activeWidget.id) ? 'Completed' : 'Mark Video as Watched' }}</span>
+                </button>
+              </div>
+
+              <div class="takeaway-box" *ngIf="activeWidget.parsedVideo?.keyTakeaway">
+                <span class="material-symbols-outlined takeaway-icon">lightbulb</span>
+                <div>
+                  <strong>Key Takeaway:</strong>
+                  <p>{{ activeWidget.parsedVideo.keyTakeaway }}</p>
+                </div>
+              </div>
+
+              <p class="overview-text" *ngIf="activeWidget.parsedVideo?.overview">{{ activeWidget.parsedVideo.overview }}</p>
+            </div>
+          </div>
+
+          <!-- 📝 WIDGET 2: INTERACTIVE READING GUIDE -->
+          <div *ngIf="activeWidget.type === 'guide' || activeWidget.type === 'document'" class="widget-view guide-view fade-in">
+            <div class="reading-content-card">
+              <div class="guide-typography-body">
+                <p class="guide-paragraph">{{ activeWidget.description }}</p>
+              </div>
+
+              <div class="resource-action-bar" *ngIf="activeWidget.rawUrl">
+                <a [href]="activeWidget.rawUrl" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
+                  <span class="material-symbols-outlined">download</span> Download Accompanying Material
+                </a>
+              </div>
+
+              <div class="guide-completion-bar">
+                <button class="btn btn-sm btn-primary" 
+                        [class.btn-outline]="isWidgetCompleted(activeWidget.id)"
+                        (click)="markActiveWidgetCompleted()">
+                  <span class="material-symbols-outlined">done_all</span>
+                  <span>{{ isWidgetCompleted(activeWidget.id) ? 'Guide Completed' : 'I Have Finished Reading' }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ❓ WIDGET 3: INTERACTIVE MICRO-QUIZ KNOWLEDGE CHECK -->
+          <div *ngIf="activeWidget.type === 'quiz' && activeWidget.parsedQuiz" class="widget-view quiz-view fade-in">
+            <div class="quiz-interactive-card">
+              <div class="quiz-question-box">
+                <span class="quiz-q-tag">Knowledge Check</span>
+                <h3 class="quiz-prompt">{{ activeWidget.parsedQuiz.question }}</h3>
+              </div>
+
+              <div class="quiz-options-list">
+                <div *ngFor="let opt of activeWidget.parsedQuiz.options; let optIdx = index"
+                     class="quiz-option-card"
+                     [class.selected]="quizSelectedOption === optIdx"
+                     [class.correct]="quizSubmitted && optIdx === activeWidget.parsedQuiz.correctIndex"
+                     [class.incorrect]="quizSubmitted && quizSelectedOption === optIdx && optIdx !== activeWidget.parsedQuiz.correctIndex"
+                     (click)="selectQuizOption(optIdx)">
+                  <div class="option-marker">{{ optIdx === 0 ? 'A' : optIdx === 1 ? 'B' : optIdx === 2 ? 'C' : 'D' }}</div>
+                  <div class="option-text">{{ opt }}</div>
+                  <span class="material-symbols-outlined status-icon" *ngIf="quizSubmitted && optIdx === activeWidget.parsedQuiz.correctIndex">check_circle</span>
+                  <span class="material-symbols-outlined status-icon wrong" *ngIf="quizSubmitted && quizSelectedOption === optIdx && optIdx !== activeWidget.parsedQuiz.correctIndex">cancel</span>
+                </div>
+              </div>
+
+              <!-- Instant Feedback Banner -->
+              <div *ngIf="quizSubmitted" class="quiz-feedback-box fade-in" [class.feedback-correct]="quizIsCorrect" [class.feedback-incorrect]="!quizIsCorrect">
+                <div class="feedback-header">
+                  <span class="material-symbols-outlined">{{ quizIsCorrect ? 'verified' : 'help_outline' }}</span>
+                  <strong>{{ quizIsCorrect ? 'Excellent! Correct Answer' : 'Not Quite. Review the Explanation Below:' }}</strong>
+                </div>
+                <p class="feedback-explanation">{{ activeWidget.parsedQuiz.explanation }}</p>
+                <div class="feedback-actions" *ngIf="!quizIsCorrect">
+                  <button class="btn btn-xs btn-outline" (click)="resetQuiz()">Try Question Again</button>
+                </div>
+              </div>
+
+              <div class="quiz-footer-actions" *ngIf="!quizSubmitted">
+                <button class="btn btn-primary" [disabled]="quizSelectedOption === null" (click)="submitQuizAnswer()">
+                  <span class="material-symbols-outlined">send</span> Submit Answer
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 💻 WIDGET 4: CODE CHALLENGE SANDBOX -->
+          <div *ngIf="activeWidget.type === 'code' && activeWidget.parsedCode" class="widget-view code-view fade-in">
+            <div class="code-challenge-card">
+              <div class="challenge-instructions">
+                <span class="material-symbols-outlined">assignment</span>
+                <div>
+                  <strong>Challenge Requirements:</strong>
+                  <p>{{ activeWidget.parsedCode.instructions }}</p>
+                </div>
+              </div>
+
+              <div class="code-editor-box">
+                <div class="code-editor-top">
+                  <div class="lang-tag">
+                    <span class="material-symbols-outlined">code</span>
+                    <span>{{ activeWidget.parsedCode.language | uppercase }}</span>
+                  </div>
+                  <button class="copy-code-btn" (click)="copyCodeSnippet(activeWidget.parsedCode.starterCode)">
+                    <span class="material-symbols-outlined">{{ codeCopied ? 'check' : 'content_copy' }}</span>
+                    <span>{{ codeCopied ? 'Copied Template!' : 'Copy Code' }}</span>
+                  </button>
+                </div>
+                <pre class="code-pre-block"><code>{{ activeWidget.parsedCode.starterCode }}</code></pre>
+              </div>
+
+              <div class="code-footer-actions">
+                <button class="btn btn-primary" [class.btn-outline]="isWidgetCompleted(activeWidget.id)" (click)="markCodeSolved()">
+                  <span class="material-symbols-outlined">{{ isWidgetCompleted(activeWidget.id) ? 'task_alt' : 'check_circle' }}</span>
+                  <span>{{ isWidgetCompleted(activeWidget.id) ? 'Challenge Solved &amp; Verified' : 'Verify Code Solution' }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 📎 WIDGET 5: RESOURCE / SLIDES DOWNLOAD -->
+          <div *ngIf="activeWidget.type === 'link' || activeWidget.type === 'file' || activeWidget.type === 'resource'" class="widget-view resource-view fade-in">
+            <div class="resource-card">
+              <span class="material-symbols-outlined resource-main-icon">cloud_download</span>
+              <h3>{{ activeWidget.title }}</h3>
+              <p>{{ activeWidget.description || 'Download or view the official championship reference material.' }}</p>
+              <a [href]="activeWidget.rawUrl" target="_blank" rel="noopener" class="btn btn-primary">
+                <span class="material-symbols-outlined">open_in_new</span> Open / Download Resource
+              </a>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Classroom Footer Controls -->
+    <div class="classroom-footer-bar">
+      <button class="btn btn-outline" [disabled]="activeWidgetIndex === 0" (click)="goToPrevWidget()">
+        <span class="material-symbols-outlined">arrow_back</span> Previous Unit
+      </button>
+
+      <div class="footer-step-counter">
+        <span>Unit {{ activeWidgetIndex + 1 }} of {{ activeModuleWidgets.length }}</span>
+      </div>
+
+      <button class="btn btn-primary" (click)="goToNextWidget()" [disabled]="isSavingProgress">
+        <span *ngIf="activeWidgetIndex < activeModuleWidgets.length - 1">
+          Next Unit <span class="material-symbols-outlined">arrow_forward</span>
+        </span>
+        <span *ngIf="activeWidgetIndex >= activeModuleWidgets.length - 1">
+          <span class="material-symbols-outlined">military_tech</span> Complete Module Checkpoint
+        </span>
+      </button>
+    </div>
+
   </div>
 </div>
 

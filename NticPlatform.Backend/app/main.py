@@ -3895,10 +3895,7 @@ try:
     ):
         """Approve or reject submitted course content.
 
-        Critically, the reviewer may not be the author. The old flow showed
-        instructors the shared admin approvals queue with no owner scoping, so an
-        instructor could approve their own submission -- and the record was stamped
-        with the hardcoded default 'admin@ntic.org.gh' rather than whoever acted.
+        Critically, content reviewers cannot review their own submissions unless they are platform admins.
         """
         if not payload.approve and not payload.reason.strip():
             raise HTTPException(status_code=422, detail="Give a reason when rejecting content")
@@ -3926,9 +3923,7 @@ try:
                 (new_status, payload.reason if not payload.approve else None, course_id),
             )
             # Cascade to the course's contents. A reviewer approves a course
-            # *including* its modules, materials and assignments -- without this the
-            # instructor's assignments would stay 'pending' forever, invisible to
-            # students and with no separate route to publish them.
+            # *including* its modules, materials and assignments.
             for _tbl in ("lms_modules", "lms_materials", "lms_assignments"):
                 cur.execute(
                     f"UPDATE {_tbl} SET approval_status=%s WHERE course_id=%s",

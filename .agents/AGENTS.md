@@ -42,7 +42,7 @@ git diff --cached --stat
 
 #    - Verify before recording anything:
 cd NticPlatform.Backend && python -m pytest tests/ -q && cd ..
-cd NticPlatform.Frontend && npx tsc --noEmit -p tsconfig.app.json && cd ..
+cd NticPlatform.Frontend && npx ngc -p tsconfig.app.json --noEmit && cd ..
 
 #    - Commit and push to origin main:
 git commit -m "<type>: <what changed and why>"

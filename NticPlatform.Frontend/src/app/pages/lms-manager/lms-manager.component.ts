@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, OnInit, ChangeDetectorRef } from '@
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { getAuthValue } from '../../services/session.util';
@@ -27,6 +28,30 @@ export interface PendingModerationItem {
   rawItem: any;
 }
 
+export interface ModuleBlock {
+  id: string;
+  type: 'text' | 'video' | 'quiz' | 'code' | 'break' | 'resource' | 'image' | 'file';
+  title?: string;
+  content?: string;
+  url?: string;
+  fileName?: string;
+  fileSize?: string;
+  mimeType?: string;
+  videoDuration?: number;
+  videoTakeaway?: string;
+  videoSource?: 'url' | 'upload';
+  quizQuestion?: string;
+  quizOptions?: string[];
+  quizCorrectIndex?: number;
+  quizExplanation?: string;
+  codeLanguage?: string;
+  codeStarter?: string;
+  codeInstructions?: string;
+  breakLabel?: string;
+  breakRequirement?: 'read' | 'pass_quiz' | 'none';
+  isEditing?: boolean;
+}
+
 @Component({
   selector: 'app-lms-manager',
   standalone: true,
@@ -37,6 +62,23 @@ export interface PendingModerationItem {
 })
 export class LmsManagerComponent implements OnInit {
   activeTab: string = 'courses';
+
+  // ── Dedicated Full-Page Workspaces Navigation ───────────────
+  currentView: 'hub' | 'course_console' | 'module_studio' | 'course_wizard' = 'hub';
+  activeDetailCourse: any = null;
+  activeDetailModule: any = null;
+  courseConsoleTab: 'modules' | 'materials' | 'assignments' | 'students' = 'modules';
+  showCourseInsights = false;
+
+  // 1-at-a-time Progressive Course Wizard
+  courseWizardStep = 1; // 1: Title, 2: Track, 3: Difficulty & Level, 4: Scope & Summary
+
+  // Module Visual Block Canvas Subsystem
+  moduleBlocks: ModuleBlock[] = [];
+  selectedBlockId: string | null = null;
+  editingBlockId: string | null = null;
+  isCanvasPreviewMode = false;
+  isUploadingBlockFile: { [blockId: string]: boolean } = {};
 
   get activeRoleId(): string {
     return (getAuthValue('activeRoleId') || '').toLowerCase();
@@ -134,12 +176,13 @@ export class LmsManagerComponent implements OnInit {
     private apiService: ApiService,
     private currentUserService: CurrentUserService,
     private route: ActivatedRoute,
-    private cdr: ChangeDetectorRef
+    private sanitizer: DomSanitizer,
+    public cdr: ChangeDetectorRef
   ) {}
 
   get isStaffReviewer(): boolean {
-    const role = (this.currentUserService.profile()?.role || '').toLowerCase();
-    return ['admin', 'super_admin', 'content_manager', 'reviewer'].includes(role);
+    const role = (this.currentUserService.profile()?.role || this.activeRoleId).toLowerCase();
+    return ['admin', 'super_admin', 'superadmin', 'content_manager', 'reviewer'].includes(role);
   }
 
   ngOnInit(): void {
@@ -633,6 +676,10 @@ export class LmsManagerComponent implements OnInit {
     return this.authoredCourses.length ? this.authoredCourses : this.contentService.lmsCourses;
   }
 
+  getCourseById(courseId: string): any {
+    return this.authoredCourses.find(c => c.id === courseId) || this.contentService.lmsCourses.find((c: any) => c.id === courseId) || { id: courseId, title: 'Course' };
+  }
+
   get filteredCourses(): any[] {
     const q = this.searchQuery.toLowerCase();
     return this.authoredCourses
@@ -646,18 +693,23 @@ export class LmsManagerComponent implements OnInit {
           || (c.description || '').toLowerCase().includes(q);
         return matchTrack && matchStatus && matchLevel && matchApproval && matchSearch;
       })
-      .map(c => ({
-        ...c,
-        approvalStatus: c.approval_status,
-        rejectionReason: c.rejection_reason,
-        submittedBy: 'You',
-        createdAt: c.created_at,
-        enrolled: c.enrolled_count,
-        // Real figures, straight from the database.
-        completion: c.average_progress,
-        awaitingGrading: c.awaiting_grading,
-        assignmentCount: c.assignment_count,
-      }));
+      .map(c => {
+        const modulesCount = this.getModulesForCourse(c.id).length || 0;
+        return {
+          ...c,
+          modules: modulesCount,
+          modulesCount: modulesCount,
+          approvalStatus: c.approval_status,
+          rejectionReason: c.rejection_reason,
+          submittedBy: 'You',
+          createdAt: c.created_at,
+          enrolled: c.enrolled_count ?? 0,
+          // Real figures, straight from the database.
+          completion: c.average_progress ?? 0,
+          awaitingGrading: c.awaiting_grading ?? 0,
+          assignmentCount: c.assignment_count ?? 0,
+        };
+      });
   }
 
   get filteredModules(): any[] {
@@ -807,13 +859,537 @@ export class LmsManagerComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
+  getAssignmentsForCourse(courseId?: string): any[] {
+    if (!courseId) return [];
+    return this.serverAssignments.filter(a => a.course_id === courseId);
+  }
+
+  getMaterialsForCourse(courseId?: string): ApiLmsMaterial[] {
+    if (!courseId) return [];
+    return this.serverMaterials.filter(m => m.course_id === courseId);
+  }
+
+  getMaterialsForModule(moduleId?: string): ApiLmsMaterial[] {
+    if (!moduleId) return [];
+    return this.serverMaterials.filter(m => m.module_id === moduleId);
+  }
+
+  get filteredRoster(): LmsEnrollment[] {
+    return this.filteredEnrollments;
+  }
+
+  getStudentsForCourse(courseId?: string): LmsEnrollment[] {
+    if (!courseId) return this.filteredEnrollments;
+    return this.filteredEnrollments.filter(e => e.courseId === courseId);
+  }
+
+  // ── Full-Page Dedicated Workspaces ──────────────────────────
+  openCourseConsole(course: any): void {
+    this.activeDetailCourse = course;
+    this.selectedCourseId = course.id;
+    this.currentView = 'course_console';
+    this.courseConsoleTab = 'modules';
+    this.showCourseInsights = false;
+    this.cdr.markForCheck();
+  }
+
+  exitCourseConsole(): void {
+    this.currentView = 'hub';
+    this.activeDetailCourse = null;
+    this.selectedCourseId = 'all';
+    this.showCourseInsights = false;
+    this.cdr.markForCheck();
+  }
+
+  openCourseWizard(course?: any): void {
+    this.saveError = '';
+    this.courseWizardStep = 1;
+    if (course) {
+      this.formMode = 'edit';
+      this.courseForm = { ...course };
+    } else {
+      this.formMode = 'create';
+      this.courseForm = this.emptyCourse();
+      if (this.selectedTrack !== 'all') {
+        this.selectCourseTrack(this.selectedTrack);
+      }
+    }
+    this.currentView = 'course_wizard';
+    this.cdr.markForCheck();
+  }
+
+  exitCourseWizard(): void {
+    this.currentView = this.activeDetailCourse ? 'course_console' : 'hub';
+    this.courseWizardStep = 1;
+    this.saveError = '';
+    this.cdr.markForCheck();
+  }
+
+  nextCourseWizardStep(): void {
+    if (this.courseWizardStep === 1 && !this.courseForm.title.trim()) return;
+    if (this.courseWizardStep < 4) {
+      this.courseWizardStep++;
+      this.cdr.markForCheck();
+    }
+  }
+
+  prevCourseWizardStep(): void {
+    if (this.courseWizardStep > 1) {
+      this.courseWizardStep--;
+      this.cdr.markForCheck();
+    }
+  }
+
+  saveCourseFromWizard(): void {
+    if (this.isSaving) return;
+    if (!this.courseForm.title.trim()) return;
+    this.isSaving = true;
+    this.saveError = '';
+    this.cdr.markForCheck();
+
+    const payload = {
+      title: this.courseForm.title.trim(),
+      track: this.courseForm.track || 'coding',
+      icon: this.courseForm.icon || 'school',
+      level: this.courseForm.level || 'Beginner',
+      description: this.courseForm.description || '',
+      modules: Number(this.courseForm.modules) || 0,
+      competition_id: (this.selectedCycle !== 'all' ? this.selectedCycle : ''),
+    };
+
+    const request = this.formMode === 'create'
+      ? this.apiService.createAuthoredCourse(payload)
+      : this.apiService.updateAuthoredCourse(this.courseForm.id, payload);
+
+    request.subscribe({
+      next: (createdOrUpdated: any) => {
+        this.isSaving = false;
+        this.reload();
+        this.activeDetailCourse = {
+          ...this.courseForm,
+          id: createdOrUpdated?.id || this.courseForm.id,
+          enrolled_count: this.activeDetailCourse?.enrolled_count || 0,
+          average_progress: this.activeDetailCourse?.average_progress || 0,
+          assignment_count: this.activeDetailCourse?.assignment_count || 0,
+          awaiting_grading: this.activeDetailCourse?.awaiting_grading || 0
+        };
+        this.currentView = 'course_console';
+        this.cdr.markForCheck();
+      },
+      error: (err: any) => {
+        this.isSaving = false;
+        this.saveError = this.describeWriteError(err, 'course');
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  trackByIndex(index: number, item: any): number {
+    return index;
+  }
+
+  private parseMaterialToBlock(mat: ApiLmsMaterial): ModuleBlock {
+    let rawPayload = mat.description || '';
+    let parsed: any = null;
+
+    // Recursively unwrap any previously nested JSON strings
+    while (typeof rawPayload === 'string' && rawPayload.trim().startsWith('{')) {
+      try {
+        const next = JSON.parse(rawPayload);
+        parsed = { ...parsed, ...next };
+        if (typeof next.instructions === 'string') {
+          rawPayload = next.instructions;
+        } else if (typeof next.overview === 'string') {
+          rawPayload = next.overview;
+        } else if (typeof next.caption === 'string') {
+          rawPayload = next.caption;
+        } else {
+          rawPayload = '';
+          break;
+        }
+      } catch {
+        break;
+      }
+    }
+
+    let bType: ModuleBlock['type'] = 'text';
+    const declaredType = (mat.type || '').toLowerCase();
+    const widgetType = (parsed?.widget || '').toLowerCase();
+
+    if (declaredType === 'guide' || declaredType === 'text' || widgetType === 'text' || widgetType === 'guide') {
+      bType = 'text';
+    } else if (declaredType === 'video' || widgetType === 'video') {
+      bType = 'video';
+    } else if (declaredType === 'quiz' || widgetType === 'quiz') {
+      bType = 'quiz';
+    } else if (declaredType === 'code' || widgetType === 'code') {
+      bType = 'code';
+    } else if (declaredType === 'image' || widgetType === 'image') {
+      bType = 'image';
+    } else if (declaredType === 'file' || declaredType === 'document' || widgetType === 'file') {
+      bType = 'file';
+    } else if (declaredType === 'break' || widgetType === 'break') {
+      bType = 'break';
+    }
+
+    let contentText = typeof rawPayload === 'string' ? rawPayload : '';
+    if (contentText.trim().startsWith('{') && contentText.includes('"widget"')) {
+      contentText = '';
+    }
+
+    return {
+      id: mat.id,
+      type: bType,
+      title: mat.title || '',
+      content: contentText,
+      url: mat.url || '',
+      fileName: parsed?.fileName || '',
+      fileSize: parsed?.fileSize || '',
+      mimeType: parsed?.mimeType || '',
+      videoDuration: parsed?.durationMinutes || 15,
+      videoTakeaway: parsed?.keyTakeaway || '',
+      videoSource: parsed?.source || (mat.url?.includes('files/') ? 'upload' : 'url'),
+      quizQuestion: parsed?.question || mat.title || '',
+      quizOptions: (Array.isArray(parsed?.options) && parsed.options.length) ? parsed.options : ['Option A', 'Option B', 'Option C', 'Option D'],
+      quizCorrectIndex: parsed?.correctIndex ?? 0,
+      quizExplanation: parsed?.explanation || '',
+      codeLanguage: parsed?.language || 'python',
+      codeStarter: parsed?.starterCode || '# Starter code\n',
+      codeInstructions: parsed?.instructions || contentText,
+      breakLabel: parsed?.breakLabel || 'Module Checkpoint'
+    };
+  }
+
+  // ── Dedicated Module Visual Block Studio ────────────────────
+  openModuleStudio(mod?: any): void {
+    this.saveError = '';
+    this.isCanvasPreviewMode = false;
+    if (mod) {
+      this.formMode = 'edit';
+      this.activeDetailModule = { ...mod };
+      this.moduleForm = { ...mod, courseId: mod.course_id || mod.courseId || this.activeDetailCourse?.id };
+      
+      // Load blocks from materials or description
+      const modMats = this.serverMaterials.filter(m => m.module_id === mod.id);
+      if (modMats.length > 0) {
+        this.moduleBlocks = modMats.map(mat => this.parseMaterialToBlock(mat));
+      } else {
+        this.moduleBlocks = [
+          {
+            id: 'blk-' + Math.random().toString(36).slice(2, 7),
+            type: 'text',
+            title: 'Lesson Overview & Core Principles',
+            content: mod.description || 'Welcome to this curriculum module. Outline the key technical concepts here.'
+          },
+          {
+            id: 'blk-' + Math.random().toString(36).slice(2, 7),
+            type: 'break',
+            breakLabel: 'Reading Checkpoint: Comprehension Check'
+          },
+          {
+            id: 'blk-' + Math.random().toString(36).slice(2, 7),
+            type: 'quiz',
+            quizQuestion: 'What is the primary algorithmic complexity constraint for this checkpoint?',
+            quizOptions: ['O(log N)', 'O(N^2)', 'O(2^N)', 'O(N!)'],
+            quizCorrectIndex: 0,
+            quizExplanation: 'Logarithmic time complexity is required to avoid race conditions.'
+          }
+        ];
+      }
+    } else {
+      this.formMode = 'create';
+      const cId = this.activeDetailCourse?.id || this.selectedCourseId;
+      const existingMods = this.getModulesForCourse(cId);
+      const nextOrder = existingMods.length ? Math.max(...existingMods.map(m => m.order_num || 0)) + 1 : 1;
+      this.activeDetailModule = {
+        id: '',
+        course_id: cId,
+        title: '',
+        description: '',
+        order_num: nextOrder,
+        icon: 'view_module'
+      };
+      this.moduleForm = {
+        id: '',
+        courseId: cId,
+        title: '',
+        description: '',
+        order: nextOrder,
+        icon: 'view_module',
+        status: 'published',
+        approvalStatus: 'approved'
+      };
+      this.moduleBlocks = [
+        {
+          id: 'blk-' + Math.random().toString(36).slice(2, 7),
+          type: 'text',
+          title: 'Section 1: Theoretical Foundation',
+          content: 'Introduce the core topic, mathematical formulas, or architecture diagrams here.'
+        }
+      ];
+    }
+    this.currentView = 'module_studio';
+    this.selectedBlockId = this.moduleBlocks[0]?.id || null;
+    this.cdr.markForCheck();
+  }
+
+  exitModuleStudio(): void {
+    this.currentView = this.activeDetailCourse ? 'course_console' : 'hub';
+    this.activeDetailModule = null;
+    this.moduleBlocks = [];
+    this.cdr.markForCheck();
+  }
+
+  setEditingBlock(blockId: string | null): void {
+    this.editingBlockId = blockId;
+    this.cdr.markForCheck();
+  }
+
+  applyFormatting(blk: ModuleBlock, format: string): void {
+    if (!blk.content) blk.content = '';
+    switch (format) {
+      case 'bold':
+        blk.content += ' **Bold Text** ';
+        break;
+      case 'italic':
+        blk.content += ' *Italic Text* ';
+        break;
+      case 'h2':
+        blk.content += '\n## Section Heading\n';
+        break;
+      case 'h3':
+        blk.content += '\n### Subsection Title\n';
+        break;
+      case 'list':
+        blk.content += '\n- Item 1\n- Item 2\n- Item 3\n';
+        break;
+      case 'numlist':
+        blk.content += '\n1. First Step\n2. Second Step\n3. Third Step\n';
+        break;
+      case 'code':
+        blk.content += '\n```\n// Code snippet\nconst x = 10;\n```\n';
+        break;
+      case 'quote':
+        blk.content += '\n> Important core takeaway or definition to remember.\n';
+        break;
+      case 'callout':
+        blk.content += '\n> 💡 **Tip / Operational Note**: Add essential technical best practice here.\n';
+        break;
+    }
+    this.cdr.markForCheck();
+  }
+
+  onBlockFileUpload(event: Event, blk: ModuleBlock): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    this.isUploadingBlockFile[blk.id] = true;
+    this.cdr.markForCheck();
+
+    this.apiService.uploadFileBlob(file).subscribe({
+      next: res => {
+        blk.url = res.url;
+        blk.fileName = file.name;
+        blk.fileSize = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+        blk.mimeType = file.type;
+        if (!blk.title || blk.title.startsWith('Accompanying') || blk.title.startsWith('Diagram')) {
+          blk.title = file.name;
+        }
+        this.isUploadingBlockFile[blk.id] = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.isUploadingBlockFile[blk.id] = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  addBlock(type: ModuleBlock['type']): void {
+    const newBlk: ModuleBlock = {
+      id: 'blk-' + Math.random().toString(36).slice(2, 8),
+      type,
+      title: type === 'video' ? 'Video Lecture' :
+             type === 'quiz' ? 'Knowledge Check Question' :
+             type === 'code' ? 'Code Challenge' :
+             type === 'break' ? 'Section Break' :
+             type === 'image' ? 'Diagram / Architecture Figure' :
+             type === 'file' ? 'Accompanying Document / PDF' : 'Lesson Guide & Theory',
+      content: '',
+      quizOptions: type === 'quiz' ? ['Choice A', 'Choice B', 'Choice C', 'Choice D'] : undefined,
+      quizCorrectIndex: 0,
+      codeLanguage: 'python',
+      codeStarter: '# Write solution\ndef solve():\n    pass\n',
+      breakLabel: 'Milestone Checkpoint',
+      videoSource: 'url'
+    };
+    this.moduleBlocks.push(newBlk);
+    this.selectedBlockId = newBlk.id;
+    this.editingBlockId = newBlk.id;
+    this.cdr.markForCheck();
+  }
+
+  removeBlock(idx: number): void {
+    this.moduleBlocks.splice(idx, 1);
+    this.cdr.markForCheck();
+  }
+
+  moveBlockUp(idx: number): void {
+    if (idx <= 0) return;
+    const temp = this.moduleBlocks[idx];
+    this.moduleBlocks[idx] = this.moduleBlocks[idx - 1];
+    this.moduleBlocks[idx - 1] = temp;
+    this.cdr.markForCheck();
+  }
+
+  moveBlockDown(idx: number): void {
+    if (idx >= this.moduleBlocks.length - 1) return;
+    const temp = this.moduleBlocks[idx];
+    this.moduleBlocks[idx] = this.moduleBlocks[idx + 1];
+    this.moduleBlocks[idx + 1] = temp;
+    this.cdr.markForCheck();
+  }
+
+  saveModuleStudio(): void {
+    if (this.isSaving) return;
+    if (!this.moduleForm.title.trim() || !this.moduleForm.courseId) return;
+    this.isSaving = true;
+    this.saveError = '';
+    this.cdr.markForCheck();
+
+    const payload = {
+      course_id: this.moduleForm.courseId,
+      title: this.moduleForm.title.trim(),
+      description: this.moduleBlocks[0]?.content || this.moduleForm.description || '',
+      order_num: Number(this.moduleForm.order) || 1,
+      icon: this.moduleForm.icon || 'view_module',
+    };
+
+    const request = this.formMode === 'create'
+      ? this.apiService.createModule(payload)
+      : this.apiService.updateModule(this.moduleForm.id, payload);
+
+    request.subscribe({
+      next: (modResult: any) => {
+        const savedModId = modResult?.id || this.moduleForm.id;
+        
+        // Persist blocks into materials
+        this.persistBlocksForModule(savedModId, this.moduleForm.courseId);
+        this.isSaving = false;
+        this.reload();
+        this.exitModuleStudio();
+        this.cdr.markForCheck();
+      },
+      error: (err: any) => {
+        this.isSaving = false;
+        this.saveError = this.describeWriteError(err, 'module');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  private persistBlocksForModule(moduleId: string, courseId: string): void {
+    for (let i = 0; i < this.moduleBlocks.length; i++) {
+      const blk = this.moduleBlocks[i];
+      let cleanContent = (blk.content || '').trim();
+
+      // Unwrap any accidental JSON string in content
+      if (cleanContent.startsWith('{') && cleanContent.includes('"widget"')) {
+        try {
+          const inner = JSON.parse(cleanContent);
+          cleanContent = inner.instructions || inner.overview || inner.caption || '';
+        } catch {
+          cleanContent = '';
+        }
+      }
+
+      let descPayload = cleanContent;
+      if (blk.type === 'quiz') {
+        descPayload = JSON.stringify({
+          widget: 'quiz',
+          question: blk.quizQuestion || blk.title,
+          options: blk.quizOptions || ['A', 'B', 'C', 'D'],
+          correctIndex: blk.quizCorrectIndex ?? 0,
+          explanation: blk.quizExplanation || ''
+        });
+      } else if (blk.type === 'code') {
+        descPayload = JSON.stringify({
+          widget: 'code',
+          language: blk.codeLanguage || 'python',
+          starterCode: blk.codeStarter || '',
+          instructions: blk.codeInstructions || cleanContent
+        });
+      } else if (blk.type === 'video') {
+        descPayload = JSON.stringify({
+          widget: 'video',
+          durationMinutes: blk.videoDuration || 15,
+          keyTakeaway: blk.videoTakeaway || '',
+          overview: cleanContent,
+          source: blk.videoSource || 'url'
+        });
+      } else if (blk.type === 'image') {
+        descPayload = JSON.stringify({
+          widget: 'image',
+          caption: cleanContent,
+          fileName: blk.fileName || ''
+        });
+      } else if (blk.type === 'file') {
+        descPayload = JSON.stringify({
+          widget: 'file',
+          fileName: blk.fileName || 'Attachment',
+          fileSize: blk.fileSize || '',
+          instructions: cleanContent
+        });
+      } else if (blk.type === 'break') {
+        descPayload = JSON.stringify({
+          widget: 'break',
+          breakLabel: blk.breakLabel || 'Checkpoint'
+        });
+      }
+
+      const matPayload = {
+        course_id: courseId,
+        module_id: moduleId,
+        title: blk.title || (blk.type.toUpperCase() + ' ' + (i + 1)),
+        type: (blk.type === 'text' ? 'guide' : blk.type),
+        url: blk.url || '',
+        description: descPayload
+      };
+
+      if (blk.id && !blk.id.startsWith('blk-')) {
+        this.apiService.updateMaterial(blk.id, matPayload).subscribe({ error: () => {} });
+      } else {
+        this.apiService.createMaterial(matPayload).subscribe({ error: () => {} });
+      }
+    }
+  }
+
+  toggleCourseInsights(): void {
+    this.showCourseInsights = !this.showCourseInsights;
+    this.cdr.markForCheck();
+  }
+
   // ── Course Actions ──────────────────────────────────────────
-  openCourseModal(course?: LmsCourse): void {
+  openCourseModal(course?: any): void {
     this.saveError = '';
     this.courseStudioStep = 1;
     if (course) {
       this.formMode = 'edit';
-      this.courseForm = { ...course };
+      this.courseForm = {
+        id: course.id || '',
+        title: course.title || '',
+        track: course.track || 'coding',
+        icon: course.icon || 'school',
+        level: course.level || 'Beginner',
+        description: course.description || '',
+        modules: course.modules ?? 0,
+        enrolled: course.enrolled_count ?? course.enrolled ?? 0,
+        completion: course.average_progress ?? course.completion ?? 0,
+        status: course.status || 'active',
+        approvalStatus: course.approval_status || course.approvalStatus || 'approved',
+        createdAt: course.created_at || course.createdAt || new Date().toISOString().split('T')[0],
+        competitionId: course.competition_id || course.competitionId || ''
+      };
     } else {
       this.formMode = 'create';
       this.courseForm = this.emptyCourse();
@@ -926,12 +1502,21 @@ export class LmsManagerComponent implements OnInit {
   }
 
   // ── Module Actions ──────────────────────────────────────────
-  openModuleModal(mod?: LmsModule): void {
+  openModuleModal(mod?: any): void {
     this.saveError = '';
     this.moduleStep = 1;
     if (mod) {
       this.formMode = 'edit';
-      this.moduleForm = { ...mod };
+      this.moduleForm = {
+        id: mod.id || '',
+        courseId: mod.course_id || mod.courseId || '',
+        title: mod.title || '',
+        description: mod.description || '',
+        order: mod.order_num ?? mod.order ?? 1,
+        icon: mod.icon || 'view_module',
+        status: mod.status || 'published',
+        approvalStatus: mod.approval_status || mod.approvalStatus || 'approved'
+      };
     } else {
       this.formMode = 'create';
       this.moduleForm = this.emptyModule();
@@ -1012,16 +1597,167 @@ export class LmsManagerComponent implements OnInit {
     });
   }
 
+  // ── Rich Widget Form State ─────────────────────────────────────
+  quizWidgetForm = {
+    question: '',
+    optionA: '',
+    optionB: '',
+    optionC: '',
+    optionD: '',
+    correctIndex: 0,
+    explanation: ''
+  };
+
+  codeWidgetForm = {
+    language: 'python',
+    starterCode: '# Write your solution below\ndef solution():\n    pass\n',
+    instructions: ''
+  };
+
+  videoWidgetForm = {
+    durationMinutes: 15,
+    keyTakeaway: ''
+  };
+
+  // ── Formatted Description Helper ──────────────────────────────
+  getFormattedDescription(desc?: string): string {
+    if (!desc) return '';
+    const trimmed = desc.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed.widget === 'file') {
+          const parts = [
+            parsed.fileName ? `Document: ${parsed.fileName}` : 'Attached Document',
+            parsed.fileSize ? `(${parsed.fileSize})` : '',
+            parsed.instructions ? `— ${parsed.instructions}` : ''
+          ].filter(Boolean);
+          return parts.join(' ');
+        }
+        if (parsed.widget === 'video') {
+          return parsed.keyTakeaway ? `Video Lecture: ${parsed.keyTakeaway}` : (parsed.durationMinutes ? `Video Lecture (${parsed.durationMinutes} mins)` : 'Video Lecture');
+        }
+        if (parsed.widget === 'quiz') {
+          return parsed.question ? `Checkpoint Quiz: ${parsed.question}` : 'Interactive Checkpoint Quiz';
+        }
+        if (parsed.widget === 'code') {
+          return parsed.language ? `Code Challenge (${parsed.language}): ${parsed.instructions || 'Interactive Exercise'}` : 'Interactive Coding Challenge';
+        }
+        if (parsed.title || parsed.content) {
+          return parsed.title || parsed.content;
+        }
+      } catch {
+        return trimmed;
+      }
+    }
+    return trimmed;
+  }
+
+  // ── Module Bound Asset Redirect Modal ─────────────────────────
+  showModuleBoundAssetModal = false;
+  boundAssetTarget: any = null;
+  boundAssetModule: any = null;
+
+  editModuleFromBoundAsset(): void {
+    const mod = this.boundAssetModule;
+    this.showModuleBoundAssetModal = false;
+    if (mod) {
+      if (!this.activeDetailCourse) {
+        const cId = mod.course_id || mod.courseId;
+        this.activeDetailCourse = this.authoredCourses.find(c => c.id === cId)
+          || this.contentService.lmsCourses.find((c: any) => c.id === cId)
+          || null;
+      }
+      this.openModuleStudio(mod);
+    }
+    this.cdr.markForCheck();
+  }
+
+  closeModuleBoundAssetModal(): void {
+    this.showModuleBoundAssetModal = false;
+    this.boundAssetTarget = null;
+    this.boundAssetModule = null;
+    this.cdr.markForCheck();
+  }
+
   // ── Material Actions ──────────────────────────────────────────
-  openMaterialModal(mat?: LmsMaterial): void {
+  openMaterialModal(mat?: any): void {
     this.saveError = '';
     this.materialStep = 1;
     if (mat) {
+      const modId = mat.module_id || mat.moduleId;
+      if (modId) {
+        const parentMod = this.serverModules.find(m => m.id === modId) || this.contentService.lmsModules.find(m => m.id === modId);
+        this.boundAssetTarget = mat;
+        this.boundAssetModule = parentMod || { id: modId, title: this.getModuleTitle(modId), course_id: mat.course_id || mat.courseId };
+        this.showModuleBoundAssetModal = true;
+        this.cdr.markForCheck();
+        return;
+      }
+
       this.formMode = 'edit';
-      this.materialForm = { ...mat };
+      this.materialForm = {
+        id: mat.id || '',
+        courseId: mat.course_id || mat.courseId || '',
+        moduleId: mat.module_id || mat.moduleId || '',
+        title: mat.title || '',
+        type: mat.type || 'guide',
+        url: mat.url || '',
+        description: mat.description || '',
+        approvalStatus: mat.approval_status || mat.approvalStatus || 'approved',
+        createdAt: mat.created_at || mat.createdAt || new Date().toISOString().split('T')[0]
+      };
+      // Hydrate specialized widget forms if description holds JSON
+      try {
+        if (mat.description && mat.description.startsWith('{')) {
+          const parsed = JSON.parse(mat.description);
+          if (parsed.widget === 'quiz' || mat.type === 'quiz') {
+            this.quizWidgetForm = {
+              question: parsed.question || '',
+              optionA: parsed.options?.[0] || '',
+              optionB: parsed.options?.[1] || '',
+              optionC: parsed.options?.[2] || '',
+              optionD: parsed.options?.[3] || '',
+              correctIndex: parsed.correctIndex ?? 0,
+              explanation: parsed.explanation || ''
+            };
+          } else if (parsed.widget === 'code' || mat.type === 'code') {
+            this.codeWidgetForm = {
+              language: parsed.language || 'python',
+              starterCode: parsed.starterCode || '',
+              instructions: parsed.instructions || ''
+            };
+          } else if (parsed.widget === 'video' || mat.type === 'video') {
+            this.videoWidgetForm = {
+              durationMinutes: parsed.durationMinutes ?? 15,
+              keyTakeaway: parsed.keyTakeaway || ''
+            };
+          }
+        }
+      } catch {
+        // Plain string description
+      }
     } else {
       this.formMode = 'create';
       this.materialForm = this.emptyMaterial();
+      this.quizWidgetForm = {
+        question: '',
+        optionA: '',
+        optionB: '',
+        optionC: '',
+        optionD: '',
+        correctIndex: 0,
+        explanation: ''
+      };
+      this.codeWidgetForm = {
+        language: 'python',
+        starterCode: '# Write your solution below\ndef solution():\n    pass\n',
+        instructions: ''
+      };
+      this.videoWidgetForm = {
+        durationMinutes: 15,
+        keyTakeaway: ''
+      };
       if (this.selectedCourseId !== 'all') {
         this.materialForm.courseId = this.selectedCourseId;
       } else if (this.authoredCourses.length) {
@@ -1046,13 +1782,43 @@ export class LmsManagerComponent implements OnInit {
     this.saveError = '';
     this.cdr.markForCheck();
 
+    let descriptionPayload = this.materialForm.description || '';
+    if (this.materialForm.type === 'quiz') {
+      descriptionPayload = JSON.stringify({
+        widget: 'quiz',
+        question: this.quizWidgetForm.question.trim(),
+        options: [
+          this.quizWidgetForm.optionA.trim(),
+          this.quizWidgetForm.optionB.trim(),
+          this.quizWidgetForm.optionC.trim(),
+          this.quizWidgetForm.optionD.trim(),
+        ].filter(Boolean),
+        correctIndex: this.quizWidgetForm.correctIndex,
+        explanation: this.quizWidgetForm.explanation.trim()
+      });
+    } else if (this.materialForm.type === 'code') {
+      descriptionPayload = JSON.stringify({
+        widget: 'code',
+        language: this.codeWidgetForm.language,
+        starterCode: this.codeWidgetForm.starterCode,
+        instructions: this.codeWidgetForm.instructions.trim()
+      });
+    } else if (this.materialForm.type === 'video') {
+      descriptionPayload = JSON.stringify({
+        widget: 'video',
+        durationMinutes: this.videoWidgetForm.durationMinutes,
+        keyTakeaway: this.videoWidgetForm.keyTakeaway.trim(),
+        overview: this.materialForm.description || ''
+      });
+    }
+
     const payload = {
       course_id: this.materialForm.courseId,
       module_id: this.materialForm.moduleId || '',
       title: this.materialForm.title.trim(),
-      type: this.materialForm.type || 'link',
+      type: this.materialForm.type || 'guide',
       url: this.materialForm.url || '',
-      description: this.materialForm.description || '',
+      description: descriptionPayload,
     };
 
     const request = this.formMode === 'create'
@@ -1092,12 +1858,23 @@ export class LmsManagerComponent implements OnInit {
   }
 
   // ── Assignment Actions ──────────────────────────────────────────
-  openAssignmentModal(asgn?: LmsAssignment): void {
+  openAssignmentModal(asgn?: any): void {
     this.saveError = '';
     this.assignmentStep = 1;
     if (asgn) {
       this.formMode = 'edit';
-      this.assignmentForm = { ...asgn };
+      this.assignmentForm = {
+        id: asgn.id || '',
+        courseId: asgn.course_id || asgn.courseId || '',
+        title: asgn.title || '',
+        description: asgn.description || '',
+        dueDate: asgn.due_date || asgn.dueDate || new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0],
+        maxScore: asgn.max_score ?? asgn.maxScore ?? 100,
+        track: asgn.track || 'coding',
+        status: asgn.status || 'active',
+        approvalStatus: asgn.approval_status || asgn.approvalStatus || 'approved',
+        createdAt: asgn.created_at || asgn.createdAt || new Date().toISOString().split('T')[0]
+      };
     } else {
       this.formMode = 'create';
       this.assignmentForm = this.emptyAssignment();
@@ -1335,5 +2112,89 @@ export class LmsManagerComponent implements OnInit {
       approvalStatus: 'approved',
       createdAt: new Date().toISOString().split('T')[0]
     };
+  }
+
+  // ── Learner Classroom Simulation State & Handlers ─────────
+  simulationAnswers: { [blockId: string]: number } = {};
+  simulationSubmitted: { [blockId: string]: boolean } = {};
+  simulationCompletedBlocks: Set<string> = new Set<string>();
+  simulationCopiedCode: { [blockId: string]: boolean } = {};
+
+  getSafeEmbedUrl(url?: string): SafeResourceUrl {
+    if (!url) return this.sanitizer.bypassSecurityTrustResourceUrl('');
+    let cleanUrl = url;
+    if (url.includes('youtube.com/watch?v=')) {
+      const vidId = url.split('v=')[1]?.split('&')[0];
+      cleanUrl = `https://www.youtube.com/embed/${vidId}`;
+    } else if (url.includes('youtu.be/')) {
+      const vidId = url.split('youtu.be/')[1]?.split('?')[0];
+      cleanUrl = `https://www.youtube.com/embed/${vidId}`;
+    }
+    return this.sanitizer.bypassSecurityTrustResourceUrl(cleanUrl);
+  }
+
+  isSimCompleted(blockId: string): boolean {
+    return this.simulationCompletedBlocks.has(blockId);
+  }
+
+  toggleSimComplete(blockId: string): void {
+    if (this.simulationCompletedBlocks.has(blockId)) {
+      this.simulationCompletedBlocks.delete(blockId);
+    } else {
+      this.simulationCompletedBlocks.add(blockId);
+    }
+    this.cdr.markForCheck();
+  }
+
+  selectSimOption(blockId: string, optIdx: number): void {
+    if (this.simulationSubmitted[blockId]) return;
+    this.simulationAnswers[blockId] = optIdx;
+    this.cdr.markForCheck();
+  }
+
+  submitSimQuiz(blk: ModuleBlock): void {
+    if (this.simulationAnswers[blk.id] === undefined) return;
+    this.simulationSubmitted[blk.id] = true;
+    if (this.simulationAnswers[blk.id] === (blk.quizCorrectIndex ?? 0)) {
+      this.simulationCompletedBlocks.add(blk.id);
+    }
+    this.cdr.markForCheck();
+  }
+
+  resetSimQuiz(blockId: string): void {
+    delete this.simulationAnswers[blockId];
+    this.simulationSubmitted[blockId] = false;
+    this.simulationCompletedBlocks.delete(blockId);
+    this.cdr.markForCheck();
+  }
+
+  copySimCode(blockId: string, code?: string): void {
+    if (!code) return;
+    navigator.clipboard?.writeText(code).then(() => {
+      this.simulationCopiedCode[blockId] = true;
+      this.cdr.markForCheck();
+      setTimeout(() => {
+        this.simulationCopiedCode[blockId] = false;
+        this.cdr.markForCheck();
+      }, 2000);
+    }).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = code;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      this.simulationCopiedCode[blockId] = true;
+      this.cdr.markForCheck();
+      setTimeout(() => {
+        this.simulationCopiedCode[blockId] = false;
+        this.cdr.markForCheck();
+      }, 2000);
+    });
+  }
+
+  get simProgressPct(): number {
+    if (!this.moduleBlocks.length) return 0;
+    return Math.round((this.simulationCompletedBlocks.size / this.moduleBlocks.length) * 100);
   }
 }

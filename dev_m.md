@@ -76,6 +76,26 @@ To avoid committing live credentials or overwriting collaborator changes, **ALWA
 
 Use this section to leave short notes, status updates, or handoff messages for collaborators:
 
+- **[2026-09-02 - v1.0.7]**:
+  - **The Native Feel UI/UX, Rich Block Studio & Media Upload Subsystem:**
+    - **Dedicated Full-Page Workspaces:** Replaced cramped modals for course authoring and module creation with full-page dedicated consoles (`course_console`, `module_studio`, `course_wizard`).
+    - **In-Place Rich Lesson Guide Editor & Live Preview:** Added formatting toolbar (Bold, Italic, H2/H3 headings, bullet/numbered lists, code blocks, blockquotes, and operational tip callouts) for lesson content with an in-place rendered Live Preview and top-right **Pencil Edit** action.
+    - **Real Media & File Uploads (`/api/files/upload`):** Added drag-and-drop dropzones and direct file uploaders for PDF/documents, schematic & diagram images (with live preview thumbnail), and local `.mp4`/`.webm` video files alongside external stream URLs.
+    - **Recursive Payload Unwrapping:** Implemented `parseMaterialToBlock()` and sanitized `persistBlocksForModule()` to eliminate nested double-encoded JSON payloads when editing and re-saving files and guides.
+    - **Smooth Quiz Option Input Focus:** Added `trackBy: trackByIndex` and `$event.stopPropagation()` to quiz options builder, preventing DOM node thrashing and focus loss during typing.
+    - **Dedicated Up/Down Block Reorder Controls:** Added prominent position-shifting arrows (`keyboard_arrow_up`, `keyboard_arrow_down`) on each block header with instant animated sequence reordering.
+    - **Sticky Left Palette & Scrollable Canvas Stream:** The `.studio-palette-sidebar` stays pinned on the left while `.studio-canvas-stream` scrolls independently for unlimited blocks.
+    - **Clickable Touchpoints Across LMS:** Every course card, module row, learning asset, and submission is fully interactive with hover elevation and illumination borders.
+    - **1-at-a-Time Progressive Course Wizard:** 4-step sliding questionnaire (Title &rarr; Category Track &rarr; Difficulty Level &rarr; Outcomes Summary) designed for non-technical educators with zero cognitive overload.
+    - **Course Insights & Analytics Drawer:** Real-time progress distribution breakdown (Mastery, On Track, In Progress, Getting Started) and student performance indicators.
+  - All 508 backend unit tests (`pytest`) and frontend TypeScript typechecks (`tsc` / `ngc`) passing cleanly with 0 errors.
+- **[2026-09-02 - v1.0.6]**:
+  - **IBM SkillsBuild-Style Rich Multi-Widget Module Content System:**
+    - **Multi-Widget Architecture:** Modules now support 5 specialized widget types (Video Player, Interactive Reading Guide, Micro-Quiz / Knowledge Check, Code Challenge Sandbox, and Resource Attachment).
+    - **Instructor Multi-Widget Studio (`/lms-manager`):** Progressive 2-step creator allowing instructors to configure Video embed parameters (URL, duration, takeaways), Reading Guide Markdown, Micro-Quizzes (prompt, 4 options, correct answer, explanation), and Code Sandboxes (target language, requirements, starter code).
+    - **Interactive Classroom Player (`/lms`):** Full 2-column responsive learning stage with left module syllabus navigation, mastery gauge, video embeds, styled reading units, interactive quiz choice cards with instant animated visual feedback, code sandbox with 1-click clipboard copy, and seamless progress tracking.
+    - **Role Check Resilience:** Enhanced `isStaffReviewer` in LMS Manager to gracefully read from the active session token before user profile load, ensuring admins always access the Content Approvals Queue instantly.
+  - All 508 backend unit tests (`pytest`) and frontend TypeScript typechecks (`tsc`) passing cleanly.
 - **[2026-09-02 - v1.0.5]**:
   - **Instructor Portal & LMS Audit Fixes:**
     - **Multi-Course Q&A Aggregation:** Upgraded `GET /api/lms/qa` so `course_id` is optional. When omitted, instructors retrieve all discussion threads across their authored courses, and admins retrieve platform-wide threads.

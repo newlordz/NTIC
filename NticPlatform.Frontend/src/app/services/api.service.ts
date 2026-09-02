@@ -177,6 +177,13 @@ export interface LmsModule {
   status: string;
 }
 
+export interface LmsQuizQuestion {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation?: string;
+}
+
 export interface LmsMaterial {
   id: string;
   course_id: string;
@@ -185,6 +192,7 @@ export interface LmsMaterial {
   type: string;
   url: string;
   description: string;
+  payload?: any;
 }
 
 /** A student submission awaiting a mark. */
@@ -1482,6 +1490,31 @@ login(email: string, password: string): Observable<any> {
 
   generateLmsCertificate(courseId: string, studentId?: string): Observable<LmsCertificate> {
     return this.http.post<LmsCertificate>(`${this.apiUrl}/lms/certificates/generate`, { course_id: courseId, student_id: studentId });
+  }
+
+  uploadFileBlob(file: File): Observable<{ status: string; file_id: string; url: string }> {
+    return new Observable(observer => {
+      const reader = new FileReader();
+      const fileId = 'file-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+      reader.onload = () => {
+        const base64Data = reader.result as string;
+        this.http.post<any>(`${this.apiUrl}/files/upload`, {
+          file_id: fileId,
+          name: file.name,
+          mime_type: file.type || 'application/octet-stream',
+          size: file.size,
+          data_base64: base64Data
+        }).subscribe({
+          next: res => {
+            observer.next({ status: 'success', file_id: fileId, url: `${this.apiUrl}/files/${fileId}` });
+            observer.complete();
+          },
+          error: err => observer.error(err)
+        });
+      };
+      reader.onerror = err => observer.error(err);
+      reader.readAsDataURL(file);
+    });
   }
 
   bulkSync(collection: string, items: any[]): Observable<any> {

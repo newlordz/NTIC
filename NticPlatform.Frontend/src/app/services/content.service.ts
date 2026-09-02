@@ -158,7 +158,7 @@ export interface LmsMaterial {
   courseId: string;
   moduleId: string;
   title: string;
-  type: 'document' | 'video' | 'link' | 'file';
+  type: 'document' | 'video' | 'link' | 'file' | 'guide' | 'quiz' | 'code' | 'resource';
   url: string;
   description: string;
   createdAt: string;
