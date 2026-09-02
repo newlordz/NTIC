@@ -759,7 +759,7 @@
     </div>
   </div>
 
-  <!-- ── MODAL: COURSE (Redesigned Studio Creator) ── -->
+  <!-- ── MODAL: COURSE (Progressive 3-Step Studio Creator) ── -->
   <div class="modal-backdrop course-studio-backdrop" *ngIf="isCourseModalOpen" (click)="closeCourseModal()">
     <div class="modal-card course-studio-modal" (click)="$event.stopPropagation()">
       <!-- Modal Header -->
@@ -777,9 +777,19 @@
         </button>
       </div>
 
+      <!-- Progressive Step Indicator -->
+      <div class="stepper-header" style="display:flex; justify-content:space-between; align-items:center; margin:16px 24px 0; border-bottom:1px solid var(--border-color); padding-bottom:12px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button type="button" class="btn btn-xs" [class.btn-primary]="courseStudioStep === 1" [class.btn-outline]="courseStudioStep !== 1" (click)="setCourseStudioStep(1)">1. Track &amp; Title</button>
+          <button type="button" class="btn btn-xs" [class.btn-primary]="courseStudioStep === 2" [class.btn-outline]="courseStudioStep !== 2" [disabled]="!courseForm.title.trim()" (click)="setCourseStudioStep(2)">2. Overview &amp; Level</button>
+          <button type="button" class="btn btn-xs" [class.btn-primary]="courseStudioStep === 3" [class.btn-outline]="courseStudioStep !== 3" [disabled]="!courseForm.title.trim()" (click)="setCourseStudioStep(3)">3. Scope &amp; Visuals</button>
+        </div>
+        <span style="font-size:12px; color:var(--on-surface-variant); font-weight:600;">Step {{ courseStudioStep }} of 3</span>
+      </div>
+
       <div class="modal-body studio-modal-body">
-        <!-- Live Preview Card Header -->
-        <div class="course-live-preview-card">
+        <!-- Live Preview Mini Bar -->
+        <div class="course-live-preview-card" style="margin-bottom:18px;">
           <div class="preview-icon-wrapper" [class]="courseForm.track || 'coding'">
             <span class="material-symbols-outlined">{{ courseForm.icon || 'school' }}</span>
           </div>
@@ -790,55 +800,53 @@
               <span class="badge neutral" *ngIf="courseForm.status">{{ courseForm.status | titlecase }}</span>
             </div>
             <h4 class="preview-title">{{ courseForm.title || 'Untitled Course Curriculum' }}</h4>
-            <p class="preview-description">{{ courseForm.description ? (courseForm.description.slice(0, 110) + (courseForm.description.length > 110 ? '...' : '')) : 'Add a brief course description below to outline syllabus learning outcomes.' }}</p>
+            <p class="preview-description">{{ courseForm.description ? (courseForm.description.slice(0, 110) + (courseForm.description.length > 110 ? '...' : '')) : 'Add a brief course description in Step 2 to outline syllabus learning outcomes.' }}</p>
           </div>
         </div>
 
-        <!-- Section 1: Course Title -->
-        <div class="form-group studio-group">
-          <label>
-            <span>Course Title <strong class="req">*</strong></span>
-            <span class="hint-text">A descriptive, engaging title for students</span>
-          </label>
-          <div class="input-with-icon">
-            <span class="material-symbols-outlined input-icon">title</span>
-            <input type="text" [(ngModel)]="courseForm.title" placeholder="e.g. Advanced Python Algorithms &amp; Data Structures" class="studio-input" />
-          </div>
-        </div>
-
-        <!-- Section 2: Interactive Track Tiles -->
-        <div class="form-group studio-group">
-          <label>
-            <span>Select Championship Track <strong class="req">*</strong></span>
-            <span class="hint-text">Choose the primary competition category</span>
-          </label>
-          <div class="track-tiles-grid">
-            <div *ngFor="let trk of trackOptions" 
-                 class="track-tile" 
-                 [class.selected]="courseForm.track === trk.id"
-                 (click)="selectCourseTrack(trk.id)">
-              <div class="tile-icon-box" [style.color]="trk.color">
-                <span class="material-symbols-outlined">{{ trk.icon }}</span>
+        <!-- ── STEP 1: Track & Title (2 Data Points) ── -->
+        <div *ngIf="courseStudioStep === 1" class="step-content-pane">
+          <!-- Field 1: Track Selection -->
+          <div class="form-group studio-group">
+            <label>
+              <span>1. Select Championship Track <strong class="req">*</strong></span>
+              <span class="hint-text">Choose the competition category for this course</span>
+            </label>
+            <div class="track-tiles-grid">
+              <div *ngFor="let trk of trackOptions" 
+                   class="track-tile" 
+                   [class.selected]="courseForm.track === trk.id"
+                   (click)="selectCourseTrack(trk.id)">
+                <div class="tile-icon-box" [style.color]="trk.color">
+                  <span class="material-symbols-outlined">{{ trk.icon }}</span>
+                </div>
+                <div class="tile-label">{{ trk.label }}</div>
+                <span class="material-symbols-outlined tile-check" *ngIf="courseForm.track === trk.id">check_circle</span>
               </div>
-              <div class="tile-label">{{ trk.label }}</div>
-              <span class="material-symbols-outlined tile-check" *ngIf="courseForm.track === trk.id">check_circle</span>
+            </div>
+          </div>
+
+          <!-- Field 2: Course Title -->
+          <div class="form-group studio-group mt-3">
+            <label>
+              <span>2. Course Title <strong class="req">*</strong></span>
+              <span class="hint-text">A descriptive, engaging title for students</span>
+            </label>
+            <div class="input-with-icon">
+              <span class="material-symbols-outlined input-icon">title</span>
+              <input type="text" [(ngModel)]="courseForm.title" placeholder="e.g. Advanced Python Algorithms &amp; Data Structures" class="studio-input" />
             </div>
           </div>
         </div>
 
-        <!-- Section 3: Course Description -->
-        <div class="form-group studio-group">
-          <label>
-            <span>Course Description &amp; Objectives</span>
-            <span class="hint-text">Explain key takeaways, target skill level, and prerequisites</span>
-          </label>
-          <textarea [(ngModel)]="courseForm.description" rows="3" placeholder="Provide an overview of the curriculum, real-world applications, and skills students will acquire..." class="studio-textarea"></textarea>
-        </div>
-
-        <!-- Section 4: Metadata Row (Level & Cycle) -->
-        <div class="form-row studio-row">
+        <!-- ── STEP 2: Overview & Level (2 Data Points) ── -->
+        <div *ngIf="courseStudioStep === 2" class="step-content-pane">
+          <!-- Field 1: Difficulty Level -->
           <div class="form-group studio-group">
-            <label><span>Difficulty Level</span></label>
+            <label>
+              <span>1. Difficulty Level</span>
+              <span class="hint-text">Target student skill proficiency</span>
+            </label>
             <div class="select-wrapper">
               <span class="material-symbols-outlined select-icon">trending_up</span>
               <select [(ngModel)]="courseForm.level" class="studio-select">
@@ -849,21 +857,46 @@
             </div>
           </div>
 
-          <div class="form-group studio-group">
-            <label><span>Competition Cycle Scope</span></label>
-            <div class="select-wrapper">
-              <span class="material-symbols-outlined select-icon">emoji_events</span>
-              <select [(ngModel)]="courseForm.competitionId" class="studio-select">
-                <option value="">Evergreen (All Seasons)</option>
-                <option *ngFor="let c of competitions" [value]="c.id">{{ c.title }}</option>
-              </select>
-            </div>
+          <!-- Field 2: Description & Objectives -->
+          <div class="form-group studio-group mt-3">
+            <label>
+              <span>2. Course Description &amp; Objectives</span>
+              <span class="hint-text">Explain key takeaways, real-world applications, and skills</span>
+            </label>
+            <textarea [(ngModel)]="courseForm.description" rows="4" placeholder="Provide a clear overview of what students will master in this course..." class="studio-textarea"></textarea>
           </div>
         </div>
 
-        <!-- Section 5: Icon Picker & Initial Status -->
-        <div class="form-row studio-row">
-          <div class="form-group studio-group">
+        <!-- ── STEP 3: Scope & Visuals (2 Data Points) ── -->
+        <div *ngIf="courseStudioStep === 3" class="step-content-pane">
+          <!-- Field 1: Scope & Status Row -->
+          <div class="form-row studio-row">
+            <div class="form-group studio-group">
+              <label><span>Competition Cycle Scope</span></label>
+              <div class="select-wrapper">
+                <span class="material-symbols-outlined select-icon">emoji_events</span>
+                <select [(ngModel)]="courseForm.competitionId" class="studio-select">
+                  <option value="">Evergreen (All Seasons)</option>
+                  <option *ngFor="let c of competitions" [value]="c.id">{{ c.title }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group studio-group">
+              <label><span>Publication State</span></label>
+              <div class="select-wrapper">
+                <span class="material-symbols-outlined select-icon">flag</span>
+                <select [(ngModel)]="courseForm.status" class="studio-select">
+                  <option value="active">Active (Submit for Moderation)</option>
+                  <option value="draft">Draft (Private in Studio)</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Field 2: Visual Icon Picker -->
+          <div class="form-group studio-group mt-3">
             <label><span>Choose Visual Icon</span></label>
             <div class="preset-icons-bar">
               <button *ngFor="let icn of presetIcons" 
@@ -876,216 +909,279 @@
               </button>
             </div>
           </div>
-
-          <div class="form-group studio-group">
-            <label><span>Publication State</span></label>
-            <div class="select-wrapper">
-              <span class="material-symbols-outlined select-icon">flag</span>
-              <select [(ngModel)]="courseForm.status" class="studio-select">
-                <option value="active">Active (Submit for Moderation)</option>
-                <option value="draft">Draft (Private in Studio)</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
-          </div>
         </div>
 
         <!-- Error Banner -->
         <div class="error-banner" *ngIf="saveError" style="margin-top:12px;background:rgba(239,68,68,0.1);border:1px solid #ef4444;color:#ef4444;padding:12px;border-radius:10px;display:flex;align-items:center;gap:8px;font-size:12.5px;">
           <span class="material-symbols-outlined">error</span>
           <span>{{ saveError }}</span>
-      <!-- Modal Footer -->
-      <div class="modal-footer studio-modal-footer">
-        <button class="btn btn-outline" (click)="closeCourseModal()" [disabled]="isSaving">Cancel</button>
-        <button class="btn btn-primary studio-submit-btn" (click)="saveCourse()" [disabled]="!courseForm.title.trim() || isSaving">
-          <span class="material-symbols-outlined" *ngIf="!isSaving">rocket_launch</span>
-          <span class="material-symbols-outlined spin" *ngIf="isSaving">sync</span>
-          <span>{{ isSaving ? 'Saving Course...' : (formMode === 'edit' ? 'Save Changes' : 'Create & Publish Course') }}</span>
-        </button>
+        </div>
+      </div>
+
+      <!-- Modal Footer with Step Navigation -->
+      <div class="modal-footer studio-modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <button class="btn btn-outline" *ngIf="courseStudioStep === 1" (click)="closeCourseModal()" [disabled]="isSaving">Cancel</button>
+          <button class="btn btn-outline" *ngIf="courseStudioStep > 1" (click)="setCourseStudioStep(courseStudioStep - 1)" [disabled]="isSaving">
+            <span class="material-symbols-outlined">arrow_back</span> Back
+          </button>
+        </div>
+
+        <div>
+          <button class="btn btn-primary" *ngIf="courseStudioStep < 3" (click)="setCourseStudioStep(courseStudioStep + 1)" [disabled]="!courseForm.title.trim()">
+            Next <span class="material-symbols-outlined">arrow_forward</span>
+          </button>
+
+          <button class="btn btn-primary studio-submit-btn" *ngIf="courseStudioStep === 3" (click)="saveCourse()" [disabled]="!courseForm.title.trim() || isSaving">
+            <span class="material-symbols-outlined" *ngIf="!isSaving">rocket_launch</span>
+            <span class="material-symbols-outlined spin" *ngIf="isSaving">sync</span>
+            <span>{{ isSaving ? 'Saving Course...' : (formMode === 'edit' ? 'Save Changes' : 'Create & Publish Course') }}</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ── MODAL: MODULE ── -->
+  <!-- ── MODAL: MODULE (Progressive 2-Step Creator) ── -->
   <div class="modal-backdrop" *ngIf="isModuleModalOpen" (click)="closeModuleModal()">
     <div class="modal-card" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>{{ formMode === 'edit' ? 'Edit' : 'Add' }} Curriculum Module</h3>
+        <div>
+          <h3 style="margin:0;">{{ formMode === 'edit' ? 'Edit' : 'Add' }} Curriculum Module</h3>
+          <span style="font-size:12px; color:var(--on-surface-variant);">Step {{ moduleStep }} of 2: {{ moduleStep === 1 ? 'Target & Title' : 'Sequence & Outline' }}</span>
+        </div>
         <button class="close-btn" (click)="closeModuleModal()">&times;</button>
       </div>
+
       <div class="modal-body">
-        <div class="form-group">
-          <label>Course *</label>
-          <select [(ngModel)]="moduleForm.courseId" (ngModelChange)="suggestNextModuleOrder()">
-            <option value="">Select course...</option>
-            <option *ngFor="let course of coursesList" [value]="course.id">{{ course.title }}</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Module Title *</label>
-          <input type="text" [(ngModel)]="moduleForm.title" placeholder="e.g. Dynamic Programming Basics" />
-        </div>
-
-        <div class="form-group">
-          <label>Description</label>
-          <textarea [(ngModel)]="moduleForm.description" rows="2" placeholder="Brief outline of topics covered..."></textarea>
-        </div>
-
-        <div class="form-row">
+        <!-- Step 1: Course Target & Module Title (2 Data Points) -->
+        <div *ngIf="moduleStep === 1">
           <div class="form-group">
-            <label>Order Index #</label>
-            <input type="number" [(ngModel)]="moduleForm.order" min="1" />
-          </div>
-
-          <div class="form-group">
-            <label>Icon Symbol</label>
-            <input type="text" [(ngModel)]="moduleForm.icon" placeholder="e.g. view_module" />
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <p class="error-msg" *ngIf="saveError" style="color:var(--error, #ef4444); font-size:12px; margin:0 auto 0 0;">{{ saveError }}</p>
-        <button class="btn btn-outline" (click)="closeModuleModal()" [disabled]="isSaving">Cancel</button>
-        <button class="btn btn-primary" (click)="saveModule()" [disabled]="isSaving || !moduleForm.title.trim() || !moduleForm.courseId">
-          <span *ngIf="!isSaving">{{ formMode === 'edit' ? 'Update Module' : 'Save Module' }}</span>
-          <span *ngIf="isSaving" class="spinner-inline"></span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── MODAL: MATERIAL ── -->
-  <div class="modal-backdrop" *ngIf="isMaterialModalOpen" (click)="closeMaterialModal()">
-    <div class="modal-card" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>{{ formMode === 'edit' ? 'Edit' : 'Add' }} Learning Asset</h3>
-        <button class="close-btn" (click)="closeMaterialModal()">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Asset Title *</label>
-          <input type="text" [(ngModel)]="materialForm.title" placeholder="e.g. Arrays Reference Cheat Sheet" />
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Course *</label>
-            <select [(ngModel)]="materialForm.courseId" (change)="materialForm.moduleId = ''">
+            <label>1. Target Course *</label>
+            <select [(ngModel)]="moduleForm.courseId" (ngModelChange)="suggestNextModuleOrder()">
               <option value="">Select course...</option>
               <option *ngFor="let course of coursesList" [value]="course.id">{{ course.title }}</option>
             </select>
           </div>
 
-          <div class="form-group">
-            <label>Module</label>
-            <select [(ngModel)]="materialForm.moduleId">
-              <option value="">General (Course-level)</option>
-              <option *ngFor="let mod of getModulesForCourse(materialForm.courseId)" [value]="mod.id">{{ mod.title }}</option>
-            </select>
+          <div class="form-group mt-3">
+            <label>2. Module Title *</label>
+            <input type="text" [(ngModel)]="moduleForm.title" placeholder="e.g. Dynamic Programming & Recursion" />
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Asset Type</label>
-            <select [(ngModel)]="materialForm.type">
-              <option value="document">Document / PDF</option>
-              <option value="video">Video Embed / URL</option>
-              <option value="link">External Resource Link</option>
-              <option value="file">File Attachment</option>
-            </select>
+        <!-- Step 2: Sequence & Outline (2 Data Points) -->
+        <div *ngIf="moduleStep === 2">
+          <div class="form-row">
+            <div class="form-group">
+              <label>1. Order Index # (Suggested)</label>
+              <input type="number" [(ngModel)]="moduleForm.order" min="1" />
+            </div>
+
+            <div class="form-group">
+              <label>Icon Symbol</label>
+              <input type="text" [(ngModel)]="moduleForm.icon" placeholder="e.g. menu_book, code, terminal" />
+            </div>
           </div>
 
-          <div class="form-group">
-            <label>Resource URL / Link</label>
-            <input type="text" [(ngModel)]="materialForm.url" placeholder="https://..." />
+          <div class="form-group mt-3">
+            <label>2. Module Outline / Learning Objectives</label>
+            <textarea [(ngModel)]="moduleForm.description" rows="3" placeholder="Brief outline of concepts and topics covered in this module..."></textarea>
           </div>
         </div>
 
-        <div class="form-group">
-          <label>Description</label>
-          <textarea [(ngModel)]="materialForm.description" rows="2" placeholder="Instructions or overview of asset..."></textarea>
-        </div>
+        <p class="error-msg" *ngIf="saveError" style="color:var(--error, #ef4444); font-size:12px; margin:12px 0 0;">{{ saveError }}</p>
       </div>
-      <div class="modal-footer">
-        <p class="error-msg" *ngIf="saveError" style="color:var(--error, #ef4444); font-size:12px; margin:0 auto 0 0;">{{ saveError }}</p>
-        <button class="btn btn-outline" (click)="closeMaterialModal()" [disabled]="isSaving">Cancel</button>
-        <button class="btn btn-primary" (click)="saveMaterial()" [disabled]="isSaving || !materialForm.title.trim() || !materialForm.courseId">
-          <span *ngIf="!isSaving">{{ formMode === 'edit' ? 'Update Asset' : 'Save Asset' }}</span>
-          <span *ngIf="isSaving" class="spinner-inline"></span>
-        </button>
+
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <button class="btn btn-outline" *ngIf="moduleStep === 1" (click)="closeModuleModal()" [disabled]="isSaving">Cancel</button>
+          <button class="btn btn-outline" *ngIf="moduleStep === 2" (click)="setModuleStep(1)" [disabled]="isSaving">
+            <span class="material-symbols-outlined">arrow_back</span> Back
+          </button>
+        </div>
+
+        <div>
+          <button class="btn btn-primary" *ngIf="moduleStep === 1" (click)="setModuleStep(2)" [disabled]="!moduleForm.title.trim() || !moduleForm.courseId">
+            Next <span class="material-symbols-outlined">arrow_forward</span>
+          </button>
+          <button class="btn btn-primary" *ngIf="moduleStep === 2" (click)="saveModule()" [disabled]="isSaving || !moduleForm.title.trim() || !moduleForm.courseId">
+            <span *ngIf="!isSaving">{{ formMode === 'edit' ? 'Update Module' : 'Save Module' }}</span>
+            <span *ngIf="isSaving" class="spinner-inline"></span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ── MODAL: ASSIGNMENT ── -->
+  <!-- ── MODAL: MATERIAL (Progressive 2-Step Creator) ── -->
+  <div class="modal-backdrop" *ngIf="isMaterialModalOpen" (click)="closeMaterialModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3 style="margin:0;">{{ formMode === 'edit' ? 'Edit' : 'Add' }} Learning Asset</h3>
+          <span style="font-size:12px; color:var(--on-surface-variant);">Step {{ materialStep }} of 2: {{ materialStep === 1 ? 'Target & Asset Type' : 'Link & Description' }}</span>
+        </div>
+        <button class="close-btn" (click)="closeMaterialModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Step 1: Target Placement & Title (2 Data Points) -->
+        <div *ngIf="materialStep === 1">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Target Course *</label>
+              <select [(ngModel)]="materialForm.courseId" (change)="materialForm.moduleId = ''">
+                <option value="">Select course...</option>
+                <option *ngFor="let course of coursesList" [value]="course.id">{{ course.title }}</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Module Placement</label>
+              <select [(ngModel)]="materialForm.moduleId">
+                <option value="">General (Course-level)</option>
+                <option *ngFor="let mod of getModulesForCourse(materialForm.courseId)" [value]="mod.id">{{ mod.title }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row mt-3">
+            <div class="form-group" style="flex:2;">
+              <label>Asset Title *</label>
+              <input type="text" [(ngModel)]="materialForm.title" placeholder="e.g. Graph Algorithms Cheat Sheet" />
+            </div>
+
+            <div class="form-group" style="flex:1;">
+              <label>Asset Type</label>
+              <select [(ngModel)]="materialForm.type">
+                <option value="document">Document / PDF</option>
+                <option value="video">Video Embed / URL</option>
+                <option value="link">External Resource</option>
+                <option value="file">Source File</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Resource Link & Description (2 Data Points) -->
+        <div *ngIf="materialStep === 2">
+          <div class="form-group">
+            <label>Resource URL / Link</label>
+            <input type="text" [(ngModel)]="materialForm.url" placeholder="https://..." />
+          </div>
+
+          <div class="form-group mt-3">
+            <label>Instructions / Description for Students</label>
+            <textarea [(ngModel)]="materialForm.description" rows="3" placeholder="Brief summary or reading instructions..."></textarea>
+          </div>
+        </div>
+
+        <p class="error-msg" *ngIf="saveError" style="color:var(--error, #ef4444); font-size:12px; margin:12px 0 0;">{{ saveError }}</p>
+      </div>
+
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <button class="btn btn-outline" *ngIf="materialStep === 1" (click)="closeMaterialModal()" [disabled]="isSaving">Cancel</button>
+          <button class="btn btn-outline" *ngIf="materialStep === 2" (click)="setMaterialStep(1)" [disabled]="isSaving">
+            <span class="material-symbols-outlined">arrow_back</span> Back
+          </button>
+        </div>
+
+        <div>
+          <button class="btn btn-primary" *ngIf="materialStep === 1" (click)="setMaterialStep(2)" [disabled]="!materialForm.title.trim() || !materialForm.courseId">
+            Next <span class="material-symbols-outlined">arrow_forward</span>
+          </button>
+          <button class="btn btn-primary" *ngIf="materialStep === 2" (click)="saveMaterial()" [disabled]="isSaving || !materialForm.title.trim() || !materialForm.courseId">
+            <span *ngIf="!isSaving">{{ formMode === 'edit' ? 'Update Asset' : 'Save Asset' }}</span>
+            <span *ngIf="isSaving" class="spinner-inline"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: ASSIGNMENT (Progressive 2-Step Creator) ── -->
   <div class="modal-backdrop" *ngIf="isAssignmentModalOpen" (click)="closeAssignmentModal()">
     <div class="modal-card" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>{{ formMode === 'edit' ? 'Edit' : 'Create' }} Assignment</h3>
+        <div>
+          <h3 style="margin:0;">{{ formMode === 'edit' ? 'Edit' : 'Create' }} Assignment</h3>
+          <span style="font-size:12px; color:var(--on-surface-variant);">Step {{ assignmentStep }} of 2: {{ assignmentStep === 1 ? 'Target & Title' : 'Scoring & Instructions' }}</span>
+        </div>
         <button class="close-btn" (click)="closeAssignmentModal()">&times;</button>
       </div>
+
       <div class="modal-body">
-        <div class="form-group">
-          <label>Assignment Title *</label>
-          <input type="text" [(ngModel)]="assignmentForm.title" placeholder="e.g. Graph Traversal Challenge" />
-        </div>
+        <!-- Step 1: Target Course & Title (2 Data Points) -->
+        <div *ngIf="assignmentStep === 1">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Target Course *</label>
+              <select [(ngModel)]="assignmentForm.courseId">
+                <option value="">Select course...</option>
+                <option *ngFor="let course of coursesList" [value]="course.id">{{ course.title }}</option>
+              </select>
+            </div>
 
-        <div class="form-group">
-          <label>Course *</label>
-          <select [(ngModel)]="assignmentForm.courseId">
-            <option value="">Select course...</option>
-            <option *ngFor="let course of coursesList" [value]="course.id">{{ course.title }}</option>
-          </select>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Track</label>
-            <select [(ngModel)]="assignmentForm.track">
-              <option value="coding">Coding</option>
-              <option value="robotics">Robotics</option>
-              <option value="ai">AI</option>
-              <option value="cyber">Networking & Cybersecurity</option>
-              <option value="innovation">Innovation</option>
-            </select>
+            <div class="form-group">
+              <label>Championship Track</label>
+              <select [(ngModel)]="assignmentForm.track">
+                <option value="coding">Coding</option>
+                <option value="robotics">Robotics</option>
+                <option value="ai">AI</option>
+                <option value="cyber">Cybersecurity</option>
+                <option value="innovation">Innovation</option>
+              </select>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label>Max Score (Points)</label>
-            <input type="number" [(ngModel)]="assignmentForm.maxScore" min="10" />
+          <div class="form-group mt-3">
+            <label>Assignment Title *</label>
+            <input type="text" [(ngModel)]="assignmentForm.title" placeholder="e.g. Graph Traversal Challenge" />
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Due Date</label>
-            <input type="date" [(ngModel)]="assignmentForm.dueDate" />
+        <!-- Step 2: Scoring & Problem Statement (2 Data Points) -->
+        <div *ngIf="assignmentStep === 2">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Max Score (Points)</label>
+              <input type="number" [(ngModel)]="assignmentForm.maxScore" min="10" />
+            </div>
+
+            <div class="form-group">
+              <label>Due Date</label>
+              <input type="date" [(ngModel)]="assignmentForm.dueDate" />
+            </div>
           </div>
 
-          <div class="form-group">
-            <label>Status</label>
-            <select [(ngModel)]="assignmentForm.status">
-              <option value="active">Active</option>
-              <option value="draft">Draft</option>
-              <option value="closed">Closed</option>
-            </select>
+          <div class="form-group mt-3">
+            <label>Problem Statement &amp; Submission Rubric</label>
+            <textarea [(ngModel)]="assignmentForm.description" rows="3" placeholder="Detailed instructions, input/output requirements, and grading rubric..."></textarea>
           </div>
         </div>
 
-        <div class="form-group">
-          <label>Instructions & Description</label>
-          <textarea [(ngModel)]="assignmentForm.description" rows="3" placeholder="Detailed problem statement and submission requirements..."></textarea>
-        </div>
+        <p class="error-msg" *ngIf="saveError" style="color:var(--error, #ef4444); font-size:12px; margin:12px 0 0;">{{ saveError }}</p>
       </div>
-      <div class="modal-footer">
-        <p class="error-msg" *ngIf="saveError" style="color:var(--error, #ef4444); font-size:12px; margin:0 auto 0 0;">{{ saveError }}</p>
-        <button class="btn btn-outline" (click)="closeAssignmentModal()" [disabled]="isSaving">Cancel</button>
-        <button class="btn btn-primary" (click)="saveAssignment()" [disabled]="isSaving || !assignmentForm.title.trim() || !assignmentForm.courseId">
-          <span *ngIf="!isSaving">{{ formMode === 'edit' ? 'Update Assignment' : 'Save Assignment' }}</span>
-          <span *ngIf="isSaving" class="spinner-inline"></span>
-        </button>
+
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <button class="btn btn-outline" *ngIf="assignmentStep === 1" (click)="closeAssignmentModal()" [disabled]="isSaving">Cancel</button>
+          <button class="btn btn-outline" *ngIf="assignmentStep === 2" (click)="setAssignmentStep(1)" [disabled]="isSaving">
+            <span class="material-symbols-outlined">arrow_back</span> Back
+          </button>
+        </div>
+
+        <div>
+          <button class="btn btn-primary" *ngIf="assignmentStep === 1" (click)="setAssignmentStep(2)" [disabled]="!assignmentForm.title.trim() || !assignmentForm.courseId">
+            Next <span class="material-symbols-outlined">arrow_forward</span>
+          </button>
+          <button class="btn btn-primary" *ngIf="assignmentStep === 2" (click)="saveAssignment()" [disabled]="isSaving || !assignmentForm.title.trim() || !assignmentForm.courseId">
+            <span *ngIf="!isSaving">{{ formMode === 'edit' ? 'Update Assignment' : 'Save Assignment' }}</span>
+            <span *ngIf="isSaving" class="spinner-inline"></span>
+          </button>
+        </div>
       </div>
     </div>
   </div>

@@ -781,9 +781,36 @@ export class LmsManagerComponent implements OnInit {
     return asgn ? asgn.title : 'Assignment';
   }
 
+  // ── Progressive Step State for Modals (1-2 fields at a time) ──────
+  courseStudioStep: number = 1;
+  moduleStep: number = 1;
+  materialStep: number = 1;
+  assignmentStep: number = 1;
+
+  setCourseStudioStep(step: number): void {
+    this.courseStudioStep = step;
+    this.cdr.markForCheck();
+  }
+
+  setModuleStep(step: number): void {
+    this.moduleStep = step;
+    this.cdr.markForCheck();
+  }
+
+  setMaterialStep(step: number): void {
+    this.materialStep = step;
+    this.cdr.markForCheck();
+  }
+
+  setAssignmentStep(step: number): void {
+    this.assignmentStep = step;
+    this.cdr.markForCheck();
+  }
+
   // ── Course Actions ──────────────────────────────────────────
   openCourseModal(course?: LmsCourse): void {
     this.saveError = '';
+    this.courseStudioStep = 1;
     if (course) {
       this.formMode = 'edit';
       this.courseForm = { ...course };
@@ -797,6 +824,7 @@ export class LmsManagerComponent implements OnInit {
 
   closeCourseModal(): void {
     this.isCourseModalOpen = false;
+    this.courseStudioStep = 1;
     this.saveError = '';
     this.cdr.markForCheck();
   }
@@ -900,6 +928,7 @@ export class LmsManagerComponent implements OnInit {
   // ── Module Actions ──────────────────────────────────────────
   openModuleModal(mod?: LmsModule): void {
     this.saveError = '';
+    this.moduleStep = 1;
     if (mod) {
       this.formMode = 'edit';
       this.moduleForm = { ...mod };
@@ -927,6 +956,7 @@ export class LmsManagerComponent implements OnInit {
 
   closeModuleModal(): void {
     this.isModuleModalOpen = false;
+    this.moduleStep = 1;
     this.saveError = '';
     this.cdr.markForCheck();
   }
@@ -985,6 +1015,7 @@ export class LmsManagerComponent implements OnInit {
   // ── Material Actions ──────────────────────────────────────────
   openMaterialModal(mat?: LmsMaterial): void {
     this.saveError = '';
+    this.materialStep = 1;
     if (mat) {
       this.formMode = 'edit';
       this.materialForm = { ...mat };
@@ -1003,6 +1034,7 @@ export class LmsManagerComponent implements OnInit {
 
   closeMaterialModal(): void {
     this.isMaterialModalOpen = false;
+    this.materialStep = 1;
     this.saveError = '';
     this.cdr.markForCheck();
   }
@@ -1062,6 +1094,7 @@ export class LmsManagerComponent implements OnInit {
   // ── Assignment Actions ──────────────────────────────────────────
   openAssignmentModal(asgn?: LmsAssignment): void {
     this.saveError = '';
+    this.assignmentStep = 1;
     if (asgn) {
       this.formMode = 'edit';
       this.assignmentForm = { ...asgn };
@@ -1080,6 +1113,7 @@ export class LmsManagerComponent implements OnInit {
 
   closeAssignmentModal(): void {
     this.isAssignmentModalOpen = false;
+    this.assignmentStep = 1;
     this.saveError = '';
     this.cdr.markForCheck();
   }
