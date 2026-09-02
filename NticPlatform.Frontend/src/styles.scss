@@ -694,7 +694,6 @@ select {
   min-height: 100vh;
   width: 100%;
   max-width: 100vw;
-  overflow-x: clip;
   position: relative;
   background: transparent;
 
@@ -708,7 +707,7 @@ select {
     border-radius: 50%;
     background: radial-gradient(circle, rgba(0, 86, 179, 0.16) 0%, rgba(0, 86, 179, 0) 70%);
     pointer-events: none;
-    z-index: 0;
+    z-index: -1;
     filter: blur(50px);
     opacity: 0.85;
     animation: ambientFloatLeft 20s ease-in-out infinite alternate;
@@ -724,7 +723,7 @@ select {
     border-radius: 50%;
     background: radial-gradient(circle, rgba(0, 168, 150, 0.13) 0%, rgba(0, 168, 150, 0) 70%);
     pointer-events: none;
-    z-index: 0;
+    z-index: -1;
     filter: blur(60px);
     opacity: 0.85;
     animation: ambientFloatRight 24s ease-in-out infinite alternate;
@@ -1467,7 +1466,7 @@ body.ac-expanded .main-content {
 
 @keyframes dropIn {
   from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: none; }
 }
 
 /* ── Page Canvas ── */
@@ -1476,7 +1475,6 @@ body.ac-expanded .main-content {
   padding: 28px 32px;
   background: transparent;
   position: relative;
-  z-index: 1;
 }
 
 /* ── Route outlet wrapper (required for Angular route animations) ── */
@@ -4782,17 +4780,83 @@ body.dark-theme {
   overscroll-behavior-y: contain;
 }
 
-/* ── Hardware Acceleration for Sticky Navigation & Shells ── */
-.topbar,
-.landing-header,
-.public-nav,
-.header-container,
-.utility-bar {
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
-  will-change: transform, backdrop-filter;
-  -webkit-overflow-scrolling: touch;
+/* ── Universal Viewport Modal Backdrops & Overlays ── */
+.modal-overlay,
+.modal-backdrop,
+.login-modal-backdrop,
+.pass-modal-overlay,
+.global-dialog-overlay,
+.custom-modal-backdrop,
+.custom-dialog-backdrop,
+.ticket-modal-backdrop,
+.review-dialog-backdrop,
+.um-modal-backdrop,
+.ca-backdrop,
+.sponsor-tier-modal-backdrop,
+.pm-modal-backdrop,
+.mp-modal-backdrop,
+.cc-rec-modal-backdrop,
+.enlist-backdrop,
+.role-modal-backdrop,
+.glass-modal-backdrop,
+.terms-modal-backdrop,
+.db-modal-backdrop,
+.course-studio-backdrop,
+.ac-modal-backdrop,
+.ac-panel-backdrop,
+.jw-modal-backdrop,
+.side-panel-backdrop,
+.fp-backdrop,
+.cmd-palette-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+  box-sizing: border-box !important;
 }
+
+/* Secondary stacked modals (like Review/Rejection on top of Preview) */
+.review-dialog-backdrop {
+  z-index: 1000010 !important;
+}
+
+/* ── Dynamic Stacking Rule: When Any Modal is Open, Main Content Rises & Shell Chrome Drops ── */
+body:has([class*="-backdrop"], [class*="-overlay"]),
+html:has([class*="-backdrop"], [class*="-overlay"]),
+.app-shell:has([class*="-backdrop"], [class*="-overlay"]) {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+
+  .main-content {
+    z-index: 999999 !important;
+    overflow: hidden !important;
+  }
+  .app-shell,
+  .page-canvas,
+  .admin-tab-body,
+  .um-shell {
+    overflow: hidden !important;
+  }
+  .sidebar {
+    z-index: -1 !important;
+    pointer-events: none !important;
+    overflow: hidden !important;
+  }
+  .topbar {
+    z-index: -1 !important;
+    pointer-events: none !important;
+    transform: none !important;
+    -webkit-transform: none !important;
+    will-change: auto !important;
+  }
+}
+
+
 
 
 

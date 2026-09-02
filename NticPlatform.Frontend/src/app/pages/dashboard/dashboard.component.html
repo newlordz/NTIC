@@ -5275,6 +5275,10 @@
 
   </div>
 
+  </ng-container>
+
+</div> <!-- End page-canvas -->
+
   <app-application-preview-modal
     *ngIf="activePreviewRequest"
     [request]="activePreviewRequest"
@@ -5283,7 +5287,7 @@
     (approve)="approveRequest($event)"
     (reject)="quickRejectFromPreview()"></app-application-preview-modal>
 
-  <!-- -- REVIEW / REJECTION DIALOG -- -->
+  <!-- ── REVIEW / REJECTION DIALOG ── -->
   <div class="review-dialog-backdrop" *ngIf="activeReviewRequest" (click)="closeReview()">
     <div class="review-dialog" (click)="$event.stopPropagation()">
       <div class="review-dialog-header">
@@ -5345,10 +5349,6 @@
       </div>
     </div>
   </div>
-
-  </ng-container>
-
-</div> <!-- End page-canvas -->
 
 <!-- -- REGISTRATION POPUP MODAL -- -->
   <div class="ticket-modal-backdrop" *ngIf="isRegModalOpen" (click)="closeRegisterModal()">

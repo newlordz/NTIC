@@ -25,7 +25,7 @@
 }
 @keyframes cardSlideUp {
   from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: none; }
 }
 
 /* ═══════════════════════════════════════════
@@ -3503,7 +3503,12 @@
 }
 
 .admin-tab-body {
-  animation: cardSlideUp 0.35s ease forwards;
+  animation: adminTabFadeIn 0.3s ease forwards;
+}
+
+@keyframes adminTabFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* Expanded view when inside an Admin Control sub-section */
@@ -5025,9 +5030,12 @@
 .ticket-modal-backdrop {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 15, 33, 0.7);
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 15, 33, 0.75);
   backdrop-filter: blur(10px);
-  z-index: 9999;
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 100000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8231,22 +8239,36 @@
 
 /* Review / Rejection Modal */
 .review-dialog-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.5);
-  backdrop-filter: blur(4px);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 1200;
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 15, 33, 0.75) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 100010 !important;
   padding: 24px;
   animation: fadeIn 0.2s ease-out;
+  box-sizing: border-box;
 }
 .review-dialog {
-  width: 100%; max-width: 540px;
+  width: 100%;
+  max-width: 540px;
   background: var(--surface-container-lowest, #fff);
   border: 1px solid var(--outline-variant, #e2e8f0);
   border-radius: 20px;
-  box-shadow: 0 24px 60px rgba(0,0,0,0.18);
-  display: flex; flex-direction: column;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+  display: flex;
+  flex-direction: column;
   max-height: 90vh;
+  overflow: hidden;
   animation: modalSlideIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
 }
 
@@ -8261,6 +8283,7 @@
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 .review-dialog-header {
+  flex-shrink: 0;
   padding: 22px 24px 16px;
   display: flex; align-items: flex-start; justify-content: space-between;
   border-bottom: 1px solid var(--outline-variant, #e2e8f0);
@@ -8291,6 +8314,8 @@
   padding: 20px 24px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
+  max-height: calc(90vh - 140px);
 
   .review-banner {
     display: flex; align-items: flex-start; gap: 10px;
@@ -8373,6 +8398,7 @@
   }
 }
 .review-dialog-footer {
+  flex-shrink: 0;
   padding: 16px 24px;
   border-top: 1px solid var(--outline-variant, #e2e8f0);
   display: flex; gap: 10px; justify-content: flex-end;
