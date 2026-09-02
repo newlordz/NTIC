@@ -5,15 +5,11 @@
 
   <div class="tab-bar">
     <div class="tab-item" [class.active]="activeTab==='courses'" (click)="activeTab='courses'">
-      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">library_books</span>My Courses
+      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">library_books</span>My Courses &amp; Curriculum
     </div>
     <div class="tab-item" [class.active]="activeTab==='submissions'" (click)="activeTab='submissions'">
       <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">assignment</span>Student Submissions
       <span class="badge error" style="margin-left:8px;" *ngIf="pendingInstructorSubmissions.length > 0">{{ pendingInstructorSubmissions.length }}</span>
-    </div>
-    <div class="tab-item" [class.active]="activeTab==='content-submit'" (click)="activeTab='content-submit'">
-      <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle;margin-right:4px;">publish</span>Content Submission
-      <span class="badge primary" style="margin-left:8px;background:var(--warning);color:#1a1a2e;" *ngIf="pendingContentCount > 0">{{ pendingContentCount }}</span>
     </div>
   </div>
 
@@ -21,13 +17,18 @@
   <div *ngIf="activeTab==='courses'" class="fade-in">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
       <p style="color:var(--on-surface-variant);font-size:13px;margin:0;">Courses you created &mdash; <strong>{{ myCourses.length }}</strong> total</p>
+      <a routerLink="/lms-manager" (click)="goToCourseStudio()" class="btn btn-outline btn-sm" style="display:flex;align-items:center;gap:6px;text-decoration:none;cursor:pointer;">
+        <span class="material-symbols-outlined" style="font-size:16px;">edit_note</span> Open Course Studio
+      </a>
     </div>
 
     <div *ngIf="myCourses.length === 0" class="card" style="text-align:center;padding:48px 24px;">
       <span class="material-symbols-outlined" style="font-size:48px;color:var(--outline);margin-bottom:12px;">school</span>
       <h3 style="font-size:16px;margin:0 0 6px;">No Courses Yet</h3>
-      <p style="font-size:13px;color:var(--on-surface-variant);margin:0 0 16px;">Submit a course for admin moderation via the Content Submission tab.</p>
-      <button class="btn btn-primary" (click)="activeTab='content-submit'"><span class="material-symbols-outlined">add</span> Create New Course</button>
+      <p style="font-size:13px;color:var(--on-surface-variant);margin:0 0 16px;">Create, build modules, and publish curriculum in the dedicated Course Studio.</p>
+      <button class="btn btn-primary" (click)="goToCreateCourse()" routerLink="/lms-manager" [queryParams]="{ action: 'create_course' }" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+        <span class="material-symbols-outlined">add</span> Create in Course Studio
+      </button>
     </div>
 
     <div class="grid-3" *ngIf="myCourses.length > 0">
@@ -52,8 +53,9 @@
             <div class="progress-bar secondary"><div class="progress-fill" [style.width.%]="c.completion"></div></div>
           </div>
           <div *ngIf="c.completion === 0" style="font-size:12px;color:var(--on-surface-variant);padding:8px 0;">Enrollment Open</div>
-          <div style="display:flex;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid var(--outline-variant);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--outline-variant);">
             <span class="track-chip" [class]="c.track">{{c.track}}</span>
+            <a routerLink="/lms-manager" (click)="goToCourseStudio()" class="btn btn-ghost btn-sm" style="text-decoration:none;font-size:11.5px;cursor:pointer;">Manage in Studio &rarr;</a>
           </div>
           <div *ngIf="c.rejectionReason" style="margin-top:8px;padding:8px;background:rgba(239,68,68,0.08);border-radius:6px;font-size:11px;color:#ef4444;">
             <strong>Rejected:</strong> {{ c.rejectionReason }}
@@ -115,108 +117,6 @@
       <div *ngIf="instructorSubmissions.length === 0" style="text-align:center;padding:40px 16px;">
         <span class="material-symbols-outlined" style="font-size:40px;color:var(--outline);margin-bottom:8px;">inbox</span>
         <p style="color:var(--on-surface-variant);font-size:13px;margin:0;">No student submissions for your courses yet.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ TAB 3: CONTENT SUBMISSION ══ -->
-  <div *ngIf="activeTab==='content-submit'" class="fade-in">
-    <div class="card" style="margin-bottom:20px;">
-      <div class="card-header">
-        <h3>Submit Content for Admin Review</h3>
-      </div>
-      <div class="card-body">
-        <p style="color:var(--on-surface-variant);font-size:13px;margin-bottom:20px;">
-          Submit a new course or module for administrative approval. Once approved, it will appear in the active LMS curriculum.
-        </p>
-
-        <div class="error-banner" *ngIf="showContentSubmitSuccess" style="background:rgba(16,185,129,0.1);border:1px solid #10b981;color:#10b981;padding:12px;border-radius:8px;display:flex;align-items:center;gap:8px;margin-bottom:16px;">
-          <span class="material-symbols-outlined">check_circle</span>
-          <span>Content submitted successfully! It will be reviewed by an administrator.</span>
-        </div>
-
-        <div class="error-banner" *ngIf="contentSubmitError" style="background:rgba(239,68,68,0.1);border:1px solid #ef4444;color:#ef4444;padding:12px;border-radius:8px;display:flex;align-items:center;gap:8px;margin-bottom:16px;">
-          <span class="material-symbols-outlined">error</span>
-          <span>{{ contentSubmitError }}</span>
-        </div>
-
-        <div class="form-group" style="margin-bottom:16px;">
-          <label class="form-label">Content Type</label>
-          <select class="form-control form-select" [(ngModel)]="contentSubmissionForm.type">
-            <option value="course">Course (Full Track)</option>
-            <option value="module">Module (Standalone Lesson)</option>
-          </select>
-        </div>
-
-        <ng-container *ngIf="contentSubmissionForm.type === 'course'">
-          <div class="form-group" style="margin-bottom:16px;">
-            <label class="form-label">Course Title *</label>
-            <input class="form-control" type="text" placeholder="e.g. Advanced Cybersecurity Defense" [(ngModel)]="contentSubmissionForm.courseTitle">
-          </div>
-          <div class="grid-2" style="margin-bottom:16px;">
-            <div class="form-group">
-              <label class="form-label">Track</label>
-              <select class="form-control form-select" [(ngModel)]="contentSubmissionForm.courseTrack">
-                <option value="coding">Coding & Algorithms</option>
-                <option value="robotics">Robotics</option>
-                <option value="ai">Artificial Intelligence</option>
-                <option value="cyber">Networking & Cybersecurity</option>
-                <option value="innovation">Innovation & Entrepreneurship</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Level</label>
-              <select class="form-control form-select" [(ngModel)]="contentSubmissionForm.courseLevel">
-                <option value="Beginner">Beginner</option>
-                <option value="Intermediate">Intermediate</option>
-                <option value="Advanced">Advanced</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group" style="margin-bottom:20px;">
-            <label class="form-label">Course Description *</label>
-            <textarea class="form-control" rows="4" placeholder="Describe the course content, objectives, and target audience..." [(ngModel)]="contentSubmissionForm.courseDescription"></textarea>
-          </div>
-        </ng-container>
-
-        <ng-container *ngIf="contentSubmissionForm.type === 'module'">
-          <div class="form-group" style="margin-bottom:16px;">
-            <label class="form-label">Module Title *</label>
-            <input class="form-control" type="text" placeholder="e.g. Advanced Persistent Threats & APT Simulation" [(ngModel)]="contentSubmissionForm.moduleTitle">
-          </div>
-          <div class="form-group" style="margin-bottom:20px;">
-            <label class="form-label">Module Description *</label>
-            <textarea class="form-control" rows="4" placeholder="Describe the module content, learning objectives, and key takeaways..." [(ngModel)]="contentSubmissionForm.moduleDescription"></textarea>
-          </div>
-        </ng-container>
-
-        <div style="display:flex;justify-content:flex-end;">
-          <button class="btn btn-primary" (click)="submitContentForModeration()">
-            <span class="material-symbols-outlined">send</span>
-            Submit for Review
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <h3>My Submitted Content ({{ instructorSubmittedContent.length }})</h3>
-      </div>
-      <div class="card-body">
-        <div *ngIf="instructorSubmittedContent.length === 0" style="text-align:center;padding:32px 16px;color:var(--on-surface-variant);">
-          <span class="material-symbols-outlined" style="font-size:40px;margin-bottom:8px;">inbox</span>
-          <p style="margin:0;font-size:13px;">You haven't submitted any content for moderation yet.</p>
-        </div>
-        <div *ngFor="let item of instructorSubmittedContent" style="display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--outline-variant);">
-          <span class="material-symbols-outlined" [style.color]="item.type === 'course' ? 'var(--primary)' : 'var(--secondary)'">{{ item.type === 'course' ? 'school' : 'view_list' }}</span>
-          <div style="flex:1;">
-            <strong style="font-size:13px;">{{ item.label }}</strong>
-            <div style="font-size:11px;color:var(--on-surface-variant);">Type: {{ item.type | titlecase }}</div>
-          </div>
-          <span class="badge" [class]="item.status === 'approved' ? 'success' : item.status === 'rejected' ? 'error' : 'warning'">{{ item.status }}</span>
-          <span *ngIf="item.reason" style="font-size:11px;color:#ef4444;max-width:200px;text-align:right;">{{ item.reason }}</span>
-        </div>
       </div>
     </div>
   </div>
@@ -356,12 +256,15 @@
                   <div class="progress-fill" [style.width.%]="course.progress" style="height:100%; background:var(--primary); border-radius:3px;"></div>
                 </div>
               </div>
-              <div style="display:flex; gap:6px; margin-top:16px; padding-top:12px; border-top:1px solid var(--outline-variant); align-items:center;">
+              <div style="display:flex; gap:6px; margin-top:16px; padding-top:12px; border-top:1px solid var(--outline-variant); align-items:center; flex-wrap:wrap;">
                 <span class="track-chip" [class]="course.track">{{ course.track | titlecase }}</span>
                 <span style="font-size:11px; color:var(--on-surface-variant);" *ngIf="course.assignmentCount">
                   {{ course.assignmentCount }} assignment{{ course.assignmentCount === 1 ? '' : 's' }}
                 </span>
-                <button class="btn btn-subtle btn-sm" style="margin-left:auto; padding:6px 10px; font-size:11px;"
+                <button class="btn btn-secondary btn-sm" *ngIf="course.progress >= 100" (click)="claimCertificate(course)" style="margin-left:auto; display:flex; align-items:center; gap:4px; font-weight:700; font-size:11.5px;">
+                  <span class="material-symbols-outlined" style="font-size:16px;">workspace_premium</span> Certificate
+                </button>
+                <button class="btn btn-subtle btn-sm" [style.margin-left]="course.progress >= 100 ? '0' : 'auto'" style="padding:6px 10px; font-size:11px;"
                         [disabled]="isEnrolling[course.courseId]"
                         (click)="withdraw(course.courseId)">Leave</button>
                 <button class="btn btn-primary btn-sm" style="padding:6px 14px; font-size:12px; font-weight:650;" (click)="startCourseLesson(course)">{{ course.buttonText }}</button>
@@ -414,6 +317,83 @@
                 <span class="badge" [class]="mod.status === 'completed' ? 'secondary' : mod.status === 'active' ? 'primary' : 'neutral'">
                   {{ mod.status | titlecase }}
                 </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Course Announcements Alert Card -->
+        <div class="card" *ngIf="activeAnnouncements.length > 0" style="margin-top:16px;">
+          <div class="card-header" style="display:flex; align-items:center; gap:8px;">
+            <span class="material-symbols-outlined" style="color:var(--primary);">campaign</span>
+            <h3 style="margin:0;">Instructor Announcements &amp; Notices</h3>
+          </div>
+          <div class="card-body">
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <div *ngFor="let ann of activeAnnouncements" style="background:var(--surface-container-low); border-left:4px solid var(--primary); padding:14px 18px; border-radius:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                  <strong style="font-size:13.5px; color:var(--on-surface);">{{ ann.title }}</strong>
+                  <span class="badge" [class]="ann.is_urgent ? 'badge-danger' : 'badge-primary'" style="font-size:10px;">
+                    {{ ann.is_urgent ? 'URGENT' : 'NOTICE' }}
+                  </span>
+                </div>
+                <p style="font-size:12.5px; color:var(--on-surface-variant); margin:0 0 8px; line-height:1.5;">{{ ann.content }}</p>
+                <div style="font-size:11px; color:var(--on-surface-variant);">
+                  Posted by <strong>{{ ann.author_name }}</strong> &bull; {{ ann.created_at | date:'short' }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Student Q&A Discussion Forum Card -->
+        <div class="card" *ngIf="studentCourses.length" style="margin-top:16px;">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="material-symbols-outlined" style="color:var(--primary);">forum</span>
+              <h3 style="margin:0;">Course Q&amp;A &amp; Peer Discussion</h3>
+            </div>
+          </div>
+          <div class="card-body">
+            <p style="font-size:13px; color:var(--on-surface-variant); margin-bottom:16px;">
+              Have questions about this course? Ask below and get answers directly from accredited instructors.
+            </p>
+
+            <!-- Ask Question Form -->
+            <div style="background:var(--surface-container-low); padding:16px; border-radius:12px; margin-bottom:20px;">
+              <input type="text" [(ngModel)]="studentQuestion.title" placeholder="Question topic / headline (optional)..." style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid var(--outline-variant); background:var(--surface-container-lowest); font-size:13px; margin-bottom:10px; box-sizing:border-box;" />
+              <textarea [(ngModel)]="studentQuestion.content" rows="2" placeholder="Describe what you need help with in this course or module..." style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid var(--outline-variant); background:var(--surface-container-lowest); font-size:13px; margin-bottom:10px; box-sizing:border-box; resize:none;"></textarea>
+              <div style="display:flex; justify-content:flex-end;">
+                <button class="btn btn-primary btn-sm" (click)="submitQuestion(studentCourses.length > 0 ? studentCourses[0].courseId : '')" [disabled]="!studentQuestion.content.trim() || isSubmittingQuestion">
+                  <span class="material-symbols-outlined">send</span> {{ isSubmittingQuestion ? 'Posting...' : 'Post Question' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Thread List -->
+            <div *ngIf="getRootCourseQuestions().length === 0" style="text-align:center; padding:20px; color:var(--on-surface-variant); font-size:12.5px;">
+              No questions asked yet for this course. Be the first to ask!
+            </div>
+
+            <div *ngIf="getRootCourseQuestions().length > 0" style="display:flex; flex-direction:column; gap:14px;">
+              <div *ngFor="let q of getRootCourseQuestions()" style="background:var(--surface-container-low); padding:14px 18px; border-radius:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <strong style="font-size:13px; color:var(--on-surface);">{{ q.user_name }}</strong>
+                  <span style="font-size:11px; color:var(--on-surface-variant);">{{ q.created_at | date:'short' }}</span>
+                </div>
+                <h5 *ngIf="q.title" style="font-size:13.5px; font-weight:700; margin:0 0 4px; color:var(--on-surface);">{{ q.title }}</h5>
+                <p style="font-size:12.5px; color:var(--on-surface-variant); margin:0 0 10px; line-height:1.4;">{{ q.content }}</p>
+
+                <!-- Replies -->
+                <div *ngIf="getRepliesForQuestion(q.id).length > 0" style="padding-left:14px; border-left:2px solid var(--primary); display:flex; flex-direction:column; gap:8px;">
+                  <div *ngFor="let rep of getRepliesForQuestion(q.id)" style="background:var(--surface-container-lowest); padding:10px 14px; border-radius:8px;">
+                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
+                      <strong style="font-size:12px;">{{ rep.user_name }}</strong>
+                      <span class="badge" [class]="rep.user_role === 'instructor' ? 'badge-primary' : 'badge-neutral'" style="font-size:9px; padding:1px 5px;">{{ rep.user_role | uppercase }}</span>
+                    </div>
+                    <p style="font-size:12px; color:var(--on-surface); margin:0; line-height:1.4;">{{ rep.content }}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -721,6 +701,84 @@
         <button class="btn btn-primary" (click)="completeActiveLesson()">
           <span class="material-symbols-outlined">task_alt</span>
           Complete Module & Continue →
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================
+     COURSE COMPLETION CERTIFICATE MODAL
+     ========================================================= -->
+<div class="modal-backdrop fade-in" *ngIf="showCertificateModal && activeCertificate" style="position:fixed; inset:0; background:rgba(2,6,23,0.88); backdrop-filter:blur(12px); z-index:999999; display:flex; align-items:center; justify-content:center; padding:20px;" (click)="closeCertificateModal()">
+  <div class="modal-card" style="background:#ffffff; border-radius:20px; max-width:760px; width:100%; box-shadow:0 30px 80px rgba(0,0,0,0.6); overflow:hidden; border:2px solid #d4af37;" (click)="$event.stopPropagation()">
+    
+    <!-- Certificate Sheet -->
+    <div id="printableCertificate" style="padding:40px 48px; background:radial-gradient(circle at center, #ffffff 0%, #fdfbf7 100%); position:relative; border:8px double #d4af37; margin:16px; border-radius:12px; text-align:center; color:#0f172a;">
+      <!-- Header Accents -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+        <div style="font-size:11px; font-weight:800; letter-spacing:0.12em; color:#d4af37;">REPUBLIC OF GHANA</div>
+        <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(212,175,55,0.12); padding:4px 12px; border-radius:999px; color:#996515; font-size:11px; font-weight:800;">
+          <span class="material-symbols-outlined" style="font-size:14px;">verified</span> OFFICIAL ACCREDITED CREDENTIAL
+        </div>
+        <div style="font-size:11px; font-weight:800; letter-spacing:0.12em; color:#d4af37;">NTIC 2026</div>
+      </div>
+
+      <div style="font-size:24px; font-weight:900; letter-spacing:0.04em; color:#1e293b; text-transform:uppercase; margin-bottom:4px;">
+        Certificate of Completion
+      </div>
+      <p style="font-size:13px; color:#64748b; margin:0 0 24px; font-style:italic;">
+        This is to officially certify that
+      </p>
+
+      <!-- Student Name -->
+      <div style="font-size:28px; font-weight:850; color:#0066cc; border-bottom:2px solid #e2e8f0; display:inline-block; padding:0 32px 8px; margin-bottom:20px; font-family:'Inter', sans-serif;">
+        {{ activeCertificate.student_name }}
+      </div>
+
+      <p style="font-size:13px; color:#475569; max-width:540px; margin:0 auto 16px; line-height:1.6;">
+        has successfully completed all required modules, code sprint checkpoints, and laboratory assignments for the championship curriculum in
+      </p>
+
+      <!-- Course Title & Track -->
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px 20px; display:inline-flex; align-items:center; gap:12px; margin-bottom:28px;">
+        <span class="track-chip" [class]="activeCertificate.track">{{ activeCertificate.track | uppercase }}</span>
+        <strong style="font-size:16px; color:#0f172a;">{{ activeCertificate.course_title }}</strong>
+      </div>
+
+      <!-- Signatures and Details -->
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; border-top:1px solid #e2e8f0; padding-top:20px; margin-top:10px;">
+        <div style="text-align:left;">
+          <div style="font-size:11px; color:#64748b;">CERTIFICATE REGISTRY NUMBER</div>
+          <strong style="font-size:13px; font-family:monospace; color:#0f172a;">{{ activeCertificate.certificate_number }}</strong>
+          <div style="font-size:11px; color:#64748b; margin-top:2px;">Issued: {{ activeCertificate.issued_at | date:'longDate' }}</div>
+        </div>
+
+        <div style="text-align:center;">
+          <div style="width:60px; height:60px; border-radius:50%; border:2px dashed #d4af37; display:flex; align-items:center; justify-content:center; margin:0 auto 4px; color:#d4af37;">
+            <span class="material-symbols-outlined" style="font-size:32px;">military_tech</span>
+          </div>
+          <div style="font-size:9.5px; font-weight:800; color:#996515; letter-spacing:0.08em;">VERIFIED SEAL</div>
+        </div>
+
+        <div style="text-align:right;">
+          <div style="font-family:'Brush Script MT', cursive, sans-serif; font-size:22px; color:#0066cc; margin-bottom:2px;">
+            {{ activeCertificate.instructor_name }}
+          </div>
+          <div style="border-top:1px solid #94a3b8; width:160px; margin-left:auto; padding-top:3px;">
+            <strong style="font-size:11.5px; color:#0f172a;">Accredited Instructor</strong>
+            <div style="font-size:10.5px; color:#64748b;">National Tech Championship</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Action Footer -->
+    <div style="padding:16px 24px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+      <button class="btn btn-outline" (click)="closeCertificateModal()">Close</button>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-primary" (click)="printCertificate()" style="display:flex; align-items:center; gap:6px;">
+          <span class="material-symbols-outlined">print</span> Print / Download Certificate PDF
         </button>
       </div>
     </div>

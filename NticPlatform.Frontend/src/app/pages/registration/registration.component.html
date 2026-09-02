@@ -1543,6 +1543,36 @@
 
           <div style="margin-bottom: 20px;">
             <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Profile Photo (Optional)</span>
+              <span *ngIf="selectedFileNames['instructorPhoto']?.length || selectedFileIds['instructorPhoto']?.length" class="badge success" style="font-size:11px; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
+                <span class="material-symbols-outlined" style="font-size:13px;">verified</span> Photo Attached
+              </span>
+            </label>
+
+            <!-- Uploading State -->
+            <div *ngIf="isUploadingFile['instructorPhoto']" class="upload-zone" style="background: rgba(0, 63, 135, 0.04); border: 1.5px dashed var(--primary); padding: 20px; text-align: center; margin-bottom:12px;">
+              <span class="material-symbols-outlined spin-refresh" style="font-size:28px; color:var(--primary); animation: spin 1s linear infinite;">sync</span>
+              <p style="margin: 6px 0 0; font-weight: 600; color: var(--primary);">Uploading photo...</p>
+            </div>
+
+            <div class="upload-zone" (click)="instructorPhotoInput.click()" (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDropFile($event, 'instructorPhoto')" style="transition:border-color .2s, background .2s;">
+              <span class="material-symbols-outlined upload-icon">{{ (selectedFileNames['instructorPhoto']?.length || selectedFileIds['instructorPhoto']?.length) ? 'account_circle' : 'add_a_photo' }}</span>
+              <p *ngIf="!selectedFileNames['instructorPhoto']?.length">Drag & drop or <strong>Browse</strong> headshot / profile picture</p>
+              <div *ngIf="selectedFileNames['instructorPhoto']?.length" style="display:flex;align-items:center;gap:8px;">
+                <span style="color:var(--primary);font-weight:600;">{{ selectedFileNames['instructorPhoto']?.[0] }}</span>
+                <span class="material-symbols-outlined" (click)="removeFile('instructorPhoto', 0); $event.stopPropagation()" style="cursor:pointer;font-size:16px;color:var(--error);" title="Remove Photo">close</span>
+              </div>
+              <span>JPG, PNG, WebP (Max 10MB)</span>
+            </div>
+            <input #instructorPhotoInput type="file" (change)="onFileSelected($event, 'instructorPhoto')" accept=".png,.jpg,.jpeg,.webp" style="display:none">
+            <div *ngIf="instructorPhotoUrl" class="photo-preview" style="margin-top:8px; display:flex; align-items:center; gap:12px;">
+              <img [src]="instructorPhotoUrl" alt="Instructor Headshot Preview" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid var(--primary);box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+              <span style="font-size:11.5px; color:var(--on-surface-variant);">Headshot ready for live credential card & accredited badge</span>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 20px;">
+            <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
               <span>Documents (CV, Certificates, National ID) *</span>
               <span *ngIf="selectedFileNames['instructorDocs']?.length || selectedFileIds['instructorDocs']?.length" class="badge success" style="font-size:11px; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
                 <span class="material-symbols-outlined" style="font-size:13px;">verified</span> {{ (selectedFileNames['instructorDocs']?.length || selectedFileIds['instructorDocs']?.length) }} Document(s) Attached
@@ -1627,7 +1657,8 @@
                 <div class="cert-border-corner bottom-right"></div>
                 
                 <div class="instructor-card-badge">
-                  <span class="material-symbols-outlined" style="font-size:40px; color:#d4a017;">workspace_premium</span>
+                  <img *ngIf="instructorPhotoUrl" [src]="instructorPhotoUrl" alt="Instructor Avatar" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2.5px solid #d4a017;box-shadow:0 3px 12px rgba(212,160,23,0.3);" />
+                  <span *ngIf="!instructorPhotoUrl" class="material-symbols-outlined" style="font-size:40px; color:#d4a017;">workspace_premium</span>
                 </div>
                 
                 <div class="instructor-card-subtitle">ACCREDITED NTIC INSTRUCTOR</div>

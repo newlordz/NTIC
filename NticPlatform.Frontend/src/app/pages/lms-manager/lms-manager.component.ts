@@ -1,13 +1,14 @@
 import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute } from '@angular/router';
+import { getAuthValue } from '../../services/session.util';
 import { ContentService, LmsCourse, LmsModule, LmsMaterial, LmsAssignment, LmsSubmission, LmsEnrollment } from '../../services/content.service';
 import { DialogService } from '../../services/dialog.service';
 import {
   ApiService, AuthoredCourse, GradingQueueItem, CourseStudent, ModerationQueueItem,
   LmsModule as ApiLmsModule, LmsMaterial as ApiLmsMaterial,
-  LmsAssignment as LmsAssignmentApi,
+  LmsAssignment as LmsAssignmentApi, LmsAnnouncement, LmsQA
 } from '../../services/api.service';
 
 import { CurrentUserService } from '../../services/current-user.service';
@@ -33,7 +34,19 @@ export interface PendingModerationItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LmsManagerComponent implements OnInit {
-  activeTab: 'approvals' | 'courses' | 'modules' | 'materials' | 'assignments' | 'students' = 'courses';
+  activeTab: string = 'courses';
+
+  get activeRoleId(): string {
+    return (getAuthValue('activeRoleId') || '').toLowerCase();
+  }
+
+  get isInstructor(): boolean {
+    return this.activeRoleId === 'instructor';
+  }
+
+  get isAdmin(): boolean {
+    return ['super_admin', 'admin', 'content_manager'].includes(this.activeRoleId);
+  }
 
   // Filters & Search
   searchQuery = '';
@@ -62,6 +75,30 @@ export class LmsManagerComponent implements OnInit {
   moduleForm: LmsModule = this.emptyModule();
   materialForm: LmsMaterial = this.emptyMaterial();
   assignmentForm: LmsAssignment = this.emptyAssignment();
+
+  trackOptions = [
+    { id: 'coding', label: 'Coding & Algorithms', icon: 'terminal', color: '#6366f1' },
+    { id: 'robotics', label: 'Robotics & Automation', icon: 'smart_toy', color: '#0ea5e9' },
+    { id: 'ai', label: 'Artificial Intelligence', icon: 'psychology', color: '#a855f7' },
+    { id: 'cyber', label: 'Cybersecurity & Networks', icon: 'shield', color: '#10b981' },
+    { id: 'innovation', label: 'Innovation & Tech', icon: 'lightbulb', color: '#f59e0b' }
+  ];
+
+  presetIcons = [
+    'school', 'terminal', 'code', 'data_object', 'smart_toy', 'psychology', 'shield', 'memory', 'hub', 'rocket_launch'
+  ];
+
+  selectCourseTrack(trackId: string): void {
+    this.courseForm.track = trackId;
+    const match = this.trackOptions.find(t => t.id === trackId);
+    if (match && (!this.courseForm.icon || this.courseForm.icon === 'school')) {
+      this.courseForm.icon = match.icon;
+    }
+  }
+
+  selectCourseIcon(icon: string): void {
+    this.courseForm.icon = icon;
+  }
 
   // Grading & Moderation
   activeSubmission: any = null;
@@ -94,6 +131,7 @@ export class LmsManagerComponent implements OnInit {
     private dialogService: DialogService,
     private apiService: ApiService,
     private currentUserService: CurrentUserService,
+    private route: ActivatedRoute,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -103,6 +141,23 @@ export class LmsManagerComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (this.isAdmin) {
+      this.activeTab = 'courses';
+    }
+    this.route.queryParams.subscribe(params => {
+      if (params['tab'] && ['approvals', 'courses', 'modules', 'materials', 'assignments', 'students', 'announcements', 'qa'].includes(params['tab'])) {
+        if (params['tab'] === 'approvals' && !this.isStaffReviewer) {
+          this.activeTab = 'courses';
+        } else {
+          this.activeTab = params['tab'];
+        }
+      }
+      if (params['action'] === 'create_course' || params['createCourse'] === 'true') {
+        this.activeTab = 'courses';
+        this.openCourseModal();
+      }
+      this.cdr.markForCheck();
+    });
     this.currentUserService.ensureLoaded().subscribe(() => {
       this.reload();
       this.cdr.markForCheck();
@@ -200,9 +255,136 @@ export class LmsManagerComponent implements OnInit {
       this.cdr.markForCheck();
     }
 
+    this.apiService.getLmsAnnouncements().subscribe({
+      next: rows => {
+        this.serverAnnouncements = rows || [];
+        this.cdr.markForCheck();
+      },
+      error: () => { this.serverAnnouncements = []; }
+    });
+
+    if (this.authoredCourses.length > 0) {
+      const firstCourseId = this.authoredCourses[0].id;
+      this.apiService.getLmsQA(firstCourseId).subscribe({
+        next: rows => {
+          this.serverQA = rows || [];
+          this.cdr.markForCheck();
+        },
+        error: () => { this.serverQA = []; }
+      });
+    }
+
     if (this.selectedCourseId && this.selectedCourseId !== 'all') {
       this.loadRoster(this.selectedCourseId);
     }
+  }
+
+  serverAnnouncements: LmsAnnouncement[] = [];
+  serverQA: LmsQA[] = [];
+  isAnnouncementModalOpen = false;
+  announcementForm = {
+    course_id: '',
+    title: '',
+    content: '',
+    is_urgent: false
+  };
+  qaReplyDraft: { [qaId: string]: string } = {};
+  isPostingReply: { [qaId: string]: boolean } = {};
+
+  openAnnouncementModal(courseId?: string): void {
+    this.announcementForm = {
+      course_id: courseId || (this.authoredCourses[0]?.id || ''),
+      title: '',
+      content: '',
+      is_urgent: false
+    };
+    this.isAnnouncementModalOpen = true;
+  }
+
+  closeAnnouncementModal(): void {
+    this.isAnnouncementModalOpen = false;
+  }
+
+  saveAnnouncement(): void {
+    if (!this.announcementForm.title.trim() || !this.announcementForm.content.trim() || !this.announcementForm.course_id) return;
+    this.isSaving = true;
+    this.apiService.createLmsAnnouncement(this.announcementForm).subscribe({
+      next: ann => {
+        this.serverAnnouncements.unshift(ann);
+        this.isSaving = false;
+        this.closeAnnouncementModal();
+        this.cdr.markForCheck();
+      },
+      error: err => {
+        this.isSaving = false;
+        this.saveError = this.describeWriteError(err, 'announcement');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  deleteAnnouncement(id: string): void {
+    this.apiService.deleteLmsAnnouncement(id).subscribe({
+      next: () => {
+        this.serverAnnouncements = this.serverAnnouncements.filter(a => a.id !== id);
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  loadQAForCourse(courseId: string): void {
+    if (!courseId || courseId === 'all') return;
+    this.apiService.getLmsQA(courseId).subscribe({
+      next: rows => {
+        this.serverQA = rows || [];
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  submitQAReply(parentQa: LmsQA): void {
+    const text = (this.qaReplyDraft[parentQa.id] || '').trim();
+    if (!text) return;
+    this.isPostingReply[parentQa.id] = true;
+    this.apiService.createLmsQA({
+      course_id: parentQa.course_id,
+      module_id: parentQa.module_id,
+      content: text,
+      parent_id: parentQa.id
+    }).subscribe({
+      next: reply => {
+        this.serverQA.push(reply);
+        this.qaReplyDraft[parentQa.id] = '';
+        this.isPostingReply[parentQa.id] = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.isPostingReply[parentQa.id] = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  deleteQAPost(id: string): void {
+    this.apiService.deleteLmsQA(id).subscribe({
+      next: () => {
+        this.serverQA = this.serverQA.filter(q => q.id !== id && q.parent_id !== id);
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  getRepliesForQA(parentId: string): LmsQA[] {
+    return this.serverQA.filter(q => q.parent_id === parentId);
+  }
+
+  getRootQuestions(): LmsQA[] {
+    return this.serverQA.filter(q => !q.parent_id);
+  }
+
+  getCourseName(courseId: string): string {
+    const found = this.authoredCourses.find(c => c.id === courseId);
+    return found ? found.title : 'Course';
   }
 
   /** Loads the enrolled roster for one course. */

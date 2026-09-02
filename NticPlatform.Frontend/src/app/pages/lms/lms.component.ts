@@ -2,15 +2,19 @@ import { getAuthValue } from '../../services/session.util';
 import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '@angular/core';
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router, RouterLink, RouterModule } from '@angular/router';
 import { ContentService, LmsSubmission } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
-import { ApiService, MyEnrolledCourse, LmsAssignment, MySubmission } from '../../services/api.service';
+import {
+  ApiService, MyEnrolledCourse, LmsAssignment, MySubmission,
+  LmsAnnouncement, LmsQA, LmsCertificate
+} from '../../services/api.service';
 import { CurrentUserService } from '../../services/current-user.service';
 
 @Component({
   selector: 'app-lms',
   standalone: true,
-  imports: [CommonModule, TitleCasePipe, FormsModule],
+  imports: [CommonModule, TitleCasePipe, FormsModule, RouterLink, RouterModule],
   templateUrl: './lms.component.html',
   styleUrl: './lms.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -18,13 +22,28 @@ import { CurrentUserService } from '../../services/current-user.service';
 export class LmsComponent implements OnInit {
   selectedUploadFiles: { id: string; name: string }[] = [];
 
-  constructor(public contentService: ContentService, public fileStorage: FileStorageService, private apiService: ApiService, public currentUserService: CurrentUserService, private cdr: ChangeDetectorRef) {}
+  constructor(
+    public contentService: ContentService,
+    public fileStorage: FileStorageService,
+    private apiService: ApiService,
+    public currentUserService: CurrentUserService,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+  goToCourseStudio(): void {
+    this.router.navigate(['/lms-manager']);
+  }
+
+  goToCreateCourse(): void {
+    this.router.navigate(['/lms-manager'], { queryParams: { action: 'create_course' } });
+  }
 
   activeRoleId = 'student';
 
-  activeTab = 'courses';
+  activeTab: string = 'courses';
 
-  studentActiveTab = 'courses';
+  studentActiveTab: string = 'courses';
 
   activeLessonCourse: any = null;
   lessonSuccessMessage = '';
@@ -306,6 +325,104 @@ export class LmsComponent implements OnInit {
       next: rows => (this.mySubmissions = rows || []),
       error: () => { /* surfaced by the enrolment call above */ },
     });
+
+    this.apiService.getLmsAnnouncements().subscribe({
+      next: rows => {
+        this.activeAnnouncements = rows || [];
+        this.cdr.markForCheck();
+      },
+      error: () => { this.activeAnnouncements = []; }
+    });
+
+    this.apiService.getLmsCertificates().subscribe({
+      next: rows => {
+        this.myCertificates = rows || [];
+        this.cdr.markForCheck();
+      },
+      error: () => { this.myCertificates = []; }
+    });
+  }
+
+  activeAnnouncements: LmsAnnouncement[] = [];
+  activeQA: LmsQA[] = [];
+  myCertificates: LmsCertificate[] = [];
+  activeCertificate: LmsCertificate | null = null;
+  showCertificateModal = false;
+  isGeneratingCert = false;
+  studentQuestion = { title: '', content: '' };
+  isSubmittingQuestion = false;
+
+  getAnnouncementsForCourse(courseId: string): LmsAnnouncement[] {
+    return this.activeAnnouncements.filter(a => a.course_id === courseId);
+  }
+
+  loadCourseQA(courseId: string): void {
+    if (!courseId) return;
+    this.apiService.getLmsQA(courseId).subscribe({
+      next: rows => {
+        this.activeQA = rows || [];
+        this.cdr.markForCheck();
+      },
+      error: () => { this.activeQA = []; }
+    });
+  }
+
+  submitQuestion(courseId: string): void {
+    if (!this.studentQuestion.content.trim()) return;
+    this.isSubmittingQuestion = true;
+    this.apiService.createLmsQA({
+      course_id: courseId,
+      title: this.studentQuestion.title.trim() || undefined,
+      content: this.studentQuestion.content.trim()
+    }).subscribe({
+      next: created => {
+        this.activeQA.push(created);
+        this.studentQuestion = { title: '', content: '' };
+        this.isSubmittingQuestion = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.isSubmittingQuestion = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  getRepliesForQuestion(parentId: string): LmsQA[] {
+    return this.activeQA.filter(q => q.parent_id === parentId);
+  }
+
+  getRootCourseQuestions(): LmsQA[] {
+    return this.activeQA.filter(q => !q.parent_id);
+  }
+
+  claimCertificate(course: any): void {
+    const courseId = course.course_id || course.id;
+    this.isGeneratingCert = true;
+    this.apiService.generateLmsCertificate(courseId).subscribe({
+      next: cert => {
+        this.activeCertificate = cert;
+        if (!this.myCertificates.find(c => c.id === cert.id)) {
+          this.myCertificates.unshift(cert);
+        }
+        this.showCertificateModal = true;
+        this.isGeneratingCert = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.isGeneratingCert = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  closeCertificateModal(): void {
+    this.showCertificateModal = false;
+    this.activeCertificate = null;
+  }
+
+  printCertificate(): void {
+    window.print();
   }
 
   /** Courses the student could still join. */

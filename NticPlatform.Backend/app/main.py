@@ -8954,6 +8954,305 @@ try:
         broadcast_async({"type": "data_changed", "collection": "approvals"})
         return {"status": "deleted", "id": item_id}
 
+    # ── LMS ANNOUNCEMENTS ──────────────────────────────────────────────
+    class LmsAnnouncementPayload(BaseModel):
+        course_id: str
+        title: str
+        content: str
+        is_urgent: bool = False
+
+    @app.get("/api/lms/announcements")
+    def get_lms_announcements(course_id: Optional[str] = None, _actor: dict = Depends(require_auth)):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            if course_id:
+                cur.execute(
+                    "SELECT id, course_id, author_id, author_name, title, content, is_urgent, created_at FROM lms_announcements WHERE course_id = %s ORDER BY is_urgent DESC, created_at DESC",
+                    (course_id,)
+                )
+            else:
+                cur.execute(
+                    "SELECT id, course_id, author_id, author_name, title, content, is_urgent, created_at FROM lms_announcements ORDER BY is_urgent DESC, created_at DESC"
+                )
+            rows = cur.fetchall()
+            return [
+                {
+                    "id": r[0],
+                    "course_id": r[1],
+                    "author_id": r[2],
+                    "author_name": r[3],
+                    "title": r[4],
+                    "content": r[5],
+                    "is_urgent": bool(r[6]),
+                    "created_at": r[7],
+                }
+                for r in rows
+            ]
+        finally:
+            cur.close()
+            release_db_connection(conn)
+
+    @app.post("/api/lms/announcements", status_code=201)
+    def create_lms_announcement(payload: LmsAnnouncementPayload, actor: dict = Depends(require_auth)):
+        if actor["role"] not in (ROLE_INSTRUCTOR, ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_CONTENT_MANAGER):
+            raise HTTPException(status_code=403, detail="Only instructors and admins can publish announcements")
+        if not payload.title.strip() or not payload.content.strip():
+            raise HTTPException(status_code=400, detail="Title and content are required")
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        ann_id = f"ann-{uuid.uuid4().hex[:10]}"
+        now = datetime.now(timezone.utc).isoformat()
+        author_name = actor.get("full_name") or actor.get("email") or "Instructor"
+        try:
+            cur.execute(
+                """
+                INSERT INTO lms_announcements (id, course_id, author_id, author_name, title, content, is_urgent, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (ann_id, payload.course_id, actor["id"], author_name, payload.title.strip(), payload.content.strip(), payload.is_urgent, now)
+            )
+            conn.commit()
+            broadcast_async({"type": "data_changed", "collection": "lms_announcements", "course_id": payload.course_id})
+            return {
+                "id": ann_id,
+                "course_id": payload.course_id,
+                "author_id": actor["id"],
+                "author_name": author_name,
+                "title": payload.title.strip(),
+                "content": payload.content.strip(),
+                "is_urgent": payload.is_urgent,
+                "created_at": now,
+            }
+        finally:
+            cur.close()
+            release_db_connection(conn)
+
+    @app.delete("/api/lms/announcements/{ann_id}")
+    def delete_lms_announcement(ann_id: str, actor: dict = Depends(require_auth)):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT author_id FROM lms_announcements WHERE id = %s", (ann_id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Announcement not found")
+            if actor["role"] not in ADMIN_ROLES and row[0] != actor["id"]:
+                raise HTTPException(status_code=403, detail="Not authorised to delete this announcement")
+            cur.execute("DELETE FROM lms_announcements WHERE id = %s", (ann_id,))
+            conn.commit()
+            broadcast_async({"type": "data_changed", "collection": "lms_announcements"})
+            return {"status": "deleted", "id": ann_id}
+        finally:
+            cur.close()
+            release_db_connection(conn)
+
+    # ── LMS Q&A / DISCUSSIONS ──────────────────────────────────────────
+    class LmsQAPayload(BaseModel):
+        course_id: str
+        module_id: Optional[str] = None
+        title: Optional[str] = None
+        content: str
+        parent_id: Optional[str] = None
+
+    @app.get("/api/lms/qa")
+    def get_lms_qa(course_id: str, module_id: Optional[str] = None, _actor: dict = Depends(require_auth)):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            if module_id:
+                cur.execute(
+                    "SELECT id, course_id, module_id, user_id, user_name, user_role, title, content, parent_id, created_at FROM lms_qa WHERE course_id = %s AND (module_id = %s OR parent_id IS NOT NULL) ORDER BY created_at ASC",
+                    (course_id, module_id)
+                )
+            else:
+                cur.execute(
+                    "SELECT id, course_id, module_id, user_id, user_name, user_role, title, content, parent_id, created_at FROM lms_qa WHERE course_id = %s ORDER BY created_at ASC",
+                    (course_id,)
+                )
+            rows = cur.fetchall()
+            return [
+                {
+                    "id": r[0],
+                    "course_id": r[1],
+                    "module_id": r[2],
+                    "user_id": r[3],
+                    "user_name": r[4],
+                    "user_role": r[5],
+                    "title": r[6],
+                    "content": r[7],
+                    "parent_id": r[8],
+                    "created_at": r[9],
+                }
+                for r in rows
+            ]
+        finally:
+            cur.close()
+            release_db_connection(conn)
+
+    @app.post("/api/lms/qa", status_code=201)
+    def create_lms_qa(payload: LmsQAPayload, actor: dict = Depends(require_auth)):
+        if not payload.content.strip():
+            raise HTTPException(status_code=400, detail="Content cannot be empty")
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        qa_id = f"qa-{uuid.uuid4().hex[:10]}"
+        now = datetime.now(timezone.utc).isoformat()
+        user_name = actor.get("full_name") or actor.get("email") or "User"
+        try:
+            cur.execute(
+                """
+                INSERT INTO lms_qa (id, course_id, module_id, user_id, user_name, user_role, title, content, parent_id, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (qa_id, payload.course_id, payload.module_id, actor["id"], user_name, actor.get("role", "student"), payload.title, payload.content.strip(), payload.parent_id, now)
+            )
+            conn.commit()
+            broadcast_async({"type": "data_changed", "collection": "lms_qa", "course_id": payload.course_id})
+            return {
+                "id": qa_id,
+                "course_id": payload.course_id,
+                "module_id": payload.module_id,
+                "user_id": actor["id"],
+                "user_name": user_name,
+                "user_role": actor.get("role", "student"),
+                "title": payload.title,
+                "content": payload.content.strip(),
+                "parent_id": payload.parent_id,
+                "created_at": now,
+            }
+        finally:
+            cur.close()
+            release_db_connection(conn)
+
+    @app.delete("/api/lms/qa/{qa_id}")
+    def delete_lms_qa(qa_id: str, actor: dict = Depends(require_auth)):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT user_id FROM lms_qa WHERE id = %s", (qa_id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Question/reply not found")
+            if actor["role"] not in (ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_INSTRUCTOR) and row[0] != actor["id"]:
+                raise HTTPException(status_code=403, detail="Not authorised to delete this post")
+            cur.execute("DELETE FROM lms_qa WHERE id = %s OR parent_id = %s", (qa_id, qa_id))
+            conn.commit()
+            broadcast_async({"type": "data_changed", "collection": "lms_qa"})
+            return {"status": "deleted", "id": qa_id}
+        finally:
+            cur.close()
+            release_db_connection(conn)
+
+    # ── LMS CERTIFICATES ───────────────────────────────────────────────
+    class LmsCertificateGeneratePayload(BaseModel):
+        course_id: str
+        student_id: Optional[str] = None
+
+    @app.get("/api/lms/certificates")
+    def get_lms_certificates(student_id: Optional[str] = None, actor: dict = Depends(require_auth)):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            target_student = actor["id"] if actor["role"] == ROLE_STUDENT else (student_id or actor["id"])
+            cur.execute(
+                "SELECT id, course_id, student_id, student_name, course_title, track, instructor_name, certificate_number, issued_at FROM lms_certificates WHERE student_id = %s ORDER BY issued_at DESC",
+                (target_student,)
+            )
+            rows = cur.fetchall()
+            return [
+                {
+                    "id": r[0],
+                    "course_id": r[1],
+                    "student_id": r[2],
+                    "student_name": r[3],
+                    "course_title": r[4],
+                    "track": r[5],
+                    "instructor_name": r[6],
+                    "certificate_number": r[7],
+                    "issued_at": r[8],
+                }
+                for r in rows
+            ]
+        finally:
+            cur.close()
+            release_db_connection(conn)
+
+    @app.post("/api/lms/certificates/generate", status_code=201)
+    def generate_lms_certificate(payload: LmsCertificateGeneratePayload, actor: dict = Depends(require_auth)):
+        target_student_id = payload.student_id if (payload.student_id and actor["role"] in (ROLE_INSTRUCTOR, ROLE_ADMIN, ROLE_SUPER_ADMIN)) else actor["id"]
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT id, title, track, submitted_by FROM lms_courses WHERE id = %s", (payload.course_id,))
+            c_row = cur.fetchone()
+            if not c_row:
+                raise HTTPException(status_code=404, detail="Course not found")
+            course_title, track, instructor_name = c_row[1], c_row[2], c_row[3] or "NTIC Faculty"
+
+            cur.execute("SELECT id, certificate_number, issued_at FROM lms_certificates WHERE course_id = %s AND student_id = %s", (payload.course_id, target_student_id))
+            existing = cur.fetchone()
+            if existing:
+                return {
+                    "id": existing[0],
+                    "course_id": payload.course_id,
+                    "student_id": target_student_id,
+                    "course_title": course_title,
+                    "track": track,
+                    "instructor_name": instructor_name,
+                    "certificate_number": existing[1],
+                    "issued_at": existing[2],
+                }
+
+            cur.execute("SELECT full_name, email FROM users WHERE id = %s", (target_student_id,))
+            u_row = cur.fetchone()
+            student_name = (u_row[0] if u_row and u_row[0] else None) or (u_row[1] if u_row else None) or "Student Graduate"
+
+            cert_id = f"cert-{uuid.uuid4().hex[:10]}"
+            year = datetime.now(timezone.utc).year
+            cert_number = f"NTIC-CERT-{year}-{secrets.token_hex(4).upper()}"
+            now = datetime.now(timezone.utc).isoformat()
+
+            cur.execute(
+                """
+                INSERT INTO lms_certificates (id, course_id, student_id, student_name, course_title, track, instructor_name, certificate_number, issued_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (cert_id, payload.course_id, target_student_id, student_name, course_title, track, instructor_name, cert_number, now)
+            )
+            conn.commit()
+            broadcast_async({"type": "data_changed", "collection": "lms_certificates", "student_id": target_student_id})
+            return {
+                "id": cert_id,
+                "course_id": payload.course_id,
+                "student_id": target_student_id,
+                "student_name": student_name,
+                "course_title": course_title,
+                "track": track,
+                "instructor_name": instructor_name,
+                "certificate_number": cert_number,
+                "issued_at": now,
+            }
+        finally:
+            cur.close()
+            release_db_connection(conn)
+
     # BULK SYNC endpoint for LMS and other localStorage collections
     class BulkSyncPayload(BaseModel):
         collection: str

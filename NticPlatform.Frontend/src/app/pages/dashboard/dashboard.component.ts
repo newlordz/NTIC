@@ -17,7 +17,7 @@ import {
 import { BrevoEmailService } from '../../services/brevo-email.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
-import { ApiService, MyEnrolledCourse, MySubmission, SponsorshipSummary, Sponsorship, PersonnelDetail, AuthoredCourse } from '../../services/api.service';
+import { ApiService, MyEnrolledCourse, MySubmission, SponsorshipSummary, Sponsorship, PersonnelDetail, AuthoredCourse, GradingQueueItem } from '../../services/api.service';
 import { CurrentUserService } from '../../services/current-user.service';
 import type { PersonnelRoster, PersonnelPerson, PersonnelSummary } from '../../services/api.service';
 import { TimeAgoPipe } from '../../services/time-ago.pipe';
@@ -2746,14 +2746,62 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /** Courses the signed-in instructor owns, from GET /api/lms/my-courses. */
   instructorCourses: AuthoredCourse[] = [];
+  instructorGradingQueue: GradingQueueItem[] = [];
+
+  get instructorMentoredTeams(): any[] {
+    const id = this.currentUser?.id;
+    const email = (getAuthValue('activeUserEmail') || '').toLowerCase().trim();
+    const name = (this.currentUser?.fullName || this.currentUser?.name || getAuthValue('activeUserName') || '').toLowerCase().trim();
+    return (this.contentService.teams || []).filter(t => {
+      const mId = t.mentorId || (t as any).mentor_id;
+      const mName = (t.mentor || '').toLowerCase().trim();
+      const mEmail = ((t as any).mentorEmail || '').toLowerCase().trim();
+      return (id && mId === id) || (email && mEmail === email) || (name && mName === name);
+    });
+  }
 
   loadInstructorCourses(): void {
     if (this.activeRoleId !== 'instructor') return;
     this.apiService.getMyAuthoredCourses().subscribe({
-      next: rows => { this.instructorCourses = rows || []; this.cdr.markForCheck(); },
-      // Leave the list empty rather than showing placeholder cards.
-      error: () => (this.instructorCourses = []),
+      next: rows => {
+        this.instructorCourses = rows || [];
+        this.recomputeInstructorStats();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.instructorCourses = [];
+        this.recomputeInstructorStats();
+        this.cdr.markForCheck();
+      }
     });
+
+    this.apiService.getGradingQueue().subscribe({
+      next: queue => {
+        this.instructorGradingQueue = queue || [];
+        this.recomputeInstructorStats();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.instructorGradingQueue = [];
+        this.recomputeInstructorStats();
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  recomputeInstructorStats(): void {
+    if (this.activeRoleId !== 'instructor') return;
+    const totalCourses = this.instructorCourses.length;
+    const totalStudents = this.instructorCourses.reduce((sum, c) => sum + (c.enrolled_count || 0), 0);
+    const pendingGrading = this.instructorGradingQueue.length || this.instructorCourses.reduce((sum, c) => sum + (c.awaiting_grading || 0), 0);
+    const mentoredTeamsCount = this.instructorMentoredTeams.length;
+
+    this.stats = [
+      { label: 'My Courses', value: String(totalCourses), icon: 'library_books', meta: `${this.instructorCourses.filter(c => c.approval_status === 'approved').length} Active & Approved`, color: 'primary' },
+      { label: 'Enrolled Students', value: String(totalStudents), icon: 'group', meta: 'Across your courses', color: 'secondary' },
+      { label: 'Pending Reviews', value: String(pendingGrading), icon: 'pending_actions', meta: pendingGrading > 0 ? `${pendingGrading} to grade` : 'All clear', color: 'error' },
+      { label: 'Mentored Squads', value: String(mentoredTeamsCount), icon: 'co_present', meta: `${mentoredTeamsCount} Assigned teams`, color: 'tertiary' }
+    ];
   }
 
   isUserOnline(email: string): boolean {
@@ -3134,23 +3182,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
       case 'instructor':
         this.dashboardTitle = 'Instructor Dashboard';
-        this.dashboardSubtitle = `Welcome back, ${userName}. Manage your courses and review student submissions.`;
-        const instEmail = (getAuthValue('activeUserEmail') || '').trim().toLowerCase();
-        const myCourseIds = this.contentService.lmsCourses
-          .filter(c => c.submittedBy && c.submittedBy.toLowerCase().includes(instEmail))
-          .map(c => c.id);
-        const myAsgnIds = this.contentService.lmsAssignments
-          .filter(a => myCourseIds.includes(a.courseId))
-          .map(a => a.id);
-        const mySubs = this.contentService.lmsSubmissions.filter(s => myAsgnIds.includes(s.assignmentId));
-        const pendingSubs = mySubs.filter(s => s.status === 'submitted').length;
-        const totalStudents = this.contentService.lmsEnrollments.filter(e => myCourseIds.includes(e.courseId)).length;
-        this.stats = [
-          { label: 'My Courses', value: String(myCourseIds.length), icon: 'library_books', meta: 'Owned & managed', color: 'primary' },
-          { label: 'Total Students', value: String(totalStudents), icon: 'group', meta: 'Across your courses', color: 'secondary' },
-          { label: 'Pending Reviews', value: String(pendingSubs), icon: 'pending_actions', meta: pendingSubs > 0 ? 'Requires attention' : 'All clear', color: 'error' },
-          { label: 'Active Competitions', value: String(this.contentService.competitions.length), icon: 'emoji_events', meta: 'Real-time sync', color: 'tertiary' }
-        ];
+        this.dashboardSubtitle = `Welcome back, ${userName}. Manage your courses, review submissions, and mentor competition squads.`;
+        this.recomputeInstructorStats();
         break;
 
       case 'school_admin':

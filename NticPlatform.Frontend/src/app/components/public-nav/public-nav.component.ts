@@ -270,7 +270,7 @@ export class PublicNavComponent implements OnInit, OnDestroy {
       case 'student':      return '/lms';
       case 'judge':        return '/judge';
       case 'sponsor':      return '/sponsors';
-      case 'instructor':   return '/lms-manager';
+      case 'instructor':   return '/dashboard';
       case 'reviewer':
       case 'school_admin':
       case 'content_manager':

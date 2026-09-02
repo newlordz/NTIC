@@ -3,13 +3,17 @@
   <header class="lms-header">
     <div class="header-content">
       <div class="header-title">
-        <span class="material-symbols-outlined header-icon">verified_user</span>
+        <span class="material-symbols-outlined header-icon">{{ isInstructor ? 'school' : 'verified_user' }}</span>
         <div>
-          <h1>LMS Management & Content Moderation Desk</h1>
-          <p>Review instructor-submitted courses, modules, assets, and assignments. Approve content before it becomes visible to students.</p>
+          <h1>{{ isInstructor ? 'Course Studio & Teaching Hub' : 'LMS Management & Content Moderation Desk' }}</h1>
+          <p>{{ isInstructor ? 'Author courses, build lesson modules, configure learning assets, and review student assignments.' : 'Review instructor-submitted courses, modules, assets, and assignments. Approve content before it becomes visible to students.' }}</p>
         </div>
       </div>
       <div class="header-actions">
+        <!-- Live Student Classroom Preview button for instructors -->
+        <a *ngIf="isInstructor" routerLink="/lms" class="btn btn-outline" style="text-decoration:none;display:flex;align-items:center;gap:6px;" title="Preview student classroom view">
+          <span class="material-symbols-outlined">visibility</span> Preview Student View
+        </a>
         <button class="btn btn-outline" (click)="openCourseModal()">
           <span class="material-symbols-outlined">add</span> New Course
         </button>
@@ -48,7 +52,7 @@
       </div>
       <div class="stat-details">
         <span class="stat-value">{{ totalCourses }}</span>
-        <span class="stat-label">Total Courses ({{ activeCoursesCount }} Active)</span>
+        <span class="stat-label">{{ isInstructor ? 'My Courses' : 'Total Courses' }} ({{ activeCoursesCount }} Active)</span>
       </div>
     </div>
 
@@ -68,7 +72,7 @@
       </div>
       <div class="stat-details">
         <span class="stat-value">{{ totalMaterials }}</span>
-        <span class="stat-label">Learning Assets & Files</span>
+        <span class="stat-label">Learning Assets &amp; Files</span>
       </div>
     </div>
 
@@ -90,7 +94,7 @@
       <span class="badge-count warn-badge" *ngIf="pendingApprovalsCount > 0">{{ pendingApprovalsCount }}</span>
     </button>
     <button class="tab-btn" [class.active]="activeTab === 'courses'" (click)="activeTab = 'courses'">
-      <span class="material-symbols-outlined">menu_book</span> Courses Hub
+      <span class="material-symbols-outlined">menu_book</span> {{ isInstructor ? 'My Courses' : 'Courses Hub' }}
     </button>
     <button class="tab-btn" [class.active]="activeTab === 'modules'" (click)="activeTab = 'modules'">
       <span class="material-symbols-outlined">view_module</span> Curriculum Modules
@@ -99,11 +103,19 @@
       <span class="material-symbols-outlined">folder_open</span> Learning Assets
     </button>
     <button class="tab-btn" [class.active]="activeTab === 'assignments'" (click)="activeTab = 'assignments'">
-      <span class="material-symbols-outlined">assignment</span> Assignments & Reviews
+      <span class="material-symbols-outlined">assignment</span> Assignments &amp; Grading
       <span class="badge-count" *ngIf="pendingGradingCount > 0">{{ pendingGradingCount }}</span>
     </button>
     <button class="tab-btn" [class.active]="activeTab === 'students'" (click)="activeTab = 'students'">
-      <span class="material-symbols-outlined">group</span> Student Roster & Progress
+      <span class="material-symbols-outlined">group</span> Student Roster &amp; Progress
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'announcements'" (click)="activeTab = 'announcements'">
+      <span class="material-symbols-outlined">campaign</span> Announcements
+      <span class="badge-count" *ngIf="serverAnnouncements.length > 0">{{ serverAnnouncements.length }}</span>
+    </button>
+    <button class="tab-btn" [class.active]="activeTab === 'qa'" (click)="activeTab = 'qa'">
+      <span class="material-symbols-outlined">forum</span> Student Q&amp;A
+      <span class="badge-count" *ngIf="getRootQuestions().length > 0">{{ getRootQuestions().length }}</span>
     </button>
   </div>
 
@@ -551,6 +563,160 @@
     </div>
   </div>
 
+  <!-- ── TAB 6: COURSE ANNOUNCEMENTS ── -->
+  <div *ngIf="activeTab === 'announcements'" class="tab-content-panel">
+    <div class="panel-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div>
+        <h2 style="margin:0 0 4px;">Course Announcements &amp; Broadcasts ({{ serverAnnouncements.length }})</h2>
+        <p style="font-size:13px;color:var(--on-surface-variant);margin:0;">Broadcast important curriculum updates, deadlines, and project instructions to all enrolled students.</p>
+      </div>
+      <button class="btn btn-primary" (click)="openAnnouncementModal()">
+        <span class="material-symbols-outlined">add_alert</span> Post Announcement
+      </button>
+    </div>
+
+    <div *ngIf="serverAnnouncements.length === 0" class="empty-state" style="text-align:center;padding:50px 20px;background:var(--surface-container-low);border-radius:14px;">
+      <span class="material-symbols-outlined" style="font-size:48px;color:var(--outline);margin-bottom:12px;">campaign</span>
+      <h3 style="font-size:16px;margin:0 0 6px;">No Announcements Yet</h3>
+      <p style="font-size:13px;color:var(--on-surface-variant);margin:0 0 16px;">Keep your students updated by sharing notes, reminders, or schedule changes.</p>
+      <button class="btn btn-primary" (click)="openAnnouncementModal()">
+        <span class="material-symbols-outlined">add</span> Post Your First Announcement
+      </button>
+    </div>
+
+    <div class="announcements-grid" *ngIf="serverAnnouncements.length > 0" style="display:flex;flex-direction:column;gap:14px;">
+      <div *ngFor="let ann of serverAnnouncements" class="card" style="padding:18px 22px;border-radius:14px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="badge" [class]="ann.is_urgent ? 'badge-danger' : 'badge-primary'" style="font-size:10.5px;padding:3px 8px;">
+              {{ ann.is_urgent ? 'URGENT NOTICE' : 'GENERAL ANNOUNCEMENT' }}
+            </span>
+            <span style="font-size:12px;color:var(--on-surface-variant);">{{ getCourseName(ann.course_id) }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11.5px;color:var(--on-surface-variant);">{{ ann.created_at | date:'short' }}</span>
+            <button class="btn btn-xs btn-subtle" (click)="deleteAnnouncement(ann.id)" title="Delete announcement" style="color:#ef4444;">
+              <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
+            </button>
+          </div>
+        </div>
+        <h4 style="font-size:16px;font-weight:750;color:var(--on-surface);margin:0;">{{ ann.title }}</h4>
+        <p style="font-size:13.5px;color:var(--on-surface-variant);line-height:1.5;margin:0;white-space:pre-wrap;">{{ ann.content }}</p>
+        <div style="font-size:11.5px;color:var(--on-surface-variant);border-top:1px solid var(--outline-variant);padding-top:8px;">
+          Posted by <strong>{{ ann.author_name }}</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB 7: STUDENT Q&A / DISCUSSIONS ── -->
+  <div *ngIf="activeTab === 'qa'" class="tab-content-panel">
+    <div class="panel-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div>
+        <h2 style="margin:0 0 4px;">Student Q&amp;A &amp; Discussion Threads ({{ getRootQuestions().length }})</h2>
+        <p style="font-size:13px;color:var(--on-surface-variant);margin:0;">Answer student questions and guide discussion topics for your curriculum modules.</p>
+      </div>
+    </div>
+
+    <div *ngIf="getRootQuestions().length === 0" class="empty-state" style="text-align:center;padding:50px 20px;background:var(--surface-container-low);border-radius:14px;">
+      <span class="material-symbols-outlined" style="font-size:48px;color:var(--outline);margin-bottom:12px;">forum</span>
+      <h3 style="font-size:16px;margin:0 0 6px;">No Active Questions</h3>
+      <p style="font-size:13px;color:var(--on-surface-variant);margin:0;">Questions posted by students on your course modules will appear here for you to answer.</p>
+    </div>
+
+    <div class="qa-threads-list" *ngIf="getRootQuestions().length > 0" style="display:flex;flex-direction:column;gap:16px;">
+      <div *ngFor="let q of getRootQuestions()" class="card" style="padding:20px 24px;border-radius:14px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:34px;height:34px;border-radius:50%;background:rgba(99,102,241,0.12);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;">
+              {{ q.user_name.charAt(0) }}
+            </div>
+            <div>
+              <strong>{{ q.user_name }}</strong>
+              <span class="badge secondary" style="margin-left:6px;font-size:10px;">{{ q.user_role | titlecase }}</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11.5px;color:var(--on-surface-variant);">{{ q.created_at | date:'short' }}</span>
+            <button class="btn btn-xs btn-subtle" (click)="deleteQAPost(q.id)" style="color:#ef4444;" title="Delete thread">
+              <span class="material-symbols-outlined" style="font-size:16px;">delete</span>
+            </button>
+          </div>
+        </div>
+
+        <h4 style="font-size:15.5px;font-weight:750;margin:0 0 6px;" *ngIf="q.title">{{ q.title }}</h4>
+        <p style="font-size:13.5px;color:var(--on-surface-variant);line-height:1.5;margin:0 0 16px;">{{ q.content }}</p>
+
+        <!-- Nested Replies List -->
+        <div class="replies-list" style="padding-left:20px;border-left:2px solid var(--outline-variant);margin-bottom:14px;display:flex;flex-direction:column;gap:10px;">
+          <div *ngFor="let rep of getRepliesForQA(q.id)" style="padding:10px 14px;background:var(--surface-container-low);border-radius:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <strong style="font-size:12px;">{{ rep.user_name }}</strong>
+                <span class="badge" [class]="rep.user_role === 'instructor' ? 'badge-primary' : 'badge-neutral'" style="font-size:9.5px;padding:2px 6px;">{{ rep.user_role | uppercase }}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:10.5px;color:var(--on-surface-variant);">{{ rep.created_at | date:'short' }}</span>
+                <button class="btn btn-xs btn-subtle" (click)="deleteQAPost(rep.id)" style="color:#ef4444;padding:2px;">
+                  <span class="material-symbols-outlined" style="font-size:14px;">delete</span>
+                </button>
+              </div>
+            </div>
+            <p style="font-size:12.5px;color:var(--on-surface);margin:0;line-height:1.4;">{{ rep.content }}</p>
+          </div>
+        </div>
+
+        <!-- Instructor Reply Box -->
+        <div style="display:flex;gap:10px;align-items:flex-end;">
+          <textarea [(ngModel)]="qaReplyDraft[q.id]" placeholder="Write an official instructor answer..." rows="2" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--surface-container-lowest);font-size:13px;resize:none;"></textarea>
+          <button class="btn btn-primary btn-sm" (click)="submitQAReply(q)" [disabled]="!qaReplyDraft[q.id] || !qaReplyDraft[q.id].trim() || isPostingReply[q.id]">
+            <span class="material-symbols-outlined">send</span> Reply
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: CREATE ANNOUNCEMENT ── -->
+  <div class="modal-backdrop" *ngIf="isAnnouncementModalOpen" (click)="closeAnnouncementModal()">
+    <div class="modal-card" style="max-width:580px;" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Post Course Announcement</h3>
+        <button class="close-btn" (click)="closeAnnouncementModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Target Course *</label>
+          <select [(ngModel)]="announcementForm.course_id">
+            <option value="">Select course...</option>
+            <option *ngFor="let c of authoredCourses" [value]="c.id">{{ c.title }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Announcement Headline *</label>
+          <input type="text" [(ngModel)]="announcementForm.title" placeholder="e.g. Project Submission Deadline Extended" />
+        </div>
+
+        <div class="form-group">
+          <label>Details &amp; Instructions *</label>
+          <textarea [(ngModel)]="announcementForm.content" rows="4" placeholder="Write full announcement details for your students..."></textarea>
+        </div>
+
+        <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+          <input type="checkbox" id="urgentNotice" [(ngModel)]="announcementForm.is_urgent" style="width:auto;cursor:pointer;" />
+          <label for="urgentNotice" style="margin:0;cursor:pointer;font-weight:600;">Mark as Urgent Priority (Banners on Student Dashboard)</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="closeAnnouncementModal()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveAnnouncement()" [disabled]="!announcementForm.title.trim() || !announcementForm.content.trim() || !announcementForm.course_id || isSaving">
+          <span class="material-symbols-outlined">campaign</span> {{ isSaving ? 'Posting...' : 'Publish Announcement' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── MODAL: REJECTION FEEDBACK ── -->
   <div class="modal-backdrop" *ngIf="isRejectModalOpen" (click)="closeRejectModal()">
     <div class="modal-card" (click)="$event.stopPropagation()">
@@ -576,78 +742,148 @@
     </div>
   </div>
 
-  <!-- ── MODAL: COURSE ── -->
-  <div class="modal-backdrop" *ngIf="isCourseModalOpen" (click)="closeCourseModal()">
-    <div class="modal-card" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>{{ formMode === 'edit' ? 'Edit' : 'Create New' }} Course</h3>
-        <button class="close-btn" (click)="closeCourseModal()">&times;</button>
+  <!-- ── MODAL: COURSE (Redesigned Studio Creator) ── -->
+  <div class="modal-backdrop course-studio-backdrop" *ngIf="isCourseModalOpen" (click)="closeCourseModal()">
+    <div class="modal-card course-studio-modal" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="studio-modal-header">
+        <div class="studio-header-title-group">
+          <div class="studio-badge">
+            <span class="material-symbols-outlined">auto_stories</span>
+            <span>CURRICULUM STUDIO</span>
+          </div>
+          <h2>{{ formMode === 'edit' ? 'Edit Course Curriculum' : 'Create New Course' }}</h2>
+          <p>{{ formMode === 'edit' ? 'Update course syllabus, track metadata, and module parameters.' : 'Design your course track, configure syllabus topics, and submit for championship accreditation.' }}</p>
+        </div>
+        <button class="close-btn" (click)="closeCourseModal()" title="Close dialog">
+          <span class="material-symbols-outlined">close</span>
+        </button>
       </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Course Title *</label>
-          <input type="text" [(ngModel)]="courseForm.title" placeholder="e.g. Advanced Python Algorithms" />
-        </div>
 
-        <div class="form-group">
-          <label>Description</label>
-          <textarea [(ngModel)]="courseForm.description" rows="3" placeholder="Provide course objectives and summary..."></textarea>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Track</label>
-            <select [(ngModel)]="courseForm.track">
-              <option value="coding">Coding</option>
-              <option value="robotics">Robotics</option>
-              <option value="ai">AI</option>
-              <option value="cyber">Networking & Cybersecurity</option>
-              <option value="innovation">Innovation</option>
-            </select>
+      <div class="modal-body studio-modal-body">
+        <!-- Live Preview Card Header -->
+        <div class="course-live-preview-card">
+          <div class="preview-icon-wrapper" [class]="courseForm.track || 'coding'">
+            <span class="material-symbols-outlined">{{ courseForm.icon || 'school' }}</span>
           </div>
-
-          <div class="form-group">
-            <label>Difficulty Level</label>
-            <select [(ngModel)]="courseForm.level">
-              <option value="Beginner">Beginner</option>
-              <option value="Intermediate">Intermediate</option>
-              <option value="Advanced">Advanced</option>
-            </select>
+          <div class="preview-details">
+            <div class="preview-badges">
+              <span class="track-chip" [class]="courseForm.track || 'coding'">{{ courseForm.track ? (courseForm.track | uppercase) : 'SELECT TRACK' }}</span>
+              <span class="badge secondary" *ngIf="courseForm.level">{{ courseForm.level }}</span>
+              <span class="badge neutral" *ngIf="courseForm.status">{{ courseForm.status | titlecase }}</span>
+            </div>
+            <h4 class="preview-title">{{ courseForm.title || 'Untitled Course Curriculum' }}</h4>
+            <p class="preview-description">{{ courseForm.description ? (courseForm.description.slice(0, 110) + (courseForm.description.length > 110 ? '...' : '')) : 'Add a brief course description below to outline syllabus learning outcomes.' }}</p>
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Competition Cycle</label>
-            <select [(ngModel)]="courseForm.competitionId">
-              <option value="">Evergreen (not cycle-specific)</option>
-              <option *ngFor="let c of competitions" [value]="c.id">{{ c.title }}</option>
-            </select>
+        <!-- Section 1: Course Title -->
+        <div class="form-group studio-group">
+          <label>
+            <span>Course Title <strong class="req">*</strong></span>
+            <span class="hint-text">A descriptive, engaging title for students</span>
+          </label>
+          <div class="input-with-icon">
+            <span class="material-symbols-outlined input-icon">title</span>
+            <input type="text" [(ngModel)]="courseForm.title" placeholder="e.g. Advanced Python Algorithms &amp; Data Structures" class="studio-input" />
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Material Icon Symbol</label>
-            <input type="text" [(ngModel)]="courseForm.icon" placeholder="e.g. data_object, memory, psychology" />
-          </div>
-
-          <div class="form-group">
-            <label>Status</label>
-            <select [(ngModel)]="courseForm.status">
-              <option value="active">Active</option>
-              <option value="draft">Draft</option>
-              <option value="archived">Archived</option>
-            </select>
+        <!-- Section 2: Interactive Track Tiles -->
+        <div class="form-group studio-group">
+          <label>
+            <span>Select Championship Track <strong class="req">*</strong></span>
+            <span class="hint-text">Choose the primary competition category</span>
+          </label>
+          <div class="track-tiles-grid">
+            <div *ngFor="let trk of trackOptions" 
+                 class="track-tile" 
+                 [class.selected]="courseForm.track === trk.id"
+                 (click)="selectCourseTrack(trk.id)">
+              <div class="tile-icon-box" [style.color]="trk.color">
+                <span class="material-symbols-outlined">{{ trk.icon }}</span>
+              </div>
+              <div class="tile-label">{{ trk.label }}</div>
+              <span class="material-symbols-outlined tile-check" *ngIf="courseForm.track === trk.id">check_circle</span>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <p class="error-msg" *ngIf="saveError" style="color:var(--error, #ef4444); font-size:12px; margin:0 auto 0 0;">{{ saveError }}</p>
+
+        <!-- Section 3: Course Description -->
+        <div class="form-group studio-group">
+          <label>
+            <span>Course Description &amp; Objectives</span>
+            <span class="hint-text">Explain key takeaways, target skill level, and prerequisites</span>
+          </label>
+          <textarea [(ngModel)]="courseForm.description" rows="3" placeholder="Provide an overview of the curriculum, real-world applications, and skills students will acquire..." class="studio-textarea"></textarea>
+        </div>
+
+        <!-- Section 4: Metadata Row (Level & Cycle) -->
+        <div class="form-row studio-row">
+          <div class="form-group studio-group">
+            <label><span>Difficulty Level</span></label>
+            <div class="select-wrapper">
+              <span class="material-symbols-outlined select-icon">trending_up</span>
+              <select [(ngModel)]="courseForm.level" class="studio-select">
+                <option value="Beginner">Beginner (Introductory)</option>
+                <option value="Intermediate">Intermediate (Core Skills)</option>
+                <option value="Advanced">Advanced (Championship Prep)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group studio-group">
+            <label><span>Competition Cycle Scope</span></label>
+            <div class="select-wrapper">
+              <span class="material-symbols-outlined select-icon">emoji_events</span>
+              <select [(ngModel)]="courseForm.competitionId" class="studio-select">
+                <option value="">Evergreen (All Seasons)</option>
+                <option *ngFor="let c of competitions" [value]="c.id">{{ c.title }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 5: Icon Picker & Initial Status -->
+        <div class="form-row studio-row">
+          <div class="form-group studio-group">
+            <label><span>Choose Visual Icon</span></label>
+            <div class="preset-icons-bar">
+              <button *ngFor="let icn of presetIcons" 
+                      type="button"
+                      class="icon-chip-btn" 
+                      [class.active]="courseForm.icon === icn"
+                      (click)="selectCourseIcon(icn)"
+                      [title]="icn">
+                <span class="material-symbols-outlined">{{ icn }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group studio-group">
+            <label><span>Publication State</span></label>
+            <div class="select-wrapper">
+              <span class="material-symbols-outlined select-icon">flag</span>
+              <select [(ngModel)]="courseForm.status" class="studio-select">
+                <option value="active">Active (Submit for Moderation)</option>
+                <option value="draft">Draft (Private in Studio)</option>
+                <option value="archived">Archived</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error Banner -->
+        <div class="error-banner" *ngIf="saveError" style="margin-top:12px;background:rgba(239,68,68,0.1);border:1px solid #ef4444;color:#ef4444;padding:12px;border-radius:10px;display:flex;align-items:center;gap:8px;font-size:12.5px;">
+          <span class="material-symbols-outlined">error</span>
+          <span>{{ saveError }}</span>
+      <!-- Modal Footer -->
+      <div class="modal-footer studio-modal-footer">
         <button class="btn btn-outline" (click)="closeCourseModal()" [disabled]="isSaving">Cancel</button>
-        <button class="btn btn-primary" (click)="saveCourse()" [disabled]="isSaving || !courseForm.title.trim()">
-          <span *ngIf="!isSaving">{{ formMode === 'edit' ? 'Update Course' : 'Save Course' }}</span>
-          <span *ngIf="isSaving" class="spinner-inline"></span>
+        <button class="btn btn-primary studio-submit-btn" (click)="saveCourse()" [disabled]="!courseForm.title.trim() || isSaving">
+          <span class="material-symbols-outlined" *ngIf="!isSaving">rocket_launch</span>
+          <span class="material-symbols-outlined spin" *ngIf="isSaving">sync</span>
+          <span>{{ isSaving ? 'Saving Course...' : (formMode === 'edit' ? 'Save Changes' : 'Create & Publish Course') }}</span>
         </button>
       </div>
     </div>

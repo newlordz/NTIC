@@ -1636,6 +1636,7 @@ setAuthValue('activeUserEmail', email);
   judgeLogoUrl: string | null = null;
   sponsorLogoUrl: string | null = null;
   studentPhotoUrl: string | null = null;
+  instructorPhotoUrl: string | null = null;
   groupPhotoUrl: string | null = null;
   groupLogoUrl: string | null = null;
   memberPhotoUrls: Record<string, string | null> = { lead: null, m2: null, m3: null, m4: null, m5: null };
@@ -1715,6 +1716,7 @@ setAuthValue('activeUserEmail', email);
         sponsorLogo: 3 * 1024 * 1024,
         judgeLogo: 3 * 1024 * 1024,
         studentPhoto: 10 * 1024 * 1024,
+        instructorPhoto: 10 * 1024 * 1024,
         groupPhoto: 10 * 1024 * 1024,
         groupLogo: 10 * 1024 * 1024,
         memberLeadPhoto: 10 * 1024 * 1024,
@@ -1753,6 +1755,8 @@ setAuthValue('activeUserEmail', email);
         await this.loadSponsorLogo();
       } else if (field === 'studentPhoto') {
         await this.loadStudentPhoto();
+      } else if (field === 'instructorPhoto') {
+        await this.loadInstructorPhoto();
       } else if (field === 'groupPhoto') {
         await this.loadGroupPhoto();
       } else if (field === 'groupLogo') {
@@ -1812,6 +1816,14 @@ setAuthValue('activeUserEmail', email);
     }
   }
 
+  private async loadInstructorPhoto(): Promise<void> {
+    const id = this.selectedFileIds['instructorPhoto']?.[0];
+    if (id) {
+      this.instructorPhotoUrl = await this.fileStorage.getUrl(id);
+      this.cdr?.markForCheck?.();
+    }
+  }
+
   private async loadGroupPhoto(): Promise<void> {
     const id = this.selectedFileIds['groupPhoto']?.[0];
     if (id) {
@@ -1855,6 +1867,9 @@ setAuthValue('activeUserEmail', email);
     } else if (field === 'studentPhoto') {
       if (this.studentPhotoUrl) { this.fileStorage.revokeUrl(this.studentPhotoUrl); }
       this.studentPhotoUrl = null;
+    } else if (field === 'instructorPhoto') {
+      if (this.instructorPhotoUrl) { this.fileStorage.revokeUrl(this.instructorPhotoUrl); }
+      this.instructorPhotoUrl = null;
     } else if (field === 'groupPhoto') {
       if (this.groupPhotoUrl) { this.fileStorage.revokeUrl(this.groupPhotoUrl); }
     this.groupPhotoUrl = null;
@@ -2387,6 +2402,11 @@ setAuthValue('activeUserEmail', email);
         expertise: expertiseMap
       };
       this.isDraftResumed = true;
+      if (d.photoFileId) {
+        this.selectedFileIds['instructorPhoto'] = [d.photoFileId];
+        this.selectedFileNames['instructorPhoto'] = ['Instructor Profile Photo'];
+        this.loadInstructorPhoto();
+      }
       if (d.email || app.contact) this.verifiedValues['instEmail'] = (d.email || app.contact || '').trim().toLowerCase();
       if (d.phone || d.tel) this.verifiedValues['instTel'] = this.normalizePhone(d.phone || d.tel);
       const docs = d.docs || d.instructorDocs || d.documents || [];
@@ -3630,6 +3650,7 @@ setAuthValue('activeUserEmail', email);
     this.judgeLogoUrl = null;
     this.sponsorLogoUrl = null;
     this.studentPhotoUrl = null;
+    this.instructorPhotoUrl = null;
     this.groupPhotoUrl = null;
     this.missingDocsError = '';
 
@@ -4046,6 +4067,7 @@ setAuthValue('activeUserEmail', email);
           portfolio: this.instructorForm.portfolio || '',
           experience: 'Mentor with registered history',
           courses: ['LMS Course 101: Python Intro', 'LMS Course 202: Robotics Base'],
+          photoFileId: this.selectedFileIds['instructorPhoto']?.[0] || undefined,
           code: this.editingApprovalId
             ? (this.contentService.pendingApprovals.find(a => a.id === this.editingApprovalId)?.details?.code || this.generateApplicationCode('instructor'))
             : this.generateApplicationCode('instructor'),

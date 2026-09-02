@@ -665,6 +665,16 @@ export class ContentService {
   readonly writeFailures$ = new Subject<{ collection: string; status: number; message: string }>();
 
   syncToBackend(collection: string, items: any[]): void {
+    const token = getAuthValue('activeUserToken');
+    const role = (getAuthValue('activeRoleId') || '').toLowerCase();
+    const isAdmin = role === 'admin' || role === 'super_admin';
+    if (!token || !isAdmin) {
+      // Bulk-sync endpoint (POST /api/bulk-sync) requires admin privileges on the server.
+      // Unauthenticated public visitors or non-admin roles persist via dedicated endpoints
+      // (such as POST /api/approvals/public) and must never attempt admin bulk-sync.
+      return;
+    }
+
     this.apiService.bulkSync(collection, items).subscribe({
       next: () => {},
       error: (err: any) => {
@@ -1784,10 +1794,15 @@ export class ContentService {
     // Create/seed only. status is deliberately NOT sent: an approval is always
     // 'pending' on create, and the Reviewer/Access PATCH is the single writer
     // of decisions. See the backend bulk-sync + POST handles.
-    this.syncToBackend('approvals', approvalsList.map(a => ({
-      id: a.id, type: a.type, entity: a.entity, contact: a.contact,
-      submitted: a.submitted, details: a.details || {}
-    })));
+    const token = getAuthValue('activeUserToken');
+    const role = (getAuthValue('activeRoleId') || '').toLowerCase();
+    const isAdmin = role === 'admin' || role === 'super_admin';
+    if (token && isAdmin) {
+      this.syncToBackend('approvals', approvalsList.map(a => ({
+        id: a.id, type: a.type, entity: a.entity, contact: a.contact,
+        submitted: a.submitted, details: a.details || {}
+      })));
+    }
   }
 
   saveRejectedApprovals(list: ApprovalRequest[]): void {

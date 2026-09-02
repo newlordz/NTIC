@@ -77,7 +77,7 @@
       <!-- Records link removed - now centralized under Document & Entity Archive in Admin Control -->
       <a class="nav-item" *ngIf="hasAccess('lms_admin')" routerLink="/lms-manager" routerLinkActive="active" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">school</span>
-        LMS Manager
+        {{ currentUser?.roleId === 'instructor' ? 'Course Studio' : 'LMS Manager' }}
       </a>
     </div>
 

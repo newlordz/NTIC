@@ -379,6 +379,42 @@ def _create_tables(conn):
             status VARCHAR(20) DEFAULT 'active'
         );
 
+        CREATE TABLE IF NOT EXISTS lms_announcements (
+            id VARCHAR(64) PRIMARY KEY,
+            course_id VARCHAR(64) REFERENCES lms_courses(id) ON DELETE CASCADE,
+            author_id VARCHAR(64),
+            author_name VARCHAR(200),
+            title VARCHAR(250) NOT NULL,
+            content TEXT NOT NULL,
+            is_urgent BOOLEAN DEFAULT FALSE,
+            created_at VARCHAR(50)
+        );
+
+        CREATE TABLE IF NOT EXISTS lms_qa (
+            id VARCHAR(64) PRIMARY KEY,
+            course_id VARCHAR(64) REFERENCES lms_courses(id) ON DELETE CASCADE,
+            module_id VARCHAR(64),
+            user_id VARCHAR(64),
+            user_name VARCHAR(200),
+            user_role VARCHAR(50),
+            title VARCHAR(250),
+            content TEXT NOT NULL,
+            parent_id VARCHAR(64),
+            created_at VARCHAR(50)
+        );
+
+        CREATE TABLE IF NOT EXISTS lms_certificates (
+            id VARCHAR(64) PRIMARY KEY,
+            course_id VARCHAR(64) REFERENCES lms_courses(id) ON DELETE CASCADE,
+            student_id VARCHAR(64),
+            student_name VARCHAR(200),
+            course_title VARCHAR(250),
+            track VARCHAR(50),
+            instructor_name VARCHAR(200),
+            certificate_number VARCHAR(100) UNIQUE,
+            issued_at VARCHAR(50)
+        );
+
         -- Student sign-ups for a competition cycle.
         --
         -- This had no table at all. registerStudentForCycle() in the frontend was a

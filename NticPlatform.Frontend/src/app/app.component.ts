@@ -713,7 +713,7 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'overview':     return adminRoles.includes(role);
       case 'admin_control': return adminRoles.includes(role);
       case 'roster':       return ['school_admin'].includes(role);
-      case 'registration': return ['instructor', 'super_admin', 'admin'].includes(role);
+      case 'registration': return ['super_admin', 'admin'].includes(role);
       // `/lms` has a full instructor UI ("My Courses", "Submit for Review") and the
       // route guard already allows instructors -- but this returned student-only, so
       // no link was ever rendered and an instructor could only reach it by typing
@@ -725,7 +725,7 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'sponsors':     return ['sponsor'].includes(role);
       // Judging workspace. Mirrors the backend's GRADING_ROLES and the
       // 'judge' entry in the auth guard's ROLE_ACCESS map.
-      case 'judging':      return ['judge', 'reviewer', 'instructor', 'super_admin', 'admin'].includes(role);
+      case 'judging':      return ['judge', 'reviewer', 'super_admin', 'admin'].includes(role);
       case 'reporting':    return ['super_admin', 'admin', 'reviewer', 'instructor', 'school_admin'].includes(role);
       case 'records':      return ['super_admin', 'admin', 'content_manager'].includes(role);
       case 'users':        return ['super_admin', 'admin'].includes(role);

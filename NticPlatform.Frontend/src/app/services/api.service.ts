@@ -217,6 +217,42 @@ export interface ModerationQueueItem {
   created_at: string;
 }
 
+export interface LmsAnnouncement {
+  id: string;
+  course_id: string;
+  author_id: string;
+  author_name: string;
+  title: string;
+  content: string;
+  is_urgent: boolean;
+  created_at: string;
+}
+
+export interface LmsQA {
+  id: string;
+  course_id: string;
+  module_id?: string;
+  user_id: string;
+  user_name: string;
+  user_role: string;
+  title?: string;
+  content: string;
+  parent_id?: string;
+  created_at: string;
+}
+
+export interface LmsCertificate {
+  id: string;
+  course_id: string;
+  student_id: string;
+  student_name: string;
+  course_title: string;
+  track: string;
+  instructor_name: string;
+  certificate_number: string;
+  issued_at: string;
+}
+
 /**
  * A sponsor's commitment.
  *
@@ -1408,6 +1444,42 @@ login(email: string, password: string): Observable<any> {
 
   getSystemTelemetry(): Observable<any> {
     return this.http.get<any>(this.apiUrl + '/system/telemetry');
+  }
+
+  getLmsAnnouncements(courseId?: string): Observable<LmsAnnouncement[]> {
+    const url = courseId ? `${this.apiUrl}/lms/announcements?course_id=${courseId}` : `${this.apiUrl}/lms/announcements`;
+    return this.http.get<LmsAnnouncement[]>(url);
+  }
+
+  createLmsAnnouncement(payload: { course_id: string; title: string; content: string; is_urgent?: boolean }): Observable<LmsAnnouncement> {
+    return this.http.post<LmsAnnouncement>(`${this.apiUrl}/lms/announcements`, payload);
+  }
+
+  deleteLmsAnnouncement(id: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/lms/announcements/${id}`);
+  }
+
+  getLmsQA(courseId: string, moduleId?: string): Observable<LmsQA[]> {
+    let url = `${this.apiUrl}/lms/qa?course_id=${courseId}`;
+    if (moduleId) url += `&module_id=${moduleId}`;
+    return this.http.get<LmsQA[]>(url);
+  }
+
+  createLmsQA(payload: { course_id: string; module_id?: string; title?: string; content: string; parent_id?: string }): Observable<LmsQA> {
+    return this.http.post<LmsQA>(`${this.apiUrl}/lms/qa`, payload);
+  }
+
+  deleteLmsQA(id: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/lms/qa/${id}`);
+  }
+
+  getLmsCertificates(studentId?: string): Observable<LmsCertificate[]> {
+    const url = studentId ? `${this.apiUrl}/lms/certificates?student_id=${studentId}` : `${this.apiUrl}/lms/certificates`;
+    return this.http.get<LmsCertificate[]>(url);
+  }
+
+  generateLmsCertificate(courseId: string, studentId?: string): Observable<LmsCertificate> {
+    return this.http.post<LmsCertificate>(`${this.apiUrl}/lms/certificates/generate`, { course_id: courseId, student_id: studentId });
   }
 
   bulkSync(collection: string, items: any[]): Observable<any> {
