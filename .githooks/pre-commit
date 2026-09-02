@@ -94,6 +94,35 @@ case "$STAGED" in
         ;;
 esac
 
+# ── 4. Mojibake / encoding corruption ─────────────────────────────────────────
+# Windows PowerShell 5.1 defaults `Set-Content` / `Out-File` to ANSI, not UTF-8.
+# A tool that reads a UTF-8 source and writes it back through 5.1 re-encodes
+# every multi-byte character as CP1252, so 'e' becomes 'a<' and so on. The damage
+# compounds on each round-trip and, once committed, comes back on every checkout
+# or `git restore` -- which is exactly how dashboard.component.html accumulated
+# 1016 C1 control characters before it was repaired.
+#
+# The tell is the C1 range U+0080-U+009F. Those are non-printable control codes:
+# valid UTF-8 text never contains them, but CP1252-mangled UTF-8 is full of them.
+# Matching on that range alone keeps this check free of false positives, so
+# genuine UTF-8 (accents, emoji, box-drawing) still commits normally.
+for f in $STAGED; do
+    case "$f" in
+        *.html|*.ts|*.js|*.cjs|*.mjs|*.scss|*.css|*.py|*.json|*.md|*.yml|*.yaml)
+            # LC_ALL=C makes grep operate on bytes, so the C2/C3-prefixed UTF-8
+            # encodings of U+0080-U+009F are what actually get matched.
+            if staged_content "$f" | LC_ALL=C grep -qP '[\xc2\xc3][\x80-\x9f]' 2>/dev/null; then
+                echo "pre-commit: '$f' contains C1 control characters (U+0080-U+009F)."
+                echo "    This is mojibake -- UTF-8 that was re-saved as CP1252/ANSI."
+                echo "    Re-save the file as UTF-8 without BOM before committing."
+                echo "    In PowerShell, write with an explicit encoding:"
+                echo "        [System.IO.File]::WriteAllText(\$path, \$text, (New-Object System.Text.UTF8Encoding(\$false)))"
+                FAIL=1
+            fi
+            ;;
+    esac
+done
+
 if [ "$FAIL" -ne 0 ]; then
     echo ""
     echo "pre-commit: commit aborted. Nothing has been staged or unstaged."
