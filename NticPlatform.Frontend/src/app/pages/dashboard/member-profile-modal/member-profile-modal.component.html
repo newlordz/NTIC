@@ -1,0 +1,63 @@
+<div class="admin-modal-overlay" *ngIf="member" (click)="onClose()">
+  <div class="admin-modal" (click)="$event.stopPropagation()" style="max-width:480px;border-radius:16px;">
+    <div class="admin-modal-header" style="background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="material-symbols-outlined" style="font-size:24px;">badge</span>
+        <div>
+          <h3 style="margin:0;font-size:16px;color:#fff;">Member Profile Details</h3>
+          <span style="font-size:11px;opacity:0.85;">{{ member.name }}</span>
+        </div>
+      </div>
+      <button class="admin-modal-close" (click)="onClose()" style="color:#fff;">&times;</button>
+    </div>
+    <div class="admin-modal-body" style="padding:20px;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--outline-variant);">
+        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;">
+          {{ getInitials(member.name) }}
+        </div>
+        <div>
+          <h3 style="margin:0 0 2px 0;font-size:16px;font-weight:700;color:var(--on-surface);">{{ member.name }}</h3>
+          <span class="badge primary">{{ member.role }}</span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:13px;">
+        <div>
+          <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Email</span>
+          <strong style="color:var(--on-surface);">{{ member.email || 'N/A' }}</strong>
+        </div>
+        <div>
+          <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Phone</span>
+          <strong style="color:var(--on-surface);">{{ member.phone || 'N/A' }}</strong>
+        </div>
+        <div>
+          <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Track / Competition</span>
+          <strong style="color:var(--primary);">{{ member.track || 'General' }}</strong>
+        </div>
+        <div>
+          <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Institution</span>
+          <strong style="color:var(--on-surface);">{{ member.organization || schoolName || 'NTIC Member' }}</strong>
+        </div>
+        <div *ngIf="member.class">
+          <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Class / Form</span>
+          <strong style="color:var(--on-surface);">{{ member.class }}</strong>
+        </div>
+        <div *ngIf="member.gender">
+          <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Gender</span>
+          <strong style="color:var(--on-surface);">{{ member.gender }}</strong>
+        </div>
+        <div *ngIf="member.guardianName && member.guardianName !== 'N/A'">
+          <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Guardian Name</span>
+          <strong style="color:var(--on-surface);">{{ member.guardianName }}</strong>
+        </div>
+        <div *ngIf="member.guardianPhone && member.guardianPhone !== 'N/A'">
+          <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Guardian Phone</span>
+          <strong style="color:var(--on-surface);">{{ member.guardianPhone }}</strong>
+        </div>
+      </div>
+    </div>
+    <div class="admin-modal-footer" style="padding:12px 20px;border-top:1px solid var(--outline-variant);display:flex;justify-content:flex-end;">
+      <button class="btn btn-primary btn-sm" (click)="onClose()">Close</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,54 @@
+.admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+.admin-modal {
+  background: var(--surface-container-lowest, #fff);
+  border-radius: 18px;
+  width: 480px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+  animation: modalSlideUp 0.3s ease;
+
+  &.admin-modal-sm { width: 380px; }
+}
+
+.admin-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 24px 0;
+  .material-symbols-outlined { font-size: 22px; color: var(--primary); }
+  h3 { flex: 1; font-size: 16px; font-weight: 700; margin: 0; }
+}
+
+.admin-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--on-surface-variant);
+  line-height: 1;
+  padding: 0;
+  &:hover { color: var(--on-surface); }
+}
+
+.admin-modal-body {
+  padding: 16px 24px;
+}
+
+.admin-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 24px 20px;
+}

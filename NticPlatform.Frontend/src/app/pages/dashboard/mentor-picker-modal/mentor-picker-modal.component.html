@@ -1,0 +1,84 @@
+<div class="mp-modal-backdrop fade-in" *ngIf="team" (click)="onClose()">
+  <div class="mp-modal-sheet" (click)="$event.stopPropagation()">
+    <div class="mp-modal-sheet-header">
+      <div class="mp-modal-title-row">
+        <div class="mp-modal-icon-badge">
+          <span class="material-symbols-outlined">school</span>
+        </div>
+        <div class="mp-modal-title-group">
+          <h3 class="mp-modal-title">Allocate Instructor</h3>
+          <p class="mp-modal-sub">
+            For <strong class="mp-team-hl">{{ team.name }}</strong>
+            <span class="mp-team-track-pill" *ngIf="team.track">{{ team.track }}</span>
+          </p>
+        </div>
+      </div>
+      <button type="button" class="mp-modal-close-btn" (click)="onClose()" title="Close popup">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Quick search filter -->
+    <div class="mp-modal-search-bar" *ngIf="instructors.length > 2">
+      <span class="material-symbols-outlined search-ic">search</span>
+      <input type="text"
+             class="mp-modal-search-input"
+             placeholder="Search by instructor name, specialization track, email..."
+             [(ngModel)]="searchQuery"
+             (click)="$event.stopPropagation()">
+      <button type="button" class="mp-modal-clear-btn" *ngIf="searchQuery" (click)="searchQuery = ''">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <!-- Instructor Cards Grid / List -->
+    <div class="mp-modal-options-container">
+      <div class="mp-modal-options-grid">
+        <button type="button"
+                *ngFor="let inst of getFilteredInstructors(team.track)"
+                class="mp-modal-option-card"
+                [class.is-selected]="(team.mentorId || team.mentor_id) === inst.id"
+                [class.is-match]="isTrackMatch(team.track, inst.track)"
+                (click)="onSelectInstructor(inst.id)">
+          <div class="mp-opt-avatar">
+            {{ getInitials(inst.name) }}
+          </div>
+          <div class="mp-opt-info">
+            <div class="mp-opt-name-row">
+              <span class="mp-opt-name">{{ inst.name }}</span>
+              <span *ngIf="isTrackMatch(team.track, inst.track)" class="mp-opt-match-badge">
+                <span class="material-symbols-outlined">star</span> Track Match
+              </span>
+            </div>
+            <div class="mp-opt-meta">
+              <span class="mp-opt-track">{{ inst.track || 'General' }}</span>
+              <span class="mp-opt-dot">&bull;</span>
+              <span class="mp-opt-workload">{{ inst.assignedCount }} team{{ inst.assignedCount === 1 ? '' : 's' }} assigned</span>
+            </div>
+          </div>
+          <span class="material-symbols-outlined mp-opt-check" *ngIf="(team.mentorId || team.mentor_id) === inst.id">check_circle</span>
+        </button>
+      </div>
+
+      <div *ngIf="getFilteredInstructors(team.track).length === 0" class="mp-modal-empty">
+        <span class="material-symbols-outlined">person_search</span>
+        <h4>No instructors found</h4>
+        <p>No available instructors matched "{{ searchQuery }}".</p>
+      </div>
+    </div>
+
+    <!-- Modal Footer with Unassign & Dismiss -->
+    <div class="mp-modal-sheet-footer">
+      <button type="button"
+              class="btn btn-outline-danger btn-sm"
+              *ngIf="team.mentorId || team.mentor_id"
+              (click)="onRemoveAssignment(); $event.stopPropagation()">
+        <span class="material-symbols-outlined">person_off</span>
+        <span>Remove Mentor Assignment</span>
+      </button>
+      <button type="button" class="btn btn-subtle btn-sm" (click)="onClose()">
+        <span>Done</span>
+      </button>
+    </div>
+  </div>
+</div>

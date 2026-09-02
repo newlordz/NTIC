@@ -1,0 +1,18 @@
+<div class="custom-modal-backdrop" *ngIf="alert?.isOpen" (click)="onDismiss()">
+  <div class="custom-alert-card" [ngClass]="alert?.type || 'info'" (click)="$event.stopPropagation()">
+    <div class="custom-alert-icon-wrap">
+      <span class="material-symbols-outlined">
+        {{ alert?.type === 'success' ? 'check_circle' :
+           alert?.type === 'warning' ? 'warning' :
+           alert?.type === 'error' ? 'error' : 'info' }}
+      </span>
+    </div>
+    <div class="custom-alert-content">
+      <h4 class="custom-alert-title">{{ alert?.title }}</h4>
+      <p class="custom-alert-message">{{ alert?.message }}</p>
+    </div>
+    <div class="custom-alert-actions">
+      <button class="btn-alert-dismiss" (click)="onDismiss()">Got It</button>
+    </div>
+  </div>
+</div>

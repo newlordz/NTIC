@@ -6402,170 +6402,30 @@
   <!-- ============================================================================================================================
        CUSTOM SLEEK ALERT NOTIFICATION MODAL
        ============================================================================================================================ -->
-  <div class="custom-modal-backdrop" *ngIf="customAlertModal?.isOpen" (click)="closeCustomAlert()">
-    <div class="custom-alert-card" [ngClass]="customAlertModal?.type || 'info'" (click)="$event.stopPropagation()">
-      <div class="custom-alert-icon-wrap">
-        <span class="material-symbols-outlined">
-          {{ customAlertModal?.type === 'success' ? 'check_circle' :
-             customAlertModal?.type === 'warning' ? 'warning' :
-             customAlertModal?.type === 'error' ? 'error' : 'info' }}
-        </span>
-      </div>
-      <div class="custom-alert-content">
-        <h4 class="custom-alert-title">{{ customAlertModal?.title }}</h4>
-        <p class="custom-alert-message">{{ customAlertModal?.message }}</p>
-      </div>
-      <div class="custom-alert-actions">
-        <button class="btn-alert-dismiss" (click)="closeCustomAlert()">Got It</button>
-      </div>
-    </div>
-  </div>
+  <app-custom-alert-modal
+    [alert]="customAlertModal"
+    (dismiss)="closeCustomAlert()"></app-custom-alert-modal>
 
-  <!-- Member Profile Modal -->
-  <div class="admin-modal-overlay" *ngIf="selectedMemberProfile" (click)="closeMemberProfileModal()">
-    <div class="admin-modal" (click)="$event.stopPropagation()" style="max-width:480px;border-radius:16px;">
-      <div class="admin-modal-header" style="background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span class="material-symbols-outlined" style="font-size:24px;">badge</span>
-          <div>
-            <h3 style="margin:0;font-size:16px;color:#fff;">Member Profile Details</h3>
-            <span style="font-size:11px;opacity:0.85;">{{ selectedMemberProfile.name }}</span>
-          </div>
-        </div>
-        <button class="admin-modal-close" (click)="closeMemberProfileModal()" style="color:#fff;">&times;</button>
-      </div>
-      <div class="admin-modal-body" style="padding:20px;">
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--outline-variant);">
-          <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;">
-            {{ getInitials(selectedMemberProfile.name) }}
-          </div>
-          <div>
-            <h3 style="margin:0 0 2px 0;font-size:16px;font-weight:700;color:var(--on-surface);">{{ selectedMemberProfile.name }}</h3>
-            <span class="badge primary">{{ selectedMemberProfile.role }}</span>
-          </div>
-        </div>
+  <app-member-profile-modal
+    [member]="selectedMemberProfile"
+    [schoolName]="schoolName"
+    (close)="closeMemberProfileModal()"></app-member-profile-modal>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:13px;">
-          <div>
-            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Email</span>
-            <strong style="color:var(--on-surface);">{{ selectedMemberProfile.email || 'N/A' }}</strong>
-          </div>
-          <div>
-            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Phone</span>
-            <strong style="color:var(--on-surface);">{{ selectedMemberProfile.phone || 'N/A' }}</strong>
-          </div>
-          <div>
-            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Track / Competition</span>
-            <strong style="color:var(--primary);">{{ selectedMemberProfile.track || 'General' }}</strong>
-          </div>
-          <div>
-            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Institution</span>
-            <strong style="color:var(--on-surface);">{{ selectedMemberProfile.organization || schoolName || 'NTIC Member' }}</strong>
-          </div>
-          <div *ngIf="selectedMemberProfile.class">
-            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Class / Form</span>
-            <strong style="color:var(--on-surface);">{{ selectedMemberProfile.class }}</strong>
-          </div>
-          <div *ngIf="selectedMemberProfile.gender">
-            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Gender</span>
-            <strong style="color:var(--on-surface);">{{ selectedMemberProfile.gender }}</strong>
-          </div>
-          <div *ngIf="selectedMemberProfile.guardianName && selectedMemberProfile.guardianName !== 'N/A'">
-            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Guardian Name</span>
-            <strong style="color:var(--on-surface);">{{ selectedMemberProfile.guardianName }}</strong>
-          </div>
-          <div *ngIf="selectedMemberProfile.guardianPhone && selectedMemberProfile.guardianPhone !== 'N/A'">
-            <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;">Guardian Phone</span>
-            <strong style="color:var(--on-surface);">{{ selectedMemberProfile.guardianPhone }}</strong>
-          </div>
-        </div>
-      </div>
-      <div class="admin-modal-footer" style="padding:12px 20px;border-top:1px solid var(--outline-variant);display:flex;justify-content:flex-end;">
-        <button class="btn btn-primary btn-sm" (click)="closeMemberProfileModal()">Close</button>
-      </div>
-    </div>
-  </div>
+  <app-institution-portal-modal
+    [isOpen]="isPortalOpen"
+    [schoolName]="schoolName"
+    [loading]="institutionLoading"
+    [students]="institutionStudents"
+    [issuedCredentials]="issuedCredentials"
+    (close)="closeInstitutionPortal()"
+    (dismissCredentials)="dismissIssuedCredentials()"
+    (resetCredentials)="resetStudentCredentials($event)"></app-institution-portal-modal>
 
-  <!-- Institution Student Portal Modal -->
-  <div class="admin-modal-overlay" *ngIf="isPortalOpen" (click)="closeInstitutionPortal()">
-    <div class="admin-modal" (click)="$event.stopPropagation()" style="max-width:760px;border-radius:16px;max-height:88vh;display:flex;flex-direction:column;">
-      <div class="admin-modal-header" style="background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span class="material-symbols-outlined" style="font-size:24px;">manage_accounts</span>
-          <div>
-            <h3 style="margin:0;font-size:16px;">Student Portal &mdash; {{ schoolName }}</h3>
-            <span style="font-size:11px;opacity:0.85;">Manage the login accounts of students under your institution</span>
-          </div>
-        </div>
-        <button class="cc-rec-modal-close" (click)="closeInstitutionPortal()" type="button" style="color:#fff;">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-
-      <div style="padding:16px 20px;overflow-y:auto;flex:1;">
-        <!-- One-time credentials banner, shown after issuing -->
-        <div *ngIf="issuedCredentials" style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:10px;padding:14px;margin-bottom:16px;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <span class="material-symbols-outlined" style="color:#059669;">key</span>
-            <strong style="color:#065f46;">New login for {{ issuedCredentials.full_name }}</strong>
-          </div>
-          <p style="font-size:12px;color:#065f46;margin:0 0 10px 0;">Give these to the student now. The password is shown once and cannot be retrieved again. They must change it on first login.</p>
-          <div style="display:flex;gap:16px;flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:13px;">
-            <div><span style="color:#047857;">Email:</span> <strong>{{ issuedCredentials.email }}</strong></div>
-            <div><span style="color:#047857;">Password:</span> <strong>{{ issuedCredentials.temporary_password }}</strong></div>
-          </div>
-          <button class="btn btn-sm" (click)="dismissIssuedCredentials()" style="margin-top:10px;">Done</button>
-        </div>
-
-        <div *ngIf="institutionLoading" style="text-align:center;padding:32px;color:var(--on-surface-variant);">
-          <span class="material-symbols-outlined" style="font-size:32px;opacity:0.4;">hourglass_top</span>
-          <p style="font-size:13px;">Loading your students...</p>
-        </div>
-
-        <div *ngIf="!institutionLoading && institutionStudents.length === 0" style="text-align:center;padding:32px;color:var(--on-surface-variant);">
-          <span class="material-symbols-outlined" style="font-size:36px;opacity:0.3;">person_off</span>
-          <p style="font-size:13px;margin-top:6px;">No student accounts yet. Students get an account automatically once their team is approved with their email on file.</p>
-        </div>
-
-        <table *ngIf="!institutionLoading && institutionStudents.length > 0" style="width:100%;border-collapse:collapse;font-size:12.5px;">
-          <thead>
-            <tr style="text-align:left;border-bottom:2px solid var(--outline-variant);color:var(--on-surface-variant);">
-              <th style="padding:8px 6px;">Student</th>
-              <th style="padding:8px 6px;">Email</th>
-              <th style="padding:8px 6px;">Login status</th>
-              <th style="padding:8px 6px;text-align:right;">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let s of institutionStudents" style="border-bottom:1px solid var(--outline-variant);">
-              <td style="padding:8px 6px;font-weight:600;">{{ s.full_name }}</td>
-              <td style="padding:8px 6px;color:var(--on-surface-variant);">{{ s.email }}</td>
-              <td style="padding:8px 6px;">
-                <span *ngIf="s.has_logged_in && !s.must_change_password" class="badge secondary" style="font-size:10px;">Active</span>
-                <span *ngIf="s.must_change_password" class="badge primary" style="font-size:10px;">Awaiting first login</span>
-                <span *ngIf="!s.has_logged_in && !s.must_change_password" class="badge" style="font-size:10px;">Never signed in</span>
-              </td>
-              <td style="padding:8px 6px;text-align:right;">
-                <button class="btn btn-sm" (click)="resetStudentCredentials(s)" style="font-size:11px;">
-                  <span class="material-symbols-outlined" style="font-size:14px;">key</span> Issue login
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================================================
-       RECORD INSPECTOR POPUP MODAL (Subcomponent)
-  ============================================================ -->
   <app-record-inspector-modal
     [isOpen]="dashboardRecordModalOpen"
     [record]="dashboardSelectedRecord"
     (close)="closeDashboardRecordModal()"
-    (openArchive)="openFullRecordsArchive()">
-  </app-record-inspector-modal>
+    (openArchive)="openFullRecordsArchive()"></app-record-inspector-modal>
 
   <!-- ============================================================
        SPONSORSHIP TIER BREAKDOWN POPUP MODAL (ROOT VIEWPORT OVERLAY)
@@ -6576,7 +6436,14 @@
     [initialSearch]="sponsorTierSearch"
     (close)="closeSponsorTierModal()"></app-sponsor-tier-modal>
 
-
+  <!-- ============================================================
+       INSTRUCTOR / MENTOR ALLOCATION POPUP MODAL (ROOT VIEWPORT OVERLAY)
+       ============================================================ -->
+  <app-mentor-picker-modal
+    [team]="activeMentorModalTeam"
+    [instructors]="allPlatformInstructors"
+    (close)="closeMentorModal()"
+    (select)="selectMentorForTeam($event.teamId, $event.mentorId)"></app-mentor-picker-modal>
 
   <!-- ============================================================================================================
        STUDENT LEAD: REQUEST MENTOR MODAL (Pool Match / Nominate Expert Subcomponent)

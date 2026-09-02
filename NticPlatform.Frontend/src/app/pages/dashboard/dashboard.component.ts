@@ -28,7 +28,11 @@ import { ApplicationPreviewModalComponent } from './application-preview-modal/ap
 import { SponsorTierModalComponent } from './sponsor-tier-modal/sponsor-tier-modal.component';
 import { MentorRequestModalComponent } from './mentor-request-modal/mentor-request-modal.component';
 import { InstitutionDecisionModalComponent } from './institution-decision-modal/institution-decision-modal.component';
+import { MentorPickerModalComponent } from './mentor-picker-modal/mentor-picker-modal.component';
+import { CustomAlertModalComponent } from './custom-alert-modal/custom-alert-modal.component';
 import { RecordInspectorModalComponent } from './record-inspector-modal/record-inspector-modal.component';
+import { MemberProfileModalComponent } from './member-profile-modal/member-profile-modal.component';
+import { InstitutionPortalModalComponent } from './institution-portal-modal/institution-portal-modal.component';
 
 export interface SponsorInfographic {
   partnerCount: number;
@@ -62,7 +66,9 @@ type PersonnelRole = 'governance' | 'mentor' | 'sponsor' | 'judge' | 'instructor
     LmsManagerComponent, UserManagementComponent,
     ApplicationPreviewModalComponent, SponsorTierModalComponent,
     MentorRequestModalComponent, InstitutionDecisionModalComponent,
-    RecordInspectorModalComponent
+    MentorPickerModalComponent, CustomAlertModalComponent,
+    RecordInspectorModalComponent, MemberProfileModalComponent,
+    InstitutionPortalModalComponent
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
