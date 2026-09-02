@@ -1,7 +1,9 @@
-import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute } from '@angular/router';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { getAuthValue } from '../../services/session.util';
 import { ContentService, LmsCourse, LmsModule, LmsMaterial, LmsAssignment, LmsSubmission, LmsEnrollment } from '../../services/content.service';
 import { DialogService } from '../../services/dialog.service';
@@ -401,16 +403,106 @@ export class LmsManagerComponent implements OnInit {
     return found ? found.title : 'Course';
   }
 
-  /** Loads the enrolled roster for one course. */
-  loadRoster(courseId: string): void {
+  filterMentoredOnly: boolean = false;
+
+  /** Loads the enrolled roster for one course or all authored courses. */
+  loadRoster(courseId: string = 'all'): void {
     if (!courseId || courseId === 'all') {
-      this.courseRoster = [];
+      if (!this.authoredCourses.length) {
+        this.courseRoster = [];
+        this.cdr.markForCheck();
+        return;
+      }
+      const requests = this.authoredCourses.map(c => this.apiService.getCourseStudents(c.id).pipe(catchError(() => of([]))));
+      forkJoin(requests).subscribe({
+        next: results => {
+          const combined: CourseStudent[] = [];
+          const seen = new Set<string>();
+          results.forEach((rows, idx) => {
+            const course = this.authoredCourses[idx];
+            (rows || []).forEach(r => {
+              const key = `${r.student_id}-${course.id}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                combined.push({ ...r, course_id: course.id } as any);
+              }
+            });
+          });
+          this.courseRoster = combined;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.courseRoster = [];
+          this.cdr.markForCheck();
+        }
+      });
       return;
     }
     this.apiService.getCourseStudents(courseId).subscribe({
-      next: rows => (this.courseRoster = rows || []),
-      error: () => (this.courseRoster = []),
+      next: rows => {
+        this.courseRoster = (rows || []).map(r => ({ ...r, course_id: courseId } as any));
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.courseRoster = [];
+        this.cdr.markForCheck();
+      },
     });
+  }
+
+  exportGradebookCsv(): void {
+    const list = this.filteredEnrollments;
+    if (!list.length) return;
+
+    const headers = ['Student Name', 'Email', 'Course', 'Progress (%)', 'Status', 'Enrolled Date', 'Last Active', 'Average Score'];
+    const rows = list.map(s => [
+      `"${(s.studentName || '').replace(/"/g, '""')}"`,
+      `"${(s.studentEmail || '').replace(/"/g, '""')}"`,
+      `"${(this.getCourseTitle(s.courseId) || '').replace(/"/g, '""')}"`,
+      s.progressPct ?? 0,
+      `"${(s.status || 'active').replace(/"/g, '""')}"`,
+      `"${(s.enrolledAt || '').replace(/"/g, '""')}"`,
+      `"${(s.lastActive || '').replace(/"/g, '""')}"`,
+      s.averageScore !== null && s.averageScore !== undefined ? s.averageScore : 'N/A',
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `NTIC_Gradebook_Export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  exportGradingQueueCsv(): void {
+    const list = this.filteredSubmissions;
+    if (!list.length) return;
+
+    const headers = ['Student Name', 'Student Email', 'Assignment', 'Submitted At', 'Status', 'Score', 'Repo URL'];
+    const rows = list.map(s => [
+      `"${(s.studentName || '').replace(/"/g, '""')}"`,
+      `"${(s.studentEmail || '').replace(/"/g, '""')}"`,
+      `"${(this.getAssignmentTitle(s.assignmentId) || '').replace(/"/g, '""')}"`,
+      `"${(s.submittedAt || '').replace(/"/g, '""')}"`,
+      `"${(s.status || 'submitted').replace(/"/g, '""')}"`,
+      s.score !== null && s.score !== undefined ? s.score : 'Pending',
+      `"${(s.url || '').replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `NTIC_Grading_Queue_Export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   /** Approve or reject someone else's submitted content. */
@@ -643,19 +735,23 @@ export class LmsManagerComponent implements OnInit {
       }));
   }
 
-  /** The enrolled roster. Needs a specific course selected. */
+  /** The enrolled roster across selected course or all authored courses. */
   get filteredEnrollments(): any[] {
     const q = this.searchQuery.toLowerCase();
     return this.courseRoster
-      .filter(e => !q
-        || (e.student_name || '').toLowerCase().includes(q)
-        || (e.student_email || '').toLowerCase().includes(q))
+      .filter(e => {
+        const matchCourse = this.selectedCourseId === 'all' || (e as any).course_id === this.selectedCourseId;
+        const matchSearch = !q
+          || (e.student_name || '').toLowerCase().includes(q)
+          || (e.student_email || '').toLowerCase().includes(q);
+        return matchCourse && matchSearch;
+      })
       .map(e => ({
         ...e,
         studentName: e.student_name || e.student_email || 'Student',
         studentEmail: e.student_email,
         progressPct: e.progress_pct,
-        courseId: this.selectedCourseId,
+        courseId: (e as any).course_id || this.selectedCourseId,
         enrolledAt: e.enrolled_at,
         lastActive: e.last_active,
         averageScore: e.average_score,

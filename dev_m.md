@@ -82,6 +82,8 @@ Use this section to leave short notes, status updates, or handoff messages for c
     - **Cross-Course Announcement Scoping:** Upgraded `GET /api/lms/announcements` so instructors retrieve announcements for all their authored courses or enrollments when no single course filter is applied.
     - **Reactive Toolbar Course Switcher:** Linked toolbar `selectedCourseId` to dynamically refresh both Q&A threads and announcements via `onCourseFilterChange()`.
     - **Grading Desk Consolidation & Dynamic Score Validation:** Replaced duplicate revision buttons in the grading modal with a single "Request Revision (Return to Student)" action. Dynamically bound score input validation to `activeSubmission.max_score` with informative score point indicators.
+    - **Gradebook & Submissions CSV Exports:** Added 1-click CSV report generators in the Students Roster tab (`exportGradebookCsv()`) and Grading Desk (`exportGradingQueueCsv()`) with progress percentages, submission dates, and assessment scores.
+    - **Smart Module Order Cascading:** In `PATCH /api/lms/modules/{module_id}`, changing a module's order index now automatically shifts adjacent modules' order indices to keep syllabus sequences compact and collision-free.
     - **UI/UX Directives Applied:** Enforced strict palette discipline (monochrome foundation with primary indigo accent and functional semantic indicators) and 8px baseline spatial rhythm.
   - All 508 backend unit tests (`pytest`) and frontend TypeScript typechecks (`tsc`) passing cleanly.
 - **[2026-09-01 - v1.0.4]**:

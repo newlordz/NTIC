@@ -3418,12 +3418,13 @@ try:
         conn = _get_db()
         try:
             cur = conn.cursor()
-            cur.execute("SELECT course_id FROM lms_modules WHERE id=%s", (module_id,))
+            cur.execute("SELECT course_id, order_num FROM lms_modules WHERE id=%s", (module_id,))
             row = cur.fetchone()
             if not row:
                 conn.rollback(); cur.close()
                 raise HTTPException(status_code=404, detail="Module not found")
-            _load_owned_course(cur, row[0], actor)
+            course_id, old_order = row[0], row[1] or 1
+            _load_owned_course(cur, course_id, actor)
 
             title = str(payload.get("title", "")).strip()
             if not title:
@@ -3431,6 +3432,21 @@ try:
             description = str(payload.get("description", ""))
             order_num = int(payload.get("order_num", 1) or 1)
             icon = str(payload.get("icon", "menu_book"))
+
+            if order_num != old_order:
+                # Re-sequence adjacent modules for this course so order indices remain dense
+                if order_num < old_order:
+                    cur.execute(
+                        "UPDATE lms_modules SET order_num = order_num + 1 "
+                        "WHERE course_id = %s AND id != %s AND order_num >= %s AND order_num < %s",
+                        (course_id, module_id, order_num, old_order)
+                    )
+                else:
+                    cur.execute(
+                        "UPDATE lms_modules SET order_num = order_num - 1 "
+                        "WHERE course_id = %s AND id != %s AND order_num <= %s AND order_num > %s",
+                        (course_id, module_id, order_num, old_order)
+                    )
 
             cur.execute(
                 "UPDATE lms_modules SET title=%s, description=%s, order_num=%s, icon=%s WHERE id=%s",
@@ -3441,7 +3457,7 @@ try:
         finally:
             release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "lms_modules"})
-        return {"status": "updated", "id": module_id, "title": title}
+        return {"status": "updated", "id": module_id, "title": title, "order_num": order_num}
 
     @app.get("/api/lms/modules")
     def list_modules(course_id: str = "", _actor: dict = Depends(require_auth)):

@@ -464,9 +464,14 @@
 
     <!-- Student Submissions Audit Table -->
     <div class="section-block mt-6">
-      <div class="panel-sub-header">
-        <h3>Student Submissions & Admin Review Desk ({{ filteredSubmissions.length }})</h3>
-        <span class="text-subtle text-sm">Review student submissions. Reject for resubmission or request instructor revision if needed.</span>
+      <div class="panel-sub-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+        <div>
+          <h3 style="margin:0 0 4px;">Student Submissions &amp; Review Desk ({{ filteredSubmissions.length }})</h3>
+          <span class="text-subtle text-sm">Review student submissions, assign rubric scores, or request revisions.</span>
+        </div>
+        <button class="btn btn-outline btn-sm" (click)="exportGradingQueueCsv()" [disabled]="filteredSubmissions.length === 0" title="Export submissions queue to CSV">
+          <span class="material-symbols-outlined" style="font-size:16px;">download</span> Export Submissions (CSV)
+        </button>
       </div>
 
       <div class="table-responsive" *ngIf="filteredSubmissions.length > 0">
@@ -516,8 +521,20 @@
 
   <!-- ── TAB 5: STUDENT ROSTER & PROGRESS ── -->
   <div *ngIf="activeTab === 'students'" class="tab-content-panel">
-    <div class="panel-header">
-      <h2>Enrolled Student Roster & Completion Metrics ({{ filteredEnrollments.length }})</h2>
+    <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <div>
+        <h2 style="margin:0 0 4px;">Enrolled Student Roster &amp; Completion Metrics ({{ filteredEnrollments.length }})</h2>
+        <p style="font-size:13px; color:var(--on-surface-variant); margin:0;">Track student onboarding, curriculum progress percentage, and assessment averages.</p>
+      </div>
+      <button class="btn btn-outline" (click)="exportGradebookCsv()" [disabled]="filteredEnrollments.length === 0" title="Export gradebook to CSV">
+        <span class="material-symbols-outlined">download</span> Export Gradebook (CSV)
+      </button>
+    </div>
+
+    <div *ngIf="filteredEnrollments.length === 0" class="empty-state" style="text-align:center; padding:50px 20px; background:var(--surface-container-low); border-radius:14px;">
+      <span class="material-symbols-outlined" style="font-size:48px; color:var(--outline); margin-bottom:12px;">group_off</span>
+      <h3 style="font-size:16px; margin:0 0 6px;">No Enrolled Students</h3>
+      <p style="font-size:13px; color:var(--on-surface-variant); margin:0;">Enrolled students and their curriculum progress metrics will appear here.</p>
     </div>
 
     <div class="table-responsive" *ngIf="filteredEnrollments.length > 0">
