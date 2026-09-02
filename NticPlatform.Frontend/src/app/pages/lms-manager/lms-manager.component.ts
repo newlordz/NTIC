@@ -1229,6 +1229,84 @@ export class LmsManagerComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
+  // ── AI Curriculum Copilot ──────────────────────────────────
+  isGeneratingAiQuiz: { [blockId: string]: boolean } = {};
+  isGeneratingNewAiQuiz = false;
+
+  generateAiQuizForBlock(blk: ModuleBlock): void {
+    if (!blk || this.isGeneratingAiQuiz[blk.id]) return;
+    this.isGeneratingAiQuiz[blk.id] = true;
+    this.cdr.markForCheck();
+
+    let guideContext = blk.content || '';
+    if (!guideContext.trim()) {
+      const guideBlocks = this.moduleBlocks.filter(b => b.type === 'text' && b.content?.trim());
+      guideContext = guideBlocks.map(b => `${b.title}\n${b.content}`).join('\n\n');
+    }
+    if (!guideContext.trim()) {
+      guideContext = this.moduleForm.title + ' ' + (this.moduleForm.description || '');
+    }
+
+    const track = this.activeDetailCourse?.track || 'coding';
+    const title = blk.title || this.moduleForm.title || 'Technical Unit';
+
+    this.apiService.generateAiQuiz(guideContext, track, title).subscribe({
+      next: res => {
+        this.isGeneratingAiQuiz[blk.id] = false;
+        if (res && res.question) {
+          blk.quizQuestion = res.question;
+          blk.quizOptions = res.options && res.options.length === 4 ? res.options : ['Option A', 'Option B', 'Option C', 'Option D'];
+          blk.quizCorrectIndex = res.correct_index ?? 0;
+          blk.quizExplanation = res.explanation || '';
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.isGeneratingAiQuiz[blk.id] = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  generateAiQuizAsNewBlock(): void {
+    if (this.isGeneratingNewAiQuiz) return;
+    this.isGeneratingNewAiQuiz = true;
+    this.cdr.markForCheck();
+
+    const guideBlocks = this.moduleBlocks.filter(b => b.type === 'text' && b.content?.trim());
+    let guideContext = guideBlocks.map(b => `${b.title}\n${b.content}`).join('\n\n');
+    if (!guideContext.trim()) {
+      guideContext = this.moduleForm.title + ' ' + (this.moduleForm.description || 'Core concepts and algorithmic foundations.');
+    }
+
+    const track = this.activeDetailCourse?.track || 'coding';
+    const title = this.moduleForm.title || 'Module Checkpoint';
+
+    this.apiService.generateAiQuiz(guideContext, track, title).subscribe({
+      next: res => {
+        this.isGeneratingNewAiQuiz = false;
+        const newBlk: ModuleBlock = {
+          id: 'blk-' + Math.random().toString(36).slice(2, 7),
+          type: 'quiz',
+          title: 'AI Checkpoint: ' + (res?.question?.slice(0, 45) || 'Comprehension Check') + '...',
+          quizQuestion: res?.question || 'Which principle best satisfies the algorithmic requirement?',
+          quizOptions: res?.options && res.options.length === 4 ? res.options : ['Option A', 'Option B', 'Option C', 'Option D'],
+          quizCorrectIndex: res?.correct_index ?? 0,
+          quizExplanation: res?.explanation || ''
+        };
+        this.moduleBlocks.push(newBlk);
+        this.selectedBlockId = newBlk.id;
+        this.editingBlockId = newBlk.id;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.isGeneratingNewAiQuiz = false;
+        this.addBlock('quiz');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   removeBlock(idx: number): void {
     this.moduleBlocks.splice(idx, 1);
     this.cdr.markForCheck();
@@ -1927,6 +2005,133 @@ export class LmsManagerComponent implements OnInit {
         this.saveError = this.describeWriteError(err, 'assignment');
         this.cdr.markForCheck();
       },
+    });
+  }
+
+  // ── Assignment Attachment Upload & Cloning ──────────────────
+  isUploadingAssignmentFile = false;
+  isCloningCourse: { [courseId: string]: boolean } = {};
+
+  onAssignmentFileUpload(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    this.isUploadingAssignmentFile = true;
+    this.cdr.markForCheck();
+
+    this.apiService.uploadFileBlob(file).subscribe({
+      next: res => {
+        this.isUploadingAssignmentFile = false;
+        if (res && res.url) {
+          const sizeMb = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+          const attachHeader = `[Attached Resource: ${file.name} (${sizeMb})](${res.url})`;
+          if (!this.assignmentForm.description) {
+            this.assignmentForm.description = attachHeader;
+          } else if (!this.assignmentForm.description.includes(res.url)) {
+            this.assignmentForm.description = this.assignmentForm.description.trim() + '\n\n' + attachHeader;
+          }
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.isUploadingAssignmentFile = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  cloneCourse(sourceCourse: any): void {
+    if (!sourceCourse || this.isCloningCourse[sourceCourse.id]) return;
+    this.isCloningCourse[sourceCourse.id] = true;
+    this.saveError = '';
+    this.cdr.markForCheck();
+
+    const coursePayload = {
+      title: `${sourceCourse.title} (Draft Copy)`,
+      track: sourceCourse.track || 'coding',
+      icon: sourceCourse.icon || 'school',
+      level: sourceCourse.level || 'Beginner',
+      description: sourceCourse.description || '',
+      status: 'draft',
+      approval_status: 'approved'
+    };
+
+    this.apiService.createLmsCourse(coursePayload).subscribe({
+      next: (newCourse: any) => {
+        const newCourseId = newCourse.id;
+        const sourceModules = this.serverModules.filter(m => m.course_id === sourceCourse.id);
+        const sourceMaterials = this.serverMaterials.filter(m => m.course_id === sourceCourse.id);
+        const sourceAssignments = this.serverAssignments.filter(a => a.course_id === sourceCourse.id);
+
+        if (sourceModules.length === 0 && sourceMaterials.length === 0 && sourceAssignments.length === 0) {
+          this.isCloningCourse[sourceCourse.id] = false;
+          this.reload();
+          this.openCourseConsole(newCourse);
+          this.cdr.markForCheck();
+          return;
+        }
+
+        const cloneModulePromises = sourceModules.map(mod => {
+          return this.apiService.createModule({
+            course_id: newCourseId,
+            title: mod.title,
+            description: mod.description || '',
+            order_num: mod.order_num || 1,
+            icon: mod.icon || 'view_module'
+          }).toPromise().then(createdMod => ({ oldId: mod.id, newId: createdMod?.id }));
+        });
+
+        Promise.all(cloneModulePromises).then(moduleMappings => {
+          const modMap: { [oldId: string]: string } = {};
+          moduleMappings.forEach(m => {
+            if (m && m.oldId && m.newId) modMap[m.oldId] = m.newId;
+          });
+
+          const cloneMatPromises = sourceMaterials.map(mat => {
+            const mappedModId = mat.module_id ? (modMap[mat.module_id] || '') : '';
+            return this.apiService.createMaterial({
+              course_id: newCourseId,
+              module_id: mappedModId,
+              title: mat.title,
+              type: mat.type || 'guide',
+              url: mat.url || '',
+              description: mat.description || ''
+            }).toPromise();
+          });
+
+          const cloneAsgnPromises = sourceAssignments.map(asgn => {
+            return this.apiService.createAssignment({
+              course_id: newCourseId,
+              title: asgn.title,
+              description: asgn.description || '',
+              due_date: asgn.due_date || '',
+              max_score: asgn.max_score ?? 100,
+              track: asgn.track || newCourse.track
+            }).toPromise();
+          });
+
+          Promise.all([...cloneMatPromises, ...cloneAsgnPromises]).then(() => {
+            this.isCloningCourse[sourceCourse.id] = false;
+            this.reload();
+            this.openCourseConsole(newCourse);
+            this.cdr.markForCheck();
+          }).catch(() => {
+            this.isCloningCourse[sourceCourse.id] = false;
+            this.reload();
+            this.openCourseConsole(newCourse);
+            this.cdr.markForCheck();
+          });
+        }).catch(() => {
+          this.isCloningCourse[sourceCourse.id] = false;
+          this.reload();
+          this.cdr.markForCheck();
+        });
+      },
+      error: (err: any) => {
+        this.isCloningCourse[sourceCourse.id] = false;
+        this.saveError = this.describeWriteError(err, 'course');
+        this.cdr.markForCheck();
+      }
     });
   }
 

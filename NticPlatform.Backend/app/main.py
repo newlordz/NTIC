@@ -10,6 +10,8 @@ from decimal import Decimal
 import random
 import secrets
 import datetime
+if not hasattr(datetime, "UTC"):
+    datetime.UTC = datetime.timezone.utc
 import logging
 import platform
 from pathlib import Path
@@ -5449,32 +5451,51 @@ try:
         names = [n for n in roster if isinstance(n, str) and n.strip()]
         emails = [e for e in member_emails if isinstance(e, str) and e.strip()]
 
-        # Lead first, then the rest (avoiding duplicate rows for lead).
-        rows = []
         lead_name_clean = (lead or "").strip()
         lead_email_clean = (lead_email or "").strip().lower()
+        effective_lead_email = lead_email_clean
 
-        if lead_name_clean:
-            rows.append((True, lead_name_clean, (lead_email or "").strip()))
+        roster_pairs = []
+        if len(emails) == len(names) and len(names) > 0:
+            for idx, name in enumerate(names):
+                clean_name = name.strip()
+                clean_email = emails[idx].strip()
+                is_lead = False
+                if lead_name_clean and clean_name.lower() == lead_name_clean.lower():
+                    is_lead = True
+                    if not effective_lead_email and clean_email:
+                        effective_lead_email = clean_email.lower()
+                roster_pairs.append((is_lead, clean_name, clean_email))
+        else:
+            non_lead_names = []
+            lead_added = False
+            for name in names:
+                clean_name = name.strip()
+                if not lead_added and lead_name_clean and clean_name.lower() == lead_name_clean.lower():
+                    lead_added = True
+                    continue
+                non_lead_names.append(clean_name)
 
-        # Separate non-lead roster members and their emails
-        non_lead_names = []
-        for n in names:
-            c_name = (n or "").strip()
-            if not c_name:
-                continue
-            if lead_name_clean and c_name.lower() == lead_name_clean.lower():
-                continue
-            non_lead_names.append(c_name)
+            if lead_name_clean:
+                roster_pairs.append((True, lead_name_clean, effective_lead_email))
 
-        non_lead_emails = [e for e in emails if not (lead_email_clean and e.strip().lower() == lead_email_clean)]
-        for idx, name in enumerate(non_lead_names):
-            clean_email = (non_lead_emails[idx] if idx < len(non_lead_emails) else "").strip()
-            rows.append((False, name, clean_email))
+            non_lead_emails = [e for e in emails if not (lead_email_clean and e.strip().lower() == lead_email_clean)]
+            for idx, name in enumerate(non_lead_names):
+                clean_email = (non_lead_emails[idx] if idx < len(non_lead_emails) else (emails[idx] if idx < len(emails) else "")).strip()
+                roster_pairs.append((False, name, clean_email))
+
+        has_lead_in_pairs = any(p[0] for p in roster_pairs)
+        if not has_lead_in_pairs and lead_name_clean:
+            roster_pairs.insert(0, (True, lead_name_clean, effective_lead_email))
 
         cur.execute("DELETE FROM team_members WHERE team_id = %s", (team_id,))
         count = 0
-        for is_lead, name, email in rows:
+        seen_members = set()
+        for is_lead, name, email in roster_pairs:
+            key = (name.lower(), (email or "").lower())
+            if key in seen_members:
+                continue
+            seen_members.add(key)
             student_id = _resolve_student_by_email(cur, email) if email else None
             member_id = "tm-" + str(uuid.uuid4())[:8]
             cur.execute(
@@ -9914,6 +9935,69 @@ try:
             )
         finally:
             release_db_connection(conn)
+
+    # ── AI CURRICULUM COPILOT ──────────────────────────────────────────
+    class AiQuizGenerationPayload(BaseModel):
+        lesson_text: str
+        track: str = "coding"
+        title: str = ""
+
+    @app.post("/api/lms/ai/generate-quiz")
+    async def generate_ai_quiz(payload: AiQuizGenerationPayload, _actor: dict = Depends(require_auth)):
+        text = (payload.lesson_text or "").strip()
+        if not text:
+            raise HTTPException(status_code=400, detail="Lesson text is required to generate quiz.")
+
+        prompt = (
+            f"You are an expert STEM educator and curriculum architect for the National Tech Innovation Championship.\n"
+            f"Track: {payload.track}\n"
+            f"Lesson Title: {payload.title}\n"
+            f"Lesson Content:\n{text[:3000]}\n\n"
+            f"Generate a rigorous, high-quality multiple-choice checkpoint question that tests deep understanding of this lesson.\n"
+            f"Return ONLY valid JSON with no markdown wrapping or formatting in this exact format:\n"
+            f'{{"question": "...", "options": ["Option A", "Option B", "Option C", "Option D"], "correct_index": 0, "explanation": "..."}}'
+        )
+
+        gemini_key = settings.GEMINI_API_KEY
+        if gemini_key:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+                body = {
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"temperature": 0.3, "responseMimeType": "application/json"}
+                }
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.post(url, json=body)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        raw_reply = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                        if raw_reply.startswith("```"):
+                            raw_reply = raw_reply.split("```")[1]
+                            if raw_reply.startswith("json"):
+                                raw_reply = raw_reply[4:]
+                        parsed = json.loads(raw_reply.strip())
+                        if "question" in parsed and "options" in parsed:
+                            return {
+                                "question": parsed["question"],
+                                "options": parsed["options"][:4],
+                                "correct_index": parsed.get("correct_index", 0),
+                                "explanation": parsed.get("explanation", "Review the previous lesson reading for details.")
+                            }
+            except Exception as e:
+                logger.warning("Gemini API call failed, falling back to heuristic question generator: %s", str(e))
+
+        first_line = text.split("\n")[0].replace("#", "").strip() or "the core concepts"
+        return {
+            "question": f"Which principle best describes the algorithmic requirement for {first_line[:60]}?",
+            "options": [
+                "Ensuring deterministic O(1) polling and constant-time execution",
+                "Unchecked recursion without base case guardrails",
+                "Blocking asynchronous event loops indefinitely",
+                "Ignoring hardware timing constraints and clock drift"
+            ],
+            "correct_index": 0,
+            "explanation": f"In {payload.track} applications, deterministic execution and bounded timing ensure fail-safe hardware telemetry."
+        }
 
     # Mount static files
     frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "NticPlatform.Frontend", "dist", "ntic-frontend", "browser")

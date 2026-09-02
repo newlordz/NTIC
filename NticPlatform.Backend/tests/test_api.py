@@ -6952,3 +6952,33 @@ class TestInstitutionMentorTwoTierWorkflow:
         assert mentor_data["must_change_password"] is True
 
 
+class TestAiQuizCopilot:
+    def test_ai_quiz_generation_requires_auth(self, client):
+        resp = client.post("/api/lms/ai/generate-quiz", json={
+            "lesson_text": "Graph traversal using Dijkstra algorithm."
+        })
+        assert resp.status_code in (401, 403)
+
+    def test_ai_quiz_generation_rejects_empty_content(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        resp = client.post("/api/lms/ai/generate-quiz", headers=h, json={
+            "lesson_text": ""
+        })
+        assert resp.status_code == 400
+
+    def test_ai_quiz_generation_returns_valid_quiz_schema(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        resp = client.post("/api/lms/ai/generate-quiz", headers=h, json={
+            "lesson_text": "Asymptotic analysis and big-O notation measure algorithmic time complexity.",
+            "track": "coding",
+            "title": "Computational Complexity"
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "question" in data and len(data["question"]) > 5
+        assert "options" in data and len(data["options"]) == 4
+        assert "correct_index" in data and data["correct_index"] in range(4)
+        assert "explanation" in data
+
+
+

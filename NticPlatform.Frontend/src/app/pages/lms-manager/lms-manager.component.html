@@ -276,8 +276,8 @@
             <button class="btn btn-xs btn-subtle" (click)="openCourseWizard(course); $event.stopPropagation()">
               <span class="material-symbols-outlined">edit</span> Edit
             </button>
-            <button class="btn btn-xs btn-subtle" (click)="duplicateCourse(course); $event.stopPropagation()">
-              <span class="material-symbols-outlined">content_copy</span> Duplicate
+            <button class="btn btn-xs btn-subtle" (click)="cloneCourse(course); $event.stopPropagation()" [disabled]="isCloningCourse[course.id]" title="Duplicate full course as draft">
+              <span class="material-symbols-outlined">{{ isCloningCourse[course.id] ? 'sync' : 'content_copy' }}</span> {{ isCloningCourse[course.id] ? 'Cloning...' : 'Clone' }}
             </button>
             <button class="btn btn-xs btn-danger" (click)="deleteCourse(course.id); $event.stopPropagation()">
               <span class="material-symbols-outlined">delete</span> Delete
@@ -742,6 +742,10 @@
         <a routerLink="/lms" class="btn btn-outline" style="text-decoration:none;display:flex;align-items:center;gap:6px;" title="Preview how students experience this course">
           <span class="material-symbols-outlined">visibility</span> Preview Classroom
         </a>
+        <button class="btn btn-outline" (click)="cloneCourse(activeDetailCourse)" [disabled]="isCloningCourse[activeDetailCourse?.id]" title="Duplicate this entire course and its modules as a new draft">
+          <span class="material-symbols-outlined">{{ isCloningCourse[activeDetailCourse?.id] ? 'sync' : 'content_copy' }}</span>
+          {{ isCloningCourse[activeDetailCourse?.id] ? 'Cloning...' : 'Clone as Draft' }}
+        </button>
         <button class="btn btn-outline" (click)="openCourseWizard(activeDetailCourse)">
           <span class="material-symbols-outlined">edit</span> Edit Course
         </button>
@@ -1069,6 +1073,14 @@
             </div>
           </button>
 
+          <button class="palette-btn palette-btn-ai" (click)="generateAiQuizAsNewBlock()" [disabled]="isGeneratingNewAiQuiz" title="Generate comprehension micro-quiz with AI">
+            <span class="material-symbols-outlined icon-ai">{{ isGeneratingNewAiQuiz ? 'sync' : 'auto_awesome' }}</span>
+            <div class="palette-btn-text">
+              <strong>{{ isGeneratingNewAiQuiz ? 'Generating AI Quiz...' : 'AI Quiz Copilot' }}</strong>
+              <span>Auto-generate questions from lesson text</span>
+            </div>
+          </button>
+
           <button class="palette-btn" (click)="addBlock('quiz')">
             <span class="material-symbols-outlined icon-quiz">help_outline</span>
             <div class="palette-btn-text">
@@ -1294,7 +1306,13 @@
               <!-- 5. Checkpoint Micro-Quiz Block -->
               <div *ngIf="blk.type === 'quiz'" class="block-fields">
                 <div class="form-group mb-2">
-                  <label class="text-xs">Question Prompt</label>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <label class="text-xs">Question Prompt</label>
+                    <button type="button" class="btn btn-xs btn-ai-sparkle" (click)="generateAiQuizForBlock(blk)" [disabled]="isGeneratingAiQuiz[blk.id]" title="Auto-generate question & options from guide content using AI">
+                      <span class="material-symbols-outlined" style="font-size:14px; color:#6366f1;">{{ isGeneratingAiQuiz[blk.id] ? 'sync' : 'auto_awesome' }}</span>
+                      <span style="font-size:11px; font-weight:700; color:#4f46e5;">{{ isGeneratingAiQuiz[blk.id] ? 'Generating...' : 'AI Generate from Guide' }}</span>
+                    </button>
+                  </div>
                   <input type="text" [(ngModel)]="blk.quizQuestion" placeholder="e.g. Which register stores the program counter?" class="studio-input-sm" />
                 </div>
                 <div class="quiz-options-builder" *ngIf="blk.quizOptions">
@@ -2342,6 +2360,17 @@
           <div class="form-group mt-3">
             <label>Problem Statement &amp; Submission Rubric</label>
             <textarea [(ngModel)]="assignmentForm.description" rows="3" placeholder="Detailed instructions, input/output requirements, and grading rubric..."></textarea>
+          </div>
+
+          <div class="form-group mt-3">
+            <label>Starter File / Problem PDF Attachment (Optional)</label>
+            <div class="file-upload-dropzone">
+              <input type="file" accept=".pdf,.doc,.docx,.zip,.py,.cpp,.txt" (change)="onAssignmentFileUpload($event)" class="file-input-hidden" id="asgn_file_upload" />
+              <label for="asgn_file_upload" class="dropzone-label">
+                <span class="material-symbols-outlined">{{ isUploadingAssignmentFile ? 'cloud_sync' : 'upload_file' }}</span>
+                <span>{{ isUploadingAssignmentFile ? 'Uploading file payload...' : 'Attach Starter Code Archive (.zip) or Problem PDF' }}</span>
+              </label>
+            </div>
           </div>
         </div>
 

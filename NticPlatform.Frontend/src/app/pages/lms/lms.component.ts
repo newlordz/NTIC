@@ -811,8 +811,20 @@ export class LmsComponent implements OnInit {
           parsedVideo: widgetType === 'video' ? {
             durationMinutes: parsedPayload?.durationMinutes || 15,
             keyTakeaway: parsedPayload?.keyTakeaway || 'Mastering hardware timing & logic.',
-            overview: parsedPayload?.overview || mat.description || ''
+            overview: parsedPayload?.overview || (mat.description?.startsWith('{') ? '' : mat.description) || ''
           } : null,
+          parsedImage: widgetType === 'image' ? {
+            caption: parsedPayload?.caption || (mat.description?.startsWith('{') ? '' : mat.description) || '',
+            fileName: parsedPayload?.fileName || 'Schematic Diagram'
+          } : null,
+          parsedFile: (widgetType === 'file' || widgetType === 'document') ? {
+            fileName: parsedPayload?.fileName || mat.title || 'Attached Project Document',
+            fileSize: parsedPayload?.fileSize || 'PDF',
+            instructions: parsedPayload?.instructions || (mat.description?.startsWith('{') ? '' : mat.description) || ''
+          } : null,
+          parsedBreak: widgetType === 'break' ? {
+            breakLabel: parsedPayload?.breakLabel || mat.title || 'Checkpoint'
+          } : null
         });
       }
     } else {

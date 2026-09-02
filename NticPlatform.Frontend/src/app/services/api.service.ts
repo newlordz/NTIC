@@ -1544,6 +1544,13 @@ login(email: string, password: string): Observable<any> {
     return this.http.post(this.apiUrl + '/bulk-sync', { collection, items });
   }
 
+  generateAiQuiz(lessonText: string, track?: string, title?: string): Observable<{ question: string; options: string[]; correct_index: number; explanation: string }> {
+    return this.http.post<{ question: string; options: string[]; correct_index: number; explanation: string }>(
+      `${this.apiUrl}/lms/ai/generate-quiz`,
+      { lesson_text: lessonText, track: track || 'coding', title: title || '' }
+    );
+  }
+
   purgeTestData(): Observable<any> {
     return this.http.post(this.apiUrl + '/admin/purge-test-data', {});
   }

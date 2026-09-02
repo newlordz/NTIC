@@ -1239,34 +1239,188 @@
   }
 }
 
-/* 📎 Resource Download Card Layout */
-.resource-view {
-  .resource-card {
+/* 🖼️ Schematic Diagram Layout */
+.image-view {
+  .image-diagram-card {
     background: #1e293b;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 14px;
-    padding: 32px 24px;
-    text-align: center;
+    padding: 24px;
 
-    .resource-main-icon {
-      font-size: 48px;
-      color: #6366f1;
-      margin-bottom: 12px;
+    .diagram-viewport {
+      max-height: 460px;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #090d16;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+
+      .diagram-img {
+        max-width: 100%;
+        max-height: 460px;
+        object-fit: contain;
+      }
     }
 
-    h3 {
-      font-size: 17px;
-      font-weight: 750;
-      color: #ffffff;
-      margin: 0 0 8px;
+    .diagram-placeholder {
+      padding: 40px 20px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 13px;
+      margin-bottom: 16px;
+
+      .material-symbols-outlined { font-size: 40px; margin-bottom: 6px; }
     }
 
-    p {
+    .diagram-caption-box {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      background: rgba(99, 102, 241, 0.08);
+      border-left: 3px solid #6366f1;
+      border-radius: 6px;
+      color: #cbd5e1;
+      font-size: 12.5px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+
+      .material-symbols-outlined { font-size: 18px; color: #818cf8; margin-top: 1px; }
+      p { margin: 0; }
+    }
+
+    .diagram-footer-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+  }
+}
+
+/* 📄 Document Attachment Card Layout */
+.resource-view {
+  .resource-document-card {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 24px;
+
+    .doc-header-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+
+      .doc-badge-box {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: rgba(239, 68, 68, 0.12);
+        color: #ef4444;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+
+        .doc-icon { font-size: 28px; }
+      }
+
+      .doc-meta {
+        flex: 1;
+
+        h3 {
+          margin: 0 0 4px;
+          font-size: 16px;
+          font-weight: 750;
+          color: #ffffff;
+        }
+
+        .doc-size-chip {
+          font-size: 11px;
+          font-weight: 700;
+          color: #94a3b8;
+          background: rgba(255, 255, 255, 0.06);
+          padding: 2px 8px;
+          border-radius: 4px;
+        }
+      }
+    }
+
+    .doc-instructions {
       font-size: 13px;
       color: #94a3b8;
-      max-width: 440px;
-      margin: 0 auto 20px;
       line-height: 1.5;
+      margin: 0 0 20px;
+    }
+
+    .doc-actions-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+
+      .btn-download {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+    }
+  }
+}
+
+/* 🚩 Section Break Milestone Gate */
+.break-view {
+  .break-milestone-card {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(14, 165, 233, 0.12));
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 14px;
+    padding: 32px 24px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+
+    .break-icon-box {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #6366f1;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+
+      .material-symbols-outlined { font-size: 28px; }
+    }
+
+    .break-info {
+      max-width: 480px;
+
+      h3 {
+        font-size: 18px;
+        font-weight: 800;
+        color: #ffffff;
+        margin: 0 0 8px;
+      }
+
+      p {
+        font-size: 13px;
+        color: #cbd5e1;
+        margin: 0;
+        line-height: 1.5;
+      }
+    }
+
+    .break-actions {
+      margin-top: 8px;
     }
   }
 }

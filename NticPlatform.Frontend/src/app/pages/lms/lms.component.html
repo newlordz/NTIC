@@ -895,15 +895,76 @@
             </div>
           </div>
 
-          <!-- 📎 WIDGET 5: RESOURCE / SLIDES DOWNLOAD -->
-          <div *ngIf="activeWidget.type === 'link' || activeWidget.type === 'file' || activeWidget.type === 'resource'" class="widget-view resource-view fade-in">
-            <div class="resource-card">
-              <span class="material-symbols-outlined resource-main-icon">cloud_download</span>
-              <h3>{{ activeWidget.title }}</h3>
-              <p>{{ activeWidget.description || 'Download or view the official championship reference material.' }}</p>
-              <a [href]="activeWidget.rawUrl" target="_blank" rel="noopener" class="btn btn-primary">
-                <span class="material-symbols-outlined">open_in_new</span> Open / Download Resource
-              </a>
+          <!-- 🖼️ WIDGET 5: SCHEMATIC DIAGRAM & IMAGE -->
+          <div *ngIf="activeWidget.type === 'image'" class="widget-view image-view fade-in">
+            <div class="image-diagram-card">
+              <div class="diagram-viewport" *ngIf="activeWidget.rawUrl">
+                <img [src]="activeWidget.rawUrl" [alt]="activeWidget.title || 'Technical Diagram'" class="diagram-img" />
+              </div>
+              <div class="diagram-placeholder" *ngIf="!activeWidget.rawUrl">
+                <span class="material-symbols-outlined">image</span>
+                <p>Schematic illustration will display here.</p>
+              </div>
+
+              <div class="diagram-caption-box" *ngIf="activeWidget.parsedImage?.caption || activeWidget.description">
+                <span class="material-symbols-outlined">info</span>
+                <p>{{ activeWidget.parsedImage?.caption || activeWidget.description }}</p>
+              </div>
+
+              <div class="diagram-footer-actions">
+                <button class="btn btn-primary" [class.btn-outline]="isWidgetCompleted(activeWidget.id)" (click)="markVideoCompleted()">
+                  <span class="material-symbols-outlined">{{ isWidgetCompleted(activeWidget.id) ? 'task_alt' : 'visibility' }}</span>
+                  <span>{{ isWidgetCompleted(activeWidget.id) ? 'Diagram Reviewed' : 'Mark Diagram Analyzed' }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 📄 WIDGET 6: DOCUMENT & PDF ATTACHMENT -->
+          <div *ngIf="activeWidget.type === 'file' || activeWidget.type === 'document' || activeWidget.type === 'link' || activeWidget.type === 'resource'" class="widget-view resource-view fade-in">
+            <div class="resource-document-card">
+              <div class="doc-header-row">
+                <div class="doc-badge-box">
+                  <span class="material-symbols-outlined doc-icon">picture_as_pdf</span>
+                </div>
+                <div class="doc-meta">
+                  <h3>{{ activeWidget.title }}</h3>
+                  <span class="doc-size-chip" *ngIf="activeWidget.parsedFile?.fileSize">{{ activeWidget.parsedFile?.fileSize }}</span>
+                </div>
+              </div>
+
+              <p class="doc-instructions" *ngIf="activeWidget.parsedFile?.instructions || activeWidget.description">
+                {{ activeWidget.parsedFile?.instructions || activeWidget.description }}
+              </p>
+
+              <div class="doc-actions-row">
+                <a *ngIf="activeWidget.rawUrl" [href]="activeWidget.rawUrl" target="_blank" rel="noopener" class="btn btn-outline btn-download">
+                  <span class="material-symbols-outlined">download</span> Download Attached Document
+                </a>
+                <button class="btn btn-primary" [class.btn-outline]="isWidgetCompleted(activeWidget.id)" (click)="markVideoCompleted()">
+                  <span class="material-symbols-outlined">{{ isWidgetCompleted(activeWidget.id) ? 'task_alt' : 'check_circle' }}</span>
+                  <span>{{ isWidgetCompleted(activeWidget.id) ? 'Document Read & Completed' : 'Mark Document Read' }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 🚩 WIDGET 7: SECTION BREAK GATE -->
+          <div *ngIf="activeWidget.type === 'break'" class="widget-view break-view fade-in">
+            <div class="break-milestone-card">
+              <div class="break-icon-box">
+                <span class="material-symbols-outlined">splitscreen</span>
+              </div>
+              <div class="break-info">
+                <h3>{{ activeWidget.parsedBreak?.breakLabel || activeWidget.title || 'Section Milestone Checkpoint' }}</h3>
+                <p>You have completed the preceding learning units in this block. Take a brief pause or continue directly to the next section.</p>
+              </div>
+              <div class="break-actions">
+                <button class="btn btn-primary" (click)="goToNextWidget()">
+                  <span>Continue Next Section</span>
+                  <span class="material-symbols-outlined">arrow_forward</span>
+                </button>
+              </div>
             </div>
           </div>
 
