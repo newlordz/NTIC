@@ -1,0 +1,66 @@
+<div class="cc-rec-modal-backdrop" *ngIf="isOpen && record" (click)="onClose()">
+  <div class="cc-rec-modal" (click)="$event.stopPropagation()">
+    <div class="cc-rec-modal-header">
+      <div class="cc-rec-modal-title-group">
+        <div class="cc-rec-modal-avatar" [class]="'avatar-' + record.type">
+          {{ record.initials }}
+        </div>
+        <div>
+          <h3>{{ record.entityName }}</h3>
+          <p>{{ record.title }} &middot; <span class="cc-rec-id">#{{ record.id }}</span></p>
+        </div>
+      </div>
+      <button class="cc-rec-modal-close" (click)="onClose()" type="button">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="cc-rec-modal-body">
+      <div class="cc-rec-modal-grid">
+        <div class="cc-rec-field">
+          <span class="cc-field-lbl">Entity Type</span>
+          <span class="cc-field-val">{{ record.entityType }}</span>
+        </div>
+        <div class="cc-rec-field">
+          <span class="cc-field-lbl">Verification Status</span>
+          <span class="cc-rec-status-badge" [class]="'status-' + record.status">
+            <span class="cc-status-dot"></span>
+            {{ record.statusLabel }}
+          </span>
+        </div>
+        <div class="cc-rec-field">
+          <span class="cc-field-lbl">Region &amp; District</span>
+          <span class="cc-field-val">{{ record.region }} {{ record.district ? '(' + record.district + ')' : '' }}</span>
+        </div>
+        <div class="cc-rec-field">
+          <span class="cc-field-lbl">Contact Information</span>
+          <span class="cc-field-val">{{ record.contactEmail }} &middot; {{ record.contactPhone }}</span>
+        </div>
+      </div>
+
+      <div class="cc-rec-files-section" *ngIf="record.files && record.files.length > 0">
+        <h4 style="font-size:13px;font-weight:700;margin:16px 0 8px;color:var(--on-surface);">Attached Documentation &amp; Credentials ({{ record.files.length }})</h4>
+        <div class="cc-rec-files-list">
+          <div *ngFor="let file of record.files" class="cc-rec-file-card">
+            <span class="material-symbols-outlined" style="color:#0284c7;">description</span>
+            <div class="cc-rec-file-info">
+              <div class="cc-rec-file-name">{{ file.name }}</div>
+              <div class="cc-rec-file-meta">Verified Archive Document</div>
+            </div>
+            <button class="cc-rec-file-dl" (click)="onOpenArchive()" title="View in Archive" type="button">
+              <span class="material-symbols-outlined">open_in_new</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cc-rec-modal-footer">
+      <button class="btn btn-outline btn-sm" (click)="onClose()" type="button">Close</button>
+      <button class="btn btn-primary btn-sm" (click)="onOpenArchive()" type="button">
+        <span class="material-symbols-outlined">folder</span>
+        <span>Open Full Archive</span>
+      </button>
+    </div>
+  </div>
+</div>

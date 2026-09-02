@@ -28,6 +28,7 @@ import { ApplicationPreviewModalComponent } from './application-preview-modal/ap
 import { SponsorTierModalComponent } from './sponsor-tier-modal/sponsor-tier-modal.component';
 import { MentorRequestModalComponent } from './mentor-request-modal/mentor-request-modal.component';
 import { InstitutionDecisionModalComponent } from './institution-decision-modal/institution-decision-modal.component';
+import { RecordInspectorModalComponent } from './record-inspector-modal/record-inspector-modal.component';
 
 export interface SponsorInfographic {
   partnerCount: number;
@@ -60,7 +61,8 @@ type PersonnelRole = 'governance' | 'mentor' | 'sponsor' | 'judge' | 'instructor
     CommonModule, RouterLink, FormsModule, TimeAgoPipe,
     LmsManagerComponent, UserManagementComponent,
     ApplicationPreviewModalComponent, SponsorTierModalComponent,
-    MentorRequestModalComponent, InstitutionDecisionModalComponent
+    MentorRequestModalComponent, InstitutionDecisionModalComponent,
+    RecordInspectorModalComponent
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',

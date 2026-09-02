@@ -6557,73 +6557,15 @@
     </div>
   </div>
 
-  <!-- RECORD INSPECTOR MODAL -->
-  <div class="cc-rec-modal-backdrop" *ngIf="dashboardRecordModalOpen && dashboardSelectedRecord" (click)="closeDashboardRecordModal()">
-    <div class="cc-rec-modal" (click)="$event.stopPropagation()">
-      <div class="cc-rec-modal-header">
-        <div class="cc-rec-modal-title-group">
-          <div class="cc-rec-modal-avatar" [class]="'avatar-' + dashboardSelectedRecord.type">
-            {{ dashboardSelectedRecord.initials }}
-          </div>
-          <div>
-            <h3>{{ dashboardSelectedRecord.entityName }}</h3>
-            <p>{{ dashboardSelectedRecord.title }} &middot; <span class="cc-rec-id">#{{ dashboardSelectedRecord.id }}</span></p>
-          </div>
-        </div>
-        <button class="cc-rec-modal-close" (click)="closeDashboardRecordModal()" type="button">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-
-      <div class="cc-rec-modal-body">
-        <div class="cc-rec-modal-grid">
-          <div class="cc-rec-field">
-            <span class="cc-field-lbl">Entity Type</span>
-            <span class="cc-field-val">{{ dashboardSelectedRecord.entityType }}</span>
-          </div>
-          <div class="cc-rec-field">
-            <span class="cc-field-lbl">Verification Status</span>
-            <span class="cc-rec-status-badge" [class]="'status-' + dashboardSelectedRecord.status">
-              <span class="cc-status-dot"></span>
-              {{ dashboardSelectedRecord.statusLabel }}
-            </span>
-          </div>
-          <div class="cc-rec-field">
-            <span class="cc-field-lbl">Region &amp; District</span>
-            <span class="cc-field-val">{{ dashboardSelectedRecord.region }} {{ dashboardSelectedRecord.district ? '(' + dashboardSelectedRecord.district + ')' : '' }}</span>
-          </div>
-          <div class="cc-rec-field">
-            <span class="cc-field-lbl">Contact Information</span>
-            <span class="cc-field-val">{{ dashboardSelectedRecord.contactEmail }} &middot; {{ dashboardSelectedRecord.contactPhone }}</span>
-          </div>
-        </div>
-
-        <div class="cc-rec-files-section" *ngIf="dashboardSelectedRecord.files && dashboardSelectedRecord.files.length > 0">
-          <h4 style="font-size:13px;font-weight:700;margin:16px 0 8px;color:var(--on-surface);">Attached Documentation &amp; Credentials ({{ dashboardSelectedRecord.files.length }})</h4>
-          <div class="cc-rec-files-list">
-            <div *ngFor="let file of dashboardSelectedRecord.files" class="cc-rec-file-card">
-              <span class="material-symbols-outlined" style="color:#0284c7;">description</span>
-              <div class="cc-rec-file-info">
-                <div class="cc-rec-file-name">{{ file.name }}</div>
-                <div class="cc-rec-file-meta">Verified Archive Document</div>
-              </div>
-              <button class="cc-rec-file-dl" (click)="openFullRecordsArchive()" title="View in Archive" type="button">
-                <span class="material-symbols-outlined">open_in_new</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="cc-rec-modal-footer">
-        <button class="btn btn-outline btn-sm" (click)="closeDashboardRecordModal()" type="button">Close</button>
-        <button class="btn btn-primary btn-sm" (click)="openFullRecordsArchive()" type="button">
-          <span class="material-symbols-outlined">folder</span>
-          <span>Open Full Archive</span>
-        </button>
-      </div>
-    </div>
-  </div>
+  <!-- ============================================================
+       RECORD INSPECTOR POPUP MODAL (Subcomponent)
+  ============================================================ -->
+  <app-record-inspector-modal
+    [isOpen]="dashboardRecordModalOpen"
+    [record]="dashboardSelectedRecord"
+    (close)="closeDashboardRecordModal()"
+    (openArchive)="openFullRecordsArchive()">
+  </app-record-inspector-modal>
 
   <!-- ============================================================
        SPONSORSHIP TIER BREAKDOWN POPUP MODAL (ROOT VIEWPORT OVERLAY)
@@ -6634,93 +6576,7 @@
     [initialSearch]="sponsorTierSearch"
     (close)="closeSponsorTierModal()"></app-sponsor-tier-modal>
 
-  <!-- ============================================================
-       INSTRUCTOR / MENTOR ALLOCATION POPUP MODAL (ROOT VIEWPORT OVERLAY)
-       ============================================================ -->
-  <div class="mp-modal-backdrop fade-in" *ngIf="activeMentorModalTeam" (click)="closeMentorModal()">
-    <div class="mp-modal-sheet" (click)="$event.stopPropagation()">
-      <div class="mp-modal-sheet-header">
-        <div class="mp-modal-title-row">
-          <div class="mp-modal-icon-badge">
-            <span class="material-symbols-outlined">school</span>
-          </div>
-          <div class="mp-modal-title-group">
-            <h3 class="mp-modal-title">Allocate Instructor</h3>
-            <p class="mp-modal-sub">
-              For <strong class="mp-team-hl">{{ activeMentorModalTeam.name }}</strong> 
-              <span class="mp-team-track-pill" *ngIf="activeMentorModalTeam.track">{{ activeMentorModalTeam.track }}</span>
-            </p>
-          </div>
-        </div>
-        <button type="button" class="mp-modal-close-btn" (click)="closeMentorModal()" title="Close popup">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
 
-      <!-- Quick search filter -->
-      <div class="mp-modal-search-bar" *ngIf="allPlatformInstructors.length > 2">
-        <span class="material-symbols-outlined search-ic">search</span>
-        <input type="text"
-               class="mp-modal-search-input"
-               placeholder="Search by instructor name, specialization track, email..."
-               [(ngModel)]="mentorPickerSearchQuery"
-               (click)="$event.stopPropagation()">
-        <button type="button" class="mp-modal-clear-btn" *ngIf="mentorPickerSearchQuery" (click)="mentorPickerSearchQuery = ''">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-
-      <!-- Instructor Cards Grid / List -->
-      <div class="mp-modal-options-container">
-        <div class="mp-modal-options-grid">
-          <button type="button"
-                  *ngFor="let inst of getFilteredPickerInstructors(activeMentorModalTeam.track)"
-                  class="mp-modal-option-card"
-                  [class.is-selected]="(activeMentorModalTeam.mentorId || activeMentorModalTeam.mentor_id) === inst.id"
-                  [class.is-match]="isTrackMatch(activeMentorModalTeam.track, inst.track)"
-                  (click)="selectMentorForTeam(activeMentorModalTeam.id, inst.id)">
-            <div class="mp-opt-avatar">
-              {{ getInitials(inst.name) }}
-            </div>
-            <div class="mp-opt-info">
-              <div class="mp-opt-name-row">
-                <span class="mp-opt-name">{{ inst.name }}</span>
-                <span *ngIf="isTrackMatch(activeMentorModalTeam.track, inst.track)" class="mp-opt-match-badge">
-                  <span class="material-symbols-outlined">star</span> Track Match
-                </span>
-              </div>
-              <div class="mp-opt-meta">
-                <span class="mp-opt-track">{{ inst.track || 'General' }}</span>
-                <span class="mp-opt-dot">&bull;</span>
-                <span class="mp-opt-workload">{{ inst.assignedCount }} team{{ inst.assignedCount === 1 ? '' : 's' }} assigned</span>
-              </div>
-            </div>
-            <span class="material-symbols-outlined mp-opt-check" *ngIf="(activeMentorModalTeam.mentorId || activeMentorModalTeam.mentor_id) === inst.id">check_circle</span>
-          </button>
-        </div>
-
-        <div *ngIf="getFilteredPickerInstructors(activeMentorModalTeam.track).length === 0" class="mp-modal-empty">
-          <span class="material-symbols-outlined">person_search</span>
-          <h4>No instructors found</h4>
-          <p>No available instructors matched "{{ mentorPickerSearchQuery }}".</p>
-        </div>
-      </div>
-
-      <!-- Modal Footer with Unassign & Dismiss -->
-      <div class="mp-modal-sheet-footer">
-        <button type="button" 
-                class="btn btn-outline-danger btn-sm" 
-                *ngIf="activeMentorModalTeam.mentorId || activeMentorModalTeam.mentor_id"
-                (click)="selectMentorForTeam(activeMentorModalTeam.id, ''); $event.stopPropagation()">
-          <span class="material-symbols-outlined">person_off</span>
-          <span>Remove Mentor Assignment</span>
-        </button>
-        <button type="button" class="btn btn-subtle btn-sm" (click)="closeMentorModal()">
-          <span>Done</span>
-        </button>
-      </div>
-    </div>
-  </div>
 
   <!-- ============================================================================================================
        STUDENT LEAD: REQUEST MENTOR MODAL (Pool Match / Nominate Expert Subcomponent)
