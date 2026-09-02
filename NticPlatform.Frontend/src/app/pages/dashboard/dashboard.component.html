@@ -1,8 +1,8 @@
 <div class="page-canvas route-animate">
 
-  <!-- =Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â
+  <!-- ============================================================================================================
        NON-ADMIN DASHBOARDS (Student / Instructor / etc.)
-  =Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â -->
+  ============================================================================================================ -->
   <ng-container *ngIf="activeRoleId !== 'super_admin'">
     <!-- Page Header -->
     <div class="page-header with-action">
@@ -679,12 +679,12 @@
 
   </ng-container>
 
-  <!-- =Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â
+  <!-- ============================================================================================================
        SUPER ADMIN COMMAND CENTER
-  =Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â -->
+  ============================================================================================================ -->
   <ng-container *ngIf="activeRoleId === 'super_admin' || activeRoleId === 'content_manager' || activeRoleId === 'reviewer' || activeRoleId === 'competition_manager'">
 
-    <!-- â•Ââ•Â DYNAMIC COSMIC SKY LAYER (Twinkling Stars + Slow Shooting Comets - Admin Only) â•Ââ•Â -->
+    <!-- === DYNAMIC COSMIC SKY LAYER (Twinkling Stars + Slow Shooting Comets - Admin Only) === -->
     <div class="atmospheric-sky-layer" aria-hidden="true">
       <div class="cosmic-starfield">
         <div class="star-layer star-layer-1"></div>
@@ -712,7 +712,7 @@
       </div>
     </div>
 
-    <!-- â•Ââ•Â COMMAND CENTER MASTHEAD â•Ââ•Â -->
+    <!-- === COMMAND CENTER MASTHEAD === -->
     <div class="cc-masthead" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
       <div class="cc-scanline"></div>
       <div class="cc-masthead-left">
@@ -738,7 +738,7 @@
       </div>
     </div>
 
-    <!-- â•Ââ•Â COMMAND CENTER KPI CARDS â•Ââ•Â -->
+    <!-- === COMMAND CENTER KPI CARDS === -->
     <div class="cc-kpi-grid" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
       <div *ngFor="let stat of stats; trackBy: trackByStatLabel; let i = index"
            class="cc-kpi-card"
@@ -763,7 +763,7 @@
       </div>
     </div>
 
-    <!-- â•Ââ•Â SINGLE-SCREEN COMMAND CENTER DASHBOARD â•Ââ•Â -->
+    <!-- === SINGLE-SCREEN COMMAND CENTER DASHBOARD === -->
     <div class="cc-viewport-container" *ngIf="adminTab === 'dashboard' && !maximizedContentTab">
 
       <!-- ── VISUAL ANALYTICS: SYSTEM TELEMETRY & INFRASTRUCTURE NODES GRID ── -->
@@ -2168,9 +2168,9 @@
         </div>
       </ng-container>
 
-      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+      <!-- ============================================================
            PERSONNEL DETAIL MODAL POPUP
-      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+      ============================================================ -->
       <div class="pm-modal-backdrop" *ngIf="selectedPerson" (click)="closePersonDetail()">
         <div class="pm-modal-card" (click)="$event.stopPropagation()" *ngIf="selectedPerson as p">
           
@@ -2634,7 +2634,7 @@
           <div>
             <span class="admin-status-badge" [class]="user.status.toLowerCase()">{{ user.status }}</span>
           </div>
-          <div><code style="font-size:11px;background:var(--surface-container);padding:2px 6px;border-radius:4px;">{{ isMainAdmin(user) ? '••••••••••••' : (user.ticket || '--') }}</code></div>
+          <div><code style="font-size:11px;background:var(--surface-container);padding:2px 6px;border-radius:4px;">{{ isMainAdmin(user) ? '====' : (user.ticket || '--') }}</code></div>
           <div class="admin-date-cell">{{ (user.registeredAt | slice:0:10) || '--' }}</div>
           <div class="admin-actions-cell">
             <button class="admin-action-btn" title="Toggle Status" *ngIf="!isMainAdmin(user)" (click)="toggleUserStatus(user)">
@@ -3435,7 +3435,7 @@
               <div class="aei-field-val">{{ auditSelectedLog.location }}</div>
             </div>
 
-            <!-- User Agent – full width -->
+            <!-- User Agent = full width -->
             <div class="aei-field aei-field-full">
               <div class="aei-field-lbl">
                 <span class="material-symbols-outlined">devices</span>
@@ -3613,7 +3613,7 @@
                   <div class="live-user-email">{{ user.email }}</div>
                 </div>
                 <div class="live-item-right">
-                  <code class="live-ticket-code">{{ isMainAdmin(user) ? '••••••••••••' : user.ticket }}</code>
+                  <code class="live-ticket-code">{{ isMainAdmin(user) ? '====' : user.ticket }}</code>
                   <button class="live-action-btn" *ngIf="!isMainAdmin(user)" (mousedown)="$event.stopPropagation(); copyTicket(user.ticket)" [title]="copiedTicket === user.ticket ? 'Copied!' : 'Copy Access Token'">
                     <span class="material-symbols-outlined">{{ copiedTicket === user.ticket ? 'check' : 'content_copy' }}</span>
                   </button>
@@ -3644,7 +3644,7 @@
                   <div class="live-user-email">{{ session.email }} &middot; <small>Started {{ session.created_at | slice:0:16 }}</small></div>
                 </div>
                 <div class="live-item-right">
-                  <code class="live-ticket-code">{{ isMainAdmin(session) ? '••••••••••••' : (session.display) }}</code>
+                  <code class="live-ticket-code">{{ isMainAdmin(session) ? '====' : (session.display) }}</code>
                   <button class="live-action-btn danger" (mousedown)="$event.stopPropagation(); revokeSession(session.user_id)" title="Revoke Session">
                     <span class="material-symbols-outlined">link_off</span>
                   </button>
@@ -3704,7 +3704,7 @@
               </span>
             </div>
             <div class="admin-ticket-cell">
-              <code class="admin-ticket-code">{{ isMainAdmin(user) ? '••••••••••••' : user.ticket }}</code>
+              <code class="admin-ticket-code">{{ isMainAdmin(user) ? '====' : user.ticket }}</code>
               <button class="admin-copy-btn" *ngIf="!isMainAdmin(user)" (click)="copyTicket(user.ticket)" [title]="copiedTicket === user.ticket ? 'Copied!' : 'Copy Ticket'">
                 <span class="material-symbols-outlined">{{ copiedTicket === user.ticket ? 'check' : 'content_copy' }}</span>
               </button>
@@ -3759,7 +3759,7 @@
               </span>
             </div>
             <div class="admin-ticket-cell">
-              <code class="admin-ticket-code" style="font-size:0.65rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;">{{ isMainAdmin(session) ? '••••••••••••' : session.display }}</code>
+              <code class="admin-ticket-code" style="font-size:0.65rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;">{{ isMainAdmin(session) ? '====' : session.display }}</code>
             </div>
             <div class="admin-date-cell">{{ session.created_at | slice:0:16 }}</div>
             <div class="admin-date-cell">{{ session.expires_at | slice:0:16 }}</div>
@@ -4360,7 +4360,7 @@
           </div>
           <div class="cms-field">
             <label>Award / Honour Badge <span class="req">*</span></label>
-            <input type="text" [(ngModel)]="hofForm.badge" placeholder="ðŸ† Cybersecurity Grand Champions">
+            <input type="text" [(ngModel)]="hofForm.badge" placeholder="Cybersecurity Grand Champions">
           </div>
           <div class="cms-field">
             <label>Track Category</label>
@@ -4486,23 +4486,23 @@
             <label style="margin-bottom:8px;display:block;">Track Points (Total auto-sums in real-time)</label>
             <div class="cms-lb-points-row">
               <div class="cms-lb-point-field">
-                <span>ðŸ’» Coding</span>
+                <span>Coding</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.coding" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field">
-                <span>ðŸ¤– Robotics</span>
+                <span>Robotics</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.robotics" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field">
-                <span>ðŸ§  AI</span>
+                <span>AI</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.ai" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field">
-                <span>ðŸ”’ Cyber</span>
+                <span>Cyber</span>
                 <input type="number" [(ngModel)]="lbForm.trackPoints.cyber" (ngModelChange)="onLbTrackChange()" min="0">
               </div>
               <div class="cms-lb-point-field total">
-                <span>ðŸ† Total</span>
+                <span>Total</span>
                 <input type="number" [ngModel]="lbForm.trackPoints.all" readonly>
               </div>
             </div>
@@ -5382,7 +5382,7 @@
                 <span class="material-symbols-outlined">{{ registerRole === 'judge' ? 'gavel' : 'handshake' }}</span>
               </div>
               <div>
-                <h3>{{ registerRole === 'judge' ? 'âš– Competition Judge' : 'ðŸ¤ Platform Sponsor' }}</h3>
+                <h3>{{ registerRole === 'judge' ? 'Competition Judge' : 'Platform Sponsor' }}</h3>
                 <p>{{ registerRole === 'judge' ? 'A unique access token will be generated upon registration.' : 'The sponsor will receive a dedicated portal token for their CSR dashboard.' }}</p>
               </div>
             </div>
@@ -5564,7 +5564,7 @@
               <div>
                 <div class="preview-ticket-platform">National NTIC Platform</div>
                 <div class="preview-ticket-type">
-                  {{ registerRole === 'judge' ? 'âš– Competition Judge' : 'ðŸ¤ Platform Sponsor' }}
+                  {{ registerRole === 'judge' ? 'Competition Judge' : 'Platform Sponsor' }}
                 </div>
               </div>
               <div class="preview-ticket-year">2026</div>
@@ -5694,7 +5694,7 @@
             <span style="font-size:11px;color:var(--on-surface-variant);">GHS</span>
           </div>
           <div style="position:relative;">
-            <span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:700;color:var(--on-surface-variant);">GHâ‚µ</span>
+            <span style="position:absolute;left:18px;top:50%;transform:translateY(-50%);font-size:24px;font-weight:700;color:var(--on-surface-variant);">GH&#8373;</span>
             <input type="number" [(ngModel)]="settleAmount" placeholder="0.00" min="1"
                    style="width:100%;padding:18px 18px 18px 72px;font-size:28px;font-weight:800;text-align:left;border:2px solid var(--outline-variant);border-radius:14px;background:var(--surface-container-lowest);color:var(--on-surface);outline:none;transition:border-color 0.2s;box-sizing:border-box;"
                    (focus)="$any($event.target).style.borderColor='var(--primary)'"
@@ -5872,7 +5872,7 @@
           </div>
           <div class="ticket-code-wrap">
             <div class="ticket-code-label">ACCESS TOKEN</div>
-            <div class="ticket-code">{{ isMainAdmin(viewTicketUser) ? '••••••••••••' : viewTicketUser?.ticket }}</div>
+            <div class="ticket-code">{{ isMainAdmin(viewTicketUser) ? '====' : viewTicketUser?.ticket }}</div>
           </div>
         </div>
       </div>
@@ -5901,7 +5901,7 @@
           <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px dashed rgba(16, 185, 129, 0.2); margin-top: 4px;">
             <span style="color: var(--on-surface-variant); font-weight: 600;">Activation OTP:</span>
             <span style="font-family: monospace; font-size: 13.5px; background: var(--surface); border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; color: #059669; font-weight: 700; letter-spacing: 0.5px;">
-              {{ isMainAdmin(viewTicketUser) ? '••••••' : (viewTicketUser?.otp || viewTicketUser?.temporary_password || viewTicketUser?.password || 'Already Activated') }}
+              {{ isMainAdmin(viewTicketUser) ? '==' : (viewTicketUser?.otp || viewTicketUser?.temporary_password || viewTicketUser?.password || 'Already Activated') }}
             </span>
           </div>
         </div>
@@ -6191,7 +6191,7 @@
             </div>
           </div>
           <div class="role-user-ticket">
-            <span class="role-user-ticket-code">{{ isMainAdmin(user) ? '••••••••••••' : user.ticket }}</span>
+            <span class="role-user-ticket-code">{{ isMainAdmin(user) ? '====' : user.ticket }}</span>
           </div>
         </div>
       </div>
@@ -6208,9 +6208,9 @@
     </div>
   </div>
 
-  <!-- =Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â
+  <!-- ============================================================================================================================
        CUSTOM CREDENTIALS & APPROVAL SUCCESS MODAL (WITH ONE-CLICK COPY)
-       =Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â -->
+       ============================================================================================================================ -->
   <div class="custom-modal-backdrop" *ngIf="credentialsModal?.isOpen" (click)="proceedFromCredentialsModal()">
     <div class="custom-credentials-modal" (click)="$event.stopPropagation()">
       <div class="cred-modal-header">
@@ -6296,9 +6296,9 @@
     </div>
   </div>
 
-  <!-- =Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â
+  <!-- ============================================================================================================================
        CUSTOM SLEEK ALERT NOTIFICATION MODAL
-       =Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â=Ã‚Â -->
+       ============================================================================================================================ -->
   <div class="custom-modal-backdrop" *ngIf="customAlertModal?.isOpen" (click)="closeCustomAlert()">
     <div class="custom-alert-card" [ngClass]="customAlertModal?.type || 'info'" (click)="$event.stopPropagation()">
       <div class="custom-alert-icon-wrap">
@@ -6522,18 +6522,18 @@
     </div>
   </div>
 
-  <!-- â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â
+  <!-- ============================================================
        SPONSORSHIP TIER BREAKDOWN POPUP MODAL (ROOT VIEWPORT OVERLAY)
-  â•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Ââ•Â -->
+  ============================================================ -->
   <app-sponsor-tier-modal
     *ngIf="sponsorTierModalOpen && selectedSponsorTier"
     [tier]="selectedSponsorTier"
     [initialSearch]="sponsorTierSearch"
     (close)="closeSponsorTierModal()"></app-sponsor-tier-modal>
 
-  <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  <!-- ============================================================
        INSTRUCTOR / MENTOR ALLOCATION POPUP MODAL (ROOT VIEWPORT OVERLAY)
-       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+       ============================================================ -->
   <div class="mp-modal-backdrop fade-in" *ngIf="activeMentorModalTeam" (click)="closeMentorModal()">
     <div class="mp-modal-sheet" (click)="$event.stopPropagation()">
       <div class="mp-modal-sheet-header">
