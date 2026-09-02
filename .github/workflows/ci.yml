@@ -132,6 +132,57 @@ jobs:
         # No tests exist yet; at minimum make sure the file parses.
         run: node --check server.js
 
+  encoding:
+    name: Encoding (mojibake scan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fail on mojibake (C1 control characters)
+        # Windows PowerShell 5.1 defaults Set-Content and Out-File to ANSI rather
+        # than UTF-8. A tool that reads a UTF-8 source and writes it back through
+        # 5.1 re-encodes every multi-byte character as CP1252, and the damage
+        # compounds on each round-trip. dashboard.component.html reached main
+        # carrying 1016 such characters; because the corruption was committed it
+        # came back on every checkout and restore, so fixing the working tree was
+        # never enough.
+        #
+        # .githooks/pre-commit runs this same check locally, but core.hooksPath is
+        # per-clone config that a fresh clone has not set yet. This job is the
+        # backstop that applies to everyone.
+        run: |
+          set +e
+
+          # U+0080-U+009F encode as C2 80..C2 9F. Matching \xc2 alone is exact.
+          # Widening to [\xc2\xc3] would also match C3 80..C3 9F -- U+00C0-U+00DF,
+          # the legitimate accented capitals -- and reject a properly spelled name.
+          #
+          # LC_ALL=C is load-bearing, not decoration. The runner's locale is
+          # en_US.UTF-8, where grep decodes C2 90 into a single character and the
+          # two-byte pattern can never match -- the check silently passes on a
+          # genuinely corrupt file. LC_ALL=C forces byte-wise matching.
+          matches=$(LC_ALL=C grep -rlP '\xc2[\x80-\x9f]' \
+            --include='*.html' --include='*.ts' --include='*.js' \
+            --include='*.cjs' --include='*.mjs' --include='*.scss' \
+            --include='*.css' --include='*.py' --include='*.json' \
+            --include='*.md' --include='*.yml' --include='*.yaml' \
+            --exclude-dir=node_modules --exclude-dir=dist \
+            --exclude-dir=.git --exclude-dir=.angular \
+            --exclude='package-lock.json' \
+            . 2>/dev/null)
+
+          if [ -n "$matches" ]; then
+            echo "::error::Mojibake detected - these files contain C1 control characters (U+0080-U+009F):"
+            echo "$matches"
+            echo ""
+            echo "This is UTF-8 that was re-saved as CP1252/ANSI. Re-save as UTF-8"
+            echo "without BOM. In PowerShell, always write with an explicit encoding:"
+            echo '    [System.IO.File]::WriteAllText($path, $text, (New-Object System.Text.UTF8Encoding($false)))'
+            exit 1
+          fi
+
+          echo "No mojibake found."
+
   secrets:
     name: Secret scan
     runs-on: ubuntu-latest

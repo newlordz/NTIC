@@ -104,14 +104,18 @@ esac
 #
 # The tell is the C1 range U+0080-U+009F. Those are non-printable control codes:
 # valid UTF-8 text never contains them, but CP1252-mangled UTF-8 is full of them.
-# Matching on that range alone keeps this check free of false positives, so
-# genuine UTF-8 (accents, emoji, box-drawing) still commits normally.
+#
+# The pattern is deliberately \xc2 only, never [\xc2\xc3]. In UTF-8, U+0080-U+009F
+# encode as C2 80..C2 9F, so \xc2[\x80-\x9f] is exact. Adding \xc3 would widen the
+# match to C3 80..C3 9F, which is U+00C0-U+00DF -- the legitimate accented capitals
+# E-acute, O-umlaut, U-umlaut, sharp-s, C-cedilla. That would reject a commit for
+# containing a name like "Rene" spelled properly, so it is not worth the extra
+# mojibake marker it would catch.
 for f in $STAGED; do
     case "$f" in
         *.html|*.ts|*.js|*.cjs|*.mjs|*.scss|*.css|*.py|*.json|*.md|*.yml|*.yaml)
-            # LC_ALL=C makes grep operate on bytes, so the C2/C3-prefixed UTF-8
-            # encodings of U+0080-U+009F are what actually get matched.
-            if staged_content "$f" | LC_ALL=C grep -qP '[\xc2\xc3][\x80-\x9f]' 2>/dev/null; then
+            # LC_ALL=C makes grep work on raw bytes rather than decoded characters.
+            if staged_content "$f" | LC_ALL=C grep -qP '\xc2[\x80-\x9f]' 2>/dev/null; then
                 echo "pre-commit: '$f' contains C1 control characters (U+0080-U+009F)."
                 echo "    This is mojibake -- UTF-8 that was re-saved as CP1252/ANSI."
                 echo "    Re-save the file as UTF-8 without BOM before committing."
