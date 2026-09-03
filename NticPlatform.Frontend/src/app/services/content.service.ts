@@ -474,6 +474,7 @@ export class ContentService {
   submissions: Submission[] = [];
   auditLogs: any[] = [];
   readonly auditLogs$ = new BehaviorSubject<any[]>([]);
+  readonly dataRefreshed$ = new Subject<string>();
   csrUpdates: any[] = [];
   competitions: Competition[] = [];
 
@@ -735,6 +736,7 @@ export class ContentService {
             }));
             this.users = mapped;
             this.saveState('users', mapped);
+            this.dataRefreshed$.next('users');
           }
           this.userCount = total;
           this.saveState('userCount', total);
@@ -770,6 +772,7 @@ export class ContentService {
             this.saveState('approvedApprovals', approved);
             this.rejectedApprovals = rejected;
             this.saveState('rejectedApprovals', rejected);
+            this.dataRefreshed$.next('approvals');
           }
         },
         error: () => {}
@@ -784,6 +787,7 @@ export class ContentService {
             const merged = this.mergeTeams(teams);
             this.teams = merged;
             this.saveState('teams', merged);
+            this.dataRefreshed$.next('teams');
           }
         },
         error: (e: any) => console.log('Backend teams fallback to local cache')
@@ -795,6 +799,7 @@ export class ContentService {
             const merged = this.mergeSubmissions(subs);
             this.submissions = merged;
             this.saveState('submissions', merged);
+            this.dataRefreshed$.next('submissions');
           }
         },
         error: (e: any) => console.log('Backend submissions fallback to local cache')

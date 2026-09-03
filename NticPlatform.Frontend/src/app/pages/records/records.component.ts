@@ -1,4 +1,5 @@
-import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Subject, takeUntil } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService, ApprovalRequest } from '../../services/content.service';
@@ -41,7 +42,9 @@ interface Record {
   styleUrl: './records.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RecordsComponent implements OnInit {
+export class RecordsComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  isLoading = false;
   readonly sortOptions = [
     { value: 'submittedAt', label: 'Date Submitted' },
     { value: 'entityName', label: 'Entity Name' },
@@ -210,11 +213,35 @@ export class RecordsComponent implements OnInit {
     if (urlPath === 'database' || tabParam === 'database') {
       this.activeTab = 'database';
     }
+    this.isLoading = this.allRecords.length === 0;
     this.loadDbData();
     this.loadTrashState();
     this.loadRecords();
     this.contentService.refreshBackendData();
+
+    this.contentService.dataRefreshed$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(col => {
+        if (['all', 'approvals', 'users', 'teams'].includes(col)) {
+          this.loadRecords();
+          this.isLoading = false;
+          this.cdr.markForCheck();
+        }
+      });
+
+    setTimeout(() => {
+      if (this.isLoading) {
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      }
+    }, 1500);
+
     this.cdr.markForCheck();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
 

@@ -3251,6 +3251,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
     });
     this.loadDashboardRecords();
+    const dataSub = this.contentService.dataRefreshed$.subscribe(col => {
+      if (['all', 'approvals', 'users', 'teams'].includes(col)) {
+        this.loadDashboardRecords();
+        this.cdr.markForCheck();
+      }
+    });
+    this.liveIntervals.push(dataSub);
     this.loadAuthSessionCount();
     this.recomputeTournamentTracks();
     this.preloadLogos();

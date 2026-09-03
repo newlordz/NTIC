@@ -213,8 +213,15 @@
       </div>
     </div>
 
+    <!-- LOADING STATE -->
+    <div class="empty-state" *ngIf="isLoading && filteredRecords.length === 0">
+      <span class="material-symbols-outlined empty-icon spin" style="color: var(--primary); animation: spin 1s linear infinite;">progress_activity</span>
+      <h3>Loading Verified Archives...</h3>
+      <p>Synchronizing entity registrations, credential records, and submitted documentation from the database.</p>
+    </div>
+
     <!-- EMPTY STATE -->
-    <div class="empty-state" *ngIf="filteredRecords.length === 0">
+    <div class="empty-state" *ngIf="!isLoading && filteredRecords.length === 0">
       <span class="material-symbols-outlined empty-icon">folder_open</span>
       <h3>No Archived Records Found</h3>
       <p>No records match your active search or filter criteria.</p>
