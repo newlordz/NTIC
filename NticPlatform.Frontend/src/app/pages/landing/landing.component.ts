@@ -127,10 +127,10 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     if (h.logoUrl) return h.logoUrl;
     
     const schoolName = (h.school || '').toLowerCase();
-    if (schoolName.includes('prempeh')) return 'assets/logos/prempeh.png';
-    if (schoolName.includes('wesley girls')) return 'assets/logos/weygeyhey.png';
-    if (schoolName.includes('mfantsipim')) return 'assets/logos/mfantsipim.png';
-    if (schoolName.includes('gsts') || schoolName.includes('technical')) return 'assets/logos/gsts.png';
+    if (schoolName.includes('prempeh')) return 'assets/logos/prempeh.webp';
+    if (schoolName.includes('wesley girls')) return 'assets/logos/weygeyhey.webp';
+    if (schoolName.includes('mfantsipim')) return 'assets/logos/mfantsipim.webp';
+    if (schoolName.includes('gsts') || schoolName.includes('technical')) return 'assets/logos/gsts.webp';
     
     return null;
   }
