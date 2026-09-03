@@ -24,6 +24,12 @@
         <button class="btn btn-primary btn-sm" routerLink="/lms" [queryParams]="{ tab: 'assignments' }"><span class="material-symbols-outlined">upload_file</span>Submit Work</button>
       </div>
       <div style="display:flex;gap:10px;" *ngIf="activeRoleId === 'school_admin'">
+        <a *ngIf="schoolViewTab === 'roster'" routerLink="/dashboard" [queryParams]="{ tab: 'dashboard' }" class="btn btn-subtle btn-sm">
+          <span class="material-symbols-outlined">dashboard</span>Overview Dashboard
+        </a>
+        <a *ngIf="schoolViewTab === 'dashboard'" routerLink="/dashboard" [queryParams]="{ tab: 'roster' }" class="btn btn-subtle btn-sm">
+          <span class="material-symbols-outlined">groups</span>My Teams &amp; Roster
+        </a>
         <button class="btn btn-primary btn-sm" (click)="openAddTeamModal()"><span class="material-symbols-outlined">group_add</span>Add Team</button>
       </div>
       <div style="display:flex;gap:10px;" *ngIf="activeRoleId === 'judge'">
@@ -41,8 +47,8 @@
     </div>
 
     <!-- Stat Cards -->
-    <div class="stat-grid stagger">
-      <div *ngFor="let stat of (activeRoleId === 'school_admin' ? schoolAdminStats : stats); trackBy: trackByStatLabel" 
+    <div class="stat-grid stagger" *ngIf="!isSchoolRosterView">
+      <div *ngFor="let stat of currentRoleStats; trackBy: trackByStatLabel" 
            class="stat-card" [class]="stat.color"
            role="button" tabindex="0" style="cursor: pointer"
            (click)="onStatCardClick(stat)">
@@ -59,7 +65,9 @@
     </div>
 
     <!-- Two Column Layout -->
-    <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;">
+    <div [style.display]="isSchoolRosterView ? 'block' : 'grid'"
+         [style.gridTemplateColumns]="'1fr 340px'"
+         style="gap:20px;">
 
       <!-- LEFT COLUMN -->
       <div>
@@ -391,210 +399,374 @@
 
         <!-- School Admin Portal Panel -->
         <div *ngIf="activeRoleId === 'school_admin'">
-          <!-- School Profile Crest / Name Header -->
-          <div class="school-profile-banner" id="school-roster-section">
-            <label class="school-crest-avatar" [class.has-img]="!!schoolAvatarUrl" title="Click to upload/change school crest" style="cursor: pointer; position: relative;">
-              <input type="file" accept="image/*" (change)="onSchoolCrestSelected($event)" style="display:none;">
-              <img *ngIf="schoolAvatarUrl" [src]="schoolAvatarUrl" [alt]="schoolName" class="school-crest-img">
-              <span *ngIf="!schoolAvatarUrl && schoolAvatarInitials" class="school-crest-initials">{{ schoolAvatarInitials }}</span>
-              <span *ngIf="!schoolAvatarUrl && !schoolAvatarInitials" class="material-symbols-outlined">account_balance</span>
-              <div class="school-crest-hover-overlay">
-                <span class="material-symbols-outlined" style="font-size:16px;">photo_camera</span>
-              </div>
-            </label>
-            <div class="school-profile-details">
-              <h2>{{ schoolName }}</h2>
-              <span class="school-badge-status">ACCREDITED NTIC MEMBER</span>
-            </div>
-            <button class="btn btn-primary btn-sm" (click)="openAddTeamModal()" style="margin-left: auto;">
-              <span class="material-symbols-outlined">add</span>Register Team
-            </button>
-            <button class="btn btn-secondary btn-sm" (click)="openInstitutionPortal()" style="margin-left: 8px;">
-              <span class="material-symbols-outlined">manage_accounts</span>Student Portal
-            </button>
-          </div>
 
-          <!-- Pending Student Mentor Requests (Two-Tier Institutional Review Queue) -->
-          <div class="section-title" style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span>Student Mentor Requests</span>
-              <span class="badge" *ngIf="institutionMentorRequests.length > 0" style="background:#fef3c7;color:#b45309;font-size:11px;font-weight:700;border:1px solid #fde68a;">
-                {{ institutionMentorRequests.length }} Pending Review
-              </span>
-            </div>
-            <button class="btn btn-ghost btn-sm" (click)="loadInstitutionApprovals()" style="font-size:11.5px;display:flex;align-items:center;gap:4px;">
-              <span class="material-symbols-outlined" style="font-size:14px;">refresh</span> Refresh
-            </button>
-          </div>
-
-          <div *ngIf="institutionMentorRequests.length > 0" style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;">
-            <div *ngFor="let req of institutionMentorRequests" class="card" style="padding:16px;border:1px solid rgba(245,158,11,0.3);background:linear-gradient(135deg, rgba(254,243,199,0.2) 0%, var(--surface-container-lowest) 100%);">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;">
-                <div>
-                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                    <span class="material-symbols-outlined" style="color:#d97706;font-size:20px;">co_present</span>
-                    <h4 style="margin:0;font-size:14.5px;font-weight:700;">{{ req.details?.team_name || req.entity }}</h4>
-                    <span class="team-track-chip" [class]="(req.details?.track || 'coding').toLowerCase()" style="font-size:10px;">{{ req.details?.track || 'General' }}</span>
-                  </div>
-                  <div style="font-size:11.5px;color:var(--on-surface-variant);display:flex;align-items:center;gap:12px;">
-                    <span><strong>Lead:</strong> {{ req.details?.lead_name || req.contact }} ({{ req.details?.lead_email || req.contact }})</span>
-                    <span>&bull;</span>
-                    <span><strong>Requested:</strong> {{ req.created_at | timeAgo }}</span>
-                  </div>
+          <!-- ══════════════════════════════════════════════════════════════════
+               1. SCHOOL OVERVIEW DASHBOARD VIEW (tab=dashboard)
+          ══════════════════════════════════════════════════════════════════ -->
+          <div *ngIf="schoolViewTab === 'dashboard'">
+            <!-- School Profile Crest / Name Header -->
+            <div class="school-profile-banner" id="school-roster-section">
+              <label class="school-crest-avatar" [class.has-img]="!!schoolAvatarUrl" title="Click to upload/change school crest" style="cursor: pointer; position: relative;">
+                <input type="file" accept="image/*" (change)="onSchoolCrestSelected($event)" style="display:none;">
+                <img *ngIf="schoolAvatarUrl" [src]="schoolAvatarUrl" [alt]="schoolName" class="school-crest-img">
+                <span *ngIf="!schoolAvatarUrl && schoolAvatarInitials" class="school-crest-initials">{{ schoolAvatarInitials }}</span>
+                <span *ngIf="!schoolAvatarUrl && !schoolAvatarInitials" class="material-symbols-outlined">account_balance</span>
+                <div class="school-crest-hover-overlay">
+                  <span class="material-symbols-outlined" style="font-size:16px;">photo_camera</span>
                 </div>
-                <span class="badge" style="background:#fef3c7;color:#b45309;font-size:10.5px;font-weight:700;border:1px solid #fde68a;">
-                  Awaiting School Review
+              </label>
+              <div class="school-profile-details">
+                <h2>{{ schoolName }}</h2>
+                <span class="school-badge-status">ACCREDITED NTIC MEMBER</span>
+              </div>
+              <a class="btn btn-primary btn-sm" routerLink="/dashboard" [queryParams]="{ tab: 'roster' }" style="margin-left: auto;">
+                <span class="material-symbols-outlined">groups</span>My Teams &amp; Roster
+              </a>
+              <button class="btn btn-secondary btn-sm" (click)="openInstitutionPortal()" style="margin-left: 8px;">
+                <span class="material-symbols-outlined">manage_accounts</span>Student Portal
+              </button>
+            </div>
+
+            <!-- Pending Student Mentor Requests (Two-Tier Institutional Review Queue) -->
+            <div class="section-title" style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span>Student Mentor Requests</span>
+                <span class="badge" *ngIf="institutionMentorRequests.length > 0" style="background:#fef3c7;color:#b45309;font-size:11px;font-weight:700;border:1px solid #fde68a;">
+                  {{ institutionMentorRequests.length }} Pending Review
                 </span>
               </div>
+              <button class="btn btn-ghost btn-sm" (click)="loadInstitutionApprovals()" style="font-size:11.5px;display:flex;align-items:center;gap:4px;">
+                <span class="material-symbols-outlined" style="font-size:14px;">refresh</span> Refresh
+              </button>
+            </div>
 
-              <!-- Suggested Mentor Details Card (Read-Only) -->
-              <div *ngIf="req.details?.suggested_mentor" style="padding:12px;background:var(--surface-container);border:1px solid var(--outline-variant);border-radius:10px;margin-bottom:12px;">
-                <div style="font-size:11px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:var(--primary);margin-bottom:8px;display:flex;align-items:center;gap:5px;">
-                  <span class="material-symbols-outlined" style="font-size:14px;">person_search</span>
-                  Suggested Mentor Nominee (Read-Only)
+            <div *ngIf="institutionMentorRequests.length > 0" style="display:flex;flex-direction:column;gap:12px;margin-bottom:24px;">
+              <div *ngFor="let req of institutionMentorRequests" class="card" style="padding:16px;border:1px solid rgba(245,158,11,0.3);background:linear-gradient(135deg, rgba(254,243,199,0.2) 0%, var(--surface-container-lowest) 100%);">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;">
+                  <div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                      <span class="material-symbols-outlined" style="color:#d97706;font-size:20px;">co_present</span>
+                      <h4 style="margin:0;font-size:14.5px;font-weight:700;">{{ req.details?.team_name || req.entity }}</h4>
+                      <span class="team-track-chip" [class]="(req.details?.track || 'coding').toLowerCase()" style="font-size:10px;">{{ req.details?.track || 'General' }}</span>
+                    </div>
+                    <div style="font-size:11.5px;color:var(--on-surface-variant);display:flex;align-items:center;gap:12px;">
+                      <span><strong>Lead:</strong> {{ req.details?.lead_name || req.contact }} ({{ req.details?.lead_email || req.contact }})</span>
+                      <span>&bull;</span>
+                      <span><strong>Requested:</strong> {{ req.created_at | timeAgo }}</span>
+                    </div>
+                  </div>
+                  <span class="badge" style="background:#fef3c7;color:#b45309;font-size:10.5px;font-weight:700;border:1px solid #fde68a;">
+                    Awaiting School Review
+                  </span>
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;">
-                  <div><strong>Full Name:</strong> {{ req.details.suggested_mentor.name }}</div>
-                  <div><strong>Email:</strong> {{ req.details.suggested_mentor.email }}</div>
-                  <div *ngIf="req.details.suggested_mentor.phone"><strong>Phone:</strong> {{ req.details.suggested_mentor.phone }}</div>
-                  <div *ngIf="req.details.suggested_mentor.organization"><strong>Organization:</strong> {{ req.details.suggested_mentor.organization }}</div>
-                  <div *ngIf="req.details.suggested_mentor.expertise" style="grid-column:1 / -1;"><strong>Expertise / Track:</strong> {{ req.details.suggested_mentor.expertise }}</div>
-                  <div *ngIf="req.details.suggested_mentor.bio" style="grid-column:1 / -1;font-style:italic;color:var(--on-surface-variant);padding-top:4px;border-top:1px dashed var(--outline-variant);">
-                    "{{ req.details.suggested_mentor.bio }}"
+
+                <!-- Suggested Mentor Details Card (Read-Only) -->
+                <div *ngIf="req.details?.suggested_mentor" style="padding:12px;background:var(--surface-container);border:1px solid var(--outline-variant);border-radius:10px;margin-bottom:12px;">
+                  <div style="font-size:11px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:var(--primary);margin-bottom:8px;display:flex;align-items:center;gap:5px;">
+                    <span class="material-symbols-outlined" style="font-size:14px;">person_search</span>
+                    Suggested Mentor Nominee (Read-Only)
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;">
+                    <div><strong>Full Name:</strong> {{ req.details.suggested_mentor.name }}</div>
+                    <div><strong>Email:</strong> {{ req.details.suggested_mentor.email }}</div>
+                    <div *ngIf="req.details.suggested_mentor.phone"><strong>Phone:</strong> {{ req.details.suggested_mentor.phone }}</div>
+                    <div *ngIf="req.details.suggested_mentor.organization"><strong>Organization:</strong> {{ req.details.suggested_mentor.organization }}</div>
+                    <div *ngIf="req.details.suggested_mentor.expertise" style="grid-column:1 / -1;"><strong>Expertise / Track:</strong> {{ req.details.suggested_mentor.expertise }}</div>
+                    <div *ngIf="req.details.suggested_mentor.bio" style="grid-column:1 / -1;font-style:italic;color:var(--on-surface-variant);padding-top:4px;border-top:1px dashed var(--outline-variant);">
+                      "{{ req.details.suggested_mentor.bio }}"
+                    </div>
                   </div>
                 </div>
+
+                <div *ngIf="!req.details?.suggested_mentor && req.details?.mode === 'auto_track'" style="padding:10px 12px;background:var(--surface-container);border:1px solid var(--outline-variant);border-radius:8px;margin-bottom:12px;font-size:12px;display:flex;align-items:center;gap:8px;">
+                  <span class="material-symbols-outlined" style="color:var(--primary);font-size:16px;">auto_awesome</span>
+                  <span>Team requested <strong>Auto-Match</strong> from the NTIC official Mentor directory in <strong>{{ req.details?.track || 'General' }}</strong>.</span>
+                </div>
+
+                <!-- Action Bar -->
+                <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;padding-top:10px;border-top:1px solid var(--outline-variant);">
+                  <button type="button" class="btn btn-sm btn-subtle" (click)="openInstitutionDecisionModal(req, 'reject')" style="font-size:11.5px;color:#dc2626;border-color:#fecaca;">
+                    <span class="material-symbols-outlined" style="font-size:14px;">cancel</span> Decline Request
+                  </button>
+                  <button type="button" class="btn btn-sm btn-primary" (click)="openInstitutionDecisionModal(req, 'approve')" style="font-size:11.5px;">
+                    <span class="material-symbols-outlined" style="font-size:14px;">check_circle</span> Approve &amp; Forward to NTIC Admin
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="institutionMentorRequests.length === 0" class="card" style="padding:18px 20px;margin-bottom:24px;border:1px dashed var(--outline-variant);background:var(--surface-container-low);display:flex;align-items:center;gap:14px;">
+              <div style="width:40px;height:40px;border-radius:12px;background:rgba(16,185,129,0.12);color:#059669;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <span class="material-symbols-outlined" style="font-size:22px;">verified</span>
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:13.5px;font-weight:700;color:var(--on-surface);">All Student Mentor Requests Resolved</div>
+                <div style="font-size:12px;color:var(--on-surface-variant);">Any new squad requests for mentor endorsement or matching will appear here in real time.</div>
+              </div>
+            </div>
+
+            <!-- Enlisted Squads Overview Snapshot Card -->
+            <div class="card" style="padding:20px;margin-bottom:24px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+                <div>
+                  <h3 style="margin:0 0 4px;font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px;">
+                    <span class="material-symbols-outlined" style="color:var(--primary);font-size:20px;">sports_score</span>
+                    School Competition Squads ({{ schoolTeams.length }})
+                  </h3>
+                  <p style="margin:0;font-size:12px;color:var(--on-surface-variant);">
+                    Active squads registered for NTIC competition cycles across tracks.
+                  </p>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <button class="btn btn-subtle btn-sm" (click)="openAddTeamModal()">
+                    <span class="material-symbols-outlined">add</span>Add Squad
+                  </button>
+                  <a class="btn btn-primary btn-sm" routerLink="/dashboard" [queryParams]="{ tab: 'roster' }">
+                    <span>Manage Full Roster</span>
+                    <span class="material-symbols-outlined" style="font-size:16px;">arrow_forward</span>
+                  </a>
+                </div>
               </div>
 
-              <div *ngIf="!req.details?.suggested_mentor && req.details?.mode === 'auto_track'" style="padding:10px 12px;background:var(--surface-container);border:1px solid var(--outline-variant);border-radius:8px;margin-bottom:12px;font-size:12px;display:flex;align-items:center;gap:8px;">
-                <span class="material-symbols-outlined" style="color:var(--primary);font-size:16px;">auto_awesome</span>
-                <span>Team requested <strong>Auto-Match</strong> from the NTIC official Mentor directory in <strong>{{ req.details?.track || 'General' }}</strong>.</span>
+              <!-- Quick Summary List of Squads -->
+              <div *ngIf="schoolTeams.length > 0" style="display:flex;flex-direction:column;gap:8px;">
+                <div *ngFor="let team of schoolTeams.slice(0, 3)" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;">
+                  <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                    <span class="team-track-chip" [class]="team.track.toLowerCase()">{{ team.track }}</span>
+                    <span style="font-weight:700;font-size:13px;color:var(--on-surface);">{{ team.name }}</span>
+                    <span style="font-size:11.5px;color:var(--on-surface-variant);">&bull; Lead: {{ team.rosterList?.[0] || team.lead }} ({{ team.members }} members)</span>
+                  </div>
+                  <a routerLink="/dashboard" [queryParams]="{ tab: 'roster' }" class="btn btn-ghost btn-sm" style="font-size:11px;font-weight:700;color:var(--primary);">
+                    View &rarr;
+                  </a>
+                </div>
+                <div *ngIf="schoolTeams.length > 3" style="text-align:center;padding-top:8px;">
+                  <a routerLink="/dashboard" [queryParams]="{ tab: 'roster' }" style="font-size:12px;font-weight:700;color:var(--primary);text-decoration:none;">
+                    + {{ schoolTeams.length - 3 }} more squads. Open full roster workspace &rarr;
+                  </a>
+                </div>
               </div>
 
-              <!-- Action Bar -->
-              <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;padding-top:10px;border-top:1px solid var(--outline-variant);">
-                <button type="button" class="btn btn-sm btn-subtle" (click)="openInstitutionDecisionModal(req, 'reject')" style="font-size:11.5px;color:#dc2626;border-color:#fecaca;">
-                  <span class="material-symbols-outlined" style="font-size:14px;">cancel</span> Decline Request
+              <!-- Empty State for Teams -->
+              <div class="school-teams-empty" *ngIf="schoolTeams.length === 0">
+                <span class="material-symbols-outlined">groups</span>
+                <h4>No Teams Registered</h4>
+                <p>Your school hasn't registered any squads under NTIC competition tracks yet.</p>
+                <button class="btn btn-primary" (click)="openAddTeamModal()">
+                  <span class="material-symbols-outlined">add</span>Register Your First Team
                 </button>
-                <button type="button" class="btn btn-sm btn-primary" (click)="openInstitutionDecisionModal(req, 'approve')" style="font-size:11.5px;">
-                  <span class="material-symbols-outlined" style="font-size:14px;">check_circle</span> Approve &amp; Forward to NTIC Admin
-                </button>
               </div>
             </div>
           </div>
 
-          <!-- School Teams Roster List -->
-          <div class="section-title">School Squads & Teams</div>
-          <div class="school-teams-grid" *ngIf="schoolTeams.length > 0">
-            <div *ngFor="let team of schoolTeams" class="card team-roster-card">
-              <div class="card-body">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
-                  <div style="display:flex;align-items:center;gap:6px;">
-                    <span *ngIf="isTeamInCompetition(team)" class="badge primary" style="display:inline-flex;align-items:center;gap:4px;" [title]="'Enrolled in competition: ' + getTeamCompetitionTitle(team)">
-                      <span class="material-symbols-outlined" style="font-size:13px;">emoji_events</span>
-                      <span>In Competition</span>
-                    </span>
-                    <span *ngIf="!isTeamInCompetition(team)" class="badge" style="background:var(--surface-container-high);color:var(--on-surface-variant);display:inline-flex;align-items:center;gap:4px;" title="Squad active and formed, but not yet registered in a competition cycle">
-                      <span class="material-symbols-outlined" style="font-size:13px;">playlist_add_check</span>
-                      <span>Roster Ready</span>
-                    </span>
-                    <span class="badge" [class.secondary]="team.status === 'Active' || team.status === 'In Competition'" [class.badge-danger]="team.status === 'Suspended'" style="font-size:10px;">
-                      {{ team.status === 'In Competition' ? 'Active' : (team.status || 'Active') }}
-                    </span>
-                  </div>
-                  <span class="team-track-chip" [class]="team.track.toLowerCase()">{{ team.track }}</span>
-                </div>
-                <h3 class="team-card-title">{{ team.name }}</h3>
-                <div class="team-card-meta">
-                  <div><strong>Team Lead:</strong> {{ team.rosterList?.[0] || team.lead }}</div>
-                  <div><strong>Members:</strong> {{ team.members }} active students</div>
-                  <div *ngIf="isTeamInCompetition(team)" style="margin-top:4px;font-size:11.5px;color:var(--primary);display:flex;align-items:center;gap:4px;">
-                    <span class="material-symbols-outlined" style="font-size:14px;">emoji_events</span>
-                    <span>Cycle: <strong>{{ getTeamCompetitionTitle(team) }}</strong></span>
-                  </div>
-                  <!-- Mentor is centrally assigned by NTIC Administration -->
-                  <div style="margin-top:8px;padding:6px 10px;background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;">
-                    <span style="display:flex;align-items:center;gap:5px;color:var(--on-surface-variant);">
-                      <span class="material-symbols-outlined" style="font-size:15px;color:var(--primary);">co_present</span>
-                      <strong>Assigned Mentor:</strong>
-                    </span>
-                    <span *ngIf="team.mentorId || team.mentor" class="badge secondary" style="font-size:10.5px;">
-                      {{ getMentorName(team.mentorId) || team.mentor }}
-                    </span>
-                    <span *ngIf="!team.mentorId && !team.mentor" style="color:var(--on-surface-variant);font-style:italic;font-size:11px;">
-                      Pending NTIC allocation
-                    </span>
-                  </div>
-                  <div *ngIf="team.motto" style="font-style:italic;color:var(--primary);margin-top:4px;border-top:1px dashed var(--outline-variant);padding-top:4px;">"{{ team.motto }}"</div>
-                  
-                  <!-- Display Roster Chips if available -->
-                  <div *ngIf="team.rosterList && team.rosterList.length > 0" class="roster-chips-container" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--outline-variant);">
-                    <span *ngFor="let student of team.rosterList; let i = index" class="roster-student-chip" [style.background]="i === 0 ? '#fef3c7' : 'var(--surface-container)'" [style.color]="i === 0 ? '#d97706' : 'var(--on-surface)'" style="padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;border:1px solid var(--outline-variant);">
-                      <span class="material-symbols-outlined" style="font-size:13px;">{{ i === 0 ? 'stars' : 'person' }}</span>
-                      {{ student }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Squad Management Footer Bar -->
-                <div class="team-card-actions" style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--outline-variant);align-items:center;flex-wrap:wrap;">
-                  <button *ngIf="!isTeamInCompetition(team)" type="button" routerLink="/competitions" style="display:flex;align-items:center;gap:4px;padding:6px 12px;font-size:11.5px;font-weight:700;color:#059669;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:8px;cursor:pointer;margin-right:auto;text-decoration:none;">
-                    <span class="material-symbols-outlined" style="font-size:15px;">emoji_events</span>
-                    Apply to Cycle
-                  </button>
-                  <button type="button" class="btn-manage-squad edit" (click)="editTeam(team)" style="display:flex;align-items:center;gap:4px;padding:6px 12px;font-size:11.5px;font-weight:700;color:var(--primary);background:rgba(0,63,135,0.06);border:1px solid rgba(0,63,135,0.2);border-radius:8px;cursor:pointer;transition:all 0.2s ease;">
-                    <span class="material-symbols-outlined" style="font-size:15px;">edit_square</span>
-                    Edit Roster & Squad
-                  </button>
-                  <button type="button" class="btn-manage-squad delete" (click)="disbandTeam(team)" style="display:flex;align-items:center;gap:4px;padding:6px 10px;font-size:11.5px;font-weight:700;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;cursor:pointer;transition:all 0.2s ease;">
-                    <span class="material-symbols-outlined" style="font-size:15px;">delete</span>
-                    Disband
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Empty State for Teams -->
-          <div class="school-teams-empty" *ngIf="schoolTeams.length === 0">
-            <span class="material-symbols-outlined">groups</span>
-            <h4>No Teams Registered</h4>
-            <p>Your school hasn't registered any squads under NTIC competition tracks yet.</p>
-            <button class="btn btn-primary" (click)="openAddTeamModal()">
-              <span class="material-symbols-outlined">add</span>Register Your First Team
-            </button>
-          </div>
-
-          <!-- Registered Team Members & Roster Profiles Section -->
-          <div class="card" style="margin-top:20px;">
-            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
-              <h3 style="display:flex;align-items:center;gap:8px;margin:0;font-size:14px;">
-                <span class="material-symbols-outlined" style="font-size:18px;">badge</span>
-                Registered Team Members &amp; Profiles ({{ schoolMembers.length }})
-              </h3>
-            </div>
-            <div class="card-body" style="padding:16px;">
-              <div *ngIf="schoolMembers.length > 0" class="school-members-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));gap:12px;">
-                <div *ngFor="let member of schoolMembers" class="member-profile-card" (click)="openMemberProfileModal(member)" style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:10px;padding:12px;cursor:pointer;transition:all 0.2s ease;">
+          <!-- ══════════════════════════════════════════════════════════════════
+               2. DEDICATED TEAMS & STUDENT ROSTER WORKSPACE (tab=roster)
+          ══════════════════════════════════════════════════════════════════ -->
+          <div *ngIf="schoolViewTab === 'roster'">
+            <!-- Roster Workspace Header & Search/Filter Toolbar -->
+            <div class="card" style="padding:18px 20px;margin-bottom:20px;background:var(--surface-container-low);border:1px solid var(--outline-variant);">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+                <div>
                   <div style="display:flex;align-items:center;gap:10px;">
-                    <div class="member-avatar" style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">
-                      {{ getInitials(member.name) }}
+                    <span class="material-symbols-outlined" style="font-size:26px;color:var(--primary);">groups</span>
+                    <h2 style="margin:0;font-size:18px;font-weight:800;">My Teams &amp; Student Roster</h2>
+                    <span class="badge primary" style="font-size:11px;padding:3px 8px;">
+                      {{ filteredSchoolTeams.length }} Squad{{ filteredSchoolTeams.length === 1 ? '' : 's' }} &bull; {{ filteredSchoolMembers.length }} Students
+                    </span>
+                  </div>
+                  <p style="margin:4px 0 0;font-size:12.5px;color:var(--on-surface-variant);">
+                    Inspect student rosters, assign captains, modify squads, or issue portal login credentials.
+                  </p>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <button class="btn btn-primary btn-sm" (click)="openAddTeamModal()">
+                    <span class="material-symbols-outlined">add</span>Register New Team
+                  </button>
+                  <button class="btn btn-secondary btn-sm" (click)="openInstitutionPortal()">
+                    <span class="material-symbols-outlined">manage_accounts</span>Student Portal Credentials
+                  </button>
+                </div>
+              </div>
+
+              <!-- Search input & Track Filter Pills -->
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;">
+                <div style="position:relative;flex:1;min-width:260px;">
+                  <span class="material-symbols-outlined" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--outline);">search</span>
+                  <input type="text"
+                         [(ngModel)]="schoolRosterSearchQuery"
+                         placeholder="Search squads, captain names, or student members..."
+                         style="width:100%;padding:8px 12px 8px 36px;border-radius:8px;border:1px solid var(--outline-variant);background:var(--surface-container-lowest);font-size:13px;outline:none;">
+                </div>
+                <!-- Track filter chips -->
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                  <button type="button"
+                          (click)="setSchoolRosterTrackFilter('all')"
+                          class="btn btn-sm"
+                          [class.btn-primary]="schoolRosterTrackFilter === 'all'"
+                          [class.btn-subtle]="schoolRosterTrackFilter !== 'all'"
+                          style="font-size:11.5px;border-radius:999px;padding:4px 12px;">
+                    All Tracks ({{ schoolTeams.length }})
+                  </button>
+                  <button type="button"
+                          (click)="setSchoolRosterTrackFilter('coding')"
+                          class="btn btn-sm"
+                          [class.btn-primary]="schoolRosterTrackFilter === 'coding'"
+                          [class.btn-subtle]="schoolRosterTrackFilter !== 'coding'"
+                          style="font-size:11.5px;border-radius:999px;padding:4px 12px;">
+                    Coding
+                  </button>
+                  <button type="button"
+                          (click)="setSchoolRosterTrackFilter('ai')"
+                          class="btn btn-sm"
+                          [class.btn-primary]="schoolRosterTrackFilter === 'ai'"
+                          [class.btn-subtle]="schoolRosterTrackFilter !== 'ai'"
+                          style="font-size:11.5px;border-radius:999px;padding:4px 12px;">
+                    AI &amp; ML
+                  </button>
+                  <button type="button"
+                          (click)="setSchoolRosterTrackFilter('robotics')"
+                          class="btn btn-sm"
+                          [class.btn-primary]="schoolRosterTrackFilter === 'robotics'"
+                          [class.btn-subtle]="schoolRosterTrackFilter !== 'robotics'"
+                          style="font-size:11.5px;border-radius:999px;padding:4px 12px;">
+                    Robotics
+                  </button>
+                  <button type="button"
+                          (click)="setSchoolRosterTrackFilter('cyber')"
+                          class="btn btn-sm"
+                          [class.btn-primary]="schoolRosterTrackFilter === 'cyber'"
+                          [class.btn-subtle]="schoolRosterTrackFilter !== 'cyber'"
+                          style="font-size:11.5px;border-radius:999px;padding:4px 12px;">
+                    Cyber
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- School Teams Roster List -->
+            <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <span>Enlisted Squads &amp; Rosters ({{ filteredSchoolTeams.length }})</span>
+            </div>
+            <div class="school-teams-grid" *ngIf="filteredSchoolTeams.length > 0">
+              <div *ngFor="let team of filteredSchoolTeams" class="card team-roster-card">
+                <div class="card-body">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                      <span *ngIf="isTeamInCompetition(team)" class="badge primary" style="display:inline-flex;align-items:center;gap:4px;">
+                        <span class="material-symbols-outlined" style="font-size:13px;">emoji_events</span>
+                        <span>In Competition</span>
+                      </span>
+                      <span *ngIf="!isTeamInCompetition(team)" class="badge" style="background:var(--surface-container-high);color:var(--on-surface-variant);display:inline-flex;align-items:center;gap:4px;">
+                        <span class="material-symbols-outlined" style="font-size:13px;">playlist_add_check</span>
+                        <span>Roster Ready</span>
+                      </span>
+                      <span class="badge secondary" style="font-size:10px;">
+                        {{ team.status || 'Active' }}
+                      </span>
                     </div>
-                    <div style="flex:1;min-width:0;">
-                      <div style="font-size:13px;font-weight:700;color:var(--on-surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ member.name }}</div>
-                      <div style="font-size:11px;color:var(--on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ member.email }}</div>
+                    <span class="team-track-chip" [class]="team.track.toLowerCase()">{{ team.track }}</span>
+                  </div>
+                  <h3 class="team-card-title">{{ team.name }}</h3>
+                  <div class="team-card-meta">
+                    <div><strong>Team Lead:</strong> {{ team.rosterList?.[0] || team.lead }}</div>
+                    <div><strong>Members:</strong> {{ team.members }} active students</div>
+                    <div *ngIf="isTeamInCompetition(team)" style="margin-top:4px;font-size:11.5px;color:var(--primary);display:flex;align-items:center;gap:4px;">
+                      <span class="material-symbols-outlined" style="font-size:14px;">emoji_events</span>
+                      <span>Cycle: <strong>{{ getTeamCompetitionTitle(team) }}</strong></span>
+                    </div>
+                    <!-- Mentor is centrally assigned by NTIC Administration -->
+                    <div style="margin-top:8px;padding:6px 10px;background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;">
+                      <span style="display:flex;align-items:center;gap:5px;color:var(--on-surface-variant);">
+                        <span class="material-symbols-outlined" style="font-size:15px;color:var(--primary);">co_present</span>
+                        <strong>Assigned Mentor:</strong>
+                      </span>
+                      <span *ngIf="team.mentorId || team.mentor" class="badge secondary" style="font-size:10.5px;">
+                        {{ getMentorName(team.mentorId) || team.mentor }}
+                      </span>
+                      <span *ngIf="!team.mentorId && !team.mentor" style="color:var(--on-surface-variant);font-style:italic;font-size:11px;">
+                        Pending NTIC allocation
+                      </span>
+                    </div>
+                    <div *ngIf="team.motto" style="font-style:italic;color:var(--primary);margin-top:4px;border-top:1px dashed var(--outline-variant);padding-top:4px;">"{{ team.motto }}"</div>
+                    
+                    <!-- Display Roster Chips if available -->
+                    <div *ngIf="team.rosterList && team.rosterList.length > 0" class="roster-chips-container" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--outline-variant);">
+                      <span *ngFor="let student of team.rosterList" class="roster-student-chip" style="padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;border:1px solid var(--outline-variant);background:var(--surface-container);color:var(--on-surface);">
+                        <span class="material-symbols-outlined" style="font-size:13px;">person</span>
+                        {{ student }}
+                      </span>
                     </div>
                   </div>
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px dashed var(--outline-variant);font-size:11px;">
-                    <span class="badge secondary" style="font-size:10px;">{{ member.role || 'Member' }}</span>
-                    <span style="color:var(--primary);font-weight:600;display:flex;align-items:center;gap:2px;">
-                      <span class="material-symbols-outlined" style="font-size:14px;">visibility</span> Profile
-                    </span>
+
+                  <!-- Squad Management Footer Bar -->
+                  <div class="team-card-actions" style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--outline-variant);align-items:center;flex-wrap:wrap;">
+                    <button *ngIf="!isTeamInCompetition(team)" type="button" routerLink="/competitions" style="display:flex;align-items:center;gap:4px;padding:6px 12px;font-size:11.5px;font-weight:700;color:#059669;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:8px;cursor:pointer;margin-right:auto;text-decoration:none;">
+                      <span class="material-symbols-outlined" style="font-size:15px;">emoji_events</span>
+                      Apply to Cycle
+                    </button>
+                    <button type="button" class="btn-manage-squad edit" (click)="editTeam(team)" style="display:flex;align-items:center;gap:4px;padding:6px 12px;font-size:11.5px;font-weight:700;color:var(--primary);background:rgba(0,63,135,0.06);border:1px solid rgba(0,63,135,0.2);border-radius:8px;cursor:pointer;transition:all 0.2s ease;">
+                      <span class="material-symbols-outlined" style="font-size:15px;">edit_square</span>
+                      Edit Roster &amp; Squad
+                    </button>
+                    <button type="button" class="btn-manage-squad delete" (click)="disbandTeam(team)" style="display:flex;align-items:center;gap:4px;padding:6px 10px;font-size:11.5px;font-weight:700;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;cursor:pointer;transition:all 0.2s ease;">
+                      <span class="material-symbols-outlined" style="font-size:15px;">delete</span>
+                      Disband
+                    </button>
                   </div>
                 </div>
               </div>
-              <div *ngIf="schoolMembers.length === 0" style="text-align:center;padding:24px;color:var(--on-surface-variant);">
-                <span class="material-symbols-outlined" style="font-size:32px;color:var(--outline);">person_off</span>
-                <p style="font-size:13px;margin-top:6px;">No team members registered under your institution yet.</p>
+            </div>
+            
+            <!-- Empty Filter State -->
+            <div *ngIf="filteredSchoolTeams.length === 0 && schoolTeams.length > 0" class="card" style="text-align:center;padding:40px 20px;margin-bottom:24px;">
+              <span class="material-symbols-outlined" style="font-size:44px;color:var(--outline);margin-bottom:8px;">search_off</span>
+              <h4 style="margin:0 0 4px;font-size:15px;font-weight:700;">No Matching Squads</h4>
+              <p style="margin:0 0 12px;font-size:12.5px;color:var(--on-surface-variant);">No squads match "{{ schoolRosterSearchQuery }}" under the selected track.</p>
+              <button class="btn btn-ghost btn-sm" (click)="schoolRosterSearchQuery = ''; schoolRosterTrackFilter = 'all'">Reset Filters</button>
+            </div>
+
+            <!-- Empty State for Teams -->
+            <div class="school-teams-empty" *ngIf="schoolTeams.length === 0">
+              <span class="material-symbols-outlined">groups</span>
+              <h4>No Teams Registered</h4>
+              <p>Your school hasn't registered any squads under NTIC competition tracks yet.</p>
+              <button class="btn btn-primary" (click)="openAddTeamModal()">
+                <span class="material-symbols-outlined">add</span>Register Your First Team
+              </button>
+            </div>
+
+            <!-- Registered Team Members & Roster Profiles Section -->
+            <div class="card" style="margin-top:24px;">
+              <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                <h3 style="display:flex;align-items:center;gap:8px;margin:0;font-size:14px;">
+                  <span class="material-symbols-outlined" style="font-size:18px;">badge</span>
+                  Registered Student Directory &amp; Profiles ({{ filteredSchoolMembers.length }})
+                </h3>
+              </div>
+              <div class="card-body" style="padding:16px;">
+                <div *ngIf="filteredSchoolMembers.length > 0" class="school-members-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));gap:12px;">
+                  <div *ngFor="let member of filteredSchoolMembers" class="member-profile-card" (click)="openMemberProfileModal(member)" style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:10px;padding:12px;cursor:pointer;transition:all 0.2s ease;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                      <div class="member-avatar" style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">
+                        {{ getInitials(member.name) }}
+                      </div>
+                      <div style="flex:1;min-width:0;">
+                        <div style="font-size:13px;font-weight:700;color:var(--on-surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ member.name }}</div>
+                        <div style="font-size:11px;color:var(--on-surface-variant);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ member.email }}</div>
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px dashed var(--outline-variant);font-size:11px;">
+                      <span class="badge secondary" style="font-size:10px;">{{ member.role || 'Member' }}</span>
+                      <span style="color:var(--primary);font-weight:600;display:flex;align-items:center;gap:2px;">
+                        <span class="material-symbols-outlined" style="font-size:14px;">visibility</span> Profile
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div *ngIf="filteredSchoolMembers.length === 0" style="text-align:center;padding:24px;color:var(--on-surface-variant);">
+                  <span class="material-symbols-outlined" style="font-size:32px;color:var(--outline);">person_off</span>
+                  <p style="font-size:13px;margin-top:6px;">No student records found matching current filter.</p>
+                </div>
               </div>
             </div>
           </div>
@@ -603,7 +775,7 @@
       </div>
 
       <!-- RIGHT COLUMN -->
-      <div>
+      <div *ngIf="!isSchoolRosterView">
         <!-- Instructor Sidebar Panel -->
         <div *ngIf="activeRoleId === 'instructor'" style="display:flex;flex-direction:column;gap:16px;">
           <!-- Submissions Awaiting Grading -->

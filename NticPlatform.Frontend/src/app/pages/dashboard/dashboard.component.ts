@@ -83,6 +83,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   dashboardSubtitle = 'NTIC Platform Portal';
   currentUser: any = null;
 
+  // ── School Admin Workspace State ──────────────────────────
+  schoolViewTab: 'dashboard' | 'roster' = 'dashboard';
+  schoolRosterSearchQuery = '';
+  schoolRosterTrackFilter = 'all';
+
   stats: any[] = [];
 
   // ─── LIVE TELEMETRY ──────────────────────────
@@ -3309,7 +3314,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
 
       this.isRegModalOpen = params['openRegModal'] === 'true';
-      if (params['tab'] === 'roster') {
+      if (this.activeRoleId === 'school_admin') {
+        this.schoolViewTab = params['tab'] === 'roster' ? 'roster' : 'dashboard';
+        const activeUser = this.currentUser;
+        const userName = activeUser ? activeUser.name : 'Administrator';
+        if (this.schoolViewTab === 'roster') {
+          this.dashboardTitle = activeUser?.organization ? `${activeUser.organization} Teams & Roster` : 'My Teams & Student Roster';
+          this.dashboardSubtitle = 'Manage your registered squads, assign team captains, configure members, and issue credentials.';
+        } else {
+          this.dashboardTitle = activeUser?.organization ? `${activeUser.organization} Admin Dashboard` : 'School Admin Dashboard';
+          this.dashboardSubtitle = `Welcome back, ${userName}. NTIC Analytics & Team Management.`;
+        }
+      } else if (params['tab'] === 'roster') {
         setTimeout(() => {
           if (typeof document !== 'undefined') {
             const el = document.getElementById('school-roster-section');
@@ -6537,6 +6553,57 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   selectedMemberProfile: any | null = null;
+
+  get isSchoolRosterView(): boolean {
+    return this.activeRoleId === 'school_admin' && this.schoolViewTab === 'roster';
+  }
+
+  get isSchoolDashboardView(): boolean {
+    return this.activeRoleId === 'school_admin' && this.schoolViewTab === 'dashboard';
+  }
+
+  get currentRoleStats(): any[] {
+    return this.activeRoleId === 'school_admin' ? this.schoolAdminStats : this.stats;
+  }
+
+  get filteredSchoolTeams(): any[] {
+    let list = this.schoolTeams;
+    if (this.schoolRosterTrackFilter && this.schoolRosterTrackFilter !== 'all') {
+      list = list.filter(t => (t.track || '').toLowerCase() === this.schoolRosterTrackFilter.toLowerCase());
+    }
+    if (this.schoolRosterSearchQuery && this.schoolRosterSearchQuery.trim()) {
+      const q = this.schoolRosterSearchQuery.trim().toLowerCase();
+      list = list.filter(t => 
+        (t.name || '').toLowerCase().includes(q) ||
+        (t.lead || '').toLowerCase().includes(q) ||
+        (t.track || '').toLowerCase().includes(q) ||
+        (Array.isArray(t.rosterList) && t.rosterList.some((m: string) => m.toLowerCase().includes(q)))
+      );
+    }
+    return list;
+  }
+
+  get filteredSchoolMembers(): any[] {
+    let list = this.schoolMembers;
+    if (this.schoolRosterTrackFilter && this.schoolRosterTrackFilter !== 'all') {
+      list = list.filter(m => (m.track || '').toLowerCase().includes(this.schoolRosterTrackFilter.toLowerCase()));
+    }
+    if (this.schoolRosterSearchQuery && this.schoolRosterSearchQuery.trim()) {
+      const q = this.schoolRosterSearchQuery.trim().toLowerCase();
+      list = list.filter(m =>
+        (m.name || '').toLowerCase().includes(q) ||
+        (m.email || '').toLowerCase().includes(q) ||
+        (m.teamName || '').toLowerCase().includes(q) ||
+        (m.role || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }
+
+  setSchoolRosterTrackFilter(track: string): void {
+    this.schoolRosterTrackFilter = track;
+    this.cdr.markForCheck();
+  }
 
   openMemberProfileModal(member: any): void {
     this.selectedMemberProfile = member;
