@@ -108,7 +108,10 @@
         <span class="material-symbols-outlined">folder_open</span> Learning Assets
       </button>
       <button class="tab-btn" [class.active]="activeTab === 'assignments'" (click)="activeTab = 'assignments'">
-        <span class="material-symbols-outlined">assignment</span> Assignments &amp; Grading
+        <span class="material-symbols-outlined">assignment</span> Assignments
+      </button>
+      <button class="tab-btn" [class.active]="activeTab === 'grading'" (click)="activeTab = 'grading'">
+        <span class="material-symbols-outlined">fact_check</span> Grading Desk
         <span class="badge-count" *ngIf="pendingGradingCount > 0">{{ pendingGradingCount }}</span>
       </button>
       <button class="tab-btn" [class.active]="activeTab === 'students'" (click)="activeTab = 'students'">
@@ -419,17 +422,20 @@
   </div>
 
   <!-- ── TAB 4: ASSIGNMENTS & GRADING ── -->
+  <!-- ── TAB 4: ASSIGNMENTS HUB ── -->
   <div *ngIf="activeTab === 'assignments'" class="tab-content-panel">
     <div class="panel-header">
-      <h2>Assignments & Submissions Desk</h2>
+      <div>
+        <h2>Course Assessment Tasks ({{ filteredAssignments.length }})</h2>
+        <p class="text-subtle text-xs">Configure challenge deliverables, due dates, starter files, and rubric evaluation matrices.</p>
+      </div>
       <button class="btn btn-sm btn-primary" (click)="openAssignmentModal()">
-        <span class="material-symbols-outlined">add</span> New Assignment
+        <span class="material-symbols-outlined">add</span> Create New Assignment
       </button>
     </div>
 
     <!-- Active Assignments Section -->
     <div class="section-block">
-      <h3>Active Course Assignments ({{ filteredAssignments.length }})</h3>
       <div class="table-responsive" *ngIf="filteredAssignments.length > 0">
         <table class="lms-table">
           <thead>
@@ -468,27 +474,38 @@
           </tbody>
         </table>
       </div>
+
+      <div class="empty-state" *ngIf="filteredAssignments.length === 0">
+        <span class="material-symbols-outlined">assignment</span>
+        <h3>No Assignments Created Yet</h3>
+        <p>Author your first practical challenge or project milestone.</p>
+        <button class="btn btn-primary mt-3" (click)="openAssignmentModal()">
+          <span class="material-symbols-outlined">add</span> Create First Assignment
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: DEDICATED GRADING DESK ── -->
+  <div *ngIf="activeTab === 'grading'" class="tab-content-panel">
+    <div class="panel-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+      <div>
+        <h2 style="margin:0 0 4px;">Student Submissions &amp; Grading Desk ({{ filteredSubmissions.length }})</h2>
+        <p class="text-subtle text-xs">Review student code deliverables, evaluate with the Rubric Matrix, or request revisions.</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button type="button" class="btn btn-sm btn-squad-toggle" [class.active]="filterMentoredOnly" (click)="filterMentoredOnly = !filterMentoredOnly" title="Filter to submissions from your mentored squads">
+          <span class="material-symbols-outlined">shield_person</span>
+          <span>My Mentored Squads</span>
+          <span class="squad-badge" *ngIf="filterMentoredOnly">Active</span>
+        </button>
+        <button class="btn btn-outline btn-sm" (click)="exportGradingQueueCsv()" [disabled]="filteredSubmissions.length === 0" title="Export submissions queue to CSV">
+          <span class="material-symbols-outlined" style="font-size:16px;">download</span> Export Submissions (CSV)
+        </button>
+      </div>
     </div>
 
-    <!-- Student Submissions Audit Table -->
-    <div class="section-block mt-6">
-      <div class="panel-sub-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-        <div>
-          <h3 style="margin:0 0 4px;">Student Submissions &amp; Review Desk ({{ filteredSubmissions.length }})</h3>
-          <span class="text-subtle text-sm">Review student submissions, assign rubric scores, or request revisions.</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <button type="button" class="btn btn-sm btn-squad-toggle" [class.active]="filterMentoredOnly" (click)="filterMentoredOnly = !filterMentoredOnly" title="Filter to submissions from your mentored squads">
-            <span class="material-symbols-outlined">shield_person</span>
-            <span>My Mentored Squads</span>
-            <span class="squad-badge" *ngIf="filterMentoredOnly">Active</span>
-          </button>
-          <button class="btn btn-outline btn-sm" (click)="exportGradingQueueCsv()" [disabled]="filteredSubmissions.length === 0" title="Export submissions queue to CSV">
-            <span class="material-symbols-outlined" style="font-size:16px;">download</span> Export Submissions (CSV)
-          </button>
-        </div>
-      </div>
-
+    <div class="section-block">
       <div class="table-responsive" *ngIf="filteredSubmissions.length > 0">
         <table class="lms-table">
           <thead>
@@ -523,13 +540,19 @@
                 <span *ngIf="sub.status === 'rejected'" class="badge badge-danger">Rejected -- Resubmit</span>
               </td>
               <td>
-                <button class="btn btn-xs btn-outline" (click)="openGradingModal(sub)">
-                  <span class="material-symbols-outlined">fact_check</span> Review
+                <button class="btn btn-xs btn-primary" (click)="openGradingModal(sub)">
+                  <span class="material-symbols-outlined">fact_check</span> Grade &amp; Review
                 </button>
               </td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="empty-state" *ngIf="filteredSubmissions.length === 0">
+        <span class="material-symbols-outlined">fact_check</span>
+        <h3>Grading Desk Queue is Empty</h3>
+        <p>No student submissions are currently awaiting evaluation.</p>
       </div>
     </div>
   </div>
@@ -803,19 +826,23 @@
 
     <!-- Scoped Console Workspace Tabs -->
     <div class="console-tabs-bar">
-      <button class="console-tab-btn" [class.active]="courseConsoleTab === 'modules'" (click)="courseConsoleTab = 'modules'">
+      <button id="tour-tab-modules" class="console-tab-btn" [class.active]="courseConsoleTab === 'modules'" (click)="onConsoleTabClick('modules')">
         <span class="material-symbols-outlined">view_module</span> Curriculum Modules ({{ getModulesForCourse(activeDetailCourse?.id).length }})
       </button>
-      <button class="console-tab-btn" [class.active]="courseConsoleTab === 'materials'" (click)="courseConsoleTab = 'materials'">
+      <button id="tour-tab-materials" class="console-tab-btn" [class.active]="courseConsoleTab === 'materials'" (click)="onConsoleTabClick('materials')">
         <span class="material-symbols-outlined">folder_open</span> Learning Assets ({{ getMaterialsForCourse(activeDetailCourse?.id).length }})
       </button>
-      <button class="console-tab-btn" [class.active]="courseConsoleTab === 'assignments'" (click)="courseConsoleTab = 'assignments'">
-        <span class="material-symbols-outlined">assignment</span> Assignments &amp; Grading ({{ getAssignmentsForCourse(activeDetailCourse?.id).length }})
+      <button id="tour-tab-assignments" class="console-tab-btn" [class.active]="courseConsoleTab === 'assignments'" (click)="onConsoleTabClick('assignments')">
+        <span class="material-symbols-outlined">assignment</span> Assignments ({{ getAssignmentsForCourse(activeDetailCourse?.id).length }})
       </button>
-      <button class="console-tab-btn" [class.active]="courseConsoleTab === 'students'" (click)="courseConsoleTab = 'students'">
+      <button id="tour-tab-grading" class="console-tab-btn" [class.active]="courseConsoleTab === 'grading'" (click)="onConsoleTabClick('grading')">
+        <span class="material-symbols-outlined">fact_check</span> Grading Desk
+        <span class="badge-count" *ngIf="activeDetailCourse?.awaiting_grading">{{ activeDetailCourse?.awaiting_grading }}</span>
+      </button>
+      <button id="tour-tab-students" class="console-tab-btn" [class.active]="courseConsoleTab === 'students'" (click)="onConsoleTabClick('students')">
         <span class="material-symbols-outlined">group</span> Student Roster
       </button>
-      <button class="console-tab-btn" [class.active]="courseConsoleTab === 'insights'" (click)="courseConsoleTab = 'insights'">
+      <button id="tour-tab-insights" class="console-tab-btn" [class.active]="courseConsoleTab === 'insights'" (click)="onConsoleTabClick('insights')">
         <span class="material-symbols-outlined">analytics</span> Insights &amp; Analytics
       </button>
     </div>
@@ -827,7 +854,7 @@
           <h3>Syllabus Structure &amp; Lesson Sequence</h3>
           <p class="text-subtle text-xs">Tap any module to enter its dedicated visual block canvas.</p>
         </div>
-        <button class="btn btn-sm btn-primary" (click)="openModuleStudio()">
+        <button id="tour-btn-add-module" class="btn btn-sm btn-primary" (click)="onTourAddModuleClick()">
           <span class="material-symbols-outlined">add</span> Add New Module
         </button>
       </div>
@@ -860,7 +887,7 @@
         <span class="material-symbols-outlined">view_module</span>
         <h3>No Curriculum Modules Yet</h3>
         <p>Start designing the syllabus by adding your first lesson module.</p>
-        <button class="btn btn-primary mt-3" (click)="openModuleStudio()">
+        <button id="tour-btn-create-first-module" class="btn btn-primary mt-3" (click)="onTourAddModuleClick()">
           <span class="material-symbols-outlined">add</span> Create First Module
         </button>
       </div>
@@ -871,11 +898,11 @@
       <div class="console-section-header">
         <div>
           <h3>Course Learning Assets &amp; Widgets</h3>
-          <p class="text-subtle text-xs">Video lectures, interactive reading guides, quizzes, and code challenges.</p>
+          <p class="text-subtle text-xs">Video lectures, interactive reading guides, quizzes, and code challenges assembled from your modules.</p>
         </div>
-        <button class="btn btn-sm btn-primary" (click)="openMaterialModal()">
-          <span class="material-symbols-outlined">add</span> Add Learning Asset
-        </button>
+        <div class="assets-source-badge" title="Assets are authored within Curriculum Modules">
+          <span class="material-symbols-outlined text-primary">auto_awesome</span> Sourced from Module Studio
+        </div>
       </div>
 
       <div class="table-responsive" *ngIf="getMaterialsForCourse(activeDetailCourse?.id).length > 0">
@@ -903,62 +930,350 @@
           </tbody>
         </table>
       </div>
-
-      <div class="empty-state" *ngIf="getMaterialsForCourse(activeDetailCourse?.id).length === 0">
-        <span class="material-symbols-outlined">folder_open</span>
-        <h3>No Learning Assets Found</h3>
-        <p>Add video embeds, quizzes, or code challenges to this course.</p>
-      </div>
     </div>
 
-    <!-- ── CONSOLE SUBTAB 3: ASSIGNMENTS & GRADING ── -->
+    <!-- ── CONSOLE SUBTAB 3: ASSIGNMENTS ── -->
     <div *ngIf="courseConsoleTab === 'assignments'" class="console-tab-body">
-      <div class="console-section-header">
-        <div>
-          <h3>Course Assessment Tasks</h3>
-          <p class="text-subtle text-xs">Grading rubrics and project deliverables.</p>
+      <!-- ── IN-FLOW ASSIGNMENT STUDIO (OPEN WHEN CREATING/EDITING) ── -->
+      <div *ngIf="isAssignmentWizardOpen" class="in-flow-assignment-studio fade-in">
+        <div class="in-flow-studio-header">
+          <div class="studio-header-title">
+            <span class="material-symbols-outlined header-icon">assignment_add</span>
+            <div>
+              <div class="in-flow-badge-context">
+                <span class="context-pill">
+                  <span class="material-symbols-outlined">school</span>
+                  {{ activeDetailCourse?.title }}
+                </span>
+                <span class="context-pill track-pill">
+                  <span class="material-symbols-outlined">category</span>
+                  {{ (assignmentForm.track || activeDetailCourse?.track || 'coding') | titlecase }} Track
+                </span>
+              </div>
+              <h3>{{ formMode === 'edit' ? 'Edit Assignment Challenge' : 'Create New Course Assignment' }}</h3>
+              <p class="text-subtle text-xs">Define competition tasks, milestone deliverables, starter code, and rubric scoring benchmarks.</p>
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline" (click)="exitAssignmentWizard()">
+            <span class="material-symbols-outlined">close</span> Close Studio
+          </button>
         </div>
-        <button class="btn btn-sm btn-primary" (click)="openAssignmentModal()">
-          <span class="material-symbols-outlined">add</span> Create Assignment
-        </button>
+
+        <!-- Stepper Indicators (3 Steps) -->
+        <div class="wizard-stepper mb-4">
+          <div class="wizard-step-indicator" [class.active]="assignmentWizardStep >= 1" [class.current]="assignmentWizardStep === 1">1</div>
+          <div class="wizard-connector" [class.active]="assignmentWizardStep >= 2"></div>
+          <div class="wizard-step-indicator" [class.active]="assignmentWizardStep >= 2" [class.current]="assignmentWizardStep === 2">2</div>
+          <div class="wizard-connector" [class.active]="assignmentWizardStep >= 3"></div>
+          <div class="wizard-step-indicator" [class.active]="assignmentWizardStep >= 3" [class.current]="assignmentWizardStep === 3">3</div>
+        </div>
+
+        <div class="wizard-content-box in-flow-content-box">
+          <!-- Step 1: Challenge Title, Due Date & Max Score -->
+          <div *ngIf="assignmentWizardStep === 1" class="wizard-step-pane slide-in">
+            <span class="step-badge">Step 1 of 3: Deliverable Details</span>
+            <h2>Give this challenge a compelling title &amp; deadline</h2>
+            <p class="step-subtext">Clearly communicate what students are building and when it is due.</p>
+
+            <div class="focused-input-wrap mb-4">
+              <span class="material-symbols-outlined input-icon">assignment</span>
+              <input type="text" [(ngModel)]="assignmentForm.title" placeholder="e.g. Milestone 1: Autonomous Pathfinding Algorithm" class="focused-large-input" autofocus />
+            </div>
+
+            <div class="wizard-inputs-dual-grid">
+              <div class="input-card-group">
+                <label><span class="material-symbols-outlined">event</span> Submission Due Date</label>
+                <input type="date" [(ngModel)]="assignmentForm.dueDate" class="input-field-clean" />
+              </div>
+
+              <div class="input-card-group">
+                <label><span class="material-symbols-outlined">grade</span> Total Max Points</label>
+                <input type="number" [(ngModel)]="assignmentForm.maxScore" class="input-field-clean" [readonly]="rubricCriteria.length > 0" />
+                <span class="text-xs text-subtle mt-1" *ngIf="rubricCriteria.length > 0">Calculated automatically from Rubric Matrix in Step 3</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Problem Statement & Starter Files with Rich Formatting -->
+          <div *ngIf="assignmentWizardStep === 2" class="wizard-step-pane slide-in">
+            <span class="step-badge">Step 2 of 3: Problem Statement</span>
+            <h2>Problem Statement, Instructions &amp; Starter Files</h2>
+            <p class="step-subtext">Detail requirements, edge cases, starter repository links, and rubric deliverables.</p>
+
+            <!-- Real-Time WYSIWYG Studio Editor -->
+            <div class="wysiwyg-editor-card mb-4">
+              <div class="wysiwyg-toolbar">
+                <div class="toolbar-group">
+                  <button type="button" class="wysiwyg-btn" (click)="execEditorCommand('bold')" title="Bold (Ctrl+B)">
+                    <span class="material-symbols-outlined">format_bold</span>
+                  </button>
+                  <button type="button" class="wysiwyg-btn" (click)="execEditorCommand('italic')" title="Italic (Ctrl+I)">
+                    <span class="material-symbols-outlined">format_italic</span>
+                  </button>
+                  <button type="button" class="wysiwyg-btn" (click)="execEditorCommand('underline')" title="Underline (Ctrl+U)">
+                    <span class="material-symbols-outlined">format_underlined</span>
+                  </button>
+                  <span class="toolbar-divider"></span>
+                  <button type="button" class="wysiwyg-btn text-btn" (click)="execEditorFormatBlock('h2')" title="Section Heading">
+                    <strong>H2</strong>
+                  </button>
+                  <button type="button" class="wysiwyg-btn text-btn" (click)="execEditorFormatBlock('h3')" title="Subsection Heading">
+                    <strong>H3</strong>
+                  </button>
+                  <span class="toolbar-divider"></span>
+                  <button type="button" class="wysiwyg-btn" (click)="execEditorCommand('insertUnorderedList')" title="Bullet List">
+                    <span class="material-symbols-outlined">format_list_bulleted</span>
+                  </button>
+                  <button type="button" class="wysiwyg-btn" (click)="execEditorCommand('insertOrderedList')" title="Numbered List">
+                    <span class="material-symbols-outlined">format_list_numbered</span>
+                  </button>
+                  <span class="toolbar-divider"></span>
+                  <button type="button" class="wysiwyg-btn" (click)="insertEditorCodeBlock()" title="Insert Code Snippet">
+                    <span class="material-symbols-outlined">code</span>
+                  </button>
+                  <button type="button" class="wysiwyg-btn" (click)="insertEditorCallout()" title="Insert Callout Note">
+                    <span class="material-symbols-outlined">lightbulb</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Contenteditable Visual Canvas (Type & See Styled Output Directly!) -->
+              <div 
+                #assignmentEditorCanvas
+                class="wysiwyg-content-canvas" 
+                contenteditable="true"
+                (input)="onAssignmentEditorInput($event)"
+                placeholder="Specify project requirements, starter repository deliverables, edge cases, and environment setup..."
+              ></div>
+            </div>
+
+            <!-- Starter Code & Specification PDF Dropzone -->
+            <div class="attachment-uploader-card">
+              <div class="attachment-dropzone">
+                <span class="material-symbols-outlined upload-icon">cloud_upload</span>
+                <div class="upload-copy">
+                  <strong>Attach Starter Files, Template Repo ZIP, or Problem PDF</strong>
+                  <p>Drag &amp; drop or click to upload supporting assignment assets</p>
+                </div>
+                <label class="btn btn-sm btn-outline cursor-pointer">
+                  <span>Browse Files</span>
+                  <input type="file" (change)="onAssignmentFileUpload($event)" style="display:none;" />
+                </label>
+              </div>
+              <div *ngIf="isUploadingAssignmentFile" class="uploading-progress-indicator mt-2">
+                <span class="spinner-inline"></span> Uploading starter asset...
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: Multi-Criterion Rubric Matrix -->
+          <div *ngIf="assignmentWizardStep === 3" class="wizard-step-pane slide-in">
+            <span class="step-badge">Step 3 of 3: Evaluation Matrix</span>
+            <h2>Multi-Criterion Rubric Matrix</h2>
+            <p class="step-subtext">Define clear grading criteria. Scores will sync directly into the dedicated Grading Desk.</p>
+
+            <div class="rubric-matrix-builder mb-3">
+              <div class="rubric-header-row">
+                <div class="rubric-title-block">
+                  <span class="material-symbols-outlined text-primary">fact_check</span>
+                  <div>
+                    <strong>Evaluation Criteria &amp; Weighting</strong>
+                    <span class="rubric-subtitle">{{ rubricCriteria.length }} criteria defined</span>
+                  </div>
+                </div>
+                <div class="rubric-total-pill" [class.badge-match]="rubricTotalPoints === assignmentForm.maxScore">
+                  Total Weight: <strong>{{ rubricTotalPoints }} pts</strong>
+                </div>
+              </div>
+
+              <!-- 1-Click Quick Presets -->
+              <div class="rubric-presets-strip">
+                <span class="preset-label">Apply Preset:</span>
+                <button type="button" class="btn-rubric-preset" (click)="applyRubricPreset('coding')">
+                  <span class="material-symbols-outlined">terminal</span> Code &amp; Algorithms
+                </button>
+                <button type="button" class="btn-rubric-preset" (click)="applyRubricPreset('robotics')">
+                  <span class="material-symbols-outlined">smart_toy</span> Hardware &amp; Robotics
+                </button>
+                <button type="button" class="btn-rubric-preset" (click)="applyRubricPreset('presentation')">
+                  <span class="material-symbols-outlined">co_present</span> Project Report
+                </button>
+              </div>
+
+              <!-- Criteria List -->
+              <div class="rubric-criteria-list" *ngIf="rubricCriteria.length > 0">
+                <div *ngFor="let crit of rubricCriteria; let cIdx = index" class="rubric-criterion-card">
+                  <div class="criterion-main-inputs">
+                    <div class="criterion-title-wrap">
+                      <span class="criterion-idx">#{{ cIdx + 1 }}</span>
+                      <input type="text" [(ngModel)]="crit.title" placeholder="Criterion Title (e.g. Algorithmic Correctness)" class="crit-input-title" />
+                    </div>
+                    <div class="criterion-points-wrap">
+                      <input type="number" [(ngModel)]="crit.maxPoints" (ngModelChange)="syncMaxScoreFromRubric()" min="1" max="100" class="crit-input-points" />
+                      <span class="crit-pts-suffix">pts</span>
+                      <button type="button" class="btn-remove-crit" (click)="removeRubricCriterion(cIdx)" title="Remove criterion">
+                        <span class="material-symbols-outlined">close</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="criterion-desc-wrap">
+                    <input type="text" [(ngModel)]="crit.description" placeholder="Guidance notes: what benchmark must the student meet to achieve full marks?" class="crit-input-desc" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="rubric-actions-row">
+                <button type="button" class="btn btn-sm btn-outline" (click)="addRubricCriterion()">
+                  <span class="material-symbols-outlined">add</span> Add Custom Criterion
+                </button>
+                <span class="rubric-hint" *ngIf="rubricCriteria.length === 0">No rubric attached yet. Use a preset above or add criteria manually.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Wizard Navigation Footer -->
+        <div class="wizard-footer in-flow-wizard-footer">
+          <button class="btn btn-outline" *ngIf="assignmentWizardStep === 1" (click)="exitAssignmentWizard()">Cancel</button>
+          <button class="btn btn-outline" *ngIf="assignmentWizardStep > 1" (click)="prevAssignmentWizardStep()">
+            <span class="material-symbols-outlined">arrow_back</span> Back
+          </button>
+
+          <div class="wizard-right-actions">
+            <button class="btn btn-primary" *ngIf="assignmentWizardStep < 3" (click)="nextAssignmentWizardStep()" [disabled]="assignmentWizardStep === 1 && !assignmentForm.title.trim()">
+              Next Step <span class="material-symbols-outlined">arrow_forward</span>
+            </button>
+            <button class="btn btn-success" *ngIf="assignmentWizardStep === 3" (click)="saveAssignmentFromWizard()" [disabled]="isSaving || !assignmentForm.title.trim() || !assignmentForm.courseId">
+              <span *ngIf="!isSaving" style="display:flex;align-items:center;gap:6px;">
+                <span class="material-symbols-outlined">check_circle</span> Save &amp; Publish Assignment
+              </span>
+              <span *ngIf="isSaving" class="spinner-inline"></span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div class="table-responsive" *ngIf="getAssignmentsForCourse(activeDetailCourse?.id).length > 0">
+      <!-- ── STANDARD ASSIGNMENTS TABLE (SHOWN WHEN NOT IN STUDIO) ── -->
+      <ng-container *ngIf="!isAssignmentWizardOpen">
+        <div class="console-section-header">
+          <div>
+            <h3>Course Assessment Tasks</h3>
+            <p class="text-subtle text-xs">Project deliverables, due dates, and rubric evaluation matrices.</p>
+          </div>
+          <button id="tour-btn-create-asgn" class="btn btn-sm btn-primary" (click)="onTourCreateAssignmentClick()">
+            <span class="material-symbols-outlined">add</span> Create Assignment
+          </button>
+        </div>
+
+        <div class="table-responsive" *ngIf="getAssignmentsForCourse(activeDetailCourse?.id).length > 0">
+          <table class="lms-table">
+            <thead>
+              <tr>
+                <th>Assignment Title</th>
+                <th>Due Date</th>
+                <th>Max Score</th>
+                <th>Submissions</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let asgn of getAssignmentsForCourse(activeDetailCourse?.id)" class="clickable-row" (click)="openAssignmentWizard(asgn)">
+                <td><strong>{{ asgn.title }}</strong></td>
+                <td>{{ asgn.due_date || asgn.dueDate || 'Open-ended' }}</td>
+                <td>{{ asgn.max_score || asgn.maxScore || 100 }} pts</td>
+                <td><span class="badge badge-info">{{ asgn.submissions_count || 0 }} Submitted</span></td>
+                <td>
+                  <div class="table-actions" (click)="$event.stopPropagation()">
+                    <button class="btn btn-xs btn-subtle" (click)="openAssignmentWizard(asgn)" title="Edit"><span class="material-symbols-outlined">edit</span></button>
+                    <button class="btn btn-xs btn-danger" (click)="deleteAssignment(asgn.id)" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="empty-state" *ngIf="getAssignmentsForCourse(activeDetailCourse?.id).length === 0">
+          <span class="material-symbols-outlined">assignment</span>
+          <h3>No Assignments Configured</h3>
+          <p>Create a project or checkpoint task for students to submit work.</p>
+          <button id="tour-btn-create-first-asgn" class="btn btn-primary mt-3" (click)="onTourCreateAssignmentClick()">
+            <span class="material-symbols-outlined">add</span> Create First Assignment
+          </button>
+        </div>
+      </ng-container>
+    </div>
+
+    <!-- ── CONSOLE SUBTAB 4: DEDICATED GRADING DESK ── -->
+    <div *ngIf="courseConsoleTab === 'grading'" class="console-tab-body">
+      <div class="console-section-header">
+        <div>
+          <h3>Course Submissions &amp; Grading Desk</h3>
+          <p class="text-subtle text-xs">Review student code deliverables, evaluate with the Rubric Matrix, or request revisions.</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button id="tour-btn-mentored-squads" type="button" class="btn btn-sm btn-squad-toggle" [class.active]="filterMentoredOnly" (click)="filterMentoredOnly = !filterMentoredOnly" title="Filter to submissions from your mentored squads">
+            <span class="material-symbols-outlined">shield_person</span>
+            <span>My Mentored Squads</span>
+            <span class="squad-badge" *ngIf="filterMentoredOnly">Active</span>
+          </button>
+          <button class="btn btn-outline btn-sm" (click)="exportGradingQueueCsv()" [disabled]="getSubmissionsForCourse(activeDetailCourse?.id).length === 0" title="Export submissions queue to CSV">
+            <span class="material-symbols-outlined" style="font-size:16px;">download</span> Export Submissions (CSV)
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive" *ngIf="getSubmissionsForCourse(activeDetailCourse?.id).length > 0">
         <table class="lms-table">
           <thead>
             <tr>
-              <th>Assignment Title</th>
-              <th>Due Date</th>
-              <th>Max Score</th>
-              <th>Submissions</th>
+              <th>Student Name</th>
+              <th>Assignment</th>
+              <th>Submitted At</th>
+              <th>Submission Code / Repo</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let asgn of getAssignmentsForCourse(activeDetailCourse?.id)" class="clickable-row" (click)="openAssignmentModal(asgn)">
-              <td><strong>{{ asgn.title }}</strong></td>
-              <td>{{ asgn.due_date || asgn.dueDate || 'Open-ended' }}</td>
-              <td>{{ asgn.max_score || asgn.maxScore || 100 }} pts</td>
-              <td><span class="badge badge-info">{{ asgn.submissions_count || 0 }} Submitted</span></td>
+            <tr *ngFor="let sub of getSubmissionsForCourse(activeDetailCourse?.id)">
               <td>
-                <div class="table-actions" (click)="$event.stopPropagation()">
-                  <button class="btn btn-xs btn-subtle" (click)="openAssignmentModal(asgn)"><span class="material-symbols-outlined">edit</span></button>
-                  <button class="btn btn-xs btn-danger" (click)="deleteAssignment(asgn.id)"><span class="material-symbols-outlined">delete</span></button>
-                </div>
+                <strong>{{ sub.studentName }}</strong>
+                <div class="text-xs text-subtle">{{ sub.studentEmail }}</div>
+              </td>
+              <td>{{ getAssignmentTitle(sub.assignmentId) }}</td>
+              <td class="text-subtle text-xs">{{ sub.submittedAt }}</td>
+              <td>
+                <a [href]="sub.url" target="_blank" class="link-btn" *ngIf="sub.url">
+                  <span class="material-symbols-outlined">terminal</span> Inspect Submission
+                </a>
+                <span *ngIf="!sub.url" class="text-subtle text-xs">Direct Code Entry</span>
+              </td>
+              <td>
+                <span *ngIf="sub.status === 'graded'" class="badge badge-success">Graded: {{ sub.score }} pts</span>
+                <span *ngIf="sub.status === 'regrade_requested'" class="badge badge-warning">Revision Requested</span>
+                <span *ngIf="sub.status === 'resubmitted'" class="badge badge-info">Resubmitted</span>
+                <span *ngIf="sub.status === 'submitted'" class="badge badge-neutral">Pending Review</span>
+                <span *ngIf="sub.status === 'rejected'" class="badge badge-danger">Rejected -- Resubmit</span>
+              </td>
+              <td>
+                <button class="btn btn-xs btn-primary" (click)="openGradingModal(sub)">
+                  <span class="material-symbols-outlined">fact_check</span> Grade &amp; Review
+                </button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div class="empty-state" *ngIf="getAssignmentsForCourse(activeDetailCourse?.id).length === 0">
-        <span class="material-symbols-outlined">assignment</span>
-        <h3>No Assignments Configured</h3>
-        <p>Create a project or checkpoint task for students to submit work.</p>
+      <div class="empty-state" *ngIf="getSubmissionsForCourse(activeDetailCourse?.id).length === 0">
+        <span class="material-symbols-outlined">fact_check</span>
+        <h3>Grading Desk is Clear</h3>
+        <p>No student submissions are currently awaiting grading for this course.</p>
       </div>
     </div>
 
-    <!-- ── CONSOLE SUBTAB 4: STUDENT ROSTER ── -->
+    <!-- ── CONSOLE SUBTAB 5: STUDENT ROSTER ── -->
     <div *ngIf="courseConsoleTab === 'students'" class="console-tab-body">
       <div class="console-section-header">
         <div>
@@ -1179,12 +1494,18 @@
             <span class="material-symbols-outlined">{{ isCanvasPreviewMode ? 'edit_note' : 'visibility' }}</span>
             {{ isCanvasPreviewMode ? 'Switch to Edit Canvas' : 'Live Learner Preview' }}
           </button>
-          <button class="btn btn-primary" (click)="saveModuleStudio()" [disabled]="isSaving || !moduleForm.title.trim()">
+          <button class="btn btn-primary" (click)="saveModuleStudio()" [disabled]="isSaving">
             <span class="material-symbols-outlined">save</span> {{ isSaving ? 'Saving...' : 'Save & Publish Module' }}
           </button>
         </div>
       </div>
     </header>
+
+    <!-- Save Error Banner in Module Studio -->
+    <div class="alert alert-danger mx-4 my-2" *ngIf="saveError">
+      <span class="material-symbols-outlined">error</span>
+      <span>{{ saveError }}</span>
+    </div>
 
     <!-- Module Settings Header Banner -->
     <div class="module-config-strip">
@@ -1199,7 +1520,8 @@
       </div>
       <div class="config-field flex-grow">
         <label>Module Title <strong class="req">*</strong></label>
-        <input type="text" [(ngModel)]="moduleForm.title" placeholder="e.g. Algorithmic State Machines &amp; Sensor Telemetry" class="studio-inline-input title-input" />
+        <input type="text" [(ngModel)]="moduleForm.title" placeholder="e.g. Algorithmic State Machines &amp; Sensor Telemetry" class="studio-inline-input title-input" [class.input-error]="saveError && !moduleForm.title.trim()" />
+        <span class="text-xs text-danger" *ngIf="saveError && !moduleForm.title.trim()">A module title is required.</span>
       </div>
       <div class="config-field order-field">
         <label>Sequence Order</label>
@@ -1809,7 +2131,24 @@
   <!-- ════════════════════════════════════════════════════════════
        VIEW 4: PROGRESSIVE 1-AT-A-TIME COURSE WIZARD
        ════════════════════════════════════════════════════════════ -->
-  <div *ngIf="currentView === 'course_wizard'" class="course-wizard-view fade-in">
+  <div *ngIf="currentView === 'course_wizard'" class="course-wizard-flow-container fade-in">
+    <header class="lms-header mb-4">
+      <div class="header-content">
+        <div class="header-title">
+          <span class="material-symbols-outlined header-icon">school</span>
+          <div>
+            <div class="console-breadcrumb-bar mb-2" style="padding:0;background:transparent;">
+              <button type="button" class="breadcrumb-back-btn" (click)="exitCourseWizard()">
+                <span class="material-symbols-outlined">arrow_back</span> Back to Hub
+              </button>
+            </div>
+            <h1>{{ formMode === 'edit' ? 'Edit Course: ' + (courseForm.title || 'Curriculum') : 'Create New Course' }}</h1>
+            <p>Define curriculum metadata, championship category, learning tracks, and syllabus prerequisites.</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
     <div class="wizard-card-centered">
       <!-- Wizard Step Progress Header -->
       <div class="wizard-stepper">
@@ -1905,6 +2244,208 @@
           <button class="btn btn-success" *ngIf="courseWizardStep === 4" (click)="saveCourseFromWizard()" [disabled]="isSaving || !courseForm.title.trim()">
             <span *ngIf="!isSaving" style="display:flex;align-items:center;gap:6px;">
               <span class="material-symbols-outlined">rocket_launch</span> Create &amp; Open Course Console
+            </span>
+            <span *ngIf="isSaving" class="spinner-inline"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       VIEW 5: PROGRESSIVE 1-AT-A-TIME ASSIGNMENT WIZARD
+       ════════════════════════════════════════════════════════════ -->
+  <div *ngIf="currentView === 'assignment_wizard'" class="course-wizard-flow-container fade-in">
+    <header class="lms-header mb-4">
+      <div class="header-content">
+        <div class="header-title">
+          <span class="material-symbols-outlined header-icon">assignment_add</span>
+          <div>
+            <div class="console-breadcrumb-bar mb-2" style="padding:0;background:transparent;">
+              <button type="button" class="breadcrumb-back-btn" (click)="exitAssignmentWizard()">
+                <span class="material-symbols-outlined">arrow_back</span> Back to Hub
+              </button>
+            </div>
+            <h1>Create Course Assignment</h1>
+            <p>Define project requirements, due date, starter assets, and rubric evaluation benchmarks.</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="wizard-card-centered">
+      <!-- Wizard Step Progress Header -->
+      <div class="wizard-stepper">
+        <div class="wizard-step-indicator" [class.active]="assignmentWizardStep >= 1" [class.current]="assignmentWizardStep === 1">1</div>
+        <div class="wizard-connector" [class.active]="assignmentWizardStep >= 2"></div>
+        <div class="wizard-step-indicator" [class.active]="assignmentWizardStep >= 2" [class.current]="assignmentWizardStep === 2">2</div>
+        <div class="wizard-connector" [class.active]="assignmentWizardStep >= 3"></div>
+        <div class="wizard-step-indicator" [class.active]="assignmentWizardStep >= 3" [class.current]="assignmentWizardStep === 3">3</div>
+        <div class="wizard-connector" [class.active]="assignmentWizardStep >= 4"></div>
+        <div class="wizard-step-indicator" [class.active]="assignmentWizardStep >= 4" [class.current]="assignmentWizardStep === 4">4</div>
+      </div>
+
+      <div class="wizard-content-box">
+        <!-- ── STEP 1: TARGET COURSE & TRACK ── -->
+        <div *ngIf="assignmentWizardStep === 1" class="wizard-step-pane slide-in">
+          <span class="step-badge">Step 1 of 4</span>
+          <h2>Which course is this assignment for?</h2>
+          <p class="step-subtext">Select the curriculum context and championship track for this deliverable.</p>
+
+          <div class="form-group mb-4">
+            <label class="font-semibold text-sm mb-2 block">Target Course</label>
+            <select [(ngModel)]="assignmentForm.courseId" class="focused-select" (change)="onAssignmentCourseChange()">
+              <option value="" disabled>Choose a course...</option>
+              <option *ngFor="let crs of authoredCourses" [value]="crs.id">{{ crs.title }}</option>
+            </select>
+          </div>
+
+          <label class="font-semibold text-sm mb-2 block">Championship Track</label>
+          <div class="track-cards-grid">
+            <div *ngFor="let trk of trackOptions" class="track-selection-tile" [class.selected]="assignmentForm.track === trk.id" (click)="assignmentForm.track = trk.id">
+              <div class="tile-icon-box" [style.color]="trk.color">
+                <span class="material-symbols-outlined">{{ trk.icon }}</span>
+              </div>
+              <div class="tile-label">{{ trk.label }}</div>
+              <span class="material-symbols-outlined tile-check" *ngIf="assignmentForm.track === trk.id">check_circle</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── STEP 2: TITLE, DUE DATE & MAX SCORE ── -->
+        <div *ngIf="assignmentWizardStep === 2" class="wizard-step-pane slide-in">
+          <span class="step-badge">Step 2 of 4</span>
+          <h2>Give this challenge a compelling title &amp; deadline</h2>
+          <p class="step-subtext">Clearly communicate what students are building and when it is due.</p>
+
+          <div class="focused-input-wrap mb-4">
+            <span class="material-symbols-outlined input-icon">assignment</span>
+            <input type="text" [(ngModel)]="assignmentForm.title" placeholder="e.g. Milestone 1: PID Controller Implementation" class="focused-large-input" autofocus />
+          </div>
+
+          <div class="wizard-inputs-dual-grid">
+            <div class="input-card-group">
+              <label><span class="material-symbols-outlined">event</span> Submission Due Date</label>
+              <input type="date" [(ngModel)]="assignmentForm.dueDate" class="input-field-clean" />
+            </div>
+
+            <div class="input-card-group">
+              <label><span class="material-symbols-outlined">grade</span> Total Max Points</label>
+              <input type="number" [(ngModel)]="assignmentForm.maxScore" class="input-field-clean" [readonly]="rubricCriteria.length > 0" />
+              <span class="text-xs text-subtle mt-1" *ngIf="rubricCriteria.length > 0">Calculated automatically from Rubric Matrix in Step 4</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── STEP 3: PROBLEM STATEMENT & STARTER ASSETS ── -->
+        <div *ngIf="assignmentWizardStep === 3" class="wizard-step-pane slide-in">
+          <span class="step-badge">Step 3 of 4</span>
+          <h2>Problem Statement &amp; Starter Files</h2>
+          <p class="step-subtext">Detail instructions, technical constraints, test suites, and download materials.</p>
+
+          <div class="focused-input-wrap mb-3">
+            <textarea [(ngModel)]="assignmentForm.description" rows="5" placeholder="Specify requirements, repository deliverables, edge cases, and environment setup..." class="focused-large-textarea"></textarea>
+          </div>
+
+          <!-- Starter Code & Specification PDF Dropzone -->
+          <div class="attachment-uploader-card">
+            <div class="attachment-dropzone">
+              <span class="material-symbols-outlined upload-icon">cloud_upload</span>
+              <div class="upload-copy">
+                <strong>Attach Starter Files, Template Repo ZIP, or Problem PDF</strong>
+                <p>Drag &amp; drop or click to upload supporting assignment assets</p>
+              </div>
+              <label class="btn btn-sm btn-outline cursor-pointer">
+                <span>Browse Files</span>
+                <input type="file" (change)="onAssignmentFileUpload($event)" style="display:none;" />
+              </label>
+            </div>
+            <div *ngIf="isUploadingAssignmentFile" class="uploading-progress-indicator mt-2">
+              <span class="spinner-inline"></span> Uploading starter asset...
+            </div>
+          </div>
+        </div>
+
+        <!-- ── STEP 4: MULTI-CRITERION RUBRIC MATRIX ── -->
+        <div *ngIf="assignmentWizardStep === 4" class="wizard-step-pane slide-in">
+          <span class="step-badge">Step 4 of 4</span>
+          <h2>Multi-Criterion Rubric Matrix</h2>
+          <p class="step-subtext">Define clear evaluation criteria. Scores will sync directly into the Grading Desk.</p>
+
+          <div class="rubric-matrix-builder mb-3">
+            <div class="rubric-header-row">
+              <div class="rubric-title-block">
+                <span class="material-symbols-outlined text-primary">fact_check</span>
+                <div>
+                  <strong>Evaluation Criteria &amp; Weighting</strong>
+                  <span class="rubric-subtitle">{{ rubricCriteria.length }} criteria defined</span>
+                </div>
+              </div>
+              <div class="rubric-total-pill" [class.badge-match]="rubricTotalPoints === assignmentForm.maxScore">
+                Total Weight: <strong>{{ rubricTotalPoints }} pts</strong>
+              </div>
+            </div>
+
+            <!-- 1-Click Quick Presets -->
+            <div class="rubric-presets-strip">
+              <span class="preset-label">Apply Preset:</span>
+              <button type="button" class="btn-rubric-preset" (click)="applyRubricPreset('coding')">
+                <span class="material-symbols-outlined">terminal</span> Code &amp; Algorithms
+              </button>
+              <button type="button" class="btn-rubric-preset" (click)="applyRubricPreset('robotics')">
+                <span class="material-symbols-outlined">smart_toy</span> Hardware &amp; Robotics
+              </button>
+              <button type="button" class="btn-rubric-preset" (click)="applyRubricPreset('presentation')">
+                <span class="material-symbols-outlined">co_present</span> Project Report
+              </button>
+            </div>
+
+            <!-- Criteria List -->
+            <div class="rubric-criteria-list" *ngIf="rubricCriteria.length > 0">
+              <div *ngFor="let crit of rubricCriteria; let cIdx = index" class="rubric-criterion-card">
+                <div class="criterion-main-inputs">
+                  <div class="criterion-title-wrap">
+                    <span class="criterion-idx">#{{ cIdx + 1 }}</span>
+                    <input type="text" [(ngModel)]="crit.title" placeholder="Criterion Title (e.g. Algorithmic Correctness)" class="crit-input-title" />
+                  </div>
+                  <div class="criterion-points-wrap">
+                    <input type="number" [(ngModel)]="crit.maxPoints" (ngModelChange)="syncMaxScoreFromRubric()" min="1" max="100" class="crit-input-points" />
+                    <span class="crit-pts-suffix">pts</span>
+                    <button type="button" class="btn-remove-crit" (click)="removeRubricCriterion(cIdx)" title="Remove criterion">
+                      <span class="material-symbols-outlined">close</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="criterion-desc-wrap">
+                  <input type="text" [(ngModel)]="crit.description" placeholder="Guidance notes: what benchmark must the student meet to achieve full marks?" class="crit-input-desc" />
+                </div>
+              </div>
+            </div>
+
+            <div class="rubric-actions-row">
+              <button type="button" class="btn btn-sm btn-outline" (click)="addRubricCriterion()">
+                <span class="material-symbols-outlined">add</span> Add Custom Criterion
+              </button>
+              <span class="rubric-hint" *ngIf="rubricCriteria.length === 0">No rubric attached yet. Use a preset above or add criteria manually.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wizard Navigation Footer -->
+      <div class="wizard-footer">
+        <button class="btn btn-outline" *ngIf="assignmentWizardStep === 1" (click)="exitAssignmentWizard()">Cancel</button>
+        <button class="btn btn-outline" *ngIf="assignmentWizardStep > 1" (click)="prevAssignmentWizardStep()">
+          <span class="material-symbols-outlined">arrow_back</span> Back
+        </button>
+
+        <div class="wizard-right-actions">
+          <button class="btn btn-primary" *ngIf="assignmentWizardStep < 4" (click)="nextAssignmentWizardStep()" [disabled]="(assignmentWizardStep === 1 && (!assignmentForm.courseId || !assignmentForm.track)) || (assignmentWizardStep === 2 && !assignmentForm.title.trim())">
+            Next Step <span class="material-symbols-outlined">arrow_forward</span>
+          </button>
+          <button class="btn btn-success" *ngIf="assignmentWizardStep === 4" (click)="saveAssignmentFromWizard()" [disabled]="isSaving || !assignmentForm.title.trim() || !assignmentForm.courseId">
+            <span *ngIf="!isSaving" style="display:flex;align-items:center;gap:6px;">
+              <span class="material-symbols-outlined">check_circle</span> Save &amp; Publish Assignment
             </span>
             <span *ngIf="isSaving" class="spinner-inline"></span>
           </button>
@@ -2745,5 +3286,56 @@
         </button>
       </div>
     </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       FULL-SCREEN OVERLAY ONBOARDING TOUR (Spotlight & Popover)
+       ════════════════════════════════════════════════════════════ -->
+  <div *ngIf="isTourActive" class="tour-overlay-portal">
+    <!-- Darkened fixed backdrop with click to skip -->
+    <div class="tour-backdrop" [class.backdrop-dark]="!spotlightStyle" (click)="skipTour()"></div>
+
+    <!-- Glowing spotlight cutout window over active target element -->
+    <div class="tour-spotlight" *ngIf="spotlightStyle" [ngStyle]="spotlightStyle"></div>
+
+    <!-- Floating popover card pointing to target element -->
+    <div class="tour-popover" *ngIf="popoverStyle" [ngStyle]="popoverStyle">
+      <div class="tour-arrow" [class]="popoverArrowClass" *ngIf="spotlightStyle"></div>
+
+      <div class="tour-popover-header">
+        <span class="material-symbols-outlined">{{ currentTourConfig.icon }}</span>
+        <h3>{{ currentTourConfig.title }}</h3>
+        <span class="tour-step-counter">{{ tourStep }}/{{ tourStepsConfig.length }}</span>
+      </div>
+
+      <div class="tour-popover-body">
+        <p>{{ currentTourConfig.content }}</p>
+        <div class="tour-action-highlight" *ngIf="currentTourConfig.action">
+          <strong>Action Required:</strong>
+          <span>{{ currentTourConfig.action }}</span>
+        </div>
+      </div>
+
+      <div class="tour-popover-footer">
+        <div class="tour-progress-dots">
+          <div *ngFor="let s of tourStepsConfig; let i = index"
+               class="tour-progress-dot"
+               [class.active]="i === tourStep - 1"
+               [class.completed]="i < tourStep - 1"></div>
+        </div>
+
+        <div class="tour-btn-group">
+          <button type="button" class="tour-btn tour-btn-secondary" *ngIf="tourStep > 1" (click)="prevTourStep()">
+            <span class="material-symbols-outlined" style="font-size:16px;">arrow_back</span> Back
+          </button>
+          <button type="button" class="tour-btn tour-btn-primary" *ngIf="tourStep < tourStepsConfig.length" (click)="nextTourStep()">
+            Next <span class="material-symbols-outlined" style="font-size:16px;">arrow_forward</span>
+          </button>
+          <button type="button" class="tour-btn tour-btn-success" *ngIf="tourStep === tourStepsConfig.length" (click)="skipTour()">
+            <span class="material-symbols-outlined" style="font-size:16px;">check_circle</span> Got It, Let's Build!
+          </button>
+          <button type="button" class="tour-btn tour-btn-skip" (click)="skipTour()">Skip Tour</button>
+        </div>
+      </div>
   </div>
 </div>

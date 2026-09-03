@@ -1,8 +1,8 @@
-import { Component, ChangeDetectionStrategy, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, ChangeDetectorRef, HostListener, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute } from '@angular/router';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { getAuthValue } from '../../services/session.util';
@@ -82,10 +82,10 @@ export class LmsManagerComponent implements OnInit {
   activeTab: string = 'courses';
 
   // ── Dedicated Full-Page Workspaces Navigation ───────────────
-  currentView: 'hub' | 'course_console' | 'module_studio' | 'course_wizard' = 'hub';
+  currentView: 'hub' | 'course_console' | 'module_studio' | 'course_wizard' | 'assignment_wizard' = 'hub';
   activeDetailCourse: any = null;
   activeDetailModule: any = null;
-  courseConsoleTab: 'modules' | 'materials' | 'assignments' | 'students' | 'insights' = 'modules';
+  courseConsoleTab: 'modules' | 'materials' | 'assignments' | 'grading' | 'students' | 'insights' = 'modules';
   showCourseInsights = false;
 
   // ── Assignment Rubric Matrix Subsystem ──────────────────────
@@ -163,6 +163,10 @@ export class LmsManagerComponent implements OnInit {
     return this.rubricCriteria.reduce((acc, c) => acc + (Number(c.maxPoints) || 0), 0);
   }
 
+  get rubricTotalPoints(): number {
+    return this.totalRubricPoints;
+  }
+
   onRubricScoreChange(c: RubricCriterion, score: number): void {
     c.earnedPoints = Math.max(0, Math.min(c.maxPoints, Number(score) || 0));
     this.recalculateGradeFromRubric();
@@ -188,6 +192,13 @@ export class LmsManagerComponent implements OnInit {
 
   // 1-at-a-time Progressive Course Wizard
   courseWizardStep = 1; // 1: Title, 2: Track, 3: Difficulty & Level, 4: Scope & Summary
+
+  // 1-at-a-time Progressive Assignment Wizard
+  assignmentWizardStep = 1; // 1: Course & Track, 2: Title, Due Date & Points, 3: Problem Prompt & Starter File, 4: Rubric Matrix
+
+  // Interactive Guided Course Tour Widget Subsystem
+  isTourActive = false;
+  tourStep = 1; // 1: Modules, 2: Materials, 3: Assignments, 4: Grading Desk, 5: Students, 6: Insights
 
   // Module Visual Block Canvas Subsystem
   moduleBlocks: ModuleBlock[] = [];
@@ -953,6 +964,25 @@ export class LmsManagerComponent implements OnInit {
       }));
   }
 
+  getSubmissionsForCourse(courseId?: string): any[] {
+    if (!courseId) return [];
+    const mentoredEmails = this.filterMentoredOnly ? this.mentoredStudentEmails : null;
+    return this.gradingQueue
+      .filter(s => {
+        const matchCourse = s.course_id === courseId;
+        const matchMentored = !this.filterMentoredOnly || (s.student_email && mentoredEmails?.has(s.student_email.toLowerCase()));
+        return matchCourse && matchMentored;
+      })
+      .map(s => ({
+        ...s,
+        studentName: s.student_name,
+        studentEmail: s.student_email,
+        assignmentId: s.assignment_id,
+        submittedAt: s.submitted_at,
+        courseId: s.course_id,
+      }));
+  }
+
   /** The enrolled roster across selected course or all authored courses. */
   get filteredEnrollments(): any[] {
     const q = this.searchQuery.toLowerCase();
@@ -1059,6 +1089,16 @@ export class LmsManagerComponent implements OnInit {
     this.courseConsoleTab = 'modules';
     this.showCourseInsights = false;
     this.cdr.markForCheck();
+
+    // Check if course has 0 modules, activate wizard tour if empty
+    const modules = this.getModulesForCourse(course.id);
+    if (!modules || modules.length === 0) {
+      setTimeout(() => {
+        if (this.currentView === 'course_console' && this.getModulesForCourse(course.id).length === 0) {
+          this.startCourseTour();
+        }
+      }, 300);
+    }
   }
 
   exitCourseConsole(): void {
@@ -1142,6 +1182,9 @@ export class LmsManagerComponent implements OnInit {
           awaiting_grading: this.activeDetailCourse?.awaiting_grading || 0
         };
         this.currentView = 'course_console';
+        if (this.formMode === 'create') {
+          this.startCourseTour();
+        }
         this.cdr.markForCheck();
       },
       error: (err: any) => {
@@ -1271,10 +1314,13 @@ export class LmsManagerComponent implements OnInit {
       const cId = this.activeDetailCourse?.id || this.selectedCourseId;
       const existingMods = this.getModulesForCourse(cId);
       const nextOrder = existingMods.length ? Math.max(...existingMods.map(m => m.order_num || 0)) + 1 : 1;
+      const defaultTitle = existingMods.length
+        ? `Module ${nextOrder}: Core Concepts`
+        : 'Module 1: Introduction & Foundations';
       this.activeDetailModule = {
         id: '',
         course_id: cId,
-        title: '',
+        title: defaultTitle,
         description: '',
         order_num: nextOrder,
         icon: 'view_module'
@@ -1282,7 +1328,7 @@ export class LmsManagerComponent implements OnInit {
       this.moduleForm = {
         id: '',
         courseId: cId,
-        title: '',
+        title: defaultTitle,
         description: '',
         order: nextOrder,
         icon: 'view_module',
@@ -1307,6 +1353,20 @@ export class LmsManagerComponent implements OnInit {
     this.currentView = this.activeDetailCourse ? 'course_console' : 'hub';
     this.activeDetailModule = null;
     this.moduleBlocks = [];
+    if (this.isTourPausedWaitingForModule) {
+      setTimeout(() => {
+        if (this.currentView === 'course_console') {
+          if (this.getModulesForCourse(this.activeDetailCourse?.id).length >= 1) {
+            this.isTourPausedWaitingForModule = false;
+            this.tourStep = 3;
+          } else {
+            this.tourStep = 2;
+          }
+          this.isTourActive = true;
+          this.syncTourStep();
+        }
+      }, 300);
+    }
     this.cdr.markForCheck();
   }
 
@@ -1513,7 +1573,16 @@ export class LmsManagerComponent implements OnInit {
 
   saveModuleStudio(): void {
     if (this.isSaving) return;
-    if (!this.moduleForm.title.trim() || !this.moduleForm.courseId) return;
+    if (!this.moduleForm.title.trim()) {
+      this.saveError = 'Please enter a module title before saving.';
+      this.cdr.markForCheck();
+      return;
+    }
+    if (!this.moduleForm.courseId) {
+      this.saveError = 'Course ID missing. Please refresh and try again.';
+      this.cdr.markForCheck();
+      return;
+    }
     this.isSaving = true;
     this.saveError = '';
     this.cdr.markForCheck();
@@ -1536,9 +1605,37 @@ export class LmsManagerComponent implements OnInit {
         
         // Persist blocks into materials
         this.persistBlocksForModule(savedModId, this.moduleForm.courseId);
+
+        // Optimistically record module in serverModules so length immediately reflects the creation
+        const optimisticMod: any = {
+          id: savedModId,
+          course_id: this.moduleForm.courseId,
+          title: this.moduleForm.title.trim(),
+          description: this.moduleBlocks[0]?.content || this.moduleForm.description || '',
+          order_num: Number(this.moduleForm.order) || 1,
+          icon: this.moduleForm.icon || 'view_module',
+          status: 'published'
+        };
+        if (!this.serverModules.find(m => m.id === savedModId)) {
+          this.serverModules = [optimisticMod, ...this.serverModules];
+        }
+
+        const wasWaitingForModule = this.isTourPausedWaitingForModule;
+        this.isTourPausedWaitingForModule = false;
+
         this.isSaving = false;
         this.reload();
         this.exitModuleStudio();
+
+        if (wasWaitingForModule) {
+          setTimeout(() => {
+            if (this.currentView === 'course_console') {
+              this.tourStep = 3; // Advance immediately to Step 3: Learning Assets!
+              this.isTourActive = true;
+              this.syncTourStep();
+            }
+          }, 350);
+        }
         this.cdr.markForCheck();
       },
       error: (err: any) => {
@@ -1806,6 +1903,20 @@ export class LmsManagerComponent implements OnInit {
     this.isModuleModalOpen = false;
     this.moduleStep = 1;
     this.saveError = '';
+    if (this.isTourPausedWaitingForModule) {
+      setTimeout(() => {
+        if (this.currentView === 'course_console') {
+          if (this.getModulesForCourse(this.activeDetailCourse?.id).length >= 1) {
+            this.isTourPausedWaitingForModule = false;
+            this.tourStep = 3;
+          } else {
+            this.tourStep = 2;
+          }
+          this.isTourActive = true;
+          this.syncTourStep();
+        }
+      }, 300);
+    }
     this.cdr.markForCheck();
   }
 
@@ -2120,20 +2231,24 @@ export class LmsManagerComponent implements OnInit {
     });
   }
 
-  // ── Assignment Actions ──────────────────────────────────────────
-  openAssignmentModal(asgn?: any): void {
+  // ── Progressive 1-at-a-Time Assignment Wizard ───────────────────
+  isAssignmentWizardOpen = false;
+  isAssignmentPreviewMode = false;
+
+  openAssignmentWizard(asgn?: any): void {
     this.saveError = '';
-    this.assignmentStep = 1;
+    this.assignmentWizardStep = 1;
+    this.isAssignmentPreviewMode = false;
     if (asgn) {
       this.formMode = 'edit';
       this.assignmentForm = {
         id: asgn.id || '',
-        courseId: asgn.course_id || asgn.courseId || '',
+        courseId: asgn.course_id || asgn.courseId || (this.activeDetailCourse?.id || ''),
         title: asgn.title || '',
         description: asgn.description || '',
         dueDate: asgn.due_date || asgn.dueDate || new Date(Date.now() + 7*24*60*60*1000).toISOString().split('T')[0],
         maxScore: asgn.max_score ?? asgn.maxScore ?? 100,
-        track: asgn.track || 'coding',
+        track: asgn.track || (this.activeDetailCourse?.track || 'coding'),
         status: asgn.status || 'active',
         approvalStatus: asgn.approval_status || asgn.approvalStatus || 'approved',
         createdAt: asgn.created_at || asgn.createdAt || new Date().toISOString().split('T')[0]
@@ -2156,25 +2271,140 @@ export class LmsManagerComponent implements OnInit {
       this.formMode = 'create';
       this.assignmentForm = this.emptyAssignment();
       this.rubricCriteria = [];
-      if (this.selectedCourseId !== 'all') {
+      if (this.activeDetailCourse) {
+        this.assignmentForm.courseId = this.activeDetailCourse.id;
+        this.assignmentForm.track = this.activeDetailCourse.track || 'coding';
+      } else if (this.selectedCourseId !== 'all') {
         this.assignmentForm.courseId = this.selectedCourseId;
       } else if (this.authoredCourses.length) {
         this.assignmentForm.courseId = this.authoredCourses[0].id;
+        this.assignmentForm.track = this.authoredCourses[0].track || 'coding';
       }
     }
-    this.isAssignmentModalOpen = true;
+
+    if (this.activeDetailCourse) {
+      this.currentView = 'course_console';
+      this.courseConsoleTab = 'assignments';
+      this.isAssignmentWizardOpen = true;
+    } else {
+      this.currentView = 'assignment_wizard';
+    }
+    this.initEditorContent();
     this.cdr.markForCheck();
   }
 
-  closeAssignmentModal(): void {
-    this.isAssignmentModalOpen = false;
-    this.assignmentStep = 1;
-    this.rubricCriteria = [];
+  onAssignmentCourseChange(): void {
+    const found = this.authoredCourses.find(c => c.id === this.assignmentForm.courseId);
+    if (found && found.track) {
+      this.assignmentForm.track = found.track;
+    }
+  }
+
+  exitAssignmentWizard(): void {
+    this.isAssignmentWizardOpen = false;
+    this.currentView = this.activeDetailCourse ? 'course_console' : 'hub';
+    this.assignmentWizardStep = 1;
     this.saveError = '';
+    this.isAssignmentPreviewMode = false;
+    if (this.isTourPausedWaitingForAssignment) {
+      this.isTourPausedWaitingForAssignment = false;
+      setTimeout(() => {
+        if (this.currentView === 'course_console') {
+          this.tourStep = 6; // Move to Grading Desk
+          this.isTourActive = true;
+          this.syncTourStep();
+        }
+      }, 300);
+    }
     this.cdr.markForCheck();
   }
 
-  saveAssignment(): void {
+  nextAssignmentWizardStep(): void {
+    if (this.activeDetailCourse) {
+      if (this.assignmentWizardStep === 1 && !this.assignmentForm.title.trim()) return;
+      if (this.assignmentWizardStep < 3) {
+        this.assignmentWizardStep++;
+        this.initEditorContent();
+        this.cdr.markForCheck();
+      }
+    } else {
+      if (this.assignmentWizardStep === 1 && (!this.assignmentForm.courseId || !this.assignmentForm.track)) return;
+      if (this.assignmentWizardStep === 2 && !this.assignmentForm.title.trim()) return;
+      if (this.assignmentWizardStep < 4) {
+        this.assignmentWizardStep++;
+        this.initEditorContent();
+        this.cdr.markForCheck();
+      }
+    }
+  }
+
+  prevAssignmentWizardStep(): void {
+    if (this.assignmentWizardStep > 1) {
+      this.assignmentWizardStep--;
+      this.initEditorContent();
+      this.cdr.markForCheck();
+    }
+  }
+
+  @ViewChild('assignmentEditorCanvas') assignmentEditorCanvas?: ElementRef<HTMLDivElement>;
+
+  execEditorCommand(command: string, value: string = ''): void {
+    document.execCommand(command, false, value);
+    this.syncEditorContent();
+  }
+
+  execEditorFormatBlock(headingTag: string): void {
+    document.execCommand('formatBlock', false, `<${headingTag}>`);
+    this.syncEditorContent();
+  }
+
+  insertEditorCodeBlock(): void {
+    const codeHtml = `<pre class="wysiwyg-code-block"><code># Write starter code or test runner here\ndef verify_solution():\n    pass</code></pre><p><br></p>`;
+    document.execCommand('insertHTML', false, codeHtml);
+    this.syncEditorContent();
+  }
+
+  insertEditorCallout(): void {
+    const calloutHtml = `<div class="wysiwyg-callout-note">💡 <strong>Constraint Note:</strong> Submissions exceeding O(N log N) time complexity will be rejected.</div><p><br></p>`;
+    document.execCommand('insertHTML', false, calloutHtml);
+    this.syncEditorContent();
+  }
+
+  onAssignmentEditorInput(event: Event): void {
+    this.syncEditorContent();
+  }
+
+  private syncEditorContent(): void {
+    if (this.assignmentEditorCanvas?.nativeElement) {
+      const cleanDesc = this.assignmentEditorCanvas.nativeElement.innerHTML;
+      this.assignmentForm.description = cleanDesc;
+    }
+    this.cdr.markForCheck();
+  }
+
+  initEditorContent(): void {
+    setTimeout(() => {
+      if (this.assignmentEditorCanvas?.nativeElement) {
+        let raw = (this.assignmentForm.description || '').replace(/<!-- RUBRIC_DATA:[\s\S]*?-->/g, '').trim();
+        if (raw && !raw.includes('<p>') && !raw.includes('<div>') && !raw.includes('<pre>')) {
+          raw = raw
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/### (.*?)\n/g, '<h3>$1</h3>')
+            .replace(/## (.*?)\n/g, '<h2>$1</h2>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/```([\w]*)\n([\s\S]*?)```/g, '<pre class="wysiwyg-code-block"><code>$2</code></pre>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/> 💡 (.*?)\n/g, '<div class="wysiwyg-callout-note">💡 $1</div>')
+            .replace(/\n\n/g, '<p></p>')
+            .replace(/\n/g, '<br/>');
+        }
+        this.assignmentEditorCanvas.nativeElement.innerHTML = raw || '';
+      }
+    }, 60);
+  }
+
+  saveAssignmentFromWizard(): void {
     if (this.isSaving) return;
     if (!this.assignmentForm.title.trim() || !this.assignmentForm.courseId) return;
     this.isSaving = true;
@@ -2205,9 +2435,22 @@ export class LmsManagerComponent implements OnInit {
       : this.apiService.updateAssignment(this.assignmentForm.id, payload);
 
     request.subscribe({
-      next: () => {
+      next: (asgnResult: any) => {
         this.isSaving = false;
-        this.closeAssignmentModal();
+        const savedId = asgnResult?.id || this.assignmentForm.id || ('asgn-' + Date.now());
+        const optimisticAsgn: any = {
+          id: savedId,
+          course_id: this.assignmentForm.courseId,
+          title: this.assignmentForm.title.trim(),
+          description: finalDescription,
+          due_date: this.assignmentForm.dueDate || '',
+          max_score: this.assignmentForm.maxScore || 100,
+          track: this.assignmentForm.track || ''
+        };
+        if (!this.serverAssignments.find(a => a.id === savedId)) {
+          this.serverAssignments = [optimisticAsgn, ...this.serverAssignments];
+        }
+        this.exitAssignmentWizard();
         this.reload();
         this.cdr.markForCheck();
       },
@@ -2217,6 +2460,320 @@ export class LmsManagerComponent implements OnInit {
         this.cdr.markForCheck();
       },
     });
+  }
+
+  openAssignmentModal(asgn?: any): void {
+    this.openAssignmentWizard(asgn);
+  }
+
+  closeAssignmentModal(): void {
+    this.exitAssignmentWizard();
+  }
+
+  saveAssignment(): void {
+    this.saveAssignmentFromWizard();
+  }
+
+  // ── Overlay Onboarding Tour Subsystem (Spotlight & Popover) ──
+  spotlightStyle: any = null;
+  popoverStyle: any = null;
+  popoverArrowClass: 'top' | 'bottom' = 'top';
+  isTourPausedWaitingForModule = false;
+  isTourPausedWaitingForAssignment = false;
+  activeHighlightedElement: HTMLElement | null = null;
+
+  readonly tourStepsConfig = [
+    {
+      step: 1,
+      tab: 'modules' as const,
+      targetSelector: '#tour-tab-modules',
+      icon: 'view_module',
+      title: '1. Curriculum Modules (The Core)',
+      content: 'Every course starts with curriculum modules. This workspace holds your lesson guides, video lectures, micro-quizzes, and interactive coding challenges.',
+      action: 'Notice the Curriculum Modules workspace (currently active). Click Next below to add your first module.',
+      nextLabel: 'Next: Add First Module'
+    },
+    {
+      step: 2,
+      tab: 'modules' as const,
+      targetSelector: '#tour-btn-create-first-module, #tour-btn-add-module',
+      icon: 'add_circle',
+      title: '2. Create Your First Module',
+      content: 'Your syllabus has 0 modules right now. Click "+ Add New Module" (highlighted below) to launch Module Studio, or click "Skip to Learning Assets" to explore the rest.',
+      action: 'Click the highlighted "+ Add New Module" button below to open Module Studio.',
+      nextLabel: '+ Open Module Studio',
+      isAddModuleAction: true
+    },
+    {
+      step: 3,
+      tab: 'materials' as const,
+      targetSelector: '#tour-tab-materials',
+      icon: 'folder_open',
+      title: '3. Course Learning Assets (Auto-Populated)',
+      content: 'Notice this tab! All videos, documents, micro-quizzes, and code challenges from your modules are automatically organized right here with no separate manual upload required.',
+      action: 'Click the highlighted "Learning Assets" tab (or click Next) to view.',
+      nextLabel: 'Next: Assignments'
+    },
+    {
+      step: 4,
+      tab: 'assignments' as const,
+      targetSelector: '#tour-tab-assignments',
+      icon: 'assignment',
+      title: '4. Course Assignments & Tasks',
+      content: 'Here you create competition tasks, milestone deliverables, starter repository files, and rubric evaluation matrices.',
+      action: 'Click the highlighted "Assignments" tab (or click Next) to inspect.',
+      nextLabel: 'Next: Create Assignment'
+    },
+    {
+      step: 5,
+      tab: 'assignments' as const,
+      targetSelector: '#tour-btn-create-first-asgn, #tour-btn-create-asgn',
+      icon: 'add_task',
+      title: '5. Create Course Assignment',
+      content: 'Click "+ Create Assignment" (highlighted below) to launch the step-by-step challenge wizard with starter code attachments and rubric evaluation matrices!',
+      action: 'Click the highlighted "+ Create Assignment" button or click Next.',
+      nextLabel: '+ Open Assignment Wizard',
+      isAddAssignmentAction: true
+    },
+    {
+      step: 6,
+      tab: 'grading' as const,
+      targetSelector: '#tour-tab-grading',
+      icon: 'fact_check',
+      title: '6. Dedicated Submission Grading Desk',
+      content: 'Student deliverables land directly in this dedicated grading queue. Review repository code, score with 1-click rubric criteria, or request revisions.',
+      action: 'Click the highlighted "Grading Desk" tab (or click Next).',
+      nextLabel: 'Next: Mentored Squads Filter'
+    },
+    {
+      step: 7,
+      tab: 'grading' as const,
+      targetSelector: '#tour-btn-mentored-squads',
+      icon: 'shield_person',
+      title: '7. "My Mentored Squads" Quick-Filter',
+      content: 'Toggle this button to instantly filter the grading queue and student roster to only the competition teams assigned directly to your mentorship.',
+      action: 'Notice the "My Mentored Squads" filter button.',
+      nextLabel: 'Next: Student Roster'
+    },
+    {
+      step: 8,
+      tab: 'students' as const,
+      targetSelector: '#tour-tab-students',
+      icon: 'group',
+      title: '8. Student Roster & Progress Tracking',
+      content: 'Track student enrollment velocity and overall completion benchmarks. View individual progress % and checkpoint completion rates.',
+      action: 'Click the highlighted "Student Roster" tab (or click Next).',
+      nextLabel: 'Next: Insights & Analytics'
+    },
+    {
+      step: 9,
+      tab: 'insights' as const,
+      targetSelector: '#tour-tab-insights',
+      icon: 'analytics',
+      title: '9. Cohort Insights & Analytics Radar',
+      content: 'Monitor completion funnels, identify checkpoint drop-offs, and export executive cohort gradebooks to CSV in 1 click! You are all set to build a championship curriculum.',
+      action: 'Click "Insights & Analytics" to complete your walkthrough.',
+      nextLabel: 'Finish Tour'
+    }
+  ];
+
+  get currentTourConfig() {
+    return this.tourStepsConfig[this.tourStep - 1] || this.tourStepsConfig[0];
+  }
+
+  startCourseTour(): void {
+    this.isTourActive = true;
+    this.tourStep = 1;
+    this.syncTourStep();
+  }
+
+  onConsoleTabClick(tab: 'modules' | 'materials' | 'assignments' | 'grading' | 'students' | 'insights'): void {
+    this.courseConsoleTab = tab;
+    if (this.isTourActive) {
+      if (this.tourStep === 1 && tab === 'modules') {
+        this.nextTourStep();
+      } else if (this.tourStep === 3 && tab === 'materials') {
+        this.nextTourStep();
+      } else if (this.tourStep === 4 && tab === 'assignments') {
+        this.nextTourStep();
+      } else if (this.tourStep === 6 && tab === 'grading') {
+        this.nextTourStep();
+      } else if (this.tourStep === 8 && tab === 'students') {
+        this.nextTourStep();
+      } else if (this.tourStep === 9 && tab === 'insights') {
+        this.nextTourStep();
+      }
+    }
+  }
+
+  onTourAddModuleClick(): void {
+    if (this.isTourActive && this.tourStep === 2) {
+      this.isTourPausedWaitingForModule = true;
+      this.isTourActive = false;
+      this.clearTargetHighlight();
+    }
+    this.openModuleStudio();
+  }
+
+  onTourCreateAssignmentClick(): void {
+    if (this.isTourActive && this.tourStep === 5) {
+      this.isTourPausedWaitingForAssignment = true;
+      this.isTourActive = false;
+      this.clearTargetHighlight();
+    }
+    this.openAssignmentWizard();
+  }
+
+  nextTourStep(): void {
+    if (this.currentTourConfig.isAddModuleAction) {
+      this.onTourAddModuleClick();
+      return;
+    }
+    if (this.currentTourConfig.isAddAssignmentAction) {
+      this.onTourCreateAssignmentClick();
+      return;
+    }
+
+    if (this.tourStep < this.tourStepsConfig.length) {
+      this.tourStep++;
+      this.syncTourStep();
+    } else {
+      this.skipTour();
+    }
+  }
+
+  prevTourStep(): void {
+    if (this.tourStep > 1) {
+      this.tourStep--;
+      this.syncTourStep();
+    }
+  }
+
+  skipTour(): void {
+    this.isTourActive = false;
+    this.isTourPausedWaitingForModule = false;
+    this.isTourPausedWaitingForAssignment = false;
+    this.tourStep = 1;
+    this.spotlightStyle = null;
+    this.popoverStyle = null;
+    this.clearTargetHighlight();
+    this.cdr.markForCheck();
+  }
+
+  private clearTargetHighlight(): void {
+    if (this.activeHighlightedElement) {
+      this.activeHighlightedElement.classList.remove('tour-highlighted-element');
+      this.activeHighlightedElement = null;
+    }
+    document.querySelectorAll('.tour-highlighted-element').forEach(el => el.classList.remove('tour-highlighted-element'));
+  }
+
+  private syncTourStep(): void {
+    const config = this.currentTourConfig;
+    this.courseConsoleTab = config.tab;
+    this.cdr.markForCheck();
+
+    // Give DOM time to switch tab and render
+    setTimeout(() => {
+      this.updateSpotlightAndPopover(config.targetSelector);
+    }, 150);
+  }
+
+  updateSpotlightAndPopover(selector: string): void {
+    if (!this.isTourActive) return;
+
+    let attempts = 0;
+    const tryFind = () => {
+      if (!this.isTourActive) return;
+      attempts++;
+      const target = document.querySelector(selector) as HTMLElement;
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        this.calculateFixedPositions(target);
+        setTimeout(() => {
+          if (this.isTourActive) {
+            this.calculateFixedPositions(target);
+          }
+        }, 200);
+      } else if (attempts < 6 && this.isTourActive) {
+        setTimeout(tryFind, 150);
+      } else if (this.isTourActive) {
+        this.showFallbackCenteredPopover();
+      }
+    };
+
+    tryFind();
+  }
+
+  private showFallbackCenteredPopover(): void {
+    this.clearTargetHighlight();
+    const viewportWidth = window.innerWidth;
+    const popoverWidth = Math.min(420, viewportWidth - 32);
+    const left = Math.max(16, (viewportWidth - popoverWidth) / 2);
+    const top = Math.max(80, window.innerHeight * 0.28);
+
+    this.spotlightStyle = null;
+    this.popoverArrowClass = 'top';
+    this.popoverStyle = {
+      top: `${Math.round(top)}px`,
+      left: `${Math.round(left)}px`,
+      maxWidth: `${popoverWidth}px`,
+      width: `${popoverWidth}px`
+    };
+    this.cdr.markForCheck();
+  }
+
+  private calculateFixedPositions(target: HTMLElement): void {
+    this.clearTargetHighlight();
+    this.activeHighlightedElement = target;
+    target.classList.add('tour-highlighted-element');
+
+    const rect = target.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    // Fixed coordinates relative to viewport (NO scrollTop/scrollLeft)
+    this.spotlightStyle = {
+      top: `${Math.round(rect.top - 6)}px`,
+      left: `${Math.round(rect.left - 6)}px`,
+      width: `${Math.round(rect.width + 12)}px`,
+      height: `${Math.round(rect.height + 12)}px`
+    };
+
+    const popoverWidth = Math.min(380, viewportWidth - 32);
+    let top: number;
+    let left = Math.max(16, Math.min(rect.left - 10, viewportWidth - popoverWidth - 20));
+    let arrowClass: 'top' | 'bottom' = 'top';
+
+    if (rect.bottom + 260 < viewportHeight || rect.top < 260) {
+      top = rect.bottom + 14;
+      arrowClass = 'top';
+    } else {
+      top = Math.max(16, rect.top - 275);
+      arrowClass = 'bottom';
+    }
+
+    this.popoverArrowClass = arrowClass;
+    this.popoverStyle = {
+      top: `${Math.round(top)}px`,
+      left: `${Math.round(left)}px`,
+      maxWidth: `${popoverWidth}px`,
+      width: `${popoverWidth}px`
+    };
+
+    this.cdr.markForCheck();
+  }
+
+  @HostListener('window:resize')
+  @HostListener('window:scroll')
+  onWindowTourChange(): void {
+    if (this.isTourActive) {
+      const config = this.currentTourConfig;
+      const target = document.querySelector(config.targetSelector) as HTMLElement;
+      if (target) {
+        this.calculateFixedPositions(target);
+      }
+    }
   }
 
   // ── Assignment Attachment Upload & Cloning ──────────────────
