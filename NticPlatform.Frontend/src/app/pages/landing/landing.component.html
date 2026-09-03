@@ -214,7 +214,7 @@
           <h1>{{ slide.title }}</h1>
           <p>{{ slide.description }}</p>
           <div class="card-actions">
-            <a [href]="getSlideCtaLink(slide).startsWith('#') ? 'javascript:void(0)' : getSlideCtaLink(slide)"
+            <a [href]="getSlideCtaLink(slide).startsWith('#') ? null : getSlideCtaLink(slide)"
               (click)="getSlideCtaLink(slide).startsWith('#') ? openLoginModal($event) : null"
               class="btn btn-gold btn-lg"
               *ngIf="slide.ctaText !== ''">

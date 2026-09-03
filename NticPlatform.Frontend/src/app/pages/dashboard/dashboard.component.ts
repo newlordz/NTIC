@@ -2826,12 +2826,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
     });
 
-    // The drilldown list. Only administrators may read this, so a 403 simply means
-    // the panel shows totals without the per-partner breakdown.
-    this.apiService.getAllSponsorships().subscribe({
-      next: rows => { this.allSponsorships = rows || []; this.cdr.markForCheck(); },
-      error: () => (this.allSponsorships = []),
-    });
+    // The drilldown list. Only administrators may read this.
+    const isAdmin = ['admin', 'super_admin'].includes((this.activeRoleId || '').toLowerCase());
+    if (isAdmin) {
+      this.apiService.getAllSponsorships().subscribe({
+        next: rows => { this.allSponsorships = rows || []; this.cdr.markForCheck(); },
+        error: () => (this.allSponsorships = []),
+      });
+    } else {
+      this.allSponsorships = [];
+    }
   }
 
   /** Tier colours, keyed by the tier name a sponsor actually entered. */
