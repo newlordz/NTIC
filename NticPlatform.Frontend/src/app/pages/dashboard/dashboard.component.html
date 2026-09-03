@@ -579,6 +579,10 @@
                   </p>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;">
+                  <a class="btn btn-ghost btn-sm" routerLink="/dashboard" [queryParams]="{ tab: 'dashboard' }" style="font-size:12px;display:flex;align-items:center;gap:4px;">
+                    <span class="material-symbols-outlined" style="font-size:16px;">arrow_back</span>
+                    Dashboard
+                  </a>
                   <button class="btn btn-primary btn-sm" (click)="openAddTeamModal()">
                     <span class="material-symbols-outlined">add</span>Register New Team
                   </button>

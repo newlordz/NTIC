@@ -3251,11 +3251,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // the user looking at a blank name.
     this.currentUserService.ensureLoaded().subscribe(profile => {
       if (profile) {
+        this.currentUser = profile;
+        if (profile.role) this.activeRoleId = profile.role;
         this.loadDashboardData();
         this.loadStudentSummary();
         if (this.activeRoleId === 'student') this.loadMyTeams();
         this.loadSponsorSummary();
         this.loadInstructorCourses();
+        if (this.activeRoleId === 'school_admin') {
+          const tabParam = this.route.snapshot.queryParams['tab'];
+          this.schoolViewTab = tabParam === 'roster' ? 'roster' : 'dashboard';
+          const userName = profile.full_name || 'Administrator';
+          if (this.schoolViewTab === 'roster') {
+            this.dashboardTitle = profile.organization ? `${profile.organization} Teams & Roster` : 'My Teams & Student Roster';
+            this.dashboardSubtitle = 'Manage your registered squads, assign team captains, configure members, and issue credentials.';
+          } else {
+            this.dashboardTitle = profile.organization ? `${profile.organization} Admin Dashboard` : 'School Admin Dashboard';
+            this.dashboardSubtitle = `Welcome back, ${userName}. NTIC Analytics & Team Management.`;
+          }
+        }
         this.cdr.markForCheck();
       }
     });
@@ -3307,15 +3321,31 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.personnelTab = params['personnelRole'] as any;
       }
 
-      if (!hasExplicitTab) {
-        this.restoreNavStateFromStorage();
-      } else {
-        this.persistNavState();
+      // ONLY manage admin nav persistence for actual system admins
+      const isAdmin = ['super_admin', 'admin', 'content_manager', 'reviewer', 'competition_manager'].includes(this.activeRoleId);
+      if (isAdmin) {
+        if (!hasExplicitTab) {
+          this.restoreNavStateFromStorage();
+        } else {
+          try {
+            const state = {
+              adminTab: this.adminTab,
+              adminSubTab: this.adminSubTab,
+              contentTab: this.contentTab,
+              cmsCategoryFilter: this.cmsCategoryFilter,
+              personnelTab: this.personnelTab,
+              maximizedContentTab: this.maximizedContentTab
+            };
+            if (typeof localStorage !== 'undefined') {
+              localStorage.setItem('ntic_admin_nav_state', JSON.stringify(state));
+            }
+          } catch { /* ignore */ }
+        }
       }
 
       this.isRegModalOpen = params['openRegModal'] === 'true';
       if (this.activeRoleId === 'school_admin') {
-        this.schoolViewTab = params['tab'] === 'roster' ? 'roster' : 'dashboard';
+        this.schoolViewTab = (params['tab'] === 'roster') ? 'roster' : 'dashboard';
         const activeUser = this.currentUser;
         const userName = activeUser ? activeUser.name : 'Administrator';
         if (this.schoolViewTab === 'roster') {
@@ -3348,6 +3378,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.openSponsorPartner(brandMatch.tierKey, brandMatch.name);
         }
       }
+      this.cdr.markForCheck();
     });
 
     if (this.activeRoleId === 'super_admin') {
@@ -6567,34 +6598,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   get filteredSchoolTeams(): any[] {
-    let list = this.schoolTeams;
+    let list = this.schoolTeams || [];
     if (this.schoolRosterTrackFilter && this.schoolRosterTrackFilter !== 'all') {
-      list = list.filter(t => (t.track || '').toLowerCase() === this.schoolRosterTrackFilter.toLowerCase());
+      list = list.filter(t => (t?.track || '').toLowerCase() === this.schoolRosterTrackFilter.toLowerCase());
     }
     if (this.schoolRosterSearchQuery && this.schoolRosterSearchQuery.trim()) {
       const q = this.schoolRosterSearchQuery.trim().toLowerCase();
       list = list.filter(t => 
-        (t.name || '').toLowerCase().includes(q) ||
-        (t.lead || '').toLowerCase().includes(q) ||
-        (t.track || '').toLowerCase().includes(q) ||
-        (Array.isArray(t.rosterList) && t.rosterList.some((m: string) => m.toLowerCase().includes(q)))
+        (t?.name || '').toLowerCase().includes(q) ||
+        (t?.lead || '').toLowerCase().includes(q) ||
+        (t?.track || '').toLowerCase().includes(q) ||
+        (Array.isArray(t?.rosterList) && t.rosterList.some((m: string) => (m || '').toLowerCase().includes(q)))
       );
     }
     return list;
   }
 
   get filteredSchoolMembers(): any[] {
-    let list = this.schoolMembers;
+    let list = this.schoolMembers || [];
     if (this.schoolRosterTrackFilter && this.schoolRosterTrackFilter !== 'all') {
-      list = list.filter(m => (m.track || '').toLowerCase().includes(this.schoolRosterTrackFilter.toLowerCase()));
+      list = list.filter(m => (m?.track || '').toLowerCase().includes(this.schoolRosterTrackFilter.toLowerCase()));
     }
     if (this.schoolRosterSearchQuery && this.schoolRosterSearchQuery.trim()) {
       const q = this.schoolRosterSearchQuery.trim().toLowerCase();
       list = list.filter(m =>
-        (m.name || '').toLowerCase().includes(q) ||
-        (m.email || '').toLowerCase().includes(q) ||
-        (m.teamName || '').toLowerCase().includes(q) ||
-        (m.role || '').toLowerCase().includes(q)
+        (m?.name || '').toLowerCase().includes(q) ||
+        (m?.email || '').toLowerCase().includes(q) ||
+        (m?.teamName || '').toLowerCase().includes(q) ||
+        (m?.role || '').toLowerCase().includes(q)
       );
     }
     return list;
@@ -6739,10 +6770,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const activeEmail = (getAuthValue('activeUserEmail') || '').trim().toLowerCase();
     const cleanSchoolName = (this.schoolName || this.currentUser?.organization || '').trim().toLowerCase();
 
-    const myTeams = this.contentService.teams.filter(t => {
-      const cleanTeamSchool = (t.schoolName || '').trim().toLowerCase();
-      const cleanLeadEmail = ((t as any).leadEmail || '').trim().toLowerCase();
-      const cleanLeadName = (t.lead || '').trim().toLowerCase();
+    const teams = this.contentService.teams || [];
+    const myTeams = teams.filter(t => {
+      const cleanTeamSchool = (t?.schoolName || '').trim().toLowerCase();
+      const cleanLeadEmail = ((t as any)?.leadEmail || '').trim().toLowerCase();
+      const cleanLeadName = (t?.lead || '').trim().toLowerCase();
       return (cleanSchoolName && (cleanTeamSchool === cleanSchoolName || cleanTeamSchool.includes(cleanSchoolName) || cleanSchoolName.includes(cleanTeamSchool))) ||
              (activeEmail && (cleanLeadEmail === activeEmail || cleanLeadName === activeEmail));
     });
@@ -6750,7 +6782,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // If no teams found in active registry, check pending and approved requests
     if (myTeams.length === 0) {
       const restoredTeams: any[] = [];
-      const allReqs = [...this.contentService.pendingApprovals, ...this.contentService.approvedApprovals];
+      const allReqs = [...(this.contentService.pendingApprovals || []), ...(this.contentService.approvedApprovals || [])];
       allReqs.forEach(req => {
         const cleanReqSchool = (req.entity || req.details?.school || req.details?.institution || '').trim().toLowerCase();
         const cleanReqEmail = (req.contact || req.details?.email || req.details?.repEmail || '').trim().toLowerCase();

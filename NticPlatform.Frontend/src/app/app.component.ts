@@ -801,6 +801,21 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.pageTitles[seg] ?? 'NTIC Portal';
   }
 
+  isNavActive(tab: 'dashboard' | 'roster'): boolean {
+    const url = this.router.url || '';
+    if (!url.startsWith('/dashboard')) return false;
+    const qIndex = url.indexOf('?');
+    if (qIndex === -1) {
+      return tab === 'dashboard';
+    }
+    const params = new URLSearchParams(url.substring(qIndex + 1));
+    const currentTab = params.get('tab');
+    if (tab === 'roster') {
+      return currentTab === 'roster';
+    }
+    return !currentTab || currentTab === 'dashboard' || currentTab === 'overview';
+  }
+
   showNotificationsDropdown = false;
   showAppsDropdown = false;
   showProfileDropdown = false;

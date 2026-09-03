@@ -27,7 +27,7 @@
 
     <div class="sidebar-section">
       <div class="sidebar-section-label">Main</div>
-      <a class="nav-item" *ngIf="hasAccess('dashboard')" routerLink="/dashboard" [queryParams]="{ tab: 'dashboard' }" routerLinkActive="active" [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'exact', fragment: 'exact', matrixParams: 'exact' }" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('dashboard')" routerLink="/dashboard" [queryParams]="{ tab: 'dashboard' }" [class.active]="isNavActive('dashboard')" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">dashboard</span>
         Dashboard
       </a>
@@ -35,7 +35,7 @@
         <span class="material-symbols-outlined">admin_panel_settings</span>
         Admin Control
       </a>
-      <a class="nav-item" *ngIf="hasAccess('roster')" routerLink="/dashboard" [queryParams]="{ tab: 'roster' }" routerLinkActive="active" [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'exact', fragment: 'exact', matrixParams: 'exact' }" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('roster')" routerLink="/dashboard" [queryParams]="{ tab: 'roster' }" [class.active]="isNavActive('roster')" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">groups</span>
         My Teams &amp; Roster
       </a>
