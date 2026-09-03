@@ -477,9 +477,16 @@
           <h3 style="margin:0 0 4px;">Student Submissions &amp; Review Desk ({{ filteredSubmissions.length }})</h3>
           <span class="text-subtle text-sm">Review student submissions, assign rubric scores, or request revisions.</span>
         </div>
-        <button class="btn btn-outline btn-sm" (click)="exportGradingQueueCsv()" [disabled]="filteredSubmissions.length === 0" title="Export submissions queue to CSV">
-          <span class="material-symbols-outlined" style="font-size:16px;">download</span> Export Submissions (CSV)
-        </button>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button type="button" class="btn btn-sm btn-squad-toggle" [class.active]="filterMentoredOnly" (click)="filterMentoredOnly = !filterMentoredOnly" title="Filter to submissions from your mentored squads">
+            <span class="material-symbols-outlined">shield_person</span>
+            <span>My Mentored Squads</span>
+            <span class="squad-badge" *ngIf="filterMentoredOnly">Active</span>
+          </button>
+          <button class="btn btn-outline btn-sm" (click)="exportGradingQueueCsv()" [disabled]="filteredSubmissions.length === 0" title="Export submissions queue to CSV">
+            <span class="material-symbols-outlined" style="font-size:16px;">download</span> Export Submissions (CSV)
+          </button>
+        </div>
       </div>
 
       <div class="table-responsive" *ngIf="filteredSubmissions.length > 0">
@@ -534,9 +541,16 @@
         <h2 style="margin:0 0 4px;">Enrolled Student Roster &amp; Completion Metrics ({{ filteredEnrollments.length }})</h2>
         <p style="font-size:13px; color:var(--on-surface-variant); margin:0;">Track student onboarding, curriculum progress percentage, and assessment averages.</p>
       </div>
-      <button class="btn btn-outline" (click)="exportGradebookCsv()" [disabled]="filteredEnrollments.length === 0" title="Export gradebook to CSV">
-        <span class="material-symbols-outlined">download</span> Export Gradebook (CSV)
-      </button>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button type="button" class="btn btn-sm btn-squad-toggle" [class.active]="filterMentoredOnly" (click)="filterMentoredOnly = !filterMentoredOnly" title="Filter to students from your mentored squads">
+          <span class="material-symbols-outlined">shield_person</span>
+          <span>My Mentored Squads</span>
+          <span class="squad-badge" *ngIf="filterMentoredOnly">Active</span>
+        </button>
+        <button class="btn btn-outline" (click)="exportGradebookCsv()" [disabled]="filteredEnrollments.length === 0" title="Export gradebook to CSV">
+          <span class="material-symbols-outlined">download</span> Export Gradebook (CSV)
+        </button>
+      </div>
     </div>
 
     <div *ngIf="filteredEnrollments.length === 0" class="empty-state" style="text-align:center; padding:50px 20px; background:var(--surface-container-low); border-radius:14px;">
@@ -801,6 +815,9 @@
       <button class="console-tab-btn" [class.active]="courseConsoleTab === 'students'" (click)="courseConsoleTab = 'students'">
         <span class="material-symbols-outlined">group</span> Student Roster
       </button>
+      <button class="console-tab-btn" [class.active]="courseConsoleTab === 'insights'" (click)="courseConsoleTab = 'insights'">
+        <span class="material-symbols-outlined">analytics</span> Insights &amp; Analytics
+      </button>
     </div>
 
     <!-- ── CONSOLE SUBTAB 1: MODULES SYLLABUS TREE ── -->
@@ -985,6 +1002,147 @@
         <span class="material-symbols-outlined">group</span>
         <h3>No Enrolled Students Yet</h3>
         <p>Students will appear here once they enroll in this course track.</p>
+      </div>
+    </div>
+
+    <!-- ── CONSOLE SUBTAB 5: COURSE INSIGHTS & COHORT ANALYTICS RADAR ── -->
+    <div *ngIf="courseConsoleTab === 'insights'" class="console-tab-body fade-in">
+      <div class="console-section-header">
+        <div>
+          <h3>Cohort Insights &amp; Performance Analytics</h3>
+          <p class="text-subtle text-xs">Real-time completion telemetry, score distribution, and module checkpoint mastery.</p>
+        </div>
+        <div class="header-action-group">
+          <button class="btn btn-sm btn-outline" (click)="exportCourseAnalyticsCsv()">
+            <span class="material-symbols-outlined">download</span> Export Analytics CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Executive Metrics Grid -->
+      <div class="analytics-kpi-grid">
+        <div class="kpi-metric-card">
+          <div class="kpi-icon-wrap icon-blue">
+            <span class="material-symbols-outlined">group</span>
+          </div>
+          <div class="kpi-data">
+            <span class="kpi-value">{{ courseAnalyticsData.totalEnrolled }}</span>
+            <span class="kpi-label">Active Learners</span>
+          </div>
+        </div>
+
+        <div class="kpi-metric-card">
+          <div class="kpi-icon-wrap icon-green">
+            <span class="material-symbols-outlined">verified</span>
+          </div>
+          <div class="kpi-data">
+            <span class="kpi-value">{{ courseAnalyticsData.completionRate }}%</span>
+            <span class="kpi-label">Completion Velocity</span>
+          </div>
+        </div>
+
+        <div class="kpi-metric-card">
+          <div class="kpi-icon-wrap icon-purple">
+            <span class="material-symbols-outlined">grade</span>
+          </div>
+          <div class="kpi-data">
+            <span class="kpi-value">{{ courseAnalyticsData.avgScore }}%</span>
+            <span class="kpi-label">Average Cohort Mark</span>
+          </div>
+        </div>
+
+        <div class="kpi-metric-card">
+          <div class="kpi-icon-wrap icon-amber">
+            <span class="material-symbols-outlined">pending_actions</span>
+          </div>
+          <div class="kpi-data">
+            <span class="kpi-value">{{ courseAnalyticsData.pendingGradingCount }}</span>
+            <span class="kpi-label">Awaiting Grading</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cohort Funnel & Progression Breakdown -->
+      <div class="analytics-dashboard-grid mt-4">
+        <!-- Progress Funnel Card -->
+        <div class="analytics-panel-card">
+          <div class="panel-header">
+            <h4><span class="material-symbols-outlined">timeline</span> Learner Completion Funnel</h4>
+            <span class="panel-badge">{{ courseAnalyticsData.totalEnrolled }} Total</span>
+          </div>
+          <div class="funnel-bars-container">
+            <div class="funnel-row">
+              <div class="funnel-row-info">
+                <span class="status-dot dot-green"></span>
+                <span class="funnel-stage-name">Completed Curriculum (100%)</span>
+                <span class="funnel-stage-count">{{ courseAnalyticsData.completedCount }} learners</span>
+              </div>
+              <div class="funnel-progress-track">
+                <div class="funnel-fill fill-green" [style.width.%]="courseAnalyticsData.totalEnrolled ? (courseAnalyticsData.completedCount / courseAnalyticsData.totalEnrolled) * 100 : 0"></div>
+              </div>
+            </div>
+
+            <div class="funnel-row">
+              <div class="funnel-row-info">
+                <span class="status-dot dot-blue"></span>
+                <span class="funnel-stage-name">In Progress (1% &ndash; 99%)</span>
+                <span class="funnel-stage-count">{{ courseAnalyticsData.inProgressCount }} learners</span>
+              </div>
+              <div class="funnel-progress-track">
+                <div class="funnel-fill fill-blue" [style.width.%]="courseAnalyticsData.totalEnrolled ? (courseAnalyticsData.inProgressCount / courseAnalyticsData.totalEnrolled) * 100 : 0"></div>
+              </div>
+            </div>
+
+            <div class="funnel-row">
+              <div class="funnel-row-info">
+                <span class="status-dot dot-muted"></span>
+                <span class="funnel-stage-name">Enrolled (Not Started 0%)</span>
+                <span class="funnel-stage-count">{{ courseAnalyticsData.notStartedCount }} learners</span>
+              </div>
+              <div class="funnel-progress-track">
+                <div class="funnel-fill fill-muted" [style.width.%]="courseAnalyticsData.totalEnrolled ? (courseAnalyticsData.notStartedCount / courseAnalyticsData.totalEnrolled) * 100 : 0"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Module Mastery & Drop-off Radar -->
+        <div class="analytics-panel-card">
+          <div class="panel-header">
+            <h4><span class="material-symbols-outlined">insights</span> Module Checkpoint Mastery</h4>
+            <span class="panel-badge">{{ courseAnalyticsData.modulesAnalytics.length }} Modules</span>
+          </div>
+          <div class="table-responsive">
+            <table class="lms-table table-compact">
+              <thead>
+                <tr>
+                  <th>Sequence</th>
+                  <th>Module Title</th>
+                  <th>Units</th>
+                  <th>Checkpoint Pass Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let mod of courseAnalyticsData.modulesAnalytics">
+                  <td><span class="badge-order">#{{ mod.order }}</span></td>
+                  <td><strong>{{ mod.title }}</strong></td>
+                  <td class="text-subtle">{{ mod.unitCount }} units</td>
+                  <td>
+                    <div class="progress-cell">
+                      <div class="progress-bar-wrap">
+                        <div class="progress-bar-fill" [style.width.%]="mod.checkpointPassRate" [class.fill-warning]="mod.checkpointPassRate < 80"></div>
+                      </div>
+                      <span class="progress-val">{{ mod.checkpointPassRate }}%</span>
+                    </div>
+                  </td>
+                </tr>
+                <tr *ngIf="courseAnalyticsData.modulesAnalytics.length === 0">
+                  <td colspan="4" class="text-center text-subtle" style="padding: 24px;">No modules authored for this course yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1303,27 +1461,50 @@
                 </div>
               </div>
 
-              <!-- 5. Checkpoint Micro-Quiz Block -->
+              <!-- 5. Checkpoint Micro-Quiz Block (Multi-Question Supported) -->
               <div *ngIf="blk.type === 'quiz'" class="block-fields">
-                <div class="form-group mb-2">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <label class="text-xs">Question Prompt</label>
-                    <button type="button" class="btn btn-xs btn-ai-sparkle" (click)="generateAiQuizForBlock(blk)" [disabled]="isGeneratingAiQuiz[blk.id]" title="Auto-generate question & options from guide content using AI">
-                      <span class="material-symbols-outlined" style="font-size:14px; color:#6366f1;">{{ isGeneratingAiQuiz[blk.id] ? 'sync' : 'auto_awesome' }}</span>
-                      <span style="font-size:11px; font-weight:700; color:#4f46e5;">{{ isGeneratingAiQuiz[blk.id] ? 'Generating...' : 'AI Generate from Guide' }}</span>
+                <!-- Question Tabs Strip -->
+                <div class="quiz-questions-nav-strip mb-2">
+                  <div class="q-tabs-list">
+                    <button *ngFor="let qItem of getQuizQuestions(blk); let qIdx = index"
+                            type="button"
+                            class="q-tab-btn"
+                            [class.active]="(blk.activeQuestionIdx ?? 0) === qIdx"
+                            (click)="selectQuizQuestion(blk, qIdx)">
+                      <span>Q{{ qIdx + 1 }}</span>
+                      <span *ngIf="getQuizQuestions(blk).length > 1"
+                            class="q-del-btn"
+                            (click)="removeQuizQuestion(blk, qIdx); $event.stopPropagation()"
+                            title="Remove Question">&times;</span>
+                    </button>
+                    <button type="button" class="q-add-tab-btn" (click)="addQuizQuestion(blk)" title="Add another question to this quiz checkpoint">
+                      <span class="material-symbols-outlined">add</span> Add Question
                     </button>
                   </div>
-                  <input type="text" [(ngModel)]="blk.quizQuestion" placeholder="e.g. Which register stores the program counter?" class="studio-input-sm" />
+                  <span class="q-count-badge">{{ getQuizQuestions(blk).length }} Question{{ getQuizQuestions(blk).length === 1 ? '' : 's' }}</span>
                 </div>
-                <div class="quiz-options-builder" *ngIf="blk.quizOptions">
-                  <div class="quiz-opt-row" *ngFor="let opt of blk.quizOptions; let oIdx = index; trackBy: trackByIndex">
-                    <input type="radio" [name]="'quiz_corr_' + blk.id" [checked]="blk.quizCorrectIndex === oIdx" (change)="blk.quizCorrectIndex = oIdx" />
-                    <input type="text" [(ngModel)]="blk.quizOptions[oIdx]" class="studio-input-sm" (click)="$event.stopPropagation()" />
+
+                <div class="form-group mb-2">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <label class="text-xs">Question {{ (blk.activeQuestionIdx ?? 0) + 1 }} Prompt</label>
+                    <button type="button" class="btn btn-xs btn-ai-sparkle" (click)="generateAiQuizForBlock(blk)" [disabled]="isGeneratingAiQuiz[blk.id]" title="Auto-generate question & options from guide content using AI">
+                      <span class="material-symbols-outlined" style="font-size:14px; color:#6366f1;">{{ isGeneratingAiQuiz[blk.id] ? 'sync' : 'auto_awesome' }}</span>
+                      <span style="font-size:11px; font-weight:700; color:#4f46e5;">{{ isGeneratingAiQuiz[blk.id] ? 'Generating...' : 'AI Copilot' }}</span>
+                    </button>
+                  </div>
+                  <input type="text" [(ngModel)]="getActiveQuizQuestion(blk).question" (ngModelChange)="blk.quizQuestion = getActiveQuizQuestion(blk).question" placeholder="e.g. Which register stores the program counter?" class="studio-input-sm" />
+                </div>
+
+                <div class="quiz-options-builder" *ngIf="getActiveQuizQuestion(blk).options">
+                  <div class="quiz-opt-row" *ngFor="let opt of getActiveQuizQuestion(blk).options; let oIdx = index; trackBy: trackByIndex">
+                    <input type="radio" [name]="'quiz_corr_' + blk.id + '_' + (blk.activeQuestionIdx ?? 0)" [checked]="getActiveQuizQuestion(blk).correctIndex === oIdx" (change)="getActiveQuizQuestion(blk).correctIndex = oIdx; blk.quizCorrectIndex = oIdx" />
+                    <input type="text" [(ngModel)]="getActiveQuizQuestion(blk).options[oIdx]" (ngModelChange)="blk.quizOptions = getActiveQuizQuestion(blk).options" class="studio-input-sm" (click)="$event.stopPropagation()" />
                   </div>
                 </div>
+
                 <div class="form-group mt-2">
                   <label class="text-xs">Pedagogical Explanation (Shown after answering)</label>
-                  <input type="text" [(ngModel)]="blk.quizExplanation" placeholder="Explain why the correct answer is right..." class="studio-input-sm" />
+                  <input type="text" [(ngModel)]="getActiveQuizQuestion(blk).explanation" (ngModelChange)="blk.quizExplanation = getActiveQuizQuestion(blk).explanation" placeholder="Explain why the correct answer is right..." class="studio-input-sm" />
                 </div>
               </div>
 
@@ -1518,35 +1699,49 @@
 
               <!-- 5. INTERACTIVE MICRO-QUIZ KNOWLEDGE CHECK -->
               <div *ngIf="blk.type === 'quiz'" class="sim-unit-content sim-quiz-unit">
-                <div class="sim-quiz-badge">Knowledge Check</div>
-                <h4 class="sim-quiz-question">{{ blk.quizQuestion || 'Sample Question Prompt' }}</h4>
-
-                <div class="sim-quiz-choices-grid" *ngIf="blk.quizOptions">
-                  <button *ngFor="let opt of blk.quizOptions; let oIdx = index; trackBy: trackByIndex"
-                          type="button"
-                          class="sim-choice-btn"
-                          [class.selected]="simulationAnswers[blk.id] === oIdx"
-                          [class.correct]="simulationSubmitted[blk.id] && oIdx === (blk.quizCorrectIndex ?? 0)"
-                          [class.wrong]="simulationSubmitted[blk.id] && simulationAnswers[blk.id] === oIdx && oIdx !== (blk.quizCorrectIndex ?? 0)"
-                          (click)="selectSimOption(blk.id, oIdx)">
-                    <span class="choice-letter">{{ ['A','B','C','D'][oIdx] }}</span>
-                    <span class="choice-text">{{ opt }}</span>
-                    <span class="material-symbols-outlined choice-status-icon" *ngIf="simulationSubmitted[blk.id] && oIdx === (blk.quizCorrectIndex ?? 0)">check_circle</span>
-                    <span class="material-symbols-outlined choice-status-icon" *ngIf="simulationSubmitted[blk.id] && simulationAnswers[blk.id] === oIdx && oIdx !== (blk.quizCorrectIndex ?? 0)">cancel</span>
-                  </button>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                  <div class="sim-quiz-badge">Knowledge Check</div>
+                  <div class="sim-q-stepper" *ngIf="getQuizQuestions(blk).length > 1">
+                    <button *ngFor="let q of getQuizQuestions(blk); let qIdx = index"
+                            type="button"
+                            class="sim-q-step-btn"
+                            [class.active]="getSimActiveQIndex(blk.id) === qIdx"
+                            (click)="setSimActiveQIndex(blk.id, qIdx)">
+                      Q{{ qIdx + 1 }}
+                    </button>
+                  </div>
                 </div>
 
-                <!-- Quiz Feedback Box -->
-                <div *ngIf="simulationSubmitted[blk.id]" class="sim-quiz-feedback-box" [class.success]="simulationAnswers[blk.id] === (blk.quizCorrectIndex ?? 0)" [class.failure]="simulationAnswers[blk.id] !== (blk.quizCorrectIndex ?? 0)">
-                  <div class="feedback-icon-title">
-                    <span class="material-symbols-outlined">{{ simulationAnswers[blk.id] === (blk.quizCorrectIndex ?? 0) ? 'verified' : 'error' }}</span>
-                    <strong>{{ simulationAnswers[blk.id] === (blk.quizCorrectIndex ?? 0) ? 'Correct! Excellent comprehension.' : 'Not quite right.' }}</strong>
+                <div class="sim-q-body">
+                  <h4 class="sim-quiz-question">{{ (getQuizQuestions(blk)[getSimActiveQIndex(blk.id)] || {}).question || blk.quizQuestion || 'Sample Question Prompt' }}</h4>
+
+                  <div class="sim-quiz-choices-grid" *ngIf="getQuizQuestions(blk)[getSimActiveQIndex(blk.id)]?.options">
+                    <button *ngFor="let opt of getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].options; let oIdx = index; trackBy: trackByIndex"
+                            type="button"
+                            class="sim-choice-btn"
+                            [class.selected]="getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) === oIdx"
+                            [class.correct]="simulationSubmitted[blk.id] && oIdx === getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex"
+                            [class.wrong]="simulationSubmitted[blk.id] && getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) === oIdx && oIdx !== getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex"
+                            (click)="selectSimOption(blk.id, oIdx)">
+                      <span class="choice-letter">{{ ['A','B','C','D'][oIdx] }}</span>
+                      <span class="choice-text">{{ opt }}</span>
+                      <span class="material-symbols-outlined choice-status-icon" *ngIf="simulationSubmitted[blk.id] && oIdx === getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex">check_circle</span>
+                      <span class="material-symbols-outlined choice-status-icon" *ngIf="simulationSubmitted[blk.id] && getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) === oIdx && oIdx !== getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex">cancel</span>
+                    </button>
                   </div>
-                  <p class="feedback-explanation" *ngIf="blk.quizExplanation">{{ blk.quizExplanation }}</p>
+
+                  <!-- Quiz Feedback Box -->
+                  <div *ngIf="simulationSubmitted[blk.id]" class="sim-quiz-feedback-box" [class.success]="getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) === getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex" [class.failure]="getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) !== getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex">
+                    <div class="feedback-icon-title">
+                      <span class="material-symbols-outlined">{{ getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) === getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex ? 'verified' : 'error' }}</span>
+                      <strong>{{ getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) === getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex ? 'Correct! Excellent comprehension.' : 'Not quite right.' }}</strong>
+                    </div>
+                    <p class="feedback-explanation" *ngIf="getQuizQuestions(blk)[getSimActiveQIndex(blk.id)]?.explanation">{{ getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].explanation }}</p>
+                  </div>
                 </div>
 
                 <div class="sim-action-footer">
-                  <button *ngIf="!simulationSubmitted[blk.id]" class="btn btn-sm btn-primary" (click)="submitSimQuiz(blk)" [disabled]="simulationAnswers[blk.id] === undefined">
+                  <button *ngIf="!simulationSubmitted[blk.id]" class="btn btn-sm btn-primary" (click)="submitSimQuiz(blk)" [disabled]="getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) === undefined">
                     <span class="material-symbols-outlined">send</span> Submit Answer
                   </button>
                   <button *ngIf="simulationSubmitted[blk.id]" class="btn btn-sm btn-outline" (click)="resetSimQuiz(blk.id)">
@@ -2362,6 +2557,65 @@
             <textarea [(ngModel)]="assignmentForm.description" rows="3" placeholder="Detailed instructions, input/output requirements, and grading rubric..."></textarea>
           </div>
 
+          <!-- Evaluation Rubric Matrix Builder -->
+          <div class="rubric-matrix-builder mt-3">
+            <div class="rubric-header-row">
+              <div class="rubric-title-block">
+                <span class="material-symbols-outlined text-primary">rule</span>
+                <div>
+                  <strong>Multi-Criterion Rubric Matrix (Optional)</strong>
+                  <span class="rubric-subtitle">Break assignment scoring into weighted multi-criteria benchmarks</span>
+                </div>
+              </div>
+              <div class="rubric-total-pill" [class.badge-match]="totalRubricPoints === assignmentForm.maxScore">
+                Total: <strong>{{ totalRubricPoints }} pts</strong>
+              </div>
+            </div>
+
+            <!-- Rubric Quick Presets -->
+            <div class="rubric-presets-strip">
+              <span class="preset-label">Templates:</span>
+              <button type="button" class="btn-rubric-preset" (click)="applyRubricPreset('coding')">
+                <span class="material-symbols-outlined">terminal</span> Code &amp; Algorithms
+              </button>
+              <button type="button" class="btn-rubric-preset" (click)="applyRubricPreset('robotics')">
+                <span class="material-symbols-outlined">smart_toy</span> Hardware &amp; Robotics
+              </button>
+              <button type="button" class="btn-rubric-preset" (click)="applyRubricPreset('presentation')">
+                <span class="material-symbols-outlined">description</span> Project Report
+              </button>
+            </div>
+
+            <!-- Criteria Rows -->
+            <div class="rubric-criteria-list" *ngIf="rubricCriteria.length > 0">
+              <div *ngFor="let crit of rubricCriteria; let cIdx = index" class="rubric-criterion-card">
+                <div class="criterion-main-inputs">
+                  <div class="criterion-title-wrap">
+                    <span class="criterion-idx">#{{ cIdx + 1 }}</span>
+                    <input type="text" [(ngModel)]="crit.title" placeholder="Criterion title (e.g. Code Architecture)" class="crit-input-title" />
+                  </div>
+                  <div class="criterion-points-wrap">
+                    <input type="number" min="1" max="100" [(ngModel)]="crit.maxPoints" (ngModelChange)="syncMaxScoreFromRubric()" class="crit-input-points" />
+                    <span class="crit-pts-suffix">pts</span>
+                    <button type="button" class="btn-remove-crit" (click)="removeRubricCriterion(cIdx)" title="Remove criterion">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="criterion-desc-wrap">
+                  <input type="text" [(ngModel)]="crit.description" placeholder="Description of expectations and benchmark..." class="crit-input-desc" />
+                </div>
+              </div>
+            </div>
+
+            <div class="rubric-actions-row">
+              <button type="button" class="btn btn-xs btn-outline" (click)="addRubricCriterion()">
+                <span class="material-symbols-outlined">add</span> Add Custom Criterion
+              </button>
+              <span class="rubric-hint" *ngIf="rubricCriteria.length === 0">No criteria defined yet. Click a template or "+ Add Custom Criterion".</span>
+            </div>
+          </div>
+
           <div class="form-group mt-3">
             <label>Starter File / Problem PDF Attachment (Optional)</label>
             <div class="file-upload-dropzone">
@@ -2431,8 +2685,45 @@
 
         <hr style="margin: 20px 0; border-color: var(--border-color);">
 
+        <!-- Interactive Rubric Matrix Scoring Grid -->
+        <div *ngIf="activeRubricCriteria.length > 0" class="grading-rubric-matrix mb-3">
+          <div class="rubric-matrix-header">
+            <div>
+              <h4 style="margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;">
+                <span class="material-symbols-outlined text-primary" style="font-size:18px;">fact_check</span>
+                Interactive Rubric Matrix Evaluation
+              </h4>
+              <span style="font-size:12px;color:var(--on-surface-variant);">Click benchmark percentages or adjust criterion points to score accurately.</span>
+            </div>
+            <div class="rubric-calculated-pill">
+              Calculated: <strong>{{ gradeScore ?? 0 }}</strong> / {{ activeSubmission.max_score || 100 }} pts
+            </div>
+          </div>
+
+          <div class="rubric-scoring-grid">
+            <div *ngFor="let crit of activeRubricCriteria" class="rubric-score-card">
+              <div class="crit-info">
+                <strong>{{ crit.title }}</strong>
+                <p *ngIf="crit.description">{{ crit.description }}</p>
+              </div>
+              <div class="crit-controls">
+                <div class="crit-quick-tiers">
+                  <button type="button" class="tier-btn" [class.active]="crit.earnedPoints === 0" (click)="setCriterionScorePct(crit, 0)">0%</button>
+                  <button type="button" class="tier-btn" (click)="setCriterionScorePct(crit, 0.5)">50%</button>
+                  <button type="button" class="tier-btn" (click)="setCriterionScorePct(crit, 0.8)">80%</button>
+                  <button type="button" class="tier-btn" [class.active]="crit.earnedPoints === crit.maxPoints" (click)="setCriterionScorePct(crit, 1.0)">100%</button>
+                </div>
+                <div class="crit-stepper-wrap">
+                  <input type="number" min="0" [max]="crit.maxPoints" [ngModel]="crit.earnedPoints" (ngModelChange)="onRubricScoreChange(crit, $event)" class="crit-points-stepper" />
+                  <span class="crit-max-label">/ {{ crit.maxPoints }} pts</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="form-group">
-          <label>Score (0 &ndash; {{ activeSubmission.max_score || 100 }} pts) *</label>
+          <label>Total Final Score (0 &ndash; {{ activeSubmission.max_score || 100 }} pts) *</label>
           <input class="form-control" type="number" min="0" [max]="activeSubmission.max_score || 100" [(ngModel)]="gradeScore" placeholder="Enter score">
         </div>
 

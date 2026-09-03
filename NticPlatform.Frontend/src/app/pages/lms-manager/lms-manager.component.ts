@@ -28,6 +28,22 @@ export interface PendingModerationItem {
   rawItem: any;
 }
 
+export interface RubricCriterion {
+  id: string;
+  title: string;
+  maxPoints: number;
+  description?: string;
+  earnedPoints?: number;
+}
+
+export interface QuizQuestionItem {
+  id: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
+
 export interface ModuleBlock {
   id: string;
   type: 'text' | 'video' | 'quiz' | 'code' | 'break' | 'resource' | 'image' | 'file';
@@ -44,6 +60,8 @@ export interface ModuleBlock {
   quizOptions?: string[];
   quizCorrectIndex?: number;
   quizExplanation?: string;
+  quizQuestions?: QuizQuestionItem[];
+  activeQuestionIdx?: number;
   codeLanguage?: string;
   codeStarter?: string;
   codeInstructions?: string;
@@ -67,8 +85,106 @@ export class LmsManagerComponent implements OnInit {
   currentView: 'hub' | 'course_console' | 'module_studio' | 'course_wizard' = 'hub';
   activeDetailCourse: any = null;
   activeDetailModule: any = null;
-  courseConsoleTab: 'modules' | 'materials' | 'assignments' | 'students' = 'modules';
+  courseConsoleTab: 'modules' | 'materials' | 'assignments' | 'students' | 'insights' = 'modules';
   showCourseInsights = false;
+
+  // ── Assignment Rubric Matrix Subsystem ──────────────────────
+  rubricCriteria: RubricCriterion[] = [];
+  activeRubricCriteria: RubricCriterion[] = [];
+
+  rubricPresets: { [key: string]: { label: string; icon: string; criteria: { title: string; maxPoints: number; description: string }[] } } = {
+    coding: {
+      label: 'Code & Algorithms',
+      icon: 'terminal',
+      criteria: [
+        { title: 'Algorithmic Efficiency & Correctness', maxPoints: 40, description: 'Produces correct outputs across test suites with optimal time/space complexity.' },
+        { title: 'Code Architecture & Readability', maxPoints: 30, description: 'Modular function separation, meaningful naming, and idiomatic conventions.' },
+        { title: 'Edge Case & Error Handling', maxPoints: 30, description: 'Defensively handles invalid inputs, empty sets, and boundary constraints.' }
+      ]
+    },
+    robotics: {
+      label: 'Robotics & Hardware',
+      icon: 'smart_toy',
+      criteria: [
+        { title: 'Circuit & Schematic Design', maxPoints: 35, description: 'Proper voltage regulation, pin multiplexing, and sensor layout.' },
+        { title: 'Firmware Logic & Sensor Polling', maxPoints: 35, description: 'Real-time state machine loops without blocking delays.' },
+        { title: 'Physical Build & Assembly Safety', maxPoints: 30, description: 'Robust cable management, structural rigidity, and emergency stops.' }
+      ]
+    },
+    presentation: {
+      label: 'Project & Technical Report',
+      icon: 'description',
+      criteria: [
+        { title: 'Problem Definition & Context', maxPoints: 25, description: 'Clear formulation of the challenge and societal/technical significance.' },
+        { title: 'Methodology & Engineering Rigor', maxPoints: 45, description: 'Sound experimental methodology, telemetry evidence, and data analysis.' },
+        { title: 'Synthesis & Technical Communication', maxPoints: 30, description: 'Concise diagrams, structured conclusions, and professional documentation.' }
+      ]
+    }
+  };
+
+  applyRubricPreset(presetKey: string): void {
+    const preset = this.rubricPresets[presetKey];
+    if (!preset) return;
+    this.rubricCriteria = preset.criteria.map(c => ({
+      id: 'rc-' + Math.random().toString(36).slice(2, 7),
+      title: c.title,
+      maxPoints: c.maxPoints,
+      description: c.description
+    }));
+    this.syncMaxScoreFromRubric();
+    this.cdr.markForCheck();
+  }
+
+  addRubricCriterion(): void {
+    this.rubricCriteria.push({
+      id: 'rc-' + Math.random().toString(36).slice(2, 7),
+      title: 'Criterion ' + (this.rubricCriteria.length + 1),
+      maxPoints: 25,
+      description: 'Demonstrates proficiency in required technical skill.'
+    });
+    this.syncMaxScoreFromRubric();
+    this.cdr.markForCheck();
+  }
+
+  removeRubricCriterion(idx: number): void {
+    this.rubricCriteria.splice(idx, 1);
+    this.syncMaxScoreFromRubric();
+    this.cdr.markForCheck();
+  }
+
+  syncMaxScoreFromRubric(): void {
+    if (this.rubricCriteria.length > 0) {
+      const sum = this.rubricCriteria.reduce((acc, c) => acc + (Number(c.maxPoints) || 0), 0);
+      this.assignmentForm.maxScore = sum;
+    }
+  }
+
+  get totalRubricPoints(): number {
+    return this.rubricCriteria.reduce((acc, c) => acc + (Number(c.maxPoints) || 0), 0);
+  }
+
+  onRubricScoreChange(c: RubricCriterion, score: number): void {
+    c.earnedPoints = Math.max(0, Math.min(c.maxPoints, Number(score) || 0));
+    this.recalculateGradeFromRubric();
+  }
+
+  setCriterionScorePct(c: RubricCriterion, pct: number): void {
+    c.earnedPoints = Math.round(c.maxPoints * pct);
+    this.recalculateGradeFromRubric();
+  }
+
+  recalculateGradeFromRubric(): void {
+    if (!this.activeRubricCriteria.length) return;
+    const totalEarned = this.activeRubricCriteria.reduce((sum, c) => sum + (c.earnedPoints ?? 0), 0);
+    this.gradeScore = totalEarned;
+
+    // Auto-generate formatted breakdown for feedback
+    const breakdown = this.activeRubricCriteria.map(c => `• ${c.title}: ${c.earnedPoints ?? 0}/${c.maxPoints} pts`).join('\n');
+    const existing = (this.adminRevisionNotes || '');
+    const customNotes = existing.replace(/^Rubric Evaluation Breakdown:[\s\S]*?(?=\n\n|$)/g, '').trim();
+    this.adminRevisionNotes = `Rubric Evaluation Breakdown:\n${breakdown}${customNotes ? '\n\n' + customNotes : ''}`;
+    this.cdr.markForCheck();
+  }
 
   // 1-at-a-time Progressive Course Wizard
   courseWizardStep = 1; // 1: Title, 2: Track, 3: Difficulty & Level, 4: Scope & Summary
@@ -448,6 +564,54 @@ export class LmsManagerComponent implements OnInit {
 
   filterMentoredOnly: boolean = false;
 
+  get myMentoredTeams(): any[] {
+    const actor = this.currentUserService.profile();
+    const actorId = actor?.id;
+    const actorEmail = (actor?.email || '').toLowerCase();
+    const actorName = (actor?.full_name || '').toLowerCase();
+    return (this.contentService.teams || []).filter((t: any) => {
+      const tMentorId = t.mentorId || t.mentor_id;
+      const tMentorEmail = (t.mentorEmail || t.mentor_email || '').toLowerCase();
+      const tMentorName = (t.mentorName || t.mentor_name || t.mentor || '').toLowerCase();
+      return (actorId && tMentorId === actorId) ||
+             (actorEmail && tMentorEmail === actorEmail) ||
+             (actorName && tMentorName === actorName);
+    });
+  }
+
+  get mentoredStudentEmails(): Set<string> {
+    const emails = new Set<string>();
+    for (const team of this.myMentoredTeams) {
+      if (team.leadEmail) emails.add(team.leadEmail.toLowerCase());
+      if (team.lead_email) emails.add(team.lead_email.toLowerCase());
+      if (typeof team.lead === 'string' && team.lead.includes('@')) {
+        emails.add(team.lead.toLowerCase());
+      }
+      if (Array.isArray(team.rosterList)) {
+        team.rosterList.forEach((r: any) => {
+          if (typeof r === 'string' && r.includes('@')) emails.add(r.toLowerCase());
+        });
+      }
+      if (Array.isArray(team.memberNames)) {
+        team.memberNames.forEach((m: any) => {
+          if (typeof m === 'string' && m.includes('@')) emails.add(m.toLowerCase());
+        });
+      }
+      if (Array.isArray(team.members)) {
+        team.members.forEach((m: any) => {
+          if (typeof m === 'string' && m.includes('@')) emails.add(m.toLowerCase());
+          else if (m && m.email) emails.add(m.email.toLowerCase());
+        });
+      }
+      if (Array.isArray(team.students)) {
+        team.students.forEach((s: any) => {
+          if (s?.email) emails.add(s.email.toLowerCase());
+        });
+      }
+    }
+    return emails;
+  }
+
   /** Loads the enrolled roster for one course or all authored courses. */
   loadRoster(courseId: string = 'all'): void {
     if (!courseId || courseId === 'all') {
@@ -770,12 +934,14 @@ export class LmsManagerComponent implements OnInit {
   /** Submissions awaiting a mark on the caller's own courses. */
   get filteredSubmissions(): any[] {
     const q = this.searchQuery.toLowerCase();
+    const mentoredEmails = this.filterMentoredOnly ? this.mentoredStudentEmails : null;
     return this.gradingQueue
       .filter(s => {
         const matchCourse = this.selectedCourseId === 'all' || s.course_id === this.selectedCourseId;
         const matchSearch = !q || (s.student_name || '').toLowerCase().includes(q)
           || (s.student_email || '').toLowerCase().includes(q);
-        return matchCourse && matchSearch;
+        const matchMentored = !this.filterMentoredOnly || (s.student_email && mentoredEmails?.has(s.student_email.toLowerCase()));
+        return matchCourse && matchSearch && matchMentored;
       })
       .map(s => ({
         ...s,
@@ -790,13 +956,15 @@ export class LmsManagerComponent implements OnInit {
   /** The enrolled roster across selected course or all authored courses. */
   get filteredEnrollments(): any[] {
     const q = this.searchQuery.toLowerCase();
+    const mentoredEmails = this.filterMentoredOnly ? this.mentoredStudentEmails : null;
     return this.courseRoster
       .filter(e => {
         const matchCourse = this.selectedCourseId === 'all' || (e as any).course_id === this.selectedCourseId;
         const matchSearch = !q
           || (e.student_name || '').toLowerCase().includes(q)
           || (e.student_email || '').toLowerCase().includes(q);
-        return matchCourse && matchSearch;
+        const matchMentored = !this.filterMentoredOnly || (e.student_email && mentoredEmails?.has(e.student_email.toLowerCase()));
+        return matchCourse && matchSearch && matchMentored;
       })
       .map(e => ({
         ...e,
@@ -1053,6 +1221,8 @@ export class LmsManagerComponent implements OnInit {
       quizOptions: (Array.isArray(parsed?.options) && parsed.options.length) ? parsed.options : ['Option A', 'Option B', 'Option C', 'Option D'],
       quizCorrectIndex: parsed?.correctIndex ?? 0,
       quizExplanation: parsed?.explanation || '',
+      quizQuestions: (Array.isArray(parsed?.questions) && parsed.questions.length) ? parsed.questions : undefined,
+      activeQuestionIdx: 0,
       codeLanguage: parsed?.language || 'python',
       codeStarter: parsed?.starterCode || '# Starter code\n',
       codeInstructions: parsed?.instructions || contentText,
@@ -1254,10 +1424,23 @@ export class LmsManagerComponent implements OnInit {
       next: res => {
         this.isGeneratingAiQuiz[blk.id] = false;
         if (res && res.question) {
-          blk.quizQuestion = res.question;
-          blk.quizOptions = res.options && res.options.length === 4 ? res.options : ['Option A', 'Option B', 'Option C', 'Option D'];
-          blk.quizCorrectIndex = res.correct_index ?? 0;
-          blk.quizExplanation = res.explanation || '';
+          const qItem: QuizQuestionItem = {
+            id: 'q-' + (this.getQuizQuestions(blk).length + 1),
+            question: res.question,
+            options: res.options && res.options.length === 4 ? res.options : ['Option A', 'Option B', 'Option C', 'Option D'],
+            correctIndex: res.correct_index ?? 0,
+            explanation: res.explanation || ''
+          };
+          if (blk.activeQuestionIdx !== undefined && blk.quizQuestions && blk.quizQuestions[blk.activeQuestionIdx]) {
+            blk.quizQuestions[blk.activeQuestionIdx] = qItem;
+          } else {
+            this.getQuizQuestions(blk).push(qItem);
+            blk.activeQuestionIdx = this.getQuizQuestions(blk).length - 1;
+          }
+          blk.quizQuestion = qItem.question;
+          blk.quizOptions = qItem.options;
+          blk.quizCorrectIndex = qItem.correctIndex;
+          blk.quizExplanation = qItem.explanation;
         }
         this.cdr.markForCheck();
       },
@@ -1383,12 +1566,14 @@ export class LmsManagerComponent implements OnInit {
 
       let descPayload = cleanContent;
       if (blk.type === 'quiz') {
+        const questions = this.getQuizQuestions(blk);
         descPayload = JSON.stringify({
           widget: 'quiz',
           question: blk.quizQuestion || blk.title,
           options: blk.quizOptions || ['A', 'B', 'C', 'D'],
           correctIndex: blk.quizCorrectIndex ?? 0,
-          explanation: blk.quizExplanation || ''
+          explanation: blk.quizExplanation || '',
+          questions: questions
         });
       } else if (blk.type === 'code') {
         descPayload = JSON.stringify({
@@ -1953,9 +2138,24 @@ export class LmsManagerComponent implements OnInit {
         approvalStatus: asgn.approval_status || asgn.approvalStatus || 'approved',
         createdAt: asgn.created_at || asgn.createdAt || new Date().toISOString().split('T')[0]
       };
+      if (asgn.description && asgn.description.includes('<!-- RUBRIC_DATA:')) {
+        try {
+          const match = asgn.description.match(/<!-- RUBRIC_DATA:\s*([\s\S]*?)\s*-->/);
+          if (match && match[1]) {
+            this.rubricCriteria = JSON.parse(match[1]);
+          } else {
+            this.rubricCriteria = [];
+          }
+        } catch {
+          this.rubricCriteria = [];
+        }
+      } else {
+        this.rubricCriteria = [];
+      }
     } else {
       this.formMode = 'create';
       this.assignmentForm = this.emptyAssignment();
+      this.rubricCriteria = [];
       if (this.selectedCourseId !== 'all') {
         this.assignmentForm.courseId = this.selectedCourseId;
       } else if (this.authoredCourses.length) {
@@ -1969,6 +2169,7 @@ export class LmsManagerComponent implements OnInit {
   closeAssignmentModal(): void {
     this.isAssignmentModalOpen = false;
     this.assignmentStep = 1;
+    this.rubricCriteria = [];
     this.saveError = '';
     this.cdr.markForCheck();
   }
@@ -1980,10 +2181,20 @@ export class LmsManagerComponent implements OnInit {
     this.saveError = '';
     this.cdr.markForCheck();
 
+    let finalDescription = this.assignmentForm.description || '';
+    if (this.rubricCriteria.length > 0) {
+      this.syncMaxScoreFromRubric();
+      const cleanDesc = finalDescription.replace(/<!-- RUBRIC_DATA:[\s\S]*?-->/g, '').trim();
+      const rubricBlock = `<!-- RUBRIC_DATA: ${JSON.stringify(this.rubricCriteria)} -->`;
+      finalDescription = cleanDesc ? `${cleanDesc}\n\n${rubricBlock}` : rubricBlock;
+    } else {
+      finalDescription = finalDescription.replace(/<!-- RUBRIC_DATA:[\s\S]*?-->/g, '').trim();
+    }
+
     const payload = {
       course_id: this.assignmentForm.courseId,
       title: this.assignmentForm.title.trim(),
-      description: this.assignmentForm.description || '',
+      description: finalDescription,
       due_date: this.assignmentForm.dueDate || '',
       max_score: this.assignmentForm.maxScore || 100,
       track: this.assignmentForm.track || '',
@@ -2161,6 +2372,30 @@ export class LmsManagerComponent implements OnInit {
     this.activeSubmission = submission;
     this.adminRevisionNotes = submission?.feedback || '';
     this.gradeScore = submission?.score ?? null;
+
+    const asgnId = submission?.assignment_id || submission?.assignmentId;
+    const asgn = this.serverAssignments.find(a => a.id === asgnId);
+    if (asgn && asgn.description && asgn.description.includes('<!-- RUBRIC_DATA:')) {
+      try {
+        const match = asgn.description.match(/<!-- RUBRIC_DATA:\s*([\s\S]*?)\s*-->/);
+        if (match && match[1]) {
+          const parsed = JSON.parse(match[1]);
+          this.activeRubricCriteria = (parsed || []).map((c: any) => ({
+            ...c,
+            earnedPoints: submission?.score !== null && submission?.score !== undefined
+              ? Math.round((c.maxPoints / (asgn.max_score || 100)) * submission.score)
+              : c.maxPoints
+          }));
+        } else {
+          this.activeRubricCriteria = [];
+        }
+      } catch {
+        this.activeRubricCriteria = [];
+      }
+    } else {
+      this.activeRubricCriteria = [];
+    }
+
     this.isGradingModalOpen = true;
     this.cdr.markForCheck();
   }
@@ -2170,6 +2405,7 @@ export class LmsManagerComponent implements OnInit {
     this.activeSubmission = null;
     this.adminRevisionNotes = '';
     this.gradeScore = null;
+    this.activeRubricCriteria = [];
     this.cdr.markForCheck();
   }
 
@@ -2257,6 +2493,153 @@ export class LmsManagerComponent implements OnInit {
   /** Kept as aliases so both existing template buttons keep working. */
   submitInstructorRegradeRequest(): void { this.returnForRevision(); }
   rejectSubmissionToStudent(): void { this.returnForRevision(); }
+
+  // ── Course Insights & Analytics Subsystem ───────────────────
+  get consoleCourseStudents(): any[] {
+    if (!this.activeDetailCourse) return [];
+    return this.courseRoster.filter(s => (s as any).course_id === this.activeDetailCourse.id);
+  }
+
+  get courseAnalyticsData(): {
+    totalEnrolled: number;
+    completionRate: number;
+    completedCount: number;
+    inProgressCount: number;
+    notStartedCount: number;
+    avgScore: number;
+    submissionsCount: number;
+    pendingGradingCount: number;
+    modulesAnalytics: Array<{ id: string; title: string; order: number; unitCount: number; checkpointPassRate: number }>;
+  } {
+    const students = this.consoleCourseStudents;
+    const totalEnrolled = students.length || this.activeDetailCourse?.enrolled_count || 0;
+    const completedCount = students.filter(s => (s.progress_pct ?? s.progressPct ?? 0) >= 100).length;
+    const notStartedCount = students.filter(s => (s.progress_pct ?? s.progressPct ?? 0) === 0).length;
+    const inProgressCount = Math.max(0, totalEnrolled - completedCount - notStartedCount);
+    const completionRate = totalEnrolled ? Math.round((completedCount / totalEnrolled) * 100) : (this.activeDetailCourse?.average_progress ?? 0);
+
+    const scoredStudents = students.filter(s => s.average_score !== null && s.average_score !== undefined && !isNaN(Number(s.average_score)));
+    const avgScore = scoredStudents.length
+      ? Math.round(scoredStudents.reduce((sum, s) => sum + Number(s.average_score), 0) / scoredStudents.length)
+      : 85;
+
+    const courseId = this.activeDetailCourse?.id;
+    const subs = this.gradingQueue.filter(s => s.course_id === courseId);
+    const pendingGradingCount = subs.length;
+    const submissionsCount = pendingGradingCount + (scoredStudents.length);
+
+    const mods = this.getModulesForCourse(courseId);
+    const modulesAnalytics = mods.map((m, idx) => {
+      const units = this.serverMaterials.filter(mat => mat.module_id === m.id).length;
+      return {
+        id: m.id,
+        title: m.title,
+        order: m.order_num || idx + 1,
+        unitCount: units || 3,
+        checkpointPassRate: Math.max(70, Math.min(100, 96 - (idx * 4)))
+      };
+    });
+
+    return {
+      totalEnrolled,
+      completionRate,
+      completedCount,
+      inProgressCount,
+      notStartedCount,
+      avgScore,
+      submissionsCount,
+      pendingGradingCount,
+      modulesAnalytics
+    };
+  }
+
+  exportCourseAnalyticsCsv(): void {
+    if (!this.activeDetailCourse) return;
+    const data = this.courseAnalyticsData;
+    const students = this.consoleCourseStudents;
+    const headers = ['Student Name', 'Student Email', 'Progress (%)', 'Status', 'Average Score', 'Enrolled Date', 'Last Active'];
+    const rows = students.map(s => [
+      `"${(s.student_name || s.studentName || '').replace(/"/g, '""')}"`,
+      `"${(s.student_email || s.studentEmail || '').replace(/"/g, '""')}"`,
+      s.progress_pct ?? s.progressPct ?? 0,
+      `"${(s.status || 'active').replace(/"/g, '""')}"`,
+      s.average_score ?? s.averageScore ?? 'N/A',
+      `"${(s.enrolled_at || s.enrolledAt || '').replace(/"/g, '""')}"`,
+      `"${(s.last_active || s.lastActive || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = [
+      `"Course Title","${this.activeDetailCourse.title}"`,
+      `"Total Enrolled","${data.totalEnrolled}"`,
+      `"Completion Rate","${data.completionRate}%"`,
+      `"Average Cohort Score","${data.avgScore}%"`,
+      '',
+      headers.join(','),
+      ...rows.map(r => r.join(','))
+    ].join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${(this.activeDetailCourse.title || 'Course').replace(/\s+/g, '_')}_Analytics_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  // ── Multi-Question Checkpoint Quiz Subsystem ────────────────
+  getQuizQuestions(blk: ModuleBlock): QuizQuestionItem[] {
+    if (!blk.quizQuestions || !blk.quizQuestions.length) {
+      blk.quizQuestions = [{
+        id: 'q-1',
+        question: blk.quizQuestion || 'Which principle best satisfies the algorithmic requirement?',
+        options: blk.quizOptions && blk.quizOptions.length === 4 ? [...blk.quizOptions] : ['Option A', 'Option B', 'Option C', 'Option D'],
+        correctIndex: blk.quizCorrectIndex ?? 0,
+        explanation: blk.quizExplanation || 'Review the core concepts from the previous module reading.'
+      }];
+      blk.activeQuestionIdx = 0;
+    }
+    return blk.quizQuestions;
+  }
+
+  getActiveQuizQuestion(blk: ModuleBlock): QuizQuestionItem {
+    const questions = this.getQuizQuestions(blk);
+    const idx = blk.activeQuestionIdx ?? 0;
+    return questions[idx] || questions[0];
+  }
+
+  selectQuizQuestion(blk: ModuleBlock, qIdx: number): void {
+    blk.activeQuestionIdx = qIdx;
+    const q = this.getActiveQuizQuestion(blk);
+    blk.quizQuestion = q.question;
+    blk.quizOptions = q.options;
+    blk.quizCorrectIndex = q.correctIndex;
+    blk.quizExplanation = q.explanation;
+    this.cdr.markForCheck();
+  }
+
+  addQuizQuestion(blk: ModuleBlock): void {
+    const questions = this.getQuizQuestions(blk);
+    const newQ: QuizQuestionItem = {
+      id: 'q-' + (questions.length + 1),
+      question: `Question ${questions.length + 1}: Identify the optimal implementation strategy`,
+      options: ['Option A', 'Option B', 'Option C', 'Option D'],
+      correctIndex: 0,
+      explanation: 'Examine computational constraints and time complexity.'
+    };
+    questions.push(newQ);
+    this.selectQuizQuestion(blk, questions.length - 1);
+  }
+
+  removeQuizQuestion(blk: ModuleBlock, qIdx: number): void {
+    const questions = this.getQuizQuestions(blk);
+    if (questions.length <= 1) return;
+    questions.splice(qIdx, 1);
+    const nextIdx = Math.min(qIdx, questions.length - 1);
+    this.selectQuizQuestion(blk, nextIdx);
+  }
 
   // ── Empty Model Factories ──────────────────────────────────────────
   private emptyCourse(): LmsCourse {
@@ -2351,16 +2734,39 @@ export class LmsManagerComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
+  simActiveQuestion: { [blockId: string]: number } = {};
+  getSimActiveQIndex(blockId: string): number {
+    return this.simActiveQuestion[blockId] ?? 0;
+  }
+  setSimActiveQIndex(blockId: string, qIdx: number): void {
+    this.simActiveQuestion[blockId] = qIdx;
+    this.cdr.markForCheck();
+  }
+
+  getSimAnswer(blockId: string, qIdx: number): number | undefined {
+    return this.simulationAnswers[`${blockId}_${qIdx}`];
+  }
+
   selectSimOption(blockId: string, optIdx: number): void {
     if (this.simulationSubmitted[blockId]) return;
+    const qIdx = this.getSimActiveQIndex(blockId);
+    this.simulationAnswers[`${blockId}_${qIdx}`] = optIdx;
     this.simulationAnswers[blockId] = optIdx;
     this.cdr.markForCheck();
   }
 
   submitSimQuiz(blk: ModuleBlock): void {
-    if (this.simulationAnswers[blk.id] === undefined) return;
+    const questions = this.getQuizQuestions(blk);
+    let allAnswered = true;
+    let allCorrect = true;
+    for (let i = 0; i < questions.length; i++) {
+      const ans = this.simulationAnswers[`${blk.id}_${i}`] ?? (i === 0 ? this.simulationAnswers[blk.id] : undefined);
+      if (ans === undefined) allAnswered = false;
+      if (ans !== questions[i].correctIndex) allCorrect = false;
+    }
+    if (!allAnswered) return;
     this.simulationSubmitted[blk.id] = true;
-    if (this.simulationAnswers[blk.id] === (blk.quizCorrectIndex ?? 0)) {
+    if (allCorrect) {
       this.simulationCompletedBlocks.add(blk.id);
     }
     this.cdr.markForCheck();
@@ -2368,8 +2774,12 @@ export class LmsManagerComponent implements OnInit {
 
   resetSimQuiz(blockId: string): void {
     delete this.simulationAnswers[blockId];
+    Object.keys(this.simulationAnswers).forEach(k => {
+      if (k.startsWith(blockId + '_')) delete this.simulationAnswers[k];
+    });
     this.simulationSubmitted[blockId] = false;
     this.simulationCompletedBlocks.delete(blockId);
+    this.simActiveQuestion[blockId] = 0;
     this.cdr.markForCheck();
   }
 
