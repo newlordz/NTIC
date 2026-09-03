@@ -5466,9 +5466,16 @@ select.form-control {
 .custom-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 99999;
-  background: rgba(4, 8, 25, 0.82);
-  backdrop-filter: blur(14px);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1000000;
+  background: rgba(4, 8, 25, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   display: flex;
   align-items: center;
   justify-content: center;
