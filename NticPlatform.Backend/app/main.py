@@ -5651,7 +5651,7 @@ try:
         cur.execute(
             "INSERT INTO teams (id, name, track, lead, members, status, school_name, "
             "competition_id, mentor_status, is_solo, roster_list) "
-            "VALUES (%s, %s, %s, %s, 1, 'In Competition', NULL, %s, 'none', TRUE, %s)",
+            "VALUES (%s, %s, %s, %s, 1, 'Active', NULL, %s, 'none', TRUE, %s)",
             (team_id, f"{display} (Individual)", track or "", display,
              competition_id or None, json.dumps([display])),
         )
@@ -5728,15 +5728,33 @@ try:
         conn = _get_db()
         try:
             cur = conn.cursor()
+            actor_email = (actor.get("email") or "").strip().lower()
+            actor_name = (actor.get("full_name") or "").strip().lower()
             cur.execute(
                 "SELECT DISTINCT ON (t.id) t.id, t.name, t.track, t.competition_id, t.mentor_id, "
                 "COALESCE(t.mentor_status, 'none'), COALESCE(t.is_solo, FALSE), "
-                "m.is_lead "
-                "FROM teams t JOIN team_members m ON m.team_id = t.id "
-                "WHERE m.student_id = %s ORDER BY t.id, m.is_lead DESC",
-                (actor["id"],),
+                "COALESCE(m.is_lead, lower(t.lead) = %s) "
+                "FROM teams t "
+                "LEFT JOIN team_members m ON m.team_id = t.id AND (m.student_id = %s OR lower(m.email) = %s OR lower(m.name) = %s) "
+                "WHERE m.id IS NOT NULL OR lower(t.lead) = %s "
+                "ORDER BY t.id, m.is_lead DESC",
+                (actor_name, actor["id"], actor_email, actor_name, actor_name),
             )
             rows = cur.fetchall()
+            cleaned_rows = []
+            for r in rows:
+                m_status = r[5]
+                t_id = r[0]
+                if m_status in ('requested', 'pending', 'pending_school', 'pending_admin') and not r[4]:
+                    cur.execute(
+                        "SELECT COUNT(*) FROM pending_approvals WHERE type = 'Mentor Request' AND details->>'team_id' = %s AND status IN ('pending', 'pending_institution', 'requested')",
+                        (t_id,)
+                    )
+                    if (cur.fetchone()[0] or 0) == 0:
+                        cur.execute("UPDATE teams SET mentor_status = 'none' WHERE id = %s", (t_id,))
+                        conn.commit()
+                        m_status = 'none'
+                cleaned_rows.append((r[0], r[1], r[2], r[3], r[4], m_status, r[6], r[7]))
             cur.close()
         finally:
             release_db_connection(conn)
@@ -5746,7 +5764,7 @@ try:
                 "competitionId": r[3], "mentorId": r[4],
                 "mentorStatus": r[5], "isSolo": bool(r[6]), "isLead": bool(r[7]),
             }
-            for r in rows
+            for r in cleaned_rows
         ]
 
     # Team writes are decision points, not proposals.
@@ -8999,7 +9017,7 @@ try:
                     emails = _names(t.get("memberEmails"))
                 lead = (t.get("leadName") or t.get("lead") or (roster[0] if roster else "") or "Team Lead").strip()
                 track = (t.get("track") or "Coding").strip()
-                team_id = _upsert_team(cur, name, track, lead, max(len(roster), 1), "In Competition",
+                team_id = _upsert_team(cur, name, track, lead, max(len(roster), 1), "Active",
                                        entity, competition_id, "", "", roster,
                                        (emails[0] if emails else ""), emails,
                                        member_credentials)
@@ -9016,7 +9034,7 @@ try:
             motto = (details.get("motto") or "").strip()
             lead_email = (details.get("leadEmail") or "").strip()
             member_emails = _names(details.get("memberEmails"))
-            team_id = _upsert_team(cur, name, track, lead, max(len(roster), 1), "In Competition",
+            team_id = _upsert_team(cur, name, track, lead, max(len(roster), 1), "Active",
                                    school, competition_id, mentor, motto, roster,
                                    lead_email, member_emails, member_credentials)
             created.append(team_id)
@@ -9035,7 +9053,7 @@ try:
             member_emails = _names(details.get("memberEmails"))
             cur.execute(
                 "UPDATE teams SET name = %s, track = %s, lead = %s, members = %s, "
-                "status = 'In Competition', school_name = %s, mentor = %s, motto = %s, roster_list = %s WHERE id = %s",
+                "status = 'Active', school_name = %s, mentor = %s, motto = %s, roster_list = %s WHERE id = %s",
                 (new_name, track, lead, max(len(roster), 1), school, mentor, motto,
                  json.dumps(roster), team_id),
             )
@@ -9153,6 +9171,13 @@ try:
             or None
         )
         doc_file_id = details.get("docFileId") or details.get("doc_file_id") or None
+        org_val = (
+            details.get("schoolName")
+            or details.get("school_name")
+            or details.get("institution")
+            or (approval_row["entity"] if role in {ROLE_SCHOOL_ADMIN, ROLE_SPONSOR} else None)
+            or None
+        )
         cur.execute(
             "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, "
             "organization, photo_file_id, doc_file_id, must_change_password) "
@@ -9160,7 +9185,7 @@ try:
             (
                 user_id, email, full_name, role, ticket,
                 hash_password(temp_password),
-                details.get("schoolName") or approval_row["entity"] or None,
+                org_val,
                 photo_file_id, doc_file_id,
             ),
         )

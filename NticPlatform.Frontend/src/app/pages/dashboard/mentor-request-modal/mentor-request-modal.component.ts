@@ -30,6 +30,7 @@ export class MentorRequestModalComponent {
   tab: 'pool' | 'suggest' = 'pool';
   mode: 'auto_track' | 'existing' = 'auto_track';
   selectedInstructorId = '';
+  suggestStep = 1;
 
   suggestedForm = {
     name: '',
@@ -40,7 +41,36 @@ export class MentorRequestModalComponent {
     bio: ''
   };
 
+  setTab(newTab: 'pool' | 'suggest'): void {
+    this.tab = newTab;
+    if (newTab === 'suggest') {
+      this.suggestStep = 1;
+    }
+  }
+
+  nextStep(): void {
+    if (this.suggestStep === 1) {
+      if (!this.canProceedStep1()) return;
+    }
+    if (this.suggestStep < 3) {
+      this.suggestStep++;
+    }
+  }
+
+  prevStep(): void {
+    if (this.suggestStep > 1) {
+      this.suggestStep--;
+    }
+  }
+
+  canProceedStep1(): boolean {
+    const name = (this.suggestedForm.name || '').trim();
+    const email = (this.suggestedForm.email || '').trim();
+    return name.length > 0 && email.length > 0 && email.includes('@');
+  }
+
   onClose(): void {
+    this.suggestStep = 1;
     this.close.emit();
   }
 

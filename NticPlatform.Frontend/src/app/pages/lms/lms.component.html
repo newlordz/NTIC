@@ -602,25 +602,33 @@
            email were hardcoded fixtures ("Efua Mensah", "e.mensah@ntic.gov.gh")
            and the phone number below is still a literal, so showing this to a
            real student presented invented contact details as fact. -->
-      <div class="sidebar-panel-card" *ngIf="studentProfile.mentor">
-        <h3><span class="material-symbols-outlined">co_present</span> Assigned Mentor</h3>
-        <div class="mentor-info-row">
-          <div class="mentor-avatar">{{ studentProfile.mentorAvatar }}</div>
-          <div class="mentor-meta">
-            <strong>{{ studentProfile.mentor }}</strong>
-            <span>School Coach & Mentor</span>
+      <!-- Squad Mentorship Card on LMS Sidebar -->
+      <div class="sidebar-panel-card">
+        <h3><span class="material-symbols-outlined">co_present</span> Squad Mentorship</h3>
+        <div *ngIf="studentProfile.mentor; else noMentorLmsTpl">
+          <div class="mentor-info-row">
+            <div class="mentor-avatar">{{ studentProfile.mentorAvatar }}</div>
+            <div class="mentor-meta">
+              <strong>{{ studentProfile.mentor }}</strong>
+              <span>Certified Mentor</span>
+            </div>
+          </div>
+          <div class="mentor-contact" *ngIf="studentProfile.mentorEmail">
+            <div class="contact-item">
+              <span class="material-symbols-outlined">mail</span>
+              <span>{{ studentProfile.mentorEmail }}</span>
+            </div>
           </div>
         </div>
-        <div class="mentor-contact">
-          <div class="contact-item">
-            <span class="material-symbols-outlined">mail</span>
-            <span>{{ studentProfile.mentorEmail }}</span>
+        <ng-template #noMentorLmsTpl>
+          <div style="padding:4px 0 10px;font-size:12px;color:var(--on-surface-variant);line-height:1.4;">
+            No mentor is currently assigned to your squad.
           </div>
-          <div class="contact-item">
-            <span class="material-symbols-outlined">call</span>
-            <span>+233 24 456 7890</span>
-          </div>
-        </div>
+          <a routerLink="/dashboard" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;text-decoration:none;font-size:11.5px;font-weight:700;padding:8px 12px;border-radius:8px;background:var(--primary);color:#fff;">
+            <span class="material-symbols-outlined" style="font-size:15px;">co_present</span>
+            <span>Request Mentor on Dashboard</span>
+          </a>
+        </ng-template>
       </div>
 
       <div class="sidebar-panel-card">

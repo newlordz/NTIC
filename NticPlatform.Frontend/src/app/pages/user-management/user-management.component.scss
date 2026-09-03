@@ -556,6 +556,88 @@ $radius-xl: 20px;
   &.pill-suspended.active { color: $red; }
 }
 
+// Affiliation Pills & School Selector
+.affiliation-pills {
+  display: flex;
+  background: $surface-bg;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  padding: 3px;
+  gap: 2px;
+}
+
+.aff-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: $text-muted;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  .aff-icon {
+    font-size: 14px;
+  }
+
+  .aff-count {
+    font-size: 11px;
+    opacity: 0.75;
+  }
+
+  &:hover {
+    color: $text-primary;
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  &.active {
+    background: $surface;
+    color: $blue;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  &.pill-inst.active {
+    color: #2563eb;
+    background: rgba(37, 99, 235, 0.1);
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.15);
+  }
+
+  &.pill-indep.active {
+    color: #d97706;
+    background: rgba(245, 158, 11, 0.1);
+    box-shadow: 0 1px 3px rgba(245, 158, 11, 0.15);
+  }
+}
+
+.institution-select-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.um-select-inst {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: $text-primary;
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius-sm;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  max-width: 200px;
+
+  &:focus {
+    border-color: $blue;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  }
+}
+
 // View Toggle
 .view-toggle {
   display: flex;
@@ -770,6 +852,78 @@ $radius-xl: 20px;
   vertical-align: middle;
 }
 
+.um-org-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.um-org-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+
+  .org-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .org-name {
+    white-space: nowrap;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &.inst-badge {
+    background: rgba(37, 99, 235, 0.08);
+    color: #2563eb;
+    border: 1px solid rgba(37, 99, 235, 0.22);
+  }
+
+  &.indep-badge {
+    background: rgba(100, 116, 139, 0.08);
+    color: #64748b;
+    border: 1px solid rgba(100, 116, 139, 0.2);
+  }
+}
+
+.squad-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  .squad-icon {
+    font-size: 13px;
+  }
+
+  &:hover {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: #10b981;
+    transform: translateY(-1px);
+  }
+}
+
+.um-org-dim {
+  color: $text-muted;
+  opacity: 0.75;
+}
+
 .um-ticket {
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 11px;
@@ -973,6 +1127,24 @@ $radius-xl: 20px;
   color: $text-muted;
 
   .material-symbols-outlined { font-size: 15px; }
+
+  &.inst-meta {
+    color: #2563eb;
+    .inst-highlight { font-weight: 600; }
+  }
+
+  &.squad-meta {
+    color: #059669;
+    .squad-highlight {
+      cursor: pointer;
+      &:hover { text-decoration: underline; }
+    }
+  }
+
+  &.indep-meta {
+    color: #64748b;
+    .indep-highlight { font-weight: 500; font-style: italic; }
+  }
 }
 
 .um-card-foot {
@@ -1222,6 +1394,69 @@ $radius-xl: 20px;
   font-size: 13px;
   font-weight: 600;
   color: $text-primary;
+}
+
+.um-info-muted {
+  color: $text-muted !important;
+  font-style: italic;
+  font-weight: 400 !important;
+}
+
+.um-squad-box {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(37, 99, 235, 0.06));
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: $radius-sm;
+
+  .squad-box-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .squad-box-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .squad-box-icon {
+    font-size: 24px;
+    color: #059669;
+  }
+
+  .squad-box-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: $text-primary;
+  }
+
+  .squad-box-track {
+    font-size: 12px;
+    color: $text-muted;
+  }
+
+  .squad-jump-btn {
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #059669;
+
+    &:hover {
+      background: rgba(16, 185, 129, 0.1);
+      border-color: #10b981;
+    }
+  }
+
+  .squad-box-details {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(16, 185, 129, 0.2);
+    font-size: 12px;
+    color: $text-muted;
+
+    strong { color: $text-primary; }
+  }
 }
 
 // Warning Banner

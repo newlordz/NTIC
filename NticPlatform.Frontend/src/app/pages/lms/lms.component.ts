@@ -314,12 +314,31 @@ export class LmsComponent implements OnInit {
       { key: 'coding', label: 'Algorithm Design' },
       { key: 'robotics', label: 'Hardware / IoT' },
       { key: 'ai', label: 'Data & AI' },
-      { key: 'cyber', label: 'Cybersecurity' }
+      { key: 'cyber', label: 'Cybersecurity' },
+      { key: 'innovat', label: 'Open Innovation' }
     ];
 
-    const studentTrack = (this.studentProfile?.trackId || this.studentProfile?.track || '').toLowerCase();
+    const studentTrackRaw = (this.studentProfile?.track || '').trim();
+    const studentTrackKey = (this.studentProfile?.trackId || studentTrackRaw).toLowerCase();
 
-    return defaultTracks.map(t => {
+    // Only display the track(s) the student or their institution actually selected,
+    // plus any track where the student actually has enrolled courses.
+    let relevantTracks = defaultTracks.filter(t =>
+      studentTrackKey.includes(t.key) ||
+      studentTrackRaw.toLowerCase().includes(t.key) ||
+      (t.key === 'coding' && (studentTrackRaw.toLowerCase().includes('soft') || studentTrackRaw.toLowerCase().includes('algo') || studentTrackRaw.toLowerCase().includes('cod'))) ||
+      this.myEnrolments.some(e => (e.track || '').toLowerCase().includes(t.key) || (e.title || '').toLowerCase().includes(t.key))
+    );
+
+    // If no match from predefined list, but student has a custom track specified:
+    if (relevantTracks.length === 0 && studentTrackRaw && studentTrackRaw.toLowerCase() !== 'unassigned') {
+      relevantTracks = [{ key: studentTrackKey || 'track', label: studentTrackRaw }];
+    } else if (relevantTracks.length === 0) {
+      // Fallback only if completely unassigned
+      relevantTracks = [defaultTracks[0]];
+    }
+
+    return relevantTracks.map(t => {
       const matchingCourses = this.myEnrolments.filter(e =>
         (e.track || '').toLowerCase().includes(t.key) ||
         (e.title || '').toLowerCase().includes(t.key) ||
@@ -334,8 +353,8 @@ export class LmsComponent implements OnInit {
         pct = 0;
       }
 
-      let level = 'Unranked';
-      let levelClass = 'unranked';
+      let level = 'Enrolled';
+      let levelClass = 'novice';
       if (pct >= 75) {
         level = 'Advanced';
         levelClass = 'advanced';
@@ -346,8 +365,8 @@ export class LmsComponent implements OnInit {
         level = 'Beginner';
         levelClass = 'beginner';
       } else {
-        level = studentTrack.includes(t.key) ? 'Enrolled' : 'Unranked';
-        levelClass = studentTrack.includes(t.key) ? 'novice' : 'unranked';
+        level = 'Enrolled';
+        levelClass = 'novice';
       }
 
       return {

@@ -439,29 +439,64 @@ export class DashboardComponent implements OnInit, OnDestroy {
   get regionalBreakdown(): { region: string; schools: number; pct: number; color: string; leads: number; students: number }[] {
     const teams = this.contentService.teams || [];
     const users = this.contentService.users || [];
+    const schools = this.contentService.schools || [];
+    const approvals = this.contentService.pendingApprovals || [];
+
+    const resolveRegion = (schoolName?: string, userOrg?: string): string => {
+      const target = (schoolName || userOrg || '').trim().toLowerCase();
+      if (!target) return 'Western';
+
+      const matchedSchool = schools.find(s => (s.name || '').trim().toLowerCase() === target || target.includes((s.name || '').toLowerCase()));
+      if (matchedSchool?.region) return matchedSchool.region;
+
+      const matchedApproval = approvals.find(a => (a.entity || '').trim().toLowerCase() === target || ((a.details as any)?.schoolName || '').trim().toLowerCase() === target);
+      const appRegion = (matchedApproval?.details as any)?.region;
+      if (appRegion) return appRegion;
+
+      if (target.includes('gsts') || target.includes('takoradi') || target.includes('sekondi') || target.includes('tarkwa') || target.includes('fijai')) return 'Western';
+      if (target.includes('presec') || target.includes('achimota') || target.includes('accra') || target.includes('tema') || target.includes('legon')) return 'Greater Accra';
+      if (target.includes('prempeh') || target.includes('kumasi') || target.includes('opoku ware') || target.includes('ashanti')) return 'Ashanti';
+      if (target.includes('wesley') || target.includes('mfantsipim') || target.includes('adisco') || target.includes('cape coast') || target.includes('central')) return 'Central';
+      if (target.includes('tamale') || target.includes('northern')) return 'Northern';
+      if (target.includes('koforidua') || target.includes('eastern')) return 'Eastern';
+      if (target.includes('sunyani') || target.includes('bono')) return 'Bono';
+      if (target.includes('ho') || target.includes('volta') || target.includes('mawuli')) return 'Volta';
+
+      return 'Western';
+    };
+
     const regionMap = new Map<string, { schools: Set<string>; leads: number; students: number }>();
+
     for (const t of teams) {
-      const r = (t.region || 'Unknown').trim();
+      const school = (t.schoolName || t.school_name || '').trim();
+      const r = (t.region || resolveRegion(school, '')).trim();
       if (!regionMap.has(r)) regionMap.set(r, { schools: new Set(), leads: 0, students: 0 });
       const entry = regionMap.get(r)!;
-      if (t.schoolName || t.school_name) entry.schools.add((t.schoolName || t.school_name)!);
-      entry.students += (t.members || 0);
+      if (school) entry.schools.add(school);
+      else entry.schools.add(t.name || 'Autonomous Squad');
+      entry.students += (t.members || t.rosterList?.length || 3);
     }
+
     for (const u of users) {
       if (u.role === 'instructor' || u.role === 'school_admin') {
-        const r = (u.region || 'Unknown').trim();
+        const org = (u.organization || '').trim();
+        const r = (u.region || resolveRegion('', org)).trim();
         if (!regionMap.has(r)) regionMap.set(r, { schools: new Set(), leads: 0, students: 0 });
         regionMap.get(r)!.leads++;
+        if (org && org !== 'NTIC System') {
+          regionMap.get(r)!.schools.add(org);
+        }
       }
     }
+
     if (regionMap.size === 0) return [];
     const sorted = Array.from(regionMap.entries()).sort((a, b) => b[1].schools.size - a[1].schools.size);
-    const maxSchools = sorted[0]?.[1].schools.size || 1;
+    const maxSchools = Math.max(...sorted.map(s => s[1].schools.size), 1);
     return sorted.map(([region, data], i) => ({
       region,
-      schools: data.schools.size,
-      pct: Math.round((data.schools.size / maxSchools) * 100),
-      color: this.trackColors[i % this.trackColors.length],
+      schools: Math.max(data.schools.size, 1),
+      pct: Math.round((Math.max(data.schools.size, 1) / maxSchools) * 100),
+      color: this.trackColors[i % this.trackColors.length] || '#2563eb',
       leads: data.leads,
       students: data.students
     }));
@@ -492,14 +527,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   get participatingRegionsCount(): number {
-    const regions = new Set<string>();
-    for (const t of (this.contentService.teams || [])) {
-      if (t.region && t.region.trim()) regions.add(t.region.trim().toLowerCase());
-    }
-    for (const u of (this.contentService.users || [])) {
-      if (u.region && u.region.trim()) regions.add(u.region.trim().toLowerCase());
-    }
-    return regions.size;
+    return this.regionalBreakdown.length;
   }
 
   get superAdminCount(): number {
@@ -566,6 +594,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   goToSubTab(sub: string): void {
+    this.adminTab = 'control';
     this.adminSubTab = sub as any;
     if (sub === 'content' && this.contentTab === 'pagecopy') {
       this.loadLandingCopyForm();
@@ -577,6 +606,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.loadApprovalsFromBackend();
     }
     this.persistNavState();
+    this.cdr.markForCheck();
   }
 
   persistNavState(): void {
@@ -1254,9 +1284,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       title: 'Hero Banner & Global CTAs', icon: 'view_carousel',
       fields: [
         { key: 'hero.defaultCtaText', label: 'Primary CTA Button (e.g. Enter Portal)' },
-        { key: 'hero.defaultCtaLink', label: 'Primary CTA Link (e.g. #portal)' },
         { key: 'hero.applyBtn', label: 'Secondary CTA Button (e.g. Apply Now)' },
-        { key: 'hero.applyLink', label: 'Secondary CTA Link (e.g. /registration)' },
       ],
     },
     {
@@ -2337,6 +2365,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return inst ? (inst.fullName || inst.full_name || inst.name || inst.email || 'Instructor') : 'Assigned Instructor';
   }
 
+  isTeamInCompetition(team: any): boolean {
+    if (!team) return false;
+    const compId = team.competitionId || team.competition_id;
+    return !!(compId && typeof compId === 'string' && compId.trim() && compId !== 'none');
+  }
+
+  getTeamCompetitionTitle(team: any): string {
+    if (!team) return '';
+    const compId = team.competitionId || team.competition_id;
+    if (!compId) return '';
+    const comp = (this.contentService.competitions || []).find(c => c.id === compId);
+    return comp ? comp.title : 'Active Competition Cycle';
+  }
+
   getMentorObj(mentorId: string | null | undefined): any {
     if (!mentorId) return null;
     return (this.registeredUsers || []).find(u => u.id === mentorId) || null;
@@ -3191,6 +3233,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // An absent role grants nothing. The !this.activeRoleId || prefix used to
     // make a missing role behave like a full administrator.
     this.canManageUsers = ['super_admin', 'admin'].includes(this.activeRoleId);
+    if (this.activeRoleId === 'student') {
+      this.loadMyTeams();
+    }
     this.loadDashboardData();
     // The greeting and role panels need the server profile. It may not have
     // arrived yet on a cold load, so re-render once it does rather than leaving
@@ -4448,7 +4493,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!stat || !stat.label) return;
     const label = stat.label.toLowerCase();
 
-    if (this.activeRoleId === 'super_admin') {
+    if (['super_admin', 'admin'].includes(this.activeRoleId)) {
       if (label.includes('registered users') || label.includes('users')) {
         this.goToSubTab('users');
       } else if (label.includes('pending approvals') || label.includes('approvals')) {
@@ -4461,7 +4506,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.goToTab('dashboard');
       }
       if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 260, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
   }
@@ -6632,7 +6677,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
                 lead: t.leadName || (roster[0] || 'Student Captain'),
                 members: Math.max(roster.length, 3),
                 rosterList: roster,
-                status: 'In Competition',
+                status: 'Active',
                 mentor: 'Assigned Coordinator',
                 motto: 'National NTI Competition Squad',
                 schoolName: this.schoolName || req.entity
@@ -6645,7 +6690,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
               lead: req.details?.members?.[0] || 'Student Captain',
               members: req.details?.members?.length || 4,
               rosterList: req.details?.members || ['Student Captain', 'Member 2', 'Member 3'],
-              status: 'In Competition',
+              status: 'Active',
               mentor: 'Assigned Coordinator',
               motto: 'Sandbox Innovation Project',
               schoolName: this.schoolName || req.details?.school
@@ -6735,7 +6780,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
               guardianPhone: s.guardianPhone || 'N/A',
               track: s.track || 'Coding & Algorithms',
               organization: req.entity || this.schoolName,
-              status: 'In Competition'
+              status: 'Active'
             });
           });
         }
@@ -6752,7 +6797,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
                 teamName: t.name,
                 track: t.track || req.details?.tracks || 'Coding',
                 organization: req.entity || this.schoolName,
-                status: 'In Competition'
+                status: 'Active'
               });
             });
           });
@@ -6774,7 +6819,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
             teamName: t.name,
             track: t.track || 'Coding',
             organization: t.schoolName || this.schoolName,
-            status: t.status || 'In Competition'
+            status: t.status === 'In Competition' ? 'Active' : (t.status || 'Active')
           });
         });
       } else if (t.lead && (!activeEmail || t.lead.toLowerCase() !== activeEmail)) {
@@ -6785,7 +6830,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           teamName: t.name,
           track: t.track || 'Coding',
           organization: t.schoolName || this.schoolName,
-          status: t.status || 'In Competition'
+          status: t.status === 'In Competition' ? 'Active' : (t.status || 'Active')
         });
       }
     });

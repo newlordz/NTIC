@@ -3917,6 +3917,35 @@ setAuthValue('activeUserEmail', email);
 
   async submitRegistration(): Promise<void> {
     if (this.isSubmitting) return;
+
+    if (this.activeTab === 'school') {
+      if (!this.schoolForm.name?.trim()) {
+        this.showCustomAlert('Please enter your School Name.', 'Information Required', 'warning');
+        return;
+      }
+      if (!this.hasRequiredDocs) {
+        this.showCustomAlert('Please upload your School Accreditation Documents in Step 4 before submitting.', 'Document Required', 'warning');
+        return;
+      }
+      if (!this.schoolForm.acceptedTerms) {
+        this.showCustomAlert('Please check the box to agree to the Terms & Conditions and Privacy Policy.', 'Agreement Required', 'warning');
+        return;
+      }
+    } else if (this.activeTab === 'instructor') {
+      if (!this.instructorForm.name?.trim()) {
+        this.showCustomAlert('Please enter your Full Name.', 'Information Required', 'warning');
+        return;
+      }
+      if (!this.hasRequiredDocs) {
+        this.showCustomAlert('Please upload your Documents (CV, Certificates, or National ID) before submitting.', 'Document Required', 'warning');
+        return;
+      }
+      if (!this.instructorForm.acceptedTerms) {
+        this.showCustomAlert('Please check the box to agree to the Terms & Conditions and Privacy Policy.', 'Agreement Required', 'warning');
+        return;
+      }
+    }
+
     this.autoStageCurrentTeam();
     if (!this.validateCurrentTab()) return;
 
@@ -4014,6 +4043,7 @@ setAuthValue('activeUserEmail', email);
     }
 
     this.isSubmitting = true;
+    this.cdr.markForCheck();
 
     // Capture school logo file ID (not base64 -- too large for storage)
     let logoFileId: string | null = null;
@@ -4021,10 +4051,7 @@ setAuthValue('activeUserEmail', email);
       logoFileId = this.selectedFileIds['schoolLogo']?.[0] || null;
     }
     
-    // Simulate API call with modern loader
-    setTimeout(async () => {
     try {
-      this.isSubmitting = false;
       this.isPreviewModalOpen = false;
 
       // Add to pending approvals in localStorage via ContentService
@@ -4457,19 +4484,21 @@ setAuthValue('activeUserEmail', email);
         localStorage.setItem('ntic_drafts', JSON.stringify(drafts));
       }
 
+      this.isSubmitting = false;
       this.justUpdatedApplication = !!this.editingApprovalId;
       this.editingApprovalId = null;
       this.lastApplicationCode = details?.code || null;
       this.copiedApplicationCode = false;
       this.isSuccessModalOpen = true;
       this.clearDraftPrefills();
+      this.cdr.markForCheck();
     } catch (err) {
       console.error('[Registration] Submission error:', err);
       this.isSubmitting = false;
       this.isPreviewModalOpen = false;
+      this.cdr.markForCheck();
       this.dialogService.toast('Submission failed. Please try again. Error: ' + (err as any)?.message, 'error');
     }
-    }, 1500);
   }
 
   closeSuccessModal(): void {

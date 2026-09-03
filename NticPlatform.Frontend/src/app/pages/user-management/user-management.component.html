@@ -151,6 +151,46 @@
         </div>
 
         <div class="um-toolbar-right">
+          <!-- Affiliation pills (Students tab only) -->
+          <div class="affiliation-pills" *ngIf="roleFilter === 'student'">
+            <button
+              class="aff-pill"
+              [class.active]="affiliationFilter === 'all'"
+              (click)="setAffiliationFilter('all')"
+              title="Show all students">
+              All Students
+            </button>
+            <button
+              class="aff-pill pill-inst"
+              [class.active]="affiliationFilter === 'institution'"
+              (click)="setAffiliationFilter('institution')"
+              title="Students affiliated with a school/institution">
+              <span class="material-symbols-outlined aff-icon">school</span>
+              <span>Institution</span>
+              <span class="aff-count" *ngIf="roleFilter === 'student'">({{ getInstitutionStudentCount() }})</span>
+            </button>
+            <button
+              class="aff-pill pill-indep"
+              [class.active]="affiliationFilter === 'independent'"
+              (click)="setAffiliationFilter('independent')"
+              title="Independent student entrants">
+              <span class="material-symbols-outlined aff-icon">person</span>
+              <span>Independent</span>
+              <span class="aff-count" *ngIf="roleFilter === 'student'">({{ getIndependentStudentCount() }})</span>
+            </button>
+          </div>
+
+          <!-- Specific Institution Dropdown -->
+          <div class="institution-select-wrap" *ngIf="(affiliationFilter === 'institution' || selectedInstitutionFilter !== 'all') && knownInstitutions.length > 0">
+            <select
+              class="um-select-inst"
+              [ngModel]="selectedInstitutionFilter"
+              (ngModelChange)="setSelectedInstitutionFilter($event)">
+              <option value="all">All Schools ({{ knownInstitutions.length }})</option>
+              <option *ngFor="let inst of knownInstitutions" [value]="inst">{{ inst }}</option>
+            </select>
+          </div>
+
           <!-- Status pills -->
           <div class="status-pills">
             <button class="status-pill" [class.active]="statusFilter === 'all'" (click)="statusFilter='all'; applyFilters()">All</button>
@@ -215,7 +255,36 @@
                   <span class="role-pill" [class]="'rp-' + u.role">{{ getUserRoleLabel(u) }}</span>
                 </td>
                 <td>
-                  <span class="um-org">{{ u.organization || 'NTIC Platform' }}</span>
+                  <!-- Student under Institution -->
+                  <div class="um-org-cell" *ngIf="u.role === 'student' && isInstitutionStudent(u)">
+                    <span class="um-org-badge inst-badge" [title]="'Affiliated School: ' + getStudentOrganization(u)">
+                      <span class="material-symbols-outlined org-icon">school</span>
+                      <span class="org-name">{{ getStudentOrganization(u) }}</span>
+                    </span>
+                    <button
+                      *ngIf="getStudentTeam(u) as team"
+                      class="squad-pill-btn"
+                      (click)="$event.stopPropagation(); jumpToTeam(team.name)"
+                      [title]="'Squad: ' + team.name + ' (' + team.track + ') - Click to view in Teams'">
+                      <span class="material-symbols-outlined squad-icon">groups</span>
+                      <span>{{ team.name }}</span>
+                    </button>
+                  </div>
+
+                  <!-- Independent Student -->
+                  <div class="um-org-cell" *ngIf="u.role === 'student' && !isInstitutionStudent(u)">
+                    <span class="um-org-badge indep-badge" title="Independent Student (No School Affiliation)">
+                      <span class="material-symbols-outlined org-icon">person</span>
+                      <span class="org-name">Independent</span>
+                    </span>
+                  </div>
+
+                  <!-- Non-Student Roles -->
+                  <div class="um-org-cell" *ngIf="u.role !== 'student'">
+                    <span class="um-org">
+                      {{ getUserOrganizationDisplay(u) }}
+                    </span>
+                  </div>
                 </td>
                 <td>
                   <span class="um-ticket">{{ isMainAdmin(u) ? '••••••••••••' : (u.ticket || '--') }}</span>
@@ -267,9 +336,28 @@
             <div class="um-card-email">{{ u.email }}</div>
             <span class="role-pill" [class]="'rp-' + u.role">{{ getUserRoleLabel(u) }}</span>
 
-            <div class="um-card-meta">
+            <!-- Institution Student Meta -->
+            <div class="um-card-meta inst-meta" *ngIf="u.role === 'student' && isInstitutionStudent(u)">
+              <span class="material-symbols-outlined">school</span>
+              <span class="inst-highlight">{{ getStudentOrganization(u) }}</span>
+            </div>
+            <div class="um-card-meta squad-meta" *ngIf="u.role === 'student' && getStudentTeam(u) as team">
+              <span class="material-symbols-outlined">groups</span>
+              <span class="squad-highlight" (click)="$event.stopPropagation(); jumpToTeam(team.name)">
+                Squad: <strong>{{ team.name }}</strong> ({{ team.track }})
+              </span>
+            </div>
+
+            <!-- Independent Student Meta -->
+            <div class="um-card-meta indep-meta" *ngIf="u.role === 'student' && !isInstitutionStudent(u)">
+              <span class="material-symbols-outlined">person</span>
+              <span class="indep-highlight">Independent Entrant</span>
+            </div>
+
+            <!-- Non-Student Meta -->
+            <div class="um-card-meta" *ngIf="u.role !== 'student'">
               <span class="material-symbols-outlined">business</span>
-              <span>{{ u.organization || 'NTIC Platform' }}</span>
+              <span>{{ getUserOrganizationDisplay(u) }}</span>
             </div>
             <div class="um-card-meta" *ngIf="u.ticket">
               <span class="material-symbols-outlined">confirmation_number</span>
@@ -714,10 +802,30 @@
               {{ selectedUser.status || 'Active' }}
             </span>
           </div>
-          <div class="um-info-item">
-            <span class="um-info-label">Organization / School</span>
-            <span class="um-info-val">{{ selectedUser.organization || 'NTIC Platform' }}</span>
+
+          <!-- Student Affiliation Details -->
+          <ng-container *ngIf="selectedUser.role === 'student'">
+            <div class="um-info-item">
+              <span class="um-info-label">Affiliation Status</span>
+              <span class="um-org-badge" [class.inst-badge]="isInstitutionStudent(selectedUser)" [class.indep-badge]="!isInstitutionStudent(selectedUser)">
+                <span class="material-symbols-outlined org-icon">{{ isInstitutionStudent(selectedUser) ? 'school' : 'person' }}</span>
+                <span>{{ isInstitutionStudent(selectedUser) ? 'Institution Enrolled' : 'Independent Entrant' }}</span>
+              </span>
+            </div>
+            <div class="um-info-item">
+              <span class="um-info-label">Institution / School</span>
+              <span class="um-info-val" [class.um-info-muted]="!isInstitutionStudent(selectedUser)">
+                {{ getStudentOrganization(selectedUser) || 'Independent (No School Attached)' }}
+              </span>
+            </div>
+          </ng-container>
+
+          <!-- Non-Student Organization -->
+          <div class="um-info-item" *ngIf="selectedUser.role !== 'student'">
+            <span class="um-info-label">Organization / Institution</span>
+            <span class="um-info-val">{{ getUserOrganizationDisplay(selectedUser) }}</span>
           </div>
+
           <div class="um-info-item" *ngIf="selectedUser.ticket">
             <span class="um-info-label">Access Ticket</span>
             <span class="um-info-val um-ticket">{{ isMainAdmin(selectedUser) ? '••••••••••••' : selectedUser.ticket }}</span>
@@ -725,6 +833,26 @@
           <div class="um-info-item" *ngIf="selectedUser.phone">
             <span class="um-info-label">Phone Number</span>
             <span class="um-info-val">{{ selectedUser.phone }}</span>
+          </div>
+        </div>
+
+        <!-- Student Squad & Team Banner in Modal -->
+        <div class="um-squad-box" *ngIf="selectedUser.role === 'student' && getStudentTeam(selectedUser) as team">
+          <div class="squad-box-header">
+            <div class="squad-box-title">
+              <span class="material-symbols-outlined squad-box-icon">groups</span>
+              <div>
+                <div class="squad-box-name">{{ team.name }}</div>
+                <div class="squad-box-track">{{ team.track }} Track • {{ team.schoolName || team.school_name || 'Enrolled Squad' }}</div>
+              </div>
+            </div>
+            <button class="cmd-btn cmd-btn-ghost btn-sm squad-jump-btn" (click)="jumpToTeam(team.name)">
+              <span class="material-symbols-outlined">visibility</span> View Squad
+            </button>
+          </div>
+          <div class="squad-box-details" *ngIf="team.lead || team.mentor">
+            <span *ngIf="team.lead">Lead: <strong>{{ team.lead }}</strong></span>
+            <span *ngIf="team.mentor"> • Mentor: <strong>{{ team.mentor }}</strong></span>
           </div>
         </div>
       </div>
@@ -800,13 +928,13 @@
             Select User Role
           </p>
           <div class="ca-role-grid">
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'judge'" (click)="setNewUserRole('judge')">
-              <span class="material-symbols-outlined">gavel</span>
-              <span>Judge</span>
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'instructor'" (click)="setNewUserRole('instructor')">
+              <span class="material-symbols-outlined">co_present</span>
+              <span>Mentor</span>
             </button>
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'sponsor'" (click)="setNewUserRole('sponsor')">
-              <span class="material-symbols-outlined">handshake</span>
-              <span>Sponsor</span>
+            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'competition_manager'" (click)="setNewUserRole('competition_manager')">
+              <span class="material-symbols-outlined">emoji_events</span>
+              <span>Comp. Manager</span>
             </button>
             <button class="ca-role-chip" [class.selected]="newUserForm.role === 'content_manager'" (click)="setNewUserRole('content_manager')">
               <span class="material-symbols-outlined">edit_note</span>
@@ -815,10 +943,6 @@
             <button class="ca-role-chip" [class.selected]="newUserForm.role === 'reviewer'" (click)="setNewUserRole('reviewer')">
               <span class="material-symbols-outlined">rate_review</span>
               <span>Reviewer</span>
-            </button>
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'competition_manager'" (click)="setNewUserRole('competition_manager')">
-              <span class="material-symbols-outlined">emoji_events</span>
-              <span>Comp. Manager</span>
             </button>
           </div>
         </div>
@@ -855,12 +979,12 @@
               <label class="ca-label">Organization / Institution</label>
               <div class="ca-input-wrap">
                 <span class="material-symbols-outlined ca-input-icon">business</span>
-                <input type="text" [(ngModel)]="newUserForm.organization" placeholder="School or Sponsor Company" class="ca-input" />
+                <input type="text" [(ngModel)]="newUserForm.organization" placeholder="e.g. NTIC System or School Name" class="ca-input" />
               </div>
             </div>
             <p class="ca-creds-note">
             <span class="material-symbols-outlined">info</span>
-            Credentials will be delivered automatically via Email upon account creation.
+            Credentials will be generated securely and shown for immediate clipboard copy upon account creation.
           </p>
           </div>
         </div>

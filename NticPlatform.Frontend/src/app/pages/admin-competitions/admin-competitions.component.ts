@@ -100,7 +100,7 @@ export class AdminCompetitionsComponent implements OnInit {
   }
 
   get canManageCompetitions(): boolean {
-    return ['super_admin', 'admin', 'support_admin', 'school_admin', 'instructor', 'competition_manager', 'content_manager'].includes(this.activeRoleId);
+    return ['super_admin', 'admin', 'competition_manager'].includes(this.activeRoleId);
   }
 
   get totalCycles(): number { return this.competitions.length; }

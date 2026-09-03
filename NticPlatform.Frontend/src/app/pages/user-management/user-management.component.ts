@@ -29,6 +29,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   searchQuery = '';
   roleFilter = 'all';
   statusFilter = 'all';
+  affiliationFilter: 'all' | 'institution' | 'independent' = 'all';
+  selectedInstitutionFilter: string = 'all';
   viewMode: 'table' | 'grid' = 'table';
   isAddUserModalOpen = false;
   selectedUser: User | null = null;
@@ -41,8 +43,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     fullName: '',
     email: '',
     phone: '',
-    role: 'judge',
-    organization: '',
+    role: 'instructor',
+    organization: 'NTIC System',
     status: 'Active',
     ticket: '',
     password: ''
@@ -356,17 +358,161 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     if (this.statusFilter !== 'all') {
       list = list.filter(u => u.status.toLowerCase() === this.statusFilter);
     }
+    if (this.affiliationFilter === 'institution') {
+      list = list.filter(u => u.role === 'student' && this.isInstitutionStudent(u));
+    } else if (this.affiliationFilter === 'independent') {
+      list = list.filter(u => u.role === 'student' && !this.isInstitutionStudent(u));
+    }
+    if (this.selectedInstitutionFilter !== 'all') {
+      const targetInst = this.selectedInstitutionFilter.toLowerCase();
+      list = list.filter(u =>
+        (u.role === 'student' && this.getStudentOrganization(u).toLowerCase() === targetInst) ||
+        (u.organization && u.organization.trim().toLowerCase() === targetInst)
+      );
+    }
     if (this.searchQuery.trim()) {
       const q = this.searchQuery.toLowerCase();
       list = list.filter(u =>
         u.fullName?.toLowerCase().includes(q) ||
         u.email?.toLowerCase().includes(q) ||
         u.organization?.toLowerCase().includes(q) ||
+        this.getStudentOrganization(u).toLowerCase().includes(q) ||
+        this.getUserOrganizationDisplay(u).toLowerCase().includes(q) ||
         u.ticket?.toLowerCase().includes(q) ||
-        u.phone?.toLowerCase().includes(q)
+        u.phone?.toLowerCase().includes(q) ||
+        this.getStudentTeam(u)?.name?.toLowerCase().includes(q)
       );
     }
     this.filteredUsers = list;
+  }
+
+  setAffiliationFilter(filter: 'all' | 'institution' | 'independent'): void {
+    this.affiliationFilter = filter;
+    if (filter !== 'institution') {
+      this.selectedInstitutionFilter = 'all';
+    }
+    this.applyFilters();
+  }
+
+  setSelectedInstitutionFilter(inst: string): void {
+    this.selectedInstitutionFilter = inst;
+    this.applyFilters();
+  }
+
+  isInstitutionStudent(u: User): boolean {
+    if (!u || u.role !== 'student') return false;
+    const org = (u.organization || '').trim().toLowerCase();
+    const fullNameLower = (u.fullName || '').trim().toLowerCase();
+    const ignored = ['', 'ntic platform', 'independent', 'open registration', '_pending_profile', 'none', 'n/a', fullNameLower];
+    if (org && !ignored.includes(org)) {
+      return true;
+    }
+    const team = this.getStudentTeam(u);
+    if (team) {
+      const teamSchool = (team.schoolName || team.school_name || '').trim().toLowerCase();
+      if (teamSchool && !['registered institution', 'independent', 'none', '', fullNameLower].includes(teamSchool)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  getStudentOrganization(u: User): string {
+    if (!u) return '';
+    const org = (u.organization || '').trim();
+    const fullNameLower = (u.fullName || '').trim().toLowerCase();
+    const ignored = ['', 'ntic platform', 'independent', 'open registration', '_pending_profile', 'none', 'n/a', fullNameLower];
+    if (org && !ignored.includes(org.toLowerCase())) {
+      return org;
+    }
+    const team = this.getStudentTeam(u);
+    if (team) {
+      const teamSchool = (team.schoolName || team.school_name || '').trim();
+      if (teamSchool && !['registered institution', 'independent', 'none', '', fullNameLower].includes(teamSchool.toLowerCase())) {
+        return teamSchool;
+      }
+    }
+    return '';
+  }
+
+  getUserOrganizationDisplay(u: User): string {
+    if (!u) return '';
+    const org = (u.organization || '').trim();
+    const isSelfName = org.toLowerCase() === (u.fullName || '').trim().toLowerCase();
+    if (org && !isSelfName && !['ntic platform', 'independent', 'open registration', '_pending_profile'].includes(org.toLowerCase())) {
+      return org;
+    }
+    // Platform-level personnel and educators default to 'NTIC System'
+    if (['super_admin', 'admin', 'instructor', 'content_manager', 'reviewer', 'competition_manager'].includes(u.role)) {
+      return 'NTIC System';
+    }
+    if (u.role === 'student') {
+      return this.getStudentOrganization(u) || 'Independent';
+    }
+    if (u.role === 'judge') {
+      return (org && !isSelfName) ? org : 'Independent / NTIC Panel';
+    }
+    return (org && !isSelfName) ? org : 'Independent';
+  }
+
+  getStudentTeam(u: User): Team | undefined {
+    if (!u) return undefined;
+    const nameLower = (u.fullName || '').trim().toLowerCase();
+    const emailLower = (u.email || '').trim().toLowerCase();
+    return this.teams.find(t => {
+      const leadMatch = (t.lead && (t.lead.toLowerCase() === nameLower || t.lead.toLowerCase() === emailLower));
+      if (leadMatch) return true;
+      if (Array.isArray(t.rosterList) && t.rosterList.some((m: any) => typeof m === 'string' && (m.toLowerCase().includes(nameLower) || (emailLower && m.toLowerCase().includes(emailLower))))) {
+        return true;
+      }
+      if (Array.isArray(t.memberNames) && t.memberNames.some((m: any) => typeof m === 'string' && (m.toLowerCase().includes(nameLower) || (emailLower && m.toLowerCase().includes(emailLower))))) {
+        return true;
+      }
+      if (Array.isArray(t.memberList) && t.memberList.some((m: any) => typeof m === 'string' && (m.toLowerCase().includes(nameLower) || (emailLower && m.toLowerCase().includes(emailLower))))) {
+        return true;
+      }
+      return false;
+    });
+  }
+
+  get knownInstitutions(): string[] {
+    const instSet = new Set<string>();
+    for (const u of this.users) {
+      if (u.role === 'school_admin' && u.organization) {
+        const org = u.organization.trim();
+        const selfName = (u.fullName || '').trim().toLowerCase();
+        if (org && !['ntic platform', 'independent', 'open registration', selfName].includes(org.toLowerCase())) {
+          instSet.add(org);
+        }
+      }
+      if (u.role === 'student') {
+        const org = this.getStudentOrganization(u);
+        if (org && org.toLowerCase() !== (u.fullName || '').trim().toLowerCase()) instSet.add(org);
+      }
+    }
+    for (const t of this.teams) {
+      const s = (t.schoolName || t.school_name || '').trim();
+      if (s && !['registered institution', 'independent'].includes(s.toLowerCase())) {
+        instSet.add(s);
+      }
+    }
+    return Array.from(instSet).sort((a, b) => a.localeCompare(b));
+  }
+
+  getInstitutionStudentCount(): number {
+    return this.users.filter(u => u.role === 'student' && this.isInstitutionStudent(u)).length;
+  }
+
+  getIndependentStudentCount(): number {
+    return this.users.filter(u => u.role === 'student' && !this.isInstitutionStudent(u)).length;
+  }
+
+  jumpToTeam(teamName: string): void {
+    if (!teamName) return;
+    this.closeDetail();
+    this.setRoleTab('teams');
+    this.teamSearchQuery = teamName;
+    this.applyTeamFilters();
   }
 
   setRoleTab(role: string): void {
@@ -394,8 +540,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   setNewUserRole(role: string): void {
     const prefixMap: Record<string, string> = {
-      judge: 'NTIC-JDG-',
-      sponsor: 'NTIC-SPO-',
+      instructor: 'NTIC-MTR-',
       school_admin: 'NTIC-SCH-',
       content_manager: 'NTIC-CNT-',
       reviewer: 'NTIC-REV-',
@@ -407,6 +552,9 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.newUserForm.role = role;
     this.newUserForm.ticket = prefix + this.randomSuffix();
     this.newUserForm.password = '';
+    if (role === 'instructor' && !this.newUserForm.organization) {
+      this.newUserForm.organization = 'NTIC System';
+    }
   }
 
   /**
@@ -513,14 +661,14 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     }, 60);
   }
 
-  openAddUserModal(defaultRole = 'judge'): void {
+  openAddUserModal(defaultRole = 'instructor'): void {
     this.formError = '';
     this.newUserForm = {
       fullName: '',
       email: '',
       phone: '',
       role: defaultRole,
-      organization: '',
+      organization: defaultRole === 'instructor' ? 'NTIC System' : '',
       status: 'Active',
       ticket: '',
       password: ''
@@ -612,6 +760,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       role: newUser.role,
       status: newUser.status,
       ticket: newUser.ticket,
+      organization: newUser.organization || (newUser.role === 'instructor' ? 'NTIC System' : ''),
       // Deliberately no `password`. The server generates a strong one with a
       // CSPRNG and returns it once as `temporary_password`. The old code sent a
       // Math.random() 6-digit value, falling back to the literal '123456'.

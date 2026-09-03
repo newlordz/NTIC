@@ -483,18 +483,34 @@
           </div>
 
           <!-- School Teams Roster List -->
-          <div class="section-title">School Competition Teams</div>
+          <div class="section-title">School Squads & Teams</div>
           <div class="school-teams-grid" *ngIf="schoolTeams.length > 0">
             <div *ngFor="let team of schoolTeams" class="card team-roster-card">
               <div class="card-body">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                  <span class="badge secondary">{{ team.status }}</span>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span *ngIf="isTeamInCompetition(team)" class="badge primary" style="display:inline-flex;align-items:center;gap:4px;" [title]="'Enrolled in competition: ' + getTeamCompetitionTitle(team)">
+                      <span class="material-symbols-outlined" style="font-size:13px;">emoji_events</span>
+                      <span>In Competition</span>
+                    </span>
+                    <span *ngIf="!isTeamInCompetition(team)" class="badge" style="background:var(--surface-container-high);color:var(--on-surface-variant);display:inline-flex;align-items:center;gap:4px;" title="Squad active and formed, but not yet registered in a competition cycle">
+                      <span class="material-symbols-outlined" style="font-size:13px;">playlist_add_check</span>
+                      <span>Roster Ready</span>
+                    </span>
+                    <span class="badge" [class.secondary]="team.status === 'Active' || team.status === 'In Competition'" [class.badge-danger]="team.status === 'Suspended'" style="font-size:10px;">
+                      {{ team.status === 'In Competition' ? 'Active' : (team.status || 'Active') }}
+                    </span>
+                  </div>
                   <span class="team-track-chip" [class]="team.track.toLowerCase()">{{ team.track }}</span>
                 </div>
                 <h3 class="team-card-title">{{ team.name }}</h3>
                 <div class="team-card-meta">
                   <div><strong>Team Lead:</strong> {{ team.rosterList?.[0] || team.lead }}</div>
                   <div><strong>Members:</strong> {{ team.members }} active students</div>
+                  <div *ngIf="isTeamInCompetition(team)" style="margin-top:4px;font-size:11.5px;color:var(--primary);display:flex;align-items:center;gap:4px;">
+                    <span class="material-symbols-outlined" style="font-size:14px;">emoji_events</span>
+                    <span>Cycle: <strong>{{ getTeamCompetitionTitle(team) }}</strong></span>
+                  </div>
                   <!-- Mentor is centrally assigned by NTIC Administration -->
                   <div style="margin-top:8px;padding:6px 10px;background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;">
                     <span style="display:flex;align-items:center;gap:5px;color:var(--on-surface-variant);">
@@ -520,7 +536,11 @@
                 </div>
 
                 <!-- Squad Management Footer Bar -->
-                <div class="team-card-actions" style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--outline-variant);">
+                <div class="team-card-actions" style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--outline-variant);align-items:center;flex-wrap:wrap;">
+                  <button *ngIf="!isTeamInCompetition(team)" type="button" routerLink="/competitions" style="display:flex;align-items:center;gap:4px;padding:6px 12px;font-size:11.5px;font-weight:700;color:#059669;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:8px;cursor:pointer;margin-right:auto;text-decoration:none;">
+                    <span class="material-symbols-outlined" style="font-size:15px;">emoji_events</span>
+                    Apply to Cycle
+                  </button>
                   <button type="button" class="btn-manage-squad edit" (click)="editTeam(team)" style="display:flex;align-items:center;gap:4px;padding:6px 12px;font-size:11.5px;font-weight:700;color:var(--primary);background:rgba(0,63,135,0.06);border:1px solid rgba(0,63,135,0.2);border-radius:8px;cursor:pointer;transition:all 0.2s ease;">
                     <span class="material-symbols-outlined" style="font-size:15px;">edit_square</span>
                     Edit Roster & Squad

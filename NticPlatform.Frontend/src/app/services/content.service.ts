@@ -1261,7 +1261,7 @@ export class ContentService {
         track: b.track || 'Coding',
         lead: b.lead || 'Team Lead',
         members: b.members ?? 1,
-        status: b.status || 'In Competition',
+        status: b.status === 'In Competition' && !b.competition_id ? 'Active' : (b.status || 'Active'),
         competitionId: b.competition_id ?? null,
         schoolName: b.school_name || '',
         school_name: b.school_name || '',

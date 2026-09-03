@@ -74,63 +74,152 @@
         </label>
       </div>
 
-      <!-- TAB 2: Suggest / Nominate External Mentor -->
+      <!-- TAB 2: Suggest / Nominate External Mentor (Step Wizard) -->
       <div *ngIf="tab === 'suggest'" style="display:flex;flex-direction:column;gap:14px;">
-        <div style="padding:10px 12px;background:rgba(0,85,204,0.06);border:1px solid rgba(0,85,204,0.18);border-radius:8px;font-size:12px;color:var(--on-surface-variant);line-height:1.5;">
-          <span class="material-symbols-outlined" style="font-size:15px;color:var(--primary);vertical-align:middle;margin-right:4px;">info</span>
-          Nominate an industry expert or external mentor. Once approved, the platform will automatically provision their account and send them an official invitation link.
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div>
-            <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Mentor Full Name *</label>
-            <input type="text" [(ngModel)]="suggestedForm.name" placeholder="e.g. Dr. Kwame Mensah" style="width:100%;padding:9px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+        
+        <!-- Step Progress Indicator -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px 12px;border-bottom:1px solid var(--outline-variant);margin-bottom:4px;">
+          <div (click)="suggestStep > 1 ? suggestStep = 1 : null" [style.cursor]="suggestStep > 1 ? 'pointer' : 'default'" style="display:flex;align-items:center;gap:6px;">
+            <span [style.background]="suggestStep >= 1 ? 'var(--primary)' : 'var(--surface-container-high)'" [style.color]="suggestStep >= 1 ? '#fff' : 'var(--on-surface-variant)'" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;transition:all 0.2s;">
+              <span *ngIf="suggestStep > 1" class="material-symbols-outlined" style="font-size:14px;">check</span>
+              <span *ngIf="suggestStep <= 1">1</span>
+            </span>
+            <span style="font-size:12px;" [style.font-weight]="suggestStep === 1 ? '700' : '500'" [style.color]="suggestStep === 1 ? 'var(--primary)' : 'var(--on-surface-variant)'">Nominee</span>
           </div>
-          <div>
-            <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Official Email Address *</label>
-            <input type="email" [(ngModel)]="suggestedForm.email" placeholder="e.g. mentor@techcorp.com" style="width:100%;padding:9px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+
+          <div style="flex:1;height:2px;margin:0 10px;transition:background 0.3s;" [style.background]="suggestStep > 1 ? 'var(--primary)' : 'var(--outline-variant)'"></div>
+
+          <div (click)="suggestStep > 2 ? suggestStep = 2 : null" [style.cursor]="suggestStep > 2 ? 'pointer' : 'default'" style="display:flex;align-items:center;gap:6px;">
+            <span [style.background]="suggestStep >= 2 ? 'var(--primary)' : 'var(--surface-container-high)'" [style.color]="suggestStep >= 2 ? '#fff' : 'var(--on-surface-variant)'" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;transition:all 0.2s;">
+              <span *ngIf="suggestStep > 2" class="material-symbols-outlined" style="font-size:14px;">check</span>
+              <span *ngIf="suggestStep <= 2">2</span>
+            </span>
+            <span style="font-size:12px;" [style.font-weight]="suggestStep === 2 ? '700' : '500'" [style.color]="suggestStep === 2 ? 'var(--primary)' : 'var(--on-surface-variant)'">Expertise</span>
+          </div>
+
+          <div style="flex:1;height:2px;margin:0 10px;transition:background 0.3s;" [style.background]="suggestStep > 2 ? 'var(--primary)' : 'var(--outline-variant)'"></div>
+
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span [style.background]="suggestStep >= 3 ? 'var(--primary)' : 'var(--surface-container-high)'" [style.color]="suggestStep >= 3 ? '#fff' : 'var(--on-surface-variant)'" style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;transition:all 0.2s;">
+              3
+            </span>
+            <span style="font-size:12px;" [style.font-weight]="suggestStep === 3 ? '700' : '500'" [style.color]="suggestStep === 3 ? 'var(--primary)' : 'var(--on-surface-variant)'">Statement</span>
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div>
-            <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Phone Number (Optional)</label>
-            <input type="tel" [(ngModel)]="suggestedForm.phone" placeholder="+233 XX XXX XXXX" style="width:100%;padding:9px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+        <!-- STEP 1: Nominee Identity & Contact -->
+        <div *ngIf="suggestStep === 1" style="display:flex;flex-direction:column;gap:12px;">
+          <div style="padding:10px 12px;background:rgba(0,85,204,0.06);border:1px solid rgba(0,85,204,0.18);border-radius:8px;font-size:12px;color:var(--on-surface-variant);line-height:1.5;">
+            <span class="material-symbols-outlined" style="font-size:15px;color:var(--primary);vertical-align:middle;margin-right:4px;">person</span>
+            Step 1 of 3: Provide the official name and email of your nominated mentor.
           </div>
+
           <div>
-            <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Organization / Company</label>
-            <input type="text" [(ngModel)]="suggestedForm.organization" placeholder="e.g. AI Research Hub" style="width:100%;padding:9px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+            <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Mentor Full Name <span style="color:#ef4444;">*</span></label>
+            <input type="text" [(ngModel)]="suggestedForm.name" placeholder="e.g. Dr. Kwame Mensah" style="width:100%;padding:10px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+          </div>
+
+          <div>
+            <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Official Email Address <span style="color:#ef4444;">*</span></label>
+            <input type="email" [(ngModel)]="suggestedForm.email" placeholder="e.g. mentor@techcorp.com" style="width:100%;padding:10px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+            <span style="font-size:10.5px;color:var(--on-surface-variant);margin-top:3px;display:block;">Invitation and account credentials will be delivered here once approved.</span>
+          </div>
+
+          <div>
+            <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Phone Number <span style="font-weight:400;color:var(--on-surface-variant);">(Optional)</span></label>
+            <input type="tel" [(ngModel)]="suggestedForm.phone" placeholder="+233 XX XXX XXXX" style="width:100%;padding:10px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
           </div>
         </div>
 
-        <div>
-          <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Field of Expertise / Track</label>
-          <input type="text" [(ngModel)]="suggestedForm.expertise" placeholder="e.g. Robotics &amp; Embedded Systems" style="width:100%;padding:9px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+        <!-- STEP 2: Professional Background & Track -->
+        <div *ngIf="suggestStep === 2" style="display:flex;flex-direction:column;gap:12px;">
+          <div style="padding:10px 12px;background:rgba(0,85,204,0.06);border:1px solid rgba(0,85,204,0.18);border-radius:8px;font-size:12px;color:var(--on-surface-variant);line-height:1.5;">
+            <span class="material-symbols-outlined" style="font-size:15px;color:var(--primary);vertical-align:middle;margin-right:4px;">business</span>
+            Step 2 of 3: Specify their current institution and technical track specialty.
+          </div>
+
+          <div>
+            <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Organization / Company / School</label>
+            <input type="text" [(ngModel)]="suggestedForm.organization" placeholder="e.g. AI Research Hub, KNUST, or Tech Corp" style="width:100%;padding:10px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+          </div>
+
+          <div>
+            <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Field of Expertise / Track</label>
+            <input type="text" [(ngModel)]="suggestedForm.expertise" placeholder="e.g. {{ team?.track || 'Robotics & Embedded Systems' }}" style="width:100%;padding:10px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);">
+            <span style="font-size:10.5px;color:var(--on-surface-variant);margin-top:3px;display:block;">Aligned to your squad track: <strong>{{ team?.track || 'General' }}</strong></span>
+          </div>
         </div>
 
-        <div>
-          <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Brief Background / Statement (Optional)</label>
-          <textarea [(ngModel)]="suggestedForm.bio" rows="2" placeholder="Describe their experience and how they will assist your team..." style="width:100%;padding:9px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);resize:vertical;"></textarea>
-        </div>
-      </div>
+        <!-- STEP 3: Statement & Summary -->
+        <div *ngIf="suggestStep === 3" style="display:flex;flex-direction:column;gap:12px;">
+          <div style="padding:10px 12px;background:rgba(0,85,204,0.06);border:1px solid rgba(0,85,204,0.18);border-radius:8px;font-size:12px;color:var(--on-surface-variant);line-height:1.5;">
+            <span class="material-symbols-outlined" style="font-size:15px;color:var(--primary);vertical-align:middle;margin-right:4px;">rate_review</span>
+            Step 3 of 3: Review nomination details and add an optional statement.
+          </div>
 
-      <!-- Two-Tier Pathway Notice -->
-      <div style="margin-top:16px;padding:10px 14px;background:var(--surface-container-lowest);border:1px dashed var(--outline-variant);border-radius:8px;font-size:11.5px;color:var(--on-surface-variant);display:flex;align-items:center;gap:8px;">
-        <span class="material-symbols-outlined" style="font-size:16px;color:#d97706;">shield</span>
-        <span><strong>Approval Pathway:</strong> Sent to your Institution Admin first &rarr; then forwarded to NTIC Platform Super Admin.</span>
+          <div>
+            <label style="font-size:11.5px;font-weight:700;display:block;margin-bottom:4px;">Brief Statement / How they will assist your squad <span style="font-weight:400;color:var(--on-surface-variant);">(Optional)</span></label>
+            <textarea [(ngModel)]="suggestedForm.bio" rows="2" placeholder="Explain why you nominated this mentor and how their guidance will assist your team..." style="width:100%;padding:10px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12.5px;color:var(--on-surface);resize:vertical;"></textarea>
+          </div>
+
+          <!-- Nomination Summary Card -->
+          <div style="padding:12px 14px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;font-size:12px;display:flex;flex-direction:column;gap:5px;">
+            <div style="font-weight:700;color:var(--on-surface);margin-bottom:2px;">Nomination Summary:</div>
+            <div><strong>Nominee:</strong> {{ suggestedForm.name }} ({{ suggestedForm.email }})</div>
+            <div *ngIf="suggestedForm.organization"><strong>Organization:</strong> {{ suggestedForm.organization }}</div>
+            <div *ngIf="suggestedForm.expertise"><strong>Specialty:</strong> {{ suggestedForm.expertise }}</div>
+          </div>
+        </div>
+
+        <!-- Two-Tier Pathway Notice -->
+        <div style="padding:10px 14px;background:var(--surface-container-lowest);border:1px dashed var(--outline-variant);border-radius:8px;font-size:11.5px;color:var(--on-surface-variant);display:flex;align-items:center;gap:8px;">
+          <span class="material-symbols-outlined" style="font-size:16px;color:#d97706;">shield</span>
+          <span><strong>Approval Pathway:</strong> Sent to your Institution Admin first &rarr; then forwarded to NTIC Platform Super Admin.</span>
+        </div>
       </div>
     </div>
 
     <!-- Modal Footer -->
-    <div style="padding:16px 24px;border-top:1px solid var(--outline-variant);display:flex;justify-content:flex-end;gap:10px;background:var(--surface-container-low);">
-      <button type="button" class="btn btn-subtle btn-sm" (click)="onClose()" [disabled]="isSubmitting">
-        Cancel
-      </button>
-      <button type="button" class="btn btn-primary btn-sm" (click)="onSubmit()" [disabled]="isSubmitting" style="display:flex;align-items:center;gap:6px;">
-        <span class="material-symbols-outlined" style="font-size:15px;" *ngIf="!isSubmitting">send</span>
-        <span class="material-symbols-outlined spin" style="font-size:15px;" *ngIf="isSubmitting">progress_activity</span>
-        <span>{{ isSubmitting ? 'Submitting Request...' : 'Submit Mentor Request' }}</span>
-      </button>
+    <div style="padding:16px 24px;border-top:1px solid var(--outline-variant);display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface-container-low);">
+      <!-- Left side: Cancel or Back -->
+      <div>
+        <button *ngIf="tab === 'pool' || suggestStep === 1" type="button" class="btn btn-subtle btn-sm" (click)="onClose()" [disabled]="isSubmitting">
+          Cancel
+        </button>
+        <button *ngIf="tab === 'suggest' && suggestStep > 1" type="button" class="btn btn-subtle btn-sm" (click)="prevStep()" [disabled]="isSubmitting" style="display:flex;align-items:center;gap:4px;">
+          <span class="material-symbols-outlined" style="font-size:14px;">arrow_back</span>
+          <span>Back</span>
+        </button>
+      </div>
+
+      <!-- Right side: Next or Submit -->
+      <div>
+        <!-- Pool Tab Submit -->
+        <button *ngIf="tab === 'pool'" type="button" class="btn btn-primary btn-sm" (click)="onSubmit()" [disabled]="isSubmitting" style="display:flex;align-items:center;gap:6px;">
+          <span class="material-symbols-outlined" style="font-size:15px;" *ngIf="!isSubmitting">send</span>
+          <span class="material-symbols-outlined spin" style="font-size:15px;" *ngIf="isSubmitting">progress_activity</span>
+          <span>{{ isSubmitting ? 'Submitting Request...' : 'Submit Mentor Request' }}</span>
+        </button>
+
+        <!-- Suggest Tab Step 1 -> Step 2 -->
+        <button *ngIf="tab === 'suggest' && suggestStep === 1" type="button" class="btn btn-primary btn-sm" (click)="nextStep()" [disabled]="!canProceedStep1()" style="display:flex;align-items:center;gap:6px;">
+          <span>Next: Expertise</span>
+          <span class="material-symbols-outlined" style="font-size:14px;">arrow_forward</span>
+        </button>
+
+        <!-- Suggest Tab Step 2 -> Step 3 -->
+        <button *ngIf="tab === 'suggest' && suggestStep === 2" type="button" class="btn btn-primary btn-sm" (click)="nextStep()" style="display:flex;align-items:center;gap:6px;">
+          <span>Next: Statement</span>
+          <span class="material-symbols-outlined" style="font-size:14px;">arrow_forward</span>
+        </button>
+
+        <!-- Suggest Tab Step 3 -> Submit -->
+        <button *ngIf="tab === 'suggest' && suggestStep === 3" type="button" class="btn btn-primary btn-sm" (click)="onSubmit()" [disabled]="isSubmitting" style="display:flex;align-items:center;gap:6px;">
+          <span class="material-symbols-outlined" style="font-size:15px;" *ngIf="!isSubmitting">send</span>
+          <span class="material-symbols-outlined spin" style="font-size:15px;" *ngIf="isSubmitting">progress_activity</span>
+          <span>{{ isSubmitting ? 'Submitting Nomination...' : 'Submit Mentor Nomination' }}</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>

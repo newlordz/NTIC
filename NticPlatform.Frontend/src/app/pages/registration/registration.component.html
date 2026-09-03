@@ -1405,7 +1405,7 @@
                 </div>
                 <span>I agree to the <a (click)="openTermsModal('school')" class="terms-link">Terms & Conditions</a> and <a (click)="openPrivacyModal()" class="terms-link">Privacy Policy</a></span>
               </label>
-              <button class="btn btn-primary btn-full submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting || !schoolForm.acceptedTerms || !schoolForm.gdpaConsent || !hasRequiredDocs">
+              <button class="btn btn-primary btn-full submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting">
                 <span *ngIf="!isSubmitting" style="display:flex; align-items:center; gap:8px;">
                   Submit Registry <span class="material-symbols-outlined">check_circle</span>
                 </span>
@@ -1619,7 +1619,7 @@
               <input type="checkbox" [(ngModel)]="instructorForm.acceptedTerms" name="instructorTerms" style="accent-color:var(--primary);">
               <span>I agree to the <a (click)="openTermsModal('instructor')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
             </label>
-            <button class="btn btn-primary" (click)="submitRegistration()" [disabled]="isSubmitting || !instructorForm.acceptedTerms || !hasRequiredDocs">
+            <button class="btn btn-primary" (click)="submitRegistration()" [disabled]="isSubmitting">
               <span *ngIf="!isSubmitting" style="display:flex; align-items:center; gap:8px;">
                 <span class="material-symbols-outlined">badge</span>
                 Register Instructor
@@ -2834,7 +2834,7 @@
           <input type="checkbox" [(ngModel)]="schoolForm.acceptedTerms" name="schoolTermsPreview" style="accent-color:var(--primary);">
           <span>I agree to the <a (click)="openTermsModal('school')" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Terms & Conditions</a> and <a (click)="openPrivacyModal()" style="color:var(--primary); text-decoration:underline; cursor:pointer;">Privacy Policy</a></span>
         </label>
-        <button class="btn btn-primary submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting || !schoolForm.acceptedTerms || !schoolForm.gdpaConsent || !hasRequiredDocs">
+        <button class="btn btn-primary submit-btn-glow" (click)="submitRegistration()" [disabled]="isSubmitting">
           <span *ngIf="!isSubmitting" style="display:flex; align-items:center; gap:8px;">
             Confirm & Submit <span class="material-symbols-outlined">check_circle</span>
           </span>
