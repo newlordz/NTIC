@@ -712,7 +712,7 @@ export class ContentService {
     const token = getAuthValue('activeUserToken');
     const role = (getAuthValue('activeRoleId') || '').toLowerCase();
     const isAdmin = role === 'admin' || role === 'super_admin';
-    const canViewApprovals = isAdmin || ['support_admin', 'school_admin', 'reviewer'].includes(role);
+    const canViewApprovals = isAdmin;
 
     // ── 1. Protected Admin collections (Admin/Super Admin only) ──
     if (token && isAdmin) {
@@ -747,7 +747,7 @@ export class ContentService {
       this.fetchAuditLogsFromBackend();
     }
 
-    // ── 2. Approval collections (Admin & Reviewer/Support/SchoolAdmin) ──
+    // ── 2. Approval collections (Admin & Super Admin only) ──
     if (token && canViewApprovals) {
       this.apiService.getApprovals().subscribe({
         next: (backendApprovals: any[]) => {
@@ -774,6 +774,15 @@ export class ContentService {
             this.saveState('rejectedApprovals', rejected);
             this.dataRefreshed$.next('approvals');
           }
+        },
+        error: () => {}
+      });
+    }
+
+    if (token && role === 'school_admin') {
+      this.apiService.getInstitutionApprovals().subscribe({
+        next: () => {
+          this.dataRefreshed$.next('institution_approvals');
         },
         error: () => {}
       });
@@ -986,7 +995,7 @@ export class ContentService {
     const token = getAuthValue('activeUserToken');
     const role = (getAuthValue('activeRoleId') || '').toLowerCase();
     const isAdmin = role === 'admin' || role === 'super_admin';
-    const canViewApprovals = isAdmin || ['support_admin', 'school_admin', 'reviewer'].includes(role);
+    const canViewApprovals = isAdmin;
 
     switch (collection) {
       case 'users': {
@@ -1077,33 +1086,43 @@ export class ContentService {
         });
         return;
       case 'approvals':
-        if (!token || !canViewApprovals) return;
-        this.apiService.getApprovals().subscribe({
-          next: (backendApprovals: any[]) => {
-            if (!backendApprovals) return;
-            const pending: any[] = [];
-            const approved: any[] = [];
-            const rejected: any[] = [];
-            backendApprovals.forEach((a: any) => {
-              const mapped = {
-                id: a.id, type: a.type, entity: a.entity, contact: a.contact,
-                submitted: a.submitted, details: a.details || {},
-                reviewedAt: a.reviewedAt, reviewer: a.reviewer,
-                rejectionReasons: a.rejectionReasons, rejectionNotes: a.rejectionNotes
-              };
-              if (a.status === 'pending') pending.push(mapped);
-              else if (a.status === 'approved') approved.push(mapped);
-              else if (a.status === 'rejected') rejected.push(mapped);
-            });
-            this.pendingApprovals = pending;
-            this.saveState('pendingApprovals', pending);
-            this.approvedApprovals = approved;
-            this.saveState('approvedApprovals', approved);
-            this.rejectedApprovals = rejected;
-            this.saveState('rejectedApprovals', rejected);
-          },
-          error: () => {}
-        });
+        if (!token) return;
+        if (canViewApprovals) {
+          this.apiService.getApprovals().subscribe({
+            next: (backendApprovals: any[]) => {
+              if (!backendApprovals) return;
+              const pending: any[] = [];
+              const approved: any[] = [];
+              const rejected: any[] = [];
+              backendApprovals.forEach((a: any) => {
+                const mapped = {
+                  id: a.id, type: a.type, entity: a.entity, contact: a.contact,
+                  submitted: a.submitted, details: a.details || {},
+                  reviewedAt: a.reviewedAt, reviewer: a.reviewer,
+                  rejectionReasons: a.rejectionReasons, rejectionNotes: a.rejectionNotes
+                };
+                if (a.status === 'pending') pending.push(mapped);
+                else if (a.status === 'approved') approved.push(mapped);
+                else if (a.status === 'rejected') rejected.push(mapped);
+              });
+              this.pendingApprovals = pending;
+              this.saveState('pendingApprovals', pending);
+              this.approvedApprovals = approved;
+              this.saveState('approvedApprovals', approved);
+              this.rejectedApprovals = rejected;
+              this.saveState('rejectedApprovals', rejected);
+              this.dataRefreshed$.next('approvals');
+            },
+            error: () => {}
+          });
+        } else if (role === 'school_admin') {
+          this.apiService.getInstitutionApprovals().subscribe({
+            next: () => {
+              this.dataRefreshed$.next('institution_approvals');
+            },
+            error: () => {}
+          });
+        }
         return;
       case 'landing_copy':
         this.apiService.getLandingCopy().subscribe({

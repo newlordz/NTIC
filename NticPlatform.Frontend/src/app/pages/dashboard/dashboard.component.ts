@@ -3252,7 +3252,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
     this.loadDashboardRecords();
     const dataSub = this.contentService.dataRefreshed$.subscribe(col => {
-      if (['all', 'approvals', 'users', 'teams'].includes(col)) {
+      if (['all', 'approvals', 'users', 'teams', 'institution_approvals'].includes(col)) {
+        if (col === 'institution_approvals' || this.activeRoleId === 'school_admin') {
+          this.loadInstitutionApprovals();
+        }
         this.loadDashboardRecords();
         this.cdr.markForCheck();
       }
@@ -3581,8 +3584,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadApprovalsFromBackend(): void {
     const token = getAuthValue('activeUserToken');
     const role = (getAuthValue('activeRoleId') || '').toLowerCase();
-    const canView = ['admin', 'super_admin', 'support_admin', 'school_admin', 'reviewer'].includes(role);
-    if (!token || !canView) return;
+    if (!token) return;
+
+    if (role === 'school_admin') {
+      this.loadInstitutionApprovals();
+      return;
+    }
+
+    const isAdmin = ['admin', 'super_admin'].includes(role);
+    if (!isAdmin) return;
 
     this.apiService.getApprovals().subscribe({
       next: (backendApprovals: any[]) => {
