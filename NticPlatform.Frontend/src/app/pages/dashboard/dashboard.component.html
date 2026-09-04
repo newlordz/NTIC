@@ -4090,7 +4090,7 @@
         <p>No pending approvals at this time.</p>
       </div>
       <div class="admin-approvals-list" *ngIf="pendingApprovals.length > 0">
-        <div *ngFor="let req of pendingApprovals; trackBy: trackByApprovalId" class="admin-approval-card">
+        <div *ngFor="let req of pendingApprovals; trackBy: trackByApprovalId" class="admin-approval-card clickable-card" (click)="openPreview(req)">
           <div class="admin-approval-icon">
             <img *ngIf="getLogoUrl(req.details)" [src]="getLogoUrl(req.details)" alt="Logo" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
             <span *ngIf="!getLogoUrl(req.details)" class="material-symbols-outlined">{{ req.type === 'School Registration' ? 'account_balance' : req.type === 'Team Addition' ? 'groups' : req.type === 'Student Registration' ? 'person' : 'person' }}</span>
@@ -4100,12 +4100,12 @@
             <div class="admin-approval-entity">{{ req.entity }}</div>
             <div class="admin-approval-contact">{{ req.contact }} &middot; Submitted {{ req.submitted }}</div>
           </div>
-          <div class="admin-approval-actions">
+          <div class="admin-approval-actions" (click)="$event.stopPropagation()">
             <button class="btn btn-sm admin-preview-btn" (click)="openPreview(req)">
               <span class="material-symbols-outlined">visibility</span>Preview
             </button>
-            <button class="btn btn-sm admin-reject-btn" (click)="openReview(req)">
-              <span class="material-symbols-outlined">rate_review</span>Review
+            <button class="btn btn-sm admin-review-btn" (click)="openReview(req, 'approve')">
+              <span class="material-symbols-outlined">rate_review</span>Review &amp; Decide
             </button>
             <button class="btn btn-primary btn-sm" (click)="approveRequest(req)">
               <span class="material-symbols-outlined">check</span>Approve
@@ -5586,15 +5586,17 @@
     (approve)="approveRequest($event)"
     (reject)="quickRejectFromPreview()"></app-application-preview-modal>
 
-  <!-- ── REVIEW / REJECTION DIALOG ── -->
+  <!-- ── REVIEW / DECISION DIALOG ── -->
   <div class="review-dialog-backdrop" *ngIf="activeReviewRequest" (click)="closeReview()">
     <div class="review-dialog" (click)="$event.stopPropagation()">
       <div class="review-dialog-header">
         <div class="review-dialog-title-row">
-          <span class="material-symbols-outlined review-dialog-icon">gavel</span>
+          <span class="material-symbols-outlined review-dialog-icon" [style.color]="reviewDecision === 'approve' ? '#059669' : '#dc2626'" [style.background]="reviewDecision === 'approve' ? 'rgba(5,150,105,0.08)' : 'rgba(220,38,38,0.08)'">
+            {{ reviewDecision === 'approve' ? 'verified' : 'gavel' }}
+          </span>
           <div>
-            <h3>Review & Rejection</h3>
-            <p>{{ activeReviewRequest.entity }} -- {{ activeReviewRequest.type }}</p>
+            <h3>{{ reviewDecision === 'approve' ? 'Approve & Provision Application' : 'Review & Rejection Feedback' }}</h3>
+            <p>{{ activeReviewRequest.entity }} &bull; {{ activeReviewRequest.type }}</p>
           </div>
         </div>
         <button class="review-dialog-close" (click)="closeReview()">
@@ -5602,46 +5604,90 @@
         </button>
       </div>
 
+      <!-- Decision Toggle Segment -->
+      <div class="review-decision-tabs">
+        <button type="button" class="btn btn-xs review-tab-btn" [class.active-approve]="reviewDecision === 'approve'" (click)="reviewDecision = 'approve'">
+          <span class="material-symbols-outlined" style="font-size:16px;">check_circle</span> Approve &amp; Provision
+        </button>
+        <button type="button" class="btn btn-xs review-tab-btn" [class.active-reject]="reviewDecision === 'reject'" (click)="reviewDecision = 'reject'">
+          <span class="material-symbols-outlined" style="font-size:16px;">cancel</span> Reject / Request Changes
+        </button>
+      </div>
+
       <div class="review-dialog-body">
-        <div class="review-banner">
-          <span class="material-symbols-outlined">info</span>
-          <span>Select the reasons for rejection and add any notes to guide the applicant on what needs to be corrected.</span>
+        <!-- ── APPROVE BRANCH ── -->
+        <div *ngIf="reviewDecision === 'approve'" class="review-approve-section">
+          <div class="review-banner" style="background:rgba(5,150,105,0.05); border:1px solid rgba(5,150,105,0.2); color:#065f46;">
+            <span class="material-symbols-outlined" style="color:#059669;">task_alt</span>
+            <span>Approving this application will generate official user accounts and tickets on the server and dispatch credentials to <strong>{{ activeReviewRequest.contact }}</strong>.</span>
+          </div>
+
+          <div class="applicant-review-summary" style="background:var(--surface-container-low, #f8fafc); border:1px solid var(--outline-variant, #e2e8f0); border-radius:12px; padding:14px; margin-bottom:16px;">
+            <div style="font-size:11px; font-weight:700; color:var(--on-surface-variant); text-transform:uppercase; margin-bottom:6px;">Applicant Summary</div>
+            <div style="font-size:14px; font-weight:750; color:var(--on-surface);">{{ activeReviewRequest.entity }}</div>
+            <div style="font-size:12px; color:var(--on-surface-variant); margin-top:2px;">{{ activeReviewRequest.type }} &bull; Contact: {{ activeReviewRequest.contact }}</div>
+            <div *ngIf="activeReviewRequest.submitted" style="font-size:11.5px; color:var(--on-surface-variant); margin-top:4px;">Submitted: {{ activeReviewRequest.submitted }}</div>
+          </div>
+
+          <div class="rejection-notes-section">
+            <label class="notes-label">
+              <span class="material-symbols-outlined">chat</span>
+              Approval / Welcome Note (Optional)
+            </label>
+            <textarea
+              [(ngModel)]="approvalNotes"
+              rows="3"
+              placeholder="Add an optional welcome remark or onboarding message to be logged..."
+            ></textarea>
+          </div>
         </div>
 
-        <div class="rejection-reasons-grid">
-          <label
-            *ngFor="let reason of reviewReasons; let i = index"
-            class="rejection-reason-card"
-            [class.selected]="selectedReasons[reason]"
-          >
-            <input type="checkbox" [(ngModel)]="selectedReasons[reason]" hidden>
-            <span class="reason-icon">
-              <span class="material-symbols-outlined">{{ getReasonIcon(reason) }}</span>
-            </span>
-            <span class="reason-text">{{ reason }}</span>
-            <span class="reason-check">
-              <span class="material-symbols-outlined">{{ selectedReasons[reason] ? 'check_circle' : 'radio_button_unchecked' }}</span>
-            </span>
-          </label>
-        </div>
+        <!-- ── REJECT BRANCH ── -->
+        <div *ngIf="reviewDecision === 'reject'" class="review-reject-section">
+          <div class="review-banner">
+            <span class="material-symbols-outlined">info</span>
+            <span>Select the reasons for rejection and add any notes to guide the applicant on what needs to be corrected.</span>
+          </div>
 
-        <div class="rejection-notes-section">
-          <label for="rejectNotes" class="notes-label">
-            <span class="material-symbols-outlined">edit_note</span>
-            Admin Notes
-          </label>
-          <textarea
-            id="rejectNotes"
-            [(ngModel)]="rejectionNotes"
-            rows="4"
-            placeholder="Describe what the applicant needs to fix, correct, or provide..."
-          ></textarea>
+          <div class="rejection-reasons-grid">
+            <label
+              *ngFor="let reason of reviewReasons; let i = index"
+              class="rejection-reason-card"
+              [class.selected]="selectedReasons[reason]"
+            >
+              <input type="checkbox" [(ngModel)]="selectedReasons[reason]" hidden>
+              <span class="reason-icon">
+                <span class="material-symbols-outlined">{{ getReasonIcon(reason) }}</span>
+              </span>
+              <span class="reason-text">{{ reason }}</span>
+              <span class="reason-check">
+                <span class="material-symbols-outlined">{{ selectedReasons[reason] ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              </span>
+            </label>
+          </div>
+
+          <div class="rejection-notes-section">
+            <label for="rejectNotes" class="notes-label">
+              <span class="material-symbols-outlined">edit_note</span>
+              Feedback / Revision Notes
+            </label>
+            <textarea
+              id="rejectNotes"
+              [(ngModel)]="rejectionNotes"
+              rows="4"
+              placeholder="Describe what the applicant needs to fix, correct, or provide..."
+            ></textarea>
+          </div>
         </div>
       </div>
 
       <div class="review-dialog-footer">
         <button class="btn-reject-cancel" (click)="closeReview()">Cancel</button>
-        <button class="btn-reject-confirm" (click)="submitRejection()">
+        <button *ngIf="reviewDecision === 'approve'" class="btn-approve-confirm" (click)="approveRequestFromReview()">
+          <span class="material-symbols-outlined">check_circle</span>
+          Confirm &amp; Approve
+        </button>
+        <button *ngIf="reviewDecision === 'reject'" class="btn-reject-confirm" (click)="submitRejection()">
           <span class="material-symbols-outlined">thumb_down</span>
           Reject Application
         </button>

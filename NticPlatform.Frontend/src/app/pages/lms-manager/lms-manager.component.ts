@@ -93,7 +93,7 @@ export class LmsManagerComponent implements OnInit {
   activeTab: string = 'courses';
 
   // ── Dedicated Full-Page Workspaces Navigation ───────────────
-  currentView: 'hub' | 'course_console' | 'module_studio' | 'course_wizard' | 'assignment_wizard' = 'hub';
+  currentView: 'hub' | 'course_console' | 'module_studio' | 'course_wizard' | 'assignment_wizard' | 'course_review_inspection' = 'hub';
   activeDetailCourse: any = null;
   activeDetailModule: any = null;
   courseConsoleTab: 'modules' | 'materials' | 'assignments' | 'grading' | 'students' | 'insights' = 'modules';
@@ -249,6 +249,8 @@ export class LmsManagerComponent implements OnInit {
   isAssignmentModalOpen = false;
   isGradingModalOpen = false;
   isRejectModalOpen = false;
+  isQuickModerateModalOpen = false;
+  activeModerateItem: PendingModerationItem | null = null;
 
   formMode: 'create' | 'edit' = 'create';
 
@@ -816,6 +818,184 @@ export class LmsManagerComponent implements OnInit {
    */
   approveModerationItem(item: PendingModerationItem): void {
     this.moderate(item.id, true);
+    this.dialogService.toast(`"${item.title}" approved and published!`, 'success');
+  }
+
+  openQuickModerateModal(item: PendingModerationItem): void {
+    this.activeModerateItem = item;
+    this.rejectionReasonInput = '';
+    this.isQuickModerateModalOpen = true;
+    this.cdr.markForCheck();
+  }
+
+  closeQuickModerateModal(): void {
+    this.isQuickModerateModalOpen = false;
+    this.activeModerateItem = null;
+    this.cdr.markForCheck();
+  }
+
+  // ── Dedicated Read-Only Course Review & Audit State ───────────
+  reviewInspectingCourse: any = null;
+  reviewQuoteText = '';
+  reviewQuoteSection = '';
+  reviewFeedbackNote = '';
+  reviewFeedbackComments: Array<{ id: string; section: string; quote: string; note: string; timestamp: string }> = [];
+
+  openCourseForReview(item: PendingModerationItem): void {
+    const raw = item.rawItem;
+    const found = this.authoredCourses.find(c => c.id === item.id) || {
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      track: raw?.track || 'coding',
+      icon: raw?.icon || 'school',
+      level: raw?.level || 'Beginner',
+      status: raw?.status || 'draft',
+      approvalStatus: 'pending',
+      approval_status: 'pending',
+      submittedBy: item.submittedBy || raw?.submitted_by || 'Instructor',
+      submitted_by: item.submittedBy || raw?.submitted_by || 'Instructor',
+      created_at: item.createdAt || raw?.created_at,
+      competitionId: raw?.competition_id || raw?.competitionId
+    };
+    this.reviewInspectingCourse = found;
+    this.selectedCourseId = found.id;
+    this.reviewQuoteText = '';
+    this.reviewQuoteSection = '';
+    this.reviewFeedbackNote = '';
+    this.reviewFeedbackComments = [];
+    this.currentView = 'course_review_inspection';
+    this.cdr.markForCheck();
+  }
+
+  exitCourseReview(): void {
+    this.currentView = 'hub';
+    this.activeTab = 'approvals';
+    this.reviewInspectingCourse = null;
+    this.reviewQuoteText = '';
+    this.reviewQuoteSection = '';
+    this.reviewFeedbackNote = '';
+    this.reviewFeedbackComments = [];
+    this.cdr.markForCheck();
+  }
+
+  quoteSection(sectionName: string, textSnippet?: string): void {
+    this.reviewQuoteSection = sectionName;
+    this.reviewQuoteText = textSnippet ? textSnippet.slice(0, 180) : '';
+    this.dialogService.toast(`Quoted "${sectionName}" to review sidebar`, 'info');
+    this.cdr.markForCheck();
+  }
+
+  clearQuote(): void {
+    this.reviewQuoteSection = '';
+    this.reviewQuoteText = '';
+    this.cdr.markForCheck();
+  }
+
+  addFeedbackComment(): void {
+    if (!this.reviewFeedbackNote.trim()) {
+      this.dialogService.toast('Please write a feedback note or recommendation before adding.', 'warning');
+      return;
+    }
+    this.reviewFeedbackComments.push({
+      id: 'rfc-' + Math.random().toString(36).slice(2, 7),
+      section: this.reviewQuoteSection || 'General Course Curriculum',
+      quote: this.reviewQuoteText || '',
+      note: this.reviewFeedbackNote.trim(),
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+    this.reviewFeedbackNote = '';
+    this.reviewQuoteSection = '';
+    this.reviewQuoteText = '';
+    this.dialogService.toast('Review comment attached to draft.', 'success');
+    this.cdr.markForCheck();
+  }
+
+  removeFeedbackComment(idx: number): void {
+    this.reviewFeedbackComments.splice(idx, 1);
+    this.cdr.markForCheck();
+  }
+
+  sendFeedbackToCreator(): void {
+    if (!this.reviewInspectingCourse) return;
+    if (this.reviewFeedbackComments.length === 0 && !this.reviewFeedbackNote.trim()) {
+      this.dialogService.toast('Please add at least one review note or observation before sending.', 'warning');
+      return;
+    }
+    if (this.reviewFeedbackNote.trim()) {
+      this.addFeedbackComment();
+    }
+    const lines = this.reviewFeedbackComments.map((c, i) =>
+      `${i + 1}. [${c.section}]${c.quote ? ` (Quoted: "${c.quote}")\n   Feedback: ` : ' Feedback: '}${c.note}`
+    );
+    const feedbackPayload = `Curriculum Review & Revision Recommendations:\n\n${lines.join('\n\n')}`;
+    this.moderate(this.reviewInspectingCourse.id, false, feedbackPayload);
+    this.dialogService.toast(`Review feedback sent to instructor (${this.reviewInspectingCourse.submittedBy || 'Creator'}).`, 'success');
+    this.exitCourseReview();
+  }
+
+  approveCourseFromReview(): void {
+    if (!this.reviewInspectingCourse) return;
+    this.moderate(this.reviewInspectingCourse.id, true);
+    this.dialogService.toast(`Course "${this.reviewInspectingCourse.title}" successfully approved and published!`, 'success');
+    this.exitCourseReview();
+  }
+
+  getModuleBlocksForModule(moduleId: string): ModuleBlock[] {
+    const mats = this.getMaterialsForModule(moduleId);
+    return mats.map(m => this.parseMaterialToBlock(m));
+  }
+
+  getAssignmentRubric(asgn: any): RubricCriterion[] {
+    if (!asgn || !asgn.description) return [];
+    const match = asgn.description.match(/<!-- RUBRIC_DATA:([\s\S]*?)-->/);
+    if (match && match[1]) {
+      try {
+        return JSON.parse(match[1]) || [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
+
+  getAssignmentCleanDescription(asgn: any): string {
+    if (!asgn || !asgn.description) return '';
+    return asgn.description.replace(/<!-- RUBRIC_DATA:[\s\S]*?-->/g, '').trim();
+  }
+
+  isPendingModerationCourse(course?: any): boolean {
+    if (!course) return false;
+    const cId = course.id;
+    if (this.moderationQueue.some(m => m.id === cId)) return true;
+    const status = course.approvalStatus || course.approval_status;
+    return status === 'pending';
+  }
+
+  approveActiveCourseFromConsole(): void {
+    if (!this.activeDetailCourse) return;
+    this.moderate(this.activeDetailCourse.id, true);
+    this.dialogService.toast(`Course "${this.activeDetailCourse.title}" approved and published!`, 'success');
+    this.activeDetailCourse.approvalStatus = 'approved';
+    this.activeDetailCourse.approval_status = 'approved';
+    this.cdr.markForCheck();
+  }
+
+  openRejectModalForActiveCourse(): void {
+    if (!this.activeDetailCourse) return;
+    this.activeRejectItem = {
+      id: this.activeDetailCourse.id,
+      type: 'course',
+      typeLabel: 'Course',
+      title: this.activeDetailCourse.title,
+      description: this.activeDetailCourse.description,
+      submittedBy: this.activeDetailCourse.submitted_by || this.activeDetailCourse.submittedBy || 'Instructor',
+      createdAt: this.activeDetailCourse.created_at,
+      rawItem: this.activeDetailCourse
+    };
+    this.rejectionReasonInput = '';
+    this.isRejectModalOpen = true;
+    this.cdr.markForCheck();
   }
 
   openRejectModal(item: PendingModerationItem): void {
@@ -833,6 +1013,11 @@ export class LmsManagerComponent implements OnInit {
     if (!this.activeRejectItem || !this.rejectionReasonInput.trim()) return;
     // The reason is required server-side too, so it genuinely reaches the author.
     this.moderate(this.activeRejectItem.id, false, this.rejectionReasonInput.trim());
+    this.dialogService.toast(`Feedback sent. "${this.activeRejectItem.title}" marked as rejected.`, 'info');
+    if (this.activeDetailCourse && this.activeDetailCourse.id === this.activeRejectItem.id) {
+      this.activeDetailCourse.approvalStatus = 'rejected';
+      this.activeDetailCourse.approval_status = 'rejected';
+    }
     this.closeRejectModal();
   }
 

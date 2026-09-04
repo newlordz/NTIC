@@ -5317,15 +5317,27 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return [];
   }
 
+  reviewDecision: 'approve' | 'reject' = 'approve';
+  approvalNotes: string = '';
+
   openPreview(req: any): void {
     this.activePreviewRequest = req;
   }
 
-  openReview(req: any): void {
+  openReview(req: any, defaultDecision: 'approve' | 'reject' = 'approve'): void {
     this.activeReviewRequest = req;
+    this.reviewDecision = defaultDecision;
     this.reviewReasons = this.getReviewReasons(req.type);
     this.selectedReasons = {};
     this.rejectionNotes = '';
+    this.approvalNotes = '';
+  }
+
+  approveRequestFromReview(): void {
+    if (!this.activeReviewRequest) return;
+    const req = this.activeReviewRequest;
+    this.closeReview();
+    this.approveRequest(req);
   }
 
   submitRejection(): void {

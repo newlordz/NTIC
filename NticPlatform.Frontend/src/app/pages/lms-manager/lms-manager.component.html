@@ -185,7 +185,7 @@
       </div>
 
       <div class="moderation-queue-grid" *ngIf="pendingLmsItems.length > 0">
-        <div *ngFor="let item of pendingLmsItems" class="moderation-card">
+        <div *ngFor="let item of pendingLmsItems" class="moderation-card clickable-card" (click)="openCourseForReview(item)">
           <div class="moderation-card-header">
             <span class="type-pill" [class]="'pill-' + item.type">{{ item.typeLabel }}</span>
             <span class="badge badge-warning">Awaiting Admin Review</span>
@@ -193,7 +193,7 @@
 
           <div class="moderation-card-body">
             <h3>{{ item.title }}</h3>
-            <p class="description-text">{{ item.description }}</p>
+            <p class="description-text">{{ stripHtml(item.description) }}</p>
 
             <div class="instructor-chip">
               <span class="material-symbols-outlined">person</span>
@@ -208,12 +208,12 @@
             </div>
           </div>
 
-          <div class="moderation-card-footer">
-            <button class="btn btn-sm btn-outline danger" (click)="openRejectModal(item)">
-              <span class="material-symbols-outlined">close</span> Reject & Feedback
-            </button>
-            <button class="btn btn-sm btn-primary" (click)="approveModerationItem(item)">
-              <span class="material-symbols-outlined">check_circle</span> Approve & Publish
+          <div class="moderation-card-footer" (click)="$event.stopPropagation()">
+            <div class="card-footer-hint text-xs text-subtle">
+              <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">open_in_new</span> Click card to inspect
+            </div>
+            <button class="btn btn-sm btn-primary-soft" (click)="openQuickModerateModal(item)">
+              <span class="material-symbols-outlined">gavel</span> Decision Action
             </button>
           </div>
         </div>
@@ -751,6 +751,25 @@
       </button>
       <span class="breadcrumb-separator">/</span>
       <span class="breadcrumb-current">{{ activeDetailCourse?.title || 'Course Console' }}</span>
+    </div>
+
+    <!-- Course Moderation Sticky Review Action Bar -->
+    <div class="course-moderation-top-bar" *ngIf="isAdmin && isPendingModerationCourse(activeDetailCourse)">
+      <div class="moderation-status-pill">
+        <span class="material-symbols-outlined">pending_actions</span>
+        <div>
+          <strong>Curriculum In Moderation Queue</strong>
+          <span>Submitted by {{ activeDetailCourse?.submitted_by || activeDetailCourse?.submittedBy || 'Instructor' }} &bull; Review the complete syllabus, lesson guides, quizzes, and deliverables below before making an accreditation decision.</span>
+        </div>
+      </div>
+      <div class="moderation-action-buttons">
+        <button class="btn btn-sm btn-outline danger" (click)="openRejectModalForActiveCourse()">
+          <span class="material-symbols-outlined">close</span> Reject with Feedback
+        </button>
+        <button class="btn btn-sm btn-success" (click)="approveActiveCourseFromConsole()">
+          <span class="material-symbols-outlined">check_circle</span> Approve &amp; Publish Course
+        </button>
+      </div>
     </div>
 
     <!-- Course Executive Hero Header -->
@@ -2414,6 +2433,291 @@
     </div>
   </div>
 
+  <!-- ════════════════════════════════════════════════════════════
+       VIEW 6: DEDICATED READ-ONLY COURSE REVIEW & AUDIT PAGE
+       ════════════════════════════════════════════════════════════ -->
+  <div *ngIf="currentView === 'course_review_inspection'" class="course-review-workspace fade-in">
+    <!-- Top Action & Navigation Bar -->
+    <header class="review-top-bar">
+      <div class="review-top-left">
+        <button type="button" class="btn btn-subtle btn-sm" (click)="exitCourseReview()">
+          <span class="material-symbols-outlined">arrow_back</span> Back to Approvals Queue
+        </button>
+        <div class="review-title-badge-wrap">
+          <h2>{{ reviewInspectingCourse?.title || 'Course Audit' }}</h2>
+          <div class="review-meta-pills">
+            <span class="badge" [class]="'badge-' + (reviewInspectingCourse?.track || 'coding')">{{ (reviewInspectingCourse?.track || 'coding') | titlecase }}</span>
+            <span class="badge badge-warning">
+              <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">pending_actions</span> Awaiting Admin Review
+            </span>
+            <span class="badge badge-subtle">Level: {{ reviewInspectingCourse?.level || 'All Levels' }}</span>
+            <span class="badge badge-subtle" *ngIf="reviewInspectingCourse?.competitionId">Cycle: {{ cycleLabel(reviewInspectingCourse?.competitionId) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="review-top-right">
+        <button type="button" class="btn btn-outline danger" (click)="sendFeedbackToCreator()" [disabled]="isSaving">
+          <span class="material-symbols-outlined">send</span> Send Review Feedback
+        </button>
+        <button type="button" class="btn btn-success" (click)="approveCourseFromReview()" [disabled]="isSaving">
+          <span class="material-symbols-outlined">verified</span> Approve &amp; Publish Course
+        </button>
+      </div>
+    </header>
+
+    <!-- Main 2-Column Review Layout -->
+    <div class="review-body-grid">
+      <!-- LEFT: Read-Only Course Deep-Inspection Canvas -->
+      <div class="review-main-content">
+        <!-- 1. Executive Course Overview -->
+        <div class="review-card mb-4">
+          <div class="review-card-header">
+            <div class="review-card-title-group">
+              <span class="material-symbols-outlined header-icon text-primary">auto_stories</span>
+              <div>
+                <h3>Curriculum Overview &amp; Learning Outcomes</h3>
+                <p class="text-xs text-subtle">Authored by <strong>{{ reviewInspectingCourse?.submittedBy || 'Instructor' }}</strong></p>
+              </div>
+            </div>
+            <button type="button" class="btn-quote" (click)="quoteSection('Course Overview', stripHtml(reviewInspectingCourse?.description))" title="Quote this section in review notes">
+              <span class="material-symbols-outlined">format_quote</span> Quote Section
+            </button>
+          </div>
+          <div class="review-card-body">
+            <div class="ql-snow" *ngIf="reviewInspectingCourse?.description">
+              <div class="ql-editor p-0" [innerHTML]="reviewInspectingCourse?.description"></div>
+            </div>
+            <p class="text-subtle italic text-sm" *ngIf="!reviewInspectingCourse?.description">No syllabus description provided.</p>
+          </div>
+        </div>
+
+        <!-- 2. Curriculum Modules & Lesson Guide Sequence -->
+        <div class="review-section-header">
+          <div>
+            <h3>Syllabus Modules &amp; Interactive Learning Units ({{ getModulesForCourse(reviewInspectingCourse?.id).length }})</h3>
+            <p class="text-xs text-subtle">Review theory guides, video lessons, checkpoint quizzes, and coding challenges.</p>
+          </div>
+        </div>
+
+        <div *ngIf="getModulesForCourse(reviewInspectingCourse?.id).length === 0" class="empty-state mb-4">
+          <span class="material-symbols-outlined text-warning">folder_open</span>
+          <h4>No modules configured in this course</h4>
+          <p>The instructor has not added any modules to this submission.</p>
+        </div>
+
+        <div *ngFor="let mod of getModulesForCourse(reviewInspectingCourse?.id); let mIdx = index" class="review-module-card mb-4">
+          <div class="review-module-header">
+            <div class="module-title-wrap">
+              <span class="module-order-pill">Module #{{ mod.order_num || (mIdx + 1) }}</span>
+              <h4>{{ mod.title }}</h4>
+            </div>
+            <button type="button" class="btn-quote" (click)="quoteSection('Module #' + (mIdx + 1) + ': ' + mod.title, mod.title)" title="Quote this module in review notes">
+              <span class="material-symbols-outlined">format_quote</span> Quote Module
+            </button>
+          </div>
+
+          <p class="module-summary-text text-sm" *ngIf="mod.description">{{ getFormattedDescription(mod.description) }}</p>
+
+          <!-- Module Interactive Units Grid -->
+          <div class="review-units-list mt-3">
+            <div *ngFor="let blk of getModuleBlocksForModule(mod.id); let uIdx = index" class="review-unit-item">
+              <div class="unit-item-header">
+                <div class="unit-type-badge">
+                  <span class="material-symbols-outlined">{{ blk.type === 'text' ? 'menu_book' : blk.type === 'video' ? 'play_circle' : blk.type === 'quiz' ? 'quiz' : blk.type === 'code' ? 'terminal' : 'attach_file' }}</span>
+                  <span>Unit {{ uIdx + 1 }}: {{ blk.type === 'text' ? 'Rich Lesson Guide' : blk.type === 'video' ? 'Video Lecture' : blk.type === 'quiz' ? 'Interactive Quiz' : blk.type === 'code' ? 'Coding Challenge' : 'Downloadable Resource' }}</span>
+                </div>
+                <button type="button" class="btn-quote-sm" (click)="quoteSection(mod.title + ' -> ' + (blk.title || 'Unit ' + (uIdx + 1)), stripHtml(blk.content || blk.quizQuestion || blk.codeInstructions))" title="Quote this unit in review">
+                  <span class="material-symbols-outlined">format_quote</span> Quote
+                </button>
+              </div>
+
+              <!-- Content for Rich Guide -->
+              <div *ngIf="blk.type === 'text'" class="unit-item-body">
+                <h5 class="unit-heading" *ngIf="blk.title">{{ blk.title }}</h5>
+                <div class="ql-snow" *ngIf="blk.content">
+                  <div class="ql-editor p-0" [innerHTML]="blk.content"></div>
+                </div>
+                <p class="text-subtle text-xs italic" *ngIf="!blk.content">No lesson text written.</p>
+              </div>
+
+              <!-- Content for Video -->
+              <div *ngIf="blk.type === 'video'" class="unit-item-body">
+                <div class="video-preview-pill">
+                  <span class="material-symbols-outlined text-primary">smart_display</span>
+                  <div>
+                    <strong>{{ blk.videoTakeaway || blk.title || 'Video Lecture' }}</strong>
+                    <div class="text-xs text-subtle" *ngIf="blk.videoDuration">Duration: ~{{ blk.videoDuration }} minutes</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Content for Quiz -->
+              <div *ngIf="blk.type === 'quiz'" class="unit-item-body">
+                <div class="quiz-question-box">
+                  <strong>Question:</strong> {{ blk.quizQuestion || 'Untitled Quiz Question' }}
+                </div>
+                <div class="quiz-options-review mt-2">
+                  <div *ngFor="let opt of blk.quizOptions; let oIdx = index" class="quiz-opt-row" [class.correct-answer]="oIdx === blk.quizCorrectIndex">
+                    <span class="opt-bullet">{{ oIdx === blk.quizCorrectIndex ? '✓' : '•' }}</span>
+                    <span>{{ opt }}</span>
+                    <span class="correct-tag" *ngIf="oIdx === blk.quizCorrectIndex">Correct Answer</span>
+                  </div>
+                </div>
+                <div class="quiz-expl-box mt-2 text-xs" *ngIf="blk.quizExplanation">
+                  <strong>Explanation:</strong> {{ blk.quizExplanation }}
+                </div>
+              </div>
+
+              <!-- Content for Code Challenge -->
+              <div *ngIf="blk.type === 'code'" class="unit-item-body">
+                <div class="code-challenge-review">
+                  <div class="text-xs font-semibold mb-1">Language: <code>{{ blk.codeLanguage || 'python' }}</code></div>
+                  <div class="code-instr text-xs mb-2">{{ blk.codeInstructions || 'Solve the challenge.' }}</div>
+                  <pre class="code-starter-block" *ngIf="blk.codeStarter"><code>{{ blk.codeStarter }}</code></pre>
+                </div>
+              </div>
+
+              <!-- Content for Attachment / PDF -->
+              <div *ngIf="blk.type === 'file'" class="unit-item-body">
+                <div class="file-attachment-pill">
+                  <span class="material-symbols-outlined text-primary">description</span>
+                  <span>{{ blk.fileName || blk.title || 'Resource Document' }}</span>
+                  <span class="file-size-tag" *ngIf="blk.fileSize">({{ blk.fileSize }})</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Assignments & Problem Statements -->
+        <div class="review-section-header mt-4">
+          <div>
+            <h3>Assignments &amp; Assessment Rubrics ({{ getAssignmentsForCourse(reviewInspectingCourse?.id).length }})</h3>
+            <p class="text-xs text-subtle">Review problem prompts, deliverables, and scoring criteria.</p>
+          </div>
+        </div>
+
+        <div *ngIf="getAssignmentsForCourse(reviewInspectingCourse?.id).length === 0" class="empty-state mb-4">
+          <span class="material-symbols-outlined text-subtle">assignment</span>
+          <h4>No assignments configured</h4>
+          <p>No standalone assignments submitted for this course.</p>
+        </div>
+
+        <div *ngFor="let asgn of getAssignmentsForCourse(reviewInspectingCourse?.id); let aIdx = index" class="review-assignment-card mb-4">
+          <div class="assignment-header-row">
+            <div>
+              <span class="assignment-badge">Assignment #{{ aIdx + 1 }}</span>
+              <h4>{{ asgn.title }}</h4>
+              <div class="text-xs text-subtle mt-1">
+                <span>Max Points: <strong>{{ asgn.maxPoints || asgn.max_score || 100 }} pts</strong></span>
+                <span *ngIf="asgn.dueDate">&bull; Due: <strong>{{ asgn.dueDate | date:'mediumDate' }}</strong></span>
+              </div>
+            </div>
+            <button type="button" class="btn-quote" (click)="quoteSection('Assignment: ' + asgn.title, getAssignmentCleanDescription(asgn))" title="Quote this assignment in review notes">
+              <span class="material-symbols-outlined">format_quote</span> Quote Assignment
+            </button>
+          </div>
+
+          <div class="assignment-problem-statement mt-3">
+            <h5 class="text-xs font-bold text-uppercase text-subtle">Problem Statement</h5>
+            <div class="ql-snow mt-1">
+              <div class="ql-editor p-0" [innerHTML]="getAssignmentCleanDescription(asgn)"></div>
+            </div>
+          </div>
+
+          <!-- Evaluation Rubric Matrix Table -->
+          <div class="assignment-rubric-matrix mt-3" *ngIf="getAssignmentRubric(asgn).length > 0">
+            <h5 class="text-xs font-bold text-uppercase text-subtle mb-2">Grading Rubric Matrix</h5>
+            <div class="table-responsive">
+              <table class="rubric-review-table">
+                <thead>
+                  <tr>
+                    <th>Criterion</th>
+                    <th style="width:100px;">Max Pts</th>
+                    <th>Benchmark Guidance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let crit of getAssignmentRubric(asgn)">
+                    <td><strong>{{ crit.title }}</strong></td>
+                    <td><span class="points-badge">{{ crit.maxPoints }} pts</span></td>
+                    <td>{{ crit.description }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Sticky Review & Feedback Sidebar -->
+      <aside class="review-sidebar">
+        <div class="sidebar-sticky-box">
+          <div class="sidebar-header">
+            <span class="material-symbols-outlined sidebar-icon">rate_review</span>
+            <div>
+              <h3>Reviewer Desk</h3>
+              <p class="text-xs text-subtle">Quote items &amp; send constructive feedback to creator.</p>
+            </div>
+          </div>
+
+          <!-- Active Quote Banner -->
+          <div class="active-quote-banner" *ngIf="reviewQuoteSection">
+            <div class="quote-header">
+              <span class="quote-tag">{{ reviewQuoteSection }}</span>
+              <button type="button" class="btn-clear-quote" (click)="clearQuote()" title="Remove quote">&times;</button>
+            </div>
+            <div class="quote-snippet" *ngIf="reviewQuoteText">
+              &ldquo;{{ reviewQuoteText }}&rdquo;
+            </div>
+          </div>
+
+          <!-- Comment Input Area -->
+          <div class="sidebar-input-group mt-3">
+            <label class="text-xs font-bold">
+              {{ reviewQuoteSection ? 'Feedback on quoted section' : 'General review feedback / note' }}
+            </label>
+            <textarea
+              [(ngModel)]="reviewFeedbackNote"
+              rows="3"
+              class="sidebar-textarea"
+              placeholder="e.g. Please clarify starter repository instructions or add 2 more quiz questions..."
+            ></textarea>
+            <button type="button" class="btn btn-xs btn-primary-soft btn-block mt-2" (click)="addFeedbackComment()">
+              <span class="material-symbols-outlined">add_comment</span> Add Review Comment
+            </button>
+          </div>
+
+          <!-- Drafted Review Items List -->
+          <div class="drafted-comments-list mt-3" *ngIf="reviewFeedbackComments.length > 0">
+            <div class="drafted-header">
+              <span class="text-xs font-bold">Feedback Items ({{ reviewFeedbackComments.length }})</span>
+            </div>
+            <div *ngFor="let c of reviewFeedbackComments; let cIdx = index" class="drafted-item">
+              <div class="drafted-item-top">
+                <span class="drafted-item-section">{{ c.section }}</span>
+                <button type="button" class="btn-del-item" (click)="removeFeedbackComment(cIdx)" title="Remove item">&times;</button>
+              </div>
+              <div class="drafted-item-quote" *ngIf="c.quote">&ldquo;{{ c.quote }}&rdquo;</div>
+              <div class="drafted-item-note">{{ c.note }}</div>
+            </div>
+          </div>
+
+          <!-- Decision Action Footer -->
+          <div class="sidebar-decision-footer mt-4">
+            <button type="button" class="btn btn-outline danger btn-block mb-2" (click)="sendFeedbackToCreator()">
+              <span class="material-symbols-outlined">send</span> Send Feedback to Creator
+            </button>
+            <button type="button" class="btn btn-success btn-block" (click)="approveCourseFromReview()">
+              <span class="material-symbols-outlined">check_circle</span> Approve &amp; Publish Live
+            </button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
   <!-- ── MODAL: COURSE INSIGHTS & ANALYTICS DRAWER ── -->
   <div class="modal-backdrop" *ngIf="showCourseInsights" (click)="toggleCourseInsights()">
     <div class="modal-card insights-modal-card" (click)="$event.stopPropagation()">
@@ -2507,6 +2811,45 @@
         <button class="btn btn-outline" (click)="closeAnnouncementModal()">Cancel</button>
         <button class="btn btn-primary" (click)="saveAnnouncement()" [disabled]="!announcementForm.title.trim() || !announcementForm.content.trim() || !announcementForm.course_id || isSaving">
           <span class="material-symbols-outlined">campaign</span> {{ isSaving ? 'Posting...' : 'Publish Announcement' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL: QUICK MODERATION DECISION ── -->
+  <div class="modal-backdrop" *ngIf="isQuickModerateModalOpen" (click)="closeQuickModerateModal()">
+    <div class="modal-card quick-moderate-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-header-title" style="display:flex; align-items:center; gap:8px;">
+          <span class="material-symbols-outlined text-warning" style="font-size:24px;">pending_actions</span>
+          <h3 style="margin:0;">Moderate Submission</h3>
+        </div>
+        <button class="close-btn" (click)="closeQuickModerateModal()">&times;</button>
+      </div>
+      <div class="modal-body" *ngIf="activeModerateItem">
+        <div class="moderate-summary-card">
+          <div class="type-pill pill-course" style="display:inline-block; margin-bottom:6px;">{{ activeModerateItem.typeLabel }}</div>
+          <h4>{{ activeModerateItem.title }}</h4>
+          <p class="text-subtle text-xs mb-2">{{ stripHtml(activeModerateItem.description) || 'No description provided.' }}</p>
+          <div class="meta-row text-xs text-subtle">
+            <span>Instructor: <strong>{{ activeModerateItem.submittedBy }}</strong></span>
+            <span *ngIf="activeModerateItem.createdAt">&bull; Submitted: <strong>{{ activeModerateItem.createdAt | date:'mediumDate' }}</strong></span>
+          </div>
+        </div>
+
+        <div class="moderate-options-box mt-3">
+          <p class="text-xs text-subtle mb-3">Inspect the complete curriculum in the dedicated workspace or take an immediate decision:</p>
+          <button type="button" class="btn btn-outline btn-block mb-2" style="width:100%; justify-content:center; display:flex; align-items:center; gap:8px; font-weight:700;" (click)="openCourseForReview(activeModerateItem); closeQuickModerateModal()">
+            <span class="material-symbols-outlined">visibility</span> Open Full Course Console to Review Everything
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;" *ngIf="activeModerateItem">
+        <button class="btn btn-outline danger" (click)="openRejectModal(activeModerateItem); closeQuickModerateModal()">
+          <span class="material-symbols-outlined">close</span> Reject with Feedback
+        </button>
+        <button class="btn btn-success" (click)="approveModerationItem(activeModerateItem); closeQuickModerateModal()">
+          <span class="material-symbols-outlined">check_circle</span> Approve &amp; Publish Live
         </button>
       </div>
     </div>
