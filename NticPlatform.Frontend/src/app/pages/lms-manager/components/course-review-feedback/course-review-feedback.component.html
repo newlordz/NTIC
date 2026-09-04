@@ -1,0 +1,213 @@
+<div class="feedback-page-container fade-in">
+  <!-- ── Top Header Bar ── -->
+  <header class="feedback-page-header">
+    <div class="header-left">
+      <div class="breadcrumb-trail">
+        <button type="button" class="back-link-btn" (click)="onExit()" title="Back to Course Console">
+          <span class="material-symbols-outlined">arrow_back</span>
+          <span>Course Console</span>
+        </button>
+        <span class="crumb-separator">/</span>
+        <span class="course-chip">
+          <span class="material-symbols-outlined">{{ course?.icon || 'school' }}</span>
+          <span class="course-title-text">{{ course?.title || 'Course' }}</span>
+        </span>
+        <span class="crumb-separator">/</span>
+        <span class="current-crumb">Reviewer Feedback &amp; Curriculum Audit</span>
+      </div>
+
+      <div class="title-meta-row">
+        <div class="status-warning-badge">
+          <span class="material-symbols-outlined">assignment_late</span>
+        </div>
+        <div>
+          <h1>Reviewer Remediation Notes &amp; Course Syllabus</h1>
+          <p class="header-subtext">Review the constructive feedback provided by the platform reviewer before updating curriculum units in the editor.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button type="button" class="btn btn-outline" (click)="onExit()">
+        <span class="material-symbols-outlined">arrow_back</span> Back to Console
+      </button>
+      <button type="button" class="btn btn-primary btn-edit-cta" (click)="onEdit()">
+        <span class="material-symbols-outlined">edit_note</span> Edit Curriculum
+      </button>
+    </div>
+  </header>
+
+  <!-- ── 2-Column Review Split Workspace ── -->
+  <div class="feedback-workspace-grid">
+    <!-- ── Left Column: Full Read-Only Course Stream ── -->
+    <main class="course-readonly-canvas" id="readonly-canvas">
+      <!-- Course Hero Card -->
+      <section class="readonly-hero-card mb-4" id="section-overview">
+        <div class="hero-top-badges">
+          <span class="badge" [class]="'badge-' + (course?.track || 'coding')">{{ (course?.track || 'coding') | titlecase }}</span>
+          <span class="badge badge-subtle">{{ course?.level || 'All Levels' }}</span>
+          <span class="badge badge-warning">
+            <span class="material-symbols-outlined badge-icon">assignment_late</span> Changes Requested
+          </span>
+        </div>
+        <h2 class="course-hero-title">{{ course?.title }}</h2>
+        <div class="course-hero-description" [innerHTML]="course?.description || 'No overview provided.'"></div>
+
+        <div class="course-meta-stats">
+          <div class="meta-stat-item">
+            <span class="material-symbols-outlined">view_module</span>
+            <span><strong>{{ getModules().length }}</strong> Modules</span>
+          </div>
+          <div class="meta-stat-item">
+            <span class="material-symbols-outlined">description</span>
+            <span><strong>{{ materials.length }}</strong> Learning Units</span>
+          </div>
+          <div class="meta-stat-item" *ngIf="course?.submittedBy">
+            <span class="material-symbols-outlined">person</span>
+            <span>Author: <strong>{{ course?.submittedBy }}</strong></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Modules & Material Stream -->
+      <div class="modules-readonly-stream">
+        <div class="section-title-bar">
+          <h3>Curriculum Modules &amp; Learning Units</h3>
+          <span class="text-xs text-subtle">Read-only preview of submitted structure</span>
+        </div>
+
+        <div *ngIf="getModules().length === 0" class="empty-modules-card">
+          <span class="material-symbols-outlined empty-icon">view_module</span>
+          <h4>No Modules Configured Yet</h4>
+          <p>This course does not currently have any published modules.</p>
+          <button type="button" class="btn btn-sm btn-primary mt-2" (click)="onEdit()">
+            <span class="material-symbols-outlined">add</span> Create First Module
+          </button>
+        </div>
+
+        <div *ngFor="let mod of getModules(); let modIdx = index" class="readonly-module-card" [id]="'readonly-mod-' + mod.id">
+          <div class="module-header-bar">
+            <div class="module-index-badge">{{ modIdx + 1 }}</div>
+            <div class="module-title-group">
+              <h4>{{ mod.title }}</h4>
+              <p *ngIf="mod.description" class="module-desc">{{ mod.description }}</p>
+            </div>
+            <span class="module-units-count">{{ getMaterialsForModule(mod.id).length }} Units</span>
+          </div>
+
+          <div class="module-units-stream">
+            <div *ngIf="getMaterialsForModule(mod.id).length === 0" class="empty-units-note">
+              <span class="material-symbols-outlined">info</span>
+              <span>No material units added to this module yet.</span>
+            </div>
+
+            <div *ngFor="let unit of getMaterialsForModule(mod.id); let uIdx = index" class="readonly-unit-card" [id]="'readonly-unit-' + unit.id">
+              <div class="unit-card-header">
+                <span class="unit-type-pill" [class]="'type-' + unit.type">
+                  <span class="material-symbols-outlined unit-type-icon">
+                    {{ unit.type === 'video' ? 'smart_display' : unit.type === 'quiz' ? 'quiz' : unit.type === 'code' ? 'terminal' : unit.type === 'callout' ? 'lightbulb' : unit.type === 'image' ? 'image' : unit.type === 'file' ? 'attach_file' : 'article' }}
+                  </span>
+                  {{ unit.type | uppercase }}
+                </span>
+                <h5 class="unit-title">{{ unit.title }}</h5>
+              </div>
+
+              <!-- Unit Content Body -->
+              <div class="unit-card-body">
+                <!-- Video Unit -->
+                <div *ngIf="unit.type === 'video'" class="unit-video-preview">
+                  <div class="video-meta-box">
+                    <span class="material-symbols-outlined video-play-icon">play_circle</span>
+                    <div>
+                      <div class="video-url-label" *ngIf="unit.url">Video Source: <code>{{ unit.url }}</code></div>
+                      <div class="video-placeholder-label" *ngIf="!unit.url">No video URL linked yet.</div>
+                    </div>
+                  </div>
+                  <div *ngIf="parseWidgetData(unit)?.overview" class="unit-text-content mt-2" [innerHTML]="parseWidgetData(unit)?.overview"></div>
+                </div>
+
+                <!-- Quiz Unit -->
+                <div *ngIf="unit.type === 'quiz'" class="unit-quiz-preview">
+                  <div class="quiz-question-box">
+                    <strong>Question:</strong> {{ parseWidgetData(unit)?.question || unit.title }}
+                  </div>
+                  <div class="quiz-options-list" *ngIf="parseWidgetData(unit)?.options">
+                    <div *ngFor="let opt of parseWidgetData(unit)?.options; let oIdx = index"
+                         class="quiz-option-item"
+                         [class.correct-option]="oIdx === parseWidgetData(unit)?.correctIndex">
+                      <span class="option-marker">{{ ['A','B','C','D'][oIdx] || (oIdx + 1) }}</span>
+                      <span>{{ opt }}</span>
+                      <span class="badge badge-success text-xs ml-auto" *ngIf="oIdx === parseWidgetData(unit)?.correctIndex">Correct Key</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Code Unit -->
+                <div *ngIf="unit.type === 'code'" class="unit-code-preview">
+                  <div class="code-header-tag">Language: <strong>{{ parseWidgetData(unit)?.language || 'Python' }}</strong></div>
+                  <pre class="code-box"><code>{{ parseWidgetData(unit)?.starterCode || '// Code starter stub' }}</code></pre>
+                </div>
+
+                <!-- Standard Lesson Guide / Text -->
+                <div *ngIf="unit.type === 'guide' || unit.type === 'text' || !parseWidgetData(unit)?.widget" class="unit-text-content" [innerHTML]="unit.description || 'No theory text.'"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ── Right Rail: Reviewer Notes & Remediation Panel ── -->
+    <aside class="feedback-sidebar-rail">
+      <div class="feedback-sticky-card">
+        <div class="feedback-card-header">
+          <div class="header-icon-box">
+            <span class="material-symbols-outlined">rate_review</span>
+          </div>
+          <div>
+            <h3>Reviewer Remarks</h3>
+            <span class="feedback-status-pill">Revision Required</span>
+          </div>
+        </div>
+
+        <div class="feedback-body-scroll">
+          <div class="feedback-notice-banner">
+            <span class="material-symbols-outlined">info</span>
+            <div>
+              <strong>Action Guide</strong>
+              <p>Please review the notes and remediation points below. When ready, switch to the curriculum editor to make the required adjustments.</p>
+            </div>
+          </div>
+
+          <div class="feedback-remarks-container">
+            <h5 class="remarks-title">Reviewer Feedback &amp; Checklist</h5>
+            <div class="remarks-content-box">
+              <pre class="remarks-pre">{{ rejectionReason }}</pre>
+            </div>
+          </div>
+
+          <!-- Quick Navigation Outline -->
+          <div class="syllabus-toc-box">
+            <h5 class="toc-title">Quick Jump Navigation</h5>
+            <div class="toc-links-list">
+              <button type="button" class="toc-link-item" (click)="scrollToSection('section-overview')">
+                <span class="material-symbols-outlined">info</span>
+                <span>Course Overview</span>
+              </button>
+              <button type="button" *ngFor="let mod of getModules(); let i = index" class="toc-link-item" (click)="scrollToSection('readonly-mod-' + mod.id)">
+                <span class="material-symbols-outlined">view_module</span>
+                <span>Module {{ i + 1 }}: {{ mod.title }}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="feedback-card-footer">
+          <button type="button" class="btn btn-primary btn-block btn-edit-action" (click)="onEdit()">
+            <span class="material-symbols-outlined">edit</span> Edit Course Modules
+          </button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>

@@ -1,0 +1,722 @@
+<div class="module-studio-container fade-in">
+  <!-- ── Studio Header Bar ── -->
+  <header class="studio-header">
+    <div class="studio-header-top">
+      <div class="header-breadcrumb-area">
+        <button type="button" class="back-link-btn" (click)="onExit()" title="Back to Course Console">
+          <span class="material-symbols-outlined">arrow_back</span>
+          <span>Course Console</span>
+        </button>
+        <span class="crumb-separator">/</span>
+        <span class="course-chip">
+          <span class="material-symbols-outlined">{{ course?.icon || 'school' }}</span>
+          <span class="course-title-text">{{ course?.title || 'Course' }}</span>
+        </span>
+        <span class="crumb-separator">/</span>
+        <span class="current-crumb">{{ module ? 'Edit Module' : 'New Module' }}</span>
+      </div>
+
+      <!-- Header Action Buttons -->
+      <div class="studio-header-actions">
+        <button type="button" class="btn btn-sm btn-studio-utility" (click)="togglePaletteSidebar()" [disabled]="isCanvasPreviewMode" [title]="isPaletteCollapsed ? 'Show Component Palette' : 'Hide Component Palette'">
+          <span class="material-symbols-outlined">{{ isPaletteCollapsed ? 'dock_to_right' : 'dock_to_left' }}</span>
+          <span class="btn-label">{{ isPaletteCollapsed ? 'Show Palette' : 'Hide Palette' }}</span>
+        </button>
+
+        <div class="studio-btn-group">
+          <button type="button" class="btn btn-sm btn-studio-utility" (click)="collapseAll()" [disabled]="isCanvasPreviewMode" title="Collapse all blocks for quick overview">
+            <span class="material-symbols-outlined">unfold_less</span>
+            <span class="btn-label">Collapse</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-studio-utility" (click)="expandAll()" [disabled]="isCanvasPreviewMode" title="Expand all blocks">
+            <span class="material-symbols-outlined">unfold_more</span>
+            <span class="btn-label">Expand</span>
+          </button>
+        </div>
+
+        <button type="button" class="btn btn-sm btn-preview-toggle" (click)="isCanvasPreviewMode = !isCanvasPreviewMode" [class.active-preview]="isCanvasPreviewMode" title="Toggle student simulation view">
+          <span class="material-symbols-outlined">{{ isCanvasPreviewMode ? 'edit_note' : 'visibility' }}</span>
+          <span>{{ isCanvasPreviewMode ? 'Back to Editor' : 'Learner Preview' }}</span>
+        </button>
+
+        <button type="button" class="btn btn-sm btn-studio-save" (click)="onSave()" [disabled]="isSaving">
+          <span class="material-symbols-outlined">save</span>
+          <span>{{ isSaving ? 'Saving...' : 'Save & Publish' }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="studio-header-main">
+      <div class="title-with-icon">
+        <div class="studio-badge-icon">
+          <span class="material-symbols-outlined">design_services</span>
+        </div>
+        <div>
+          <h1>{{ module ? 'Curriculum Module Studio' : 'Author Curriculum Module' }}</h1>
+          <p class="studio-subtext">Craft interactive lessons with rich theory, flexible images, videos, checkpoint quizzes, and coding challenges.</p>
+        </div>
+      </div>
+
+      <!-- Live Content Metrics Pill -->
+      <div class="studio-metrics-bar">
+        <div class="metric-chip" title="Total Word Count">
+          <span class="material-symbols-outlined">article</span>
+          <span><strong>{{ totalWords }}</strong> words</span>
+        </div>
+        <div class="metric-chip" title="Estimated Reading & Learning Time">
+          <span class="material-symbols-outlined">schedule</span>
+          <span><strong>~{{ estimatedReadMinutes }}</strong> min</span>
+        </div>
+        <div class="metric-chip" title="Total Checkpoint Quizzes">
+          <span class="material-symbols-outlined">quiz</span>
+          <span><strong>{{ totalQuizzesCount }}</strong> {{ totalQuizzesCount === 1 ? 'quiz' : 'quizzes' }}</span>
+        </div>
+        <div class="metric-chip" title="Total Blocks in Module">
+          <span class="material-symbols-outlined">widgets</span>
+          <span><strong>{{ moduleBlocks.length }}</strong> {{ moduleBlocks.length === 1 ? 'block' : 'blocks' }}</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Save Error Banner -->
+  <div class="alert alert-danger mx-4 my-2" *ngIf="saveError">
+    <span class="material-symbols-outlined">error</span>
+    <span>{{ saveError }}</span>
+  </div>
+
+  <!-- ── Module Setup Strip ── -->
+  <div class="module-config-strip">
+    <div class="config-header-badge">
+      <div class="config-icon-box">
+        <span class="material-symbols-outlined">view_module</span>
+      </div>
+      <div class="config-badge-text">
+        <span class="badge-label">Module Setup</span>
+        <span class="badge-count-pill">{{ moduleBlocks.length }} Blocks</span>
+      </div>
+    </div>
+
+    <div class="config-field flex-grow">
+      <label>Module Title <strong class="text-danger">*</strong></label>
+      <input
+        type="text"
+        [(ngModel)]="moduleForm.title"
+        placeholder="e.g. Algorithmic State Machines &amp; Sensor Telemetry"
+        class="studio-inline-input title-input"
+        [class.input-error]="saveError && !moduleForm.title.trim()"
+        [disabled]="isCanvasPreviewMode"
+      />
+      <span class="text-xs text-danger" *ngIf="saveError && !moduleForm.title.trim()">A module title is required.</span>
+    </div>
+
+    <div class="config-field order-field">
+      <label>Sequence Order</label>
+      <input type="number" min="1" [(ngModel)]="moduleForm.order" class="studio-inline-input" [disabled]="isCanvasPreviewMode" />
+    </div>
+  </div>
+
+  <!-- ── Workspace Layout (Left Palette + Center Canvas) ── -->
+  <div class="studio-workspace-grid" [class.sidebar-collapsed]="isPaletteCollapsed">
+    <!-- ── Left Widget Palette ── -->
+    <aside class="studio-palette-sidebar" [class.palette-disabled]="isCanvasPreviewMode">
+      <div class="palette-header">
+        <h4>Insert Learning Block</h4>
+        <p class="palette-desc" *ngIf="!isCanvasPreviewMode">Click or drag any widget to the canvas sequence.</p>
+        <p class="palette-desc text-warning" *ngIf="isCanvasPreviewMode">Widgets are disabled in learner preview mode.</p>
+      </div>
+
+      <div class="palette-buttons-list">
+        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'text')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('text')" title="Click or drag to add Rich Lesson Guide">
+          <span class="material-symbols-outlined icon-guide">notes</span>
+          <div class="palette-btn-text">
+            <strong>Rich Lesson Guide</strong>
+            <span>Theory, principles, and concepts</span>
+          </div>
+        </button>
+
+        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'image')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('image')" title="Click or drag to add Diagram & Image">
+          <span class="material-symbols-outlined icon-image">image</span>
+          <div class="palette-btn-text">
+            <strong>Diagram &amp; Image</strong>
+            <span>Resize, align beside text, or center</span>
+          </div>
+        </button>
+
+        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'video')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('video')" title="Click or drag to add Video Lecture">
+          <span class="material-symbols-outlined icon-video">smart_display</span>
+          <div class="palette-btn-text">
+            <strong>Video Lecture</strong>
+            <span>YouTube URL or uploaded MP4</span>
+          </div>
+        </button>
+
+        <button type="button" class="palette-btn palette-btn-ai" [disabled]="isCanvasPreviewMode" (click)="!isCanvasPreviewMode && triggerAiQuiz.emit({ isNew: true })" title="Generate comprehension micro-quiz with AI Copilot">
+          <span class="material-symbols-outlined icon-ai">auto_awesome</span>
+          <div class="palette-btn-text">
+            <strong>AI Quiz Copilot</strong>
+            <span>Auto-generate questions from text</span>
+          </div>
+        </button>
+
+        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'quiz')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('quiz')" title="Click or drag to add Checkpoint Question">
+          <span class="material-symbols-outlined icon-quiz">help_outline</span>
+          <div class="palette-btn-text">
+            <strong>Checkpoint Question</strong>
+            <span>Micro-quiz with immediate feedback</span>
+          </div>
+        </button>
+
+        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'code')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('code')" title="Click or drag to add Code Sandbox">
+          <span class="material-symbols-outlined icon-code">terminal</span>
+          <div class="palette-btn-text">
+            <strong>Code Sandbox</strong>
+            <span>Interactive challenge &amp; starter</span>
+          </div>
+        </button>
+
+        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'callout')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('callout')" title="Click or drag to add Callout / Pro Tip">
+          <span class="material-symbols-outlined icon-callout">lightbulb</span>
+          <div class="palette-btn-text">
+            <strong>Callout / Pro Tip</strong>
+            <span>Note, Tip, Warning, Key Takeaway</span>
+          </div>
+        </button>
+
+        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'file')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('file')" title="Click or drag to add Document & PDF">
+          <span class="material-symbols-outlined icon-file">attach_file</span>
+          <div class="palette-btn-text">
+            <strong>Document &amp; PDF</strong>
+            <span>Project specs and handouts</span>
+          </div>
+        </button>
+
+        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'break')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('break')" title="Click or drag to add Section Break Gate">
+          <span class="material-symbols-outlined icon-break">splitscreen</span>
+          <div class="palette-btn-text">
+            <strong>Section Break Gate</strong>
+            <span>Reading checkpoint before continuing</span>
+          </div>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ── Center Visual Stream Canvas ── -->
+    <main class="studio-canvas-stream">
+      <!-- ── EDIT MODE CANVAS ── -->
+      <div class="canvas-blocks-container" *ngIf="!isCanvasPreviewMode">
+        <div *ngFor="let blk of moduleBlocks; let idx = index; trackBy: trackByBlockId"
+             class="canvas-block-card"
+             [id]="'card-' + blk.id"
+             [attr.data-block-id]="blk.id"
+             [class.selected]="selectedBlockId === blk.id"
+             [class.is-collapsed]="blk.isCollapsed"
+             [class.drag-over-card]="dragOverIndex === idx"
+             draggable="true"
+             (dragstart)="onDragStart($event, idx)"
+             (dragover)="onDragOver($event, idx)"
+             (dragleave)="onDragLeave($event, idx)"
+             (drop)="onDrop($event, idx)"
+             (dragend)="onDragEnd()"
+             (click)="selectedBlockId = blk.id">
+
+          <!-- ── Slot In-Between Inserter Button ── -->
+          <div class="in-between-slot-zone" (click)="$event.stopPropagation()">
+            <button type="button" class="slot-plus-btn" (click)="toggleInsertSlot(idx)" title="Insert block at this position">
+              <span class="material-symbols-outlined">add</span>
+              <span>Insert Block</span>
+            </button>
+
+            <!-- Slot Insert Menu -->
+            <div class="slot-insert-menu" *ngIf="activeInsertSlotIndex === idx">
+              <button type="button" (click)="addBlock('text', idx)"><span class="material-symbols-outlined">notes</span> Lesson Guide</button>
+              <button type="button" (click)="addBlock('image', idx)"><span class="material-symbols-outlined">image</span> Diagram / Image</button>
+              <button type="button" (click)="addBlock('video', idx)"><span class="material-symbols-outlined">smart_display</span> Video</button>
+              <button type="button" (click)="addBlock('quiz', idx)"><span class="material-symbols-outlined">quiz</span> Checkpoint Quiz</button>
+              <button type="button" (click)="addBlock('callout', idx)"><span class="material-symbols-outlined">lightbulb</span> Callout</button>
+              <button type="button" (click)="addBlock('code', idx)"><span class="material-symbols-outlined">terminal</span> Code Challenge</button>
+              <button type="button" (click)="addBlock('file', idx)"><span class="material-symbols-outlined">attach_file</span> Document</button>
+            </div>
+          </div>
+
+          <!-- ── Block Card Header Bar ── -->
+          <div class="block-card-header">
+            <div class="block-identity">
+              <!-- Drag Handle Icon -->
+              <span class="drag-handle-grip" title="Click and drag to reorder block">
+                <span class="material-symbols-outlined">drag_indicator</span>
+              </span>
+
+              <!-- Push Up / Down Quick Buttons -->
+              <div class="reorder-controls-pill">
+                <button type="button" class="reorder-arrow-btn" (click)="moveBlockUp(idx); $event.stopPropagation()" [disabled]="idx === 0" title="Move Up">
+                  <span class="material-symbols-outlined">keyboard_arrow_up</span>
+                </button>
+                <span class="block-order-chip">#{{ idx + 1 }}</span>
+                <button type="button" class="reorder-arrow-btn" (click)="moveBlockDown(idx); $event.stopPropagation()" [disabled]="idx === moduleBlocks.length - 1" title="Move Down">
+                  <span class="material-symbols-outlined">keyboard_arrow_down</span>
+                </button>
+              </div>
+
+              <!-- Type Pill -->
+              <span class="type-pill" [class]="'pill-' + blk.type">{{ blk.type | uppercase }}</span>
+              <span class="block-card-title-preview text-xs text-subtle" *ngIf="blk.title && editingBlockId !== blk.id">{{ blk.title }}</span>
+            </div>
+
+            <!-- Block Actions -->
+            <div class="block-actions">
+              <!-- Collapse / Expand Toggle -->
+              <button type="button" class="btn btn-icon-xs" (click)="toggleCollapse(blk); $event.stopPropagation()" [title]="blk.isCollapsed ? 'Expand Block' : 'Collapse Block'">
+                <span class="material-symbols-outlined">{{ blk.isCollapsed ? 'expand_more' : 'expand_less' }}</span>
+              </button>
+
+              <!-- Pencil / Done Edit Toggle (Text/Callout blocks) -->
+              <button *ngIf="blk.type === 'text' || blk.type === 'callout'" type="button" class="btn btn-icon-xs" [class.active-edit]="editingBlockId === blk.id" (click)="setEditingBlock(editingBlockId === blk.id ? null : blk.id); $event.stopPropagation()" [title]="editingBlockId === blk.id ? 'Save & Preview' : 'Edit Block'">
+                <span class="material-symbols-outlined">{{ editingBlockId === blk.id ? 'done' : 'edit' }}</span>
+              </button>
+
+              <!-- Duplicate Block -->
+              <button type="button" class="btn btn-icon-xs" (click)="cloneBlock(idx); $event.stopPropagation()" title="Duplicate Block">
+                <span class="material-symbols-outlined">content_copy</span>
+              </button>
+
+              <!-- Delete Block -->
+              <button type="button" class="btn btn-icon-xs danger" (click)="removeBlock(idx); $event.stopPropagation()" title="Delete Block">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- ── Block Body Content (Hidden when Collapsed) ── -->
+          <div class="block-card-body" *ngIf="!blk.isCollapsed">
+
+            <!-- 1. Rich Guide Block -->
+            <div *ngIf="blk.type === 'text'" class="block-fields">
+              <!-- Edit Mode -->
+              <div *ngIf="editingBlockId === blk.id" class="guide-edit-mode">
+                <div class="form-group mb-2">
+                  <label class="text-xs font-semibold">Section Heading</label>
+                  <input type="text" [(ngModel)]="blk.title" placeholder="e.g. Core Architectural Principles" class="studio-input-sm font-semibold" />
+                </div>
+                <div class="quill-editor-wrapper quill-full-height mb-2">
+                  <quill-editor
+                    [(ngModel)]="blk.content"
+                    [modules]="quillConfig"
+                    placeholder="Write theory, formatted concepts, code benchmarks, and explanations..."
+                  ></quill-editor>
+                </div>
+                <div class="edit-footer-row mt-2">
+                  <button type="button" class="btn btn-xs btn-primary" (click)="setEditingBlock(null)">
+                    <span class="material-symbols-outlined">done</span> Done Editing
+                  </button>
+                </div>
+              </div>
+
+              <!-- Live Preview Mode -->
+              <div *ngIf="editingBlockId !== blk.id" class="guide-live-preview-box" (click)="setEditingBlock(blk.id)">
+                <h4 class="preview-section-title" *ngIf="blk.title">{{ blk.title }}</h4>
+                <div class="preview-rendered-body ql-snow" *ngIf="blk.content">
+                  <div class="ql-editor" [innerHTML]="blk.content" style="padding:0; min-height:auto;"></div>
+                </div>
+                <div class="preview-empty-hint" *ngIf="!blk.content">
+                  <span class="material-symbols-outlined">edit_note</span> Click to add lesson content...
+                </div>
+                <div class="edit-hover-pill">
+                  <span class="material-symbols-outlined">edit</span> Click to edit
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. DIAGRAM & IMAGE BLOCK (Advanced Resizing, Float, Optional Fields) -->
+            <div *ngIf="blk.type === 'image'" class="block-fields image-block-editor">
+              <div class="grid-2-col mb-2">
+                <div class="form-group">
+                  <label class="text-xs">Optional Diagram Title <span class="text-subtle text-2xs">(Optional)</span></label>
+                  <input type="text" [(ngModel)]="blk.title" placeholder="e.g. Memory Architecture Diagram" class="studio-input-sm" />
+                </div>
+                <div class="form-group">
+                  <label class="text-xs">Optional Caption / Notes <span class="text-subtle text-2xs">(Optional)</span></label>
+                  <input type="text" [(ngModel)]="blk.imageCaption" placeholder="e.g. Figure 1.2 Data Flow Pipeline" class="studio-input-sm" />
+                </div>
+              </div>
+
+              <!-- Upload / Dropzone -->
+              <div class="file-upload-dropzone mb-3">
+                <input type="file" accept="image/*" (change)="onFileInputChange($event, blk)" class="file-input-hidden" [id]="'img_' + blk.id" />
+                <label [for]="'img_' + blk.id" class="dropzone-label">
+                  <span class="material-symbols-outlined">{{ isUploadingBlockFile[blk.id] ? 'cloud_sync' : 'add_photo_alternate' }}</span>
+                  <span>{{ isUploadingBlockFile[blk.id] ? 'Uploading image...' : (blk.fileName || (blk.url ? 'Replace Image' : 'Upload Image / Diagram (.png, .jpg, .svg, .webp)')) }}</span>
+                </label>
+              </div>
+
+              <!-- Advanced Image Formatting Toolbar -->
+              <div class="image-styling-toolbar mb-3" *ngIf="blk.url">
+                <!-- Width Sizing Selector -->
+                <div class="toolbar-section">
+                  <span class="toolbar-label">Image Width:</span>
+                  <div class="btn-group-pill">
+                    <button type="button" class="pill-option-btn" [class.active]="(blk.imageWidth || '100%') === '25%'" (click)="blk.imageWidth = '25%'">25% (Thumb)</button>
+                    <button type="button" class="pill-option-btn" [class.active]="(blk.imageWidth || '100%') === '33%'" (click)="blk.imageWidth = '33%'">33%</button>
+                    <button type="button" class="pill-option-btn" [class.active]="(blk.imageWidth || '100%') === '50%'" (click)="blk.imageWidth = '50%'">50% (Half)</button>
+                    <button type="button" class="pill-option-btn" [class.active]="(blk.imageWidth || '100%') === '75%'" (click)="blk.imageWidth = '75%'">75%</button>
+                    <button type="button" class="pill-option-btn" [class.active]="(blk.imageWidth || '100%') === '100%'" (click)="blk.imageWidth = '100%'">100% (Full)</button>
+                  </div>
+                </div>
+
+                <!-- Alignment & Flow Selector -->
+                <div class="toolbar-section">
+                  <span class="toolbar-label">Alignment &amp; Flow:</span>
+                  <div class="btn-group-pill">
+                    <button type="button" class="pill-option-btn" [class.active]="(blk.imageAlign || 'center') === 'center'" (click)="blk.imageAlign = 'center'" title="Center aligned">
+                      <span class="material-symbols-outlined">format_align_center</span> Center
+                    </button>
+                    <button type="button" class="pill-option-btn" [class.active]="(blk.imageAlign || 'center') === 'float-left'" (click)="blk.imageAlign = 'float-left'" title="Float Left - text wraps right">
+                      <span class="material-symbols-outlined">format_indent_increase</span> Float Left
+                    </button>
+                    <button type="button" class="pill-option-btn" [class.active]="(blk.imageAlign || 'center') === 'float-right'" (click)="blk.imageAlign = 'float-right'" title="Float Right - text wraps left">
+                      <span class="material-symbols-outlined">format_indent_decrease</span> Float Right
+                    </button>
+                    <button type="button" class="pill-option-btn" [class.active]="(blk.imageAlign || 'center') === 'beside-text'" (click)="blk.imageAlign = 'beside-text'" title="Side-by-side 2-column split">
+                      <span class="material-symbols-outlined">vertical_split</span> Beside Text
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Style Toggles -->
+                <div class="toolbar-section toggles-row">
+                  <label class="checkbox-label">
+                    <input type="checkbox" [(ngModel)]="blk.imageRounded" />
+                    <span>Rounded Corners</span>
+                  </label>
+                  <label class="checkbox-label">
+                    <input type="checkbox" [(ngModel)]="blk.imageBorder" />
+                    <span>Subtle Border</span>
+                  </label>
+                  <label class="checkbox-label">
+                    <input type="checkbox" [(ngModel)]="blk.imageShadow" />
+                    <span>Drop Shadow</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Beside Text Editor (When Beside Text Split is enabled) -->
+              <div class="beside-text-container mb-3" *ngIf="blk.url && blk.imageAlign === 'beside-text'">
+                <label class="text-xs font-semibold">Explanatory Text (Displayed Beside Image)</label>
+                <textarea
+                  [(ngModel)]="blk.besideText"
+                  rows="3"
+                  class="studio-textarea-sm"
+                  placeholder="Explain the diagram components, annotations, or step-by-step instructions displayed alongside this image..."
+                ></textarea>
+              </div>
+
+              <!-- Live Image Visual Preview Card -->
+              <div *ngIf="blk.url" class="image-preview-card" [class.layout-beside]="blk.imageAlign === 'beside-text'" [class.layout-float-left]="blk.imageAlign === 'float-left'" [class.layout-float-right]="blk.imageAlign === 'float-right'">
+                <div class="image-inner-wrap" [style.width]="blk.imageAlign === 'beside-text' ? '50%' : (blk.imageWidth || '100%')" [style.margin]="(blk.imageAlign === 'center' || !blk.imageAlign) ? '0 auto' : ''">
+                  <h5 class="diagram-preview-title" *ngIf="blk.title">{{ blk.title }}</h5>
+                  <img
+                    [src]="blk.url"
+                    [alt]="blk.title || 'Diagram'"
+                    class="diagram-preview-img"
+                    [class.is-rounded]="blk.imageRounded"
+                    [class.has-border]="blk.imageBorder"
+                    [class.has-shadow]="blk.imageShadow"
+                  />
+                  <div class="diagram-caption" *ngIf="blk.imageCaption">{{ blk.imageCaption }}</div>
+                </div>
+                <div class="beside-text-preview" *ngIf="blk.imageAlign === 'beside-text' && blk.besideText">
+                  <p>{{ blk.besideText }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Video Block -->
+            <div *ngIf="blk.type === 'video'" class="block-fields">
+              <div class="video-source-selector mb-2">
+                <label class="radio-label">
+                  <input type="radio" [name]="'vsrc_' + blk.id" [(ngModel)]="blk.videoSource" value="url" /> YouTube / Video URL
+                </label>
+                <label class="radio-label">
+                  <input type="radio" [name]="'vsrc_' + blk.id" [(ngModel)]="blk.videoSource" value="upload" /> Upload Video File (.mp4, .webm)
+                </label>
+              </div>
+
+              <div class="form-group mb-2" *ngIf="blk.videoSource !== 'upload'">
+                <label class="text-xs">YouTube / Video Embed URL</label>
+                <input type="text" [(ngModel)]="blk.url" placeholder="https://www.youtube.com/watch?v=..." class="studio-input-sm" />
+              </div>
+
+              <div class="form-group mb-2" *ngIf="blk.videoSource === 'upload'">
+                <label class="text-xs">Upload Video File</label>
+                <div class="file-upload-dropzone">
+                  <input type="file" accept="video/mp4,video/webm" (change)="onFileInputChange($event, blk)" class="file-input-hidden" [id]="'file_' + blk.id" />
+                  <label [for]="'file_' + blk.id" class="dropzone-label">
+                    <span class="material-symbols-outlined">{{ isUploadingBlockFile[blk.id] ? 'cloud_sync' : 'video_file' }}</span>
+                    <span>{{ isUploadingBlockFile[blk.id] ? 'Uploading video...' : (blk.fileName || 'Choose MP4 / WebM Video File') }}</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="grid-2-col mb-2">
+                <div class="form-group">
+                  <label class="text-xs">Estimated Duration (Minutes)</label>
+                  <input type="number" min="1" [(ngModel)]="blk.videoDuration" class="studio-input-sm" />
+                </div>
+                <div class="form-group">
+                  <label class="text-xs">Key Takeaway Summary</label>
+                  <input type="text" [(ngModel)]="blk.videoTakeaway" placeholder="Core takeaway from this video" class="studio-input-sm" />
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Checkpoint Micro-Quiz Block -->
+            <div *ngIf="blk.type === 'quiz'" class="block-fields">
+              <div class="quiz-questions-nav-strip mb-2">
+                <div class="q-tabs-list">
+                  <button *ngFor="let qItem of getQuizQuestions(blk); let qIdx = index"
+                          type="button"
+                          class="q-tab-btn"
+                          [class.active]="(blk.activeQuestionIdx ?? 0) === qIdx"
+                          (click)="selectQuizQuestion(blk, qIdx)">
+                    <span>Q{{ qIdx + 1 }}</span>
+                    <span *ngIf="getQuizQuestions(blk).length > 1"
+                          class="q-del-btn"
+                          (click)="removeQuizQuestion(blk, qIdx); $event.stopPropagation()"
+                          title="Remove Question">&times;</span>
+                  </button>
+                  <button type="button" class="q-add-tab-btn" (click)="addQuizQuestion(blk)" title="Add another question">
+                    <span class="material-symbols-outlined">add</span> Add Question
+                  </button>
+                </div>
+                <span class="q-count-badge">{{ getQuizQuestions(blk).length }} Question{{ getQuizQuestions(blk).length === 1 ? '' : 's' }}</span>
+              </div>
+
+              <div class="form-group mb-2">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                  <label class="text-xs">Question {{ (blk.activeQuestionIdx ?? 0) + 1 }} Prompt</label>
+                  <button type="button" class="btn btn-xs btn-ai-sparkle" (click)="triggerAiQuiz.emit({ block: blk })" [disabled]="isGeneratingAiQuiz[blk.id]" title="Auto-generate question from guide content using AI">
+                    <span class="material-symbols-outlined" style="font-size:14px; color:#6366f1;">{{ isGeneratingAiQuiz[blk.id] ? 'sync' : 'auto_awesome' }}</span>
+                    <span style="font-size:11px; font-weight:700; color:#4f46e5;">{{ isGeneratingAiQuiz[blk.id] ? 'Generating...' : 'AI Copilot' }}</span>
+                  </button>
+                </div>
+                <input type="text" [(ngModel)]="getActiveQuizQuestion(blk).question" (ngModelChange)="blk.quizQuestion = getActiveQuizQuestion(blk).question" placeholder="e.g. Which algorithm provides logarithmic search complexity?" class="studio-input-sm" />
+              </div>
+
+              <div class="quiz-options-builder" *ngIf="getActiveQuizQuestion(blk).options">
+                <div class="quiz-opt-row" *ngFor="let opt of getActiveQuizQuestion(blk).options; let oIdx = index; trackBy: trackByIndex">
+                  <input type="radio" [name]="'quiz_corr_' + blk.id + '_' + (blk.activeQuestionIdx ?? 0)" [checked]="getActiveQuizQuestion(blk).correctIndex === oIdx" (change)="getActiveQuizQuestion(blk).correctIndex = oIdx; blk.quizCorrectIndex = oIdx" />
+                  <input type="text" [(ngModel)]="getActiveQuizQuestion(blk).options[oIdx]" (ngModelChange)="blk.quizOptions = getActiveQuizQuestion(blk).options" class="studio-input-sm" (click)="$event.stopPropagation()" />
+                </div>
+              </div>
+
+              <div class="form-group mt-2">
+                <label class="text-xs">Pedagogical Explanation (Shown after answering)</label>
+                <input type="text" [(ngModel)]="getActiveQuizQuestion(blk).explanation" (ngModelChange)="blk.quizExplanation = getActiveQuizQuestion(blk).explanation" placeholder="Explain why the correct answer is right..." class="studio-input-sm" />
+              </div>
+            </div>
+
+            <!-- 5. Code Sandbox Challenge Block -->
+            <div *ngIf="blk.type === 'code'" class="block-fields">
+              <div class="grid-2-col mb-2">
+                <div class="form-group">
+                  <label class="text-xs">Target Language</label>
+                  <select [(ngModel)]="blk.codeLanguage" class="studio-input-sm">
+                    <option value="python">Python 3</option>
+                    <option value="javascript">JavaScript / TypeScript</option>
+                    <option value="cpp">C++ 20</option>
+                    <option value="csharp">C# (.NET)</option>
+                    <option value="java">Java 21</option>
+                    <option value="arduino">Arduino C++</option>
+                    <option value="rust">Rust</option>
+                    <option value="go">Go (Golang)</option>
+                    <option value="html">HTML / CSS / Web</option>
+                    <option value="sql">SQL / Database</option>
+                    <option value="bash">Bash / Shell Script</option>
+                    <option value="php">PHP</option>
+                    <option value="kotlin">Kotlin</option>
+                    <option value="swift">Swift</option>
+                    <option value="dart">Dart / Flutter</option>
+                    <option value="r">R Language</option>
+                    <option value="json">JSON / YAML Config</option>
+                    <option value="other">Other / Custom Language</option>
+                  </select>
+                  <input *ngIf="blk.codeLanguage === 'other'"
+                         type="text"
+                         [(ngModel)]="blk.customCodeLanguage"
+                         placeholder="Specify custom language name (e.g. Solidity, Haskell, Verilog)..."
+                         class="studio-input-sm mt-1" />
+                </div>
+                <div class="form-group">
+                  <label class="text-xs">Challenge Title</label>
+                  <input type="text" [(ngModel)]="blk.title" placeholder="e.g. Implement Binary Search" class="studio-input-sm" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="text-xs">Starter Code Template</label>
+                <textarea [(ngModel)]="blk.codeStarter" rows="4" class="code-textarea"></textarea>
+              </div>
+            </div>
+
+            <!-- 6. Callout / Pro Tip Block -->
+            <div *ngIf="blk.type === 'callout'" class="block-fields callout-editor-box" [class]="'callout-type-' + (blk.calloutType || 'tip')">
+              <div class="callout-header-row mb-2">
+                <div class="form-group flex-grow">
+                  <label class="text-xs">Callout Theme</label>
+                  <select [(ngModel)]="blk.calloutType" class="studio-input-sm">
+                    <option value="tip">💡 Pro Tip &amp; Best Practice</option>
+                    <option value="note">📌 Important Note</option>
+                    <option value="warning">⚠️ Caution &amp; Pitfall</option>
+                    <option value="danger">🛑 Critical Constraint</option>
+                    <option value="key_takeaway">🎯 Key Takeaway</option>
+                  </select>
+                </div>
+                <div class="form-group flex-grow-2">
+                  <label class="text-xs">Callout Heading</label>
+                  <input type="text" [(ngModel)]="blk.title" placeholder="e.g. Production Performance Warning" class="studio-input-sm" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="text-xs">Callout Content</label>
+                <textarea [(ngModel)]="blk.content" rows="3" class="studio-textarea-sm" placeholder="Write the highlight, tip, or warning note..."></textarea>
+              </div>
+            </div>
+
+            <!-- 7. Document / PDF Attachment Block -->
+            <div *ngIf="blk.type === 'file'" class="block-fields">
+              <div class="form-group mb-2">
+                <label class="text-xs">Document Title</label>
+                <input type="text" [(ngModel)]="blk.title" placeholder="e.g. Competition Datasheet &amp; Rules PDF" class="studio-input-sm" />
+              </div>
+              <div class="file-upload-dropzone mb-2">
+                <input type="file" accept=".pdf,.doc,.docx,.zip,.txt" (change)="onFileInputChange($event, blk)" class="file-input-hidden" [id]="'doc_' + blk.id" />
+                <label [for]="'doc_' + blk.id" class="dropzone-label">
+                  <span class="material-symbols-outlined">{{ isUploadingBlockFile[blk.id] ? 'cloud_sync' : 'upload_file' }}</span>
+                  <span>{{ isUploadingBlockFile[blk.id] ? 'Uploading document...' : (blk.fileName || 'Upload PDF / Project Document') }}</span>
+                </label>
+              </div>
+              <div *ngIf="blk.url" class="file-attached-pill mb-2">
+                <span class="material-symbols-outlined">picture_as_pdf</span>
+                <span>{{ blk.fileName || 'Document Attached' }} ({{ blk.fileSize || 'PDF' }})</span>
+              </div>
+              <div class="form-group">
+                <label class="text-xs">Reading Instructions</label>
+                <input type="text" [(ngModel)]="blk.content" placeholder="Instructions for students regarding this document..." class="studio-input-sm" />
+              </div>
+            </div>
+
+            <!-- 8. Section Break Gate -->
+            <div *ngIf="blk.type === 'break'" class="block-fields break-block-box">
+              <span class="material-symbols-outlined">splitscreen</span>
+              <div>
+                <strong>Section Checkpoint Gate</strong>
+                <div class="text-xs text-subtle">Students must complete the preceding reading or quiz before the next section unlocks.</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Add Block Bottom Prompt -->
+        <div class="add-block-bottom-prompt"
+             [class.drag-over-bottom]="isDragOverBottomPrompt"
+             (dragover)="onBottomPromptDragOver($event)"
+             (dragleave)="onBottomPromptDragLeave()"
+             (drop)="onBottomPromptDrop($event)"
+             (click)="addBlock('text')">
+          <span class="material-symbols-outlined">add_circle</span>
+          <span>Click or drag a widget here to append to module</span>
+        </div>
+      </div>
+
+      <!-- ── LIVE LEARNER SIMULATION PREVIEW ── -->
+      <div class="canvas-preview-pane fade-in" *ngIf="isCanvasPreviewMode">
+        <div class="sim-classroom-header">
+          <div class="sim-header-info">
+            <div class="sim-live-badge">
+              <span class="sim-pulse-dot"></span> LIVE LEARNER SIMULATION
+            </div>
+            <h2>{{ moduleForm.title || 'Untitled Module' }}</h2>
+            <div class="sim-meta-row">
+              <span>{{ course?.title }}</span> &bull;
+              <span>~{{ estimatedReadMinutes }} min read</span> &bull;
+              <span>{{ moduleBlocks.length }} interactive units</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sim-content-body">
+          <div *ngFor="let blk of moduleBlocks; let idx = index" class="sim-block-render">
+            <!-- Text Block -->
+            <div *ngIf="blk.type === 'text'" class="sim-text-unit mb-4">
+              <h3 class="sim-heading" *ngIf="blk.title">{{ blk.title }}</h3>
+              <div class="ql-snow">
+                <div class="ql-editor p-0" [innerHTML]="blk.content"></div>
+              </div>
+            </div>
+
+            <!-- Image Block -->
+            <div *ngIf="blk.type === 'image' && blk.url" class="sim-image-unit mb-4" [class.sim-layout-beside]="blk.imageAlign === 'beside-text'">
+              <div class="sim-image-wrap" [style.width]="blk.imageAlign === 'beside-text' ? '50%' : (blk.imageWidth || '100%')" [style.margin]="(blk.imageAlign === 'center' || !blk.imageAlign) ? '0 auto' : ''">
+                <h4 *ngIf="blk.title" class="sim-img-title">{{ blk.title }}</h4>
+                <img [src]="blk.url" [alt]="blk.title || 'Diagram'" class="sim-img-tag" [class.is-rounded]="blk.imageRounded" [class.has-border]="blk.imageBorder" [class.has-shadow]="blk.imageShadow" />
+                <p class="sim-caption" *ngIf="blk.imageCaption">{{ blk.imageCaption }}</p>
+              </div>
+              <div class="sim-beside-text" *ngIf="blk.imageAlign === 'beside-text' && blk.besideText">
+                <p>{{ blk.besideText }}</p>
+              </div>
+            </div>
+
+            <!-- Callout Block -->
+            <div *ngIf="blk.type === 'callout'" class="sim-callout-unit mb-4" [class]="'callout-type-' + (blk.calloutType || 'tip')">
+              <div class="callout-icon-col">
+                <span class="material-symbols-outlined" *ngIf="blk.calloutType === 'tip'">lightbulb</span>
+                <span class="material-symbols-outlined" *ngIf="blk.calloutType === 'warning'">warning</span>
+                <span class="material-symbols-outlined" *ngIf="blk.calloutType === 'danger'">error</span>
+                <span class="material-symbols-outlined" *ngIf="blk.calloutType === 'key_takeaway'">flag</span>
+                <span class="material-symbols-outlined" *ngIf="!blk.calloutType || blk.calloutType === 'note'">info</span>
+              </div>
+              <div class="callout-text-col">
+                <strong class="callout-title" *ngIf="blk.title">{{ blk.title }}</strong>
+                <p class="callout-body">{{ blk.content }}</p>
+              </div>
+            </div>
+
+            <!-- Video Block -->
+            <div *ngIf="blk.type === 'video'" class="sim-video-unit mb-4">
+              <div class="video-mock-player">
+                <span class="material-symbols-outlined" style="font-size:48px; color:#ffffff;">play_circle</span>
+                <span>{{ blk.url || blk.fileName || 'Video Player' }}</span>
+              </div>
+              <div class="sim-video-takeaway mt-2" *ngIf="blk.videoTakeaway">
+                <strong>Key Takeaway:</strong> {{ blk.videoTakeaway }}
+              </div>
+            </div>
+
+            <!-- Quiz Block -->
+            <div *ngIf="blk.type === 'quiz'" class="sim-quiz-unit mb-4">
+              <div *ngFor="let q of getQuizQuestions(blk); let qIdx = index" class="sim-quiz-card mb-3">
+                <div class="sim-quiz-qnum">Checkpoint Question {{ qIdx + 1 }}</div>
+                <div class="sim-quiz-question">{{ q.question }}</div>
+                <div class="sim-quiz-options">
+                  <div *ngFor="let opt of q.options; let oIdx = index" class="sim-opt-item">
+                    <span class="sim-opt-letter">{{ ['A', 'B', 'C', 'D'][oIdx] || oIdx + 1 }}</span>
+                    <span>{{ opt }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Code Challenge Block -->
+            <div *ngIf="blk.type === 'code'" class="sim-code-unit mb-4">
+              <div class="sim-code-header">
+                <span>{{ blk.title || 'Code Challenge' }}</span>
+                <span class="code-lang-tag">{{ (blk.codeLanguage === 'other' && blk.customCodeLanguage ? blk.customCodeLanguage : (blk.codeLanguage || 'CODE')) | uppercase }}</span>
+              </div>
+              <pre class="sim-code-preview"><code>{{ blk.codeStarter }}</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>

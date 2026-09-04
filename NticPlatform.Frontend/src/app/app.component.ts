@@ -632,6 +632,19 @@ export class AppComponent implements OnInit, OnDestroy {
         roleName: this.roleLabels[roleId] || 'User',
       };
     });
+
+    if (getAuthValue('activeUserToken')) {
+      const role = (roleId || '').toLowerCase();
+      if (role === 'instructor' || role === 'content_manager' || role === 'admin' || role === 'super_admin') {
+        this.apiService.getMyAuthoredCourses().subscribe({
+          next: (courses) => {
+            this.instructorCourses = courses || [];
+            this.recalculateNotifications();
+          },
+          error: () => {}
+        });
+      }
+    }
   }
 
   onAvatarLoadError(): void {
@@ -824,6 +837,7 @@ export class AppComponent implements OnInit, OnDestroy {
   clearedNotificationIds = new Set<string>();
   notifications: any[] = [];
   activeUnreadCount = 0;
+  instructorCourses: any[] = [];
 
   private loadReadNotifications(): void {
     if (typeof window === 'undefined') return;
@@ -943,6 +957,50 @@ export class AppComponent implements OnInit, OnDestroy {
           category: 'System',
           unread: !this.readNotificationIds.has('sys-pending-' + pendingCount),
         });
+      }
+    }
+
+    // Dynamic instructor course review notifications (revisions & approvals)
+    if (this.instructorCourses && this.instructorCourses.length > 0) {
+      const currentUserName = (this.currentUser?.name || getAuthValue('activeUserName') || '').toLowerCase();
+      const currentUserEmail = (getAuthValue('activeUserEmail') || '').toLowerCase();
+
+      for (const course of this.instructorCourses) {
+        const subBy = (course.submittedBy || (course as any).submitted_by || '').toLowerCase();
+        const isOwner = !subBy ||
+                        (currentUserName && subBy.includes(currentUserName)) ||
+                        (currentUserEmail && subBy.includes(currentUserEmail));
+
+        if (isOwner) {
+          const status = course.approvalStatus || (course as any).approval_status;
+          const rejectionReason = course.rejectionReason || (course as any).rejection_reason;
+          if (status === 'rejected') {
+            const notifId = `crs-rejected-${course.id}`;
+            const reasonSnippet = rejectionReason ? `: ${rejectionReason.slice(0, 60)}...` : '';
+            list.push({
+              id: notifId,
+              title: `Changes requested for "${course.title}"${reasonSnippet}`,
+              time: 'Revision Required',
+              icon: 'assignment_late',
+              category: 'Curriculum Review',
+              unread: !this.readNotificationIds.has(notifId),
+              route: '/lms-manager',
+              queryParams: { courseId: course.id, tab: 'courses' }
+            });
+          } else if (status === 'approved') {
+            const notifId = `crs-approved-${course.id}`;
+            list.push({
+              id: notifId,
+              title: `Course Approved: "${course.title}" is published live!`,
+              time: 'Published',
+              icon: 'check_circle',
+              category: 'Curriculum Review',
+              unread: !this.readNotificationIds.has(notifId),
+              route: '/lms-manager',
+              queryParams: { courseId: course.id, tab: 'courses' }
+            });
+          }
+        }
       }
     }
 

@@ -258,6 +258,12 @@
             <div class="text-xs text-subtle mt-2" *ngIf="course.submittedBy">
               Instructor: <strong>{{ course.submittedBy }}</strong>
             </div>
+
+            <!-- Reviewer Revision Alert Chip on Card (Only for non-admin instructors/authors) -->
+            <div class="course-rejection-pill-alert mt-2" *ngIf="(course.approvalStatus === 'rejected' || course.rejectionReason) && !isAdmin" (click)="openFeedbackModal(course); $event.stopPropagation()">
+              <span class="material-symbols-outlined">report</span>
+              <span>Changes Requested &bull; Tap to View Feedback</span>
+            </div>
           </div>
 
           <div class="course-metrics">
@@ -276,6 +282,9 @@
           </div>
 
           <div class="course-card-footer">
+            <button class="btn btn-xs btn-outline warning" *ngIf="course.approvalStatus === 'rejected'" (click)="resubmitCourseForReview(course); $event.stopPropagation()" [disabled]="isResubmittingCourse[course.id]" title="Resubmit for review">
+              <span class="material-symbols-outlined">send</span> {{ isResubmittingCourse[course.id] ? 'Submitting...' : 'Resubmit' }}
+            </button>
             <button class="btn btn-xs btn-subtle" (click)="openCourseWizard(course); $event.stopPropagation()">
               <span class="material-symbols-outlined">edit</span> Edit
             </button>
@@ -753,7 +762,7 @@
       <span class="breadcrumb-current">{{ activeDetailCourse?.title || 'Course Console' }}</span>
     </div>
 
-    <!-- Course Moderation Sticky Review Action Bar -->
+    <!-- Course Moderation Sticky Review Action Bar (for Reviewers) -->
     <div class="course-moderation-top-bar" *ngIf="isAdmin && isPendingModerationCourse(activeDetailCourse)">
       <div class="moderation-status-pill">
         <span class="material-symbols-outlined">pending_actions</span>
@@ -768,6 +777,25 @@
         </button>
         <button class="btn btn-sm btn-success" (click)="approveActiveCourseFromConsole()">
           <span class="material-symbols-outlined">check_circle</span> Approve &amp; Publish Course
+        </button>
+      </div>
+    </div>
+
+    <!-- Course Revision Required Sticky Banner (for Instructors/Authors) -->
+    <div class="course-revision-required-bar" *ngIf="(activeDetailCourse?.approvalStatus === 'rejected' || activeDetailCourse?.rejectionReason) && !isAdmin">
+      <div class="revision-status-pill">
+        <span class="material-symbols-outlined text-danger">assignment_late</span>
+        <div>
+          <strong>Reviewer Revision Feedback Attached</strong>
+          <p class="text-xs" style="margin:2px 0 0;">{{ activeDetailCourse?.rejectionReason ? (activeDetailCourse?.rejectionReason | slice:0:160) + '...' : 'Review recommendations attached. Please update curriculum modules and resubmit.' }}</p>
+        </div>
+      </div>
+      <div class="revision-action-buttons">
+        <button type="button" class="btn btn-sm btn-outline" (click)="openFeedbackModal(activeDetailCourse)">
+          <span class="material-symbols-outlined">visibility</span> View Full Review Notes
+        </button>
+        <button type="button" class="btn btn-sm btn-primary" (click)="resubmitCourseForReview(activeDetailCourse)" [disabled]="isResubmittingCourse[activeDetailCourse?.id]">
+          <span class="material-symbols-outlined">send</span> {{ isResubmittingCourse[activeDetailCourse?.id] ? 'Resubmitting...' : 'Resubmit for Review' }}
         </button>
       </div>
     </div>
@@ -1444,660 +1472,32 @@
   </div>
 
   <!-- ════════════════════════════════════════════════════════════
-       VIEW 3: DEDICATED MODULE VISUAL BLOCK CANVAS STUDIO
+       VIEW 3: DEDICATED MODULE VISUAL BLOCK CANVAS STUDIO (STANDALONE COMPONENT)
        ════════════════════════════════════════════════════════════ -->
-  <div *ngIf="currentView === 'module_studio'" class="module-studio-view fade-in">
-    <!-- Studio Header & Actions -->
-    <header class="lms-header studio-hero-header">
-      <div class="header-content">
-        <div class="header-title">
-          <span class="material-symbols-outlined header-icon">design_services</span>
-          <div>
-            <div class="studio-breadcrumb-row">
-              <button class="breadcrumb-back-btn" (click)="exitModuleStudio()" title="Back to Course Console">
-                <span class="material-symbols-outlined">arrow_back</span>
-                <span>Back to Course</span>
-              </button>
-              <span class="breadcrumb-separator">/</span>
-              <span class="breadcrumb-course-chip">
-                <span class="material-symbols-outlined">{{ activeDetailCourse?.icon || 'school' }}</span>
-                {{ activeDetailCourse?.title || 'Course' }}
-              </span>
-              <span class="breadcrumb-separator">/</span>
-              <span class="breadcrumb-current">Module Studio</span>
-            </div>
-            <h1>{{ activeDetailModule ? 'Edit Curriculum Module' : 'Author New Lesson Module' }}</h1>
-            <p>Assemble rich guides, video lectures, interactive checkpoint quizzes, coding sandboxes, and learning assets.</p>
-          </div>
-        </div>
-        <div class="header-actions">
-          <button class="btn btn-outline" (click)="isCanvasPreviewMode = !isCanvasPreviewMode">
-            <span class="material-symbols-outlined">{{ isCanvasPreviewMode ? 'edit_note' : 'visibility' }}</span>
-            {{ isCanvasPreviewMode ? 'Switch to Edit Canvas' : 'Live Learner Preview' }}
-          </button>
-          <button class="btn btn-primary" (click)="saveModuleStudio()" [disabled]="isSaving">
-            <span class="material-symbols-outlined">save</span> {{ isSaving ? 'Saving...' : 'Save & Publish Module' }}
-          </button>
-        </div>
-      </div>
-    </header>
+  <app-module-studio
+    *ngIf="currentView === 'module_studio'"
+    [course]="activeDetailCourse"
+    [module]="activeDetailModule"
+    [initialBlocks]="moduleBlocks"
+    [isSaving]="isSaving"
+    [saveError]="saveError"
+    (exit)="exitModuleStudio()"
+    (save)="handleSaveModuleStudioFromChild($event)"
+    (triggerAiQuiz)="handleTriggerAiQuizFromChild($event)"
+    (uploadFile)="handleUploadBlockFileFromChild($event)">
+  </app-module-studio>
 
-    <!-- Save Error Banner in Module Studio -->
-    <div class="alert alert-danger mx-4 my-2" *ngIf="saveError">
-      <span class="material-symbols-outlined">error</span>
-      <span>{{ saveError }}</span>
-    </div>
-
-    <!-- Module Settings Header Banner -->
-    <div class="module-config-strip">
-      <div class="config-header-badge">
-        <div class="config-icon-box">
-          <span class="material-symbols-outlined">view_module</span>
-        </div>
-        <div class="config-badge-text">
-          <span class="badge-label">Module Setup</span>
-          <span class="badge-count-pill">{{ moduleBlocks.length }} Blocks</span>
-        </div>
-      </div>
-      <div class="config-field flex-grow">
-        <label>Module Title <strong class="req">*</strong></label>
-        <input type="text" [(ngModel)]="moduleForm.title" placeholder="e.g. Algorithmic State Machines &amp; Sensor Telemetry" class="studio-inline-input title-input" [class.input-error]="saveError && !moduleForm.title.trim()" />
-        <span class="text-xs text-danger" *ngIf="saveError && !moduleForm.title.trim()">A module title is required.</span>
-      </div>
-      <div class="config-field order-field">
-        <label>Sequence Order</label>
-        <input type="number" min="1" [(ngModel)]="moduleForm.order" class="studio-inline-input" />
-      </div>
-    </div>
-
-    <!-- Split Studio Layout: Left Palette + Center Visual Stream -->
-    <div class="studio-workspace-grid">
-      <!-- ── Left Widget Palette ── -->
-      <aside class="studio-palette-sidebar">
-        <h4>Insert Learning Block</h4>
-        <p class="palette-desc">Click any block to insert it into the module sequence.</p>
-
-        <div class="palette-buttons-list">
-          <button class="palette-btn" (click)="addBlock('text')">
-            <span class="material-symbols-outlined icon-guide">notes</span>
-            <div class="palette-btn-text">
-              <strong>Rich Lesson Guide</strong>
-              <span>Theory, principles, and formatted concepts</span>
-            </div>
-          </button>
-
-          <button class="palette-btn" (click)="addBlock('video')">
-            <span class="material-symbols-outlined icon-video">smart_display</span>
-            <div class="palette-btn-text">
-              <strong>Video Stream / MP4</strong>
-              <span>YouTube URL or upload local video file</span>
-            </div>
-          </button>
-
-          <button class="palette-btn palette-btn-ai" (click)="generateAiQuizAsNewBlock()" [disabled]="isGeneratingNewAiQuiz" title="Generate comprehension micro-quiz with AI">
-            <span class="material-symbols-outlined icon-ai">{{ isGeneratingNewAiQuiz ? 'sync' : 'auto_awesome' }}</span>
-            <div class="palette-btn-text">
-              <strong>{{ isGeneratingNewAiQuiz ? 'Generating AI Quiz...' : 'AI Quiz Copilot' }}</strong>
-              <span>Auto-generate questions from lesson text</span>
-            </div>
-          </button>
-
-          <button class="palette-btn" (click)="addBlock('quiz')">
-            <span class="material-symbols-outlined icon-quiz">help_outline</span>
-            <div class="palette-btn-text">
-              <strong>Checkpoint Question</strong>
-              <span>Micro-quiz with immediate feedback</span>
-            </div>
-          </button>
-
-          <button class="palette-btn" (click)="addBlock('code')">
-            <span class="material-symbols-outlined icon-code">terminal</span>
-            <div class="palette-btn-text">
-              <strong>Code Sandbox</strong>
-              <span>Interactive coding challenge &amp; starter</span>
-            </div>
-          </button>
-
-          <button class="palette-btn" (click)="addBlock('image')">
-            <span class="material-symbols-outlined icon-image">image</span>
-            <div class="palette-btn-text">
-              <strong>Diagram &amp; Image</strong>
-              <span>Upload schematics, diagrams, and figures</span>
-            </div>
-          </button>
-
-          <button class="palette-btn" (click)="addBlock('file')">
-            <span class="material-symbols-outlined icon-file">attach_file</span>
-            <div class="palette-btn-text">
-              <strong>Document &amp; PDF</strong>
-              <span>Upload project specs and handouts</span>
-            </div>
-          </button>
-
-          <button class="palette-btn" (click)="addBlock('break')">
-            <span class="material-symbols-outlined icon-break">splitscreen</span>
-            <div class="palette-btn-text">
-              <strong>Section Break Gate</strong>
-              <span>Reading checkpoint before continuing</span>
-            </div>
-          </button>
-        </div>
-      </aside>
-
-      <!-- ── Center Visual Stream Canvas ── -->
-      <main class="studio-canvas-stream">
-        <div class="canvas-blocks-container" *ngIf="!isCanvasPreviewMode">
-          <div *ngFor="let blk of moduleBlocks; let idx = index; trackBy: trackByIndex" class="canvas-block-card" [class.selected]="selectedBlockId === blk.id" (click)="selectedBlockId = blk.id">
-            <!-- Block Header Bar -->
-            <div class="block-card-header">
-              <div class="block-identity">
-                <!-- Dedicated Quick Reorder Controls (Push Up / Down) -->
-                <div class="reorder-controls-pill">
-                  <button type="button" class="reorder-arrow-btn" (click)="moveBlockUp(idx); $event.stopPropagation()" [disabled]="idx === 0" title="Push Block Up">
-                    <span class="material-symbols-outlined">keyboard_arrow_up</span>
-                  </button>
-                  <span class="block-order-chip">#{{ idx + 1 }}</span>
-                  <button type="button" class="reorder-arrow-btn" (click)="moveBlockDown(idx); $event.stopPropagation()" [disabled]="idx === moduleBlocks.length - 1" title="Push Block Down">
-                    <span class="material-symbols-outlined">keyboard_arrow_down</span>
-                  </button>
-                </div>
-
-                <span class="type-pill" [class]="'pill-' + blk.type">{{ blk.type | uppercase }}</span>
-                <span class="block-card-title-preview text-xs text-subtle" *ngIf="blk.title && editingBlockId !== blk.id">{{ blk.title }}</span>
-              </div>
-
-              <div class="block-actions">
-                <!-- Pencil / Live Preview Toggle -->
-                <button class="btn btn-icon-xs" [class.active-edit]="editingBlockId === blk.id" (click)="setEditingBlock(editingBlockId === blk.id ? null : blk.id); $event.stopPropagation()" [title]="editingBlockId === blk.id ? 'Save & Preview' : 'Edit Block'">
-                  <span class="material-symbols-outlined">{{ editingBlockId === blk.id ? 'done' : 'edit' }}</span>
-                </button>
-                <button class="btn btn-icon-xs" (click)="moveBlockUp(idx); $event.stopPropagation()" [disabled]="idx === 0" title="Push Up in Sequence">
-                  <span class="material-symbols-outlined">arrow_upward</span>
-                </button>
-                <button class="btn btn-icon-xs" (click)="moveBlockDown(idx); $event.stopPropagation()" [disabled]="idx === moduleBlocks.length - 1" title="Push Down in Sequence">
-                  <span class="material-symbols-outlined">arrow_downward</span>
-                </button>
-                <button class="btn btn-icon-xs danger" (click)="removeBlock(idx); $event.stopPropagation()" title="Delete Block">
-                  <span class="material-symbols-outlined">delete</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Block Body by Type -->
-            <div class="block-card-body">
-              <!-- 1. Rich Guide Block -->
-              <div *ngIf="blk.type === 'text'" class="block-fields">
-                <!-- EDIT MODE -->
-                <div *ngIf="editingBlockId === blk.id" class="guide-edit-mode">
-                  <div class="form-group mb-2">
-                    <label class="text-xs font-semibold">Section Heading</label>
-                    <input type="text" [(ngModel)]="blk.title" placeholder="e.g. Core Architectural Principles" class="studio-input-sm font-semibold" />
-                  </div>
-
-                  <div class="quill-editor-wrapper quill-full-height mb-2">
-                    <quill-editor
-                      [(ngModel)]="blk.content"
-                      [modules]="quillConfig"
-                      placeholder="Write theory, formatted concepts, principles, code benchmarks, and explanations..."
-                    ></quill-editor>
-                  </div>
-
-                  <div class="edit-footer-row mt-2">
-                    <button class="btn btn-xs btn-primary" (click)="setEditingBlock(null)">
-                      <span class="material-symbols-outlined">done</span> Done Editing
-                    </button>
-                  </div>
-                </div>
-
-                <!-- LIVE PREVIEW MODE -->
-                <div *ngIf="editingBlockId !== blk.id" class="guide-live-preview-box" (click)="setEditingBlock(blk.id)">
-                  <h4 class="preview-section-title">{{ blk.title || 'Lesson Overview' }}</h4>
-                  <div class="preview-rendered-body ql-snow" *ngIf="blk.content">
-                    <div class="ql-editor" [innerHTML]="blk.content" style="padding:0; min-height:auto;"></div>
-                  </div>
-                  <div class="preview-empty-hint" *ngIf="!blk.content">
-                    <span class="material-symbols-outlined">edit_note</span> Click to add lesson content...
-                  </div>
-                  <div class="edit-hover-pill">
-                    <span class="material-symbols-outlined">edit</span> Click to edit
-                  </div>
-                </div>
-              </div>
-
-              <!-- 2. Video Stream / File Upload Block -->
-              <div *ngIf="blk.type === 'video'" class="block-fields">
-                <div class="video-source-selector mb-2">
-                  <label class="radio-label">
-                    <input type="radio" [name]="'vsrc_' + blk.id" [(ngModel)]="blk.videoSource" value="url" /> YouTube / Video URL
-                  </label>
-                  <label class="radio-label">
-                    <input type="radio" [name]="'vsrc_' + blk.id" [(ngModel)]="blk.videoSource" value="upload" /> Upload Video File (.mp4, .webm)
-                  </label>
-                </div>
-
-                <div class="form-group mb-2" *ngIf="blk.videoSource !== 'upload'">
-                  <label class="text-xs">YouTube / Video Embed URL</label>
-                  <input type="text" [(ngModel)]="blk.url" placeholder="https://www.youtube.com/watch?v=..." class="studio-input-sm" />
-                </div>
-
-                <div class="form-group mb-2" *ngIf="blk.videoSource === 'upload'">
-                  <label class="text-xs">Upload Video File</label>
-                  <div class="file-upload-dropzone">
-                    <input type="file" accept="video/mp4,video/webm" (change)="onBlockFileUpload($event, blk)" class="file-input-hidden" [id]="'file_' + blk.id" />
-                    <label [for]="'file_' + blk.id" class="dropzone-label">
-                      <span class="material-symbols-outlined">{{ isUploadingBlockFile[blk.id] ? 'cloud_sync' : 'video_file' }}</span>
-                      <span>{{ isUploadingBlockFile[blk.id] ? 'Uploading video file...' : (blk.fileName || 'Choose MP4 / WebM Video File') }}</span>
-                    </label>
-                  </div>
-                </div>
-
-                <div class="grid-2-col mb-2">
-                  <div class="form-group">
-                    <label class="text-xs">Estimated Duration (Minutes)</label>
-                    <input type="number" min="1" [(ngModel)]="blk.videoDuration" class="studio-input-sm" />
-                  </div>
-                  <div class="form-group">
-                    <label class="text-xs">Key Takeaway Summary</label>
-                    <input type="text" [(ngModel)]="blk.videoTakeaway" placeholder="Core takeaway from this video" class="studio-input-sm" />
-                  </div>
-                </div>
-              </div>
-
-              <!-- 3. Image / Diagram Attachment Block -->
-              <div *ngIf="blk.type === 'image'" class="block-fields">
-                <div class="form-group mb-2">
-                  <label class="text-xs">Diagram Title</label>
-                  <input type="text" [(ngModel)]="blk.title" placeholder="e.g. System Circuit Diagram &amp; Flow" class="studio-input-sm" />
-                </div>
-
-                <div class="file-upload-dropzone mb-2">
-                  <input type="file" accept="image/*" (change)="onBlockFileUpload($event, blk)" class="file-input-hidden" [id]="'img_' + blk.id" />
-                  <label [for]="'img_' + blk.id" class="dropzone-label">
-                    <span class="material-symbols-outlined">{{ isUploadingBlockFile[blk.id] ? 'cloud_sync' : 'add_photo_alternate' }}</span>
-                    <span>{{ isUploadingBlockFile[blk.id] ? 'Uploading image...' : (blk.fileName || 'Upload Schematic / Diagram Image') }}</span>
-                  </label>
-                </div>
-
-                <div *ngIf="blk.url" class="image-preview-card mb-2">
-                  <img [src]="blk.url" alt="Diagram preview" class="diagram-preview-img" />
-                </div>
-
-                <div class="form-group">
-                  <label class="text-xs">Figure Caption &amp; Explanation</label>
-                  <input type="text" [(ngModel)]="blk.content" placeholder="Describe the figure and key annotations..." class="studio-input-sm" />
-                </div>
-              </div>
-
-              <!-- 4. Document / PDF Attachment Block -->
-              <div *ngIf="blk.type === 'file'" class="block-fields">
-                <div class="form-group mb-2">
-                  <label class="text-xs">Document Title</label>
-                  <input type="text" [(ngModel)]="blk.title" placeholder="e.g. Competition Datasheet &amp; Rules PDF" class="studio-input-sm" />
-                </div>
-
-                <div class="file-upload-dropzone mb-2">
-                  <input type="file" accept=".pdf,.doc,.docx,.zip,.txt" (change)="onBlockFileUpload($event, blk)" class="file-input-hidden" [id]="'doc_' + blk.id" />
-                  <label [for]="'doc_' + blk.id" class="dropzone-label">
-                    <span class="material-symbols-outlined">{{ isUploadingBlockFile[blk.id] ? 'cloud_sync' : 'upload_file' }}</span>
-                    <span>{{ isUploadingBlockFile[blk.id] ? 'Uploading document...' : (blk.fileName || 'Upload PDF / Project Document') }}</span>
-                  </label>
-                </div>
-
-                <div *ngIf="blk.url" class="file-attached-pill mb-2">
-                  <span class="material-symbols-outlined">picture_as_pdf</span>
-                  <span>{{ blk.fileName || 'Document Attached' }} ({{ blk.fileSize || 'PDF' }})</span>
-                </div>
-
-                <div class="form-group">
-                  <label class="text-xs">Reading Instructions</label>
-                  <input type="text" [(ngModel)]="blk.content" placeholder="Instructions for students regarding this document..." class="studio-input-sm" />
-                </div>
-              </div>
-
-              <!-- 5. Checkpoint Micro-Quiz Block (Multi-Question Supported) -->
-              <div *ngIf="blk.type === 'quiz'" class="block-fields">
-                <!-- Question Tabs Strip -->
-                <div class="quiz-questions-nav-strip mb-2">
-                  <div class="q-tabs-list">
-                    <button *ngFor="let qItem of getQuizQuestions(blk); let qIdx = index"
-                            type="button"
-                            class="q-tab-btn"
-                            [class.active]="(blk.activeQuestionIdx ?? 0) === qIdx"
-                            (click)="selectQuizQuestion(blk, qIdx)">
-                      <span>Q{{ qIdx + 1 }}</span>
-                      <span *ngIf="getQuizQuestions(blk).length > 1"
-                            class="q-del-btn"
-                            (click)="removeQuizQuestion(blk, qIdx); $event.stopPropagation()"
-                            title="Remove Question">&times;</span>
-                    </button>
-                    <button type="button" class="q-add-tab-btn" (click)="addQuizQuestion(blk)" title="Add another question to this quiz checkpoint">
-                      <span class="material-symbols-outlined">add</span> Add Question
-                    </button>
-                  </div>
-                  <span class="q-count-badge">{{ getQuizQuestions(blk).length }} Question{{ getQuizQuestions(blk).length === 1 ? '' : 's' }}</span>
-                </div>
-
-                <div class="form-group mb-2">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <label class="text-xs">Question {{ (blk.activeQuestionIdx ?? 0) + 1 }} Prompt</label>
-                    <button type="button" class="btn btn-xs btn-ai-sparkle" (click)="generateAiQuizForBlock(blk)" [disabled]="isGeneratingAiQuiz[blk.id]" title="Auto-generate question & options from guide content using AI">
-                      <span class="material-symbols-outlined" style="font-size:14px; color:#6366f1;">{{ isGeneratingAiQuiz[blk.id] ? 'sync' : 'auto_awesome' }}</span>
-                      <span style="font-size:11px; font-weight:700; color:#4f46e5;">{{ isGeneratingAiQuiz[blk.id] ? 'Generating...' : 'AI Copilot' }}</span>
-                    </button>
-                  </div>
-                  <input type="text" [(ngModel)]="getActiveQuizQuestion(blk).question" (ngModelChange)="blk.quizQuestion = getActiveQuizQuestion(blk).question" placeholder="e.g. Which register stores the program counter?" class="studio-input-sm" />
-                </div>
-
-                <div class="quiz-options-builder" *ngIf="getActiveQuizQuestion(blk).options">
-                  <div class="quiz-opt-row" *ngFor="let opt of getActiveQuizQuestion(blk).options; let oIdx = index; trackBy: trackByIndex">
-                    <input type="radio" [name]="'quiz_corr_' + blk.id + '_' + (blk.activeQuestionIdx ?? 0)" [checked]="getActiveQuizQuestion(blk).correctIndex === oIdx" (change)="getActiveQuizQuestion(blk).correctIndex = oIdx; blk.quizCorrectIndex = oIdx" />
-                    <input type="text" [(ngModel)]="getActiveQuizQuestion(blk).options[oIdx]" (ngModelChange)="blk.quizOptions = getActiveQuizQuestion(blk).options" class="studio-input-sm" (click)="$event.stopPropagation()" />
-                  </div>
-                </div>
-
-                <div class="form-group mt-2">
-                  <label class="text-xs">Pedagogical Explanation (Shown after answering)</label>
-                  <input type="text" [(ngModel)]="getActiveQuizQuestion(blk).explanation" (ngModelChange)="blk.quizExplanation = getActiveQuizQuestion(blk).explanation" placeholder="Explain why the correct answer is right..." class="studio-input-sm" />
-                </div>
-              </div>
-
-              <!-- 6. Code Sandbox Block -->
-              <div *ngIf="blk.type === 'code'" class="block-fields">
-                <div class="grid-2-col mb-2">
-                  <div class="form-group">
-                    <label class="text-xs">Target Language</label>
-                    <select [(ngModel)]="blk.codeLanguage" class="studio-input-sm">
-                      <option value="python">Python 3</option>
-                      <option value="cpp">C++ 20</option>
-                      <option value="arduino">Arduino C++</option>
-                      <option value="javascript">JavaScript / TypeScript</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label class="text-xs">Challenge Title</label>
-                    <input type="text" [(ngModel)]="blk.title" placeholder="e.g. Implement Binary Search" class="studio-input-sm" />
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label class="text-xs">Starter Code Template</label>
-                  <textarea [(ngModel)]="blk.codeStarter" rows="4" class="code-textarea"></textarea>
-                </div>
-              </div>
-
-              <!-- 7. Section Break Gate -->
-              <div *ngIf="blk.type === 'break'" class="block-fields break-block-box">
-                <span class="material-symbols-outlined">splitscreen</span>
-                <div>
-                  <strong>Section Checkpoint Gate</strong>
-                  <div class="text-xs text-subtle">Students must complete the preceding reading or quiz before the next section unlocks.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="add-block-bottom-prompt" (click)="addBlock('text')">
-            <span class="material-symbols-outlined">add_circle</span>
-            <span>Click to append another learning block to this module</span>
-          </div>
-        </div>
-
-        <!-- Live Learner Preview -->
-        <div class="canvas-preview-pane fade-in" *ngIf="isCanvasPreviewMode">
-          <!-- Simulation Top Bar -->
-          <div class="sim-classroom-header">
-            <div class="sim-header-info">
-              <div class="sim-live-badge">
-                <span class="sim-pulse-dot"></span> LIVE LEARNER SIMULATION
-              </div>
-              <h3>{{ moduleForm.title || 'Untitled Module' }}</h3>
-              <p class="sim-module-meta">
-                <span>{{ moduleBlocks.length }} Interactive Units</span> &bull;
-                <span>Estimated Completion: {{ (moduleBlocks.length * 5) }} mins</span>
-              </p>
-            </div>
-
-            <div class="sim-progress-card">
-              <div class="sim-progress-top">
-                <span class="text-xs font-bold">Simulated Mastery</span>
-                <span class="sim-pct-text">{{ simProgressPct }}%</span>
-              </div>
-              <div class="sim-progress-bar-wrap">
-                <div class="sim-progress-bar-fill" [style.width.%]="simProgressPct"></div>
-              </div>
-              <span class="sim-progress-sub">{{ simulationCompletedBlocks.size }} of {{ moduleBlocks.length }} units completed</span>
-            </div>
-          </div>
-
-          <!-- Empty State -->
-          <div class="empty-state" *ngIf="moduleBlocks.length === 0" style="padding: 40px; text-align: center;">
-            <span class="material-symbols-outlined" style="font-size: 40px; color: var(--outline);">auto_stories</span>
-            <h4>No blocks added yet</h4>
-            <p class="text-subtle">Exit preview and insert blocks from the palette to simulate this module.</p>
-          </div>
-
-          <!-- Continuous Flow of Real Interactive Units -->
-          <div class="sim-units-stream" *ngIf="moduleBlocks.length > 0">
-            <div *ngFor="let blk of moduleBlocks; let bIdx = index" class="sim-unit-card" [class.completed]="isSimCompleted(blk.id)">
-              
-              <!-- Unit Header Tag -->
-              <div class="sim-unit-tag-bar">
-                <div class="sim-tag-left">
-                  <span class="sim-index-chip">Unit {{ bIdx + 1 }}</span>
-                  <span class="type-pill" [class]="'pill-' + blk.type">{{ blk.type | uppercase }}</span>
-                </div>
-                <div class="sim-status-indicator" [class.done]="isSimCompleted(blk.id)">
-                  <span class="material-symbols-outlined">{{ isSimCompleted(blk.id) ? 'check_circle' : 'radio_button_unchecked' }}</span>
-                  <span>{{ isSimCompleted(blk.id) ? 'Completed' : 'Pending' }}</span>
-                </div>
-              </div>
-
-              <!-- 1. VIDEO UNIT -->
-              <div *ngIf="blk.type === 'video'" class="sim-unit-content sim-video-unit">
-                <h4 class="sim-unit-title">{{ blk.title || 'Video Lecture' }}</h4>
-                <div class="sim-video-player-frame mb-3">
-                  <!-- Embed Iframe for URLs -->
-                  <iframe *ngIf="blk.videoSource !== 'upload' && blk.url" [src]="getSafeEmbedUrl(blk.url)" title="Video player" allowfullscreen class="sim-video-iframe"></iframe>
-                  
-                  <!-- Real HTML5 Video Tag for Local Uploaded Videos -->
-                  <video *ngIf="blk.videoSource === 'upload' && blk.url" [src]="blk.url" controls class="sim-video-native-player"></video>
-                  
-                  <div *ngIf="!blk.url" class="sim-video-placeholder">
-                    <span class="material-symbols-outlined">play_circle</span>
-                    <span>No video URL or file specified. Add a video in edit mode to play.</span>
-                  </div>
-                </div>
-
-                <div class="sim-video-meta-row" *ngIf="blk.videoDuration || blk.videoTakeaway">
-                  <span class="sim-duration-pill" *ngIf="blk.videoDuration">
-                    <span class="material-symbols-outlined">schedule</span> {{ blk.videoDuration }} mins
-                  </span>
-                  <div class="sim-takeaway-card" *ngIf="blk.videoTakeaway">
-                    <span class="material-symbols-outlined">lightbulb</span>
-                    <div>
-                      <strong>Core Takeaway:</strong> {{ blk.videoTakeaway }}
-                    </div>
-                  </div>
-                </div>
-
-                <div class="sim-action-footer">
-                  <button class="btn btn-sm btn-outline" [class.btn-primary]="isSimCompleted(blk.id)" (click)="toggleSimComplete(blk.id)">
-                    <span class="material-symbols-outlined">{{ isSimCompleted(blk.id) ? 'done_all' : 'check' }}</span>
-                    <span>{{ isSimCompleted(blk.id) ? 'Video Watched & Marked Complete' : 'Mark Video Completed' }}</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- 2. RICH LESSON GUIDE UNIT -->
-              <div *ngIf="blk.type === 'text'" class="sim-unit-content sim-guide-unit">
-                <h3 class="sim-guide-heading">{{ blk.title || 'Lesson Overview & Theory' }}</h3>
-                <div class="sim-guide-body markdown-rendered-style ql-snow" *ngIf="blk.content">
-                  <div class="ql-editor" [innerHTML]="blk.content" style="padding:0;"></div>
-                </div>
-                <div class="sim-guide-empty" *ngIf="!blk.content">
-                  <p>No lesson content written for this block yet.</p>
-                </div>
-
-                <div class="sim-action-footer">
-                  <button class="btn btn-sm btn-primary" [class.btn-outline]="isSimCompleted(blk.id)" (click)="toggleSimComplete(blk.id)">
-                    <span class="material-symbols-outlined">{{ isSimCompleted(blk.id) ? 'done_all' : 'check_circle' }}</span>
-                    <span>{{ isSimCompleted(blk.id) ? 'Reading Section Completed' : 'I Have Finished Reading' }}</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- 3. DIAGRAM & IMAGE UNIT -->
-              <div *ngIf="blk.type === 'image'" class="sim-unit-content sim-image-unit">
-                <h4 class="sim-unit-title">{{ blk.title || 'System Diagram & Figure' }}</h4>
-                <div class="sim-image-stage mb-2" *ngIf="blk.url">
-                  <img [src]="blk.url" alt="Diagram" class="sim-diagram-img" />
-                </div>
-                <div class="sim-image-placeholder mb-2" *ngIf="!blk.url">
-                  <span class="material-symbols-outlined">image</span>
-                  <span>No image uploaded. Attach an image in edit mode.</span>
-                </div>
-                <p class="sim-caption-text" *ngIf="blk.content">{{ blk.content }}</p>
-
-                <div class="sim-action-footer">
-                  <button class="btn btn-sm btn-outline" [class.btn-primary]="isSimCompleted(blk.id)" (click)="toggleSimComplete(blk.id)">
-                    <span class="material-symbols-outlined">{{ isSimCompleted(blk.id) ? 'done_all' : 'visibility' }}</span>
-                    <span>{{ isSimCompleted(blk.id) ? 'Diagram Reviewed' : 'Mark Diagram Reviewed' }}</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- 4. DOCUMENT & PDF ATTACHMENT UNIT -->
-              <div *ngIf="blk.type === 'file'" class="sim-unit-content sim-file-unit">
-                <h4 class="sim-unit-title">{{ blk.title || 'Reference Document & PDF' }}</h4>
-                <div class="sim-file-download-box mb-3">
-                  <div class="sim-file-info-col">
-                    <span class="material-symbols-outlined file-pdf-icon">picture_as_pdf</span>
-                    <div>
-                      <strong>{{ blk.fileName || 'Curriculum_Resource.pdf' }}</strong>
-                      <span class="text-xs text-subtle d-block">{{ blk.fileSize || 'PDF Document' }}</span>
-                    </div>
-                  </div>
-                  <a *ngIf="blk.url" [href]="blk.url" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
-                    <span class="material-symbols-outlined">download</span> Download PDF
-                  </a>
-                </div>
-                <p class="sim-caption-text" *ngIf="blk.content">{{ blk.content }}</p>
-
-                <div class="sim-action-footer">
-                  <button class="btn btn-sm btn-outline" [class.btn-primary]="isSimCompleted(blk.id)" (click)="toggleSimComplete(blk.id)">
-                    <span class="material-symbols-outlined">{{ isSimCompleted(blk.id) ? 'done_all' : 'download_done' }}</span>
-                    <span>{{ isSimCompleted(blk.id) ? 'Document Downloaded' : 'Mark Document Read' }}</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- 5. INTERACTIVE MICRO-QUIZ KNOWLEDGE CHECK -->
-              <div *ngIf="blk.type === 'quiz'" class="sim-unit-content sim-quiz-unit">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                  <div class="sim-quiz-badge">Knowledge Check</div>
-                  <div class="sim-q-stepper" *ngIf="getQuizQuestions(blk).length > 1">
-                    <button *ngFor="let q of getQuizQuestions(blk); let qIdx = index"
-                            type="button"
-                            class="sim-q-step-btn"
-                            [class.active]="getSimActiveQIndex(blk.id) === qIdx"
-                            (click)="setSimActiveQIndex(blk.id, qIdx)">
-                      Q{{ qIdx + 1 }}
-                    </button>
-                  </div>
-                </div>
-
-                <div class="sim-q-body">
-                  <h4 class="sim-quiz-question">{{ (getQuizQuestions(blk)[getSimActiveQIndex(blk.id)] || {}).question || blk.quizQuestion || 'Sample Question Prompt' }}</h4>
-
-                  <div class="sim-quiz-choices-grid" *ngIf="getQuizQuestions(blk)[getSimActiveQIndex(blk.id)]?.options">
-                    <button *ngFor="let opt of getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].options; let oIdx = index; trackBy: trackByIndex"
-                            type="button"
-                            class="sim-choice-btn"
-                            [class.selected]="getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) === oIdx"
-                            [class.correct]="simulationSubmitted[blk.id] && oIdx === getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex"
-                            [class.wrong]="simulationSubmitted[blk.id] && getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) === oIdx && oIdx !== getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex"
-                            (click)="selectSimOption(blk.id, oIdx)">
-                      <span class="choice-letter">{{ ['A','B','C','D'][oIdx] }}</span>
-                      <span class="choice-text">{{ opt }}</span>
-                      <span class="material-symbols-outlined choice-status-icon" *ngIf="simulationSubmitted[blk.id] && oIdx === getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex">check_circle</span>
-                      <span class="material-symbols-outlined choice-status-icon" *ngIf="simulationSubmitted[blk.id] && getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) === oIdx && oIdx !== getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex">cancel</span>
-                    </button>
-                  </div>
-
-                  <!-- Quiz Feedback Box -->
-                  <div *ngIf="simulationSubmitted[blk.id]" class="sim-quiz-feedback-box" [class.success]="getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) === getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex" [class.failure]="getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) !== getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex">
-                    <div class="feedback-icon-title">
-                      <span class="material-symbols-outlined">{{ getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) === getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex ? 'verified' : 'error' }}</span>
-                      <strong>{{ getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) === getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].correctIndex ? 'Correct! Excellent comprehension.' : 'Not quite right.' }}</strong>
-                    </div>
-                    <p class="feedback-explanation" *ngIf="getQuizQuestions(blk)[getSimActiveQIndex(blk.id)]?.explanation">{{ getQuizQuestions(blk)[getSimActiveQIndex(blk.id)].explanation }}</p>
-                  </div>
-                </div>
-
-                <div class="sim-action-footer">
-                  <button *ngIf="!simulationSubmitted[blk.id]" class="btn btn-sm btn-primary" (click)="submitSimQuiz(blk)" [disabled]="getSimAnswer(blk.id, getSimActiveQIndex(blk.id)) === undefined">
-                    <span class="material-symbols-outlined">send</span> Submit Answer
-                  </button>
-                  <button *ngIf="simulationSubmitted[blk.id]" class="btn btn-sm btn-outline" (click)="resetSimQuiz(blk.id)">
-                    <span class="material-symbols-outlined">replay</span> Try Again
-                  </button>
-                </div>
-              </div>
-
-              <!-- 6. CODE SANDBOX CHALLENGE -->
-              <div *ngIf="blk.type === 'code'" class="sim-unit-content sim-code-unit">
-                <div class="sim-code-top-row">
-                  <h4 class="sim-unit-title">{{ blk.title || 'Hands-On Code Challenge' }}</h4>
-                  <span class="sim-lang-badge">{{ (blk.codeLanguage || 'python') | uppercase }}</span>
-                </div>
-                <p class="sim-code-instructions" *ngIf="blk.codeInstructions">{{ blk.codeInstructions }}</p>
-
-                <!-- macOS / IDE Window Shell -->
-                <div class="sim-code-ide-window mb-3">
-                  <div class="ide-title-bar">
-                    <div class="window-dots">
-                      <span class="dot red"></span>
-                      <span class="dot yellow"></span>
-                      <span class="dot green"></span>
-                    </div>
-                    <span class="ide-file-title">main.{{ blk.codeLanguage === 'python' ? 'py' : blk.codeLanguage === 'cpp' ? 'cpp' : 'js' }}</span>
-                    <button class="ide-copy-btn" (click)="copySimCode(blk.id, blk.codeStarter)">
-                      <span class="material-symbols-outlined">{{ simulationCopiedCode[blk.id] ? 'done' : 'content_copy' }}</span>
-                      <span>{{ simulationCopiedCode[blk.id] ? 'Copied!' : 'Copy Code' }}</span>
-                    </button>
-                  </div>
-                  <pre class="ide-code-viewport"><code>{{ blk.codeStarter || '# Write solution here\n' }}</code></pre>
-                </div>
-
-                <div class="sim-action-footer">
-                  <button class="btn btn-sm btn-primary" [class.btn-outline]="isSimCompleted(blk.id)" (click)="toggleSimComplete(blk.id)">
-                    <span class="material-symbols-outlined">{{ isSimCompleted(blk.id) ? 'done_all' : 'code' }}</span>
-                    <span>{{ isSimCompleted(blk.id) ? 'Challenge Solved & Completed' : 'I Have Completed This Code' }}</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- 7. SECTION BREAK GATE -->
-              <div *ngIf="blk.type === 'break'" class="sim-unit-content sim-break-unit">
-                <div class="sim-break-milestone-card">
-                  <div class="sim-milestone-icon-wrap">
-                    <span class="material-symbols-outlined">flag_circle</span>
-                  </div>
-                  <div class="sim-milestone-text">
-                    <strong>{{ blk.breakLabel || 'Milestone Checkpoint' }}</strong>
-                    <span>You have reached the section checkpoint. All preceding interactive units have been mastered.</span>
-                  </div>
-                  <span class="sim-milestone-status-chip">
-                    <span class="material-symbols-outlined">lock_open</span> UNLOCKED
-                  </span>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  </div>
+  <!-- ════════════════════════════════════════════════════════════
+       VIEW 3B: DEDICATED REVIEW REMEDIATION & READ-ONLY COURSE AUDIT
+       ════════════════════════════════════════════════════════════ -->
+  <app-course-review-feedback
+    *ngIf="currentView === 'review_feedback'"
+    [course]="activeDetailCourse || feedbackModalCourse"
+    [modules]="(activeDetailCourse || feedbackModalCourse) ? getModulesForCourse((activeDetailCourse || feedbackModalCourse).id) : []"
+    [materials]="serverMaterials"
+    (exit)="exitFeedbackView()"
+    (editCurriculum)="editCurriculumFromFeedback()">
+  </app-course-review-feedback>
 
   <!-- ════════════════════════════════════════════════════════════
        VIEW 4: PROGRESSIVE 1-AT-A-TIME COURSE WIZARD
@@ -2436,287 +1836,19 @@
   <!-- ════════════════════════════════════════════════════════════
        VIEW 6: DEDICATED READ-ONLY COURSE REVIEW & AUDIT PAGE
        ════════════════════════════════════════════════════════════ -->
-  <div *ngIf="currentView === 'course_review_inspection'" class="course-review-workspace fade-in">
-    <!-- Top Action & Navigation Bar -->
-    <header class="review-top-bar">
-      <div class="review-top-left">
-        <button type="button" class="btn btn-subtle btn-sm" (click)="exitCourseReview()">
-          <span class="material-symbols-outlined">arrow_back</span> Back to Approvals Queue
-        </button>
-        <div class="review-title-badge-wrap">
-          <h2>{{ reviewInspectingCourse?.title || 'Course Audit' }}</h2>
-          <div class="review-meta-pills">
-            <span class="badge" [class]="'badge-' + (reviewInspectingCourse?.track || 'coding')">{{ (reviewInspectingCourse?.track || 'coding') | titlecase }}</span>
-            <span class="badge badge-warning">
-              <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">pending_actions</span> Awaiting Admin Review
-            </span>
-            <span class="badge badge-subtle">Level: {{ reviewInspectingCourse?.level || 'All Levels' }}</span>
-            <span class="badge badge-subtle" *ngIf="reviewInspectingCourse?.competitionId">Cycle: {{ cycleLabel(reviewInspectingCourse?.competitionId) }}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="review-top-right">
-        <button type="button" class="btn btn-outline danger" (click)="sendFeedbackToCreator()" [disabled]="isSaving">
-          <span class="material-symbols-outlined">send</span> Send Review Feedback
-        </button>
-        <button type="button" class="btn btn-success" (click)="approveCourseFromReview()" [disabled]="isSaving">
-          <span class="material-symbols-outlined">verified</span> Approve &amp; Publish Course
-        </button>
-      </div>
-    </header>
-
-    <!-- Main 2-Column Review Layout -->
-    <div class="review-body-grid">
-      <!-- LEFT: Read-Only Course Deep-Inspection Canvas -->
-      <div class="review-main-content">
-        <!-- 1. Executive Course Overview -->
-        <div class="review-card mb-4">
-          <div class="review-card-header">
-            <div class="review-card-title-group">
-              <span class="material-symbols-outlined header-icon text-primary">auto_stories</span>
-              <div>
-                <h3>Curriculum Overview &amp; Learning Outcomes</h3>
-                <p class="text-xs text-subtle">Authored by <strong>{{ reviewInspectingCourse?.submittedBy || 'Instructor' }}</strong></p>
-              </div>
-            </div>
-            <button type="button" class="btn-quote" (click)="quoteSection('Course Overview', stripHtml(reviewInspectingCourse?.description))" title="Quote this section in review notes">
-              <span class="material-symbols-outlined">format_quote</span> Quote Section
-            </button>
-          </div>
-          <div class="review-card-body">
-            <div class="ql-snow" *ngIf="reviewInspectingCourse?.description">
-              <div class="ql-editor p-0" [innerHTML]="reviewInspectingCourse?.description"></div>
-            </div>
-            <p class="text-subtle italic text-sm" *ngIf="!reviewInspectingCourse?.description">No syllabus description provided.</p>
-          </div>
-        </div>
-
-        <!-- 2. Curriculum Modules & Lesson Guide Sequence -->
-        <div class="review-section-header">
-          <div>
-            <h3>Syllabus Modules &amp; Interactive Learning Units ({{ getModulesForCourse(reviewInspectingCourse?.id).length }})</h3>
-            <p class="text-xs text-subtle">Review theory guides, video lessons, checkpoint quizzes, and coding challenges.</p>
-          </div>
-        </div>
-
-        <div *ngIf="getModulesForCourse(reviewInspectingCourse?.id).length === 0" class="empty-state mb-4">
-          <span class="material-symbols-outlined text-warning">folder_open</span>
-          <h4>No modules configured in this course</h4>
-          <p>The instructor has not added any modules to this submission.</p>
-        </div>
-
-        <div *ngFor="let mod of getModulesForCourse(reviewInspectingCourse?.id); let mIdx = index" class="review-module-card mb-4">
-          <div class="review-module-header">
-            <div class="module-title-wrap">
-              <span class="module-order-pill">Module #{{ mod.order_num || (mIdx + 1) }}</span>
-              <h4>{{ mod.title }}</h4>
-            </div>
-            <button type="button" class="btn-quote" (click)="quoteSection('Module #' + (mIdx + 1) + ': ' + mod.title, mod.title)" title="Quote this module in review notes">
-              <span class="material-symbols-outlined">format_quote</span> Quote Module
-            </button>
-          </div>
-
-          <p class="module-summary-text text-sm" *ngIf="mod.description">{{ getFormattedDescription(mod.description) }}</p>
-
-          <!-- Module Interactive Units Grid -->
-          <div class="review-units-list mt-3">
-            <div *ngFor="let blk of getModuleBlocksForModule(mod.id); let uIdx = index" class="review-unit-item">
-              <div class="unit-item-header">
-                <div class="unit-type-badge">
-                  <span class="material-symbols-outlined">{{ blk.type === 'text' ? 'menu_book' : blk.type === 'video' ? 'play_circle' : blk.type === 'quiz' ? 'quiz' : blk.type === 'code' ? 'terminal' : 'attach_file' }}</span>
-                  <span>Unit {{ uIdx + 1 }}: {{ blk.type === 'text' ? 'Rich Lesson Guide' : blk.type === 'video' ? 'Video Lecture' : blk.type === 'quiz' ? 'Interactive Quiz' : blk.type === 'code' ? 'Coding Challenge' : 'Downloadable Resource' }}</span>
-                </div>
-                <button type="button" class="btn-quote-sm" (click)="quoteSection(mod.title + ' -> ' + (blk.title || 'Unit ' + (uIdx + 1)), stripHtml(blk.content || blk.quizQuestion || blk.codeInstructions))" title="Quote this unit in review">
-                  <span class="material-symbols-outlined">format_quote</span> Quote
-                </button>
-              </div>
-
-              <!-- Content for Rich Guide -->
-              <div *ngIf="blk.type === 'text'" class="unit-item-body">
-                <h5 class="unit-heading" *ngIf="blk.title">{{ blk.title }}</h5>
-                <div class="ql-snow" *ngIf="blk.content">
-                  <div class="ql-editor p-0" [innerHTML]="blk.content"></div>
-                </div>
-                <p class="text-subtle text-xs italic" *ngIf="!blk.content">No lesson text written.</p>
-              </div>
-
-              <!-- Content for Video -->
-              <div *ngIf="blk.type === 'video'" class="unit-item-body">
-                <div class="video-preview-pill">
-                  <span class="material-symbols-outlined text-primary">smart_display</span>
-                  <div>
-                    <strong>{{ blk.videoTakeaway || blk.title || 'Video Lecture' }}</strong>
-                    <div class="text-xs text-subtle" *ngIf="blk.videoDuration">Duration: ~{{ blk.videoDuration }} minutes</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Content for Quiz -->
-              <div *ngIf="blk.type === 'quiz'" class="unit-item-body">
-                <div class="quiz-question-box">
-                  <strong>Question:</strong> {{ blk.quizQuestion || 'Untitled Quiz Question' }}
-                </div>
-                <div class="quiz-options-review mt-2">
-                  <div *ngFor="let opt of blk.quizOptions; let oIdx = index" class="quiz-opt-row" [class.correct-answer]="oIdx === blk.quizCorrectIndex">
-                    <span class="opt-bullet">{{ oIdx === blk.quizCorrectIndex ? '✓' : '•' }}</span>
-                    <span>{{ opt }}</span>
-                    <span class="correct-tag" *ngIf="oIdx === blk.quizCorrectIndex">Correct Answer</span>
-                  </div>
-                </div>
-                <div class="quiz-expl-box mt-2 text-xs" *ngIf="blk.quizExplanation">
-                  <strong>Explanation:</strong> {{ blk.quizExplanation }}
-                </div>
-              </div>
-
-              <!-- Content for Code Challenge -->
-              <div *ngIf="blk.type === 'code'" class="unit-item-body">
-                <div class="code-challenge-review">
-                  <div class="text-xs font-semibold mb-1">Language: <code>{{ blk.codeLanguage || 'python' }}</code></div>
-                  <div class="code-instr text-xs mb-2">{{ blk.codeInstructions || 'Solve the challenge.' }}</div>
-                  <pre class="code-starter-block" *ngIf="blk.codeStarter"><code>{{ blk.codeStarter }}</code></pre>
-                </div>
-              </div>
-
-              <!-- Content for Attachment / PDF -->
-              <div *ngIf="blk.type === 'file'" class="unit-item-body">
-                <div class="file-attachment-pill">
-                  <span class="material-symbols-outlined text-primary">description</span>
-                  <span>{{ blk.fileName || blk.title || 'Resource Document' }}</span>
-                  <span class="file-size-tag" *ngIf="blk.fileSize">({{ blk.fileSize }})</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 3. Assignments & Problem Statements -->
-        <div class="review-section-header mt-4">
-          <div>
-            <h3>Assignments &amp; Assessment Rubrics ({{ getAssignmentsForCourse(reviewInspectingCourse?.id).length }})</h3>
-            <p class="text-xs text-subtle">Review problem prompts, deliverables, and scoring criteria.</p>
-          </div>
-        </div>
-
-        <div *ngIf="getAssignmentsForCourse(reviewInspectingCourse?.id).length === 0" class="empty-state mb-4">
-          <span class="material-symbols-outlined text-subtle">assignment</span>
-          <h4>No assignments configured</h4>
-          <p>No standalone assignments submitted for this course.</p>
-        </div>
-
-        <div *ngFor="let asgn of getAssignmentsForCourse(reviewInspectingCourse?.id); let aIdx = index" class="review-assignment-card mb-4">
-          <div class="assignment-header-row">
-            <div>
-              <span class="assignment-badge">Assignment #{{ aIdx + 1 }}</span>
-              <h4>{{ asgn.title }}</h4>
-              <div class="text-xs text-subtle mt-1">
-                <span>Max Points: <strong>{{ asgn.maxPoints || asgn.max_score || 100 }} pts</strong></span>
-                <span *ngIf="asgn.dueDate">&bull; Due: <strong>{{ asgn.dueDate | date:'mediumDate' }}</strong></span>
-              </div>
-            </div>
-            <button type="button" class="btn-quote" (click)="quoteSection('Assignment: ' + asgn.title, getAssignmentCleanDescription(asgn))" title="Quote this assignment in review notes">
-              <span class="material-symbols-outlined">format_quote</span> Quote Assignment
-            </button>
-          </div>
-
-          <div class="assignment-problem-statement mt-3">
-            <h5 class="text-xs font-bold text-uppercase text-subtle">Problem Statement</h5>
-            <div class="ql-snow mt-1">
-              <div class="ql-editor p-0" [innerHTML]="getAssignmentCleanDescription(asgn)"></div>
-            </div>
-          </div>
-
-          <!-- Evaluation Rubric Matrix Table -->
-          <div class="assignment-rubric-matrix mt-3" *ngIf="getAssignmentRubric(asgn).length > 0">
-            <h5 class="text-xs font-bold text-uppercase text-subtle mb-2">Grading Rubric Matrix</h5>
-            <div class="table-responsive">
-              <table class="rubric-review-table">
-                <thead>
-                  <tr>
-                    <th>Criterion</th>
-                    <th style="width:100px;">Max Pts</th>
-                    <th>Benchmark Guidance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let crit of getAssignmentRubric(asgn)">
-                    <td><strong>{{ crit.title }}</strong></td>
-                    <td><span class="points-badge">{{ crit.maxPoints }} pts</span></td>
-                    <td>{{ crit.description }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- RIGHT: Sticky Review & Feedback Sidebar -->
-      <aside class="review-sidebar">
-        <div class="sidebar-sticky-box">
-          <div class="sidebar-header">
-            <span class="material-symbols-outlined sidebar-icon">rate_review</span>
-            <div>
-              <h3>Reviewer Desk</h3>
-              <p class="text-xs text-subtle">Quote items &amp; send constructive feedback to creator.</p>
-            </div>
-          </div>
-
-          <!-- Active Quote Banner -->
-          <div class="active-quote-banner" *ngIf="reviewQuoteSection">
-            <div class="quote-header">
-              <span class="quote-tag">{{ reviewQuoteSection }}</span>
-              <button type="button" class="btn-clear-quote" (click)="clearQuote()" title="Remove quote">&times;</button>
-            </div>
-            <div class="quote-snippet" *ngIf="reviewQuoteText">
-              &ldquo;{{ reviewQuoteText }}&rdquo;
-            </div>
-          </div>
-
-          <!-- Comment Input Area -->
-          <div class="sidebar-input-group mt-3">
-            <label class="text-xs font-bold">
-              {{ reviewQuoteSection ? 'Feedback on quoted section' : 'General review feedback / note' }}
-            </label>
-            <textarea
-              [(ngModel)]="reviewFeedbackNote"
-              rows="3"
-              class="sidebar-textarea"
-              placeholder="e.g. Please clarify starter repository instructions or add 2 more quiz questions..."
-            ></textarea>
-            <button type="button" class="btn btn-xs btn-primary-soft btn-block mt-2" (click)="addFeedbackComment()">
-              <span class="material-symbols-outlined">add_comment</span> Add Review Comment
-            </button>
-          </div>
-
-          <!-- Drafted Review Items List -->
-          <div class="drafted-comments-list mt-3" *ngIf="reviewFeedbackComments.length > 0">
-            <div class="drafted-header">
-              <span class="text-xs font-bold">Feedback Items ({{ reviewFeedbackComments.length }})</span>
-            </div>
-            <div *ngFor="let c of reviewFeedbackComments; let cIdx = index" class="drafted-item">
-              <div class="drafted-item-top">
-                <span class="drafted-item-section">{{ c.section }}</span>
-                <button type="button" class="btn-del-item" (click)="removeFeedbackComment(cIdx)" title="Remove item">&times;</button>
-              </div>
-              <div class="drafted-item-quote" *ngIf="c.quote">&ldquo;{{ c.quote }}&rdquo;</div>
-              <div class="drafted-item-note">{{ c.note }}</div>
-            </div>
-          </div>
-
-          <!-- Decision Action Footer -->
-          <div class="sidebar-decision-footer mt-4">
-            <button type="button" class="btn btn-outline danger btn-block mb-2" (click)="sendFeedbackToCreator()">
-              <span class="material-symbols-outlined">send</span> Send Feedback to Creator
-            </button>
-            <button type="button" class="btn btn-success btn-block" (click)="approveCourseFromReview()">
-              <span class="material-symbols-outlined">check_circle</span> Approve &amp; Publish Live
-            </button>
-          </div>
-        </div>
-      </aside>
-    </div>
-  </div>
+  <app-course-review-audit
+    *ngIf="currentView === 'course_review_inspection'"
+    [course]="reviewInspectingCourse"
+    [modules]="serverModules"
+    [materials]="serverMaterials"
+    [assignments]="serverAssignments"
+    [competitions]="competitions"
+    [isSaving]="isSaving"
+    (exit)="exitCourseReview()"
+    (approve)="approveCourseFromReview()"
+    (sendFeedback)="handleSendReviewFeedback($event)"
+    (reject)="handleRejectCourseFromReview($event)">
+  </app-course-review-audit>
 
   <!-- ── MODAL: COURSE INSIGHTS & ANALYTICS DRAWER ── -->
   <div class="modal-backdrop" *ngIf="showCourseInsights" (click)="toggleCourseInsights()">
@@ -3658,5 +2790,6 @@
           <button type="button" class="tour-btn tour-btn-skip" (click)="skipTour()">Skip Tour</button>
         </div>
       </div>
+    </div>
   </div>
 </div>

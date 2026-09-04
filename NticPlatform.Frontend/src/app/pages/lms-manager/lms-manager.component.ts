@@ -47,7 +47,7 @@ export interface QuizQuestionItem {
 
 export interface ModuleBlock {
   id: string;
-  type: 'text' | 'video' | 'quiz' | 'code' | 'break' | 'resource' | 'image' | 'file';
+  type: 'text' | 'video' | 'quiz' | 'code' | 'break' | 'resource' | 'image' | 'file' | 'callout';
   title?: string;
   content?: string;
   url?: string;
@@ -64,17 +64,30 @@ export interface ModuleBlock {
   quizQuestions?: QuizQuestionItem[];
   activeQuestionIdx?: number;
   codeLanguage?: string;
+  customCodeLanguage?: string;
   codeStarter?: string;
   codeInstructions?: string;
   breakLabel?: string;
   breakRequirement?: 'read' | 'pass_quiz' | 'none';
+  imageWidth?: '25%' | '33%' | '50%' | '75%' | '100%';
+  imageAlign?: 'center' | 'left' | 'right' | 'float-left' | 'float-right' | 'beside-text';
+  besideText?: string;
+  imageBorder?: boolean;
+  imageShadow?: boolean;
+  imageRounded?: boolean;
+  imageCaption?: string;
+  calloutType?: 'note' | 'tip' | 'warning' | 'danger' | 'key_takeaway';
   isEditing?: boolean;
 }
+
+import { CourseReviewAuditComponent, ReviewFeedbackItem } from './components/course-review-audit/course-review-audit.component';
+import { ModuleStudioComponent } from './components/module-studio/module-studio.component';
+import { CourseReviewFeedbackComponent } from './components/course-review-feedback/course-review-feedback.component';
 
 @Component({
   selector: 'app-lms-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, QuillEditorComponent],
+  imports: [CommonModule, FormsModule, RouterLink, QuillEditorComponent, CourseReviewAuditComponent, ModuleStudioComponent, CourseReviewFeedbackComponent],
   templateUrl: './lms-manager.component.html',
   styleUrls: ['./lms-manager.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -82,10 +95,15 @@ export interface ModuleBlock {
 export class LmsManagerComponent implements OnInit {
   quillConfig = {
     toolbar: [
+      [{ font: [] }, { size: ['small', false, 'large', 'huge'] }],
+      [{ header: [1, 2, 3, 4, 5, 6, false] }],
       ['bold', 'italic', 'underline', 'strike'],
-      [{ 'header': 2 }, { 'header': 3 }],
-      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-      ['blockquote', 'code-block'],
+      [{ color: [] }, { background: [] }],
+      [{ script: 'sub' }, { script: 'super' }],
+      [{ header: 1 }, { header: 2 }, 'blockquote', 'code-block'],
+      [{ list: 'ordered' }, { list: 'bullet' }, { indent: '-1' }, { indent: '+1' }],
+      [{ direction: 'rtl' }, { align: [] }],
+      ['link', 'image', 'video'],
       ['clean']
     ]
   };
@@ -93,7 +111,7 @@ export class LmsManagerComponent implements OnInit {
   activeTab: string = 'courses';
 
   // ── Dedicated Full-Page Workspaces Navigation ───────────────
-  currentView: 'hub' | 'course_console' | 'module_studio' | 'course_wizard' | 'assignment_wizard' | 'course_review_inspection' = 'hub';
+  currentView: 'hub' | 'course_console' | 'module_studio' | 'course_wizard' | 'assignment_wizard' | 'course_review_inspection' | 'review_feedback' = 'hub';
   activeDetailCourse: any = null;
   activeDetailModule: any = null;
   courseConsoleTab: 'modules' | 'materials' | 'assignments' | 'grading' | 'students' | 'insights' = 'modules';
@@ -340,6 +358,17 @@ export class LmsManagerComponent implements OnInit {
       if (params['action'] === 'create_course' || params['createCourse'] === 'true') {
         this.activeTab = 'courses';
         this.openCourseModal();
+      }
+      if (params['courseId']) {
+        const targetCourseId = params['courseId'];
+        this.activeTab = 'courses';
+        setTimeout(() => {
+          const target = this.filteredCourses.find(c => c.id === targetCourseId) ||
+                         this.authoredCourses.find(c => c.id === targetCourseId);
+          if (target) {
+            this.openCourseConsole(target);
+          }
+        }, 700);
       }
       this.cdr.markForCheck();
     });
@@ -836,10 +865,6 @@ export class LmsManagerComponent implements OnInit {
 
   // ── Dedicated Read-Only Course Review & Audit State ───────────
   reviewInspectingCourse: any = null;
-  reviewQuoteText = '';
-  reviewQuoteSection = '';
-  reviewFeedbackNote = '';
-  reviewFeedbackComments: Array<{ id: string; section: string; quote: string; note: string; timestamp: string }> = [];
 
   openCourseForReview(item: PendingModerationItem): void {
     const raw = item.rawItem;
@@ -860,10 +885,6 @@ export class LmsManagerComponent implements OnInit {
     };
     this.reviewInspectingCourse = found;
     this.selectedCourseId = found.id;
-    this.reviewQuoteText = '';
-    this.reviewQuoteSection = '';
-    this.reviewFeedbackNote = '';
-    this.reviewFeedbackComments = [];
     this.currentView = 'course_review_inspection';
     this.cdr.markForCheck();
   }
@@ -872,65 +893,20 @@ export class LmsManagerComponent implements OnInit {
     this.currentView = 'hub';
     this.activeTab = 'approvals';
     this.reviewInspectingCourse = null;
-    this.reviewQuoteText = '';
-    this.reviewQuoteSection = '';
-    this.reviewFeedbackNote = '';
-    this.reviewFeedbackComments = [];
     this.cdr.markForCheck();
   }
 
-  quoteSection(sectionName: string, textSnippet?: string): void {
-    this.reviewQuoteSection = sectionName;
-    this.reviewQuoteText = textSnippet ? textSnippet.slice(0, 180) : '';
-    this.dialogService.toast(`Quoted "${sectionName}" to review sidebar`, 'info');
-    this.cdr.markForCheck();
-  }
-
-  clearQuote(): void {
-    this.reviewQuoteSection = '';
-    this.reviewQuoteText = '';
-    this.cdr.markForCheck();
-  }
-
-  addFeedbackComment(): void {
-    if (!this.reviewFeedbackNote.trim()) {
-      this.dialogService.toast('Please write a feedback note or recommendation before adding.', 'warning');
-      return;
-    }
-    this.reviewFeedbackComments.push({
-      id: 'rfc-' + Math.random().toString(36).slice(2, 7),
-      section: this.reviewQuoteSection || 'General Course Curriculum',
-      quote: this.reviewQuoteText || '',
-      note: this.reviewFeedbackNote.trim(),
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    });
-    this.reviewFeedbackNote = '';
-    this.reviewQuoteSection = '';
-    this.reviewQuoteText = '';
-    this.dialogService.toast('Review comment attached to draft.', 'success');
-    this.cdr.markForCheck();
-  }
-
-  removeFeedbackComment(idx: number): void {
-    this.reviewFeedbackComments.splice(idx, 1);
-    this.cdr.markForCheck();
-  }
-
-  sendFeedbackToCreator(): void {
+  handleSendReviewFeedback(event: { payload: string; items: ReviewFeedbackItem[] }): void {
     if (!this.reviewInspectingCourse) return;
-    if (this.reviewFeedbackComments.length === 0 && !this.reviewFeedbackNote.trim()) {
-      this.dialogService.toast('Please add at least one review note or observation before sending.', 'warning');
-      return;
-    }
-    if (this.reviewFeedbackNote.trim()) {
-      this.addFeedbackComment();
-    }
-    const lines = this.reviewFeedbackComments.map((c, i) =>
-      `${i + 1}. [${c.section}]${c.quote ? ` (Quoted: "${c.quote}")\n   Feedback: ` : ' Feedback: '}${c.note}`
-    );
-    const feedbackPayload = `Curriculum Review & Revision Recommendations:\n\n${lines.join('\n\n')}`;
-    this.moderate(this.reviewInspectingCourse.id, false, feedbackPayload);
-    this.dialogService.toast(`Review feedback sent to instructor (${this.reviewInspectingCourse.submittedBy || 'Creator'}).`, 'success');
+    this.moderate(this.reviewInspectingCourse.id, false, event.payload);
+    this.dialogService.toast(`Revision feedback sent to instructor (${this.reviewInspectingCourse.submittedBy || 'Creator'}).`, 'success');
+    this.exitCourseReview();
+  }
+
+  handleRejectCourseFromReview(event: { reason: string; checklist: string[] }): void {
+    if (!this.reviewInspectingCourse) return;
+    this.moderate(this.reviewInspectingCourse.id, false, event.reason);
+    this.dialogService.toast(`Course "${this.reviewInspectingCourse.title}" rejected and creator notified.`, 'info');
     this.exitCourseReview();
   }
 
@@ -1019,6 +995,79 @@ export class LmsManagerComponent implements OnInit {
       this.activeDetailCourse.approval_status = 'rejected';
     }
     this.closeRejectModal();
+  }
+
+  isResubmittingCourse: Record<string, boolean> = {};
+  isFeedbackModalOpen = false;
+  feedbackModalCourse: any = null;
+
+  openFeedbackModal(course: any): void {
+    this.feedbackModalCourse = course;
+    this.activeDetailCourse = course;
+    this.selectedCourseId = course.id;
+    this.currentView = 'review_feedback';
+    this.cdr.markForCheck();
+  }
+
+  closeFeedbackModal(): void {
+    this.isFeedbackModalOpen = false;
+    this.feedbackModalCourse = null;
+    this.cdr.markForCheck();
+  }
+
+  exitFeedbackView(): void {
+    this.currentView = 'hub';
+    this.cdr.markForCheck();
+  }
+
+  editCurriculumFromFeedback(): void {
+    if (this.activeDetailCourse || this.feedbackModalCourse) {
+      this.openCourseConsole(this.activeDetailCourse || this.feedbackModalCourse);
+    } else {
+      this.currentView = 'hub';
+    }
+    this.cdr.markForCheck();
+  }
+
+  resubmitCourseForReview(course: any): void {
+    if (!course || !course.id || this.isResubmittingCourse[course.id]) return;
+    this.isResubmittingCourse[course.id] = true;
+    this.apiService.resubmitCourse(course.id).subscribe({
+      next: () => {
+        this.isResubmittingCourse[course.id] = false;
+        this.dialogService.toast(`Course "${course.title}" resubmitted for review! Moderation status is now pending.`, 'success');
+        
+        // Immediately clear rejection flags so UI updates everywhere
+        course.approvalStatus = 'pending';
+        course.approval_status = 'pending';
+        course.rejectionReason = '';
+        course.rejection_reason = '';
+
+        if (this.activeDetailCourse && this.activeDetailCourse.id === course.id) {
+          this.activeDetailCourse.approvalStatus = 'pending';
+          this.activeDetailCourse.approval_status = 'pending';
+          this.activeDetailCourse.rejectionReason = '';
+          this.activeDetailCourse.rejection_reason = '';
+        }
+
+        const sIdx = this.authoredCourses.findIndex(c => c.id === course.id);
+        if (sIdx !== -1) {
+          this.authoredCourses[sIdx] = {
+            ...this.authoredCourses[sIdx],
+            approval_status: 'pending',
+            rejection_reason: ''
+          };
+        }
+
+        this.reload();
+        this.cdr.markForCheck();
+      },
+      error: err => {
+        this.isResubmittingCourse[course.id] = false;
+        this.dialogService.toast(err?.error?.detail || 'Failed to resubmit course. Please try again.', 'error');
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   /** Scope the course list to a cycle (or 'all') and reload from the server. */
@@ -1435,6 +1484,8 @@ export class LmsManagerComponent implements OnInit {
       bType = 'image';
     } else if (declaredType === 'file' || declaredType === 'document' || widgetType === 'file') {
       bType = 'file';
+    } else if (declaredType === 'callout' || widgetType === 'callout') {
+      bType = 'callout';
     } else if (declaredType === 'break' || widgetType === 'break') {
       bType = 'break';
     }
@@ -1463,9 +1514,18 @@ export class LmsManagerComponent implements OnInit {
       quizQuestions: (Array.isArray(parsed?.questions) && parsed.questions.length) ? parsed.questions : undefined,
       activeQuestionIdx: 0,
       codeLanguage: parsed?.language || 'python',
+      customCodeLanguage: parsed?.customLanguage || '',
       codeStarter: parsed?.starterCode || '# Starter code\n',
       codeInstructions: parsed?.instructions || contentText,
-      breakLabel: parsed?.breakLabel || 'Module Checkpoint'
+      breakLabel: parsed?.breakLabel || 'Module Checkpoint',
+      imageWidth: parsed?.imageWidth || '100%',
+      imageAlign: parsed?.imageAlign || 'center',
+      besideText: parsed?.besideText || '',
+      imageRounded: parsed?.imageRounded ?? true,
+      imageBorder: parsed?.imageBorder ?? true,
+      imageShadow: parsed?.imageShadow ?? false,
+      imageCaption: parsed?.caption || '',
+      calloutType: parsed?.calloutType || 'tip'
     };
   }
 
@@ -1659,7 +1719,15 @@ export class LmsManagerComponent implements OnInit {
   isGeneratingAiQuiz: { [blockId: string]: boolean } = {};
   isGeneratingNewAiQuiz = false;
 
-  generateAiQuizForBlock(blk: ModuleBlock): void {
+  handleTriggerAiQuizFromChild(event: { block?: ModuleBlock; isNew?: boolean }): void {
+    if (event.block) {
+      this.generateAiQuizForBlock(event.block);
+    } else {
+      this.generateAiQuizAsNewBlock();
+    }
+  }
+
+  generateAiQuizForBlock(blk?: ModuleBlock): void {
     if (!blk || this.isGeneratingAiQuiz[blk.id]) return;
     this.isGeneratingAiQuiz[blk.id] = true;
     this.cdr.markForCheck();
@@ -1872,6 +1940,7 @@ export class LmsManagerComponent implements OnInit {
         descPayload = JSON.stringify({
           widget: 'code',
           language: blk.codeLanguage || 'python',
+          customLanguage: blk.customCodeLanguage || '',
           starterCode: blk.codeStarter || '',
           instructions: blk.codeInstructions || cleanContent
         });
@@ -1886,8 +1955,21 @@ export class LmsManagerComponent implements OnInit {
       } else if (blk.type === 'image') {
         descPayload = JSON.stringify({
           widget: 'image',
-          caption: cleanContent,
-          fileName: blk.fileName || ''
+          caption: blk.imageCaption || cleanContent,
+          fileName: blk.fileName || '',
+          imageWidth: blk.imageWidth || '100%',
+          imageAlign: blk.imageAlign || 'center',
+          besideText: blk.besideText || '',
+          imageRounded: blk.imageRounded ?? true,
+          imageBorder: blk.imageBorder ?? true,
+          imageShadow: blk.imageShadow ?? false
+        });
+      } else if (blk.type === 'callout') {
+        descPayload = JSON.stringify({
+          widget: 'callout',
+          calloutType: blk.calloutType || 'tip',
+          title: blk.title || 'Pro Tip',
+          content: cleanContent
         });
       } else if (blk.type === 'file') {
         descPayload = JSON.stringify({
@@ -1918,6 +2000,35 @@ export class LmsManagerComponent implements OnInit {
         this.apiService.createMaterial(matPayload).subscribe({ error: () => {} });
       }
     }
+  }
+
+  handleSaveModuleStudioFromChild(event: { moduleForm: any; blocks: ModuleBlock[] }): void {
+    this.moduleForm = { ...this.moduleForm, ...event.moduleForm };
+    this.moduleBlocks = event.blocks;
+    this.saveModuleStudio();
+  }
+
+  handleUploadBlockFileFromChild(event: { file: File; block: ModuleBlock }): void {
+    const { file, block } = event;
+    const isVideo = file.type.startsWith('video/');
+    
+    this.apiService.uploadFile(file).subscribe({
+      next: res => {
+        block.url = res.url || res.file_url || '';
+        block.fileName = file.name;
+        block.fileSize = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+        block.mimeType = file.type;
+        if (isVideo) {
+          block.videoSource = 'upload';
+        }
+        this.dialogService.toast(`Uploaded "${file.name}" successfully!`, 'success');
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.dialogService.toast(`Failed to upload "${file.name}".`, 'error');
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   toggleCourseInsights(): void {

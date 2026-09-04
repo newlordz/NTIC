@@ -3951,6 +3951,54 @@ try:
         broadcast_async({"type": "data_changed", "collection": "lms_courses"})
         return {"id": course_id, "approval_status": new_status}
 
+    @app.post("/api/lms/courses/{course_id}/resubmit")
+    def resubmit_course(
+        course_id: str,
+        actor: dict = Depends(require_role(LMS_ROLES)),
+    ):
+        """Allow a course author to resubmit a previously rejected/revised course for review."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT owner_id, title FROM lms_courses WHERE id = %s", (course_id,)
+            )
+            row = cur.fetchone()
+            if not row:
+                conn.rollback(); cur.close()
+                raise HTTPException(status_code=404, detail="Course not found")
+            if row[0] and row[0] != actor["id"] and not _is_lms_staff(actor):
+                conn.rollback(); cur.close()
+                raise HTTPException(
+                    status_code=403,
+                    detail="You can only resubmit your own courses.",
+                )
+
+            cur.execute(
+                "UPDATE lms_courses SET approval_status='pending' WHERE id=%s",
+                (course_id,),
+            )
+            for _tbl in ("lms_modules", "lms_materials", "lms_assignments"):
+                cur.execute(
+                    f"UPDATE {_tbl} SET approval_status='pending' WHERE course_id=%s",
+                    (course_id,),
+                )
+            cur.execute(
+                "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s,%s,%s,%s)",
+                (
+                    f"Resubmitted course '{row[1]}' for review",
+                    actor.get("email") or actor["id"],
+                    datetime.datetime.now(datetime.UTC).isoformat(),
+                    "lms",
+                ),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_courses"})
+        return {"id": course_id, "approval_status": "pending"}
+
     @app.get("/api/lms/moderation-queue")
     def lms_moderation_queue(actor: dict = Depends(require_role(STAFF_REVIEW_ROLES))):
         """Courses awaiting review, excluding the reviewer's own submissions."""

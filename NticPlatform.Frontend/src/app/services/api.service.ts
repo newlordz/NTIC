@@ -752,6 +752,14 @@ export class ApiService {
     );
   }
 
+  /** Resubmit a rejected or revised course for review. */
+  resubmitCourse(courseId: string): Observable<any> {
+    return this.http.post(
+      `${this.apiUrl}/lms/courses/${encodeURIComponent(courseId)}/resubmit`,
+      {}
+    );
+  }
+
   // ── Sponsorships & payments ───────────────────────────────────────────
   // Replaces a hardcoded infographic and payments that never persisted. Amounts
   // are strings end to end: the column is NUMERIC and parsing to a JS number would
@@ -1515,7 +1523,11 @@ login(email: string, password: string): Observable<any> {
     return this.http.post<LmsCertificate>(`${this.apiUrl}/lms/certificates/generate`, { course_id: courseId, student_id: studentId });
   }
 
-  uploadFileBlob(file: File): Observable<{ status: string; file_id: string; url: string }> {
+  uploadFile(file: File): Observable<{ status: string; file_id: string; url: string; file_url?: string }> {
+    return this.uploadFileBlob(file);
+  }
+
+  uploadFileBlob(file: File): Observable<{ status: string; file_id: string; url: string; file_url?: string }> {
     return new Observable(observer => {
       const reader = new FileReader();
       const fileId = 'file-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);

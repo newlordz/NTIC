@@ -431,30 +431,28 @@
 .classroom-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(8, 14, 26, 0.88);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: #090e17;
   z-index: 99999;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
 }
 
 .classroom-modal {
   background: #0f172a;
   color: #f8fafc;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
-  width: 100%;
-  max-width: 1080px;
-  height: 86vh;
-  max-height: 820px;
-  box-shadow: 0 35px 80px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(99, 102, 241, 0.15);
+  border: none;
+  border-radius: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: modalScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: none;
 }
 
 @keyframes modalScaleUp {
