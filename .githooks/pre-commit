@@ -127,6 +127,32 @@ for f in $STAGED; do
     esac
 done
 
+# ── 5. Duplicate Python class definitions ──────────────────────────────────────
+# Prevents class name shadowing and duplicate schema declarations across large files.
+for f in $STAGED; do
+    case "$f" in
+        *.py)
+            dups=$(staged_content "$f" | python -c '
+import sys, ast
+from collections import Counter
+try:
+    tree = ast.parse(sys.stdin.read())
+    classes = [n.name for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]
+    dups = [name for name, count in Counter(classes).items() if count > 1]
+    if dups:
+        print(", ".join(dups))
+except Exception:
+    pass
+' 2>/dev/null)
+            if [ -n "$dups" ]; then
+                echo "pre-commit: duplicate class definition(s) in $f: $dups"
+                echo "    Each class name must be unique within a file to prevent shadowing."
+                FAIL=1
+            fi
+            ;;
+    esac
+done
+
 if [ "$FAIL" -ne 0 ]; then
     echo ""
     echo "pre-commit: commit aborted. Nothing has been staged or unstaged."

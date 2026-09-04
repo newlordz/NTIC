@@ -58,6 +58,33 @@ jobs:
         working-directory: NticPlatform.Backend
         run: python -m compileall -q app run.py
 
+      - name: Check class definition uniqueness
+        working-directory: NticPlatform.Backend
+        run: |
+          python -c "
+          import ast, sys
+          from pathlib import Path
+          from collections import Counter
+
+          has_errors = False
+          for p in Path('.').rglob('*.py'):
+              if any(part in p.parts for part in ('.venv', 'venv', '__pycache__', '.pytest_cache')):
+                  continue
+              try:
+                  tree = ast.parse(p.read_text(encoding='utf-8'))
+                  classes = [n.name for n in ast.walk(tree) if isinstance(n, ast.ClassDef)]
+                  dups = [name for name, count in Counter(classes).items() if count > 1]
+                  if dups:
+                      dup_names = ', '.join(dups)
+                      print(f'::error file={p}::Duplicate class definition(s) in {p}: {dup_names}')
+                      has_errors = True
+              except Exception:
+                  pass
+          if has_errors:
+              sys.exit(1)
+          print('Class uniqueness check OK')
+          "
+
       - name: Fail if the app object is None
         working-directory: NticPlatform.Backend
         # main.py wraps the whole application in `try/except ImportError` and

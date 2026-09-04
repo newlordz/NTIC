@@ -50,6 +50,9 @@ try:
     from fastapi.staticfiles import StaticFiles
     from fastapi.responses import FileResponse, JSONResponse, Response
     from pydantic import BaseModel, Field
+    from app.schemas.teams import TeamCreate, AssignMentorPayload, MentorRequestPayload
+    from app.schemas.approvals import ApprovalCreate, ApprovalUpdate, InstitutionApprovalDecision
+    from app.schemas.support import ChatRequest, TicketCreate, TicketReply, TicketStatusUpdate
 
     _AUDIT_LOCK_ID = 843001
 
@@ -4506,11 +4509,6 @@ try:
     # cap so it cannot be used as free, unmetered LLM capacity on our key.
     _CHAT_MAX_CHARS = 20_000
 
-    class ChatRequest(BaseModel):
-        system_instruction: dict = {}
-        contents: list = []
-        generationConfig: dict = {}
-
     @app.post("/api/chat")
     async def chat_proxy(payload: ChatRequest, request: Request):
         if not settings.GEMINI_API_KEY:
@@ -4542,19 +4540,6 @@ try:
             return resp.json()
 
     # TICKETS
-    class TicketCreate(BaseModel):
-        userId: str = Field(default="", max_length=120)
-        userName: str = Field(default="", max_length=120)
-        userRole: str = Field(default="", max_length=40)
-        userEmail: str = Field(default="", max_length=254)
-        chatHistory: list = []
-
-    class TicketReply(BaseModel):
-        agentName: str
-        text: str
-
-    class TicketStatusUpdate(BaseModel):
-        status: str
 
     @app.post("/api/tickets", status_code=status.HTTP_201_CREATED)
     def create_ticket(payload: TicketCreate, request: Request):
@@ -5381,25 +5366,6 @@ try:
         return {"status": "deleted", "id": item_id}
 
     # TEAMS
-    class TeamCreate(BaseModel):
-        name: str
-        track: str = ""
-        lead: str = ""
-        members: int = 1
-        status: str = "Active"
-        school_name: str = ""
-        mentor: str = ""
-        motto: str = ""
-        roster_list: list = []
-        # Which cycle this team is competing in. Optional: teams created before
-        # cycles were linked, and teams not tied to one, carry None.
-        competition_id: Optional[str] = None
-        # Member identities. Used to build real team_members rows keyed by
-        # account. lead_email/member_emails are optional and may be empty when a
-        # form only collected names; those rows are stored name-only until a
-        # student account is linked.
-        lead_email: str = Field(default="", max_length=150)
-        member_emails: list[str] = Field(default_factory=list)
 
     def _validate_competition_ref(cur, competition_id: Optional[str]) -> Optional[str]:
         """Reject a reference to a cycle that does not exist.
@@ -6023,9 +5989,6 @@ try:
         return [{"id": r[0], "full_name": r[1] or "", "email": r[2] or "",
                  "organization": r[3] or ""} for r in rows]
 
-    class AssignMentorPayload(BaseModel):
-        mentor_id: Optional[str] = None
-
     @app.patch("/api/teams/{team_id}/mentor")
     def assign_team_mentor(team_id: str, payload: AssignMentorPayload,
                            actor: dict = Depends(require_role(COMPETITION_ROLES))):
@@ -6073,25 +6036,14 @@ try:
         broadcast_async({"type": "data_changed", "collection": "teams"})
         return {"team_id": team_id, "mentor_id": target_mentor, "mentor_status": "assigned"}
 
-    class MentorRequestPayload(BaseModel):
-        mode: str = "auto_track"  # "auto_track" | "existing" | "suggested"
-        mentor_id: Optional[str] = None
-        suggested_name: Optional[str] = None
-        suggested_email: Optional[str] = None
-        suggested_phone: Optional[str] = None
-        suggested_org: Optional[str] = None
-        suggested_expertise: Optional[str] = None
-        suggested_bio: Optional[str] = None
-
     @app.post("/api/teams/{team_id}/request-mentor")
-    def request_team_mentor(team_id: str, payload: Optional[MentorRequestPayload] = Body(default=None), actor: dict = Depends(require_auth)):
+    def request_team_mentor(team_id: str, payload: MentorRequestPayload = Body(default_factory=MentorRequestPayload), actor: dict = Depends(require_auth)):
         """A team requests a mentor.
 
         If the team is under an institution/school, it requires school_admin approval first
         (status: pending_institution), then Super Admin approval.
         If independent/open, it goes directly to platform admin approval (status: pending).
         """
-        payload = payload or MentorRequestPayload()
         conn = _get_db()
         try:
             cur = conn.cursor()
@@ -8041,40 +7993,6 @@ try:
         return {"id": course_id, "title": payload.title, "approval_status": approval}
 
     # PENDING APPROVALS (cross-machine sync)
-    class ApprovalCreate(BaseModel):
-        # `status` is intentionally ignored on create: an approval is always
-        # created 'pending' and only the Reviewer/Access decision endpoint
-        # (PATCH /api/approvals/{id}) may move it to approved/rejected. Allowing
-        # a client to stash a status here was another blind writer that could put
-        # a row straight into 'approved' with no provisioning.
-        id: str
-        type: str
-        entity: str
-        contact: str = ""
-        submitted: str = ""
-        details: dict = {}
-        status: str = "pending"
-    class ApprovalUpdate(BaseModel):
-        status: str = ""
-        reviewed_at: str = ""
-        reviewer: str = ""
-        rejection_reasons: str = ""
-        rejection_notes: str = ""
-
-    class MentorRequestPayload(BaseModel):
-        mode: str = "auto_track"  # 'auto_track', 'existing', 'suggested'
-        mentor_id: Optional[str] = None
-        suggested_name: Optional[str] = None
-        suggested_email: Optional[str] = None
-        suggested_phone: Optional[str] = None
-        suggested_org: Optional[str] = None
-        suggested_expertise: Optional[str] = None
-        suggested_bio: Optional[str] = None
-
-    class InstitutionApprovalDecision(BaseModel):
-        action: str  # 'approve', 'reject'
-        notes: Optional[str] = ""
-        reasons: Optional[str] = ""
 
     @app.get("/api/approvals")
     def list_approvals(status: str = "", competition_id: str = "", _admin: dict = Depends(require_admin)):
