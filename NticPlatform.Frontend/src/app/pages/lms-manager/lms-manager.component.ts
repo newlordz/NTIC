@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
+import { QuillEditorComponent } from 'ngx-quill';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { getAuthValue } from '../../services/session.util';
@@ -73,12 +74,22 @@ export interface ModuleBlock {
 @Component({
   selector: 'app-lms-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, QuillEditorComponent],
   templateUrl: './lms-manager.component.html',
   styleUrls: ['./lms-manager.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LmsManagerComponent implements OnInit {
+  quillConfig = {
+    toolbar: [
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'header': 2 }, { 'header': 3 }],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      ['blockquote', 'code-block'],
+      ['clean']
+    ]
+  };
+
   activeTab: string = 'courses';
 
   // ── Dedicated Full-Page Workspaces Navigation ───────────────
@@ -1994,6 +2005,11 @@ export class LmsManagerComponent implements OnInit {
   };
 
   // ── Formatted Description Helper ──────────────────────────────
+  stripHtml(html?: string): string {
+    if (!html) return '';
+    return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+  }
+
   getFormattedDescription(desc?: string): string {
     if (!desc) return '';
     const trimmed = desc.trim();
@@ -2018,13 +2034,13 @@ export class LmsManagerComponent implements OnInit {
           return parsed.language ? `Code Challenge (${parsed.language}): ${parsed.instructions || 'Interactive Exercise'}` : 'Interactive Coding Challenge';
         }
         if (parsed.title || parsed.content) {
-          return parsed.title || parsed.content;
+          return this.stripHtml(parsed.title || parsed.content);
         }
       } catch {
-        return trimmed;
+        return this.stripHtml(trimmed);
       }
     }
-    return trimmed;
+    return this.stripHtml(trimmed);
   }
 
   // ── Module Bound Asset Redirect Modal ─────────────────────────
@@ -2289,7 +2305,6 @@ export class LmsManagerComponent implements OnInit {
     } else {
       this.currentView = 'assignment_wizard';
     }
-    this.initEditorContent();
     this.cdr.markForCheck();
   }
 
@@ -2324,7 +2339,6 @@ export class LmsManagerComponent implements OnInit {
       if (this.assignmentWizardStep === 1 && !this.assignmentForm.title.trim()) return;
       if (this.assignmentWizardStep < 3) {
         this.assignmentWizardStep++;
-        this.initEditorContent();
         this.cdr.markForCheck();
       }
     } else {
@@ -2332,7 +2346,6 @@ export class LmsManagerComponent implements OnInit {
       if (this.assignmentWizardStep === 2 && !this.assignmentForm.title.trim()) return;
       if (this.assignmentWizardStep < 4) {
         this.assignmentWizardStep++;
-        this.initEditorContent();
         this.cdr.markForCheck();
       }
     }
@@ -2341,68 +2354,11 @@ export class LmsManagerComponent implements OnInit {
   prevAssignmentWizardStep(): void {
     if (this.assignmentWizardStep > 1) {
       this.assignmentWizardStep--;
-      this.initEditorContent();
       this.cdr.markForCheck();
     }
   }
 
-  @ViewChild('assignmentEditorCanvas') assignmentEditorCanvas?: ElementRef<HTMLDivElement>;
 
-  execEditorCommand(command: string, value: string = ''): void {
-    document.execCommand(command, false, value);
-    this.syncEditorContent();
-  }
-
-  execEditorFormatBlock(headingTag: string): void {
-    document.execCommand('formatBlock', false, `<${headingTag}>`);
-    this.syncEditorContent();
-  }
-
-  insertEditorCodeBlock(): void {
-    const codeHtml = `<pre class="wysiwyg-code-block"><code># Write starter code or test runner here\ndef verify_solution():\n    pass</code></pre><p><br></p>`;
-    document.execCommand('insertHTML', false, codeHtml);
-    this.syncEditorContent();
-  }
-
-  insertEditorCallout(): void {
-    const calloutHtml = `<div class="wysiwyg-callout-note">💡 <strong>Constraint Note:</strong> Submissions exceeding O(N log N) time complexity will be rejected.</div><p><br></p>`;
-    document.execCommand('insertHTML', false, calloutHtml);
-    this.syncEditorContent();
-  }
-
-  onAssignmentEditorInput(event: Event): void {
-    this.syncEditorContent();
-  }
-
-  private syncEditorContent(): void {
-    if (this.assignmentEditorCanvas?.nativeElement) {
-      const cleanDesc = this.assignmentEditorCanvas.nativeElement.innerHTML;
-      this.assignmentForm.description = cleanDesc;
-    }
-    this.cdr.markForCheck();
-  }
-
-  initEditorContent(): void {
-    setTimeout(() => {
-      if (this.assignmentEditorCanvas?.nativeElement) {
-        let raw = (this.assignmentForm.description || '').replace(/<!-- RUBRIC_DATA:[\s\S]*?-->/g, '').trim();
-        if (raw && !raw.includes('<p>') && !raw.includes('<div>') && !raw.includes('<pre>')) {
-          raw = raw
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/### (.*?)\n/g, '<h3>$1</h3>')
-            .replace(/## (.*?)\n/g, '<h2>$1</h2>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/```([\w]*)\n([\s\S]*?)```/g, '<pre class="wysiwyg-code-block"><code>$2</code></pre>')
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            .replace(/> 💡 (.*?)\n/g, '<div class="wysiwyg-callout-note">💡 $1</div>')
-            .replace(/\n\n/g, '<p></p>')
-            .replace(/\n/g, '<br/>');
-        }
-        this.assignmentEditorCanvas.nativeElement.innerHTML = raw || '';
-      }
-    }, 60);
-  }
 
   saveAssignmentFromWizard(): void {
     if (this.isSaving) return;

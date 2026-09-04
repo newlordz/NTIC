@@ -254,7 +254,7 @@
 
           <div class="course-card-body">
             <h3>{{ course.title }}</h3>
-            <p>{{ course.description }}</p>
+            <p>{{ stripHtml(course.description) }}</p>
             <div class="text-xs text-subtle mt-2" *ngIf="course.submittedBy">
               Instructor: <strong>{{ course.submittedBy }}</strong>
             </div>
@@ -1000,51 +1000,13 @@
             <h2>Problem Statement, Instructions &amp; Starter Files</h2>
             <p class="step-subtext">Detail requirements, edge cases, starter repository links, and rubric deliverables.</p>
 
-            <!-- Real-Time WYSIWYG Studio Editor -->
-            <div class="wysiwyg-editor-card mb-4">
-              <div class="wysiwyg-toolbar">
-                <div class="toolbar-group">
-                  <button type="button" class="wysiwyg-btn" (click)="execEditorCommand('bold')" title="Bold (Ctrl+B)">
-                    <span class="material-symbols-outlined">format_bold</span>
-                  </button>
-                  <button type="button" class="wysiwyg-btn" (click)="execEditorCommand('italic')" title="Italic (Ctrl+I)">
-                    <span class="material-symbols-outlined">format_italic</span>
-                  </button>
-                  <button type="button" class="wysiwyg-btn" (click)="execEditorCommand('underline')" title="Underline (Ctrl+U)">
-                    <span class="material-symbols-outlined">format_underlined</span>
-                  </button>
-                  <span class="toolbar-divider"></span>
-                  <button type="button" class="wysiwyg-btn text-btn" (click)="execEditorFormatBlock('h2')" title="Section Heading">
-                    <strong>H2</strong>
-                  </button>
-                  <button type="button" class="wysiwyg-btn text-btn" (click)="execEditorFormatBlock('h3')" title="Subsection Heading">
-                    <strong>H3</strong>
-                  </button>
-                  <span class="toolbar-divider"></span>
-                  <button type="button" class="wysiwyg-btn" (click)="execEditorCommand('insertUnorderedList')" title="Bullet List">
-                    <span class="material-symbols-outlined">format_list_bulleted</span>
-                  </button>
-                  <button type="button" class="wysiwyg-btn" (click)="execEditorCommand('insertOrderedList')" title="Numbered List">
-                    <span class="material-symbols-outlined">format_list_numbered</span>
-                  </button>
-                  <span class="toolbar-divider"></span>
-                  <button type="button" class="wysiwyg-btn" (click)="insertEditorCodeBlock()" title="Insert Code Snippet">
-                    <span class="material-symbols-outlined">code</span>
-                  </button>
-                  <button type="button" class="wysiwyg-btn" (click)="insertEditorCallout()" title="Insert Callout Note">
-                    <span class="material-symbols-outlined">lightbulb</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Contenteditable Visual Canvas (Type & See Styled Output Directly!) -->
-              <div 
-                #assignmentEditorCanvas
-                class="wysiwyg-content-canvas" 
-                contenteditable="true"
-                (input)="onAssignmentEditorInput($event)"
+            <!-- Official Quill WYSIWYG Editor -->
+            <div class="quill-editor-wrapper quill-full-height mb-4">
+              <quill-editor
+                [(ngModel)]="assignmentForm.description"
+                [modules]="quillConfig"
                 placeholder="Specify project requirements, starter repository deliverables, edge cases, and environment setup..."
-              ></div>
+              ></quill-editor>
             </div>
 
             <!-- Starter Code & Specification PDF Dropzone -->
@@ -1649,28 +1611,16 @@
                 <!-- EDIT MODE -->
                 <div *ngIf="editingBlockId === blk.id" class="guide-edit-mode">
                   <div class="form-group mb-2">
-                    <label class="text-xs">Section Heading</label>
+                    <label class="text-xs font-semibold">Section Heading</label>
                     <input type="text" [(ngModel)]="blk.title" placeholder="e.g. Core Architectural Principles" class="studio-input-sm font-semibold" />
                   </div>
 
-                  <!-- Rich Formatting Toolbar -->
-                  <div class="rich-toolbar">
-                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'bold')" title="Bold"><span class="material-symbols-outlined">format_bold</span></button>
-                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'italic')" title="Italic"><span class="material-symbols-outlined">format_italic</span></button>
-                    <div class="toolbar-divider"></div>
-                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'h2')" title="Heading 2"><span class="material-symbols-outlined">title</span></button>
-                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'h3')" title="Heading 3"><span class="material-symbols-outlined">format_size</span></button>
-                    <div class="toolbar-divider"></div>
-                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'list')" title="Bullet List"><span class="material-symbols-outlined">format_list_bulleted</span></button>
-                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'numlist')" title="Numbered List"><span class="material-symbols-outlined">format_list_numbered</span></button>
-                    <div class="toolbar-divider"></div>
-                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'code')" title="Code Snippet"><span class="material-symbols-outlined">code</span></button>
-                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'quote')" title="Blockquote"><span class="material-symbols-outlined">format_quote</span></button>
-                    <button type="button" class="toolbar-btn" (click)="applyFormatting(blk, 'callout')" title="Tip Callout"><span class="material-symbols-outlined">lightbulb</span></button>
-                  </div>
-
-                  <div class="form-group">
-                    <textarea [(ngModel)]="blk.content" rows="6" placeholder="Write lesson markdown content or use the formatting bar above..." class="studio-textarea-sm font-mono"></textarea>
+                  <div class="quill-editor-wrapper quill-full-height mb-2">
+                    <quill-editor
+                      [(ngModel)]="blk.content"
+                      [modules]="quillConfig"
+                      placeholder="Write theory, formatted concepts, principles, code benchmarks, and explanations..."
+                    ></quill-editor>
                   </div>
 
                   <div class="edit-footer-row mt-2">
@@ -1683,7 +1633,9 @@
                 <!-- LIVE PREVIEW MODE -->
                 <div *ngIf="editingBlockId !== blk.id" class="guide-live-preview-box" (click)="setEditingBlock(blk.id)">
                   <h4 class="preview-section-title">{{ blk.title || 'Lesson Overview' }}</h4>
-                  <div class="preview-rendered-body" *ngIf="blk.content">{{ blk.content }}</div>
+                  <div class="preview-rendered-body ql-snow" *ngIf="blk.content">
+                    <div class="ql-editor" [innerHTML]="blk.content" style="padding:0; min-height:auto;"></div>
+                  </div>
                   <div class="preview-empty-hint" *ngIf="!blk.content">
                     <span class="material-symbols-outlined">edit_note</span> Click to add lesson content...
                   </div>
@@ -1959,8 +1911,8 @@
               <!-- 2. RICH LESSON GUIDE UNIT -->
               <div *ngIf="blk.type === 'text'" class="sim-unit-content sim-guide-unit">
                 <h3 class="sim-guide-heading">{{ blk.title || 'Lesson Overview & Theory' }}</h3>
-                <div class="sim-guide-body markdown-rendered-style" *ngIf="blk.content">
-                  {{ blk.content }}
+                <div class="sim-guide-body markdown-rendered-style ql-snow" *ngIf="blk.content">
+                  <div class="ql-editor" [innerHTML]="blk.content" style="padding:0;"></div>
                 </div>
                 <div class="sim-guide-empty" *ngIf="!blk.content">
                   <p>No lesson content written for this block yet.</p>
@@ -2224,8 +2176,12 @@
           <h2>Provide a summary of expected learning outcomes</h2>
           <p class="step-subtext">A brief paragraph explaining what students will master.</p>
 
-          <div class="focused-input-wrap">
-            <textarea [(ngModel)]="courseForm.description" rows="5" placeholder="Explain the key learning goals, projects built, and competition readiness..." class="focused-large-textarea"></textarea>
+          <div class="quill-editor-wrapper quill-full-height mb-3">
+            <quill-editor
+              [(ngModel)]="courseForm.description"
+              [modules]="quillConfig"
+              placeholder="Explain the key learning goals, syllabus prerequisites, projects built, and competition readiness..."
+            ></quill-editor>
           </div>
         </div>
       </div>
@@ -2343,8 +2299,12 @@
           <h2>Problem Statement &amp; Starter Files</h2>
           <p class="step-subtext">Detail instructions, technical constraints, test suites, and download materials.</p>
 
-          <div class="focused-input-wrap mb-3">
-            <textarea [(ngModel)]="assignmentForm.description" rows="5" placeholder="Specify requirements, repository deliverables, edge cases, and environment setup..." class="focused-large-textarea"></textarea>
+          <div class="quill-editor-wrapper quill-full-height mb-3">
+            <quill-editor
+              [(ngModel)]="assignmentForm.description"
+              [modules]="quillConfig"
+              placeholder="Specify requirements, repository deliverables, edge cases, and environment setup..."
+            ></quill-editor>
           </div>
 
           <!-- Starter Code & Specification PDF Dropzone -->
@@ -2618,7 +2578,7 @@
               <span class="badge neutral" *ngIf="courseForm.status">{{ courseForm.status | titlecase }}</span>
             </div>
             <h4 class="preview-title">{{ courseForm.title || 'Untitled Course Curriculum' }}</h4>
-            <p class="preview-description">{{ courseForm.description ? (courseForm.description.slice(0, 110) + (courseForm.description.length > 110 ? '...' : '')) : 'Add a brief course description in Step 2 to outline syllabus learning outcomes.' }}</p>
+            <p class="preview-description">{{ stripHtml(courseForm.description) ? (stripHtml(courseForm.description).slice(0, 110) + (stripHtml(courseForm.description).length > 110 ? '...' : '')) : 'Add a brief course description in Step 2 to outline syllabus learning outcomes.' }}</p>
           </div>
         </div>
 
@@ -2681,7 +2641,13 @@
               <span>2. Course Description &amp; Objectives</span>
               <span class="hint-text">Explain key takeaways, real-world applications, and skills</span>
             </label>
-            <textarea [(ngModel)]="courseForm.description" rows="4" placeholder="Provide a clear overview of what students will master in this course..." class="studio-textarea"></textarea>
+            <div class="quill-editor-wrapper quill-full-height mt-2">
+              <quill-editor
+                [(ngModel)]="courseForm.description"
+                [modules]="quillConfig"
+                placeholder="Provide a clear overview of what students will master in this course..."
+              ></quill-editor>
+            </div>
           </div>
         </div>
 
@@ -3008,8 +2974,14 @@
               <input type="text" [(ngModel)]="materialForm.url" placeholder="https://..." />
             </div>
             <div class="form-group mt-3">
-              <label>Guide Content &amp; Lesson Notes (Markdown Supported)</label>
-              <textarea [(ngModel)]="materialForm.description" rows="4" placeholder="Comprehensive lesson breakdown, theoretical concepts, and key equations..."></textarea>
+              <label>Guide Content &amp; Lesson Notes</label>
+              <div class="quill-editor-wrapper quill-full-height mt-2">
+                <quill-editor
+                  [(ngModel)]="materialForm.description"
+                  [modules]="quillConfig"
+                  placeholder="Comprehensive lesson breakdown, theoretical concepts, and key equations..."
+                ></quill-editor>
+              </div>
             </div>
           </div>
         </div>
@@ -3095,7 +3067,13 @@
 
           <div class="form-group mt-3">
             <label>Problem Statement &amp; Submission Rubric</label>
-            <textarea [(ngModel)]="assignmentForm.description" rows="3" placeholder="Detailed instructions, input/output requirements, and grading rubric..."></textarea>
+            <div class="quill-editor-wrapper quill-full-height mt-2">
+              <quill-editor
+                [(ngModel)]="assignmentForm.description"
+                [modules]="quillConfig"
+                placeholder="Detailed instructions, input/output requirements, and grading rubric..."
+              ></quill-editor>
+            </div>
           </div>
 
           <!-- Evaluation Rubric Matrix Builder -->

@@ -1933,7 +1933,14 @@
               font-size: 13px;
               color: var(--on-surface, #1e293b);
               line-height: 1.6;
-              white-space: pre-wrap;
+
+              .ql-editor {
+                padding: 0;
+                font-size: 13px;
+                line-height: 1.6;
+                color: var(--on-surface, #1e293b);
+                min-height: auto;
+              }
             }
 
             .preview-empty-hint {
@@ -3865,100 +3872,65 @@
   }
 }
 
-/* ── Real-Time WYSIWYG Contenteditable Studio Editor ── */
-.wysiwyg-editor-card {
-  border: 1px solid var(--border-color, #cbd5e1);
-  border-radius: 14px;
+/* ── Quill WYSIWYG Editor ── */
+.quill-editor-wrapper {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
   overflow: hidden;
+  border: 1px solid var(--border-color, #cbd5e1);
   background: #ffffff;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.02);
+  width: 100%;
+  min-height: 280px;
 
-  .wysiwyg-toolbar {
+  quill-editor {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #1e293b;
-    padding: 8px 14px;
-    border-bottom: 1px solid #0f172a;
+    flex-direction: column;
+    flex: 1;
+    width: 100%;
+    height: 100%;
+  }
 
-    .toolbar-group {
-      display: flex;
-      align-items: center;
-      gap: 4px;
+  .ql-toolbar.ql-snow {
+    border: none;
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    background: var(--surface-container-low, #f8fafc);
+    padding: 10px 14px;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    flex-shrink: 0;
+  }
 
-      .wysiwyg-btn {
-        background: transparent;
-        border: 1px solid transparent;
-        border-radius: 6px;
-        height: 32px;
-        min-width: 32px;
-        padding: 0 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #cbd5e1;
-        cursor: pointer;
-        transition: all 0.15s ease;
+  .ql-container.ql-snow {
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 
-        .material-symbols-outlined { font-size: 18px; color: #cbd5e1; }
-        &.text-btn { font-size: 12px; font-weight: 800; color: #cbd5e1; }
+    .ql-editor {
+      flex: 1;
+      min-height: 240px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--on-surface, #0f172a);
 
-        &:hover {
-          background: rgba(255, 255, 255, 0.14);
-          color: #ffffff;
-          .material-symbols-outlined { color: #ffffff; }
-        }
-      }
-
-      .toolbar-divider {
-        width: 1px;
-        height: 18px;
-        background: rgba(255, 255, 255, 0.18);
-        margin: 0 6px;
+      &.ql-blank::before {
+        color: #94a3b8;
+        font-style: normal;
       }
     }
   }
 
-  .wysiwyg-content-canvas {
-    min-height: 200px;
-    padding: 16px 20px;
-    font-size: 14px;
-    line-height: 1.6;
-    color: var(--on-surface, #0f172a);
-    outline: none;
-    background: #ffffff;
+  &.quill-full-height {
+    min-height: 380px;
 
-    &:empty:before {
-      content: attr(placeholder);
-      color: #94a3b8;
-      pointer-events: none;
-    }
-
-    h2 { font-size: 18px; font-weight: 800; color: #0f172a; margin: 16px 0 8px; }
-    h3 { font-size: 16px; font-weight: 700; color: #1e293b; margin: 12px 0 6px; }
-    p { margin: 8px 0; }
-    ul, ol { margin: 8px 0; padding-left: 24px; }
-    li { margin-bottom: 4px; }
-
-    .wysiwyg-code-block {
-      background: #0f172a;
-      color: #f8fafc;
-      padding: 14px 18px;
-      border-radius: 10px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      margin: 12px 0;
-      overflow-x: auto;
-    }
-
-    .wysiwyg-callout-note {
-      background: #eff6ff;
-      border-left: 4px solid #3b82f6;
-      padding: 10px 14px;
-      border-radius: 6px;
-      margin: 12px 0;
-      font-size: 13px;
-      color: #1e40af;
+    .ql-container.ql-snow .ql-editor {
+      min-height: 340px;
     }
   }
 }
