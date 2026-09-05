@@ -96,6 +96,10 @@ USE_SHARED_RATE_LIMIT = True
 
 logger = logging.getLogger("ntic.security")
 
+# Set once the relaxed-limit warning has been emitted, so it appears in the log
+# on startup without repeating on every subsequent request.
+_DEV_RATE_LIMIT_WARNED = False
+
 
 def _raise_429(retry_after: int):
     raise HTTPException(
@@ -173,15 +177,25 @@ def check_rate_limit(key: str, max_attempts: int = 5, window_seconds: int = 60):
     if os.getenv("DISABLE_RATE_LIMITS", "").strip().lower() in ("1", "true", "yes"):
         return
 
-    # In local development mode (NTIC_DEV_RELOAD / NTIC_DEV_MODE), extend limits by 100x
-    # so developers testing OTPs/forms locally are not blocked by 429 throttling.
-    if (
+    # Local development can raise the ceiling so that testing OTPs and forms is
+    # not blocked by 429s. This is gated on an explicit opt-in, NOT on the
+    # environment name alone: NTIC_DEV_MODE or ENVIRONMENT=dev reaching a
+    # production deployment would otherwise silently weaken every limit by 100x
+    # -- login included -- with nothing in the logs to say so. A deployment must
+    # now ask for it by name.
+    if os.getenv("ALLOW_DEV_RATE_LIMITS", "").strip().lower() in ("1", "true", "yes") and (
         os.getenv("NTIC_DEV_RELOAD", "").strip().lower() in ("1", "true", "yes")
         or os.getenv("NTIC_DEV_MODE", "").strip().lower() in ("1", "true", "yes")
         or os.getenv("ENVIRONMENT", "").strip().lower() in ("dev", "development", "local")
     ):
         multiplier = int(os.getenv("DEV_RATE_LIMIT_MULTIPLIER", "100") or "100")
         max_attempts = max_attempts * multiplier
+        if not _DEV_RATE_LIMIT_WARNED:
+            logger.warning(
+                "Rate limits are relaxed %sx because ALLOW_DEV_RATE_LIMITS is set. "
+                "This must never be set in production.", multiplier
+            )
+            globals()["_DEV_RATE_LIMIT_WARNED"] = True
 
     if USE_SHARED_RATE_LIMIT:
         if _check_rate_limit_shared(key, max_attempts, window_seconds):

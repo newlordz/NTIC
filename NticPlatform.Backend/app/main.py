@@ -26,7 +26,7 @@ from app.database import init_postgres_db, get_db_connection, release_db_connect
 from app.security import (
     verify_password, create_token, require_auth, require_admin, require_role,
     check_rate_limit, reset_rate_limit, account_is_disabled, hash_password,
-    validate_password_strength, MIN_PASSWORD_LENGTH,
+    validate_password_strength, MIN_PASSWORD_LENGTH, verify_token,
     ADMIN_ROLES, CONTENT_ROLES, COMPETITION_ROLES, GRADING_ROLES,
     APPROVAL_ROLES, STUDENT_ADMIN_ROLES, SUPPORT_ROLES, LMS_ROLES, GOVERNANCE_ROLES,
     touch_session, SESSION_IDLE_MINUTES, SESSION_ABSOLUTE_DAYS,
@@ -415,6 +415,37 @@ try:
         allow_headers=["*"],
     )
 
+    # Content-Security-Policy for the served application.
+    #
+    # 'unsafe-inline' and 'unsafe-eval' are required by this build rather than
+    # chosen: index.html carries an inline splash script and inline styles, the
+    # templates use inline style attributes throughout, and Angular's dev/JIT path
+    # evaluates generated code. Removing them means removing those first, so the
+    # policy states the real situation instead of a stricter one that would have to
+    # be disabled the moment it broke a page.
+    #
+    # The value is still worth setting: default-src 'self' stops script, frame and
+    # object loads from any other origin, form-action blocks off-site form posts,
+    # frame-ancestors 'none' backs up X-Frame-Options, and connect-src limits where
+    # the app may call out to.
+    _CSP_POLICY = "; ".join([
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' data: https://fonts.gstatic.com",
+        "img-src 'self' data: blob: https:",
+        "media-src 'self' data: blob:",
+        # ws:/wss: are named explicitly rather than relying on 'self'. CSP3 says
+        # 'self' covers a same-origin WebSocket, but that was not always honoured,
+        # and WsSyncService is how the app receives live updates -- a silently
+        # blocked socket would look like stale data, not a policy error.
+        "connect-src 'self' ws: wss: https://generativelanguage.googleapis.com",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+    ])
+
     @app.middleware("http")
     async def add_security_and_telemetry_headers(request: Request, call_next):
         # CORS is handled by CORSMiddleware above against the configured
@@ -427,8 +458,24 @@ try:
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
+        # Deliberately 0: the legacy XSS auditor introduced its own bugs and is
+        # gone from current browsers. Content-Security-Policy below is the control.
         response.headers["X-XSS-Protection"] = "0"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        # /api/files/{id} sets its own, far stricter, sandboxed policy for
+        # user-uploaded bytes -- do not overwrite it with the application policy.
+        if "Content-Security-Policy" not in response.headers:
+            response.headers["Content-Security-Policy"] = _CSP_POLICY
+        # Features this application never uses. Denying them limits what injected
+        # script could reach even if it did run.
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=(), usb=(), serial=(), "
+            "payment=(), midi=(), magnetometer=(), gyroscope=(), accelerometer=()"
+        )
+        # Severs the window reference a page opened via target="_blank" would
+        # otherwise keep, which is the basis of reverse-tabnabbing.
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-site"
         response.headers["Server-Timing"] = f"total;dur={_dur_ms}"
         return response
 
@@ -998,8 +1045,12 @@ try:
         html_content: str = Field(min_length=1, max_length=100_000)
 
     @app.post("/api/send-email")
-    def send_email_proxy(payload: EmailPayload, request: Request, _actor: dict = Depends(require_auth)):
-        """Generic sender. Requires a session."""
+    def send_email_proxy(
+        payload: EmailPayload,
+        request: Request,
+        _actor: dict = Depends(require_role(APPROVAL_ROLES, ROLE_SUPPORT_ADMIN)),
+    ):
+        """Generic sender. Requires administrative staff authorization to prevent open mail relay."""
         if not settings.SMTP_HOST and not os.getenv("NTIC_DEV_RELOAD"):
             raise HTTPException(status_code=503, detail="Email service not configured")
 
@@ -1196,9 +1247,13 @@ try:
                 pass
         if not gateway:
             return False
+        headers = {}
+        gw_secret = (os.getenv("WHATSAPP_GATEWAY_SECRET") or os.getenv("SMS_GATEWAY_SECRET") or "").strip()
+        if gw_secret:
+            headers["X-Gateway-Secret"] = gw_secret
         try:
             resp = httpx.post(
-                f"{gateway}/send-otp", json={"phone": phone, "otp": code}, timeout=15
+                f"{gateway}/send-otp", json={"phone": phone, "otp": code}, headers=headers, timeout=15
             )
             if resp.status_code >= 400:
                 logger.warning(f"SMS gateway error {resp.status_code}: {resp.text[:300]}")
@@ -1794,14 +1849,15 @@ try:
         return not ip.is_global
 
     def extract_client_ip(request: Request) -> str:
-        # X-Forwarded-For / X-Real-IP are only honoured when the request arrived
-        # from a proxy we trust. Otherwise anyone could set these headers to a
-        # fresh value on every request and defeat the IP rate limits on login,
-        # OTP and the other public endpoints.
+        # X-Forwarded-For, X-Real-IP, and CF-Connecting-IP are only honoured
+        # when the request arrived from a proxy we trust. Otherwise an attacker
+        # connecting directly to the origin can spoof these headers to a fresh
+        # value on every request and defeat IP-based rate limiting across the app.
         peer = request.client.host if request.client else ""
         if _is_trusted_proxy_peer(peer):
-            # Only reachable when the direct peer is a trusted proxy, so these
-            # headers are set by that proxy rather than by the client.
+            cf_ip = request.headers.get("cf-connecting-ip")
+            if cf_ip:
+                return cf_ip.strip()
             real_ip = request.headers.get("x-real-ip")
             if real_ip:
                 return real_ip.strip()
@@ -1810,12 +1866,6 @@ try:
                 parts = [p.strip() for p in forwarded.split(",") if p.strip()]
                 if parts:
                     return parts[0]
-        # Cloudflare overwrites cf-connecting-ip on every request, so it cannot
-        # be spoofed by the end client when traffic actually flows through
-        # Cloudflare.
-        cf_ip = request.headers.get("cf-connecting-ip")
-        if cf_ip:
-            return cf_ip.strip()
         return peer or "127.0.0.1"
 
     def anonymize_ip(ip: str) -> str:
@@ -7206,11 +7256,16 @@ try:
         return {"id": user_id, "sessions_revoked": revoked}
 
     @app.post("/api/admin/purge-test-data")
-    def purge_test_data(actor: dict = Depends(require_admin)):
+    def purge_test_data(actor: dict = Depends(require_role(ROLE_SUPER_ADMIN))):
         """Purge test tables and reset the platform for real live users.
 
-        Preserves super-admin accounts only.
+        Preserves super-admin accounts only. Gated by ALLOW_DATA_PURGE in production.
         """
+        if os.getenv("ALLOW_DATA_PURGE", "").strip().lower() not in ("true", "1") and not os.getenv("NTIC_DEV_RELOAD"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Database purge is disabled in production. Set ALLOW_DATA_PURGE=true in server variables to enable.",
+            )
         tables = [
             "assignment_submissions",
             "students",
@@ -9869,10 +9924,75 @@ try:
         data_base64: str
         size: int = 0
 
+    _ALLOWED_UPLOAD_MIME_TYPES = frozenset({
+        "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif",
+        "application/pdf", "video/mp4", "video/webm",
+        "text/plain", "text/markdown", "application/json",
+    })
+
+    # Leading bytes each binary format must start with. A declared MIME type is a
+    # client claim; this checks the bytes actually match it, so a script cannot be
+    # smuggled in under an allowlisted content type. Text formats are excluded on
+    # purpose -- they have no signature -- and are always served as attachments.
+    _UPLOAD_MAGIC_BYTES = {
+        "image/jpeg": ((b"\xff\xd8\xff",),),
+        "image/jpg": ((b"\xff\xd8\xff",),),
+        "image/png": ((b"\x89PNG\r\n\x1a\n",),),
+        "image/gif": ((b"GIF87a", b"GIF89a"),),
+        "application/pdf": ((b"%PDF-",),),
+        # RIFF....WEBP / ....ftyp -- the second marker sits at a fixed offset.
+        "image/webp": ((b"RIFF",), (b"WEBP", 8)),
+        "video/mp4": ((b"ftyp", 4),),
+        "video/webm": ((b"\x1a\x45\xdf\xa3",),),
+    }
+
+    def _magic_bytes_match(raw: bytes, mime: str) -> bool:
+        """True when `raw` starts with a signature valid for `mime`.
+
+        Unknown/text types return True: they carry no signature, and rejecting
+        them here would block legitimate uploads rather than add safety.
+        """
+        rules = _UPLOAD_MAGIC_BYTES.get(mime)
+        if not rules:
+            return True
+        for rule in rules:
+            prefixes = rule[0] if isinstance(rule[0], tuple) else (rule[0],)
+            offset = rule[1] if len(rule) > 1 else 0
+            if not any(raw[offset:offset + len(p)] == p for p in prefixes):
+                return False
+        return True
+
+    def _safe_content_disposition(disposition: str, name: str) -> str:
+        """Build a Content-Disposition value that cannot inject headers.
+
+        The stored name is attacker-supplied. Interpolating it raw allowed a
+        quote or CR/LF to break out of the header and append arbitrary ones, so
+        it is reduced to a conservative character set and the RFC 5987 form
+        carries the original for clients that support it.
+        """
+        from urllib.parse import quote
+
+        cleaned = re.sub(r'[^A-Za-z0-9._ -]', "_", (name or "file"))[:120].strip() or "file"
+        encoded = quote((name or "file")[:120], safe="")
+        return f"{disposition}; filename=\"{cleaned}\"; filename*=UTF-8''{encoded}"
+
     @app.post("/api/files/upload")
     def upload_file(payload: FileUploadPayload, request: Request):
         if not payload.file_id or not payload.data_base64:
             raise HTTPException(status_code=400, detail="Missing file_id or data_base64")
+
+        # Sanitize and validate MIME type to prevent Stored XSS (blocking HTML, SVG, JS, etc.)
+        mime = (payload.mime_type or "image/png").strip().lower()
+        if mime not in _ALLOWED_UPLOAD_MIME_TYPES:
+            raise HTTPException(
+                status_code=415,
+                detail="Unsupported media format. Allowed formats: JPG, PNG, WebP, GIF, PDF, MP4, WebM, and plain text.",
+            )
+
+        # Enforce max payload file size cap (10MB limit)
+        if (payload.size and payload.size > 10 * 1024 * 1024) or len(payload.data_base64) > 15 * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="File too large. Maximum allowed size is 10MB.")
+
         client_ip = extract_client_ip(request)
         check_rate_limit(f"file-upload:{client_ip}", max_attempts=60, window_seconds=300)
         conn = get_db_connection()
@@ -9880,9 +10000,40 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
         try:
+            # Overwrite protection. This endpoint is unauthenticated so that the
+            # public registration form can attach documents, and the insert is an
+            # upsert, so without this check anyone could replace any stored file
+            # -- an applicant's ID scan, a hero slide -- by reusing its id. Ids
+            # are predictable (`profile-photo-<timestamp>`), so guessing is cheap.
+            #
+            # Replacing an existing file requires an administrator: no client flow
+            # reuses an id (every caller mints a fresh one), so a collision is
+            # either a retry or an attack.
+            cur.execute("SELECT id FROM stored_files WHERE id = %s", (payload.file_id,))
+            if cur.fetchone():
+                auth_header = request.headers.get("Authorization", "")
+                actor = verify_token(auth_header[7:]) if auth_header.startswith("Bearer ") else None
+                if not actor or actor.get("role") not in ADMIN_ROLES:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="A file with this id already exists.",
+                    )
+
             data_b64 = payload.data_base64
             if "," in data_b64 and "base64" in data_b64:
                 data_b64 = data_b64.split(",", 1)[1]
+
+            # Confirm the bytes are really the format the caller claims.
+            import base64 as _b64
+            try:
+                head = _b64.b64decode(data_b64[:64], validate=False)
+            except Exception:
+                raise HTTPException(status_code=400, detail="File data is not valid base64.")
+            if not _magic_bytes_match(head, mime):
+                raise HTTPException(
+                    status_code=415,
+                    detail="File contents do not match the declared file type.",
+                )
 
             cur.execute("""
                 INSERT INTO stored_files (id, name, mime_type, size, data_base64)
@@ -9892,7 +10043,7 @@ try:
                     mime_type = EXCLUDED.mime_type,
                     size = EXCLUDED.size,
                     data_base64 = EXCLUDED.data_base64
-            """, (payload.file_id, payload.name, payload.mime_type, payload.size or len(data_b64), data_b64))
+            """, (payload.file_id, payload.name, mime, payload.size or len(data_b64), data_b64))
             conn.commit()
             cur.close()
             return {"status": "success", "file_id": payload.file_id}
@@ -9916,12 +10067,22 @@ try:
                 raw_bytes = base64.b64decode(row[2])
             except Exception:
                 raise HTTPException(status_code=500, detail="Corrupt file data")
+
+            raw_mime = (row[1] or "image/png").strip().lower()
+            safe_mime = raw_mime if raw_mime in _ALLOWED_UPLOAD_MIME_TYPES else "application/octet-stream"
+            is_inline_safe = safe_mime.startswith("image/") or safe_mime in ("video/mp4", "video/webm")
+            disposition = _safe_content_disposition(
+                "inline" if is_inline_safe else "attachment", row[0]
+            )
+
             return Response(
                 content=raw_bytes,
-                media_type=row[1] or "image/png",
+                media_type=safe_mime,
                 headers={
                     "Cache-Control": "public, max-age=86400, immutable",
-                    "Content-Disposition": f'inline; filename="{row[0]}"',
+                    "Content-Disposition": disposition,
+                    "X-Content-Type-Options": "nosniff",
+                    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
                 }
             )
         finally:
