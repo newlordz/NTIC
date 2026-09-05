@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Router, ActivatedRoute } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ContentService, User, Team } from '../../services/content.service';
 import { ApiService } from '../../services/api.service';
@@ -49,7 +49,12 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     ticket: '',
     password: ''
   };
+  copiedNewUserTicket = false;
   formError = '';
+  isCheckingEmailAvailability = false;
+  emailAvailabilityStatus: 'none' | 'checking' | 'available' | 'taken' = 'none';
+  emailAvailabilityMessage = '';
+  private emailCheckDebounceTimer: any = null;
 
   createdUserModal: {
     isOpen: boolean;
@@ -79,6 +84,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   isDeleteTeamLoading: boolean = false;
   isEditTeamOpen: boolean = false;
   editTeamForm: any = {};
+  assigningMentorTeamId: string | null = null;
 
   roleTabs = [
     { id: 'all', label: 'All Users', icon: 'group' },
@@ -87,7 +93,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     { id: 'teams', label: 'Teams & Squads', icon: 'groups' },
     { id: 'instructor', label: 'Instructors', icon: 'badge' },
     { id: 'judge', label: 'Judges', icon: 'gavel' },
-    { id: 'sponsor', label: 'Sponsors', icon: 'handshake' },
+    { id: 'sponsor', label: 'Partners & Sponsors', icon: 'handshake' },
     { id: 'content_manager', label: 'Content Mgrs', icon: 'edit_note' },
     { id: 'reviewer', label: 'Reviewers', icon: 'rate_review' },
     { id: 'competition_manager', label: 'Comp. Mgrs', icon: 'emoji_events' },
@@ -134,6 +140,31 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       this.router.navigate(['/dashboard']);
       return;
     }
+
+    // 1. Instant Cache Hydration (0ms load time for instant display)
+    if (this.contentService.users && this.contentService.users.length > 0) {
+      this.users = [...this.contentService.users];
+    } else {
+      try {
+        const raw = localStorage.getItem('ntic_users');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            this.users = parsed;
+          }
+        }
+      } catch {}
+    }
+
+    if (this.contentService.teams && this.contentService.teams.length > 0) {
+      this.teams = [...this.contentService.teams];
+      this.applyTeamFilters();
+    }
+
+    this.applyFilters();
+    this.cdr.markForCheck();
+
+    // 2. Parallel Background Network Sync (non-blocking)
     this.loadUsers();
     this.loadTeams();
     this.loadTickets();
@@ -175,6 +206,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   syncAccounts(showToastNotice = true): void {
     this.isSyncing = true;
+    this.cdr.markForCheck();
     this.http.get<any[]>(`${environment.apiUrl}/users`).subscribe({
       next: (backendUsers) => {
         const existingLookup: Record<string, any> = {};
@@ -212,6 +244,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         this.applyFilters();
         this.loadAvatars();
         this.isSyncing = false;
+        this.cdr.markForCheck();
         if (showToastNotice) {
           this.showToast('Accounts Synced', `Successfully synchronized ${cleanUsers.length} accounts from backend database.`);
         }
@@ -222,6 +255,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         this.applyFilters();
         this.loadAvatars();
         this.isSyncing = false;
+        this.cdr.markForCheck();
         if (showToastNotice) {
           this.showToast('Sync Notice', 'Backend sync unavailable. Loaded cached user accounts.', 4000);
         }
@@ -256,32 +290,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   loadUsers(): void {
-    this.apiService.getTeams().subscribe({
-      next: (backendTeams) => {
-        this.teams = (backendTeams || []).map((t: any) => ({
-          id: t.id,
-          name: t.name,
-          track: t.track || 'General',
-          lead: t.lead || 'Unassigned',
-          members: t.members || 1,
-          status: t.status || 'Active',
-          schoolName: t.school_name || t.schoolName || '',
-          school_name: t.school_name || t.schoolName || '',
-          mentor: t.mentor || '',
-          mentorId: t.mentorId || t.mentor_id || null,
-          mentorStatus: t.mentorStatus || t.mentor_status || 'none',
-          motto: t.motto || '',
-          rosterList: t.rosterList || [],
-          competitionId: t.competition_id || t.competitionId || null,
-          photoFileId: t.photoFileId || t.photo_file_id || t.logoFileId || t.logo_file_id
-        }));
-        this.syncAccounts(false);
-      },
-      error: () => {
-        this.teams = [...this.contentService.teams];
-        this.syncAccounts(false);
-      }
-    });
+    this.syncAccounts(false);
   }
 
   async loadAvatars(): Promise<void> {
@@ -338,6 +347,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         this.teamAvatarUrls[teamKey] = (t as any).photo_url || (t as any).logo_url || (t as any).image;
       }
     }
+    this.cdr.markForCheck();
   }
 
   getUserAvatarUrl(u: User | null): string {
@@ -384,6 +394,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       );
     }
     this.filteredUsers = list;
+    this.cdr.markForCheck();
   }
 
   setAffiliationFilter(filter: 'all' | 'institution' | 'independent'): void {
@@ -545,6 +556,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       content_manager: 'NTIC-CNT-',
       reviewer: 'NTIC-REV-',
       competition_manager: 'NTIC-CMP-',
+      sponsor: 'NTIC-PTR-',
       admin: 'NTIC-ADM-'
     };
     const prefix = prefixMap[role] || 'NTIC-USR-';
@@ -554,6 +566,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.newUserForm.password = '';
     if (role === 'instructor' && !this.newUserForm.organization) {
       this.newUserForm.organization = 'NTIC System';
+    } else if (role === 'sponsor' && !this.newUserForm.organization) {
+      this.newUserForm.organization = '';
     }
   }
 
@@ -663,6 +677,9 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   openAddUserModal(defaultRole = 'instructor'): void {
     this.formError = '';
+    this.emailAvailabilityStatus = 'none';
+    this.emailAvailabilityMessage = '';
+    this.isCheckingEmailAvailability = false;
     this.newUserForm = {
       fullName: '',
       email: '',
@@ -681,6 +698,97 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   closeAddUserModal(): void {
     this.isAddUserModalOpen = false;
     this.formError = '';
+    this.copiedNewUserTicket = false;
+    this.emailAvailabilityStatus = 'none';
+    this.emailAvailabilityMessage = '';
+    this.isCheckingEmailAvailability = false;
+    if (this.emailCheckDebounceTimer) {
+      clearTimeout(this.emailCheckDebounceTimer);
+    }
+  }
+
+  onNewUserEmailChange(): void {
+    this.emailAvailabilityStatus = 'none';
+    this.emailAvailabilityMessage = '';
+    this.formError = '';
+    if (this.emailCheckDebounceTimer) {
+      clearTimeout(this.emailCheckDebounceTimer);
+    }
+    const em = (this.newUserForm?.email || '').trim().toLowerCase();
+    if (!em || !em.includes('@') || em.length < 5) {
+      return;
+    }
+    this.emailCheckDebounceTimer = setTimeout(() => {
+      this.checkNewUserEmailAvailability();
+    }, 350);
+  }
+
+  checkNewUserEmailAvailability(): void {
+    const em = (this.newUserForm?.email || '').trim().toLowerCase();
+    if (!em || !em.includes('@')) {
+      this.emailAvailabilityStatus = 'none';
+      this.emailAvailabilityMessage = '';
+      return;
+    }
+    this.isCheckingEmailAvailability = true;
+    this.emailAvailabilityStatus = 'checking';
+    this.cdr.markForCheck();
+
+    this.apiService.checkAvailability(em, '').subscribe({
+      next: (res) => {
+        this.isCheckingEmailAvailability = false;
+        if (res?.email_taken || this.contentService.isEmailTaken(em)) {
+          this.emailAvailabilityStatus = 'taken';
+          this.emailAvailabilityMessage = 'This email is already registered.';
+          this.formError = `The email "${em}" is already registered to another account or pending application.`;
+        } else {
+          this.emailAvailabilityStatus = 'available';
+          this.emailAvailabilityMessage = 'Email is available';
+          if (this.formError && this.formError.includes('already registered')) {
+            this.formError = '';
+          }
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.isCheckingEmailAvailability = false;
+        this.emailAvailabilityStatus = 'none';
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  copyNewUserTicket(): void {
+    const ticket = (this.newUserForm?.ticket || '').trim();
+    if (!ticket) return;
+    this.copiedNewUserTicket = true;
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(ticket).catch(() => {
+        this.fallbackCopyTicket(ticket);
+      });
+    } else {
+      this.fallbackCopyTicket(ticket);
+    }
+    this.showToast('Ticket Copied', `Access ticket "${ticket}" copied to clipboard.`, 2500);
+    setTimeout(() => {
+      this.copiedNewUserTicket = false;
+      this.cdr.markForCheck();
+    }, 2500);
+    this.cdr.markForCheck();
+  }
+
+  private fallbackCopyTicket(text: string): void {
+    try {
+      const el = document.createElement('textarea');
+      el.value = text;
+      el.setAttribute('readonly', '');
+      el.style.position = 'fixed';
+      el.style.left = '-9999px';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    } catch (_) {}
   }
 
   openCreatedUserModal(user: User): void {
@@ -714,22 +822,45 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     }
   }
 
-  saveNewUser(): void {
+  async saveNewUser(): Promise<void> {
     this.formError = '';
     if (!this.newUserForm.fullName || !this.newUserForm.fullName.trim()) {
       this.formError = 'Please enter the user\'s Full Name.';
       this.showToast('Validation Error', 'Full Name is required.', 4000);
       return;
     }
-    if (!this.newUserForm.email || !this.newUserForm.email.trim()) {
+    const email = (this.newUserForm.email || '').trim();
+    if (!email) {
       this.formError = 'Please enter a valid Email Address.';
       this.showToast('Validation Error', 'Email Address is required.', 4000);
       return;
     }
-    if (this.contentService.isEmailTaken(this.newUserForm.email.trim())) {
-      this.formError = `The email "${this.newUserForm.email}" is already registered to another account.`;
-      this.showToast('Email Taken', `The email ${this.newUserForm.email} is already registered.`, 4500);
-      return;
+    const phone = (this.newUserForm.phone || '').trim();
+
+    // 1. Authoritative Pre-submission Check against Database (users, pending_approvals, students)
+    this.isCheckingEmailAvailability = true;
+    try {
+      const avail = await firstValueFrom(this.apiService.checkAvailability(email, phone));
+      if (avail?.email_taken || this.contentService.isEmailTaken(email)) {
+        this.emailAvailabilityStatus = 'taken';
+        this.emailAvailabilityMessage = 'This email is already registered.';
+        this.formError = `The email "${email}" is already registered to another account or pending application.`;
+        this.showToast('Email Taken', this.formError, 5000);
+        this.isCheckingEmailAvailability = false;
+        this.cdr.markForCheck();
+        return;
+      }
+      if (avail?.phone_taken) {
+        this.formError = `The phone number "${phone}" is already registered to another account.`;
+        this.showToast('Phone Number Taken', this.formError, 5000);
+        this.isCheckingEmailAvailability = false;
+        this.cdr.markForCheck();
+        return;
+      }
+    } catch (_) {
+      // Allow the backend authoritative guard to provide the ultimate backstop
+    } finally {
+      this.isCheckingEmailAvailability = false;
     }
 
     if (!this.newUserForm.ticket) {
@@ -1062,7 +1193,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       super_admin: 'Super Admin', admin: 'Admin', content_manager: 'Content Manager',
       reviewer: 'Reviewer', competition_manager: 'Competition Manager',
       school_admin: 'School Admin', instructor: 'Instructor', student: 'Student',
-      judge: 'Judge', sponsor: 'Sponsor'
+      judge: 'Judge', sponsor: 'Corporate Partner'
     };
     return map[role] || role;
   }
@@ -1130,13 +1261,16 @@ export class UserManagementComponent implements OnInit, OnDestroy {
           mentorStatus: t.mentorStatus || t.mentor_status || 'none',
           motto: t.motto || '',
           rosterList: t.rosterList || [],
-          competitionId: t.competition_id || t.competitionId || null
+          competitionId: t.competition_id || t.competitionId || null,
+          photoFileId: t.photoFileId || t.photo_file_id || t.logoFileId || t.logo_file_id
         }));
         this.applyTeamFilters();
+        this.cdr.markForCheck();
       },
       error: () => {
         this.teams = [...this.contentService.teams];
         this.applyTeamFilters();
+        this.cdr.markForCheck();
       }
     });
   }
@@ -1160,6 +1294,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       );
     }
     this.filteredTeams = list;
+    this.cdr.markForCheck();
   }
 
   setTeamTrackFilter(track: string): void {
@@ -1172,8 +1307,15 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.applyTeamFilters();
   }
 
+  get mentorsList(): User[] {
+    return this.users.filter(u => {
+      const r = (u.role || '').toLowerCase();
+      return r === 'instructor' || r === 'mentor' || r === 'lead_mentor' || r === 'super_admin' || r === 'admin';
+    });
+  }
+
   get instructorsList(): User[] {
-    return this.users.filter(u => (u.role || '').toLowerCase() === 'instructor');
+    return this.mentorsList;
   }
 
   openDeleteTeamModal(team: Team): void {
@@ -1228,8 +1370,16 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.editTeamForm = {};
   }
 
+  getMentorName(mentorId: string | null | undefined): string {
+    if (!mentorId) return '';
+    const found = this.users.find(u => u.id === mentorId);
+    return found ? (found.fullName || found.email) : '';
+  }
+
   saveEditTeam(): void {
     if (!this.editTeamForm.id || !this.editTeamForm.name.trim()) return;
+    const teamId = this.editTeamForm.id;
+    const originalTeam = this.teams.find(t => t.id === teamId);
     const payload = {
       name: this.editTeamForm.name.trim(),
       track: this.editTeamForm.track,
@@ -1240,17 +1390,26 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       motto: this.editTeamForm.motto
     };
 
-    this.apiService.updateTeam(this.editTeamForm.id, payload).subscribe({
+    const mentorChanged = (this.editTeamForm.mentorId || '') !== (originalTeam?.mentorId || '');
+    const newMentorId = this.editTeamForm.mentorId || '';
+
+    this.apiService.updateTeam(teamId, payload).subscribe({
       next: () => {
-        const idx = this.teams.findIndex(t => t.id === this.editTeamForm.id);
+        const idx = this.teams.findIndex(t => t.id === teamId);
         if (idx !== -1) {
           this.teams[idx] = {
             ...this.teams[idx],
             ...payload,
             schoolName: payload.school_name
           };
-          this.applyTeamFilters();
         }
+
+        if (mentorChanged && originalTeam) {
+          this.assignTeamMentor(originalTeam, newMentorId);
+        }
+
+        this.applyTeamFilters();
+        this.cdr.markForCheck();
         this.closeEditTeamModal();
         this.showToast('Team Updated', `Squad "${payload.name}" updated successfully.`);
       },
@@ -1262,15 +1421,38 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   assignTeamMentor(team: Team, mentorId: string): void {
     const mId = mentorId ? mentorId : null;
+    if (team.mentorId === mId) return;
+
+    const previousMentorId = team.mentorId;
     const mentorUser = this.users.find(u => u.id === mId);
+    this.assigningMentorTeamId = team.id || null;
+    this.cdr.markForCheck();
+
     this.apiService.assignTeamMentor(team.id || '', mId).subscribe({
       next: () => {
+        this.assigningMentorTeamId = null;
         team.mentorId = mId;
         team.mentor = mentorUser ? mentorUser.fullName : '';
         team.mentorStatus = mId ? 'assigned' : 'none';
-        this.showToast('Mentor Assigned', mentorUser ? `Assigned ${mentorUser.fullName} to ${team.name}.` : `Unassigned mentor from ${team.name}.`);
+
+        // Synchronize in contentService.teams
+        const ctIdx = this.contentService.teams.findIndex(t => t.id === team.id);
+        if (ctIdx !== -1) {
+          this.contentService.teams[ctIdx].mentorId = mId;
+          this.contentService.teams[ctIdx].mentor = team.mentor;
+          this.contentService.teams[ctIdx].mentorStatus = team.mentorStatus;
+        }
+
+        this.applyTeamFilters();
+        this.cdr.markForCheck();
+        this.showToast('Mentor Updated', mentorUser ? `Assigned ${mentorUser.fullName} to ${team.name}.` : `Unassigned mentor from ${team.name}.`);
       },
       error: (err) => {
+        this.assigningMentorTeamId = null;
+        // Revert local binding on failure
+        team.mentorId = previousMentorId;
+        this.applyTeamFilters();
+        this.cdr.markForCheck();
         this.showToast('Mentor Update Failed', err?.error?.detail || 'Failed to update mentor.', 4000);
       }
     });

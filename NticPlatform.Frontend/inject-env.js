@@ -53,9 +53,9 @@ for (const file of ENV_FILES) {
 
   fs.copyFileSync(file, backup);
 
-  let content = fs.readFileSync(file, 'utf8');
-  content = content.replace('REPLACE_BREVO_API_KEY', process.env.BREVO_API_KEY || '');
-  content = content.replace('REPLACE_SMSMODE_API_KEY', process.env.SMSMODE_API_KEY || '');
-  content = content.replace('REPLACE_GEMINI_API_KEY', process.env.GEMINI_API_KEY || '');
-  fs.writeFileSync(file, content);
+  // Security hygiene: The client-side application proxies email, SMS, and AI requests
+  // via the backend API (/api/send-email, /api/chat, etc.). Provider secret keys must
+  // NEVER be injected into the public frontend bundle. We keep safe empty/placeholder
+  // values to satisfy the TypeScript interface without leaking credentials.
 }
+

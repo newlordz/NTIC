@@ -726,6 +726,8 @@ Keep answers short. Mention the exact page. Be empathetic but concise.`,
 
   /** Admin: load soft-deleted tickets from backend */
   async loadRecycleBinTickets(): Promise<void> {
+    const token = getAuthValue('activeUserToken');
+    if (!token) return;
     try {
       const tickets: any = await firstValueFrom(this.http.get(`${environment.apiUrl}/tickets?recycled=true`));
       this.recycleBinTickets.set((tickets || []).map((t: any) => this.parseTicket(t)));

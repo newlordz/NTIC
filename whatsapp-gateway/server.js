@@ -4,11 +4,25 @@ const qrcode = require('qrcode-terminal');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 
 const app = express();
+const HOST = process.env.HOST || '127.0.0.1';
 const PORT = process.env.PORT || 3001;
+const GATEWAY_SECRET = (process.env.WHATSAPP_GATEWAY_SECRET || process.env.SMS_GATEWAY_SECRET || '').trim();
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Authorization guard: require secret header if GATEWAY_SECRET is configured
+app.use((req, res, next) => {
+  if (req.path === '/status' || !GATEWAY_SECRET) {
+    return next();
+  }
+  const provided = req.headers['x-gateway-secret'] || (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '');
+  if (provided !== GATEWAY_SECRET) {
+    return res.status(401).json({ success: false, error: 'Unauthorized WhatsApp gateway request.' });
+  }
+  next();
+});
 
 let isConnected = false;
 let qrCodeData = null;
@@ -194,9 +208,9 @@ app.post('/send-credentials', async (req, res) => {
 });
 
 // Start Express Server & WhatsApp Client
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   console.log(`\n======================================================`);
-  console.log(`  NTIC WHATSAPP GATEWAY MICROSERVICE STARTED (Port ${PORT})  `);
+  console.log(`  NTIC WHATSAPP GATEWAY MICROSERVICE STARTED (http://${HOST}:${PORT})  `);
   console.log(`======================================================\n`);
   client.initialize().catch((err) => {
     console.error('[WhatsApp Gateway] Failed to initialize client:', err);

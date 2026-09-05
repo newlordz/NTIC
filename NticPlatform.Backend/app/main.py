@@ -715,6 +715,7 @@ try:
         # server-templated endpoint over widening it.
         PUBLIC_UNSAFE = {
             "/api/login",
+            "/api/logout",
             "/api/users/register",
             # The public registration form filing an application for review.
             # Purpose-built rather than widening anything: type is allowlisted,
@@ -756,28 +757,43 @@ try:
         # made this middleware answer 401 with no CORS headers - which the
         # browser reports as an opaque CORS failure, not a 401.
         #
-        # This broke cross-origin logins specifically: /api/auth/verify is
-        # special-cased below, so its preflight always failed. Same-origin setups
-        # (the backend serving the built frontend on one port) send no preflight
-        # and were therefore unaffected, which is why it only showed up on the
-        # dev server.
-        if request.method == "OPTIONS":
+        # Likewise, logging out or logging in must never be rejected by this
+        # middleware because of a stale or expired Bearer token in the headers.
+        path = request.url.path
+        if request.method == "OPTIONS" or path in ("/api/login", "/api/logout"):
             return await call_next(request)
+
+        def _cors_json_response(status_code: int, content: dict) -> JSONResponse:
+            resp = JSONResponse(status_code=status_code, content=content)
+            req_origin = request.headers.get("origin")
+            if req_origin:
+                allowed = [o.strip() for o in settings.ALLOWED_ORIGINS if o.strip()]
+                if (
+                    req_origin in allowed
+                    or "*" in allowed
+                    or req_origin.startswith("http://localhost:")
+                    or req_origin.startswith("http://127.0.0.1:")
+                ):
+                    resp.headers["Access-Control-Allow-Origin"] = req_origin
+                    resp.headers["Access-Control-Allow-Credentials"] = "true"
+                    resp.headers["Access-Control-Allow-Methods"] = "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT"
+                    resp.headers["Access-Control-Allow-Headers"] = "*"
+                    resp.headers["Vary"] = "Origin"
+            return resp
 
         auth_header = request.headers.get("Authorization", "")
         has_bearer = auth_header.startswith("Bearer ")
-        path = request.url.path
         is_drafts_route = path == "/api/drafts" or path.startswith("/api/drafts/")
         is_write_protected = request.method in ("POST", "PUT", "PATCH", "DELETE") and path not in PUBLIC_UNSAFE and not is_drafts_route
         is_verify_check = path == "/api/auth/verify"
 
         if has_bearer or is_write_protected or is_verify_check:
             if not has_bearer:
-                return JSONResponse(status_code=401, content={"detail": "Authentication required"})
+                return _cors_json_response(status_code=401, content={"detail": "Authentication required"})
             token = auth_header[7:]
             conn = get_db_connection()
             if not conn:
-                return JSONResponse(status_code=503, content={"detail": "Database unreachable"})
+                return _cors_json_response(status_code=503, content={"detail": "Database unreachable"})
             cur = conn.cursor()
             try:
                 # Join users so that a suspended account cannot keep using a
@@ -792,9 +808,9 @@ try:
                 cur.close()
                 release_db_connection(conn)
             if session_row is None:
-                return JSONResponse(status_code=401, content={"detail": "Invalid or revoked session token"})
+                return _cors_json_response(status_code=401, content={"detail": "Invalid or revoked session token"})
             if account_is_disabled(session_row[0]):
-                return JSONResponse(status_code=403, content={"detail": "This account has been disabled"})
+                return _cors_json_response(status_code=403, content={"detail": "This account has been disabled"})
         return await call_next(request)
 
     class StudentCreate(BaseModel):
@@ -6107,32 +6123,33 @@ try:
             target_mentor = (payload.mentor_id or "").strip()
             if not target_mentor or target_mentor.lower() in ("none", "null", "unassigned"):
                 cur.execute(
-                    "UPDATE teams SET mentor_id = NULL, mentor_status = 'none' WHERE id = %s",
+                    "UPDATE teams SET mentor_id = NULL, mentor = '', mentor_status = 'none' WHERE id = %s",
                     (team_id,),
                 )
                 conn.commit()
                 cur.close()
                 broadcast_async({"type": "data_changed", "collection": "teams"})
-                return {"team_id": team_id, "mentor_id": None, "mentor_status": "none"}
+                return {"team_id": team_id, "mentor_id": None, "mentor_name": "", "mentor_status": "none"}
 
             cur.execute(
-                "SELECT role, organization FROM users WHERE id = %s", (target_mentor,)
+                "SELECT role, organization, full_name FROM users WHERE id = %s", (target_mentor,)
             )
             mentor = cur.fetchone()
-            if not mentor or (mentor[0] or "") != "instructor":
+            if not mentor or (mentor[0] or "").lower() not in ("instructor", "mentor", "lead_mentor", "admin", "super_admin"):
                 cur.close()
-                raise HTTPException(status_code=400, detail="Mentor must be an instructor account")
+                raise HTTPException(status_code=400, detail="Mentor must be an accredited mentor or instructor account")
 
+            mentor_name = mentor[2] or ""
             cur.execute(
-                "UPDATE teams SET mentor_id = %s, mentor_status = 'assigned' WHERE id = %s",
-                (target_mentor, team_id),
+                "UPDATE teams SET mentor_id = %s, mentor = %s, mentor_status = 'assigned' WHERE id = %s",
+                (target_mentor, mentor_name, team_id),
             )
             conn.commit()
             cur.close()
         finally:
             release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "teams"})
-        return {"team_id": team_id, "mentor_id": target_mentor, "mentor_status": "assigned"}
+        return {"team_id": team_id, "mentor_id": target_mentor, "mentor_name": mentor_name, "mentor_status": "assigned"}
 
     @app.post("/api/teams/{team_id}/request-mentor")
     def request_team_mentor(team_id: str, payload: MentorRequestPayload = Body(default_factory=MentorRequestPayload), actor: dict = Depends(require_auth)):
@@ -7478,11 +7495,60 @@ try:
 
         ticket = payload.ticket or f"NTIC-{payload.role.upper()[:3]}-{_generate_access_code()}"
         phone = payload.phone.strip() if payload.phone and payload.phone.strip() else None
+        em = payload.email.strip().lower()
         cur = conn.cursor()
         try:
+            # Enforce authoritative email uniqueness across users, pending_approvals, and students
+            cur.execute("SELECT id FROM users WHERE LOWER(COALESCE(email, '')) = %s LIMIT 1", (em,))
+            if cur.fetchone():
+                cur.close()
+                release_db_connection(conn)
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"The email '{payload.email}' is already registered to an existing account.",
+                )
+
+            cur.execute("""
+                SELECT id FROM pending_approvals 
+                WHERE status = 'pending'
+                  AND (LOWER(COALESCE(contact, '')) = %s 
+                   OR LOWER(COALESCE(details->>'schoolEmail', '')) = %s
+                   OR LOWER(COALESCE(details->>'repEmail', '')) = %s
+                   OR LOWER(COALESCE(details->>'leadEmail', '')) = %s
+                   OR LOWER(COALESCE(details->>'email', '')) = %s)
+                LIMIT 1
+            """, (em, em, em, em, em))
+            if cur.fetchone():
+                cur.close()
+                release_db_connection(conn)
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"The email '{payload.email}' is currently tied to a pending application under review.",
+                )
+
+            if payload.role != "student":
+                cur.execute("SELECT id FROM students WHERE LOWER(COALESCE(email, '')) = %s LIMIT 1", (em,))
+                if cur.fetchone():
+                    cur.close()
+                    release_db_connection(conn)
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"The email '{payload.email}' is already registered to a student profile.",
+                    )
+
+            if phone:
+                cur.execute("SELECT id FROM users WHERE phone = %s LIMIT 1", (phone,))
+                if cur.fetchone():
+                    cur.close()
+                    release_db_connection(conn)
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"The phone number '{payload.phone}' is already registered to another account.",
+                    )
+
             cur.execute(
                 "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone, organization, age_group, experience_level, competition_id, photo_file_id, doc_file_id, must_change_password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                (user_id, payload.email.strip().lower(), payload.full_name, payload.role, ticket, password_hash, payload.status, phone, payload.organization or None, payload.age_group or None, payload.experience_level or None, payload.competition_id or None, payload.photo_file_id or None, payload.doc_file_id or None, bool(generated_password))
+                (user_id, em, payload.full_name, payload.role, ticket, password_hash, payload.status, phone, payload.organization or None, payload.age_group or None, payload.experience_level or None, payload.competition_id or None, payload.photo_file_id or None, payload.doc_file_id or None, bool(generated_password))
             )
             conn.commit()
         except Exception as e:

@@ -202,6 +202,25 @@ class TestCORS:
         # could read credentialed responses.
         assert resp.headers.get("access-control-allow-origin") != "https://evil.example.com"
 
+    def test_unauthenticated_protected_endpoint_preserves_cors(self, client):
+        # When an expired or missing token hits a protected route, it must return
+        # 401 WITH the CORS header so browsers don't report an opaque CORS failure.
+        resp = client.get("/api/system/nodes-health", headers={
+            "Origin": "http://localhost:4200",
+            "Authorization": "Bearer non_existent_or_expired_token"
+        })
+        assert resp.status_code == 401
+        assert resp.headers.get("access-control-allow-origin") == "http://localhost:4200"
+
+    def test_logout_without_auth_preserves_cors_and_succeeds(self, client):
+        # A client whose token expired must be permitted to call /api/logout
+        # without 401 rejection, and must receive valid CORS headers.
+        resp = client.post("/api/logout", json={"token": "expired_token"}, headers={
+            "Origin": "http://localhost:4200"
+        })
+        assert resp.status_code == 200
+        assert resp.headers.get("access-control-allow-origin") == "http://localhost:4200"
+
 
 class TestShapes:
     def test_competition_get_shape(self, client, admin_token):

@@ -380,15 +380,24 @@
 
       <!-- ─── EMPTY STATE: USERS ─── -->
       <div class="um-empty" *ngIf="filteredUsers.length === 0">
-        <div class="um-empty-icon">
-          <span class="material-symbols-outlined">manage_search</span>
-        </div>
-        <h3>No Users Found</h3>
-        <p>No accounts match your current filters or search query.</p>
-        <button class="cmd-btn cmd-btn-primary" (click)="searchQuery=''; roleFilter='all'; statusFilter='all'; applyFilters()">
-          <span class="material-symbols-outlined">clear_all</span>
-          Reset Filters
-        </button>
+        <ng-container *ngIf="isSyncing && users.length === 0; else noUsersFound">
+          <div class="um-empty-icon">
+            <span class="material-symbols-outlined spinning">sync</span>
+          </div>
+          <h3>Loading User Accounts…</h3>
+          <p>Synchronizing identity records from database…</p>
+        </ng-container>
+        <ng-template #noUsersFound>
+          <div class="um-empty-icon">
+            <span class="material-symbols-outlined">manage_search</span>
+          </div>
+          <h3>No Users Found</h3>
+          <p>No accounts match your current filters or search query.</p>
+          <button class="cmd-btn cmd-btn-primary" (click)="searchQuery=''; roleFilter='all'; statusFilter='all'; applyFilters()">
+            <span class="material-symbols-outlined">clear_all</span>
+            Reset Filters
+          </button>
+        </ng-template>
       </div>
     </ng-container>
 
@@ -475,16 +484,43 @@
                   <div style="font-size:13px;font-weight:600;color:var(--on-surface);">{{ t.lead || 'Unassigned' }}</div>
                   <div style="font-size:11px;color:var(--on-surface-variant);">{{ t.members || 1 }} member{{ (t.members || 1) > 1 ? 's' : '' }}</div>
                 </td>
-                <td>
-                  <select
-                    class="squad-mentor-select"
-                    [ngModel]="t.mentorId || ''"
-                    (ngModelChange)="assignTeamMentor(t, $event)">
-                    <option value="">-- No Mentor --</option>
-                    <option *ngFor="let inst of instructorsList" [value]="inst.id">
-                      {{ inst.fullName || inst.email }} (Instructor)
-                    </option>
-                  </select>
+                <td class="td-mentor" (click)="$event.stopPropagation()">
+                  <div *ngIf="assigningMentorTeamId === t.id" class="mentor-loading-pill">
+                    <span class="material-symbols-outlined spinning" style="font-size:14px;">sync</span>
+                    <span>Saving...</span>
+                  </div>
+
+                  <div *ngIf="assigningMentorTeamId !== t.id" class="mentor-cell-wrap">
+                    <!-- Assigned Mentor Chip -->
+                    <div class="mentor-pill assigned" *ngIf="t.mentorId">
+                      <div class="mentor-mini-avatar">
+                        {{ getInitials(t.mentor || getMentorName(t.mentorId)) }}
+                      </div>
+                      <div class="mentor-meta">
+                        <span class="mentor-name">{{ t.mentor || getMentorName(t.mentorId) }}</span>
+                        <span class="mentor-role">Squad Mentor</span>
+                      </div>
+                    </div>
+
+                    <!-- Requested Badge -->
+                    <div class="mentor-pill requested" *ngIf="!t.mentorId && (t.mentorStatus === 'requested' || t.mentorStatus === 'pending_school')">
+                      <span class="material-symbols-outlined" style="font-size:14px;color:#f59e0b;">priority_high</span>
+                      <span style="font-weight:600;color:#f59e0b;">Requested</span>
+                    </div>
+
+                    <!-- Quick Dropdown -->
+                    <select
+                      class="squad-mentor-select"
+                      [class.has-mentor]="!!t.mentorId"
+                      [ngModel]="t.mentorId || ''"
+                      (ngModelChange)="assignTeamMentor(t, $event)"
+                      [title]="t.mentorId ? 'Change or remove assigned mentor' : 'Assign mentor'">
+                      <option value="">{{ t.mentorId ? '✕ Unassign Mentor' : '-- Assign Mentor --' }}</option>
+                      <option *ngFor="let inst of mentorsList" [value]="inst.id">
+                        {{ inst.fullName || inst.email }} (Mentor)
+                      </option>
+                    </select>
+                  </div>
                 </td>
                 <td>
                   <span class="um-status" [class]="'st-' + (t.status || 'active').toLowerCase()">
@@ -928,19 +964,23 @@
             Select User Role
           </p>
           <div class="ca-role-grid">
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'instructor'" (click)="setNewUserRole('instructor')">
+            <button type="button" class="ca-role-chip" [class.selected]="newUserForm.role === 'instructor'" (click)="setNewUserRole('instructor')">
               <span class="material-symbols-outlined">co_present</span>
               <span>Mentor</span>
             </button>
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'competition_manager'" (click)="setNewUserRole('competition_manager')">
+            <button type="button" class="ca-role-chip" [class.selected]="newUserForm.role === 'sponsor'" (click)="setNewUserRole('sponsor')">
+              <span class="material-symbols-outlined">handshake</span>
+              <span>Partner</span>
+            </button>
+            <button type="button" class="ca-role-chip" [class.selected]="newUserForm.role === 'competition_manager'" (click)="setNewUserRole('competition_manager')">
               <span class="material-symbols-outlined">emoji_events</span>
               <span>Comp. Manager</span>
             </button>
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'content_manager'" (click)="setNewUserRole('content_manager')">
+            <button type="button" class="ca-role-chip" [class.selected]="newUserForm.role === 'content_manager'" (click)="setNewUserRole('content_manager')">
               <span class="material-symbols-outlined">edit_note</span>
               <span>Content Mgr</span>
             </button>
-            <button class="ca-role-chip" [class.selected]="newUserForm.role === 'reviewer'" (click)="setNewUserRole('reviewer')">
+            <button type="button" class="ca-role-chip" [class.selected]="newUserForm.role === 'reviewer'" (click)="setNewUserRole('reviewer')">
               <span class="material-symbols-outlined">rate_review</span>
               <span>Reviewer</span>
             </button>
@@ -962,11 +1002,31 @@
               </div>
             </div>
             <div class="ca-field">
-              <label class="ca-label">Email Address <span class="ca-required">*</span></label>
-              <div class="ca-input-wrap">
-                <span class="material-symbols-outlined ca-input-icon">mail</span>
-                <input type="email" [(ngModel)]="newUserForm.email" placeholder="user@ntic.edu.gh" class="ca-input" />
+              <div class="ca-label-row">
+                <label class="ca-label">Email Address <span class="ca-required">*</span></label>
+                <span class="ca-avail-status checking" *ngIf="emailAvailabilityStatus === 'checking'">
+                  <span class="material-symbols-outlined spin-icon">sync</span> Checking...
+                </span>
+                <span class="ca-avail-status available" *ngIf="emailAvailabilityStatus === 'available'">
+                  <span class="material-symbols-outlined">check_circle</span> Available
+                </span>
+                <span class="ca-avail-status taken" *ngIf="emailAvailabilityStatus === 'taken'">
+                  <span class="material-symbols-outlined">error</span> Already Registered
+                </span>
               </div>
+              <div class="ca-input-wrap" [class.input-valid]="emailAvailabilityStatus === 'available'" [class.input-error]="emailAvailabilityStatus === 'taken'">
+                <span class="material-symbols-outlined ca-input-icon">mail</span>
+                <input 
+                  type="email" 
+                  [(ngModel)]="newUserForm.email" 
+                  (ngModelChange)="onNewUserEmailChange()"
+                  (blur)="checkNewUserEmailAvailability()"
+                  placeholder="user@ntic.edu.gh" 
+                  class="ca-input" />
+              </div>
+              <span class="ca-field-hint taken-hint" *ngIf="emailAvailabilityStatus === 'taken'">
+                This email is already in use by another user or pending application.
+              </span>
             </div>
             <div class="ca-field">
               <label class="ca-label">Phone Number</label>
@@ -982,33 +1042,60 @@
                 <input type="text" [(ngModel)]="newUserForm.organization" placeholder="e.g. NTIC System or School Name" class="ca-input" />
               </div>
             </div>
-            <p class="ca-creds-note">
-            <span class="material-symbols-outlined">info</span>
-            Credentials will be generated securely and shown for immediate clipboard copy upon account creation.
-          </p>
           </div>
         </div>
 
-        <!-- Section: Generated Credentials (Read-only display) -->
+        <!-- Section: Generated Credentials (Premium Read-only Security Card) -->
         <div class="ca-creds-box">
           <div class="ca-creds-header">
-            <span class="material-symbols-outlined">key</span>
-            <span>Auto-Generated Access Credentials</span>
+            <div class="ca-creds-icon-badge">
+              <span class="material-symbols-outlined">vpn_key</span>
+            </div>
+            <div class="ca-creds-header-text">
+              <span class="ca-creds-title">Auto-Generated Access Credentials</span>
+              <span class="ca-creds-subtitle">System-assigned ticket for secure identity &amp; instant sign-in</span>
+            </div>
+            <div class="ca-creds-status-pill">
+              <span class="ca-pulse-dot"></span>
+              <span>Pre-Provisioned</span>
+            </div>
           </div>
+
           <div class="ca-creds-row">
             <div class="ca-cred-item">
-              <span class="ca-cred-label">Ticket / Access Pass</span>
-              <div class="ca-cred-value">
-                <code>{{ newUserForm.ticket }}</code>
+              <div class="ca-cred-meta">
+                <span class="ca-cred-label">Ticket / Access Pass</span>
+                <span class="ca-cred-badge">PRIMARY ID</span>
+              </div>
+              <div class="ca-cred-value-wrap">
+                <code class="ca-cred-code">{{ newUserForm.ticket }}</code>
+                <button type="button" class="ca-cred-copy-btn" [class.copied]="copiedNewUserTicket" (click)="copyNewUserTicket()" title="Copy Ticket">
+                  <span class="material-symbols-outlined">{{ copiedNewUserTicket ? 'check_circle' : 'content_copy' }}</span>
+                  <span>{{ copiedNewUserTicket ? 'Copied!' : 'Copy' }}</span>
+                </button>
               </div>
             </div>
+
             <div class="ca-cred-divider"></div>
+
             <div class="ca-cred-item">
-              <span class="ca-cred-label">Temporary PIN</span>
-              <div class="ca-cred-value">
-                <code>{{ newUserForm.password }}</code>
+              <div class="ca-cred-meta">
+                <span class="ca-cred-label">Temporary PIN / Password</span>
+                <span class="ca-cred-badge pin">ENCRYPTED</span>
+              </div>
+              <div class="ca-cred-value-wrap">
+                <code class="ca-cred-code pin" *ngIf="newUserForm.password">{{ newUserForm.password }}</code>
+                <div class="ca-cred-pending-pill" *ngIf="!newUserForm.password">
+                  <span class="material-symbols-outlined">lock</span>
+                  <span>Issued via Server on Save</span>
+                </div>
               </div>
             </div>
+          </div>
+
+          <div class="ca-creds-footer-note">
+            <span class="material-symbols-outlined">verified_user</span>
+            <span>Credentials will be securely dispatched via Brevo Email &amp; SMSMode upon creation.</span>
           </div>
         </div>
 
@@ -1185,6 +1272,15 @@
           <div class="ca-field" style="grid-column:1/-1;">
             <label class="ca-label">Team Motto / Slogan</label>
             <input type="text" [(ngModel)]="editTeamForm.motto" placeholder="e.g. Innovate beyond limits" class="ca-input" style="padding-left:12px;" />
+          </div>
+          <div class="ca-field" style="grid-column:1/-1;">
+            <label class="ca-label">Assigned Mentor</label>
+            <select [(ngModel)]="editTeamForm.mentorId" class="ca-input" style="padding-left:12px;">
+              <option value="">-- No Mentor (Unassigned) --</option>
+              <option *ngFor="let inst of mentorsList" [value]="inst.id">
+                {{ inst.fullName || inst.email }} (Mentor)
+              </option>
+            </select>
           </div>
         </div>
       </div>

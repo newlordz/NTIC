@@ -1256,6 +1256,10 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       item.card.removeEventListener('mouseleave', item.mouseLeave);
     });
     this.cardListeners = [];
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
     if (this.storyTimer) clearInterval(this.storyTimer);
     if (typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') {
       this.videoBlobCache.forEach(url => URL.revokeObjectURL(url));
@@ -2147,33 +2151,49 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
 
   // ── COUNTDOWN CLOCK ─────────────────────────────────────────
   startCountdown(): void {
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+      this.countdownInterval = null;
+    }
+
     const update = () => {
-      const now = new Date().getTime();
+      const now = Date.now();
       const target = this.competitionDate.getTime();
-      if (isNaN(target)) {
-        this.countdownDays = this.countdownHours = this.countdownMins = this.countdownSecs = 0;
-        this.cdr.markForCheck();
+      if (isNaN(target) || target <= now) {
+        if (this.countdownDays !== 0 || this.countdownHours !== 0 || this.countdownMins !== 0 || this.countdownSecs !== 0) {
+          this.ngZone.run(() => {
+            this.countdownDays = this.countdownHours = this.countdownMins = this.countdownSecs = 0;
+            try { this.cdr.detectChanges(); } catch (_) { this.cdr.markForCheck(); }
+          });
+        }
         return;
       }
       const dist = target - now;
-      if (dist <= 0) {
-        this.countdownDays = this.countdownHours = this.countdownMins = this.countdownSecs = 0;
-        this.cdr.markForCheck();
-        return;
+      const days  = Math.floor(dist / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const mins  = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
+      const secs  = Math.floor((dist % (1000 * 60)) / 1000);
+
+      // Only enter Angular Zone and re-render when an integer second actually transitions!
+      // Polling at 100ms outside Zone keeps CPU near 0%, while ngZone.run() + detectChanges()
+      // guarantees that the DOM updates instantaneously on every single second without skipping.
+      if (secs !== this.countdownSecs || mins !== this.countdownMins || hours !== this.countdownHours || days !== this.countdownDays) {
+        this.ngZone.run(() => {
+          this.countdownDays  = days;
+          this.countdownHours = hours;
+          this.countdownMins  = mins;
+          this.countdownSecs  = secs;
+          this.countdownTick  = !this.countdownTick;
+          try { this.cdr.detectChanges(); } catch (_) { this.cdr.markForCheck(); }
+        });
       }
-      this.countdownDays  = Math.floor(dist / (1000 * 60 * 60 * 24));
-      this.countdownHours = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      this.countdownMins  = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
-      this.countdownSecs  = Math.floor((dist % (1000 * 60)) / 1000);
-      this.countdownTick  = !this.countdownTick;
-      this.cdr.markForCheck();
     };
+
     update();
-    if (this.countdownInterval) clearInterval(this.countdownInterval);
     this.ngZone.runOutsideAngular(() => {
       this.countdownInterval = setInterval(() => {
         update();
-      }, 1000);
+      }, 100);
     });
   }
 

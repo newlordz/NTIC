@@ -2,6 +2,7 @@ import { getAuthValue } from '../../services/session.util';
 import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { ContentService, SponsorPayment, User } from '../../services/content.service';
 import { DialogService } from '../../services/dialog.service';
 import { ApiService, Sponsorship, SponsorPayment as ApiSponsorPayment } from '../../services/api.service';
@@ -10,7 +11,7 @@ import { CurrentUserService } from '../../services/current-user.service';
 @Component({
   selector: 'app-sponsors',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './sponsors.component.html',
   styleUrl: './sponsors.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -339,6 +340,99 @@ export class SponsorsComponent implements OnInit {
 
   downloadCertificate(): void {
     this.viewCSRCertificate();
+  }
+
+  downloadVIPPass(): void {
+    const sponsor = this.loggedInSponsor;
+    const orgName = this.getSponsorName(sponsor);
+    const repName = sponsor?.fullName || 'Corporate VIP Representative';
+    const tier = sponsor?.tier || 'Corporate Partner';
+    const token = sponsor?.ticket || 'NTIC-VIP-PASS';
+
+    const passWindow = window.open('', '_blank', 'width=880,height=650');
+    if (!passWindow) {
+      this.dialogService.toast('Please allow popups to view and download your VIP Guest Pass.', 'warning');
+      return;
+    }
+
+    passWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>VIP Executive Guest Pass -- ${orgName}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600;700;800&family=Fira+Code:wght@700&display=swap');
+          body {
+            margin: 0; padding: 40px; background: #0b0f19; font-family: 'Inter', sans-serif;
+            color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box;
+          }
+          .pass-card {
+            width: 100%; max-width: 680px; background: linear-gradient(145deg, #131b2e 0%, #0d1322 100%);
+            border: 2px solid rgba(245, 158, 11, 0.5); border-radius: 24px; padding: 40px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 40px rgba(245, 158, 11, 0.15);
+            position: relative; overflow: hidden;
+          }
+          .pass-glow { position: absolute; width: 300px; height: 300px; top: -100px; right: -100px; border-radius: 50%; background: radial-gradient(circle, rgba(245, 158, 11, 0.2) 0%, transparent 70%); pointer-events: none; }
+          .pass-top { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 24px; margin-bottom: 24px; }
+          .pass-brand { font-family: 'Cinzel', serif; font-size: 20px; font-weight: 700; color: #fbbf24; letter-spacing: 2px; }
+          .pass-type-badge { background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; color: #fbbf24; font-size: 11px; font-weight: 800; padding: 6px 14px; border-radius: 20px; letter-spacing: 1.5px; text-transform: uppercase; }
+          .pass-title { font-size: 26px; font-weight: 800; margin: 0 0 6px; color: #ffffff; }
+          .pass-sub { font-size: 14px; color: #94a3b8; margin: 0 0 24px; }
+          .pass-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; margin-bottom: 24px; }
+          .item-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+          .item-value { font-size: 15px; font-weight: 700; color: #f1f5f9; }
+          .pass-code-box { display: flex; justify-content: space-between; align-items: center; background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.4); border-radius: 12px; padding: 14px 20px; margin-bottom: 24px; }
+          .code-text { font-family: 'Fira Code', monospace; font-size: 18px; font-weight: 700; color: #fbbf24; letter-spacing: 1px; }
+          .pass-footer { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748b; }
+          .btn-print { background: linear-gradient(135deg, #f59e0b, #d97706); color: #0b0f19; font-weight: 800; font-size: 13px; border: none; padding: 8px 18px; border-radius: 8px; cursor: pointer; }
+          @media print { .btn-print { display: none; } body { padding: 0; background: #fff; color: #000; } .pass-card { border: 2px solid #000; color: #000; background: #fff; } .pass-title, .item-value { color: #000; } }
+        </style>
+      </head>
+      <body>
+        <div class="pass-card">
+          <div class="pass-glow"></div>
+          <div class="pass-top">
+            <div>
+              <div class="pass-brand">NTI GHANA CHAMPIONSHIP</div>
+              <div style="font-size:12px;color:#94a3b8;margin-top:2px;">National Technology & Innovation Championship</div>
+            </div>
+            <span class="pass-type-badge">VIP GUEST ADMISSION</span>
+          </div>
+          <h1 class="pass-title">${orgName}</h1>
+          <p class="pass-sub">Official Accreditation: ${tier}</p>
+          <div class="pass-grid">
+            <div>
+              <div class="item-label">Admit Lead Executive</div>
+              <div class="item-value">${repName}</div>
+            </div>
+            <div>
+              <div class="item-label">Access Level</div>
+              <div class="item-value">All Stages + VIP Hospitality Lounge</div>
+            </div>
+            <div>
+              <div class="item-label">Event Date</div>
+              <div class="item-value">October 2026 Grand Finale</div>
+            </div>
+            <div>
+              <div class="item-label">Venue</div>
+              <div class="item-value">Accra Intl Conference Centre</div>
+            </div>
+          </div>
+          <div class="pass-code-box">
+            <div>
+              <div class="item-label" style="color:#fbbf24;">VIP PASS TOKEN</div>
+              <div class="code-text">${token}</div>
+            </div>
+            <button class="btn-print" onclick="window.print()">Print VIP Pass</button>
+          </div>
+          <div class="pass-footer">
+            <span>Valid for up to 4 Corporate Representatives. Verified by Ministry of Education & NTI Ghana Secretariat.</span>
+          </div>
+        </div>
+      </body>
+      </html>
+    `);
+    passWindow.document.close();
   }
 
   viewCSRCertificate(): void {

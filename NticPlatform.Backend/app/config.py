@@ -52,10 +52,14 @@ class Config:
 
     PORT: int = int(os.getenv("PORT", 5000))
 
-    ALLOWED_ORIGINS: list = os.getenv(
-        "ALLOWED_ORIGINS",
-        "http://localhost:4200,http://localhost:8080,https://ntic.up.railway.app",
-    ).split(",")
+    ALLOWED_ORIGINS: list = [
+        origin.strip()
+        for origin in os.getenv(
+            "ALLOWED_ORIGINS",
+            "http://localhost:4200,http://localhost:8080,https://ntic.up.railway.app",
+        ).split(",")
+        if origin.strip()
+    ]
 
     @classmethod
     def validate(cls) -> None:

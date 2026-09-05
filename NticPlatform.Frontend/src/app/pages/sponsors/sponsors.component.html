@@ -34,6 +34,9 @@
         <button class="btn btn-subtle" (click)="downloadCertificate()">
           <span class="material-symbols-outlined">workspace_premium</span> CSR Certificate
         </button>
+        <button class="btn btn-subtle" (click)="downloadVIPPass()">
+          <span class="material-symbols-outlined">confirmation_number</span> VIP Passes (4)
+        </button>
       </div>
     </div>
 
@@ -47,33 +50,33 @@
       </div>
       <div class="stat-card secondary">
         <div class="stat-bg-icon material-symbols-outlined">handshake</div>
-        <div class="stat-label"><span class="material-symbols-outlined">handshake</span>Sponsorship Tier</div>
-        <div class="stat-value" style="font-size:20px;">{{ loggedInSponsor?.tier || 'Partner Tier' }}</div>
+        <div class="stat-label"><span class="material-symbols-outlined">handshake</span>Partnership Tier</div>
+        <div class="stat-value" style="font-size:20px;">{{ loggedInSponsor?.tier || 'Corporate Partner' }}</div>
         <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">Active Package</div>
       </div>
       <div class="stat-card tertiary">
-        <div class="stat-bg-icon material-symbols-outlined">groups</div>
-        <div class="stat-label"><span class="material-symbols-outlined">groups</span>Track Supported</div>
+        <div class="stat-bg-icon material-symbols-outlined">rocket_launch</div>
+        <div class="stat-label"><span class="material-symbols-outlined">rocket_launch</span>Track Supported</div>
         <div class="stat-value" style="font-size:20px;">{{ loggedInSponsor?.track || 'All Tracks' }}</div>
-        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">NTIC Championship</div>
+        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">NTI Ghana Championship</div>
       </div>
       <div class="stat-card primary">
         <div class="stat-bg-icon material-symbols-outlined">verified</div>
         <div class="stat-label"><span class="material-symbols-outlined">verified</span>Account Status</div>
         <div class="stat-value" style="font-size:20px;">{{ loggedInSponsor?.status || 'Active' }}</div>
-        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">Since {{ loggedInSponsor && loggedInSponsor.registeredAt ? loggedInSponsor.registeredAt.split('T')[0] : 'Registered' }}</div>
+        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">Verified Partner</div>
       </div>
     </div>
 
-    <!-- Details Grid -->
+    <!-- Details Grid: 4 Strategic Corporate Modules -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
 
-      <!-- Sponsorship Profile Card -->
+      <!-- 1. Sponsorship Profile Card -->
       <div class="card">
         <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
           <div style="display:flex;align-items:center;gap:10px;">
-            <span class="material-symbols-outlined" style="color:var(--primary);">badge</span>
-            <h3>Sponsorship Profile</h3>
+            <span class="material-symbols-outlined" style="color:var(--primary);">corporate_fare</span>
+            <h3>Partnership Representation</h3>
           </div>
           <button class="btn btn-subtle btn-sm" (click)="openEditProfileModal()">
             <span class="material-symbols-outlined" style="font-size:16px;">edit</span> Edit Profile
@@ -89,30 +92,30 @@
             <span class="info-value">{{ loggedInSponsor?.fullName || '--' }}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">Email</span>
+            <span class="info-label">Corporate Email</span>
             <span class="info-value">{{ loggedInSponsor?.email || '--' }}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">Phone</span>
+            <span class="info-label">Official Phone</span>
             <span class="info-value">{{ loggedInSponsor?.phone || '--' }}</span>
           </div>
           <div class="info-row">
             <span class="info-label">Partnership Tier</span>
-            <span class="info-value"><strong style="color:var(--primary);">{{ loggedInSponsor?.tier || 'Not specified' }}</strong></span>
+            <span class="info-value"><strong style="color:var(--primary);">{{ loggedInSponsor?.tier || 'Official Partner' }}</strong></span>
           </div>
           <div class="info-row">
-            <span class="info-label">Access Token</span>
-            <span class="info-value" style="font-family:monospace;font-size:13px;color:var(--primary);">{{ loggedInSponsor?.ticket }}</span>
+            <span class="info-label">Partner Access Pass</span>
+            <span class="info-value" style="font-family:monospace;font-size:13px;color:var(--primary);font-weight:700;">{{ loggedInSponsor?.ticket }}</span>
           </div>
         </div>
       </div>
 
-      <!-- Payment & Financial Records Card -->
+      <!-- 2. Payment & Financial Records Card -->
       <div class="card">
         <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
           <div style="display:flex;align-items:center;gap:10px;">
             <span class="material-symbols-outlined" style="color:var(--secondary);">receipt_long</span>
-            <h3>Payment Records & Transactions</h3>
+            <h3>Contributions & Settlement Ledger</h3>
           </div>
           <button class="btn btn-primary btn-sm" (click)="openPaymentModal()">
             <span class="material-symbols-outlined" style="font-size:16px;">credit_card</span> Pay / Settle
@@ -123,10 +126,10 @@
           <!-- Empty payment history state -->
           <div *ngIf="!loggedInSponsor?.payments?.length" style="padding:20px;background:var(--surface-container-low);border-radius:10px;border:1.5px dashed var(--outline-variant);text-align:center;">
             <span class="material-symbols-outlined" style="font-size:32px;color:var(--outline);display:block;margin-bottom:8px;">payments</span>
-            <p style="margin:0 0 6px;font-weight:700;font-size:14px;color:var(--on-surface);">No payment recorded yet</p>
-            <p style="margin:0 0 14px;font-size:12px;color:var(--on-surface-variant);">You can log an online payment, bank transfer, or mobile money receipt directly below.</p>
+            <p style="margin:0 0 6px;font-weight:700;font-size:14px;color:var(--on-surface);">No settlement logged yet</p>
+            <p style="margin:0 0 14px;font-size:12px;color:var(--on-surface-variant);">You can record an official bank wire, corporate cheque, or mobile money contribution directly below.</p>
             <button class="btn btn-primary btn-sm" (click)="openPaymentModal()">
-              <span class="material-symbols-outlined">add_card</span> Settle Sponsorship Now
+              <span class="material-symbols-outlined">add_card</span> Settle Contribution Now
             </button>
           </div>
 
@@ -140,7 +143,7 @@
                   <span class="badge primary" style="font-size:10px;">{{ pay.status }}</span>
                 </div>
                 <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">
-                  {{ pay.method }} * Ref: <strong style="font-family:monospace;">{{ pay.refNo }}</strong>
+                  {{ pay.method }} · Ref: <strong style="font-family:monospace;">{{ pay.refNo }}</strong>
                 </div>
                 <div *ngIf="pay.notes" style="font-size:11px;color:var(--on-surface-variant);margin-top:2px;">
                   {{ pay.notes }}
@@ -153,6 +156,73 @@
             </div>
           </div>
 
+        </div>
+      </div>
+
+      <!-- 3. Corporate Branding & Ecosystem Exposure Card -->
+      <div class="card">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="material-symbols-outlined" style="color:#0284c7;">palette</span>
+            <h3>Brand Showcase & Exposure</h3>
+          </div>
+          <span class="badge primary" style="font-size:11px;">Active Accreditation</span>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
+          <div style="padding:14px;background:var(--surface-container-low);border-radius:10px;display:flex;align-items:center;gap:16px;">
+            <div style="width:54px;height:54px;border-radius:10px;background:#ffffff;border:1px solid var(--outline-variant);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);overflow:hidden;flex-shrink:0;">
+              <span class="material-symbols-outlined" style="font-size:32px;color:var(--primary);">business</span>
+            </div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--on-surface);">{{ getSponsorName(loggedInSponsor) }}</div>
+              <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">Main Stage · Web Banner · Broadcast Overlay</div>
+            </div>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Ecosystem Reach</span>
+            <span class="info-value"><strong>85,000+</strong> Targeted Student & Youth Impressions</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Event Stage Presence</span>
+            <span class="info-value">Keynote Address & Award Presenter Slot</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Exhibition Booth</span>
+            <span class="info-value">Booth #A-12 (Main Foyer Exhibition)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Talent Scouting & VIP Event Access Card -->
+      <div class="card">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="material-symbols-outlined" style="color:#d97706;">emoji_events</span>
+            <h3>Talent Scouting & VIP Access</h3>
+          </div>
+          <button class="btn btn-subtle btn-sm" (click)="downloadVIPPass()">
+            <span class="material-symbols-outlined" style="font-size:16px;">print</span> Print Pass
+          </button>
+        </div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
+          <div style="padding:14px;background:linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(217,119,6,0.08) 100%);border:1px solid rgba(245,158,11,0.25);border-radius:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:700;color:#b45309;letter-spacing:0.5px;text-transform:uppercase;">Grand Finale Accreditation</span>
+              <span class="badge secondary" style="font-size:10px;">4 Passes Reserved</span>
+            </div>
+            <div style="font-size:13.5px;font-weight:700;color:var(--on-surface);">Accra International Conference Centre (AICC)</div>
+            <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">October 2026 · VIP Hospitality Lounge & Networking Gala</div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;padding-top:4px;">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--on-surface);">Discover Emerging Tech Talent</div>
+              <div style="font-size:11.5px;color:var(--on-surface-variant);">Browse verified portfolios & projects in {{ loggedInSponsor?.track || 'all tracks' }}</div>
+            </div>
+            <a class="btn btn-primary btn-sm" [routerLink]="['/talent']">
+              <span class="material-symbols-outlined" style="font-size:16px;">person_search</span> Explore Talent
+            </a>
+          </div>
         </div>
       </div>
 
