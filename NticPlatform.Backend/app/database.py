@@ -331,6 +331,7 @@ def _create_tables(conn):
             type VARCHAR(20),
             url TEXT,
             description TEXT,
+            order_num INTEGER DEFAULT 0,
             created_at VARCHAR(50),
             submitted_by VARCHAR(200),
             approval_status VARCHAR(20) DEFAULT 'approved',
@@ -612,6 +613,10 @@ def _create_tables(conn):
               AND (LOWER(t.submitted_by) = LOWER(u.email)
                    OR LOWER(t.submitted_by) = LOWER(u.full_name))
         """)
+
+    # Sequential ordering for LMS materials/blocks within a module
+    cur.execute("ALTER TABLE lms_materials ADD COLUMN IF NOT EXISTS order_num INTEGER DEFAULT 0;")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_lms_materials_order ON lms_materials (module_id, order_num);")
 
     # Tie LMS content to the competition cycle it prepares students for.
     #

@@ -8,103 +8,107 @@
   <div class="sidebar-overlay" *ngIf="!isLandingPage && isMobileSidebarOpen" (click)="closeMobileSidebar()"></div>
 
   <!-- ══ SIDEBAR ══ -->
-  <aside class="sidebar" *ngIf="!isLandingPage" [class.mobile-open]="isMobileSidebarOpen">
+  <aside class="sidebar" *ngIf="!isLandingPage" [class.mobile-open]="isMobileSidebarOpen" [class.desktop-collapsed]="isDesktopSidebarCollapsed">
     <div class="sidebar-brand">
-      <div class="brand-logo">
+      <div class="brand-logo" (click)="toggleDesktopSidebar()" style="cursor: pointer;" [title]="isDesktopSidebarCollapsed ? 'Expand sidebar' : 'NTIC'">
         <span class="material-symbols-outlined fill" style="font-size:22px;">rocket_launch</span>
       </div>
-      <div class="brand-text">
+      <div class="brand-text" *ngIf="!isDesktopSidebarCollapsed">
         <div class="brand-name">{{ brandTitle }}</div>
         <div class="brand-sub">{{ brandSubtitle }}</div>
       </div>
+      <button type="button" class="sidebar-collapse-toggle-btn" (click)="toggleDesktopSidebar()" [title]="isDesktopSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar to icons'" [attr.aria-label]="isDesktopSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+        <span class="material-symbols-outlined">{{ isDesktopSidebarCollapsed ? 'chevron_right' : 'chevron_left' }}</span>
+      </button>
     </div>
 
     <a class="sidebar-new-btn" *ngIf="currentUser?.roleId !== 'student' && currentUser?.roleId !== 'sponsor' && currentUser?.roleId !== 'super_admin' && currentUser?.roleId !== 'content_manager' && currentUser?.roleId !== 'reviewer' && currentUser?.roleId !== 'competition_manager'"
-       (click)="navigateSidebarCTA()">
+       (click)="navigateSidebarCTA()"
+       [title]="currentUser?.roleId === 'instructor' ? 'Grade Work' : currentUser?.roleId === 'school_admin' ? 'Add Team' : currentUser?.roleId === 'judge' ? 'Score Challenge' : 'New Challenge'">
       <span class="material-symbols-outlined" style="font-size:18px;">{{ currentUser?.roleId === 'judge' ? 'gavel' : currentUser?.roleId === 'school_admin' ? 'group_add' : currentUser?.roleId === 'instructor' ? 'assignment_turned_in' : 'add' }}</span>
-      {{ currentUser?.roleId === 'instructor' ? 'Grade Work' : currentUser?.roleId === 'school_admin' ? 'Add Team' : currentUser?.roleId === 'judge' ? 'Score Challenge' : 'New Challenge' }}
+      <span class="btn-label" *ngIf="!isDesktopSidebarCollapsed">{{ currentUser?.roleId === 'instructor' ? 'Grade Work' : currentUser?.roleId === 'school_admin' ? 'Add Team' : currentUser?.roleId === 'judge' ? 'Score Challenge' : 'New Challenge' }}</span>
     </a>
 
     <div class="sidebar-section">
-      <div class="sidebar-section-label">Main</div>
-      <a class="nav-item" *ngIf="hasAccess('dashboard')" routerLink="/dashboard" [queryParams]="{ tab: 'dashboard' }" [class.active]="isNavActive('dashboard')" (click)="closeMobileSidebar()">
+      <div class="sidebar-section-label" *ngIf="!isDesktopSidebarCollapsed">Main</div>
+      <a class="nav-item" *ngIf="hasAccess('dashboard')" routerLink="/dashboard" [queryParams]="{ tab: 'dashboard' }" [class.active]="isNavActive('dashboard')" (click)="closeMobileSidebar()" title="Dashboard">
         <span class="material-symbols-outlined">dashboard</span>
-        Dashboard
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Dashboard</span>
       </a>
-      <a class="nav-item" *ngIf="hasAccess('admin_control')" routerLink="/dashboard" [queryParams]="{ tab: 'control' }" routerLinkActive="active" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('admin_control')" routerLink="/dashboard" [queryParams]="{ tab: 'control' }" routerLinkActive="active" (click)="closeMobileSidebar()" title="Admin Control">
         <span class="material-symbols-outlined">admin_panel_settings</span>
-        Admin Control
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Admin Control</span>
       </a>
-      <a class="nav-item" *ngIf="hasAccess('settings')" routerLink="/profile-completion" routerLinkActive="active" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('settings')" routerLink="/profile-completion" routerLinkActive="active" (click)="closeMobileSidebar()" title="Settings">
         <span class="material-symbols-outlined">settings</span>
-        Settings
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Settings</span>
       </a>
-      <a class="nav-item" *ngIf="hasAccess('roster')" routerLink="/dashboard" [queryParams]="{ tab: 'roster' }" [class.active]="isNavActive('roster')" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('roster')" routerLink="/dashboard" [queryParams]="{ tab: 'roster' }" [class.active]="isNavActive('roster')" (click)="closeMobileSidebar()" title="My Teams &amp; Roster">
         <span class="material-symbols-outlined">groups</span>
-        My Teams &amp; Roster
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">My Teams &amp; Roster</span>
       </a>
       <a class="nav-item" *ngIf="hasAccess('registration')" 
          [routerLink]="currentUser?.roleId === 'super_admin' ? '/dashboard' : '/registration'" 
          [queryParams]="currentUser?.roleId === 'super_admin' ? { openRegModal: 'true' } : { tab: 'school' }" 
-         routerLinkActive="active" (click)="closeMobileSidebar()">
+         routerLinkActive="active" (click)="closeMobileSidebar()" title="Service Support">
         <span class="material-symbols-outlined">how_to_reg</span>
-        Service Support
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Service Support</span>
       </a>
-      <a class="nav-item" *ngIf="hasAccess('lms')" routerLink="/lms" routerLinkActive="active" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('lms')" routerLink="/lms" routerLinkActive="active" (click)="closeMobileSidebar()" title="LMS">
         <span class="material-symbols-outlined">school</span>
-        LMS
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">LMS</span>
       </a>
-      <a class="nav-item" *ngIf="hasAccess('judging')" routerLink="/judge" routerLinkActive="active" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('judging')" routerLink="/judge" routerLinkActive="active" (click)="closeMobileSidebar()" title="Observatory">
         <span class="material-symbols-outlined">visibility</span>
-        Observatory
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Observatory</span>
       </a>
-      <a class="nav-item" *ngIf="hasAccess('sponsors')" routerLink="/sponsors" routerLinkActive="active" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('sponsors')" routerLink="/sponsors" routerLinkActive="active" (click)="closeMobileSidebar()" title="Executive Portal">
         <span class="material-symbols-outlined">handshake</span>
-        Executive Portal
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Executive Portal</span>
       </a>
-      <a class="nav-item" *ngIf="hasAccess('competitions')" [routerLink]="competitionsNavRoute" [routerLinkActiveOptions]="{exact: true}" routerLinkActive="active" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('competitions')" [routerLink]="competitionsNavRoute" [routerLinkActiveOptions]="{exact: true}" routerLinkActive="active" (click)="closeMobileSidebar()" title="Competitions">
         <span class="material-symbols-outlined">emoji_events</span>
-        Competitions
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Competitions</span>
       </a>
     </div>
 
     <div class="sidebar-section" *ngIf="hasAccess('leaderboard') || hasAccess('reporting') || hasAccess('lms_admin')">
-      <div class="sidebar-section-label">Analytics</div>
-      <a class="nav-item" *ngIf="hasAccess('leaderboard')" routerLink="/leaderboard" routerLinkActive="active" (click)="closeMobileSidebar()">
+      <div class="sidebar-section-label" *ngIf="!isDesktopSidebarCollapsed">Analytics</div>
+      <a class="nav-item" *ngIf="hasAccess('leaderboard')" routerLink="/leaderboard" routerLinkActive="active" (click)="closeMobileSidebar()" title="Leaderboard">
         <span class="material-symbols-outlined">leaderboard</span>
-        Leaderboard
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Leaderboard</span>
       </a>
-      <a class="nav-item" *ngIf="hasAccess('reporting')" routerLink="/reporting" routerLinkActive="active" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('reporting')" routerLink="/reporting" routerLinkActive="active" (click)="closeMobileSidebar()" [title]="currentUser?.roleId === 'school_admin' ? 'School Reports' : 'Reports'">
         <span class="material-symbols-outlined">assessment</span>
-        {{ currentUser?.roleId === 'school_admin' ? 'School Reports' : 'Reports' }}
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">{{ currentUser?.roleId === 'school_admin' ? 'School Reports' : 'Reports' }}</span>
       </a>
       <!-- Records link removed - now centralized under Document & Entity Archive in Admin Control -->
-      <a class="nav-item" *ngIf="hasAccess('lms_admin')" routerLink="/lms-manager" routerLinkActive="active" (click)="closeMobileSidebar()">
+      <a class="nav-item" *ngIf="hasAccess('lms_admin')" routerLink="/lms-manager" routerLinkActive="active" (click)="closeMobileSidebar()" [title]="currentUser?.roleId === 'instructor' ? 'Course Studio' : 'LMS Manager'">
         <span class="material-symbols-outlined">school</span>
-        {{ currentUser?.roleId === 'instructor' ? 'Course Studio' : 'LMS Manager' }}
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">{{ currentUser?.roleId === 'instructor' ? 'Course Studio' : 'LMS Manager' }}</span>
       </a>
     </div>
 
     <div class="sidebar-footer">
-      <a class="nav-item" (click)="logout()">
+      <a class="nav-item" (click)="logout()" title="Landing Page">
         <span class="material-symbols-outlined">logout</span>
-        Landing Page
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Landing Page</span>
       </a>
       <div class="divider"></div>
-      <div class="user-profile-chip" (click)="toggleProfile($event)" style="cursor: pointer;">
+      <div class="user-profile-chip" (click)="toggleProfile($event)" style="cursor: pointer;" [title]="currentUser?.name || 'User Profile'">
         <div class="avatar" *ngIf="!currentUser?.photoUrl">{{ currentUser?.avatar || 'SA' }}</div>
         <img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" (error)="onAvatarLoadError()" class="avatar" alt="Profile" />
-        <div class="user-info">
+        <div class="user-info" *ngIf="!isDesktopSidebarCollapsed">
           <div class="user-name">{{ currentUser?.name || 'Super Admin' }}</div>
           <div class="user-role" *ngIf="!isAdminRole(currentUser?.roleId)">{{ currentUser?.roleName || 'Administrator' }}</div>
         </div>
-        <span class="material-symbols-outlined" style="margin-left:auto;font-size:18px;color:var(--outline)">expand_more</span>
+        <span class="material-symbols-outlined" *ngIf="!isDesktopSidebarCollapsed" style="margin-left:auto;font-size:18px;color:var(--outline)">expand_more</span>
       </div>
     </div>
   </aside>
 
   <!-- ══ MAIN ══ -->
-  <div [class.main-content]="!isLandingPage">
+  <div [class.main-content]="!isLandingPage" [class.sidebar-collapsed]="!isLandingPage && isDesktopSidebarCollapsed">
     <!-- Top Bar -->
     <header class="topbar" *ngIf="!isLandingPage">
       <div class="topbar-left">

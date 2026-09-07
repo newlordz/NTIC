@@ -462,7 +462,7 @@
             <tr *ngFor="let asgn of filteredAssignments">
               <td>
                 <strong>{{ asgn.title }}</strong>
-                <div class="text-xs text-subtle">{{ asgn.description | slice:0:60 }}...</div>
+                <div class="text-xs text-subtle">{{ stripHtml(asgn.description) | slice:0:60 }}...</div>
               </td>
               <td>{{ getCourseTitle(asgn.courseId) }}</td>
               <td><span class="badge" [class]="'badge-' + asgn.track">{{ asgn.track | titlecase }}</span></td>
@@ -815,7 +815,10 @@
             </span>
           </div>
           <h2>{{ activeDetailCourse?.title }}</h2>
-          <p class="hero-description">{{ activeDetailCourse?.description || 'No description provided.' }}</p>
+          <div class="hero-description ql-snow" *ngIf="activeDetailCourse?.description">
+            <div class="ql-editor p-0" [innerHTML]="activeDetailCourse?.description"></div>
+          </div>
+          <p class="hero-description" *ngIf="!activeDetailCourse?.description">No description provided.</p>
         </div>
       </div>
 

@@ -45,6 +45,7 @@ export class AppComponent implements OnInit, OnDestroy {
   currentUser: { name: string; avatar: string; roleName: string; roleId: string; photoUrl?: string | null } | null = null;
   showScrollToTop = false;
   isMobileSidebarOpen = false;
+  isDesktopSidebarCollapsed = false;
   private ticketPollTimer: any = null;
   private idleSubs: { unsubscribe(): void }[] = [];
   private idleWarningOpen = false;
@@ -254,6 +255,11 @@ export class AppComponent implements OnInit, OnDestroy {
     this.appUpdate.init();
     this.loadUserProfile();
     this.loadReadNotifications();
+    if (typeof window !== 'undefined') {
+      try {
+        this.isDesktopSidebarCollapsed = localStorage.getItem('ntic_desktop_sidebar_collapsed') === 'true';
+      } catch (_) {}
+    }
     // Tell the user when a save did not reach the server. These writes go through
     // POST /api/bulk-sync, which is admin-only, so an instructor's course or a
     // sponsor's payment would 403 and survive only in this browser -- previously
@@ -430,6 +436,15 @@ export class AppComponent implements OnInit, OnDestroy {
   closeMobileSidebar(): void {
     this.isMobileSidebarOpen = false;
     this.renderer.removeClass(document.body, 'sidebar-drawer-open');
+  }
+
+  toggleDesktopSidebar(): void {
+    this.isDesktopSidebarCollapsed = !this.isDesktopSidebarCollapsed;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('ntic_desktop_sidebar_collapsed', this.isDesktopSidebarCollapsed ? 'true' : 'false');
+      } catch (_) {}
+    }
   }
 
   navigateToDashboard(): void {

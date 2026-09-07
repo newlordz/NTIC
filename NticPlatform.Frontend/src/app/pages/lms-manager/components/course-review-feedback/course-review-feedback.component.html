@@ -90,7 +90,7 @@
             <div class="module-index-badge">{{ modIdx + 1 }}</div>
             <div class="module-title-group">
               <h4>{{ mod.title }}</h4>
-              <p *ngIf="mod.description" class="module-desc">{{ mod.description }}</p>
+              <p *ngIf="mod.description" class="module-desc">{{ stripHtml(mod.description) }}</p>
             </div>
             <span class="module-units-count">{{ getMaterialsForModule(mod.id).length }} Units</span>
           </div>

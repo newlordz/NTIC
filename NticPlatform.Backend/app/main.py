@@ -3609,6 +3609,7 @@ try:
         type: str = Field(default="link", max_length=20)
         url: str = Field(default="", max_length=2000)
         description: str = Field(default="", max_length=5000)
+        order_num: Optional[int] = 0
 
     @app.post("/api/lms/materials", status_code=status.HTTP_201_CREATED)
     def create_material(payload: LmsMaterialPayload, actor: dict = Depends(require_role(LMS_ROLES))):
@@ -3620,10 +3621,10 @@ try:
             material_id = "mat-" + str(uuid.uuid4())[:8]
             cur.execute(
                 "INSERT INTO lms_materials (id, course_id, module_id, title, type, url, "
-                "description, created_at, submitted_by, approval_status, owner_id) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                "description, order_num, created_at, submitted_by, approval_status, owner_id) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                 (material_id, payload.course_id, payload.module_id or None, payload.title,
-                 payload.type, payload.url, payload.description,
+                 payload.type, payload.url, payload.description, payload.order_num or 0,
                  datetime.datetime.now(datetime.UTC).isoformat(),
                  actor.get("full_name") or actor.get("email") or "",
                  inherited, actor["id"]),
@@ -3654,11 +3655,18 @@ try:
             mat_type = str(payload.get("type", "link"))
             url = str(payload.get("url", ""))
             description = str(payload.get("description", ""))
+            order_num = payload.get("order_num")
 
-            cur.execute(
-                "UPDATE lms_materials SET title=%s, module_id=%s, type=%s, url=%s, description=%s WHERE id=%s",
-                (title, module_id or None, mat_type, url, description, material_id),
-            )
+            if order_num is not None:
+                cur.execute(
+                    "UPDATE lms_materials SET title=%s, module_id=%s, type=%s, url=%s, description=%s, order_num=%s WHERE id=%s",
+                    (title, module_id or None, mat_type, url, description, int(order_num), material_id),
+                )
+            else:
+                cur.execute(
+                    "UPDATE lms_materials SET title=%s, module_id=%s, type=%s, url=%s, description=%s WHERE id=%s",
+                    (title, module_id or None, mat_type, url, description, material_id),
+                )
             conn.commit()
             cur.close()
         finally:
@@ -3672,19 +3680,19 @@ try:
         try:
             cur = conn.cursor()
             if _is_lms_staff(_actor):
-                sql = "SELECT id, course_id, module_id, title, type, url, description FROM lms_materials WHERE 1=1"
+                sql = "SELECT id, course_id, module_id, title, type, url, description, order_num FROM lms_materials WHERE 1=1"
                 params: list = []
                 if course_id:
                     sql += " AND course_id = %s"
                     params.append(course_id)
             else:
-                sql = ("SELECT id, course_id, module_id, title, type, url, description "
+                sql = ("SELECT id, course_id, module_id, title, type, url, description, order_num "
                        "FROM lms_materials WHERE (COALESCE(approval_status,'approved')='approved' OR owner_id=%s)")
                 params = [_actor["id"]]
                 if course_id:
                     sql += " AND course_id = %s"
                     params.append(course_id)
-            sql += " ORDER BY title"
+            sql += " ORDER BY COALESCE(order_num, 0) ASC, created_at ASC, id ASC"
             cur.execute(sql, params)
             rows = cur.fetchall()
             cur.close()
@@ -3692,7 +3700,8 @@ try:
             release_db_connection(conn)
         return [
             {"id": r[0], "course_id": r[1] or "", "module_id": r[2] or "", "title": r[3],
-             "type": r[4] or "link", "url": r[5] or "", "description": r[6] or ""}
+             "type": r[4] or "link", "url": r[5] or "", "description": r[6] or "",
+             "order_num": r[7] if len(r) > 7 and r[7] is not None else 0}
             for r in rows
         ]
 
@@ -10376,8 +10385,8 @@ try:
                             (item.get("id"), item.get("courseId"), item.get("title"), item.get("description",""), item.get("order",1), item.get("icon",""), item.get("status","published"), item.get("submitted_by",""), item.get("approval_status","approved")))
         elif payload.collection == "lms_materials":
             for item in payload.items:
-                cur.execute("INSERT INTO lms_materials (id, course_id, module_id, title, type, url, description, created_at, submitted_by, approval_status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title",
-                            (item.get("id"), item.get("courseId"), item.get("moduleId"), item.get("title"), item.get("type",""), item.get("url",""), item.get("description",""), item.get("created_at") or None, item.get("submitted_by",""), item.get("approval_status","approved")))
+                cur.execute("INSERT INTO lms_materials (id, course_id, module_id, title, type, url, description, order_num, created_at, submitted_by, approval_status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, order_num = EXCLUDED.order_num",
+                            (item.get("id"), item.get("courseId"), item.get("moduleId"), item.get("title"), item.get("type",""), item.get("url",""), item.get("description",""), item.get("order_num") or item.get("order", 0), item.get("created_at") or None, item.get("submitted_by",""), item.get("approval_status","approved")))
         elif payload.collection == "lms_assignments":
             for item in payload.items:
                 cur.execute("INSERT INTO lms_assignments (id, course_id, title, description, due_date, max_score, track, status, created_at, submitted_by, approval_status) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, status = EXCLUDED.status",

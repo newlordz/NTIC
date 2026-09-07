@@ -1328,7 +1328,9 @@ export class LmsManagerComponent implements OnInit {
 
   getMaterialsForModule(moduleId?: string): ApiLmsMaterial[] {
     if (!moduleId) return [];
-    return this.serverMaterials.filter(m => m.module_id === moduleId);
+    return this.serverMaterials
+      .filter(m => m.module_id === moduleId)
+      .sort((a, b) => (a.order_num ?? 0) - (b.order_num ?? 0));
   }
 
   get filteredRoster(): LmsEnrollment[] {
@@ -1569,7 +1571,9 @@ export class LmsManagerComponent implements OnInit {
       this.moduleForm = { ...mod, courseId: mod.course_id || mod.courseId || this.activeDetailCourse?.id };
       
       // Load blocks from materials or description
-      const modMats = this.serverMaterials.filter(m => m.module_id === mod.id);
+      const modMats = this.serverMaterials
+        .filter(m => m.module_id === mod.id)
+        .sort((a, b) => (a.order_num ?? (a as any).order ?? 0) - (b.order_num ?? (b as any).order ?? 0));
       if (modMats.length > 0) {
         this.moduleBlocks = modMats.map(mat => this.parseMaterialToBlock(mat));
       } else {
@@ -2039,7 +2043,8 @@ export class LmsManagerComponent implements OnInit {
         title: blk.title || (blk.type.toUpperCase() + ' ' + (i + 1)),
         type: (blk.type === 'text' ? 'guide' : blk.type),
         url: blk.url || '',
-        description: descPayload
+        description: descPayload,
+        order_num: i + 1
       };
 
       if (blk.id && !blk.id.startsWith('blk-')) {
@@ -2629,6 +2634,7 @@ export class LmsManagerComponent implements OnInit {
       type: this.materialForm.type || 'guide',
       url: this.materialForm.url || '',
       description: descriptionPayload,
+      order_num: (this.materialForm as any).order_num || (this.serverMaterials.filter(m => m.module_id === this.materialForm.moduleId).length + 1)
     };
 
     const request = this.formMode === 'create'

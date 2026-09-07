@@ -192,6 +192,7 @@ export interface LmsMaterial {
   type: string;
   url: string;
   description: string;
+  order_num?: number;
   payload?: any;
 }
 
@@ -677,13 +678,13 @@ export class ApiService {
 
   createMaterial(payload: {
     course_id: string; module_id?: string; title: string;
-    type?: string; url?: string; description?: string;
+    type?: string; url?: string; description?: string; order_num?: number;
   }): Observable<any> {
     return this.http.post(this.apiUrl + '/lms/materials', payload);
   }
 
   updateMaterial(materialId: string, payload: {
-    title: string; module_id?: string; type?: string; url?: string; description?: string;
+    title: string; module_id?: string; type?: string; url?: string; description?: string; order_num?: number;
   }): Observable<any> {
     return this.http.patch(`${this.apiUrl}/lms/materials/${encodeURIComponent(materialId)}`, payload);
   }

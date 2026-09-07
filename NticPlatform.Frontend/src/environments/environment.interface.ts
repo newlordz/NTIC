@@ -4,4 +4,13 @@ export interface Environment {
   gemini?: {
     apiKey: string;
   };
+  brevo?: {
+    apiKey: string;
+    senderEmail?: string;
+    senderName?: string;
+  };
+  smsmode?: {
+    apiKey: string;
+  };
 }
+

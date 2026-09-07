@@ -34,6 +34,18 @@ export class LmsComponent implements OnInit {
     public sanitizer: DomSanitizer
   ) {}
 
+  isSyllabusCollapsed = false;
+
+  toggleSyllabus(): void {
+    this.isSyllabusCollapsed = !this.isSyllabusCollapsed;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('ntic_classroom_syllabus_collapsed', this.isSyllabusCollapsed ? 'true' : 'false');
+      } catch (_) {}
+    }
+    this.cdr.markForCheck();
+  }
+
   goToCourseStudio(): void {
     this.router.navigate(['/lms-manager']);
   }
@@ -717,6 +729,27 @@ export class LmsComponent implements OnInit {
     return Math.round(total / graded.length);
   }
 
+  stripHtml(html?: string): string {
+    if (!html) return '';
+    return html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  formatRichContent(content?: string): string {
+    if (!content) return '';
+    const trimmed = content.trim();
+    if (/<[a-z][\s\S]*>/i.test(trimmed)) {
+      return trimmed;
+    }
+    return trimmed
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br/>');
+  }
+
   get studentCourses() {
     // Reads enrolments, not "every course on the platform" as it used to.
     return this.myEnrolments.map(e => ({
@@ -727,7 +760,7 @@ export class LmsComponent implements OnInit {
       totalModules: e.modules || 0,
       color: 'primary',
       progress: e.progress_pct || 0,
-      module: e.description || '',
+      module: this.stripHtml(e.description) || '',
       level: e.level,
       lastActive: e.last_active ? 'Last active ' + e.last_active.slice(0, 10) : 'Not started',
       badgeText: (e.progress_pct || 0) >= 100 ? 'Completed' : 'In Progress',
@@ -852,7 +885,9 @@ export class LmsComponent implements OnInit {
   }
 
   buildWidgetsForModule(mod: any, allMaterials: any[]): any[] {
-    const modMaterials = allMaterials.filter(m => m.module_id === mod.id || m.moduleId === mod.id);
+    const modMaterials = allMaterials
+      .filter(m => m.module_id === mod.id || m.moduleId === mod.id)
+      .sort((a, b) => (a.order_num ?? a.order ?? 0) - (b.order_num ?? b.order ?? 0));
     const widgets: any[] = [];
 
     if (modMaterials.length > 0) {
@@ -867,14 +902,26 @@ export class LmsComponent implements OnInit {
         }
 
         const widgetType = mat.type || (parsedPayload?.widget) || 'guide';
+        let widgetDescription = mat.description || '';
+        if (parsedPayload && (parsedPayload.content || parsedPayload.instructions || parsedPayload.overview)) {
+          if (widgetType === 'guide' || widgetType === 'document' || widgetType === 'text' || widgetType === 'callout') {
+            widgetDescription = parsedPayload.content || parsedPayload.instructions || parsedPayload.overview || '';
+          }
+        }
+
         widgets.push({
           id: mat.id || ('widget-' + Math.random().toString(36).slice(2, 8)),
           title: mat.title,
           type: widgetType,
           rawUrl: mat.url || '',
           embedUrl: mat.url ? this.getSafeEmbedUrl(mat.url) : null,
-          description: mat.description || '',
+          description: widgetDescription,
           payload: parsedPayload,
+          parsedCallout: widgetType === 'callout' ? {
+            calloutType: parsedPayload?.calloutType || 'tip',
+            title: parsedPayload?.title || mat.title || 'Pro Tip',
+            content: parsedPayload?.content || widgetDescription || ''
+          } : null,
           parsedQuiz: widgetType === 'quiz' ? {
             question: parsedPayload?.question || mat.title,
             options: parsedPayload?.options || ['Option A', 'Option B', 'Option C', 'Option D'],
@@ -1314,6 +1361,11 @@ export class LmsComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    if (typeof window !== 'undefined') {
+      try {
+        this.isSyllabusCollapsed = localStorage.getItem('ntic_classroom_syllabus_collapsed') === 'true';
+      } catch (_) {}
+    }
     this.activeRoleId = getAuthValue('activeRoleId') || 'student';
     if (this.activeRoleId === 'student') {
       this.studentActiveTab = 'courses';

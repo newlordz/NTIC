@@ -908,6 +908,147 @@ select {
   flex-direction: column;
   position: relative;
   max-width: 100%;
+  transition: width 0.25s ease;
+}
+
+.sidebar-collapse-toggle-btn {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--surface-container-low, #f1f5f9);
+  border: 1px solid var(--outline-variant, #e2e8f0);
+  color: var(--on-surface-variant, #64748b);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+
+  &:hover {
+    background: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+    transform: scale(1.05);
+  }
+
+  .material-symbols-outlined {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 900px) {
+  .sidebar-collapse-toggle-btn {
+    display: none !important;
+  }
+}
+
+@media (min-width: 901px) {
+  .sidebar.desktop-collapsed {
+    width: 68px;
+    min-width: 68px;
+    max-width: 68px;
+    flex: 0 0 68px;
+
+    .sidebar-brand {
+      padding: 16px 8px;
+      justify-content: center;
+      flex-direction: column;
+      gap: 10px;
+
+      .brand-logo {
+        width: 38px;
+        height: 38px;
+        margin: 0 auto;
+      }
+      .sidebar-collapse-toggle-btn {
+        margin: 0 auto;
+        width: 26px;
+        height: 26px;
+      }
+    }
+
+    .sidebar-new-btn {
+      width: 44px;
+      height: 44px;
+      margin: 10px auto;
+      padding: 0;
+      border-radius: 10px;
+      justify-content: center;
+      .material-symbols-outlined {
+        font-size: 22px;
+        margin: 0;
+      }
+    }
+
+    .sidebar-section {
+      padding: 6px 4px;
+      .sidebar-section-label {
+        display: none;
+      }
+    }
+
+    .nav-item {
+      justify-content: center;
+      padding: 10px 0;
+      width: 44px;
+      height: 44px;
+      margin: 4px auto;
+      border-radius: 8px;
+      position: relative;
+
+      .material-symbols-outlined {
+        font-size: 22px;
+        margin: 0;
+      }
+
+      &.active {
+        border-left: none;
+        padding-left: 0;
+        background: rgba(0, 63, 135, 0.12);
+        color: var(--primary);
+      }
+
+      .nav-badge-tickets {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        min-width: 8px;
+        height: 8px;
+        padding: 0;
+        border-radius: 50%;
+        font-size: 0;
+      }
+    }
+
+    .sidebar-footer {
+      padding: 8px 4px;
+
+      .nav-item {
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        margin: 4px auto;
+      }
+
+      .user-profile-chip {
+        justify-content: center;
+        padding: 6px 0;
+        margin: 4px auto;
+        width: 44px;
+
+        .avatar {
+          margin: 0 auto;
+        }
+      }
+    }
+  }
+
+  .main-content.sidebar-collapsed {
+    width: calc(100% - 68px);
+  }
 }
 
 .main-content > :not(.topbar):not(router-outlet) {

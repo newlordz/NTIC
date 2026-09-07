@@ -161,6 +161,8 @@ export interface LmsMaterial {
   type: 'document' | 'video' | 'link' | 'file' | 'guide' | 'quiz' | 'code' | 'resource' | 'table';
   url: string;
   description: string;
+  order_num?: number;
+  order?: number;
   createdAt: string;
   submittedBy?: string;
   approvalStatus?: 'pending' | 'approved' | 'rejected';

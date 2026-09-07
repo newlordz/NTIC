@@ -64,6 +64,11 @@ export class CourseReviewFeedbackComponent implements OnInit, OnChanges {
     return null;
   }
 
+  stripHtml(html?: string): string {
+    if (!html) return '';
+    return html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
   scrollToSection(elementId: string): void {
     const el = document.getElementById(elementId);
     if (el) {

@@ -708,13 +708,18 @@
     </div>
 
     <!-- Classroom Content Split Layout -->
-    <div class="classroom-body-grid">
+    <div class="classroom-body-grid" [class.syllabus-collapsed]="isSyllabusCollapsed">
       
       <!-- Left Column: Syllabus & Unit Sequence -->
-      <div class="classroom-syllabus-col">
+      <div class="classroom-syllabus-col" [class.collapsed]="isSyllabusCollapsed">
         <div class="syllabus-header">
-          <span class="material-symbols-outlined">menu_book</span>
-          <h4>{{ activeLessonModule?.title || 'Course Syllabus' }}</h4>
+          <div class="syllabus-header-left" *ngIf="!isSyllabusCollapsed">
+            <span class="material-symbols-outlined">menu_book</span>
+            <h4>{{ activeLessonModule?.title || 'Course Syllabus' }}</h4>
+          </div>
+          <button type="button" class="syllabus-collapse-toggle-btn" (click)="toggleSyllabus()" [title]="isSyllabusCollapsed ? 'Expand syllabus' : 'Collapse syllabus to icons'" [attr.aria-label]="isSyllabusCollapsed ? 'Expand syllabus' : 'Collapse syllabus'">
+            <span class="material-symbols-outlined">{{ isSyllabusCollapsed ? 'chevron_right' : 'chevron_left' }}</span>
+          </button>
         </div>
 
         <div class="syllabus-units-list">
@@ -722,15 +727,16 @@
                class="syllabus-unit-item"
                [class.active]="activeWidgetIndex === idx"
                [class.completed]="isWidgetCompleted(widget.id)"
-               (click)="selectWidget(widget, idx)">
+               (click)="selectWidget(widget, idx)"
+               [title]="(idx + 1) + '. ' + widget.title">
             <div class="unit-status-indicator">
               <span class="material-symbols-outlined" *ngIf="isWidgetCompleted(widget.id)">check_circle</span>
               <span class="unit-index-dot" *ngIf="!isWidgetCompleted(widget.id)">{{ idx + 1 }}</span>
             </div>
-            <div class="unit-info">
+            <div class="unit-info" *ngIf="!isSyllabusCollapsed">
               <span class="unit-type-tag">
                 <span class="material-symbols-outlined unit-icon">
-                  {{ widget.type === 'video' ? 'smart_display' : widget.type === 'quiz' ? 'quiz' : widget.type === 'code' ? 'terminal' : widget.type === 'guide' ? 'article' : 'attachment' }}
+                  {{ widget.type === 'video' ? 'smart_display' : widget.type === 'quiz' ? 'quiz' : widget.type === 'code' ? 'terminal' : widget.type === 'guide' ? 'article' : widget.type === 'table' ? 'table_chart' : 'attachment' }}
                 </span>
                 {{ widget.type | uppercase }}
               </span>
@@ -740,7 +746,7 @@
         </div>
 
         <!-- Syllabus Completion Gauge -->
-        <div class="syllabus-footer-gauge">
+        <div class="syllabus-footer-gauge" *ngIf="!isSyllabusCollapsed">
           <div class="gauge-label">
             <span>Module Mastery</span>
             <strong>{{ moduleProgressPercent }}%</strong>
@@ -799,15 +805,17 @@
                 </div>
               </div>
 
-              <p class="overview-text" *ngIf="activeWidget.parsedVideo?.overview">{{ activeWidget.parsedVideo.overview }}</p>
+              <div class="overview-text ql-snow" *ngIf="activeWidget.parsedVideo?.overview">
+                <div class="ql-editor p-0" [innerHTML]="formatRichContent(activeWidget.parsedVideo.overview)"></div>
+              </div>
             </div>
           </div>
 
           <!-- 📝 WIDGET 2: INTERACTIVE READING GUIDE -->
-          <div *ngIf="activeWidget.type === 'guide' || activeWidget.type === 'document'" class="widget-view guide-view fade-in">
+          <div *ngIf="activeWidget.type === 'guide' || activeWidget.type === 'document' || activeWidget.type === 'text'" class="widget-view guide-view fade-in">
             <div class="reading-content-card">
-              <div class="guide-typography-body">
-                <p class="guide-paragraph">{{ activeWidget.description }}</p>
+              <div class="guide-typography-body ql-snow">
+                <div class="ql-editor guide-paragraph" [innerHTML]="formatRichContent(activeWidget.description)"></div>
               </div>
 
               <div class="resource-action-bar" *ngIf="activeWidget.rawUrl">
@@ -916,7 +924,7 @@
 
               <div class="diagram-caption-box" *ngIf="activeWidget.parsedImage?.caption || activeWidget.description">
                 <span class="material-symbols-outlined">info</span>
-                <p>{{ activeWidget.parsedImage?.caption || activeWidget.description }}</p>
+                <div class="diagram-caption-text" [innerHTML]="formatRichContent(activeWidget.parsedImage?.caption || activeWidget.description)"></div>
               </div>
 
               <div class="diagram-footer-actions">
@@ -941,9 +949,9 @@
                 </div>
               </div>
 
-              <p class="doc-instructions" *ngIf="activeWidget.parsedFile?.instructions || activeWidget.description">
-                {{ activeWidget.parsedFile?.instructions || activeWidget.description }}
-              </p>
+              <div class="doc-instructions ql-snow" *ngIf="activeWidget.parsedFile?.instructions || activeWidget.description">
+                <div class="ql-editor p-0" [innerHTML]="formatRichContent(activeWidget.parsedFile?.instructions || activeWidget.description)"></div>
+              </div>
 
               <div class="doc-actions-row">
                 <a *ngIf="activeWidget.rawUrl" [href]="activeWidget.rawUrl" target="_blank" rel="noopener" class="btn btn-outline btn-download">
@@ -971,6 +979,35 @@
                 <button class="btn btn-primary" (click)="goToNextWidget()">
                   <span>Continue Next Section</span>
                   <span class="material-symbols-outlined">arrow_forward</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 💡 WIDGET 7B: CALLOUT / PRO TIP -->
+          <div *ngIf="activeWidget.type === 'callout'" class="widget-view callout-view fade-in">
+            <div class="reading-content-card">
+              <div class="sim-callout-unit" [class]="'callout-type-' + (activeWidget.parsedCallout?.calloutType || activeWidget.payload?.calloutType || 'tip')">
+                <div class="callout-icon-col">
+                  <span class="material-symbols-outlined" *ngIf="(activeWidget.parsedCallout?.calloutType || activeWidget.payload?.calloutType) === 'tip'">lightbulb</span>
+                  <span class="material-symbols-outlined" *ngIf="(activeWidget.parsedCallout?.calloutType || activeWidget.payload?.calloutType) === 'warning'">warning</span>
+                  <span class="material-symbols-outlined" *ngIf="(activeWidget.parsedCallout?.calloutType || activeWidget.payload?.calloutType) === 'danger'">error</span>
+                  <span class="material-symbols-outlined" *ngIf="(activeWidget.parsedCallout?.calloutType || activeWidget.payload?.calloutType) === 'key_takeaway'">flag</span>
+                  <span class="material-symbols-outlined" *ngIf="!(activeWidget.parsedCallout?.calloutType || activeWidget.payload?.calloutType) || (activeWidget.parsedCallout?.calloutType || activeWidget.payload?.calloutType) === 'note'">info</span>
+                </div>
+                <div class="callout-text-col">
+                  <strong class="callout-title" *ngIf="activeWidget.parsedCallout?.title || activeWidget.payload?.title || activeWidget.title">{{ activeWidget.parsedCallout?.title || activeWidget.payload?.title || activeWidget.title }}</strong>
+                  <div class="callout-body ql-snow">
+                    <div class="ql-editor p-0" [innerHTML]="formatRichContent(activeWidget.parsedCallout?.content || activeWidget.payload?.content || activeWidget.description)"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="guide-completion-bar mt-3">
+                <button class="btn btn-sm btn-primary" 
+                        [class.btn-outline]="isWidgetCompleted(activeWidget.id)"
+                        (click)="markActiveWidgetCompleted()">
+                  <span class="material-symbols-outlined">done_all</span>
+                  <span>{{ isWidgetCompleted(activeWidget.id) ? 'Unit Completed' : 'Mark as Read' }}</span>
                 </button>
               </div>
             </div>

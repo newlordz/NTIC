@@ -211,12 +211,12 @@ export class CourseReviewAuditComponent {
     if (desc.trim().startsWith('{')) {
       try {
         const p = JSON.parse(desc);
-        return p.overview || p.instructions || p.caption || '';
+        return this.stripHtml(p.overview || p.instructions || p.caption || p.content || '');
       } catch {
-        return desc;
+        return this.stripHtml(desc);
       }
     }
-    return desc;
+    return this.stripHtml(desc);
   }
 
   cycleLabel(competitionId?: string): string {

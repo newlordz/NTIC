@@ -4533,6 +4533,31 @@ class TestInstructorAuthoring:
         })
         assert resp.status_code == 201, resp.text
 
+    def test_materials_respect_sequential_order_not_alphabetical(self, client, admin_token):
+        """Materials must return ordered by order_num, not alphabetically by title."""
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        # Create materials where alphabetical order ('A' < 'T' < 'V') differs from sequential order (1, 2, 3)
+        client.post("/api/lms/materials", headers=self._auth(token), json={
+            "course_id": course_id, "title": "Video Lecture Intro", "type": "video", "order_num": 1,
+        })
+        client.post("/api/lms/materials", headers=self._auth(token), json={
+            "course_id": course_id, "title": "Technical Guide", "type": "guide", "order_num": 2,
+        })
+        client.post("/api/lms/materials", headers=self._auth(token), json={
+            "course_id": course_id, "title": "Algorithm Comparison Table", "type": "table", "order_num": 3,
+        })
+        resp = client.get(f"/api/lms/materials?course_id={course_id}", headers=self._auth(token))
+        assert resp.status_code == 200, resp.text
+        items = resp.json()
+        assert len(items) == 3
+        assert [i["title"] for i in items] == [
+            "Video Lecture Intro",
+            "Technical Guide",
+            "Algorithm Comparison Table",
+        ]
+        assert [i["order_num"] for i in items] == [1, 2, 3]
+
     def test_assignments_persist_and_students_can_see_them(self, client, admin_token):
         token, _e = self._instructor(client, admin_token)
         course_id = self._course(client, token)
