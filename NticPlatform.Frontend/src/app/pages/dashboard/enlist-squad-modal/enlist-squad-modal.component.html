@@ -1,4 +1,4 @@
-<div class="ticket-modal-backdrop enlist-backdrop" *ngIf="isOpen" (click)="onClose()">
+<div class="ticket-modal-backdrop enlist-backdrop" *ngIf="isOpen" (click)="!isSubmitting && onClose()">
   <div class="enlist-modal-card" (click)="$event.stopPropagation()">
     
     <!-- Gradient Banner Header -->
@@ -13,12 +13,12 @@
           <p class="enlist-subtitle">{{ editingTeamOriginalName ? 'Update student member names, track assignment, or mentor details.' : 'Register your school\'s competitive NTI team into active tournament brackets.' }}</p>
         </div>
       </div>
-      <button class="enlist-close-btn" (click)="onClose()" title="Close modal">
+      <button class="enlist-close-btn" [disabled]="isSubmitting" (click)="!isSubmitting && onClose()" title="Close modal">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
     
-    <form (ngSubmit)="onSubmit()" #addTeamForm="ngForm" class="enlist-form-body">
+    <form (ngSubmit)="!isSubmitting && onSubmit()" #addTeamForm="ngForm" class="enlist-form-body">
       
       <!-- Section 1: Track Selector -->
       <div class="enlist-section">
@@ -230,10 +230,11 @@
           </span>
         </div>
         <div class="enlist-actions">
-          <button type="button" class="enlist-btn-cancel" (click)="onClose()">Cancel</button>
-          <button type="submit" class="enlist-btn-submit" [disabled]="!addTeamForm.form.valid">
-            <span class="material-symbols-outlined">send</span>
-            {{ editingTeamOriginalName ? 'Submit Modifications for Admin Approval' : 'Submit Squad for Admin Approval' }}
+          <button type="button" class="enlist-btn-cancel" [disabled]="isSubmitting" (click)="!isSubmitting && onClose()">Cancel</button>
+          <button type="submit" class="enlist-btn-submit" [disabled]="!addTeamForm.form.valid || isSubmitting" [class.loading]="isSubmitting">
+            <span *ngIf="isSubmitting" class="spinner-inline"></span>
+            <span *ngIf="!isSubmitting" class="material-symbols-outlined">send</span>
+            <span>{{ isSubmitting ? (editingTeamOriginalName ? 'Submitting Modifications...' : 'Registering Squad...') : (editingTeamOriginalName ? 'Submit Modifications for Admin Approval' : 'Submit Squad for Admin Approval') }}</span>
           </button>
         </div>
       </div>

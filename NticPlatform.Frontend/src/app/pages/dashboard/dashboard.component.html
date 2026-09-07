@@ -723,96 +723,126 @@
               </div>
             </div>
 
-            <!-- School Teams Roster List -->
-            <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-              <span>Enlisted Squads &amp; Rosters ({{ filteredSchoolTeams.length }})</span>
-            </div>
-            <div class="school-teams-grid" *ngIf="filteredSchoolTeams.length > 0">
-              <div *ngFor="let team of filteredSchoolTeams" class="card team-roster-card">
-                <div class="card-body">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
-                    <div style="display:flex;align-items:center;gap:6px;">
-                      <span *ngIf="isTeamInCompetition(team)" class="badge primary" style="display:inline-flex;align-items:center;gap:4px;">
-                        <span class="material-symbols-outlined" style="font-size:13px;">emoji_events</span>
-                        <span>In Competition</span>
-                      </span>
-                      <span *ngIf="!isTeamInCompetition(team)" class="badge" style="background:var(--surface-container-high);color:var(--on-surface-variant);display:inline-flex;align-items:center;gap:4px;">
-                        <span class="material-symbols-outlined" style="font-size:13px;">playlist_add_check</span>
-                        <span>Roster Ready</span>
-                      </span>
-                      <span class="badge secondary" style="font-size:10px;">
-                        {{ team.status || 'Active' }}
-                      </span>
-                    </div>
-                    <span class="team-track-chip" [class]="team.track.toLowerCase()">{{ team.track }}</span>
-                  </div>
-                  <h3 class="team-card-title">{{ team.name }}</h3>
-                  <div class="team-card-meta">
-                    <div><strong>Team Lead:</strong> {{ team.rosterList?.[0] || team.lead }}</div>
-                    <div><strong>Members:</strong> {{ team.members }} active students</div>
-                    <div *ngIf="isTeamInCompetition(team)" style="margin-top:4px;font-size:11.5px;color:var(--primary);display:flex;align-items:center;gap:4px;">
-                      <span class="material-symbols-outlined" style="font-size:14px;">emoji_events</span>
-                      <span>Cycle: <strong>{{ getTeamCompetitionTitle(team) }}</strong></span>
-                    </div>
-                    <!-- Mentor is centrally assigned by NTIC Administration -->
-                    <div style="margin-top:8px;padding:6px 10px;background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;">
-                      <span style="display:flex;align-items:center;gap:5px;color:var(--on-surface-variant);">
-                        <span class="material-symbols-outlined" style="font-size:15px;color:var(--primary);">co_present</span>
-                        <strong>Assigned Mentor:</strong>
-                      </span>
-                      <span *ngIf="team.mentorId || team.mentor" class="badge secondary" style="font-size:10.5px;">
-                        {{ getMentorName(team.mentorId) || team.mentor }}
-                      </span>
-                      <span *ngIf="!team.mentorId && !team.mentor" style="color:var(--on-surface-variant);font-style:italic;font-size:11px;">
-                        Pending NTIC allocation
-                      </span>
-                    </div>
-                    <div *ngIf="team.motto" style="font-style:italic;color:var(--primary);margin-top:4px;border-top:1px dashed var(--outline-variant);padding-top:4px;">"{{ team.motto }}"</div>
-                    
-                    <!-- Display Roster Chips if available -->
-                    <div *ngIf="team.rosterList && team.rosterList.length > 0" class="roster-chips-container" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--outline-variant);">
-                      <span *ngFor="let student of team.rosterList" class="roster-student-chip" style="padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;border:1px solid var(--outline-variant);background:var(--surface-container);color:var(--on-surface);">
-                        <span class="material-symbols-outlined" style="font-size:13px;">person</span>
-                        {{ student }}
-                      </span>
-                    </div>
-                  </div>
+            <!-- =========================================================================
+                 TEAM DEEP-DIVE & MEMBER PERFORMANCE VIEW (When a Team Card is Clicked)
+                 ========================================================================= -->
+            <app-team-detail-view
+              *ngIf="selectedTeamDetails"
+              [team]="selectedTeamDetails"
+              [schoolName]="schoolName"
+              [isTeamInCompetition]="isTeamInCompetition(selectedTeamDetails)"
+              [competitionTitle]="getTeamCompetitionTitle(selectedTeamDetails)"
+              [mentorName]="getMentorName(selectedTeamDetails.mentorId) || selectedTeamDetails.mentor || 'Pending Allocation'"
+              [rosterMembers]="getTeamRosterMembers(selectedTeamDetails)"
+              [teamSubmissions]="getTeamSubmissions(selectedTeamDetails)"
+              [averageScore]="getTeamAverageScore(selectedTeamDetails)"
+              (back)="closeTeamDetailView()"
+              (editTeam)="editTeam($event)"
+              (inspectMember)="openMemberProfileModal($event)">
+            </app-team-detail-view>
 
-                  <!-- Squad Management Footer Bar -->
-                  <div class="team-card-actions" style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--outline-variant);align-items:center;flex-wrap:wrap;">
-                    <button *ngIf="!isTeamInCompetition(team)" type="button" routerLink="/competitions" style="display:flex;align-items:center;gap:4px;padding:6px 12px;font-size:11.5px;font-weight:700;color:#059669;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:8px;cursor:pointer;margin-right:auto;text-decoration:none;">
-                      <span class="material-symbols-outlined" style="font-size:15px;">emoji_events</span>
-                      Apply to Cycle
-                    </button>
-                    <button type="button" class="btn-manage-squad edit" (click)="editTeam(team)" style="display:flex;align-items:center;gap:4px;padding:6px 12px;font-size:11.5px;font-weight:700;color:var(--primary);background:rgba(0,63,135,0.06);border:1px solid rgba(0,63,135,0.2);border-radius:8px;cursor:pointer;transition:all 0.2s ease;">
-                      <span class="material-symbols-outlined" style="font-size:15px;">edit_square</span>
-                      Edit Roster &amp; Squad
-                    </button>
-                    <button type="button" class="btn-manage-squad delete" (click)="disbandTeam(team)" style="display:flex;align-items:center;gap:4px;padding:6px 10px;font-size:11.5px;font-weight:700;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;cursor:pointer;transition:all 0.2s ease;">
-                      <span class="material-symbols-outlined" style="font-size:15px;">delete</span>
-                      Disband
-                    </button>
+            <!-- Standard Roster Grid (When NO Team is Selected) -->
+            <div *ngIf="!selectedTeamDetails">
+              <!-- School Teams Roster List -->
+              <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                <span>Enlisted Squads &amp; Rosters ({{ filteredSchoolTeams.length }})</span>
+              </div>
+              <div class="school-teams-grid" *ngIf="filteredSchoolTeams.length > 0">
+                <div *ngFor="let team of filteredSchoolTeams" class="card team-roster-card" (click)="openTeamDetailView(team)" style="cursor:pointer;" title="Click to view squad details and member performance">
+                  <div class="card-body">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
+                      <div style="display:flex;align-items:center;gap:6px;">
+                        <span *ngIf="isTeamInCompetition(team)" class="badge primary" style="display:inline-flex;align-items:center;gap:4px;">
+                          <span class="material-symbols-outlined" style="font-size:13px;">emoji_events</span>
+                          <span>In Competition</span>
+                        </span>
+                        <span *ngIf="!isTeamInCompetition(team)" class="badge" style="background:var(--surface-container-high);color:var(--on-surface-variant);display:inline-flex;align-items:center;gap:4px;">
+                          <span class="material-symbols-outlined" style="font-size:13px;">playlist_add_check</span>
+                          <span>Roster Ready</span>
+                        </span>
+                        <span class="badge secondary" style="font-size:10px;">
+                          {{ team.status || 'Active' }}
+                        </span>
+                      </div>
+                      <span class="team-track-chip" [class]="team.track.toLowerCase()">{{ team.track }}</span>
+                    </div>
+                    <h3 class="team-card-title">{{ team.name }}</h3>
+                    <div class="team-card-meta">
+                      <div><strong>Team Lead:</strong> {{ team.rosterList?.[0] || team.lead }}</div>
+                      <div><strong>Members:</strong> {{ team.members }} active students</div>
+                      <div *ngIf="isTeamInCompetition(team)" style="margin-top:4px;font-size:11.5px;color:var(--primary);display:flex;align-items:center;gap:4px;">
+                        <span class="material-symbols-outlined" style="font-size:14px;">emoji_events</span>
+                        <span>Cycle: <strong>{{ getTeamCompetitionTitle(team) }}</strong></span>
+                      </div>
+                      <!-- Mentor is centrally assigned by NTIC Administration -->
+                      <div style="margin-top:8px;padding:6px 10px;background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;">
+                        <span style="display:flex;align-items:center;gap:5px;color:var(--on-surface-variant);">
+                          <span class="material-symbols-outlined" style="font-size:15px;color:var(--primary);">co_present</span>
+                          <strong>Assigned Mentor:</strong>
+                        </span>
+                        <span *ngIf="team.mentorId || team.mentor" class="badge secondary" style="font-size:10.5px;">
+                          {{ getMentorName(team.mentorId) || team.mentor }}
+                        </span>
+                        <span *ngIf="!team.mentorId && !team.mentor" style="color:var(--on-surface-variant);font-style:italic;font-size:11px;">
+                          Pending NTIC allocation
+                        </span>
+                      </div>
+                      <div *ngIf="team.motto" style="font-style:italic;color:var(--primary);margin-top:4px;border-top:1px dashed var(--outline-variant);padding-top:4px;">"{{ team.motto }}"</div>
+                      
+                      <!-- Display Roster Chips if available -->
+                      <div *ngIf="team.rosterList && team.rosterList.length > 0" class="roster-chips-container" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--outline-variant);">
+                        <span *ngFor="let student of team.rosterList" class="roster-student-chip" style="padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;border:1px solid var(--outline-variant);background:var(--surface-container);color:var(--on-surface);">
+                          <span class="material-symbols-outlined" style="font-size:13px;">person</span>
+                          {{ student }}
+                        </span>
+                      </div>
+
+                      <!-- Click to View Hint -->
+                      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px dashed var(--outline-variant);font-size:11px;color:var(--primary);font-weight:700;">
+                        <span style="display:flex;align-items:center;gap:4px;">
+                          <span class="material-symbols-outlined" style="font-size:14px;">analytics</span>
+                          View Squad &amp; Performance
+                        </span>
+                        <span class="material-symbols-outlined" style="font-size:16px;">arrow_forward</span>
+                      </div>
+                    </div>
+
+                    <!-- Squad Management Footer Bar -->
+                    <div class="team-card-actions" style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--outline-variant);align-items:center;flex-wrap:wrap;">
+                      <button *ngIf="!isTeamInCompetition(team)" type="button" routerLink="/competitions" (click)="$event.stopPropagation()" style="display:flex;align-items:center;gap:4px;padding:6px 12px;font-size:11.5px;font-weight:700;color:#059669;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:8px;cursor:pointer;margin-right:auto;text-decoration:none;">
+                        <span class="material-symbols-outlined" style="font-size:15px;">emoji_events</span>
+                        Apply to Cycle
+                      </button>
+                      <button type="button" class="btn-manage-squad edit" (click)="$event.stopPropagation(); editTeam(team)" style="display:flex;align-items:center;gap:4px;padding:6px 12px;font-size:11.5px;font-weight:700;color:var(--primary);background:rgba(0,63,135,0.06);border:1px solid rgba(0,63,135,0.2);border-radius:8px;cursor:pointer;transition:all 0.2s ease;">
+                        <span class="material-symbols-outlined" style="font-size:15px;">edit_square</span>
+                        Edit Roster &amp; Squad
+                      </button>
+                      <button type="button" class="btn-manage-squad delete" (click)="$event.stopPropagation(); disbandTeam(team)" style="display:flex;align-items:center;gap:4px;padding:6px 10px;font-size:11.5px;font-weight:700;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;cursor:pointer;transition:all 0.2s ease;">
+                        <span class="material-symbols-outlined" style="font-size:15px;">delete</span>
+                        Disband
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <!-- Empty Filter State -->
-            <div *ngIf="filteredSchoolTeams.length === 0 && schoolTeams.length > 0" class="card" style="text-align:center;padding:40px 20px;margin-bottom:24px;">
-              <span class="material-symbols-outlined" style="font-size:44px;color:var(--outline);margin-bottom:8px;">search_off</span>
-              <h4 style="margin:0 0 4px;font-size:15px;font-weight:700;">No Matching Squads</h4>
-              <p style="margin:0 0 12px;font-size:12.5px;color:var(--on-surface-variant);">No squads match "{{ schoolRosterSearchQuery }}" under the selected track.</p>
-              <button class="btn btn-ghost btn-sm" (click)="schoolRosterSearchQuery = ''; schoolRosterTrackFilter = 'all'">Reset Filters</button>
-            </div>
+              
+              <!-- Empty Filter State -->
+              <div *ngIf="filteredSchoolTeams.length === 0 && schoolTeams.length > 0" class="card" style="text-align:center;padding:40px 20px;margin-bottom:24px;">
+                <span class="material-symbols-outlined" style="font-size:44px;color:var(--outline);margin-bottom:8px;">search_off</span>
+                <h4 style="margin:0 0 4px;font-size:15px;font-weight:700;">No Matching Squads</h4>
+                <p style="margin:0 0 12px;font-size:12.5px;color:var(--on-surface-variant);">No squads match "{{ schoolRosterSearchQuery }}" under the selected track.</p>
+                <button class="btn btn-ghost btn-sm" (click)="schoolRosterSearchQuery = ''; schoolRosterTrackFilter = 'all'">Reset Filters</button>
+              </div>
 
-            <!-- Empty State for Teams -->
-            <div class="school-teams-empty" *ngIf="schoolTeams.length === 0">
-              <span class="material-symbols-outlined">groups</span>
-              <h4>No Teams Registered</h4>
-              <p>Your school hasn't registered any squads under NTIC competition tracks yet.</p>
-              <button class="btn btn-primary" (click)="openAddTeamModal()">
-                <span class="material-symbols-outlined">add</span>Register Your First Team
-              </button>
+              <!-- Empty State for Teams -->
+              <div class="school-teams-empty" *ngIf="schoolTeams.length === 0">
+                <span class="material-symbols-outlined">groups</span>
+                <h4>No Teams Registered</h4>
+                <p>Your school hasn't registered any squads under NTIC competition tracks yet.</p>
+                <button class="btn btn-primary" (click)="openAddTeamModal()">
+                  <span class="material-symbols-outlined">add</span>Register Your First Team
+                </button>
+              </div>
             </div>
 
             <!-- Registered Team Members & Roster Profiles Section -->
@@ -6361,6 +6391,7 @@
   <!-- ENLIST SQUAD MODAL -->
   <app-enlist-squad-modal
     [isOpen]="isAddTeamModalOpen"
+    [isSubmitting]="isSubmittingTeam"
     [editingTeamOriginalName]="editingTeamOriginalName"
     [teamForm]="teamForm"
     [additionalMemberIndices]="additionalMemberIndices"

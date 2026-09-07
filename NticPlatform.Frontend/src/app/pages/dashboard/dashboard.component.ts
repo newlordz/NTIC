@@ -37,6 +37,7 @@ import { CredentialsModalComponent } from './credentials-modal/credentials-modal
 import { RoleUsersModalComponent } from './role-users-modal/role-users-modal.component';
 import { EnlistSquadModalComponent } from './enlist-squad-modal/enlist-squad-modal.component';
 import { UserTicketModalComponent } from './user-ticket-modal/user-ticket-modal.component';
+import { TeamDetailViewComponent } from './team-detail-view/team-detail-view.component';
 
 export interface SponsorInfographic {
   partnerCount: number;
@@ -73,7 +74,7 @@ type PersonnelRole = 'governance' | 'mentor' | 'sponsor' | 'judge' | 'instructor
     MentorPickerModalComponent, CustomAlertModalComponent,
     RecordInspectorModalComponent, MemberProfileModalComponent,
     InstitutionPortalModalComponent, CredentialsModalComponent, RoleUsersModalComponent,
-    EnlistSquadModalComponent, UserTicketModalComponent
+    EnlistSquadModalComponent, UserTicketModalComponent, TeamDetailViewComponent
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
@@ -1945,6 +1946,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   schoolAvatarUrl: string | null = null;
   schoolAvatarInitials = '';
   isAddTeamModalOpen = false;
+  isSubmittingTeam = false;
+  selectedTeamDetails: any | null = null;
   teamForm = { id: undefined as string | undefined, name: '', track: 'Coding', lead: '', members: 4, mentor: '', motto: '', memberNames: ['', '', '', '', '', '', '', ''], leadEmail: '', memberEmails: ['', '', '', '', '', '', '', ''] };
 
   // Registration form
@@ -7239,6 +7242,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   closeAddTeamModal(): void {
     this.isAddTeamModalOpen = false;
+    this.isSubmittingTeam = false;
     this.editingTeamOriginalName = null;
     if (this.route.snapshot.queryParams['action'] === 'add_team') {
       this.router.navigate([], { relativeTo: this.route, queryParams: { action: null }, queryParamsHandling: 'merge' });
@@ -7246,6 +7250,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   submitAddTeam(): void {
+    if (this.isSubmittingTeam) return;
+
     if (!this.teamForm.name.trim() || !this.teamForm.lead.trim() || !this.teamForm.leadEmail?.trim()) {
       this.dialogService.toast('Team Name, Team Lead Name, and Team Lead Email are required.', 'warning');
       return;
@@ -7255,6 +7261,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.dialogService.toast('Please provide a valid email address for the Team Lead.', 'warning');
       return;
     }
+
+    this.isSubmittingTeam = true;
+    this.cdr.markForCheck();
 
     const activeMembersList = [
       this.teamForm.lead.trim(),
@@ -7324,6 +7333,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         motto: this.teamForm.motto || ''
       }).subscribe({
         next: (res) => {
+          this.isSubmittingTeam = false;
           this.contentService.saveApprovals([
             { ...approvalReq, id: res.id, entity: res.entity || approvalReq.entity },
             ...this.contentService.pendingApprovals
@@ -7336,8 +7346,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
           });
           this.dialogService.toast(`Modification request for "${this.teamForm.name.trim()}" submitted for Super Admin review and approval.`, 'success');
           this.closeAddTeamModal();
+          this.cdr.markForCheck();
         },
         error: (err: any) => {
+          this.isSubmittingTeam = false;
+          this.cdr.markForCheck();
           const detail = err?.error?.detail || err?.message || 'Unknown error';
           this.dialogService.toast(
             err?.status === 0
@@ -7391,6 +7404,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         motto: this.teamForm.motto || ''
       }).subscribe({
         next: (res) => {
+          this.isSubmittingTeam = false;
           this.contentService.saveApprovals([
             { ...approvalReq, id: res.id, entity: res.entity || approvalReq.entity },
             ...this.contentService.pendingApprovals
@@ -7403,8 +7417,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
           });
           this.dialogService.toast(`Team Addition "${approvalReq.entity}" submitted for Super Admin review and approval.`, 'success');
           this.closeAddTeamModal();
+          this.cdr.markForCheck();
         },
         error: (err: any) => {
+          this.isSubmittingTeam = false;
+          this.cdr.markForCheck();
           const detail = err?.error?.detail || err?.message || 'Unknown error';
           this.dialogService.toast(
             err?.status === 0
@@ -7415,6 +7432,100 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       });
     }
+  }
+
+  openTeamDetailView(team: any): void {
+    this.selectedTeamDetails = team;
+    this.cdr.markForCheck();
+  }
+
+  closeTeamDetailView(): void {
+    this.selectedTeamDetails = null;
+    this.cdr.markForCheck();
+  }
+
+  getTeamRosterMembers(team: any): any[] {
+    if (!team) return [];
+    const rosterNames = this.getTeamMembers(team);
+    const schoolMems = this.schoolMembers;
+    return rosterNames.map((name: string, idx: number) => {
+      const cleanName = (name || '').trim().toLowerCase();
+      const found = schoolMems.find(m => (m.name || '').trim().toLowerCase() === cleanName);
+      const role = idx === 0 ? 'Team Lead / Student Captain' : 'Squad Member';
+      const email = (idx === 0 && team.leadEmail)
+        ? team.leadEmail
+        : (team.memberEmails?.[idx - 1] || found?.email || `${cleanName.replace(/\s+/g, '.')}@student.ntic.edu.gh`);
+      
+      const submissions = this.getStudentSubmissions(name, email, team);
+      const scoredSubs = submissions.filter((s: any) => typeof s.score === 'number' && s.score !== null);
+      const avgScore = scoredSubs.length > 0
+        ? Math.round(scoredSubs.reduce((acc: number, s: any) => acc + Number(s.score), 0) / scoredSubs.length)
+        : null;
+      const topScore = scoredSubs.length > 0
+        ? Math.max(...scoredSubs.map((s: any) => Number(s.score)))
+        : null;
+
+      return {
+        ...(found || {}),
+        name: name,
+        email: email,
+        role: role,
+        isLead: idx === 0,
+        track: team.track || 'General',
+        schoolName: team.schoolName || this.schoolName,
+        status: found?.status || 'Active',
+        submissionsCount: submissions.length,
+        scoredCount: scoredSubs.length,
+        avgScore: avgScore,
+        topScore: topScore,
+        submissions: submissions
+      };
+    });
+  }
+
+  getStudentSubmissions(studentName: string, studentEmail?: string, team?: any): any[] {
+    const cleanName = (studentName || '').trim().toLowerCase();
+    const cleanEmail = (studentEmail || '').trim().toLowerCase();
+    const cleanTeamId = team?.id || '';
+    const cleanTeamName = (team?.name || '').trim().toLowerCase();
+
+    const allSubs = this.contentService.submissions || [];
+    return allSubs.filter((s: any) => {
+      const sStudent = (s.student || s.student_name || s.student_id || '').trim().toLowerCase();
+      const sEmail = (s.email || '').trim().toLowerCase();
+      const sTeamId = s.team_id || s.teamId || '';
+      const sTeam = (s.team_name || s.team || '').trim().toLowerCase();
+
+      return (cleanName && (sStudent === cleanName || sStudent.includes(cleanName))) ||
+             (cleanEmail && sEmail === cleanEmail) ||
+             (cleanTeamId && sTeamId === cleanTeamId) ||
+             (cleanTeamName && sTeam === cleanTeamName);
+    });
+  }
+
+  getTeamSubmissions(team: any): any[] {
+    if (!team) return [];
+    const cleanTeamId = team.id || '';
+    const cleanTeamName = (team.name || '').trim().toLowerCase();
+    const memberNames = this.getTeamMembers(team).map((m: string) => m.trim().toLowerCase());
+
+    const allSubs = this.contentService.submissions || [];
+    return allSubs.filter((s: any) => {
+      const sTeamId = s.team_id || s.teamId || '';
+      const sTeam = (s.team_name || s.team || '').trim().toLowerCase();
+      const sStudent = (s.student || s.student_name || '').trim().toLowerCase();
+
+      return (cleanTeamId && sTeamId === cleanTeamId) ||
+             (cleanTeamName && sTeam === cleanTeamName) ||
+             (memberNames.some((m: string) => m && (sStudent === m || sStudent.includes(m))));
+    });
+  }
+
+  getTeamAverageScore(team: any): number | null {
+    const subs = this.getTeamSubmissions(team);
+    const scored = subs.filter((s: any) => typeof s.score === 'number' && s.score !== null);
+    if (scored.length === 0) return null;
+    return Math.round(scored.reduce((sum: number, s: any) => sum + Number(s.score), 0) / scored.length);
   }
 
 

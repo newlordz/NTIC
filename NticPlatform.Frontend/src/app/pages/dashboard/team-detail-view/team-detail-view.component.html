@@ -1,0 +1,194 @@
+<div *ngIf="team" class="team-deepdive-container">
+  <!-- Navigation / Back Bar -->
+  <div class="team-deepdive-nav">
+    <button class="btn btn-ghost btn-sm back-btn" (click)="onBack()">
+      <span class="material-symbols-outlined">arrow_back</span> Back to All Squads
+    </button>
+    <div class="nav-action-btns">
+      <button type="button" class="btn btn-sm btn-edit-squad" (click)="onEdit()">
+        <span class="material-symbols-outlined">edit_square</span>
+        Edit Squad &amp; Roster
+      </button>
+      <button *ngIf="!isTeamInCompetition" type="button" routerLink="/competitions" class="btn btn-sm btn-primary">
+        <span class="material-symbols-outlined">emoji_events</span>
+        Apply to Tournament Cycle
+      </button>
+    </div>
+  </div>
+
+  <!-- Hero Banner for Selected Team -->
+  <div class="card team-hero-card">
+    <div class="hero-top-row">
+      <div class="hero-info">
+        <div class="hero-badges">
+          <span class="team-track-chip" [class]="team.track?.toLowerCase()">{{ team.track }}</span>
+          <span *ngIf="isTeamInCompetition" class="badge primary">
+            <span class="material-symbols-outlined">emoji_events</span>
+            In Competition
+          </span>
+          <span *ngIf="!isTeamInCompetition" class="badge badge-ready">
+            <span class="material-symbols-outlined">playlist_add_check</span>
+            Roster Ready
+          </span>
+          <span class="badge secondary">{{ team.status || 'Active' }}</span>
+        </div>
+        <h2 class="hero-title">{{ team.name }}</h2>
+        <div *ngIf="team.motto" class="hero-motto">"{{ team.motto }}"</div>
+        <div class="hero-meta">
+          <span><strong>Institution:</strong> {{ team.schoolName || schoolName }}</span>
+          <span *ngIf="isTeamInCompetition"><strong>Competition Cycle:</strong> {{ competitionTitle }}</span>
+        </div>
+      </div>
+      <div class="hero-score-box">
+        <div class="score-label">Average Squad Score</div>
+        <div class="score-number">
+          {{ averageScore !== null ? averageScore + '/100' : 'Awaiting' }}
+        </div>
+        <div class="score-subtext">
+          {{ teamSubmissions.length }} Competition Project(s)
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 KPI Summary Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Team Captain / Lead</div>
+        <div class="kpi-value">{{ team.rosterList?.[0] || team.lead }}</div>
+        <div class="kpi-sub">{{ team.leadEmail || 'Official Student Lead' }}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Assigned School Mentor</div>
+        <div class="kpi-value">{{ mentorName || 'Pending Allocation' }}</div>
+        <div class="kpi-sub">Supervising Instructor</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Enlisted Squad Size</div>
+        <div class="kpi-value">{{ team.members }} Registered Students</div>
+        <div class="kpi-sub">{{ team.track }} Category</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Tournament Bracket</div>
+        <div class="kpi-value">{{ isTeamInCompetition ? 'Active in Competition' : 'Tournament Ready' }}</div>
+        <div class="kpi-sub">Verified National Squad</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Squad Members Dossier Section (Step-in to each member) -->
+  <div class="card members-section-card">
+    <div class="card-header section-header">
+      <div>
+        <h3 class="section-heading">
+          <span class="material-symbols-outlined">groups</span>
+          Squad Members &amp; Performance Step-In
+        </h3>
+        <p class="section-subheading">Click on any member card to step into their full dossier, submissions, and judge feedback records.</p>
+      </div>
+      <span class="badge secondary">{{ rosterMembers.length }} Enlisted</span>
+    </div>
+    <div class="card-body section-body">
+      <div class="members-grid">
+        <div 
+          *ngFor="let m of rosterMembers" 
+          class="card member-profile-card" 
+          (click)="onInspectMember(m)" 
+          title="Click to view detailed student profile & performance dossier">
+          <div class="member-top-row">
+            <div class="member-avatar">
+              {{ getInitials(m.name) }}
+            </div>
+            <div class="member-details">
+              <div class="member-name-row">
+                <span class="member-name">{{ m.name }}</span>
+                <span *ngIf="m.isLead" class="badge primary lead-badge">Lead</span>
+              </div>
+              <div class="member-email">{{ m.email }}</div>
+            </div>
+          </div>
+
+          <!-- Individual Performance Stats -->
+          <div class="member-perf-strip">
+            <div class="perf-col">
+              <span class="perf-lbl">Graded Projects</span>
+              <strong class="perf-val">{{ m.scoredCount }} / {{ m.submissionsCount }}</strong>
+            </div>
+            <div class="perf-col">
+              <span class="perf-lbl">Avg Score</span>
+              <strong class="perf-val perf-primary">{{ m.avgScore !== null ? m.avgScore + '/100' : '--' }}</strong>
+            </div>
+            <div class="perf-col">
+              <span class="perf-lbl">Best Score</span>
+              <strong class="perf-val perf-success">{{ m.topScore !== null ? m.topScore + '/100' : '--' }}</strong>
+            </div>
+          </div>
+
+          <div class="member-card-footer">
+            <span class="badge" [class]="m.status === 'Active' ? 'success' : 'secondary'">{{ m.status || 'Active' }}</span>
+            <span class="step-in-action">
+              <span class="material-symbols-outlined">visibility</span>
+              Step-In Details &rarr;
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Squad Submissions & Projects Section -->
+  <div class="card submissions-section-card">
+    <div class="card-header section-header">
+      <h3 class="section-heading">
+        <span class="material-symbols-outlined">folder_special</span>
+        Tournament Submissions &amp; Judge Evaluations
+      </h3>
+      <span class="badge primary">{{ teamSubmissions.length }} Submissions</span>
+    </div>
+    <div class="card-body section-body">
+      <div *ngIf="teamSubmissions.length > 0" class="submissions-table-wrap">
+        <table class="table submissions-table">
+          <thead>
+            <tr>
+              <th>Assignment / Project</th>
+              <th>Submitted By</th>
+              <th>Status</th>
+              <th>Score</th>
+              <th>Judge Feedback</th>
+              <th>Submitted At</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of teamSubmissions">
+              <td><strong>{{ s.assignment || s.title || s.assignment_id || 'Competition Submission' }}</strong></td>
+              <td>{{ s.student || s.student_name || 'Squad Member' }}</td>
+              <td>
+                <span class="badge" [class]="s.score !== null ? 'success' : 'warning'">
+                  {{ s.score !== null ? 'Graded' : 'Awaiting Review' }}
+                </span>
+              </td>
+              <td>
+                <strong *ngIf="s.score !== null" class="score-cell">{{ s.score }} / {{ s.max_score || 100 }}</strong>
+                <span *ngIf="s.score === null" class="pending-cell">Pending</span>
+              </td>
+              <td class="feedback-cell">
+                {{ s.feedback || 'No written feedback provided yet.' }}
+              </td>
+              <td class="time-cell">
+                {{ s.submitted || s.created_at || 'Recent' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="teamSubmissions.length === 0" class="submissions-empty">
+        <span class="material-symbols-outlined">assignment_late</span>
+        <h4>No Submissions Recorded Yet</h4>
+        <p>This squad has not submitted project files or videos for competition judging yet.</p>
+        <button *ngIf="!isTeamInCompetition" routerLink="/competitions" class="btn btn-sm btn-primary">
+          <span class="material-symbols-outlined">emoji_events</span> Enlist In Active Cycle
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

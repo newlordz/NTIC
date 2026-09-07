@@ -1,19 +1,69 @@
+:host {
+  display: contents;
+}
+
+.enlist-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(15, 23, 42, 0.75) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  z-index: 1000000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+  box-sizing: border-box !important;
+  overflow-y: auto !important;
+  animation: enlistFadeIn 0.25s ease-out;
+}
+
+@keyframes enlistFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .enlist-modal-card {
   width: 100%;
   max-width: 620px;
+  max-height: 90vh;
+  margin: auto !important;
   background: var(--surface-container-lowest);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 24px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 63, 135, 0.1);
-  overflow: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   animation: enlistSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
 }
 
 @keyframes enlistSlideUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinner-inline {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
 }
 
 .enlist-header-banner {

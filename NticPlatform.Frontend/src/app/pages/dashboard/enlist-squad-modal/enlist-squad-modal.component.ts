@@ -11,6 +11,7 @@ import { FormsModule } from '@angular/forms';
 })
 export class EnlistSquadModalComponent {
   @Input() isOpen = false;
+  @Input() isSubmitting = false;
   @Input() editingTeamOriginalName: string | null = null;
   @Input() teamForm: any = null;
   @Input() additionalMemberIndices: number[] = [];

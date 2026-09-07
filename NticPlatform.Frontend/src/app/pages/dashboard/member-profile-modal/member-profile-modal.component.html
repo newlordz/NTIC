@@ -55,6 +55,49 @@
           <strong style="color:var(--on-surface);">{{ member.guardianPhone }}</strong>
         </div>
       </div>
+
+      <!-- Student Performance & Submissions Breakdown (Step-in Detail) -->
+      <div *ngIf="member.submissions && member.submissions.length > 0" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--outline-variant);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <span style="display:block;font-size:11px;font-weight:700;color:var(--on-surface-variant);text-transform:uppercase;letter-spacing:0.04em;">Performance &amp; Submissions</span>
+          <span class="badge primary" style="font-size:10px;">{{ member.submissions.length }} Submitted</span>
+        </div>
+        
+        <div style="display:flex;gap:10px;margin-bottom:14px;">
+          <div style="flex:1;background:var(--surface-container);padding:10px 12px;border-radius:10px;text-align:center;">
+            <div style="font-size:11px;color:var(--on-surface-variant);">Average Score</div>
+            <div style="font-size:17px;font-weight:800;color:var(--primary);margin-top:2px;">
+              {{ member.avgScore !== null ? member.avgScore + '/100' : 'Pending' }}
+            </div>
+          </div>
+          <div style="flex:1;background:var(--surface-container);padding:10px 12px;border-radius:10px;text-align:center;">
+            <div style="font-size:11px;color:var(--on-surface-variant);">Best Score</div>
+            <div style="font-size:17px;font-weight:800;color:#059669;margin-top:2px;">
+              {{ member.topScore !== null ? member.topScore + '/100' : 'Pending' }}
+            </div>
+          </div>
+          <div style="flex:1;background:var(--surface-container);padding:10px 12px;border-radius:10px;text-align:center;">
+            <div style="font-size:11px;color:var(--on-surface-variant);">Graded Count</div>
+            <div style="font-size:17px;font-weight:800;color:var(--on-surface);margin-top:2px;">
+              {{ member.scoredCount }} / {{ member.submissionsCount }}
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div *ngFor="let sub of member.submissions" style="padding:10px 12px;background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:8px;font-size:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <strong style="color:var(--on-surface);">{{ sub.assignment || sub.title || sub.assignment_id || 'Competition Submission' }}</strong>
+              <span class="badge" [class]="sub.score !== null ? 'success' : 'warning'">
+                {{ sub.score !== null ? sub.score + '/100' : 'Awaiting Grade' }}
+              </span>
+            </div>
+            <div *ngIf="sub.feedback" style="margin-top:6px;font-style:italic;color:var(--on-surface-variant);font-size:11px;padding:4px 8px;background:var(--surface-container);border-radius:6px;">
+              "{{ sub.feedback }}"
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="admin-modal-footer" style="padding:12px 20px;border-top:1px solid var(--outline-variant);display:flex;justify-content:flex-end;">
       <button class="btn btn-primary btn-sm" (click)="onClose()">Close</button>
