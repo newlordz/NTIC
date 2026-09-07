@@ -14,7 +14,7 @@ import {
   TalentDiscovery,
   UpcomingEvent
 } from '../../services/content.service';
-import { BrevoEmailService } from '../../services/brevo-email.service';
+import { EmailService } from '../../services/email.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
 import { ApiService, MyEnrolledCourse, MySubmission, SponsorshipSummary, Sponsorship, PersonnelDetail, AuthoredCourse, GradingQueueItem } from '../../services/api.service';
@@ -3220,7 +3220,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     public contentService: ContentService,
     private route: ActivatedRoute,
     private router: Router,
-    private emailService: BrevoEmailService,
+    private emailService: EmailService,
     private fileStorage: FileStorageService,
     private cdr: ChangeDetectorRef,
     public dialogService: DialogService,

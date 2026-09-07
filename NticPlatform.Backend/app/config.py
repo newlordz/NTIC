@@ -33,11 +33,10 @@ class Config:
     POSTGRES_DB: str = _get_nonempty_env("POSTGRES_DB") or _get_nonempty_env("PGDATABASE", "NticPlatformDb")
 
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    BREVO_API_KEY: str = os.getenv("BREVO_API_KEY", "")
 
     # Outbound email identity is controlled by the server ONLY. Clients may
     # never choose the From address, otherwise /api/send-email becomes an
-    # open, spoofable relay on our paid Brevo account.
+    # open, spoofable relay.
     MAIL_FROM_EMAIL: str = _get_nonempty_env("MAIL_FROM_EMAIL", "enochessel5@gmail.com")
     MAIL_FROM_NAME: str = _get_nonempty_env("MAIL_FROM_NAME", "NTIC Ghana Championship")
     # Where security alerts are delivered. Falls back to the sender.
@@ -83,14 +82,11 @@ class Config:
 
     @classmethod
     def log_mail_config(cls) -> None:
-        """Outbound mail identity is now server-controlled. If the operator has
-        not chosen one, say so loudly: Brevo rejects unverified senders, so an
-        unset value means email silently stops working."""
+        """Outbound mail identity is server-controlled."""
         if not _get_nonempty_env("MAIL_FROM_EMAIL"):
             logger.warning(
                 "MAIL_FROM_EMAIL is not set - falling back to '%s'. "
-                "Outbound email will FAIL unless this address is a verified "
-                "sender in Brevo. Set MAIL_FROM_EMAIL to your verified sender.",
+                "Set MAIL_FROM_EMAIL to your verified sender address.",
                 cls.MAIL_FROM_EMAIL,
             )
         else:

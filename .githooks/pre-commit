@@ -82,7 +82,7 @@ ENV_DEV="NticPlatform.Frontend/src/environments/environment.ts"
 case "$STAGED" in
     *"$ENV_DEV"*)
         body=$(staged_content "$ENV_DEV")
-        for token in REPLACE_BREVO_API_KEY REPLACE_SMSMODE_API_KEY REPLACE_GEMINI_API_KEY; do
+        for token in REPLACE_GEMINI_API_KEY; do
             if ! printf '%s' "$body" | grep -q "$token"; then
                 echo "pre-commit: $ENV_DEV is missing the '$token' placeholder."
                 echo "    A build is probably mid-flight and has injected real keys."

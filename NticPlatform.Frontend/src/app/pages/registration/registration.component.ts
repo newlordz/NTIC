@@ -7,7 +7,7 @@ import { Subscription, firstValueFrom } from 'rxjs';
 import { ThemeService } from '../../services/theme.service';
 import { ContentService } from '../../services/content.service';
 import { FileStorageService } from '../../services/file-storage.service';
-import { BrevoEmailService } from '../../services/brevo-email.service';
+import { EmailService } from '../../services/email.service';
 import { SmsService } from '../../services/sms.service';
 import { NotificationService } from '../../services/notification.service';
 import { DialogService } from '../../services/dialog.service';
@@ -1975,7 +1975,7 @@ setAuthValue('activeUserEmail', email);
     public themeService: ThemeService,
     public contentService: ContentService,
     public fileStorage: FileStorageService,
-    private emailService: BrevoEmailService,
+    private emailService: EmailService,
     private smsService: SmsService,
     private notificationService: NotificationService,
     public dialogService: DialogService,

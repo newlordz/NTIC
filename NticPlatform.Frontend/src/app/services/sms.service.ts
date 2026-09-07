@@ -81,49 +81,19 @@ export class SmsService {
     );
   }
 
-  private whatsappGatewayUrl = (environment as any).whatsappGatewayUrl || 'http://localhost:3001';
-
   sendOtpSms(phone: string, otpCode: string): Observable<SmsResponse> {
     const message = `NTIC Competition: Your OTP code is ${otpCode}. Do not share this code.`;
-    // Try sending via WhatsApp Gateway first (unlimited free), with fallback to SMS
-    this.sendWhatsAppOtp(phone, otpCode).subscribe();
     return this.sendSms(phone, message);
   }
 
   sendCredentialsSms(phone: string, fullName: string, ticket: string, pin: string): Observable<SmsResponse> {
     const message = `NTIC Platform: Welcome ${fullName}! Ticket: ${ticket}, PIN: ${pin}. Log in at https://ntic.edu.gh`;
-    // Try sending via WhatsApp Gateway first (unlimited free), with fallback to SMS
-    this.sendWhatsAppCredentials(phone, fullName, ticket, pin).subscribe();
     return this.sendSms(phone, message);
   }
 
-  // --- UNLIMITED WHATSAPP GATEWAY INTEGRATION ---
-  sendWhatsAppMessage(phone: string, message: string): Observable<SmsResponse> {
-    const url = `${this.whatsappGatewayUrl}/send`;
-    return this.http.post<SmsResponse>(url, { phone, message }).pipe(
-      map(res => {
-        console.log('[WhatsApp Gateway] Notification response:', res);
-        return res;
-      }),
-      catchError(err => {
-        console.warn('[WhatsApp Gateway] Could not connect to local WhatsApp service:', err?.message);
-        return of({ success: false, error: err?.message || 'WhatsApp Gateway offline' });
-      })
-    );
-  }
-
-  sendWhatsAppOtp(phone: string, otp: string): Observable<SmsResponse> {
-    const url = `${this.whatsappGatewayUrl}/send-otp`;
-    return this.http.post<SmsResponse>(url, { phone, otp }).pipe(
-      catchError(err => of({ success: false, error: err?.message }))
-    );
-  }
-
-  sendWhatsAppCredentials(phone: string, fullName: string, ticket: string, pin: string): Observable<SmsResponse> {
-    const url = `${this.whatsappGatewayUrl}/send-credentials`;
-    return this.http.post<SmsResponse>(url, { phone, fullName, ticket, pin }).pipe(
-      catchError(err => of({ success: false, error: err?.message }))
-    );
+  sendPasswordResetSms(phone: string, fullName: string, ticket: string, pin: string): Observable<SmsResponse> {
+    const message = `NTIC Platform: Hello ${fullName}, your password has been reset. Ticket: ${ticket}, Temporary PIN: ${pin}. Log in at https://ntic.edu.gh`;
+    return this.sendSms(phone, message);
   }
 }
 

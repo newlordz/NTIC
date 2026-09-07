@@ -13,7 +13,7 @@ import { FilterTicketsPipe } from '../../services/filter-tickets.pipe';
 import { FileStorageService } from '../../services/file-storage.service';
 
 import { SmsService } from '../../services/sms.service';
-import { BrevoEmailService } from '../../services/brevo-email.service';
+import { EmailService } from '../../services/email.service';
 
 @Component({
   selector: 'app-user-management',
@@ -59,8 +59,15 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   createdUserModal: {
     isOpen: boolean;
     user: User;
+    mode: 'create' | 'reset';
+    title: string;
+    subtitle: string;
+    description: string;
+    isEmailDispatched: boolean;
+    dispatchNotice: string;
     copiedTicket: boolean;
     copiedPin: boolean;
+    copiedAll: boolean;
   } | null = null;
 
   deleteUserConfirm: User | null = null;
@@ -109,7 +116,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     private http: HttpClient,
     private fileStorage: FileStorageService,
     public smsService: SmsService,
-    public emailService: BrevoEmailService
+    public emailService: EmailService
   , private cdr: ChangeDetectorRef) {}
 
   get canManageUsers(): boolean {
@@ -791,12 +798,57 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     } catch (_) {}
   }
 
-  openCreatedUserModal(user: User): void {
+  openCreatedUserModal(
+    user: User,
+    mode: 'create' | 'reset' = 'create',
+    options?: {
+      title?: string;
+      subtitle?: string;
+      description?: string;
+      isEmailDispatched?: boolean;
+      dispatchNotice?: string;
+    }
+  ): void {
+    const roleLabel = this.getUserRoleLabel(user);
+    const isReset = mode === 'reset';
+
+    const defaultTitle = isReset
+      ? 'Password Reset Successfully! 🔑'
+      : 'Account Created Successfully! 🎉';
+
+    const defaultSubtitle = isReset
+      ? 'New temporary credentials generated for this account'
+      : 'Credentials generated and dispatched via Email';
+
+    const defaultDescription = isReset
+      ? `A new temporary password has been generated for <strong>${user.fullName}</strong> (${roleLabel}).`
+      : `A new <strong>${roleLabel}</strong> account has been created for <strong>${user.fullName}</strong>.`;
+
+    const isSquadPlaceholder = (user.email || '').includes('@squad.ntic.org.gh');
+    const hasDispatched = options?.isEmailDispatched ?? (!isSquadPlaceholder && Boolean(user.email));
+
+    let defaultNotice = '';
+    if (hasDispatched && user.email) {
+      defaultNotice = `Credentials dispatched to <strong>${user.email}</strong>${user.phone ? ' and SMS' : ''}.`;
+      if (isReset) {
+        defaultNotice += ' The user will be prompted to set a permanent password on next login.';
+      }
+    } else {
+      defaultNotice = `Share these credentials securely with <strong>${user.fullName}</strong>. They will be prompted to set a permanent password on next login.`;
+    }
+
     this.createdUserModal = {
       isOpen: true,
       user,
+      mode,
+      title: options?.title || defaultTitle,
+      subtitle: options?.subtitle || defaultSubtitle,
+      description: options?.description || defaultDescription,
+      isEmailDispatched: hasDispatched,
+      dispatchNotice: options?.dispatchNotice || defaultNotice,
       copiedTicket: false,
-      copiedPin: false
+      copiedPin: false,
+      copiedAll: false
     };
     this.autoFocusModal('.cmd-btn-primary, .btn-cred-copy');
   }
@@ -805,20 +857,40 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.createdUserModal = null;
   }
 
-  copyCreatedUserText(type: 'ticket' | 'pin'): void {
+  copyCreatedUserText(type: 'ticket' | 'pin' | 'all'): void {
     if (!this.createdUserModal) return;
     let text = '';
     if (type === 'ticket') {
       text = this.createdUserModal.user.ticket || '';
       this.createdUserModal.copiedTicket = true;
       setTimeout(() => { if (this.createdUserModal) this.createdUserModal.copiedTicket = false; }, 2500);
-    } else {
+    } else if (type === 'pin') {
       text = this.createdUserModal.user.otp || '';
       this.createdUserModal.copiedPin = true;
       setTimeout(() => { if (this.createdUserModal) this.createdUserModal.copiedPin = false; }, 2500);
+    } else if (type === 'all') {
+      const parts: string[] = [];
+      if (this.createdUserModal.user.fullName) {
+        parts.push(`Name: ${this.createdUserModal.user.fullName}`);
+      }
+      if (this.createdUserModal.user.ticket) {
+        parts.push(`Access Ticket ID: ${this.createdUserModal.user.ticket}`);
+      }
+      if (this.createdUserModal.user.otp) {
+        parts.push(`Temporary Password: ${this.createdUserModal.user.otp}`);
+      }
+      if (this.createdUserModal.user.email) {
+        parts.push(`Email: ${this.createdUserModal.user.email}`);
+      }
+      text = parts.join('\n');
+      this.createdUserModal.copiedAll = true;
+      setTimeout(() => { if (this.createdUserModal) this.createdUserModal.copiedAll = false; }, 2500);
     }
-    if (navigator?.clipboard) {
-      navigator.clipboard.writeText(text);
+
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).catch(() => this.fallbackCopyTicket(text));
+    } else {
+      this.fallbackCopyTicket(text);
     }
   }
 
@@ -1115,10 +1187,29 @@ export class UserManagementComponent implements OnInit, OnDestroy {
           users[idx].passwordChanged = false;
           this.contentService.saveUsers(users);
         }
-        this.openCreatedUserModal({
-          ...user,
-          otp: newOTP
-        });
+
+        const isPlaceholder = (user.email || '').includes('@squad.ntic.org.gh');
+        const canEmail = Boolean(user.email && !isPlaceholder);
+        if (canEmail) {
+          this.emailService.sendPasswordResetEmail(user.email, user.fullName, user.ticket || '', newOTP);
+        }
+        if (user.phone) {
+          this.smsService.sendPasswordResetSms(user.phone, user.fullName, user.ticket || '', newOTP).subscribe();
+        }
+
+        this.openCreatedUserModal(
+          {
+            ...user,
+            otp: newOTP
+          },
+          'reset',
+          {
+            title: 'Password Reset Successfully! 🔑',
+            subtitle: 'New temporary credentials generated and dispatched',
+            description: `A new temporary password has been generated for <strong>${user.fullName}</strong> (${this.getUserRoleLabel(user)}).`,
+            isEmailDispatched: canEmail
+          }
+        );
         this.showToast('Password Reset', `A new one-time password was generated for ${user.fullName}.`, 6000);
         this.loadUsers();
       },
@@ -1162,19 +1253,29 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         if (uIdx > -1) {
           this.users[uIdx].otp = newPass;
         }
-        this.openCreatedUserModal({
-          id: team.id || '',
-          email: `${team.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@squad.ntic.org.gh`,
-          fullName: `${team.name} (${team.lead || 'Squad Lead'})`,
-          phone: '',
-          role: 'student',
-          organization: team.schoolName || team.school_name || 'Independent',
-          ticket: `NTIC-SQD-${(team.id || '0000').slice(-4).toUpperCase()}`,
-          status: team.status || 'Active',
-          otp: newPass,
-          registeredAt: '',
-          lastLogin: ''
-        });
+        this.openCreatedUserModal(
+          {
+            id: team.id || '',
+            email: `${team.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@squad.ntic.org.gh`,
+            fullName: `${team.name} (${team.lead || 'Squad Lead'})`,
+            phone: '',
+            role: 'student',
+            organization: team.schoolName || team.school_name || 'Independent',
+            ticket: `NTIC-SQD-${(team.id || '0000').slice(-4).toUpperCase()}`,
+            status: team.status || 'Active',
+            otp: newPass,
+            registeredAt: '',
+            lastLogin: ''
+          },
+          'reset',
+          {
+            title: 'Squad Pass Regenerated! 🔑',
+            subtitle: 'New access pass generated for squad',
+            description: `A new access pass has been generated for <strong>${team.name}</strong> (${team.lead || 'Squad Lead'}).`,
+            isEmailDispatched: false,
+            dispatchNotice: `Share this new access pass directly with squad members of <strong>${team.name}</strong>.`
+          }
+        );
         this.showToast('Credentials Reset', `New access pass generated for ${team.name}.`, 5000);
       },
       error: (err) => {

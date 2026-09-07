@@ -16,7 +16,6 @@ email/WhatsApp notifications.
 |---|---|---|
 | `NticPlatform.Backend/` | REST API + WebSocket server | Python 3.12, FastAPI, PostgreSQL (raw `psycopg2`) |
 | `NticPlatform.Frontend/` | Single-page application (PWA) | Angular 17, TypeScript, SCSS |
-| `whatsapp-gateway/` | Optional OTP/notification relay | Node.js, Express, `whatsapp-web.js` |
 | `stitch_national_ntic_competition_platform/` | Static design mockups | HTML + Tailwind (reference only, not deployed) |
 
 ---
@@ -77,26 +76,9 @@ npm run dev
 App on **http://localhost:4200**, proxying `/api` to port 5000 via
 `proxy.conf.json`.
 
-### 4. WhatsApp gateway (optional)
-
-Only needed for phone/SMS OTP delivery.
-
-```bash
-cd whatsapp-gateway
-npm ci
-npm start          # scan the printed QR code with WhatsApp
-```
-
-Then set `SMS_GATEWAY_URL=http://localhost:3001` in `.env`. Without it, phone
-verification reports itself unavailable rather than failing silently.
-
-> ⚠️ `whatsapp-web.js` automates WhatsApp Web through a headless browser. It is
-> unofficial and its use is against WhatsApp's Terms of Service; the paired
-> number risks being banned. Treat it as a development convenience.
-
 ### Windows helper scripts
 
-`run_backend.bat`, `run_frontend.bat`, `run_frontend_dev.bat`, `run_whatsapp.bat`
+`run_backend.bat`, `run_frontend.bat`, `run_frontend_dev.bat`
 (and `.ps1` equivalents) wrap the commands above. There are no POSIX equivalents
 yet — on macOS/Linux use the commands directly.
 

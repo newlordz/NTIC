@@ -629,10 +629,10 @@ try:
             },
             {
                 "id": "node-sms",
-                "name": "SMS / WhatsApp Gateway",
+                "name": "SMS Gateway",
                 "status": "Configured" if os.getenv("SMS_GATEWAY_URL", "").strip() else "Not configured",
                 "latencyMs": None,
-                "detail": "SMSMode / WhatsApp HTTP Relay" if os.getenv("SMS_GATEWAY_URL", "").strip() else "Awaiting Gateway URL",
+                "detail": "SMS HTTP Relay" if os.getenv("SMS_GATEWAY_URL", "").strip() else "Awaiting Gateway URL",
                 "measured": False,
             },
         ]
@@ -864,11 +864,11 @@ try:
     # NOTE: /api/health is intentionally NOT registered here. The comprehensive
     # handler is defined above at line 455 with database latency and process uptime.
 
-    # EMAIL PROXY - sends via Brevo from the backend (avoids CORS + exposed API key)
+    # EMAIL PROXY - sends via native SMTP from the backend (avoids CORS + exposed credentials)
     #
     # HARDENING: the sender identity is chosen by the SERVER, never by the
     # caller. Allowing a client-supplied From address turned this endpoint into
-    # a spoofable open relay on our paid Brevo account. Field lengths are
+    # a spoofable open relay. Field lengths are
     # capped and the endpoint is rate limited per client IP.
     _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+\.[^@\s]{2,}$")
 
@@ -1245,11 +1245,9 @@ try:
         return f"{'*' * max(0, len(digits) - 3)}{digits[-3:]}" if digits else "***"
 
     def _send_sms_otp(phone: str, code: str) -> bool:
-        """Deliver an OTP over the WhatsApp/SMS gateway, server-side.
+        """Deliver an OTP over the SMS gateway, server-side.
 
-        Requires SMS_GATEWAY_URL. Previously the browser called the gateway on
-        localhost directly, which could never work in production and exposed the
-        code to the caller.
+        Requires SMS_GATEWAY_URL.
         """
         gateway = os.getenv("SMS_GATEWAY_URL", "").strip().rstrip("/")
         if not gateway:
@@ -1258,13 +1256,13 @@ try:
                 root_env = Path(__file__).resolve().parent.parent.parent / ".env"
                 if root_env.exists() and "SMS_GATEWAY_URL" not in os.environ:
                     env_vals = dotenv_values(root_env)
-                    gateway = (env_vals.get("SMS_GATEWAY_URL") or env_vals.get("WHATSAPP_GATEWAY_URL") or "").strip().rstrip("/")
+                    gateway = (env_vals.get("SMS_GATEWAY_URL") or "").strip().rstrip("/")
             except Exception:
                 pass
         if not gateway:
             return False
         headers = {}
-        gw_secret = (os.getenv("WHATSAPP_GATEWAY_SECRET") or os.getenv("SMS_GATEWAY_SECRET") or "").strip()
+        gw_secret = os.getenv("SMS_GATEWAY_SECRET", "").strip()
         if gw_secret:
             headers["X-Gateway-Secret"] = gw_secret
         try:
