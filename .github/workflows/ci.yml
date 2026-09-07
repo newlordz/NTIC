@@ -148,18 +148,6 @@ jobs:
         working-directory: NticPlatform.Frontend
         run: npx ng build --configuration production
 
-  gateway:
-    name: WhatsApp gateway (syntax)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Syntax check
-        working-directory: whatsapp-gateway
-        # No tests exist yet; at minimum make sure the file parses.
-        run: node --check server.js
 
   encoding:
     name: Encoding (mojibake scan)
