@@ -62,7 +62,7 @@ const ROLE_ACCESS: Record<string, readonly string[]> = {
  * the role string and never reset it, so signing out of an admin account and
  * back in as a student left the student holding the admin's verified role.
  */
-let cache: { token: string; role: string } | null = null;
+let cache: { token: string; role: string; mustChangePassword?: boolean } | null = null;
 
 /** Called on logout so nothing survives into the next session. */
 export function resetVerifiedRoleCache(): void {
@@ -94,6 +94,10 @@ export const authGuard: CanActivateFn = async (_route, state) => {
   }
 
   if (cache && cache.token === token) {
+    if (cache.mustChangePassword && path !== 'dashboard' && path !== 'profile-completion') {
+      router.navigate(['/dashboard']);
+      return false;
+    }
     if (!allowed.includes(cache.role)) {
       router.navigate(['/dashboard']);
       return false;
@@ -104,9 +108,15 @@ export const authGuard: CanActivateFn = async (_route, state) => {
   try {
     const http = inject(HttpClient);
     const res = await firstValueFrom(
-      http.get<{ role: string; email: string }>(`${environment.apiUrl}/auth/verify`)
+      http.get<{ role: string; email: string; must_change_password?: boolean }>(`${environment.apiUrl}/auth/verify`)
     );
-    cache = { token, role: res.role };
+    const mustChange = Boolean(res.must_change_password);
+    cache = { token, role: res.role, mustChangePassword: mustChange };
+
+    if (mustChange && path !== 'dashboard' && path !== 'profile-completion') {
+      router.navigate(['/dashboard']);
+      return false;
+    }
     if (!allowed.includes(res.role)) {
       // Authenticated but not permitted here: send them somewhere they can go
       // rather than logging them out.

@@ -192,4 +192,26 @@ describe('authGuard', () => {
     httpMock.expectOne(verifyUrl).flush({ role: 'student', email: 'a@b.com' });
     expect(await result).toBeTrue();
   });
+
+  it('redirects to /dashboard when must_change_password is true and navigating to other routes', async () => {
+    signIn();
+    const result = run('/judge');
+    httpMock.expectOne(verifyUrl).flush({ role: 'judge', email: 'j@b.com', must_change_password: true });
+    expect(await result).toBeFalse();
+    expect(router.navigate).toHaveBeenCalledWith(['/dashboard']);
+  });
+
+  it('allows navigation to /dashboard when must_change_password is true', async () => {
+    signIn();
+    const result = run('/dashboard');
+    httpMock.expectOne(verifyUrl).flush({ role: 'student', email: 's@b.com', must_change_password: true });
+    expect(await result).toBeTrue();
+  });
+
+  it('allows navigation to /profile-completion when must_change_password is true', async () => {
+    signIn();
+    const result = run('/profile-completion');
+    httpMock.expectOne(verifyUrl).flush({ role: 'student', email: 's@b.com', must_change_password: true });
+    expect(await result).toBeTrue();
+  });
 });

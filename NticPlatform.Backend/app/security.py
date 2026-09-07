@@ -339,7 +339,7 @@ def require_auth(request: Request):
     try:
         cur = conn.cursor()
         cur.execute(
-            "SELECT u.id, u.email, u.full_name, u.role, u.status FROM auth_sessions s JOIN users u ON s.user_id = u.id WHERE s.token = %s AND s.expires_at > CURRENT_TIMESTAMP",
+            "SELECT u.id, u.email, u.full_name, u.role, u.status, COALESCE(u.must_change_password, FALSE) FROM auth_sessions s JOIN users u ON s.user_id = u.id WHERE s.token = %s AND s.expires_at > CURRENT_TIMESTAMP",
             (token,),
         )
         row = cur.fetchone()
@@ -353,7 +353,14 @@ def require_auth(request: Request):
     if account_is_disabled(row[4]):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This account has been disabled")
 
-    return {"id": row[0], "email": row[1], "full_name": row[2], "role": row[3], "status": row[4]}
+    return {
+        "id": row[0],
+        "email": row[1],
+        "full_name": row[2],
+        "role": row[3],
+        "status": row[4],
+        "must_change_password": bool(row[5]) if len(row) > 5 else False,
+    }
 
 
 def require_admin(request: Request):

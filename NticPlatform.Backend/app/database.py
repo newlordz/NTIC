@@ -519,9 +519,12 @@ def _create_tables(conn):
             progress_pct INTEGER DEFAULT 0,
             completed_modules INTEGER DEFAULT 0,
             last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            course_id VARCHAR(64) NULL,
             PRIMARY KEY (student_id, course_title)
         );
     """)
+    cur.execute("ALTER TABLE lms_progress ADD COLUMN IF NOT EXISTS course_id VARCHAR(64) NULL;")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_lms_progress_course_id ON lms_progress (course_id);")
     cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS tag VARCHAR(64) DEFAULT '';")
     cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS tag_color VARCHAR(64) DEFAULT '';")
     cur.execute("ALTER TABLE stories ADD COLUMN IF NOT EXISTS read_time VARCHAR(32) DEFAULT '5 min';")

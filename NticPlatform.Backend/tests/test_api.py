@@ -7233,4 +7233,109 @@ class TestAiQuizCopilot:
         assert "explanation" in data
 
 
+class TestPhase4DataIntegrity:
+    def test_leaderboard_recalculate_permissions_and_run(self, client, admin_token, student_token):
+        # Student cannot trigger recalculation
+        resp_stu = client.post(
+            "/api/leaderboard/recalculate",
+            headers={"Authorization": f"Bearer {student_token}"}
+        )
+        assert resp_stu.status_code == 403
+
+        # Admin can trigger recalculation
+        resp_admin = client.post(
+            "/api/leaderboard/recalculate",
+            headers={"Authorization": f"Bearer {admin_token}"}
+        )
+        assert resp_admin.status_code == 200
+        data = resp_admin.json()
+        assert data.get("status") == "success"
+
+    def test_grading_triggers_school_score_recalculation(self, client, admin_token):
+        school_name = f"Phase4 Academy {uuid.uuid4().hex[:6]}"
+        email = f"stu_{uuid.uuid4().hex[:6]}@test.com"
+
+        stu_resp = client.post("/api/students", headers={"Authorization": f"Bearer {admin_token}"}, json={
+            "first_name": "Phase",
+            "last_name": "Student",
+            "email": email,
+            "track": "Coding",
+            "school_name": school_name,
+            "consent_granted": True
+        })
+        assert stu_resp.status_code == 201
+        stu_id = stu_resp.json()["id"]
+
+        sub_resp = client.post("/api/submissions", json={
+            "student_id": stu_id,
+            "source_code_path": "solution.py",
+            "video_url": ""
+        }, headers={"Authorization": f"Bearer {admin_token}"})
+        assert sub_resp.status_code == 201
+        sub_id = sub_resp.json()["id"]
+
+        grade_resp = client.patch(f"/api/submissions/{sub_id}/grade", json={
+            "score": 92,
+            "feedback": "Outstanding",
+            "status": "Graded"
+        }, headers={"Authorization": f"Bearer {admin_token}"})
+        assert grade_resp.status_code == 200
+
+        # Verify school exists and has aggregated score
+        schools_resp = client.get("/api/schools")
+        assert schools_resp.status_code == 200
+        matched = [s for s in schools_resp.json() if s["name"].strip().lower() == school_name.lower()]
+        assert len(matched) == 1
+        assert matched[0]["score"] >= 92
+        assert matched[0]["coding_score"] >= 92
+        assert matched[0]["rank"] is not None
+
+    def test_contact_verification_and_check_availability_consistency(self, client, admin_token):
+        unique_email = f"p4_unique_{uuid.uuid4().hex[:6]}@test.com"
+
+        # Initially available
+        avail_resp = client.get(f"/api/auth/check-availability?email={unique_email}")
+        assert avail_resp.status_code == 200
+        avail_data = avail_resp.json()
+        assert avail_data.get("email_taken") is False
+        assert avail_data.get("email_available") is True
+
+        verify_resp = client.post("/api/auth/verify-contact", json={"email": unique_email})
+        assert verify_resp.status_code == 200
+        verify_data = verify_resp.json()
+        assert verify_data.get("status") == "available"
+        assert verify_data.get("available") is True
+
+        # Now register a student with this email
+        stu_resp = client.post("/api/students", headers={"Authorization": f"Bearer {admin_token}"}, json={
+            "first_name": "Dup",
+            "last_name": "Check",
+            "email": unique_email,
+            "track": "Robotics",
+            "consent_granted": True
+        })
+        assert stu_resp.status_code == 201
+
+        # Now taken on both endpoints
+        avail_resp2 = client.get(f"/api/auth/check-availability?email={unique_email}")
+        assert avail_resp2.status_code == 200
+        avail_data2 = avail_resp2.json()
+        assert avail_data2.get("email_taken") is True
+        assert avail_data2.get("email_available") is False
+
+        verify_resp2 = client.post("/api/auth/verify-contact", json={"email": unique_email})
+        assert verify_resp2.status_code == 200
+        verify_data2 = verify_resp2.json()
+        assert verify_data2.get("status") == "taken"
+        assert verify_data2.get("available") is False
+
+    def test_auth_verify_returns_must_change_password(self, client, admin_token):
+        resp = client.get("/api/auth/verify", headers={"Authorization": f"Bearer {admin_token}"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "must_change_password" in data
+        assert isinstance(data["must_change_password"], bool)
+
+
+
 

@@ -1703,6 +1703,17 @@ try:
                                 email_taken = True
                         except Exception:
                             pass
+                        if not email_taken:
+                            # 4. Check active registration drafts
+                            try:
+                                cur.execute(
+                                    "SELECT 1 FROM registration_drafts WHERE lower(email) = %s AND updated_at > CURRENT_TIMESTAMP - INTERVAL '7 days' LIMIT 1",
+                                    (em,)
+                                )
+                                if cur.fetchone():
+                                    email_taken = True
+                            except Exception:
+                                pass
             
             if ph:
                 # Clean phone digits for comparison (last 9 digits)
@@ -1748,11 +1759,26 @@ try:
                             """, (suffix, suffix, suffix, suffix))
                         if cur.fetchone():
                             phone_taken = True
+                        else:
+                            try:
+                                cur.execute(
+                                    "SELECT 1 FROM registration_drafts WHERE draft_data::text LIKE %s AND updated_at > CURRENT_TIMESTAMP - INTERVAL '7 days' LIMIT 1",
+                                    ('%' + suffix + '%',)
+                                )
+                                if cur.fetchone():
+                                    phone_taken = True
+                            except Exception:
+                                pass
             cur.close()
         finally:
             release_db_connection(conn)
             
-        return {"email_taken": email_taken, "phone_taken": phone_taken}
+        return {
+            "email_taken": email_taken,
+            "phone_taken": phone_taken,
+            "email_available": not email_taken,
+            "phone_available": not phone_taken
+        }
 
     # AUTH
     class LoginRequest(BaseModel):
@@ -2023,7 +2049,11 @@ try:
 
     @app.get("/api/auth/verify")
     def auth_verify(user: dict = Depends(require_auth)):
-        return {"role": user["role"], "email": user["email"]}
+        return {
+            "role": user["role"],
+            "email": user["email"],
+            "must_change_password": bool(user.get("must_change_password", False))
+        }
 
     @app.post("/api/auth/heartbeat")
     def auth_heartbeat(request: Request, _user: dict = Depends(require_auth)):
@@ -2403,44 +2433,25 @@ try:
     def verify_contact(request: Request, payload: dict | None = None):
         """Check if email or phone is already registered or reserved by a draft.
 
-        Unavoidably an account-existence oracle, so it is rate limited to stop
-        bulk enumeration of the user base.
+        Consolidated with check-availability to guarantee identical collision results.
         """
         client_ip = extract_client_ip(request)
         check_rate_limit(f"verify-contact:{client_ip}", max_attempts=10, window_seconds=60)
         check_rate_limit(f"verify-contact-hourly:{client_ip}", max_attempts=100, window_seconds=3600)
 
-        conn = get_db_connection()
-        if not conn:
-            raise HTTPException(status_code=503, detail="Database unreachable")
-        cur = conn.cursor()
-        result = {"email_available": True, "phone_available": True}
-        if payload and isinstance(payload.get("email"), str):
-            email = payload["email"].strip().lower()
-            cur.execute("SELECT id FROM users WHERE lower(email) = %s", (email,))
-            if cur.fetchone():
-                result["email_available"] = False
-            else:
-                cur.execute(
-                    "SELECT email FROM registration_drafts WHERE lower(email) = %s AND updated_at > CURRENT_TIMESTAMP - INTERVAL '7 days'",
-                    (email,)
-                )
-                if cur.fetchone():
-                    result["email_available"] = False
-        if payload and isinstance(payload.get("phone"), str):
-            phone = payload["phone"].strip()
-            cur.execute("SELECT id FROM users WHERE phone = %s", (phone,))
-            if cur.fetchone():
-                result["phone_available"] = False
-            else:
-                cur.execute(
-                    "SELECT email FROM registration_drafts WHERE draft_data::text LIKE %s AND updated_at > CURRENT_TIMESTAMP - INTERVAL '7 days'",
-                    ('%' + phone + '%',)
-                )
-                if cur.fetchone():
-                    result["phone_available"] = False
-        cur.close(); release_db_connection(conn)
-        return result
+        payload = payload or {}
+        email = str(payload.get("email") or "").strip()
+        phone = str(payload.get("phone") or "").strip()
+        res = check_availability(request=request, email=email, phone=phone)
+        return {
+            "email_available": res["email_available"],
+            "phone_available": res["phone_available"],
+            "email_taken": res["email_taken"],
+            "phone_taken": res["phone_taken"],
+            "available": res["email_available"] and res["phone_available"],
+            "status": "available" if (res["email_available"] and res["phone_available"]) else "taken",
+        }
+
 
     @app.post("/api/drafts")
     def save_draft(request: Request, payload: dict | None = None):
@@ -2764,7 +2775,7 @@ try:
                 "FROM lms_enrollments e "
                 "JOIN lms_courses c ON c.id = e.course_id "
                 "LEFT JOIN lms_progress p ON p.student_id = e.student_id "
-                "  AND p.course_title = c.title "
+                "  AND (p.course_id = c.id OR (p.course_id IS NULL AND p.course_title = c.title)) "
                 "WHERE e.student_id = %s AND e.status = 'active' "
                 "ORDER BY e.enrolled_at DESC",
                 (student_id,),
@@ -2969,20 +2980,28 @@ try:
                 conn.rollback(); cur.close()
                 raise HTTPException(status_code=422, detail="progress_pct and completed_modules must be numbers")
 
+            course_id = (payload.get("course_id") or "").strip()
+            if not course_id:
+                cur.execute("SELECT id FROM lms_courses WHERE LOWER(TRIM(title)) = LOWER(TRIM(%s)) LIMIT 1", (payload["course_title"],))
+                cid_row = cur.fetchone()
+                if cid_row and cid_row[0]:
+                    course_id = cid_row[0]
+
             cur.execute("""
-                INSERT INTO lms_progress (student_id, course_title, progress_pct, completed_modules, last_accessed)
-                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
+                INSERT INTO lms_progress (student_id, course_title, progress_pct, completed_modules, last_accessed, course_id)
+                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, %s)
                 ON CONFLICT (student_id, course_title) DO UPDATE SET
                     progress_pct = EXCLUDED.progress_pct,
                     completed_modules = EXCLUDED.completed_modules,
-                    last_accessed = CURRENT_TIMESTAMP
-            """, (student_id, payload["course_title"], pct, modules))
+                    last_accessed = CURRENT_TIMESTAMP,
+                    course_id = COALESCE(EXCLUDED.course_id, lms_progress.course_id)
+            """, (student_id, payload["course_title"], pct, modules, course_id or None))
             # Mirror onto the enrolment row so instructor/admin course views agree.
             cur.execute(
                 "UPDATE lms_enrollments e SET progress_pct = %s, last_active = %s "
                 "FROM lms_courses c "
-                "WHERE c.id = e.course_id AND e.student_id = %s AND c.title = %s",
-                (pct, datetime.datetime.now(datetime.UTC).isoformat(), student_id, payload["course_title"]),
+                "WHERE c.id = e.course_id AND e.student_id = %s AND (c.id = %s OR c.title = %s)",
+                (pct, datetime.datetime.now(datetime.UTC).isoformat(), student_id, course_id or "", payload["course_title"]),
             )
             conn.commit()
             cur.close()
@@ -3111,6 +3130,10 @@ try:
                 cur, student_id, actor.get("full_name") or "",
                 actor.get("email") or "", payload.competition_id, comp[3] or "",
             )
+            if solo_team_id is None:
+                conn.rollback()
+                cur.close()
+                raise HTTPException(status_code=500, detail="Failed to create or link solo team entrant")
             conn.commit()
             cur.close()
         finally:
@@ -5218,6 +5241,85 @@ try:
 
         return ""
 
+    def _recalculate_school_scores(cur, school_name: str):
+        if not school_name or not school_name.strip():
+            return
+        clean_school = school_name.strip()
+
+        cur.execute("SELECT id FROM schools WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s))", (clean_school,))
+        sch_row = cur.fetchone()
+        if not sch_row:
+            sch_id = "sch-" + str(uuid.uuid4())[:8]
+            cur.execute(
+                "INSERT INTO schools (id, name, region, teams, score, rank, status) VALUES (%s, %s, 'National', 1, 0, 999, 'Active')",
+                (sch_id, clean_school)
+            )
+
+        cur.execute("""
+            SELECT 
+                COALESCE(SUM(s.score), 0) as total_score,
+                COALESCE(SUM(CASE WHEN LOWER(COALESCE(c.track, st.track, t.track, '')) LIKE '%%coding%%' THEN s.score ELSE 0 END), 0) as coding_score,
+                COALESCE(SUM(CASE WHEN LOWER(COALESCE(c.track, st.track, t.track, '')) LIKE '%%robotics%%' THEN s.score ELSE 0 END), 0) as robotics_score,
+                COALESCE(SUM(CASE WHEN LOWER(COALESCE(c.track, st.track, t.track, '')) LIKE '%%ai%%' THEN s.score ELSE 0 END), 0) as ai_score,
+                COALESCE(SUM(CASE WHEN LOWER(COALESCE(c.track, st.track, t.track, '')) LIKE '%%cyber%%' THEN s.score ELSE 0 END), 0) as cyber_score
+            FROM assignment_submissions s
+            LEFT JOIN competitions c ON c.id = s.competition_id
+            LEFT JOIN students st ON st.id = s.student_id
+            LEFT JOIN team_members tm ON tm.student_id = s.student_id
+            LEFT JOIN teams t ON t.id = tm.team_id
+            WHERE s.score IS NOT NULL
+              AND (
+                LOWER(TRIM(COALESCE(st.school_name, ''))) = LOWER(TRIM(%s))
+                OR LOWER(TRIM(COALESCE(t.school_name, ''))) = LOWER(TRIM(%s))
+                OR s.student_id IN (
+                    SELECT u.id FROM users u WHERE LOWER(TRIM(COALESCE(u.organization, ''))) = LOWER(TRIM(%s))
+                )
+              )
+        """, (clean_school, clean_school, clean_school))
+        agg = cur.fetchone()
+        if agg:
+            tot, cod, rob, ai_sc, cyb = agg
+            cur.execute("""
+                UPDATE schools 
+                SET score = %s, coding_score = %s, robotics_score = %s, ai_score = %s, cyber_score = %s
+                WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s))
+            """, (int(tot), int(cod), int(rob), int(ai_sc), int(cyb), clean_school))
+
+        cur.execute("""
+            UPDATE schools SET rank = sub.r
+            FROM (
+                SELECT id, DENSE_RANK() OVER (ORDER BY score DESC, name ASC) as r
+                FROM schools
+            ) sub
+            WHERE schools.id = sub.id
+        """)
+
+    def recalculate_all_school_scores(cur):
+        cur.execute("SELECT DISTINCT name FROM schools WHERE name IS NOT NULL")
+        school_names = [r[0] for r in cur.fetchall() if r[0]]
+        for s_name in school_names:
+            _recalculate_school_scores(cur, s_name)
+
+    @app.post("/api/leaderboard/recalculate")
+    def recalculate_leaderboard(_actor: dict = Depends(require_role(ADMIN_ROLES))):
+        conn = get_db_connection()
+        if not conn:
+            raise HTTPException(status_code=503, detail="Database unreachable")
+        cur = conn.cursor()
+        try:
+            recalculate_all_school_scores(cur)
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            cur.close()
+            release_db_connection(conn)
+            raise HTTPException(status_code=500, detail=str(e))
+        cur.close()
+        release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "schools"})
+        broadcast_async({"type": "data_changed", "collection": "leaderboard"})
+        return {"status": "success", "message": "Leaderboard scores and ranks recalculated"}
+
     @app.patch("/api/submissions/{item_id}/grade")
     def grade_submission(item_id: str, payload: GradeSubmissionRequest, actor: dict = Depends(require_role(GRADING_ROLES))):
         """Score a competition submission and record WHO scored it.
@@ -5297,6 +5399,11 @@ try:
             )
             row = cur.fetchone()
             if row:
+                # Recalculate school leaderboard scores for this student's school
+                student_school = _student_school(cur, sub_student_id)
+                if student_school:
+                    _recalculate_school_scores(cur, student_school)
+
                 # Same transaction as the score itself: an attributed grade and
                 # its audit entry must not be able to disagree. A revision records
                 # the previous score so the change is reconstructable.
@@ -5325,6 +5432,8 @@ try:
         if not row:
             raise HTTPException(status_code=404, detail="Submission not found")
         broadcast_async({"type": "data_changed", "collection": "submissions"})
+        broadcast_async({"type": "data_changed", "collection": "schools"})
+        broadcast_async({"type": "data_changed", "collection": "leaderboard"})
         return {"id": item_id, "status": "graded", "graded_by": actor["id"]}
 
     # ── JUDGING WORKSPACE ───────────────────────────────────────────
