@@ -54,10 +54,11 @@ class TestLogin:
         # Session should no longer be valid
         assert client.get("/api/users/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
 
-    def test_logout_without_auth_fails(self, client):
-        # Fake body token with no Authorization header must 401
+    def test_logout_without_auth_succeeds(self, client):
+        # Calling logout without Authorization header returns 200 safely
         resp = client.post("/api/logout", json={"token": "fake-token-attempt"})
-        assert resp.status_code == 401
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
 
 
 class TestCompetitions:
@@ -2287,6 +2288,8 @@ class TestPublicSurface:
         ("POST", "/api/approvals/public"),
         # File/photo upload with IP rate limit and DB storage.
         ("POST", "/api/files/upload"),
+        # Idempotent logout: client with expired token must be able to call logout without 401
+        ("POST", "/api/logout"),
     }
 
     def test_no_unexpected_anonymous_write_endpoints(self):

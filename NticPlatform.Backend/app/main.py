@@ -2346,11 +2346,23 @@ try:
         return {"status": "changed", "other_sessions_revoked": revoked}
 
     @app.post("/api/logout")
-    def logout(request: Request, _user: dict = Depends(require_auth)):
+    async def logout(request: Request):
         auth_header = request.headers.get("Authorization", "")
+        token = ""
         if auth_header.startswith("Bearer "):
             token = auth_header[7:].strip()
-            invalidate_session_token(token)
+        else:
+            try:
+                body = await request.json()
+                if isinstance(body, dict):
+                    token = body.get("token", "")
+            except Exception:
+                pass
+        if token:
+            try:
+                invalidate_session_token(token)
+            except Exception:
+                pass
         return {"status": "ok"}
 
     # ─── AUTH SESSION MANAGEMENT ─────────────────────────────────────
