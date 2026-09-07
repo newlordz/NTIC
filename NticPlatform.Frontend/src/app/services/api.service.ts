@@ -296,6 +296,7 @@ export interface SponsorPayment {
   method: string;
   reference: string;
   notes: string;
+  proof_file_url?: string;
   /** 'pending_verification' | 'verified' | 'rejected' */
   status: string;
   verified_by_name: string;
@@ -304,6 +305,7 @@ export interface SponsorPayment {
   created_at: string | null;
   organization: string;
   sponsor_email: string;
+  sponsor_name?: string;
 }
 
 /**
@@ -324,6 +326,7 @@ export interface SponsorshipSummary {
   partner_count: number;
   total_committed: string;
   total_received: string;
+  total_beneficiaries?: number;
   awaiting_verification: string;
   awaiting_verification_count: number;
   pending_pledges: number;
@@ -800,7 +803,7 @@ export class ApiService {
    * old UI wrote 'Confirmed' on submit.
    */
   recordSponsorPayment(sponsorshipId: string, payload: {
-    amount: string; method?: string; reference: string; notes?: string;
+    amount: string; method?: string; reference: string; notes?: string; proof_file_url?: string;
   }): Observable<{ id: string; status: string; amount: string }> {
     return this.http.post<{ id: string; status: string; amount: string }>(
       `${this.apiUrl}/sponsorships/${encodeURIComponent(sponsorshipId)}/payments`,
@@ -1049,8 +1052,8 @@ login(email: string, password: string): Observable<any> {
     );
   }
 
-  logout(token: string): Observable<any> {
-    return this.http.post(this.apiUrl + '/logout', { token });
+  logout(token?: string): Observable<any> {
+    return this.http.post(this.apiUrl + '/logout', {});
   }
 
   // ─── Auth Session Management ─────────────────────────────────────────
@@ -1197,6 +1200,14 @@ login(email: string, password: string): Observable<any> {
     );
   }
 
+  /** Instructor accepts or declines a team mentorship request. */
+  respondToMentorRequest(teamId: string, action: 'accept' | 'decline', reason?: string): Observable<any> {
+    return this.http.patch(
+      this.apiUrl + '/teams/' + encodeURIComponent(teamId) + '/mentor-response',
+      { action, reason }
+    );
+  }
+
   /** Approvals relevant to the signed-in institution (school_admin). */
   getInstitutionApprovals(): Observable<any[]> {
     return this.http.get<any[]>(this.apiUrl + '/approvals/institution/mine');
@@ -1219,6 +1230,7 @@ login(email: string, password: string): Observable<any> {
   getMyTeams(): Observable<Array<{
     id: string; name: string; track: string; competitionId: string | null;
     mentorId: string | null; mentorStatus: string; isSolo: boolean; isLead: boolean;
+    mentorName?: string; mentorEmail?: string;
   }>> {
     return this.http.get<any[]>(this.apiUrl + '/teams/mine');
   }

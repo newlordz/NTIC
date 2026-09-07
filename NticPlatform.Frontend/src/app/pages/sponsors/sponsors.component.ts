@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ContentService, SponsorPayment, User } from '../../services/content.service';
 import { DialogService } from '../../services/dialog.service';
-import { ApiService, Sponsorship, SponsorPayment as ApiSponsorPayment } from '../../services/api.service';
+import { ApiService, Sponsorship, SponsorPayment as ApiSponsorPayment, SponsorshipSummary } from '../../services/api.service';
 import { CurrentUserService } from '../../services/current-user.service';
 
 @Component({
@@ -53,10 +53,38 @@ export class SponsorsComponent implements OnInit {
   isSubmittingPayment = false;
   paymentSuccessMessage = '';
 
+  // Payment proof file upload state
+  proofFile: File | null = null;
+  proofFileName = '';
+  proofFileUrl = '';
+  isUploadingProof = false;
+
+  // Ecosystem summary state
+  ecosystemSummary: SponsorshipSummary | null = null;
+  isLoadingEcosystemSummary = false;
+
+  // Admin verification queue state
+  pendingPayments: ApiSponsorPayment[] = [];
+  isLoadingPendingPayments = false;
+  isVerifyingPayment: { [id: string]: boolean } = {};
+
+  get isAdmin(): boolean {
+    const role = (getAuthValue('activeRoleId') || '').toLowerCase();
+    return role === 'admin' || role === 'super_admin';
+  }
+
   ngOnInit(): void {
     this.currentUser.ensureLoaded().subscribe(() => {
       this.loadSponsorData();
+      this.loadEcosystemSummary();
+      if (this.isAdmin) {
+        this.loadPendingPayments();
+      }
     });
+    this.loadEcosystemSummary();
+    if (this.isAdmin) {
+      this.loadPendingPayments();
+    }
     this.cdr.markForCheck();
   }
 
@@ -185,6 +213,11 @@ export class SponsorsComponent implements OnInit {
   openPaymentModal(): void {
     this.isPaymentModalOpen = true;
     this.paymentSuccessMessage = '';
+    this.paymentError = '';
+    this.proofFile = null;
+    this.proofFileName = '';
+    this.proofFileUrl = '';
+    this.isUploadingProof = false;
     const sponsor = this.loggedInSponsor;
     this.paymentForm = {
       amount: '50,000',
@@ -202,21 +235,35 @@ export class SponsorsComponent implements OnInit {
     this.isPaymentModalOpen = false;
   }
 
+  onProofFileSelected(event: any): void {
+    const file = event?.target?.files?.[0];
+    if (!file) return;
+    this.proofFile = file;
+    this.proofFileName = file.name;
+    this.isUploadingProof = true;
+    this.apiService.uploadFileBlob(file).subscribe({
+      next: res => {
+        this.isUploadingProof = false;
+        this.proofFileUrl = res.url || res.file_url || (res.file_id ? `/api/files/${res.file_id}` : '');
+        this.dialogService.toast('Payment proof uploaded successfully.', 'success');
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.isUploadingProof = false;
+        this.dialogService.toast('Could not upload file. Please try again.', 'error');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  removeProofFile(): void {
+    this.proofFile = null;
+    this.proofFileName = '';
+    this.proofFileUrl = '';
+  }
+
   /**
    * Records a payment reference against the sponsor's commitment.
-   *
-   * The previous version was a `setTimeout(600)` that built a payment object, ran
-   * `parseInt(amount.replace(/[^0-9]/g,''))` to total it, and saved via
-   * `contentService.saveUsers()` -> POST /api/bulk-sync. bulk-sync is admin-only, so
-   * for the sponsor actually using this page it 403'd and the error was discarded:
-   * the payment existed only in that browser, and no administrator ever saw it.
-   *
-   * Two further problems that fix themselves by moving server-side:
-   *   * The running total was computed with parseInt on a formatted string, so
-   *     "GH 1,500" became 1 and decimals were silently truncated. Amounts are now
-   *     NUMERIC in the database.
-   *   * Money was stored on the users row, with no verification state and no audit
-   *     trail. It now has both.
    */
   submitPayment(): void {
     const amount = (this.paymentForm.amount || '').trim();
@@ -247,12 +294,17 @@ export class SponsorsComponent implements OnInit {
       method: this.selectedPaymentMethod || 'bank_transfer',
       reference,
       notes: (this.paymentForm.notes || '').trim(),
+      proof_file_url: this.proofFileUrl || undefined,
     }).subscribe({
       next: () => {
         this.isSubmittingPayment = false;
         this.paymentSuccessMessage =
           'Payment reference recorded. Our team will verify it against the bank statement and confirm.';
         this.loadSponsorData();
+        if (this.isAdmin) {
+          this.loadPendingPayments();
+        }
+        this.loadEcosystemSummary();
         setTimeout(() => this.closePaymentModal(), 1400);
       },
       error: (err: any) => {
@@ -797,11 +849,92 @@ export class SponsorsComponent implements OnInit {
     invoiceWindow.document.close();
   }
 
+  loadEcosystemSummary(): void {
+    this.isLoadingEcosystemSummary = true;
+    this.apiService.getSponsorshipSummary().subscribe({
+      next: summary => {
+        this.ecosystemSummary = summary;
+        this.isLoadingEcosystemSummary = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.ecosystemSummary = null;
+        this.isLoadingEcosystemSummary = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  loadPendingPayments(): void {
+    this.isLoadingPendingPayments = true;
+    this.apiService.getPendingSponsorPayments().subscribe({
+      next: rows => {
+        this.pendingPayments = rows || [];
+        this.isLoadingPendingPayments = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.pendingPayments = [];
+        this.isLoadingPendingPayments = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  verifyPayment(payment: ApiSponsorPayment, verified: boolean): void {
+    let reason = '';
+    if (!verified) {
+      const input = window.prompt('Please provide a reason for rejecting this payment reference:');
+      if (!input || !input.trim()) {
+        this.dialogService.toast('Rejection reason is required.', 'warning');
+        return;
+      }
+      reason = input.trim();
+    }
+    this.isVerifyingPayment[payment.id] = true;
+    this.apiService.verifySponsorPayment(payment.id, verified, reason).subscribe({
+      next: () => {
+        this.isVerifyingPayment[payment.id] = false;
+        this.dialogService.toast(
+          verified ? 'Payment confirmed and marked as verified.' : 'Payment has been rejected.',
+          verified ? 'success' : 'info'
+        );
+        this.loadPendingPayments();
+        this.loadEcosystemSummary();
+        this.loadSponsorData();
+        this.cdr.markForCheck();
+      },
+      error: (err: any) => {
+        this.isVerifyingPayment[payment.id] = false;
+        this.dialogService.toast(err?.error?.detail || 'Failed to update payment verification state.', 'error');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   get activeSponsors(): any[] {
     return this.contentService.users.filter(u => u.role === 'sponsor');
   }
 
   get totalCommitted(): string {
+    if (this.ecosystemSummary?.total_committed) {
+      return `GH₵ ${this.ecosystemSummary.total_committed}`;
+    }
     return `${this.activeSponsors.length} sponsor${this.activeSponsors.length !== 1 ? 's' : ''}`;
+  }
+
+  get totalReceived(): string {
+    if (this.ecosystemSummary?.total_received) {
+      return `GH₵ ${this.ecosystemSummary.total_received}`;
+    }
+    return 'GH₵ 0';
+  }
+
+  get totalBeneficiaries(): number {
+    return this.ecosystemSummary?.total_beneficiaries || 0;
+  }
+
+  get receivedPercentage(): number {
+    return this.ecosystemSummary?.received_pct || 0;
   }
 }

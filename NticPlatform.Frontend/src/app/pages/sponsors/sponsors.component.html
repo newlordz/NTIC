@@ -45,8 +45,8 @@
       <div class="stat-card primary">
         <div class="stat-bg-icon material-symbols-outlined">monetization_on</div>
         <div class="stat-label"><span class="material-symbols-outlined">monetization_on</span>Total Paid</div>
-        <div class="stat-value" style="font-size:22px;color:var(--primary);">{{ getSponsorTotal(loggedInSponsor) }}</div>
-        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">Recorded & Verified</div>
+        <div class="stat-value" style="font-size:22px;color:var(--primary);">GH₵ {{ totalVerified }}</div>
+        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">Verified · Pledged: GH₵ {{ totalPledged }}</div>
       </div>
       <div class="stat-card secondary">
         <div class="stat-bg-icon material-symbols-outlined">handshake</div>
@@ -124,7 +124,7 @@
         <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
 
           <!-- Empty payment history state -->
-          <div *ngIf="!loggedInSponsor?.payments?.length" style="padding:20px;background:var(--surface-container-low);border-radius:10px;border:1.5px dashed var(--outline-variant);text-align:center;">
+          <div *ngIf="!myPayments?.length && !loggedInSponsor?.payments?.length" style="padding:20px;background:var(--surface-container-low);border-radius:10px;border:1.5px dashed var(--outline-variant);text-align:center;">
             <span class="material-symbols-outlined" style="font-size:32px;color:var(--outline);display:block;margin-bottom:8px;">payments</span>
             <p style="margin:0 0 6px;font-weight:700;font-size:14px;color:var(--on-surface);">No settlement logged yet</p>
             <p style="margin:0 0 14px;font-size:12px;color:var(--on-surface-variant);">You can record an official bank wire, corporate cheque, or mobile money contribution directly below.</p>
@@ -133,8 +133,40 @@
             </button>
           </div>
 
-          <!-- Real payment history records -->
-          <div *ngIf="loggedInSponsor?.payments?.length" style="display:flex;flex-direction:column;gap:10px;">
+          <!-- Real server-backed payment history records -->
+          <div *ngIf="myPayments?.length" style="display:flex;flex-direction:column;gap:10px;">
+            <div *ngFor="let pay of myPayments"
+                 style="padding:12px 14px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="font-weight:700;font-size:14px;color:var(--on-surface);">GH₵ {{ pay.amount }}</span>
+                  <span class="badge" [class.primary]="pay.status === 'verified'" [class.warn]="pay.status === 'pending'" [class.error]="pay.status === 'rejected'" style="font-size:10px;text-transform:uppercase;">
+                    {{ pay.status }}
+                  </span>
+                </div>
+                <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">
+                  {{ pay.method }} · Ref: <strong style="font-family:monospace;">{{ pay.reference }}</strong>
+                </div>
+                <div *ngIf="pay.notes" style="font-size:11px;color:var(--on-surface-variant);margin-top:2px;">
+                  {{ pay.notes }}
+                </div>
+                <div *ngIf="pay.proof_file_url" style="margin-top:6px;">
+                  <a [href]="pay.proof_file_url" target="_blank" class="btn btn-subtle btn-sm" style="font-size:11px;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;">
+                    <span class="material-symbols-outlined" style="font-size:14px;">attachment</span> View Bank Slip / Receipt
+                  </a>
+                </div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:11px;color:var(--on-surface-variant);">{{ pay.created_at ? pay.created_at.split('T')[0] : 'Recorded' }}</div>
+                <span *ngIf="pay.status === 'verified'" class="material-symbols-outlined" style="color:var(--primary);font-size:18px;margin-top:4px;">check_circle</span>
+                <span *ngIf="pay.status === 'pending'" class="material-symbols-outlined" style="color:#d97706;font-size:18px;margin-top:4px;">schedule</span>
+                <span *ngIf="pay.status === 'rejected'" class="material-symbols-outlined" style="color:#ef4444;font-size:18px;margin-top:4px;">cancel</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fallback demo payment records if no server payments yet -->
+          <div *ngIf="!myPayments?.length && loggedInSponsor?.payments?.length" style="display:flex;flex-direction:column;gap:10px;">
             <div *ngFor="let pay of loggedInSponsor?.payments"
                  style="padding:12px 14px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
               <div>
@@ -383,6 +415,29 @@
             <label class="form-label">Payment Notes (Optional)</label>
             <input class="form-control" type="text" [(ngModel)]="paymentForm.notes" placeholder="e.g., Sponsorship installment for Gold Tier">
           </div>
+
+          <!-- Payment Proof Upload -->
+          <div class="form-group">
+            <label class="form-label">Payment Proof (Bank Slip / Receipt / Screenshot)</label>
+            <div *ngIf="!proofFileUrl" style="display:flex;align-items:center;gap:10px;">
+              <input type="file" #proofInput (change)="onProofFileSelected($event)" accept="image/*,application/pdf" style="display:none;">
+              <button type="button" class="btn btn-subtle btn-sm" (click)="proofInput.click()" [disabled]="isUploadingProof">
+                <span class="material-symbols-outlined" style="font-size:16px;">upload_file</span>
+                {{ isUploadingProof ? 'Uploading Receipt...' : 'Attach Proof of Payment' }}
+              </button>
+              <span style="font-size:12px;color:var(--on-surface-variant);">PNG, JPG, PDF (Max 10MB)</span>
+            </div>
+            <div *ngIf="proofFileUrl" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="material-symbols-outlined" style="color:var(--primary);font-size:18px;">description</span>
+                <span style="font-size:12px;font-weight:600;">{{ proofFileName || 'Payment Proof Attached' }}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <a [href]="proofFileUrl" target="_blank" class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:11px;">View</a>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="removeProofFile()" style="padding:2px 6px;color:#ef4444;">Remove</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
@@ -414,10 +469,82 @@
 
     <!-- KPI Bar -->
     <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
-      <div class="stat-card primary"><div class="stat-bg-icon material-symbols-outlined">handshake</div><div class="stat-label"><span class="material-symbols-outlined">handshake</span>Active Sponsors</div><div class="stat-value">{{ activeSponsors.length }}</div></div>
-      <div class="stat-card secondary"><div class="stat-bg-icon material-symbols-outlined">monetization_on</div><div class="stat-label"><span class="material-symbols-outlined">monetization_on</span>Total Committed</div><div class="stat-value" style="font-size:24px;">{{ totalCommitted }}</div></div>
-      <div class="stat-card primary"><div class="stat-bg-icon material-symbols-outlined">group</div><div class="stat-label"><span class="material-symbols-outlined">group</span>Students Reached</div><div class="stat-value">1,248</div></div>
-      <div class="stat-card tertiary"><div class="stat-bg-icon material-symbols-outlined">female</div><div class="stat-label"><span class="material-symbols-outlined">female</span>Female Participants</div><div class="stat-value">52%</div></div>
+      <div class="stat-card primary">
+        <div class="stat-bg-icon material-symbols-outlined">handshake</div>
+        <div class="stat-label"><span class="material-symbols-outlined">handshake</span>Active Sponsors</div>
+        <div class="stat-value">{{ activeSponsors.length }}</div>
+      </div>
+      <div class="stat-card secondary">
+        <div class="stat-bg-icon material-symbols-outlined">monetization_on</div>
+        <div class="stat-label"><span class="material-symbols-outlined">monetization_on</span>Total Committed</div>
+        <div class="stat-value" style="font-size:24px;">{{ totalCommitted }}</div>
+      </div>
+      <div class="stat-card primary">
+        <div class="stat-bg-icon material-symbols-outlined">paid</div>
+        <div class="stat-label"><span class="material-symbols-outlined">paid</span>Total Received</div>
+        <div class="stat-value" style="font-size:24px;">{{ totalReceived }}</div>
+        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">{{ receivedPercentage }}% fulfilled</div>
+      </div>
+      <div class="stat-card tertiary">
+        <div class="stat-bg-icon material-symbols-outlined">groups</div>
+        <div class="stat-label"><span class="material-symbols-outlined">groups</span>Beneficiaries Reached</div>
+        <div class="stat-value">{{ totalBeneficiaries > 0 ? (totalBeneficiaries | number) : '1,248' }}</div>
+        <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">Students in Ecosystem</div>
+      </div>
+    </div>
+
+    <!-- Sponsor Payment Verification Queue (Admin Only) -->
+    <div *ngIf="isAdmin" class="card" style="margin-top:24px;">
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="material-symbols-outlined" style="color:var(--primary);">verified_user</span>
+          <h3 style="margin:0;font-size:16px;font-weight:700;">Sponsor Payment Verification Queue</h3>
+        </div>
+        <span class="badge" [class.primary]="pendingPayments.length > 0" [class.secondary]="pendingPayments.length === 0">
+          {{ pendingPayments.length }} Pending
+        </span>
+      </div>
+      <div class="card-body">
+        <div *ngIf="isLoadingPendingPayments" style="text-align:center;padding:24px;color:var(--on-surface-variant);">
+          Loading pending payments...
+        </div>
+        <div *ngIf="!isLoadingPendingPayments && pendingPayments.length === 0" style="text-align:center;padding:24px;color:var(--on-surface-variant);font-size:13px;">
+          <span class="material-symbols-outlined" style="font-size:32px;color:var(--outline);display:block;margin-bottom:6px;">check_circle</span>
+          All sponsor payment claims have been verified. No pending transactions.
+        </div>
+        <div *ngIf="!isLoadingPendingPayments && pendingPayments.length > 0" style="display:flex;flex-direction:column;gap:12px;">
+          <div *ngFor="let pay of pendingPayments" style="padding:14px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-weight:700;font-size:15px;color:var(--on-surface);">GH₵ {{ pay.amount }}</span>
+                <span class="badge secondary" style="font-size:10px;text-transform:uppercase;">{{ pay.method }}</span>
+                <span class="badge warn" style="font-size:10px;">Awaiting Verification</span>
+              </div>
+              <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">
+                Ref: <strong style="font-family:monospace;">{{ pay.reference }}</strong>
+                <span *ngIf="pay.organization || pay.sponsor_name"> · Sponsor: <strong>{{ pay.organization || pay.sponsor_name }}</strong></span>
+                <span *ngIf="pay.created_at"> · Logged: {{ pay.created_at | date:'mediumDate' }}</span>
+              </div>
+              <div *ngIf="pay.notes" style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">
+                Notes: {{ pay.notes }}
+              </div>
+              <div *ngIf="pay.proof_file_url" style="margin-top:6px;">
+                <a [href]="pay.proof_file_url" target="_blank" class="btn btn-subtle btn-sm" style="font-size:11px;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;">
+                  <span class="material-symbols-outlined" style="font-size:14px;">receipt</span> View Attached Bank Slip / Receipt
+                </a>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+              <button class="btn btn-primary btn-sm" [disabled]="isVerifyingPayment[pay.id]" (click)="verifyPayment(pay, true)">
+                <span class="material-symbols-outlined" style="font-size:16px;">check</span> Confirm & Verify
+              </button>
+              <button class="btn btn-subtle btn-sm" style="color:#ef4444;" [disabled]="isVerifyingPayment[pay.id]" (click)="verifyPayment(pay, false)">
+                <span class="material-symbols-outlined" style="font-size:16px;">close</span> Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Sponsor List -->
