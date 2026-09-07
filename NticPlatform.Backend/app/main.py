@@ -26,7 +26,7 @@ from app.database import init_postgres_db, get_db_connection, release_db_connect
 from app.security import (
     verify_password, create_token, require_auth, require_admin, require_role,
     check_rate_limit, reset_rate_limit, account_is_disabled, hash_password,
-    validate_password_strength, MIN_PASSWORD_LENGTH, verify_token,
+    validate_password_strength, MIN_PASSWORD_LENGTH, verify_token, invalidate_session_token,
     ADMIN_ROLES, CONTENT_ROLES, COMPETITION_ROLES, GRADING_ROLES,
     APPROVAL_ROLES, STUDENT_ADMIN_ROLES, SUPPORT_ROLES, LMS_ROLES, GOVERNANCE_ROLES,
     touch_session, SESSION_IDLE_MINUTES, SESSION_ABSOLUTE_DAYS,
@@ -820,6 +820,7 @@ try:
         track: str = "Coding"
         consent_granted: bool = True
         tenant_id: str = "11111111-1111-1111-1111-111111111111"
+        school_name: str = ""
 
     class SubmissionCreate(BaseModel):
         student_id: str
@@ -2315,24 +2316,11 @@ try:
         return {"status": "changed", "other_sessions_revoked": revoked}
 
     @app.post("/api/logout")
-    def logout(request: Request, payload: dict | None = None):
-        payload = payload or {}
-        token = payload.get("token", "")
-        if not token and request and request.headers.get("Authorization"):
-            auth_header = request.headers.get("Authorization", "")
-            if auth_header.startswith("Bearer "):
-                token = auth_header[7:]
-        if token:
-            conn = _get_db()
-            try:
-                cur = conn.cursor()
-                cur.execute("DELETE FROM auth_sessions WHERE token = %s", (token,))
-                conn.commit()
-                cur.close()
-            except Exception:
-                conn.rollback()
-            finally:
-                release_db_connection(conn)
+    def logout(request: Request, _user: dict = Depends(require_auth)):
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+            invalidate_session_token(token)
         return {"status": "ok"}
 
     # ─── AUTH SESSION MANAGEMENT ─────────────────────────────────────
@@ -4259,6 +4247,7 @@ try:
         method: str = Field(default="bank_transfer", max_length=40)
         reference: str = Field(min_length=1, max_length=120)
         notes: str = Field(default="", max_length=2000)
+        proof_file_url: str = Field(default="", max_length=1000)
 
     @app.post("/api/sponsorships/{sponsorship_id}/payments", status_code=status.HTTP_201_CREATED)
     def record_my_payment(
@@ -4306,10 +4295,11 @@ try:
             payment_id = "pay-" + str(uuid.uuid4())[:8]
             cur.execute(
                 "INSERT INTO sponsorship_payments (id, sponsorship_id, sponsor_id, amount, "
-                "currency, method, reference, notes, status) "
-                "VALUES (%s,%s,%s,%s,'GHS',%s,%s,%s,'pending_verification')",
+                "currency, method, reference, notes, status, proof_file_url) "
+                "VALUES (%s,%s,%s,%s,'GHS',%s,%s,%s,'pending_verification',%s)",
                 (payment_id, sponsorship_id, actor["id"], payload.amount,
-                 payload.method, payload.reference.strip(), payload.notes),
+                 payload.method, payload.reference.strip(), payload.notes,
+                 payload.proof_file_url.strip() or None),
             )
             conn.commit()
             cur.close()
@@ -4331,12 +4321,13 @@ try:
             "rejection_reason": r[11] or "",
             "created_at": str(r[12]) if r[12] else None,
             "organization": r[13] or "", "sponsor_email": r[14] or "",
+            "proof_file_url": r[15] or "",
         }
 
     _PAYMENT_SELECT = (
         "SELECT p.id, p.sponsorship_id, p.sponsor_id, p.amount, p.currency, p.method, "
         "p.reference, p.notes, p.status, p.verified_by_name, p.verified_at, "
-        "p.rejection_reason, p.created_at, s.organization, u.email "
+        "p.rejection_reason, p.created_at, s.organization, u.email, p.proof_file_url "
         "FROM sponsorship_payments p "
         "LEFT JOIN sponsorships s ON s.id = p.sponsorship_id "
         "LEFT JOIN users u ON u.id = p.sponsor_id "
@@ -4489,6 +4480,9 @@ try:
 
             cur.execute("SELECT COUNT(*) FROM sponsorships WHERE status='pending'")
             pending_pledges = cur.fetchone()[0]
+
+            cur.execute("SELECT COUNT(*) FROM students")
+            total_beneficiaries = cur.fetchone()[0] or 0
             cur.close()
         finally:
             release_db_connection(conn)
@@ -4498,6 +4492,7 @@ try:
             "partner_count": sponsor_accounts or partners or 0,
             "total_committed": _money(committed),
             "total_received": _money(received),
+            "total_beneficiaries": total_beneficiaries,
             "awaiting_verification": _money(awaiting),
             "awaiting_verification_count": awaiting_count or 0,
             "pending_pledges": pending_pledges or 0,
@@ -4903,12 +4898,7 @@ try:
         return [{"id": r[0], "tenant_id": r[1], "first_name": r[2], "last_name": r[3], "email": r[4], "track": r[5], "consent_granted": r[6], "created_at": str(r[7])} for r in rows]
 
     @app.post("/api/students", status_code=status.HTTP_201_CREATED)
-    def create_student(payload: StudentCreate, request: Request):
-        # Still reachable without a session: the anonymous team-registration flow
-        # creates the team lead's student record here. Rate limited so it cannot
-        # be used to bulk-inject records.
-        # TODO: route anonymous registration through the approvals queue, then
-        # require a session on this endpoint.
+    def create_student(payload: StudentCreate, request: Request, _actor: dict = Depends(require_role(STUDENT_ADMIN_ROLES))):
         client_ip = extract_client_ip(request)
         check_rate_limit(f"student-create:{client_ip}", max_attempts=10, window_seconds=300)
         check_rate_limit(f"student-create-hourly:{client_ip}", max_attempts=40, window_seconds=3600)
@@ -4918,8 +4908,8 @@ try:
         student_id = str(uuid.uuid4())
         cur = conn.cursor()
         try:
-            cur.execute("INSERT INTO students (id, tenant_id, first_name, last_name, email, track, consent_granted) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                        (student_id, payload.tenant_id, payload.first_name, payload.last_name, payload.email, payload.track, payload.consent_granted))
+            cur.execute("INSERT INTO students (id, tenant_id, first_name, last_name, email, track, consent_granted, school_name) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+                        (student_id, payload.tenant_id, payload.first_name, payload.last_name, payload.email, payload.track, payload.consent_granted, payload.school_name or None))
             conn.commit()
         except Exception as e:
             conn.rollback()
@@ -4929,7 +4919,7 @@ try:
         cur.close()
         release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "students"})
-        return {"id": student_id, "first_name": payload.first_name, "last_name": payload.last_name, "email": payload.email, "track": payload.track}
+        return {"id": student_id, "first_name": payload.first_name, "last_name": payload.last_name, "email": payload.email, "track": payload.track, "school_name": payload.school_name or ""}
 
     @app.delete("/api/students/{item_id}")
     def delete_student(item_id: str, _actor: dict = Depends(require_role(STUDENT_ADMIN_ROLES))):
@@ -5038,6 +5028,46 @@ try:
         feedback: str = ""
         status: str | None = None
 
+    def _judge_school(cur, judge_user_id: str) -> str:
+        cur.execute("SELECT organization FROM users WHERE id = %s", (judge_user_id,))
+        row = cur.fetchone()
+        return (row[0] or "").strip() if row else ""
+
+    def _student_school(cur, student_id: str) -> str:
+        if not student_id:
+            return ""
+        try:
+            cur.execute("SELECT school_name FROM students WHERE id = %s", (student_id,))
+            row = cur.fetchone()
+            if row and row[0] and row[0].strip():
+                return row[0].strip()
+        except Exception:
+            pass
+
+        cur.execute(
+            "SELECT t.school_name FROM teams t "
+            "JOIN team_members tm ON tm.team_id = t.id "
+            "WHERE tm.student_id = %s OR tm.student_id = (SELECT user_id FROM students WHERE id = %s) "
+            "LIMIT 1",
+            (student_id, student_id),
+        )
+        row = cur.fetchone()
+        if row and row[0] and row[0].strip():
+            return row[0].strip()
+
+        cur.execute(
+            "SELECT organization FROM users "
+            "WHERE id = %s OR id = (SELECT user_id FROM students WHERE id = %s) "
+            "OR lower(email) = (SELECT lower(email) FROM students WHERE id = %s) "
+            "LIMIT 1",
+            (student_id, student_id, student_id),
+        )
+        row = cur.fetchone()
+        if row and row[0] and row[0].strip():
+            return row[0].strip()
+
+        return ""
+
     @app.patch("/api/submissions/{item_id}/grade")
     def grade_submission(item_id: str, payload: GradeSubmissionRequest, actor: dict = Depends(require_role(GRADING_ROLES))):
         """Score a competition submission and record WHO scored it.
@@ -5063,7 +5093,7 @@ try:
             new_status = "Graded"
         try:
             cur.execute(
-                "SELECT score, graded_by, graded_by_name FROM assignment_submissions "
+                "SELECT score, graded_by, graded_by_name, student_id FROM assignment_submissions "
                 "WHERE id = %s",
                 (item_id,),
             )
@@ -5072,6 +5102,7 @@ try:
                 conn.rollback(); cur.close(); release_db_connection(conn)
                 raise HTTPException(status_code=404, detail="Submission not found")
 
+            sub_student_id = existing[3]
             already_scored = existing[0] is not None
             scored_by_someone_else = bool(existing[1]) and existing[1] != actor["id"]
             is_admin = actor.get("role") in set(ADMIN_ROLES)
@@ -5084,6 +5115,20 @@ try:
                         "Ask an administrator if it needs changing."
                     ),
                 )
+
+            # School-isolation conflict-of-interest check:
+            # A judge cannot grade submissions from their own school/institution.
+            if not is_admin:
+                judge_school = _judge_school(cur, actor["id"])
+                student_school = _student_school(cur, sub_student_id)
+                if judge_school and student_school and judge_school.strip().lower() == student_school.strip().lower():
+                    conn.rollback(); cur.close(); release_db_connection(conn)
+                    raise HTTPException(
+                        status_code=409,
+                        detail=(
+                            f"Conflict of interest: You cannot grade submissions from your own school ({student_school.strip()})."
+                        ),
+                    )
             is_revision = already_scored
 
             cur.execute(
@@ -5811,9 +5856,12 @@ try:
             cur.execute(
                 "SELECT DISTINCT ON (t.id) t.id, t.name, t.track, t.competition_id, t.mentor_id, "
                 "COALESCE(t.mentor_status, 'none'), COALESCE(t.is_solo, FALSE), "
-                "COALESCE(m.is_lead, lower(t.lead) = %s) "
+                "COALESCE(m.is_lead, lower(t.lead) = %s), "
+                "COALESCE(NULLIF(t.mentor, ''), u.full_name, ''), "
+                "COALESCE(u.email, '') "
                 "FROM teams t "
                 "LEFT JOIN team_members m ON m.team_id = t.id AND (m.student_id = %s OR lower(m.email) = %s OR lower(m.name) = %s) "
+                "LEFT JOIN users u ON u.id = t.mentor_id "
                 "WHERE m.id IS NOT NULL OR lower(t.lead) = %s "
                 "ORDER BY t.id, m.is_lead DESC",
                 (actor_name, actor["id"], actor_email, actor_name, actor_name),
@@ -5832,7 +5880,7 @@ try:
                         cur.execute("UPDATE teams SET mentor_status = 'none' WHERE id = %s", (t_id,))
                         conn.commit()
                         m_status = 'none'
-                cleaned_rows.append((r[0], r[1], r[2], r[3], r[4], m_status, r[6], r[7]))
+                cleaned_rows.append((r[0], r[1], r[2], r[3], r[4], m_status, r[6], r[7], r[8], r[9]))
             cur.close()
         finally:
             release_db_connection(conn)
@@ -5841,6 +5889,7 @@ try:
                 "id": r[0], "name": r[1], "track": r[2] or "",
                 "competitionId": r[3], "mentorId": r[4],
                 "mentorStatus": r[5], "isSolo": bool(r[6]), "isLead": bool(r[7]),
+                "mentorName": r[8] or "", "mentorEmail": r[9] or "",
             }
             for r in cleaned_rows
         ]
@@ -6311,6 +6360,94 @@ try:
         if assigned:
             broadcast_async({"type": "data_changed", "collection": "teams"})
         return {"assigned": assigned}
+
+    class MentorResponsePayload(BaseModel):
+        action: str = Field(..., pattern="^(accept|decline)$")
+        reason: Optional[str] = None
+
+    @app.patch("/api/teams/{item_id}/mentor-response")
+    def mentor_response(item_id: str, payload: MentorResponsePayload, actor: dict = Depends(require_role(("instructor", "super_admin", "admin")))):
+        """Instructor accepts or declines a mentorship request for a squad."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT id, name, mentor_id, mentor_status, school_name, lead, competition_id FROM teams WHERE id = %s",
+                (item_id,)
+            )
+            team = cur.fetchone()
+            if not team:
+                cur.close()
+                raise HTTPException(status_code=404, detail="Team not found")
+
+            is_admin = actor.get("role") in set(ADMIN_ROLES)
+            if not is_admin and team[2] and team[2] != actor["id"] and team[3] != "requested":
+                cur.close()
+                raise HTTPException(status_code=403, detail="You are not authorized to respond for this team's mentorship.")
+
+            mentor_name = actor.get("full_name") or actor.get("email") or "Instructor"
+            if payload.action == "accept":
+                new_status = "assigned"
+                cur.execute(
+                    "UPDATE teams SET mentor_id = %s, mentor = %s, mentor_status = %s WHERE id = %s",
+                    (actor["id"], mentor_name, new_status, item_id)
+                )
+            else:
+                new_status = "declined"
+                cur.execute(
+                    "UPDATE teams SET mentor_status = %s WHERE id = %s",
+                    (new_status, item_id)
+                )
+
+            # Look up team lead / member email for notification
+            cur.execute(
+                "SELECT email, name FROM team_members WHERE team_id = %s AND is_lead = TRUE AND email IS NOT NULL AND email != '' LIMIT 1",
+                (item_id,)
+            )
+            lead_row = cur.fetchone()
+            if not lead_row:
+                cur.execute(
+                    "SELECT email, name FROM team_members WHERE team_id = %s AND email IS NOT NULL AND email != '' LIMIT 1",
+                    (item_id,)
+                )
+                lead_row = cur.fetchone()
+
+            team_name = team[1]
+            if lead_row and lead_row[0]:
+                to_email = lead_row[0].strip()
+                lead_name = lead_row[1] or "Team Lead"
+                if payload.action == "accept":
+                    subj = f"Mentorship Confirmed: {mentor_name} has accepted to mentor {team_name}"
+                    msg = (
+                        f"<p>Hello {lead_name},</p>"
+                        f"<p>Great news! Instructor <strong>{mentor_name}</strong> has accepted to be the dedicated mentor for your squad, <strong>{team_name}</strong>.</p>"
+                        f"<p>You can now connect with your mentor through the NTIC Platform.</p>"
+                    )
+                else:
+                    reason_txt = f"<p>Reason: {payload.reason}</p>" if payload.reason else ""
+                    subj = f"Mentorship Update for {team_name}"
+                    msg = (
+                        f"<p>Hello {lead_name},</p>"
+                        f"<p>Instructor <strong>{mentor_name}</strong> was unable to take on mentorship for <strong>{team_name}</strong> at this time.</p>"
+                        f"{reason_txt}"
+                        f"<p>You can request an alternative mentor or auto-allocation through your team workspace.</p>"
+                    )
+                send_email(
+                    to_email=to_email,
+                    to_name=lead_name,
+                    subject=subj,
+                    html_content=msg,
+                    text_content=msg
+                )
+
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+
+        broadcast_async({"type": "data_changed", "collection": "teams"})
+        return {"team_id": item_id, "mentor_status": new_status, "mentor": mentor_name if payload.action == "accept" else ""}
+
     # EVENTS
     @app.get("/api/events")
     def list_events():
@@ -6692,6 +6829,18 @@ try:
         cur.execute("DELETE FROM talent_discovery WHERE id=%s", (item_id,)); conn.commit(); cur.close(); release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "talent"})
         return {"status": "deleted", "id": item_id}
+
+    @app.get("/api/talent-discovery")
+    def list_talent_discovery():
+        return list_talent()
+
+    @app.post("/api/talent-discovery", status_code=status.HTTP_201_CREATED)
+    def create_talent_discovery(payload: TalentCreate, _actor: dict = Depends(require_role(CONTENT_ROLES))):
+        return create_talent(payload, _actor)
+
+    @app.delete("/api/talent-discovery/{item_id}")
+    def delete_talent_discovery(item_id: str, _actor: dict = Depends(require_role(CONTENT_ROLES))):
+        return delete_talent(item_id, _actor)
 
     # PLATFORM STATS + COUNTDOWN
     #
@@ -9386,6 +9535,68 @@ try:
             broadcast_async({"type": "data_changed", "collection": "teams"})
             if teams.get("applied"):
                 broadcast_async({"type": "data_changed", "collection": "users"})
+
+        # Send decision email to applicant if status transitioned to approved or rejected
+        if target_status in ("approved", "rejected"):
+            try:
+                applicant_email = (before[2] or "").strip()
+                details_dict = before[3] if isinstance(before[3], dict) else {}
+                if not applicant_email or "@" not in applicant_email:
+                    applicant_email = (
+                        details_dict.get("email")
+                        or details_dict.get("contact_email")
+                        or details_dict.get("schoolEmail")
+                        or ""
+                    ).strip()
+                if applicant_email and "@" in applicant_email:
+                    applicant_name = (before[1] or details_dict.get("fullName") or details_dict.get("name") or "Applicant").strip()
+                    app_type = (before[0] or "Application").replace("_", " ").title()
+                    if target_status == "approved":
+                        subject = f"NTIC Championship: Your {app_type} Has Been Approved"
+                        cred_html = ""
+                        if account.get("provisioned") and account.get("ticket"):
+                            cred_html = (
+                                f'<div style="background:#f1f8e9;border:1px solid #c8e6c9;border-radius:8px;padding:16px;margin:16px 0;">'
+                                f'<p style="margin:0 0 8px;font-weight:bold;color:#2e7d32;">Your Account Credentials:</p>'
+                                f'<p style="margin:4px 0;"><strong>Access Pass / Ticket:</strong> <code>{html_escape(str(account["ticket"]))}</code></p>'
+                                + (f'<p style="margin:4px 0;"><strong>Temporary Password:</strong> <code>{html_escape(str(account["temporary_password"]))}</code></p>' if account.get("temporary_password") else "")
+                                + f'</div>'
+                            )
+                        html_body = (
+                            f'<div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:12px;">'
+                            f'<h2 style="color:#1b5e20;margin-top:0;">Application Approved!</h2>'
+                            f'<p>Dear {html_escape(applicant_name)},</p>'
+                            f'<p>We are pleased to inform you that your <strong>{html_escape(app_type)}</strong> for the National Tech and Innovation Championship has been <strong>approved</strong>.</p>'
+                            f'{cred_html}'
+                            f'<p>You can now sign in to your dashboard at <a href="https://ntic.org.gh">ntic.org.gh</a>.</p>'
+                            f'<p style="color:#666;font-size:13px;margin-top:24px;">National Tech and Innovation Championship Ghana</p>'
+                            f'</div>'
+                        )
+                    else:
+                        subject = f"NTIC Championship: Update on Your {app_type}"
+                        reasons = payload.rejection_reasons or payload.rejection_notes or ""
+                        reasons_html = ""
+                        if reasons:
+                            reasons_html = (
+                                f'<div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:8px;padding:16px;margin:16px 0;">'
+                                f'<p style="margin:0 0 8px;font-weight:bold;color:#c62828;">Reason / Feedback:</p>'
+                                f'<p style="margin:4px 0;color:#333;">{html_escape(str(reasons))}</p>'
+                                f'</div>'
+                            )
+                        html_body = (
+                            f'<div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;border:1px solid #e0e0e0;border-radius:12px;">'
+                            f'<h2 style="color:#b71c1c;margin-top:0;">Application Status Update</h2>'
+                            f'<p>Dear {html_escape(applicant_name)},</p>'
+                            f'<p>Thank you for your interest in the National Tech and Innovation Championship. After review, we regret to inform you that your <strong>{html_escape(app_type)}</strong> could not be approved at this time.</p>'
+                            f'{reasons_html}'
+                            f'<p>If you have any questions, please contact our support team.</p>'
+                            f'<p style="color:#666;font-size:13px;margin-top:24px;">National Tech and Innovation Championship Ghana</p>'
+                            f'</div>'
+                        )
+                    send_email(to_email=applicant_email, to_name=applicant_name, subject=subject, html_content=html_body)
+            except Exception as mail_err:
+                logger.warning(f"Could not send decision email for approval {item_id}: {mail_err}")
+
         return {"id": item_id, "status": "updated", "account": account,
                 "team_change": team_change, "teams": teams, "mentor_assignment": mentor_assignment}
 

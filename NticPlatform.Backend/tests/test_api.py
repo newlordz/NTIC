@@ -47,9 +47,17 @@ class TestLogin:
 
     def test_logout(self, client, disposable_admin_token):
         token = disposable_admin_token
-        resp = client.post("/api/logout", json={"token": token}, headers={"Authorization": f"Bearer {token}"})
+        # Valid logout with Authorization header invalidates session
+        resp = client.post("/api/logout", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
+        # Session should no longer be valid
+        assert client.get("/api/users/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+
+    def test_logout_without_auth_fails(self, client):
+        # Fake body token with no Authorization header must 401
+        resp = client.post("/api/logout", json={"token": "fake-token-attempt"})
+        assert resp.status_code == 401
 
 
 class TestCompetitions:
@@ -147,7 +155,7 @@ class TestTeams:
 class TestGrading:
     def test_grade_submission(self, client, admin_token):
         email = f"test{str(uuid.uuid4())[:8]}@test.com"
-        stu_resp = client.post("/api/students", json={
+        stu_resp = client.post("/api/students", headers={"Authorization": f"Bearer {admin_token}"}, json={
             "first_name": "Test",
             "last_name": "Student",
             "email": email,
@@ -2258,9 +2266,7 @@ class TestPublicSurface:
 
     ANONYMOUS_WRITES_ALLOWED = {
         ("POST", "/api/login"),
-        ("POST", "/api/logout"),
         ("POST", "/api/users/register"),
-        ("POST", "/api/students"),
         ("POST", "/api/tickets"),
         ("POST", "/api/chat"),
         ("POST", "/api/auth/verify-contact"),
@@ -2311,6 +2317,15 @@ class TestPublicSurface:
         })
         assert resp.status_code == 401
 
+    def test_create_student_requires_a_session(self, client):
+        resp = client.post("/api/students", json={
+            "first_name": "Anon",
+            "last_name": "Student",
+            "email": "anon@example.com",
+            "track": "Coding",
+        })
+        assert resp.status_code == 401
+
     def test_client_cannot_choose_the_email_sender(self, client, admin_token, monkeypatch):
         import app.main as main
         captured = {}
@@ -2347,7 +2362,34 @@ class TestPublicSurface:
         assert client.post("/api/events", json={"title": "Fake", "date": "2026-01-01"}, headers=headers).status_code == 403
         assert client.post("/api/stories", json={"title": "Fake", "excerpt": "x"}, headers=headers).status_code == 403
         assert client.post("/api/talent", json={"student_name": "Fake"}, headers=headers).status_code == 403
+        assert client.post("/api/talent-discovery", json={"student_name": "Fake"}, headers=headers).status_code == 403
         assert client.post("/api/csr", json={"title": "Fake"}, headers=headers).status_code == 403
+
+    def test_talent_discovery_crud_endpoints(self, client, admin_token, student_token):
+        resp = client.get("/api/talent-discovery")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+        student_headers = {"Authorization": f"Bearer {student_token}"}
+        assert client.post("/api/talent-discovery", json={"student_name": "Test"}, headers=student_headers).status_code == 403
+
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+        create_resp = client.post("/api/talent-discovery", json={
+            "student_name": "Kwame Tech",
+            "school": "Opoku Ware",
+            "track": "Coding",
+            "project_title": "AI Drone",
+            "talent_tags": "AI,Python",
+            "description": "Outstanding coding proficiency",
+            "mentor": "Dr. Mensah",
+            "status": "active"
+        }, headers=admin_headers)
+        assert create_resp.status_code == 201
+        tid = create_resp.json()["id"]
+
+        del_resp = client.delete(f"/api/talent-discovery/{tid}", headers=admin_headers)
+        assert del_resp.status_code == 200
+        assert del_resp.json()["status"] == "deleted"
 
     def test_anonymous_ticket_cannot_claim_a_privileged_identity(self, client):
         resp = client.post("/api/tickets", json={
@@ -3067,8 +3109,8 @@ class TestJudgingWorkspace:
     def _auth(self, token):
         return {"Authorization": f"Bearer {token}"}
 
-    def _make_student(self, client, track="Coding"):
-        resp = client.post("/api/students", json={
+    def _make_student(self, client, admin_token, track="Coding"):
+        resp = client.post("/api/students", headers=self._auth(admin_token), json={
             "first_name": "Queue", "last_name": "Candidate",
             "email": f"stu-{uuid.uuid4().hex[:8]}@judge.test",
             "track": track, "consent_granted": True,
@@ -3077,7 +3119,7 @@ class TestJudgingWorkspace:
         return resp.json()["id"]
 
     def _make_submission(self, client, admin_token, track="Coding"):
-        stu_id = self._make_student(client, track)
+        stu_id = self._make_student(client, admin_token, track)
         resp = client.post("/api/submissions", json={
             "student_id": stu_id, "source_code_path": "entry.py", "video_url": "",
         }, headers=self._auth(admin_token))
@@ -5069,6 +5111,59 @@ class TestJudgeScoreRevision:
         assert client.patch(f"/api/submissions/{sub}/grade", headers=self._auth(token),
                             json={"score": -5}).status_code == 422
 
+    def test_judge_from_same_school_is_blocked_with_conflict_of_interest(self, client, admin_token):
+        """School-isolation: A judge from school X cannot grade submissions from school X."""
+        from app.database import get_db_connection, release_db_connection
+        judge_token, judge_email = self._user(client, admin_token, "judge", "Judge Accra Academy")
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET organization = 'Accra Academy' WHERE lower(email) = %s", (judge_email.lower(),))
+        conn.commit()
+
+        sub_id = self._submission(client, admin_token)
+        cur.execute("SELECT student_id FROM assignment_submissions WHERE id = %s", (sub_id,))
+        student_id = cur.fetchone()[0]
+        cur.execute("UPDATE students SET school_name = 'Accra Academy' WHERE id = %s", (student_id,))
+        conn.commit()
+        cur.close()
+        release_db_connection(conn)
+
+        resp = client.patch(
+            f"/api/submissions/{sub_id}/grade",
+            headers=self._auth(judge_token),
+            json={"score": 88, "feedback": "Great project!"},
+        )
+        assert resp.status_code == 409, resp.text
+        assert "Conflict of interest" in resp.json()["detail"]
+        assert "Accra Academy" in resp.json()["detail"]
+
+    def test_judge_from_different_school_can_grade(self, client, admin_token):
+        """A judge from school X CAN grade submissions from school Y."""
+        from app.database import get_db_connection, release_db_connection
+        judge_token, judge_email = self._user(client, admin_token, "judge", "Judge Presec")
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET organization = 'Presec Legon' WHERE lower(email) = %s", (judge_email.lower(),))
+        conn.commit()
+
+        sub_id = self._submission(client, admin_token)
+        cur.execute("SELECT student_id FROM assignment_submissions WHERE id = %s", (sub_id,))
+        student_id = cur.fetchone()[0]
+        cur.execute("UPDATE students SET school_name = 'Achimota School' WHERE id = %s", (student_id,))
+        conn.commit()
+        cur.close()
+        release_db_connection(conn)
+
+        resp = client.patch(
+            f"/api/submissions/{sub_id}/grade",
+            headers=self._auth(judge_token),
+            json={"score": 88, "feedback": "Great project!"},
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["status"] == "graded"
+
     def test_queue_reports_whether_the_artifact_is_reachable(self, client, admin_token):
         """A bare filename cannot be opened -- there is no file-serving endpoint. The
         judge UI rendered it as inert text, which reads as a broken link."""
@@ -5699,6 +5794,67 @@ class TestApprovalProvisioning:
         account = self._approve(client, admin_token, approval_id)["account"]
         assert account["provisioned"] is False
         assert "contact email" in account["reason"]
+
+    def test_approval_sends_decision_email_to_applicant(self, client, admin_token, monkeypatch):
+        """Admin approves -> applicant receives decision email."""
+        import app.main as main
+        sent_emails = []
+
+        def fake_send(to_email, to_name="", subject="", html_content="", text_content=None, **kwargs):
+            sent_emails.append({
+                "to_email": to_email, "to_name": to_name,
+                "subject": subject, "html": html_content
+            })
+            return True
+
+        monkeypatch.setattr(main, "send_email", fake_send)
+
+        email = f"approved-applicant-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = self._submit(client, admin_token, "School Registration", email, entity="Accra STEM Academy")
+        res = self._approve(client, admin_token, approval_id)
+        assert res["status"] == "updated"
+
+        # Verify email was dispatched
+        assert len(sent_emails) == 1
+        mail = sent_emails[0]
+        assert mail["to_email"] == email
+        assert "Approved" in mail["subject"]
+        assert "Accra STEM Academy" in mail["html"]
+        if res["account"].get("ticket"):
+            assert res["account"]["ticket"] in mail["html"]
+
+    def test_rejection_sends_decision_email_to_applicant(self, client, admin_token, monkeypatch):
+        """Admin rejects -> applicant receives rejection notice email."""
+        import app.main as main
+        sent_emails = []
+
+        def fake_send(to_email, to_name="", subject="", html_content="", text_content=None, **kwargs):
+            sent_emails.append({
+                "to_email": to_email, "to_name": to_name,
+                "subject": subject, "html": html_content
+            })
+            return True
+
+        monkeypatch.setattr(main, "send_email", fake_send)
+
+        email = f"rejected-applicant-{uuid.uuid4().hex[:8]}@example.com"
+        approval_id = self._submit(client, admin_token, "Instructor Access", email, entity="John Doe")
+        resp = client.patch(
+            f"/api/approvals/{approval_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+            json={
+                "status": "rejected",
+                "rejection_reasons": "Incomplete verification documents",
+                "rejection_notes": "Please re-upload your teacher ID card.",
+            },
+        )
+        assert resp.status_code == 200
+
+        assert len(sent_emails) == 1
+        mail = sent_emails[0]
+        assert mail["to_email"] == email
+        assert "Update on Your" in mail["subject"]
+        assert "Incomplete verification documents" in mail["html"]
 
     def test_unknown_approval_type_records_decision_without_provisioning(self, client, admin_token):
         approval_id = self._submit(client, admin_token, "Mystery Type",

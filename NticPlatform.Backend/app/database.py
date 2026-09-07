@@ -584,6 +584,7 @@ def _create_tables(conn):
     # mapping layer. user_id is kept as an explicit, indexed back-reference for
     # rows that predate this (seeded students keep their original ids).
     cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS user_id VARCHAR(64);")
+    cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS school_name VARCHAR(200);")
 
     # Real ownership for authored LMS content.
     #
@@ -758,8 +759,13 @@ def _create_tables(conn):
             verified_by_name VARCHAR(200),
             verified_at TIMESTAMP NULL,
             rejection_reason TEXT,
+            proof_file_url TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+    """)
+
+    cur.execute("""
+        ALTER TABLE sponsorship_payments ADD COLUMN IF NOT EXISTS proof_file_url TEXT;
     """)
 
     # Back-fill the link for any student row whose email already matches a user.
