@@ -2391,6 +2391,43 @@ class TestPublicSurface:
         assert del_resp.status_code == 200
         assert del_resp.json()["status"] == "deleted"
 
+    def test_hall_of_fame_crud_endpoints(self, client, admin_token, student_token):
+        resp = client.get("/api/hall-of-fame")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+        student_headers = {"Authorization": f"Bearer {student_token}"}
+        assert client.post("/api/hall-of-fame", json={"name": "Test"}, headers=student_headers).status_code == 403
+
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+        create_resp = client.post("/api/hall-of-fame", json={
+            "type": "individual",
+            "initials": "KC",
+            "name": "Kofi Champion",
+            "school": "Achimota",
+            "year": "2026",
+            "badge": "Gold Winner",
+            "track_class": "coding"
+        }, headers=admin_headers)
+        assert create_resp.status_code == 201
+        hid = create_resp.json()["id"]
+
+        patch_resp = client.patch(f"/api/hall-of-fame/{hid}", json={
+            "type": "individual",
+            "initials": "KC",
+            "name": "Kofi Champion Updated",
+            "school": "Achimota",
+            "year": "2026",
+            "badge": "Grand Gold Winner",
+            "track_class": "coding"
+        }, headers=admin_headers)
+        assert patch_resp.status_code == 200
+        assert patch_resp.json()["status"] == "updated"
+
+        del_resp = client.delete(f"/api/hall-of-fame/{hid}", headers=admin_headers)
+        assert del_resp.status_code == 200
+        assert del_resp.json()["status"] == "deleted"
+
     def test_anonymous_ticket_cannot_claim_a_privileged_identity(self, client):
         resp = client.post("/api/tickets", json={
             "userId": "USR-000",
