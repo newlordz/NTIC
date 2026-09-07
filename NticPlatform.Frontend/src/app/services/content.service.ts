@@ -775,7 +775,7 @@ export class ContentService {
             this.dataRefreshed$.next('approvals');
           }
         },
-        error: () => {}
+        error: (err: any) => console.warn('[ContentService] Failed to load pending approvals from backend', err)
       });
     }
 
@@ -784,7 +784,7 @@ export class ContentService {
         next: () => {
           this.dataRefreshed$.next('institution_approvals');
         },
-        error: () => {}
+        error: (err: any) => console.warn('[ContentService] Failed to load institution approvals from backend', err)
       });
     }
 
@@ -877,7 +877,7 @@ export class ContentService {
           }
         }
       },
-      error: () => {}
+      error: (err: any) => console.warn('[ContentService] Failed to load platform stats from backend', err)
     });
 
     this.apiService.getHeroSlides().subscribe({
@@ -887,7 +887,7 @@ export class ContentService {
           this.saveState('heroSlides', this.heroSlides);
         }
       },
-      error: () => {}
+      error: (err: any) => console.warn('[ContentService] Failed to load hero slides from backend', err)
     });
 
     this.apiService.getTalent().subscribe({
@@ -897,7 +897,7 @@ export class ContentService {
           this.saveState('talentDiscovery', this.talentDiscovery);
         }
       },
-      error: () => {}
+      error: (err: any) => console.warn('[ContentService] Failed to load talent discovery from backend', err)
     });
 
     this.apiService.getCsrUpdates().subscribe({
@@ -907,7 +907,7 @@ export class ContentService {
           this.saveState('csrUpdates', this.csrUpdates);
         }
       },
-      error: () => {}
+      error: (err: any) => console.warn('[ContentService] Failed to load CSR updates from backend', err)
     });
 
     this.apiService.getLandingCopy().subscribe({
@@ -917,7 +917,7 @@ export class ContentService {
           this.saveState('landingCopy', copy);
         }
       },
-      error: () => {}
+      error: (err: any) => console.warn('[ContentService] Failed to load landing copy from backend', err)
     });
 
     this.apiService.getCompetitions().subscribe({
@@ -1113,14 +1113,14 @@ export class ContentService {
               this.saveState('rejectedApprovals', rejected);
               this.dataRefreshed$.next('approvals');
             },
-            error: () => {}
+            error: (err: any) => console.warn('[ContentService] Reload approvals failed', err)
           });
         } else if (role === 'school_admin') {
           this.apiService.getInstitutionApprovals().subscribe({
             next: () => {
               this.dataRefreshed$.next('institution_approvals');
             },
-            error: () => {}
+            error: (err: any) => console.warn('[ContentService] Reload institution approvals failed', err)
           });
         }
         return;
@@ -1132,7 +1132,7 @@ export class ContentService {
               this.saveState('landingCopy', copy);
             }
           },
-          error: () => {}
+          error: (err: any) => console.warn('[ContentService] Reload landing copy failed', err)
         });
         return;
       case 'competition_registrations':
@@ -2005,7 +2005,9 @@ export class ContentService {
           type: top.type || 'info',
           ip: top.ip || '',
           client: top.client || ''
-        }).subscribe({ error: () => {} });
+        }).subscribe({
+          error: (err: any) => console.warn('[ContentService] Failed to persist top audit log', err)
+        });
       }
     }
   }
@@ -2030,7 +2032,9 @@ export class ContentService {
       type: entry.type,
       ip: entry.ip,
       client: entry.client
-    }).subscribe({ error: () => {} });
+    }).subscribe({
+      error: (err: any) => console.warn('[ContentService] Failed to persist audit log', err)
+    });
   }
 
   fetchAuditLogsFromBackend(params?: { limit?: number; before_id?: number; append?: boolean }): void {
@@ -2279,6 +2283,11 @@ export class ContentService {
   /** Teams attached to one cycle. */
   getTeamsForCompetition(competitionId: string): Team[] {
     return this.teams.filter(t => t.competitionId === competitionId);
+  }
+
+  /** Submissions attached to one cycle. */
+  getSubmissionsForCompetition(competitionId: string): Submission[] {
+    return this.submissions.filter(s => (s as any).competitionId === competitionId || (s as any).competition_id === competitionId);
   }
 
   removeCompetition(id: string): void {
