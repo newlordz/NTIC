@@ -37,8 +37,10 @@ function run(args, label) {
 function runNg(args) {
   // Resolve the local Angular CLI rather than relying on PATH.
   const ngBin = path.join(__dirname, 'node_modules', '@angular', 'cli', 'bin', 'ng.js');
-  const nodeOptions = process.env.NODE_OPTIONS || '--max-old-space-size=4096';
-  const result = spawnSync(process.execPath, [ngBin, ...args], { stdio: 'inherit', env: { ...process.env, NODE_OPTIONS: nodeOptions } });
+  const nodeOptions = process.env.NODE_OPTIONS || '--max-old-space-size=2048';
+  const maxWorkers = process.env.NG_BUILD_MAX_WORKERS || '1';
+  const env = { ...process.env, NODE_OPTIONS: nodeOptions, NG_BUILD_MAX_WORKERS: maxWorkers };
+  const result = spawnSync(process.execPath, [ngBin, ...args], { stdio: 'inherit', env });
   if (result.error) {
     throw new Error(`ng could not start: ${result.error.message}`);
   }
