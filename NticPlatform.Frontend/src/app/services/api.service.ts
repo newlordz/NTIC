@@ -1458,6 +1458,17 @@ login(email: string, password: string): Observable<any> {
     return this.http.delete(this.apiUrl + '/news/' + id);
   }
 
+  exportReport(params: { competition_id?: string; report_type?: string; format?: string; school?: string }): Observable<Blob> {
+    const q = new URLSearchParams();
+    if (params.competition_id) q.set('competition_id', params.competition_id);
+    if (params.report_type) q.set('report_type', params.report_type);
+    if (params.format) q.set('format', params.format);
+    if (params.school) q.set('school', params.school);
+    const queryString = q.toString();
+    const url = `${this.apiUrl}/reports/export${queryString ? '?' + queryString : ''}`;
+    return this.http.get(url, { responseType: 'blob' });
+  }
+
   getAuditLogs(params?: { limit?: number; category?: string; usr?: string; q?: string; before_id?: number }): Observable<any[]> {
     let url = this.apiUrl + '/audit-logs';
     if (params) {

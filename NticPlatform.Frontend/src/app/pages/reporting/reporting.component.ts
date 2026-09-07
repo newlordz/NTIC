@@ -4,6 +4,7 @@ import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService, Competition, Team } from '../../services/content.service';
 import { CurrentUserService } from '../../services/current-user.service';
+import { ApiService } from '../../services/api.service';
 import { TimeAgoPipe } from '../../services/time-ago.pipe';
 
 @Component({
@@ -43,6 +44,7 @@ export class ReportingComponent implements OnInit {
   constructor(
     public contentService: ContentService,
     public currentUserService: CurrentUserService,
+    private apiService: ApiService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -260,64 +262,88 @@ export class ReportingComponent implements OnInit {
     this.downloadOffset++;
     this.saveReportsState();
 
-    const scopedTeams = this.scopedTeams;
-    const teamsCount = scopedTeams.length;
-    const studentsCount = scopedTeams.reduce((acc, t) => acc + (t.rosterList?.length || 0), 0);
-    const dateStr = new Date().toLocaleString();
+    const cleanCycle = (this.scopeLabel || 'all_cycles').replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    const cleanTitle = (report.title || 'report').replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    const dateStamp = new Date().toISOString().split('T')[0];
+    const isCsv = format === 'Excel' || format === 'CSV';
+    const ext = isCsv ? 'csv' : 'txt';
+    const filename = `ntic_report_${cleanCycle}_${cleanTitle}_${dateStamp}.${ext}`;
 
-    let content = `==========================================================\n`;
-    content += `         NTIC NATIONAL COMPETITION PLATFORM\n`;
-    content += `        OFFICIAL INSTITUTIONAL REPORT EXPORT\n`;
-    content += `==========================================================\n\n`;
-    content += `Report Title    : ${report.title}\n`;
-    content += `Report Type     : ${report.type}\n`;
-    content += `Export Format   : ${format}\n`;
-    content += `Generated Date  : ${report.date}\n`;
-    content += `Exported On     : ${dateStr}\n`;
-    content += `Institution     : ${this.schoolName}\n`;
-    // Without this the file gives no way to tell which cycle it covers, so two
-    // exports taken at different scopes look identical.
-    content += `Cycle Scope     : ${this.scopeLabel}\n`;
-    content += `Compiled By     : ${this.userName} (${this.activeRoleId})\n\n`;
-    content += `--- SUMMARY METRICS ---\n`;
-    content += `Total Enlisted Squads   : ${teamsCount}\n`;
-    content += `Total Active Students   : ${studentsCount}\n`;
-    content += `Accreditation Status    : Verified & Active\n\n`;
-    content += `--- SQUAD ROSTER DETAILS ---\n`;
+    const triggerDownload = (blob: Blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
 
-    if (teamsCount > 0) {
-      scopedTeams.forEach((t, i) => {
-        content += `${i + 1}. Squad Name : ${t.name}\n`;
-        content += `   Track      : ${t.track}\n`;
-        content += `   Lead       : ${t.lead}\n`;
-        content += `   Members    : ${t.rosterList?.join(', ') || 'N/A'}\n\n`;
+      this.auditLogs.unshift({
+        action: `Exported (${format}): ${report.title} [Scope: ${this.scopeLabel}]`,
+        user: this.userName,
+        time: new Date().toISOString(),
+        icon: 'download',
+        color: 'secondary'
       });
-    } else {
-      content += this.selectedCycleId
-        ? `No student squads are registered for ${this.scopeLabel}.\n`
-        : `No student squads have been registered under this institution yet.\n`;
-    }
+      this.cdr.markForCheck();
+    };
 
-    content += `==========================================================\n`;
-    content += `End of Official Report - Ghana Data Protection Act Compliant\n`;
+    // First attempt server-generated scoped export
+    this.apiService.exportReport({
+      competition_id: this.selectedCycleId || undefined,
+      report_type: report.title,
+      format: isCsv ? 'csv' : 'txt',
+      school: this.schoolName !== 'National Platform' ? this.schoolName : undefined
+    }).subscribe({
+      next: (blob: Blob) => {
+        triggerDownload(blob);
+      },
+      error: () => {
+        // Graceful client fallback preserving cycle-stamped header & filename
+        const scopedTeams = this.scopedTeams;
+        const teamsCount = scopedTeams.length;
+        const studentsCount = scopedTeams.reduce((acc, t) => acc + (t.rosterList?.length || 0), 0);
+        const dateStr = new Date().toLocaleString();
 
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const cleanTitle = report.title.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
-    a.download = `${cleanTitle}_export.${format === 'Excel' ? 'csv' : 'txt'}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+        let content = `==========================================================\n`;
+        content += `         NTIC NATIONAL COMPETITION PLATFORM\n`;
+        content += `        OFFICIAL INSTITUTIONAL REPORT EXPORT\n`;
+        content += `==========================================================\n\n`;
+        content += `Report Title    : ${report.title}\n`;
+        content += `Report Type     : ${report.type}\n`;
+        content += `Export Format   : ${format}\n`;
+        content += `Generated Date  : ${report.date}\n`;
+        content += `Exported On     : ${dateStr}\n`;
+        content += `Institution     : ${this.schoolName}\n`;
+        content += `Cycle Scope     : ${this.scopeLabel}\n`;
+        content += `Compiled By     : ${this.userName} (${this.activeRoleId})\n\n`;
+        content += `--- SUMMARY METRICS ---\n`;
+        content += `Total Enlisted Squads   : ${teamsCount}\n`;
+        content += `Total Active Students   : ${studentsCount}\n`;
+        content += `Accreditation Status    : Verified & Active\n\n`;
+        content += `--- SQUAD ROSTER DETAILS ---\n`;
 
-    this.auditLogs.unshift({
-      action: `Exported (${format}): ${report.title}`,
-      user: this.userName,
-      time: new Date().toISOString(),
-      icon: 'download',
-      color: 'secondary'
+        if (teamsCount > 0) {
+          scopedTeams.forEach((t, i) => {
+            content += `${i + 1}. Squad Name : ${t.name}\n`;
+            content += `   Track      : ${t.track}\n`;
+            content += `   Lead       : ${t.lead}\n`;
+            content += `   Members    : ${t.rosterList?.join(', ') || 'N/A'}\n`;
+            content += `   Cycle      : ${this.scopeLabel}\n\n`;
+          });
+        } else {
+          content += this.selectedCycleId
+            ? `No student squads are registered for ${this.scopeLabel}.\n`
+            : `No student squads have been registered under this institution yet.\n`;
+        }
+
+        content += `==========================================================\n`;
+        content += `End of Official Report - Ghana Data Protection Act Compliant\n`;
+
+        const fallbackBlob = new Blob([content], { type: isCsv ? 'text/csv;charset=utf-8;' : 'text/plain;charset=utf-8;' });
+        triggerDownload(fallbackBlob);
+      }
     });
   }
 

@@ -2428,6 +2428,46 @@ class TestPublicSurface:
         assert del_resp.status_code == 200
         assert del_resp.json()["status"] == "deleted"
 
+    def test_server_generated_report_export(self, client, admin_token, monkeypatch):
+        from app.database import get_db_connection, release_db_connection
+        # Ensure test competition and teams exist
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO competitions (id, title, status) VALUES ('comp-cycle-1', 'NTIC National Cycle 1', 'active') ON CONFLICT (id) DO NOTHING")
+        cur.execute("INSERT INTO competitions (id, title, status) VALUES ('comp-cycle-2', 'NTIC National Cycle 2', 'active') ON CONFLICT (id) DO NOTHING")
+        cur.execute("INSERT INTO teams (id, name, track, lead, members, school_name, competition_id) VALUES ('t-rep-1', 'Team One', 'Coding', 'Lead One', 4, 'Achimota', 'comp-cycle-1') ON CONFLICT (id) DO NOTHING")
+        cur.execute("INSERT INTO teams (id, name, track, lead, members, school_name, competition_id) VALUES ('t-rep-2', 'Team Two', 'Robotics', 'Lead Two', 3, 'Presec', 'comp-cycle-2') ON CONFLICT (id) DO NOTHING")
+        conn.commit()
+        cur.close()
+        release_db_connection(conn)
+
+        # Unauthenticated request is rejected
+        assert client.get("/api/reports/export").status_code in (401, 403)
+
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+        # Export Cycle 1
+        resp_c1 = client.get("/api/reports/export?competition_id=comp-cycle-1&format=csv", headers=admin_headers)
+        assert resp_c1.status_code == 200
+        assert resp_c1.headers["content-type"].startswith("text/csv")
+        assert "ntic_report_ntic_national_cycle_1_" in resp_c1.headers["content-disposition"]
+        text_c1 = resp_c1.text
+        assert "# Cycle Scope: NTIC National Cycle 1" in text_c1
+        assert "Team One" in text_c1
+        assert "Team Two" not in text_c1
+
+        # Export Cycle 2
+        resp_c2 = client.get("/api/reports/export?competition_id=comp-cycle-2&format=csv", headers=admin_headers)
+        assert resp_c2.status_code == 200
+        assert "ntic_report_ntic_national_cycle_2_" in resp_c2.headers["content-disposition"]
+        text_c2 = resp_c2.text
+        assert "# Cycle Scope: NTIC National Cycle 2" in text_c2
+        assert "Team Two" in text_c2
+        assert "Team One" not in text_c2
+
+        # Filenames and headers are clearly distinguishable
+        assert resp_c1.headers["content-disposition"] != resp_c2.headers["content-disposition"]
+
     def test_anonymous_ticket_cannot_claim_a_privileged_identity(self, client):
         resp = client.post("/api/tickets", json={
             "userId": "USR-000",
