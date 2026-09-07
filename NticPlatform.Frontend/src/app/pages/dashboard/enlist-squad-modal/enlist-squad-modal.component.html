@@ -1,0 +1,243 @@
+<div class="ticket-modal-backdrop enlist-backdrop" *ngIf="isOpen" (click)="onClose()">
+  <div class="enlist-modal-card" (click)="$event.stopPropagation()">
+    
+    <!-- Gradient Banner Header -->
+    <div class="enlist-header-banner">
+      <div class="enlist-header-left">
+        <div class="enlist-crest-icon">
+          <span class="material-symbols-outlined">shield_with_house</span>
+        </div>
+        <div>
+          <div class="enlist-badge-tag">{{ editingTeamOriginalName ? 'SQUAD ROSTER MODIFICATION' : 'OFFICIAL NTIC TOURNAMENT REGISTRATION' }}</div>
+          <h3 class="enlist-title">{{ editingTeamOriginalName ? 'Edit Squad Roster' : 'National Squad Enlistment' }}</h3>
+          <p class="enlist-subtitle">{{ editingTeamOriginalName ? 'Update student member names, track assignment, or mentor details.' : 'Register your school\'s competitive NTI team into active tournament brackets.' }}</p>
+        </div>
+      </div>
+      <button class="enlist-close-btn" (click)="onClose()" title="Close modal">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    
+    <form (ngSubmit)="onSubmit()" #addTeamForm="ngForm" class="enlist-form-body">
+      
+      <!-- Section 1: Track Selector -->
+      <div class="enlist-section">
+        <label class="enlist-label">1. {{ editingTeamOriginalName ? 'Competition Track (Locked)' : 'Select Competition Track' }} <span class="req">*</span></label>
+        
+        <!-- Locked Banner for Edit Mode -->
+        <div *ngIf="editingTeamOriginalName" class="track-locked-banner" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(0,63,135,0.06);border:1px solid rgba(0,63,135,0.2);border-radius:10px;margin-bottom:8px;">
+          <span class="material-symbols-outlined" style="color:var(--primary);font-size:24px;">lock</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--on-surface);">Track Locked: {{ teamForm?.track }}</div>
+            <div style="font-size:11px;color:var(--on-surface-variant);margin-top:2px;">Competition track is bound to approved registration. Track reassignments require official administrative approval.</div>
+          </div>
+        </div>
+
+        <!-- Selectable Grid for New Team Registration -->
+        <div class="track-cards-grid" *ngIf="!editingTeamOriginalName && teamForm">
+          <div 
+            class="track-select-card" 
+            [class.active]="teamForm.track === 'Coding'" 
+            (click)="teamForm.track = 'Coding'"
+          >
+            <div class="track-card-icon coding"><span class="material-symbols-outlined">code</span></div>
+            <div class="track-card-name">Coding & Algorithms</div>
+            <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
+          </div>
+
+          <div 
+            class="track-select-card" 
+            [class.active]="teamForm.track === 'Robotics'" 
+            (click)="teamForm.track = 'Robotics'"
+          >
+            <div class="track-card-icon robotics"><span class="material-symbols-outlined">precision_manufacturing</span></div>
+            <div class="track-card-name">Robotics & IoT</div>
+            <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
+          </div>
+
+          <div 
+            class="track-select-card" 
+            [class.active]="teamForm.track === 'AI'" 
+            (click)="teamForm.track = 'AI'"
+          >
+            <div class="track-card-icon ai"><span class="material-symbols-outlined">psychology</span></div>
+            <div class="track-card-name">AI Engineering</div>
+            <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
+          </div>
+
+          <div 
+            class="track-select-card" 
+            [class.active]="teamForm.track === 'Networking & Cybersecurity'" 
+            (click)="teamForm.track = 'Networking & Cybersecurity'"
+          >
+            <div class="track-card-icon cybersecurity"><span class="material-symbols-outlined">security</span></div>
+            <div class="track-card-name">Networking & Cybersecurity CTF</div>
+            <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
+          </div>
+
+          <div 
+            class="track-select-card" 
+            [class.active]="teamForm.track === 'Innovation'" 
+            (click)="teamForm.track = 'Innovation'"
+          >
+            <div class="track-card-icon innovation"><span class="material-symbols-outlined">lightbulb</span></div>
+            <div class="track-card-name">Open Innovation</div>
+            <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Squad Information -->
+      <div class="enlist-section" *ngIf="teamForm">
+        <label class="enlist-label">2. Squad & Mentor Binding <span class="req">*</span></label>
+        <div class="enlist-fields-grid">
+          
+          <div class="enlist-field">
+            <span class="field-label">Official Squad Name <span class="req">*</span></span>
+            <div class="input-with-icon">
+              <span class="material-symbols-outlined prefix-icon">flag</span>
+              <input 
+                type="text" 
+                name="teamName" 
+                [(ngModel)]="teamForm.name" 
+                required 
+                placeholder="e.g. PRESEC Cyber Knights" 
+                class="enlist-input"
+              >
+            </div>
+            <span class="field-hint">Appears on national leaderboards & official certificates.</span>
+          </div>
+
+          <div class="enlist-field">
+            <span class="field-label">Assigned School Mentor</span>
+            <div class="input-with-icon">
+              <span class="material-symbols-outlined prefix-icon">school</span>
+              <select 
+                name="teamMentor" 
+                [(ngModel)]="teamForm.mentor" 
+                class="enlist-select"
+              >
+                <option value="">General School Coordinator</option>
+                <option *ngFor="let inst of schoolInstructors" [value]="inst.fullName">{{ inst.fullName }} ({{ inst.track || 'NTI' }})</option>
+              </select>
+            </div>
+            <span class="field-hint">Supervising instructor for this competition track.</span>
+          </div>
+
+          <div class="enlist-field full-width">
+            <span class="field-label">Student Captain / Team Lead Name <span class="req">*</span></span>
+            <div class="input-with-icon">
+              <span class="material-symbols-outlined prefix-icon">person</span>
+              <input 
+                type="text" 
+                name="teamLead" 
+                [(ngModel)]="teamForm.lead" 
+                required 
+                placeholder="e.g. Samuel Osei (Student Captain)" 
+                class="enlist-input"
+              >
+            </div>
+          </div>
+
+          <div class="enlist-field full-width">
+            <span class="field-label">Team Lead Email *</span>
+            <div class="input-with-icon">
+              <span class="material-symbols-outlined prefix-icon">alternate_email</span>
+              <input 
+                type="email" 
+                name="teamLeadEmail" 
+                [(ngModel)]="teamForm.leadEmail" 
+                required
+                placeholder="e.g. samuel.osei@student.ntic.edu.gh" 
+                class="enlist-input"
+              >
+            </div>
+          </div>
+
+          <div class="enlist-field full-width">
+            <span class="field-label">Project Motto / Innovation Theme <span class="optional">(Optional)</span></span>
+            <div class="input-with-icon">
+              <span class="material-symbols-outlined prefix-icon">tips_and_updates</span>
+              <input 
+                type="text" 
+                name="teamMotto" 
+                [(ngModel)]="teamForm.motto" 
+                placeholder="e.g. Building an autonomous solar irrigation grid for rural agriculture" 
+                class="enlist-input"
+              >
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Section 3: Roster Size & Student Names -->
+      <div class="enlist-section" *ngIf="teamForm">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <label class="enlist-label" style="margin:0;">3. Squad Roster Size & Student Names</label>
+          <span class="size-badge">{{ teamForm.members }} Students Active</span>
+        </div>
+        <div class="roster-size-selector" style="margin-bottom:12px;">
+          <button 
+            type="button" 
+            *ngFor="let size of [3,4,5,6,7,8]" 
+            class="size-pill-btn" 
+            [class.active]="teamForm.members === size" 
+            (click)="onSelectSize(size)"
+          >
+            <span class="material-symbols-outlined" style="font-size:16px;">groups</span>
+            {{ size }} Members
+          </button>
+        </div>
+        <span class="field-hint" style="margin-bottom:12px;">National competition regulations mandate between 3 and 8 students per enlisted squad.</span>
+
+        <!-- Dynamic Member Inputs -->
+        <div *ngIf="additionalMemberIndices.length > 0" class="additional-members-container">
+          <div class="roster-list-header">
+            <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">group_add</span>
+            <span>Enter Full Names of Additional Student Roster Members:</span>
+          </div>
+          <div class="members-input-grid">
+            <div *ngFor="let idx of additionalMemberIndices" class="member-input-row">
+              <span class="member-number-badge">#{{ idx + 2 }}</span>
+              <input 
+                type="text" 
+                [name]="'member_' + idx" 
+                [(ngModel)]="teamForm.memberNames[idx]" 
+                [placeholder]="'Student Member #' + (idx + 2) + ' Full Name (e.g. Amina Yusuf)'" 
+                class="enlist-input member-name-input"
+              >
+              <input 
+                type="email" 
+                [name]="'member_email_' + idx" 
+                [(ngModel)]="teamForm.memberEmails[idx]" 
+                placeholder="email (optional)" 
+                class="enlist-input member-email-input"
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer Actions -->
+      <div class="enlist-footer">
+        <div class="enlist-footer-info">
+          <span class="material-symbols-outlined" style="color:var(--primary);font-size:18px;">
+            hourglass_top
+          </span>
+          <span>
+            {{ editingTeamOriginalName ? 'Squad name, roster, and mentor changes require Super Admin review and approval before updating tournament records.' : 'New squad submissions are routed to Super Admin for tournament bracket approval.' }}
+          </span>
+        </div>
+        <div class="enlist-actions">
+          <button type="button" class="enlist-btn-cancel" (click)="onClose()">Cancel</button>
+          <button type="submit" class="enlist-btn-submit" [disabled]="!addTeamForm.form.valid">
+            <span class="material-symbols-outlined">send</span>
+            {{ editingTeamOriginalName ? 'Submit Modifications for Admin Approval' : 'Submit Squad for Admin Approval' }}
+          </button>
+        </div>
+      </div>
+
+    </form>
+  </div>
+</div>

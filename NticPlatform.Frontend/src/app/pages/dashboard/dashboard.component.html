@@ -90,8 +90,8 @@
                   <div style="font-size:11px;color:var(--on-surface-variant);">{{ t.track || 'No track' }}</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-                  <span *ngIf="t.mentorId" class="badge secondary" style="font-size:10px;display:flex;align-items:center;gap:4px;">
-                    <span class="material-symbols-outlined" style="font-size:12px;">verified</span> Mentor Assigned
+                  <span *ngIf="t.mentorId || t.mentorName" class="badge secondary" style="font-size:10px;display:flex;align-items:center;gap:4px;" [title]="t.mentorEmail ? 'Mentor: ' + (t.mentorName || 'Assigned') + ' (' + t.mentorEmail + ')' : ''">
+                    <span class="material-symbols-outlined" style="font-size:12px;">verified</span> {{ t.mentorName ? 'Mentor: ' + t.mentorName : 'Mentor Assigned' }}
                   </span>
                   <span *ngIf="!t.mentorId && t.mentorStatus === 'pending_school'" class="badge" style="background:#fef3c7;color:#b45309;font-size:10px;border:1px solid #fde68a;display:flex;align-items:center;gap:4px;">
                     <span class="material-symbols-outlined" style="font-size:12px;">hourglass_top</span> Awaiting School Approval
@@ -273,6 +273,40 @@
                   <span class="badge warning" *ngIf="track.awaiting_grading">{{ track.awaiting_grading }} to grade</span>
                   <span *ngIf="!track.awaiting_grading" style="font-size:11.5px;color:var(--on-surface-variant);">Nothing awaiting a grade</span>
                   <button class="btn btn-ghost btn-sm" routerLink="/lms-manager">Manage</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- In-Flight Mentorship Requests Panel -->
+          <div *ngIf="instructorPendingMentorRequests.length > 0" class="card" style="margin-top:24px;border:1px solid rgba(245,158,11,0.4);background:linear-gradient(135deg, rgba(254,243,199,0.15) 0%, var(--surface-container-lowest) 100%);">
+            <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+              <h3 style="display:flex;align-items:center;gap:8px;margin:0;font-size:14px;font-weight:700;">
+                <span class="material-symbols-outlined" style="font-size:18px;color:#d97706;">co_present</span>
+                Mentorship Requests
+              </h3>
+              <span class="badge warning" style="font-size:10px;">{{ instructorPendingMentorRequests.length }} Awaiting Response</span>
+            </div>
+            <div class="card-body" style="padding:14px;display:flex;flex-direction:column;gap:12px;">
+              <div *ngFor="let team of instructorPendingMentorRequests" style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                  <div>
+                    <strong style="font-size:13.5px;color:var(--on-surface);">{{ team.name }}</strong>
+                    <div style="font-size:11px;color:var(--on-surface-variant);margin-top:2px;">{{ team.schoolName || team.school_name || 'Independent' }} &bull; Track: <strong>{{ team.track || 'General' }}</strong></div>
+                  </div>
+                  <span class="badge primary" style="font-size:10px;">{{ team.members || 1 }} Entrant{{ (team.members || 1) === 1 ? '' : 's' }}</span>
+                </div>
+                <div style="font-size:11.5px;color:var(--on-surface-variant);display:flex;align-items:center;gap:6px;">
+                  <span class="material-symbols-outlined" style="font-size:14px;color:var(--primary);">person</span>
+                  <span><strong>Lead:</strong> {{ team.lead || 'Student Lead' }}</span>
+                </div>
+                <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;padding-top:8px;border-top:1px dashed var(--outline-variant);">
+                  <button class="btn btn-outline btn-sm" [disabled]="isRespondingToMentor" (click)="respondToMentorRequest(team, 'decline')" style="font-size:11px;padding:4px 10px;color:#ef4444;border-color:rgba(239,68,68,0.4);">
+                    <span class="material-symbols-outlined" style="font-size:14px;">close</span> Decline
+                  </button>
+                  <button class="btn btn-primary btn-sm" [disabled]="isRespondingToMentor" (click)="respondToMentorRequest(team, 'accept')" style="font-size:11px;padding:4px 12px;background:#10b981;border-color:#10b981;">
+                    <span class="material-symbols-outlined" style="font-size:14px;">check</span> Accept Mentorship
+                  </button>
                 </div>
               </div>
             </div>
@@ -555,6 +589,48 @@
                 <button class="btn btn-primary" (click)="openAddTeamModal()">
                   <span class="material-symbols-outlined">add</span>Register Your First Team
                 </button>
+              </div>
+            </div>
+
+            <!-- School Student Submissions & Individual Scores Panel -->
+            <div class="card" style="padding:20px;margin-bottom:24px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <div>
+                  <h3 style="margin:0 0 4px;font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px;">
+                    <span class="material-symbols-outlined" style="color:var(--primary);font-size:20px;">assignment_turned_in</span>
+                    Student Project Evaluations &amp; Scores ({{ schoolSubmissions.length }})
+                  </h3>
+                  <p style="margin:0;font-size:12px;color:var(--on-surface-variant);">
+                    Individual competition scores and judge evaluation for your school's squads and entrants.
+                  </p>
+                </div>
+              </div>
+
+              <div *ngIf="schoolSubmissions.length === 0" style="text-align:center;padding:24px 16px;color:var(--on-surface-variant);background:var(--surface-container-low);border-radius:10px;border:1px dashed var(--outline-variant);">
+                <span class="material-symbols-outlined" style="font-size:32px;opacity:0.3;margin-bottom:6px;">history_edu</span>
+                <p style="margin:0;font-size:12.5px;font-weight:600;">No Submissions Scored Yet</p>
+                <p style="margin:4px 0 0;font-size:11.5px;opacity:0.8;">Once your school's teams submit projects and judges evaluate them, individual breakdown scores will appear here.</p>
+              </div>
+
+              <div *ngIf="schoolSubmissions.length > 0" style="display:flex;flex-direction:column;gap:10px;">
+                <div *ngFor="let sub of schoolSubmissions" style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                  <div style="min-width:0;">
+                    <div style="font-weight:700;font-size:13.5px;color:var(--on-surface);">{{ sub.title || sub.assignment_title || sub.team || 'Competition Project' }}</div>
+                    <div style="font-size:11.5px;color:var(--on-surface-variant);margin-top:2px;">
+                      Entrant: <strong>{{ sub.student || sub.student_name || sub.team || 'Student' }}</strong>
+                      <span *ngIf="sub.track"> &bull; Track: {{ sub.track }}</span>
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="text-align:right;">
+                      <div *ngIf="sub.score !== null && sub.score !== undefined" style="font-size:16px;font-weight:900;color:#10b981;font-family:'JetBrains Mono',monospace;">
+                        {{ sub.score }} / 100
+                      </div>
+                      <span *ngIf="sub.score === null || sub.score === undefined" class="badge warning" style="font-size:10px;">Evaluation Pending</span>
+                      <div *ngIf="sub.status" style="font-size:10px;color:var(--on-surface-variant);text-transform:uppercase;">{{ sub.status }}</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1960,6 +2036,18 @@
               <div class="cc-control-card-label">Document &amp; Entity Archive</div>
               <div class="cc-control-card-desc">Centralized repository for schools, instructors, judges, sponsors, and credentials.</div>
               <div class="cc-control-card-count">{{ dashboardTotalRecordsCount }} archived records</div>
+            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+          </div>
+
+          <div class="cc-control-card" routerLink="/profile-completion">
+            <div class="cc-control-card-icon" style="background: rgba(99, 102, 241, 0.12); color: #6366f1;">
+              <span class="material-symbols-outlined">settings</span>
+            </div>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">System &amp; Account Settings</div>
+              <div class="cc-control-card-desc">Configure account credentials, security options, notification preferences, and platform defaults.</div>
+              <div class="cc-control-card-count">Preferences &amp; Security</div>
             </div>
             <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
@@ -4216,6 +4304,10 @@
         <span class="material-symbols-outlined">event</span>Upcoming Events
         <span class="cms-count-badge">{{ contentService.upcomingEvents.length }}</span>
       </button>
+      <button *ngIf="isCmsTabVisible('csr')" class="cms-sub-tab" [class.active]="contentTab === 'csr'" (click)="setContentTab('csr')">
+        <span class="material-symbols-outlined">volunteer_activism</span>CSR Updates
+        <span class="cms-count-badge">{{ contentService.csrUpdates.length }}</span>
+      </button>
       <button *ngIf="isCmsTabVisible('pagecopy')" class="cms-sub-tab" [class.active]="contentTab === 'pagecopy'" (click)="setContentTab('pagecopy')">
         <span class="material-symbols-outlined">edit_note</span>Page Manager
       </button>
@@ -5572,6 +5664,101 @@
       </div>
     </div>
 
+    <!-- ── 11. CSR UPDATES PANEL ── -->
+    <div *ngIf="contentTab === 'csr'" class="cms-panel">
+      <div class="cms-panel-header">
+        <div class="cms-panel-info">
+          <div class="cms-panel-icon-wrap" style="background: rgba(16, 185, 129, 0.12); color: #10b981;">
+            <span class="material-symbols-outlined">volunteer_activism</span>
+          </div>
+          <div>
+            <h3 class="cms-panel-title">Corporate Social Responsibility (CSR) Updates</h3>
+            <p class="cms-panel-desc">Manage CSR initiatives, social outreach stories, and sponsor impact records shown across the portal.</p>
+          </div>
+        </div>
+        <div class="cms-panel-actions">
+          <div class="cms-search-box">
+            <span class="material-symbols-outlined cms-search-icon">search</span>
+            <input type="text" [(ngModel)]="csrSearchQuery" placeholder="Search CSR updates by title, body, or date...">
+            <button *ngIf="csrSearchQuery" class="cms-search-clear" (click)="csrSearchQuery = ''" title="Clear search">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <button class="btn btn-primary btn-sm" (click)="openCsrForm()">
+            <span class="material-symbols-outlined">add</span>Add CSR Update
+          </button>
+        </div>
+      </div>
+
+      <!-- Add / Edit CSR Form -->
+      <div class="cms-form-card" *ngIf="csrFormOpen">
+        <div class="cms-form-card-header">
+          <h4>
+            <span class="material-symbols-outlined">volunteer_activism</span>
+            {{ editingCsrId ? 'Edit CSR Update' : 'New CSR Initiative Update' }}
+          </h4>
+          <button class="cms-form-close" (click)="closeCsrForm()"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <div class="cms-form-error" *ngIf="csrFormError">{{ csrFormError }}</div>
+        <div class="cms-form-grid">
+          <div class="cms-field cms-field-full">
+            <label>Title <span class="req">*</span></label>
+            <input type="text" [(ngModel)]="csrForm.title" placeholder="e.g. MTN Ghana Foundation Donates 200 Robotics Toolkits">
+          </div>
+          <div class="cms-field">
+            <label>Date</label>
+            <input type="text" [(ngModel)]="csrForm.date" placeholder="e.g. Aug 15, 2026">
+          </div>
+          <div class="cms-field">
+            <label>Icon Identifier</label>
+            <input type="text" [(ngModel)]="csrForm.icon" placeholder="e.g. volunteer_activism, school, handshake">
+          </div>
+          <div class="cms-field cms-field-full">
+            <label>Description &amp; Impact Summary <span class="req">*</span></label>
+            <textarea rows="3" [(ngModel)]="csrForm.description" placeholder="Detail the CSR initiative, beneficiaries reached, and participating sponsor organizations..."></textarea>
+          </div>
+        </div>
+        <div class="cms-form-actions">
+          <button class="btn btn-subtle btn-sm" (click)="closeCsrForm()">Cancel</button>
+          <button class="btn btn-primary btn-sm" (click)="submitCsrForm()">
+            <span class="material-symbols-outlined">{{ editingCsrId ? 'save' : 'publish' }}</span>
+            {{ editingCsrId ? 'Save Changes' : 'Publish CSR Update' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- CSR Items List -->
+      <div class="cms-news-list">
+        <div *ngFor="let item of filteredCsrUpdates" class="cms-news-item">
+          <div class="cms-news-tag" style="background: rgba(16, 185, 129, 0.15); color: #047857;">CSR</div>
+          <div class="cms-news-body">
+            <div class="cms-news-headline">{{ item.title }}</div>
+            <p style="margin: 4px 0 6px; font-size: 13px; color: var(--on-surface-variant); line-height: 1.4;">{{ item.description }}</p>
+            <div class="cms-news-date">
+              <span class="material-symbols-outlined" style="font-size:12px;">schedule</span>
+              {{ item.date || 'Active' }}
+            </div>
+          </div>
+          <div class="cms-item-actions">
+            <button class="cms-edit-btn" (click)="openCsrForm(item)" title="Edit CSR Update">
+              <span class="material-symbols-outlined">edit</span>
+            </button>
+            <button class="cms-delete-btn" (click)="removeCsrItem(item.id)" title="Delete CSR Update">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </div>
+        </div>
+        <div *ngIf="contentService.csrUpdates.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">volunteer_activism</span>
+          <p>No CSR initiative updates registered yet.</p>
+        </div>
+        <div *ngIf="contentService.csrUpdates.length > 0 && filteredCsrUpdates.length === 0" class="cms-empty">
+          <span class="material-symbols-outlined">search_off</span>
+          <p>No CSR updates found matching "{{ csrSearchQuery }}".</p>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   </ng-container>
@@ -6162,484 +6349,36 @@
 </div>
 
   <!-- -- TICKET MODAL -- -->
-  <div class="ticket-modal-backdrop" *ngIf="viewTicketUser" (click)="closeTicketModal()">
-    <div class="ticket-modal" (click)="$event.stopPropagation()">
-      <div class="ticket-modal-header">
-        <h3>Access Token</h3>
-        <button class="ticket-modal-close" (click)="closeTicketModal()">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-      <div class="ticket-card">
-        <div class="ticket-card-top">
-          <div class="ticket-org-logo" style="overflow:hidden;">
-            <img *ngIf="viewTicketUserPhotoUrl || viewTicketUser?.photoUrl || viewTicketUser?.logoUrl" [src]="viewTicketUserPhotoUrl || viewTicketUser?.photoUrl || viewTicketUser?.logoUrl" style="width:100%;height:100%;border-radius:inherit;object-fit:cover;" alt="Logo" />
-            <span class="material-symbols-outlined" *ngIf="!(viewTicketUserPhotoUrl || viewTicketUser?.photoUrl || viewTicketUser?.logoUrl)">rocket_launch</span>
-          </div>
-          <div>
-            <div class="ticket-platform-name">National NTIC Platform</div>
-            <div class="ticket-role-label" [class]="viewTicketUser?.role">
-              {{ getUserRoleLabel(viewTicketUser) }}
-            </div>
-          </div>
-        </div>
-        <div class="ticket-divider">
-          <span class="ticket-divider-notch left"></span>
-          <div class="ticket-divider-line"></div>
-          <span class="ticket-divider-notch right"></span>
-        </div>
-        <div class="ticket-card-body">
-          <div class="ticket-user-info">
-            <div class="ticket-field">
-              <span class="ticket-field-label">Name</span>
-              <span class="ticket-field-value">{{ viewTicketUser?.fullName }}</span>
-            </div>
-            <div class="ticket-field">
-              <span class="ticket-field-label">Email</span>
-              <span class="ticket-field-value">{{ viewTicketUser?.email }}</span>
-            </div>
-            <div class="ticket-field">
-              <span class="ticket-field-label">Phone</span>
-              <span class="ticket-field-value">{{ viewTicketUser?.phone || 'Not Provided' }}</span>
-            </div>
-            <div class="ticket-field">
-              <span class="ticket-field-label">Organization</span>
-              <span class="ticket-field-value">{{ viewTicketUser?.organization || 'NTIC Competition' }}</span>
-            </div>
-            <div class="ticket-field" *ngIf="viewTicketUser?.track">
-              <span class="ticket-field-label">Track</span>
-              <span class="ticket-field-value">{{ viewTicketUser?.track }}</span>
-            </div>
-            <div class="ticket-field" *ngIf="viewTicketUser?.tier || viewTicketUser?.package">
-              <span class="ticket-field-label">Package</span>
-              <span class="ticket-field-value">{{ viewTicketUser?.package || viewTicketUser?.tier }}</span>
-            </div>
-          </div>
-          <div class="ticket-code-wrap">
-            <div class="ticket-code-label">ACCESS TOKEN</div>
-            <div class="ticket-code">{{ isMainAdmin(viewTicketUser) ? '====' : viewTicketUser?.ticket }}</div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Secure OTP & Email Dispatch Status -->
-      <div class="dispatch-status-container animate-fade-in" style="margin-top: 16px; padding: 12px 16px; background: rgba(16, 185, 129, 0.08); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.2); text-align: left; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-        <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #059669; margin-bottom: 10px; font-size: 14px;">
-          <span class="material-symbols-outlined" style="font-size: 18px; color: #059669;">verified</span>
-          <span>Security Token &amp; Credentials Status</span>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;" *ngIf="viewTicketUser?.email">
-            <span style="color: var(--on-surface-variant); display: flex; align-items: center; gap: 6px;">
-              <span class="material-symbols-outlined" style="font-size: 15px; color: #10b981;">mail</span>
-              <span>Email:</span>
-            </span>
-            <span style="font-weight: 600; color: var(--on-surface);">Token dispatched to {{ viewTicketUser?.email }}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center;" *ngIf="viewTicketUser?.phone">
-            <span style="color: var(--on-surface-variant); display: flex; align-items: center; gap: 6px;">
-              <span class="material-symbols-outlined" style="font-size: 15px; color: #10b981;">sms</span>
-              <span>SMS OTP:</span>
-            </span>
-            <span style="font-weight: 600; color: var(--on-surface);">Sent to {{ viewTicketUser?.phone }}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px dashed rgba(16, 185, 129, 0.2); margin-top: 4px;">
-            <span style="color: var(--on-surface-variant); font-weight: 600;">Activation OTP:</span>
-            <span style="font-family: monospace; font-size: 13.5px; background: var(--surface); border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; color: #059669; font-weight: 700; letter-spacing: 0.5px;">
-              {{ isMainAdmin(viewTicketUser) ? '==' : (viewTicketUser?.otp || viewTicketUser?.temporary_password || viewTicketUser?.password || 'Already Activated') }}
-            </span>
-          </div>
-        </div>
-      </div>
+  <app-user-ticket-modal
+    *ngIf="viewTicketUser"
+    [user]="viewTicketUser"
+    [photoUrl]="viewTicketUserPhotoUrl"
+    [copiedTicket]="copiedTicket"
+    (close)="closeTicketModal()"
+    (copy)="copyTicket($event)"
+    (resetOtp)="resetUserPasswordFromModal($event)"></app-user-ticket-modal>
 
-      <div class="ticket-modal-actions" style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 16px;">
-        <button class="btn btn-subtle" *ngIf="!isMainAdmin(viewTicketUser)" (click)="copyTicket(viewTicketUser?.ticket)">
-          <span class="material-symbols-outlined">{{ copiedTicket === viewTicketUser?.ticket ? 'check' : 'content_copy' }}</span>
-          {{ copiedTicket === viewTicketUser?.ticket ? 'Copied!' : 'Copy Credentials' }}
-        </button>
-        <button class="btn btn-subtle" *ngIf="!isMainAdmin(viewTicketUser) && viewTicketUser?.id" (click)="resetUserPasswordFromModal(viewTicketUser)" title="Regenerate dynamic temporary OTP for user">
-          <span class="material-symbols-outlined">restart_alt</span>
-          Reset OTP
-        </button>
-        <button class="btn btn-primary" (click)="closeTicketModal()">Done</button>
-      </div>
-    </div>
-  </div>
+  <!-- ENLIST SQUAD MODAL -->
+  <app-enlist-squad-modal
+    [isOpen]="isAddTeamModalOpen"
+    [editingTeamOriginalName]="editingTeamOriginalName"
+    [teamForm]="teamForm"
+    [additionalMemberIndices]="additionalMemberIndices"
+    [schoolInstructors]="schoolInstructors"
+    (close)="closeAddTeamModal()"
+    (submit)="submitAddTeam()"
+    (selectSize)="onSelectSize($event)"></app-enlist-squad-modal>
 
-  <!-- ENLIST SQUAD MODAL (PREMIUM SCHOOL ADMIN DESIGN) -->
-  <div class="ticket-modal-backdrop enlist-backdrop" *ngIf="isAddTeamModalOpen" (click)="closeAddTeamModal()">
-    <div class="enlist-modal-card" (click)="$event.stopPropagation()">
-      
-      <!-- Gradient Banner Header -->
-      <div class="enlist-header-banner">
-        <div class="enlist-header-left">
-          <div class="enlist-crest-icon">
-            <span class="material-symbols-outlined">shield_with_house</span>
-          </div>
-          <div>
-            <div class="enlist-badge-tag">{{ editingTeamOriginalName ? 'SQUAD ROSTER MODIFICATION' : 'OFFICIAL NTIC TOURNAMENT REGISTRATION' }}</div>
-            <h3 class="enlist-title">{{ editingTeamOriginalName ? 'Edit Squad Roster' : 'National Squad Enlistment' }}</h3>
-            <p class="enlist-subtitle">{{ editingTeamOriginalName ? 'Update student member names, track assignment, or mentor details.' : 'Register your school\'s competitive NTI team into active tournament brackets.' }}</p>
-          </div>
-        </div>
-        <button class="enlist-close-btn" (click)="closeAddTeamModal()" title="Close modal">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-      
-      <form (ngSubmit)="submitAddTeam()" #addTeamForm="ngForm" class="enlist-form-body">
-        
-        <!-- Section 1: Track Selector -->
-        <div class="enlist-section">
-          <label class="enlist-label">1. {{ editingTeamOriginalName ? 'Competition Track (Locked)' : 'Select Competition Track' }} <span class="req">*</span></label>
-          
-          <!-- Locked Banner for Edit Mode -->
-          <div *ngIf="editingTeamOriginalName" class="track-locked-banner" style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(0,63,135,0.06);border:1px solid rgba(0,63,135,0.2);border-radius:10px;margin-bottom:8px;">
-            <span class="material-symbols-outlined" style="color:var(--primary);font-size:24px;">lock</span>
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--on-surface);">Track Locked: {{ teamForm.track }}</div>
-              <div style="font-size:11px;color:var(--on-surface-variant);margin-top:2px;">Competition track is bound to approved registration. Track reassignments require official administrative approval.</div>
-            </div>
-          </div>
+  <!-- ROLE USERS MODAL -->
+  <app-role-users-modal
+    [role]="roleModalRole"
+    [users]="roleModalUsers"
+    (close)="closeRoleModal()"></app-role-users-modal>
 
-          <!-- Selectable Grid for New Team Registration -->
-          <div class="track-cards-grid" *ngIf="!editingTeamOriginalName">
-            <div 
-              class="track-select-card" 
-              [class.active]="teamForm.track === 'Coding'" 
-              (click)="teamForm.track = 'Coding'"
-            >
-              <div class="track-card-icon coding"><span class="material-symbols-outlined">code</span></div>
-              <div class="track-card-name">Coding & Algorithms</div>
-              <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
-            </div>
-
-            <div 
-              class="track-select-card" 
-              [class.active]="teamForm.track === 'Robotics'" 
-              (click)="teamForm.track = 'Robotics'"
-            >
-              <div class="track-card-icon robotics"><span class="material-symbols-outlined">precision_manufacturing</span></div>
-              <div class="track-card-name">Robotics & IoT</div>
-              <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
-            </div>
-
-            <div 
-              class="track-select-card" 
-              [class.active]="teamForm.track === 'AI'" 
-              (click)="teamForm.track = 'AI'"
-            >
-              <div class="track-card-icon ai"><span class="material-symbols-outlined">psychology</span></div>
-              <div class="track-card-name">AI Engineering</div>
-              <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
-            </div>
-
-            <div 
-              class="track-select-card" 
-              [class.active]="teamForm.track === 'Networking & Cybersecurity'" 
-              (click)="teamForm.track = 'Networking & Cybersecurity'"
-            >
-              <div class="track-card-icon cybersecurity"><span class="material-symbols-outlined">security</span></div>
-              <div class="track-card-name">Networking & Cybersecurity CTF</div>
-              <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
-            </div>
-
-            <div 
-              class="track-select-card" 
-              [class.active]="teamForm.track === 'Innovation'" 
-              (click)="teamForm.track = 'Innovation'"
-            >
-              <div class="track-card-icon innovation"><span class="material-symbols-outlined">lightbulb</span></div>
-              <div class="track-card-name">Open Innovation</div>
-              <div class="track-active-check"><span class="material-symbols-outlined">check_circle</span></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Section 2: Squad Information -->
-        <div class="enlist-section">
-          <label class="enlist-label">2. Squad & Mentor Binding <span class="req">*</span></label>
-          <div class="enlist-fields-grid">
-            
-            <div class="enlist-field">
-              <span class="field-label">Official Squad Name <span class="req">*</span></span>
-              <div class="input-with-icon">
-                <span class="material-symbols-outlined prefix-icon">flag</span>
-                <input 
-                  type="text" 
-                  name="teamName" 
-                  [(ngModel)]="teamForm.name" 
-                  required 
-                  placeholder="e.g. PRESEC Cyber Knights" 
-                  class="enlist-input"
-                >
-              </div>
-              <span class="field-hint">Appears on national leaderboards & official certificates.</span>
-            </div>
-
-            <div class="enlist-field">
-              <span class="field-label">Assigned School Mentor</span>
-              <div class="input-with-icon">
-                <span class="material-symbols-outlined prefix-icon">school</span>
-                <select 
-                  name="teamMentor" 
-                  [(ngModel)]="teamForm.mentor" 
-                  class="enlist-select"
-                >
-                  <option value="">General School Coordinator</option>
-                  <option *ngFor="let inst of schoolInstructors" [value]="inst.fullName">{{ inst.fullName }} ({{ inst.track || 'NTI' }})</option>
-                </select>
-              </div>
-              <span class="field-hint">Supervising instructor for this competition track.</span>
-            </div>
-
-            <div class="enlist-field full-width">
-              <span class="field-label">Student Captain / Team Lead Name <span class="req">*</span></span>
-              <div class="input-with-icon">
-                <span class="material-symbols-outlined prefix-icon">person</span>
-                <input 
-                  type="text" 
-                  name="teamLead" 
-                  [(ngModel)]="teamForm.lead" 
-                  required 
-                  placeholder="e.g. Samuel Osei (Student Captain)" 
-                  class="enlist-input"
-                >
-              </div>
-            </div>
-
-            <div class="enlist-field full-width">
-              <span class="field-label">Team Lead Email *</span>
-              <div class="input-with-icon">
-                <span class="material-symbols-outlined prefix-icon">alternate_email</span>
-                <input 
-                  type="email" 
-                  name="teamLeadEmail" 
-                  [(ngModel)]="teamForm.leadEmail" 
-                  required
-                  placeholder="e.g. samuel.osei@student.ntic.edu.gh" 
-                  class="enlist-input"
-                >
-              </div>
-            </div>
-
-            <div class="enlist-field full-width">
-              <span class="field-label">Project Motto / Innovation Theme <span class="optional">(Optional)</span></span>
-              <div class="input-with-icon">
-                <span class="material-symbols-outlined prefix-icon">tips_and_updates</span>
-                <input 
-                  type="text" 
-                  name="teamMotto" 
-                  [(ngModel)]="teamForm.motto" 
-                  placeholder="e.g. Building an autonomous solar irrigation grid for rural agriculture" 
-                  class="enlist-input"
-                >
-              </div>
-            </div>
-
-          </div>
-        </div>
-
-        <!-- Section 3: Roster Size & Student Names -->
-        <div class="enlist-section">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <label class="enlist-label" style="margin:0;">3. Squad Roster Size & Student Names</label>
-            <span class="size-badge">{{ teamForm.members }} Students Active</span>
-          </div>
-          <div class="roster-size-selector" style="margin-bottom:12px;">
-            <button 
-              type="button" 
-              *ngFor="let size of [3,4,5,6,7,8]" 
-              class="size-pill-btn" 
-              [class.active]="teamForm.members === size" 
-              (click)="onSelectSize(size)"
-            >
-              <span class="material-symbols-outlined" style="font-size:16px;">groups</span>
-              {{ size }} Members
-            </button>
-          </div>
-          <span class="field-hint" style="margin-bottom:12px;">National competition regulations mandate between 3 and 8 students per enlisted squad.</span>
-
-          <!-- Dynamic Member Inputs -->
-          <div *ngIf="additionalMemberIndices.length > 0" class="additional-members-container">
-            <div class="roster-list-header">
-              <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">group_add</span>
-              <span>Enter Full Names of Additional Student Roster Members:</span>
-            </div>
-            <div class="members-input-grid">
-              <div *ngFor="let idx of additionalMemberIndices" class="member-input-row">
-                <span class="member-number-badge">#{{ idx + 2 }}</span>
-                <input 
-                  type="text" 
-                  [name]="'member_' + idx" 
-                  [(ngModel)]="teamForm.memberNames[idx]" 
-                  [placeholder]="'Student Member #' + (idx + 2) + ' Full Name (e.g. Amina Yusuf)'" 
-                  class="enlist-input member-name-input"
-                >
-                <input 
-                  type="email" 
-                  [name]="'member_email_' + idx" 
-                  [(ngModel)]="teamForm.memberEmails[idx]" 
-                  placeholder="email (optional)" 
-                  class="enlist-input member-email-input"
-                >
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Modal Footer Actions -->
-        <div class="enlist-footer">
-          <div class="enlist-footer-info">
-            <span class="material-symbols-outlined" style="color:var(--primary);font-size:18px;">
-              hourglass_top
-            </span>
-            <span>
-              {{ editingTeamOriginalName ? 'Squad name, roster, and mentor changes require Super Admin review and approval before updating tournament records.' : 'New squad submissions are routed to Super Admin for tournament bracket approval.' }}
-            </span>
-          </div>
-          <div class="enlist-actions">
-            <button type="button" class="enlist-btn-cancel" (click)="closeAddTeamModal()">Cancel</button>
-            <button type="submit" class="enlist-btn-submit" [disabled]="!addTeamForm.form.valid">
-              <span class="material-symbols-outlined">send</span>
-              {{ editingTeamOriginalName ? 'Submit Modifications for Admin Approval' : 'Submit Squad for Admin Approval' }}
-            </button>
-          </div>
-        </div>
-
-      </form>
-    </div>
-  </div>
-
-  <!-- -- ROLE USERS MODAL -- -->
-  <div class="ticket-modal-backdrop" *ngIf="roleModalRole" (click)="closeRoleModal()">
-    <div class="ticket-modal role-users-modal" (click)="$event.stopPropagation()">
-      <div class="ticket-modal-header">
-        <h3>{{ roleModalRole ? getRoleLabel(roleModalRole) + ' Users' : '' }}</h3>
-        <button class="ticket-modal-close" (click)="closeRoleModal()">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-
-      <div class="role-users-list" *ngIf="roleModalUsers.length > 0">
-        <div *ngFor="let user of roleModalUsers" class="role-user-row">
-          <div class="role-user-avatar" [class]="user.role">
-            {{ getInitials(user.fullName) }}
-          </div>
-          <div class="role-user-body">
-            <div class="role-user-name">{{ user.fullName }}</div>
-            <div class="role-user-email">{{ user.email }}</div>
-            <div class="role-user-sub">
-              <span>{{ user.organization }}</span>
-              <span class="role-user-dot">&middot;</span>
-              <span class="role-user-status" [class.active]="user.status === 'Active'">{{ user.status }}</span>
-            </div>
-          </div>
-          <div class="role-user-ticket">
-            <span class="role-user-ticket-code">{{ isMainAdmin(user) ? '====' : user.ticket }}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="role-users-empty" *ngIf="roleModalUsers.length === 0">
-        <span class="material-symbols-outlined">person_off</span>
-        <p>No users registered for this role.</p>
-      </div>
-
-      <div class="ticket-modal-actions">
-        <span class="role-users-count">{{ roleModalUsers.length }} user{{ roleModalUsers.length !== 1 ? 's' : '' }}</span>
-        <button class="btn btn-primary" (click)="closeRoleModal()">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================================================================================================================
-       CUSTOM CREDENTIALS & APPROVAL SUCCESS MODAL (WITH ONE-CLICK COPY)
-       ============================================================================================================================ -->
-  <div class="custom-modal-backdrop" *ngIf="credentialsModal?.isOpen" (click)="proceedFromCredentialsModal()">
-    <div class="custom-credentials-modal" (click)="$event.stopPropagation()">
-      <div class="cred-modal-header">
-        <div class="cred-badge-icon">
-          <span class="material-symbols-outlined">verified_user</span>
-        </div>
-        <h3 class="cred-modal-title">{{ credentialsModal?.title }}</h3>
-        <p class="cred-modal-subtitle">{{ credentialsModal?.subtitle }}</p>
-      </div>
-
-      <div class="cred-cards-container">
-        <div class="cred-item-card">
-          <div class="cred-item-meta">
-            <span class="cred-label">YOUR ACCESS PASS</span>
-            <span class="cred-tag">OFFICIAL ID</span>
-          </div>
-          <div class="cred-value-row">
-            <code class="cred-code-text">{{ credentialsModal?.accessPass }}</code>
-            <button class="btn-cred-copy" [class.copied]="credentialsModal?.copiedPass" (click)="copyModalText('pass')">
-              <span class="material-symbols-outlined icon">{{ credentialsModal?.copiedPass ? 'check_circle' : 'content_copy' }}</span>
-              <span>{{ credentialsModal?.copiedPass ? 'Copied!' : 'Copy Pass' }}</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="cred-item-card">
-          <div class="cred-item-meta">
-            <span class="cred-label">SECURITY PIN / OTP CODE</span>
-            <span class="cred-tag pin">SECURITY CODE</span>
-          </div>
-          <div class="cred-value-row">
-            <code class="cred-code-text pin-code">{{ credentialsModal?.pin }}</code>
-            <button class="btn-cred-copy" [class.copied]="credentialsModal?.copiedPin" (click)="copyModalText('pin')">
-              <span class="material-symbols-outlined icon">{{ credentialsModal?.copiedPin ? 'check_circle' : 'content_copy' }}</span>
-              <span>{{ credentialsModal?.copiedPin ? 'Copied!' : 'Copy Code' }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="cred-copy-all-wrapper">
-        <button class="btn-copy-all" [class.copied]="credentialsModal?.copiedAll" (click)="copyModalText('all')">
-          <span class="material-symbols-outlined">{{ credentialsModal?.copiedAll ? 'done_all' : 'inventory_2' }}</span>
-          <span>{{ credentialsModal?.copiedAll ? 'All Credentials Copied to Clipboard!' : 'Copy Both Credentials (Pass + Code)' }}</span>
-        </button>
-      </div>
-
-      <div class="cred-member-list" *ngIf="credentialsModal?.memberCredentials?.length">
-        <div class="cred-member-header">
-          <span class="material-symbols-outlined">group</span>
-          <strong>Student Member Credentials</strong>
-        </div>
-        <div class="cred-member-note">Share these one-time logins with the team members below. Each must change their password on first sign-in.</div>
-        <div class="cred-member-row" *ngFor="let m of credentialsModal?.memberCredentials">
-          <div class="cred-member-id">
-            <span class="cred-member-name">{{ m.name || m.email }}</span>
-            <span class="cred-member-email">{{ m.email }}</span>
-          </div>
-          <code class="cred-code-text cred-member-ticket">{{ m.ticket }}</code>
-          <div class="cred-member-pin">
-            <code class="cred-code-text pin-code">{{ m.temporary_password }}</code>
-          </div>
-        </div>
-        <div class="cred-member-actions">
-          <button class="btn-cred-copy" (click)="copyMemberCredentials()" [style.background]="credentialsModal?.copiedMembers ? '#10b981' : ''" [style.color]="credentialsModal?.copiedMembers ? '#ffffff' : ''" style="transition: all 0.25s ease;">
-            <span class="material-symbols-outlined icon">{{ credentialsModal?.copiedMembers ? 'check' : 'content_copy' }}</span>
-            <span>{{ credentialsModal?.copiedMembers ? 'Copied All Member Logins!' : 'Copy All Member Logins' }}</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="cred-info-banner" *ngIf="credentialsModal?.extraInfo">
-        <span class="material-symbols-outlined info-icon">info</span>
-        <span>{{ credentialsModal?.extraInfo }}</span>
-      </div>
-
-      <div class="cred-modal-footer">
-        <button class="btn-cred-proceed" (click)="proceedFromCredentialsModal()">
-          <span>Dismiss</span>
-          <span class="material-symbols-outlined">check</span>
-        </button>
-      </div>
-    </div>
-  </div>
+  <!-- CUSTOM CREDENTIALS & APPROVAL SUCCESS MODAL -->
+  <app-credentials-modal
+    [modal]="credentialsModal"
+    (proceed)="proceedFromCredentialsModal()"></app-credentials-modal>
 
   <!-- ============================================================================================================================
        CUSTOM SLEEK ALERT NOTIFICATION MODAL

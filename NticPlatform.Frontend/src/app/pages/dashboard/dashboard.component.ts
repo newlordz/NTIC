@@ -33,6 +33,10 @@ import { CustomAlertModalComponent } from './custom-alert-modal/custom-alert-mod
 import { RecordInspectorModalComponent } from './record-inspector-modal/record-inspector-modal.component';
 import { MemberProfileModalComponent } from './member-profile-modal/member-profile-modal.component';
 import { InstitutionPortalModalComponent } from './institution-portal-modal/institution-portal-modal.component';
+import { CredentialsModalComponent } from './credentials-modal/credentials-modal.component';
+import { RoleUsersModalComponent } from './role-users-modal/role-users-modal.component';
+import { EnlistSquadModalComponent } from './enlist-squad-modal/enlist-squad-modal.component';
+import { UserTicketModalComponent } from './user-ticket-modal/user-ticket-modal.component';
 
 export interface SponsorInfographic {
   partnerCount: number;
@@ -68,7 +72,8 @@ type PersonnelRole = 'governance' | 'mentor' | 'sponsor' | 'judge' | 'instructor
     MentorRequestModalComponent, InstitutionDecisionModalComponent,
     MentorPickerModalComponent, CustomAlertModalComponent,
     RecordInspectorModalComponent, MemberProfileModalComponent,
-    InstitutionPortalModalComponent
+    InstitutionPortalModalComponent, CredentialsModalComponent, RoleUsersModalComponent,
+    EnlistSquadModalComponent, UserTicketModalComponent
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
@@ -657,7 +662,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           if (parsed.adminSubTab !== undefined) {
             this.adminSubTab = parsed.adminSubTab;
           }
-          if (parsed.contentTab && ['stories', 'hof', 'leaderboard', 'talent', 'stats', 'news', 'countdown', 'slideshow', 'philosophy', 'events', 'pagecopy'].includes(parsed.contentTab)) {
+          if (parsed.contentTab && ['stories', 'hof', 'leaderboard', 'talent', 'stats', 'news', 'countdown', 'slideshow', 'philosophy', 'events', 'pagecopy', 'csr'].includes(parsed.contentTab)) {
             this.contentTab = parsed.contentTab;
           }
           if (parsed.cmsCategoryFilter) {
@@ -1270,7 +1275,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   // ─── CONTENT MANAGER STATE ──────────────────────
-  contentTab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' | 'philosophy' | 'events' | 'pagecopy' = 'stories';
+  contentTab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' | 'philosophy' | 'events' | 'pagecopy' | 'csr' = 'stories';
   maximizedContentTab: string | null = null;
   cmsCategoryFilter: 'all' | 'landing' | 'competitions' | 'broadcast' = 'all';
   cmsSearchQuery: string = '';
@@ -1282,6 +1287,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   tdSearchQuery: string = '';
   newsSearchQuery: string = '';
   eventsSearchQuery: string = '';
+  csrSearchQuery: string = '';
 
   // ── Landing Page Copy editor ──────────────────────────────────
   landingCopySections: LandingCopySection[] = [
@@ -1609,7 +1615,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.totalMatchingCopyFieldsCount = results.reduce((sum, item) => sum + item.fields.length, 0);
   }
 
-  setContentTab(tab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' | 'philosophy' | 'events' | 'pagecopy', updateUrl = true): void {
+  setContentTab(tab: 'stories' | 'hof' | 'leaderboard' | 'talent' | 'stats' | 'news' | 'countdown' | 'slideshow' | 'philosophy' | 'events' | 'pagecopy' | 'csr', updateUrl = true): void {
     this.contentTab = tab;
     if (tab === 'pagecopy') {
       this.loadLandingCopyForm();
@@ -1794,13 +1800,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
     );
   }
 
+  get filteredCsrUpdates(): any[] {
+    const list = this.contentService.csrUpdates || [];
+    if (!this.csrSearchQuery.trim()) return list;
+    const q = this.csrSearchQuery.toLowerCase().trim();
+    return list.filter(c =>
+      c.title?.toLowerCase().includes(q) ||
+      c.description?.toLowerCase().includes(q) ||
+      c.date?.toLowerCase().includes(q)
+    );
+  }
+
   setCmsCategory(category: 'all' | 'landing' | 'competitions' | 'broadcast'): void {
     this.cmsCategoryFilter = category;
-    if (category === 'landing' && !['stories', 'slideshow', 'philosophy', 'stats', 'countdown', 'pagecopy'].includes(this.contentTab)) {
+    if (category === 'landing' && !['stories', 'slideshow', 'philosophy', 'stats', 'countdown', 'pagecopy', 'csr'].includes(this.contentTab)) {
       this.contentTab = 'stories';
     } else if (category === 'competitions' && !['leaderboard', 'hof', 'talent'].includes(this.contentTab)) {
       this.contentTab = 'leaderboard';
-    } else if (category === 'broadcast' && !['news', 'events'].includes(this.contentTab)) {
+    } else if (category === 'broadcast' && !['news', 'events', 'csr'].includes(this.contentTab)) {
       this.contentTab = 'news';
     }
     this.persistNavState();
@@ -1808,9 +1825,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   isCmsTabVisible(tab: string): boolean {
     if (this.cmsCategoryFilter === 'all') return true;
-    if (this.cmsCategoryFilter === 'landing') return ['stories', 'slideshow', 'philosophy', 'stats', 'countdown', 'pagecopy'].includes(tab);
+    if (this.cmsCategoryFilter === 'landing') return ['stories', 'slideshow', 'philosophy', 'stats', 'countdown', 'pagecopy', 'csr'].includes(tab);
     if (this.cmsCategoryFilter === 'competitions') return ['leaderboard', 'hof', 'talent'].includes(tab);
-    if (this.cmsCategoryFilter === 'broadcast') return ['news', 'events'].includes(tab);
+    if (this.cmsCategoryFilter === 'broadcast') return ['news', 'events', 'csr'].includes(tab);
     return true;
   }
 
@@ -1822,7 +1839,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
            (this.contentService.newsFeedItems?.length || 0) +
            (this.contentService.upcomingEvents?.length || 0) +
            (this.contentService.heroSlides?.length || 0) +
-           (this.contentService.philosophyCards?.length || 0);
+           (this.contentService.philosophyCards?.length || 0) +
+           (this.contentService.csrUpdates?.length || 0);
   }
 
   // Story form
@@ -1903,6 +1921,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
   newsFormOpen = false;
   newsFormError = '';
   editingNewsId: string | null = null;
+
+  // CSR Updates form
+  csrForm = {
+    title: '',
+    description: '',
+    date: '',
+    icon: 'volunteer_activism'
+  };
+  csrFormOpen = false;
+  csrFormError = '';
+  editingCsrId: string | null = null;
 
   // Countdown settings
   countdownInput: string = '';
@@ -2054,6 +2083,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   myTeams: Array<{
     id: string; name: string; track: string; competitionId: string | null;
     mentorId: string | null; mentorStatus: string; isSolo: boolean; isLead: boolean;
+    mentorName?: string | null; mentorEmail?: string | null;
   }> = [];
 
   loadMyTeams(): void {
@@ -3054,10 +3084,65 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const email = (getAuthValue('activeUserEmail') || '').toLowerCase().trim();
     const name = (this.currentUser?.fullName || this.currentUser?.name || getAuthValue('activeUserName') || '').toLowerCase().trim();
     return (this.contentService.teams || []).filter(t => {
+      const status = t.mentorStatus || (t as any).mentor_status;
+      if (status === 'requested') return false;
       const mId = t.mentorId || (t as any).mentor_id;
       const mName = (t.mentor || '').toLowerCase().trim();
       const mEmail = ((t as any).mentorEmail || '').toLowerCase().trim();
       return (id && mId === id) || (email && mEmail === email) || (name && mName === name);
+    });
+  }
+
+  get instructorPendingMentorRequests(): any[] {
+    const id = this.currentUser?.id;
+    const email = (getAuthValue('activeUserEmail') || '').toLowerCase().trim();
+    const name = (this.currentUser?.fullName || this.currentUser?.name || getAuthValue('activeUserName') || '').toLowerCase().trim();
+    return (this.contentService.teams || []).filter(t => {
+      const status = t.mentorStatus || (t as any).mentor_status;
+      if (status !== 'requested') return false;
+      const mId = t.mentorId || (t as any).mentor_id;
+      const mName = (t.mentor || '').toLowerCase().trim();
+      const mEmail = ((t as any).mentorEmail || '').toLowerCase().trim();
+      return (id && mId === id) || (email && mEmail === email) || (name && mName === name);
+    });
+  }
+
+  isRespondingToMentor = false;
+
+  async respondToMentorRequest(team: any, action: 'accept' | 'decline'): Promise<void> {
+    if (this.isRespondingToMentor) return;
+
+    if (action === 'decline') {
+      const ok = await this.dialogService.confirm({
+        title: 'Decline Mentorship Request?',
+        message: `Are you sure you want to decline mentorship for squad "${team.name}"? They will be notified so they can request another mentor.`,
+        confirmText: 'Decline Request',
+        cancelText: 'Cancel'
+      });
+      if (!ok) return;
+    }
+
+    this.isRespondingToMentor = true;
+    this.apiService.respondToMentorRequest(team.id, action).subscribe({
+      next: () => {
+        this.isRespondingToMentor = false;
+        this.dialogService.toast(
+          action === 'accept'
+            ? `Mentorship accepted for ${team.name}! You are now assigned as their mentor.`
+            : `Mentorship request for ${team.name} declined.`,
+          'success'
+        );
+        this.contentService.refreshBackendData();
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        this.isRespondingToMentor = false;
+        this.dialogService.toast(
+          err?.error?.detail || `Could not ${action} mentor request. Please try again.`,
+          'error'
+        );
+        this.cdr.markForCheck();
+      }
     });
   }
 
@@ -3305,7 +3390,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       }
 
-      if (params['contentTab'] && ['stories', 'hof', 'leaderboard', 'talent', 'stats', 'news', 'countdown', 'slideshow', 'philosophy', 'events', 'pagecopy'].includes(params['contentTab'])) {
+      if (params['contentTab'] && ['stories', 'hof', 'leaderboard', 'talent', 'stats', 'news', 'countdown', 'slideshow', 'philosophy', 'events', 'pagecopy', 'csr'].includes(params['contentTab'])) {
         hasExplicitTab = true;
         this.contentTab = params['contentTab'] as any;
         if (this.contentTab === 'pagecopy') {
@@ -6456,6 +6541,61 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.addAuditLog({ action: `News item removed (ID: ${id})`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
   }
 
+  // ── CSR Updates Methods ──────────────────────────────────────────────
+  openCsrForm(item?: any): void {
+    if (item) {
+      this.editingCsrId = item.id;
+      this.csrForm = {
+        title: item.title || '',
+        description: item.description || '',
+        date: item.date || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        icon: item.icon || 'volunteer_activism'
+      };
+    } else {
+      this.editingCsrId = null;
+      this.csrForm = {
+        title: '',
+        description: '',
+        date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+        icon: 'volunteer_activism'
+      };
+    }
+    this.csrFormError = '';
+    this.csrFormOpen = true;
+  }
+
+  closeCsrForm(): void {
+    this.csrFormOpen = false;
+    this.editingCsrId = null;
+  }
+
+  submitCsrForm(): void {
+    if (!this.csrForm.title || !this.csrForm.description) {
+      this.csrFormError = 'Title and description are required.';
+      return;
+    }
+    if (this.editingCsrId) {
+      const updated = this.contentService.csrUpdates.map(c => c.id === this.editingCsrId ? { ...c, ...this.csrForm } : c);
+      this.contentService.saveCsrUpdates(updated);
+      this.dialogService.toast('CSR Update saved.', 'success');
+      this.addAuditLog({ action: `CSR Update modified: "${this.csrForm.title}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
+    } else {
+      const newId = 'csr-' + Date.now();
+      const newItem = { id: newId, ...this.csrForm };
+      this.contentService.saveCsrUpdates([newItem, ...this.contentService.csrUpdates]);
+      this.dialogService.toast('CSR Update published.', 'success');
+      this.addAuditLog({ action: `CSR Update added: "${this.csrForm.title}"`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
+    }
+    this.csrFormOpen = false;
+    this.editingCsrId = null;
+  }
+
+  removeCsrItem(id: string): void {
+    this.contentService.removeCsrUpdate(id);
+    this.dialogService.toast('CSR Update deleted.', 'info');
+    this.addAuditLog({ action: `CSR Update deleted (ID: ${id})`, user: 'admin@ntic.org.gh', time: new Date().toISOString(), type: 'system' });
+  }
+
   trackClass_options = [
     { value: 'coding-track', label: '⚡ Coding' },
     { value: 'robotics-track', label: '🤖 Robotics' },
@@ -6504,6 +6644,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   editingTeamOriginalName: string | null = null;
   private _cachedSchoolTeams: any[] = [];
   private _cachedSchoolAdminStats: any[] = [];
+  schoolSubmissions: any[] = [];
 
   recomputeSchoolAdminData(): void {
     const activeEmail = (getAuthValue('activeUserEmail') || '').trim().toLowerCase();
@@ -6533,6 +6674,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const sSchool = (s.school || s.organization || '').trim().toLowerCase();
       return (sTeam && myTeamNames.has(sTeam)) || (cleanSchoolName && (sSchool === cleanSchoolName || sSchool.includes(cleanSchoolName)));
     });
+    this.schoolSubmissions = mySubmissions;
     const scoredSubs = mySubmissions.filter((s: any) => typeof s.score === 'number' && s.score !== null && !isNaN(s.score));
     let avgScoreStr = '—';
     let avgScoreMeta = 'Tournament scoring pending';

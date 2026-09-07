@@ -1,0 +1,103 @@
+<div class="ticket-modal-backdrop" *ngIf="user" (click)="onClose()">
+  <div class="ticket-modal" (click)="$event.stopPropagation()">
+    <div class="ticket-modal-header">
+      <h3>Access Token</h3>
+      <button class="ticket-modal-close" (click)="onClose()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="ticket-card">
+      <div class="ticket-card-top">
+        <div class="ticket-org-logo" style="overflow:hidden;">
+          <img *ngIf="photoUrl || user?.photoUrl || user?.logoUrl" [src]="photoUrl || user?.photoUrl || user?.logoUrl" style="width:100%;height:100%;border-radius:inherit;object-fit:cover;" alt="Logo" />
+          <span class="material-symbols-outlined" *ngIf="!(photoUrl || user?.photoUrl || user?.logoUrl)">rocket_launch</span>
+        </div>
+        <div>
+          <div class="ticket-platform-name">National NTIC Platform</div>
+          <div class="ticket-role-label" [class]="user?.role">
+            {{ getUserRoleLabel(user) }}
+          </div>
+        </div>
+      </div>
+      <div class="ticket-divider">
+        <span class="ticket-divider-notch left"></span>
+        <div class="ticket-divider-line"></div>
+        <span class="ticket-divider-notch right"></span>
+      </div>
+      <div class="ticket-card-body">
+        <div class="ticket-user-info">
+          <div class="ticket-field">
+            <span class="ticket-field-label">Name</span>
+            <span class="ticket-field-value">{{ user?.fullName }}</span>
+          </div>
+          <div class="ticket-field">
+            <span class="ticket-field-label">Email</span>
+            <span class="ticket-field-value">{{ user?.email }}</span>
+          </div>
+          <div class="ticket-field">
+            <span class="ticket-field-label">Phone</span>
+            <span class="ticket-field-value">{{ user?.phone || 'Not Provided' }}</span>
+          </div>
+          <div class="ticket-field">
+            <span class="ticket-field-label">Organization</span>
+            <span class="ticket-field-value">{{ user?.organization || 'NTIC Competition' }}</span>
+          </div>
+          <div class="ticket-field" *ngIf="user?.track">
+            <span class="ticket-field-label">Track</span>
+            <span class="ticket-field-value">{{ user?.track }}</span>
+          </div>
+          <div class="ticket-field" *ngIf="user?.tier || user?.package">
+            <span class="ticket-field-label">Package</span>
+            <span class="ticket-field-value">{{ user?.package || user?.tier }}</span>
+          </div>
+        </div>
+        <div class="ticket-code-wrap">
+          <div class="ticket-code-label">ACCESS TOKEN</div>
+          <div class="ticket-code">{{ isMainAdmin(user) ? '====' : user?.ticket }}</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Secure OTP & Email Dispatch Status -->
+    <div class="dispatch-status-container animate-fade-in" style="margin-top: 16px; padding: 12px 16px; background: rgba(16, 185, 129, 0.08); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.2); text-align: left; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+      <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: #059669; margin-bottom: 10px; font-size: 14px;">
+        <span class="material-symbols-outlined" style="font-size: 18px; color: #059669;">verified</span>
+        <span>Security Token &amp; Credentials Status</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12.5px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;" *ngIf="user?.email">
+          <span style="color: var(--on-surface-variant); display: flex; align-items: center; gap: 6px;">
+            <span class="material-symbols-outlined" style="font-size: 15px; color: #10b981;">mail</span>
+            <span>Email:</span>
+          </span>
+          <span style="font-weight: 600; color: var(--on-surface);">Token dispatched to {{ user?.email }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;" *ngIf="user?.phone">
+          <span style="color: var(--on-surface-variant); display: flex; align-items: center; gap: 6px;">
+            <span class="material-symbols-outlined" style="font-size: 15px; color: #10b981;">sms</span>
+            <span>SMS OTP:</span>
+          </span>
+          <span style="font-weight: 600; color: var(--on-surface);">Sent to {{ user?.phone }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px dashed rgba(16, 185, 129, 0.2); margin-top: 4px;">
+          <span style="color: var(--on-surface-variant); font-weight: 600;">Activation OTP:</span>
+          <span style="font-family: monospace; font-size: 13.5px; background: var(--surface); border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 4px; color: #059669; font-weight: 700; letter-spacing: 0.5px;">
+            {{ isMainAdmin(user) ? '==' : (user?.otp || user?.temporary_password || user?.password || 'Already Activated') }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ticket-modal-actions" style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 16px;">
+      <button class="btn btn-subtle" *ngIf="!isMainAdmin(user)" (click)="onCopy(user?.ticket)">
+        <span class="material-symbols-outlined">{{ copiedTicket === user?.ticket ? 'check' : 'content_copy' }}</span>
+        {{ copiedTicket === user?.ticket ? 'Copied!' : 'Copy Credentials' }}
+      </button>
+      <button class="btn btn-subtle" *ngIf="!isMainAdmin(user) && user?.id" (click)="onResetOtp(user)" title="Regenerate dynamic temporary OTP for user">
+        <span class="material-symbols-outlined">restart_alt</span>
+        Reset OTP
+      </button>
+      <button class="btn btn-primary" (click)="onClose()">Done</button>
+    </div>
+  </div>
+</div>

@@ -2072,7 +2072,13 @@ export class ContentService {
   saveCsrUpdates(csrUpdatesList: any[]): void {
     this.csrUpdates = csrUpdatesList;
     this.saveState('csrUpdates', this.csrUpdates);
-    csrUpdatesList.forEach(c => this.apiService.createCsrUpdate({ id: c.id || '', title: c.title || '', description: c.description || '', date: c.date || '' }).subscribe());
+    csrUpdatesList.forEach(c => this.apiService.createCsrUpdate({ id: c.id || '', title: c.title || '', description: c.description || '', date: c.date || '', icon: c.icon || '' }).subscribe());
+  }
+
+  removeCsrUpdate(id: string): void {
+    this.csrUpdates = this.csrUpdates.filter(c => c.id !== id);
+    this.saveState('csrUpdates', this.csrUpdates);
+    this.apiService.deleteCsrUpdate(id).subscribe();
   }
 
   // ── Talent Discovery Management Helpers ───────────────────────────
