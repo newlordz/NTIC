@@ -2349,6 +2349,7 @@
                 <option value="guide">📝 Interactive Reading Guide</option>
                 <option value="quiz">❓ Micro-Quiz / Knowledge Check</option>
                 <option value="code">💻 Code Challenge Sandbox</option>
+                <option value="table">📊 Interactive Data &amp; Comparison Table</option>
                 <option value="document">📄 Document / PDF</option>
                 <option value="link">📎 External Resource / Slides</option>
               </select>
@@ -2442,8 +2443,64 @@
             </div>
           </div>
 
+          <!-- Interactive Table Fields -->
+          <div *ngIf="materialForm.type === 'table'">
+            <div class="form-row">
+              <div class="form-group" style="flex:2;">
+                <label>Table Heading / Title *</label>
+                <input type="text" [(ngModel)]="tableWidgetForm.title" placeholder="e.g. Algorithmic Bounds &amp; Pinout Matrix" />
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label>Color Theme</label>
+                <select [(ngModel)]="tableWidgetForm.theme">
+                  <option value="primary">🏛️ Primary Blue</option>
+                  <option value="emerald">🌿 Emerald Tech</option>
+                  <option value="dark">🌑 Dark Graphite</option>
+                  <option value="amber">⚡ Amber Solar</option>
+                  <option value="minimal">📄 Minimalist Slate</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group mt-3">
+              <label>Table Caption / Subtitle</label>
+              <input type="text" [(ngModel)]="tableWidgetForm.caption" placeholder="e.g. Direct benchmark comparisons across test fixtures" />
+            </div>
+            <div class="form-group mt-3">
+              <label>Column Headers (comma-separated)</label>
+              <input type="text" [(ngModel)]="tableWidgetForm.headers" placeholder="e.g. Component, Baseline Standard, Target Mastery, Status" />
+            </div>
+            <div class="form-group mt-3">
+              <label>Table Data Rows (one row per line, comma-separated cells)</label>
+              <textarea [(ngModel)]="tableWidgetForm.rowsText" rows="4" style="font-family:'JetBrains Mono',monospace; font-size:12px;" placeholder="Row 1 Cell 1, Row 1 Cell 2, Row 1 Cell 3&#10;Row 2 Cell 1, Row 2 Cell 2, Row 2 Cell 3"></textarea>
+            </div>
+            <div class="form-row mt-3" style="display:flex; gap:16px; flex-wrap:wrap;">
+              <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+                <input type="checkbox" [(ngModel)]="tableWidgetForm.striped" /> Zebra Striped
+              </label>
+              <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+                <input type="checkbox" [(ngModel)]="tableWidgetForm.bordered" /> Grid Borders
+              </label>
+              <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+                <input type="checkbox" [(ngModel)]="tableWidgetForm.hoverable" /> Row Hover
+              </label>
+              <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+                <input type="checkbox" [(ngModel)]="tableWidgetForm.highlightFirstColumn" /> Bold 1st Column
+              </label>
+              <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+                <input type="checkbox" [(ngModel)]="tableWidgetForm.searchable" /> Learner Search
+              </label>
+              <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+                <input type="checkbox" [(ngModel)]="tableWidgetForm.sortable" /> Column Sorting
+              </label>
+            </div>
+            <div class="form-group mt-3">
+              <label>Footer Notes / Legend</label>
+              <input type="text" [(ngModel)]="tableWidgetForm.footerNotes" placeholder="e.g. Verified by championship technical committee." />
+            </div>
+          </div>
+
           <!-- Reading Guide / Document / Link Fields -->
-          <div *ngIf="materialForm.type !== 'video' && materialForm.type !== 'quiz' && materialForm.type !== 'code'">
+          <div *ngIf="materialForm.type !== 'video' && materialForm.type !== 'quiz' && materialForm.type !== 'code' && materialForm.type !== 'table'">
             <div class="form-group">
               <label>Resource URL / Attachment Link</label>
               <input type="text" [(ngModel)]="materialForm.url" placeholder="https://..." />

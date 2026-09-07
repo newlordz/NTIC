@@ -183,6 +183,14 @@
           </div>
         </button>
 
+        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'table')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('table')" title="Click or drag to add Data Table">
+          <span class="material-symbols-outlined icon-table" style="color:#0284c7;">table_chart</span>
+          <div class="palette-btn-text">
+            <strong>Data &amp; Table Matrix</strong>
+            <span>Custom columns, rows &amp; search</span>
+          </div>
+        </button>
+
         <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'file')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('file')" title="Click or drag to add Document & PDF">
           <span class="material-symbols-outlined icon-file">attach_file</span>
           <div class="palette-btn-text">
@@ -234,6 +242,7 @@
               <button type="button" (click)="addBlock('video', idx)"><span class="material-symbols-outlined">smart_display</span> Video</button>
               <button type="button" (click)="addBlock('quiz', idx)"><span class="material-symbols-outlined">quiz</span> Checkpoint Quiz</button>
               <button type="button" (click)="addBlock('callout', idx)"><span class="material-symbols-outlined">lightbulb</span> Callout</button>
+              <button type="button" (click)="addBlock('table', idx)"><span class="material-symbols-outlined" style="color:#0284c7;">table_chart</span> Data Table</button>
               <button type="button" (click)="addBlock('code', idx)"><span class="material-symbols-outlined">terminal</span> Code Challenge</button>
               <button type="button" (click)="addBlock('file', idx)"><span class="material-symbols-outlined">attach_file</span> Document</button>
             </div>
@@ -613,6 +622,137 @@
               </div>
             </div>
 
+            <!-- 9. Interactive Data & Comparison Table Block -->
+            <div *ngIf="blk.type === 'table'" class="block-fields table-editor-box">
+              <!-- Top Controls & Metas -->
+              <div class="table-meta-bar mb-3">
+                <div class="grid-2-col mb-2">
+                  <div class="form-group">
+                    <label class="text-xs">Table Heading / Title *</label>
+                    <input type="text" [(ngModel)]="blk.tableTitle" placeholder="e.g. Asymptotic Runtime & Memory Bounds" class="studio-input-sm" />
+                  </div>
+                  <div class="form-group">
+                    <label class="text-xs">Table Caption / Subtitle</label>
+                    <input type="text" [(ngModel)]="blk.tableCaption" placeholder="e.g. Benchmark comparison across standard dataset sizes" class="studio-input-sm" />
+                  </div>
+                </div>
+
+                <div class="table-toolbar-row">
+                  <div class="toolbar-item">
+                    <label class="text-xs">Visual Theme</label>
+                    <select [(ngModel)]="blk.tableTheme" class="studio-input-sm">
+                      <option value="primary">🏛️ Primary Blue (NTIC Official)</option>
+                      <option value="emerald">🌿 Emerald Tech (Hardware/Sensors)</option>
+                      <option value="dark">🌑 Dark Graphite (Pro IDE)</option>
+                      <option value="amber">⚡ Amber Solar (Competitions)</option>
+                      <option value="minimal">📄 Minimalist Slate</option>
+                    </select>
+                  </div>
+
+                  <div class="toolbar-item">
+                    <label class="text-xs">Load Educational Preset</label>
+                    <div class="preset-btn-group">
+                      <button type="button" class="btn-preset" (click)="applyTablePreset(blk, 'complexity')" title="Asymptotic Big-O Complexity Matrix">
+                        <span>Complexity</span>
+                      </button>
+                      <button type="button" class="btn-preset" (click)="applyTablePreset(blk, 'hardware')" title="Microcontroller Pinout & Peripheral Mapping">
+                        <span>Pinouts</span>
+                      </button>
+                      <button type="button" class="btn-preset" (click)="applyTablePreset(blk, 'rubric')" title="Tournament Evaluation Rubric">
+                        <span>Rubric</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="toolbar-actions-right">
+                    <button type="button" class="btn btn-sm btn-outline" (click)="addTableColumn(blk)" title="Insert new column">
+                      <span class="material-symbols-outlined">add_box</span> Add Column
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline" (click)="addTableRow(blk)" title="Append new row">
+                      <span class="material-symbols-outlined">add_circle</span> Add Row
+                    </button>
+                    <button type="button" class="btn btn-sm btn-ghost" (click)="copyTableMarkdown(blk)" title="Copy entire table as Markdown text">
+                      <span class="material-symbols-outlined">content_copy</span> Copy MD
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Feature Toggles Strip -->
+                <div class="table-toggles-strip mt-2">
+                  <label class="toggle-pill">
+                    <input type="checkbox" [(ngModel)]="blk.tableStriped" />
+                    <span>Zebra Striped</span>
+                  </label>
+                  <label class="toggle-pill">
+                    <input type="checkbox" [(ngModel)]="blk.tableBordered" />
+                    <span>Grid Borders</span>
+                  </label>
+                  <label class="toggle-pill">
+                    <input type="checkbox" [(ngModel)]="blk.tableHoverable" />
+                    <span>Row Hover</span>
+                  </label>
+                  <label class="toggle-pill">
+                    <input type="checkbox" [(ngModel)]="blk.tableHighlightFirstColumn" />
+                    <span>Bold 1st Column</span>
+                  </label>
+                  <label class="toggle-pill">
+                    <input type="checkbox" [(ngModel)]="blk.tableSearchable" />
+                    <span>Learner Search Bar</span>
+                  </label>
+                  <label class="toggle-pill">
+                    <input type="checkbox" [(ngModel)]="blk.tableSortable" />
+                    <span>Column Sorting</span>
+                  </label>
+                  <label class="toggle-pill">
+                    <input type="checkbox" [(ngModel)]="blk.tableCompact" />
+                    <span>Compact Density</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Interactive Live Data Grid Editor -->
+              <div class="table-editor-grid-wrapper">
+                <table class="table-editor-grid" [class.is-compact]="blk.tableCompact">
+                  <thead>
+                    <tr>
+                      <th class="col-seq-num">#</th>
+                      <th *ngFor="let header of blk.tableHeaders; let colIdx = index" class="editable-header-th">
+                        <div class="header-editor-cell">
+                          <input type="text" [(ngModel)]="blk.tableHeaders![colIdx]" placeholder="Column Name" class="header-inline-input" />
+                          <button type="button" class="btn-del-col" (click)="removeTableColumn(blk, colIdx)" title="Delete this column" [disabled]="blk.tableHeaders!.length <= 1">
+                            &times;
+                          </button>
+                        </div>
+                      </th>
+                      <th class="col-actions-head">Row Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let row of blk.tableRows; let rowIdx = index" class="editable-body-tr">
+                      <td class="row-num-td">{{ rowIdx + 1 }}</td>
+                      <td *ngFor="let cell of row; let cIdx = index" class="editable-cell-td">
+                        <input type="text" [(ngModel)]="row[cIdx]" placeholder="Cell value..." class="cell-inline-input" [class.primary-col-bold]="cIdx === 0 && blk.tableHighlightFirstColumn" />
+                      </td>
+                      <td class="row-actions-td">
+                        <div class="row-btns-box">
+                          <button type="button" class="btn-row-action" (click)="moveTableRow(blk, rowIdx, -1)" [disabled]="rowIdx === 0" title="Move row up">&uarr;</button>
+                          <button type="button" class="btn-row-action" (click)="moveTableRow(blk, rowIdx, 1)" [disabled]="rowIdx === (blk.tableRows?.length || 0) - 1" title="Move row down">&darr;</button>
+                          <button type="button" class="btn-row-action" (click)="duplicateTableRow(blk, rowIdx)" title="Duplicate row">&#x29c9;</button>
+                          <button type="button" class="btn-row-action btn-del-row" (click)="removeTableRow(blk, rowIdx)" [disabled]="(blk.tableRows?.length || 0) <= 1" title="Delete row">&times;</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Footer Notes & Explanatory Legend -->
+              <div class="form-group mt-3">
+                <label class="text-xs">Footer Notes / Citations / Legend</label>
+                <input type="text" [(ngModel)]="blk.tableFooterNotes" placeholder="e.g. Reference benchmarks measured on standard test fixtures with 10k iterations." class="studio-input-sm" />
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -713,6 +853,58 @@
                 <span class="code-lang-tag">{{ (blk.codeLanguage === 'other' && blk.customCodeLanguage ? blk.customCodeLanguage : (blk.codeLanguage || 'CODE')) | uppercase }}</span>
               </div>
               <pre class="sim-code-preview"><code>{{ blk.codeStarter }}</code></pre>
+            </div>
+
+            <!-- Table Block Simulation -->
+            <div *ngIf="blk.type === 'table'" class="sim-table-unit mb-4">
+              <div class="sim-table-card" [class]="'theme-' + (blk.tableTheme || 'primary')">
+                <div class="sim-table-header">
+                  <div>
+                    <h4 class="sim-table-title">{{ blk.tableTitle || blk.title || 'Data Matrix' }}</h4>
+                    <p class="sim-table-caption" *ngIf="blk.tableCaption">{{ blk.tableCaption }}</p>
+                  </div>
+                  <div class="sim-table-actions" *ngIf="blk.tableSearchable">
+                    <div class="sim-search-box">
+                      <span class="material-symbols-outlined">search</span>
+                      <input type="text" [(ngModel)]="previewTableSearchQuery[blk.id]" placeholder="Filter table rows..." class="sim-search-input" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="sim-table-scroll-wrapper">
+                  <table class="sim-data-table" [class.is-striped]="blk.tableStriped" [class.is-bordered]="blk.tableBordered" [class.is-hoverable]="blk.tableHoverable" [class.is-compact]="blk.tableCompact">
+                    <thead>
+                      <tr>
+                        <th *ngFor="let h of blk.tableHeaders; let cIdx = index" [class.is-sortable]="blk.tableSortable" (click)="blk.tableSortable && setPreviewTableSort(blk.id, cIdx)">
+                          <div class="th-content">
+                            <span>{{ h }}</span>
+                            <span class="material-symbols-outlined sort-icon" *ngIf="blk.tableSortable && previewTableSortCol[blk.id] === cIdx">
+                              {{ previewTableSortAsc[blk.id] ? 'arrow_upward' : 'arrow_downward' }}
+                            </span>
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let row of getPreviewFilteredRows(blk)">
+                        <td *ngFor="let cell of row; let cIdx = index" [class.primary-col-bold]="cIdx === 0 && blk.tableHighlightFirstColumn">
+                          {{ cell }}
+                        </td>
+                      </tr>
+                      <tr *ngIf="getPreviewFilteredRows(blk).length === 0">
+                        <td [attr.colspan]="blk.tableHeaders?.length || 1" class="text-center text-muted py-3">
+                          No matching records found.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="sim-table-footer" *ngIf="blk.tableFooterNotes">
+                  <span class="material-symbols-outlined">info</span>
+                  <span>{{ blk.tableFooterNotes }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

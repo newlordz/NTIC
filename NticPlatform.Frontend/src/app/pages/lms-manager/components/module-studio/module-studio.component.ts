@@ -17,7 +17,7 @@ export interface QuizQuestionItem {
 
 export interface ModuleBlock {
   id: string;
-  type: 'text' | 'video' | 'quiz' | 'code' | 'break' | 'resource' | 'image' | 'file' | 'callout';
+  type: 'text' | 'video' | 'quiz' | 'code' | 'break' | 'resource' | 'image' | 'file' | 'callout' | 'table';
   title?: string;
   content?: string;
   url?: string;
@@ -49,6 +49,21 @@ export interface ModuleBlock {
   imageCaption?: string;
   // Callout block settings
   calloutType?: 'note' | 'tip' | 'warning' | 'danger' | 'key_takeaway';
+  // Table Widget Settings
+  tableTitle?: string;
+  tableCaption?: string;
+  tableHeaders?: string[];
+  tableRows?: string[][];
+  tableTheme?: 'primary' | 'dark' | 'emerald' | 'amber' | 'minimal';
+  tableStriped?: boolean;
+  tableBordered?: boolean;
+  tableHoverable?: boolean;
+  tableCompact?: boolean;
+  tableHighlightFirstColumn?: boolean;
+  tableSearchable?: boolean;
+  tableSortable?: boolean;
+  tableAlignment?: 'left' | 'center' | 'right';
+  tableFooterNotes?: string;
   isEditing?: boolean;
   isCollapsed?: boolean;
 }
@@ -249,6 +264,26 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
       newBlock.calloutType = 'tip';
       newBlock.title = 'Pro Tip & Best Practice';
       newBlock.content = 'Remember to structure your logic before implementing to ensure clean separation of concerns.';
+    } else if (type === 'table') {
+      newBlock.title = 'Data Comparison Matrix';
+      newBlock.tableCaption = 'Comparative analysis and technical specifications';
+      newBlock.tableHeaders = ['Component / Metric', 'Standard / Baseline', 'Championship Target', 'Status'];
+      newBlock.tableRows = [
+        ['Algorithmic Latency', '< 50ms', '< 10ms (Optimized)', 'Verified'],
+        ['Memory Footprint', '< 256MB', '< 64MB (Minimal Arena)', 'Verified'],
+        ['Throughput (req/s)', '1,000 req/s', '5,000 req/s', 'Target'],
+        ['Test Coverage', '80% Branch', '95% Full Suite', 'In Progress']
+      ];
+      newBlock.tableTheme = 'primary';
+      newBlock.tableStriped = true;
+      newBlock.tableBordered = true;
+      newBlock.tableHoverable = true;
+      newBlock.tableCompact = false;
+      newBlock.tableHighlightFirstColumn = true;
+      newBlock.tableSearchable = true;
+      newBlock.tableSortable = true;
+      newBlock.tableAlignment = 'left';
+      newBlock.tableFooterNotes = 'Data verified against competition benchmark criteria.';
     }
 
     if (slotIndex !== undefined && slotIndex >= 0 && slotIndex <= this.moduleBlocks.length) {
@@ -283,12 +318,182 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
       case 'video': return 'Video Lecture';
       case 'quiz': return 'Comprehension Checkpoint';
       case 'code': return 'Interactive Coding Challenge';
+      case 'table': return 'Data & Specification Table';
       case 'image': return ''; // Image titles are optional!
       case 'file': return 'Reference Document & Handout';
       case 'callout': return 'Important Notice';
       case 'break': return 'Section Checkpoint';
       default: return '';
     }
+  }
+
+  // ── Table Widget Manipulation Subsystem ─────────────────────
+  addTableColumn(blk: ModuleBlock): void {
+    if (!blk.tableHeaders) blk.tableHeaders = [];
+    if (!blk.tableRows) blk.tableRows = [];
+    const colNum = blk.tableHeaders.length + 1;
+    blk.tableHeaders.push(`Column ${colNum}`);
+    for (const row of blk.tableRows) {
+      row.push('');
+    }
+    this.dialogService.toast('Added column to table.', 'info');
+    this.cdr.markForCheck();
+  }
+
+  removeTableColumn(blk: ModuleBlock, colIdx: number): void {
+    if (!blk.tableHeaders || blk.tableHeaders.length <= 1) {
+      this.dialogService.toast('Table must retain at least one column.', 'warning');
+      return;
+    }
+    blk.tableHeaders.splice(colIdx, 1);
+    if (blk.tableRows) {
+      for (const row of blk.tableRows) {
+        row.splice(colIdx, 1);
+      }
+    }
+    this.dialogService.toast('Removed column.', 'info');
+    this.cdr.markForCheck();
+  }
+
+  addTableRow(blk: ModuleBlock): void {
+    if (!blk.tableHeaders) blk.tableHeaders = ['Column 1', 'Column 2'];
+    if (!blk.tableRows) blk.tableRows = [];
+    const newRow = new Array(blk.tableHeaders.length).fill('');
+    blk.tableRows.push(newRow);
+    this.cdr.markForCheck();
+  }
+
+  removeTableRow(blk: ModuleBlock, rowIdx: number): void {
+    if (!blk.tableRows || blk.tableRows.length <= 1) {
+      this.dialogService.toast('Table must have at least one data row.', 'warning');
+      return;
+    }
+    blk.tableRows.splice(rowIdx, 1);
+    this.cdr.markForCheck();
+  }
+
+  moveTableRow(blk: ModuleBlock, rowIdx: number, direction: -1 | 1): void {
+    if (!blk.tableRows) return;
+    const targetIdx = rowIdx + direction;
+    if (targetIdx < 0 || targetIdx >= blk.tableRows.length) return;
+    const temp = blk.tableRows[rowIdx];
+    blk.tableRows[rowIdx] = blk.tableRows[targetIdx];
+    blk.tableRows[targetIdx] = temp;
+    this.cdr.markForCheck();
+  }
+
+  duplicateTableRow(blk: ModuleBlock, rowIdx: number): void {
+    if (!blk.tableRows || !blk.tableRows[rowIdx]) return;
+    const cloned = [...blk.tableRows[rowIdx]];
+    blk.tableRows.splice(rowIdx + 1, 0, cloned);
+    this.dialogService.toast('Row duplicated.', 'info');
+    this.cdr.markForCheck();
+  }
+
+  applyTablePreset(blk: ModuleBlock, presetKey: string): void {
+    if (presetKey === 'complexity') {
+      blk.tableTitle = 'Algorithmic Complexity Reference';
+      blk.tableCaption = 'Asymptotic runtime and memory scaling bounds';
+      blk.tableHeaders = ['Algorithm / Procedure', 'Best Case', 'Average Case', 'Worst Case', 'Space'];
+      blk.tableRows = [
+        ['Binary Search', 'O(1)', 'O(log n)', 'O(log n)', 'O(1)'],
+        ['Merge Sort', 'O(n log n)', 'O(n log n)', 'O(n log n)', 'O(n)'],
+        ['Quick Sort', 'O(n log n)', 'O(n log n)', 'O(n²)', 'O(log n)'],
+        ['Dijkstra (Binary Heap)', 'O(V + E)', 'O((V + E) log V)', 'O((V + E) log V)', 'O(V)']
+      ];
+      blk.tableTheme = 'primary';
+      blk.tableHighlightFirstColumn = true;
+      blk.tableFooterNotes = 'V = vertices, E = edges in graph traversal.';
+    } else if (presetKey === 'hardware') {
+      blk.tableTitle = 'Microcontroller Pinout & Peripheral Mapping';
+      blk.tableCaption = 'Hardware bus assignments and sensor voltage levels';
+      blk.tableHeaders = ['Pin / Header', 'Function', 'Protocol / Signal', 'Target Hardware Device', 'Voltage'];
+      blk.tableRows = [
+        ['GPIO 21 (SDA)', 'I2C Data', 'I2C Fast Mode', 'MPU6050 IMU Accelerometer', '3.3V'],
+        ['GPIO 22 (SCL)', 'I2C Clock', 'I2C Fast Mode', 'MPU6050 IMU Accelerometer', '3.3V'],
+        ['GPIO 18', 'SPI SCK', 'Hardware SPI', 'TFT Display ST7789', '3.3V'],
+        ['GPIO 23', 'PWM Timer', 'Timer 1 Ch A', 'Dual H-Bridge Motor Driver', '5.0V']
+      ];
+      blk.tableTheme = 'emerald';
+      blk.tableHighlightFirstColumn = true;
+      blk.tableFooterNotes = 'Verify common ground across 3.3V and 5.0V power rails.';
+    } else if (presetKey === 'rubric') {
+      blk.tableTitle = 'Tournament Evaluation & Rubric Weighting';
+      blk.tableCaption = 'National Tech Championship judging scorecard';
+      blk.tableHeaders = ['Evaluation Pillar', 'Points', 'Target Mastery', 'Verification Rubric'];
+      blk.tableRows = [
+        ['Algorithmic Efficiency', '30 pts', 'Sub-linear queries, zero memory leaks', 'Automated test runner benchmarks'],
+        ['System Architecture', '25 pts', 'Clean modular boundaries, OOP/FP purity', 'Instructor code review & audit'],
+        ['Resilience & Security', '25 pts', 'Strict sanitization, fault tolerance', 'Fuzz testing & penetration tests'],
+        ['Project Documentation', '20 pts', 'Comprehensive schemas, README & demo', 'Live jury defense & presentation']
+      ];
+      blk.tableTheme = 'dark';
+      blk.tableHighlightFirstColumn = true;
+      blk.tableFooterNotes = 'Total scorecard: 100 points maximum.';
+    }
+    this.dialogService.toast(`Applied ${presetKey.toUpperCase()} preset to table.`, 'success');
+    this.cdr.markForCheck();
+  }
+
+  exportTableToCsv(blk: ModuleBlock): string {
+    const headers = (blk.tableHeaders || []).join(',');
+    const rows = (blk.tableRows || []).map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    return `${headers}\n${rows}`;
+  }
+
+  copyTableMarkdown(blk: ModuleBlock): void {
+    const headers = blk.tableHeaders || ['Col 1', 'Col 2'];
+    const separator = headers.map(() => '---');
+    const rows = blk.tableRows || [];
+    const mdLines = [
+      `| ${headers.join(' | ')} |`,
+      `| ${separator.join(' | ')} |`,
+      ...rows.map(r => `| ${r.join(' | ')} |`)
+    ];
+    const md = mdLines.join('\n');
+    navigator.clipboard.writeText(md).then(() => {
+      this.dialogService.toast('Table copied as Markdown!', 'success');
+    }).catch(() => {
+      this.dialogService.toast('Failed to copy to clipboard', 'error');
+    });
+  }
+
+  // ── Preview Interactive Simulation for Table ────────────────
+  previewTableSearchQuery: Record<string, string> = {};
+  previewTableSortCol: Record<string, number | null> = {};
+  previewTableSortAsc: Record<string, boolean> = {};
+
+  setPreviewTableSort(blockId: string, colIdx: number): void {
+    if (this.previewTableSortCol[blockId] === colIdx) {
+      this.previewTableSortAsc[blockId] = !this.previewTableSortAsc[blockId];
+    } else {
+      this.previewTableSortCol[blockId] = colIdx;
+      this.previewTableSortAsc[blockId] = true;
+    }
+    this.cdr.markForCheck();
+  }
+
+  getPreviewFilteredRows(blk: ModuleBlock): string[][] {
+    let rows = [...(blk.tableRows || [])];
+    const q = (this.previewTableSearchQuery[blk.id] || '').trim().toLowerCase();
+    if (q) {
+      rows = rows.filter(r => r.some(cell => (cell || '').toLowerCase().includes(q)));
+    }
+    const sortCol = this.previewTableSortCol[blk.id];
+    if (sortCol !== undefined && sortCol !== null && sortCol >= 0) {
+      const isAsc = this.previewTableSortAsc[blk.id] ?? true;
+      rows.sort((a, b) => {
+        const valA = (a[sortCol] || '').toLowerCase();
+        const valB = (b[sortCol] || '').toLowerCase();
+        const numA = parseFloat(valA);
+        const numB = parseFloat(valB);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return isAsc ? numA - numB : numB - numA;
+        }
+        return isAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      });
+    }
+    return rows;
   }
 
   cloneBlock(index: number): void {

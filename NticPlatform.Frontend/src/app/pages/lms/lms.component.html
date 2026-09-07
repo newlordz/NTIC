@@ -976,6 +976,100 @@
             </div>
           </div>
 
+          <!-- 📊 WIDGET 8: INTERACTIVE DATA & COMPARISON TABLE -->
+          <div *ngIf="activeWidget.type === 'table' && activeWidget.parsedTable" class="widget-view table-view fade-in">
+            <div class="interactive-table-card" [class]="'theme-' + (activeWidget.parsedTable.theme || 'primary')">
+              <!-- Header with Titles and Tools -->
+              <div class="table-card-header">
+                <div class="header-titles">
+                  <div class="table-badge-pill">
+                    <span class="material-symbols-outlined">table_chart</span>
+                    <span>TECHNICAL MATRIX</span>
+                  </div>
+                  <h3>{{ activeWidget.parsedTable.title || activeWidget.title || 'Data Comparison Table' }}</h3>
+                  <p class="table-subtitle" *ngIf="activeWidget.parsedTable.caption">{{ activeWidget.parsedTable.caption }}</p>
+                </div>
+
+                <div class="header-tools">
+                  <!-- Live Search Filter -->
+                  <div class="table-search-input-wrap" *ngIf="activeWidget.parsedTable.searchable">
+                    <span class="material-symbols-outlined search-icon">search</span>
+                    <input type="text" [(ngModel)]="tableSearchQuery" placeholder="Search matrix..." class="table-search-input" />
+                    <button type="button" class="clear-search-btn" *ngIf="tableSearchQuery" (click)="tableSearchQuery = ''">&times;</button>
+                  </div>
+
+                  <!-- Quick Export / Copy Actions -->
+                  <div class="table-actions-group">
+                    <button type="button" class="btn btn-xs btn-outline" (click)="copyTableMarkdown(activeWidget.parsedTable)" title="Copy Table as Markdown">
+                      <span class="material-symbols-outlined">{{ tableCopiedToast ? 'check' : 'content_copy' }}</span>
+                      <span>{{ tableCopiedToast ? 'Copied MD!' : 'Copy MD' }}</span>
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline" (click)="downloadTableCsv(activeWidget.parsedTable)" title="Download as CSV File">
+                      <span class="material-symbols-outlined">download</span>
+                      <span>CSV</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Responsive Table Container -->
+              <div class="table-responsive-container">
+                <table class="classroom-data-table"
+                       [class.is-striped]="activeWidget.parsedTable.striped"
+                       [class.is-bordered]="activeWidget.parsedTable.bordered"
+                       [class.is-hoverable]="activeWidget.parsedTable.hoverable"
+                       [class.is-compact]="activeWidget.parsedTable.compact">
+                  <thead>
+                    <tr>
+                      <th *ngFor="let h of activeWidget.parsedTable.headers; let colIdx = index"
+                          [class.is-sortable]="activeWidget.parsedTable.sortable"
+                          (click)="activeWidget.parsedTable.sortable && setTableSort(colIdx)">
+                        <div class="header-flex">
+                          <span>{{ h }}</span>
+                          <span class="material-symbols-outlined sort-caret" *ngIf="activeWidget.parsedTable.sortable && tableSortCol === colIdx">
+                            {{ tableSortAsc ? 'arrow_upward' : 'arrow_downward' }}
+                          </span>
+                          <span class="material-symbols-outlined sort-caret inactive" *ngIf="activeWidget.parsedTable.sortable && tableSortCol !== colIdx">
+                            unfold_more
+                          </span>
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let row of getTableFilteredRows(activeWidget.parsedTable)">
+                      <td *ngFor="let cell of row; let cellIdx = index" [class.highlight-first]="cellIdx === 0 && activeWidget.parsedTable.highlightFirstColumn">
+                        {{ cell }}
+                      </td>
+                    </tr>
+                    <tr *ngIf="getTableFilteredRows(activeWidget.parsedTable).length === 0">
+                      <td [attr.colspan]="activeWidget.parsedTable.headers?.length || 1" class="empty-filter-cell">
+                        <span class="material-symbols-outlined">search_off</span>
+                        <span>No records matching "{{ tableSearchQuery }}"</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Footer Notes & Citation -->
+              <div class="table-card-footer" *ngIf="activeWidget.parsedTable.footerNotes">
+                <span class="material-symbols-outlined footer-icon">info</span>
+                <span class="footer-note-text">{{ activeWidget.parsedTable.footerNotes }}</span>
+              </div>
+
+              <!-- Action Bar to Mark Completed -->
+              <div class="table-completion-bar">
+                <button class="btn btn-primary"
+                        [class.btn-outline]="isWidgetCompleted(activeWidget.id)"
+                        (click)="markTableCompleted()">
+                  <span class="material-symbols-outlined">{{ isWidgetCompleted(activeWidget.id) ? 'task_alt' : 'verified' }}</span>
+                  <span>{{ isWidgetCompleted(activeWidget.id) ? 'Matrix Reviewed & Understood' : 'Mark Table Reviewed' }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
 
       </div>

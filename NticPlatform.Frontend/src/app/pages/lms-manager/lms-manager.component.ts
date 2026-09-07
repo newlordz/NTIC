@@ -47,7 +47,7 @@ export interface QuizQuestionItem {
 
 export interface ModuleBlock {
   id: string;
-  type: 'text' | 'video' | 'quiz' | 'code' | 'break' | 'resource' | 'image' | 'file' | 'callout';
+  type: 'text' | 'video' | 'quiz' | 'code' | 'break' | 'resource' | 'image' | 'file' | 'callout' | 'table';
   title?: string;
   content?: string;
   url?: string;
@@ -77,6 +77,20 @@ export interface ModuleBlock {
   imageRounded?: boolean;
   imageCaption?: string;
   calloutType?: 'note' | 'tip' | 'warning' | 'danger' | 'key_takeaway';
+  tableTitle?: string;
+  tableCaption?: string;
+  tableHeaders?: string[];
+  tableRows?: string[][];
+  tableTheme?: 'primary' | 'dark' | 'emerald' | 'amber' | 'minimal';
+  tableStriped?: boolean;
+  tableBordered?: boolean;
+  tableHoverable?: boolean;
+  tableCompact?: boolean;
+  tableHighlightFirstColumn?: boolean;
+  tableSearchable?: boolean;
+  tableSortable?: boolean;
+  tableAlignment?: 'left' | 'center' | 'right';
+  tableFooterNotes?: string;
   isEditing?: boolean;
 }
 
@@ -1486,6 +1500,8 @@ export class LmsManagerComponent implements OnInit {
       bType = 'file';
     } else if (declaredType === 'callout' || widgetType === 'callout') {
       bType = 'callout';
+    } else if (declaredType === 'table' || widgetType === 'table') {
+      bType = 'table';
     } else if (declaredType === 'break' || widgetType === 'break') {
       bType = 'break';
     }
@@ -1525,7 +1541,21 @@ export class LmsManagerComponent implements OnInit {
       imageBorder: parsed?.imageBorder ?? true,
       imageShadow: parsed?.imageShadow ?? false,
       imageCaption: parsed?.caption || '',
-      calloutType: parsed?.calloutType || 'tip'
+      calloutType: parsed?.calloutType || 'tip',
+      tableTitle: parsed?.title || mat.title || '',
+      tableCaption: parsed?.caption || '',
+      tableHeaders: Array.isArray(parsed?.headers) ? parsed.headers : ['Feature', 'Specification', 'Notes'],
+      tableRows: Array.isArray(parsed?.rows) ? parsed.rows : [['Param 1', 'Spec A', 'Standard']],
+      tableTheme: parsed?.theme || 'primary',
+      tableStriped: parsed?.striped ?? true,
+      tableBordered: parsed?.bordered ?? true,
+      tableHoverable: parsed?.hoverable ?? true,
+      tableCompact: parsed?.compact ?? false,
+      tableHighlightFirstColumn: parsed?.highlightFirstColumn ?? true,
+      tableSearchable: parsed?.searchable ?? true,
+      tableSortable: parsed?.sortable ?? true,
+      tableAlignment: parsed?.alignment || 'left',
+      tableFooterNotes: parsed?.footerNotes || ''
     };
   }
 
@@ -1983,6 +2013,24 @@ export class LmsManagerComponent implements OnInit {
           widget: 'break',
           breakLabel: blk.breakLabel || 'Checkpoint'
         });
+      } else if (blk.type === 'table') {
+        descPayload = JSON.stringify({
+          widget: 'table',
+          title: blk.tableTitle || blk.title || 'Data Table',
+          caption: blk.tableCaption || '',
+          headers: blk.tableHeaders || ['Feature', 'Specification', 'Notes'],
+          rows: blk.tableRows || [['Param 1', 'Spec A', 'Standard']],
+          theme: blk.tableTheme || 'primary',
+          striped: blk.tableStriped ?? true,
+          bordered: blk.tableBordered ?? true,
+          hoverable: blk.tableHoverable ?? true,
+          compact: blk.tableCompact ?? false,
+          highlightFirstColumn: blk.tableHighlightFirstColumn ?? true,
+          searchable: blk.tableSearchable ?? true,
+          sortable: blk.tableSortable ?? true,
+          alignment: blk.tableAlignment || 'left',
+          footerNotes: blk.tableFooterNotes || ''
+        });
       }
 
       const matPayload = {
@@ -2300,6 +2348,22 @@ export class LmsManagerComponent implements OnInit {
     keyTakeaway: ''
   };
 
+  tableWidgetForm = {
+    title: '',
+    caption: '',
+    headers: 'Metric / Component, Baseline Standard, Championship Target, Status',
+    rowsText: 'Algorithmic Latency, < 50ms, < 10ms, Verified\nMemory Footprint, < 256MB, < 64MB, Verified\nThroughput, 1000 req/s, 5000 req/s, In Target',
+    theme: 'primary',
+    striped: true,
+    bordered: true,
+    hoverable: true,
+    compact: false,
+    highlightFirstColumn: true,
+    searchable: true,
+    sortable: true,
+    footerNotes: ''
+  };
+
   // ── Formatted Description Helper ──────────────────────────────
   stripHtml(html?: string): string {
     if (!html) return '';
@@ -2328,6 +2392,11 @@ export class LmsManagerComponent implements OnInit {
         }
         if (parsed.widget === 'code') {
           return parsed.language ? `Code Challenge (${parsed.language}): ${parsed.instructions || 'Interactive Exercise'}` : 'Interactive Coding Challenge';
+        }
+        if (parsed.widget === 'table') {
+          const cols = Array.isArray(parsed.headers) ? parsed.headers.length : 0;
+          const rows = Array.isArray(parsed.rows) ? parsed.rows.length : 0;
+          return `Data Table: ${parsed.title || 'Data Table'} (${cols} cols × ${rows} rows)`;
         }
         if (parsed.title || parsed.content) {
           return this.stripHtml(parsed.title || parsed.content);
@@ -2418,6 +2487,24 @@ export class LmsManagerComponent implements OnInit {
               durationMinutes: parsed.durationMinutes ?? 15,
               keyTakeaway: parsed.keyTakeaway || ''
             };
+          } else if (parsed.widget === 'table' || mat.type === 'table') {
+            const headersStr = Array.isArray(parsed.headers) ? parsed.headers.join(', ') : 'Metric, Standard, Target, Status';
+            const rowsStr = Array.isArray(parsed.rows) ? parsed.rows.map((r: any[]) => r.join(', ')).join('\n') : '';
+            this.tableWidgetForm = {
+              title: parsed.title || mat.title || '',
+              caption: parsed.caption || '',
+              headers: headersStr,
+              rowsText: rowsStr,
+              theme: parsed.theme || 'primary',
+              striped: parsed.striped ?? true,
+              bordered: parsed.bordered ?? true,
+              hoverable: parsed.hoverable ?? true,
+              compact: parsed.compact ?? false,
+              highlightFirstColumn: parsed.highlightFirstColumn ?? true,
+              searchable: parsed.searchable ?? true,
+              sortable: parsed.sortable ?? true,
+              footerNotes: parsed.footerNotes || ''
+            };
           }
         }
       } catch {
@@ -2443,6 +2530,21 @@ export class LmsManagerComponent implements OnInit {
       this.videoWidgetForm = {
         durationMinutes: 15,
         keyTakeaway: ''
+      };
+      this.tableWidgetForm = {
+        title: '',
+        caption: '',
+        headers: 'Metric / Component, Baseline Standard, Championship Target, Status',
+        rowsText: 'Algorithmic Latency, < 50ms, < 10ms, Verified\nMemory Footprint, < 256MB, < 64MB, Verified\nThroughput, 1000 req/s, 5000 req/s, In Target',
+        theme: 'primary',
+        striped: true,
+        bordered: true,
+        hoverable: true,
+        compact: false,
+        highlightFirstColumn: true,
+        searchable: true,
+        sortable: true,
+        footerNotes: ''
       };
       if (this.selectedCourseId !== 'all') {
         this.materialForm.courseId = this.selectedCourseId;
@@ -2495,6 +2597,28 @@ export class LmsManagerComponent implements OnInit {
         durationMinutes: this.videoWidgetForm.durationMinutes,
         keyTakeaway: this.videoWidgetForm.keyTakeaway.trim(),
         overview: this.materialForm.description || ''
+      });
+    } else if (this.materialForm.type === 'table') {
+      const headers = this.tableWidgetForm.headers.split(',').map(h => h.trim()).filter(Boolean);
+      const rows = this.tableWidgetForm.rowsText
+        .split('\n')
+        .map(r => r.split(',').map(c => c.trim()))
+        .filter(r => r.length > 0 && r.some(c => c !== ''));
+      descriptionPayload = JSON.stringify({
+        widget: 'table',
+        title: this.tableWidgetForm.title.trim() || this.materialForm.title.trim(),
+        caption: this.tableWidgetForm.caption.trim(),
+        headers: headers.length ? headers : ['Feature', 'Specification', 'Notes'],
+        rows: rows.length ? rows : [['Parameter 1', 'Specification A', 'Standard']],
+        theme: this.tableWidgetForm.theme || 'primary',
+        striped: this.tableWidgetForm.striped ?? true,
+        bordered: this.tableWidgetForm.bordered ?? true,
+        hoverable: this.tableWidgetForm.hoverable ?? true,
+        compact: this.tableWidgetForm.compact ?? false,
+        highlightFirstColumn: this.tableWidgetForm.highlightFirstColumn ?? true,
+        searchable: this.tableWidgetForm.searchable ?? true,
+        sortable: this.tableWidgetForm.sortable ?? true,
+        footerNotes: this.tableWidgetForm.footerNotes.trim()
       });
     }
 

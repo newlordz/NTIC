@@ -902,6 +902,25 @@ export class LmsComponent implements OnInit {
           } : null,
           parsedBreak: widgetType === 'break' ? {
             breakLabel: parsedPayload?.breakLabel || mat.title || 'Checkpoint'
+          } : null,
+          parsedTable: widgetType === 'table' ? {
+            title: parsedPayload?.title || mat.title || 'Data Comparison Matrix',
+            caption: parsedPayload?.caption || '',
+            headers: Array.isArray(parsedPayload?.headers) && parsedPayload.headers.length ? parsedPayload.headers : ['Feature / Metric', 'Standard', 'Target', 'Status'],
+            rows: Array.isArray(parsedPayload?.rows) && parsedPayload.rows.length ? parsedPayload.rows : [
+              ['Param 1', 'Standard Val', 'Championship Target', 'Verified'],
+              ['Param 2', 'Baseline Val', 'Optimized Val', 'In Progress']
+            ],
+            theme: parsedPayload?.theme || 'primary',
+            striped: parsedPayload?.striped ?? true,
+            bordered: parsedPayload?.bordered ?? true,
+            hoverable: parsedPayload?.hoverable ?? true,
+            compact: parsedPayload?.compact ?? false,
+            highlightFirstColumn: parsedPayload?.highlightFirstColumn ?? true,
+            searchable: parsedPayload?.searchable ?? true,
+            sortable: parsedPayload?.sortable ?? true,
+            alignment: parsedPayload?.alignment || 'left',
+            footerNotes: parsedPayload?.footerNotes || ''
           } : null
         });
       }
@@ -1044,6 +1063,87 @@ export class LmsComponent implements OnInit {
 
   isWidgetCompleted(widgetId: string): boolean {
     return this.completedWidgetIds.has(widgetId);
+  }
+
+  // ── Table Widget Classroom Interactivity ─────────────────────
+  tableSearchQuery: string = '';
+  tableSortCol: number | null = null;
+  tableSortAsc: boolean = true;
+  tableCopiedToast: boolean = false;
+
+  setTableSort(colIdx: number): void {
+    if (this.tableSortCol === colIdx) {
+      this.tableSortAsc = !this.tableSortAsc;
+    } else {
+      this.tableSortCol = colIdx;
+      this.tableSortAsc = true;
+    }
+    this.cdr.markForCheck();
+  }
+
+  getTableFilteredRows(tableData: any): string[][] {
+    if (!tableData || !tableData.rows) return [];
+    let rows = [...tableData.rows];
+    const q = (this.tableSearchQuery || '').trim().toLowerCase();
+    if (q) {
+      rows = rows.filter(r => r.some((cell: string) => (cell || '').toLowerCase().includes(q)));
+    }
+    if (this.tableSortCol !== null && this.tableSortCol >= 0) {
+      const col = this.tableSortCol;
+      const asc = this.tableSortAsc;
+      rows.sort((a, b) => {
+        const valA = (a[col] || '').toLowerCase();
+        const valB = (b[col] || '').toLowerCase();
+        const numA = parseFloat(valA);
+        const numB = parseFloat(valB);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return asc ? numA - numB : numB - numA;
+        }
+        return asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      });
+    }
+    return rows;
+  }
+
+  copyTableMarkdown(tableData: any): void {
+    if (!tableData) return;
+    const headers = tableData.headers || ['Col 1', 'Col 2'];
+    const separator = headers.map(() => '---');
+    const rows = tableData.rows || [];
+    const mdLines = [
+      `| ${headers.join(' | ')} |`,
+      `| ${separator.join(' | ')} |`,
+      ...rows.map((r: any[]) => `| ${r.join(' | ')} |`)
+    ];
+    navigator.clipboard?.writeText(mdLines.join('\n')).then(() => {
+      this.tableCopiedToast = true;
+      this.cdr.markForCheck();
+      setTimeout(() => {
+        this.tableCopiedToast = false;
+        this.cdr.markForCheck();
+      }, 2000);
+    });
+  }
+
+  downloadTableCsv(tableData: any): void {
+    if (!tableData) return;
+    const headers = (tableData.headers || []).join(',');
+    const rows = (tableData.rows || []).map((r: any[]) => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const csvContent = `${headers}\n${rows}`;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(tableData.title || 'table_export').toLowerCase().replace(/[^a-z0-9]+/g, '_')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  markTableCompleted(): void {
+    if (this.activeWidget) {
+      this.completedWidgetIds.add(this.activeWidget.id);
+    }
+    this.cdr.markForCheck();
   }
 
   get completedWidgetsCount(): number {

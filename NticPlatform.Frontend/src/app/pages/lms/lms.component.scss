@@ -1423,6 +1423,350 @@
   }
 }
 
+/* 📊 WIDGET 8: INTERACTIVE DATA & COMPARISON TABLE */
+.table-view {
+  .interactive-table-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+
+    .table-card-header {
+      padding: 18px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      border-bottom: 1px solid #e2e8f0;
+
+      .header-titles {
+        .table-badge-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 10.5px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          padding: 3px 10px;
+          border-radius: 999px;
+          background: rgba(0, 85, 204, 0.08);
+          color: #0055cc;
+          margin-bottom: 6px;
+
+          .material-symbols-outlined {
+            font-size: 14px;
+          }
+        }
+
+        h3 {
+          margin: 0;
+          font-size: 18px;
+          font-weight: 800;
+          color: #0f172a;
+          letter-spacing: -0.01em;
+        }
+
+        .table-subtitle {
+          margin: 4px 0 0;
+          font-size: 13px;
+          color: #64748b;
+        }
+      }
+
+      .header-tools {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+
+        .table-search-input-wrap {
+          position: relative;
+          display: flex;
+          align-items: center;
+
+          .search-icon {
+            position: absolute;
+            left: 10px;
+            font-size: 16px;
+            color: #94a3b8;
+            pointer-events: none;
+          }
+
+          .table-search-input {
+            padding: 6px 28px 6px 32px;
+            font-size: 12.5px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #f8fafc;
+            color: #0f172a;
+            outline: none;
+            width: 180px;
+            transition: all 0.2s ease;
+
+            &:focus {
+              border-color: #0055cc;
+              background: #ffffff;
+              box-shadow: 0 0 0 3px rgba(0, 85, 204, 0.1);
+              width: 220px;
+            }
+          }
+
+          .clear-search-btn {
+            position: absolute;
+            right: 8px;
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            line-height: 1;
+
+            &:hover {
+              color: #ef4444;
+            }
+          }
+        }
+
+        .table-actions-group {
+          display: flex;
+          gap: 6px;
+        }
+      }
+    }
+
+    .table-responsive-container {
+      overflow-x: auto;
+      background: #ffffff;
+    }
+
+    .classroom-data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+
+      th {
+        padding: 12px 16px;
+        font-weight: 750;
+        color: #334155;
+        background: #f8fafc;
+        white-space: nowrap;
+        border-bottom: 2px solid #e2e8f0;
+
+        &.is-sortable {
+          cursor: pointer;
+          user-select: none;
+          transition: background 0.15s ease;
+
+          &:hover {
+            background: #f1f5f9;
+          }
+        }
+
+        .header-flex {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+
+          .sort-caret {
+            font-size: 16px;
+            color: #0055cc;
+
+            &.inactive {
+              color: #cbd5e1;
+              font-size: 14px;
+            }
+          }
+        }
+      }
+
+      td {
+        padding: 12px 16px;
+        color: #1e293b;
+        border-bottom: 1px solid #f1f5f9;
+        line-height: 1.45;
+
+        &.highlight-first {
+          font-weight: 750;
+          color: #0f172a;
+        }
+      }
+
+      &.is-striped tbody tr:nth-child(even) {
+        background-color: rgba(248, 250, 252, 0.65);
+      }
+
+      &.is-hoverable tbody tr:hover {
+        background-color: rgba(0, 85, 204, 0.035);
+      }
+
+      &.is-bordered {
+        th, td {
+          border: 1px solid #e2e8f0;
+        }
+      }
+
+      &.is-compact {
+        th, td {
+          padding: 8px 12px;
+          font-size: 12px;
+        }
+      }
+
+      .empty-filter-cell {
+        text-align: center;
+        padding: 32px 16px;
+        color: #94a3b8;
+        display: table-cell;
+
+        .material-symbols-outlined {
+          display: block;
+          font-size: 32px;
+          margin: 0 auto 6px;
+          color: #cbd5e1;
+        }
+      }
+    }
+
+    .table-card-footer {
+      padding: 10px 20px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #64748b;
+
+      .footer-icon {
+        font-size: 16px;
+        color: #94a3b8;
+      }
+    }
+
+    .table-completion-bar {
+      padding: 16px 24px;
+      background: #ffffff;
+      border-top: 1px solid #f1f5f9;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    /* Themes */
+    &.theme-primary {
+      border-color: rgba(0, 85, 204, 0.25);
+      .table-card-header {
+        background: linear-gradient(135deg, rgba(0, 85, 204, 0.05), rgba(0, 63, 135, 0.01));
+      }
+      .classroom-data-table th {
+        background: rgba(0, 85, 204, 0.07);
+        color: #003f87;
+        border-bottom-color: rgba(0, 85, 204, 0.18);
+      }
+    }
+
+    &.theme-emerald {
+      border-color: rgba(16, 185, 129, 0.25);
+      .table-card-header {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(5, 150, 105, 0.01));
+        .table-badge-pill {
+          background: rgba(16, 185, 129, 0.1);
+          color: #059669;
+        }
+        h3 { color: #065f46; }
+      }
+      .classroom-data-table th {
+        background: rgba(16, 185, 129, 0.08);
+        color: #065f46;
+        border-bottom-color: rgba(16, 185, 129, 0.2);
+        .sort-caret { color: #059669; }
+      }
+    }
+
+    &.theme-dark {
+      background: #0f172a;
+      border-color: #334155;
+      color: #f8fafc;
+
+      .table-card-header {
+        background: #1e293b;
+        border-bottom-color: #334155;
+        .table-badge-pill {
+          background: rgba(56, 189, 248, 0.15);
+          color: #38bdf8;
+        }
+        h3 { color: #f8fafc; }
+        .table-subtitle { color: #94a3b8; }
+        .table-search-input {
+          background: #0f172a;
+          border-color: #475569;
+          color: #f8fafc;
+        }
+      }
+
+      .table-responsive-container {
+        background: #0f172a;
+      }
+
+      .classroom-data-table {
+        th {
+          background: #1e293b;
+          color: #e2e8f0;
+          border-bottom-color: #475569;
+          &:hover { background: #334155; }
+          .sort-caret { color: #38bdf8; }
+        }
+        td {
+          color: #cbd5e1;
+          border-bottom-color: #1e293b;
+          &.highlight-first { color: #ffffff; }
+        }
+        &.is-striped tbody tr:nth-child(even) {
+          background-color: rgba(30, 41, 59, 0.4);
+        }
+        &.is-hoverable tbody tr:hover {
+          background-color: rgba(56, 189, 248, 0.07);
+        }
+        &.is-bordered th, &.is-bordered td {
+          border-color: #334155;
+        }
+      }
+
+      .table-card-footer {
+        background: #1e293b;
+        border-top-color: #334155;
+        color: #94a3b8;
+      }
+
+      .table-completion-bar {
+        background: #1e293b;
+        border-top-color: #334155;
+      }
+    }
+
+    &.theme-amber {
+      border-color: rgba(245, 158, 11, 0.25);
+      .table-card-header {
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.07), rgba(217, 119, 6, 0.01));
+        .table-badge-pill {
+          background: rgba(245, 158, 11, 0.12);
+          color: #b45309;
+        }
+        h3 { color: #92400e; }
+      }
+      .classroom-data-table th {
+        background: rgba(245, 158, 11, 0.09);
+        color: #92400e;
+        border-bottom-color: rgba(245, 158, 11, 0.22);
+        .sort-caret { color: #d97706; }
+      }
+    }
+  }
+}
+
 /* Classroom Footer Bar */
 .classroom-footer-bar {
   padding: 16px 28px;
