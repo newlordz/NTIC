@@ -8034,6 +8034,23 @@ try:
         broadcast_async({"type": "data_changed", "collection": "hof"})
         return {"status": "deleted", "id": item_id}
 
+    # /api/hall-of-fame aliases
+    @app.get("/api/hall-of-fame")
+    def list_hall_of_fame():
+        return list_hof()
+
+    @app.post("/api/hall-of-fame", status_code=status.HTTP_201_CREATED)
+    def create_hall_of_fame(payload: HofCreate, actor: dict = Depends(require_role(CONTENT_ROLES))):
+        return create_hof(payload=payload, _actor=actor)
+
+    @app.patch("/api/hall-of-fame/{item_id}")
+    def update_hall_of_fame(item_id: str, payload: HofCreate, actor: dict = Depends(require_role(CONTENT_ROLES))):
+        return update_hof(item_id=item_id, payload=payload, _actor=actor)
+
+    @app.delete("/api/hall-of-fame/{item_id}")
+    def delete_hall_of_fame(item_id: str, actor: dict = Depends(require_role(CONTENT_ROLES))):
+        return delete_hof(item_id=item_id, _actor=actor)
+
     # NEWS ITEMS
     class NewsCreate(BaseModel):
         headline: str
