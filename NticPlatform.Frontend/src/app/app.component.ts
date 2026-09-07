@@ -760,6 +760,7 @@ export class AppComponent implements OnInit, OnDestroy {
     // support_admin/competition_manager whose API calls all return 403.
     switch (menuItem) {
       case 'dashboard':    return true;
+      case 'settings':     return true;
       case 'overview':     return adminRoles.includes(role);
       case 'admin_control': return adminRoles.includes(role);
       case 'roster':       return ['school_admin'].includes(role);

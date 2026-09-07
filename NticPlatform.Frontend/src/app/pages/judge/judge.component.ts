@@ -587,7 +587,7 @@ export class JudgeComponent implements OnInit {
         this.saveError = err?.status === 404
           ? 'That submission no longer exists.'
           : err?.status === 403
-            ? 'Your role is not permitted to score submissions.'
+            ? (err?.error?.detail || 'Your role is not permitted to score submissions.')
             : err?.status === 409
               ? (err?.error?.detail || 'Another judge has already scored this entry.')
               : err?.status === 422

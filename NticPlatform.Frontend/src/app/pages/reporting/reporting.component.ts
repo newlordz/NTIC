@@ -3,6 +3,7 @@ import { Component, ChangeDetectionStrategy, OnInit , ChangeDetectorRef } from '
 import { CommonModule, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ContentService, Competition, Team } from '../../services/content.service';
+import { CurrentUserService } from '../../services/current-user.service';
 import { TimeAgoPipe } from '../../services/time-ago.pipe';
 
 @Component({
@@ -39,7 +40,11 @@ export class ReportingComponent implements OnInit {
    */
   selectedCycleId = '';
 
-  constructor(public contentService: ContentService, private cdr: ChangeDetectorRef) {}
+  constructor(
+    public contentService: ContentService,
+    public currentUserService: CurrentUserService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   /** Cycles offered in the scope picker, newest first. */
   get cycleOptions(): Competition[] {
@@ -69,15 +74,16 @@ export class ReportingComponent implements OnInit {
   ngOnInit(): void {
     if (typeof window !== 'undefined') {
       this.activeRoleId = getAuthValue('activeRoleId') || '';
-      const activeUserStr = localStorage.getItem('activeUser');
-      if (activeUserStr) {
-        try {
-          const user = JSON.parse(activeUserStr);
-          this.userName = user.name || 'Administrator';
-          this.schoolName = user.organization || 'Ghana Secondary Technical School';
-        } catch (e) {}
-      }
     }
+
+    this.currentUserService.ensureLoaded().subscribe(user => {
+      if (user) {
+        this.userName = user.full_name || 'Administrator';
+        this.schoolName = user.organization || 'My Institution';
+        this.loadRoleData();
+        this.cdr.markForCheck();
+      }
+    });
 
     this.loadRoleData();
     this.cdr.markForCheck();

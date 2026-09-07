@@ -54,6 +54,7 @@ export class LmsComponent implements OnInit {
 
   authoredCourses: any[] = [];
   serverModules: any[] = [];
+  myTeams: any[] = [];
 
   // ── Instructor data helpers ─────────────────────────────────
   private get currentUserEmail(): string {
@@ -195,55 +196,95 @@ export class LmsComponent implements OnInit {
     return this.instructorSubmittedContent.filter(c => c.status === 'pending').length;
   }
 
+  isSubmittingContent = false;
+
   submitContentForModeration(): void {
     const form = this.contentSubmissionForm;
-    const email = this.currentUserEmail;
     if (form.type === 'course') {
       if (!form.courseTitle.trim() || !form.courseDescription.trim()) {
         this.contentSubmitError = 'Please enter both course title and description.';
         return;
       }
       this.contentSubmitError = '';
-      const newCourse = {
-        id: 'crs-' + Date.now(),
+      this.isSubmittingContent = true;
+      this.apiService.createAuthoredCourse({
         title: form.courseTitle.trim(),
         track: form.courseTrack,
         icon: 'school',
         level: form.courseLevel,
         description: form.courseDescription.trim(),
-        modules: 0,
-        enrolled: 0,
-        completion: 0,
-        status: 'draft' as const,
-        approvalStatus: 'pending' as const,
-        createdAt: new Date().toISOString().split('T')[0],
-        submittedBy: email
-      };
-      const current = [...this.contentService.lmsCourses, newCourse];
-      this.contentService.saveLmsCourses(current);
+        modules: 0
+      }).subscribe({
+        next: () => {
+          this.isSubmittingContent = false;
+          this.showContentSubmitSuccess = true;
+          this.contentSubmissionForm = {
+            type: 'course',
+            courseTitle: '',
+            courseTrack: 'coding',
+            courseLevel: 'Beginner',
+            courseDescription: '',
+            moduleTitle: '',
+            moduleDescription: ''
+          };
+          this.contentService.refreshBackendData();
+          this.cdr.markForCheck();
+          setTimeout(() => {
+            this.showContentSubmitSuccess = false;
+            this.cdr.markForCheck();
+          }, 4000);
+        },
+        error: (err) => {
+          this.isSubmittingContent = false;
+          this.contentSubmitError = err?.error?.detail || 'Failed to submit course for moderation. Please try again.';
+          this.cdr.markForCheck();
+        }
+      });
     } else {
       if (!form.moduleTitle.trim() || !form.moduleDescription.trim()) {
         this.contentSubmitError = 'Please enter both module title and description.';
         return;
       }
+      const targetCourseId = (form as any).courseId || (this.myCourses.length > 0 ? this.myCourses[0].id : '');
+      if (!targetCourseId) {
+        this.contentSubmitError = 'Please create or select a course before submitting a module.';
+        return;
+      }
       this.contentSubmitError = '';
-      const newModule = {
-        id: 'mod-' + Date.now(),
-        courseId: '',
+      this.isSubmittingContent = true;
+      this.apiService.createModule({
+        course_id: targetCourseId,
         title: form.moduleTitle.trim(),
         description: form.moduleDescription.trim(),
-        order: 1,
-        icon: 'view_list',
-        status: 'draft' as const,
-        submittedBy: email,
-        approvalStatus: 'pending' as const
-      };
-      const current = [...this.contentService.lmsModules, newModule];
-      this.contentService.saveLmsModules(current);
+        order_num: 1,
+        icon: 'view_list'
+      }).subscribe({
+        next: () => {
+          this.isSubmittingContent = false;
+          this.showContentSubmitSuccess = true;
+          this.contentSubmissionForm = {
+            type: 'course',
+            courseTitle: '',
+            courseTrack: 'coding',
+            courseLevel: 'Beginner',
+            courseDescription: '',
+            moduleTitle: '',
+            moduleDescription: ''
+          };
+          this.contentService.refreshBackendData();
+          this.cdr.markForCheck();
+          setTimeout(() => {
+            this.showContentSubmitSuccess = false;
+            this.cdr.markForCheck();
+          }, 4000);
+        },
+        error: (err) => {
+          this.isSubmittingContent = false;
+          this.contentSubmitError = err?.error?.detail || 'Failed to submit module for moderation. Please try again.';
+          this.cdr.markForCheck();
+        }
+      });
     }
-    this.showContentSubmitSuccess = true;
-    this.contentSubmissionForm = { type: 'course', courseTitle: '', courseTrack: 'coding', courseLevel: 'Beginner', courseDescription: '', moduleTitle: '', moduleDescription: '' };
-    setTimeout(() => { this.showContentSubmitSuccess = false; }, 4000);
   }
 
   // ── Student Portal ──────────────────────────────────────────
@@ -282,17 +323,27 @@ export class LmsComponent implements OnInit {
         avatar: this.currentUserService.initials() || 'ST',
         email: me.email,
         status: me.status || '',
-        // No mentor-assignment model exists yet, so these are left empty rather
-        // than showing the invented "Efua Mensah / e.mensah@ntic.gov.gh".
-        mentor: '',
-        mentorAvatar: '',
-        mentorEmail: ''
+        mentor: (() => {
+          const t = (this.myTeams || []).find(tm => tm.mentorId || tm.mentorName);
+          return t ? (t.mentorName || (t.mentorId ? 'Assigned Mentor' : '')) : '';
+        })(),
+        mentorAvatar: (() => {
+          const t = (this.myTeams || []).find(tm => tm.mentorId || tm.mentorName);
+          const name = t ? (t.mentorName || '') : '';
+          return name ? name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'CM';
+        })(),
+        mentorEmail: (() => {
+          const t = (this.myTeams || []).find(tm => tm.mentorId || tm.mentorName);
+          return t ? (t.mentorEmail || '') : '';
+        })()
       };
     }
 
     // Not loaded yet (or offline). Show what is genuinely known and nothing more
     // -- never another person's name.
     const activeEmail = this.currentUserEmail;
+    const fallbackTeam = (this.myTeams || []).find(tm => tm.mentorId || tm.mentorName);
+    const fallbackMentorName = fallbackTeam ? (fallbackTeam.mentorName || (fallbackTeam.mentorId ? 'Assigned Mentor' : '')) : '';
     return {
       name: getAuthValue('activeUserName') || '',
       id: '',
@@ -303,9 +354,9 @@ export class LmsComponent implements OnInit {
       avatar: '',
       email: activeEmail || '',
       status: '',
-      mentor: '',
-      mentorAvatar: '',
-      mentorEmail: ''
+      mentor: fallbackMentorName,
+      mentorAvatar: fallbackMentorName ? fallbackMentorName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'CM',
+      mentorEmail: fallbackTeam ? (fallbackTeam.mentorEmail || '') : ''
     };
   }
 
@@ -414,6 +465,14 @@ export class LmsComponent implements OnInit {
     if (this.activeRoleId !== 'student') return;
     this.isLoadingStudentData = true;
     this.studentDataError = '';
+
+    this.apiService.getMyTeams().subscribe({
+      next: teams => {
+        this.myTeams = teams || [];
+        this.cdr.markForCheck();
+      },
+      error: () => {}
+    });
 
     this.apiService.getMyEnrolments().subscribe({
       next: rows => {

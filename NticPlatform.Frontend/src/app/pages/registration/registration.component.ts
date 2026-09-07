@@ -4132,22 +4132,6 @@ setAuthValue('activeUserEmail', email);
           if (id) memberPhotoIds.push(id);
         });
         
-          // --- INTEGRATION: POSTGRESQL BACKEND ---
-          try {
-            const names = this.teamForm.leadName.trim().split(' ');
-            this.apiService.createStudent({
-              first_name: names[0] || 'Unknown',
-              last_name: names.slice(1).join(' ') || 'Student',
-              email: this.teamForm.leadEmail,
-              track: this.teamForm.track,
-              consent_granted: true
-            }).subscribe({
-              next: (res) => console.log('Successfully saved student to PostgreSQL DB:', res),
-              error: (err) => console.error('Failed to save to PostgreSQL:', err)
-            });
-          } catch(e) {}
-          // ---------------------------------------
-
           const regTeam: any = {
           name: this.teamForm.name,
           track: this.teamForm.track || 'Coding',

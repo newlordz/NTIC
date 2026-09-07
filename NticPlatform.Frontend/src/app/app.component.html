@@ -35,6 +35,10 @@
         <span class="material-symbols-outlined">admin_panel_settings</span>
         Admin Control
       </a>
+      <a class="nav-item" *ngIf="hasAccess('settings')" routerLink="/profile-completion" routerLinkActive="active" (click)="closeMobileSidebar()">
+        <span class="material-symbols-outlined">settings</span>
+        Settings
+      </a>
       <a class="nav-item" *ngIf="hasAccess('roster')" routerLink="/dashboard" [queryParams]="{ tab: 'roster' }" [class.active]="isNavActive('roster')" (click)="closeMobileSidebar()">
         <span class="material-symbols-outlined">groups</span>
         My Teams &amp; Roster
