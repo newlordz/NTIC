@@ -32,7 +32,7 @@ from app.security import (
     touch_session, SESSION_IDLE_MINUTES, SESSION_ABSOLUTE_DAYS,
     ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_SPONSOR, ROLE_JUDGE, ROLE_INSTRUCTOR,
     ROLE_STUDENT, ROLE_SCHOOL_ADMIN, ROLE_SUPPORT_ADMIN, ROLE_CONTENT_MANAGER,
-    ROLE_COMPETITION_MANAGER, ROLE_REVIEWER, ROLE_MENTOR,
+    ROLE_COMPETITION_MANAGER, ROLE_REVIEWER, ROLE_MENTOR, ROLE_GOVERNMENT,
 )
 from app.ws_manager import ws_manager, broadcast_async
 from app.lifecycle import (
@@ -7361,7 +7361,7 @@ try:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
 
-        roles = tuple(GOVERNANCE_ROLES | {ROLE_MENTOR, ROLE_SPONSOR, ROLE_JUDGE, ROLE_INSTRUCTOR, ROLE_STUDENT})
+        roles = tuple(GOVERNANCE_ROLES | {ROLE_MENTOR, ROLE_SPONSOR, ROLE_JUDGE, ROLE_INSTRUCTOR, ROLE_STUDENT, ROLE_GOVERNMENT})
         cur.execute(
             "SELECT id, email, full_name, role, ticket, status, phone, organization, "
             "created_at, photo_file_id, doc_file_id, "
@@ -7585,6 +7585,7 @@ try:
             "people": people,
             "summary": {
                 "governance": _summarise(GOVERNANCE_ROLES),
+                "government": _summarise(ROLE_GOVERNMENT),
                 "mentor": _summarise(ROLE_MENTOR),
                 "sponsor": _summarise(ROLE_SPONSOR),
                 "judge": _summarise(ROLE_JUDGE),

@@ -2484,8 +2484,7 @@
 
         <div class="pm-empty" *ngIf="personnelList.length === 0">
           <span class="material-symbols-outlined">person_search</span>
-          <p *ngIf="personnelInTab.length === 0">No {{ personnelTab }}s are registered on the platform yet.</p>
-          <p *ngIf="personnelInTab.length > 0">No {{ personnelTab }}s match your search or filter.</p>
+          <p>{{ personnelEmptyMessage }}</p>
           <button class="btn btn-secondary btn-sm" *ngIf="personnelInTab.length > 0"
                   (click)="personnelSearch = ''; personnelFilter = 'all'">Clear filters</button>
         </div>
@@ -2500,6 +2499,7 @@
                 <th>Last seen</th>
                   <th>Sign-ins</th>
                   <th *ngIf="personnelTab === 'governance'">Access Level</th>
+                  <th *ngIf="personnelTab === 'government'">Institution / Focus</th>
                   <th *ngIf="personnelTab === 'mentor'">Mentorship Area</th>
                   <th *ngIf="personnelTab === 'instructor'">Courses</th>
                   <th *ngIf="personnelTab === 'judge' || personnelTab === 'instructor'">Graded</th>
@@ -2534,6 +2534,10 @@
                 <td><span class="pm-sub">{{ p.login_count || '—' }}</span></td>
                 <td *ngIf="personnelTab === 'governance'">
                   <span class="pm-chip pm-chip-ok">{{ formatGovernanceRole(p.role) }}</span>
+                </td>
+                <td *ngIf="personnelTab === 'government'">
+                  <span class="pm-chip pm-chip-ok">{{ p.organization || p.sector || 'Public Sector Agency' }}</span>
+                  <div class="pm-sub" *ngIf="p.track || p.expertise">{{ p.track || p.expertise }} Project Focus</div>
                 </td>
                 <td *ngIf="personnelTab === 'mentor'">
                   <span class="pm-sub">{{ p.track || p.expertise || 'General Mentorship' }}</span>

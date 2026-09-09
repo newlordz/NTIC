@@ -61,7 +61,7 @@ export interface SponsorInfographic {
 interface LandingCopyField { key: string; label: string; multiline?: boolean; }
 interface LandingCopySection { title: string; icon: string; fields: LandingCopyField[]; }
 
-type PersonnelRole = 'governance' | 'mentor' | 'sponsor' | 'judge' | 'instructor';
+type PersonnelRole = 'governance' | 'government' | 'mentor' | 'sponsor' | 'judge' | 'instructor';
 
 @Component({
   selector: 'app-dashboard',
@@ -707,6 +707,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   readonly personnelTabs: { id: PersonnelRole; label: string; icon: string }[] = [
     { id: 'governance', label: 'Governance', icon: 'admin_panel_settings' },
+    { id: 'government', label: 'Government Institutions', icon: 'account_balance' },
     { id: 'mentor', label: 'Mentors', icon: 'psychology' },
     { id: 'sponsor', label: 'Sponsors', icon: 'handshake' },
     { id: 'judge', label: 'Judges', icon: 'gavel' },
@@ -887,6 +888,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const govRoles = ['super_admin', 'admin', 'support_admin', 'content_manager', 'competition_manager', 'reviewer', 'school_admin', 'governance'];
       return this.personnelRoster.people.filter(p => govRoles.includes(p.role));
     }
+    if (this.personnelTab === 'government') {
+      return this.personnelRoster.people.filter(p =>
+        p.role === 'government' ||
+        p.role === 'gov_partner' ||
+        p.role === 'government_institution' ||
+        (p.sector && p.sector.toLowerCase().includes('government'))
+      );
+    }
     if (this.personnelTab === 'mentor') {
       return this.personnelRoster.people.filter(p => p.role === 'mentor' || p.role === 'lead_mentor');
     }
@@ -917,6 +926,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return this.personnelRoster?.summary?.[role]?.total ?? 0;
   }
 
+  get personnelEmptyMessage(): string {
+    if (this.personnelInTab.length === 0) {
+      return this.personnelTab === 'government'
+        ? 'No government institutions or public sector partners registered yet.'
+        : `No ${this.personnelTab}s are registered on the platform yet.`;
+    }
+    return this.personnelTab === 'government'
+      ? 'No government institutions match your search or filter.'
+      : `No ${this.personnelTab}s match your search or filter.`;
+  }
+
   formatGovernanceRole(role: string): string {
     const map: Record<string, string> = {
       super_admin: 'Super Admin',
@@ -927,7 +947,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       reviewer: 'Reviewer / Auditor',
       school_admin: 'School Lead / Admin',
       mentor: 'Mentor',
-      lead_mentor: 'Lead Mentor'
+      lead_mentor: 'Lead Mentor',
+      government: 'Government Institution / Agency',
+      gov_partner: 'Public Sector Partner',
+      government_institution: 'Government Institution'
     };
     return map[role] || (role ? role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Governance');
   }
