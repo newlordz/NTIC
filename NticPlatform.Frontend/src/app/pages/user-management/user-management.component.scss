@@ -827,6 +827,7 @@ $radius-xl: 20px;
   &.av-content_manager  { background: linear-gradient(135deg, #1e3a5f, #60a5fa); }
   &.av-reviewer         { background: linear-gradient(135deg, #3b1f6e, #a78bfa); }
   &.av-competition_manager { background: linear-gradient(135deg, #7c2d12, #f97316); }
+  &.av-teams            { background: linear-gradient(135deg, #4338ca, #6366f1); }
   &[class*="av-"] { background: linear-gradient(135deg, #334155, #64748b); }
 }
 
@@ -1008,6 +1009,7 @@ $radius-xl: 20px;
   &.rp-content_manager  { background: $blue-lt; color: darken($blue, 8%); }
   &.rp-reviewer         { background: $purple-lt; color: darken($purple, 8%); }
   &.rp-competition_manager { background: rgba(249,115,22,0.12); color: #ea580c; }
+  &.rp-teams            { background: rgba(99, 102, 241, 0.12); color: #6366f1; }
 }
 
 // Row Actions
@@ -1102,6 +1104,7 @@ $radius-xl: 20px;
   &.ca-content_manager  { background: lighten($blue, 15%); }
   &.ca-reviewer         { background: lighten($purple, 15%); }
   &.ca-competition_manager { background: #f97316; }
+  &.ca-teams            { background: #6366f1; }
 }
 
 .um-card-top {

@@ -25,7 +25,7 @@ import { EmailService } from '../../services/email.service';
 })
 export class UserManagementComponent implements OnInit, OnDestroy {
   users: User[] = [];
-  filteredUsers: User[] = [];
+  filteredUsers: any[] = [];
   searchQuery = '';
   roleFilter = 'all';
   statusFilter = 'all';
@@ -458,8 +458,12 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  getUserAvatarUrl(u: User | null): string {
-    if (!u || !u.id) return '';
+  getUserAvatarUrl(u: any): string {
+    if (!u) return '';
+    if (u.isTeam && u.teamRef) {
+      return this.getTeamAvatarUrl(u.teamRef);
+    }
+    if (!u.id) return '';
     return this.userAvatarUrls[u.id] || '';
   }
 
@@ -516,12 +520,27 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   applyFilters(): void {
-    let list = [...this.users];
-    if (this.roleFilter !== 'all') {
+    let list: any[] = [...this.users];
+    if (this.roleFilter === 'all') {
+      const teamEntries: any[] = this.teams.map(t => ({
+        id: t.id || `team-${t.name}`,
+        fullName: t.name,
+        email: t.lead ? `Lead: ${t.lead}` : 'Squad Entry',
+        role: 'teams',
+        organization: t.schoolName || t.school_name || t.track || 'Independent',
+        status: t.status || 'Active',
+        ticket: (t as any).ticket || (t as any).code || `${t.members || t.rosterList?.length || (t as any).roster_list?.length || 1} Members`,
+        phone: '',
+        createdAt: '',
+        isTeam: true,
+        teamRef: t
+      }));
+      list = [...list, ...teamEntries];
+    } else {
       list = list.filter(u => u.role === this.roleFilter);
     }
     if (this.statusFilter !== 'all') {
-      list = list.filter(u => u.status.toLowerCase() === this.statusFilter);
+      list = list.filter(u => (u.status || '').toLowerCase() === this.statusFilter);
     }
     if (this.affiliationFilter === 'institution') {
       list = list.filter(u => u.role === 'student' && this.isInstitutionStudent(u));
@@ -532,7 +551,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       const targetInst = this.selectedInstitutionFilter.toLowerCase();
       list = list.filter(u =>
         (u.role === 'student' && this.getStudentOrganization(u).toLowerCase() === targetInst) ||
-        (u.organization && u.organization.trim().toLowerCase() === targetInst)
+        (u.organization && u.organization.trim().toLowerCase() === targetInst) ||
+        (u.isTeam && (u.organization || '').toLowerCase().includes(targetInst))
       );
     }
     if (this.searchQuery.trim()) {
@@ -545,7 +565,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         this.getUserOrganizationDisplay(u).toLowerCase().includes(q) ||
         u.ticket?.toLowerCase().includes(q) ||
         u.phone?.toLowerCase().includes(q) ||
-        this.getStudentTeam(u)?.name?.toLowerCase().includes(q)
+        this.getStudentTeam(u)?.name?.toLowerCase().includes(q) ||
+        (u.isTeam && u.teamRef?.track?.toLowerCase().includes(q))
       );
     }
     this.filteredUsers = list;
@@ -692,17 +713,27 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   }
 
   getRoleCount(role: string): number {
-    if (role === 'all') return this.users.length;
+    if (role === 'all') return this.users.length + this.teams.length;
     if (role === 'teams') return this.teams.length;
     return this.users.filter(u => u.role === role).length;
   }
 
   getActiveCount(): number {
-    return this.users.filter(u => (u.status || '').toLowerCase() === 'active').length;
+    return this.users.filter(u => (u.status || '').toLowerCase() === 'active').length +
+      this.teams.filter(t => (t.status || '').toLowerCase() === 'active').length;
   }
 
   getSuspendedCount(): number {
-    return this.users.filter(u => (u.status || '').toLowerCase() === 'suspended').length;
+    return this.users.filter(u => (u.status || '').toLowerCase() === 'suspended').length +
+      this.teams.filter(t => (t.status || '').toLowerCase() === 'suspended').length;
+  }
+
+  onRowClick(u: any): void {
+    if (u?.isTeam && u.teamRef) {
+      this.openInspectTeamModal(u.teamRef);
+    } else {
+      this.viewUser(u);
+    }
   }
 
   setNewUserRole(role: string): void {
@@ -1443,7 +1474,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       super_admin: 'Super Admin', admin: 'Admin', content_manager: 'Content Manager',
       reviewer: 'Reviewer', competition_manager: 'Competition Manager',
       school_admin: 'School Admin', instructor: 'Instructor', student: 'Student',
-      judge: 'Judge', sponsor: 'Corporate Partner'
+      judge: 'Judge', sponsor: 'Corporate Partner', teams: 'Squad'
     };
     return map[role] || role;
   }
@@ -1463,7 +1494,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       super_admin: 'admin_panel_settings', admin: 'shield', content_manager: 'edit_note',
       reviewer: 'rate_review', competition_manager: 'emoji_events',
       school_admin: 'school', instructor: 'badge', student: 'person',
-      judge: 'gavel', sponsor: 'handshake'
+      judge: 'gavel', sponsor: 'handshake', teams: 'groups'
     };
     return map[role] || 'person';
   }

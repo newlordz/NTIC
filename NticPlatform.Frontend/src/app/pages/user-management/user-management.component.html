@@ -76,7 +76,7 @@
             <span class="material-symbols-outlined">trending_up</span>
           </span>
         </div>
-        <div class="kpi-gem-num">{{ users.length }}</div>
+        <div class="kpi-gem-num">{{ users.length + teams.length }}</div>
         <div class="kpi-gem-lbl">Total Registered</div>
       </div>
 
@@ -234,12 +234,13 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let u of filteredUsers" class="um-row" (click)="viewUser(u)">
+              <tr *ngFor="let u of filteredUsers" class="um-row" (click)="onRowClick(u)">
                 <td class="td-user">
                   <div class="um-user-cell">
                     <div class="um-avatar" [class]="'av-' + u.role">
                       <img *ngIf="getUserAvatarUrl(u)" [src]="getUserAvatarUrl(u)" class="um-avatar-img" [alt]="u.fullName" />
-                      <span *ngIf="!getUserAvatarUrl(u)">{{ getInitials(u.fullName || u.email) }}</span>
+                      <span class="material-symbols-outlined" *ngIf="!getUserAvatarUrl(u) && u.isTeam" style="font-size:18px;">groups</span>
+                      <span *ngIf="!getUserAvatarUrl(u) && !u.isTeam">{{ getInitials(u.fullName || u.email) }}</span>
                     </div>
                     <div class="um-user-info">
                       <div class="um-name">{{ u.fullName }} <span *ngIf="isCurrentUser(u)" class="you-badge">You</span></div>
@@ -251,8 +252,20 @@
                   <span class="role-pill" [class]="'rp-' + u.role">{{ getUserRoleLabel(u) }}</span>
                 </td>
                 <td>
+                  <!-- Team / Squad Row -->
+                  <div class="um-org-cell" *ngIf="u.isTeam">
+                    <span class="um-org-badge inst-badge" [title]="'Affiliated School: ' + (u.teamRef?.schoolName || u.teamRef?.school_name || 'Independent')">
+                      <span class="material-symbols-outlined org-icon">school</span>
+                      <span class="org-name">{{ u.teamRef?.schoolName || u.teamRef?.school_name || 'Independent' }}</span>
+                    </span>
+                    <span class="squad-pill-btn" style="cursor:default;" *ngIf="u.teamRef?.track" [title]="'Competition Track: ' + u.teamRef?.track">
+                      <span class="material-symbols-outlined squad-icon">category</span>
+                      <span>{{ u.teamRef?.track }}</span>
+                    </span>
+                  </div>
+
                   <!-- Student under Institution -->
-                  <div class="um-org-cell" *ngIf="u.role === 'student' && isInstitutionStudent(u)">
+                  <div class="um-org-cell" *ngIf="!u.isTeam && u.role === 'student' && isInstitutionStudent(u)">
                     <span class="um-org-badge inst-badge" [title]="'Affiliated School: ' + getStudentOrganization(u)">
                       <span class="material-symbols-outlined org-icon">school</span>
                       <span class="org-name">{{ getStudentOrganization(u) }}</span>
@@ -268,7 +281,7 @@
                   </div>
 
                   <!-- Independent Student -->
-                  <div class="um-org-cell" *ngIf="u.role === 'student' && !isInstitutionStudent(u)">
+                  <div class="um-org-cell" *ngIf="!u.isTeam && u.role === 'student' && !isInstitutionStudent(u)">
                     <span class="um-org-badge indep-badge" title="Independent Student (No School Affiliation)">
                       <span class="material-symbols-outlined org-icon">person</span>
                       <span class="org-name">Independent</span>
@@ -276,7 +289,7 @@
                   </div>
 
                   <!-- Non-Student Roles -->
-                  <div class="um-org-cell" *ngIf="u.role !== 'student'">
+                  <div class="um-org-cell" *ngIf="!u.isTeam && u.role !== 'student'">
                     <span class="um-org">
                       {{ getUserOrganizationDisplay(u) }}
                     </span>
@@ -292,7 +305,21 @@
                   </span>
                 </td>
                 <td class="td-actions" (click)="$event.stopPropagation()">
-                  <div class="row-actions" *ngIf="!isMainAdmin(u)">
+                  <div class="row-actions" *ngIf="u.isTeam">
+                    <button class="ra-btn" (click)="openInspectTeamModal(u.teamRef)" title="Inspect Squad & Member Roster">
+                      <span class="material-symbols-outlined">visibility</span>
+                    </button>
+                    <button class="ra-btn ra-status" (click)="toggleTeamStatus(u.teamRef)" [title]="(u.status || '').toLowerCase() === 'active' ? 'Suspend Squad Account' : 'Activate Squad Account'">
+                      <span class="material-symbols-outlined">{{ (u.status || '').toLowerCase() === 'active' ? 'block' : 'check_circle' }}</span>
+                    </button>
+                    <button class="ra-btn ra-reset" (click)="regenerateTeamOTP(u.teamRef)" title="Reset Password / Regenerate Access Pass">
+                      <span class="material-symbols-outlined">lock_reset</span>
+                    </button>
+                    <button class="ra-btn ra-delete" (click)="openDeleteTeamModal(u.teamRef)" title="Delete Squad">
+                      <span class="material-symbols-outlined">delete</span>
+                    </button>
+                  </div>
+                  <div class="row-actions" *ngIf="!u.isTeam && !isMainAdmin(u)">
                     <button class="ra-btn ra-status" (click)="toggleStatus(u)" [title]="(u.status || '').toLowerCase() === 'active' ? 'Suspend Account' : 'Activate Account'">
                       <span class="material-symbols-outlined">{{ (u.status || '').toLowerCase() === 'active' ? 'block' : 'check_circle' }}</span>
                     </button>
@@ -303,7 +330,7 @@
                       <span class="material-symbols-outlined">delete</span>
                     </button>
                   </div>
-                  <span *ngIf="isMainAdmin(u)" class="locked-tag">
+                  <span *ngIf="!u.isTeam && isMainAdmin(u)" class="locked-tag">
                     <span class="material-symbols-outlined">lock</span> Protected
                   </span>
                 </td>
@@ -315,12 +342,13 @@
 
       <!-- ─── VIEW 2: CARD GRID ─── -->
       <div class="um-grid" *ngIf="viewMode === 'grid' && filteredUsers.length > 0">
-        <div *ngFor="let u of filteredUsers" class="um-card" (click)="viewUser(u)">
+        <div *ngFor="let u of filteredUsers" class="um-card" (click)="onRowClick(u)">
           <div class="um-card-accent" [class]="'ca-' + u.role"></div>
           <div class="um-card-top">
             <div class="um-avatar large" [class]="'av-' + u.role">
               <img *ngIf="getUserAvatarUrl(u)" [src]="getUserAvatarUrl(u)" class="um-avatar-img" [alt]="u.fullName" />
-              <span *ngIf="!getUserAvatarUrl(u)">{{ getInitials(u.fullName || u.email) }}</span>
+              <span class="material-symbols-outlined" *ngIf="!getUserAvatarUrl(u) && u.isTeam" style="font-size:24px;">groups</span>
+              <span *ngIf="!getUserAvatarUrl(u) && !u.isTeam">{{ getInitials(u.fullName || u.email) }}</span>
             </div>
             <span class="um-status" [class]="'st-' + (u.status || 'active').toLowerCase()">
               <span class="um-status-dot"></span>
@@ -332,12 +360,22 @@
             <div class="um-card-email">{{ u.email }}</div>
             <span class="role-pill" [class]="'rp-' + u.role">{{ getUserRoleLabel(u) }}</span>
 
+            <!-- Team / Squad Meta -->
+            <div class="um-card-meta inst-meta" *ngIf="u.isTeam">
+              <span class="material-symbols-outlined">school</span>
+              <span class="inst-highlight">{{ u.teamRef?.schoolName || u.teamRef?.school_name || 'Independent' }}</span>
+            </div>
+            <div class="um-card-meta squad-meta" *ngIf="u.isTeam && u.teamRef?.track">
+              <span class="material-symbols-outlined">category</span>
+              <span class="squad-highlight">Track: <strong>{{ u.teamRef?.track }}</strong></span>
+            </div>
+
             <!-- Institution Student Meta -->
-            <div class="um-card-meta inst-meta" *ngIf="u.role === 'student' && isInstitutionStudent(u)">
+            <div class="um-card-meta inst-meta" *ngIf="!u.isTeam && u.role === 'student' && isInstitutionStudent(u)">
               <span class="material-symbols-outlined">school</span>
               <span class="inst-highlight">{{ getStudentOrganization(u) }}</span>
             </div>
-            <div class="um-card-meta squad-meta" *ngIf="u.role === 'student' && getStudentTeam(u) as team">
+            <div class="um-card-meta squad-meta" *ngIf="!u.isTeam && u.role === 'student' && getStudentTeam(u) as team">
               <span class="material-symbols-outlined">groups</span>
               <span class="squad-highlight" (click)="$event.stopPropagation(); jumpToTeam(team.name)">
                 Squad: <strong>{{ team.name }}</strong> ({{ team.track }})
@@ -345,13 +383,13 @@
             </div>
 
             <!-- Independent Student Meta -->
-            <div class="um-card-meta indep-meta" *ngIf="u.role === 'student' && !isInstitutionStudent(u)">
+            <div class="um-card-meta indep-meta" *ngIf="!u.isTeam && u.role === 'student' && !isInstitutionStudent(u)">
               <span class="material-symbols-outlined">person</span>
               <span class="indep-highlight">Independent Entrant</span>
             </div>
 
             <!-- Non-Student Meta -->
-            <div class="um-card-meta" *ngIf="u.role !== 'student'">
+            <div class="um-card-meta" *ngIf="!u.isTeam && u.role !== 'student'">
               <span class="material-symbols-outlined">business</span>
               <span>{{ getUserOrganizationDisplay(u) }}</span>
             </div>
@@ -361,15 +399,25 @@
             </div>
           </div>
           <div class="um-card-footer" (click)="$event.stopPropagation()">
-            <button class="cmd-btn cmd-btn-ghost panel-btn btn-sm" (click)="editUser(u)">
-              <span class="material-symbols-outlined">edit</span> Edit
-            </button>
-            <button *ngIf="!isMainAdmin(u)" class="cmd-btn cmd-btn-ghost panel-btn btn-sm cmd-btn-danger" (click)="deleteUser(u)">
-              <span class="material-symbols-outlined">delete</span>
-            </button>
-            <span *ngIf="isMainAdmin(u)" class="locked-tag">
-              <span class="material-symbols-outlined">lock</span> Protected Admin
-            </span>
+            <ng-container *ngIf="u.isTeam">
+              <button class="cmd-btn cmd-btn-ghost panel-btn btn-sm" (click)="openInspectTeamModal(u.teamRef)">
+                <span class="material-symbols-outlined">visibility</span> Inspect
+              </button>
+              <button class="cmd-btn cmd-btn-ghost panel-btn btn-sm cmd-btn-danger" (click)="openDeleteTeamModal(u.teamRef)">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            </ng-container>
+            <ng-container *ngIf="!u.isTeam">
+              <button class="cmd-btn cmd-btn-ghost panel-btn btn-sm" (click)="editUser(u)">
+                <span class="material-symbols-outlined">edit</span> Edit
+              </button>
+              <button *ngIf="!isMainAdmin(u)" class="cmd-btn cmd-btn-ghost panel-btn btn-sm cmd-btn-danger" (click)="deleteUser(u)">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+              <span *ngIf="isMainAdmin(u)" class="locked-tag">
+                <span class="material-symbols-outlined">lock</span> Protected Admin
+              </span>
+            </ng-container>
           </div>
         </div>
       </div>
