@@ -1601,7 +1601,20 @@ export class LmsManagerComponent implements OnInit {
       }
     } else {
       this.formMode = 'create';
-      const cId = this.activeDetailCourse?.id || this.selectedCourseId;
+      let cId = this.activeDetailCourse?.id || '';
+      if (!cId && this.selectedCourseId && this.selectedCourseId !== 'all') {
+        cId = this.selectedCourseId;
+      }
+      if (!cId && this.authoredCourses.length) {
+        cId = this.authoredCourses[0].id;
+      }
+      if (!cId && this.coursesList.length) {
+        cId = this.coursesList[0].id;
+      }
+      if (!this.activeDetailCourse && cId) {
+        this.activeDetailCourse = this.authoredCourses.find(c => c.id === cId) ||
+                                 this.coursesList.find((c: any) => c.id === cId) || null;
+      }
       const existingMods = this.getModulesForCourse(cId);
       const nextOrder = existingMods.length ? Math.max(...existingMods.map(m => m.order_num || 0)) + 1 : 1;
       const defaultTitle = existingMods.length
@@ -1871,29 +1884,45 @@ export class LmsManagerComponent implements OnInit {
 
   saveModuleStudio(): void {
     if (this.isSaving) return;
-    if (!this.moduleForm.title.trim()) {
+    if (!this.moduleForm.title?.trim()) {
       this.saveError = 'Please enter a module title before saving.';
+      this.dialogService.toast(this.saveError, 'warning');
       this.cdr.markForCheck();
       return;
     }
-    if (!this.moduleForm.courseId) {
-      this.saveError = 'Course ID missing. Please refresh and try again.';
+
+    let cId = this.moduleForm.courseId;
+    if (!cId || cId === 'all') {
+      cId = this.activeDetailCourse?.id || (this.selectedCourseId !== 'all' ? this.selectedCourseId : '') || this.authoredCourses[0]?.id || this.coursesList[0]?.id || '';
+      this.moduleForm.courseId = cId;
+    }
+    if (!cId || cId === 'all') {
+      this.saveError = 'Course ID missing. Please select or create a course first.';
+      this.dialogService.toast(this.saveError, 'error');
       this.cdr.markForCheck();
       return;
     }
+
     this.isSaving = true;
     this.saveError = '';
     this.cdr.markForCheck();
 
+    let rawDesc = this.moduleBlocks[0]?.content || this.moduleForm.description || '';
+    if (rawDesc.length > 25000) {
+      rawDesc = rawDesc.slice(0, 25000);
+    }
+
     const payload = {
       course_id: this.moduleForm.courseId,
       title: this.moduleForm.title.trim(),
-      description: this.moduleBlocks[0]?.content || this.moduleForm.description || '',
+      description: rawDesc,
       order_num: Number(this.moduleForm.order) || 1,
       icon: this.moduleForm.icon || 'view_module',
     };
 
-    const request = this.formMode === 'create'
+    const isEditMode = this.formMode === 'edit' && !!this.moduleForm.id && !this.moduleForm.id.startsWith('mod-temp') && !this.moduleForm.id.startsWith('blk-');
+
+    const request = !isEditMode
       ? this.apiService.createModule(payload)
       : this.apiService.updateModule(this.moduleForm.id, payload);
 
@@ -1909,7 +1938,7 @@ export class LmsManagerComponent implements OnInit {
           id: savedModId,
           course_id: this.moduleForm.courseId,
           title: this.moduleForm.title.trim(),
-          description: this.moduleBlocks[0]?.content || this.moduleForm.description || '',
+          description: rawDesc,
           order_num: Number(this.moduleForm.order) || 1,
           icon: this.moduleForm.icon || 'view_module',
           status: 'published'
@@ -1922,6 +1951,7 @@ export class LmsManagerComponent implements OnInit {
         this.isTourPausedWaitingForModule = false;
 
         this.isSaving = false;
+        this.dialogService.toast('Module saved and published successfully!', 'success');
         this.reload();
         this.exitModuleStudio();
 
@@ -1939,6 +1969,7 @@ export class LmsManagerComponent implements OnInit {
       error: (err: any) => {
         this.isSaving = false;
         this.saveError = this.describeWriteError(err, 'module');
+        this.dialogService.toast(this.saveError, 'error');
         this.cdr.markForCheck();
       }
     });
@@ -2035,6 +2066,10 @@ export class LmsManagerComponent implements OnInit {
           alignment: blk.tableAlignment || 'left',
           footerNotes: blk.tableFooterNotes || ''
         });
+      }
+
+      if (descPayload && descPayload.length > 50000) {
+        descPayload = descPayload.slice(0, 50000);
       }
 
       const matPayload = {

@@ -53,6 +53,25 @@ def _ensure_landing_copy(cur) -> None:
                 cur.execute("INSERT INTO landing_copy (key, value, section) VALUES (%s, %s, %s)", (key, value, _section))
 
 
+def _ensure_lms_courses(cur) -> None:
+    """Seed foundational LMS courses so curriculum module creation and authoring
+    have valid course references and foreign keys."""
+    cur.execute("SELECT count(*) FROM lms_courses")
+    if cur.fetchone()[0] == 0:
+        courses = [
+            ("crs-1", "Python Data Structures", "coding", "data_object", "Intermediate", "Master lists, dicts, sets, and tuples for competitive programming.", 8, 320, 68, "active", "2026-01-15", "Dr. Ebenezer Mensah (Achimota School)", "approved", "USR-000"),
+            ("crs-2", "Arduino Robotics Base", "robotics", "memory", "Beginner", "Build and program your first autonomous robot with Arduino.", 6, 180, 42, "active", "2026-01-20", "Eng. Sarah Kwofie (PRESEC Legon)", "approved", "USR-000"),
+            ("crs-3", "AI Fundamentals with TensorFlow", "ai", "psychology", "Intermediate", "Train, evaluate, and deploy machine learning models.", 10, 210, 55, "active", "2026-02-01", "Prof. Kwesi Appiah (KNUST NTI Lab)", "approved", "USR-000"),
+            ("crs-4", "Network Security Essentials", "cyber", "shield", "Beginner", "Learn firewalls, encryption, and penetration testing basics.", 7, 145, 38, "active", "2026-02-10", "Dr. Ebenezer Mensah (Achimota School)", "approved", "USR-000")
+        ]
+        for c in courses:
+            cur.execute("""
+                INSERT INTO lms_courses (id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status, owner_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO NOTHING
+            """, c)
+
+
 def seed_initial_data(conn):
     cur = conn.cursor()
 
@@ -143,10 +162,12 @@ def seed_initial_data(conn):
     else:
         logger.info("Super-admin account already exists — leaving password and status untouched.")
 
+    _ensure_landing_copy(cur)
+    _ensure_lms_courses(cur)
+
     # Demo/placeholder content is opt-in. Without it the schema is created and the
     # operator starts with real data; set NTIC_SEED_DEMO=true for a dev sandbox.
     if not _seed_demo_content():
-        _ensure_landing_copy(cur)
         conn.commit()
         cur.close()
         return

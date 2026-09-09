@@ -3478,7 +3478,7 @@ try:
     class LmsModulePayload(BaseModel):
         course_id: str = Field(min_length=1, max_length=64)
         title: str = Field(min_length=1, max_length=200)
-        description: str = Field(default="", max_length=5000)
+        description: str = Field(default="", max_length=50000)
         order_num: int = Field(default=1, ge=1, le=500)
         icon: str = Field(default="menu_book", max_length=50)
 
@@ -3608,7 +3608,7 @@ try:
         title: str = Field(min_length=1, max_length=200)
         type: str = Field(default="link", max_length=20)
         url: str = Field(default="", max_length=2000)
-        description: str = Field(default="", max_length=5000)
+        description: str = Field(default="", max_length=100000)
         order_num: Optional[int] = 0
 
     @app.post("/api/lms/materials", status_code=status.HTTP_201_CREATED)
@@ -10785,7 +10785,7 @@ try:
                 or path.startswith("/redoc")
                 or path.startswith("/openapi.json")
             ):
-                return JSONResponse(status_code=404, content={"detail": "Not Found"})
+                return JSONResponse(status_code=404, content={"detail": getattr(exc, "detail", "Not Found") or "Not Found"})
             index_path = os.path.join(frontend_dist, "index.html")
             if os.path.exists(index_path):
                 # The SPA fallback must not be cached either.

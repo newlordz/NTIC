@@ -88,7 +88,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
   @Output() triggerAiQuiz = new EventEmitter<{ block?: ModuleBlock; isNew?: boolean }>();
   @Output() uploadFile = new EventEmitter<{ file: File; block: ModuleBlock }>();
 
-  moduleForm: { id?: string; title: string; order: number; description: string } = {
+  moduleForm: { id?: string; courseId?: string; title: string; order: number; description: string } = {
     title: '',
     order: 1,
     description: ''
@@ -146,12 +146,14 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     if (this.module) {
       this.moduleForm = {
         id: this.module.id,
+        courseId: this.module.course_id || this.module.courseId || this.course?.id || '',
         title: this.module.title || '',
-        order: this.module.order ?? 1,
+        order: this.module.order_num ?? this.module.order ?? 1,
         description: this.module.description || ''
       };
     } else {
       this.moduleForm = {
+        courseId: this.course?.id || '',
         title: '',
         order: 1,
         description: ''
