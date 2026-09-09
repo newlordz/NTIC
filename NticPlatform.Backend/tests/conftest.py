@@ -29,6 +29,8 @@ os.environ["NTIC_DEV_MODE"] = "false"
 os.environ["ENVIRONMENT"] = "test"
 os.environ["PBKDF2_ITERATIONS"] = "1000"
 os.environ["DISABLE_RATE_LIMITS"] = "false"
+os.environ["SMTP_HOST"] = ""
+os.environ["SMTP_USER"] = ""
 
 import pytest
 import psycopg2
@@ -36,6 +38,8 @@ import psycopg2.extensions
 from fastapi.testclient import TestClient
 
 from app.config import settings
+settings.SMTP_HOST = ""
+settings.SMTP_USER = ""
 from app.database import init_postgres_db
 from app.main import app
 

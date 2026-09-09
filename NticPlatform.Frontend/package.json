@@ -8,6 +8,7 @@
     "dev:host": "node build-with-env.js serve --host 0.0.0.0 --disable-host-check",
     "build": "node build-with-env.js build",
     "watch": "ng build --watch --configuration development",
+    "typecheck": "ngc -p tsconfig.app.json --noEmit",
     "test": "ng test"
   },
   "private": true,
