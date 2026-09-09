@@ -27,6 +27,7 @@ os.environ["NTIC_ADMIN_PASSWORD"] = ADMIN_PASSWORD
 os.environ["NTIC_DEV_RELOAD"] = "false"
 os.environ["NTIC_DEV_MODE"] = "false"
 os.environ["ENVIRONMENT"] = "test"
+os.environ["PBKDF2_ITERATIONS"] = "1000"
 os.environ["DISABLE_RATE_LIMITS"] = "false"
 
 import pytest

@@ -7,7 +7,18 @@ import time
 from collections import defaultdict
 from fastapi import HTTPException, status, Request
 
-_ITERATIONS = 600_000
+def _get_iterations() -> int:
+    env_iter = os.getenv("PBKDF2_ITERATIONS")
+    if env_iter:
+        try:
+            return max(100, int(env_iter))
+        except ValueError:
+            pass
+    if (os.getenv("ENVIRONMENT") or "").strip().lower() == "test":
+        return 1_000
+    return 600_000
+
+_ITERATIONS = _get_iterations()
 
 # ── Session lifetime ────────────────────────────────────────────────────
 # Sessions expire on INACTIVITY, not on a fixed schedule. `expires_at` is
@@ -252,7 +263,7 @@ def clear_all_rate_limits():
 
 def hash_password(password: str) -> str:
     salt = secrets.token_hex(16)
-    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), _ITERATIONS)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), _get_iterations())
     return f"{salt}${dk.hex()}"
 
 def verify_password(password: str, stored: str) -> bool:
@@ -260,7 +271,7 @@ def verify_password(password: str, stored: str) -> bool:
         salt, hex_digest = stored.split("$", 1)
     except ValueError:
         return False
-    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), _ITERATIONS)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), _get_iterations())
     return secrets.compare_digest(dk.hex(), hex_digest)
 
 def create_token() -> str:

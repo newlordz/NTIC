@@ -461,7 +461,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let t of filteredTeams" class="um-row">
+              <tr *ngFor="let t of filteredTeams" class="um-row" (click)="openInspectTeamModal(t)" style="cursor:pointer;" title="Click to view squad roster & member dossiers">
                 <td class="td-user">
                   <div class="um-user-cell">
                     <div class="um-avatar av-student" style="background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;display:flex;align-items:center;justify-content:center;">
@@ -481,8 +481,32 @@
                   <span class="um-org">{{ t.schoolName || t.school_name || 'Independent' }}</span>
                 </td>
                 <td>
-                  <div style="font-size:13px;font-weight:600;color:var(--on-surface);">{{ t.lead || 'Unassigned' }}</div>
-                  <div style="font-size:11px;color:var(--on-surface-variant);">{{ t.members || 1 }} member{{ (t.members || 1) > 1 ? 's' : '' }}</div>
+                  <div class="team-lead-cell">
+                    <div class="lead-avatar-wrap">
+                      <div class="mini-avatar">
+                        <img *ngIf="getMemberAvatarUrl(t.lead)" [src]="getMemberAvatarUrl(t.lead)" class="mini-avatar-img" [alt]="t.lead" />
+                        <span *ngIf="!getMemberAvatarUrl(t.lead)">{{ getInitials(t.lead) }}</span>
+                      </div>
+                      <div class="lead-info">
+                        <span class="lead-name">{{ t.lead || 'Unassigned' }}</span>
+                        <span class="lead-badge">Lead</span>
+                      </div>
+                    </div>
+                    <!-- Roster Members Avatar Stack -->
+                    <div class="roster-avatar-strip" *ngIf="getRosterMembers(t).length > 0">
+                      <div
+                        *ngFor="let member of getRosterMembers(t).slice(0, 5)"
+                        class="roster-avatar-bubble"
+                        [title]="member">
+                        <img *ngIf="getMemberAvatarUrl(member)" [src]="getMemberAvatarUrl(member)" class="bubble-img" [alt]="member" />
+                        <span *ngIf="!getMemberAvatarUrl(member)">{{ getInitials(member) }}</span>
+                      </div>
+                      <span class="roster-more-count" *ngIf="getRosterMembers(t).length > 5">
+                        +{{ getRosterMembers(t).length - 5 }}
+                      </span>
+                      <span class="roster-count-text">{{ t.members || getRosterMembers(t).length || 1 }} member{{ (t.members || getRosterMembers(t).length || 1) > 1 ? 's' : '' }}</span>
+                    </div>
+                  </div>
                 </td>
                 <td class="td-mentor" (click)="$event.stopPropagation()">
                   <div *ngIf="assigningMentorTeamId === t.id" class="mentor-loading-pill">
@@ -494,7 +518,8 @@
                     <!-- Assigned Mentor Chip -->
                     <div class="mentor-pill assigned" *ngIf="t.mentorId">
                       <div class="mentor-mini-avatar">
-                        {{ getInitials(t.mentor || getMentorName(t.mentorId)) }}
+                        <img *ngIf="getMemberAvatarUrl(t.mentor || getMentorName(t.mentorId))" [src]="getMemberAvatarUrl(t.mentor || getMentorName(t.mentorId))" class="mentor-mini-avatar-img" [alt]="t.mentor || getMentorName(t.mentorId)" />
+                        <span *ngIf="!getMemberAvatarUrl(t.mentor || getMentorName(t.mentorId))">{{ getInitials(t.mentor || getMentorName(t.mentorId)) }}</span>
                       </div>
                       <div class="mentor-meta">
                         <span class="mentor-name">{{ t.mentor || getMentorName(t.mentorId) }}</span>
@@ -530,6 +555,9 @@
                 </td>
                 <td class="td-actions" (click)="$event.stopPropagation()">
                   <div class="row-actions">
+                    <button class="ra-btn" (click)="openInspectTeamModal(t)" title="Inspect Squad & Member Roster">
+                      <span class="material-symbols-outlined">visibility</span>
+                    </button>
                     <button class="ra-btn ra-status" (click)="toggleTeamStatus(t)" [title]="(t.status || '').toLowerCase() === 'active' ? 'Suspend Squad Account' : 'Activate Squad Account'">
                       <span class="material-symbols-outlined">{{ (t.status || '').toLowerCase() === 'active' ? 'block' : 'check_circle' }}</span>
                     </button>
@@ -1218,6 +1246,93 @@
           <span class="material-symbols-outlined" *ngIf="!isDeleteTeamLoading">delete</span>
           <span class="material-symbols-outlined spinning" *ngIf="isDeleteTeamLoading">sync</span>
           {{ isDeleteTeamLoading ? 'Deleting...' : 'Delete Permanently' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       MODAL: INSPECT SQUAD & MEMBERS DOSSIER
+  ══════════════════════════════════════════ -->
+  <div class="um-modal-backdrop" *ngIf="isInspectTeamOpen && selectedTeamForInspection" (click)="closeInspectTeamModal()">
+    <div class="um-modal" style="max-width:700px;" (click)="$event.stopPropagation()">
+      <div class="um-modal-header">
+        <div class="um-modal-title-row">
+          <div class="um-avatar large av-student" style="background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;display:flex;align-items:center;justify-content:center;">
+            <img *ngIf="getTeamAvatarUrl(selectedTeamForInspection)" [src]="getTeamAvatarUrl(selectedTeamForInspection)" class="um-avatar-img" [alt]="selectedTeamForInspection.name" />
+            <span class="material-symbols-outlined" *ngIf="!getTeamAvatarUrl(selectedTeamForInspection)">groups</span>
+          </div>
+          <div>
+            <h3>{{ selectedTeamForInspection.name }}</h3>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:2px;">
+              <span class="role-pill rp-student">{{ selectedTeamForInspection.track || 'General' }}</span>
+              <span class="um-status" [class]="'st-' + (selectedTeamForInspection.status || 'active').toLowerCase()">
+                <span class="um-status-dot"></span>
+                {{ selectedTeamForInspection.status || 'Active' }}
+              </span>
+            </div>
+          </div>
+        </div>
+        <button class="um-modal-close" (click)="closeInspectTeamModal()" title="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="um-modal-body">
+        <!-- Squad Metadata Strip -->
+        <div class="um-info-grid" style="margin-bottom:20px;">
+          <div class="um-info-item">
+            <span class="um-info-lbl">School / Institution</span>
+            <span class="um-info-val">{{ selectedTeamForInspection.schoolName || selectedTeamForInspection.school_name || 'Independent Squad' }}</span>
+          </div>
+          <div class="um-info-item">
+            <span class="um-info-lbl">Squad Motto</span>
+            <span class="um-info-val">{{ selectedTeamForInspection.motto ? ('"' + selectedTeamForInspection.motto + '"') : 'None specified' }}</span>
+          </div>
+          <div class="um-info-item">
+            <span class="um-info-lbl">Team Captain</span>
+            <span class="um-info-val">{{ selectedTeamForInspection.lead || 'Unassigned' }}</span>
+          </div>
+          <div class="um-info-item">
+            <span class="um-info-lbl">Assigned Mentor</span>
+            <span class="um-info-val">{{ selectedTeamForInspection.mentor || getMentorName(selectedTeamForInspection.mentorId) || 'Pending Allocation' }}</span>
+          </div>
+        </div>
+
+        <!-- Squad Members & Roster Dossier -->
+        <div class="squad-members-dossier">
+          <div class="smd-header">
+            <span class="material-symbols-outlined" style="color:var(--primary);font-size:18px;">badge</span>
+            <h4>Enlisted Squad Members ({{ getRosterMembers(selectedTeamForInspection).length }})</h4>
+          </div>
+
+          <div class="smd-grid">
+            <div *ngFor="let member of getRosterMembers(selectedTeamForInspection); let idx = index" class="smd-member-card">
+              <div class="smd-avatar-wrap">
+                <div class="smd-avatar">
+                  <img *ngIf="getMemberAvatarUrl(member)" [src]="getMemberAvatarUrl(member)" class="smd-avatar-img" [alt]="member" />
+                  <span *ngIf="!getMemberAvatarUrl(member)">{{ getInitials(member) }}</span>
+                </div>
+                <span class="smd-lead-badge" *ngIf="idx === 0 || member === selectedTeamForInspection.lead">Lead</span>
+              </div>
+              <div class="smd-member-info">
+                <div class="smd-name">{{ member }}</div>
+                <div class="smd-email" *ngIf="getMemberInfo(member).email">{{ getMemberInfo(member).email }}</div>
+                <div class="smd-ticket" *ngIf="getMemberInfo(member).ticket">
+                  <span class="material-symbols-outlined" style="font-size:12px;">confirmation_number</span>
+                  <span>{{ getMemberInfo(member).ticket }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="um-modal-footer">
+        <button class="cmd-btn cmd-btn-ghost" (click)="closeInspectTeamModal()">Close</button>
+        <button class="cmd-btn cmd-btn-primary" (click)="closeInspectTeamModal(); openEditTeamModal(selectedTeamForInspection)">
+          <span class="material-symbols-outlined">edit</span>
+          Edit Squad
         </button>
       </div>
     </div>

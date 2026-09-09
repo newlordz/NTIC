@@ -3072,6 +3072,14 @@ $radius-xl: 20px;
   font-weight: 700;
   letter-spacing: -0.5px;
   flex-shrink: 0;
+  overflow: hidden;
+
+  .mentor-mini-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
 }
 
 .mentor-meta {
@@ -3166,6 +3174,241 @@ $radius-xl: 20px;
       border-color: rgba(255, 255, 255, 0.2) !important;
       color: #94a3b8 !important;
     }
+  }
+}
+
+// ── Team Lead & Members Roster Column ──────────────────
+.team-lead-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-items: flex-start;
+}
+
+.lead-avatar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  flex-shrink: 0;
+  overflow: hidden;
+
+  .mini-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+}
+
+.lead-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lead-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.lead-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--primary);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.roster-avatar-strip {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.roster-avatar-bubble {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #64748b, #475569);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9.5px;
+  font-weight: 700;
+  border: 2px solid var(--surface, #ffffff);
+  margin-left: -6px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  transition: transform 0.15s ease;
+
+  &:first-child {
+    margin-left: 0;
+  }
+
+  &:hover {
+    transform: scale(1.25);
+    z-index: 5;
+  }
+
+  .bubble-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+}
+
+.roster-more-count {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--on-surface-variant);
+  margin-left: 3px;
+}
+
+.roster-count-text {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  margin-left: 6px;
+}
+
+// ── Squad Members Dossier in Modal ─────────────────────
+.squad-members-dossier {
+  margin-top: 16px;
+  border-top: 1px solid var(--outline-variant, rgba(0,0,0,0.08));
+  padding-top: 16px;
+
+  .smd-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+
+    h4 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--on-surface);
+    }
+  }
+
+  .smd-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+  }
+
+  .smd-member-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--surface-container-low, rgba(0,0,0,0.02));
+    border: 1px solid var(--outline-variant, rgba(0,0,0,0.08));
+    border-radius: 10px;
+  }
+
+  .smd-avatar-wrap {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .smd-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    overflow: hidden;
+
+    .smd-avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+  }
+
+  .smd-lead-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: var(--primary, #2563eb);
+    color: #fff;
+    font-size: 8px;
+    font-weight: 800;
+    padding: 1px 4px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .smd-member-info {
+    min-width: 0;
+    flex: 1;
+
+    .smd-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--on-surface);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .smd-email {
+      font-size: 11px;
+      color: var(--on-surface-variant);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .smd-ticket {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10.5px;
+      font-family: monospace;
+      font-weight: 600;
+      color: var(--primary);
+      margin-top: 2px;
+    }
+  }
+}
+
+:host-context(body.dark-theme) {
+  .squad-members-dossier {
+    border-top-color: rgba(255, 255, 255, 0.1);
+
+    .smd-member-card {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+  .roster-avatar-bubble {
+    border-color: #1e293b;
   }
 }
 

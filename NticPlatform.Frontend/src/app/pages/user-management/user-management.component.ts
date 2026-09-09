@@ -39,6 +39,9 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   editForm: any = {};
   userAvatarUrls: Record<string, string> = {};
   teamAvatarUrls: Record<string, string> = {};
+  memberAvatarUrls: Record<string, string> = {};
+  selectedTeamForInspection: Team | null = null;
+  isInspectTeamOpen = false;
   newUserForm: any = {
     fullName: '',
     email: '',
@@ -307,35 +310,132 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       const explicitPhoto = (u as any).avatarUrl || (u as any).photo_url || (u as any).image;
       if (explicitPhoto) {
         this.userAvatarUrls[u.id] = explicitPhoto;
+        if (u.email) this.memberAvatarUrls[u.email.toLowerCase().trim()] = explicitPhoto;
+        if (u.fullName) this.memberAvatarUrls[u.fullName.toLowerCase().trim()] = explicitPhoto;
         continue;
       }
       const fileId = u.photoFileId || (u as any).profilePhotoFileId || (u as any).photo_file_id;
       if (fileId) {
         try {
           const url = await this.fileStorage.getUrl(fileId);
-          if (url) this.userAvatarUrls[u.id] = url;
+          if (url) {
+            this.userAvatarUrls[u.id] = url;
+            if (u.email) this.memberAvatarUrls[u.email.toLowerCase().trim()] = url;
+            if (u.fullName) this.memberAvatarUrls[u.fullName.toLowerCase().trim()] = url;
+          }
         } catch { }
       }
     }
 
     // 2. Cross-reference approvals and registrations
-    const allApprovals = [
+    let allApprovals = [
       ...this.contentService.approvedApprovals,
       ...this.contentService.pendingApprovals
     ];
+    if (allApprovals.length === 0) {
+      try {
+        const remoteApprovals = await firstValueFrom(this.apiService.getApprovals());
+        if (Array.isArray(remoteApprovals)) {
+          allApprovals = remoteApprovals;
+        }
+      } catch {}
+    }
+
     for (const req of allApprovals) {
-      const contact = (req.contact || '').toLowerCase();
-      const entity = (req.entity || '').toLowerCase();
-      const fileId = req.details?.photoFileId || req.details?.logoFileId || (req.details?.memberPhotos?.[0]);
-      if (!fileId) continue;
-      
-      for (const u of this.users) {
-        if (this.userAvatarUrls[u.id]) continue;
-        if (u.email.toLowerCase() === contact || u.fullName.toLowerCase().includes(entity) || entity.includes(u.fullName.toLowerCase())) {
+      const contact = (req.contact || '').toLowerCase().trim();
+      const entity = (req.entity || '').toLowerCase().trim();
+      const details = req.details || {};
+      const logoFileId = details.logoFileId || details.photoFileId;
+
+      if (logoFileId) {
+        for (const u of this.users) {
+          if (!this.userAvatarUrls[u.id]) {
+            if (
+              (u.email && u.email.toLowerCase().trim() === contact) ||
+              (u.fullName && entity && (u.fullName.toLowerCase().includes(entity) || entity.includes(u.fullName.toLowerCase()))) ||
+              (u.organization && entity && u.organization.toLowerCase().trim() === entity)
+            ) {
+              try {
+                const url = await this.fileStorage.getUrl(logoFileId);
+                if (url) this.userAvatarUrls[u.id] = url;
+              } catch {}
+            }
+          }
+        }
+      }
+
+      // Parse teams in this registration
+      const teamsInReq: any[] = Array.isArray(details.teamsList) ? details.teamsList : [];
+      for (const tReq of teamsInReq) {
+        if (!tReq) continue;
+        const teamName = (tReq.name || '').trim();
+
+        // Parse member photos (space-delimited string or array)
+        let photos: string[] = [];
+        if (typeof tReq.memberPhotos === 'string') {
+          photos = tReq.memberPhotos.split(/\s+/).filter(Boolean);
+        } else if (Array.isArray(tReq.memberPhotos)) {
+          photos = tReq.memberPhotos.filter((p: any) => typeof p === 'string' && p.trim());
+        }
+
+        // Parse member names
+        let names: string[] = [];
+        if (typeof tReq.rosterList === 'string') {
+          names = tReq.rosterList.split(/\s+/).filter(Boolean);
+        } else if (Array.isArray(tReq.rosterList)) {
+          names = tReq.rosterList.map((m: any) => typeof m === 'string' ? m : (m?.name || '')).filter(Boolean);
+        } else if (typeof tReq.members === 'string') {
+          names = tReq.members.split(/\s+/).filter(Boolean);
+        }
+        if (names.length === 0) {
+          names = [tReq.leadName, tReq.member2Name, tReq.member3Name, tReq.member4Name, tReq.member5Name].filter(Boolean);
+        }
+
+        // Parse member emails
+        const emails: string[] = [tReq.leadEmail, tReq.member2Email, tReq.member3Email, tReq.member4Email, tReq.member5Email].filter(Boolean);
+
+        for (let i = 0; i < photos.length; i++) {
+          const fileId = photos[i];
+          if (!fileId) continue;
+          const memberName = names[i];
+          const memberEmail = emails[i];
+
           try {
             const url = await this.fileStorage.getUrl(fileId);
-            if (url) this.userAvatarUrls[u.id] = url;
-          } catch { }
+            if (url) {
+              if (memberName) {
+                this.memberAvatarUrls[memberName.toLowerCase().trim()] = url;
+              }
+              if (memberEmail) {
+                this.memberAvatarUrls[memberEmail.toLowerCase().trim()] = url;
+              }
+              for (const u of this.users) {
+                if (!this.userAvatarUrls[u.id]) {
+                  if (
+                    (memberEmail && u.email && u.email.toLowerCase().trim() === memberEmail.toLowerCase().trim()) ||
+                    (memberName && u.fullName && u.fullName.toLowerCase().trim() === memberName.toLowerCase().trim())
+                  ) {
+                    this.userAvatarUrls[u.id] = url;
+                  }
+                }
+              }
+            }
+          } catch {}
+        }
+
+        // Squad avatar from registration
+        const squadPhotoId = tReq.photoFileId || tReq.logoFileId || logoFileId || photos[0];
+        if (squadPhotoId && teamName) {
+          try {
+            const url = await this.fileStorage.getUrl(squadPhotoId);
+            if (url) {
+              this.teamAvatarUrls[teamName] = url;
+              const matchedTeam = this.teams.find(tm => tm.name && tm.name.toLowerCase().trim() === teamName.toLowerCase());
+              if (matchedTeam && matchedTeam.id) {
+                this.teamAvatarUrls[matchedTeam.id] = url;
+              }
+            }
+          } catch {}
         }
       }
     }
@@ -344,14 +444,41 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     for (const t of this.teams) {
       const teamKey = t.id || t.name;
       if (this.teamAvatarUrls[teamKey]) continue;
-      const fileId = t.logoFileId || t.photoFileId || (t as any).logo_file_id || (t as any).photo_file_id;
+
+      const fileId = t.photoFileId || t.logoFileId || (t as any).photo_file_id || (t as any).logo_file_id;
       if (fileId) {
         try {
           const url = await this.fileStorage.getUrl(fileId);
-          if (url) this.teamAvatarUrls[teamKey] = url;
-        } catch { }
+          if (url) {
+            this.teamAvatarUrls[teamKey] = url;
+            if (t.name) this.teamAvatarUrls[t.name] = url;
+            if (t.id) this.teamAvatarUrls[t.id] = url;
+          }
+        } catch {}
       } else if ((t as any).photo_url || (t as any).logo_url || (t as any).image) {
-        this.teamAvatarUrls[teamKey] = (t as any).photo_url || (t as any).logo_url || (t as any).image;
+        const direct = (t as any).photo_url || (t as any).logo_url || (t as any).image;
+        this.teamAvatarUrls[teamKey] = direct;
+        if (t.name) this.teamAvatarUrls[t.name] = direct;
+      } else {
+        // Fallback: Check if school organization has a logo from school admin
+        const schoolName = (t.schoolName || t.school_name || '').toLowerCase().trim();
+        if (schoolName) {
+          const schoolUser = this.users.find(u =>
+            u.organization && u.organization.toLowerCase().trim() === schoolName && this.userAvatarUrls[u.id]
+          );
+          if (schoolUser && this.userAvatarUrls[schoolUser.id]) {
+            this.teamAvatarUrls[teamKey] = this.userAvatarUrls[schoolUser.id];
+            if (t.name) this.teamAvatarUrls[t.name] = this.userAvatarUrls[schoolUser.id];
+          }
+        }
+        // Fallback 2: Check if team lead has an avatar
+        if (!this.teamAvatarUrls[teamKey] && t.lead) {
+          const leadUrl = this.getMemberAvatarUrl(t.lead);
+          if (leadUrl) {
+            this.teamAvatarUrls[teamKey] = leadUrl;
+            if (t.name) this.teamAvatarUrls[t.name] = leadUrl;
+          }
+        }
       }
     }
     this.cdr.markForCheck();
@@ -364,7 +491,54 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   getTeamAvatarUrl(t: Team | null): string {
     if (!t) return '';
-    return this.teamAvatarUrls[t.id || t.name] || '';
+    return this.teamAvatarUrls[t.id || ''] || this.teamAvatarUrls[t.name || ''] || '';
+  }
+
+  getMemberAvatarUrl(nameOrEmail: string | null | undefined): string {
+    if (!nameOrEmail) return '';
+    const key = nameOrEmail.trim().toLowerCase();
+    if (this.memberAvatarUrls[key]) return this.memberAvatarUrls[key];
+    const found = this.users.find(u =>
+      (u.fullName && u.fullName.trim().toLowerCase() === key) ||
+      (u.email && u.email.trim().toLowerCase() === key)
+    );
+    if (found && this.userAvatarUrls[found.id]) {
+      return this.userAvatarUrls[found.id];
+    }
+    return '';
+  }
+
+  getRosterMembers(t: Team | null): string[] {
+    if (!t) return [];
+    if (Array.isArray(t.rosterList) && t.rosterList.length > 0) {
+      return t.rosterList.map((m: any) => typeof m === 'string' ? m : (m?.name || '')).filter(Boolean);
+    }
+    if (t.lead) return [t.lead];
+    return [];
+  }
+
+  getMemberInfo(nameOrEmail: string): { name: string; email: string; ticket: string; photoUrl: string } {
+    const key = (nameOrEmail || '').trim().toLowerCase();
+    const foundUser = this.users.find(u =>
+      (u.fullName && u.fullName.trim().toLowerCase() === key) ||
+      (u.email && u.email.trim().toLowerCase() === key)
+    );
+    return {
+      name: foundUser?.fullName || nameOrEmail,
+      email: foundUser?.email || '',
+      ticket: foundUser?.ticket || '',
+      photoUrl: this.getMemberAvatarUrl(nameOrEmail)
+    };
+  }
+
+  openInspectTeamModal(team: Team): void {
+    this.selectedTeamForInspection = team;
+    this.isInspectTeamOpen = true;
+  }
+
+  closeInspectTeamModal(): void {
+    this.isInspectTeamOpen = false;
+    this.selectedTeamForInspection = null;
   }
 
   applyFilters(): void {
@@ -537,6 +711,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.roleFilter = role;
     if (role === 'teams') {
       this.applyTeamFilters();
+      this.loadAvatars();
     } else {
       this.applyFilters();
     }
@@ -1366,11 +1541,13 @@ export class UserManagementComponent implements OnInit, OnDestroy {
           photoFileId: t.photoFileId || t.photo_file_id || t.logoFileId || t.logo_file_id
         }));
         this.applyTeamFilters();
+        this.loadAvatars();
         this.cdr.markForCheck();
       },
       error: () => {
         this.teams = [...this.contentService.teams];
         this.applyTeamFilters();
+        this.loadAvatars();
         this.cdr.markForCheck();
       }
     });

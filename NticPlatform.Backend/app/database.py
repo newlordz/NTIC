@@ -714,6 +714,7 @@ def _create_tables(conn):
     # path. is_solo marks these so a UI can label or filter them; they are real
     # team rows with one member and no school.
     cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS is_solo BOOLEAN DEFAULT FALSE;")
+    cur.execute("ALTER TABLE teams ADD COLUMN IF NOT EXISTS photo_file_id VARCHAR(255);")
 
     # Sponsor commitments and the payments made against them.
     cur.execute("""
@@ -925,6 +926,42 @@ def _create_tables(conn):
           )
     """)
     conn.commit()
+
+    # Backfill team photo_file_id and student member photos from approved applications
+    try:
+        cur.execute("SELECT details FROM pending_approvals WHERE status = 'approved' AND details IS NOT NULL")
+        for (raw_details,) in cur.fetchall():
+            import json as _j
+            det = raw_details if isinstance(raw_details, dict) else _j.loads(raw_details) if isinstance(raw_details, str) else {}
+            logo_id = det.get("logoFileId") or det.get("photoFileId")
+            teams_list = det.get("teamsList") or []
+            if isinstance(teams_list, list):
+                for t in teams_list:
+                    if not isinstance(t, dict):
+                        continue
+                    t_name = (t.get("name") or "").strip()
+                    if not t_name:
+                        continue
+                    t_photo = t.get("photoFileId") or t.get("logoFileId") or logo_id
+                    if t_photo:
+                        cur.execute("UPDATE teams SET photo_file_id = %s WHERE lower(name) = lower(%s) AND (photo_file_id IS NULL OR photo_file_id = '')", (t_photo, t_name))
+
+                    member_photos = t.get("memberPhotos")
+                    photos = member_photos.split() if isinstance(member_photos, str) else member_photos if isinstance(member_photos, list) else []
+                    emails = [t.get("leadEmail"), t.get("member2Email"), t.get("member3Email"), t.get("member4Email"), t.get("member5Email")]
+                    names = [t.get("leadName"), t.get("member2Name"), t.get("member3Name"), t.get("member4Name"), t.get("member5Name")]
+                    for idx, pid in enumerate(photos):
+                        if not pid:
+                            continue
+                        em = (emails[idx] or "").strip().lower() if idx < len(emails) else ""
+                        nm = (names[idx] or "").strip() if idx < len(names) else ""
+                        if em:
+                            cur.execute("UPDATE users SET photo_file_id = %s WHERE lower(email) = %s AND (photo_file_id IS NULL OR photo_file_id = '')", (pid, em))
+                        elif nm:
+                            cur.execute("UPDATE users SET photo_file_id = %s WHERE lower(full_name) = lower(%s) AND (photo_file_id IS NULL OR photo_file_id = '')", (pid, nm))
+        conn.commit()
+    except Exception as e:
+        logger.warning(f"Backfill team/member photos non-fatal: {e}")
 
     _create_indexes(cur)
     conn.commit()

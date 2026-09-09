@@ -6081,13 +6081,13 @@ try:
         cur = conn.cursor()
         if competition_id:
             cur.execute(
-                "SELECT id, name, track, lead, members, status, school_name, competition_id, COALESCE(mentor, ''), COALESCE(motto, ''), COALESCE(roster_list, '[]'::jsonb), mentor_id, COALESCE(mentor_status, 'none'), COALESCE(is_solo, FALSE) "
+                "SELECT id, name, track, lead, members, status, school_name, competition_id, COALESCE(mentor, ''), COALESCE(motto, ''), COALESCE(roster_list, '[]'::jsonb), mentor_id, COALESCE(mentor_status, 'none'), COALESCE(is_solo, FALSE), COALESCE(photo_file_id, '') "
                 "FROM teams WHERE competition_id = %s ORDER BY name ASC",
                 (competition_id,),
             )
         else:
             cur.execute(
-                "SELECT id, name, track, lead, members, status, school_name, competition_id, COALESCE(mentor, ''), COALESCE(motto, ''), COALESCE(roster_list, '[]'::jsonb), mentor_id, COALESCE(mentor_status, 'none'), COALESCE(is_solo, FALSE) "
+                "SELECT id, name, track, lead, members, status, school_name, competition_id, COALESCE(mentor, ''), COALESCE(motto, ''), COALESCE(roster_list, '[]'::jsonb), mentor_id, COALESCE(mentor_status, 'none'), COALESCE(is_solo, FALSE), COALESCE(photo_file_id, '') "
                 "FROM teams ORDER BY name ASC"
             )
         rows = cur.fetchall()
@@ -6118,6 +6118,7 @@ try:
                 "mentorId": r[11] if len(r) > 11 else None,
                 "mentorStatus": r[12] if len(r) > 12 else "none",
                 "isSolo": bool(r[13]) if len(r) > 13 else False,
+                "photoFileId": r[14] if len(r) > 14 else "",
             })
         return res
 
@@ -9448,14 +9449,15 @@ try:
             "temporary_password": temp_password
         }
 
-    def _upsert_team(cur, name, track, lead, members, status, school_name,
-                      competition_id, mentor, motto, roster_list, lead_email, member_emails,
-                     member_credentials: list | None = None) -> str:
-        """Create or update a team and sync its members + member accounts.
+    def _upsert_team(cur, name: str, track: str, lead: str, members: int, status: str,
+                     school_name: str, competition_id: str, mentor: str, motto: str,
+                     roster_list: list, lead_email: str = "", member_emails: list = None,
+                     member_credentials: list = None, photo_file_id: str = "") -> str:
+        """Create or update a team row, sync membership, and provision accounts.
 
-        Idempotent by (name, school_name) and shared by the team endpoints and
-        the approval-provisioning path, so approving a school/team application
-        materialises the team in the SAME transaction rather than relying on the
+        Consolidates the three places teams are written to (school approval, team
+        approval, team creation API). Idempotent on (name, school_name). Creates
+        missing student accounts for members immediately instead of leaving the
         reviewer's browser to do it later.
 
         When `member_credentials` is supplied, the one-time credentials for any
@@ -9472,18 +9474,20 @@ try:
             team_id = existing[0]
             cur.execute(
                 "UPDATE teams SET track = %s, lead = %s, members = %s, status = %s, "
-                "competition_id = %s, mentor = %s, motto = %s, roster_list = %s WHERE id = %s",
+                "competition_id = %s, mentor = %s, motto = %s, roster_list = %s, "
+                "photo_file_id = COALESCE(NULLIF(%s, ''), photo_file_id) WHERE id = %s",
                 (track, lead, members, status, competition_id or None, mentor, motto,
-                 json.dumps(roster_list or []), team_id),
+                 json.dumps(roster_list or []), photo_file_id or "", team_id),
             )
         else:
             team_id = "team-" + str(uuid.uuid4())[:8]
             cur.execute(
                 "INSERT INTO teams (id, name, track, lead, members, status, school_name, "
-                "competition_id, mentor, motto, roster_list) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                "competition_id, mentor, motto, roster_list, photo_file_id) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (team_id, name, track, lead, members, status, school_name or "",
-                 competition_id or None, mentor, motto, json.dumps(roster_list or [])),
+                 competition_id or None, mentor, motto, json.dumps(roster_list or []),
+                 photo_file_id or ""),
             )
         _sync_team_members(cur, team_id, lead, roster_list or [], lead_email or "", member_emails or [])
         created_members = _provision_team_member_accounts(cur, team_id, school_name or None)
@@ -9530,6 +9534,7 @@ try:
             teams = details.get("teamsList")
             if not isinstance(teams, list):
                 return {"applied": False, "reason": "No teams listed in application"}
+            logo_id = details.get("logoFileId") or details.get("photoFileId") or ""
             for t in teams:
                 if not isinstance(t, dict):
                     continue
@@ -9548,11 +9553,25 @@ try:
                     emails = _names(t.get("memberEmails"))
                 lead = (t.get("leadName") or t.get("lead") or (roster[0] if roster else "") or "Team Lead").strip()
                 track = (t.get("track") or "Coding").strip()
+                t_photo = t.get("photoFileId") or t.get("logoFileId") or logo_id
                 team_id = _upsert_team(cur, name, track, lead, max(len(roster), 1), "Active",
                                        entity, competition_id, "", "", roster,
                                        (emails[0] if emails else ""), emails,
-                                       member_credentials)
+                                       member_credentials, photo_file_id=t_photo)
                 created.append(team_id)
+
+                # Propagate member photos to student accounts
+                member_photos = t.get("memberPhotos")
+                photos = member_photos.split() if isinstance(member_photos, str) else member_photos if isinstance(member_photos, list) else []
+                for idx, pid in enumerate(photos):
+                    if not pid:
+                        continue
+                    em = (emails[idx] or "").strip().lower() if idx < len(emails) else ""
+                    nm = (roster[idx] or "").strip() if idx < len(roster) else ""
+                    if em:
+                        cur.execute("UPDATE users SET photo_file_id = %s WHERE lower(email) = %s AND (photo_file_id IS NULL OR photo_file_id = '')", (pid, em))
+                    elif nm:
+                        cur.execute("UPDATE users SET photo_file_id = %s WHERE lower(full_name) = lower(%s) AND (photo_file_id IS NULL OR photo_file_id = '')", (pid, nm))
         elif approval_type == "team addition":
             name = entity
             if not name:
