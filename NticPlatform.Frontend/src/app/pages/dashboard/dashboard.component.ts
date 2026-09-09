@@ -955,6 +955,42 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return map[role] || (role ? role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Governance');
   }
 
+  hasDomainMetrics(p: PersonnelPerson): boolean {
+    return p.role === 'mentor' || !!p.track || !!p.expertise || p.submissions_graded !== null || p.role === 'instructor' || p.role === 'sponsor' || p.role === 'government' || p.role === 'gov_partner';
+  }
+
+  getPersonClearanceClass(p: PersonnelPerson): string {
+    return p.has_document ? 'pm-chip-ok' : 'pm-chip-warn';
+  }
+
+  getPersonClearanceLabel(p: PersonnelPerson): string {
+    return p.has_document ? 'MoU / Clearance on file' : 'MoU Pending';
+  }
+
+  getPersonClearanceIcon(p: PersonnelPerson): string {
+    return p.has_document ? 'verified' : 'pending_actions';
+  }
+
+  getPersonClearanceDetail(p: PersonnelPerson): string {
+    return p.has_document ? 'MoU / Mandate On File' : 'MoU Clearance Pending';
+  }
+
+  isGovernmentPerson(p: PersonnelPerson): boolean {
+    return p.role === 'government' || p.role === 'gov_partner';
+  }
+
+  getPersonClearanceTextColor(p: PersonnelPerson): string {
+    return p.has_document ? 'text-green' : 'text-amber';
+  }
+
+  getPersonStatusClass(p: PersonnelPerson): string {
+    return this.personNeedsAttention(p) ? 'pm-chip-warn' : 'pm-chip-ok';
+  }
+
+  getPersonStatusLabel(p: PersonnelPerson): string {
+    return p.must_change_password ? `${p.status} · password reset due` : p.status;
+  }
+
   /** Card badge. Read from the already-loaded user list so the count is real
    *  before the roster endpoint has been called. */
   get personnelCount(): number {

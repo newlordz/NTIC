@@ -786,8 +786,8 @@ export class AppComponent implements OnInit, OnDestroy {
       // no link was ever rendered and an instructor could only reach it by typing
       // the URL. Kept in step with ROLE_ACCESS['lms'] in auth.guard.ts.
       case 'lms':          return ['student', 'instructor'].includes(role);
-      case 'competitions': return ['student', 'instructor', 'school_admin', 'judge', 'super_admin', 'admin', 'content_manager', 'competition_manager'].includes(role);
-      case 'leaderboard':  return ['student', 'instructor', 'school_admin', 'judge', 'sponsor', ...adminRoles].includes(role);
+      case 'competitions': return ['student', 'instructor', 'school_admin', 'judge', 'super_admin', 'admin', 'content_manager', 'competition_manager', 'government'].includes(role);
+      case 'leaderboard':  return ['student', 'instructor', 'school_admin', 'judge', 'sponsor', 'government', ...adminRoles].includes(role);
       case 'talent':       return ['instructor', 'sponsor'].includes(role);
       case 'sponsors':     return ['sponsor'].includes(role);
       // Judging workspace. Mirrors the backend's GRADING_ROLES and the

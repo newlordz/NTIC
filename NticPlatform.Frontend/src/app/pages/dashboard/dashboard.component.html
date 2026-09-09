@@ -2525,7 +2525,13 @@
                 </td>
                 <td *ngIf="personnelTab === 'government'">
                   <span class="pm-chip pm-chip-ok">{{ p.organization || p.sector || 'Public Sector Agency' }}</span>
-                  <div class="pm-sub" *ngIf="p.track || p.expertise">{{ p.track || p.expertise }} Project Focus</div>
+                  <div class="pm-sub" *ngIf="p.track">{{ p.track }} Project Focus</div>
+                  <div style="margin-top: 4px;">
+                    <span class="pm-chip" [ngClass]="getPersonClearanceClass(p)" style="font-size: 11px; padding: 2px 7px; display: inline-flex; align-items: center; gap: 4px;">
+                      <span class="material-symbols-outlined" style="font-size: 13px;">{{ getPersonClearanceIcon(p) }}</span>
+                      {{ getPersonClearanceLabel(p) }}
+                    </span>
+                  </div>
                 </td>
                 <td *ngIf="personnelTab === 'mentor'">
                   <span class="pm-sub">{{ p.track || p.expertise || 'General Mentorship' }}</span>
@@ -2548,9 +2554,8 @@
                   </div>
                 </td>
                 <td>
-                  <span class="pm-chip" [class.pm-chip-ok]="!personNeedsAttention(p)"
-                                        [class.pm-chip-warn]="personNeedsAttention(p)">
-                    {{ p.status }}<ng-container *ngIf="p.must_change_password"> &middot; password reset due</ng-container>
+                  <span class="pm-chip" [ngClass]="getPersonStatusClass(p)">
+                    {{ getPersonStatusLabel(p) }}
                   </span>
                 </td>
                 <td><span class="material-symbols-outlined pm-row-arrow">chevron_right</span></td>
@@ -2690,7 +2695,7 @@
               </div>
 
               <!-- Card 3: Role-Specific Domain Details -->
-              <div class="pm-card pm-card-full" *ngIf="p.role === 'mentor' || p.track || p.expertise || p.submissions_graded !== null || p.role === 'instructor' || p.role === 'sponsor'">
+              <div class="pm-card pm-card-full" *ngIf="hasDomainMetrics(p)">
                 <div class="pm-card-header">
                   <span class="material-symbols-outlined pm-card-icon">verified_user</span>
                   <span class="pm-card-title">Domain &amp; Operational Metrics</span>
@@ -2746,6 +2751,20 @@
                     <div class="pm-domain-metric">
                       <span class="pm-domain-lbl">Verified Received</span>
                       <span class="pm-domain-val text-green">{{ formatCedis(p.amount_received) }}</span>
+                    </div>
+                  </ng-container>
+
+                  <!-- Government Institution -->
+                  <ng-container *ngIf="isGovernmentPerson(p)">
+                    <div class="pm-domain-metric">
+                      <span class="pm-domain-lbl">Institutional Clearance</span>
+                      <span class="pm-domain-val" [ngClass]="getPersonClearanceTextColor(p)">
+                        {{ getPersonClearanceDetail(p) }}
+                      </span>
+                    </div>
+                    <div class="pm-domain-metric" *ngIf="p.track">
+                      <span class="pm-domain-lbl">Priority Project Mandate</span>
+                      <span class="pm-domain-val">{{ p.track }}</span>
                     </div>
                   </ng-container>
 
