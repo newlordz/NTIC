@@ -61,7 +61,7 @@ export const httpResilienceInterceptor: HttpInterceptorFn = (req, next) => {
       }
     }),
     catchError((err: HttpErrorResponse) => {
-      if (err.status === 401 && !req.url.includes('/api/login')) {
+      if (err.status === 401 && !req.url.includes('/api/login') && !req.url.includes('/auth/heartbeat')) {
         // Only trigger session expiration if there was an active token sent
         if (token) {
           clearAllAuthValues();

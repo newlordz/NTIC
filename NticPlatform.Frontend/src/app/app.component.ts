@@ -49,6 +49,7 @@ export class AppComponent implements OnInit, OnDestroy {
   private ticketPollTimer: any = null;
   private idleSubs: { unsubscribe(): void }[] = [];
   private idleWarningOpen = false;
+  private isHandlingSessionExpiry = false;
   private scrollRafPending = false;
   private scrollListener = () => {
     if (this.scrollRafPending) return;
@@ -399,25 +400,46 @@ export class AppComponent implements OnInit, OnDestroy {
       type: 'warning'
     });
 
-    // Already handled by the expiry path (dialog was force-closed).
-    if (!this.idleWarningOpen) return;
+    // Already handled by expiry path
+    if (this.isHandlingSessionExpiry) {
+      this.idleWarningOpen = false;
+      return;
+    }
+
     this.idleWarningOpen = false;
 
     if (stay) {
-      this.idleTimeout.continueSession();
+      this.idleTimeout.continueSession().subscribe({
+        next: (success) => {
+          if (success) {
+            this.dialogService.toast('Your session has been extended.', 'success', 3500);
+          } else {
+            this.performLogout('Your session could not be renewed. Please sign in again.');
+          }
+        },
+        error: () => {
+          this.performLogout('Your session expired. Please sign in again.');
+        }
+      });
     } else {
       this.performLogout('You have been signed out.');
     }
   }
 
   private onSessionIdleExpired(): void {
+    if (this.isHandlingSessionExpiry) return;
+    this.isHandlingSessionExpiry = true;
     if (this.idleWarningOpen) {
       this.idleWarningOpen = false;
       // Dismiss the unanswered prompt before signing out.
       this.dialogService.closeConfirm(false);
     }
-    if (!getAuthValue('activeUserToken')) return;
+    if (!getAuthValue('activeUserToken')) {
+      this.isHandlingSessionExpiry = false;
+      return;
+    }
     this.performLogout(`You were signed out after ${this.idleTimeout.idleLimitMinutes} minutes of inactivity.`);
+    this.isHandlingSessionExpiry = false;
   }
 
   get openTicketCount(): number {
