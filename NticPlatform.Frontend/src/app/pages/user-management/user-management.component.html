@@ -560,9 +560,6 @@
                     <button class="ra-btn ra-reset" (click)="regenerateTeamOTP(t)" title="Reset Password / Regenerate Access Pass">
                       <span class="material-symbols-outlined">lock_reset</span>
                     </button>
-                    <button class="ra-btn" (click)="openEditTeamModal(t)" title="Edit Squad">
-                      <span class="material-symbols-outlined">edit</span>
-                    </button>
                     <button class="ra-btn ra-delete" (click)="openDeleteTeamModal(t)" title="Delete Squad">
                       <span class="material-symbols-outlined">delete</span>
                     </button>
@@ -1326,10 +1323,6 @@
 
       <div class="um-modal-footer">
         <button class="cmd-btn cmd-btn-ghost" (click)="closeInspectTeamModal()">Close</button>
-        <button class="cmd-btn cmd-btn-primary" (click)="closeInspectTeamModal(); openEditTeamModal(selectedTeamForInspection)">
-          <span class="material-symbols-outlined">edit</span>
-          Edit Squad
-        </button>
       </div>
     </div>
   </div>
