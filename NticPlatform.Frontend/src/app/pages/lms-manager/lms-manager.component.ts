@@ -1446,11 +1446,16 @@ export class LmsManagerComponent implements OnInit {
         if (this.formMode === 'create') {
           this.startCourseTour();
         }
+        this.dialogService.toast(
+          this.formMode === 'edit' ? 'Course changes saved successfully!' : 'Course created successfully!',
+          'success'
+        );
         this.cdr.markForCheck();
       },
       error: (err: any) => {
         this.isSaving = false;
         this.saveError = this.describeWriteError(err, 'course');
+        this.dialogService.toast(this.saveError || 'Failed to save course.', 'error');
         this.cdr.markForCheck();
       },
     });
@@ -2869,11 +2874,13 @@ export class LmsManagerComponent implements OnInit {
         }
         this.exitAssignmentWizard();
         this.reload();
+        this.dialogService.toast('Assignment saved successfully!', 'success');
         this.cdr.markForCheck();
       },
       error: (err: any) => {
         this.isSaving = false;
         this.saveError = this.describeWriteError(err, 'assignment');
+        this.dialogService.toast(this.saveError || 'Failed to save assignment.', 'error');
         this.cdr.markForCheck();
       },
     });

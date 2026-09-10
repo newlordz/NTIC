@@ -1524,6 +1524,21 @@
     </header>
 
     <div class="wizard-card-centered">
+      <!-- Wizard Top Actions: Quick Save -->
+      <div class="wizard-top-actions">
+        <button
+          type="button"
+          class="wizard-quick-save-btn"
+          (click)="saveCourseFromWizard()"
+          [disabled]="isSaving || !courseForm.title.trim()"
+          [title]="formMode === 'edit' ? 'Save course changes immediately' : 'Save and open course console'"
+        >
+          <span class="material-symbols-outlined quick-save-icon" *ngIf="!isSaving">save</span>
+          <span class="spinner-inline" *ngIf="isSaving"></span>
+          <span class="quick-save-text">{{ isSaving ? 'Saving...' : 'Save' }}</span>
+        </button>
+      </div>
+
       <!-- Wizard Step Progress Header -->
       <div class="wizard-stepper">
         <div class="wizard-step-indicator" [class.active]="courseWizardStep >= 1" [class.current]="courseWizardStep === 1">1</div>
@@ -1652,6 +1667,21 @@
     </header>
 
     <div class="wizard-card-centered">
+      <!-- Wizard Top Actions: Quick Save -->
+      <div class="wizard-top-actions">
+        <button
+          type="button"
+          class="wizard-quick-save-btn"
+          (click)="saveAssignmentFromWizard()"
+          [disabled]="isSaving || !assignmentForm.title.trim() || !assignmentForm.courseId"
+          title="Save assignment immediately"
+        >
+          <span class="material-symbols-outlined quick-save-icon" *ngIf="!isSaving">save</span>
+          <span class="spinner-inline" *ngIf="isSaving"></span>
+          <span class="quick-save-text">{{ isSaving ? 'Saving...' : 'Save' }}</span>
+        </button>
+      </div>
+
       <!-- Wizard Step Progress Header -->
       <div class="wizard-stepper">
         <div class="wizard-step-indicator" [class.active]="assignmentWizardStep >= 1" [class.current]="assignmentWizardStep === 1">1</div>
