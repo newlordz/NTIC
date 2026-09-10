@@ -3068,6 +3068,7 @@ class TestPersonnelRoster:
     def test_never_logged_in_user_reports_no_login(self, client, admin_token):
         email = self._make_user(client, admin_token, "sponsor", "Roster Sponsor")
         person = self._find(self._fetch(client, admin_token), email)
+        assert person is not None
         assert person["last_login_at"] is None
         assert person["login_count"] == 0
         assert person["is_online"] is False
@@ -3088,6 +3089,7 @@ class TestPersonnelRoster:
         token = login.json()["token"]
 
         person = self._find(self._fetch(client, admin_token), email)
+        assert person is not None
         assert person["is_online"] is True
         assert person["last_login_at"] is not None
         assert person["login_count"] >= 1
@@ -3095,6 +3097,7 @@ class TestPersonnelRoster:
         client.post("/api/logout", headers=self._auth(token))
 
         after = self._find(self._fetch(client, admin_token), email)
+        assert after is not None
         assert after["is_online"] is False, "signed-out user should not read as online"
         assert after["last_login_at"] is not None, (
             "logging out erased the login history -- last_login_at is being "
@@ -5333,7 +5336,9 @@ class TestPersonnelManagement:
                             headers=self._auth(admin_token),
                             json={"status": "Suspended", "reason": "Policy breach"})
         assert resp.status_code == 200, resp.text
-        assert self._person(client, admin_token, email)["status"] == "Suspended"
+        person = self._person(client, admin_token, email)
+        assert person is not None
+        assert person["status"] == "Suspended"
 
     def test_suspending_revokes_live_sessions(self, client, admin_token):
         """Without this the person keeps working until their idle timeout expires,
@@ -5361,7 +5366,9 @@ class TestPersonnelManagement:
                      headers=self._auth(admin_token), json={"status": "Suspended"})
         client.patch(f"/api/admin/personnel/{uid}/status",
                      headers=self._auth(admin_token), json={"status": "Active"})
-        assert self._person(client, admin_token, email)["status"] == "Active"
+        person = self._person(client, admin_token, email)
+        assert person is not None
+        assert person["status"] == "Active"
         from app.security import clear_all_rate_limits
         clear_all_rate_limits()
         assert client.post("/api/login", json={
@@ -5408,7 +5415,9 @@ class TestPersonnelManagement:
         resp = client.post(f"/api/admin/personnel/{uid}/require-password-change",
                            headers=self._auth(admin_token))
         assert resp.status_code == 200, resp.text
-        assert self._person(client, admin_token, email)["must_change_password"] is True
+        person = self._person(client, admin_token, email)
+        assert person is not None
+        assert person["must_change_password"] is True
 
     def test_requiring_a_password_change_ends_sessions(self, client, admin_token):
         """Otherwise the requirement only bites whenever they next happen to sign in."""
@@ -7259,6 +7268,34 @@ class TestAiQuizCopilot:
         assert "options" in data and len(data["options"]) == 4
         assert "correct_index" in data and data["correct_index"] in range(4)
         assert "explanation" in data
+        assert "questions" in data and len(data["questions"]) >= 1
+
+    def test_ai_quiz_generation_supports_parse_mode_and_count(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        resp = client.post("/api/lms/ai/generate-quiz", headers=h, json={
+            "lesson_text": "1. What is the clock frequency of the STM32?\nA. 16 MHz\nB. 72 MHz\nC. 1 GHz\nD. 10 kHz\nAnswer: B",
+            "track": "robotics",
+            "title": "Microcontrollers",
+            "mode": "parse",
+            "count": 2
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "questions" in data and len(data["questions"]) == 2
+        assert len(data["questions"][0]["options"]) == 4
+
+    def test_ai_quiz_generation_supports_true_false_format(self, client, admin_token):
+        h = {"Authorization": f"Bearer {admin_token}"}
+        resp = client.post("/api/lms/ai/generate-quiz", headers=h, json={
+            "lesson_text": "Python GIL restricts multiple threads from executing bytecodes concurrently.",
+            "track": "coding",
+            "question_type": "true_false",
+            "count": 1
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["options"] == ["True", "False"]
+
 
 
 class TestPhase4DataIntegrity:

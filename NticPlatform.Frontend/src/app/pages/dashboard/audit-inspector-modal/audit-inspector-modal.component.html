@@ -1,0 +1,548 @@
+<!-- ── AUDIT EVENT INSPECTOR MODAL ── -->
+<div class="aei-overlay" *ngIf="log" (click)="onClose()">
+  <div class="aei-modal" (click)="$event.stopPropagation()">
+
+    <!-- Glowing top accent bar (category-colored) -->
+    <div class="aei-accent-bar" [class]="'acat-' + log.category"></div>
+
+    <!-- ── Header ── -->
+    <div class="aei-header">
+      <div class="aei-header-left">
+        <div class="aei-icon-ring" [class]="'aring-' + log.category">
+          <span class="material-symbols-outlined">{{ log.icon }}</span>
+        </div>
+        <div class="aei-header-text">
+          <div class="aei-title">Audit Event Inspector</div>
+          <div class="aei-subtitle">
+            <span class="aei-record-id">#{{ log.id }}</span>
+            <span class="aei-dot">·</span>
+            Security Log Record
+          </div>
+        </div>
+      </div>
+      <div class="aei-header-right">
+        <span class="aei-sev-pill" [class]="'asev-' + log.severity">
+          <span class="aei-sev-dot"></span>
+          {{ log.severity | uppercase }}
+        </span>
+        <button class="aei-close-btn" (click)="onClose()" title="Close inspector">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Body ── -->
+    <div class="aei-body">
+
+      <!-- Hero action banner -->
+      <div class="aei-hero-banner" [class]="'ahero-' + log.severity">
+        <div class="aei-hero-icon-wrap">
+          <span class="material-symbols-outlined aei-hero-icon">shield_lock</span>
+        </div>
+        <div class="aei-hero-content">
+          <div class="aei-hero-action">{{ log.action }}</div>
+          <div class="aei-hero-time">
+            <span class="material-symbols-outlined">schedule</span>
+            <span>{{ log.time | date:'EEEE, MMMM d, y · HH:mm:ss z' }}</span>
+            <span class="aei-rel-time">({{ log.time | timeAgo }})</span>
+          </div>
+        </div>
+        <span class="aei-cat-badge" [class]="'acat-badge-' + log.category">
+          {{ log.category | uppercase }}
+        </span>
+      </div>
+
+      <!-- ── Quick Forensic Context Pills ── -->
+      <div class="aei-quick-strip" *ngIf="forensics">
+        <div class="aei-qchip">
+          <span class="material-symbols-outlined">domain</span>
+          <span>{{ forensics.domain }}</span>
+        </div>
+        <div class="aei-qchip aei-qchip-resource">
+          <span class="material-symbols-outlined">dataset</span>
+          <span>{{ forensics.targetResource }}</span>
+        </div>
+        <div class="aei-qchip">
+          <span class="material-symbols-outlined">laptop_chromebook</span>
+          <span>{{ forensics.machine?.osName }} · {{ forensics.machine?.browserName?.split(' ')[0] }}</span>
+        </div>
+        <div class="aei-qchip">
+          <span class="material-symbols-outlined">network_check</span>
+          <span>{{ forensics.machine?.ip }}</span>
+        </div>
+        <div class="aei-qchip aei-qchip-diff">
+          <span class="material-symbols-outlined">difference</span>
+          <span>{{ forensics.diffCount }} Changes Captured</span>
+        </div>
+      </div>
+
+      <!-- ── Forensic Tab Navigation ── -->
+      <div class="aei-tab-bar">
+        <button
+          class="aei-tab-btn"
+          [class.active]="activeTab === 'changes'"
+          (click)="setTab('changes')">
+          <span class="material-symbols-outlined">difference</span>
+          <span>Project Changes (Diff)</span>
+          <span class="aei-tab-badge" *ngIf="forensics?.diffCount">{{ forensics.diffCount }}</span>
+        </button>
+        <button
+          class="aei-tab-btn"
+          [class.active]="activeTab === 'machine'"
+          (click)="setTab('machine')">
+          <span class="material-symbols-outlined">devices</span>
+          <span>Machine Telemetry</span>
+        </button>
+        <button
+          class="aei-tab-btn"
+          [class.active]="activeTab === 'timeline'"
+          (click)="setTab('timeline')">
+          <span class="material-symbols-outlined">timeline</span>
+          <span>User Activity Stream</span>
+        </button>
+        <button
+          class="aei-tab-btn"
+          [class.active]="activeTab === 'payload'"
+          (click)="setTab('payload')">
+          <span class="material-symbols-outlined">data_object</span>
+          <span>Forensics &amp; Payload</span>
+        </button>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════════
+           TAB 1: PROJECT CHANGES & STATE DIFF (WHAT CHANGED)
+      ════════════════════════════════════════════════════════ -->
+      <div class="aei-tab-content" *ngIf="activeTab === 'changes'">
+        <!-- Target entity summary card -->
+        <div class="aei-scope-banner">
+          <div class="aei-scope-left">
+            <div class="aei-scope-icon">
+              <span class="material-symbols-outlined">edit_note</span>
+            </div>
+            <div class="aei-scope-meta">
+              <div class="aei-scope-label">MUTATED RESOURCE / ENTITY</div>
+              <div class="aei-scope-title">{{ forensics?.targetResource }}</div>
+              <div class="aei-scope-sub">{{ forensics?.operationLabel }} &middot; {{ forensics?.domain }}</div>
+            </div>
+          </div>
+          <div class="aei-scope-right">
+            <span class="aei-op-pill">{{ forensics?.operationType }}</span>
+            <span class="aei-impact-pill" [class]="'aimp-' + forensics?.impactLevel">
+              <span class="aei-impact-dot"></span>
+              {{ forensics?.impactLevel | uppercase }} IMPACT
+            </span>
+          </div>
+        </div>
+
+        <!-- Field-by-field Before & After Diff Cards -->
+        <div class="aei-diff-container">
+          <div class="aei-diff-header">
+            <div class="aei-dh-field">
+              <span class="material-symbols-outlined">tune</span>
+              Modified Property / Attribute
+            </div>
+            <div class="aei-dh-before">
+              <span class="material-symbols-outlined">history</span>
+              Previous State (Before)
+            </div>
+            <div class="aei-dh-arrow"></div>
+            <div class="aei-dh-after">
+              <span class="material-symbols-outlined">check_circle</span>
+              Committed State (After)
+            </div>
+            <div class="aei-dh-impact">Impact</div>
+          </div>
+
+          <div class="aei-diff-list">
+            <div class="aei-diff-row" *ngFor="let d of forensics?.diffs">
+              <div class="aei-diff-cell aei-cell-field">
+                <span class="aei-field-dot"></span>
+                <span class="aei-field-name">{{ d.field }}</span>
+              </div>
+
+              <div class="aei-diff-cell aei-cell-before">
+                <span class="aei-diff-badge aei-badge-before">
+                  <span class="aei-diff-state-icon material-symbols-outlined">remove_circle_outline</span>
+                  <span class="aei-diff-val">{{ d.before }}</span>
+                </span>
+              </div>
+
+              <div class="aei-diff-cell aei-cell-arrow">
+                <span class="material-symbols-outlined">arrow_forward</span>
+              </div>
+
+              <div class="aei-diff-cell aei-cell-after">
+                <span class="aei-diff-badge aei-badge-after">
+                  <span class="aei-diff-state-icon material-symbols-outlined">add_circle_outline</span>
+                  <span class="aei-diff-val">{{ d.after }}</span>
+                </span>
+              </div>
+
+              <div class="aei-diff-cell aei-cell-impact">
+                <span class="aei-trans-pill" [class]="'atrans-' + d.type">{{ d.impact }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Operational impact note -->
+        <div class="aei-impact-callout">
+          <span class="material-symbols-outlined aei-impact-info-icon">verified_user</span>
+          <div class="aei-impact-body">
+            <div class="aei-impact-heading">Security &amp; Integrity Verification</div>
+            <div class="aei-impact-desc">
+              {{ forensics?.impactText }}. All changes committed are cryptographic-hash bound,
+              irreversible in the historical stream, and attributed directly to operator <strong>{{ log.user }}</strong>.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════════
+           TAB 2: CLIENT MACHINE & ENVIRONMENT TELEMETRY
+      ════════════════════════════════════════════════════════ -->
+      <div class="aei-tab-content" *ngIf="activeTab === 'machine'">
+        <div class="aei-telemetry-grid">
+
+          <!-- Card 1: Operating System & Hardware -->
+          <div class="aei-tele-card">
+            <div class="aei-tele-head">
+              <div class="aei-tele-icon-box">
+                <span class="material-symbols-outlined">computer</span>
+              </div>
+              <div>
+                <div class="aei-tele-title">Host Machine &amp; OS</div>
+                <div class="aei-tele-sub">Operator hardware architecture</div>
+              </div>
+            </div>
+            <div class="aei-tele-props">
+              <div class="aei-tprop">
+                <span class="aei-tprop-lbl">Operating System</span>
+                <span class="aei-tprop-val aei-highlight">{{ forensics?.machine?.osName }}</span>
+              </div>
+              <div class="aei-tprop">
+                <span class="aei-tprop-lbl">System Architecture</span>
+                <span class="aei-tprop-val aei-mono">{{ forensics?.machine?.osArch }}</span>
+              </div>
+              <div class="aei-tprop">
+                <span class="aei-tprop-lbl">Device Class</span>
+                <span class="aei-tprop-val">{{ forensics?.machine?.deviceType }}</span>
+              </div>
+              <div class="aei-tprop">
+                <span class="aei-tprop-lbl">Client Screen Viewport</span>
+                <span class="aei-tprop-val aei-mono">{{ forensics?.machine?.displayResolution }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Web Client & Browser Engine -->
+          <div class="aei-tele-card">
+            <div class="aei-tele-head">
+              <div class="aei-tele-icon-box">
+                <span class="material-symbols-outlined">browser_updated</span>
+              </div>
+              <div>
+                <div class="aei-tele-title">Browser Engine &amp; Client</div>
+                <div class="aei-tele-sub">Runtime execution environment</div>
+              </div>
+            </div>
+            <div class="aei-tele-props">
+              <div class="aei-tprop">
+                <span class="aei-tprop-lbl">Browser Version</span>
+                <span class="aei-tprop-val aei-highlight">{{ forensics?.machine?.browserName }}</span>
+              </div>
+              <div class="aei-tprop">
+                <span class="aei-tprop-lbl">Rendering Engine</span>
+                <span class="aei-tprop-val aei-mono">{{ forensics?.machine?.engine }}</span>
+              </div>
+              <div class="aei-tprop aei-tprop-full">
+                <span class="aei-tprop-lbl">Raw Client / UA String</span>
+                <div class="aei-tprop-val aei-mono aei-ua-box">{{ forensics?.machine?.rawClient }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Network & Origin Location -->
+          <div class="aei-tele-card">
+            <div class="aei-tele-head">
+              <div class="aei-tele-icon-box">
+                <span class="material-symbols-outlined">public</span>
+              </div>
+              <div>
+                <div class="aei-tele-title">Network &amp; Regional Origin</div>
+                <div class="aei-tele-sub">Routing IP and ISP identification</div>
+              </div>
+            </div>
+            <div class="aei-tele-props">
+              <div class="aei-tprop">
+                <span class="aei-tprop-lbl">Origin IP Address</span>
+                <span class="aei-tprop-val aei-mono aei-copyable">
+                  <span>{{ forensics?.machine?.ip }}</span>
+                  <button class="aei-mini-copy" (click)="onCopy(forensics?.machine?.ip, 'IP Address')" title="Copy IP">
+                    <span class="material-symbols-outlined">content_copy</span>
+                  </button>
+                </span>
+              </div>
+              <div class="aei-tprop">
+                <span class="aei-tprop-lbl">Network Provider / ISP</span>
+                <span class="aei-tprop-val">{{ forensics?.machine?.networkIsp }}</span>
+              </div>
+              <div class="aei-tprop">
+                <span class="aei-tprop-lbl">Physical Geolocation</span>
+                <span class="aei-tprop-val">{{ forensics?.machine?.location }}</span>
+              </div>
+              <div class="aei-tprop">
+                <span class="aei-tprop-lbl">Machine Local Timezone</span>
+                <span class="aei-tprop-val aei-mono">{{ forensics?.machine?.timezone }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: Session & Security Protocols -->
+          <div class="aei-tele-card">
+            <div class="aei-tele-head">
+              <div class="aei-tele-icon-box">
+                <span class="material-symbols-outlined">vpn_key</span>
+              </div>
+              <div>
+                <div class="aei-tele-title">Session &amp; Security Layer</div>
+                <div class="aei-tele-sub">Cryptographic transmission context</div>
+              </div>
+            </div>
+            <div class="aei-tele-props">
+              <div class="aei-tprop">
+                <span class="aei-tprop-lbl">Session Fingerprint</span>
+                <span class="aei-tprop-val aei-mono aei-copyable">
+                  <span>{{ forensics?.machine?.sessionFingerprint }}</span>
+                  <button class="aei-mini-copy" (click)="onCopy(forensics?.machine?.sessionFingerprint, 'Session Fingerprint')" title="Copy Fingerprint">
+                    <span class="material-symbols-outlined">content_copy</span>
+                  </button>
+                </span>
+              </div>
+              <div class="aei-tprop">
+                <span class="aei-tprop-lbl">Wire Protocol / TLS</span>
+                <span class="aei-tprop-val aei-highlight">{{ forensics?.machine?.protocol }}</span>
+              </div>
+              <div class="aei-tprop">
+                <span class="aei-tprop-lbl">Immutable Audit Seal</span>
+                <span class="aei-tprop-val aei-mono" style="color:#34d399;">SHA-256 Verified &amp; Locked</span>
+              </div>
+              <div class="aei-tprop">
+                <span class="aei-tprop-lbl">Operator Role</span>
+                <span class="aei-tprop-val">{{ log.actorName }}</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════════
+           TAB 3: USER MACHINE ACTIVITY CONTEXT (TIMELINE)
+      ════════════════════════════════════════════════════════ -->
+      <div class="aei-tab-content" *ngIf="activeTab === 'timeline'">
+        <div class="aei-timeline-header">
+          <div>
+            <div class="aei-tl-title">Operator Machine Session Timeline</div>
+            <div class="aei-tl-sub">Chronological actions performed by <strong>{{ log.user }}</strong> on this machine</div>
+          </div>
+          <span class="aei-tl-count-pill">{{ forensics?.timelineItems?.length || 0 }} Events in Session</span>
+        </div>
+
+        <div class="aei-timeline-track">
+          <div
+            class="aei-tl-node"
+            *ngFor="let item of forensics?.timelineItems"
+            [class.aei-tl-current]="item.isCurrent">
+            <div class="aei-tl-left">
+              <div class="aei-tl-time">{{ item.time | date:'HH:mm:ss' }}</div>
+              <div class="aei-tl-time-ago">{{ item.time | timeAgo }}</div>
+            </div>
+
+            <div class="aei-tl-spine">
+              <div class="aei-tl-dot" [class]="'adot-' + item.category">
+                <span class="material-symbols-outlined" *ngIf="item.isCurrent">arrow_right</span>
+              </div>
+              <div class="aei-tl-line"></div>
+            </div>
+
+            <div class="aei-tl-card">
+              <div class="aei-tl-card-top">
+                <span class="aei-tl-action">{{ item.action }}</span>
+                <span class="aei-tl-cur-badge" *ngIf="item.isCurrent">CURRENT INSPECTED EVENT</span>
+                <span class="aei-tl-cat" [class]="'acat-badge-' + item.category" *ngIf="!item.isCurrent">
+                  {{ item.category | uppercase }}
+                </span>
+              </div>
+              <div class="aei-tl-meta">
+                <span class="aei-mono">#{{ item.id }}</span>
+                <span class="aei-dot">·</span>
+                <span>{{ item.time | date:'EEEE, MMM d, y' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════════
+           TAB 4: EVENT FORENSICS & RAW PAYLOAD
+      ════════════════════════════════════════════════════════ -->
+      <div class="aei-tab-content" *ngIf="activeTab === 'payload'">
+        <!-- ── Details section header ── -->
+        <div class="aei-section-label">
+          <span class="material-symbols-outlined">manage_search</span>
+          Authoritative Security Attributes
+        </div>
+
+        <!-- ── 2-col detail grid ── -->
+        <div class="aei-detail-grid">
+
+          <!-- Event ID -->
+          <div class="aei-field">
+            <div class="aei-field-lbl">
+              <span class="material-symbols-outlined">tag</span>
+              Event ID
+            </div>
+            <div class="aei-field-val aei-mono">
+              <span>{{ log.id }}</span>
+              <button class="aei-copy-btn" (click)="onCopy(log.id, 'Event ID')" title="Copy Event ID">
+                <span class="material-symbols-outlined">content_copy</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Category -->
+          <div class="aei-field">
+            <div class="aei-field-lbl">
+              <span class="material-symbols-outlined">label</span>
+              Event Category
+            </div>
+            <div class="aei-field-val">
+              <span class="aei-cat-chip" [class]="'acat-badge-' + log.category">
+                {{ log.category | uppercase }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Actor Email -->
+          <div class="aei-field">
+            <div class="aei-field-lbl">
+              <span class="material-symbols-outlined">alternate_email</span>
+              Actor Identity
+            </div>
+            <div class="aei-field-val aei-mono">
+              <span>{{ log.user }}</span>
+              <button class="aei-copy-btn" (click)="onCopy(log.user, 'Actor Email')" title="Copy Actor Email">
+                <span class="material-symbols-outlined">content_copy</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Actor Name / Role -->
+          <div class="aei-field">
+            <div class="aei-field-lbl">
+              <span class="material-symbols-outlined">badge</span>
+              Actor Name / Role
+            </div>
+            <div class="aei-field-val">{{ log.actorName }}</div>
+          </div>
+
+          <!-- IP Address -->
+          <div class="aei-field">
+            <div class="aei-field-lbl">
+              <span class="material-symbols-outlined">router</span>
+              Origin IP Address
+            </div>
+            <div class="aei-field-val aei-mono">
+              <span>{{ log.ip }}</span>
+            </div>
+          </div>
+
+          <!-- Geolocation -->
+          <div class="aei-field">
+            <div class="aei-field-lbl">
+              <span class="material-symbols-outlined">location_on</span>
+              Geolocation / Regional Zone
+            </div>
+            <div class="aei-field-val">{{ log.location }}</div>
+          </div>
+
+          <!-- User Agent = full width -->
+          <div class="aei-field aei-field-full">
+            <div class="aei-field-lbl">
+              <span class="material-symbols-outlined">devices</span>
+              Client &amp; User-Agent
+            </div>
+            <div class="aei-field-val aei-mono aei-ua">{{ log.client }}</div>
+          </div>
+
+        </div>
+
+        <!-- ── Compliance strip ── -->
+        <div class="aei-compliance-strip">
+          <div class="aei-compliance-label">
+            <span class="material-symbols-outlined">verified</span>
+            Compliance &amp; Security Classification
+          </div>
+          <div class="aei-compliance-tags">
+            <span class="aei-ctag">
+              <span class="material-symbols-outlined">gavel</span>
+              Ghana Data Protection Act (Act 843)
+            </span>
+            <span class="aei-ctag">
+              <span class="material-symbols-outlined">workspace_premium</span>
+              ISO/IEC 27001 Certified Stream
+            </span>
+            <span class="aei-ctag">
+              <span class="material-symbols-outlined">lock</span>
+              Immutable Audit Hash Verified
+            </span>
+          </div>
+        </div>
+
+        <!-- ── Raw JSON collapsible ── -->
+        <div class="aei-json-section" [class.aei-json-open]="showRawJson">
+          <div class="aei-json-header" (click)="showRawJson = !showRawJson">
+            <div class="aei-json-left">
+              <span class="material-symbols-outlined">data_object</span>
+              <span class="aei-json-title">Raw Security Event Payload</span>
+              <span class="aei-json-pill">{{ showRawJson ? 'Collapse' : 'Expand' }}</span>
+            </div>
+            <div class="aei-json-actions" (click)="$event.stopPropagation()">
+              <button class="aei-action-btn aei-action-outline" (click)="copyJson()">
+                <span class="material-symbols-outlined">content_copy</span>
+                Copy JSON
+              </button>
+              <span class="aei-json-chevron material-symbols-outlined">
+                {{ showRawJson ? 'expand_less' : 'expand_more' }}
+              </span>
+            </div>
+          </div>
+          <div class="aei-json-body" *ngIf="showRawJson">
+            <pre class="aei-json-pre"><code>{{ log | json }}</code></pre>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /aei-body -->
+
+    <!-- ── Footer ── -->
+    <div class="aei-footer">
+      <div class="aei-footer-hint">
+        <span class="material-symbols-outlined">info</span>
+        Events are immutable once written to the audit stream.
+      </div>
+      <div class="aei-footer-actions">
+        <button class="aei-action-btn aei-action-outline" (click)="copyJson()">
+          <span class="material-symbols-outlined">content_copy</span>
+          Copy JSON Payload
+        </button>
+        <button class="aei-action-btn aei-action-primary" (click)="onClose()">
+          <span class="material-symbols-outlined">check_circle</span>
+          Done
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /aei-modal -->
+</div><!-- /aei-overlay -->

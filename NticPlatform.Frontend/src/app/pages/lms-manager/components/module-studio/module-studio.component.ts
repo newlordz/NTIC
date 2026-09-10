@@ -6,6 +6,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { QuillEditorComponent } from 'ngx-quill';
 import { DialogService } from '../../../../services/dialog.service';
+import { ApiService } from '../../../../services/api.service';
 
 export interface QuizQuestionItem {
   id: string;
@@ -127,8 +128,31 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     ]
   };
 
+  // ── AI Question Builder Modal State ──────────────────────────
+  isAiQuestionBuilderOpen = false;
+  targetAiQuizBlock: ModuleBlock | null = null;
+  aiBuilderTab: 'paste' | 'documents' = 'paste';
+
+  aiQuestionSettings = {
+    questionType: 'multiple_choice' as 'multiple_choice' | 'true_false' | 'scenario',
+    difficulty: 'intermediate' as 'beginner' | 'intermediate' | 'championship',
+    count: 1,
+    includeLessonGuides: true
+  };
+
+  rawPastedQuizText = '';
+  uploadedSlideDocName = '';
+  uploadedSlideDocText = '';
+  isUploadingSlideDoc = false;
+  isProcessingAiQuestions = false;
+  aiBuilderError = '';
+
+  previewQuestions: QuizQuestionItem[] = [];
+  previewActiveIdx = 0;
+
   constructor(
     private dialogService: DialogService,
+    private apiService: ApiService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -767,5 +791,242 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
 
   onExit(): void {
     this.exit.emit();
+  }
+
+  // ── AI Question Builder Modal Handlers ───────────────────────
+  openAiQuestionBuilder(blk: ModuleBlock | null): void {
+    this.targetAiQuizBlock = blk;
+    this.isAiQuestionBuilderOpen = true;
+    this.aiBuilderError = '';
+    this.previewQuestions = [];
+    this.previewActiveIdx = 0;
+    // Default to paste mode per user request
+    this.aiBuilderTab = 'paste';
+    this.aiQuestionSettings.count = blk ? 1 : 3;
+    this.cdr.markForCheck();
+  }
+
+  closeAiQuestionBuilderModal(): void {
+    this.isAiQuestionBuilderOpen = false;
+    this.targetAiQuizBlock = null;
+    this.isProcessingAiQuestions = false;
+    this.cdr.markForCheck();
+  }
+
+  setAiBuilderTab(tab: 'paste' | 'documents'): void {
+    this.aiBuilderTab = tab;
+    this.aiBuilderError = '';
+    this.cdr.markForCheck();
+  }
+
+  getAvailableGuideContentLength(): number {
+    return this.moduleBlocks
+      .filter(b => b.type === 'text' && b.content?.trim())
+      .reduce((acc, b) => acc + (b.content?.length || 0), 0);
+  }
+
+  getAvailableAttachedDocCount(): number {
+    return this.moduleBlocks.filter(b => b.type === 'file' && (b.fileName || b.url)).length;
+  }
+
+  onSlideDocSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    this.uploadedSlideDocName = file.name;
+    this.isUploadingSlideDoc = true;
+    this.cdr.markForCheck();
+
+    if (file.name.endsWith('.txt') || file.name.endsWith('.md') || file.name.endsWith('.json') || file.type.startsWith('text/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.uploadedSlideDocText = (e.target?.result as string) || '';
+        this.isUploadingSlideDoc = false;
+        this.dialogService.toast(`Loaded slide document "${file.name}"`, 'success');
+        this.cdr.markForCheck();
+      };
+      reader.onerror = () => {
+        this.isUploadingSlideDoc = false;
+        this.dialogService.toast(`Could not read file "${file.name}".`, 'error');
+        this.cdr.markForCheck();
+      };
+      reader.readAsText(file);
+    } else {
+      // PDF or Office file metadata
+      this.uploadedSlideDocText = `[Attached Curriculum Document: ${file.name}, size: ${(file.size / 1024).toFixed(1)} KB]`;
+      this.isUploadingSlideDoc = false;
+      this.dialogService.toast(`Referenced document "${file.name}".`, 'info');
+      this.cdr.markForCheck();
+    }
+  }
+
+  clearUploadedSlideDoc(): void {
+    this.uploadedSlideDocName = '';
+    this.uploadedSlideDocText = '';
+    this.cdr.markForCheck();
+  }
+
+  executeAiQuestionBuilder(): void {
+    if (this.isProcessingAiQuestions) return;
+    this.aiBuilderError = '';
+
+    let sourceText = '';
+    const mode = this.aiBuilderTab === 'paste' ? 'parse' : 'generate';
+
+    if (this.aiBuilderTab === 'paste') {
+      sourceText = (this.rawPastedQuizText || '').trim();
+      if (!sourceText) {
+        this.aiBuilderError = 'Please paste questions, exam notes, or lecture points to organize.';
+        this.dialogService.toast(this.aiBuilderError, 'warning');
+        return;
+      }
+    } else {
+      // From slides and documents
+      const parts: string[] = [];
+      if (this.uploadedSlideDocText.trim()) {
+        parts.push(this.uploadedSlideDocText.trim());
+      }
+      if (this.aiQuestionSettings.includeLessonGuides) {
+        const guideBlocks = this.moduleBlocks.filter(b => b.type === 'text' && b.content?.trim());
+        guideBlocks.forEach(b => {
+          parts.push(`${b.title || 'Lesson Guide'}:\n${b.content}`);
+        });
+      }
+      sourceText = parts.join('\n\n').trim();
+      if (!sourceText) {
+        sourceText = `${this.moduleForm.title} - ${this.moduleForm.description || 'Core STEM concepts and algorithmic principles.'}`;
+      }
+    }
+
+    this.isProcessingAiQuestions = true;
+    this.cdr.markForCheck();
+
+    const track = this.course?.track || 'coding';
+    const title = this.moduleForm.title || 'Technical Curriculum';
+
+    this.apiService.generateAiQuiz(sourceText, track, title, {
+      mode: mode,
+      questionType: this.aiQuestionSettings.questionType,
+      difficulty: this.aiQuestionSettings.difficulty,
+      count: this.aiQuestionSettings.count
+    }).subscribe({
+      next: (res: any) => {
+        this.isProcessingAiQuestions = false;
+        const rawList = (res?.questions && Array.isArray(res.questions) && res.questions.length > 0)
+          ? res.questions
+          : [res];
+
+        this.previewQuestions = rawList.map((q: any, idx: number) => ({
+          id: 'q-ai-' + Date.now() + '-' + (idx + 1),
+          question: q.question || 'Comprehension checkpoint question',
+          options: (q.options && q.options.length >= 2) ? q.options : ['Option A', 'Option B', 'Option C', 'Option D'],
+          correctIndex: (typeof q.correct_index === 'number' && q.correct_index >= 0) ? q.correct_index : 0,
+          explanation: q.explanation || 'Verified answer key explanation.'
+        }));
+
+        this.previewActiveIdx = 0;
+        this.dialogService.toast(
+          mode === 'parse'
+            ? `Recognized & organized ${this.previewQuestions.length} question(s)!`
+            : `Generated ${this.previewQuestions.length} question(s) successfully!`,
+          'success'
+        );
+        this.cdr.markForCheck();
+      },
+      error: (err: any) => {
+        this.isProcessingAiQuestions = false;
+        this.aiBuilderError = err?.error?.detail || 'Failed to generate questions. Please try again.';
+        this.dialogService.toast(this.aiBuilderError, 'error');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  selectPreviewQuestion(idx: number): void {
+    if (idx >= 0 && idx < this.previewQuestions.length) {
+      this.previewActiveIdx = idx;
+      this.cdr.markForCheck();
+    }
+  }
+
+  removePreviewQuestion(idx: number): void {
+    this.previewQuestions.splice(idx, 1);
+    this.previewActiveIdx = Math.max(0, Math.min(this.previewActiveIdx, this.previewQuestions.length - 1));
+    this.cdr.markForCheck();
+  }
+
+  applyAiQuestionToActive(): void {
+    if (!this.targetAiQuizBlock || this.previewQuestions.length === 0) return;
+    const activeQ = this.previewQuestions[this.previewActiveIdx] || this.previewQuestions[0];
+    const targetQList = this.getQuizQuestions(this.targetAiQuizBlock);
+    const targetIdx = this.targetAiQuizBlock.activeQuestionIdx ?? 0;
+
+    if (targetQList[targetIdx]) {
+      targetQList[targetIdx] = { ...activeQ, id: targetQList[targetIdx].id };
+    } else {
+      targetQList.push({ ...activeQ });
+      this.targetAiQuizBlock.activeQuestionIdx = targetQList.length - 1;
+    }
+
+    this.targetAiQuizBlock.quizQuestion = activeQ.question;
+    this.targetAiQuizBlock.quizOptions = activeQ.options;
+    this.targetAiQuizBlock.quizCorrectIndex = activeQ.correctIndex;
+    this.targetAiQuizBlock.quizExplanation = activeQ.explanation;
+
+    this.dialogService.toast('Applied question to active prompt!', 'success');
+    this.closeAiQuestionBuilderModal();
+  }
+
+  appendAllAiQuestionsToBlock(): void {
+    if (!this.targetAiQuizBlock || this.previewQuestions.length === 0) return;
+    const targetQList = this.getQuizQuestions(this.targetAiQuizBlock);
+
+    this.previewQuestions.forEach((q, i) => {
+      targetQList.push({
+        id: 'q-' + (targetQList.length + 1),
+        question: q.question,
+        options: [...q.options],
+        correctIndex: q.correctIndex,
+        explanation: q.explanation
+      });
+    });
+
+    this.targetAiQuizBlock.activeQuestionIdx = targetQList.length - 1;
+    this.selectQuizQuestion(this.targetAiQuizBlock, this.targetAiQuizBlock.activeQuestionIdx);
+
+    this.dialogService.toast(`Appended ${this.previewQuestions.length} question(s) to quiz tabs!`, 'success');
+    this.closeAiQuestionBuilderModal();
+  }
+
+  createAiQuestionsAsNewBlock(): void {
+    if (this.previewQuestions.length === 0) return;
+
+    const firstQ = this.previewQuestions[0];
+    const newQuestions: QuizQuestionItem[] = this.previewQuestions.map((q, idx) => ({
+      id: 'q-' + (idx + 1),
+      question: q.question,
+      options: [...q.options],
+      correctIndex: q.correctIndex,
+      explanation: q.explanation
+    }));
+
+    const newBlock: ModuleBlock = {
+      id: 'blk-quiz-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 5),
+      type: 'quiz',
+      title: 'Checkpoint Quiz: ' + (firstQ.question.slice(0, 38) || 'Comprehension Check') + '...',
+      quizQuestions: newQuestions,
+      activeQuestionIdx: 0,
+      quizQuestion: firstQ.question,
+      quizOptions: [...firstQ.options],
+      quizCorrectIndex: firstQ.correctIndex,
+      quizExplanation: firstQ.explanation
+    };
+
+    this.moduleBlocks.push(newBlock);
+    this.selectedBlockId = newBlock.id;
+    this.editingBlockId = newBlock.id;
+
+    this.dialogService.toast(`Created new Quiz block with ${newQuestions.length} question(s)!`, 'success');
+    this.closeAiQuestionBuilderModal();
   }
 }

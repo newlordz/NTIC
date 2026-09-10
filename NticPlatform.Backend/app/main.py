@@ -9452,8 +9452,8 @@ try:
 
     def _upsert_team(cur, name: str, track: str, lead: str, members: int, status: str,
                      school_name: str, competition_id: str, mentor: str, motto: str,
-                     roster_list: list, lead_email: str = "", member_emails: list = None,
-                     member_credentials: list = None, photo_file_id: str = "") -> str:
+                     roster_list: list, lead_email: str = "", member_emails: list | None = None,
+                     member_credentials: list | None = None, photo_file_id: str = "") -> str:
         """Create or update a team row, sync membership, and provision accounts.
 
         Consolidates the three places teams are written to (school approval, team
@@ -9897,7 +9897,7 @@ try:
                             reasons_html = (
                                 f'<div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:8px;padding:16px;margin:16px 0;">'
                                 f'<p style="margin:0 0 8px;font-weight:bold;color:#c62828;">Reason / Feedback:</p>'
-                                f'<p style="margin:4px 0;color:#333;">{html_escape(str(reasons))}</p>'
+                                f'<p style="margin:4px 0;color:#333;">{html_escape(reasons)}</p>'
                                 f'</div>'
                             )
                         html_body = (
@@ -10548,8 +10548,15 @@ try:
         if not rules:
             return True
         for rule in rules:
-            prefixes = rule[0] if isinstance(rule[0], tuple) else (rule[0],)
-            offset = rule[1] if len(rule) > 1 else 0
+            if len(rule) > 1 and isinstance(rule[-1], int):
+                offset: int = rule[-1]
+                raw_prefixes = rule[:-1] if len(rule) > 2 else rule[0]
+            else:
+                offset = 0
+                raw_prefixes = rule
+            prefixes: tuple[bytes, ...] = raw_prefixes if isinstance(raw_prefixes, tuple) else (raw_prefixes,)
+            if len(prefixes) == 1 and isinstance(prefixes[0], tuple):
+                prefixes = prefixes[0]
             if not any(raw[offset:offset + len(p)] == p for p in prefixes):
                 return False
         return True
@@ -10680,11 +10687,15 @@ try:
         finally:
             release_db_connection(conn)
 
-    # ── AI CURRICULUM COPILOT ──────────────────────────────────────────
+    # ── AI CURRICULUM COPILOT / QUESTION BUILDER ────────────────────────
     class AiQuizGenerationPayload(BaseModel):
         lesson_text: str
         track: str = "coding"
         title: str = ""
+        mode: str = "generate"  # "generate" (from lesson/slides text) or "parse" (from raw questions/text)
+        question_type: str = "multiple_choice"  # "multiple_choice", "true_false", "scenario"
+        difficulty: str = "intermediate"  # "beginner", "intermediate", "championship"
+        count: int = 1  # 1 to 5
 
     @app.post("/api/lms/ai/generate-quiz")
     async def generate_ai_quiz(payload: AiQuizGenerationPayload, _actor: dict = Depends(require_auth)):
@@ -10692,15 +10703,40 @@ try:
         if not text:
             raise HTTPException(status_code=400, detail="Lesson text is required to generate quiz.")
 
-        prompt = (
-            f"You are an expert STEM educator and curriculum architect for the National Tech Innovation Championship.\n"
-            f"Track: {payload.track}\n"
-            f"Lesson Title: {payload.title}\n"
-            f"Lesson Content:\n{text[:3000]}\n\n"
-            f"Generate a rigorous, high-quality multiple-choice checkpoint question that tests deep understanding of this lesson.\n"
-            f"Return ONLY valid JSON with no markdown wrapping or formatting in this exact format:\n"
-            f'{{"question": "...", "options": ["Option A", "Option B", "Option C", "Option D"], "correct_index": 0, "explanation": "..."}}'
-        )
+        req_count = max(1, min(payload.count or 1, 5))
+        mode = (payload.mode or "generate").strip().lower()
+        q_type = (payload.question_type or "multiple_choice").strip().lower()
+        diff = (payload.difficulty or "intermediate").strip().lower()
+
+        if mode == "parse":
+            prompt = (
+                f"You are an expert STEM quiz parser and curriculum organizer.\n"
+                f"The user has provided raw unformatted or semi-formatted quiz questions, exam notes, or lecture points:\n"
+                f"\"\"\"\n{text[:4000]}\n\"\"\"\n\n"
+                f"Your task is to recognize the questions, separate the question prompt from its choices, identify the correct answer, and generate or extract an educational explanation.\n"
+                f"Track context: {payload.track}\n"
+                f"Desired question format: {q_type} (options: multiple_choice = 4 options, true_false = 2 options ['True', 'False'])\n"
+                f"If the text only contains statements or notes, convert them into up to {req_count} structured comprehension questions.\n"
+                f"Return ONLY valid JSON with no markdown wrapping or code blocks in this exact format:\n"
+                f'{{"questions": [{{"question": "...", "options": ["Option A", "Option B", "Option C", "Option D"], "correct_index": 0, "explanation": "..."}}]}}'
+            )
+        else:
+            prompt = (
+                f"You are an expert STEM educator and curriculum architect for the National Tech Innovation Championship.\n"
+                f"Track: {payload.track}\n"
+                f"Lesson Title: {payload.title}\n"
+                f"Difficulty Level: {diff}\n"
+                f"Question Format: {q_type}\n"
+                f"Lesson Content / Slide Context:\n{text[:3500]}\n\n"
+                f"Generate exactly {req_count} high-quality question(s) that test understanding of this lesson.\n"
+                f"Requirements:\n"
+                f"- If format is 'true_false', options MUST be exactly ['True', 'False'].\n"
+                f"- If format is 'scenario', formulate practical problem-solving or real-world system challenges.\n"
+                f"- Otherwise provide 4 distinct, plausible options.\n"
+                f"- Ensure explanation details why the correct answer is right.\n"
+                f"Return ONLY valid JSON with no markdown wrapping or code blocks in this exact format:\n"
+                f'{{"questions": [{{"question": "...", "options": ["Option A", "Option B", "Option C", "Option D"], "correct_index": 0, "explanation": "..."}}]}}'
+            )
 
         gemini_key = settings.GEMINI_API_KEY
         if gemini_key:
@@ -10720,27 +10756,84 @@ try:
                             if raw_reply.startswith("json"):
                                 raw_reply = raw_reply[4:]
                         parsed = json.loads(raw_reply.strip())
-                        if "question" in parsed and "options" in parsed:
+
+                        parsed_list = []
+                        if isinstance(parsed, dict):
+                            if "questions" in parsed and isinstance(parsed["questions"], list) and len(parsed["questions"]) > 0:
+                                parsed_list = parsed["questions"]
+                            elif "question" in parsed:
+                                parsed_list = [parsed]
+                        elif isinstance(parsed, list):
+                            parsed_list = parsed
+
+                        valid_questions = []
+                        for q in parsed_list:
+                            if isinstance(q, dict) and "question" in q:
+                                opts = q.get("options")
+                                if not isinstance(opts, list) or len(opts) < 2:
+                                    opts = ["True", "False"] if q_type == "true_false" else ["Option A", "Option B", "Option C", "Option D"]
+                                c_idx = q.get("correct_index", 0)
+                                if not isinstance(c_idx, int) or c_idx < 0 or c_idx >= len(opts):
+                                    c_idx = 0
+                                valid_questions.append({
+                                    "question": q["question"],
+                                    "options": opts,
+                                    "correct_index": c_idx,
+                                    "explanation": q.get("explanation", "Review lesson notes for verification.")
+                                })
+
+                        if valid_questions:
                             return {
-                                "question": parsed["question"],
-                                "options": parsed["options"][:4],
-                                "correct_index": parsed.get("correct_index", 0),
-                                "explanation": parsed.get("explanation", "Review the previous lesson reading for details.")
+                                "question": valid_questions[0]["question"],
+                                "options": valid_questions[0]["options"][:4] if q_type != "true_false" else valid_questions[0]["options"][:2],
+                                "correct_index": valid_questions[0]["correct_index"],
+                                "explanation": valid_questions[0]["explanation"],
+                                "questions": valid_questions[:req_count]
                             }
             except Exception as e:
                 logger.warning("Gemini API call failed, falling back to heuristic question generator: %s", str(e))
 
         first_line = text.split("\n")[0].replace("#", "").strip() or "the core concepts"
+        fallback_questions = []
+        for i in range(req_count):
+            if q_type == "true_false":
+                q_text = f"In {payload.track} development, {first_line[:50]} guarantees deterministic runtime safety."
+                opts = ["True", "False"]
+                corr = 0
+                exp = f"True: In {payload.track} architectures, bounded invariants prevent runtime degradation."
+            elif q_type == "scenario":
+                q_text = f"Given a real-world {payload.track} challenge regarding {first_line[:40]}, what is the optimal recovery action?"
+                opts = [
+                    "Isolate subsystem telemetry and engage bounded fallback routines",
+                    "Overclock the processor without heat dissipation telemetry",
+                    "Drop network encryption packets to minimize socket latency",
+                    "Bypass watchdog timers to prevent process termination"
+                ]
+                corr = 0
+                exp = f"Isolating telemetry and executing bounded fallbacks ensures system reliability under fault conditions."
+            else:
+                q_text = f"Which principle best describes the algorithmic requirement for {first_line[:55]}?" if i == 0 else f"What secondary architectural rule governs {first_line[:40]} iteration {i + 1}?"
+                opts = [
+                    "Ensuring deterministic O(1) polling and constant-time execution",
+                    "Unchecked recursion without base case guardrails",
+                    "Blocking asynchronous event loops indefinitely",
+                    "Ignoring hardware timing constraints and clock drift"
+                ]
+                corr = 0
+                exp = f"In {payload.track} applications, deterministic execution and bounded timing ensure fail-safe hardware telemetry."
+            fallback_questions.append({
+                "question": q_text,
+                "options": opts,
+                "correct_index": corr,
+                "explanation": exp
+            })
+
         return {
-            "question": f"Which principle best describes the algorithmic requirement for {first_line[:60]}?",
-            "options": [
-                "Ensuring deterministic O(1) polling and constant-time execution",
-                "Unchecked recursion without base case guardrails",
-                "Blocking asynchronous event loops indefinitely",
-                "Ignoring hardware timing constraints and clock drift"
-            ],
-            "correct_index": 0,
-            "explanation": f"In {payload.track} applications, deterministic execution and bounded timing ensure fail-safe hardware telemetry."
+            "question": fallback_questions[0]["question"],
+            "options": fallback_questions[0]["options"],
+            "correct_index": fallback_questions[0]["correct_index"],
+            "explanation": fallback_questions[0]["explanation"],
+            "questions": fallback_questions
         }
 
     # Mount static files

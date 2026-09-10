@@ -151,11 +151,11 @@
           </div>
         </button>
 
-        <button type="button" class="palette-btn palette-btn-ai" [disabled]="isCanvasPreviewMode" (click)="!isCanvasPreviewMode && triggerAiQuiz.emit({ isNew: true })" title="Generate comprehension micro-quiz with AI Copilot">
+        <button type="button" class="palette-btn palette-btn-ai" [disabled]="isCanvasPreviewMode" (click)="!isCanvasPreviewMode && openAiQuestionBuilder(null)" title="Open AI Question Builder to generate or import questions">
           <span class="material-symbols-outlined icon-ai">auto_awesome</span>
           <div class="palette-btn-text">
-            <strong>AI Quiz Copilot</strong>
-            <span>Auto-generate questions from text</span>
+            <strong>AI Question Builder</strong>
+            <span>Generate or import from text &amp; slides</span>
           </div>
         </button>
 
@@ -503,9 +503,9 @@
               <div class="form-group mb-2">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                   <label class="text-xs">Question {{ (blk.activeQuestionIdx ?? 0) + 1 }} Prompt</label>
-                  <button type="button" class="btn btn-xs btn-ai-sparkle" (click)="triggerAiQuiz.emit({ block: blk })" [disabled]="isGeneratingAiQuiz[blk.id]" title="Auto-generate question from guide content using AI">
-                    <span class="material-symbols-outlined" style="font-size:14px; color:#6366f1;">{{ isGeneratingAiQuiz[blk.id] ? 'sync' : 'auto_awesome' }}</span>
-                    <span style="font-size:11px; font-weight:700; color:#4f46e5;">{{ isGeneratingAiQuiz[blk.id] ? 'Generating...' : 'AI Copilot' }}</span>
+                  <button type="button" class="btn btn-xs btn-ai-sparkle" (click)="openAiQuestionBuilder(blk)" [disabled]="isProcessingAiQuestions" title="Open AI Question Builder for this question">
+                    <span class="material-symbols-outlined" style="font-size:14px; color:#6366f1;">auto_awesome</span>
+                    <span style="font-size:11px; font-weight:700; color:#4f46e5;">AI Question Builder</span>
                   </button>
                 </div>
                 <input type="text" [(ngModel)]="getActiveQuizQuestion(blk).question" (ngModelChange)="blk.quizQuestion = getActiveQuizQuestion(blk).question" placeholder="e.g. Which algorithm provides logarithmic search complexity?" class="studio-input-sm" />
@@ -910,5 +910,318 @@
         </div>
       </div>
     </main>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     AI QUESTION BUILDER MODAL (OPTION B + CUSTOM CRITERIA)
+     ════════════════════════════════════════════════════════════ -->
+<div class="ai-builder-modal-backdrop" *ngIf="isAiQuestionBuilderOpen" (click)="closeAiQuestionBuilderModal()">
+  <div class="ai-builder-modal-card" (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="ai-builder-header">
+      <div class="ai-builder-title-block">
+        <div class="ai-builder-icon-badge">
+          <span class="material-symbols-outlined">auto_awesome</span>
+        </div>
+        <div>
+          <h3>AI Question Builder</h3>
+          <p>Generate questions from curriculum slides and documents, or paste raw text to organize into structured questions.</p>
+        </div>
+      </div>
+      <button type="button" class="ai-modal-close-btn" (click)="closeAiQuestionBuilderModal()" title="Close">&times;</button>
+    </div>
+
+    <!-- Mode Selector Tabs (Option B default) -->
+    <div class="ai-builder-tab-bar">
+      <button
+        type="button"
+        class="ai-tab-btn"
+        [class.active]="aiBuilderTab === 'paste'"
+        (click)="setAiBuilderTab('paste')"
+      >
+        <span class="material-symbols-outlined">content_paste</span>
+        <span>Paste Raw Questions / Notes</span>
+        <span class="ai-tab-badge">Option B</span>
+      </button>
+
+      <button
+        type="button"
+        class="ai-tab-btn"
+        [class.active]="aiBuilderTab === 'documents'"
+        (click)="setAiBuilderTab('documents')"
+      >
+        <span class="material-symbols-outlined">description</span>
+        <span>From Slides &amp; Documents</span>
+      </button>
+    </div>
+
+    <div class="ai-builder-body">
+      <!-- ── SECTION: HOW QUESTIONS SHOULD BE SET ── -->
+      <div class="ai-settings-panel">
+        <div class="ai-settings-header">
+          <span class="material-symbols-outlined">tune</span>
+          <strong>Configure How Questions Should Be Set</strong>
+        </div>
+
+        <div class="ai-settings-grid">
+          <!-- 1. Question Format -->
+          <div class="ai-setting-group">
+            <label class="setting-label">Question Format</label>
+            <div class="ai-pill-selector">
+              <button
+                type="button"
+                class="ai-pill-btn"
+                [class.selected]="aiQuestionSettings.questionType === 'multiple_choice'"
+                (click)="aiQuestionSettings.questionType = 'multiple_choice'"
+              >
+                <span>Multiple Choice (4)</span>
+              </button>
+              <button
+                type="button"
+                class="ai-pill-btn"
+                [class.selected]="aiQuestionSettings.questionType === 'true_false'"
+                (click)="aiQuestionSettings.questionType = 'true_false'"
+              >
+                <span>True / False</span>
+              </button>
+              <button
+                type="button"
+                class="ai-pill-btn"
+                [class.selected]="aiQuestionSettings.questionType === 'scenario'"
+                (click)="aiQuestionSettings.questionType = 'scenario'"
+              >
+                <span>Problem Scenario</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 2. Cognitive Depth / Rigor -->
+          <div class="ai-setting-group">
+            <label class="setting-label">Difficulty &amp; Depth</label>
+            <div class="ai-pill-selector">
+              <button
+                type="button"
+                class="ai-pill-btn"
+                [class.selected]="aiQuestionSettings.difficulty === 'beginner'"
+                (click)="aiQuestionSettings.difficulty = 'beginner'"
+              >
+                <span>Beginner (Recall)</span>
+              </button>
+              <button
+                type="button"
+                class="ai-pill-btn"
+                [class.selected]="aiQuestionSettings.difficulty === 'intermediate'"
+                (click)="aiQuestionSettings.difficulty = 'intermediate'"
+              >
+                <span>Intermediate (Core)</span>
+              </button>
+              <button
+                type="button"
+                class="ai-pill-btn"
+                [class.selected]="aiQuestionSettings.difficulty === 'championship'"
+                (click)="aiQuestionSettings.difficulty = 'championship'"
+              >
+                <span>Championship (High Rigor)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 3. Question Count -->
+          <div class="ai-setting-group">
+            <label class="setting-label">Question Count</label>
+            <div class="ai-pill-selector">
+              <button
+                type="button"
+                class="ai-pill-btn"
+                [class.selected]="aiQuestionSettings.count === 1"
+                (click)="aiQuestionSettings.count = 1"
+              >
+                <span>1 Question</span>
+              </button>
+              <button
+                type="button"
+                class="ai-pill-btn"
+                [class.selected]="aiQuestionSettings.count === 3"
+                (click)="aiQuestionSettings.count = 3"
+              >
+                <span>3 Questions</span>
+              </button>
+              <button
+                type="button"
+                class="ai-pill-btn"
+                [class.selected]="aiQuestionSettings.count === 5"
+                (click)="aiQuestionSettings.count = 5"
+              >
+                <span>5 Questions</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TAB 1: PASTE RAW QUESTIONS / NOTES (OPTION B) ── -->
+      <div *ngIf="aiBuilderTab === 'paste'" class="ai-tab-content slide-in">
+        <div class="ai-paste-guide">
+          <span class="material-symbols-outlined guide-icon">info</span>
+          <div>
+            <strong>Paste any raw questions, exam banks, or lesson notes</strong>
+            <p>The AI recognizes question stems, options (A/B/C/D), marks the correct answer, and writes a pedagogical explanation.</p>
+          </div>
+        </div>
+
+        <div class="form-group mb-3">
+          <textarea
+            [(ngModel)]="rawPastedQuizText"
+            rows="7"
+            class="ai-paste-textarea"
+            placeholder="Paste questions or notes here, e.g.:&#10;&#10;1. Which communication protocol is best suited for real-time sensor loops?&#10;A. HTTP/1.1&#10;B. CAN Bus / SPI&#10;C. FTP&#10;D. SMTP&#10;Answer: B&#10;Explanation: CAN and SPI provide deterministic bus timing without application socket overhead."
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- ── TAB 2: FROM SLIDES & DOCUMENTS ── -->
+      <div *ngIf="aiBuilderTab === 'documents'" class="ai-tab-content slide-in">
+        <div class="ai-doc-summary-card mb-3">
+          <div class="doc-summary-header">
+            <span class="material-symbols-outlined text-primary">menu_book</span>
+            <div>
+              <strong>Current Module Material Context</strong>
+              <p>{{ getAvailableGuideContentLength() }} characters available from Lesson Theory blocks in this module.</p>
+            </div>
+          </div>
+          <label class="ai-checkbox-label">
+            <input type="checkbox" [(ngModel)]="aiQuestionSettings.includeLessonGuides" />
+            <span>Include all written text &amp; theory guide blocks as context</span>
+          </label>
+        </div>
+
+        <!-- Slide / Document Dropzone -->
+        <div class="ai-file-dropzone mb-3">
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx,.txt,.md,.json"
+            (change)="onSlideDocSelected($event)"
+            id="slide_doc_picker"
+            style="display:none;"
+          />
+          <label for="slide_doc_picker" class="dropzone-label">
+            <span class="material-symbols-outlined dropzone-icon">upload_file</span>
+            <div class="dropzone-text">
+              <strong *ngIf="!uploadedSlideDocName">Drop Lecture Slides or Document (.pdf, .txt, .docx, .md)</strong>
+              <strong *ngIf="uploadedSlideDocName" class="text-success">{{ uploadedSlideDocName }}</strong>
+              <p *ngIf="!uploadedSlideDocName">Click to browse or drag &amp; drop file to extract questions</p>
+              <p *ngIf="uploadedSlideDocName" class="text-xs text-subtle">File attached as context for AI Question Builder</p>
+            </div>
+          </label>
+          <button
+            type="button"
+            *ngIf="uploadedSlideDocName"
+            class="btn btn-xs btn-outline btn-clear-file"
+            (click)="clearUploadedSlideDoc()"
+          >
+            Remove file
+          </button>
+        </div>
+      </div>
+
+      <!-- Generate Action Bar -->
+      <div class="ai-generate-action-row mb-3">
+        <button
+          type="button"
+          class="btn btn-primary btn-generate-ai"
+          (click)="executeAiQuestionBuilder()"
+          [disabled]="isProcessingAiQuestions || (aiBuilderTab === 'paste' && !rawPastedQuizText.trim())"
+        >
+          <span class="material-symbols-outlined" *ngIf="!isProcessingAiQuestions">auto_awesome</span>
+          <span class="spinner-inline" *ngIf="isProcessingAiQuestions"></span>
+          <span>{{ isProcessingAiQuestions ? 'Analyzing &amp; Building Questions...' : (aiBuilderTab === 'paste' ? 'Parse &amp; Organize Questions' : 'Generate Questions from Material') }}</span>
+        </button>
+      </div>
+
+      <!-- ── PREVIEW SECTION: GENERATED / PARSED QUESTIONS ── -->
+      <div class="ai-preview-section fade-in" *ngIf="previewQuestions.length > 0">
+        <div class="preview-header">
+          <div class="preview-title">
+            <span class="material-symbols-outlined text-success">task_alt</span>
+            <strong>Review Questions ({{ previewQuestions.length }} Ready)</strong>
+          </div>
+          <!-- Question tabs if multiple -->
+          <div class="preview-tabs" *ngIf="previewQuestions.length > 1">
+            <button
+              type="button"
+              *ngFor="let q of previewQuestions; let qIdx = index"
+              class="preview-tab-btn"
+              [class.active]="previewActiveIdx === qIdx"
+              (click)="selectPreviewQuestion(qIdx)"
+            >
+              Q{{ qIdx + 1 }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Active Question Card -->
+        <div class="preview-question-card" *ngIf="previewQuestions[previewActiveIdx] as curQ">
+          <div class="form-group mb-2">
+            <label class="text-xs">Question {{ previewActiveIdx + 1 }} Prompt</label>
+            <input type="text" [(ngModel)]="curQ.question" class="studio-input-sm" />
+          </div>
+
+          <div class="preview-options-list">
+            <div class="preview-opt-row" *ngFor="let opt of curQ.options; let oIdx = index">
+              <input
+                type="radio"
+                [name]="'prev_corr_' + previewActiveIdx"
+                [checked]="curQ.correctIndex === oIdx"
+                (change)="curQ.correctIndex = oIdx"
+              />
+              <input type="text" [(ngModel)]="curQ.options[oIdx]" class="studio-input-sm" />
+              <span class="correct-badge" *ngIf="curQ.correctIndex === oIdx">Correct Answer</span>
+            </div>
+          </div>
+
+          <div class="form-group mt-2">
+            <label class="text-xs">Pedagogical Explanation</label>
+            <input type="text" [(ngModel)]="curQ.explanation" class="studio-input-sm" placeholder="Why this answer is correct..." />
+          </div>
+        </div>
+
+        <!-- Insertion Action Buttons -->
+        <div class="ai-insertion-actions">
+          <button
+            type="button"
+            class="btn btn-outline"
+            *ngIf="targetAiQuizBlock"
+            (click)="applyAiQuestionToActive()"
+            title="Apply this question into the active question tab"
+          >
+            <span class="material-symbols-outlined">edit_note</span>
+            <span>Apply to Active Question (Q{{ (targetAiQuizBlock.activeQuestionIdx ?? 0) + 1 }})</span>
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-success"
+            *ngIf="targetAiQuizBlock"
+            (click)="appendAllAiQuestionsToBlock()"
+            title="Add all generated questions as new question tabs"
+          >
+            <span class="material-symbols-outlined">library_add</span>
+            <span>Add All as New Question Tabs (+{{ previewQuestions.length }})</span>
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="createAiQuestionsAsNewBlock()"
+            title="Create a new quiz block on the module canvas"
+          >
+            <span class="material-symbols-outlined">post_add</span>
+            <span>Insert as New Checkpoint Block</span>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

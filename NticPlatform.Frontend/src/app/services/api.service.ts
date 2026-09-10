@@ -1580,10 +1580,41 @@ login(email: string, password: string): Observable<any> {
     return this.http.post(this.apiUrl + '/bulk-sync', { collection, items });
   }
 
-  generateAiQuiz(lessonText: string, track?: string, title?: string): Observable<{ question: string; options: string[]; correct_index: number; explanation: string }> {
-    return this.http.post<{ question: string; options: string[]; correct_index: number; explanation: string }>(
+  generateAiQuiz(
+    lessonText: string,
+    track?: string,
+    title?: string,
+    options?: {
+      mode?: 'generate' | 'parse';
+      questionType?: 'multiple_choice' | 'true_false' | 'scenario';
+      difficulty?: 'beginner' | 'intermediate' | 'championship';
+      count?: number;
+    }
+  ): Observable<{
+    question: string;
+    options: string[];
+    correct_index: number;
+    explanation: string;
+    questions?: Array<{ question: string; options: string[]; correct_index: number; explanation: string }>;
+  }> {
+    const payload: any = {
+      lesson_text: lessonText,
+      track: track || 'coding',
+      title: title || '',
+      mode: options?.mode || 'generate',
+      question_type: options?.questionType || 'multiple_choice',
+      difficulty: options?.difficulty || 'intermediate',
+      count: options?.count || 1
+    };
+    return this.http.post<{
+      question: string;
+      options: string[];
+      correct_index: number;
+      explanation: string;
+      questions?: Array<{ question: string; options: string[]; correct_index: number; explanation: string }>;
+    }>(
       `${this.apiUrl}/lms/ai/generate-quiz`,
-      { lesson_text: lessonText, track: track || 'coding', title: title || '' }
+      payload
     );
   }
 
