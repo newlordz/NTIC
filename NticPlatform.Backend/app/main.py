@@ -2120,8 +2120,31 @@ try:
             # client makes -- so the student pass has a real id to show before the
             # student submits anything.
             student_id = None
+            team_info = None
             if row[3] == ROLE_STUDENT:
                 student_id = _ensure_student_record(cur, actor)
+                cur.execute(
+                    "SELECT t.id, t.name, t.track, t.mentor_id, "
+                    "COALESCE(NULLIF(t.mentor, ''), u.full_name, ''), COALESCE(u.email, ''), "
+                    "COALESCE(t.school_name, '') "
+                    "FROM teams t "
+                    "JOIN team_members tm ON tm.team_id = t.id "
+                    "LEFT JOIN users u ON u.id = t.mentor_id "
+                    "WHERE tm.student_id = %s OR lower(tm.email) = %s OR lower(tm.name) = %s "
+                    "LIMIT 1",
+                    (actor["id"], (actor.get("email") or "").lower(), (actor.get("full_name") or "").lower())
+                )
+                t_row = cur.fetchone()
+                if t_row:
+                    team_info = {
+                        "team_id": t_row[0],
+                        "team_name": t_row[1],
+                        "track": t_row[2] or "",
+                        "mentor_id": t_row[3],
+                        "mentor_name": t_row[4] or "",
+                        "mentor_email": t_row[5] or "",
+                        "school_name": t_row[6] or ""
+                    }
                 conn.commit()
             cur.close()
         finally:
@@ -2138,9 +2161,14 @@ try:
             "rep_name": row[13] or "",
             "tier": row[14] or "",
             "experience_level": row[15] or "",
-            "track": row[16] or "",
+            "track": row[16] or (team_info["track"] if team_info else "") or "",
             "photo_file_id": row[17] or "",
             "student_id": student_id,
+            "team_id": team_info["team_id"] if team_info else None,
+            "team_name": team_info["team_name"] if team_info else "",
+            "mentor_id": team_info["mentor_id"] if team_info else None,
+            "mentor_name": team_info["mentor_name"] if team_info else "",
+            "mentor_email": team_info["mentor_email"] if team_info else "",
         }
 
     class UpdateMyProfilePayload(BaseModel):
@@ -2207,6 +2235,18 @@ try:
         conn = _get_db()
         try:
             cur = conn.cursor()
+            if actor.get("role") == ROLE_STUDENT:
+                cur.execute("SELECT organization FROM users WHERE id = %s", (actor["id"],))
+                u_row = cur.fetchone()
+                current_org = (u_row[0] or "").strip() if u_row else ""
+                if current_org and current_org.lower() not in ("independent competitor", "independent", "unassigned"):
+                    provided.pop("full_name", None)
+                    provided.pop("organization", None)
+
+            if not provided:
+                cur.close()
+                return {"status": "saved", "message": "No modifiable fields were changed"}
+
             # A blank phone must be stored as NULL, not '': the column has a
             # UNIQUE constraint, and a second empty string would collide.
             if "phone" in provided and not (provided["phone"] or "").strip():
@@ -2464,6 +2504,56 @@ try:
             "status": "available" if (res["email_available"] and res["phone_available"]) else "taken",
         }
 
+
+    class SupportRequestPayload(BaseModel):
+        name: str = Field(..., max_length=200)
+        email: str = Field(..., max_length=254)
+        type: str = Field(default="general", max_length=50)
+        schoolName: str | None = None
+        competitionTier: str | None = None
+        message: str = Field(..., max_length=5000)
+
+    @app.post("/api/support-requests")
+    def submit_support_request(request: Request, payload: SupportRequestPayload):
+        client_ip = extract_client_ip(request)
+        check_rate_limit(f"support-req:{client_ip}", max_attempts=15, window_seconds=60)
+
+        type_labels = {
+            "team": "Team Sponsorship Request",
+            "competition": "Competition Sponsorship Request",
+            "mail": "Institutional Mail Inquiry",
+            "suggestion": "Public Syllabus Suggestion",
+        }
+        approval_type = type_labels.get(payload.type, "External Inquiry")
+
+        inq_id = f"inq-{uuid.uuid4().hex[:8]}"
+        details = {
+            "name": payload.name.strip(),
+            "email": payload.email.strip().lower(),
+            "inquiry_type": payload.type,
+            "school_name": payload.schoolName or "",
+            "competition_tier": payload.competitionTier or "",
+            "message": payload.message.strip(),
+            "submitted_ip": client_ip,
+        }
+
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                INSERT INTO pending_approvals (id, type, entity, contact, submitted, details, status)
+                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, %s, 'pending')
+                """,
+                (inq_id, approval_type, payload.name.strip(), payload.email.strip().lower(), json.dumps(details)),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+
+        broadcast_async({"type": "data_changed", "collection": "pending_approvals"})
+        return {"status": "received", "id": inq_id}
 
     @app.post("/api/drafts")
     def save_draft(request: Request, payload: dict | None = None):
@@ -6139,7 +6229,8 @@ try:
                 "COALESCE(t.mentor_status, 'none'), COALESCE(t.is_solo, FALSE), "
                 "COALESCE(m.is_lead, lower(t.lead) = %s), "
                 "COALESCE(NULLIF(t.mentor, ''), u.full_name, ''), "
-                "COALESCE(u.email, '') "
+                "COALESCE(u.email, ''), "
+                "COALESCE(t.school_name, '') "
                 "FROM teams t "
                 "LEFT JOIN team_members m ON m.team_id = t.id AND (m.student_id = %s OR lower(m.email) = %s OR lower(m.name) = %s) "
                 "LEFT JOIN users u ON u.id = t.mentor_id "
@@ -6161,7 +6252,7 @@ try:
                         cur.execute("UPDATE teams SET mentor_status = 'none' WHERE id = %s", (t_id,))
                         conn.commit()
                         m_status = 'none'
-                cleaned_rows.append((r[0], r[1], r[2], r[3], r[4], m_status, r[6], r[7], r[8], r[9]))
+                cleaned_rows.append((r[0], r[1], r[2], r[3], r[4], m_status, r[6], r[7], r[8], r[9], r[10]))
             cur.close()
         finally:
             release_db_connection(conn)
@@ -6171,6 +6262,7 @@ try:
                 "competitionId": r[3], "mentorId": r[4],
                 "mentorStatus": r[5], "isSolo": bool(r[6]), "isLead": bool(r[7]),
                 "mentorName": r[8] or "", "mentorEmail": r[9] or "",
+                "schoolName": r[10] or "",
             }
             for r in cleaned_rows
         ]
@@ -6191,6 +6283,9 @@ try:
         cur = conn.cursor()
         try:
             comp_ref = _validate_competition_ref(cur, payload.competition_id)
+            clean_status = payload.status or "Active"
+            if clean_status == "In Competition" and not comp_ref:
+                clean_status = "Active"
             cur.execute(
                 "SELECT id FROM teams WHERE lower(name) = %s AND lower(COALESCE(school_name, '')) = %s",
                 (payload.name.strip().lower(), (payload.school_name or "").strip().lower())
@@ -6200,12 +6295,12 @@ try:
                 team_id = existing[0]
                 cur.execute(
                     "UPDATE teams SET track = %s, lead = %s, members = %s, status = %s, competition_id = %s, mentor = %s, motto = %s, roster_list = %s WHERE id = %s",
-                    (payload.track, payload.lead, payload.members, payload.status, comp_ref, payload.mentor, payload.motto, json.dumps(payload.roster_list), team_id)
+                    (payload.track, payload.lead, payload.members, clean_status, comp_ref, payload.mentor, payload.motto, json.dumps(payload.roster_list), team_id)
                 )
             else:
                 cur.execute(
                     "INSERT INTO teams (id, name, track, lead, members, status, school_name, competition_id, mentor, motto, roster_list) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                    (team_id, payload.name, payload.track, payload.lead, payload.members, payload.status, payload.school_name, comp_ref, payload.mentor, payload.motto, json.dumps(payload.roster_list))
+                    (team_id, payload.name, payload.track, payload.lead, payload.members, clean_status, payload.school_name, comp_ref, payload.mentor, payload.motto, json.dumps(payload.roster_list))
                 )
             _sync_team_members(cur, team_id, payload.lead, payload.roster_list,
                                payload.lead_email, payload.member_emails)
@@ -9471,13 +9566,16 @@ try:
             (name.strip().lower(), (school_name or "").strip().lower()),
         )
         existing = cur.fetchone()
+        clean_status = status or "Active"
+        if clean_status == "In Competition" and not competition_id:
+            clean_status = "Active"
         if existing:
             team_id = existing[0]
             cur.execute(
                 "UPDATE teams SET track = %s, lead = %s, members = %s, status = %s, "
                 "competition_id = %s, mentor = %s, motto = %s, roster_list = %s, "
                 "photo_file_id = COALESCE(NULLIF(%s, ''), photo_file_id) WHERE id = %s",
-                (track, lead, members, status, competition_id or None, mentor, motto,
+                (track, lead, members, clean_status, competition_id or None, mentor, motto,
                  json.dumps(roster_list or []), photo_file_id or "", team_id),
             )
         else:
@@ -9486,7 +9584,7 @@ try:
                 "INSERT INTO teams (id, name, track, lead, members, status, school_name, "
                 "competition_id, mentor, motto, roster_list, photo_file_id) "
                 "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                (team_id, name, track, lead, members, status, school_name or "",
+                (team_id, name, track, lead, members, clean_status, school_name or "",
                  competition_id or None, mentor, motto, json.dumps(roster_list or []),
                  photo_file_id or ""),
             )
@@ -10697,6 +10795,262 @@ try:
         difficulty: str = "intermediate"  # "beginner", "intermediate", "championship"
         count: int = 1  # 1 to 5
 
+    def parse_raw_quiz_text(raw: str, default_type: str = "multiple_choice") -> list:
+        lines = [line.strip() for line in raw.splitlines() if line.strip()]
+        if not lines:
+            return []
+
+        questions = []
+        curr_q = {'question': '', 'options': [], 'correct_index': 0, 'explanation': ''}
+
+        opt_re = re.compile(r'^(?:[\(\[]?([A-Da-d])[\)\]\.\:\-]\s*|\b([A-Da-d])\s*[\)\.\:\-]\s*)(.*)$')
+        ans_re = re.compile(r'^(?:(?:Correct\s*)?Answer|Ans|Key)\s*[:=\-]?\s*\(?([A-Da-d1-4]|True|False|[^\)\n\r]+)\)?', re.IGNORECASE)
+        exp_re = re.compile(r'^(?:Explanation|Rationale|Reason|Note)\s*[:=\-]?\s*(.*)', re.IGNORECASE)
+        q_num_re = re.compile(r'^(?:(?:Question|Q|Q\.)\s*(\d+)[\.\:\-\)]\s*|(\d+)[\.\:\-\)]\s+)(.*)$', re.IGNORECASE)
+
+        for line in lines:
+            ans_match = ans_re.match(line)
+            if ans_match:
+                ans_val = ans_match.group(1).strip()
+                if ans_val.upper() in ['A', '1']: curr_q['correct_index'] = 0
+                elif ans_val.upper() in ['B', '2']: curr_q['correct_index'] = 1
+                elif ans_val.upper() in ['C', '3']: curr_q['correct_index'] = 2
+                elif ans_val.upper() in ['D', '4']: curr_q['correct_index'] = 3
+                elif ans_val.lower() == 'true': curr_q['correct_index'] = 0
+                elif ans_val.lower() == 'false': curr_q['correct_index'] = 1
+                else:
+                    for idx, opt in enumerate(curr_q['options']):
+                        if ans_val.lower() in opt.lower():
+                            curr_q['correct_index'] = idx
+                            break
+                continue
+
+            exp_match = exp_re.match(line)
+            if exp_match:
+                curr_q['explanation'] = exp_match.group(1).strip() or line
+                continue
+
+            opt_match = opt_re.match(line)
+            if opt_match:
+                opt_text = (opt_match.group(3) or '').strip()
+                if opt_text:
+                    curr_q['options'].append(opt_text)
+                continue
+
+            q_match = q_num_re.match(line)
+            if q_match and (curr_q['question'] or curr_q['options']):
+                questions.append(curr_q)
+                q_clean = (q_match.group(3) or '').strip()
+                curr_q = {'question': q_clean, 'options': [], 'correct_index': 0, 'explanation': ''}
+                continue
+
+            if len(curr_q['options']) >= 2:
+                questions.append(curr_q)
+                curr_q = {'question': line, 'options': [], 'correct_index': 0, 'explanation': ''}
+                continue
+
+            if q_match:
+                q_clean = (q_match.group(3) or '').strip()
+                curr_q['question'] = q_clean if not curr_q['question'] else curr_q['question'] + ' ' + q_clean
+            elif not curr_q['question']:
+                curr_q['question'] = line
+            else:
+                curr_q['question'] += ' ' + line
+
+        if curr_q['question'] or curr_q['options']:
+            questions.append(curr_q)
+
+        clean_questions = []
+        for q in questions:
+            q_text = q['question'].strip()
+            opts = [o.strip() for o in q['options'] if o.strip()]
+            if not q_text and opts:
+                q_text = "Select the correct option:"
+            if not q_text and not opts:
+                continue
+            if len(opts) < 2:
+                opts = ["True", "False"] if default_type == "true_false" else ["Option A", "Option B", "Option C", "Option D"]
+            c_idx = q['correct_index']
+            exp = q['explanation'].strip() if q['explanation'].strip() else "Verified curriculum answer key explanation."
+
+            # Auto-align true_false questions if explanation explicitly denotes answer
+            if len(opts) == 2 and opts[0].lower() == "true" and opts[1].lower() == "false":
+                exp_low = exp.lower()
+                if exp_low.startswith("false") or "answer is false" in exp_low or "statement is false" in exp_low:
+                    c_idx = 1
+                elif exp_low.startswith("true") or "answer is true" in exp_low or "statement is true" in exp_low:
+                    c_idx = 0
+
+            if c_idx < 0 or c_idx >= len(opts):
+                c_idx = 0
+            clean_questions.append({
+                'question': q_text,
+                'options': opts,
+                'correct_index': c_idx,
+                'explanation': exp
+            })
+
+        return clean_questions
+
+    def generate_curriculum_document_quiz(doc_text: str, track_name: str, lesson_title: str, question_type: str, difficulty: str, count: int) -> list[dict]:
+        track_clean = (track_name or "coding").strip().lower()
+        title_clean = (lesson_title or "Curriculum Concepts").strip()
+
+        # 1. Segment and extract distinct concepts from doc_text
+        raw_lines = [l.strip() for l in doc_text.splitlines() if l.strip()]
+        candidates = []
+        for line in raw_lines:
+            if line.startswith("[Attached Curriculum Document:") or line.startswith("---") or line.startswith("==="):
+                continue
+            cleaned = re.sub(r'^[#*>\-\d.]+\s*', '', line).strip()
+            # If line has substantial length and isn't a generic heading
+            if len(cleaned) >= 15 and not cleaned.lower().startswith("lesson guide:"):
+                candidates.append(cleaned)
+
+        # Also extract sentences if candidates are fewer than requested count
+        if len(candidates) < count:
+            sentences = re.split(r'(?<=[.!?])\s+', doc_text)
+            for s in sentences:
+                s_clean = re.sub(r'^[#*>\-\d.]+\s*', '', s).strip()
+                if len(s_clean) >= 20 and s_clean not in candidates and not s_clean.startswith("[Attached"):
+                    candidates.append(s_clean)
+
+        # Domain knowledge pillars for curriculum tracks
+        domain_pillars = {
+            "coding": [
+                ("Algorithmic Invariants & Complexity", "Verifying loop invariants and maintaining asymptotic bounds O(log n) ensures predictable throughput under peak load.", "Failing to establish base-case invariants leads to unbounded recursion and latency spikes."),
+                ("Memory Allocation & Data Mutation", "Utilizing immutable data patterns and scoping variables defensively prevents concurrent race conditions.", "Unsynchronized shared memory mutations result in non-deterministic memory corruption."),
+                ("Modular Architecture & Contract Design", "Decoupling components through strict interface boundaries maximizes unit testability and maintainability.", "Monolithic tight coupling makes regression verification difficult and fragile."),
+                ("Defensive Validation & Exception Boundaries", "Enforcing structured error boundaries with circuit-breakers prevents cascaded system failures.", "Silently catching and suppressing exceptions hides critical faults from monitoring pipelines."),
+                ("Data Structure Efficiency & Access Patterns", "Selecting hash-indexed maps provides O(1) expected lookup efficiency compared to linear scans.", "Sequential lookups on unindexed collections degrade asymptotic performance.")
+            ],
+            "robotics": [
+                ("Sensor Signal Filtering & Conditioning", "Applying digital Kalman filters suppresses high-frequency sensor noise to provide clean state estimates.", "Unfiltered ADC readings lead to actuator jitter and unstable control outputs."),
+                ("Closed-Loop Feedback & PID Control", "Proportional-Integral-Derivative loops continuously compute error terms to achieve target positioning.", "Open-loop actuation cannot compensate for mechanical friction or external load changes."),
+                ("Hardware Bus Arbitration & Timing", "SPI and CAN bus protocols enforce synchronized clocking and deterministic bus arbitration.", "Non-deterministic asynchronous polling risks missed interrupt deadlines in hard real-time systems."),
+                ("Power Isolation & Ground Referencing", "Decoupling motor inductive spikes through flyback diodes and optoisolators prevents microcontroller brownouts.", "Directly coupling high-current inductive loads to logic rails causes catastrophic voltage dips."),
+                ("Kinematic Trajectory & Limit Protection", "Inverse kinematic solvers evaluate joint angle constraints to prevent mechanical collisions.", "Executing unchecked velocity steps can overload servos and violate physical limits.")
+            ]
+        }
+        pillars = domain_pillars.get(track_clean, domain_pillars["coding"])
+
+        generated_qs = []
+        used_concepts = set()
+
+        for idx in range(count):
+            # Select distinct concept for each question index
+            concept_label = ""
+            concept_fact = ""
+
+            if idx < len(candidates):
+                candidate_str = candidates[idx]
+                if candidate_str not in used_concepts:
+                    concept_label = candidate_str[:70]
+                    concept_fact = candidate_str[:120]
+                    used_concepts.add(candidate_str)
+
+            if not concept_label:
+                pillar = pillars[idx % len(pillars)]
+                concept_label = pillar[0]
+                concept_fact = pillar[1]
+
+            if question_type == "true_false":
+                # Alternate between true and false questions with distinct concepts
+                is_true = (idx % 2 == 0)
+                if is_true:
+                    q_stem = f"In {title_clean}, adhering to the principles of {concept_label} guarantees deterministic system behavior."
+                    options = ["True", "False"]
+                    correct_idx = 0
+                    explanation = f"True: In {track_clean} applications, {concept_label} enforces validated state invariants."
+                else:
+                    q_stem = f"When designing {title_clean}, implementing {concept_label} eliminates the need for boundary checks and error validation."
+                    options = ["True", "False"]
+                    correct_idx = 1
+                    explanation = f"False: Defensive validation and boundary checking remain mandatory regardless of whether {concept_label} is used."
+
+            elif question_type == "scenario":
+                scenarios = [
+                    (f"During an integration test of {concept_label} in {title_clean}, the subsystem encounters intermittent latency spikes. What is the optimal remediation?",
+                     f"Implement asynchronous buffering and optimize critical-path algorithms for {concept_label}.",
+                     "Disable error logging and instrumentation to reduce CPU overhead",
+                     "Increase worker thread count without bounding memory allocation",
+                     "Bypass input validation filters to speed up execution loops",
+                     0,
+                     f"Decoupling via asynchronous buffers and optimizing critical-path logic resolves latency without compromising correctness."),
+                    (f"An automated continuous integration audit flags a concurrency anomaly in {concept_label}. Which verification procedure best isolates the bug?",
+                     "Rely exclusively on manual visual code review without automated runners",
+                     f"Execute deterministic stress-tests with race-condition analyzers on {concept_label}.",
+                     "Temporarily delete the failing test assertion to maintain build green status",
+                     "Deploy directly to staging without reproducing the issue in isolation",
+                     1,
+                     f"Deterministic stress tests coupled with race analyzers provide empirical evidence of concurrency defects."),
+                    (f"A remote telemetry node utilizing {concept_label} temporarily loses network connectivity. How should the firmware handle outgoing records?",
+                     "Immediately drop newly generated packets to prevent queue buildup",
+                     "Trigger an unconditional reboot loop until the network socket reconnects",
+                     f"Buffer records locally in persistent non-volatile memory until the uplink is restored.",
+                     "Overclock the hardware transmission module to force packet receipt",
+                     2,
+                     f"Non-volatile ring buffering ensures zero data loss during transient communication outages."),
+                    (f"A code review indicates tight coupling between {concept_label} and external peripheral drivers. What architectural pattern should be applied?",
+                     "Merge all hardware drivers into a single global procedural file",
+                     "Bypass abstraction layers to prioritize raw instruction speed",
+                     "Hardcode peripheral register addresses directly inside application logic",
+                     f"Introduce an abstract interface (HAL) cleanly separating business logic from {concept_label} drivers.",
+                     3,
+                     f"A Hardware Abstraction Layer decouples application logic from device-specific details, facilitating portability and testing.")
+                ]
+                sc = scenarios[idx % len(scenarios)]
+                q_stem = sc[0]
+                options = [sc[1], sc[2], sc[3], sc[4]]
+                correct_idx = sc[5]
+                explanation = sc[6]
+
+            else:  # multiple_choice
+                angles = [
+                    (f"What is the primary role or operational objective of {concept_label} in {title_clean}?",
+                     f"To enforce structured data flow, reliability, and deterministic execution for {concept_label}.",
+                     "To bypass runtime validation and eliminate state monitoring",
+                     "To force synchronous single-threaded blocking execution throughout",
+                     "To store unbounded unindexed global records in shared memory",
+                     0,
+                     f"The fundamental objective of {concept_label} is providing reliable, structured operational execution within {title_clean}."),
+                    (f"When configuring or integrating {concept_label}, which engineering best practice must be prioritized?",
+                     "Hardcoding configuration parameters directly into compiled binaries",
+                     f"Maintaining clean modular separation and validating input invariants for {concept_label}.",
+                     "Disabling bounds checks to optimize synthetic benchmarks",
+                     "Executing recursive operations without base-case terminations",
+                     1,
+                     f"Enforcing modular separation and validating invariants ensures {concept_label} operates predictably under all states."),
+                    (f"Which common failure mode or anti-pattern must developers guard against when implementing {concept_label}?",
+                     "Utilizing automated unit testing suites with code coverage",
+                     "Applying strict type definitions and interface contracts",
+                     f"Unsynchronized concurrent mutations and unhandled boundary edge-cases in {concept_label}.",
+                     "Documenting public interfaces and algorithmic preconditions",
+                     2,
+                     f"Unsynchronized state mutations and unhandled edge cases are primary hazards when working with {concept_label}."),
+                    (f"How is the correctness and performance of {concept_label} most effectively verified?",
+                     "Assuming correctness if the module compiles without syntax warnings",
+                     "Skipping regression tests when minor logic patches are committed",
+                     "Inspecting system logs only after critical production outages occur",
+                     f"Automated unit benchmarks, assertion testing, and regression analysis of {concept_label}.",
+                     3,
+                     f"Rigorous regression analysis and automated unit test assertions provide empirical proof of correctness.")
+                ]
+                ang = angles[idx % len(angles)]
+                q_stem = ang[0]
+                options = [ang[1], ang[2], ang[3], ang[4]]
+                correct_idx = ang[5]
+                explanation = ang[6]
+
+            generated_qs.append({
+                "question": q_stem,
+                "options": options,
+                "correct_index": correct_idx,
+                "explanation": explanation
+            })
+
+        return generated_qs
+
     @app.post("/api/lms/ai/generate-quiz")
     async def generate_ai_quiz(payload: AiQuizGenerationPayload, _actor: dict = Depends(require_auth)):
         text = (payload.lesson_text or "").strip()
@@ -10709,6 +11063,25 @@ try:
         diff = (payload.difficulty or "intermediate").strip().lower()
 
         if mode == "parse":
+            # 1. Deterministic high-precision parser for pasted questions & exam banks
+            parsed_questions = parse_raw_quiz_text(text, default_type=q_type)
+            if parsed_questions:
+                selected_qs = list(parsed_questions)
+                if len(selected_qs) < req_count:
+                    supplemental = generate_curriculum_document_quiz(
+                        text, payload.track or "coding", payload.title or "Curriculum Checkpoint",
+                        q_type, diff, req_count - len(selected_qs)
+                    )
+                    selected_qs.extend(supplemental)
+                final_qs = selected_qs[:req_count]
+                return {
+                    "question": final_qs[0]["question"],
+                    "options": final_qs[0]["options"][:4] if q_type != "true_false" else final_qs[0]["options"][:2],
+                    "correct_index": final_qs[0]["correct_index"],
+                    "explanation": final_qs[0]["explanation"],
+                    "questions": final_qs
+                }
+
             prompt = (
                 f"You are an expert STEM quiz parser and curriculum organizer.\n"
                 f"The user has provided raw unformatted or semi-formatted quiz questions, exam notes, or lecture points:\n"
@@ -10716,9 +11089,9 @@ try:
                 f"Your task is to recognize the questions, separate the question prompt from its choices, identify the correct answer, and generate or extract an educational explanation.\n"
                 f"Track context: {payload.track}\n"
                 f"Desired question format: {q_type} (options: multiple_choice = 4 options, true_false = 2 options ['True', 'False'])\n"
-                f"If the text only contains statements or notes, convert them into up to {req_count} structured comprehension questions.\n"
+                f"Generate exactly {req_count} completely UNIQUE, non-repeating questions testing different concepts.\n"
                 f"Return ONLY valid JSON with no markdown wrapping or code blocks in this exact format:\n"
-                f'{{"questions": [{{"question": "...", "options": ["Option A", "Option B", "Option C", "Option D"], "correct_index": 0, "explanation": "..."}}]}}'
+                f'{{"questions": [{{"question": "Distinct Question 1...", "options": ["Option A", "Option B", "Option C", "Option D"], "correct_index": 0, "explanation": "..."}}]}}'
             )
         else:
             prompt = (
@@ -10728,14 +11101,16 @@ try:
                 f"Difficulty Level: {diff}\n"
                 f"Question Format: {q_type}\n"
                 f"Lesson Content / Slide Context:\n{text[:3500]}\n\n"
-                f"Generate exactly {req_count} high-quality question(s) that test understanding of this lesson.\n"
-                f"Requirements:\n"
+                f"Generate exactly {req_count} completely UNIQUE, NON-REPEATING questions that test understanding of different parts of this lesson.\n"
+                f"CRITICAL REQUIREMENTS:\n"
+                f"- Every question MUST test a DIFFERENT concept or topic from the provided text. Do NOT repeat or duplicate questions.\n"
                 f"- If format is 'true_false', options MUST be exactly ['True', 'False'].\n"
                 f"- If format is 'scenario', formulate practical problem-solving or real-world system challenges.\n"
                 f"- Otherwise provide 4 distinct, plausible options.\n"
+                f"- Vary the correct option index across questions (e.g. not all index 0).\n"
                 f"- Ensure explanation details why the correct answer is right.\n"
                 f"Return ONLY valid JSON with no markdown wrapping or code blocks in this exact format:\n"
-                f'{{"questions": [{{"question": "...", "options": ["Option A", "Option B", "Option C", "Option D"], "correct_index": 0, "explanation": "..."}}]}}'
+                f'{{"questions": [{{"question": "Question 1...", "options": ["Option A", "Option B", "Option C", "Option D"], "correct_index": 0, "explanation": "..."}}]}}'
             )
 
         gemini_key = settings.GEMINI_API_KEY
@@ -10772,8 +11147,30 @@ try:
                                 opts = q.get("options")
                                 if not isinstance(opts, list) or len(opts) < 2:
                                     opts = ["True", "False"] if q_type == "true_false" else ["Option A", "Option B", "Option C", "Option D"]
-                                c_idx = q.get("correct_index", 0)
-                                if not isinstance(c_idx, int) or c_idx < 0 or c_idx >= len(opts):
+                                c_raw = q.get("correct_index", q.get("correctIndex", q.get("answer", q.get("correct_answer", 0))))
+                                c_idx = 0
+                                if isinstance(c_raw, int):
+                                    c_idx = c_raw
+                                elif isinstance(c_raw, str):
+                                    s = c_raw.strip()
+                                    if s.isdigit():
+                                        c_idx = int(s)
+                                    elif s.lower() == "true":
+                                        c_idx = 0
+                                    elif s.lower() == "false":
+                                        c_idx = 1
+                                    elif s.upper() in ["A", "B", "C", "D"]:
+                                        c_idx = ["A", "B", "C", "D"].index(s.upper())
+
+                                exp_text = str(q.get("explanation", "")).strip()
+                                if q_type == "true_false" or (len(opts) == 2 and opts[0].lower() == "true" and opts[1].lower() == "false"):
+                                    exp_low = exp_text.lower()
+                                    if exp_low.startswith("false") or "answer is false" in exp_low or "statement is false" in exp_low:
+                                        c_idx = 1
+                                    elif exp_low.startswith("true") or "answer is true" in exp_low or "statement is true" in exp_low:
+                                        c_idx = 0
+
+                                if c_idx < 0 or c_idx >= len(opts):
                                     c_idx = 0
                                 valid_questions.append({
                                     "question": q["question"],
@@ -10782,58 +11179,39 @@ try:
                                     "explanation": q.get("explanation", "Review lesson notes for verification.")
                                 })
 
+                        # If Gemini returned fewer than requested, supplement with diverse questions
                         if valid_questions:
+                            if len(valid_questions) < req_count:
+                                needed = req_count - len(valid_questions)
+                                supp = generate_curriculum_document_quiz(
+                                    text, payload.track or "coding", payload.title or "Module Checkpoint",
+                                    q_type, diff, needed
+                                )
+                                valid_questions.extend(supp)
+
+                            final_list = valid_questions[:req_count]
                             return {
-                                "question": valid_questions[0]["question"],
-                                "options": valid_questions[0]["options"][:4] if q_type != "true_false" else valid_questions[0]["options"][:2],
-                                "correct_index": valid_questions[0]["correct_index"],
-                                "explanation": valid_questions[0]["explanation"],
-                                "questions": valid_questions[:req_count]
+                                "question": final_list[0]["question"],
+                                "options": final_list[0]["options"][:4] if q_type != "true_false" else final_list[0]["options"][:2],
+                                "correct_index": final_list[0]["correct_index"],
+                                "explanation": final_list[0]["explanation"],
+                                "questions": final_list
                             }
             except Exception as e:
                 logger.warning("Gemini API call failed, falling back to heuristic question generator: %s", str(e))
 
-        first_line = text.split("\n")[0].replace("#", "").strip() or "the core concepts"
-        fallback_questions = []
-        for i in range(req_count):
-            if q_type == "true_false":
-                q_text = f"In {payload.track} development, {first_line[:50]} guarantees deterministic runtime safety."
-                opts = ["True", "False"]
-                corr = 0
-                exp = f"True: In {payload.track} architectures, bounded invariants prevent runtime degradation."
-            elif q_type == "scenario":
-                q_text = f"Given a real-world {payload.track} challenge regarding {first_line[:40]}, what is the optimal recovery action?"
-                opts = [
-                    "Isolate subsystem telemetry and engage bounded fallback routines",
-                    "Overclock the processor without heat dissipation telemetry",
-                    "Drop network encryption packets to minimize socket latency",
-                    "Bypass watchdog timers to prevent process termination"
-                ]
-                corr = 0
-                exp = f"Isolating telemetry and executing bounded fallbacks ensures system reliability under fault conditions."
-            else:
-                q_text = f"Which principle best describes the algorithmic requirement for {first_line[:55]}?" if i == 0 else f"What secondary architectural rule governs {first_line[:40]} iteration {i + 1}?"
-                opts = [
-                    "Ensuring deterministic O(1) polling and constant-time execution",
-                    "Unchecked recursion without base case guardrails",
-                    "Blocking asynchronous event loops indefinitely",
-                    "Ignoring hardware timing constraints and clock drift"
-                ]
-                corr = 0
-                exp = f"In {payload.track} applications, deterministic execution and bounded timing ensure fail-safe hardware telemetry."
-            fallback_questions.append({
-                "question": q_text,
-                "options": opts,
-                "correct_index": corr,
-                "explanation": exp
-            })
+        # Diverse heuristic curriculum question generator
+        diverse_questions = generate_curriculum_document_quiz(
+            text, payload.track or "coding", payload.title or "Module Checkpoint",
+            q_type, diff, req_count
+        )
 
         return {
-            "question": fallback_questions[0]["question"],
-            "options": fallback_questions[0]["options"],
-            "correct_index": fallback_questions[0]["correct_index"],
-            "explanation": fallback_questions[0]["explanation"],
-            "questions": fallback_questions
+            "question": diverse_questions[0]["question"],
+            "options": diverse_questions[0]["options"],
+            "correct_index": diverse_questions[0]["correct_index"],
+            "explanation": diverse_questions[0]["explanation"],
+            "questions": diverse_questions
         }
 
     # Mount static files

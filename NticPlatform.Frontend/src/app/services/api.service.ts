@@ -1082,6 +1082,17 @@ login(email: string, password: string): Observable<any> {
     return this.http.post<{ email_available: boolean; phone_available: boolean }>(this.apiUrl + '/auth/verify-contact', payload);
   }
 
+  submitSupportRequest(payload: {
+    name: string;
+    email: string;
+    type: string;
+    schoolName?: string;
+    competitionTier?: string;
+    message: string;
+  }): Observable<any> {
+    return this.http.post(this.apiUrl + '/support-requests', payload);
+  }
+
   saveDraft(payload: { email: string; data: any }): Observable<any> {
     return this.http.post(this.apiUrl + '/drafts', payload);
   }

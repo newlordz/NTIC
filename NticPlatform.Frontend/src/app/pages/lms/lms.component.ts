@@ -337,17 +337,18 @@ export class LmsComponent implements OnInit {
         status: me.status || '',
         mentor: (() => {
           const t = (this.myTeams || []).find(tm => tm.mentorId || tm.mentorName);
-          return t ? (t.mentorName || (t.mentorId ? 'Assigned Mentor' : '')) : '';
+          return t?.mentorName || (me as any)?.mentor_name || (t?.mentorId ? 'Assigned Mentor' : '');
         })(),
         mentorAvatar: (() => {
           const t = (this.myTeams || []).find(tm => tm.mentorId || tm.mentorName);
-          const name = t ? (t.mentorName || '') : '';
+          const name = t?.mentorName || (me as any)?.mentor_name || '';
           return name ? name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'CM';
         })(),
         mentorEmail: (() => {
           const t = (this.myTeams || []).find(tm => tm.mentorId || tm.mentorName);
-          return t ? (t.mentorEmail || '') : '';
-        })()
+          return t?.mentorEmail || (me as any)?.mentor_email || '';
+        })(),
+        teamName: (this.myTeams || [])[0]?.name || (me as any)?.team_name || ''
       };
     }
 
@@ -368,7 +369,8 @@ export class LmsComponent implements OnInit {
       status: '',
       mentor: fallbackMentorName,
       mentorAvatar: fallbackMentorName ? fallbackMentorName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'CM',
-      mentorEmail: fallbackTeam ? (fallbackTeam.mentorEmail || '') : ''
+      mentorEmail: fallbackTeam?.mentorEmail || '',
+      teamName: fallbackTeam?.name || ''
     };
   }
 
@@ -643,12 +645,96 @@ export class LmsComponent implements OnInit {
     window.print();
   }
 
+  allAvailableCourses: any[] = [];
+  courseTabFilter: 'recommended' | 'all' = 'recommended';
+  selectedAssignmentForSubmission: any = null;
+
+  setCourseFilter(filter: 'recommended' | 'all'): void {
+    this.courseTabFilter = filter;
+    this.filterAvailableCourses();
+    this.cdr.markForCheck();
+  }
+
+  get recommendedCoursesCount(): number {
+    return this.allAvailableCourses.filter((c: any) => c.isInstructorCourse || c.isTrackMatch).length;
+  }
+
+  filterAvailableCourses(): void {
+    if (this.courseTabFilter === 'recommended') {
+      const rec = this.allAvailableCourses.filter((c: any) => c.isInstructorCourse || c.isTrackMatch);
+      this.availableCourses = rec.length > 0 ? rec : this.allAvailableCourses;
+    } else {
+      this.availableCourses = this.allAvailableCourses;
+    }
+  }
+
+  openSubmitForAssignment(assignment: any): void {
+    this.selectedAssignmentForSubmission = assignment;
+    this.newSubmission.courseTitle = assignment.course_id;
+    this.newSubmission.assignmentId = assignment.id;
+    this.showUploadSuccess = false;
+    this.submissionError = '';
+    this.cdr.markForCheck();
+  }
+
+  cancelSubmission(): void {
+    this.selectedAssignmentForSubmission = null;
+    this.newSubmission = {
+      courseTitle: '',
+      assignmentId: '',
+      url: '',
+      notes: ''
+    };
+    this.selectedUploadFiles = [];
+    this.cdr.markForCheck();
+  }
+
   /** Courses the student could still join. */
   private recomputeAvailableCourses(): void {
     const enrolled = new Set(this.myEnrolments.map(e => e.course_id));
-    this.availableCourses = (this.contentService.lmsCourses || [])
+    const studentTrackKey = (this.studentProfile?.trackId || 'coding').toLowerCase();
+    const mentorName = (this.studentProfile?.mentor || '').trim().toLowerCase();
+    const mentorEmail = (this.studentProfile?.mentorEmail || '').trim().toLowerCase();
+
+    const allApproved = (this.contentService.lmsCourses || [])
       .filter((c: any) => !enrolled.has(c.id))
-      .filter((c: any) => (c.approvalStatus || c.approval_status || 'approved') === 'approved');
+      .filter((c: any) => (c.approvalStatus || c.approval_status || 'approved') === 'approved')
+      .map((c: any) => {
+        const cTrack = (c.track || '').toLowerCase();
+        const author = (c.submittedBy || c.submitted_by || '').trim();
+        const authorLower = author.toLowerCase();
+        
+        const isInstructorCourse = Boolean(
+          (mentorName && (authorLower.includes(mentorName) || mentorName.includes(authorLower))) ||
+          (mentorEmail && authorLower.includes(mentorEmail))
+        );
+        const isTrackMatch = Boolean(
+          cTrack === studentTrackKey ||
+          (studentTrackKey === 'coding' && (cTrack.includes('code') || cTrack.includes('program') || cTrack.includes('python'))) ||
+          (studentTrackKey === 'robotics' && cTrack.includes('robot')) ||
+          (studentTrackKey === 'ai' && (cTrack.includes('ai') || cTrack.includes('tensor') || cTrack.includes('data'))) ||
+          (studentTrackKey === 'cyber' && (cTrack.includes('cyber') || cTrack.includes('security')))
+        );
+
+        return {
+          ...c,
+          author,
+          isInstructorCourse,
+          isTrackMatch
+        };
+      });
+
+    // Sort: Instructor courses first, then track matches, then other
+    allApproved.sort((a: any, b: any) => {
+      if (a.isInstructorCourse && !b.isInstructorCourse) return -1;
+      if (!a.isInstructorCourse && b.isInstructorCourse) return 1;
+      if (a.isTrackMatch && !b.isTrackMatch) return -1;
+      if (!a.isTrackMatch && b.isTrackMatch) return 1;
+      return 0;
+    });
+
+    this.allAvailableCourses = allApproved;
+    this.filterAvailableCourses();
   }
 
   private loadAssignmentsForMyCourses(): void {

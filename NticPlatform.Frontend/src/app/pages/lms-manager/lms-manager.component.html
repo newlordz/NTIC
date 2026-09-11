@@ -19,10 +19,10 @@
           <a *ngIf="isInstructor" routerLink="/lms" class="btn btn-outline" style="text-decoration:none;display:flex;align-items:center;gap:6px;" title="Preview student classroom view">
             <span class="material-symbols-outlined">visibility</span> Preview Student View
           </a>
-          <button class="btn btn-primary" (click)="openCourseWizard()">
+          <button class="btn btn-primary" *ngIf="!isAdmin" (click)="openCourseWizard()">
             <span class="material-symbols-outlined">add</span> Create New Course
           </button>
-          <button class="btn btn-outline" (click)="openAssignmentModal()">
+          <button class="btn btn-outline" *ngIf="!isAdmin" (click)="openAssignmentModal()">
             <span class="material-symbols-outlined">assignment_add</span> Create Assignment
           </button>
         </div>
@@ -233,7 +233,7 @@
           <h2>Courses Roster ({{ filteredCourses.length }})</h2>
           <p class="text-subtle text-xs">Tap any course card or row to enter its dedicated management console.</p>
         </div>
-        <button class="btn btn-sm btn-primary" (click)="openCourseWizard()">
+        <button class="btn btn-sm btn-primary" (click)="openCourseWizard()" *ngIf="!isAdmin">
           <span class="material-symbols-outlined">add</span> Create New Course
         </button>
       </div>
@@ -282,18 +282,49 @@
           </div>
 
           <div class="course-card-footer">
-            <button class="btn btn-xs btn-outline warning" *ngIf="course.approvalStatus === 'rejected'" (click)="resubmitCourseForReview(course); $event.stopPropagation()" [disabled]="isResubmittingCourse[course.id]" title="Resubmit for review">
-              <span class="material-symbols-outlined">send</span> {{ isResubmittingCourse[course.id] ? 'Submitting...' : 'Resubmit' }}
-            </button>
-            <button class="btn btn-xs btn-subtle" (click)="openCourseWizard(course); $event.stopPropagation()">
-              <span class="material-symbols-outlined">edit</span> Edit
-            </button>
-            <button class="btn btn-xs btn-subtle" (click)="cloneCourse(course); $event.stopPropagation()" [disabled]="isCloningCourse[course.id]" title="Duplicate full course as draft">
-              <span class="material-symbols-outlined">{{ isCloningCourse[course.id] ? 'sync' : 'content_copy' }}</span> {{ isCloningCourse[course.id] ? 'Cloning...' : 'Clone' }}
-            </button>
-            <button class="btn btn-xs btn-danger" (click)="deleteCourse(course.id); $event.stopPropagation()">
-              <span class="material-symbols-outlined">delete</span> Delete
-            </button>
+            <!-- Instructor Actions (Edit, Clone, Delete, Resubmit) -->
+            <ng-container *ngIf="!isAdmin">
+              <button class="btn btn-xs btn-outline warning" *ngIf="course.approvalStatus === 'rejected'" (click)="resubmitCourseForReview(course); $event.stopPropagation()" [disabled]="isResubmittingCourse[course.id]" title="Resubmit for review">
+                <span class="material-symbols-outlined">send</span> {{ isResubmittingCourse[course.id] ? 'Submitting...' : 'Resubmit' }}
+              </button>
+              <button class="btn btn-xs btn-subtle" (click)="openCourseWizard(course); $event.stopPropagation()">
+                <span class="material-symbols-outlined">edit</span> Edit
+              </button>
+              <button class="btn btn-xs btn-subtle" (click)="cloneCourse(course); $event.stopPropagation()" [disabled]="isCloningCourse[course.id]" title="Duplicate full course as draft">
+                <span class="material-symbols-outlined">{{ isCloningCourse[course.id] ? 'sync' : 'content_copy' }}</span> {{ isCloningCourse[course.id] ? 'Cloning...' : 'Clone' }}
+              </button>
+              <button class="btn btn-xs btn-danger" (click)="deleteCourse(course.id); $event.stopPropagation()">
+                <span class="material-symbols-outlined">delete</span> Delete
+              </button>
+            </ng-container>
+
+            <!-- Admin Reviewer Actions: View, Approve, Reject ONLY -->
+            <ng-container *ngIf="isAdmin">
+              <button class="btn btn-xs btn-subtle" (click)="openCourseConsole(course); $event.stopPropagation()" title="View curriculum syllabus and materials">
+                <span class="material-symbols-outlined">visibility</span> View
+              </button>
+              <button
+                class="btn btn-xs btn-success"
+                *ngIf="course.approvalStatus !== 'approved'"
+                (click)="approveCourseDirect(course); $event.stopPropagation()"
+                [disabled]="isApprovingCourse[course.id]"
+                title="Approve and publish this course"
+              >
+                <span class="material-symbols-outlined">check_circle</span>
+                {{ isApprovingCourse[course.id] ? 'Approving...' : 'Approve' }}
+              </button>
+              <button
+                class="btn btn-xs btn-outline danger"
+                *ngIf="course.approvalStatus !== 'rejected'"
+                (click)="openRejectModal(course); $event.stopPropagation()"
+                title="Reject curriculum and request revisions"
+              >
+                <span class="material-symbols-outlined">cancel</span> Reject
+              </button>
+              <span class="badge badge-success status-pill-tag" *ngIf="course.approvalStatus === 'approved'">
+                <span class="material-symbols-outlined" style="font-size:12px; vertical-align:middle; margin-right:2px;">verified</span> Approved
+              </span>
+            </ng-container>
           </div>
         </div>
       </div>
@@ -309,7 +340,7 @@
   <div *ngIf="activeTab === 'modules'" class="tab-content-panel">
     <div class="panel-header">
       <h2>Curriculum Modules ({{ filteredModules.length }})</h2>
-      <button class="btn btn-sm btn-primary" (click)="openModuleModal()">
+      <button class="btn btn-sm btn-primary" *ngIf="!isAdmin" (click)="openModuleModal()">
         <span class="material-symbols-outlined">add</span> Add Module
       </button>
     </div>
@@ -347,8 +378,13 @@
             </td>
             <td>
               <div class="action-buttons">
-                <button class="icon-btn" (click)="openModuleModal(mod)" title="Edit"><span class="material-symbols-outlined">edit</span></button>
-                <button class="icon-btn danger" (click)="deleteModule(mod.id)" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                <ng-container *ngIf="!isAdmin">
+                  <button class="icon-btn" (click)="openModuleModal(mod)" title="Edit"><span class="material-symbols-outlined">edit</span></button>
+                  <button class="icon-btn danger" (click)="deleteModule(mod.id)" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                </ng-container>
+                <ng-container *ngIf="isAdmin">
+                  <button class="icon-btn" (click)="openModuleModal(mod)" title="View Module Details"><span class="material-symbols-outlined">visibility</span></button>
+                </ng-container>
               </div>
             </td>
           </tr>
@@ -367,7 +403,7 @@
   <div *ngIf="activeTab === 'materials'" class="tab-content-panel">
     <div class="panel-header">
       <h2>Learning Assets & Resources ({{ filteredMaterials.length }})</h2>
-      <button class="btn btn-sm btn-primary" (click)="openMaterialModal()">
+      <button class="btn btn-sm btn-primary" *ngIf="!isAdmin" (click)="openMaterialModal()">
         <span class="material-symbols-outlined">upload_file</span> Add Learning Asset
       </button>
     </div>
@@ -414,8 +450,13 @@
             </td>
             <td>
               <div class="action-buttons">
-                <button class="icon-btn" (click)="openMaterialModal(mat)" title="Edit"><span class="material-symbols-outlined">edit</span></button>
-                <button class="icon-btn danger" (click)="deleteMaterial(mat.id)" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                <ng-container *ngIf="!isAdmin">
+                  <button class="icon-btn" (click)="openMaterialModal(mat)" title="Edit"><span class="material-symbols-outlined">edit</span></button>
+                  <button class="icon-btn danger" (click)="deleteMaterial(mat.id)" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                </ng-container>
+                <ng-container *ngIf="isAdmin">
+                  <button class="icon-btn" (click)="openMaterialModal(mat)" title="View Asset"><span class="material-symbols-outlined">visibility</span></button>
+                </ng-container>
               </div>
             </td>
           </tr>
@@ -438,7 +479,7 @@
         <h2>Course Assessment Tasks ({{ filteredAssignments.length }})</h2>
         <p class="text-subtle text-xs">Configure challenge deliverables, due dates, starter files, and rubric evaluation matrices.</p>
       </div>
-      <button class="btn btn-sm btn-primary" (click)="openAssignmentModal()">
+      <button class="btn btn-sm btn-primary" *ngIf="!isAdmin" (click)="openAssignmentModal()">
         <span class="material-symbols-outlined">add</span> Create New Assignment
       </button>
     </div>
@@ -475,8 +516,13 @@
               </td>
               <td>
                 <div class="action-buttons">
-                  <button class="icon-btn" (click)="openAssignmentModal(asgn)" title="Edit"><span class="material-symbols-outlined">edit</span></button>
-                  <button class="icon-btn danger" (click)="deleteAssignment(asgn.id)" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                  <ng-container *ngIf="!isAdmin">
+                    <button class="icon-btn" (click)="openAssignmentModal(asgn)" title="Edit"><span class="material-symbols-outlined">edit</span></button>
+                    <button class="icon-btn danger" (click)="deleteAssignment(asgn.id)" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                  </ng-container>
+                  <ng-container *ngIf="isAdmin">
+                    <button class="icon-btn" (click)="openAssignmentModal(asgn)" title="View Assignment"><span class="material-symbols-outlined">visibility</span></button>
+                  </ng-container>
                 </div>
               </td>
             </tr>
@@ -488,7 +534,7 @@
         <span class="material-symbols-outlined">assignment</span>
         <h3>No Assignments Created Yet</h3>
         <p>Author your first practical challenge or project milestone.</p>
-        <button class="btn btn-primary mt-3" (click)="openAssignmentModal()">
+        <button class="btn btn-primary mt-3" *ngIf="!isAdmin" (click)="openAssignmentModal()">
           <span class="material-symbols-outlined">add</span> Create First Assignment
         </button>
       </div>
@@ -763,19 +809,21 @@
     </div>
 
     <!-- Course Moderation Sticky Review Action Bar (for Reviewers) -->
-    <div class="course-moderation-top-bar" *ngIf="isAdmin && isPendingModerationCourse(activeDetailCourse)">
-      <div class="moderation-status-pill">
-        <span class="material-symbols-outlined">pending_actions</span>
+    <div class="course-moderation-top-bar" *ngIf="isAdmin">
+      <div class="moderation-status-pill" [class.status-approved]="activeDetailCourse?.approvalStatus === 'approved'" [class.status-rejected]="activeDetailCourse?.approvalStatus === 'rejected'">
+        <span class="material-symbols-outlined">{{ activeDetailCourse?.approvalStatus === 'approved' ? 'verified' : activeDetailCourse?.approvalStatus === 'rejected' ? 'cancel' : 'pending_actions' }}</span>
         <div>
-          <strong>Curriculum In Moderation Queue</strong>
-          <span>Submitted by {{ activeDetailCourse?.submitted_by || activeDetailCourse?.submittedBy || 'Instructor' }} &bull; Review the complete syllabus, lesson guides, quizzes, and deliverables below before making an accreditation decision.</span>
+          <strong>
+            {{ activeDetailCourse?.approvalStatus === 'approved' ? 'Curriculum Approved & Published Live' : activeDetailCourse?.approvalStatus === 'rejected' ? 'Curriculum Marked as Rejected' : 'Curriculum In Moderation Queue' }}
+          </strong>
+          <span>Submitted by {{ activeDetailCourse?.submitted_by || activeDetailCourse?.submittedBy || 'Instructor' }} &bull; Admin moderation desk. You can audit curriculum units, approve for publication, or reject with feedback.</span>
         </div>
       </div>
       <div class="moderation-action-buttons">
-        <button class="btn btn-sm btn-outline danger" (click)="openRejectModalForActiveCourse()">
+        <button class="btn btn-sm btn-outline danger" *ngIf="activeDetailCourse?.approvalStatus !== 'rejected'" (click)="openRejectModalForActiveCourse()">
           <span class="material-symbols-outlined">close</span> Reject with Feedback
         </button>
-        <button class="btn btn-sm btn-success" (click)="approveActiveCourseFromConsole()">
+        <button class="btn btn-sm btn-success" *ngIf="activeDetailCourse?.approvalStatus !== 'approved'" (click)="approveActiveCourseFromConsole()">
           <span class="material-symbols-outlined">check_circle</span> Approve &amp; Publish Course
         </button>
       </div>
@@ -829,14 +877,17 @@
         <a routerLink="/lms" class="btn btn-outline" style="text-decoration:none;display:flex;align-items:center;gap:6px;" title="Preview how students experience this course">
           <span class="material-symbols-outlined">visibility</span> Preview Classroom
         </a>
-        <button class="btn btn-outline" (click)="cloneCourse(activeDetailCourse)" [disabled]="isCloningCourse[activeDetailCourse?.id]" title="Duplicate this entire course and its modules as a new draft">
+        <button class="btn btn-outline primary" *ngIf="isAdmin" (click)="openCourseForReviewFromConsole()" title="Inspect complete curriculum syllabus in audit workspace">
+          <span class="material-symbols-outlined">rule</span> Full Syllabus Audit
+        </button>
+        <button class="btn btn-outline" *ngIf="!isAdmin" (click)="cloneCourse(activeDetailCourse)" [disabled]="isCloningCourse[activeDetailCourse?.id]" title="Duplicate this entire course and its modules as a new draft">
           <span class="material-symbols-outlined">{{ isCloningCourse[activeDetailCourse?.id] ? 'sync' : 'content_copy' }}</span>
           {{ isCloningCourse[activeDetailCourse?.id] ? 'Cloning...' : 'Clone as Draft' }}
         </button>
-        <button class="btn btn-outline" (click)="openCourseWizard(activeDetailCourse)">
+        <button class="btn btn-outline" *ngIf="!isAdmin" (click)="openCourseWizard(activeDetailCourse)">
           <span class="material-symbols-outlined">edit</span> Edit Course
         </button>
-        <button class="btn btn-primary" (click)="openModuleStudio()">
+        <button class="btn btn-primary" *ngIf="!isAdmin" (click)="openModuleStudio()">
           <span class="material-symbols-outlined">add</span> Add Module
         </button>
       </div>
@@ -904,7 +955,7 @@
           <h3>Syllabus Structure &amp; Lesson Sequence</h3>
           <p class="text-subtle text-xs">Tap any module to enter its dedicated visual block canvas.</p>
         </div>
-        <button id="tour-btn-add-module" class="btn btn-sm btn-primary" (click)="onTourAddModuleClick()">
+        <button id="tour-btn-add-module" class="btn btn-sm btn-primary" *ngIf="!isAdmin" (click)="onTourAddModuleClick()">
           <span class="material-symbols-outlined">add</span> Add New Module
         </button>
       </div>
@@ -926,7 +977,7 @@
                 {{ getMaterialsForModule(mod.id).length || 3 }} interactive units
               </span>
               <button class="btn btn-xs btn-primary-soft" (click)="openModuleStudio(mod); $event.stopPropagation()">
-                <span class="material-symbols-outlined">design_services</span> Open Canvas Studio
+                <span class="material-symbols-outlined">{{ isAdmin ? 'visibility' : 'design_services' }}</span> {{ isAdmin ? 'Inspect Canvas' : 'Open Canvas Studio' }}
               </button>
             </div>
           </div>
@@ -937,7 +988,7 @@
         <span class="material-symbols-outlined">view_module</span>
         <h3>No Curriculum Modules Yet</h3>
         <p>Start designing the syllabus by adding your first lesson module.</p>
-        <button id="tour-btn-create-first-module" class="btn btn-primary mt-3" (click)="onTourAddModuleClick()">
+        <button id="tour-btn-create-first-module" class="btn btn-primary mt-3" *ngIf="!isAdmin" (click)="onTourAddModuleClick()">
           <span class="material-symbols-outlined">add</span> Create First Module
         </button>
       </div>
@@ -972,8 +1023,15 @@
               <td>{{ getModuleTitle(mat.module_id) }}</td>
               <td>
                 <div class="table-actions" (click)="$event.stopPropagation()">
-                  <button class="btn btn-xs btn-subtle" (click)="openMaterialModal(mat)"><span class="material-symbols-outlined">edit</span></button>
-                  <button class="btn btn-xs btn-danger" (click)="deleteMaterial(mat.id)"><span class="material-symbols-outlined">delete</span></button>
+                  <ng-container *ngIf="!isAdmin">
+                    <button class="btn btn-xs btn-subtle" (click)="openMaterialModal(mat)"><span class="material-symbols-outlined">edit</span></button>
+                    <button class="btn btn-xs btn-danger" (click)="deleteMaterial(mat.id)"><span class="material-symbols-outlined">delete</span></button>
+                  </ng-container>
+                  <ng-container *ngIf="isAdmin">
+                    <button class="btn btn-xs btn-subtle" (click)="openMaterialModal(mat)" title="View asset details">
+                      <span class="material-symbols-outlined">visibility</span> View
+                    </button>
+                  </ng-container>
                 </div>
               </td>
             </tr>
@@ -1000,7 +1058,7 @@
                   {{ (assignmentForm.track || activeDetailCourse?.track || 'coding') | titlecase }} Track
                 </span>
               </div>
-              <h3>{{ formMode === 'edit' ? 'Edit Assignment Challenge' : 'Create New Course Assignment' }}</h3>
+              <h3>{{ isAdmin ? 'Inspect Course Assignment' : (formMode === 'edit' ? 'Edit Assignment Challenge' : 'Create New Course Assignment') }}</h3>
               <p class="text-subtle text-xs">Define competition tasks, milestone deliverables, starter code, and rubric scoring benchmarks.</p>
             </div>
           </div>
@@ -1155,7 +1213,7 @@
             <button class="btn btn-primary" *ngIf="assignmentWizardStep < 3" (click)="nextAssignmentWizardStep()" [disabled]="assignmentWizardStep === 1 && !assignmentForm.title.trim()">
               Next Step <span class="material-symbols-outlined">arrow_forward</span>
             </button>
-            <button class="btn btn-success" *ngIf="assignmentWizardStep === 3" (click)="saveAssignmentFromWizard()" [disabled]="isSaving || !assignmentForm.title.trim() || !assignmentForm.courseId">
+            <button class="btn btn-success" *ngIf="assignmentWizardStep === 3 && !isAdmin" (click)="saveAssignmentFromWizard()" [disabled]="isSaving || !assignmentForm.title.trim() || !assignmentForm.courseId">
               <span *ngIf="!isSaving" style="display:flex;align-items:center;gap:6px;">
                 <span class="material-symbols-outlined">check_circle</span> Save &amp; Publish Assignment
               </span>
@@ -1172,7 +1230,7 @@
             <h3>Course Assessment Tasks</h3>
             <p class="text-subtle text-xs">Project deliverables, due dates, and rubric evaluation matrices.</p>
           </div>
-          <button id="tour-btn-create-asgn" class="btn btn-sm btn-primary" (click)="onTourCreateAssignmentClick()">
+          <button id="tour-btn-create-asgn" class="btn btn-sm btn-primary" *ngIf="!isAdmin" (click)="onTourCreateAssignmentClick()">
             <span class="material-symbols-outlined">add</span> Create Assignment
           </button>
         </div>
@@ -1196,8 +1254,13 @@
                 <td><span class="badge badge-info">{{ asgn.submissions_count || 0 }} Submitted</span></td>
                 <td>
                   <div class="table-actions" (click)="$event.stopPropagation()">
-                    <button class="btn btn-xs btn-subtle" (click)="openAssignmentWizard(asgn)" title="Edit"><span class="material-symbols-outlined">edit</span></button>
-                    <button class="btn btn-xs btn-danger" (click)="deleteAssignment(asgn.id)" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                    <ng-container *ngIf="!isAdmin">
+                      <button class="btn btn-xs btn-subtle" (click)="openAssignmentWizard(asgn)" title="Edit"><span class="material-symbols-outlined">edit</span></button>
+                      <button class="btn btn-xs btn-danger" (click)="deleteAssignment(asgn.id)" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                    </ng-container>
+                    <ng-container *ngIf="isAdmin">
+                      <button class="btn btn-xs btn-subtle" (click)="openAssignmentWizard(asgn)" title="View assignment"><span class="material-symbols-outlined">visibility</span> View</button>
+                    </ng-container>
                   </div>
                 </td>
               </tr>
@@ -1209,7 +1272,7 @@
           <span class="material-symbols-outlined">assignment</span>
           <h3>No Assignments Configured</h3>
           <p>Create a project or checkpoint task for students to submit work.</p>
-          <button id="tour-btn-create-first-asgn" class="btn btn-primary mt-3" (click)="onTourCreateAssignmentClick()">
+          <button id="tour-btn-create-first-asgn" class="btn btn-primary mt-3" *ngIf="!isAdmin" (click)="onTourCreateAssignmentClick()">
             <span class="material-symbols-outlined">add</span> Create First Assignment
           </button>
         </div>
@@ -1484,6 +1547,7 @@
     [initialBlocks]="moduleBlocks"
     [isSaving]="isSaving"
     [saveError]="saveError"
+    [isReadOnly]="isAdmin"
     (exit)="exitModuleStudio()"
     (save)="handleSaveModuleStudioFromChild($event)"
     (triggerAiQuiz)="handleTriggerAiQuizFromChild($event)"
@@ -1625,10 +1689,22 @@
 
       <!-- Wizard Navigation Footer -->
       <div class="wizard-footer">
-        <button class="btn btn-outline" *ngIf="courseWizardStep === 1" (click)="exitCourseWizard()">Cancel</button>
-        <button class="btn btn-outline" *ngIf="courseWizardStep > 1" (click)="prevCourseWizardStep()">
-          <span class="material-symbols-outlined">arrow_back</span> Back
-        </button>
+        <div class="wizard-left-actions">
+          <button class="btn btn-outline" *ngIf="courseWizardStep === 1" (click)="exitCourseWizard()">Cancel</button>
+          <button class="btn btn-outline" *ngIf="courseWizardStep > 1" (click)="prevCourseWizardStep()">
+            <span class="material-symbols-outlined">arrow_back</span> Back
+          </button>
+          <button
+            type="button"
+            class="btn-ghost-module"
+            (click)="skipToAddModule()"
+            [disabled]="isSaving || !courseForm.title.trim()"
+            title="Save and jump directly to Module Studio"
+          >
+            <span class="material-symbols-outlined">view_module</span>
+            <span>Skip to Add Module</span>
+          </button>
+        </div>
 
         <div class="wizard-right-actions">
           <button class="btn btn-primary" *ngIf="courseWizardStep < 4" (click)="nextCourseWizardStep()" [disabled]="courseWizardStep === 1 && !courseForm.title.trim()">
@@ -2239,7 +2315,7 @@
     <div class="modal-card" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div>
-          <h3 style="margin:0;">{{ formMode === 'edit' ? 'Edit' : 'Add' }} Curriculum Module</h3>
+          <h3 style="margin:0;">{{ isAdmin ? 'View Curriculum Module' : (formMode === 'edit' ? 'Edit' : 'Add') + ' Curriculum Module' }}</h3>
           <span style="font-size:12px; color:var(--on-surface-variant);">Step {{ moduleStep }} of 2: {{ moduleStep === 1 ? 'Target & Title' : 'Sequence & Outline' }}</span>
         </div>
         <button class="close-btn" (click)="closeModuleModal()">&times;</button>
@@ -2297,7 +2373,7 @@
           <button class="btn btn-primary" *ngIf="moduleStep === 1" (click)="setModuleStep(2)" [disabled]="!moduleForm.title.trim() || !moduleForm.courseId">
             Next <span class="material-symbols-outlined">arrow_forward</span>
           </button>
-          <button class="btn btn-primary" *ngIf="moduleStep === 2" (click)="saveModule()" [disabled]="isSaving || !moduleForm.title.trim() || !moduleForm.courseId">
+          <button class="btn btn-primary" *ngIf="moduleStep === 2 && !isAdmin" (click)="saveModule()" [disabled]="isSaving || !moduleForm.title.trim() || !moduleForm.courseId">
             <span *ngIf="!isSaving">{{ formMode === 'edit' ? 'Update Module' : 'Save Module' }}</span>
             <span *ngIf="isSaving" class="spinner-inline"></span>
           </button>
@@ -2330,8 +2406,8 @@
       <div class="modal-footer" style="padding:14px 20px;display:flex;justify-content:flex-end;gap:10px;">
         <button class="btn btn-outline" (click)="closeModuleBoundAssetModal()">Cancel</button>
         <button class="btn btn-primary" (click)="editModuleFromBoundAsset()" style="display:inline-flex;align-items:center;gap:6px;">
-          <span class="material-symbols-outlined" style="font-size:18px;">design_services</span>
-          <span>Edit in Module Studio</span>
+          <span class="material-symbols-outlined" style="font-size:18px;">{{ isAdmin ? 'visibility' : 'design_services' }}</span>
+          <span>{{ isAdmin ? 'Inspect in Module Studio' : 'Edit in Module Studio' }}</span>
         </button>
       </div>
     </div>
@@ -2342,7 +2418,7 @@
     <div class="modal-card" style="max-width:620px;" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div>
-          <h3 style="margin:0;">{{ formMode === 'edit' ? 'Edit' : 'Add' }} Learning Asset &amp; Widget</h3>
+          <h3 style="margin:0;">{{ isAdmin ? 'View Learning Asset &amp; Widget' : (formMode === 'edit' ? 'Edit' : 'Add') + ' Learning Asset &amp; Widget' }}</h3>
           <span style="font-size:12px; color:var(--on-surface-variant);">Step {{ materialStep }} of 2: {{ materialStep === 1 ? 'Target & Widget Format' : 'Interactive Content & Parameters' }}</span>
         </div>
         <button class="close-btn" (click)="closeMaterialModal()">&times;</button>
@@ -2566,7 +2642,7 @@
           <button class="btn btn-primary" *ngIf="materialStep === 1" (click)="setMaterialStep(2)" [disabled]="!materialForm.title.trim() || !materialForm.courseId">
             Next <span class="material-symbols-outlined">arrow_forward</span>
           </button>
-          <button class="btn btn-primary" *ngIf="materialStep === 2" (click)="saveMaterial()" [disabled]="isSaving || !materialForm.title.trim() || !materialForm.courseId">
+          <button class="btn btn-primary" *ngIf="materialStep === 2 && !isAdmin" (click)="saveMaterial()" [disabled]="isSaving || !materialForm.title.trim() || !materialForm.courseId">
             <span *ngIf="!isSaving">{{ formMode === 'edit' ? 'Update Asset' : 'Save Asset' }}</span>
             <span *ngIf="isSaving" class="spinner-inline"></span>
           </button>
@@ -2580,7 +2656,7 @@
     <div class="modal-card" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <div>
-          <h3 style="margin:0;">{{ formMode === 'edit' ? 'Edit' : 'Create' }} Assignment</h3>
+          <h3 style="margin:0;">{{ isAdmin ? 'View Assignment' : (formMode === 'edit' ? 'Edit' : 'Create') + ' Assignment' }}</h3>
           <span style="font-size:12px; color:var(--on-surface-variant);">Step {{ assignmentStep }} of 2: {{ assignmentStep === 1 ? 'Target & Title' : 'Scoring & Instructions' }}</span>
         </div>
         <button class="close-btn" (click)="closeAssignmentModal()">&times;</button>
@@ -2727,7 +2803,7 @@
           <button class="btn btn-primary" *ngIf="assignmentStep === 1" (click)="setAssignmentStep(2)" [disabled]="!assignmentForm.title.trim() || !assignmentForm.courseId">
             Next <span class="material-symbols-outlined">arrow_forward</span>
           </button>
-          <button class="btn btn-primary" *ngIf="assignmentStep === 2" (click)="saveAssignment()" [disabled]="isSaving || !assignmentForm.title.trim() || !assignmentForm.courseId">
+          <button class="btn btn-primary" *ngIf="assignmentStep === 2 && !isAdmin" (click)="saveAssignment()" [disabled]="isSaving || !assignmentForm.title.trim() || !assignmentForm.courseId">
             <span *ngIf="!isSaving">{{ formMode === 'edit' ? 'Update Assignment' : 'Save Assignment' }}</span>
             <span *ngIf="isSaving" class="spinner-inline"></span>
           </button>

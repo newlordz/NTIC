@@ -1,6 +1,6 @@
 import {
   Component, ChangeDetectionStrategy, Input, Output, EventEmitter,
-  OnInit, OnChanges, SimpleChanges, ChangeDetectorRef
+  OnInit, OnChanges, OnDestroy, SimpleChanges, ChangeDetectorRef, HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +14,19 @@ export interface QuizQuestionItem {
   options: string[];
   correctIndex: number;
   explanation: string;
+}
+
+export interface StudioDraft {
+  courseId: string;
+  courseTitle?: string;
+  moduleId?: string;
+  title: string;
+  order: number;
+  description: string;
+  blocks: ModuleBlock[];
+  savedAt: string;
+  savedAtLabel: string;
+  blockCount: number;
 }
 
 export interface ModuleBlock {
@@ -77,12 +90,13 @@ export interface ModuleBlock {
   styleUrls: ['./module-studio.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ModuleStudioComponent implements OnInit, OnChanges {
+export class ModuleStudioComponent implements OnInit, OnChanges, OnDestroy {
   @Input() course: any = null;
   @Input() module: any = null;
   @Input() initialBlocks: ModuleBlock[] = [];
   @Input() isSaving = false;
   @Input() saveError = '';
+  @Input() isReadOnly = false;
 
   @Output() exit = new EventEmitter<void>();
   @Output() save = new EventEmitter<{ moduleForm: any; blocks: ModuleBlock[] }>();
@@ -103,6 +117,16 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
   isGeneratingAiQuiz: Record<string, boolean> = {};
   isUploadingBlockFile: Record<string, boolean> = {};
 
+  // ── Auto-Save & Draft Recovery State ────────────────────────
+  autoSaveStatus: 'idle' | 'unsaved' | 'saving' | 'saved' = 'idle';
+  lastAutoSavedTime = '';
+  hasUnsavedChanges = false;
+  hasRecoverableDraft = false;
+  isDraftAutoRestored = false;
+  pendingDraft: StudioDraft | null = null;
+  pendingDraftTimeAgo = '';
+  private autoSaveTimer: any = null;
+
   // Drag & Drop State
   draggedIndex: number | null = null;
   dragOverIndex: number | null = null;
@@ -115,15 +139,11 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
 
   quillConfig = {
     toolbar: [
-      [{ font: [] }, { size: ['small', false, 'large', 'huge'] }],
-      [{ header: [1, 2, 3, 4, 5, 6, false] }],
       ['bold', 'italic', 'underline', 'strike'],
-      [{ color: [] }, { background: [] }],
-      [{ script: 'sub' }, { script: 'super' }],
-      [{ header: 1 }, { header: 2 }, 'blockquote', 'code-block'],
-      [{ list: 'ordered' }, { list: 'bullet' }, { indent: '-1' }, { indent: '+1' }],
-      [{ direction: 'rtl' }, { align: [] }],
-      ['link', 'image', 'video'],
+      [{ 'header': [1, 2, 3, false] }],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      [{ 'color': [] }, { 'background': [] }],
+      ['link', 'blockquote', 'code-block'],
       ['clean']
     ]
   };
@@ -158,12 +178,294 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
 
   ngOnInit(): void {
     this.initModuleData();
+    if (this.isReadOnly) {
+      this.isCanvasPreviewMode = true;
+      this.isPaletteCollapsed = true;
+    } else {
+      this.checkForSavedDraft();
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['module'] || changes['initialBlocks']) {
       this.initModuleData();
+      if (!this.isReadOnly) {
+        this.checkForSavedDraft();
+      }
     }
+    if (changes['isReadOnly'] && this.isReadOnly) {
+      this.isCanvasPreviewMode = true;
+      this.isPaletteCollapsed = true;
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.hasUnsavedChanges && !this.isReadOnly) {
+      this.performAutoSave();
+    }
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer);
+      this.autoSaveTimer = null;
+    }
+  }
+
+  // ── Auto-Save Event Interceptors ────────────────────────────
+  @HostListener('input')
+  onHostInput(): void {
+    if (this.isReadOnly) return;
+    this.scheduleAutoSave(false);
+  }
+
+  @HostListener('change')
+  onHostChange(): void {
+    if (this.isReadOnly) return;
+    this.scheduleAutoSave(false);
+  }
+
+  @HostListener('window:beforeunload')
+  onWindowBeforeUnload(): void {
+    if (this.isReadOnly) return;
+    this.performAutoSave();
+  }
+
+  get autoSaveLabel(): string {
+    if (this.autoSaveStatus === 'saving') return 'Autosaving...';
+    if (this.autoSaveStatus === 'saved') {
+      return this.lastAutoSavedTime ? `Autosaved ${this.lastAutoSavedTime}` : 'Autosaved';
+    }
+    if (this.autoSaveStatus === 'unsaved') return 'Unsaved changes';
+    return 'Draft ready';
+  }
+
+  get autoSaveTooltip(): string {
+    return this.lastAutoSavedTime
+      ? `Auto-saved locally at ${this.lastAutoSavedTime}. Drafts persist automatically if you close or exit.`
+      : 'Changes are automatically saved to local browser storage.';
+  }
+
+  getDraftStorageKey(): string {
+    const courseId = this.moduleForm.courseId || this.course?.id || 'general';
+    const moduleId = this.moduleForm.id || this.module?.id;
+    if (moduleId && !String(moduleId).startsWith('mod-temp-') && !String(moduleId).startsWith('blk-')) {
+      return `ntic_studio_draft_${courseId}_${moduleId}`;
+    }
+    const order = this.moduleForm.order || 1;
+    return `ntic_studio_draft_${courseId}_new_${order}`;
+  }
+
+  scheduleAutoSave(immediate = false): void {
+    if (this.isReadOnly) return;
+    this.hasUnsavedChanges = true;
+    this.autoSaveStatus = 'unsaved';
+    this.cdr.markForCheck();
+
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer);
+      this.autoSaveTimer = null;
+    }
+
+    if (immediate) {
+      this.performAutoSave();
+    } else {
+      this.autoSaveTimer = setTimeout(() => {
+        this.performAutoSave();
+      }, 800);
+    }
+  }
+
+  performAutoSave(): void {
+    if (this.isReadOnly) return;
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer);
+      this.autoSaveTimer = null;
+    }
+
+    // Skip if completely empty canvas and blank title
+    if (this.moduleBlocks.length === 0 && !this.moduleForm.title.trim()) {
+      return;
+    }
+
+    this.autoSaveStatus = 'saving';
+    this.cdr.markForCheck();
+
+    try {
+      const key = this.getDraftStorageKey();
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      const draft: StudioDraft = {
+        courseId: this.moduleForm.courseId || this.course?.id || '',
+        courseTitle: this.course?.title || '',
+        moduleId: this.moduleForm.id || this.module?.id,
+        title: this.moduleForm.title || 'Untitled Module',
+        order: this.moduleForm.order || 1,
+        description: this.moduleForm.description || '',
+        blocks: this.moduleBlocks,
+        savedAt: now.toISOString(),
+        savedAtLabel: timeStr,
+        blockCount: this.moduleBlocks.length
+      };
+
+      localStorage.setItem(key, JSON.stringify(draft));
+
+      // Also maintain latest new draft pointer for fallback
+      if (!draft.moduleId || String(draft.moduleId).startsWith('mod-temp-') || String(draft.moduleId).startsWith('blk-')) {
+        const latestKey = `ntic_studio_draft_${draft.courseId || 'general'}_latest_new`;
+        localStorage.setItem(latestKey, JSON.stringify(draft));
+      }
+
+      this.lastAutoSavedTime = timeStr;
+      this.autoSaveStatus = 'saved';
+      this.hasUnsavedChanges = false;
+    } catch (err) {
+      console.error('Failed to auto-save module draft', err);
+      this.autoSaveStatus = 'unsaved';
+    }
+    this.cdr.markForCheck();
+  }
+
+  manualSaveDraft(): void {
+    this.performAutoSave();
+    const timeLabel = this.lastAutoSavedTime || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    this.dialogService.toast(`Draft preserved in browser cache (${timeLabel})!`, 'success');
+  }
+
+  checkForSavedDraft(): void {
+    try {
+      const key = this.getDraftStorageKey();
+      let raw = localStorage.getItem(key);
+
+      // Fallback check for new modules if exact order key was not found
+      if (!raw && (!this.moduleForm.id || !this.module?.id)) {
+        const courseId = this.moduleForm.courseId || this.course?.id || 'general';
+        raw = localStorage.getItem(`ntic_studio_draft_${courseId}_latest_new`);
+      }
+
+      if (!raw) {
+        this.hasRecoverableDraft = false;
+        this.pendingDraft = null;
+        return;
+      }
+
+      const draft: StudioDraft = JSON.parse(raw);
+      if (!draft || !draft.blocks || draft.blocks.length === 0) {
+        this.hasRecoverableDraft = false;
+        this.pendingDraft = null;
+        return;
+      }
+
+      const draftAgeMs = Date.now() - new Date(draft.savedAt).getTime();
+      // Ignore drafts older than 14 days
+      if (draftAgeMs > 14 * 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(key);
+        this.hasRecoverableDraft = false;
+        this.pendingDraft = null;
+        return;
+      }
+
+      this.pendingDraft = draft;
+      this.pendingDraftTimeAgo = this.formatTimeAgo(draft.savedAt);
+
+      // If current canvas is empty (0 blocks), automatically restore the draft
+      // so the author doesn't see a blank canvas after returning!
+      if (this.moduleBlocks.length === 0) {
+        this.restoreDraft(false);
+        this.isDraftAutoRestored = true;
+        this.hasRecoverableDraft = true;
+      } else {
+        // Current canvas already has blocks (e.g. from backend materials)
+        // Show prompt banner if the local draft has distinct or newer content
+        if (JSON.stringify(draft.blocks) !== JSON.stringify(this.moduleBlocks) || (draft.title && draft.title !== this.moduleForm.title)) {
+          this.hasRecoverableDraft = true;
+          this.isDraftAutoRestored = false;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to parse module draft from localStorage', err);
+    }
+  }
+
+  restoreDraft(notify = true): void {
+    if (!this.pendingDraft) return;
+
+    if (this.pendingDraft.title && (!this.moduleForm.title || this.moduleForm.title.startsWith('Module '))) {
+      this.moduleForm.title = this.pendingDraft.title;
+    }
+    if (this.pendingDraft.order) {
+      this.moduleForm.order = this.pendingDraft.order;
+    }
+    if (this.pendingDraft.description) {
+      this.moduleForm.description = this.pendingDraft.description;
+    }
+
+    if (this.pendingDraft.blocks && this.pendingDraft.blocks.length > 0) {
+      this.moduleBlocks = this.pendingDraft.blocks.map(b => ({
+        ...b,
+        imageWidth: b.imageWidth || '100%',
+        imageAlign: b.imageAlign || 'center',
+        imageRounded: b.imageRounded ?? true,
+        imageShadow: b.imageShadow ?? false,
+        imageBorder: b.imageBorder ?? true,
+        calloutType: b.calloutType || 'tip',
+        isCollapsed: b.isCollapsed ?? false
+      }));
+      this.selectedBlockId = this.moduleBlocks[0]?.id || null;
+    }
+
+    this.hasRecoverableDraft = false;
+    this.isDraftAutoRestored = true;
+    this.autoSaveStatus = 'saved';
+    this.lastAutoSavedTime = this.pendingDraft.savedAtLabel || 'earlier';
+    this.hasUnsavedChanges = false;
+
+    if (notify) {
+      this.dialogService.toast(`Restored draft with ${this.moduleBlocks.length} block(s)!`, 'success');
+    }
+    this.cdr.markForCheck();
+  }
+
+  discardDraft(): void {
+    const key = this.getDraftStorageKey();
+    try {
+      localStorage.removeItem(key);
+      const courseId = this.moduleForm.courseId || this.course?.id || 'general';
+      localStorage.removeItem(`ntic_studio_draft_${courseId}_latest_new`);
+    } catch (e) {}
+
+    this.hasRecoverableDraft = false;
+    this.isDraftAutoRestored = false;
+    this.pendingDraft = null;
+
+    if (this.initialBlocks && this.initialBlocks.length > 0) {
+      this.moduleBlocks = this.initialBlocks.map(b => ({ ...b }));
+      this.selectedBlockId = this.moduleBlocks[0]?.id || null;
+    } else {
+      this.moduleBlocks = [];
+      this.selectedBlockId = null;
+    }
+
+    this.autoSaveStatus = 'idle';
+    this.dialogService.toast('Draft discarded. Reset to clean state.', 'info');
+    this.cdr.markForCheck();
+  }
+
+  dismissDraftBanner(): void {
+    this.isDraftAutoRestored = false;
+    this.hasRecoverableDraft = false;
+    this.cdr.markForCheck();
+  }
+
+  formatTimeAgo(isoString: string): string {
+    if (!isoString) return 'recently';
+    const diffSec = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
+    if (diffSec < 45) return 'just now';
+    if (diffSec < 90) return '1 minute ago';
+    const mins = Math.floor(diffSec / 60);
+    if (mins < 60) return `${mins} minutes ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days > 1 ? 's' : ''} ago`;
   }
 
   private initModuleData(): void {
@@ -195,16 +497,8 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
         calloutType: b.calloutType || 'tip',
         isCollapsed: b.isCollapsed ?? false
       }));
-    } else if (!this.module) {
-      this.moduleBlocks = [
-        {
-          id: 'blk-init-1',
-          type: 'text',
-          title: 'Module Overview & Learning Objectives',
-          content: '<p>Welcome to this module. In this lesson, we will explore core architectural principles, analyze reference implementations, and complete hands-on checkpoint challenges.</p>',
-          isEditing: false
-        }
-      ];
+    } else {
+      this.moduleBlocks = [];
     }
     this.cdr.markForCheck();
   }
@@ -322,6 +616,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     this.editingBlockId = (type === 'text' || type === 'callout') ? newId : null;
     this.activeInsertSlotIndex = null;
     this.dialogService.toast(`Added ${type.toUpperCase()} block to module.`, 'info');
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
 
     // Smoothly scroll down to the newly added block so the user immediately sees it
@@ -363,6 +658,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
       row.push('');
     }
     this.dialogService.toast('Added column to table.', 'info');
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
   }
 
@@ -378,6 +674,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
       }
     }
     this.dialogService.toast('Removed column.', 'info');
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
   }
 
@@ -386,6 +683,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     if (!blk.tableRows) blk.tableRows = [];
     const newRow = new Array(blk.tableHeaders.length).fill('');
     blk.tableRows.push(newRow);
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
   }
 
@@ -395,6 +693,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
       return;
     }
     blk.tableRows.splice(rowIdx, 1);
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
   }
 
@@ -405,6 +704,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     const temp = blk.tableRows[rowIdx];
     blk.tableRows[rowIdx] = blk.tableRows[targetIdx];
     blk.tableRows[targetIdx] = temp;
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
   }
 
@@ -413,6 +713,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     const cloned = [...blk.tableRows[rowIdx]];
     blk.tableRows.splice(rowIdx + 1, 0, cloned);
     this.dialogService.toast('Row duplicated.', 'info');
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
   }
 
@@ -458,6 +759,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
       blk.tableFooterNotes = 'Total scorecard: 100 points maximum.';
     }
     this.dialogService.toast(`Applied ${presetKey.toUpperCase()} preset to table.`, 'success');
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
   }
 
@@ -531,6 +833,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     this.moduleBlocks.splice(index + 1, 0, cloned);
     this.selectedBlockId = cloned.id;
     this.dialogService.toast(`Duplicated ${cloned.type.toUpperCase()} block.`, 'success');
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
 
     setTimeout(() => {
@@ -549,6 +852,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
       this.selectedBlockId = this.moduleBlocks[0]?.id || null;
     }
     this.dialogService.toast('Block removed from sequence.', 'info');
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
   }
 
@@ -557,6 +861,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     const temp = this.moduleBlocks[index];
     this.moduleBlocks[index] = this.moduleBlocks[index - 1];
     this.moduleBlocks[index - 1] = temp;
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
   }
 
@@ -565,6 +870,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     const temp = this.moduleBlocks[index];
     this.moduleBlocks[index] = this.moduleBlocks[index + 1];
     this.moduleBlocks[index + 1] = temp;
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
   }
 
@@ -668,6 +974,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     this.draggedIndex = null;
     this.dragOverIndex = null;
     this.dialogService.toast('Block reordered successfully!', 'info');
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
   }
 
@@ -703,6 +1010,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
       this.moduleBlocks.push(itemToMove);
       this.draggedIndex = null;
       this.dialogService.toast('Block moved to end.', 'info');
+      this.scheduleAutoSave(true);
       this.cdr.markForCheck();
     }
   }
@@ -736,9 +1044,26 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     if (activeQ) {
       blk.quizQuestion = activeQ.question;
       blk.quizOptions = activeQ.options;
-      blk.quizCorrectIndex = activeQ.correctIndex;
+      blk.quizCorrectIndex = Number(activeQ.correctIndex ?? 0);
       blk.quizExplanation = activeQ.explanation;
     }
+    this.cdr.markForCheck();
+  }
+
+  isQuizOptionCorrect(blk: ModuleBlock, oIdx: number): boolean {
+    const q = this.getActiveQuizQuestion(blk);
+    const cIdx = Number(q?.correctIndex ?? blk.quizCorrectIndex ?? 0);
+    return cIdx === Number(oIdx);
+  }
+
+  setQuizCorrectOption(blk: ModuleBlock, oIdx: number): void {
+    const numIdx = Number(oIdx) || 0;
+    const q = this.getActiveQuizQuestion(blk);
+    if (q) {
+      q.correctIndex = numIdx;
+    }
+    blk.quizCorrectIndex = numIdx;
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
   }
 
@@ -757,6 +1082,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     blk.quizOptions = newQ.options;
     blk.quizCorrectIndex = 0;
     blk.quizExplanation = '';
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
   }
 
@@ -766,6 +1092,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     questions.splice(qIdx, 1);
     blk.activeQuestionIdx = Math.max(0, qIdx - 1);
     this.selectQuizQuestion(blk, blk.activeQuestionIdx);
+    this.scheduleAutoSave(true);
     this.cdr.markForCheck();
   }
 
@@ -779,10 +1106,15 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
 
   // ── Save Action ──────────────────────────────────────────────
   onSave(): void {
+    if (this.isReadOnly) {
+      this.dialogService.toast('Admins cannot edit or save modules in review mode.', 'info');
+      return;
+    }
     if (!this.moduleForm.title.trim()) {
       this.dialogService.toast('Please provide a module title before saving.', 'warning');
       return;
     }
+    this.performAutoSave();
     this.save.emit({
       moduleForm: this.moduleForm,
       blocks: this.moduleBlocks
@@ -790,6 +1122,9 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
   }
 
   onExit(): void {
+    if (!this.isReadOnly) {
+      this.performAutoSave();
+    }
     this.exit.emit();
   }
 
@@ -916,21 +1251,37 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
           ? res.questions
           : [res];
 
-        this.previewQuestions = rawList.map((q: any, idx: number) => ({
-          id: 'q-ai-' + Date.now() + '-' + (idx + 1),
-          question: q.question || 'Comprehension checkpoint question',
-          options: (q.options && q.options.length >= 2) ? q.options : ['Option A', 'Option B', 'Option C', 'Option D'],
-          correctIndex: (typeof q.correct_index === 'number' && q.correct_index >= 0) ? q.correct_index : 0,
-          explanation: q.explanation || 'Verified answer key explanation.'
-        }));
+        this.previewQuestions = rawList.map((q: any, idx: number) => {
+          const opts = (q.options && q.options.length >= 2) ? q.options : ['Option A', 'Option B', 'Option C', 'Option D'];
+          const rawC = q.correct_index ?? q.correctIndex;
+          let cIdx = typeof rawC === 'number' ? rawC : parseInt(rawC, 10);
+          const exp = (q.explanation || '').trim();
+
+          // Safely deduce correct index if undefined or invalid
+          if (isNaN(cIdx) || cIdx < 0 || cIdx >= opts.length) {
+            cIdx = 0;
+          }
+          // If True/False and explanation explicitly says "False" or "True", auto-align
+          if (opts.length === 2 && opts[0].toLowerCase() === 'true' && opts[1].toLowerCase() === 'false') {
+            const expLow = exp.toLowerCase();
+            if (expLow.startsWith('false') || expLow.includes('answer is false') || expLow.includes('statement is false')) {
+              cIdx = 1;
+            } else if (expLow.startsWith('true') || expLow.includes('answer is true') || expLow.includes('statement is true')) {
+              cIdx = 0;
+            }
+          }
+
+          return {
+            id: 'q-ai-' + Date.now() + '-' + (idx + 1),
+            question: q.question || 'Comprehension checkpoint question',
+            options: opts,
+            correctIndex: cIdx,
+            explanation: exp || 'Verified answer key explanation.'
+          };
+        });
 
         this.previewActiveIdx = 0;
-        this.dialogService.toast(
-          mode === 'parse'
-            ? `Recognized & organized ${this.previewQuestions.length} question(s)!`
-            : `Generated ${this.previewQuestions.length} question(s) successfully!`,
-          'success'
-        );
+        this.insertParsedQuestionsIntoModule(this.previewQuestions, mode);
         this.cdr.markForCheck();
       },
       error: (err: any) => {
@@ -940,6 +1291,84 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
         this.cdr.markForCheck();
       }
     });
+  }
+
+  insertParsedQuestionsIntoModule(questions: QuizQuestionItem[], mode: 'parse' | 'generate'): void {
+    if (!questions || questions.length === 0) return;
+
+    if (this.targetAiQuizBlock) {
+      // Opened from an existing quiz block
+      const targetQList = this.getQuizQuestions(this.targetAiQuizBlock);
+      const activeIdx = this.targetAiQuizBlock.activeQuestionIdx ?? 0;
+
+      const currentQ = targetQList[activeIdx];
+      const isCurrentBlank = !currentQ || !currentQ.question || !currentQ.question.trim() || currentQ.question === 'New Comprehension Checkpoint';
+
+      if (isCurrentBlank && targetQList.length <= 1) {
+        // Replace current placeholder question with the first parsed question
+        targetQList[0] = { ...questions[0], id: targetQList[0]?.id || 'q-1' };
+        // If multiple questions were parsed, append the rest
+        for (let i = 1; i < questions.length; i++) {
+          targetQList.push({
+            ...questions[i],
+            id: 'q-' + (targetQList.length + 1)
+          });
+        }
+        this.selectQuizQuestion(this.targetAiQuizBlock, 0);
+      } else {
+        // Append all parsed questions to this quiz block
+        const startIdx = targetQList.length;
+        for (const q of questions) {
+          targetQList.push({
+            ...q,
+            id: 'q-' + (targetQList.length + 1)
+          });
+        }
+        this.selectQuizQuestion(this.targetAiQuizBlock, startIdx);
+      }
+
+      this.selectedBlockId = this.targetAiQuizBlock.id;
+      this.editingBlockId = this.targetAiQuizBlock.id;
+
+      const actionText = mode === 'parse' ? 'Parsed & organized' : 'Generated';
+      this.dialogService.toast(`${actionText} ${questions.length} question(s) into Quiz block!`, 'success');
+    } else {
+      // Opened from palette or general builder -> create a new Quiz Block
+      const firstQ = questions[0];
+      const newQuestions: QuizQuestionItem[] = questions.map((q, idx) => ({
+        id: 'q-' + (idx + 1),
+        question: q.question,
+        options: [...q.options],
+        correctIndex: q.correctIndex,
+        explanation: q.explanation
+      }));
+
+      const newBlock: ModuleBlock = {
+        id: 'blk-quiz-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 5),
+        type: 'quiz',
+        title: 'Checkpoint Quiz: ' + (firstQ.question.slice(0, 36) || 'Comprehension Check') + '...',
+        quizQuestions: newQuestions,
+        activeQuestionIdx: 0,
+        quizQuestion: firstQ.question,
+        quizOptions: [...firstQ.options],
+        quizCorrectIndex: firstQ.correctIndex,
+        quizExplanation: firstQ.explanation
+      };
+
+      this.moduleBlocks.push(newBlock);
+      this.selectedBlockId = newBlock.id;
+      this.editingBlockId = newBlock.id;
+
+      const actionText = mode === 'parse' ? 'Parsed & organized' : 'Created';
+      this.dialogService.toast(`${actionText} new Quiz block with ${newQuestions.length} question(s)!`, 'success');
+    }
+
+    // Immediately trigger auto-save so parsed/generated content is never lost
+    this.scheduleAutoSave(true);
+
+    // Reset inputs and close modal so author can proceed immediately
+    this.rawPastedQuizText = '';
+    this.closeAiQuestionBuilderModal();
   }
 
   selectPreviewQuestion(idx: number): void {
@@ -974,6 +1403,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     this.targetAiQuizBlock.quizExplanation = activeQ.explanation;
 
     this.dialogService.toast('Applied question to active prompt!', 'success');
+    this.scheduleAutoSave(true);
     this.closeAiQuestionBuilderModal();
   }
 
@@ -995,6 +1425,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     this.selectQuizQuestion(this.targetAiQuizBlock, this.targetAiQuizBlock.activeQuestionIdx);
 
     this.dialogService.toast(`Appended ${this.previewQuestions.length} question(s) to quiz tabs!`, 'success');
+    this.scheduleAutoSave(true);
     this.closeAiQuestionBuilderModal();
   }
 
@@ -1027,6 +1458,7 @@ export class ModuleStudioComponent implements OnInit, OnChanges {
     this.editingBlockId = newBlock.id;
 
     this.dialogService.toast(`Created new Quiz block with ${newQuestions.length} question(s)!`, 'success');
+    this.scheduleAutoSave(true);
     this.closeAiQuestionBuilderModal();
   }
 }

@@ -90,3 +90,8 @@ agent's files.
 3. **Compound Clipboard Copying**:
    - All `copyText` / `copyModalText` methods must guard against empty fields (e.g. omitting the OTP line if empty) and include `document.execCommand('copy')` fallback mechanisms for cross-browser reliability.
 
+4. **Authentic Real Data Directive (Zero Mock/Synthetic Data)**:
+   - **Never** generate, invent, or hardcode synthetic/mock telemetry, fake metrics, fake ISP/OS guesses, fake before/after state diffs, or simulated cryptography/seals.
+   - All UI views, dashboards, tables, and inspectors must display only verified backend data and authentic client attributes.
+   - If a data point is not captured or not transmitted (e.g., screen resolution in server-side HTTP logs, ISP without GeoIP/ASN resolution, unrecorded state diffs), explicitly display 'Not recorded', 'N/A', or omit the speculative field entirely. Do not fabricate values to populate UI cards.
+

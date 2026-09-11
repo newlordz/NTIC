@@ -1534,7 +1534,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
           track: t.track || 'General',
           lead: t.lead || 'Unassigned',
           members: t.members || 1,
-          status: t.status || 'Active',
+          status: (t.status === 'In Competition' && !(t.competition_id || t.competitionId)) ? 'Active' : (t.status || 'Active'),
           schoolName: t.school_name || t.schoolName || '',
           school_name: t.school_name || t.schoolName || '',
           mentor: t.mentor || '',

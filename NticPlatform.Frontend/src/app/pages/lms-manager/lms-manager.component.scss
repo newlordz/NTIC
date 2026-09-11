@@ -4915,6 +4915,45 @@
     padding-top: 20px;
     border-top: 1px solid #f1f5f9;
 
+    .wizard-left-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-ghost-module {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #047857;
+      background: #ecfdf5;
+      border: 1.5px dashed #a7f3d0;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+
+      .material-symbols-outlined {
+        font-size: 17px;
+        color: #059669;
+      }
+
+      &:hover:not(:disabled) {
+        background: #d1fae5;
+        border-color: #059669;
+        color: #064e3b;
+        transform: translateY(-1px);
+      }
+
+      &:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+    }
+
     .wizard-right-actions {
       display: flex;
       align-items: center;

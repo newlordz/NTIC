@@ -4138,7 +4138,7 @@ setAuthValue('activeUserEmail', email);
           lead: this.teamForm.leadName || 'Student Captain',
           members: Math.max(rosterList.length, 3),
           rosterList: rosterList,
-          status: 'In Competition',
+          status: 'Active',
           schoolName: this.teamForm.school || 'Registered Institution',
           memberPhotos: memberPhotoIds.length ? memberPhotoIds : undefined
         };

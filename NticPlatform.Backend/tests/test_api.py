@@ -2288,6 +2288,8 @@ class TestPublicSurface:
         ("POST", "/api/approvals/public"),
         # File/photo upload with IP rate limit and DB storage.
         ("POST", "/api/files/upload"),
+        # Public inquiry and sponsorship form from the landing page.
+        ("POST", "/api/support-requests"),
         # Idempotent logout: client with expired token must be able to call logout without 401
         ("POST", "/api/logout"),
     }

@@ -1,6 +1,12 @@
 <div class="module-studio-container fade-in">
   <!-- ── Studio Header Bar ── -->
   <header class="studio-header">
+    <!-- Read-Only Banner for Admin Reviewers -->
+    <div class="read-only-banner" *ngIf="isReadOnly">
+      <span class="material-symbols-outlined">verified_user</span>
+      <span>Admin Curriculum Inspection &bull; Verifying syllabus structure and interactive lesson units in read-only state. Editing, adding, or deleting blocks is restricted to course instructors.</span>
+    </div>
+
     <div class="studio-header-top">
       <div class="header-breadcrumb-area">
         <button type="button" class="back-link-btn" (click)="onExit()" title="Back to Course Console">
@@ -13,17 +19,17 @@
           <span class="course-title-text">{{ course?.title || 'Course' }}</span>
         </span>
         <span class="crumb-separator">/</span>
-        <span class="current-crumb">{{ module ? 'Edit Module' : 'New Module' }}</span>
+        <span class="current-crumb">{{ isReadOnly ? 'Audit Module Units' : (module ? 'Edit Module' : 'New Module') }}</span>
       </div>
 
       <!-- Header Action Buttons -->
       <div class="studio-header-actions">
-        <button type="button" class="btn btn-sm btn-studio-utility" (click)="togglePaletteSidebar()" [disabled]="isCanvasPreviewMode" [title]="isPaletteCollapsed ? 'Show Component Palette' : 'Hide Component Palette'">
+        <button *ngIf="!isReadOnly" type="button" class="btn btn-sm btn-studio-utility" (click)="togglePaletteSidebar()" [disabled]="isCanvasPreviewMode" [title]="isPaletteCollapsed ? 'Show Component Palette' : 'Hide Component Palette'">
           <span class="material-symbols-outlined">{{ isPaletteCollapsed ? 'dock_to_right' : 'dock_to_left' }}</span>
           <span class="btn-label">{{ isPaletteCollapsed ? 'Show Palette' : 'Hide Palette' }}</span>
         </button>
 
-        <div class="studio-btn-group">
+        <div class="studio-btn-group" *ngIf="!isReadOnly">
           <button type="button" class="btn btn-sm btn-studio-utility" (click)="collapseAll()" [disabled]="isCanvasPreviewMode" title="Collapse all blocks for quick overview">
             <span class="material-symbols-outlined">unfold_less</span>
             <span class="btn-label">Collapse</span>
@@ -34,26 +40,46 @@
           </button>
         </div>
 
-        <button type="button" class="btn btn-sm btn-preview-toggle" (click)="isCanvasPreviewMode = !isCanvasPreviewMode" [class.active-preview]="isCanvasPreviewMode" title="Toggle student simulation view">
+        <button *ngIf="!isReadOnly" type="button" class="btn btn-sm btn-preview-toggle" (click)="isCanvasPreviewMode = !isCanvasPreviewMode" [class.active-preview]="isCanvasPreviewMode" title="Toggle student simulation view">
           <span class="material-symbols-outlined">{{ isCanvasPreviewMode ? 'edit_note' : 'visibility' }}</span>
           <span>{{ isCanvasPreviewMode ? 'Back to Editor' : 'Learner Preview' }}</span>
         </button>
 
-        <button type="button" class="btn btn-sm btn-studio-save" (click)="onSave()" [disabled]="isSaving">
+        <!-- Auto-save Status Pill Indicator -->
+        <div *ngIf="!isReadOnly" class="autosave-pill" [ngClass]="'status-' + autoSaveStatus" [title]="autoSaveTooltip">
+          <span class="material-symbols-outlined" [class.spin]="autoSaveStatus === 'saving'">
+            {{ autoSaveStatus === 'saving' ? 'sync' : (autoSaveStatus === 'saved' ? 'cloud_done' : (autoSaveStatus === 'unsaved' ? 'cloud_upload' : 'cloud_queue')) }}
+          </span>
+          <span class="autosave-label">{{ autoSaveLabel }}</span>
+        </div>
+
+        <!-- Manual Quick Save Draft -->
+        <button *ngIf="!isReadOnly" type="button" class="btn btn-sm btn-studio-draft" (click)="manualSaveDraft()" [disabled]="autoSaveStatus === 'saving'" title="Preserve current draft to browser local storage">
+          <span class="material-symbols-outlined">save_as</span>
+          <span class="btn-label">Save Draft</span>
+        </button>
+
+        <button *ngIf="!isReadOnly" type="button" class="btn btn-sm btn-studio-save" (click)="onSave()" [disabled]="isSaving">
           <span class="material-symbols-outlined">save</span>
           <span>{{ isSaving ? 'Saving...' : 'Save & Publish' }}</span>
         </button>
+
+        <!-- Read-Only Badge for Admin Reviewers -->
+        <div class="readonly-badge-pill" *ngIf="isReadOnly">
+          <span class="material-symbols-outlined">visibility</span>
+          <span>Read-Only Audit Mode</span>
+        </div>
       </div>
     </div>
 
     <div class="studio-header-main">
       <div class="title-with-icon">
         <div class="studio-badge-icon">
-          <span class="material-symbols-outlined">design_services</span>
+          <span class="material-symbols-outlined">{{ isReadOnly ? 'visibility' : 'design_services' }}</span>
         </div>
         <div>
-          <h1>{{ module ? 'Curriculum Module Studio' : 'Author Curriculum Module' }}</h1>
-          <p class="studio-subtext">Craft interactive lessons with rich theory, flexible images, videos, checkpoint quizzes, and coding challenges.</p>
+          <h1>{{ isReadOnly ? 'Curriculum Module Inspection' : (module ? 'Curriculum Module Studio' : 'Author Curriculum Module') }}</h1>
+          <p class="studio-subtext">{{ isReadOnly ? 'Inspect lesson structure, reading guides, diagrams, media, and quizzes in student-ready format.' : 'Craft interactive lessons with rich theory, flexible images, videos, checkpoint quizzes, and coding challenges.' }}</p>
         </div>
       </div>
 
@@ -85,41 +111,32 @@
     <span>{{ saveError }}</span>
   </div>
 
-  <!-- ── Module Setup Strip ── -->
-  <div class="module-config-strip">
-    <div class="config-header-badge">
-      <div class="config-icon-box">
-        <span class="material-symbols-outlined">view_module</span>
-      </div>
-      <div class="config-badge-text">
-        <span class="badge-label">Module Setup</span>
-        <span class="badge-count-pill">{{ moduleBlocks.length }} Blocks</span>
-      </div>
-    </div>
-
-    <div class="config-field flex-grow">
-      <label>Module Title <strong class="text-danger">*</strong></label>
+  <!-- ── Top Parameter Strip: Module Title & Sequence Order ── -->
+  <div class="studio-config-bar">
+    <div class="config-field title-field">
+      <label>Module Title <strong class="text-danger" *ngIf="!isReadOnly">*</strong></label>
       <input
         type="text"
         [(ngModel)]="moduleForm.title"
+        (ngModelChange)="scheduleAutoSave(false)"
         placeholder="e.g. Algorithmic State Machines &amp; Sensor Telemetry"
         class="studio-inline-input title-input"
         [class.input-error]="saveError && !moduleForm.title.trim()"
-        [disabled]="isCanvasPreviewMode"
+        [disabled]="isCanvasPreviewMode || isReadOnly"
       />
       <span class="text-xs text-danger" *ngIf="saveError && !moduleForm.title.trim()">A module title is required.</span>
     </div>
 
     <div class="config-field order-field">
       <label>Sequence Order</label>
-      <input type="number" min="1" [(ngModel)]="moduleForm.order" class="studio-inline-input" [disabled]="isCanvasPreviewMode" />
+      <input type="number" min="1" [(ngModel)]="moduleForm.order" (ngModelChange)="scheduleAutoSave(false)" class="studio-inline-input" [disabled]="isCanvasPreviewMode || isReadOnly" />
     </div>
   </div>
 
   <!-- ── Workspace Layout (Left Palette + Center Canvas) ── -->
-  <div class="studio-workspace-grid" [class.sidebar-collapsed]="isPaletteCollapsed">
+  <div class="studio-workspace-grid" [class.sidebar-collapsed]="isPaletteCollapsed || isReadOnly">
     <!-- ── Left Widget Palette ── -->
-    <aside class="studio-palette-sidebar" [class.palette-disabled]="isCanvasPreviewMode">
+    <aside class="studio-palette-sidebar" *ngIf="!isReadOnly" [class.palette-disabled]="isCanvasPreviewMode">
       <div class="palette-header">
         <h4>Insert Learning Block</h4>
         <p class="palette-desc" *ngIf="!isCanvasPreviewMode">Click or drag any widget to the canvas sequence.</p>
@@ -151,7 +168,7 @@
           </div>
         </button>
 
-        <button type="button" class="palette-btn palette-btn-ai" [disabled]="isCanvasPreviewMode" (click)="!isCanvasPreviewMode && openAiQuestionBuilder(null)" title="Open AI Question Builder to generate or import questions">
+        <button type="button" class="palette-btn ai-palette-btn" [disabled]="isCanvasPreviewMode" (click)="!isCanvasPreviewMode && openAiQuestionBuilder(null)" title="Generate questions or parse notes with AI">
           <span class="material-symbols-outlined icon-ai">auto_awesome</span>
           <div class="palette-btn-text">
             <strong>AI Question Builder</strong>
@@ -160,7 +177,7 @@
         </button>
 
         <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'quiz')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('quiz')" title="Click or drag to add Checkpoint Question">
-          <span class="material-symbols-outlined icon-quiz">help_outline</span>
+          <span class="material-symbols-outlined icon-quiz">help</span>
           <div class="palette-btn-text">
             <strong>Checkpoint Question</strong>
             <span>Micro-quiz with immediate feedback</span>
@@ -168,41 +185,41 @@
         </button>
 
         <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'code')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('code')" title="Click or drag to add Code Sandbox">
-          <span class="material-symbols-outlined icon-code">terminal</span>
+          <span class="material-symbols-outlined icon-code">code</span>
           <div class="palette-btn-text">
             <strong>Code Sandbox</strong>
             <span>Interactive challenge &amp; starter</span>
           </div>
         </button>
 
-        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'callout')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('callout')" title="Click or drag to add Callout / Pro Tip">
+        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'table')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('table')" title="Click or drag to add Data & Specification Table">
+          <span class="material-symbols-outlined icon-table">table_chart</span>
+          <div class="palette-btn-text">
+            <strong>Data Table Widget</strong>
+            <span>Specifications, pinouts &amp; complexity</span>
+          </div>
+        </button>
+
+        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'callout')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('callout')" title="Click or drag to add Callout & Tip Box">
           <span class="material-symbols-outlined icon-callout">lightbulb</span>
           <div class="palette-btn-text">
-            <strong>Callout / Pro Tip</strong>
-            <span>Note, Tip, Warning, Key Takeaway</span>
+            <strong>Callout &amp; Pro Tip</strong>
+            <span>Warning, note, tip or key takeaway</span>
           </div>
         </button>
 
-        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'table')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('table')" title="Click or drag to add Data Table">
-          <span class="material-symbols-outlined icon-table" style="color:#0284c7;">table_chart</span>
-          <div class="palette-btn-text">
-            <strong>Data &amp; Table Matrix</strong>
-            <span>Custom columns, rows &amp; search</span>
-          </div>
-        </button>
-
-        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'file')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('file')" title="Click or drag to add Document & PDF">
+        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'file')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('file')" title="Click or drag to add File Download">
           <span class="material-symbols-outlined icon-file">attach_file</span>
           <div class="palette-btn-text">
-            <strong>Document &amp; PDF</strong>
-            <span>Project specs and handouts</span>
+            <strong>Reference Material</strong>
+            <span>Datasheet, schematic, or source file</span>
           </div>
         </button>
 
-        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'break')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('break')" title="Click or drag to add Section Break Gate">
+        <button type="button" class="palette-btn" [disabled]="isCanvasPreviewMode" draggable="true" (dragstart)="onPaletteDragStart($event, 'break')" (dragend)="onPaletteDragEnd()" (click)="!isCanvasPreviewMode && addBlock('break')" title="Click or drag to add Section Break">
           <span class="material-symbols-outlined icon-break">splitscreen</span>
           <div class="palette-btn-text">
-            <strong>Section Break Gate</strong>
+            <strong>Section Break</strong>
             <span>Reading checkpoint before continuing</span>
           </div>
         </button>
@@ -211,8 +228,74 @@
 
     <!-- ── Center Visual Stream Canvas ── -->
     <main class="studio-canvas-stream">
+      <!-- ── DRAFT RECOVERY NOTIFICATION BANNERS ── -->
+      <!-- Scenario A: Auto-restored draft notification -->
+      <div class="draft-alert-banner restored-alert" *ngIf="isDraftAutoRestored && pendingDraft && !isCanvasPreviewMode">
+        <div class="banner-left">
+          <div class="banner-icon-box">
+            <span class="material-symbols-outlined">history_edu</span>
+          </div>
+          <div class="banner-info">
+            <div class="banner-title-line">
+              <strong>Auto-Saved Draft Restored</strong>
+              <span class="draft-time-pill">Saved {{ pendingDraftTimeAgo }} ({{ pendingDraft.savedAtLabel }})</span>
+            </div>
+            <p>We restored your unsaved work ({{ pendingDraft.blockCount }} block{{ pendingDraft.blockCount === 1 ? '' : 's' }}, Title: "{{ pendingDraft.title }}"). Your progress was preserved.</p>
+          </div>
+        </div>
+        <div class="banner-actions">
+          <button type="button" class="btn btn-sm btn-banner-discard" (click)="discardDraft()" title="Discard draft and reset to clean canvas">
+            <span class="material-symbols-outlined">delete_sweep</span>
+            <span>Discard &amp; Start Fresh</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-banner-dismiss" (click)="dismissDraftBanner()" title="Keep restored draft">
+            <span class="material-symbols-outlined">check_circle</span>
+            <span>Keep Draft</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Scenario B: Prompt banner when newer unsaved local draft is available -->
+      <div class="draft-alert-banner prompt-alert" *ngIf="hasRecoverableDraft && !isDraftAutoRestored && pendingDraft && !isCanvasPreviewMode">
+        <div class="banner-left">
+          <div class="banner-icon-box">
+            <span class="material-symbols-outlined">history</span>
+          </div>
+          <div class="banner-info">
+            <div class="banner-title-line">
+              <strong>Unsaved Local Draft Found</strong>
+              <span class="draft-time-pill">Saved {{ pendingDraftTimeAgo }} ({{ pendingDraft.savedAtLabel }})</span>
+            </div>
+            <p>You have an unsaved draft with {{ pendingDraft.blockCount }} block(s) and title "{{ pendingDraft.title }}". Would you like to restore it?</p>
+          </div>
+        </div>
+        <div class="banner-actions">
+          <button type="button" class="btn btn-sm btn-banner-restore" (click)="restoreDraft(true)" title="Restore your local draft">
+            <span class="material-symbols-outlined">restore_page</span>
+            <span>Restore Draft</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-banner-discard" (click)="discardDraft()" title="Discard this local draft">
+            <span class="material-symbols-outlined">delete_sweep</span>
+            <span>Discard</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-banner-dismiss" (click)="dismissDraftBanner()">
+            <span class="material-symbols-outlined">close</span>
+            <span>Dismiss</span>
+          </button>
+        </div>
+      </div>
+
       <!-- ── EDIT MODE CANVAS ── -->
       <div class="canvas-blocks-container" *ngIf="!isCanvasPreviewMode">
+        <!-- Clean Empty State when 0 blocks -->
+        <div class="empty-module-canvas" *ngIf="moduleBlocks.length === 0">
+          <div class="empty-canvas-icon">
+            <span class="material-symbols-outlined">dashboard_customize</span>
+          </div>
+          <h3>Canvas is Clean &amp; Ready</h3>
+          <p>No content blocks yet. Choose a widget from the left palette (Lesson Guide, Diagram, Video, Quiz, Code) or click below to start building.</p>
+        </div>
+
         <div *ngFor="let blk of moduleBlocks; let idx = index; trackBy: trackByBlockId"
              class="canvas-block-card"
              [id]="'card-' + blk.id"
@@ -310,6 +393,7 @@
                 <div class="quill-editor-wrapper quill-full-height mb-2">
                   <quill-editor
                     [(ngModel)]="blk.content"
+                    (onContentChanged)="scheduleAutoSave(false)"
                     [modules]="quillConfig"
                     placeholder="Write theory, formatted concepts, code benchmarks, and explanations..."
                   ></quill-editor>
@@ -512,9 +596,46 @@
               </div>
 
               <div class="quiz-options-builder" *ngIf="getActiveQuizQuestion(blk).options">
-                <div class="quiz-opt-row" *ngFor="let opt of getActiveQuizQuestion(blk).options; let oIdx = index; trackBy: trackByIndex">
-                  <input type="radio" [name]="'quiz_corr_' + blk.id + '_' + (blk.activeQuestionIdx ?? 0)" [checked]="getActiveQuizQuestion(blk).correctIndex === oIdx" (change)="getActiveQuizQuestion(blk).correctIndex = oIdx; blk.quizCorrectIndex = oIdx" />
-                  <input type="text" [(ngModel)]="getActiveQuizQuestion(blk).options[oIdx]" (ngModelChange)="blk.quizOptions = getActiveQuizQuestion(blk).options" class="studio-input-sm" (click)="$event.stopPropagation()" />
+                <div
+                  class="quiz-opt-row"
+                  *ngFor="let opt of getActiveQuizQuestion(blk).options; let oIdx = index"
+                  [class.is-correct]="isQuizOptionCorrect(blk, oIdx)"
+                  (click)="setQuizCorrectOption(blk, oIdx)"
+                >
+                  <input
+                    type="radio"
+                    [name]="'quiz_corr_' + blk.id + '_' + (blk.activeQuestionIdx ?? 0)"
+                    [id]="'quiz_corr_' + blk.id + '_' + (blk.activeQuestionIdx ?? 0) + '_' + oIdx"
+                    [checked]="isQuizOptionCorrect(blk, oIdx)"
+                    (change)="setQuizCorrectOption(blk, oIdx)"
+                    (click)="$event.stopPropagation(); setQuizCorrectOption(blk, oIdx)"
+                    class="quiz-radio-input"
+                  />
+                  <input
+                    type="text"
+                    [(ngModel)]="getActiveQuizQuestion(blk).options[oIdx]"
+                    (ngModelChange)="blk.quizOptions = getActiveQuizQuestion(blk).options; scheduleAutoSave(false)"
+                    class="studio-input-sm"
+                    (click)="$event.stopPropagation()"
+                    [placeholder]="'Option ' + (oIdx + 1)"
+                  />
+                  <span
+                    class="correct-badge"
+                    *ngIf="isQuizOptionCorrect(blk, oIdx)"
+                    title="Marked as the correct answer"
+                  >
+                    <span class="material-symbols-outlined" style="font-size:13px; vertical-align:middle; margin-right:2px;">check_circle</span>
+                    Correct Answer
+                  </span>
+                  <button
+                    type="button"
+                    class="btn-mark-correct"
+                    *ngIf="!isQuizOptionCorrect(blk, oIdx)"
+                    (click)="$event.stopPropagation(); setQuizCorrectOption(blk, oIdx)"
+                    title="Set this option as the correct answer"
+                  >
+                    Mark Correct
+                  </button>
                 </div>
               </div>
 
@@ -1136,7 +1257,7 @@
         >
           <span class="material-symbols-outlined" *ngIf="!isProcessingAiQuestions">auto_awesome</span>
           <span class="spinner-inline" *ngIf="isProcessingAiQuestions"></span>
-          <span>{{ isProcessingAiQuestions ? 'Analyzing &amp; Building Questions...' : (aiBuilderTab === 'paste' ? 'Parse &amp; Organize Questions' : 'Generate Questions from Material') }}</span>
+          <span>{{ isProcessingAiQuestions ? 'Analyzing &amp; Building Questions...' : (aiBuilderTab === 'paste' ? 'Parse, Organize &amp; Insert into Module' : 'Generate &amp; Insert into Module') }}</span>
         </button>
       </div>
 

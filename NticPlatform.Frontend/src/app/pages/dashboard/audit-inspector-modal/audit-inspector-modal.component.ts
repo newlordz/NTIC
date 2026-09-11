@@ -18,6 +18,11 @@ export class AuditInspectorModalComponent implements OnChanges {
 
   activeTab: 'changes' | 'machine' | 'timeline' | 'payload' = 'changes';
   showRawJson = false;
+  isMaximized = false;
+
+  toggleMaximize(): void {
+    this.isMaximized = !this.isMaximized;
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['log'] && changes['log'].currentValue) {

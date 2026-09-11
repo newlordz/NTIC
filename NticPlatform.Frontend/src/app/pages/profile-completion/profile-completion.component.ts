@@ -60,6 +60,7 @@ export class ProfileCompletionComponent implements OnInit {
           this.profilePhotoFileId = me.photo_file_id;
           this.fileStorage.getUrl(me.photo_file_id).then(url => {
             this.profilePhotoPreviewUrl = url;
+            this.cdr.markForCheck();
           });
         }
         this.applyProfile({
@@ -178,6 +179,15 @@ export class ProfileCompletionComponent implements OnInit {
     return this.currentUser?.role === 'sponsor';
   }
 
+  get isStudent(): boolean {
+    return this.currentUser?.role === 'student' || getAuthValue('activeRoleId') === 'student';
+  }
+
+  get isUnderInstitution(): boolean {
+    const org = (this.currentUser?.organization || '').trim().toLowerCase();
+    return Boolean(org && org !== 'independent competitor' && org !== 'independent' && org !== 'unassigned');
+  }
+
   /** Heading text. The template hardcoded `isJudge ? 'Judge' : 'Sponsor'`, so a
    *  student or instructor editing their own profile was told it was a "Sponsor
    *  Profile". */
@@ -275,10 +285,18 @@ export class ProfileCompletionComponent implements OnInit {
     // completed their profile, saw a success screen, and lost everything the
     // next time they signed in on another device. There was also no endpoint to
     // call -- PATCH /api/users/me was added for this.
+    const fullNameToSend = (this.isStudent && this.isUnderInstitution)
+      ? (this.currentUser?.fullName || undefined)
+      : (this.profileForm.fullName?.trim() || undefined);
+
+    const organizationToSend = (this.isStudent && this.isUnderInstitution)
+      ? (this.currentUser?.organization || undefined)
+      : (this.profileForm.organization?.trim() || undefined);
+
     this.apiService.updateMyProfile({
-      full_name: this.profileForm.fullName?.trim() || undefined,
+      full_name: fullNameToSend,
       phone: this.profileForm.phone?.trim() ?? undefined,
-      organization: this.profileForm.organization?.trim() || undefined,
+      organization: organizationToSend,
       bio: this.profileForm.bio?.trim() ?? undefined,
       expertise: this.isJudge ? (this.profileForm.expertise || undefined) : undefined,
       experience_level: this.isJudge ? (this.profileForm.experience || undefined) : undefined,

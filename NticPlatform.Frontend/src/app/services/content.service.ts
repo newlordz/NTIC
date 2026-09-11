@@ -1053,6 +1053,7 @@ export class ContentService {
               const merged = this.mergeTeams(teams);
               this.teams = merged;
               this.saveState('teams', merged);
+              this.dataRefreshed$.next('teams');
             }
           },
           error: () => console.log('Backend teams fallback to local cache')
@@ -1281,6 +1282,31 @@ export class ContentService {
   private mergeTeams(backendTeams: any[]): Team[] {
     const list: Team[] = backendTeams.map((b: any) => {
       const existing = this.teams.find(t => t.id === b.id || (t.name?.toLowerCase() === b.name?.toLowerCase() && t.schoolName?.toLowerCase() === b.school_name?.toLowerCase()));
+
+      const hasMentorIdProp = ('mentorId' in b) || ('mentor_id' in b);
+      const rawMentorId = hasMentorIdProp
+        ? (b.mentorId !== undefined ? b.mentorId : b.mentor_id)
+        : (existing?.mentorId ?? existing?.mentor_id ?? null);
+      const cleanMentorId = (rawMentorId && rawMentorId !== 'none' && rawMentorId !== 'null' && rawMentorId !== 'unassigned')
+        ? rawMentorId
+        : null;
+
+      const hasMentorStatusProp = ('mentorStatus' in b) || ('mentor_status' in b);
+      const rawMentorStatus = hasMentorStatusProp
+        ? (b.mentorStatus !== undefined ? b.mentorStatus : b.mentor_status)
+        : (existing?.mentorStatus ?? existing?.mentor_status ?? 'none');
+      const cleanMentorStatus = cleanMentorId
+        ? 'assigned'
+        : (rawMentorStatus === 'requested' ? 'requested' : 'none');
+
+      const mentorName = cleanMentorId
+        ? (b.mentor !== undefined && b.mentor !== null && b.mentor !== '' ? b.mentor : (existing?.mentor || ''))
+        : '';
+
+      const isSoloVal = ('isSolo' in b)
+        ? Boolean(b.isSolo)
+        : (('is_solo' in b) ? Boolean(b.is_solo) : Boolean(existing?.isSolo ?? existing?.is_solo));
+
       return {
         id: b.id,
         name: b.name || 'Untitled Team',
@@ -1292,17 +1318,14 @@ export class ContentService {
         schoolName: b.school_name || '',
         school_name: b.school_name || '',
         rosterList: (Array.isArray(b.rosterList) && b.rosterList.length > 0) ? b.rosterList : (existing?.rosterList || undefined),
-        mentor: b.mentor || existing?.mentor || undefined,
+        mentor: mentorName,
         motto: b.motto || existing?.motto || undefined,
-        // The mentor allocation portal reads these, but they were dropped on
-        // every merge, so a Refresh wiped mentor assignments from the view and
-        // every team appeared as "No Mentor".
-        mentorId: b.mentorId ?? existing?.mentorId ?? null,
-        mentor_id: b.mentorId ?? existing?.mentor_id ?? null,
-        mentorStatus: b.mentorStatus ?? existing?.mentorStatus ?? 'none',
-        mentor_status: b.mentorStatus ?? existing?.mentor_status ?? 'none',
-        isSolo: b.isSolo ?? existing?.isSolo ?? false,
-        is_solo: b.isSolo ?? existing?.is_solo ?? false
+        mentorId: cleanMentorId,
+        mentor_id: cleanMentorId,
+        mentorStatus: cleanMentorStatus,
+        mentor_status: cleanMentorStatus,
+        isSolo: isSoloVal,
+        is_solo: isSoloVal
       };
     });
 
@@ -1458,7 +1481,7 @@ export class ContentService {
     this.storageReady = true;
   }
 
-  private saveState(key: string, data: any): void {
+  saveState(key: string, data: any): void {
     const LARGE_KEYS = ['users', 'pendingApprovals', 'rejectedApprovals', 'approvedApprovals', 'teams', 'submissions', 'auditLogs'];
 
     if (LARGE_KEYS.includes(key)) {

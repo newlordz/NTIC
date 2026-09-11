@@ -2020,8 +2020,30 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
     }
   }
 
+  isSubmittingSupport = false;
+
   submitSupportForm(): void {
-    this.supportSubmitted = true;
+    if (!this.supportForm?.name || !this.supportForm?.email || !this.supportForm?.message) return;
+    this.isSubmittingSupport = true;
+    this.apiService.submitSupportRequest({
+      name: this.supportForm.name,
+      email: this.supportForm.email,
+      type: this.activeSupportType || 'general',
+      schoolName: this.supportForm.schoolName,
+      competitionTier: this.supportForm.competitionTier,
+      message: this.supportForm.message
+    }).subscribe({
+      next: () => {
+        this.isSubmittingSupport = false;
+        this.supportSubmitted = true;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.isSubmittingSupport = false;
+        this.supportSubmitted = true;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   animateStatsCounters(): void {

@@ -2549,20 +2549,55 @@ export class DashboardComponent implements OnInit, OnDestroy {
   assignMentorToTeam(teamId: string, mentorId: string | null): void {
     if (!teamId) return;
     this.mentorActionInProgress[teamId] = true;
-    this.apiService.assignTeamMentor(teamId, mentorId || null).subscribe({
-      next: () => {
+
+    // Resolve clean mentor ID and mentor details
+    const resolvedMentorId = (mentorId && mentorId !== 'none' && mentorId !== 'unassigned' && mentorId !== 'null') ? mentorId : null;
+    const mentorUser = resolvedMentorId ? (this.registeredUsers || []).find(u => u.id === resolvedMentorId) : null;
+    const resolvedMentorName = mentorUser ? (mentorUser.fullName || mentorUser.full_name || mentorUser.name || mentorUser.email || '') : (resolvedMentorId ? this.getMentorName(resolvedMentorId) : '');
+    const resolvedStatus = resolvedMentorId ? 'assigned' : 'none';
+
+    // Synchronously & optimistically update team in local state so the UI updates immediately
+    const localTeam = (this.contentService.teams || []).find(t => t.id === teamId);
+    if (localTeam) {
+      localTeam.mentorId = resolvedMentorId;
+      localTeam.mentor_id = resolvedMentorId;
+      localTeam.mentor = resolvedMentorName;
+      localTeam.mentorStatus = resolvedStatus;
+      localTeam.mentor_status = resolvedStatus;
+      this.contentService.saveState('teams', this.contentService.teams);
+    }
+    this.cdr.markForCheck();
+
+    this.apiService.assignTeamMentor(teamId, resolvedMentorId).subscribe({
+      next: (res: any) => {
         this.mentorActionInProgress[teamId] = false;
-        if (mentorId) {
-          const mName = this.getMentorName(mentorId);
+        const actualMentorId = (res && 'mentor_id' in res) ? (res.mentor_id || null) : resolvedMentorId;
+        const actualMentorName = (res && 'mentor_name' in res) ? (res.mentor_name || '') : resolvedMentorName;
+        const actualStatus = (res && 'mentor_status' in res) ? res.mentor_status : (actualMentorId ? 'assigned' : 'none');
+
+        if (localTeam) {
+          localTeam.mentorId = actualMentorId;
+          localTeam.mentor_id = actualMentorId;
+          localTeam.mentor = actualMentorName;
+          localTeam.mentorStatus = actualStatus;
+          localTeam.mentor_status = actualStatus;
+          this.contentService.saveState('teams', this.contentService.teams);
+        }
+
+        if (actualMentorId) {
+          const mName = actualMentorName || this.getMentorName(actualMentorId);
           this.dialogService.toast(`Assigned ${mName} as mentor.`, 'success');
         } else {
           this.dialogService.toast('Mentor unassigned.', 'info');
         }
+
         this.contentService.refreshBackendData();
         this.cdr.markForCheck();
       },
       error: (err: any) => {
         this.mentorActionInProgress[teamId] = false;
+        // On error, reload from backend to revert optimistic state
+        this.contentService.refreshBackendData();
         const detail = err?.error?.detail || 'Could not update mentor assignment.';
         this.dialogService.toast(detail, 'error');
         this.cdr.markForCheck();
@@ -3384,6 +3419,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.liveIntervals.push(
+      this.contentService.dataRefreshed$.subscribe(col => {
+        if (col === 'teams' || !col) {
+          this.cdr.markForCheck();
+        }
+      })
+    );
     this.contentService.refreshBackendData();
     this.loadDbData();
     this.recomputeAuditState();
@@ -4009,35 +4051,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     const actorInitials = actorName.split(' ').map((n: string) => n.charAt(0).toUpperCase()).slice(0, 2).join('') || 'NT';
 
-    // Deterministic IP generation for realistic network tracing if not provided
-    let ip = log.ip;
-    if (!ip) {
-      const hash = Math.abs(this.hashCode(rawUser + eventId));
-      const octet2 = (hash % 150) + 50;
-      const octet3 = (Math.floor(hash / 7) % 200) + 10;
-      const octet4 = (Math.floor(hash / 13) % 250) + 2;
-      ip = `102.${octet2}.${octet3}.${octet4}`;
-    }
+    // Authentic IP attribution
+    const ip = log.ip || 'Unrecorded IP';
 
-    // Deterministic location & client
-    const location = log.location || (ip.startsWith('102') ? 'Accra, Greater Accra (GH)' : 'Kumasi, Ashanti (GH)');
-    const client = log.client || (actionLower.includes('mobile') ? 'Mobile App / Android 14' : 'NTIC Web Console / Chrome 128');
+    // Authentic location & client (no fake cities or synthetic client strings)
+    const location = log.location || (
+      ip.startsWith('192.') || ip.startsWith('127.') || ip.startsWith('10.') || ip.includes('localhost') || ip === '::1'
+        ? 'Localhost / Internal Network'
+        : 'Not recorded'
+    );
+    const client = log.client || 'Client Not Specified';
 
-    // Geo-Location flag & country code
-    let flag = '🇬🇭';
-    let countryCode = 'GH';
-    if (ip.startsWith('102') || ip.startsWith('154') || ip.startsWith('41.')) {
-      flag = '🇬🇭';
-      countryCode = 'GH';
-    } else if (ip.startsWith('192.') || ip.startsWith('127.') || ip.startsWith('10.') || ip.includes('localhost') || ip === '::1') {
+    // Network / origin indicator
+    let flag = '🌐';
+    let countryCode = 'WAN';
+    if (ip.startsWith('192.') || ip.startsWith('127.') || ip.startsWith('10.') || ip.includes('localhost') || ip === '::1') {
       flag = '🏢';
       countryCode = 'Local';
-    } else if (ip.startsWith('104.') || ip.startsWith('172.') || ip.startsWith('34.') || ip.startsWith('35.')) {
-      flag = '🇺🇸';
-      countryCode = 'US';
-    } else if (ip.startsWith('185.') || ip.startsWith('194.') || ip.startsWith('51.')) {
-      flag = '🇬🇧';
-      countryCode = 'UK';
+    } else if (log.countryCode) {
+      flag = log.flag || '🌐';
+      countryCode = log.countryCode;
     }
 
     // Device category badge
@@ -4189,16 +4222,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const user = String(log.user || log.usr || 'System').trim();
     const category = log.category || 'system';
     const rawTime = log.time || new Date().toISOString();
-    const ip = log.ip || '102.176.44.12';
-    const client = log.client || 'NTIC Web Console / Chrome 128';
+    const ip = log.ip || 'Unrecorded IP';
+    const client = log.client || 'Client Not Specified';
 
-    // 1. PROJECT DOMAIN & TARGET RESOURCE EXTRACTION
+    // 1. PROJECT DOMAIN & TARGET RESOURCE EXTRACTION (GENUINE LOG ANALYSIS)
     let domain = 'General Project Administration';
     let targetResource = 'Platform System Core';
-    let operationType = 'STATE_MUTATION';
-    let operationLabel = 'Project Configuration Update';
+    let operationType = 'SYSTEM_EVENT';
+    let operationLabel = action;
     let impactLevel: 'high' | 'medium' | 'low' = 'low';
-    let impactText = 'Standard record update';
+    let impactText = 'Standard audit event recorded';
 
     if (actionLower.includes('login') || actionLower.includes('logout') || actionLower.includes('auth') || actionLower.includes('session')) {
       domain = 'Identity & Access Security';
@@ -4206,9 +4239,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       operationType = actionLower.includes('logout') ? 'AUTH_TERMINATION' : 'AUTH_LOGIN';
       operationLabel = actionLower.includes('logout') ? 'Operator Session Terminated' : 'Privileged Access Granted';
       impactLevel = 'high';
-      impactText = 'Direct root console authentication';
+      impactText = 'Authentication event recorded in PostgreSQL';
     } else if (actionLower.includes('approv') || actionLower.includes('verif') || actionLower.includes('reject') || actionLower.includes('roster')) {
-      domain = 'Admissions & Approval Roster';
+      domain = 'Admissions & Approvals Roster';
       targetResource = action.includes(':') ? action.split(':')[1].trim() : 'Registration Application';
       operationType = actionLower.includes('reject') ? 'APPROVAL_REJECTED' : 'APPROVAL_GRANTED';
       operationLabel = actionLower.includes('reject') ? 'Application Rejected' : 'Roster Cleared & Provisioned';
@@ -4251,219 +4284,131 @@ export class DashboardComponent implements OnInit, OnDestroy {
       impactText = 'Entity removed with audit trail preserved';
     }
 
-    // 2. STRUCTURED BEFORE & AFTER STATE CHANGES (DIFF)
+    // 2. AUTHENTIC DIFF & ATTRIBUTION (NO FABRICATED BEFORE/AFTER ROWS)
     const diffs: any[] = [];
-
-    if (actionLower.includes('login')) {
-      diffs.push({
-        field: 'Session State',
-        before: 'Unauthenticated (Anonymous Visitor)',
-        after: 'Active Authenticated Session (200 OK)',
-        type: 'transition',
-        impact: 'Granted'
-      });
-      diffs.push({
-        field: 'RBAC Authorization Scope',
-        before: 'Public Guest (No Console Access)',
-        after: user.includes('super_admin') || actionLower.includes('super_admin') ? 'super_admin (Full Root Governance)' : 'admin (Operational Management)',
-        type: 'modified',
-        impact: 'Elevated'
-      });
-      diffs.push({
-        field: 'Token Security Bearer',
-        before: 'None / Expired',
-        after: 'Signed JWT HS256 Token Allocated',
-        type: 'added',
-        impact: 'Secure'
-      });
-      diffs.push({
-        field: 'Client Machine Binding',
-        before: 'Unbound IP',
-        after: `${ip} (${client.split('/')[0].trim() || 'Desktop'})`,
-        type: 'modified',
-        impact: 'Bound'
-      });
-      diffs.push({
-        field: 'Session Expiry Window',
-        before: 'N/A',
-        after: '24-Hour Rolling Idle Refresh',
-        type: 'added',
-        impact: 'Tracked'
-      });
-    } else if (actionLower.includes('approv') && actionLower.includes('student')) {
-      const studentName = action.includes(':') ? action.split(':')[1].trim() : 'Candidate';
-      diffs.push({
-        field: 'Approval Status',
-        before: 'pending (Stage 1 Verification Required)',
-        after: 'approved (Officially Cleared)',
-        type: 'transition',
-        impact: 'Cleared'
-      });
-      diffs.push({
-        field: 'PostgreSQL User Account',
-        before: 'Unregistered Candidate Application',
-        after: `Provisioned in users & students tables (${studentName})`,
-        type: 'added',
-        impact: 'Created'
-      });
-      diffs.push({
-        field: 'Credential Ticket',
-        before: 'Pending Allocation',
-        after: 'Authoritative NTIC-ACC-2026 Ticket Issued',
-        type: 'added',
-        impact: 'Assigned'
-      });
-      diffs.push({
-        field: 'Temporary Password / OTP',
-        before: 'Unassigned',
-        after: 'Temp-**** Generated & Dispatched',
-        type: 'added',
-        impact: 'Issued'
-      });
-      diffs.push({
-        field: 'Automated Dispatch Email',
-        before: 'Draft / Unsent',
-        after: 'Enqueued to Brevo SMTP Mail Relay',
-        type: 'modified',
-        impact: 'Dispatched'
-      });
-    } else if (actionLower.includes('slide field saved')) {
-      const fieldModified = action.includes(':') ? action.split(':')[1].trim() : 'Slide Field';
-      diffs.push({
-        field: `Slide Property: ${fieldModified}`,
-        before: '(Previous Working Value)',
-        after: 'Updated value committed to central state',
-        type: 'modified',
-        impact: 'Committed'
-      });
-      diffs.push({
-        field: 'Carousel Sync Status',
-        before: 'Unsaved Client Workspace Draft',
-        after: 'Synchronized to Production Showcase Stream',
-        type: 'transition',
-        impact: 'Published'
-      });
-      diffs.push({
-        field: 'Modified By Operator',
-        before: 'Last Cached Author',
-        after: `${user} (Verified Operator)`,
-        type: 'modified',
-        impact: 'Attributed'
-      });
-    } else if (actionLower.includes('slide deleted')) {
-      const slideTitle = action.includes(':') ? action.split(':')[1].trim() : 'Slide';
-      diffs.push({
-        field: 'Hero Carousel Record',
-        before: `Active Slide: ${slideTitle}`,
-        after: 'Purged from live presentation pool',
-        type: 'removed',
-        impact: 'Deleted'
-      });
-      diffs.push({
-        field: 'Database Entity State',
-        before: 'Status: Published / Active',
-        after: 'Status: Soft-Deleted / Archived in Audit Vault',
-        type: 'transition',
-        impact: 'Archived'
-      });
-    } else if (actionLower.includes('course') || actionLower.includes('quiz') || actionLower.includes('module')) {
-      diffs.push({
-        field: 'Curriculum Asset State',
-        before: 'Version Checkpoint (Previous Snapshot)',
-        after: 'Published Module Changes to Course Registry',
-        type: 'modified',
-        impact: 'Updated'
-      });
-      diffs.push({
-        field: 'Authoring Attribution',
-        before: 'Uncommitted In-Memory Edit',
-        after: `Committed by ${user}`,
-        type: 'transition',
-        impact: 'Committed'
-      });
-      diffs.push({
-        field: 'Student Progress Lock',
-        before: 'Unrestricted',
-        after: 'Active Synchronized to LMS Runtime',
-        type: 'modified',
-        impact: 'Synchronized'
-      });
+    if (Array.isArray(log.diffs) && log.diffs.length > 0) {
+      diffs.push(...log.diffs);
     } else {
-      // General action diff breakdown
       diffs.push({
-        field: 'Operation Record',
-        before: 'Pre-execution system baseline',
+        field: 'Action Recorded',
+        before: 'System Prior State',
         after: action,
         type: 'transition',
         impact: 'Executed'
       });
       diffs.push({
-        field: 'Resource State',
-        before: 'Unmodified / Initial State',
-        after: 'Modified & Validated by Server',
-        type: 'modified',
-        impact: 'Applied'
-      });
-      diffs.push({
-        field: 'Operator Attribution',
-        before: 'Anonymous',
-        after: `${user} via ${ip}`,
+        field: 'Attributed Operator',
+        before: 'Unattributed',
+        after: user,
         type: 'added',
-        impact: 'Logged'
+        impact: 'Attributed'
+      });
+      if (ip && ip !== 'Unrecorded IP') {
+        diffs.push({
+          field: 'Client IP Address',
+          before: 'Unbound IP',
+          after: ip,
+          type: 'modified',
+          impact: 'Logged'
+        });
+      }
+      diffs.push({
+        field: 'Audit Log Persistence',
+        before: 'In-Transit Request',
+        after: `Stored in PostgreSQL (Event #${log.id || 'N/A'})`,
+        type: 'added',
+        impact: 'Committed'
       });
     }
 
-    // 3. OPERATOR MACHINE & TELEMETRY PROFILE
+    // 3. AUTHENTIC OPERATOR MACHINE & TELEMETRY PROFILE
     const cLower = client.toLowerCase();
-    let osName = 'Windows 11 Pro';
-    let osArch = '64-bit Architecture (x86_64)';
+    let osName = 'Unknown OS';
+    let osArch = 'Not specified';
     let deviceType = 'Desktop Workstation';
-    let browserName = 'Google Chrome 128.0';
-    let engine = 'Blink / V8';
+    let browserName = 'Standard Web Client';
+    let engine = 'Standard Web Engine';
 
+    // Parse OS truthfully from User-Agent (never assume Enterprise or Pro SKUs)
     if (cLower.includes('windows')) {
-      osName = cLower.includes('10') ? 'Windows 10 Enterprise' : 'Windows 11 Pro';
-      osArch = '64-bit Architecture (x86_64)';
+      if (cLower.includes('windows nt 10.0') || cLower.includes('windows 10')) {
+        osName = 'Windows 10 / 11 (NT 10.0)';
+      } else if (cLower.includes('windows nt 6.3')) {
+        osName = 'Windows 8.1';
+      } else if (cLower.includes('windows nt 6.1')) {
+        osName = 'Windows 7';
+      } else {
+        osName = 'Windows OS';
+      }
       deviceType = 'Desktop PC / Workstation';
-    } else if (cLower.includes('mac') || cLower.includes('darwin')) {
-      osName = 'macOS Sonoma (14.6)';
-      osArch = 'Apple Silicon (arm64)';
-      deviceType = 'MacBook Pro / Desktop';
-    } else if (cLower.includes('linux')) {
-      osName = 'Ubuntu Linux 24.04 LTS';
-      osArch = 'x86_64 Linux Kernel 6.8';
-      deviceType = 'Linux Workstation';
+    } else if (cLower.includes('macintosh') || cLower.includes('mac os x')) {
+      const macMatch = client.match(/Mac OS X (\d+[._\d]+)/i);
+      osName = macMatch ? `macOS ${macMatch[1].replace(/_/g, '.')}` : 'macOS (Apple)';
+      deviceType = 'Mac (Desktop / Laptop)';
     } else if (cLower.includes('android')) {
-      osName = 'Android 14 (OneUI / Pixel)';
-      osArch = 'ARMv8-A (aarch64)';
+      const andMatch = client.match(/Android (\d+(\.\d+)?)/i);
+      osName = andMatch ? `Android ${andMatch[1]}` : 'Android OS';
       deviceType = 'Mobile Smartphone';
-      browserName = 'Chrome Mobile 128';
-    } else if (cLower.includes('iphone') || cLower.includes('ios')) {
-      osName = 'Apple iOS 17.5.1';
-      osArch = 'Apple A16/A17 Bionic';
+    } else if (cLower.includes('iphone')) {
+      const iosMatch = client.match(/OS (\d+([._]\d+)?)/i);
+      osName = iosMatch ? `iOS ${iosMatch[1].replace(/_/g, '.')}` : 'Apple iOS';
       deviceType = 'Apple iPhone';
-      browserName = 'Mobile Safari 17.5';
-      engine = 'WebKit';
+    } else if (cLower.includes('ipad')) {
+      osName = 'Apple iPadOS';
+      deviceType = 'Apple iPad';
+    } else if (cLower.includes('linux')) {
+      osName = 'Linux';
+      deviceType = 'Linux Workstation';
     }
 
-    if (cLower.includes('firefox')) {
-      browserName = 'Mozilla Firefox 130.0';
-      engine = 'Gecko / SpiderMonkey';
-    } else if (cLower.includes('edg')) {
-      browserName = 'Microsoft Edge 128.0';
+    // Architecture parsing
+    if (cLower.includes('win64') || cLower.includes('x86_64') || cLower.includes('x64') || cLower.includes('amd64')) {
+      osArch = '64-bit Architecture (x86_64)';
+    } else if (cLower.includes('arm64') || cLower.includes('aarch64')) {
+      osArch = '64-bit ARM (aarch64)';
+    } else if (cLower.includes('i686') || cLower.includes('i386') || cLower.includes('wow64')) {
+      osArch = '32-bit Architecture (x86)';
+    }
+
+    // Browser parsing
+    const edgMatch = client.match(/Edg\/(\d+(\.\d+)?)/);
+    const chromeMatch = client.match(/Chrome\/(\d+(\.\d+)?)/);
+    const ffMatch = client.match(/Firefox\/(\d+(\.\d+)?)/);
+    const safMatch = client.match(/Version\/(\d+(\.\d+)?).*Safari/);
+
+    if (edgMatch) {
+      browserName = `Microsoft Edge ${edgMatch[1]}`;
       engine = 'Blink / V8';
-    } else if (cLower.includes('safari') && !cLower.includes('chrome')) {
-      browserName = 'Apple Safari 17.5';
+    } else if (chromeMatch) {
+      browserName = `Google Chrome ${chromeMatch[1]}`;
+      engine = 'Blink / V8';
+    } else if (ffMatch) {
+      browserName = `Mozilla Firefox ${ffMatch[1]}`;
+      engine = 'Gecko / SpiderMonkey';
+    } else if (safMatch) {
+      browserName = `Apple Safari ${safMatch[1]}`;
       engine = 'WebKit';
+    } else if (cLower.includes('safari') && !cLower.includes('chrome')) {
+      browserName = 'Apple Safari';
+      engine = 'WebKit';
+    } else if (client && client !== 'Client Not Specified') {
+      browserName = client.split(' ')[0] || 'Web Browser';
     }
 
-    const hashVal = Math.abs(this.hashCode(user + ip + String(log.id)));
-    const sessionFingerprint = `SES-NTIC-${(10000000 + (hashVal % 89999999)).toString(16).toUpperCase()}`;
+    // Authentic Network & ISP (no fake AirtelTigo / MTN guessing)
+    let networkIsp = 'Public WAN (ISP lookup not configured)';
+    if (ip.startsWith('127.') || ip === '::1' || ip.includes('localhost')) {
+      networkIsp = 'Loopback Interface (Localhost)';
+    } else if (ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.16.')) {
+      networkIsp = 'Local Private Network (LAN)';
+    }
 
-    let networkIsp = 'Telecel / Vodafone Ghana Fibre';
-    if (ip.startsWith('102.176') || ip.startsWith('154.')) networkIsp = 'MTN Ghana Business Fibre Backbone';
-    else if (ip.startsWith('41.')) networkIsp = 'AirtelTigo / AT Enterprise Gateway';
-    else if (ip.startsWith('192.') || ip.startsWith('10.') || ip.startsWith('127.')) networkIsp = 'Campus Local Network (Loopback)';
+    // Authentic Geolocation (no fake Accra/Kumasi)
+    const location = log.location || (
+      ip.startsWith('127.') || ip === '::1' || ip.includes('localhost') || ip.startsWith('192.168.') || ip.startsWith('10.')
+        ? 'Localhost / Internal'
+        : 'Not recorded (GeoIP disabled)'
+    );
 
     const machine = {
       osName,
@@ -4473,11 +4418,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
       engine,
       ip,
       networkIsp,
-      location: log.location || 'Accra, Greater Accra (GH)',
-      timezone: 'GMT+00:00 (Africa/Accra)',
-      displayResolution: deviceType.includes('Mobile') ? '390 × 844 (Mobile Retina @ 120Hz)' : '1920 × 1080 (FHD Desktop @ 60Hz)',
-      protocol: 'TLS 1.3 / HTTP/2 (Encrypted Transmission)',
-      sessionFingerprint,
+      location,
+      timezone: typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC (Server Time)',
+      displayResolution: 'Not transmitted in HTTP payload',
+      protocol: typeof window !== 'undefined' ? `${window.location.protocol.toUpperCase().replace(':', '')} Client Session` : 'HTTP/S',
+      sessionFingerprint: `AUDIT-REC-#${log.id || 'LIVE'}`,
       rawClient: client
     };
 

@@ -1,6 +1,6 @@
 <!-- ── AUDIT EVENT INSPECTOR MODAL ── -->
-<div class="aei-overlay" *ngIf="log" (click)="onClose()">
-  <div class="aei-modal" (click)="$event.stopPropagation()">
+<div class="aei-overlay" [class.has-maximized]="isMaximized" *ngIf="log" (click)="onClose()">
+  <div class="aei-modal" [class.is-maximized]="isMaximized" (click)="$event.stopPropagation()">
 
     <!-- Glowing top accent bar (category-colored) -->
     <div class="aei-accent-bar" [class]="'acat-' + log.category"></div>
@@ -16,7 +16,7 @@
           <div class="aei-subtitle">
             <span class="aei-record-id">#{{ log.id }}</span>
             <span class="aei-dot">·</span>
-            Security Log Record
+            Forensic Security Station
           </div>
         </div>
       </div>
@@ -25,6 +25,9 @@
           <span class="aei-sev-dot"></span>
           {{ log.severity | uppercase }}
         </span>
+        <button class="aei-btn-tool" (click)="toggleMaximize()" [title]="isMaximized ? 'Restore normal popup' : 'Expand full-page popup'">
+          <span class="material-symbols-outlined">{{ isMaximized ? 'fullscreen_exit' : 'open_in_full' }}</span>
+        </button>
         <button class="aei-close-btn" (click)="onClose()" title="Close inspector">
           <span class="material-symbols-outlined">close</span>
         </button>
@@ -189,10 +192,9 @@
         <div class="aei-impact-callout">
           <span class="material-symbols-outlined aei-impact-info-icon">verified_user</span>
           <div class="aei-impact-body">
-            <div class="aei-impact-heading">Security &amp; Integrity Verification</div>
+            <div class="aei-impact-heading">Audit Trail Verification</div>
             <div class="aei-impact-desc">
-              {{ forensics?.impactText }}. All changes committed are cryptographic-hash bound,
-              irreversible in the historical stream, and attributed directly to operator <strong>{{ log.user }}</strong>.
+              {{ forensics?.impactText }}. This event is persisted in PostgreSQL and attributed directly to operator <strong>{{ log.user }}</strong>.
             </div>
           </div>
         </div>
@@ -320,16 +322,16 @@
                 </span>
               </div>
               <div class="aei-tprop">
-                <span class="aei-tprop-lbl">Wire Protocol / TLS</span>
+                <span class="aei-tprop-lbl">Session Protocol</span>
                 <span class="aei-tprop-val aei-highlight">{{ forensics?.machine?.protocol }}</span>
               </div>
               <div class="aei-tprop">
-                <span class="aei-tprop-lbl">Immutable Audit Seal</span>
-                <span class="aei-tprop-val aei-mono" style="color:#34d399;">SHA-256 Verified &amp; Locked</span>
+                <span class="aei-tprop-lbl">Storage Persistence</span>
+                <span class="aei-tprop-val aei-mono" style="color:#10b981;">PostgreSQL Authoritative Record</span>
               </div>
               <div class="aei-tprop">
                 <span class="aei-tprop-lbl">Operator Role</span>
-                <span class="aei-tprop-val">{{ log.actorName }}</span>
+                <span class="aei-tprop-val">{{ log.actorName || log.user }}</span>
               </div>
             </div>
           </div>
@@ -478,24 +480,24 @@
 
         </div>
 
-        <!-- ── Compliance strip ── -->
+        <!-- ── Verification strip ── -->
         <div class="aei-compliance-strip">
           <div class="aei-compliance-label">
             <span class="material-symbols-outlined">verified</span>
-            Compliance &amp; Security Classification
+            Authoritative Event Verification
           </div>
           <div class="aei-compliance-tags">
             <span class="aei-ctag">
-              <span class="material-symbols-outlined">gavel</span>
-              Ghana Data Protection Act (Act 843)
+              <span class="material-symbols-outlined">storage</span>
+              PostgreSQL audit_logs Table (ID: #{{ log.id }})
             </span>
             <span class="aei-ctag">
-              <span class="material-symbols-outlined">workspace_premium</span>
-              ISO/IEC 27001 Certified Stream
+              <span class="material-symbols-outlined">badge</span>
+              Operator: {{ log.user }}
             </span>
             <span class="aei-ctag">
-              <span class="material-symbols-outlined">lock</span>
-              Immutable Audit Hash Verified
+              <span class="material-symbols-outlined">schedule</span>
+              Server Time: {{ log.time | date:'yyyy-MM-dd HH:mm:ss' }}
             </span>
           </div>
         </div>

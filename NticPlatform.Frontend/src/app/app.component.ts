@@ -614,7 +614,7 @@ export class AppComponent implements OnInit, OnDestroy {
     const org = profile?.organization || '';
     switch (role) {
       case 'school_admin': return org ? `${org}` : 'Institution Admin';
-      case 'student': return 'Competitor Workspace';
+      case 'student': return org ? `${org}` : 'Student Innovation Hub';
       case 'instructor': return 'Instructor & Mentor';
       case 'judge': return 'Judge Workspace';
       case 'sponsor': return 'Partner Workspace';

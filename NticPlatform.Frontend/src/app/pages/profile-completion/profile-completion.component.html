@@ -36,13 +36,41 @@
     <div class="pc-form">
       <!-- Common fields -->
       <div class="form-group">
-        <label class="form-label">Full Name</label>
-        <input class="form-control" type="text" [(ngModel)]="profileForm.fullName" name="pcFullName" placeholder="Your full name">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label class="form-label" style="margin:0;">Full Name</label>
+          <span *ngIf="isStudent && isUnderInstitution" class="badge neutral" style="font-size:10.5px; display:inline-flex; align-items:center; gap:4px; padding:2px 8px;">
+            <span class="material-symbols-outlined" style="font-size:12px;">lock</span> Institution Locked
+          </span>
+        </div>
+        <input class="form-control" type="text" [(ngModel)]="profileForm.fullName" name="pcFullName" 
+               [disabled]="isStudent && isUnderInstitution"
+               [style.opacity]="isStudent && isUnderInstitution ? '0.75' : '1'"
+               placeholder="Your full name">
+        <small *ngIf="isStudent && isUnderInstitution" style="color:var(--on-surface-variant); font-size:11px; margin-top:4px; display:block;">
+          Student legal name is managed by {{ currentUser?.organization }}. Contact your school administrator for official registry updates.
+        </small>
+        <small *ngIf="isStudent && !isUnderInstitution" style="color:var(--on-surface-variant); font-size:11px; margin-top:4px; display:block;">
+          Independent competitors may update legal name subject to championship administrator audit.
+        </small>
       </div>
 
       <div class="form-group">
-        <label class="form-label">{{ isJudge ? 'Court / Organization *' : 'Company / Organization *' }}</label>
-        <input class="form-control" type="text" [(ngModel)]="profileForm.organization" name="pcOrg" [placeholder]="isJudge ? 'e.g., High Court of Judicature' : 'e.g., MTN Ghana Foundation'">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label class="form-label" style="margin:0;">{{ isJudge ? 'Court / Organization *' : (isStudent ? 'School / Institution' : 'Company / Organization *') }}</label>
+          <span *ngIf="isStudent && isUnderInstitution" class="badge neutral" style="font-size:10.5px; display:inline-flex; align-items:center; gap:4px; padding:2px 8px;">
+            <span class="material-symbols-outlined" style="font-size:12px;">lock</span> Verified Institution
+          </span>
+        </div>
+        <input class="form-control" type="text" [(ngModel)]="profileForm.organization" name="pcOrg"
+               [disabled]="isStudent && isUnderInstitution"
+               [style.opacity]="isStudent && isUnderInstitution ? '0.75' : '1'"
+               [placeholder]="isJudge ? 'e.g., High Court of Judicature' : (isStudent ? 'School or Academy' : 'e.g., MTN Ghana Foundation')">
+        <small *ngIf="isStudent && isUnderInstitution" style="color:var(--on-surface-variant); font-size:11px; margin-top:4px; display:block;">
+          Institutional affiliation is locked. Transfers between schools must be sanctioned through the championship coordinator.
+        </small>
+        <small *ngIf="isStudent && !isUnderInstitution" style="color:var(--on-surface-variant); font-size:11px; margin-top:4px; display:block;">
+          Independent / open competitors can specify their organization or leave as Independent.
+        </small>
       </div>
 
       <div class="grid-2">

@@ -14,10 +14,16 @@ if (process.argv[2] === 'restore') {
     const backup = path.join(BACKUP_DIR, path.basename(file));
     if (fs.existsSync(backup)) {
       fs.copyFileSync(backup, file);
-      fs.unlinkSync(backup);
+      try { fs.unlinkSync(backup); } catch (e) {}
     }
   }
-  try { fs.rmdirSync(BACKUP_DIR); } catch (e) {}
+  try {
+    if (fs.rmSync) {
+      fs.rmSync(BACKUP_DIR, { recursive: true, force: true });
+    } else {
+      fs.rmdirSync(BACKUP_DIR);
+    }
+  } catch (e) {}
   process.exit(0);
 }
 

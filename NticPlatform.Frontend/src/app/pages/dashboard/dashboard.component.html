@@ -18,10 +18,7 @@
         </button>
       </div>
       <div style="display:flex;gap:10px;" *ngIf="activeRoleId === 'student'">
-        <!-- Both of these had no (click) handler and did nothing when pressed.
-             They now navigate to the pages they name. -->
-        <button class="btn btn-subtle btn-sm" routerLink="/lms"><span class="material-symbols-outlined">school</span>My Courses</button>
-        <button class="btn btn-primary btn-sm" routerLink="/lms" [queryParams]="{ tab: 'assignments' }"><span class="material-symbols-outlined">upload_file</span>Submit Work</button>
+        <button class="btn btn-primary btn-sm" routerLink="/lms"><span class="material-symbols-outlined">school</span>My Courses &amp; Training</button>
       </div>
       <div style="display:flex;gap:10px;" *ngIf="activeRoleId === 'school_admin'">
         <a *ngIf="schoolViewTab === 'roster'" routerLink="/dashboard" [queryParams]="{ tab: 'dashboard' }" class="btn btn-subtle btn-sm">
@@ -3713,21 +3710,6 @@
       </div>
     </div>
 
-    <!-- ── AUDIT EVENT INSPECTOR MODAL ── -->
-    <app-audit-inspector-modal
-      *ngIf="auditSelectedLog"
-      [log]="auditSelectedLog"
-      [forensics]="auditForensics"
-      (close)="closeAuditInspector()"
-      (copyText)="copyAuditText($event.text, $event.label)">
-    </app-audit-inspector-modal>
-
-    <!-- Floating Toast Notification -->
-    <div class="lat-toast" *ngIf="auditToastMessage">
-      <span class="material-symbols-outlined">check_circle</span>
-      <span>{{ auditToastMessage }}</span>
-    </div>
-
     <!-- Admin Delete Confirmation -->
 
     <!-- Admin Delete Confirmation -->
@@ -6287,4 +6269,21 @@
     (close)="closeInstitutionDecisionModal()"
     (confirm)="submitInstitutionDecision($event)">
   </app-institution-decision-modal>
+
+  <!-- ============================================================================================================
+       SECURITY & LIVE AUDIT TRAIL: FORENSIC INSPECTOR POP-UP MODAL (ROOT VIEWPORT OVERLAY)
+       ============================================================================================================ -->
+  <app-audit-inspector-modal
+    *ngIf="auditSelectedLog"
+    [log]="auditSelectedLog"
+    [forensics]="auditForensics"
+    (close)="closeAuditInspector()"
+    (copyText)="copyAuditText($event.text, $event.label)">
+  </app-audit-inspector-modal>
+
+  <!-- Floating Toast Notification -->
+  <div class="lat-toast" *ngIf="auditToastMessage">
+    <span class="material-symbols-outlined">check_circle</span>
+    <span>{{ auditToastMessage }}</span>
+  </div>
 

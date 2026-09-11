@@ -1856,8 +1856,8 @@
             </div>
           </div>
 
-          <button type="submit" class="btn btn-crimson btn-full" [disabled]="!modalForm.form.valid">
-            <span>Send Institutional Request</span>
+          <button type="submit" class="btn btn-crimson btn-full" [disabled]="!modalForm.form.valid || isSubmittingSupport">
+            <span>{{ isSubmittingSupport ? 'Sending Institutional Request...' : 'Send Institutional Request' }}</span>
             <span class="material-symbols-outlined">send</span>
           </button>
         </form>

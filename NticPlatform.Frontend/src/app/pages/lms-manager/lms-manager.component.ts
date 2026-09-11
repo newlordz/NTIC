@@ -259,7 +259,8 @@ export class LmsManagerComponent implements OnInit {
   }
 
   get isAdmin(): boolean {
-    return ['super_admin', 'admin', 'content_manager'].includes(this.activeRoleId);
+    const role = (this.currentUserService.profile()?.role || this.activeRoleId || '').toLowerCase();
+    return ['super_admin', 'superadmin', 'admin', 'content_manager', 'reviewer'].includes(role);
   }
 
   // Filters & Search
@@ -988,10 +989,48 @@ export class LmsManagerComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
-  openRejectModal(item: PendingModerationItem): void {
-    this.activeRejectItem = item;
+  isApprovingCourse: Record<string, boolean> = {};
+
+  approveCourseDirect(course: any): void {
+    if (!course || !course.id || this.isApprovingCourse[course.id]) return;
+    this.isApprovingCourse[course.id] = true;
+    this.moderate(course.id, true);
+    course.approvalStatus = 'approved';
+    course.approval_status = 'approved';
+    this.dialogService.toast(`Course "${course.title}" approved and published!`, 'success');
+    this.isApprovingCourse[course.id] = false;
+    this.cdr.markForCheck();
+  }
+
+  openCourseForReviewFromConsole(): void {
+    if (!this.activeDetailCourse) return;
+    this.openCourseForReview({
+      id: this.activeDetailCourse.id,
+      type: 'course',
+      typeLabel: 'Course',
+      title: this.activeDetailCourse.title,
+      description: this.activeDetailCourse.description,
+      submittedBy: this.activeDetailCourse.submitted_by || this.activeDetailCourse.submittedBy || 'Instructor',
+      createdAt: this.activeDetailCourse.created_at,
+      rawItem: this.activeDetailCourse
+    });
+  }
+
+  openRejectModal(item: any): void {
+    if (!item) return;
+    this.activeRejectItem = {
+      id: item.id,
+      type: 'course',
+      typeLabel: 'Course',
+      title: item.title,
+      description: item.description,
+      submittedBy: item.submitted_by || item.submittedBy || item.submittedBy || 'Instructor',
+      createdAt: item.createdAt || item.created_at,
+      rawItem: item.rawItem || item
+    };
     this.rejectionReasonInput = '';
     this.isRejectModalOpen = true;
+    this.cdr.markForCheck();
   }
 
   closeRejectModal(): void {
@@ -1371,6 +1410,10 @@ export class LmsManagerComponent implements OnInit {
   }
 
   openCourseWizard(course?: any): void {
+    if (this.isAdmin) {
+      this.dialogService.toast('Admins are only permitted to view, approve, or reject courses.', 'info');
+      return;
+    }
     this.saveError = '';
     this.courseWizardStep = 1;
     if (course) {
@@ -1459,6 +1502,78 @@ export class LmsManagerComponent implements OnInit {
         this.cdr.markForCheck();
       },
     });
+  }
+
+  skipToAddModule(): void {
+    if (this.isSaving) return;
+    if (!this.courseForm.title || !this.courseForm.title.trim()) {
+      this.dialogService.toast('Please provide a course title first.', 'warning');
+      return;
+    }
+
+    this.isSaving = true;
+    this.saveError = '';
+    this.cdr.markForCheck();
+
+    const payload = {
+      title: this.courseForm.title.trim(),
+      track: this.courseForm.track || 'coding',
+      icon: this.courseForm.icon || 'school',
+      level: this.courseForm.level || 'Beginner',
+      description: this.courseForm.description || '',
+      modules: Number(this.courseForm.modules) || 0,
+      competition_id: (this.selectedCycle !== 'all' ? this.selectedCycle : ''),
+    };
+
+    if (this.formMode === 'edit') {
+      this.apiService.updateAuthoredCourse(this.courseForm.id, payload).subscribe({
+        next: (updated: any) => {
+          this.isSaving = false;
+          this.reload();
+          this.activeDetailCourse = {
+            ...this.courseForm,
+            id: updated?.id || this.courseForm.id,
+            enrolled_count: this.activeDetailCourse?.enrolled_count || 0,
+            average_progress: this.activeDetailCourse?.average_progress || 0,
+            assignment_count: this.activeDetailCourse?.assignment_count || 0,
+            awaiting_grading: this.activeDetailCourse?.awaiting_grading || 0
+          };
+          this.openModuleStudio();
+          this.dialogService.toast('Course saved. Launching Module Studio...', 'success');
+          this.cdr.markForCheck();
+        },
+        error: (err: any) => {
+          this.isSaving = false;
+          this.saveError = this.describeWriteError(err, 'course');
+          this.dialogService.toast(this.saveError || 'Failed to update course.', 'error');
+          this.cdr.markForCheck();
+        }
+      });
+    } else {
+      this.apiService.createAuthoredCourse(payload).subscribe({
+        next: (created: any) => {
+          this.isSaving = false;
+          this.reload();
+          this.activeDetailCourse = {
+            ...this.courseForm,
+            id: created?.id,
+            enrolled_count: 0,
+            average_progress: 0,
+            assignment_count: 0,
+            awaiting_grading: 0
+          };
+          this.openModuleStudio();
+          this.dialogService.toast('Course initialized. Ready to create your first module!', 'success');
+          this.cdr.markForCheck();
+        },
+        error: (err: any) => {
+          this.isSaving = false;
+          this.saveError = this.describeWriteError(err, 'course');
+          this.dialogService.toast(this.saveError || 'Failed to create course.', 'error');
+          this.cdr.markForCheck();
+        }
+      });
+    }
   }
 
   trackByIndex(index: number, item: any): number {
@@ -1581,28 +1696,17 @@ export class LmsManagerComponent implements OnInit {
         .sort((a, b) => (a.order_num ?? (a as any).order ?? 0) - (b.order_num ?? (b as any).order ?? 0));
       if (modMats.length > 0) {
         this.moduleBlocks = modMats.map(mat => this.parseMaterialToBlock(mat));
-      } else {
+      } else if (mod.description?.trim()) {
         this.moduleBlocks = [
           {
             id: 'blk-' + Math.random().toString(36).slice(2, 7),
             type: 'text',
-            title: 'Lesson Overview & Core Principles',
-            content: mod.description || 'Welcome to this curriculum module. Outline the key technical concepts here.'
-          },
-          {
-            id: 'blk-' + Math.random().toString(36).slice(2, 7),
-            type: 'break',
-            breakLabel: 'Reading Checkpoint: Comprehension Check'
-          },
-          {
-            id: 'blk-' + Math.random().toString(36).slice(2, 7),
-            type: 'quiz',
-            quizQuestion: 'What is the primary algorithmic complexity constraint for this checkpoint?',
-            quizOptions: ['O(log N)', 'O(N^2)', 'O(2^N)', 'O(N!)'],
-            quizCorrectIndex: 0,
-            quizExplanation: 'Logarithmic time complexity is required to avoid race conditions.'
+            title: 'Module Overview',
+            content: mod.description
           }
         ];
+      } else {
+        this.moduleBlocks = [];
       }
     } else {
       this.formMode = 'create';
@@ -1618,7 +1722,7 @@ export class LmsManagerComponent implements OnInit {
       }
       if (!this.activeDetailCourse && cId) {
         this.activeDetailCourse = this.authoredCourses.find(c => c.id === cId) ||
-                                 this.coursesList.find((c: any) => c.id === cId) || null;
+                                  this.coursesList.find((c: any) => c.id === cId) || null;
       }
       const existingMods = this.getModulesForCourse(cId);
       const nextOrder = existingMods.length ? Math.max(...existingMods.map(m => m.order_num || 0)) + 1 : 1;
@@ -1643,14 +1747,7 @@ export class LmsManagerComponent implements OnInit {
         status: 'published',
         approvalStatus: 'approved'
       };
-      this.moduleBlocks = [
-        {
-          id: 'blk-' + Math.random().toString(36).slice(2, 7),
-          type: 'text',
-          title: 'Section 1: Theoretical Foundation',
-          content: 'Introduce the core topic, mathematical formulas, or architecture diagrams here.'
-        }
-      ];
+      this.moduleBlocks = [];
     }
     this.currentView = 'module_studio';
     this.selectedBlockId = this.moduleBlocks[0]?.id || null;
@@ -1938,6 +2035,14 @@ export class LmsManagerComponent implements OnInit {
         // Persist blocks into materials
         this.persistBlocksForModule(savedModId, this.moduleForm.courseId);
 
+        // Clear local browser draft for this module once successfully saved and published
+        try {
+          const cId = this.moduleForm.courseId || this.activeDetailCourse?.id || 'general';
+          localStorage.removeItem(`ntic_studio_draft_${cId}_${savedModId}`);
+          localStorage.removeItem(`ntic_studio_draft_${cId}_new_${this.moduleForm.order}`);
+          localStorage.removeItem(`ntic_studio_draft_${cId}_latest_new`);
+        } catch (e) {}
+
         // Optimistically record module in serverModules so length immediately reflects the creation
         const optimisticMod: any = {
           id: savedModId,
@@ -2214,6 +2319,10 @@ export class LmsManagerComponent implements OnInit {
   }
 
   async deleteCourse(id: string): Promise<void> {
+    if (this.isAdmin) {
+      this.dialogService.toast('Admins are not permitted to delete courses.', 'info');
+      return;
+    }
     const ok = await this.dialogService.confirm({
       title: 'Delete Course',
       message: 'Are you sure you want to delete this course and all associated modules, materials, and assignments?',
@@ -2263,6 +2372,10 @@ export class LmsManagerComponent implements OnInit {
 
   // ── Module Actions ──────────────────────────────────────────
   openModuleModal(mod?: any): void {
+    if (this.isAdmin && !mod) {
+      this.dialogService.toast('Admins are only permitted to view, approve, or reject modules.', 'info');
+      return;
+    }
     this.saveError = '';
     this.moduleStep = 1;
     if (mod) {
@@ -2321,6 +2434,10 @@ export class LmsManagerComponent implements OnInit {
   }
 
   saveModule(): void {
+    if (this.isAdmin) {
+      this.dialogService.toast('Admins are only permitted to view, approve, or reject modules.', 'info');
+      return;
+    }
     if (this.isSaving) return;
     if (!this.moduleForm.title.trim() || !this.moduleForm.courseId) return;
     this.isSaving = true;
@@ -2355,6 +2472,10 @@ export class LmsManagerComponent implements OnInit {
   }
 
   async deleteModule(id: string): Promise<void> {
+    if (this.isAdmin) {
+      this.dialogService.toast('Admins are not permitted to delete modules.', 'info');
+      return;
+    }
     const ok = await this.dialogService.confirm({
       title: 'Delete Curriculum Module',
       message: 'Delete this module? Associated materials will also be removed.',
@@ -2482,6 +2603,10 @@ export class LmsManagerComponent implements OnInit {
 
   // ── Material Actions ──────────────────────────────────────────
   openMaterialModal(mat?: any): void {
+    if (this.isAdmin && !mat) {
+      this.dialogService.toast('Admins are only permitted to view, approve, or reject learning assets.', 'info');
+      return;
+    }
     this.saveError = '';
     this.materialStep = 1;
     if (mat) {
@@ -2609,6 +2734,10 @@ export class LmsManagerComponent implements OnInit {
   }
 
   saveMaterial(): void {
+    if (this.isAdmin) {
+      this.dialogService.toast('Admins are only permitted to view, approve, or reject learning assets.', 'info');
+      return;
+    }
     if (this.isSaving) return;
     if (!this.materialForm.title.trim() || !this.materialForm.courseId) return;
     this.isSaving = true;
@@ -2616,7 +2745,15 @@ export class LmsManagerComponent implements OnInit {
     this.cdr.markForCheck();
 
     let descriptionPayload = this.materialForm.description || '';
-    if (this.materialForm.type === 'quiz') {
+    if (this.materialForm.type === 'video') {
+      descriptionPayload = JSON.stringify({
+        widget: 'video',
+        url: this.materialForm.url || '',
+        durationMinutes: this.videoWidgetForm.durationMinutes || 10,
+        keyTakeaway: this.videoWidgetForm.keyTakeaway.trim(),
+        title: this.materialForm.title.trim()
+      });
+    } else if (this.materialForm.type === 'quiz') {
       descriptionPayload = JSON.stringify({
         widget: 'quiz',
         question: this.quizWidgetForm.question.trim(),
@@ -2624,8 +2761,8 @@ export class LmsManagerComponent implements OnInit {
           this.quizWidgetForm.optionA.trim(),
           this.quizWidgetForm.optionB.trim(),
           this.quizWidgetForm.optionC.trim(),
-          this.quizWidgetForm.optionD.trim(),
-        ].filter(Boolean),
+          this.quizWidgetForm.optionD.trim()
+        ],
         correctIndex: this.quizWidgetForm.correctIndex,
         explanation: this.quizWidgetForm.explanation.trim()
       });
@@ -2633,15 +2770,8 @@ export class LmsManagerComponent implements OnInit {
       descriptionPayload = JSON.stringify({
         widget: 'code',
         language: this.codeWidgetForm.language,
-        starterCode: this.codeWidgetForm.starterCode,
-        instructions: this.codeWidgetForm.instructions.trim()
-      });
-    } else if (this.materialForm.type === 'video') {
-      descriptionPayload = JSON.stringify({
-        widget: 'video',
-        durationMinutes: this.videoWidgetForm.durationMinutes,
-        keyTakeaway: this.videoWidgetForm.keyTakeaway.trim(),
-        overview: this.materialForm.description || ''
+        instructions: this.codeWidgetForm.instructions.trim(),
+        starterCode: this.codeWidgetForm.starterCode
       });
     } else if (this.materialForm.type === 'table') {
       const headers = this.tableWidgetForm.headers.split(',').map(h => h.trim()).filter(Boolean);
@@ -2697,6 +2827,10 @@ export class LmsManagerComponent implements OnInit {
   }
 
   async deleteMaterial(id: string): Promise<void> {
+    if (this.isAdmin) {
+      this.dialogService.toast('Admins are not permitted to delete learning assets.', 'info');
+      return;
+    }
     const ok = await this.dialogService.confirm({
       title: 'Delete Learning Asset',
       message: 'Delete this learning material?',
@@ -2718,6 +2852,10 @@ export class LmsManagerComponent implements OnInit {
   isAssignmentPreviewMode = false;
 
   openAssignmentWizard(asgn?: any): void {
+    if (this.isAdmin && !asgn) {
+      this.dialogService.toast('Admins are only permitted to view, approve, or reject assignments.', 'info');
+      return;
+    }
     this.saveError = '';
     this.assignmentWizardStep = 1;
     this.isAssignmentPreviewMode = false;
@@ -2827,6 +2965,10 @@ export class LmsManagerComponent implements OnInit {
 
 
   saveAssignmentFromWizard(): void {
+    if (this.isAdmin) {
+      this.dialogService.toast('Admins are only permitted to view, approve, or reject assignments.', 'info');
+      return;
+    }
     if (this.isSaving) return;
     if (!this.assignmentForm.title.trim() || !this.assignmentForm.courseId) return;
     this.isSaving = true;
@@ -3233,6 +3375,10 @@ export class LmsManagerComponent implements OnInit {
   }
 
   cloneCourse(sourceCourse: any): void {
+    if (this.isAdmin) {
+      this.dialogService.toast('Admins are not permitted to clone courses.', 'info');
+      return;
+    }
     if (!sourceCourse || this.isCloningCourse[sourceCourse.id]) return;
     this.isCloningCourse[sourceCourse.id] = true;
     this.saveError = '';
@@ -3328,6 +3474,10 @@ export class LmsManagerComponent implements OnInit {
   }
 
   async deleteAssignment(id: string): Promise<void> {
+    if (this.isAdmin) {
+      this.dialogService.toast('Admins are not permitted to delete assignments.', 'info');
+      return;
+    }
     const ok = await this.dialogService.confirm({
       title: 'Delete Assignment',
       message: 'Delete this assignment?',
