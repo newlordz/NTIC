@@ -698,7 +698,7 @@ export class LmsComponent implements OnInit {
 
     const allApproved = (this.contentService.lmsCourses || [])
       .filter((c: any) => !enrolled.has(c.id))
-      .filter((c: any) => (c.approvalStatus || c.approval_status || 'approved') === 'approved')
+      .filter((c: any) => (c.approvalStatus || c.approval_status || 'approved') === 'approved' && (c.status || 'active') === 'active')
       .map((c: any) => {
         const cTrack = (c.track || '').toLowerCase();
         const author = (c.submittedBy || c.submitted_by || '').trim();

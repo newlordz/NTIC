@@ -615,7 +615,8 @@ export class AppComponent implements OnInit, OnDestroy {
     switch (role) {
       case 'school_admin': return org ? `${org}` : 'Institution Admin';
       case 'student': return org ? `${org}` : 'Student Innovation Hub';
-      case 'instructor': return 'Instructor & Mentor';
+      case 'instructor': return 'Instructor Workspace';
+      case 'mentor': return 'Mentor Workspace';
       case 'judge': return 'Judge Workspace';
       case 'sponsor': return 'Partner Workspace';
       case 'super_admin': return 'Super Admin';

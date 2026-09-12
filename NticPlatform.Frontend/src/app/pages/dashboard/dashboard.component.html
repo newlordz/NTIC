@@ -17,6 +17,15 @@
           <span class="badge warning" *ngIf="instructorGradingQueue.length > 0" style="margin-left:4px;padding:2px 6px;font-size:10px;">{{ instructorGradingQueue.length }}</span>
         </button>
       </div>
+      <div style="display:flex;gap:10px;" *ngIf="activeRoleId === 'mentor'">
+        <button class="btn btn-subtle btn-sm" (click)="scrollToMentorRequests()">
+          <span class="material-symbols-outlined">notifications_active</span>Mentorship Requests
+          <span class="badge warning" *ngIf="instructorPendingMentorRequests.length > 0" style="margin-left:4px;padding:2px 6px;font-size:10px;">{{ instructorPendingMentorRequests.length }}</span>
+        </button>
+        <button class="btn btn-primary btn-sm" (click)="scrollToMentorSquads()">
+          <span class="material-symbols-outlined">groups</span>Active Squads ({{ instructorMentoredTeams.length }})
+        </button>
+      </div>
       <div style="display:flex;gap:10px;" *ngIf="activeRoleId === 'student'">
         <button class="btn btn-primary btn-sm" routerLink="/lms"><span class="material-symbols-outlined">school</span>My Courses &amp; Training</button>
       </div>
@@ -347,6 +356,15 @@
             </div>
           </div>
         </div>
+
+        <!-- Mentor Portal Panel -->
+        <app-mentor-workspace
+          *ngIf="activeRoleId === 'mentor'"
+          [pendingRequests]="instructorPendingMentorRequests"
+          [mentoredTeams]="instructorMentoredTeams"
+          [isResponding]="isRespondingToMentor"
+          (respond)="respondToMentorRequest($event.team, $event.action)">
+        </app-mentor-workspace>
 
         <!-- -- Judge Arena Dashboard Panel -- -->
         <div *ngIf="activeRoleId === 'judge'">
@@ -940,6 +958,43 @@
               <a routerLink="/reporting" class="btn btn-subtle btn-sm" style="justify-content:flex-start;gap:8px;font-size:12px;">
                 <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">assessment</span>
                 Export Activity &amp; Class Reports
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mentor Sidebar Panel -->
+        <div *ngIf="activeRoleId === 'mentor'" style="display:flex;flex-direction:column;gap:16px;">
+          <div class="card">
+            <div class="card-header" style="display:flex;align-items:center;gap:8px;">
+              <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">psychology</span>
+              <h3 style="margin:0;font-size:14px;font-weight:700;">Mentor Toolkit</h3>
+            </div>
+            <div class="card-body" style="padding:12px;display:flex;flex-direction:column;gap:8px;">
+              <a routerLink="/leaderboard" class="btn btn-subtle btn-sm" style="justify-content:flex-start;gap:8px;font-size:12px;">
+                <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">leaderboard</span>
+                Tournament Leaderboard
+              </a>
+              <a routerLink="/lms" class="btn btn-subtle btn-sm" style="justify-content:flex-start;gap:8px;font-size:12px;">
+                <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">menu_book</span>
+                Curriculum Reference
+              </a>
+              <a routerLink="/competitions" class="btn btn-subtle btn-sm" style="justify-content:flex-start;gap:8px;font-size:12px;">
+                <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary);">emoji_events</span>
+                Competition Stages &amp; Tracks
+              </a>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header" style="display:flex;align-items:center;gap:8px;">
+              <span class="material-symbols-outlined" style="font-size:18px;color:#10b981;">support_agent</span>
+              <h3 style="margin:0;font-size:14px;font-weight:700;">Mentor Support</h3>
+            </div>
+            <div class="card-body" style="padding:14px;font-size:12px;color:var(--on-surface-variant);line-height:1.5;">
+              <p style="margin:0 0 8px;">Need assistance with squad allocations, track questions, or technical requirements?</p>
+              <a href="mailto:mentors@ntic.edu.gh" style="color:var(--primary);font-weight:600;display:inline-flex;align-items:center;gap:4px;">
+                <span class="material-symbols-outlined" style="font-size:14px;">mail</span> mentors&#64;ntic.edu.gh
               </a>
             </div>
           </div>

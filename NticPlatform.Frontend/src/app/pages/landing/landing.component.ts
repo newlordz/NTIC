@@ -75,7 +75,14 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
       id: 'instructor',
       name: 'Instructor Portal',
       icon: 'patient_list',
-      description: 'Manage teams, assess submissions, and mentor student projects.',
+      description: 'Manage courses, publish curriculum, and evaluate coursework in the LMS.',
+      defaultEmail: ''
+    },
+    {
+      id: 'mentor',
+      name: 'Mentor Portal',
+      icon: 'psychology',
+      description: 'Guide competition squads, review team milestones, and accept mentorship requests.',
       defaultEmail: ''
     },
     {
@@ -219,12 +226,18 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
   studentsCount = 0;
   projectsCount = 0;
   grantsCount = 0;
+  sponsorsCount = 0;
   statsAnimated = false;
   hoveredNode: string | null = null;
 
   get grantsLabel(): string {
     const n = Number(this.grantsCount || 0);
     return '\u20B5' + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+
+  get sponsorsLabel(): string {
+    const n = Number(this.sponsorsCount || 0);
+    return n > 0 ? `${n}+` : `${n}`;
   }
 
   // ── COUNTDOWN CLOCK ──────────────────────────────────────────
@@ -882,7 +895,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         students: regionSchools.reduce((sum, s) => sum + (Number(s.students) || 0), 0),
         teams: regionSchools.reduce((sum, s) => sum + (Number(s.teams) || 0), 0),
         target: r.defaultCount,
-        topSchool: top ? String(top.name) : 'None',
+        topSchool: top ? String(top.name) : 'Pending Enrollment',
         schoolList: schoolNames,
         specialty: r.specialty
       };
@@ -1094,6 +1107,9 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       next: res => {
         this.partners = res?.partners || [];
         this.partnersLoaded = true;
+        if (this.partners.length > this.sponsorsCount) {
+          this.sponsorsCount = this.partners.length;
+        }
       },
       error: () => {
         // Show the empty state rather than stale or invented logos.
@@ -1688,6 +1704,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       const labels: Record<string, string> = {
         student: 'Student',
         instructor: 'Instructor',
+        mentor: 'Mentor',
         school_admin: 'School Admin',
         judge: 'Judge',
         sponsor: 'Sponsor'
@@ -1880,6 +1897,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
 
     const roleRoutes: Record<string, string> = {
       instructor: '/dashboard',
+      mentor: '/dashboard',
       judge: '/dashboard',
       student: '/lms',
       school_admin: '/dashboard',
@@ -2059,7 +2077,9 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
       const schoolsEl = this.elementRef.nativeElement.querySelector('.node-schools .node-number');
       const studentsEl = this.elementRef.nativeElement.querySelector('.node-students .node-number');
       const projectsEl = this.elementRef.nativeElement.querySelector('.node-projects .node-number');
-      const grantsEl = this.elementRef.nativeElement.querySelector('.node-grants .node-number');
+      const grantsEl = this.elementRef.nativeElement.querySelector('.node-grants:not(.node-sponsors) .node-number');
+      const sponsorsEl = this.elementRef.nativeElement.querySelector('.node-sponsors .node-number')
+        || this.elementRef.nativeElement.querySelector('.node-grants .node-number');
 
       const step = (now: number) => {
         const progress = Math.min((now - startTime) / duration, 1);
@@ -2072,6 +2092,8 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         const st = Math.floor(ease * stats.students);
         const p = Math.floor(ease * stats.projects);
         const g = Math.floor(ease * stats.grants);
+        const spTotal = Math.max(stats.sponsors || 0, this.partners?.length || 0);
+        const sp = Math.floor(ease * spTotal);
 
         if (regionsEl) regionsEl.textContent = `${r}`;
         if (mentorsEl) mentorsEl.textContent = `${m}+`;
@@ -2079,6 +2101,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
         if (studentsEl) studentsEl.textContent = `${st}+`;
         if (projectsEl) projectsEl.textContent = `${p}+`;
         if (grantsEl) grantsEl.textContent = '\u20B5' + g.toLocaleString();
+        if (sponsorsEl) sponsorsEl.textContent = spTotal > 0 ? `${sp}+` : `${sp}`;
 
         if (progress < 1) {
           requestAnimationFrame(step);
@@ -2089,6 +2112,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
           if (studentsEl) studentsEl.textContent = `${stats.students}+`;
           if (projectsEl) projectsEl.textContent = `${stats.projects}+`;
           if (grantsEl) grantsEl.textContent = '\u20B5' + Number(stats.grants || 0).toLocaleString();
+          if (sponsorsEl) sponsorsEl.textContent = spTotal > 0 ? `${spTotal}+` : `${spTotal}`;
           
           this.ngZone.run(() => {
             this.regionsCount = stats.regions;
@@ -2097,6 +2121,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
             this.studentsCount = stats.students;
             this.projectsCount = stats.projects;
             this.grantsCount = stats.grants;
+            this.sponsorsCount = spTotal;
           });
         }
       };
@@ -4111,12 +4136,34 @@ for (let i = people.length - 1; i > 0; i--) {
   }
 
   openPreview(): void {
-    const html = this.userCode.trim();
-    if (!html) return;
+    const raw = this.userCode.trim();
+    if (!raw) return;
     this.showPreviewModal = true;
+    const documentHtml = raw.toLowerCase().includes('<html') || raw.toLowerCase().includes('<!doctype')
+      ? raw
+      : `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      padding: 24px;
+      margin: 0;
+      color: #0f172a;
+      background: #ffffff;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  ${raw}
+</body>
+</html>`;
+
     setTimeout(() => {
       if (this.previewFrameRef?.nativeElement) {
-        this.renderer.setProperty(this.previewFrameRef.nativeElement, 'srcdoc', html);
+        this.renderer.setProperty(this.previewFrameRef.nativeElement, 'srcdoc', documentHtml);
       }
     });
   }
@@ -4216,9 +4263,10 @@ for (let i = people.length - 1; i > 0; i--) {
   }
 
   getRegionColor(schools: number): string {
-    if (schools === 0) return 'rgba(255, 255, 255, 0.08)';
-    const max = 42; const min = 4;
-    const t = Math.min(1, Math.max(0, (schools - min) / (max - min)));
+    if (!schools || schools <= 0) return 'rgba(255, 255, 255, 0.08)';
+    const allRegions = this._cachedRegionDataList.length ? this._cachedRegionDataList : this.regionDataList;
+    const max = Math.max(...allRegions.map(r => r.schools || 0), 1);
+    const t = Math.min(1, Math.max(0.2, schools / max));
     if (t < 0.5) {
       const p = t * 2;
       const r = Math.round(24 + p * (0 - 24));

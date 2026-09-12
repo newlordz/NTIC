@@ -102,6 +102,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     { id: 'student', label: 'Students', icon: 'person' },
     { id: 'teams', label: 'Teams & Squads', icon: 'groups' },
     { id: 'instructor', label: 'Instructors', icon: 'badge' },
+    { id: 'mentor', label: 'Mentors', icon: 'psychology' },
     { id: 'judge', label: 'Judges', icon: 'gavel' },
     { id: 'sponsor', label: 'Partners & Sponsors', icon: 'handshake' },
     { id: 'content_manager', label: 'Content Mgrs', icon: 'edit_note' },
@@ -738,7 +739,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
 
   setNewUserRole(role: string): void {
     const prefixMap: Record<string, string> = {
-      instructor: 'NTIC-MTR-',
+      instructor: 'NTIC-INS-',
+      mentor: 'NTIC-MTR-',
       school_admin: 'NTIC-SCH-',
       content_manager: 'NTIC-CNT-',
       reviewer: 'NTIC-REV-',
@@ -751,7 +753,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.newUserForm.role = role;
     this.newUserForm.ticket = prefix + this.randomSuffix();
     this.newUserForm.password = '';
-    if (role === 'instructor' && !this.newUserForm.organization) {
+    if ((role === 'instructor' || role === 'mentor') && !this.newUserForm.organization) {
       this.newUserForm.organization = 'NTIC System';
     } else if (role === 'sponsor' && !this.newUserForm.organization) {
       this.newUserForm.organization = '';
@@ -1473,7 +1475,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     const map: Record<string, string> = {
       super_admin: 'Super Admin', admin: 'Admin', content_manager: 'Content Manager',
       reviewer: 'Reviewer', competition_manager: 'Competition Manager',
-      school_admin: 'School Admin', instructor: 'Instructor', student: 'Student',
+      school_admin: 'School Admin', instructor: 'Instructor', mentor: 'Mentor', student: 'Student',
       judge: 'Judge', sponsor: 'Corporate Partner', teams: 'Squad'
     };
     return map[role] || role;
@@ -1493,7 +1495,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     const map: Record<string, string> = {
       super_admin: 'admin_panel_settings', admin: 'shield', content_manager: 'edit_note',
       reviewer: 'rate_review', competition_manager: 'emoji_events',
-      school_admin: 'school', instructor: 'badge', student: 'person',
+      school_admin: 'school', instructor: 'badge', mentor: 'psychology', student: 'person',
       judge: 'gavel', sponsor: 'handshake', teams: 'groups'
     };
     return map[role] || 'person';

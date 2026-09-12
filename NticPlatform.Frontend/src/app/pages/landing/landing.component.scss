@@ -2793,7 +2793,7 @@ body.dark-theme .partners-strip {
       --line-glow-rgb: 230, 126, 34;
       &.highlighted { stroke: #e67e22; }
     }
-    &.line-grants {
+    &.line-grants, &.line-sponsors {
       --line-glow-rgb: 0, 180, 100;
       &.highlighted { stroke: #00b464; }
     }
@@ -2828,7 +2828,7 @@ body.dark-theme .partners-strip {
     &.pulse-schools { stroke: #d4a017; filter: drop-shadow(0 0 4px rgba(212, 160, 23, 0.7)); }
     &.pulse-students { stroke: #a21c30; filter: drop-shadow(0 0 4px rgba(162, 28, 48, 0.7)); }
     &.pulse-projects { stroke: #e67e22; filter: drop-shadow(0 0 4px rgba(230, 126, 34, 0.7)); }
-    &.pulse-grants { stroke: #00b464; filter: drop-shadow(0 0 4px rgba(0, 180, 100, 0.7)); }
+    &.pulse-grants, &.pulse-sponsors { stroke: #00b464; filter: drop-shadow(0 0 4px rgba(0, 180, 100, 0.7)); }
   }
 
   &.in-view {
@@ -2862,7 +2862,7 @@ body.dark-theme .partners-strip {
         transform: translate(-50%, -50%) scale(1);
         transition-delay: 0.8s;
       }
-      &.node-grants {
+      &.node-grants, &.node-sponsors {
         transform: translate(-50%, -50%) scale(1);
         transition-delay: 0.86s;
       }
@@ -2969,7 +2969,7 @@ body.dark-theme .partners-strip {
       top: 480px; left: 600px;
       transform: translate(-50%, calc(-50% - 210px)) scale(0);
     }
-    &.node-grants {
+    &.node-grants, &.node-sponsors {
       top: 440px; left: 1050px;
       transform: translate(calc(-50% - 450px), calc(-50% - 170px)) scale(0);
     }
@@ -3046,7 +3046,7 @@ body.dark-theme .partners-strip {
       .node-icon-wrap { background: rgba(230, 126, 34, 0.07); color: #e67e22; }
       &.active .node-circle, &:hover .node-circle { border-color: #e67e22; box-shadow: 0 12px 36px rgba(230, 126, 34, 0.22); }
     }
-    &.node-grants {
+    &.node-grants, &.node-sponsors {
       .node-icon-wrap { background: rgba(0, 180, 100, 0.07); color: #00b464; }
       &.active .node-circle, &:hover .node-circle { border-color: #00b464; box-shadow: 0 12px 36px rgba(0, 180, 100, 0.22); }
     }
@@ -3127,7 +3127,7 @@ body.dark-theme .partners-strip {
       }
     }
 
-    &.node-students, &.node-grants {
+    &.node-students, &.node-grants, &.node-sponsors {
       .node-tooltip {
         bottom: 110%;
         top: auto;
@@ -5956,6 +5956,190 @@ body.dark-theme .partners-strip {
   word-break: break-word;
 }
 
+/* ── Live Code Sandbox Output Preview Modal ── */
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 14, 26, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  animation: previewFadeIn 0.22s ease-out forwards;
+}
+
+@keyframes previewFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.preview-modal {
+  width: 100%;
+  max-width: 760px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8),
+              0 0 35px rgba(168, 85, 247, 0.18);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: previewScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes previewScaleIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.preview-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: #1e293b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+  .preview-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+
+    .header-icon {
+      font-size: 20px;
+      color: #a855f7;
+    }
+
+    .header-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: #f8fafc;
+      letter-spacing: -0.01em;
+    }
+
+    .preview-tag {
+      padding: 0.2rem 0.55rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-radius: 6px;
+      background: rgba(168, 85, 247, 0.18);
+      color: #d8b4fe;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+  }
+
+  .preview-close-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    .material-symbols-outlined {
+      font-size: 18px;
+    }
+
+    &:hover {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #f87171;
+      transform: scale(1.05);
+    }
+  }
+}
+
+.preview-modal-body {
+  display: flex;
+  flex-direction: column;
+  background: #0f172a;
+}
+
+.preview-browser-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1rem;
+  background: #151f32;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+  .browser-dots {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 60px;
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+
+      &.dot-red { background: #ef4444; }
+      &.dot-yellow { background: #f59e0b; }
+      &.dot-green { background: #10b981; }
+    }
+  }
+
+  .browser-url-pill {
+    flex: 1;
+    max-width: 420px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0.3rem 0.8rem;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    font-size: 0.75rem;
+    color: #94a3b8;
+
+    .url-lock {
+      font-size: 13px;
+      color: #10b981;
+    }
+
+    .url-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .browser-actions-ghost {
+    width: 60px;
+  }
+}
+
+.preview-canvas-wrapper {
+  width: 100%;
+  background: #ffffff;
+  min-height: 380px;
+  max-height: 65vh;
+  overflow: auto;
+
+  .preview-iframe {
+    width: 100%;
+    min-height: 380px;
+    height: 100%;
+    border: none;
+    display: block;
+    background: #ffffff;
+  }
+}
+
 /* 5. Ghana Region Map Interaction - Premium Glowing Wireframe */
 .region-map-section {
   padding: 8rem 0;
@@ -6260,6 +6444,7 @@ body.dark-theme .partners-strip {
               filter 0.25s ease;
 }
 .ghana-map .gh-region:hover,
+.ghana-map .gh-region.hovered,
 .ghana-map .gh-region.selected {
   fill: rgba(255, 215, 0, 0.85) !important;
   stroke: #ffffff !important;
@@ -6351,6 +6536,10 @@ body.dark-theme .partners-strip {
   transform: translateX(8px) scale(1.02);
   color: #fff;
   box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+}
+.rl-item.dimmed {
+  opacity: 0.35;
+  filter: grayscale(40%);
 }
 .rl-dot { width: 14px; height: 14px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
 .rl-count { margin-left: auto; color: #a0aec0; font-size: 0.9rem; }

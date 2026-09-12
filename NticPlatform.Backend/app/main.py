@@ -1208,7 +1208,7 @@ try:
     _TICKET_PREFIXES = {
         "super_admin": "ADM", "admin": "ADM", "support_admin": "SUP",
         "judge": "JDG", "sponsor": "SPO",
-        "student": "STU", "instructor": "INS", "content_manager": "MGR",
+        "student": "STU", "instructor": "INS", "mentor": "MTR", "content_manager": "MGR",
         "reviewer": "REV", "competition_manager": "CMP", "school_admin": "SCH"
     }
 
@@ -1287,7 +1287,7 @@ try:
             f'<span style="font-size:32px;font-weight:800;letter-spacing:8px;color:#d4a017;">{code}</span>'
             "</div>"
             '<p style="font-size:13px;color:#999;">This code expires in 10 minutes. Do not share it with anyone.</p>'
-            '<p style="font-size:12px;color:#bbb;margin-top:24px;">NTIC Ghana National Championship</p>'
+            '<p style="font-size:12px;color:#bbb;margin-top:24px;">NTI Championship</p>'
             "</div>"
         )
 
@@ -1300,7 +1300,7 @@ try:
             f'<span style="font-size:32px;font-weight:800;letter-spacing:8px;color:#d4a017;">{code}</span>'
             "</div>"
             '<p style="font-size:13px;color:#999;">This code expires in 10 minutes. If you did not request this, ignore this email.</p>'
-            '<p style="font-size:12px;color:#bbb;margin-top:24px;">NTIC Ghana National Championship</p>'
+            '<p style="font-size:12px;color:#bbb;margin-top:24px;">NTI Championship</p>'
             "</div>"
         )
 
@@ -2776,8 +2776,8 @@ try:
             if not course:
                 conn.rollback(); cur.close()
                 raise HTTPException(status_code=404, detail="Course not found")
-            # Don't let students enrol on content still awaiting moderation.
-            if (course[2] or "approved") != "approved":
+            # Don't let students enrol on content still awaiting moderation or archived/inactive.
+            if (course[2] or "approved") != "approved" or (course[3] and course[3] != "active"):
                 conn.rollback(); cur.close()
                 raise HTTPException(status_code=409, detail="This course is not open for enrolment yet")
 
@@ -3450,6 +3450,58 @@ try:
             "competitionId": comp_ref,
         }
 
+    class CourseStatusPayload(BaseModel):
+        status: str = Field(pattern="^(active|archived|draft)$")
+
+    @app.patch("/api/lms/courses/{course_id}/status")
+    def update_course_status(
+        course_id: str,
+        payload: CourseStatusPayload,
+        actor: dict = Depends(require_role(LMS_ROLES)),
+    ):
+        """Update a course's lifecycle status (active, draft, archived) with cascaded child state."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            existing = _load_owned_course(cur, course_id, actor)
+            new_status = payload.status
+            if new_status == "active" and (existing[3] or "pending") != "approved":
+                conn.rollback(); cur.close()
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot activate an unapproved course without moderator approval",
+                )
+            cur.execute(
+                "UPDATE lms_courses SET status=%s WHERE id=%s",
+                (new_status, course_id),
+            )
+            # Cascade lifecycle state to child modules and assignments
+            if new_status == "archived":
+                cur.execute("UPDATE lms_modules SET status='archived' WHERE course_id=%s", (course_id,))
+                cur.execute("UPDATE lms_assignments SET status='archived' WHERE course_id=%s", (course_id,))
+            elif new_status == "active":
+                cur.execute("UPDATE lms_modules SET status='published' WHERE course_id=%s", (course_id,))
+                cur.execute("UPDATE lms_assignments SET status='active' WHERE course_id=%s", (course_id,))
+            elif new_status == "draft":
+                cur.execute("UPDATE lms_modules SET status='draft' WHERE course_id=%s", (course_id,))
+                cur.execute("UPDATE lms_assignments SET status='draft' WHERE course_id=%s", (course_id,))
+
+            cur.execute(
+                "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s,%s,%s,%s)",
+                (
+                    f"Set course '{existing[1]}' lifecycle status to '{new_status}'",
+                    actor.get("email") or actor["id"],
+                    datetime.datetime.now(datetime.UTC).isoformat(),
+                    "course_management",
+                ),
+            )
+            conn.commit()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        broadcast_async({"type": "data_changed", "collection": "lms_courses"})
+        return {"id": course_id, "status": new_status}
+
     @app.delete("/api/lms/courses/{course_id}")
     def delete_my_course(course_id: str, actor: dict = Depends(require_role(LMS_ROLES))):
         """Delete a course. Refuses if students are enrolled.
@@ -4095,7 +4147,7 @@ try:
         try:
             cur = conn.cursor()
             cur.execute(
-                "SELECT owner_id, title FROM lms_courses WHERE id = %s", (course_id,)
+                "SELECT owner_id, title, approval_status FROM lms_courses WHERE id = %s", (course_id,)
             )
             row = cur.fetchone()
             if not row:
@@ -4106,6 +4158,12 @@ try:
                 raise HTTPException(
                     status_code=403,
                     detail="You cannot review your own content. Ask another reviewer.",
+                )
+            if not payload.approve and row[2] == "approved":
+                conn.rollback(); cur.close()
+                raise HTTPException(
+                    status_code=400,
+                    detail="Approved courses cannot be rejected.",
                 )
 
             new_status = "approved" if payload.approve else "rejected"
@@ -6510,12 +6568,12 @@ try:
             if is_admin:
                 cur.execute(
                     "SELECT id, full_name, email, organization FROM users "
-                    "WHERE role = 'instructor' AND LOWER(status) = 'active' ORDER BY full_name"
+                    "WHERE role IN ('instructor', 'mentor') AND LOWER(status) = 'active' ORDER BY full_name"
                 )
             else:
                 cur.execute(
                     "SELECT id, full_name, email, organization FROM users "
-                    "WHERE role = 'instructor' AND LOWER(status) = 'active' "
+                    "WHERE role IN ('instructor', 'mentor') AND LOWER(status) = 'active' "
                     "AND LOWER(COALESCE(organization,'')) = LOWER(%s) ORDER BY full_name",
                     (org,),
                 )
@@ -6742,8 +6800,8 @@ try:
         reason: Optional[str] = None
 
     @app.patch("/api/teams/{item_id}/mentor-response")
-    def mentor_response(item_id: str, payload: MentorResponsePayload, actor: dict = Depends(require_role(("instructor", "super_admin", "admin")))):
-        """Instructor accepts or declines a mentorship request for a squad."""
+    def mentor_response(item_id: str, payload: MentorResponsePayload, actor: dict = Depends(require_role(("instructor", "mentor", "super_admin", "admin")))):
+        """Instructor or Mentor accepts or declines a mentorship request for a squad."""
         conn = _get_db()
         try:
             cur = conn.cursor()
@@ -7270,6 +7328,18 @@ try:
             cur.execute("SELECT COALESCE(SUM(amount),0) FROM sponsorship_payments WHERE status='verified'")
             grants = float(cur.fetchone()[0] or 0)
 
+            # Sponsors: verified corporate partners, active sponsorships, and registered sponsor accounts
+            cur.execute("""
+                SELECT COUNT(DISTINCT s) FROM (
+                    SELECT LOWER(TRIM(organization)) AS s FROM sponsorships WHERE status IN ('active','completed') AND organization IS NOT NULL AND organization <> ''
+                    UNION
+                    SELECT LOWER(TRIM(organization)) AS s FROM users WHERE role = 'sponsor' AND organization IS NOT NULL AND organization <> ''
+                    UNION
+                    SELECT id::text AS s FROM users WHERE role = 'sponsor'
+                ) p
+            """)
+            sponsors = cur.fetchone()[0] or 0
+
             cur.close()
         finally:
             release_db_connection(conn)
@@ -7277,6 +7347,7 @@ try:
         result = {
             "regions": regions, "mentors": mentors, "schools": schools,
             "students": students, "projects": projects, "grants": grants,
+            "sponsors": sponsors,
             "countdownDate": countdown,
         }
         _cache_set("platform_stats", result)
@@ -9292,6 +9363,8 @@ try:
     APPROVAL_TYPE_ROLES = {
         "school registration": ROLE_SCHOOL_ADMIN,
         "instructor access": ROLE_INSTRUCTOR,
+        "mentor access": ROLE_MENTOR,
+        "mentor registration": ROLE_MENTOR,
         "team addition": ROLE_STUDENT,
         "student registration": ROLE_STUDENT,
         "open registration": ROLE_STUDENT,
@@ -9464,7 +9537,7 @@ try:
                 else:
                     mentor_uid = "USR-" + str(uuid.uuid4())[:8]
                     temp_password = _generate_temp_password()
-                    ticket = _allocate_unique_ticket(cur, ROLE_INSTRUCTOR)
+                    ticket = _allocate_unique_ticket(cur, ROLE_MENTOR)
                     if mentor_phone:
                         cur.execute("SELECT id FROM users WHERE phone = %s", (mentor_phone,))
                         if cur.fetchone():
@@ -9472,7 +9545,7 @@ try:
                     cur.execute(
                         """
                         INSERT INTO users (id, email, full_name, role, ticket, password_hash, status, phone, organization, track, must_change_password)
-                        VALUES (%s, %s, %s, 'instructor', %s, %s, 'active', %s, %s, %s, TRUE)
+                        VALUES (%s, %s, %s, 'mentor', %s, %s, 'active', %s, %s, %s, TRUE)
                         """,
                         (mentor_uid, mentor_email, mentor_name, ticket, hash_password(temp_password),
                          mentor_phone or None, mentor_org or None, mentor_track or None)
@@ -9919,8 +9992,18 @@ try:
                 # school/team application is recorded without its teams whenever
                 # the reviewer's browser is not the one to materialise them.
                 teams = _provision_approved_teams(cur, approval_row)
-                # Mentor requests provision instructor credentials and assign teams server-side
+                # Mentor requests provision mentor credentials and assign teams server-side
                 mentor_assignment = _apply_approved_mentor_request(cur, approval_row)
+                if not account.get("provisioned") and mentor_assignment.get("created_account"):
+                    account = {
+                        "provisioned": True,
+                        "user_id": mentor_assignment.get("mentor_id"),
+                        "role": ROLE_MENTOR,
+                        "ticket": mentor_assignment.get("ticket"),
+                        "temporary_password": mentor_assignment.get("temporary_password"),
+                        "email": mentor_assignment.get("mentor_email"),
+                        "full_name": mentor_assignment.get("mentor_name"),
+                    }
 
             conn.commit()
         except HTTPException:
@@ -10800,8 +10883,25 @@ try:
         if not lines:
             return []
 
-        questions = []
-        curr_q = {'question': '', 'options': [], 'correct_index': 0, 'explanation': ''}
+        questions: list[dict[str, Any]] = []
+        curr_question: str = ""
+        curr_options: list[str] = []
+        curr_correct_index: int = 0
+        curr_explanation: str = ""
+
+        def flush_current() -> None:
+            nonlocal curr_question, curr_options, curr_correct_index, curr_explanation
+            if curr_question or curr_options:
+                questions.append({
+                    'question': curr_question,
+                    'options': curr_options,
+                    'correct_index': curr_correct_index,
+                    'explanation': curr_explanation
+                })
+            curr_question = ""
+            curr_options = []
+            curr_correct_index = 0
+            curr_explanation = ""
 
         opt_re = re.compile(r'^(?:[\(\[]?([A-Da-d])[\)\]\.\:\-]\s*|\b([A-Da-d])\s*[\)\.\:\-]\s*)(.*)$')
         ans_re = re.compile(r'^(?:(?:Correct\s*)?Answer|Ans|Key)\s*[:=\-]?\s*\(?([A-Da-d1-4]|True|False|[^\)\n\r]+)\)?', re.IGNORECASE)
@@ -10812,53 +10912,51 @@ try:
             ans_match = ans_re.match(line)
             if ans_match:
                 ans_val = ans_match.group(1).strip()
-                if ans_val.upper() in ['A', '1']: curr_q['correct_index'] = 0
-                elif ans_val.upper() in ['B', '2']: curr_q['correct_index'] = 1
-                elif ans_val.upper() in ['C', '3']: curr_q['correct_index'] = 2
-                elif ans_val.upper() in ['D', '4']: curr_q['correct_index'] = 3
-                elif ans_val.lower() == 'true': curr_q['correct_index'] = 0
-                elif ans_val.lower() == 'false': curr_q['correct_index'] = 1
+                if ans_val.upper() in ['A', '1']: curr_correct_index = 0
+                elif ans_val.upper() in ['B', '2']: curr_correct_index = 1
+                elif ans_val.upper() in ['C', '3']: curr_correct_index = 2
+                elif ans_val.upper() in ['D', '4']: curr_correct_index = 3
+                elif ans_val.lower() == 'true': curr_correct_index = 0
+                elif ans_val.lower() == 'false': curr_correct_index = 1
                 else:
-                    for idx, opt in enumerate(curr_q['options']):
+                    for idx, opt in enumerate(curr_options):
                         if ans_val.lower() in opt.lower():
-                            curr_q['correct_index'] = idx
+                            curr_correct_index = idx
                             break
                 continue
 
             exp_match = exp_re.match(line)
             if exp_match:
-                curr_q['explanation'] = exp_match.group(1).strip() or line
+                curr_explanation = exp_match.group(1).strip() or line
                 continue
 
             opt_match = opt_re.match(line)
             if opt_match:
                 opt_text = (opt_match.group(3) or '').strip()
                 if opt_text:
-                    curr_q['options'].append(opt_text)
+                    curr_options.append(opt_text)
                 continue
 
             q_match = q_num_re.match(line)
-            if q_match and (curr_q['question'] or curr_q['options']):
-                questions.append(curr_q)
-                q_clean = (q_match.group(3) or '').strip()
-                curr_q = {'question': q_clean, 'options': [], 'correct_index': 0, 'explanation': ''}
+            if q_match and (curr_question or curr_options):
+                flush_current()
+                curr_question = (q_match.group(3) or '').strip()
                 continue
 
-            if len(curr_q['options']) >= 2:
-                questions.append(curr_q)
-                curr_q = {'question': line, 'options': [], 'correct_index': 0, 'explanation': ''}
+            if len(curr_options) >= 2:
+                flush_current()
+                curr_question = line
                 continue
 
             if q_match:
                 q_clean = (q_match.group(3) or '').strip()
-                curr_q['question'] = q_clean if not curr_q['question'] else curr_q['question'] + ' ' + q_clean
-            elif not curr_q['question']:
-                curr_q['question'] = line
+                curr_question = q_clean if not curr_question else curr_question + ' ' + q_clean
+            elif not curr_question:
+                curr_question = line
             else:
-                curr_q['question'] += ' ' + line
+                curr_question += ' ' + line
 
-        if curr_q['question'] or curr_q['options']:
-            questions.append(curr_q)
+        flush_current()
 
         clean_questions = []
         for q in questions:

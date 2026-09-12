@@ -246,8 +246,8 @@
             </div>
             <div class="course-badges">
               <span class="badge" [class]="'badge-' + course.track">{{ course.track | titlecase }}</span>
-              <span class="badge" [class]="course.approvalStatus === 'approved' ? 'badge-success' : course.approvalStatus === 'pending' ? 'badge-warning' : 'badge-danger'">
-                {{ course.approvalStatus === 'approved' ? 'Approved' : course.approvalStatus === 'pending' ? 'Pending Review' : 'Rejected' }}
+              <span class="badge" [class]="course.approvalStatus === 'approved' ? (course.status === 'archived' ? 'badge-subtle' : 'badge-success') : course.approvalStatus === 'pending' ? 'badge-warning' : 'badge-danger'">
+                {{ course.approvalStatus === 'approved' ? (course.status === 'archived' ? 'Archived' : 'Approved Live') : course.approvalStatus === 'pending' ? 'Pending Review' : 'Rejected' }}
               </span>
             </div>
           </div>
@@ -282,13 +282,31 @@
           </div>
 
           <div class="course-card-footer">
-            <!-- Instructor Actions (Edit, Clone, Delete, Resubmit) -->
+            <!-- Instructor Actions (Edit, Clone, Delete, Resubmit, Lifecycle) -->
             <ng-container *ngIf="!isAdmin">
               <button class="btn btn-xs btn-outline warning" *ngIf="course.approvalStatus === 'rejected'" (click)="resubmitCourseForReview(course); $event.stopPropagation()" [disabled]="isResubmittingCourse[course.id]" title="Resubmit for review">
                 <span class="material-symbols-outlined">send</span> {{ isResubmittingCourse[course.id] ? 'Submitting...' : 'Resubmit' }}
               </button>
               <button class="btn btn-xs btn-subtle" (click)="openCourseWizard(course); $event.stopPropagation()">
                 <span class="material-symbols-outlined">edit</span> Edit
+              </button>
+              <button
+                class="btn btn-xs btn-subtle"
+                *ngIf="course.approvalStatus === 'approved' && course.status !== 'archived'"
+                (click)="toggleCourseLifecycle(course, 'archived'); $event.stopPropagation()"
+                [disabled]="isUpdatingCourseStatus[course.id]"
+                title="Unpublish this course from student enrollment (archive)"
+              >
+                <span class="material-symbols-outlined">archive</span> Unpublish
+              </button>
+              <button
+                class="btn btn-xs btn-subtle"
+                *ngIf="course.approvalStatus === 'approved' && course.status === 'archived'"
+                (click)="toggleCourseLifecycle(course, 'active'); $event.stopPropagation()"
+                [disabled]="isUpdatingCourseStatus[course.id]"
+                title="Publish this approved course live to students"
+              >
+                <span class="material-symbols-outlined">unarchive</span> Publish Live
               </button>
               <button class="btn btn-xs btn-subtle" (click)="cloneCourse(course); $event.stopPropagation()" [disabled]="isCloningCourse[course.id]" title="Duplicate full course as draft">
                 <span class="material-symbols-outlined">{{ isCloningCourse[course.id] ? 'sync' : 'content_copy' }}</span> {{ isCloningCourse[course.id] ? 'Cloning...' : 'Clone' }}
@@ -298,7 +316,7 @@
               </button>
             </ng-container>
 
-            <!-- Admin Reviewer Actions: View, Approve, Reject ONLY -->
+            <!-- Admin Reviewer Actions: View, Approve, Reject, Unpublish/Publish -->
             <ng-container *ngIf="isAdmin">
               <button class="btn btn-xs btn-subtle" (click)="openCourseConsole(course); $event.stopPropagation()" title="View curriculum syllabus and materials">
                 <span class="material-symbols-outlined">visibility</span> View
@@ -315,15 +333,38 @@
               </button>
               <button
                 class="btn btn-xs btn-outline danger"
-                *ngIf="course.approvalStatus !== 'rejected'"
+                *ngIf="course.approvalStatus !== 'rejected' && course.approvalStatus !== 'approved'"
                 (click)="openRejectModal(course); $event.stopPropagation()"
                 title="Reject curriculum and request revisions"
               >
                 <span class="material-symbols-outlined">cancel</span> Reject
               </button>
-              <span class="badge badge-success status-pill-tag" *ngIf="course.approvalStatus === 'approved'">
-                <span class="material-symbols-outlined" style="font-size:12px; vertical-align:middle; margin-right:2px;">verified</span> Approved
-              </span>
+              <ng-container *ngIf="course.approvalStatus === 'approved'">
+                <button
+                  class="btn btn-xs btn-subtle"
+                  *ngIf="course.status !== 'archived'"
+                  (click)="toggleCourseLifecycle(course, 'archived'); $event.stopPropagation()"
+                  [disabled]="isUpdatingCourseStatus[course.id]"
+                  title="Unpublish this course from student enrollment (archive)"
+                >
+                  <span class="material-symbols-outlined">archive</span> Unpublish
+                </button>
+                <button
+                  class="btn btn-xs btn-subtle"
+                  *ngIf="course.status === 'archived'"
+                  (click)="toggleCourseLifecycle(course, 'active'); $event.stopPropagation()"
+                  [disabled]="isUpdatingCourseStatus[course.id]"
+                  title="Publish this approved course live to students"
+                >
+                  <span class="material-symbols-outlined">unarchive</span> Publish Live
+                </button>
+                <span class="badge badge-success status-pill-tag" *ngIf="course.status !== 'archived'">
+                  <span class="material-symbols-outlined" style="font-size:12px; vertical-align:middle; margin-right:2px;">verified</span> Approved Live
+                </span>
+                <span class="badge badge-subtle status-pill-tag" *ngIf="course.status === 'archived'">
+                  <span class="material-symbols-outlined" style="font-size:12px; vertical-align:middle; margin-right:2px;">archive</span> Archived
+                </span>
+              </ng-container>
             </ng-container>
           </div>
         </div>
@@ -811,21 +852,41 @@
     <!-- Course Moderation Sticky Review Action Bar (for Reviewers) -->
     <div class="course-moderation-top-bar" *ngIf="isAdmin">
       <div class="moderation-status-pill" [class.status-approved]="activeDetailCourse?.approvalStatus === 'approved'" [class.status-rejected]="activeDetailCourse?.approvalStatus === 'rejected'">
-        <span class="material-symbols-outlined">{{ activeDetailCourse?.approvalStatus === 'approved' ? 'verified' : activeDetailCourse?.approvalStatus === 'rejected' ? 'cancel' : 'pending_actions' }}</span>
+        <span class="material-symbols-outlined">{{ activeDetailCourse?.approvalStatus === 'approved' ? (activeDetailCourse?.status === 'archived' ? 'archive' : 'verified') : activeDetailCourse?.approvalStatus === 'rejected' ? 'cancel' : 'pending_actions' }}</span>
         <div>
           <strong>
-            {{ activeDetailCourse?.approvalStatus === 'approved' ? 'Curriculum Approved & Published Live' : activeDetailCourse?.approvalStatus === 'rejected' ? 'Curriculum Marked as Rejected' : 'Curriculum In Moderation Queue' }}
+            {{ activeDetailCourse?.approvalStatus === 'approved' ? (activeDetailCourse?.status === 'archived' ? 'Curriculum Approved & Archived (Unpublished)' : 'Curriculum Approved & Published Live') : activeDetailCourse?.approvalStatus === 'rejected' ? 'Curriculum Marked as Rejected' : 'Curriculum In Moderation Queue' }}
           </strong>
-          <span>Submitted by {{ activeDetailCourse?.submitted_by || activeDetailCourse?.submittedBy || 'Instructor' }} &bull; Admin moderation desk. You can audit curriculum units, approve for publication, or reject with feedback.</span>
+          <span>Submitted by {{ activeDetailCourse?.submitted_by || activeDetailCourse?.submittedBy || 'Instructor' }} &bull; Admin moderation desk. You can audit curriculum units, publish live, or unpublish/archive.</span>
         </div>
       </div>
       <div class="moderation-action-buttons">
-        <button class="btn btn-sm btn-outline danger" *ngIf="activeDetailCourse?.approvalStatus !== 'rejected'" (click)="openRejectModalForActiveCourse()">
+        <button class="btn btn-sm btn-outline danger" *ngIf="activeDetailCourse?.approvalStatus !== 'rejected' && activeDetailCourse?.approvalStatus !== 'approved'" (click)="openRejectModalForActiveCourse()">
           <span class="material-symbols-outlined">close</span> Reject with Feedback
         </button>
         <button class="btn btn-sm btn-success" *ngIf="activeDetailCourse?.approvalStatus !== 'approved'" (click)="approveActiveCourseFromConsole()">
           <span class="material-symbols-outlined">check_circle</span> Approve &amp; Publish Course
         </button>
+        <ng-container *ngIf="activeDetailCourse?.approvalStatus === 'approved'">
+          <button
+            class="btn btn-sm btn-outline"
+            *ngIf="activeDetailCourse?.status !== 'archived'"
+            (click)="toggleCourseLifecycle(activeDetailCourse, 'archived')"
+            [disabled]="isUpdatingCourseStatus[activeDetailCourse?.id]"
+            title="Temporarily withdraw this course from student enrollment"
+          >
+            <span class="material-symbols-outlined">archive</span> Unpublish (Archive)
+          </button>
+          <button
+            class="btn btn-sm btn-success"
+            *ngIf="activeDetailCourse?.status === 'archived'"
+            (click)="toggleCourseLifecycle(activeDetailCourse, 'active')"
+            [disabled]="isUpdatingCourseStatus[activeDetailCourse?.id]"
+            title="Make this course visible to students"
+          >
+            <span class="material-symbols-outlined">unarchive</span> Publish Live
+          </button>
+        </ng-container>
       </div>
     </div>
 
@@ -2086,10 +2147,10 @@
         </div>
       </div>
       <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;" *ngIf="activeModerateItem">
-        <button class="btn btn-outline danger" (click)="openRejectModal(activeModerateItem); closeQuickModerateModal()">
+        <button class="btn btn-outline danger" *ngIf="activeModerateItem.approvalStatus !== 'approved' && activeModerateItem.rawItem?.approvalStatus !== 'approved' && activeModerateItem.rawItem?.approval_status !== 'approved'" (click)="openRejectModal(activeModerateItem); closeQuickModerateModal()">
           <span class="material-symbols-outlined">close</span> Reject with Feedback
         </button>
-        <button class="btn btn-success" (click)="approveModerationItem(activeModerateItem); closeQuickModerateModal()">
+        <button class="btn btn-success" *ngIf="activeModerateItem.approvalStatus !== 'approved' && activeModerateItem.rawItem?.approvalStatus !== 'approved' && activeModerateItem.rawItem?.approval_status !== 'approved'" (click)="approveModerationItem(activeModerateItem); closeQuickModerateModal()">
           <span class="material-symbols-outlined">check_circle</span> Approve &amp; Publish Live
         </button>
       </div>

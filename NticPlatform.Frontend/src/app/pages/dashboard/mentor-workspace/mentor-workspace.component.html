@@ -1,0 +1,100 @@
+<!-- ============================================================================================================
+     MENTOR WORKSPACE: DEDICATED MENTOR PORTAL SUBCOMPONENT
+     ============================================================================================================ -->
+<div>
+  <!-- In-Flight Mentorship Requests Panel -->
+  <div id="mentor-requests-section" class="card" style="margin-bottom:24px;border:1px solid rgba(139,92,246,0.4);background:linear-gradient(135deg, rgba(139,92,246,0.06) 0%, var(--surface-container-lowest) 100%);">
+    <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="display:flex;align-items:center;gap:8px;margin:0;font-size:14px;font-weight:700;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:#8b5cf6;">notifications_active</span>
+        Mentorship Requests
+      </h3>
+      <span class="badge" [ngClass]="pendingRequests.length > 0 ? 'warning' : 'secondary'" style="font-size:10px;">
+        {{ pendingRequests.length > 0 ? pendingRequests.length + ' Awaiting Response' : 'All Clear' }}
+      </span>
+    </div>
+    <div class="card-body" style="padding:14px;display:flex;flex-direction:column;gap:12px;">
+      <div *ngIf="!pendingRequests.length" style="text-align:center;padding:20px;color:var(--on-surface-variant);">
+        <span class="material-symbols-outlined" style="font-size:32px;opacity:0.4;margin-bottom:6px;">done_all</span>
+        <p style="margin:0;font-size:12px;font-weight:600;">No pending mentorship requests</p>
+        <p style="margin:4px 0 0;font-size:11px;opacity:0.8;">New team requests or administrator allocations will appear here.</p>
+      </div>
+
+      <div *ngFor="let team of pendingRequests" style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <strong style="font-size:13.5px;color:var(--on-surface);">{{ team.name }}</strong>
+            <div style="font-size:11px;color:var(--on-surface-variant);margin-top:2px;">{{ team.schoolName || team.school_name || 'Independent Squad' }} &bull; Track: <strong>{{ team.track || 'General' }}</strong></div>
+          </div>
+          <span class="badge primary" style="font-size:10px;">{{ team.members || 1 }} Entrant{{ (team.members || 1) === 1 ? '' : 's' }}</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--on-surface-variant);display:flex;align-items:center;gap:6px;">
+          <span class="material-symbols-outlined" style="font-size:14px;color:var(--primary);">person</span>
+          <span><strong>Lead:</strong> {{ team.lead || 'Student Lead' }}</span>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;padding-top:8px;border-top:1px dashed var(--outline-variant);">
+          <button class="btn btn-outline btn-sm" [disabled]="isResponding" (click)="respond.emit({ team: team, action: 'decline' })" style="font-size:11px;padding:4px 10px;color:#ef4444;border-color:rgba(239,68,68,0.4);">
+            <span class="material-symbols-outlined" style="font-size:14px;">close</span> Decline
+          </button>
+          <button class="btn btn-primary btn-sm" [disabled]="isResponding" (click)="respond.emit({ team: team, action: 'accept' })" style="font-size:11px;padding:4px 12px;background:#10b981;border-color:#10b981;">
+            <span class="material-symbols-outlined" style="font-size:14px;">check</span> Accept Mentorship
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mentored Teams & Squads Section -->
+  <div id="mentor-squads-section" class="section-title">
+    Active Mentored Squads &amp; Teams
+    <span class="badge secondary" *ngIf="mentoredTeams.length > 0">{{ mentoredTeams.length }} Assigned</span>
+  </div>
+
+  <div class="card" *ngIf="!mentoredTeams.length">
+    <div class="card-body" style="text-align:center;padding:28px 18px;">
+      <span class="material-symbols-outlined" style="font-size:40px;color:var(--outline);">diversity_3</span>
+      <h3 style="font-size:14px;font-weight:700;margin:8px 0 4px;">No squads assigned yet</h3>
+      <p style="font-size:12px;color:var(--on-surface-variant);margin:0 0 8px;">
+        Teams requesting your guidance or matched to your track expertise will appear here once accepted.
+      </p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" *ngIf="mentoredTeams.length > 0">
+    <div *ngFor="let team of mentoredTeams" class="card" style="padding:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <div style="min-width:0;">
+          <h4 style="font-size:14px;font-weight:700;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ team.name }}</h4>
+          <div style="font-size:11px;color:var(--on-surface-variant);">{{ team.schoolName || team.school_name || 'Independent Squad' }} &bull; Track: <strong>{{ team.track || 'General' }}</strong></div>
+        </div>
+        <span class="badge primary" style="font-size:10px;">{{ team.members || 1 }} Member{{ (team.members || 1) === 1 ? '' : 's' }}</span>
+      </div>
+      <div style="font-size:11.5px;color:var(--on-surface-variant);margin:8px 0;display:flex;align-items:center;gap:6px;">
+        <span class="material-symbols-outlined" style="font-size:14px;color:var(--primary);">person</span>
+        <strong>Team Lead:</strong> {{ team.lead || 'Representative' }}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--outline-variant);font-size:11px;">
+        <span style="color:#10b981;display:flex;align-items:center;gap:4px;font-weight:600;">
+          <span class="material-symbols-outlined" style="font-size:14px;">verified</span> Active Mentorship
+        </span>
+        <span class="badge secondary" style="font-size:9.5px;">{{ team.status || 'Active' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mentorship Best Practices Card -->
+  <div class="card" style="margin-top:24px;border:1px solid var(--outline-variant);">
+    <div class="card-header" style="display:flex;align-items:center;gap:8px;">
+      <span class="material-symbols-outlined" style="color:var(--primary);">tips_and_updates</span>
+      <h3 style="margin:0;font-size:14px;font-weight:700;">NTIC Mentor Guidance &amp; Expectations</h3>
+    </div>
+    <div class="card-body" style="padding:16px;font-size:12px;line-height:1.6;color:var(--on-surface-variant);">
+      <p style="margin:0 0 10px;">As an accredited NTIC Ghana mentor, your role is to advise and inspire your squads throughout the tournament lifecycle:</p>
+      <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;">
+        <li><strong>Technical Guidance:</strong> Help teams refine system architecture, debugging strategies, and hardware/software prototypes.</li>
+        <li><strong>Competition Integrity:</strong> Ensure all work submitted by students represents original problem-solving and adheres to NTIC ethics guidelines.</li>
+        <li><strong>Milestone Reviews:</strong> Check in regularly with team captains to evaluate project progress against national bracket deadlines.</li>
+      </ul>
+    </div>
+  </div>
+</div>

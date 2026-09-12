@@ -2183,7 +2183,7 @@ setAuthValue('activeUserEmail', email);
         this.isPathModalOpen = true; // Open Select Registration Path popup immediately
       } else if (tabParam || sectionParam === 'new') {
         if (tabParam) {
-          this.activeTab = tabParam;
+          this.activeTab = tabParam === 'mentor' ? 'instructor' : tabParam;
         }
         this.regState = 'new';
         if (stepParam) {
@@ -2245,8 +2245,8 @@ setAuthValue('activeUserEmail', email);
     this.saveRegState();
   }
 
-  generateApplicationCode(type: 'school' | 'team' | 'instructor' | 'student'): string {
-    const prefix = type === 'school' ? 'SCH' : type === 'team' ? 'TM' : type === 'student' ? 'STU' : 'INS';
+  generateApplicationCode(type: 'school' | 'team' | 'instructor' | 'mentor' | 'student'): string {
+    const prefix = type === 'school' ? 'SCH' : type === 'team' ? 'TM' : type === 'student' ? 'STU' : type === 'mentor' ? 'MTR' : 'INS';
     const year = new Date().getFullYear();
     // 12-character suffix (~2^60) so the code is effectively unguessable. The
     // old 4-character suffix (~1M values) let anyone brute-force the public
@@ -3586,6 +3586,10 @@ setAuthValue('activeUserEmail', email);
       this.saveRegState();
       return;
     }
+    if (role === 'mentor') {
+      this.dialogService.toast('Mentors cannot self-register. Mentors are appointed directly by Admins or requested by student squads.', 'info');
+      return;
+    }
     this.activeTab = role;
     this.isDraftResumed = false;
     if (role === 'school') {
@@ -4055,7 +4059,7 @@ setAuthValue('activeUserEmail', email);
       this.isPreviewModalOpen = false;
 
       // Add to pending approvals in localStorage via ContentService
-      let approvalType: 'School Registration' | 'Team Addition' | 'Instructor Access' | null = null;
+      let approvalType: 'School Registration' | 'Team Addition' | 'Instructor Access' | 'Mentor Access' | null = null;
       let entity = '';
       let contact = '';
       let details: any = {};
@@ -4157,21 +4161,22 @@ setAuthValue('activeUserEmail', email);
         const selectedExpertise = Object.keys(this.instructorForm.expertise)
           .filter(k => this.instructorForm.expertise[k])
           .join(', ');
+        const appCodeKey = 'instructor';
         details = {
           address: this.instructorForm.address || '',
           region: this.instructorForm.region || '',
-          institution: this.instructorForm.isIndependent ? 'Independent Mentor' : (this.instructorForm.institution || 'Independent Mentor'),
+          institution: this.instructorForm.isIndependent ? 'Independent Instructor' : (this.instructorForm.institution || 'Independent Instructor'),
           isIndependent: this.instructorForm.isIndependent || false,
           credentials: this.instructorForm.qualification || 'MSc Computer Science',
           specialization: selectedExpertise || 'Coding, AI',
           phone: this.instructorForm.tel || '',
           portfolio: this.instructorForm.portfolio || '',
-          experience: 'Mentor with registered history',
+          experience: 'Instructor with registered history',
           courses: ['LMS Course 101: Python Intro', 'LMS Course 202: Robotics Base'],
           photoFileId: this.selectedFileIds['instructorPhoto']?.[0] || undefined,
           code: this.editingApprovalId
-            ? (this.contentService.pendingApprovals.find(a => a.id === this.editingApprovalId)?.details?.code || this.generateApplicationCode('instructor'))
-            : this.generateApplicationCode('instructor'),
+            ? (this.contentService.pendingApprovals.find(a => a.id === this.editingApprovalId)?.details?.code || this.generateApplicationCode(appCodeKey))
+            : this.generateApplicationCode(appCodeKey),
           docs: this.selectedFileIds['instructorDocs']?.length
             ? this.selectedFileIds['instructorDocs'].map((id, i) => `${id}::${this.selectedFileNames['instructorDocs']?.[i] || 'document.pdf'}`)
             : undefined

@@ -4467,6 +4467,73 @@ class TestInstructorAuthoring:
         assert resp.status_code == 200
         assert resp.json()["approval_status"] == "approved"
 
+    def test_cannot_reject_approved_course(self, client, admin_token):
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        # First approve the course
+        resp = client.patch(f"/api/lms/courses/{course_id}/moderate",
+                            headers=self._auth(admin_token), json={"approve": True})
+        assert resp.status_code == 200
+        # Subsequent rejection attempt must fail
+        reject_resp = client.patch(f"/api/lms/courses/{course_id}/moderate",
+                                   headers=self._auth(admin_token),
+                                   json={"approve": False, "reason": "No longer needed"})
+        assert reject_resp.status_code == 400
+        assert "Approved courses cannot be rejected" in reject_resp.json()["detail"]
+
+    def test_course_lifecycle_unpublish_and_reactivate(self, client, admin_token):
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        # Add a module
+        m_resp = client.post("/api/lms/modules", headers=self._auth(token), json={
+            "course_id": course_id, "title": "Module 1", "order_num": 1,
+        })
+        assert m_resp.status_code == 201
+        mod_id = m_resp.json()["id"]
+
+        # Approve course
+        client.patch(f"/api/lms/courses/{course_id}/moderate",
+                     headers=self._auth(admin_token), json={"approve": True})
+
+        # Unpublish / archive course
+        archive_resp = client.patch(f"/api/lms/courses/{course_id}/status",
+                                    headers=self._auth(admin_token),
+                                    json={"status": "archived"})
+        assert archive_resp.status_code == 200
+        assert archive_resp.json()["status"] == "archived"
+
+        # Verify child module status cascaded to archived
+        mods = client.get(f"/api/lms/modules?course_id={course_id}", headers=self._auth(admin_token)).json()
+        assert any(m["id"] == mod_id and m.get("status") == "archived" for m in mods)
+
+        # Student cannot enroll while archived
+        student_token, _s = self._user(client, admin_token, "student", "Archived Test Student")
+        enroll_resp = client.post("/api/lms/enrollments", headers=self._auth(student_token),
+                                  json={"course_id": course_id})
+        assert enroll_resp.status_code == 409
+
+        # Reactivate course to active
+        active_resp = client.patch(f"/api/lms/courses/{course_id}/status",
+                                   headers=self._auth(admin_token),
+                                   json={"status": "active"})
+        assert active_resp.status_code == 200
+        assert active_resp.json()["status"] == "active"
+
+        # Now student can enroll
+        enroll_resp = client.post("/api/lms/enrollments", headers=self._auth(student_token),
+                                  json={"course_id": course_id})
+        assert enroll_resp.status_code == 201
+
+    def test_cannot_activate_unapproved_course(self, client, admin_token):
+        token, _e = self._instructor(client, admin_token)
+        course_id = self._course(client, token)
+        # Attempting to activate an unapproved course must fail
+        resp = client.patch(f"/api/lms/courses/{course_id}/status",
+                            headers=self._auth(token),
+                            json={"status": "active"})
+        assert resp.status_code == 400
+        assert "Cannot activate an unapproved course" in resp.json()["detail"]
+
     def test_rejection_requires_a_reason(self, client, admin_token):
         token, _e = self._instructor(client, admin_token)
         course_id = self._course(client, token)
@@ -7239,7 +7306,10 @@ class TestInstitutionMentorTwoTierWorkflow:
         mentor_login = client.post("/api/login", json={"email": suggested_email, "password": temp_pw})
         assert mentor_login.status_code == 200
         mentor_data = mentor_login.json()
-        assert mentor_data["role"] == "instructor"
+        assert app_data["account"]["provisioned"] is True
+        assert app_data["account"]["ticket"].startswith("NTIC-MTR-")
+        assert mentor_data["role"] == "mentor"
+        assert mentor_data["ticket"].startswith("NTIC-MTR-")
         assert mentor_data["must_change_password"] is True
 
 

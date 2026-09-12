@@ -443,7 +443,7 @@
          it only credits sponsorships an administrator has confirmed. The two
          headings are editable by a page manager via landing_copy.
     ─────────────────────────────────────────────────────────────── -->
-    <section class="partners-strip">
+    <section id="partners" class="partners-strip">
       <div class="container">
         <div class="ps-bar">
           <div class="ps-lead">
@@ -1049,14 +1049,31 @@
     <div class="preview-overlay" *ngIf="showPreviewModal" (click)="closePreview()">
       <div class="preview-modal" (click)="$event.stopPropagation()">
         <div class="preview-modal-header">
-          <span class="material-symbols-outlined">visibility</span>
-          <span>Output Preview</span>
-          <button class="preview-close-btn" (click)="closePreview()">
+          <div class="preview-header-left">
+            <span class="material-symbols-outlined header-icon">visibility</span>
+            <span class="header-title">Live Output Preview</span>
+            <span class="preview-tag">HTML / DOM</span>
+          </div>
+          <button class="preview-close-btn" (click)="closePreview()" aria-label="Close preview">
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
         <div class="preview-modal-body">
-          <iframe #previewFrame class="preview-iframe" sandbox="allow-scripts allow-same-origin"></iframe>
+          <div class="preview-browser-toolbar">
+            <div class="browser-dots">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+            </div>
+            <div class="browser-url-pill">
+              <span class="material-symbols-outlined url-lock">lock</span>
+              <span class="url-text">sandbox://preview.local/live-output.html</span>
+            </div>
+            <div class="browser-actions-ghost"></div>
+          </div>
+          <div class="preview-canvas-wrapper">
+            <iframe #previewFrame class="preview-iframe" sandbox="allow-scripts allow-same-origin"></iframe>
+          </div>
         </div>
       </div>
     </div>
@@ -1184,7 +1201,7 @@
             [class.highlighted]="hoveredNode === 'students'" />
           <path d="M 600 270 L 600 480" class="tree-line line-projects"
             [class.highlighted]="hoveredNode === 'projects'" />
-          <path d="M 600 270 L 1050 440" class="tree-line line-grants" [class.highlighted]="hoveredNode === 'grants'" />
+          <path d="M 600 270 L 1050 440" class="tree-line line-grants line-sponsors" [class.highlighted]="hoveredNode === 'sponsors' || hoveredNode === 'grants'" />
 
           <!-- Animated energy pulse overlays (flowing outwards from center) -->
           <path d="M 600 270 L 150 100" class="tree-line-pulse pulse-regions"
@@ -1197,8 +1214,8 @@
             [class.highlighted]="hoveredNode === 'students'" />
           <path d="M 600 270 L 600 480" class="tree-line-pulse pulse-projects"
             [class.highlighted]="hoveredNode === 'projects'" />
-          <path d="M 600 270 L 1050 440" class="tree-line-pulse pulse-grants"
-            [class.highlighted]="hoveredNode === 'grants'" />
+          <path d="M 600 270 L 1050 440" class="tree-line-pulse pulse-grants pulse-sponsors"
+            [class.highlighted]="hoveredNode === 'sponsors' || hoveredNode === 'grants'" />
         </svg>
 
         <!-- Center Hub Node representing the championship -->
@@ -1302,21 +1319,21 @@
           </div>
         </div>
 
-        <!-- Node 4: Grants -->
-        <div class="tree-node node-grants" [class.active]="hoveredNode === 'grants'"
-          (mouseenter)="hoveredNode = 'grants'" (mouseleave)="hoveredNode = null">
+        <!-- Node 4: Corporate Sponsors & Partners -->
+        <div class="tree-node node-sponsors node-grants" [class.active]="hoveredNode === 'sponsors'"
+          (mouseenter)="hoveredNode = 'sponsors'" (mouseleave)="hoveredNode = null"
+          (click)="scrollToSection('partners')">
           <div class="node-circle">
             <div class="node-icon-wrap">
-              <span class="material-symbols-outlined">payments</span>
+              <span class="material-symbols-outlined">handshake</span>
             </div>
-            <div class="node-number">{{ grantsLabel }}</div>
-            <div class="node-title">{{ contentService.copy('stats.grants', 'Scholarships & Grants') }}</div>
+            <div class="node-number">{{ sponsorsLabel }}</div>
+            <div class="node-title">{{ contentService.copy('stats.sponsors', 'Corporate Sponsors') }}</div>
           </div>
           <div class="node-tooltip">
             <div class="tooltip-arrow"></div>
-            <strong>{{ grantsLabel }} Support Fund</strong>
-            <p>Direct sponsorship, equipment packages, and tertiary engineering scholarships provided by our state and
-              corporate partners.</p>
+            <strong>{{ sponsorsCount > 0 ? (sponsorsCount + '+') : 'Official' }} Corporate Partners</strong>
+            <p>{{ contentService.copy('stats.sponsors.tooltip', 'Industry leaders, CSR foundations, and technology partners providing direct hardware kits, student mentorship, and championship support.') }}</p>
           </div>
         </div>
 
@@ -1386,66 +1403,98 @@
           <svg class="ghana-map" viewBox="0 0 400 500" xmlns="http://www.w3.org/2000/svg">
             <!-- Western North -->
             <path class="gh-region" id="western-north" d="M 60 180 L 100 160 L 130 170 L 140 200 L 120 230 L 80 230 Z"
+              [class.hovered]="hoveredRegionData?.id === 'western-north'"
+              [class.selected]="selectedRegion === 'western-north'"
               (mouseenter)="hoverRegion('western-north')" (mouseleave)="hoverRegion(null)"
               (click)="selectRegion('western-north')" />
             <!-- Western -->
             <path class="gh-region" id="western" d="M 60 230 L 120 230 L 130 270 L 100 300 L 55 280 L 45 250 Z"
+              [class.hovered]="hoveredRegionData?.id === 'western'"
+              [class.selected]="selectedRegion === 'western'"
               (mouseenter)="hoverRegion('western')" (mouseleave)="hoverRegion(null)"
               (click)="selectRegion('western')" />
             <!-- Central -->
             <path class="gh-region" id="central" d="M 120 280 L 170 270 L 185 290 L 175 320 L 130 320 L 110 305 Z"
+              [class.hovered]="hoveredRegionData?.id === 'central'"
+              [class.selected]="selectedRegion === 'central'"
               (mouseenter)="hoverRegion('central')" (mouseleave)="hoverRegion(null)"
               (click)="selectRegion('central')" />
             <!-- Greater Accra -->
             <path class="gh-region" id="greater-accra" d="M 185 290 L 230 280 L 240 300 L 220 330 L 185 325 Z"
+              [class.hovered]="hoveredRegionData?.id === 'greater-accra'"
+              [class.selected]="selectedRegion === 'greater-accra'"
               (mouseenter)="hoverRegion('greater-accra')" (mouseleave)="hoverRegion(null)"
               (click)="selectRegion('greater-accra')" />
             <!-- Eastern -->
             <path class="gh-region" id="eastern" d="M 175 240 L 220 230 L 245 255 L 235 285 L 185 290 L 170 270 Z"
+              [class.hovered]="hoveredRegionData?.id === 'eastern'"
+              [class.selected]="selectedRegion === 'eastern'"
               (mouseenter)="hoverRegion('eastern')" (mouseleave)="hoverRegion(null)"
               (click)="selectRegion('eastern')" />
             <!-- Ashanti -->
             <path class="gh-region" id="ashanti"
               d="M 130 200 L 175 190 L 200 210 L 195 245 L 175 255 L 140 240 L 125 225 Z"
+              [class.hovered]="hoveredRegionData?.id === 'ashanti'"
+              [class.selected]="selectedRegion === 'ashanti'"
               (mouseenter)="hoverRegion('ashanti')" (mouseleave)="hoverRegion(null)"
               (click)="selectRegion('ashanti')" />
             <!-- Bono -->
             <path class="gh-region" id="bono" d="M 100 160 L 145 140 L 165 160 L 175 190 L 130 200 L 100 185 Z"
+              [class.hovered]="hoveredRegionData?.id === 'bono'"
+              [class.selected]="selectedRegion === 'bono'"
               (mouseenter)="hoverRegion('bono')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('bono')" />
             <!-- Bono East -->
             <path class="gh-region" id="bono-east"
               d="M 165 140 L 210 130 L 225 155 L 210 175 L 185 180 L 175 190 L 165 160 Z"
+              [class.hovered]="hoveredRegionData?.id === 'bono-east'"
+              [class.selected]="selectedRegion === 'bono-east'"
               (mouseenter)="hoverRegion('bono-east')" (mouseleave)="hoverRegion(null)"
               (click)="selectRegion('bono-east')" />
             <!-- Ahafo -->
             <path class="gh-region" id="ahafo" d="M 120 175 L 130 160 L 165 160 L 175 190 L 155 195 L 135 195 Z"
+              [class.hovered]="hoveredRegionData?.id === 'ahafo'"
+              [class.selected]="selectedRegion === 'ahafo'"
               (mouseenter)="hoverRegion('ahafo')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('ahafo')" />
             <!-- Oti -->
             <path class="gh-region" id="oti" d="M 225 155 L 270 140 L 285 165 L 270 195 L 245 190 L 225 175 Z"
+              [class.hovered]="hoveredRegionData?.id === 'oti'"
+              [class.selected]="selectedRegion === 'oti'"
               (mouseenter)="hoverRegion('oti')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('oti')" />
             <!-- Volta -->
             <path class="gh-region" id="volta"
               d="M 245 190 L 280 175 L 310 200 L 295 260 L 265 270 L 245 250 L 240 220 Z"
+              [class.hovered]="hoveredRegionData?.id === 'volta'"
+              [class.selected]="selectedRegion === 'volta'"
               (mouseenter)="hoverRegion('volta')" (mouseleave)="hoverRegion(null)" (click)="selectRegion('volta')" />
             <!-- Northern -->
             <path class="gh-region" id="northern"
               d="M 145 90 L 200 70 L 250 80 L 270 110 L 265 140 L 225 155 L 210 130 L 165 120 L 145 105 Z"
+              [class.hovered]="hoveredRegionData?.id === 'northern'"
+              [class.selected]="selectedRegion === 'northern'"
               (mouseenter)="hoverRegion('northern')" (mouseleave)="hoverRegion(null)"
               (click)="selectRegion('northern')" />
             <!-- Savannah -->
             <path class="gh-region" id="savannah" d="M 80 80 L 130 60 L 145 90 L 130 115 L 100 120 L 75 110 Z"
+              [class.hovered]="hoveredRegionData?.id === 'savannah'"
+              [class.selected]="selectedRegion === 'savannah'"
               (mouseenter)="hoverRegion('savannah')" (mouseleave)="hoverRegion(null)"
               (click)="selectRegion('savannah')" />
             <!-- North East -->
             <path class="gh-region" id="north-east" d="M 200 70 L 250 55 L 285 75 L 280 110 L 250 115 L 225 100 Z"
+              [class.hovered]="hoveredRegionData?.id === 'north-east'"
+              [class.selected]="selectedRegion === 'north-east'"
               (mouseenter)="hoverRegion('north-east')" (mouseleave)="hoverRegion(null)"
               (click)="selectRegion('north-east')" />
             <!-- Upper West -->
             <path class="gh-region" id="upper-west" d="M 60 30 L 110 20 L 130 45 L 115 70 L 80 80 L 55 65 Z"
+              [class.hovered]="hoveredRegionData?.id === 'upper-west'"
+              [class.selected]="selectedRegion === 'upper-west'"
               (mouseenter)="hoverRegion('upper-west')" (mouseleave)="hoverRegion(null)"
               (click)="selectRegion('upper-west')" />
             <!-- Upper East -->
             <path class="gh-region" id="upper-east" d="M 165 25 L 215 15 L 250 30 L 250 55 L 210 65 L 175 60 L 155 45 Z"
+              [class.hovered]="hoveredRegionData?.id === 'upper-east'"
+              [class.selected]="selectedRegion === 'upper-east'"
               (mouseenter)="hoverRegion('upper-east')" (mouseleave)="hoverRegion(null)"
               (click)="selectRegion('upper-east')" />
             <!-- Region Labels -->
@@ -1471,10 +1520,10 @@
             *ngIf="hoveredRegionData && !selectedRegion">
             <strong>{{ hoveredRegionData.name }}</strong>
             <div class="rtt-row"><span class="material-symbols-outlined">school</span> {{ hoveredRegionData.schools }}
-              Schools</div>
+              {{ hoveredRegionData.schools === 1 ? 'School' : 'Schools' }}</div>
             <div class="rtt-row"><span class="material-symbols-outlined">groups</span> {{ hoveredRegionData.students || 0 }}
-              Students</div>
-            <div class="rtt-row"><span class="material-symbols-outlined">emoji_events</span> Top: {{
+              {{ (hoveredRegionData.students || 0) === 1 ? 'Student' : 'Students' }}</div>
+            <div class="rtt-row" *ngIf="hoveredRegionData.schools > 0"><span class="material-symbols-outlined">emoji_events</span> Top: {{
               hoveredRegionData.topSchool }}</div>
             <div class="rtt-row specialty-row"><span class="material-symbols-outlined">data_object</span> {{
               hoveredRegionData.specialty }}</div>
@@ -1491,12 +1540,16 @@
               </button>
             </div>
             <h3>{{ activeRd.name }} Region</h3>
-            <p class="spotlight-sub">{{ activeRd.schools }} NTIC Institutions Competing</p>
+            <p class="spotlight-sub">{{ activeRd.schools }} {{ activeRd.schools === 1 ? 'NTIC Institution' : 'NTIC Institutions' }} Competing</p>
 
-            <div class="spotlight-stat-box">
+            <div class="spotlight-stat-box" *ngIf="activeRd.schools > 0">
               <div class="ss-label"><span class="material-symbols-outlined">emoji_events</span> Regional Champion School
               </div>
               <div class="ss-value">{{ activeRd.topSchool }}</div>
+            </div>
+            <div class="spotlight-stat-box" *ngIf="activeRd.schools === 0">
+              <div class="ss-label"><span class="material-symbols-outlined">schedule</span> Roster Status</div>
+              <div class="ss-value" style="font-size:13.5px; color:var(--on-surface-variant,#94a3b8); font-weight:600;">School nominations open</div>
             </div>
 
             <div class="spotlight-stat-box">
@@ -1509,7 +1562,7 @@
               <div class="sm-header">
                 <span>National Qualification Heat</span>
                 <strong>{{ getQualificationHeat(activeRd) }}% Qualified <span style="font-weight:400; opacity:0.7;">({{
-                    activeRd.schools }}/{{ activeRd.target }} schools)</span></strong>
+                    activeRd.schools }}/{{ activeRd.target }} {{ activeRd.schools === 1 ? 'school' : 'schools' }})</span></strong>
               </div>
               <div class="sm-track">
                 <div class="sm-bar" [style.width.%]="getQualificationHeat(activeRd)"></div>
@@ -1530,11 +1583,15 @@
             </div>
             <div class="region-list">
               <div class="rl-item stagger-1" *ngFor="let rd of regionDataList; let i = index; trackBy: trackByRegionId"
-                [class]="'stagger-' + (i % 8 + 1)" (click)="selectRegion(rd.id)"
-                [class.active]="selectedRegion === rd.id">
+                [class]="'stagger-' + (i % 8 + 1)"
+                (mouseenter)="hoverRegion(rd.id)"
+                (mouseleave)="hoverRegion(null)"
+                (click)="selectRegion(rd.id)"
+                [class.active]="selectedRegion === rd.id"
+                [class.dimmed]="activeMapFilter !== 'All' && !rd.specialty.includes(activeMapFilter)">
                 <div class="rl-dot" [style.background]="getRegionColor(rd.schools)"></div>
                 <span>{{ rd.name }}</span>
-                <span class="rl-count">{{ rd.schools }} schools</span>
+                <span class="rl-count">{{ rd.schools }} {{ rd.schools === 1 ? 'school' : 'schools' }}</span>
               </div>
             </div>
           </ng-template>
@@ -1660,7 +1717,8 @@
           <h4>{{ contentService.copy('footer.col2.title', 'Portals') }}</h4>
           <ul>
             <li><a href="#" (click)="openInfoModal($event, 'courses')">Student Courses</a></li>
-            <li><a href="#" (click)="openInfoModal($event, 'instructor')">Instructor Mentoring</a></li>
+            <li><a href="#" (click)="openInfoModal($event, 'instructor')">Certified Instructors</a></li>
+            <li><a href="#" (click)="openInfoModal($event, 'mentor')">Competition Mentors</a></li>
             <li><a href="#" (click)="openInfoModal($event, 'admin')">School Admins Directory</a></li>
             <li><a href="#" (click)="openInfoModal($event, 'rubrics')">Judge Rubrics</a></li>
           </ul>

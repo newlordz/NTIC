@@ -22,7 +22,8 @@ export class RoleUsersModalComponent {
       case 'super_admin': return 'Super Admin';
       case 'admin': return 'Administrator';
       case 'judge': return 'Judge';
-      case 'instructor': return 'Instructor / Mentor';
+      case 'instructor': return 'Instructor';
+      case 'mentor': return 'Mentor';
       case 'student': return 'Student';
       case 'sponsor': return 'Sponsor';
       case 'school_admin': return 'School Coordinator';

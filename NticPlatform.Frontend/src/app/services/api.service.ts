@@ -764,6 +764,14 @@ export class ApiService {
     );
   }
 
+  /** Update course lifecycle status (active, draft, archived) with cascading child state. */
+  updateCourseStatus(courseId: string, status: 'active' | 'archived' | 'draft'): Observable<any> {
+    return this.http.patch(
+      `${this.apiUrl}/lms/courses/${encodeURIComponent(courseId)}/status`,
+      { status }
+    );
+  }
+
   // ── Sponsorships & payments ───────────────────────────────────────────
   // Replaces a hardcoded infographic and payments that never persisted. Amounts
   // are strings end to end: the column is NUMERIC and parsing to a JS number would

@@ -20,6 +20,7 @@ export const ROLE_COMPETITION_MANAGER = 'competition_manager';
 export const ROLE_REVIEWER = 'reviewer';
 export const ROLE_JUDGE = 'judge';
 export const ROLE_INSTRUCTOR = 'instructor';
+export const ROLE_MENTOR = 'mentor';
 export const ROLE_SCHOOL_ADMIN = 'school_admin';
 export const ROLE_SPONSOR = 'sponsor';
 export const ROLE_STUDENT = 'student';
@@ -29,7 +30,7 @@ export const ROLE_GOVERNMENT = 'government';
 export const ALL_ROLES = [
   ROLE_SUPER_ADMIN, ROLE_ADMIN, ROLE_SUPPORT_ADMIN, ROLE_CONTENT_MANAGER,
   ROLE_COMPETITION_MANAGER, ROLE_REVIEWER, ROLE_JUDGE, ROLE_INSTRUCTOR,
-  ROLE_SCHOOL_ADMIN, ROLE_SPONSOR, ROLE_STUDENT, ROLE_GOVERNMENT
+  ROLE_MENTOR, ROLE_SCHOOL_ADMIN, ROLE_SPONSOR, ROLE_STUDENT, ROLE_GOVERNMENT
 ] as const;
 
 export type AppRole = typeof ALL_ROLES[number];

@@ -39,6 +39,7 @@ import { EnlistSquadModalComponent } from './enlist-squad-modal/enlist-squad-mod
 import { UserTicketModalComponent } from './user-ticket-modal/user-ticket-modal.component';
 import { TeamDetailViewComponent } from './team-detail-view/team-detail-view.component';
 import { AuditInspectorModalComponent } from './audit-inspector-modal/audit-inspector-modal.component';
+import { MentorWorkspaceComponent } from './mentor-workspace/mentor-workspace.component';
 
 export interface SponsorInfographic {
   partnerCount: number;
@@ -76,7 +77,7 @@ type PersonnelRole = 'governance' | 'government' | 'mentor' | 'sponsor' | 'judge
     RecordInspectorModalComponent, MemberProfileModalComponent,
     InstitutionPortalModalComponent, CredentialsModalComponent, RoleUsersModalComponent,
     EnlistSquadModalComponent, UserTicketModalComponent, TeamDetailViewComponent,
-    AuditInspectorModalComponent
+    AuditInspectorModalComponent, MentorWorkspaceComponent
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
@@ -3234,6 +3235,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
           'success'
         );
         this.contentService.refreshBackendData();
+        if (this.activeRoleId === 'mentor') {
+          this.recomputeMentorStats();
+        } else if (this.activeRoleId === 'instructor') {
+          this.recomputeInstructorStats();
+        }
         this.cdr.markForCheck();
       },
       error: (err) => {
@@ -3289,6 +3295,57 @@ export class DashboardComponent implements OnInit, OnDestroy {
       { label: 'Pending Reviews', value: String(pendingGrading), icon: 'pending_actions', meta: pendingGrading > 0 ? `${pendingGrading} to grade` : 'All clear', color: 'error' },
       { label: 'Mentored Squads', value: String(mentoredTeamsCount), icon: 'co_present', meta: `${mentoredTeamsCount} Assigned teams`, color: 'tertiary' }
     ];
+  }
+
+  recomputeMentorStats(): void {
+    if (this.activeRoleId !== 'mentor') return;
+    const mentoredTeams = this.instructorMentoredTeams;
+    const pendingRequests = this.instructorPendingMentorRequests;
+    const totalStudents = mentoredTeams.reduce((sum, t) => sum + ((t.members && Array.isArray(t.members) ? t.members.length : (t.memberCount || (typeof t.members === 'number' ? t.members : 1)))), 0);
+    const track = this.currentUser?.track || 'All Competition Tracks';
+
+    this.stats = [
+      {
+        label: 'Assigned Squads',
+        value: String(mentoredTeams.length),
+        icon: 'groups',
+        meta: mentoredTeams.length > 0 ? `${mentoredTeams.length} Active teams` : 'No squads assigned yet',
+        color: 'primary'
+      },
+      {
+        label: 'Pending Requests',
+        value: String(pendingRequests.length),
+        icon: 'notifications_active',
+        meta: pendingRequests.length > 0 ? `${pendingRequests.length} Awaiting response` : 'All clear',
+        color: pendingRequests.length > 0 ? 'error' : 'secondary'
+      },
+      {
+        label: 'Students Mentored',
+        value: String(totalStudents),
+        icon: 'school',
+        meta: totalStudents > 0 ? 'Across active squads' : 'Pending team allocation',
+        color: 'tertiary'
+      },
+      {
+        label: 'Focus Track',
+        value: track,
+        icon: 'psychology',
+        meta: 'National NTIC Championship',
+        color: 'primary'
+      }
+    ];
+  }
+
+  scrollToMentorRequests(): void {
+    if (typeof document === 'undefined') return;
+    const el = document.getElementById('mentor-requests-section');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  scrollToMentorSquads(): void {
+    if (typeof document === 'undefined') return;
+    const el = document.getElementById('mentor-squads-section');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   isUserOnline(email: string): boolean {
@@ -3737,8 +3794,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
       case 'instructor':
         this.dashboardTitle = 'Instructor Dashboard';
-        this.dashboardSubtitle = `Welcome back, ${userName}. Manage your courses, review submissions, and mentor competition squads.`;
+        this.dashboardSubtitle = `Welcome back, ${userName}. Manage your courses, review submissions, and publish curriculum.`;
         this.recomputeInstructorStats();
+        break;
+
+      case 'mentor':
+        this.dashboardTitle = 'Mentor Dashboard';
+        this.dashboardSubtitle = `Welcome back, ${userName}. Guide your competition squads, review team milestones, and support assigned student projects.`;
+        this.recomputeMentorStats();
         break;
 
       case 'school_admin':
@@ -7893,7 +7956,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (r === 'judge') return 'Judge';
     if (r === 'sponsor') return 'Sponsor';
     if (r === 'school_admin' || r === 'school') return 'School Admin';
-    if (r === 'instructor' || r === 'mentor') return 'Instructor';
+    if (r === 'instructor') return 'Instructor';
+    if (r === 'mentor') return 'Mentor';
     if (r === 'student') return 'Student';
     if (r === 'super_admin' || r === 'admin') return 'Super Admin';
     if (r === 'content_manager') return 'Content Manager';
@@ -7918,7 +7982,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (r === 'judge') return 'gavel';
     if (r === 'sponsor') return 'handshake';
     if (r === 'school_admin' || r === 'school') return 'school';
-    if (r === 'instructor' || r === 'mentor') return 'assignment_ind';
+    if (r === 'instructor') return 'assignment_ind';
+    if (r === 'mentor') return 'psychology';
     if (r === 'student') return 'person';
     if (r === 'super_admin' || r === 'admin') return 'admin_panel_settings';
     if (r === 'competition_manager') return 'emoji_events';

@@ -79,6 +79,8 @@ STUDENT_ADMIN_ROLES = ADMIN_ROLES | {ROLE_SCHOOL_ADMIN, ROLE_INSTRUCTOR}
 SUPPORT_ROLES = ADMIN_ROLES | {ROLE_SUPPORT_ADMIN}
 # May create and manage LMS courses and materials.
 LMS_ROLES = ADMIN_ROLES | {ROLE_INSTRUCTOR, ROLE_CONTENT_MANAGER}
+# May mentor and guide competitive teams and squads.
+MENTOR_ROLES = ADMIN_ROLES | {ROLE_MENTOR, ROLE_INSTRUCTOR}
 
 # Account statuses that must be denied access. Deny-list rather than
 # requiring "Active" so that unexpected legacy values do not lock users out.

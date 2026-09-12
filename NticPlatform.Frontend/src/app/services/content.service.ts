@@ -222,6 +222,7 @@ export interface PlatformStats {
   students: number;       // live count of student accounts
   projects: number;       // live count of submitted teams/projects
   grants: number;         // live total of verified sponsorship payments (GHS)
+  sponsors?: number;      // live count of corporate sponsors & partners
 }
 
 export interface HeroSlide {
@@ -289,7 +290,7 @@ export interface User {
 
 export interface ApprovalRequest {
   id: string;
-  type: 'School Registration' | 'Team Addition' | 'Team Modification' | 'Student Registration' | 'Instructor Access' | 'Track Change Request';
+  type: 'School Registration' | 'Team Addition' | 'Team Modification' | 'Student Registration' | 'Instructor Access' | 'Mentor Access' | 'Track Change Request';
   entity: string;
   contact: string;
   submitted: string;
@@ -455,7 +456,8 @@ export class ContentService {
     schools: 0,
     students: 0,
     projects: 0,
-    grants: 0
+    grants: 0,
+    sponsors: 0
   };
 
   countdownDate: string = '2026-08-15T09:00:00';
@@ -513,7 +515,7 @@ export class ContentService {
   private readonly defaultHof: HallOfFameEntry[] = [];
   private readonly defaultLeaderboard: LeaderboardEntry[] = [];
   private readonly defaultTalentDiscovery: TalentDiscovery[] = [];
-  private readonly defaultStats: PlatformStats = { regions: 0, mentors: 0, schools: 0, students: 0, projects: 0, grants: 0 };
+  private readonly defaultStats: PlatformStats = { regions: 0, mentors: 0, schools: 0, students: 0, projects: 0, grants: 0, sponsors: 0 };
   private readonly defaultHero: HeroSlide[] = [];
   private readonly defaultNews: NewsFeedItem[] = [];
   private readonly defaultUsers: User[] = [];
@@ -870,7 +872,15 @@ export class ContentService {
       next: (stats: any) => {
         if (stats) {
           if (stats.regions !== undefined) {
-            this.platformStats = { regions: stats.regions, mentors: stats.mentors, schools: stats.schools, students: stats.students, projects: stats.projects, grants: stats.grants };
+            this.platformStats = {
+              regions: stats.regions,
+              mentors: stats.mentors,
+              schools: stats.schools,
+              students: stats.students,
+              projects: stats.projects,
+              grants: stats.grants,
+              sponsors: stats.sponsors ?? 0
+            };
             this.saveState('platformStats', this.platformStats);
           }
           if (stats.countdownDate) {

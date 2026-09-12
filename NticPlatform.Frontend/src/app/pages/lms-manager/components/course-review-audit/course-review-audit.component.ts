@@ -94,6 +94,11 @@ export class CourseReviewAuditComponent {
     private cdr: ChangeDetectorRef
   ) {}
 
+  get isApproved(): boolean {
+    const status = this.course?.approvalStatus || this.course?.approval_status;
+    return status === 'approved';
+  }
+
   get courseModules(): ApiLmsModule[] {
     if (!this.course?.id) return [];
     return this.modules
@@ -318,6 +323,10 @@ export class CourseReviewAuditComponent {
   }
 
   openRejectModal(): void {
+    if (this.isApproved) {
+      this.dialogService.toast('Approved courses cannot be rejected.', 'warning');
+      return;
+    }
     this.rejectionReason = '';
     this.rejectionChecklist.forEach(c => c.checked = false);
     this.isRejectModalOpen = true;
@@ -330,6 +339,11 @@ export class CourseReviewAuditComponent {
   }
 
   confirmRejection(): void {
+    if (this.isApproved) {
+      this.dialogService.toast('Approved courses cannot be rejected.', 'warning');
+      this.closeRejectModal();
+      return;
+    }
     const selectedChecks = this.rejectionChecklist.filter(c => c.checked).map(c => c.label);
     if (!this.rejectionReason.trim() && selectedChecks.length === 0) {
       this.dialogService.toast('Please provide a reason or select at least one issue checklist item.', 'warning');

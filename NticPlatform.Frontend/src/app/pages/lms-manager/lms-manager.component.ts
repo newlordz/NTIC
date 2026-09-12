@@ -26,6 +26,8 @@ export interface PendingModerationItem {
   submittedBy: string;
   createdAt: string;
   courseTitle?: string;
+  approvalStatus?: string;
+  approval_status?: string;
   rawItem: any;
 }
 
@@ -920,6 +922,12 @@ export class LmsManagerComponent implements OnInit {
 
   handleRejectCourseFromReview(event: { reason: string; checklist: string[] }): void {
     if (!this.reviewInspectingCourse) return;
+    const currentStatus = this.reviewInspectingCourse.approvalStatus || this.reviewInspectingCourse.approval_status;
+    if (currentStatus === 'approved') {
+      this.dialogService.toast('Approved courses cannot be rejected.', 'warning');
+      this.exitCourseReview();
+      return;
+    }
     this.moderate(this.reviewInspectingCourse.id, false, event.reason);
     this.dialogService.toast(`Course "${this.reviewInspectingCourse.title}" rejected and creator notified.`, 'info');
     this.exitCourseReview();
@@ -974,6 +982,11 @@ export class LmsManagerComponent implements OnInit {
 
   openRejectModalForActiveCourse(): void {
     if (!this.activeDetailCourse) return;
+    const currentStatus = this.activeDetailCourse.approvalStatus || this.activeDetailCourse.approval_status;
+    if (currentStatus === 'approved') {
+      this.dialogService.toast('Approved courses cannot be rejected.', 'warning');
+      return;
+    }
     this.activeRejectItem = {
       id: this.activeDetailCourse.id,
       type: 'course',
@@ -990,6 +1003,31 @@ export class LmsManagerComponent implements OnInit {
   }
 
   isApprovingCourse: Record<string, boolean> = {};
+  isUpdatingCourseStatus: Record<string, boolean> = {};
+
+  toggleCourseLifecycle(course: any, targetStatus: 'active' | 'archived'): void {
+    if (!course || !course.id || this.isUpdatingCourseStatus[course.id]) return;
+    this.isUpdatingCourseStatus[course.id] = true;
+    this.apiService.updateCourseStatus(course.id, targetStatus).subscribe({
+      next: () => {
+        course.status = targetStatus;
+        if (this.activeDetailCourse && this.activeDetailCourse.id === course.id) {
+          this.activeDetailCourse.status = targetStatus;
+        }
+        const actionLabel = targetStatus === 'active' ? 'published live' : 'unpublished (archived)';
+        this.dialogService.toast(`Course "${course.title}" is now ${actionLabel}.`, 'success');
+        this.isUpdatingCourseStatus[course.id] = false;
+        this.reload();
+        this.cdr.markForCheck();
+      },
+      error: (err: any) => {
+        this.isUpdatingCourseStatus[course.id] = false;
+        const msg = err?.error?.detail || 'Failed to update course lifecycle status.';
+        this.dialogService.toast(msg, 'error');
+        this.cdr.markForCheck();
+      }
+    });
+  }
 
   approveCourseDirect(course: any): void {
     if (!course || !course.id || this.isApprovingCourse[course.id]) return;
@@ -1018,6 +1056,11 @@ export class LmsManagerComponent implements OnInit {
 
   openRejectModal(item: any): void {
     if (!item) return;
+    const currentStatus = item.approvalStatus || item.approval_status || item.rawItem?.approvalStatus || item.rawItem?.approval_status;
+    if (currentStatus === 'approved') {
+      this.dialogService.toast('Approved courses cannot be rejected.', 'warning');
+      return;
+    }
     this.activeRejectItem = {
       id: item.id,
       type: 'course',
@@ -1040,6 +1083,12 @@ export class LmsManagerComponent implements OnInit {
 
   submitRejection(): void {
     if (!this.activeRejectItem || !this.rejectionReasonInput.trim()) return;
+    const currentStatus = this.activeRejectItem.rawItem?.approvalStatus || this.activeRejectItem.rawItem?.approval_status;
+    if (currentStatus === 'approved') {
+      this.dialogService.toast('Approved courses cannot be rejected.', 'warning');
+      this.closeRejectModal();
+      return;
+    }
     // The reason is required server-side too, so it genuinely reaches the author.
     this.moderate(this.activeRejectItem.id, false, this.rejectionReasonInput.trim());
     this.dialogService.toast(`Feedback sent. "${this.activeRejectItem.title}" marked as rejected.`, 'info');

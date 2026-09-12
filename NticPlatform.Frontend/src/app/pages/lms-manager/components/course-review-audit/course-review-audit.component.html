@@ -9,8 +9,11 @@
         <h2>{{ course?.title || 'Course Audit & Review' }}</h2>
         <div class="review-meta-pills">
           <span class="badge" [class]="'badge-' + (course?.track || 'coding')">{{ (course?.track || 'coding') | titlecase }}</span>
-          <span class="badge badge-warning">
+          <span class="badge badge-warning" *ngIf="!isApproved">
             <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">pending_actions</span> Awaiting Admin Review
+          </span>
+          <span class="badge badge-success" *ngIf="isApproved">
+            <span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle;">verified</span> Approved
           </span>
           <span class="badge badge-subtle">Level: {{ course?.level || 'All Levels' }}</span>
           <span class="badge badge-subtle" *ngIf="course?.competitionId">Cycle: {{ cycleLabel(course?.competitionId) }}</span>
@@ -19,15 +22,20 @@
     </div>
 
     <div class="review-top-right">
-      <button type="button" class="btn btn-outline danger" (click)="openRejectModal()" [disabled]="isSaving">
-        <span class="material-symbols-outlined">block</span> Reject Course
-      </button>
-      <button type="button" class="btn btn-outline warning" (click)="onSendFeedback()" [disabled]="isSaving">
-        <span class="material-symbols-outlined">send</span> Send Revision Feedback
-      </button>
-      <button type="button" class="btn btn-success" (click)="onApprove()" [disabled]="isSaving">
-        <span class="material-symbols-outlined">verified</span> Approve &amp; Publish Course
-      </button>
+      <ng-container *ngIf="!isApproved">
+        <button type="button" class="btn btn-outline danger" (click)="openRejectModal()" [disabled]="isSaving">
+          <span class="material-symbols-outlined">block</span> Reject Course
+        </button>
+        <button type="button" class="btn btn-outline warning" (click)="onSendFeedback()" [disabled]="isSaving">
+          <span class="material-symbols-outlined">send</span> Send Revision Feedback
+        </button>
+        <button type="button" class="btn btn-success" (click)="onApprove()" [disabled]="isSaving">
+          <span class="material-symbols-outlined">verified</span> Approve &amp; Publish Course
+        </button>
+      </ng-container>
+      <span class="badge badge-success" *ngIf="isApproved" style="padding:6px 12px; font-size:13px; display:inline-flex; align-items:center; gap:6px;">
+        <span class="material-symbols-outlined" style="font-size:16px;">verified</span> Curriculum Approved &amp; Live
+      </span>
     </div>
   </header>
 
@@ -275,15 +283,21 @@
 
         <!-- Decision Action Footer -->
         <div class="sidebar-decision-footer">
-          <button type="button" class="btn btn-outline danger btn-block mb-2" (click)="openRejectModal()">
-            <span class="material-symbols-outlined">block</span> Reject Course
-          </button>
-          <button type="button" class="btn btn-outline warning btn-block mb-2" (click)="onSendFeedback()">
-            <span class="material-symbols-outlined">send</span> Send Revision Feedback
-          </button>
-          <button type="button" class="btn btn-success btn-block" (click)="onApprove()">
-            <span class="material-symbols-outlined">check_circle</span> Approve &amp; Publish Live
-          </button>
+          <ng-container *ngIf="!isApproved">
+            <button type="button" class="btn btn-outline danger btn-block mb-2" (click)="openRejectModal()">
+              <span class="material-symbols-outlined">block</span> Reject Course
+            </button>
+            <button type="button" class="btn btn-outline warning btn-block mb-2" (click)="onSendFeedback()">
+              <span class="material-symbols-outlined">send</span> Send Revision Feedback
+            </button>
+            <button type="button" class="btn btn-success btn-block" (click)="onApprove()">
+              <span class="material-symbols-outlined">check_circle</span> Approve &amp; Publish Live
+            </button>
+          </ng-container>
+          <div *ngIf="isApproved" class="text-center p-3 text-success font-bold" style="background: rgba(16, 185, 129, 0.1); border-radius: 8px;">
+            <span class="material-symbols-outlined" style="vertical-align:middle; margin-right:4px;">verified</span>
+            Curriculum Approved
+          </div>
         </div>
       </div>
     </aside>
