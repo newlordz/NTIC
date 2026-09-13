@@ -568,11 +568,20 @@ export class AppComponent implements OnInit, OnDestroy {
     this.currentUserService.clear();
     this.idleTimeout.clearStoredActivity();
     this.currentUser = null;
+    this.isLandingPage = true;
     this.showPasswordSetupModal = false;
     this.isForcedPasswordChange = false;
     this.chatbot.resetSession();
     this.closeMobileSidebar();
-    this.router.navigate(['/']);
+    this.router.navigateByUrl('/', { replaceUrl: true }).then(navigated => {
+      if (!navigated && typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    }).catch(() => {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    });
     if (notice) {
       this.dialogService.toast(notice, 'info', 6000);
     }

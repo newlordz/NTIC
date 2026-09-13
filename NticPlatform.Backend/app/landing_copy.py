@@ -120,7 +120,6 @@ LANDING_COPY_DEFAULTS = [
     ("Leaderboard", "leaderboard.tabRobotics", "Robotics"),
     ("Leaderboard", "leaderboard.tabAi", "AI"),
     ("Leaderboard", "leaderboard.tabCyber", "Cyber"),
-    ("Leaderboard", "leaderboard.status", "Live standings · Accredited by MoE & GES"),
     ("Leaderboard", "leaderboard.viewFull", "View Full Leaderboard (180+ Schools)"),
 
     # ── Impact Stats ────────────────────────────────────────────────

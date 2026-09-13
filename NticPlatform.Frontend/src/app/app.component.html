@@ -22,11 +22,11 @@
       </button>
     </div>
 
-    <a class="sidebar-new-btn" *ngIf="currentUser?.roleId !== 'student' && currentUser?.roleId !== 'sponsor' && currentUser?.roleId !== 'super_admin' && currentUser?.roleId !== 'content_manager' && currentUser?.roleId !== 'reviewer' && currentUser?.roleId !== 'competition_manager'"
+    <a class="sidebar-new-btn" *ngIf="currentUser && currentUser.roleId !== 'student' && currentUser.roleId !== 'sponsor' && currentUser.roleId !== 'super_admin' && currentUser.roleId !== 'content_manager' && currentUser.roleId !== 'reviewer' && currentUser.roleId !== 'competition_manager'"
        (click)="navigateSidebarCTA()"
-       [title]="currentUser?.roleId === 'instructor' ? 'Grade Work' : currentUser?.roleId === 'school_admin' ? 'Add Team' : currentUser?.roleId === 'judge' ? 'Score Challenge' : 'New Challenge'">
-      <span class="material-symbols-outlined" style="font-size:18px;">{{ currentUser?.roleId === 'judge' ? 'gavel' : currentUser?.roleId === 'school_admin' ? 'group_add' : currentUser?.roleId === 'instructor' ? 'assignment_turned_in' : 'add' }}</span>
-      <span class="btn-label" *ngIf="!isDesktopSidebarCollapsed">{{ currentUser?.roleId === 'instructor' ? 'Grade Work' : currentUser?.roleId === 'school_admin' ? 'Add Team' : currentUser?.roleId === 'judge' ? 'Score Challenge' : 'New Challenge' }}</span>
+       [title]="currentUser.roleId === 'instructor' ? 'Grade Work' : currentUser.roleId === 'school_admin' ? 'Add Team' : currentUser.roleId === 'judge' ? 'Score Challenge' : 'New Challenge'">
+      <span class="material-symbols-outlined" style="font-size:18px;">{{ currentUser.roleId === 'judge' ? 'gavel' : currentUser.roleId === 'school_admin' ? 'group_add' : currentUser.roleId === 'instructor' ? 'assignment_turned_in' : 'add' }}</span>
+      <span class="btn-label" *ngIf="!isDesktopSidebarCollapsed">{{ currentUser.roleId === 'instructor' ? 'Grade Work' : currentUser.roleId === 'school_admin' ? 'Add Team' : currentUser.roleId === 'judge' ? 'Score Challenge' : 'New Challenge' }}</span>
     </a>
 
     <div class="sidebar-section">
@@ -86,17 +86,17 @@
     </div>
 
     <div class="sidebar-footer">
-      <a class="nav-item" (click)="logout()" title="Landing Page">
+      <a class="nav-item" (click)="logout()" title="Sign Out">
         <span class="material-symbols-outlined">logout</span>
-        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Landing Page</span>
+        <span class="nav-label" *ngIf="!isDesktopSidebarCollapsed">Sign Out</span>
       </a>
-      <div class="divider"></div>
-      <div class="user-profile-chip" (click)="toggleProfile($event)" style="cursor: pointer;" [title]="currentUser?.name || 'User Profile'">
-        <div class="avatar" *ngIf="!currentUser?.photoUrl">{{ currentUser?.avatar || 'SA' }}</div>
-        <img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" (error)="onAvatarLoadError()" class="avatar" alt="Profile" />
+      <div class="divider" *ngIf="currentUser"></div>
+      <div class="user-profile-chip" *ngIf="currentUser" (click)="toggleProfile($event)" style="cursor: pointer;" [title]="currentUser.name || 'User Profile'">
+        <div class="avatar" *ngIf="!currentUser.photoUrl">{{ currentUser.avatar || '??' }}</div>
+        <img *ngIf="currentUser.photoUrl" [src]="currentUser.photoUrl" (error)="onAvatarLoadError()" class="avatar" alt="Profile" />
         <div class="user-info" *ngIf="!isDesktopSidebarCollapsed">
-          <div class="user-name">{{ currentUser?.name || 'Super Admin' }}</div>
-          <div class="user-role" *ngIf="!isAdminRole(currentUser?.roleId)">{{ currentUser?.roleName || 'Administrator' }}</div>
+          <div class="user-name">{{ currentUser.name || 'Signed In' }}</div>
+          <div class="user-role" *ngIf="!isAdminRole(currentUser.roleId)">{{ currentUser.roleName || 'Member' }}</div>
         </div>
         <span class="material-symbols-outlined" *ngIf="!isDesktopSidebarCollapsed" style="margin-left:auto;font-size:18px;color:var(--outline)">expand_more</span>
       </div>
@@ -225,12 +225,12 @@
         </div>
 
         <!-- User Profile Avatar -->
-        <div class="action-dropdown-wrapper">
-          <button class="topbar-avatar-btn" (click)="toggleProfile($event)" [title]="(currentUser?.name || 'Account') + ' Profile'" aria-label="User Profile">
+        <div class="action-dropdown-wrapper" *ngIf="currentUser">
+          <button class="topbar-avatar-btn" (click)="toggleProfile($event)" [title]="(currentUser.name || 'Account') + ' Profile'" aria-label="User Profile">
             <div class="avatar-gradient-ring">
               <div class="avatar-core">
-                <span *ngIf="!currentUser?.photoUrl" class="avatar-initials">{{ currentUser?.avatar || 'SA' }}</span>
-                <img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" (error)="onAvatarLoadError()" class="avatar-img" alt="Profile" />
+                <span *ngIf="!currentUser.photoUrl" class="avatar-initials">{{ currentUser.avatar || '??' }}</span>
+                <img *ngIf="currentUser.photoUrl" [src]="currentUser.photoUrl" (error)="onAvatarLoadError()" class="avatar-img" alt="Profile" />
               </div>
             </div>
             <span class="presence-badge online" title="Active"></span>
@@ -238,11 +238,11 @@
 
           <div class="header-dropdown profile-dropdown" *ngIf="showProfileDropdown" (click)="$event.stopPropagation()">
             <div class="profile-header-card">
-              <div class="profile-avatar-lg" *ngIf="!currentUser?.photoUrl">{{ currentUser?.avatar || 'SA' }}</div>
-              <img *ngIf="currentUser?.photoUrl" [src]="currentUser?.photoUrl" (error)="onAvatarLoadError()" class="profile-avatar-lg" alt="Profile" />
+              <div class="profile-avatar-lg" *ngIf="!currentUser.photoUrl">{{ currentUser.avatar || '??' }}</div>
+              <img *ngIf="currentUser.photoUrl" [src]="currentUser.photoUrl" (error)="onAvatarLoadError()" class="profile-avatar-lg" alt="Profile" />
               <div class="profile-meta">
-                <div class="profile-name">{{ currentUser?.name || 'Super Admin' }}</div>
-                <div class="profile-role" *ngIf="!isAdminRole(currentUser?.roleId)">{{ currentUser?.roleName || 'System Administrator' }}</div>
+                <div class="profile-name">{{ currentUser.name || 'Signed In' }}</div>
+                <div class="profile-role" *ngIf="!isAdminRole(currentUser.roleId)">{{ currentUser.roleName || 'Member' }}</div>
               </div>
             </div>
             <div class="dropdown-divider"></div>
@@ -277,13 +277,16 @@
   <div class="pass-modal-card">
     <div class="pass-modal-header">
       <div class="pass-modal-icon">
-        <span class="material-symbols-outlined">lock_reset</span>
+        <span class="material-symbols-outlined">lock</span>
       </div>
-      <div>
+      <div class="pass-modal-titles">
         <h2>{{ isForcedPasswordChange ? 'Set Your Own Password' : 'Change Password' }}</h2>
-        <p *ngIf="isForcedPasswordChange">You signed in with a temporary password. Choose your own password below to finish activating your account.</p>
+        <p *ngIf="isForcedPasswordChange">You signed in with a temporary password. Choose a secure password below to activate your account.</p>
         <p *ngIf="!isForcedPasswordChange">Enter your current password, then choose a new one.</p>
       </div>
+      <button type="button" *ngIf="!isForcedPasswordChange" class="pass-modal-close" (click)="closePasswordSetupModal()" aria-label="Close modal">
+        <span class="material-symbols-outlined">close</span>
+      </button>
     </div>
 
     <div class="pass-modal-body">
@@ -293,7 +296,7 @@
       </div>
 
       <div class="form-group" *ngIf="!isForcedPasswordChange">
-        <label for="pwCurrent">Current Password *</label>
+        <label for="pwCurrent">Current Password</label>
         <div class="input-with-icon">
           <span class="material-symbols-outlined icon">password</span>
           <input id="pwCurrent"
@@ -306,14 +309,14 @@
       </div>
 
       <div class="form-group" [style.margin-top]="isForcedPasswordChange ? '0' : '14px'">
-        <label for="pwNew">New Password *</label>
+        <label for="pwNew">New Password</label>
         <div class="input-with-icon">
           <span class="material-symbols-outlined icon">key</span>
           <input id="pwNew"
                  [type]="isNewPasswordVisible ? 'text' : 'password'"
                  autocomplete="new-password"
                  [(ngModel)]="newPasswordInput"
-                 [placeholder]="'Enter new password (min ' + passwordMinLength + ' characters)'"
+                 [placeholder]="'Minimum ' + passwordMinLength + ' characters'"
                  class="form-control" />
           <button type="button" class="eye-btn"
                   [attr.aria-label]="isNewPasswordVisible ? 'Hide password' : 'Show password'"
@@ -324,7 +327,7 @@
       </div>
 
       <div class="form-group" style="margin-top:14px;">
-        <label for="pwConfirm">Confirm New Password *</label>
+        <label for="pwConfirm">Confirm New Password</label>
         <div class="input-with-icon">
           <span class="material-symbols-outlined icon">lock</span>
           <input id="pwConfirm"
@@ -337,8 +340,8 @@
       </div>
 
       <div class="pass-notice">
-        <span class="material-symbols-outlined">verified_user</span>
-        <span>Your temporary access pass will stop working, and any other device signed in to this account will be signed out.</span>
+        <span class="material-symbols-outlined">shield</span>
+        <span>Your temporary access pass will expire once your password is saved, and any other active sessions will be signed out.</span>
       </div>
     </div>
 

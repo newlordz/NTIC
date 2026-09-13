@@ -35,7 +35,7 @@
           <span class="material-symbols-outlined">workspace_premium</span> CSR Certificate
         </button>
         <button class="btn btn-subtle" (click)="downloadVIPPass()">
-          <span class="material-symbols-outlined">confirmation_number</span> VIP Passes (4)
+          <span class="material-symbols-outlined">confirmation_number</span> VIP Guest Pass
         </button>
       </div>
     </div>
@@ -79,7 +79,7 @@
             <h3>Partnership Representation</h3>
           </div>
           <button class="btn btn-subtle btn-sm" (click)="openEditProfileModal()">
-            <span class="material-symbols-outlined" style="font-size:16px;">edit</span> Edit Profile
+            <span class="material-symbols-outlined" style="font-size:16px;">edit</span> Update Phone
           </button>
         </div>
         <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
@@ -196,7 +196,7 @@
         <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
           <div style="display:flex;align-items:center;gap:10px;">
             <span class="material-symbols-outlined" style="color:#0284c7;">palette</span>
-            <h3>Brand Showcase & Exposure</h3>
+            <h3>Brand Showcase &amp; Exposure</h3>
           </div>
           <span class="badge primary" style="font-size:11px;">Active Accreditation</span>
         </div>
@@ -207,20 +207,20 @@
             </div>
             <div>
               <div style="font-size:14px;font-weight:700;color:var(--on-surface);">{{ getSponsorName(loggedInSponsor) }}</div>
-              <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">Main Stage · Web Banner · Broadcast Overlay</div>
+              <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">Track: {{ loggedInSponsor?.track || 'All Competition Tracks' }}</div>
             </div>
           </div>
           <div class="info-row">
-            <span class="info-label">Ecosystem Reach</span>
-            <span class="info-value"><strong>85,000+</strong> Targeted Student & Youth Impressions</span>
+            <span class="info-label">Public Showcase</span>
+            <span class="info-value">Listed in Official NTIC Partner Directory</span>
           </div>
           <div class="info-row">
-            <span class="info-label">Event Stage Presence</span>
-            <span class="info-value">Keynote Address & Award Presenter Slot</span>
+            <span class="info-label">Accreditation Tier</span>
+            <span class="info-value">{{ loggedInSponsor?.tier || 'Corporate Partner' }}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">Exhibition Booth</span>
-            <span class="info-value">Booth #A-12 (Main Foyer Exhibition)</span>
+            <span class="info-label">Track Alignment</span>
+            <span class="info-value">{{ loggedInSponsor?.track || 'All Tracks' }}</span>
           </div>
         </div>
       </div>
@@ -230,26 +230,28 @@
         <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
           <div style="display:flex;align-items:center;gap:10px;">
             <span class="material-symbols-outlined" style="color:#d97706;">emoji_events</span>
-            <h3>Talent Scouting & VIP Access</h3>
+            <h3>Talent Scouting &amp; VIP Access</h3>
           </div>
           <button class="btn btn-subtle btn-sm" (click)="downloadVIPPass()">
             <span class="material-symbols-outlined" style="font-size:16px;">print</span> Print Pass
           </button>
         </div>
         <div class="card-body" style="display:flex;flex-direction:column;gap:14px;">
-          <div style="padding:14px;background:linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(217,119,6,0.08) 100%);border:1px solid rgba(245,158,11,0.25);border-radius:10px;">
+          <div style="padding:14px;background:var(--surface-container-low);border:1px solid var(--outline-variant);border-radius:10px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span style="font-size:12px;font-weight:700;color:#b45309;letter-spacing:0.5px;text-transform:uppercase;">Grand Finale Accreditation</span>
-              <span class="badge secondary" style="font-size:10px;">4 Passes Reserved</span>
+              <span style="font-size:11px;font-weight:700;color:var(--primary);letter-spacing:0.5px;text-transform:uppercase;">VIP Corporate Accreditation</span>
+              <span class="badge secondary" style="font-size:10px;">{{ loggedInSponsor?.status || 'Active' }}</span>
             </div>
-            <div style="font-size:13.5px;font-weight:700;color:var(--on-surface);">Accra International Conference Centre (AICC)</div>
-            <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">October 2026 · VIP Hospitality Lounge & Networking Gala</div>
+            <div style="font-size:13.5px;font-weight:700;color:var(--on-surface);">Executive Championship Pass</div>
+            <div style="font-size:12px;color:var(--on-surface-variant);margin-top:4px;">
+              Token: <code style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--primary);">{{ loggedInSponsor?.ticket }}</code>
+            </div>
           </div>
 
           <div style="display:flex;align-items:center;justify-content:space-between;padding-top:4px;">
             <div>
               <div style="font-size:13px;font-weight:700;color:var(--on-surface);">Discover Emerging Tech Talent</div>
-              <div style="font-size:11.5px;color:var(--on-surface-variant);">Browse verified portfolios & projects in {{ loggedInSponsor?.track || 'all tracks' }}</div>
+              <div style="font-size:11.5px;color:var(--on-surface-variant);">Browse verified portfolios &amp; projects in {{ loggedInSponsor?.track || 'all tracks' }}</div>
             </div>
             <a class="btn btn-primary btn-sm" [routerLink]="['/talent']">
               <span class="material-symbols-outlined" style="font-size:16px;">person_search</span> Explore Talent
@@ -262,14 +264,20 @@
 
     <!-- ── PAYMENT SETTLEMENT MODAL ────────────────────────────────────── -->
     <div *ngIf="isPaymentModalOpen" class="modal-overlay" (click)="closePaymentModal()">
-      <div class="modal-card" style="max-width:520px;width:100%;" (click)="$event.stopPropagation()">
-        <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span class="material-symbols-outlined" style="color:var(--primary);font-size:24px;">payments</span>
-            <h3 style="margin:0;font-size:18px;font-weight:800;">Sponsorship Payment Center</h3>
+      <div class="modal-card" style="max-width:540px;width:100%;" (click)="$event.stopPropagation()">
+        <!-- Header -->
+        <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border-subtle,#e2e8f0);">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(0,63,135,0.08);display:flex;align-items:center;justify-content:center;color:var(--primary,#003f87);">
+              <span class="material-symbols-outlined" style="font-size:22px;">payments</span>
+            </div>
+            <div>
+              <h3 style="margin:0;font-size:17px;font-weight:800;color:var(--text-primary,#0f172a);">Sponsorship Remittance</h3>
+              <p style="margin:2px 0 0;font-size:12px;color:var(--text-secondary,#64748b);">Record your bank wire or mobile transfer for reconciliation</p>
+            </div>
           </div>
-          <button class="btn btn-ghost btn-sm" (click)="closePaymentModal()" style="min-width:auto;padding:4px;">
-            <span class="material-symbols-outlined">close</span>
+          <button class="btn btn-ghost btn-sm" (click)="closePaymentModal()" style="min-width:auto;padding:6px;border-radius:8px;" aria-label="Close modal">
+            <span class="material-symbols-outlined" style="font-size:20px;">close</span>
           </button>
         </div>
 
@@ -278,175 +286,176 @@
         </div>
 
         <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
-          <!-- Payment Method Selector Tabs -->
+          <!-- 1. Remittance Method Switcher -->
           <div>
-            <label class="form-label" style="margin-bottom:6px;display:block;">Select Payment Method</label>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <button class="btn btn-sm"
-                      [class.btn-primary]="selectedPaymentMethod === 'Bank Transfer'"
-                      [class.btn-subtle]="selectedPaymentMethod !== 'Bank Transfer'"
+            <label class="form-label" style="font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-secondary,#64748b);margin-bottom:8px;display:block;">
+              1. Payment Destination
+            </label>
+            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:6px;background:var(--surface-subtle,#f1f5f9);padding:4px;border-radius:10px;border:1px solid var(--border-subtle,#e2e8f0);">
+              <button type="button"
+                      style="border:none;border-radius:8px;padding:8px 6px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s ease;"
+                      [style.background]="selectedPaymentMethod === 'Bank Transfer' ? 'var(--surface-card, #ffffff)' : 'transparent'"
+                      [style.color]="selectedPaymentMethod === 'Bank Transfer' ? 'var(--primary, #003f87)' : 'var(--text-secondary, #64748b)'"
+                      [style.boxShadow]="selectedPaymentMethod === 'Bank Transfer' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'"
                       (click)="selectedPaymentMethod = 'Bank Transfer'">
-                <span class="material-symbols-outlined">account_balance</span> Bank Wire
+                <span class="material-symbols-outlined" style="font-size:16px;">account_balance</span> Bank Wire
               </button>
-              <button class="btn btn-sm"
-                      [class.btn-primary]="selectedPaymentMethod === 'Mobile Money'"
-                      [class.btn-subtle]="selectedPaymentMethod !== 'Mobile Money'"
+              <button type="button"
+                      style="border:none;border-radius:8px;padding:8px 6px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s ease;"
+                      [style.background]="selectedPaymentMethod === 'Mobile Money' ? 'var(--surface-card, #ffffff)' : 'transparent'"
+                      [style.color]="selectedPaymentMethod === 'Mobile Money' ? 'var(--primary, #003f87)' : 'var(--text-secondary, #64748b)'"
+                      [style.boxShadow]="selectedPaymentMethod === 'Mobile Money' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'"
                       (click)="selectedPaymentMethod = 'Mobile Money'">
-                <span class="material-symbols-outlined">smartphone</span> Mobile Money
+                <span class="material-symbols-outlined" style="font-size:16px;">smartphone</span> Mobile Money
               </button>
-              <button class="btn btn-sm"
-                      [class.btn-primary]="selectedPaymentMethod === 'Corporate Cheque'"
-                      [class.btn-subtle]="selectedPaymentMethod !== 'Corporate Cheque'"
+              <button type="button"
+                      style="border:none;border-radius:8px;padding:8px 6px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s ease;"
+                      [style.background]="selectedPaymentMethod === 'Corporate Cheque' ? 'var(--surface-card, #ffffff)' : 'transparent'"
+                      [style.color]="selectedPaymentMethod === 'Corporate Cheque' ? 'var(--primary, #003f87)' : 'var(--text-secondary, #64748b)'"
+                      [style.boxShadow]="selectedPaymentMethod === 'Corporate Cheque' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'"
                       (click)="selectedPaymentMethod = 'Corporate Cheque'">
-                <span class="material-symbols-outlined">description</span> Cheque / Invoice
-              </button>
-              <button class="btn btn-sm"
-                      [class.btn-primary]="selectedPaymentMethod === 'Card Online'"
-                      [class.btn-subtle]="selectedPaymentMethod !== 'Card Online'"
-                      (click)="selectedPaymentMethod = 'Card Online'">
-                <span class="material-symbols-outlined">credit_card</span> Pay Online (Card)
+                <span class="material-symbols-outlined" style="font-size:16px;">receipt_long</span> Cheque
               </button>
             </div>
           </div>
 
-          <!-- Method-Specific Interactive Inputs & Details -->
-          <div style="padding:16px;background:var(--surface-container-low);border-radius:12px;border:1px solid var(--outline-variant);display:flex;flex-direction:column;gap:12px;">
-            <!-- 1. BANK WIRE -->
-            <ng-container *ngIf="selectedPaymentMethod === 'Bank Transfer'">
-              <div style="font-weight:700;color:var(--primary);font-size:13px;display:flex;align-items:center;gap:6px;">
-                <span class="material-symbols-outlined" style="font-size:18px;">account_balance</span>
-                NTIC Bank Wire Receiving Account
+          <!-- 2. Destination Details Card (with 1-Click Compound Copy) -->
+          <div style="background:var(--surface-card,#ffffff);border:1px solid var(--border-subtle,#cbd5e1);border-radius:10px;padding:14px 16px;">
+            <!-- Bank Wire Info -->
+            <div *ngIf="selectedPaymentMethod === 'Bank Transfer'" style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border-subtle,#e2e8f0);">
+                <div style="font-size:12.5px;font-weight:700;color:var(--primary,#003f87);display:flex;align-items:center;gap:6px;">
+                  <span class="material-symbols-outlined" style="font-size:16px;">account_balance</span>
+                  NTIC Championship Foundation &middot; Ecobank Ghana
+                </div>
+                <span style="font-size:10.5px;font-weight:600;color:var(--text-muted,#64748b);background:var(--surface-subtle,#f1f5f9);padding:2px 8px;border-radius:4px;">Direct Deposit / Wire</span>
               </div>
-              <div style="font-size:12px;line-height:1.4;background:var(--surface-container-lowest);padding:10px;border-radius:8px;border:1px solid var(--outline-variant);">
-                <div>Bank Name: <strong>Ecobank Ghana PLC</strong></div>
-                <div>Account Name: <strong>NTIC Championship Foundation</strong></div>
-                <div>Account Number: <strong style="font-family:monospace;color:var(--primary);">1441002938101</strong></div>
-                <div>Branch / SWIFT: <strong>Accra Main * ECOGHAC</strong></div>
+
+              <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;background:var(--surface-subtle,#f8fafc);padding:10px 14px;border-radius:8px;border:1px dashed var(--border-subtle,#cbd5e1);">
+                <div>
+                  <div style="font-size:10.5px;font-weight:600;color:var(--text-secondary,#64748b);text-transform:uppercase;letter-spacing:0.5px;">Receiving Account Number</div>
+                  <div style="font-size:16px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text-primary,#0f172a);letter-spacing:1px;margin-top:2px;">1441002938101</div>
+                </div>
+                <button type="button" class="btn btn-subtle btn-sm" (click)="copyText('1441002938101', 'Account number')" style="padding:6px 12px;font-size:12px;font-weight:600;">
+                  <span class="material-symbols-outlined" style="font-size:14px;">content_copy</span> Copy
+                </button>
               </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;color:var(--text-secondary,#64748b);padding-top:2px;">
+                <div><strong style="color:var(--text-primary,#0f172a);">Bank:</strong> Ecobank Ghana PLC</div>
+                <div><strong style="color:var(--text-primary,#0f172a);">Branch:</strong> Accra Main</div>
+                <div><strong style="color:var(--text-primary,#0f172a);">SWIFT:</strong> ECOGHAC</div>
+                <div><strong style="color:var(--text-primary,#0f172a);">Currency:</strong> GHS (Ghana Cedi)</div>
+              </div>
+            </div>
+
+            <!-- MoMo Info -->
+            <div *ngIf="selectedPaymentMethod === 'Mobile Money'" style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border-subtle,#e2e8f0);">
+                <div style="font-size:12.5px;font-weight:700;color:var(--primary,#003f87);display:flex;align-items:center;gap:6px;">
+                  <span class="material-symbols-outlined" style="font-size:16px;">smartphone</span>
+                  NTIC Official MoMo Pay Line
+                </div>
+                <span style="font-size:10.5px;font-weight:600;color:var(--text-muted,#64748b);background:var(--surface-subtle,#f1f5f9);padding:2px 8px;border-radius:4px;">MTN / Telecel / AT</span>
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div style="background:var(--surface-subtle,#f8fafc);padding:10px 12px;border-radius:8px;border:1px dashed var(--border-subtle,#cbd5e1);display:flex;justify-content:space-between;align-items:center;">
+                  <div>
+                    <div style="font-size:10px;font-weight:600;color:var(--text-secondary,#64748b);text-transform:uppercase;">Merchant ID</div>
+                    <div style="font-size:14px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text-primary,#0f172a);">NTIC-NTI</div>
+                  </div>
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="copyText('NTIC-NTI', 'Merchant code')" style="padding:4px 6px;">
+                    <span class="material-symbols-outlined" style="font-size:14px;">content_copy</span>
+                  </button>
+                </div>
+
+                <div style="background:var(--surface-subtle,#f8fafc);padding:10px 12px;border-radius:8px;border:1px dashed var(--border-subtle,#cbd5e1);display:flex;justify-content:space-between;align-items:center;">
+                  <div>
+                    <div style="font-size:10px;font-weight:600;color:var(--text-secondary,#64748b);text-transform:uppercase;">MoMo Line</div>
+                    <div style="font-size:14px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text-primary,#0f172a);">055-123-4567</div>
+                  </div>
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="copyText('0551234567', 'MoMo number')" style="padding:4px 6px;">
+                    <span class="material-symbols-outlined" style="font-size:14px;">content_copy</span>
+                  </button>
+                </div>
+              </div>
+              <div style="font-size:11.5px;color:var(--text-secondary,#64748b);">Account Name: <strong style="color:var(--text-primary,#0f172a);">NTIC Foundation</strong></div>
+            </div>
+
+            <!-- Cheque Info -->
+            <div *ngIf="selectedPaymentMethod === 'Corporate Cheque'" style="display:flex;flex-direction:column;gap:8px;font-size:12.5px;color:var(--text-secondary,#475569);">
+              <div style="font-weight:700;color:var(--primary,#003f87);display:flex;align-items:center;gap:6px;">
+                <span class="material-symbols-outlined" style="font-size:16px;">receipt_long</span>
+                Corporate Cheque Remittance
+              </div>
+              <div>Issue crossed corporate cheque to: <strong style="color:var(--text-primary,#0f172a);">NTIC Championship Foundation</strong></div>
+              <div style="font-size:11.5px;color:var(--text-muted,#64748b);">Deliver to Secretariat Desk or provide bank deposit slip reference below.</div>
+            </div>
+          </div>
+
+          <!-- 3. Remittance Confirmation Inputs -->
+          <div>
+            <label class="form-label" style="font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-secondary,#64748b);margin-bottom:8px;display:block;">
+              2. Transaction Confirmation
+            </label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
               <div class="form-group">
-                <label class="form-label">Select Your Bank</label>
-                <select class="form-control form-select" [(ngModel)]="paymentForm.bankName">
-                  <option value="Ecobank Ghana">Ecobank Ghana PLC</option>
-                  <option value="Stanbic Bank">Stanbic Bank Ghana</option>
-                  <option value="GCB Bank">GCB Bank PLC</option>
-                  <option value="Fidelity Bank">Fidelity Bank Ghana</option>
-                  <option value="Absa Bank">Absa Bank Ghana</option>
-                  <option value="Zenith Bank">Zenith Bank Ghana</option>
-                  <option value="CalBank">CalBank Ghana</option>
-                  <option value="Standard Chartered">Standard Chartered Ghana</option>
-                  <option value="Other Bank">Other Commercial Bank</option>
-                </select>
+                <label class="form-label" style="font-size:12px;">Amount Paid (GH₵) <span style="color:var(--error,#dc2626);font-weight:bold;">*</span></label>
+                <input class="form-control" type="text" [(ngModel)]="paymentForm.amount" placeholder="e.g., 50,000">
               </div>
-            </ng-container>
 
-            <!-- 2. MOBILE MONEY -->
-            <ng-container *ngIf="selectedPaymentMethod === 'Mobile Money'">
-              <div style="font-weight:700;color:var(--primary);font-size:13px;display:flex;align-items:center;gap:6px;">
-                <span class="material-symbols-outlined" style="font-size:18px;">smartphone</span>
-                NTIC MoMo Merchant Pay Info
+              <div class="form-group">
+                <label class="form-label" style="font-size:12px;">Transaction Reference # <span style="color:var(--error,#dc2626);font-weight:bold;">*</span></label>
+                <input class="form-control" type="text" [(ngModel)]="paymentForm.refNo" placeholder="e.g., Bank Ref / TXN ID">
               </div>
-              <div style="font-size:12px;line-height:1.4;background:var(--surface-container-lowest);padding:10px;border-radius:8px;border:1px solid var(--outline-variant);">
-                <div>Merchant Code: <strong style="font-family:monospace;color:var(--primary);">NTIC-NTI</strong></div>
-                <div>MoMo Official Line: <strong>055-123-4567</strong></div>
-                <div>Account Name: <strong>NTIC Foundation</strong></div>
-              </div>
-              <div class="grid-2">
-                <div class="form-group">
-                  <label class="form-label">MoMo Network</label>
-                  <select class="form-control form-select" [(ngModel)]="paymentForm.momoNetwork">
-                    <option value="MTN Mobile Money">MTN MoMo</option>
-                    <option value="Telecel Cash">Telecel Cash</option>
-                    <option value="AT Money">AT Money</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Your MoMo Phone Line</label>
-                  <input class="form-control" type="tel" [(ngModel)]="paymentForm.momoNumber" placeholder="e.g. 055-123-4567">
-                </div>
-              </div>
-            </ng-container>
-
-            <!-- 3. CORPORATE CHEQUE -->
-            <ng-container *ngIf="selectedPaymentMethod === 'Corporate Cheque'">
-              <div style="font-weight:700;color:var(--primary);font-size:13px;display:flex;align-items:center;gap:6px;">
-                <span class="material-symbols-outlined" style="font-size:18px;">description</span>
-                Corporate Cheque & Tax Invoicing
-              </div>
-              <div class="grid-2">
-                <div class="form-group">
-                  <label class="form-label">Cheque Serial # / P.O. Number</label>
-                  <input class="form-control" type="text" [(ngModel)]="paymentForm.chequeNo" placeholder="e.g. CHQ-8920194">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Issuing Bank</label>
-                  <input class="form-control" type="text" [(ngModel)]="paymentForm.issuingBank" placeholder="e.g. Stanbic Bank Ghana">
-                </div>
-              </div>
-            </ng-container>
-
-            <!-- The "Card Online" block (cardholder name, 16-digit card number,
-                 expiry, CVV) was removed deliberately.
-
-                 Nothing in this application processes a card. submitPayment()
-                 only records a reference number for an admin to check against
-                 the real bank/MoMo statement, so the card fields were collected
-                 and then discarded -- pure cardholder-data risk for no function.
-                 The block also displayed a "Paystack Secured" badge while no
-                 Paystack integration exists, which is a false trust signal.
-
-                 Real card payment must use a provider's hosted fields or
-                 redirect so the PAN and CVV never enter this app. -->
-          </div>
-
-          <!-- Common Amount & Ref -->
-          <div class="grid-2">
-            <div class="form-group">
-              <label class="form-label">Amount (GH₵)</label>
-              <input class="form-control" type="text" [(ngModel)]="paymentForm.amount" placeholder="e.g., 50,000">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Transaction Reference # *</label>
-              <input class="form-control" type="text" [(ngModel)]="paymentForm.refNo" placeholder="e.g. TXN-892019">
             </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Payment Notes (Optional)</label>
+          <!-- Optional Notes -->
+          <div class="form-group" style="margin-top:-6px;">
+            <label class="form-label" style="font-size:12px;">Payment Notes (Optional)</label>
             <input class="form-control" type="text" [(ngModel)]="paymentForm.notes" placeholder="e.g., Sponsorship installment for Gold Tier">
           </div>
 
-          <!-- Payment Proof Upload -->
-          <div class="form-group">
-            <label class="form-label">Payment Proof (Bank Slip / Receipt / Screenshot)</label>
+          <!-- 4. Upload Payment Proof -->
+          <div class="form-group" style="margin-top:-4px;">
+            <label class="form-label" style="font-size:12px;">Payment Proof (Bank Slip, Receipt, or MoMo SMS)</label>
             <div *ngIf="!proofFileUrl" style="display:flex;align-items:center;gap:10px;">
               <input type="file" #proofInput (change)="onProofFileSelected($event)" accept="image/*,application/pdf" style="display:none;">
-              <button type="button" class="btn btn-subtle btn-sm" (click)="proofInput.click()" [disabled]="isUploadingProof">
+              <button type="button" class="btn btn-subtle btn-sm" (click)="proofInput.click()" [disabled]="isUploadingProof" style="display:inline-flex;align-items:center;gap:6px;">
                 <span class="material-symbols-outlined" style="font-size:16px;">upload_file</span>
                 {{ isUploadingProof ? 'Uploading Receipt...' : 'Attach Proof of Payment' }}
               </button>
-              <span style="font-size:12px;color:var(--on-surface-variant);">PNG, JPG, PDF (Max 10MB)</span>
+              <span style="font-size:11.5px;color:var(--text-muted,#64748b);">PDF, PNG, JPG (Max 10MB)</span>
             </div>
-            <div *ngIf="proofFileUrl" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;">
+            <div *ngIf="proofFileUrl" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface-subtle,#f8fafc);border:1px solid var(--border-subtle,#cbd5e1);border-radius:8px;">
               <div style="display:flex;align-items:center;gap:8px;">
-                <span class="material-symbols-outlined" style="color:var(--primary);font-size:18px;">description</span>
-                <span style="font-size:12px;font-weight:600;">{{ proofFileName || 'Payment Proof Attached' }}</span>
+                <span class="material-symbols-outlined" style="color:var(--primary,#003f87);font-size:18px;">check_circle</span>
+                <span style="font-size:12px;font-weight:600;color:var(--text-primary,#0f172a);">{{ proofFileName || 'Payment Proof Attached' }}</span>
               </div>
               <div style="display:flex;align-items:center;gap:6px;">
-                <a [href]="proofFileUrl" target="_blank" class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:11px;">View</a>
-                <button type="button" class="btn btn-ghost btn-sm" (click)="removeProofFile()" style="padding:2px 6px;color:#ef4444;">Remove</button>
+                <a [href]="proofFileUrl" target="_blank" class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;">View</a>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="removeProofFile()" style="padding:2px 8px;color:var(--error,#dc2626);font-size:11px;">Remove</button>
               </div>
             </div>
+          </div>
+
+          <!-- Verification Notice -->
+          <div style="background:var(--surface-subtle,#f8fafc);border:1px solid var(--border-subtle,#e2e8f0);border-radius:8px;padding:10px 12px;display:flex;align-items:flex-start;gap:8px;font-size:11.5px;color:var(--text-secondary,#64748b);line-height:1.4;">
+            <span class="material-symbols-outlined" style="font-size:15px;color:var(--primary,#003f87);margin-top:1px;">verified</span>
+            <div>The NTIC Financial Secretariat reconciles transactions directly against bank statements. Official CSR tax receipts are issued upon confirmation.</div>
           </div>
         </div>
 
-        <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
+        <div *ngIf="paymentError" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);color:#dc2626;padding:10px 12px;border-radius:8px;font-size:12px;margin-top:14px;">
+          {{ paymentError }}
+        </div>
+
+        <div class="modal-footer" style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:20px;padding-top:14px;border-top:1px solid var(--border-subtle,#e2e8f0);">
           <button class="btn btn-subtle" (click)="closePaymentModal()">Cancel</button>
-          <div *ngIf="paymentError" style="background:rgba(239,68,68,0.1);border:1px solid #ef4444;color:#ef4444;padding:10px 12px;border-radius:8px;font-size:12.5px;margin-bottom:12px;">
-            {{ paymentError }}
-          </div>
           <button class="btn btn-primary" (click)="submitPayment()" [disabled]="isSubmittingPayment">
-            <span *ngIf="!isSubmittingPayment">Confirm Payment</span>
+            <span *ngIf="!isSubmittingPayment">Confirm &amp; Record Payment</span>
             <span *ngIf="isSubmittingPayment">Processing...</span>
           </button>
         </div>
@@ -557,7 +566,7 @@
 
       <div *ngFor="let s of activeSponsors" class="card">
         <div class="card-body" style="display:flex;align-items:center;gap:16px;">
-          <div style="width:52px;height:52px;border-radius:12px;background:var(--primary-container);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex-shrink:0;color:var(--primary);">
+          <div style="width:52px;height:52px;border-radius:12px;background:rgba(0,63,135,0.1);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;flex-shrink:0;color:var(--primary);">
             {{ s.name.charAt(0).toUpperCase() }}
           </div>
           <div style="flex:1;">
@@ -570,7 +579,7 @@
               {{ s.email }} <span *ngIf="s.phone"> · {{ s.phone }}</span>
             </div>
           </div>
-          <div style="font-size:12px;font-family:monospace;color:var(--primary);background:var(--primary-container);padding:4px 10px;border-radius:6px;">{{ s.ticket }}</div>
+          <div style="font-size:12px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#ffffff;background:var(--primary,#003f87);padding:4px 12px;border-radius:6px;letter-spacing:0.5px;">{{ s.ticket }}</div>
         </div>
       </div>
     </div>
@@ -581,8 +590,8 @@
     <div class="modal-card" style="max-width:500px;width:100%;" (click)="$event.stopPropagation()">
       <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
         <div style="display:flex;align-items:center;gap:10px;">
-          <span class="material-symbols-outlined" style="color:var(--primary);font-size:24px;">edit_note</span>
-          <h3 style="margin:0;font-size:18px;font-weight:800;">Edit Sponsor Profile</h3>
+          <span class="material-symbols-outlined" style="color:var(--primary);font-size:24px;">contact_phone</span>
+          <h3 style="margin:0;font-size:18px;font-weight:800;">Edit Sponsor Contact</h3>
         </div>
         <button class="btn btn-ghost btn-sm" (click)="closeEditProfileModal()" style="min-width:auto;padding:4px;">
           <span class="material-symbols-outlined">close</span>
@@ -595,47 +604,67 @@
 
       <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
         <div class="form-group">
-          <label class="form-label">Company / Organization Name *</label>
-          <input class="form-control" type="text" [(ngModel)]="profileEditForm.organization" placeholder="e.g., MTN Ghana Foundation">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <label class="form-label" style="margin:0;">Company / Organization Name</label>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted,#94a3b8);font-weight:600;">
+              <span class="material-symbols-outlined" style="font-size:13px;">lock</span> Secretariat Accredited
+            </span>
+          </div>
+          <input class="form-control" type="text" [value]="profileEditForm.organization" readonly disabled
+                 style="background:var(--surface-subtle,#f8fafc);cursor:not-allowed;color:var(--text-secondary,#64748b);">
         </div>
 
         <div class="form-group">
-          <label class="form-label">CSR Representative Full Name *</label>
-          <input class="form-control" type="text" [(ngModel)]="profileEditForm.fullName" placeholder="e.g., Dr. Efua Mensah">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <label class="form-label" style="margin:0;">CSR Representative Full Name</label>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted,#94a3b8);font-weight:600;">
+              <span class="material-symbols-outlined" style="font-size:13px;">lock</span> Secretariat Accredited
+            </span>
+          </div>
+          <input class="form-control" type="text" [value]="profileEditForm.fullName" readonly disabled
+                 style="background:var(--surface-subtle,#f8fafc);cursor:not-allowed;color:var(--text-secondary,#64748b);">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Contact Phone Number</label>
-          <input class="form-control" type="tel" [(ngModel)]="profileEditForm.phone" placeholder="e.g., 055-123-4567">
+          <label class="form-label" style="font-weight:700;">Contact Phone Number *</label>
+          <input class="form-control" type="tel" [(ngModel)]="profileEditForm.phone" placeholder="e.g., 0201880325">
+          <div style="font-size:11.5px;color:var(--text-muted,#64748b);margin-top:4px;">
+            Direct telephone or WhatsApp number for event credentials and VIP coordination.
+          </div>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Partnership Tier</label>
-          <select class="form-control form-select" [(ngModel)]="profileEditForm.tier">
-            <option value="Platinum Partner (GH₵ 100k+)">Platinum Partner (GH₵ 100k+)</option>
-            <option value="Gold Partner (GH₵ 20k-100k)">Gold Partner (GH₵ 20k-100k)</option>
-            <option value="Silver Partner (GH₵ 5k-20k)">Silver Partner (GH₵ 5k-20k)</option>
-            <option value="Bronze Partner (GH₵ 1k-5k)">Bronze Partner (GH₵ 1k-5k)</option>
-          </select>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <label class="form-label" style="margin:0;">Partnership Tier</label>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted,#94a3b8);font-weight:600;">
+              <span class="material-symbols-outlined" style="font-size:13px;">lock</span> Fixed
+            </span>
+          </div>
+          <input class="form-control" type="text" [value]="profileEditForm.tier" readonly disabled
+                 style="background:var(--surface-subtle,#f8fafc);cursor:not-allowed;color:var(--text-secondary,#64748b);">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Supported Competition Track</label>
-          <select class="form-control form-select" [(ngModel)]="profileEditForm.track">
-            <option value="All Competition Tracks">All Competition Tracks</option>
-            <option value="Coding & Software">Coding & Software</option>
-            <option value="Robotics & Hardware">Robotics & Hardware</option>
-            <option value="AI & Machine Learning">AI & Machine Learning</option>
-            <option value="Cybersecurity">Networking & Cybersecurity</option>
-            <option value="Innovation & Design">Innovation & Design</option>
-          </select>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <label class="form-label" style="margin:0;">Supported Competition Track</label>
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted,#94a3b8);font-weight:600;">
+              <span class="material-symbols-outlined" style="font-size:13px;">lock</span> Fixed
+            </span>
+          </div>
+          <input class="form-control" type="text" [value]="profileEditForm.track" readonly disabled
+                 style="background:var(--surface-subtle,#f8fafc);cursor:not-allowed;color:var(--text-secondary,#64748b);">
+        </div>
+
+        <div style="background:var(--surface-subtle,#f8fafc);border:1px solid var(--border-subtle,#e2e8f0);border-radius:8px;padding:10px 12px;display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--text-secondary,#64748b);line-height:1.4;">
+          <span class="material-symbols-outlined" style="font-size:16px;color:var(--primary,#003f87);margin-top:1px;">info</span>
+          <div>Organization name, representative, tier, and track are provisioned by the NTIC Secretariat. Only your contact phone number may be edited directly.</div>
         </div>
       </div>
 
       <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
         <button class="btn btn-subtle" (click)="closeEditProfileModal()">Cancel</button>
         <button class="btn btn-primary" (click)="saveProfile()" [disabled]="isSavingProfile">
-          <span *ngIf="!isSavingProfile">Save Profile Changes</span>
+          <span *ngIf="!isSavingProfile">Save Phone Number</span>
           <span *ngIf="isSavingProfile">Saving...</span>
         </button>
       </div>

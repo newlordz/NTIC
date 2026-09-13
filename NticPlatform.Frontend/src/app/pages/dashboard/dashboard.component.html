@@ -897,6 +897,16 @@
           </div>
 
         </div>
+
+        <!-- Sponsor Workspace Panel (Left Column) -->
+        <app-sponsor-workspace
+          *ngIf="activeRoleId === 'sponsor'"
+          [currentUser]="currentUser"
+          [mySponsorships]="mySponsorships"
+          [mySponsorPayments]="mySponsorPayments"
+          (openPayment)="openPaymentCenter()"
+          (copy)="copyText($event.text, $event.label)">
+        </app-sponsor-workspace>
       </div>
 
       <!-- RIGHT COLUMN -->
@@ -1113,6 +1123,13 @@
             Open Scoring Arena
           </button>
         </div>
+
+        <!-- Sponsor Sidebar Panel (Right Column) -->
+        <app-sponsor-sidebar
+          *ngIf="activeRoleId === 'sponsor'"
+          [currentUser]="currentUser"
+          (openPayment)="openPaymentCenter()">
+        </app-sponsor-sidebar>
 
       </div>
     </div>
@@ -2121,6 +2138,18 @@
             </div>
             <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
           </div>
+
+          <div class="cc-control-card" (click)="goToSubTab('treasury')" *ngIf="canManageUsers || activeRoleId === 'super_admin'">
+            <div class="cc-control-card-icon cc-icon-treasury">
+              <span class="material-symbols-outlined">account_balance_wallet</span>
+            </div>
+            <div class="cc-control-card-body">
+              <div class="cc-control-card-label">Sponsorship &amp; Treasury Ledger</div>
+              <div class="cc-control-card-desc">Track accumulated funds, verify corporate bank deposit slips, record offline remittances &amp; issue CSR tax receipts.</div>
+              <div class="cc-control-card-count">{{ formatCedis(sponsorSummary?.total_received) }} verified &bull; {{ (sponsorSummary?.awaiting_verification_count || 0) }} awaiting verification</div>
+            </div>
+            <span class="material-symbols-outlined cc-control-arrow">chevron_right</span>
+          </div>
         </div>
       </div>
     </div>
@@ -2899,6 +2928,11 @@
         </div>
       </div>
     </div>
+
+    <!-- ── TAB: SPONSORSHIP & TREASURY PORTAL ── -->
+    <app-treasury-portal *ngIf="adminTab === 'control' && adminSubTab === 'treasury'"
+                         (backToControl)="goToTab('control')">
+    </app-treasury-portal>
 
     <!-- ── TAB: OVERVIEW (COMMAND CENTER) ── -->
     <div *ngIf="adminTab === 'overview'" class="admin-tab-body">

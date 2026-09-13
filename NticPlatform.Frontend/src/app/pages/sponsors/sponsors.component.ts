@@ -37,17 +37,12 @@ export class SponsorsComponent implements OnInit {
   profileSuccessMessage = '';
 
   isPaymentModalOpen = false;
-  selectedPaymentMethod: 'Mobile Money' | 'Bank Transfer' | 'Corporate Cheque' | 'Card Online' = 'Bank Transfer';
+  selectedPaymentMethod: 'Bank Transfer' | 'Mobile Money' | 'Corporate Cheque' = 'Bank Transfer';
 
-  paymentForm: any = {
+  paymentForm: { amount: string; refNo: string; notes: string } = {
     amount: '',
     refNo: '',
-    notes: '',
-    bankName: 'Ecobank Ghana',
-    momoNetwork: 'MTN Mobile Money',
-    momoNumber: '',
-    chequeNo: '',
-    issuingBank: 'Stanbic Bank Ghana'
+    notes: ''
   };
 
   isSubmittingPayment = false;
@@ -111,19 +106,21 @@ export class SponsorsComponent implements OnInit {
     const sponsor = this.loggedInSponsor;
     if (!sponsor) return;
 
+    const trimmedPhone = this.profileEditForm.phone.trim();
+    if (!trimmedPhone) {
+      this.dialogService.toast('Please enter a valid contact phone number.', 'warning');
+      return;
+    }
+
     this.isSavingProfile = true;
 
     this.apiService.updateMyProfile({
-      organization: this.profileEditForm.organization.trim() || undefined,
-      full_name: this.profileEditForm.fullName.trim() || undefined,
-      phone: this.profileEditForm.phone.trim() || undefined,
-      tier: this.profileEditForm.tier || undefined,
-      track: this.profileEditForm.track || undefined
+      phone: trimmedPhone
     }).subscribe({
       next: () => {
         this.currentUser.refresh().subscribe(() => {
           this.isSavingProfile = false;
-          this.profileSuccessMessage = 'Profile details updated successfully!';
+          this.profileSuccessMessage = 'Contact phone number updated successfully!';
           setTimeout(() => {
             this.closeEditProfileModal();
           }, 1000);
@@ -131,7 +128,7 @@ export class SponsorsComponent implements OnInit {
       },
       error: () => {
         this.isSavingProfile = false;
-        this.dialogService.toast('Failed to save profile changes. Please try again.', 'error');
+        this.dialogService.toast('Failed to save contact phone number. Please try again.', 'error');
       }
     });
   }
@@ -210,6 +207,36 @@ export class SponsorsComponent implements OnInit {
     return 'GH₵ 0';
   }
 
+  copyText(text: string, label: string = 'Copied'): void {
+    if (!text) return;
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        this.dialogService.toast(`${label} copied to clipboard`, 'success');
+      }).catch(() => {
+        this.fallbackCopyText(text, label);
+      });
+    } else {
+      this.fallbackCopyText(text, label);
+    }
+  }
+
+  private fallbackCopyText(text: string, label: string = 'Copied'): void {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      this.dialogService.toast(`${label} copied to clipboard`, 'success');
+    } catch {
+      this.dialogService.toast(`Failed to copy ${label}`, 'error');
+    }
+    document.body.removeChild(textArea);
+  }
+
   openPaymentModal(): void {
     this.isPaymentModalOpen = true;
     this.paymentSuccessMessage = '';
@@ -218,16 +245,11 @@ export class SponsorsComponent implements OnInit {
     this.proofFileName = '';
     this.proofFileUrl = '';
     this.isUploadingProof = false;
-    const sponsor = this.loggedInSponsor;
+    this.selectedPaymentMethod = 'Bank Transfer';
     this.paymentForm = {
-      amount: '50,000',
-      refNo: 'TXN-' + Math.floor(100000 + Math.random() * 900000),
-      notes: '',
-      bankName: 'Ecobank Ghana',
-      momoNetwork: 'MTN Mobile Money',
-      momoNumber: sponsor?.phone || '',
-      chequeNo: '',
-      issuingBank: 'Stanbic Bank Ghana'
+      amount: '',
+      refNo: '',
+      notes: ''
     };
   }
 
@@ -289,9 +311,13 @@ export class SponsorsComponent implements OnInit {
     this.paymentSuccessMessage = '';
     this.paymentError = '';
 
+    const methodSlug = this.selectedPaymentMethod === 'Mobile Money' ? 'mobile_money'
+      : this.selectedPaymentMethod === 'Corporate Cheque' ? 'cheque'
+      : 'bank_transfer';
+
     this.apiService.recordSponsorPayment(this.activeSponsorshipId, {
       amount: normalised,
-      method: this.selectedPaymentMethod || 'bank_transfer',
+      method: methodSlug,
       reference,
       notes: (this.paymentForm.notes || '').trim(),
       proof_file_url: this.proofFileUrl || undefined,
@@ -411,74 +437,217 @@ export class SponsorsComponent implements OnInit {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>VIP Executive Guest Pass -- ${orgName}</title>
+        <title>Partner Accreditation Pass -- ${orgName}</title>
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;600;700;800&family=Fira+Code:wght@700&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap');
+          * { box-sizing: border-box; margin: 0; padding: 0; }
           body {
-            margin: 0; padding: 40px; background: #0b0f19; font-family: 'Inter', sans-serif;
-            color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box;
+            background: #f1f5f9;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #0f172a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 32px 20px;
           }
           .pass-card {
-            width: 100%; max-width: 680px; background: linear-gradient(145deg, #131b2e 0%, #0d1322 100%);
-            border: 2px solid rgba(245, 158, 11, 0.5); border-radius: 24px; padding: 40px;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.8), 0 0 40px rgba(245, 158, 11, 0.15);
-            position: relative; overflow: hidden;
+            width: 100%;
+            max-width: 680px;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08);
+            overflow: hidden;
           }
-          .pass-glow { position: absolute; width: 300px; height: 300px; top: -100px; right: -100px; border-radius: 50%; background: radial-gradient(circle, rgba(245, 158, 11, 0.2) 0%, transparent 70%); pointer-events: none; }
-          .pass-top { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 24px; margin-bottom: 24px; }
-          .pass-brand { font-family: 'Cinzel', serif; font-size: 20px; font-weight: 700; color: #fbbf24; letter-spacing: 2px; }
-          .pass-type-badge { background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; color: #fbbf24; font-size: 11px; font-weight: 800; padding: 6px 14px; border-radius: 20px; letter-spacing: 1.5px; text-transform: uppercase; }
-          .pass-title { font-size: 26px; font-weight: 800; margin: 0 0 6px; color: #ffffff; }
-          .pass-sub { font-size: 14px; color: #94a3b8; margin: 0 0 24px; }
-          .pass-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; margin-bottom: 24px; }
-          .item-label { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
-          .item-value { font-size: 15px; font-weight: 700; color: #f1f5f9; }
-          .pass-code-box { display: flex; justify-content: space-between; align-items: center; background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.4); border-radius: 12px; padding: 14px 20px; margin-bottom: 24px; }
-          .code-text { font-family: 'Fira Code', monospace; font-size: 18px; font-weight: 700; color: #fbbf24; letter-spacing: 1px; }
-          .pass-footer { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #64748b; }
-          .btn-print { background: linear-gradient(135deg, #f59e0b, #d97706); color: #0b0f19; font-weight: 800; font-size: 13px; border: none; padding: 8px 18px; border-radius: 8px; cursor: pointer; }
-          @media print { .btn-print { display: none; } body { padding: 0; background: #fff; color: #000; } .pass-card { border: 2px solid #000; color: #000; background: #fff; } .pass-title, .item-value { color: #000; } }
+          .pass-header {
+            background: #003f87;
+            color: #ffffff;
+            padding: 24px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .pass-jurisdiction {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #93c5fd;
+            margin-bottom: 4px;
+          }
+          .pass-program {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            color: #ffffff;
+          }
+          .pass-badge {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 6px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            white-space: nowrap;
+          }
+          .pass-body {
+            padding: 32px;
+          }
+          .pass-entity {
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e2e8f0;
+          }
+          .pass-org-name {
+            font-size: 24px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+          }
+          .pass-tier-label {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: #003f87;
+          }
+          .pass-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+          }
+          .grid-cell {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 14px 16px;
+          }
+          .cell-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+            margin-bottom: 4px;
+          }
+          .cell-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+          }
+          .pass-token-strip {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+          }
+          .token-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #475569;
+            margin-bottom: 2px;
+          }
+          .token-code {
+            font-family: 'JetBrains Mono', Consolas, monospace;
+            font-size: 16px;
+            font-weight: 700;
+            color: #003f87;
+            letter-spacing: 1px;
+          }
+          .btn-print {
+            background: #003f87;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: background-color 0.15s ease;
+          }
+          .btn-print:hover {
+            background: #002e62;
+          }
+          .pass-footer {
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.5;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+          }
+          .pass-security-seal {
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            text-align: right;
+            white-space: nowrap;
+          }
+          @media print {
+            body { background: #ffffff; padding: 0; }
+            .pass-card { border: 1px solid #0f172a; box-shadow: none; max-width: 100%; border-radius: 0; }
+            .btn-print { display: none !important; }
+            .pass-header { background: #003f87 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          }
         </style>
       </head>
       <body>
         <div class="pass-card">
-          <div class="pass-glow"></div>
-          <div class="pass-top">
+          <div class="pass-header">
             <div>
-              <div class="pass-brand">NTI GHANA CHAMPIONSHIP</div>
-              <div style="font-size:12px;color:#94a3b8;margin-top:2px;">National Technology & Innovation Championship</div>
+              <div class="pass-jurisdiction">Republic of Ghana &middot; Ministry of Education STEM Initiative</div>
+              <div class="pass-program">National Technology &amp; Innovation Championship</div>
             </div>
-            <span class="pass-type-badge">VIP GUEST ADMISSION</span>
+            <div class="pass-badge">Accredited Partner</div>
           </div>
-          <h1 class="pass-title">${orgName}</h1>
-          <p class="pass-sub">Official Accreditation: ${tier}</p>
-          <div class="pass-grid">
-            <div>
-              <div class="item-label">Admit Lead Executive</div>
-              <div class="item-value">${repName}</div>
+          <div class="pass-body">
+            <div class="pass-entity">
+              <h1 class="pass-org-name">${orgName}</h1>
+              <div class="pass-tier-label">Official Accreditation: ${tier}</div>
             </div>
-            <div>
-              <div class="item-label">Access Level</div>
-              <div class="item-value">All Stages + VIP Hospitality Lounge</div>
+            <div class="pass-grid">
+              <div class="grid-cell">
+                <div class="cell-label">Authorized Representative</div>
+                <div class="cell-value">${repName}</div>
+              </div>
+              <div class="grid-cell">
+                <div class="cell-label">Accreditation Status</div>
+                <div class="cell-value" style="color: #059669;">Active &middot; Provisioned</div>
+              </div>
+              <div class="grid-cell">
+                <div class="cell-label">Credential Type</div>
+                <div class="cell-value">Executive Corporate Pass</div>
+              </div>
+              <div class="grid-cell">
+                <div class="cell-label">Governing Authority</div>
+                <div class="cell-value">NTIC Championship Secretariat</div>
+              </div>
             </div>
-            <div>
-              <div class="item-label">Event Date</div>
-              <div class="item-value">October 2026 Grand Finale</div>
+            <div class="pass-token-strip">
+              <div>
+                <div class="token-label">Accreditation Token ID</div>
+                <div class="token-code">${token}</div>
+              </div>
+              <button class="btn-print" onclick="window.print()">Print Official Pass</button>
             </div>
-            <div>
-              <div class="item-label">Venue</div>
-              <div class="item-value">Accra Intl Conference Centre</div>
+            <div class="pass-footer">
+              <div>Present this verified accreditation credential at the Executive Badging Desk for championship credentialing and venue access.</div>
+              <div class="pass-security-seal">Auth ID: ${token}<br>System Verified</div>
             </div>
-          </div>
-          <div class="pass-code-box">
-            <div>
-              <div class="item-label" style="color:#fbbf24;">VIP PASS TOKEN</div>
-              <div class="code-text">${token}</div>
-            </div>
-            <button class="btn-print" onclick="window.print()">Print VIP Pass</button>
-          </div>
-          <div class="pass-footer">
-            <span>Valid for up to 4 Corporate Representatives. Verified by Ministry of Education & NTI Ghana Secretariat.</span>
           </div>
         </div>
       </body>
@@ -505,75 +674,92 @@ export class SponsorsComponent implements OnInit {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>CSR Impact Certificate -- ${orgName}</title>
+        <title>CSR Recognition Certificate -- ${orgName}</title>
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;600;700&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600&display=swap');
+          * { box-sizing: border-box; margin: 0; padding: 0; }
           body {
             margin: 0;
-            padding: 40px;
-            background: #0f172a;
-            font-family: 'Inter', sans-serif;
-            color: #1e293b;
+            padding: 40px 20px;
+            background: #f1f5f9;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #0f172a;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            box-sizing: border-box;
           }
           .cert-card {
             width: 100%;
-            max-width: 860px;
+            max-width: 840px;
             background: #ffffff;
-            border: 12px solid #d97706;
-            outline: 3px solid #f59e0b;
-            padding: 50px 60px;
-            border-radius: 12px;
+            border: 2px solid #003f87;
+            outline: 1px solid #cbd5e1;
+            outline-offset: -10px;
+            padding: 48px 56px;
+            border-radius: 8px;
             text-align: center;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-            position: relative;
-            box-sizing: border-box;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08);
           }
-          .cert-header {
-            font-family: 'Cinzel', serif;
-            font-size: 14px;
-            letter-spacing: 4px;
-            color: #d97706;
+          .cert-jurisdiction {
+            font-size: 11px;
             font-weight: 700;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
+            color: #003f87;
             margin-bottom: 8px;
           }
-          .cert-title {
-            font-family: 'Cinzel', serif;
-            font-size: 32px;
-            font-weight: 800;
-            color: #0f172a;
-            margin: 0 0 20px;
-          }
-          .cert-subtitle {
-            font-size: 15px;
-            color: #64748b;
+          .cert-header {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #475569;
+            text-transform: uppercase;
             margin-bottom: 24px;
           }
-          .cert-org {
-            font-size: 30px;
+          .cert-title {
+            font-size: 26px;
             font-weight: 800;
-            color: #2563eb;
-            margin: 16px 0;
-            border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 12px;
+            color: #0f172a;
+            letter-spacing: -0.5px;
+            margin: 0 0 12px;
+          }
+          .cert-subtitle {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 20px;
+          }
+          .cert-org {
+            font-size: 28px;
+            font-weight: 800;
+            color: #003f87;
+            margin: 12px 0 16px;
             display: inline-block;
           }
+          .cert-badge {
+            display: inline-block;
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 24px;
+          }
           .cert-desc {
-            font-size: 15px;
+            font-size: 14.5px;
             line-height: 1.7;
             color: #334155;
-            max-width: 680px;
-            margin: 0 auto 30px;
+            max-width: 660px;
+            margin: 0 auto 36px;
           }
           .cert-meta {
             display: flex;
             justify-content: space-around;
-            margin-top: 40px;
+            margin-top: 32px;
             padding-top: 24px;
             border-top: 1px solid #e2e8f0;
           }
@@ -582,48 +768,41 @@ export class SponsorsComponent implements OnInit {
           }
           .cert-sig-line {
             width: 180px;
-            border-bottom: 1.5px solid #94a3b8;
+            border-bottom: 1.5px solid #cbd5e1;
             margin: 0 auto 8px;
           }
           .cert-sig-title {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
-            color: #475569;
-          }
-          .cert-badge {
-            display: inline-block;
-            background: #fef3c7;
-            color: #92400e;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 700;
-            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
           }
           .cert-token {
-            font-family: monospace;
-            font-size: 12px;
+            font-family: 'JetBrains Mono', Consolas, monospace;
+            font-size: 11px;
             color: #64748b;
-            margin-top: 20px;
+            margin-top: 28px;
           }
           @media print {
-            body { background: #fff; padding: 0; }
-            .cert-card { box-shadow: none; border-color: #d97706; }
+            body { background: #ffffff; padding: 0; }
+            .cert-card { box-shadow: none; max-width: 100%; border-radius: 0; }
           }
         </style>
       </head>
       <body>
         <div class="cert-card">
-          <div class="cert-header">National Technology & Innovation Championship</div>
+          <div class="cert-jurisdiction">Republic of Ghana &middot; Ministry of Education STEM Initiative</div>
+          <div class="cert-header">National Technology &amp; Innovation Championship</div>
           <h1 class="cert-title">CERTIFICATE OF CSR RECOGNITION</h1>
-          <div class="cert-subtitle">This official certificate of appreciation is proudly presented to</div>
+          <div class="cert-subtitle">This official credential of appreciation is proudly awarded to</div>
           
           <div class="cert-org">${orgName}</div>
           <br>
           <div class="cert-badge">${tier}</div>
 
           <p class="cert-desc">
-            In recognition of outstanding corporate social responsibility, leadership, and generous financial partnership in empowering Ghana's next generation of NTI innovators, engineers, and digital champions during the <strong>NTIC National Championship</strong>.
+            In recognition of outstanding corporate social responsibility, leadership, and partnership in empowering Ghana's next generation of technology innovators and STEM champions during the <strong>National Technology &amp; Innovation Championship</strong>.
           </p>
 
           <div class="cert-meta">

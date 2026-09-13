@@ -636,242 +636,253 @@
   </ng-container>
   <!-- ═══ END USERS TAB ═══ -->
 
-
   <!-- ══════════════════════════════════════════
        ═══ SUPPORT CENTER TAB ═══
   ══════════════════════════════════════════ -->
-  <div class="support-center" *ngIf="activeMainTab === 'support'">
+  <div class="sc-shell" *ngIf="activeMainTab === 'support'">
 
-    <!-- Support KPI Row -->
-    <div class="support-kpis">
-      <div class="support-kpi open-kpi">
-        <span class="material-symbols-outlined">inbox</span>
+    <!-- ── Page Header ── -->
+    <div class="sc-page-header">
+      <div class="sc-header-left">
+        <div class="sc-header-icon">
+          <span class="material-symbols-outlined">support_agent</span>
+        </div>
         <div>
-          <span class="kpi-num">{{ chatbotService.supportTickets() | filterTickets:'open' }}</span>
-          <span class="kpi-lbl">Open</span>
+          <h2 class="sc-page-title">Support Inbox</h2>
+          <p class="sc-page-sub">Manage user tickets, reply to conversations, and track resolution status.</p>
         </div>
       </div>
-      <div class="support-kpi progress-kpi">
-        <span class="material-symbols-outlined">pending</span>
-        <div>
-          <span class="kpi-num">{{ chatbotService.supportTickets() | filterTickets:'in_progress' }}</span>
-          <span class="kpi-lbl">In Progress</span>
+      <div class="sc-header-stats">
+        <div class="sc-stat-pill sc-stat-open" (click)="ticketStatusFilter = 'open'">
+          <span class="sc-stat-dot"></span>
+          <span class="sc-stat-num">{{ chatbotService.supportTickets() | filterTickets:'open' }}</span>
+          <span class="sc-stat-lbl">Open</span>
         </div>
-      </div>
-      <div class="support-kpi resolved-kpi">
-        <span class="material-symbols-outlined">task_alt</span>
-        <div>
-          <span class="kpi-num">{{ chatbotService.supportTickets() | filterTickets:'resolved' }}</span>
-          <span class="kpi-lbl">Resolved</span>
+        <div class="sc-stat-pill sc-stat-progress" (click)="ticketStatusFilter = 'in_progress'">
+          <span class="sc-stat-dot"></span>
+          <span class="sc-stat-num">{{ chatbotService.supportTickets() | filterTickets:'in_progress' }}</span>
+          <span class="sc-stat-lbl">In Progress</span>
+        </div>
+        <div class="sc-stat-pill sc-stat-resolved" (click)="ticketStatusFilter = 'resolved'">
+          <span class="sc-stat-dot"></span>
+          <span class="sc-stat-num">{{ chatbotService.supportTickets() | filterTickets:'resolved' }}</span>
+          <span class="sc-stat-lbl">Resolved</span>
         </div>
       </div>
     </div>
 
-    <!-- Support Layout -->
-    <div class="support-layout">
+    <!-- ── Two-column layout ── -->
+    <div class="sc-workspace">
 
-      <!-- Ticket List -->
-      <div class="ticket-list-panel">
-        <!-- Panel Header -->
-        <div class="ticket-list-header">
-          <div class="tlh-title-row">
-            <div class="tlh-title-group">
-              <span class="tlh-icon material-symbols-outlined">confirmation_number</span>
-              <div>
-                <h3>Support Tickets</h3>
-                <span class="tlh-count">{{ filteredTickets.length }} {{ ticketStatusFilter === 'recycle_bin' ? 'in bin' : ticketStatusFilter === 'all' ? 'total' : ticketStatusFilter.replace('_', ' ') }}</span>
+      <!-- LEFT: Ticket Tray -->
+      <div class="sc-tray">
+        <!-- Tray toolbar -->
+        <div class="sc-tray-toolbar">
+          <div class="sc-filter-chips">
+            <button class="sc-chip" [class.sc-chip-active]="ticketStatusFilter === 'all'"
+                    (click)="ticketStatusFilter = 'all'">
+              All
+              <span class="sc-chip-count">{{ chatbotService.supportTickets().length }}</span>
+            </button>
+            <button class="sc-chip sc-chip-open" [class.sc-chip-active]="ticketStatusFilter === 'open'"
+                    (click)="ticketStatusFilter = 'open'">
+              Open
+            </button>
+            <button class="sc-chip sc-chip-progress" [class.sc-chip-active]="ticketStatusFilter === 'in_progress'"
+                    (click)="ticketStatusFilter = 'in_progress'">
+              In Progress
+            </button>
+            <button class="sc-chip sc-chip-resolved" [class.sc-chip-active]="ticketStatusFilter === 'resolved'"
+                    (click)="ticketStatusFilter = 'resolved'">
+              Resolved
+            </button>
+            <button class="sc-chip sc-chip-bin" [class.sc-chip-active]="ticketStatusFilter === 'recycle_bin'"
+                    (click)="ticketStatusFilter = 'recycle_bin'">
+              <span class="material-symbols-outlined" style="font-size:13px;">delete</span>
+              Bin
+              <span class="sc-chip-count sc-chip-count-red" *ngIf="chatbotService.recycleBinTickets().length > 0">{{ chatbotService.recycleBinTickets().length }}</span>
+            </button>
+          </div>
+          <button class="sc-empty-bin-btn"
+                  *ngIf="ticketStatusFilter === 'recycle_bin' && chatbotService.recycleBinTickets().length > 0"
+                  (click)="emptyRecycleBin()">
+            <span class="material-symbols-outlined">delete_sweep</span>
+            Empty Bin
+          </button>
+        </div>
+
+        <!-- Empty tray -->
+        <div class="sc-tray-empty" *ngIf="filteredTickets.length === 0">
+          <div class="sc-tray-empty-art">
+            <span class="material-symbols-outlined">{{ ticketStatusFilter === 'recycle_bin' ? 'delete_outline' : 'mark_email_read' }}</span>
+          </div>
+          <p class="sc-tray-empty-title">{{ ticketStatusFilter === 'recycle_bin' ? 'Recycle Bin is empty' : 'All clear!' }}</p>
+          <p class="sc-tray-empty-sub">{{ ticketStatusFilter === 'recycle_bin' ? 'Deleted tickets show here before being permanently removed.' : 'No tickets match this filter. When users request support, they appear here.' }}</p>
+        </div>
+
+        <!-- Ticket cards -->
+        <div class="sc-tray-list">
+          <div class="sc-ticket-card"
+               *ngFor="let ticket of filteredTickets"
+               [class.sc-ticket-selected]="selectedTicket?.id === ticket.id"
+               [class.sc-ticket-deleted]="ticket.isDeleted"
+               (click)="selectTicket(ticket)">
+
+            <div class="sc-tcard-left">
+              <div class="sc-tcard-avatar" [ngClass]="ticket.isDeleted ? 'sc-av-deleted' : 'sc-av-' + ticket.status">
+                {{ ticket.userName.charAt(0).toUpperCase() }}
               </div>
+              <div class="sc-tcard-status-bar" [ngClass]="ticket.isDeleted ? 'sc-bar-deleted' : 'sc-bar-' + ticket.status"></div>
             </div>
-            <button class="empty-bin-btn" *ngIf="ticketStatusFilter === 'recycle_bin' && chatbotService.recycleBinTickets().length > 0" (click)="emptyRecycleBin()">
-              <span class="material-symbols-outlined">delete_sweep</span> Empty Bin
-            </button>
-          </div>
 
-          <!-- Filter Tabs -->
-          <div class="ticket-filter-tabs">
-            <button [class.active]="ticketStatusFilter === 'all'" (click)="ticketStatusFilter = 'all'" class="tft-btn">
-              <span class="tft-dot dot-all"></span>All
-              <span class="tft-count-pill">{{ chatbotService.supportTickets().length }}</span>
-            </button>
-            <button [class.active]="ticketStatusFilter === 'open'" (click)="ticketStatusFilter = 'open'" class="tft-btn tft-open">
-              <span class="tft-dot dot-open"></span>Open
-            </button>
-            <button [class.active]="ticketStatusFilter === 'in_progress'" (click)="ticketStatusFilter = 'in_progress'" class="tft-btn tft-progress">
-              <span class="tft-dot dot-progress"></span>In Progress
-            </button>
-            <button [class.active]="ticketStatusFilter === 'resolved'" (click)="ticketStatusFilter = 'resolved'" class="tft-btn tft-resolved">
-              <span class="tft-dot dot-resolved"></span>Resolved
-            </button>
-            <button [class.active]="ticketStatusFilter === 'recycle_bin'" (click)="ticketStatusFilter = 'recycle_bin'" class="tft-btn tft-bin">
-              <span class="material-symbols-outlined tft-bin-icon">delete</span>Bin
-              <span class="tft-bin-badge" *ngIf="chatbotService.recycleBinTickets().length > 0">{{ chatbotService.recycleBinTickets().length }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Empty state -->
-        <div class="ticket-empty" *ngIf="filteredTickets.length === 0">
-          <span class="material-symbols-outlined">{{ ticketStatusFilter === 'recycle_bin' ? 'delete_outline' : 'inbox' }}</span>
-          <p *ngIf="ticketStatusFilter === 'recycle_bin'">Recycle Bin is empty.<br>Deleted tickets will appear here before permanent removal.</p>
-          <p *ngIf="ticketStatusFilter !== 'recycle_bin'">No support tickets yet.<br>When users request human support, tickets appear here.</p>
-        </div>
-
-        <!-- Ticket Items -->
-        <div class="ticket-scroll-list">
-          <div
-            class="ticket-card"
-            [class.recycled-card]="ticket.isDeleted"
-            [class.selected-card]="selectedTicket?.id === ticket.id"
-            *ngFor="let ticket of filteredTickets"
-            (click)="selectTicket(ticket)">
-
-            <!-- Left accent bar (status colour) -->
-            <div class="ticket-card-accent" [ngClass]="ticket.isDeleted ? 'accent-deleted' : 'accent-' + ticket.status"></div>
-
-            <!-- Avatar + Body -->
-            <div class="ticket-card-body">
-              <!-- Row 1: Avatar + Name + Status Badge -->
-              <div class="tcard-row-top">
-                <div class="tcard-avatar" [ngClass]="ticket.isDeleted ? 'avatar-deleted' : 'avatar-' + ticket.status">
-                  {{ ticket.userName.charAt(0).toUpperCase() }}
+            <div class="sc-tcard-body">
+              <div class="sc-tcard-top">
+                <div class="sc-tcard-name-row">
+                  <span class="sc-tcard-name">{{ ticket.userName }}</span>
+                  <span class="sc-tcard-role-tag">{{ ticket.userRole }}</span>
                 </div>
-                <div class="tcard-user-info">
-                  <span class="tcard-name">{{ ticket.userName }}</span>
-                  <span class="tcard-role">{{ ticket.userRole }}</span>
-                </div>
-                <span class="tcard-status-badge" [ngClass]="ticket.isDeleted ? 'sbadge-deleted' : 'sbadge-' + ticket.status">
+                <span class="sc-tcard-badge"
+                      [ngClass]="ticket.isDeleted ? 'sc-badge-deleted' : 'sc-badge-' + ticket.status">
                   <ng-container *ngIf="!ticket.isDeleted">{{ ticket.status === 'in_progress' ? 'In Progress' : ticket.status | titlecase }}</ng-container>
-                  <ng-container *ngIf="ticket.isDeleted">🗑 Deleted</ng-container>
+                  <ng-container *ngIf="ticket.isDeleted">Deleted</ng-container>
                 </span>
               </div>
 
-              <!-- Row 2: Ticket ID -->
-              <div class="tcard-ticket-id">{{ ticket.id }}</div>
+              <p class="sc-tcard-preview">{{ ticket.chatHistory.at(-1)?.text | slice:0:70 }}…</p>
 
-              <!-- Row 3: Preview message -->
-              <div class="tcard-preview">{{ ticket.chatHistory.at(-1)?.text | slice:0:65 }}…</div>
-
-              <!-- Row 4: Time -->
-              <div class="tcard-time" *ngIf="!ticket.isDeleted">
-                <span class="material-symbols-outlined">schedule</span>
-                {{ ticket.createdAt | date:'MMM d · h:mm a' }}
-              </div>
-              <div class="tcard-time tcard-time-deleted" *ngIf="ticket.isDeleted">
-                <span class="material-symbols-outlined">delete_history</span>
-                Deleted {{ ticket.deletedAt | date:'MMM d · h:mm a' }}
+              <div class="sc-tcard-footer">
+                <span class="sc-tcard-id">{{ ticket.id }}</span>
+                <span class="sc-tcard-time">
+                  <span class="material-symbols-outlined">schedule</span>
+                  {{ ticket.isDeleted ? (ticket.deletedAt | date:'MMM d') : (ticket.createdAt | date:'MMM d · h:mm a') }}
+                </span>
               </div>
             </div>
 
-            <!-- Selected indicator arrow -->
-            <span class="tcard-arrow material-symbols-outlined" *ngIf="selectedTicket?.id === ticket.id">chevron_right</span>
+            <span class="sc-tcard-chevron material-symbols-outlined" *ngIf="selectedTicket?.id === ticket.id">chevron_right</span>
           </div>
         </div>
       </div>
 
-      <!-- Ticket Detail Panel -->
-      <div class="ticket-detail-panel" *ngIf="selectedTicket; else noTicketSelected">
-        <!-- Header -->
-        <div class="ticket-detail-header">
-          <div>
-            <h4>{{ selectedTicket.id }}</h4>
-            <span class="ticket-status-badge" [class]="getTicketStatusClass(selectedTicket.status)" *ngIf="!selectedTicket.isDeleted">
-              {{ selectedTicket.status === 'in_progress' ? 'In Progress' : selectedTicket.status | titlecase }}
-            </span>
-            <span class="ticket-status-badge status-deleted" *ngIf="selectedTicket.isDeleted">
-              Deleted
-            </span>
+      <!-- RIGHT: Conversation Panel -->
+      <div class="sc-conversation" *ngIf="selectedTicket; else scNoSelection">
+
+        <!-- Conv header -->
+        <div class="sc-conv-header">
+          <div class="sc-conv-user">
+            <div class="sc-conv-avatar" [ngClass]="selectedTicket.isDeleted ? 'sc-av-deleted' : 'sc-av-' + selectedTicket.status">
+              {{ getInitials(selectedTicket.userName) }}
+            </div>
+            <div class="sc-conv-meta">
+              <div class="sc-conv-name">{{ selectedTicket.userName }}</div>
+              <div class="sc-conv-details">
+                <span class="sc-conv-email">{{ selectedTicket.userEmail }}</span>
+                <span class="sc-conv-role-tag">{{ selectedTicket.userRole }}</span>
+              </div>
+            </div>
           </div>
-          <div class="ticket-detail-actions">
-            <!-- Active Ticket Actions -->
-            <ng-container *ngIf="!selectedTicket.isDeleted">
-              <button class="td-action-btn resolve-btn" *ngIf="selectedTicket.status !== 'resolved'"
-                (click)="resolveTicket(selectedTicket)">
-                <span class="material-symbols-outlined">task_alt</span> Resolve
+          <div class="sc-conv-actions">
+            <span class="sc-conv-tid">{{ selectedTicket.id }}</span>
+            <span class="sc-conv-status-badge"
+                  [ngClass]="selectedTicket.isDeleted ? 'sc-badge-deleted' : 'sc-badge-' + selectedTicket.status">
+              <ng-container *ngIf="!selectedTicket.isDeleted">{{ selectedTicket.status === 'in_progress' ? 'In Progress' : selectedTicket.status | titlecase }}</ng-container>
+              <ng-container *ngIf="selectedTicket.isDeleted">Deleted</ng-container>
+            </span>
+            <div class="sc-conv-btn-group" *ngIf="!selectedTicket.isDeleted">
+              <button class="sc-conv-btn sc-btn-resolve"
+                      *ngIf="selectedTicket.status !== 'resolved'"
+                      (click)="resolveTicket(selectedTicket)">
+                <span class="material-symbols-outlined">task_alt</span>
+                Resolve
               </button>
-              <button class="td-action-btn delete-btn" (click)="deleteTicket(selectedTicket)" title="Move to Recycle Bin">
-                <span class="material-symbols-outlined">delete</span> Delete
+              <button class="sc-conv-btn sc-btn-delete"
+                      (click)="deleteTicket(selectedTicket)"
+                      title="Move to Bin">
+                <span class="material-symbols-outlined">delete</span>
               </button>
-            </ng-container>
-
-            <!-- Recycled Ticket Actions -->
-            <ng-container *ngIf="selectedTicket.isDeleted">
-              <button class="td-action-btn restore-btn" (click)="restoreTicket(selectedTicket)" title="Restore Ticket">
-                <span class="material-symbols-outlined">restore_from_trash</span> Restore
+            </div>
+            <div class="sc-conv-btn-group" *ngIf="selectedTicket.isDeleted">
+              <button class="sc-conv-btn sc-btn-restore" (click)="restoreTicket(selectedTicket)">
+                <span class="material-symbols-outlined">restore_from_trash</span>
+                Restore
               </button>
-              <button class="td-action-btn perm-delete-btn" (click)="permanentlyDeleteTicket(selectedTicket)" title="Permanently Delete">
-                <span class="material-symbols-outlined">delete_forever</span> Delete Permanently
+              <button class="sc-conv-btn sc-btn-perm-delete" (click)="permanentlyDeleteTicket(selectedTicket)">
+                <span class="material-symbols-outlined">delete_forever</span>
               </button>
-            </ng-container>
-
-            <button class="td-action-btn close-panel-btn" (click)="closeTicketPanel()">
+            </div>
+            <button class="sc-conv-close" (click)="closeTicketPanel()">
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
         </div>
 
-        <!-- Recycled Banner -->
-        <div class="ticket-recycled-banner" *ngIf="selectedTicket.isDeleted">
+        <!-- Recycled notice -->
+        <div class="sc-deleted-notice" *ngIf="selectedTicket.isDeleted">
           <span class="material-symbols-outlined">auto_delete</span>
-          <span>This ticket is currently in the <strong>Recycle Bin</strong> (Deleted {{ selectedTicket.deletedAt | date:'MMM d, y, h:mm a' }}). You can restore it or permanently delete it.</span>
+          <span>This ticket is in the <strong>Recycle Bin</strong>. Deleted {{ selectedTicket.deletedAt | date:'MMM d, y · h:mm a' }}.</span>
         </div>
 
-        <!-- User Info -->
-        <div class="ticket-user-info">
-          <div class="ticket-user-avatar">{{ getInitials(selectedTicket.userName) }}</div>
-          <div>
-            <strong>{{ selectedTicket.userName }}</strong>
-            <span>{{ selectedTicket.userEmail }}</span>
-            <span class="ticket-role-tag">{{ selectedTicket.userRole }}</span>
-          </div>
-        </div>
-
-        <!-- Chat History -->
-        <div class="ticket-chat-history">
+        <!-- Messages -->
+        <div class="sc-messages">
           <div *ngFor="let msg of selectedTicket.chatHistory"
-               class="th-bubble-row"
-               [class.th-user]="msg.role === 'user'"
-               [class.th-bot]="msg.role !== 'user'">
-            <div class="th-bubble">
-              <span class="th-role-label">{{ msg.role === 'user' ? selectedTicket.userName : (msg.agentName || 'AI Assistant') }}</span>
+               class="sc-msg-row"
+               [class.sc-msg-from-user]="msg.role === 'user'"
+               [class.sc-msg-from-bot]="msg.role !== 'user'">
+            <div class="sc-msg-bubble">
+              <span class="sc-msg-sender">{{ msg.role === 'user' ? selectedTicket.userName : (msg.agentName || 'AI Assistant') }}</span>
               <p>{{ msg.text }}</p>
             </div>
           </div>
-          <!-- Admin replies already sent -->
-          <div *ngFor="let reply of selectedTicket.adminReplies" class="th-bubble-row th-admin">
-            <div class="th-bubble th-admin-bubble">
-              <span class="th-role-label">{{ reply.agentName }} (You)</span>
+
+          <!-- Admin replies -->
+          <div *ngFor="let reply of selectedTicket.adminReplies" class="sc-msg-row sc-msg-from-agent">
+            <div class="sc-msg-bubble sc-msg-bubble-agent">
+              <span class="sc-msg-sender">{{ reply.agentName }} · You</span>
               <p>{{ reply.text }}</p>
             </div>
           </div>
         </div>
 
-        <!-- Reply Input -->
-        <div class="ticket-reply-area" *ngIf="!selectedTicket.isDeleted && selectedTicket.status !== 'resolved'">
-          <textarea
-            [(ngModel)]="adminReplyText"
-            placeholder="Type your reply to {{ selectedTicket.userName }}..."
-            rows="3"
-            maxlength="1000"
-            class="reply-textarea">
+        <!-- Reply box -->
+        <div class="sc-reply-box" *ngIf="!selectedTicket.isDeleted && selectedTicket.status !== 'resolved'">
+          <textarea class="sc-reply-input"
+                    [(ngModel)]="adminReplyText"
+                    [placeholder]="'Reply to ' + selectedTicket.userName + '…'"
+                    rows="3"
+                    maxlength="1000">
           </textarea>
-          <button class="cmd-btn cmd-btn-primary reply-send-btn" (click)="sendAdminReply()" [disabled]="!adminReplyText.trim()">
-            <span class="material-symbols-outlined">send</span> Send Reply
-          </button>
+          <div class="sc-reply-footer">
+            <span class="sc-reply-hint">{{ adminReplyText.length }}/1000</span>
+            <button class="sc-send-btn" (click)="sendAdminReply()" [disabled]="!adminReplyText.trim()">
+              <span class="material-symbols-outlined">send</span>
+              Send Reply
+            </button>
+          </div>
         </div>
-        <div class="ticket-resolved-banner" *ngIf="!selectedTicket.isDeleted && selectedTicket.status === 'resolved'">
-          <span class="material-symbols-outlined">check_circle</span> This ticket has been resolved.
+
+        <!-- Resolved banner -->
+        <div class="sc-resolved-banner" *ngIf="!selectedTicket.isDeleted && selectedTicket.status === 'resolved'">
+          <span class="material-symbols-outlined">check_circle</span>
+          <span>This ticket is resolved.</span>
+          <span class="sc-resolved-time">Closed {{ selectedTicket.createdAt | date:'MMM d, y' }}</span>
         </div>
       </div>
 
-      <ng-template #noTicketSelected>
-        <div class="ticket-no-selection">
-          <span class="material-symbols-outlined">support_agent</span>
-          <p>Select a ticket to view conversation and reply</p>
+      <ng-template #scNoSelection>
+        <div class="sc-no-selection">
+          <div class="sc-no-sel-icon">
+            <span class="material-symbols-outlined">forum</span>
+          </div>
+          <p class="sc-no-sel-title">No ticket selected</p>
+          <p class="sc-no-sel-sub">Pick a ticket from the left to read the conversation and reply.</p>
         </div>
       </ng-template>
+
     </div>
   </div>
   <!-- ═══ END SUPPORT CENTER TAB ═══ -->
+
+
 
 
   <!-- ══════════════════════════════════════════
@@ -1033,13 +1044,21 @@
             Select User Role
           </p>
           <div class="ca-role-grid">
+            <button type="button" class="ca-role-chip" [class.selected]="newUserForm.role === 'sponsor'" (click)="setNewUserRole('sponsor')">
+              <span class="material-symbols-outlined">handshake</span>
+              <span>Sponsor</span>
+            </button>
             <button type="button" class="ca-role-chip" [class.selected]="newUserForm.role === 'instructor'" (click)="setNewUserRole('instructor')">
+              <span class="material-symbols-outlined">school</span>
+              <span>Instructor</span>
+            </button>
+            <button type="button" class="ca-role-chip" [class.selected]="newUserForm.role === 'mentor'" (click)="setNewUserRole('mentor')">
               <span class="material-symbols-outlined">co_present</span>
               <span>Mentor</span>
             </button>
-            <button type="button" class="ca-role-chip" [class.selected]="newUserForm.role === 'sponsor'" (click)="setNewUserRole('sponsor')">
-              <span class="material-symbols-outlined">handshake</span>
-              <span>Partner</span>
+            <button type="button" class="ca-role-chip" [class.selected]="newUserForm.role === 'judge'" (click)="setNewUserRole('judge')">
+              <span class="material-symbols-outlined">gavel</span>
+              <span>Judge</span>
             </button>
             <button type="button" class="ca-role-chip" [class.selected]="newUserForm.role === 'competition_manager'" (click)="setNewUserRole('competition_manager')">
               <span class="material-symbols-outlined">emoji_events</span>

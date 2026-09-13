@@ -2380,31 +2380,6 @@ body.dark-theme .partners-strip {
       color: var(--slate);
       margin-bottom: 24px;
     }
-
-    .scoreboard-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--bg-ivory);
-      border: 1px solid var(--border-color);
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--slate);
-      margin-top: 12px;
-
-      .live-dot {
-        width: 8px;
-        height: 8px;
-        background: #008060;
-        border-radius: 50%;
-        
-        &.pulse {
-          animation: pulseGreen 2s infinite;
-        }
-      }
-    }
   }
 
   /* High-Tech Tab Buttons on the Left Panel */

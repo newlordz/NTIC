@@ -44,6 +44,17 @@ for (const file of ENV_FILES) {
   // Refuse to guess. The stale backup is the last known-clean copy, so tell the
   // developer how to recover rather than destroying either version.
   if (fs.existsSync(backup)) {
+    // If the working file and backup are identical, a previous dev server was simply stopped.
+    // Clean it up automatically instead of interrupting the developer.
+    try {
+      const workingContent = fs.readFileSync(file, 'utf8');
+      const backupContent = fs.readFileSync(backup, 'utf8');
+      if (workingContent === backupContent) {
+        try { fs.unlinkSync(backup); } catch (_) {}
+        continue;
+      }
+    } catch (_) {}
+
     console.error(
       '\ninject-env: a previous build did not finish cleanly.\n' +
       `  Stale backup found: ${backup}\n` +

@@ -906,30 +906,67 @@ export class LmsManagerComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
+  openReviewInspectionForCourse(course: any): void {
+    if (!course) return;
+    this.reviewInspectingCourse = {
+      ...course,
+      approvalStatus: course.approvalStatus || course.approval_status || 'approved',
+      approval_status: course.approvalStatus || course.approval_status || 'approved',
+      submittedBy: course.submittedBy || course.submitted_by || 'Instructor',
+      submitted_by: course.submittedBy || course.submitted_by || 'Instructor'
+    };
+    this.selectedCourseId = course.id;
+    this.currentView = 'course_review_inspection';
+    this.cdr.markForCheck();
+  }
+
   exitCourseReview(): void {
     this.currentView = 'hub';
-    this.activeTab = 'approvals';
     this.reviewInspectingCourse = null;
     this.cdr.markForCheck();
   }
 
   handleSendReviewFeedback(event: { payload: string; items: ReviewFeedbackItem[] }): void {
     if (!this.reviewInspectingCourse) return;
-    this.moderate(this.reviewInspectingCourse.id, false, event.payload);
-    this.dialogService.toast(`Revision feedback sent to instructor (${this.reviewInspectingCourse.submittedBy || 'Creator'}).`, 'success');
+    const courseId = this.reviewInspectingCourse.id;
+    this.moderate(courseId, false, event.payload);
+    
+    this.reviewInspectingCourse.approvalStatus = 'rejected';
+    this.reviewInspectingCourse.approval_status = 'rejected';
+    this.reviewInspectingCourse.rejectionReason = event.payload;
+    this.reviewInspectingCourse.rejection_reason = event.payload;
+
+    const match = this.authoredCourses.find(c => c.id === courseId);
+    if (match) {
+      match.approval_status = 'rejected';
+      (match as any).approvalStatus = 'rejected';
+      match.rejection_reason = event.payload;
+      (match as any).rejectionReason = event.payload;
+    }
+
+    this.dialogService.toast(`Section revision notes sent to instructor (${this.reviewInspectingCourse.submittedBy || 'Creator'}).`, 'success');
     this.exitCourseReview();
   }
 
   handleRejectCourseFromReview(event: { reason: string; checklist: string[] }): void {
     if (!this.reviewInspectingCourse) return;
-    const currentStatus = this.reviewInspectingCourse.approvalStatus || this.reviewInspectingCourse.approval_status;
-    if (currentStatus === 'approved') {
-      this.dialogService.toast('Approved courses cannot be rejected.', 'warning');
-      this.exitCourseReview();
-      return;
+    const courseId = this.reviewInspectingCourse.id;
+    this.moderate(courseId, false, event.reason);
+
+    this.reviewInspectingCourse.approvalStatus = 'rejected';
+    this.reviewInspectingCourse.approval_status = 'rejected';
+    this.reviewInspectingCourse.rejectionReason = event.reason;
+    this.reviewInspectingCourse.rejection_reason = event.reason;
+
+    const match = this.authoredCourses.find(c => c.id === courseId);
+    if (match) {
+      match.approval_status = 'rejected';
+      (match as any).approvalStatus = 'rejected';
+      match.rejection_reason = event.reason;
+      (match as any).rejectionReason = event.reason;
     }
-    this.moderate(this.reviewInspectingCourse.id, false, event.reason);
-    this.dialogService.toast(`Course "${this.reviewInspectingCourse.title}" rejected and creator notified.`, 'info');
+
+    this.dialogService.toast(`Course "${this.reviewInspectingCourse.title}" sent back for review. Instructor notified with feedback.`, 'info');
     this.exitCourseReview();
   }
 
@@ -982,11 +1019,6 @@ export class LmsManagerComponent implements OnInit {
 
   openRejectModalForActiveCourse(): void {
     if (!this.activeDetailCourse) return;
-    const currentStatus = this.activeDetailCourse.approvalStatus || this.activeDetailCourse.approval_status;
-    if (currentStatus === 'approved') {
-      this.dialogService.toast('Approved courses cannot be rejected.', 'warning');
-      return;
-    }
     this.activeRejectItem = {
       id: this.activeDetailCourse.id,
       type: 'course',
@@ -1056,19 +1088,16 @@ export class LmsManagerComponent implements OnInit {
 
   openRejectModal(item: any): void {
     if (!item) return;
-    const currentStatus = item.approvalStatus || item.approval_status || item.rawItem?.approvalStatus || item.rawItem?.approval_status;
-    if (currentStatus === 'approved') {
-      this.dialogService.toast('Approved courses cannot be rejected.', 'warning');
-      return;
-    }
     this.activeRejectItem = {
       id: item.id,
       type: 'course',
       typeLabel: 'Course',
       title: item.title,
       description: item.description,
-      submittedBy: item.submitted_by || item.submittedBy || item.submittedBy || 'Instructor',
+      submittedBy: item.submitted_by || item.submittedBy || 'Instructor',
       createdAt: item.createdAt || item.created_at,
+      approvalStatus: item.approvalStatus || item.approval_status,
+      approval_status: item.approval_status || item.approvalStatus,
       rawItem: item.rawItem || item
     };
     this.rejectionReasonInput = '';
@@ -1083,15 +1112,9 @@ export class LmsManagerComponent implements OnInit {
 
   submitRejection(): void {
     if (!this.activeRejectItem || !this.rejectionReasonInput.trim()) return;
-    const currentStatus = this.activeRejectItem.rawItem?.approvalStatus || this.activeRejectItem.rawItem?.approval_status;
-    if (currentStatus === 'approved') {
-      this.dialogService.toast('Approved courses cannot be rejected.', 'warning');
-      this.closeRejectModal();
-      return;
-    }
     // The reason is required server-side too, so it genuinely reaches the author.
     this.moderate(this.activeRejectItem.id, false, this.rejectionReasonInput.trim());
-    this.dialogService.toast(`Feedback sent. "${this.activeRejectItem.title}" marked as rejected.`, 'info');
+    this.dialogService.toast(`Course "${this.activeRejectItem.title}" sent back for review. Instructor notified.`, 'info');
     if (this.activeDetailCourse && this.activeDetailCourse.id === this.activeRejectItem.id) {
       this.activeDetailCourse.approvalStatus = 'rejected';
       this.activeDetailCourse.approval_status = 'rejected';

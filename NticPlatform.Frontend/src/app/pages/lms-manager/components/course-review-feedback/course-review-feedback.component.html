@@ -53,6 +53,20 @@
         <h2 class="course-hero-title">{{ course?.title }}</h2>
         <div class="course-hero-description" [innerHTML]="course?.description || 'No overview provided.'"></div>
 
+        <!-- Attached Reviewer Section Feedback on Overview -->
+        <div class="section-feedback-callout mt-3" *ngIf="getAllFeedbackForSection('Course Overview', 'section-overview').length > 0">
+          <div class="callout-header">
+            <span class="material-symbols-outlined callout-icon">rate_review</span>
+            <strong>Reviewer Requested Changes on Course Overview</strong>
+          </div>
+          <div *ngFor="let fb of getAllFeedbackForSection('Course Overview', 'section-overview')" class="callout-content">
+            <p>{{ fb.note }}</p>
+          </div>
+          <button type="button" class="btn btn-xs btn-primary-soft mt-2" (click)="onEdit()">
+            <span class="material-symbols-outlined">edit</span> Edit Overview
+          </button>
+        </div>
+
         <div class="course-meta-stats">
           <div class="meta-stat-item">
             <span class="material-symbols-outlined">view_module</span>
@@ -93,6 +107,20 @@
               <p *ngIf="mod.description" class="module-desc">{{ stripHtml(mod.description) }}</p>
             </div>
             <span class="module-units-count">{{ getMaterialsForModule(mod.id).length }} Units</span>
+          </div>
+
+          <!-- Attached Reviewer Section Feedback for Module -->
+          <div class="section-feedback-callout mt-2" *ngIf="getAllFeedbackForSection(mod.title, 'readonly-mod-' + mod.id).length > 0">
+            <div class="callout-header">
+              <span class="material-symbols-outlined callout-icon">rate_review</span>
+              <strong>Reviewer Changes Requested for Module {{ modIdx + 1 }}: {{ mod.title }}</strong>
+            </div>
+            <div *ngFor="let fb of getAllFeedbackForSection(mod.title, 'readonly-mod-' + mod.id)" class="callout-content">
+              <p>{{ fb.note }}</p>
+            </div>
+            <button type="button" class="btn btn-xs btn-primary-soft mt-2" (click)="onEdit()">
+              <span class="material-symbols-outlined">edit</span> Edit Module {{ modIdx + 1 }}
+            </button>
           </div>
 
           <div class="module-units-stream">
@@ -150,6 +178,17 @@
 
                 <!-- Standard Lesson Guide / Text -->
                 <div *ngIf="unit.type === 'guide' || unit.type === 'text' || !parseWidgetData(unit)?.widget" class="unit-text-content" [innerHTML]="unit.description || 'No theory text.'"></div>
+
+                <!-- Attached Reviewer Section Feedback for Unit -->
+                <div class="section-feedback-callout unit-callout mt-2" *ngIf="getAllFeedbackForSection(unit.title, 'readonly-unit-' + unit.id).length > 0">
+                  <div class="callout-header">
+                    <span class="material-symbols-outlined callout-icon">rate_review</span>
+                    <strong>Reviewer Note for Unit {{ uIdx + 1 }}</strong>
+                  </div>
+                  <div *ngFor="let fb of getAllFeedbackForSection(unit.title, 'readonly-unit-' + unit.id)" class="callout-content">
+                    <p>{{ fb.note }}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -179,8 +218,20 @@
             </div>
           </div>
 
-          <div class="feedback-remarks-container">
-            <h5 class="remarks-title">Reviewer Feedback &amp; Checklist</h5>
+          <!-- Section Specific Items Breakdown -->
+          <div class="feedback-sections-list mt-2" *ngIf="structuredFeedbackItems.length > 0">
+            <h5 class="remarks-title" style="margin-bottom: 8px;">Sections Requiring Attention ({{ structuredFeedbackItems.length }})</h5>
+            <div *ngFor="let item of structuredFeedbackItems" class="section-feedback-summary-tile" (click)="scrollToSection(item.elementId || 'section-overview')">
+              <div class="summary-tile-header">
+                <span class="material-symbols-outlined text-warning" style="font-size:16px;">flag</span>
+                <strong>{{ item.section }}</strong>
+              </div>
+              <p class="summary-tile-note">{{ item.note }}</p>
+            </div>
+          </div>
+
+          <div class="feedback-remarks-container mt-3">
+            <h5 class="remarks-title">Overall Reviewer Feedback &amp; Checklist</h5>
             <div class="remarks-content-box">
               <pre class="remarks-pre">{{ rejectionReason }}</pre>
             </div>

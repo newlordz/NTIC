@@ -14,6 +14,7 @@ import { FileStorageService } from '../../services/file-storage.service';
 
 import { SmsService } from '../../services/sms.service';
 import { EmailService } from '../../services/email.service';
+import { NotificationService } from '../../services/notification.service';
 
 @Component({
   selector: 'app-user-management',
@@ -120,8 +121,10 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     private http: HttpClient,
     private fileStorage: FileStorageService,
     public smsService: SmsService,
-    public emailService: EmailService
-  , private cdr: ChangeDetectorRef) {}
+    public emailService: EmailService,
+    private cdr: ChangeDetectorRef,
+    public notificationService: NotificationService
+  ) {}
 
   get canManageUsers(): boolean {
     const role = (getAuthValue('activeRoleId') || '').toLowerCase();
@@ -218,6 +221,14 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   syncAccounts(showToastNotice = true): void {
     this.isSyncing = true;
     this.cdr.markForCheck();
+    let syncToastId: string | null = null;
+    if (showToastNotice) {
+      syncToastId = this.notificationService.info(
+        'Connecting to server to synchronize accounts & access credentials...',
+        'Syncing Accounts',
+        4000
+      );
+    }
     this.http.get<any[]>(`${environment.apiUrl}/users`).subscribe({
       next: (backendUsers) => {
         const existingLookup: Record<string, any> = {};
@@ -257,6 +268,13 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         this.isSyncing = false;
         this.cdr.markForCheck();
         if (showToastNotice) {
+          if (syncToastId) this.notificationService.dismiss(syncToastId);
+          const activeCount = cleanUsers.filter(u => u.status === 'Active').length;
+          this.notificationService.success(
+            `Successfully synchronized ${cleanUsers.length} user accounts (${activeCount} active). Access directory and credentials are up to date.`,
+            'Accounts Synchronized',
+            5000
+          );
           this.showToast('Accounts Synced', `Successfully synchronized ${cleanUsers.length} accounts from backend database.`);
         }
       },
@@ -268,6 +286,12 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         this.isSyncing = false;
         this.cdr.markForCheck();
         if (showToastNotice) {
+          if (syncToastId) this.notificationService.dismiss(syncToastId);
+          this.notificationService.warning(
+            'Backend server is currently unreachable. Loaded cached user accounts from local storage.',
+            'Sync Offline',
+            5000
+          );
           this.showToast('Sync Notice', 'Backend sync unavailable. Loaded cached user accounts.', 4000);
         }
       }
@@ -741,11 +765,12 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     const prefixMap: Record<string, string> = {
       instructor: 'NTIC-INS-',
       mentor: 'NTIC-MTR-',
+      judge: 'NTIC-JDG-',
       school_admin: 'NTIC-SCH-',
       content_manager: 'NTIC-CNT-',
       reviewer: 'NTIC-REV-',
       competition_manager: 'NTIC-CMP-',
-      sponsor: 'NTIC-PTR-',
+      sponsor: 'NTIC-SPO-',
       admin: 'NTIC-ADM-'
     };
     const prefix = prefixMap[role] || 'NTIC-USR-';
@@ -1205,11 +1230,29 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.editForm = {};
   }
 
-  showToast(title: string, detail: string = '', duration: number = 3000): void {
+  showToast(title: string, detail: string = '', duration: number = 3500): void {
     this.toastTitle = title;
     this.toastDetail = detail;
     this.successMessage = title;
-    setTimeout(() => { this.successMessage = ''; this.toastTitle = ''; this.toastDetail = ''; }, duration);
+    this.cdr.markForCheck();
+
+    if (title !== 'Accounts Synced' && title !== 'Sync Notice') {
+      const lower = (title + ' ' + detail).toLowerCase();
+      if (lower.includes('error') || lower.includes('failed')) {
+        this.notificationService.error(detail || title, title, duration + 1000);
+      } else if (lower.includes('notice') || lower.includes('restricted') || lower.includes('taken') || lower.includes('warning') || lower.includes('protected')) {
+        this.notificationService.warning(detail || title, title, duration + 500);
+      } else {
+        this.notificationService.success(detail || title, title, duration);
+      }
+    }
+
+    setTimeout(() => {
+      this.successMessage = '';
+      this.toastTitle = '';
+      this.toastDetail = '';
+      this.cdr.markForCheck();
+    }, duration);
   }
 
   saveEdit(): void {

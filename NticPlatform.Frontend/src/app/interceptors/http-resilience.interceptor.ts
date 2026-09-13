@@ -36,6 +36,8 @@ const QUIET_ON_FAILURE = [
   // failure), so a mail-provider outage must not tell the applicant their
   // submission "was not saved" -- it was.
   '/api/notify/',
+  'textbelt',
+  ':9090',
 ];
 
 export const httpResilienceInterceptor: HttpInterceptorFn = (req, next) => {
@@ -92,8 +94,9 @@ export const httpResilienceInterceptor: HttpInterceptorFn = (req, next) => {
       const isWrite = WRITE_METHODS.includes(req.method);
       const isQuiet = QUIET_ON_FAILURE.some(p => req.url.includes(p));
       const callerReports = req.context.get(HANDLES_OWN_WRITE_ERRORS);
+      const isApiEndpoint = req.url.startsWith('/api') || req.url.includes('/api/');
 
-      if (isWrite && !isQuiet && !callerReports) {
+      if (isWrite && isApiEndpoint && !isQuiet && !callerReports) {
         // Always log, even when the toast is throttled, so nothing is lost.
         console.error(`[http] ${req.method} ${req.url} failed:`, err.status, err.error?.detail || err.message);
 

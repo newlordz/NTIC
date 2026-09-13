@@ -41,20 +41,20 @@ export class NotificationService {
     return id;
   }
 
-  public success(message: string, title: string = 'Success'): string {
-    return this.show(message, 'success', title);
+  public success(message: string, title: string = 'Success', durationMs?: number): string {
+    return this.show(message, 'success', title, durationMs ?? 4500);
   }
 
-  public error(message: string, title: string = 'Notice'): string {
-    return this.show(message, 'error', title, 6000);
+  public error(message: string, title: string = 'Notice', durationMs?: number): string {
+    return this.show(message, 'error', title, durationMs ?? 6000);
   }
 
-  public warning(message: string, title: string = 'Warning'): string {
-    return this.show(message, 'warning', title, 5000);
+  public warning(message: string, title: string = 'Warning', durationMs?: number): string {
+    return this.show(message, 'warning', title, durationMs ?? 5000);
   }
 
-  public info(message: string, title: string = 'Information'): string {
-    return this.show(message, 'info', title);
+  public info(message: string, title: string = 'Information', durationMs?: number): string {
+    return this.show(message, 'info', title, durationMs ?? 4500);
   }
 
   public dismiss(id: string): void {

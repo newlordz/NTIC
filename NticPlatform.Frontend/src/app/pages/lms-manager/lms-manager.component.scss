@@ -109,6 +109,15 @@
         background: rgba(239, 68, 68, 0.1);
       }
     }
+
+    &.warning {
+      border-color: #f59e0b;
+      color: #d97706;
+
+      &:hover {
+        background: rgba(245, 158, 11, 0.1);
+      }
+    }
   }
 
   &.btn-subtle {
@@ -126,6 +135,15 @@
 
     &:hover {
       background: #dc2626;
+    }
+  }
+
+  &.btn-warning {
+    background: #f59e0b;
+    color: #ffffff;
+
+    &:hover {
+      background: #d97706;
     }
   }
 

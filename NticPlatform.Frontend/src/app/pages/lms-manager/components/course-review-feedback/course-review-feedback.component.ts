@@ -39,7 +39,47 @@ export class CourseReviewFeedbackComponent implements OnInit, OnChanges {
   }
 
   get rejectionReason(): string {
-    return this.course?.rejectionReason || this.course?.rejection_reason || 'No specific text comments provided by the reviewer.';
+    return this.getCleanRejectionReason();
+  }
+
+  get structuredFeedbackItems(): Array<{ section: string; note: string; quote?: string; elementId?: string }> {
+    const raw = this.course?.rejectionReason || this.course?.rejection_reason || '';
+    const match = raw.match(/<!-- REVIEW_FEEDBACK_DATA:([\s\S]*?)-->/);
+    if (match && match[1]) {
+      try {
+        const parsed = JSON.parse(match[1]);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+    }
+    // Fallback: parse lines like "1. [Module 1: Title]\n Recommendation: Note"
+    const items: Array<{ section: string; note: string; quote?: string; elementId?: string }> = [];
+    const sectionRegex = /\d+\.\s*\[(.*?)\](?:\s*Quoted snippet:\s*"(.*?)")?(?:\s*(?:Recommendation|Action Required):\s*(.*?)(?=\n\d+\.|\n\n<!--|$))/gs;
+    let m: RegExpExecArray | null;
+    while ((m = sectionRegex.exec(raw)) !== null) {
+      items.push({
+        section: m[1]?.trim() || '',
+        quote: m[2]?.trim() || '',
+        note: m[3]?.trim() || '',
+      });
+    }
+    return items;
+  }
+
+  getCleanRejectionReason(): string {
+    const raw = this.course?.rejectionReason || this.course?.rejection_reason || '';
+    const clean = raw.replace(/<!-- REVIEW_FEEDBACK_DATA:[\s\S]*?-->/g, '').trim();
+    return clean || 'No specific text comments provided by the reviewer.';
+  }
+
+  getAllFeedbackForSection(sectionName: string, elementId?: string): Array<{ section: string; note: string; quote?: string; elementId?: string }> {
+    const items = this.structuredFeedbackItems;
+    if (!items || !items.length) return [];
+    const lower = (sectionName || '').toLowerCase().trim();
+    return items.filter(i => {
+      if (elementId && i.elementId && i.elementId === elementId) return true;
+      const itemLower = (i.section || '').toLowerCase().trim();
+      return itemLower === lower || itemLower.includes(lower) || lower.includes(itemLower);
+    });
   }
 
   getModules(): any[] {

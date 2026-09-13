@@ -95,3 +95,15 @@ agent's files.
    - All UI views, dashboards, tables, and inspectors must display only verified backend data and authentic client attributes.
    - If a data point is not captured or not transmitted (e.g., screen resolution in server-side HTTP logs, ISP without GeoIP/ASN resolution, unrecorded state diffs), explicitly display 'Not recorded', 'N/A', or omit the speculative field entirely. Do not fabricate values to populate UI cards.
 
+5. **Anti-"AI UI" & Human Institutional Design Directive**:
+   - **Strictly Prohibit "AI Generated" UI Tropes**:
+     - **No Cyberpunk Neon Glow or Radioactive Bloom**: Never use electric-blue/cyan/purple glowing borders, blurry 20px-30px drop shadows (`box-shadow: 0 0 ...`), glowing outer halos on cards, or neon bloom rings on input focus.
+     - **No Hardcoded AI Dark-Mode Blackouts**: Never force hardcoded pitch-black/midnight backgrounds (`#0b1426`, `#030712`) with neon rims. All modals, panels, forms, and cards must use the platform's established design tokens (`var(--surface-card)`, `var(--border-subtle)`, `var(--text-primary)`, etc.) and adapt cleanly to both Light and Dark themes (`:host-context(body.dark-theme)`).
+     - **No Cliché Purple-to-Cyan Gradients**: Avoid giant purple-to-blue gradient squircle boxes, radioactive pills, or sci-fi HUD elements.
+   - **Human Enterprise & Clinical Clarity Standards**:
+     - **Card Surfaces**: Clean 1px neutral borders (`#e2e8f0` / dark `#334155`), realistic subtle elevation shadows, and standard rounded corners (`8px`-`12px`, never excessive ballooning).
+     - **Form Inputs**: Crisp 1px borders (`#cbd5e1` / dark `#334155`), natural 40px height, readable font size (`13.5px`-`14px`), muted neutral icons (`#94a3b8`, never neon cyan), and precise, accessible 2px-3px focus rings without blur halos.
+     - **Action Buttons**: Solid, authoritative brand colors (`#003f87` NTIC primary or theme accent) with crisp typography (`font-weight: 600`), subtle elevation (`0 1px 2px rgba(0,0,0,0.05)`), and clean tactile feedback on hover/active.
+     - **Calm, Trustworthy Callouts**: Informational callouts and security notices must look like top-tier enterprise software (e.g. Stripe, Linear, GitHub), with subtle slate backgrounds and calm iconography.
+
+

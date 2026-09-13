@@ -1,0 +1,75 @@
+<div style="display:flex;flex-direction:column;gap:16px;">
+  <!-- Corporate Partner Accreditation -->
+  <div class="card">
+    <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">verified</span>
+        Partner Accreditation
+      </h3>
+      <span class="badge secondary" style="font-size:10px;">{{ currentUser?.status || 'Active' }}</span>
+    </div>
+    <div class="card-body" style="padding:14px;display:flex;flex-direction:column;gap:12px;">
+      <div style="font-size:12px;color:var(--on-surface-variant);line-height:1.45;">
+        Verified corporate partner credentials for the National Technology &amp; Innovation Championship.
+      </div>
+
+      <div style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:11px;color:var(--on-surface-variant);margin-bottom:2px;font-weight:600;">Access Ticket</div>
+        <code style="font-size:13px;font-weight:700;color:var(--primary);font-family:'JetBrains Mono',monospace;">{{ currentUser?.ticket || 'NTIC-SPO-ACTIVE' }}</code>
+      </div>
+
+      <a routerLink="/sponsors" class="btn btn-secondary btn-sm" style="width:100%;justify-content:center;display:flex;align-items:center;gap:6px;font-size:12px;padding:8px 12px;">
+        <span class="material-symbols-outlined" style="font-size:16px;">badge</span>
+        Open VIP Portal
+      </a>
+    </div>
+  </div>
+
+  <!-- Secretariat Concierge -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">support_agent</span>
+        Secretariat Concierge
+      </h3>
+    </div>
+    <div class="card-body" style="padding:14px;display:flex;flex-direction:column;gap:10px;">
+      <p style="margin:0;font-size:12px;color:var(--on-surface-variant);line-height:1.45;">
+        Your dedicated institutional liaison for custom invoicing, WHT certificates, CSR reporting, and protocol seating:
+      </p>
+      <div style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;padding:10px;font-size:12px;">
+        <div style="font-weight:700;color:var(--on-surface);">Executive Partnerships Directorate</div>
+        <div style="color:var(--on-surface-variant);margin-top:2px;">Email: <a href="mailto:support@ntic.edu.gh" style="color:var(--primary);text-decoration:none;font-weight:600;">support&#64;ntic.edu.gh</a></div>
+        <div style="color:var(--on-surface-variant);margin-top:2px;">Ministry Liaison: Accra Secretariat</div>
+      </div>
+      <a href="mailto:support@ntic.edu.gh?subject=NTIC%20Corporate%20Sponsorship%20Inquiry" class="btn btn-ghost btn-sm" style="width:100%;justify-content:center;display:flex;align-items:center;gap:6px;font-size:12px;">
+        <span class="material-symbols-outlined" style="font-size:16px;">mail</span>
+        Contact Directorate
+      </a>
+    </div>
+  </div>
+
+  <!-- Corporate Actions -->
+  <div class="card">
+    <div class="card-header">
+      <h3 style="margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">tune</span>
+        Corporate Actions
+      </h3>
+    </div>
+    <div class="card-body" style="padding:14px;display:flex;flex-direction:column;gap:8px;">
+      <button class="btn btn-ghost btn-sm" (click)="onOpenPayment()" style="justify-content:flex-start;display:flex;align-items:center;gap:8px;width:100%;text-align:left;font-size:12.5px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">payments</span>
+        Record Settlement / MoMo
+      </button>
+      <a routerLink="/sponsors" class="btn btn-ghost btn-sm" style="justify-content:flex-start;display:flex;align-items:center;gap:8px;width:100%;text-align:left;font-size:12.5px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">handshake</span>
+        Executive VIP Portal
+      </a>
+      <a routerLink="/about" class="btn btn-ghost btn-sm" style="justify-content:flex-start;display:flex;align-items:center;gap:8px;width:100%;text-align:left;font-size:12.5px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">menu_book</span>
+        Championship Rulebook
+      </a>
+    </div>
+  </div>
+</div>

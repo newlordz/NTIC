@@ -341,6 +341,13 @@
               </button>
               <ng-container *ngIf="course.approvalStatus === 'approved'">
                 <button
+                  class="btn btn-xs btn-outline warning"
+                  (click)="openReviewInspectionForCourse(course); $event.stopPropagation()"
+                  title="Audit curriculum & send back for review with section comments"
+                >
+                  <span class="material-symbols-outlined">assignment_return</span> Return for Review
+                </button>
+                <button
                   class="btn btn-xs btn-subtle"
                   *ngIf="course.status !== 'archived'"
                   (click)="toggleCourseLifecycle(course, 'archived'); $event.stopPropagation()"
@@ -868,6 +875,13 @@
           <span class="material-symbols-outlined">check_circle</span> Approve &amp; Publish Course
         </button>
         <ng-container *ngIf="activeDetailCourse?.approvalStatus === 'approved'">
+          <button
+            class="btn btn-sm btn-outline warning"
+            (click)="openReviewInspectionForCourse(activeDetailCourse)"
+            title="Audit curriculum and send back for review with section comments"
+          >
+            <span class="material-symbols-outlined">assignment_return</span> Send Back for Review
+          </button>
           <button
             class="btn btn-sm btn-outline"
             *ngIf="activeDetailCourse?.status !== 'archived'"
@@ -2161,23 +2175,26 @@
   <div class="modal-backdrop" *ngIf="isRejectModalOpen" (click)="closeRejectModal()">
     <div class="modal-card" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>Reject & Send Feedback to Instructor</h3>
+        <h3>{{ activeRejectItem?.approvalStatus === 'approved' ? 'Send Back for Review & Revisions' : 'Reject & Send Feedback to Instructor' }}</h3>
         <button class="close-btn" (click)="closeRejectModal()">&times;</button>
       </div>
       <div class="modal-body" *ngIf="activeRejectItem">
         <div class="info-banner warning-banner">
           <div><strong>Item:</strong> {{ activeRejectItem.title }} ({{ activeRejectItem.typeLabel }})</div>
           <div><strong>Instructor:</strong> {{ activeRejectItem.submittedBy }}</div>
+          <div *ngIf="activeRejectItem.approvalStatus === 'approved'" class="text-xs text-muted mt-1">
+            Status: Currently <strong>Approved Live</strong>. Sending back will flag this course for instructor revision with your notes.
+          </div>
         </div>
 
         <div class="form-group mt-4">
-          <label>Reason for Rejection / Required Revisions *</label>
+          <label>{{ activeRejectItem.approvalStatus === 'approved' ? 'Required Revisions & Review Notes *' : 'Reason for Rejection / Required Revisions *' }}</label>
           <textarea [(ngModel)]="rejectionReasonInput" rows="4" placeholder="Explain what changes the instructor needs to make before this content can be approved..."></textarea>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" (click)="closeRejectModal()">Cancel</button>
-        <button class="btn btn-danger" (click)="submitRejection()">Confirm Rejection</button>
+        <button class="btn btn-danger" (click)="submitRejection()">{{ activeRejectItem?.approvalStatus === 'approved' ? 'Send Back for Review' : 'Confirm Rejection' }}</button>
       </div>
     </div>
   </div>

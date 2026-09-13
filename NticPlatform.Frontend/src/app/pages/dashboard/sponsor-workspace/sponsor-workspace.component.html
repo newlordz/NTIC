@@ -1,0 +1,160 @@
+<div style="display:flex;flex-direction:column;gap:20px;">
+  <!-- Corporate Representation & Profile Card -->
+  <div class="card">
+    <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">domain</span>
+        Corporate Representation &amp; Partnership Profile
+      </h3>
+      <a routerLink="/sponsors" class="btn btn-ghost btn-sm" style="font-size:11.5px;display:flex;align-items:center;gap:4px;">
+        <span class="material-symbols-outlined" style="font-size:15px;">open_in_new</span>
+        Open VIP Portal
+      </a>
+    </div>
+    <div class="card-body" style="padding:18px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px;">
+        <div style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:10px;padding:14px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--on-surface-variant);letter-spacing:0.05em;margin-bottom:6px;">Organization / Entity</div>
+          <div style="font-size:15px;font-weight:700;color:var(--on-surface);">{{ orgName }}</div>
+          <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">Lead Rep: {{ currentUser?.fullName || 'Designated Representative' }}</div>
+        </div>
+
+        <div style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:10px;padding:14px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--on-surface-variant);letter-spacing:0.05em;margin-bottom:6px;">Contact &amp; Credentials</div>
+          <div style="font-size:13px;font-weight:600;color:var(--on-surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ currentUser?.email || 'Not recorded' }}</div>
+          <div style="font-size:12px;color:var(--on-surface-variant);margin-top:2px;">{{ currentUser?.phone ? ('Tel: ' + currentUser.phone) : 'Phone: Not recorded' }}</div>
+        </div>
+
+        <div style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:10px;padding:14px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--on-surface-variant);letter-spacing:0.05em;margin-bottom:6px;">Tier &amp; Track Alignment</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <span class="badge secondary" style="font-size:11px;font-weight:700;">{{ tierName }}</span>
+          </div>
+          <div style="font-size:12px;color:var(--on-surface-variant);">Track: {{ trackScope }}</div>
+        </div>
+
+        <div style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:10px;padding:14px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--on-surface-variant);letter-spacing:0.05em;margin-bottom:6px;">Accreditation Ticket</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <code style="font-size:13px;font-weight:700;color:var(--primary);font-family:'JetBrains Mono',monospace;">{{ currentUser?.ticket || 'NTIC-SPO-ACTIVE' }}</code>
+            <button *ngIf="currentUser?.ticket" class="btn btn-ghost btn-sm" (click)="onCopy(currentUser.ticket, 'Ticket copied')" title="Copy ticket" style="padding:4px 8px;font-size:11px;">
+              <span class="material-symbols-outlined" style="font-size:14px;">content_copy</span>
+            </button>
+          </div>
+          <div style="font-size:11px;color:var(--on-surface-variant);margin-top:4px;">Status: Verified Corporate Partner</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settlement Ledger & Contribution History Card -->
+  <div class="card">
+    <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">receipt_long</span>
+        Settlement Ledger &amp; Contribution History
+      </h3>
+      <button class="btn btn-primary btn-sm" (click)="onOpenPayment()" style="font-size:11.5px;display:flex;align-items:center;gap:4px;">
+        <span class="material-symbols-outlined" style="font-size:15px;">add_card</span>
+        Settle Contribution
+      </button>
+    </div>
+    <div class="card-body" style="padding:18px;">
+      <!-- Table of recorded settlements -->
+      <div *ngIf="mySponsorPayments.length > 0" class="table-responsive" style="overflow-x:auto;">
+        <table class="data-table" style="width:100%;">
+          <thead>
+            <tr>
+              <th>Reference / TXN</th>
+              <th>Amount (GH₵)</th>
+              <th>Method</th>
+              <th>Settled</th>
+              <th>Status</th>
+              <th style="text-align:right;">Proof</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of mySponsorPayments">
+              <td style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:12px;">{{ p.reference || 'REF-N/A' }}</td>
+              <td style="font-weight:700;color:var(--on-surface);">GH₵ {{ (p.amount | number) || p.amount }}</td>
+              <td style="font-size:12px;color:var(--on-surface-variant);">{{ p.method || 'Bank / MoMo' }}</td>
+              <td style="font-size:12px;color:var(--on-surface-variant);">{{ p.created_at ? (p.created_at | timeAgo) : 'Recently' }}</td>
+              <td>
+                <span *ngIf="p.status === 'verified'" class="badge secondary" style="font-size:10.5px;">Verified</span>
+                <span *ngIf="p.status === 'pending_verification'" class="badge warning" style="font-size:10.5px;">Awaiting Verification</span>
+                <span *ngIf="p.status === 'rejected'" class="badge error" style="font-size:10.5px;">Rejected</span>
+                <span *ngIf="!['verified','pending_verification','rejected'].includes(p.status)" class="badge" style="font-size:10.5px;">{{ p.status }}</span>
+              </td>
+              <td style="text-align:right;">
+                <a *ngIf="p.proof_file_url" [href]="p.proof_file_url" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="font-size:11px;padding:3px 8px;">
+                  <span class="material-symbols-outlined" style="font-size:14px;">attachment</span> Proof
+                </a>
+                <span *ngIf="!p.proof_file_url" style="font-size:11px;color:var(--on-surface-variant);">N/A</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty state when no payments yet -->
+      <div *ngIf="mySponsorPayments.length === 0" style="text-align:center;padding:36px 20px;background:var(--surface-container-lowest);border:1px dashed var(--outline-variant);border-radius:10px;">
+        <span class="material-symbols-outlined" style="font-size:40px;color:var(--outline);opacity:0.7;margin-bottom:8px;">account_balance</span>
+        <h4 style="margin:0 0 6px;font-size:14px;font-weight:700;color:var(--on-surface);">No Financial Settlements Recorded Yet</h4>
+        <p style="margin:0 auto 16px;max-width:480px;font-size:12.5px;color:var(--on-surface-variant);line-height:1.5;">
+          All corporate contributions, cheque deposits, mobile money transfers, and wire receipts will appear in this ledger once recorded and verified.
+        </p>
+        <button class="btn btn-primary btn-sm" (click)="onOpenPayment()" style="display:inline-flex;align-items:center;gap:6px;">
+          <span class="material-symbols-outlined" style="font-size:16px;">payments</span>
+          Record Settlement or Deposit
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CSR Impact & Educational Scope Card -->
+  <div class="card">
+    <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+      <h3 style="margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;">
+        <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">volunteer_activism</span>
+        Corporate Social Responsibility (CSR) &amp; Educational Impact
+      </h3>
+      <span class="badge secondary" style="font-size:11px;">Verified STEM Initiative</span>
+    </div>
+    <div class="card-body" style="padding:18px;">
+      <p style="margin:0 0 16px;font-size:13px;color:var(--on-surface-variant);line-height:1.5;">
+        Your partnership powers high-school innovation across Ghana, funding student engineering toolkits, robotics hardware, and regional tournament transport.
+      </p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:14px;">
+        <div style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;padding:12px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">memory</span>
+            <strong style="font-size:12.5px;color:var(--on-surface);">Robotics &amp; STEM Kits</strong>
+          </div>
+          <p style="margin:0;font-size:11.5px;color:var(--on-surface-variant);line-height:1.4;">
+            Equipping student innovators with microcontrollers, sensor arrays, and fabrication supplies.
+          </p>
+        </div>
+
+        <div style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;padding:12px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">directions_bus</span>
+            <strong style="font-size:12.5px;color:var(--on-surface);">Regional Mobility Subsidy</strong>
+          </div>
+          <p style="margin:0;font-size:11.5px;color:var(--on-surface-variant);line-height:1.4;">
+            Ensuring qualified finalists from all 16 regions can travel safely to the National Grand Finale in Accra.
+          </p>
+        </div>
+
+        <div style="background:var(--surface-container-lowest);border:1px solid var(--outline-variant);border-radius:8px;padding:12px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span class="material-symbols-outlined" style="font-size:18px;color:var(--primary);">workspace_premium</span>
+            <strong style="font-size:12.5px;color:var(--on-surface);">Institutional Recognition</strong>
+          </div>
+          <p style="margin:0;font-size:11.5px;color:var(--on-surface-variant);line-height:1.4;">
+            Official CSR compliance acknowledgement recognized under the Ministry of Education STEM framework.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

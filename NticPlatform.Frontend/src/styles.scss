@@ -5036,3 +5036,14 @@ app-toast-container {
   z-index: 2147483647 !important;
   position: fixed !important;
 }
+
+.spinning {
+  display: inline-block;
+  animation: global-spin 0.85s linear infinite;
+}
+
+@keyframes global-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+

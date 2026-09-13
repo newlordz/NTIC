@@ -4467,19 +4467,20 @@ class TestInstructorAuthoring:
         assert resp.status_code == 200
         assert resp.json()["approval_status"] == "approved"
 
-    def test_cannot_reject_approved_course(self, client, admin_token):
+    def test_can_return_approved_course_for_review(self, client, admin_token):
         token, _e = self._instructor(client, admin_token)
         course_id = self._course(client, token)
         # First approve the course
         resp = client.patch(f"/api/lms/courses/{course_id}/moderate",
                             headers=self._auth(admin_token), json={"approve": True})
         assert resp.status_code == 200
-        # Subsequent rejection attempt must fail
+        assert resp.json()["approval_status"] == "approved"
+        # Subsequent revision/return request must succeed
         reject_resp = client.patch(f"/api/lms/courses/{course_id}/moderate",
                                    headers=self._auth(admin_token),
-                                   json={"approve": False, "reason": "No longer needed"})
-        assert reject_resp.status_code == 400
-        assert "Approved courses cannot be rejected" in reject_resp.json()["detail"]
+                                   json={"approve": False, "reason": "Revisions requested: update Module 1 syllabus."})
+        assert reject_resp.status_code == 200
+        assert reject_resp.json()["approval_status"] == "rejected"
 
     def test_course_lifecycle_unpublish_and_reactivate(self, client, admin_token):
         token, _e = self._instructor(client, admin_token)
@@ -5109,6 +5110,90 @@ class TestSponsorshipsAndPayments:
         token, _e = self._sponsor(client, admin_token)
         assert client.get("/api/sponsorships/payments/pending",
                           headers=self._auth(token)).status_code == 403
+
+    def test_admin_can_list_all_payments_and_record_direct_settlement(self, client, admin_token):
+        token, _e = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token, "12000.00")
+        client.patch(f"/api/sponsorships/{sponsorship_id}/status",
+                     headers=self._auth(admin_token), json={"status": "active"})
+
+        # 1. Admin directly records a payment
+        resp = client.post(f"/api/sponsorships/{sponsorship_id}/payments",
+                           headers=self._auth(admin_token),
+                           json={"amount": "6000.00", "reference": "DIR-CHQ-991", "notes": "Direct bank deposit"})
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["status"] == "verified"
+
+        # 2. Non-admin cannot list all payments
+        assert client.get("/api/sponsorships/payments", headers=self._auth(token)).status_code == 403
+
+        # 3. Admin lists all payments
+        all_payments = client.get("/api/sponsorships/payments", headers=self._auth(admin_token)).json()
+        assert any(p["reference"] == "DIR-CHQ-991" for p in all_payments)
+
+        # 4. Status filter works
+        verified_only = client.get("/api/sponsorships/payments?status=verified", headers=self._auth(admin_token)).json()
+        assert all(p["status"] == "verified" for p in verified_only)
+
+    def test_email_csr_receipt_and_verification_notifications(self, client, admin_token, monkeypatch):
+        from app import main as main_mod
+
+        emails_sent = []
+        monkeypatch.setattr(
+            main_mod,
+            "_send_brevo_email",
+            lambda to_email, to_name, subject, html_content: (
+                emails_sent.append({"to": to_email, "subject": subject, "html": html_content}),
+                True
+            )[1]
+        )
+
+        token, sponsor_email = self._sponsor(client, admin_token)
+        sponsorship_id = self._pledge(client, token, "15000.00")
+        self._activate(client, admin_token, sponsorship_id)
+
+        # 1. Sponsor submits payment claim
+        pay_resp = client.post(
+            f"/api/sponsorships/{sponsorship_id}/payments",
+            headers=self._auth(token),
+            json={"amount": "15000.00", "method": "Bank Wire", "reference": "WIRE-TAX-001"}
+        )
+        assert pay_resp.status_code == 201
+        payment_id = pay_resp.json()["id"]
+
+        # 2. Re-sending receipt for unverified payment returns 400
+        unv_resp = client.post(
+            f"/api/sponsorships/payments/{payment_id}/email-receipt",
+            headers=self._auth(admin_token),
+            json={}
+        )
+        assert unv_resp.status_code == 400
+
+        # 3. Admin verifies payment -> triggers automatic Brevo CSR confirmation email
+        emails_sent.clear()
+        ver_resp = client.patch(
+            f"/api/sponsorships/payments/{payment_id}/verify",
+            headers=self._auth(admin_token),
+            json={"verified": True}
+        )
+        assert ver_resp.status_code == 200
+        assert len(emails_sent) == 1
+        assert emails_sent[0]["to"] == sponsor_email
+        assert "Official CSR Tax Receipt" in emails_sent[0]["subject"]
+        assert "WIRE-TAX-001" in emails_sent[0]["html"]
+
+        # 4. Admin re-sends receipt to custom accounting email address
+        emails_sent.clear()
+        custom_resp = client.post(
+            f"/api/sponsorships/payments/{payment_id}/email-receipt",
+            headers=self._auth(admin_token),
+            json={"recipient_email": "cfo@corporatepartner.com"}
+        )
+        assert custom_resp.status_code == 200
+        assert custom_resp.json()["delivered"] is True
+        assert len(emails_sent) == 1
+        assert emails_sent[0]["to"] == "cfo@corporatepartner.com"
 
     # ── ecosystem aggregates ────────────────────────────────────────────
 

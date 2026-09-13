@@ -17,7 +17,7 @@ import {
 import { EmailService } from '../../services/email.service';
 import { FileStorageService } from '../../services/file-storage.service';
 import { DialogService } from '../../services/dialog.service';
-import { ApiService, MyEnrolledCourse, MySubmission, SponsorshipSummary, Sponsorship, PersonnelDetail, AuthoredCourse, GradingQueueItem } from '../../services/api.service';
+import { ApiService, MyEnrolledCourse, MySubmission, SponsorshipSummary, Sponsorship, SponsorPayment, PersonnelDetail, AuthoredCourse, GradingQueueItem } from '../../services/api.service';
 import { CurrentUserService } from '../../services/current-user.service';
 import type { PersonnelRoster, PersonnelPerson, PersonnelSummary } from '../../services/api.service';
 import { TimeAgoPipe } from '../../services/time-ago.pipe';
@@ -40,6 +40,9 @@ import { UserTicketModalComponent } from './user-ticket-modal/user-ticket-modal.
 import { TeamDetailViewComponent } from './team-detail-view/team-detail-view.component';
 import { AuditInspectorModalComponent } from './audit-inspector-modal/audit-inspector-modal.component';
 import { MentorWorkspaceComponent } from './mentor-workspace/mentor-workspace.component';
+import { SponsorWorkspaceComponent } from './sponsor-workspace/sponsor-workspace.component';
+import { SponsorSidebarComponent } from './sponsor-workspace/sponsor-sidebar.component';
+import { TreasuryPortalComponent } from './treasury-portal/treasury-portal.component';
 
 export interface SponsorInfographic {
   partnerCount: number;
@@ -77,7 +80,8 @@ type PersonnelRole = 'governance' | 'government' | 'mentor' | 'sponsor' | 'judge
     RecordInspectorModalComponent, MemberProfileModalComponent,
     InstitutionPortalModalComponent, CredentialsModalComponent, RoleUsersModalComponent,
     EnlistSquadModalComponent, UserTicketModalComponent, TeamDetailViewComponent,
-    AuditInspectorModalComponent, MentorWorkspaceComponent
+    AuditInspectorModalComponent, MentorWorkspaceComponent,
+    SponsorWorkspaceComponent, SponsorSidebarComponent, TreasuryPortalComponent
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
@@ -601,11 +605,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // ─── SUPER ADMIN STATE ─────────────────────────
   adminTab: 'overview' | 'control' | 'dashboard' | 'register' | 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'lms' | 'database' = 'dashboard';
-  adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'audit' | 'users_full' | 'personnel' | 'mentors' | '' = '';
+  adminSubTab: 'tickets' | 'approvals' | 'content' | 'users' | 'admins' | 'audit' | 'users_full' | 'personnel' | 'mentors' | 'treasury' | '' = '';
 
   goToTab(tab: string): void {
     this.adminTab = tab as any;
     this.adminSubTab = '';
+    this.expandedSection = false;
     this.persistNavState();
   }
 
@@ -617,6 +622,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     if (sub === 'personnel') {
       this.loadPersonnel();
+    }
+    if (sub === 'treasury') {
+      this.loadTreasuryData();
     }
     if (sub === 'approvals') {
       this.loadApprovalsFromBackend();
@@ -1499,7 +1507,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         { key: 'leaderboard.tabRobotics', label: 'Tab — Robotics' },
         { key: 'leaderboard.tabAi', label: 'Tab — AI' },
         { key: 'leaderboard.tabCyber', label: 'Tab — Cyber' },
-        { key: 'leaderboard.status', label: 'Status Line' },
         { key: 'leaderboard.viewFull', label: 'View Full Button' },
       ],
     },
@@ -2943,6 +2950,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   sponsorSummary: SponsorshipSummary | null = null;
   /** Individual commitments, used for the per-tier drilldown. Admin-only endpoint. */
   allSponsorships: Sponsorship[] = [];
+  /** Authenticated sponsor's own commitments and payments */
+  mySponsorships: Sponsorship[] = [];
+  mySponsorPayments: SponsorPayment[] = [];
+  isLoadingMySponsorData = false;
   isLoadingSponsorSummary = false;
   sponsorSummaryError = '';
 
@@ -2962,6 +2973,34 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.sponsorSummaryError = 'Could not load sponsorship figures.';
       },
     });
+
+    if (this.activeRoleId === 'sponsor') {
+      this.isLoadingMySponsorData = true;
+      this.apiService.getMySponsorships().subscribe({
+        next: rows => {
+          this.mySponsorships = rows || [];
+          this.loadDashboardData();
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.mySponsorships = [];
+          this.cdr.markForCheck();
+        }
+      });
+      this.apiService.getMySponsorPayments().subscribe({
+        next: payments => {
+          this.mySponsorPayments = payments || [];
+          this.isLoadingMySponsorData = false;
+          this.loadDashboardData();
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.mySponsorPayments = [];
+          this.isLoadingMySponsorData = false;
+          this.cdr.markForCheck();
+        }
+      });
+    }
 
     // The drilldown list. Only administrators may read this.
     const isAdmin = ['admin', 'super_admin'].includes((this.activeRoleId || '').toLowerCase());
@@ -3104,6 +3143,275 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   trackByPartnerName(index: number, partner: any): string {
     return partner ? partner.name : index.toString();
+  }
+
+  // ─── ADMINISTRATION TREASURY & SPONSOR PAYMENTS ───
+  treasuryPayments: SponsorPayment[] = [];
+  isLoadingTreasury = false;
+  treasuryFilter: 'all' | 'pending_verification' | 'verified' | 'rejected' = 'all';
+  treasurySearch = '';
+  isVerifyingTreasuryPayment: { [id: string]: boolean } = {};
+
+  // Direct settlement recording modal
+  isDirectSettlementModalOpen = false;
+  isSubmittingDirectSettlement = false;
+  directSettlementForm = {
+    sponsorshipId: '',
+    amount: '',
+    method: 'Bank Wire',
+    reference: '',
+    notes: '',
+    proofUrl: '',
+    date: new Date().toISOString().substring(0, 10)
+  };
+  isUploadingDirectProof = false;
+  directProofFileName = '';
+
+  loadTreasuryData(): void {
+    this.isLoadingTreasury = true;
+    this.loadSponsorSummary();
+    this.apiService.getAllSponsorPayments('all').subscribe({
+      next: payments => {
+        this.treasuryPayments = payments || [];
+        this.isLoadingTreasury = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.treasuryPayments = [];
+        this.isLoadingTreasury = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  get filteredTreasuryPayments(): SponsorPayment[] {
+    let list = this.treasuryPayments || [];
+    if (this.treasuryFilter !== 'all') {
+      list = list.filter(p => p.status === this.treasuryFilter);
+    }
+    if (this.treasurySearch && this.treasurySearch.trim()) {
+      const q = this.treasurySearch.trim().toLowerCase();
+      list = list.filter(p =>
+        (p.reference && p.reference.toLowerCase().includes(q)) ||
+        ((p as any).organization && (p as any).organization.toLowerCase().includes(q)) ||
+        ((p as any).sponsor_email && (p as any).sponsor_email.toLowerCase().includes(q)) ||
+        (p.notes && p.notes.toLowerCase().includes(q)) ||
+        (p.method && p.method.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }
+
+  get treasuryPendingCount(): number {
+    return (this.treasuryPayments || []).filter(p => p.status === 'pending_verification').length;
+  }
+
+  get treasuryVerifiedCount(): number {
+    return (this.treasuryPayments || []).filter(p => p.status === 'verified').length;
+  }
+
+  get treasuryRejectedCount(): number {
+    return (this.treasuryPayments || []).filter(p => p.status === 'rejected').length;
+  }
+
+  verifyTreasuryPayment(payment: SponsorPayment, verified: boolean): void {
+    if (!payment?.id) return;
+    const paymentId = payment.id;
+    let reason = '';
+    if (!verified) {
+      const promptReason = prompt('Enter a reason for rejecting this payment claim:');
+      if (!promptReason || !promptReason.trim()) {
+        this.dialogService.toast('A reason is required when rejecting a payment claim.', 'warning');
+        return;
+      }
+      reason = promptReason.trim();
+    }
+
+    this.isVerifyingTreasuryPayment[paymentId] = true;
+    this.apiService.verifySponsorPayment(paymentId, verified, reason).subscribe({
+      next: () => {
+        this.isVerifyingTreasuryPayment[paymentId] = false;
+        this.dialogService.toast(
+          verified ? `Payment ${payment.reference} confirmed and receipt generated.` : `Payment ${payment.reference} rejected.`,
+          'success'
+        );
+        this.loadTreasuryData();
+        this.cdr.markForCheck();
+      },
+      error: (err: any) => {
+        this.isVerifyingTreasuryPayment[paymentId] = false;
+        const msg = err?.error?.detail || 'Could not verify payment. Please try again.';
+        this.dialogService.toast(msg, 'error');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  openDirectSettlementModal(): void {
+    this.directSettlementForm = {
+      sponsorshipId: this.allSponsorships[0]?.id || '',
+      amount: '',
+      reference: '',
+      method: 'Bank Wire',
+      notes: '',
+      proofUrl: '',
+      date: new Date().toISOString().substring(0, 10)
+    };
+    this.directProofFileName = '';
+    this.isDirectSettlementModalOpen = true;
+  }
+
+  closeDirectSettlementModal(): void {
+    this.isDirectSettlementModalOpen = false;
+  }
+
+  onDirectProofFileSelected(event: any): void {
+    const file = event?.target?.files?.[0];
+    if (!file) return;
+    this.isUploadingDirectProof = true;
+    this.directProofFileName = file.name;
+    this.apiService.uploadFileBlob(file).subscribe({
+      next: res => {
+        this.isUploadingDirectProof = false;
+        this.directSettlementForm.proofUrl = res.url || res.file_url || (res.file_id ? `/api/files/${res.file_id}` : '');
+        this.dialogService.toast('Payment slip attached successfully.', 'success');
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.isUploadingDirectProof = false;
+        this.dialogService.toast('Could not upload bank slip. Try again.', 'error');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  submitDirectSettlement(): void {
+    if (!this.directSettlementForm.sponsorshipId) {
+      this.dialogService.toast('Please select an accredited sponsor organization.', 'warning');
+      return;
+    }
+    const amount = (this.directSettlementForm.amount || '').trim().replace(/[^0-9.]/g, '');
+    if (!amount || Number(amount) <= 0) {
+      this.dialogService.toast('Please enter a valid remittance amount.', 'warning');
+      return;
+    }
+    const ref = (this.directSettlementForm.reference || '').trim();
+    if (!ref) {
+      this.dialogService.toast('Please enter a bank deposit reference or cheque number.', 'warning');
+      return;
+    }
+
+    this.isSubmittingDirectSettlement = true;
+    this.apiService.recordSponsorPayment(this.directSettlementForm.sponsorshipId, {
+      amount,
+      method: this.directSettlementForm.method,
+      reference: ref,
+      notes: this.directSettlementForm.notes.trim() || undefined,
+      proof_file_url: this.directSettlementForm.proofUrl || undefined
+    }).subscribe({
+      next: () => {
+        this.isSubmittingDirectSettlement = false;
+        this.dialogService.toast(`Remittance of GH₵ ${amount} recorded and verified.`, 'success');
+        this.closeDirectSettlementModal();
+        this.loadTreasuryData();
+        this.cdr.markForCheck();
+      },
+      error: (err: any) => {
+        this.isSubmittingDirectSettlement = false;
+        const msg = err?.status === 409 ? 'A payment with that reference already exists.' : (err?.error?.detail || 'Failed to record remittance.');
+        this.dialogService.toast(msg, 'error');
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  printPaymentTaxReceipt(payment: SponsorPayment): void {
+    if (!payment) return;
+    const org = (payment as any).organization || 'Corporate Partner';
+    const amount = payment.amount;
+    const ref = payment.reference;
+    const method = payment.method || 'Bank Wire';
+    const date = payment.verified_at || payment.created_at || new Date().toISOString();
+    const verifiedBy = (payment as any).verified_by_name || 'NTIC Treasury Secretariat';
+    const printDate = new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const win = window.open('', '_blank', 'width=850,height=750');
+    if (!win) {
+      this.dialogService.toast('Please allow popups to print official CSR tax receipts.', 'warning');
+      return;
+    }
+
+    win.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>CSR Tax Receipt -- ${ref} -- ${org}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600&display=swap');
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: 'Inter', -apple-system, sans-serif; background: #f8fafc; color: #0f172a; padding: 40px 20px; display: flex; justify-content: center; }
+          .receipt-card { width: 100%; max-width: 760px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 40px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 24px; border-bottom: 2px solid #003f87; margin-bottom: 24px; }
+          .brand-title { font-size: 18px; font-weight: 800; color: #003f87; }
+          .brand-sub { font-size: 11.5px; color: #64748b; margin-top: 2px; }
+          .receipt-badge { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; }
+          .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+          .grid-cell { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; }
+          .cell-lbl { font-size: 10.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+          .cell-val { font-size: 14px; font-weight: 700; color: #0f172a; }
+          .amount-banner { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+          .amount-val { font-size: 24px; font-weight: 800; color: #15803d; }
+          .footer { font-size: 11.5px; color: #64748b; line-height: 1.5; border-top: 1px solid #e2e8f0; padding-top: 20px; display: flex; justify-content: space-between; align-items: center; }
+          @media print { body { background: #fff; padding: 0; } .receipt-card { border: 1px solid #000; box-shadow: none; max-width: 100%; border-radius: 0; } .btn-print { display: none !important; } }
+        </style>
+      </head>
+      <body>
+        <div class="receipt-card">
+          <div class="header">
+            <div>
+              <div style="font-size:10.5px;font-weight:700;color:#003f87;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;">Republic of Ghana &middot; Ministry of Education STEM Initiative</div>
+              <div class="brand-title">National Technology &amp; Innovation Championship</div>
+              <div class="brand-sub">Official Corporate CSR Tax Remittance Receipt</div>
+            </div>
+            <div class="receipt-badge">Verified Settlement</div>
+          </div>
+          <div class="amount-banner">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.5px;">Reconciled Contribution Amount</div>
+              <div style="font-size:12px;color:#15803d;">Exempt from Corporate Income Tax under STEM CSR Accreditation</div>
+            </div>
+            <div class="amount-val">${payment.amount}</div>
+          </div>
+          <div class="grid">
+            <div class="grid-cell">
+              <div class="cell-lbl">Received From (Sponsor Organization)</div>
+              <div class="cell-val">${org}</div>
+            </div>
+            <div class="grid-cell">
+              <div class="cell-lbl">Settlement Reference #</div>
+              <div class="cell-val" style="font-family:'JetBrains Mono',monospace;">${ref}</div>
+            </div>
+            <div class="grid-cell">
+              <div class="cell-lbl">Payment Remittance Method</div>
+              <div class="cell-val">${method}</div>
+            </div>
+            <div class="grid-cell">
+              <div class="cell-lbl">Settlement Reconciliation Date</div>
+              <div class="cell-val">${printDate}</div>
+            </div>
+          </div>
+          <div class="footer">
+            <div>
+              This official receipt confirms clearance into the NTIC Championship Foundation fund account at Ecobank Ghana PLC.<br>
+              Reconciled by: <strong>${verifiedBy}</strong>
+            </div>
+            <button class="btn-print" onclick="window.print()" style="background:#003f87;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:600;font-size:12px;cursor:pointer;">Print Receipt</button>
+          </div>
+        </div>
+      </body>
+      </html>
+    `);
+    win.document.close();
   }
 
   get recentScores(): any[] {
@@ -3495,6 +3803,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (this.activeRoleId === 'student') {
       this.loadMyTeams();
     }
+    if (this.activeRoleId === 'sponsor') {
+      this.loadSponsorSummary();
+    }
     this.loadDashboardData();
     // The greeting and role panels need the server profile. It may not have
     // arrived yet on a cold load, so re-render once it does rather than leaving
@@ -3545,7 +3856,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         hasExplicitTab = true;
         this.adminTab = params['tab'] as any;
         if (this.adminTab === 'control') {
-          this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins','audit','users_full','personnel','mentors'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
+          this.adminSubTab = (params['subtab'] && ['tickets','approvals','content','users','admins','audit','users_full','personnel','mentors','treasury'].includes(params['subtab'])) ? (params['subtab'] as any) : '';
         }
         if (params['subtab'] === 'personnel') {
           this.loadPersonnel();
@@ -3836,16 +4147,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.dashboardTitle = activeUser ? `${(activeUser.organization && activeUser.organization !== '_pending_profile') ? activeUser.organization : activeUser.fullName} Sponsor Dashboard` : 'Sponsor Dashboard';
         this.dashboardSubtitle = `Welcome back, ${userName}. Corporate Sponsorship & CSR Impact Panel.`;
         const sponsorUser = activeUser;
-        const sponsorTotal = sponsorUser?.total || (sponsorUser?.payments && sponsorUser.payments.length > 0 ? `GH₵ ${sponsorUser.payments.reduce((a: number, p: any) => a + (parseInt(p.amount.replace(/[^0-9]/g, ''), 10) || 0), 0).toLocaleString()}` : 'GH₵ 0');
-        const paymentCount = sponsorUser?.payments?.length || 0;
-        const tierName = sponsorUser?.tier || sponsorUser?.package || 'Partner';
+        const verifiedPaymentsTotal = (this.mySponsorPayments || [])
+          .filter(p => p.status === 'verified')
+          .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+        const sponsorTotal = verifiedPaymentsTotal > 0
+          ? `GH₵ ${verifiedPaymentsTotal.toLocaleString()}`
+          : (sponsorUser?.total || (sponsorUser?.payments && sponsorUser.payments.length > 0 ? `GH₵ ${sponsorUser.payments.reduce((a: number, p: any) => a + (parseInt(p.amount.replace(/[^0-9]/g, ''), 10) || 0), 0).toLocaleString()}` : 'GH₵ 0'));
+        const paymentCount = (this.mySponsorPayments && this.mySponsorPayments.length > 0)
+          ? this.mySponsorPayments.length
+          : (sponsorUser?.payments?.length || 0);
+        const tierName = (this.mySponsorships && this.mySponsorships[0]?.tier) || sponsorUser?.tier || sponsorUser?.package || 'Partner';
         const trackScope = sponsorUser?.track || 'All Tracks';
 
         this.stats = [
           { label: 'Total Contribution', value: String(sponsorTotal), icon: 'payments', meta: `${tierName}`, color: 'primary' },
-          { label: 'Payments Settled', value: String(paymentCount), icon: 'receipt_long', meta: paymentCount > 0 ? 'Verified transactions' : 'No payments yet', color: 'secondary' },
+          { label: 'Payments Settled', value: String(paymentCount), icon: 'receipt_long', meta: paymentCount > 0 ? `${paymentCount} recorded settlement${paymentCount > 1 ? 's' : ''}` : 'No payments yet', color: 'secondary' },
           { label: 'Supported Track', value: String(trackScope), icon: 'category', meta: 'NTI Championship', color: 'tertiary' },
-          { label: 'Account Status', value: sponsorUser?.status || 'Active', icon: 'verified', meta: 'Verified Partner', color: 'error' }
+          { label: 'Account Status', value: sponsorUser?.status || 'Active', icon: 'verified', meta: 'Verified Partner', color: 'secondary' }
         ];
         break;
 

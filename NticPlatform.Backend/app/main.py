@@ -15,7 +15,7 @@ if not hasattr(datetime, "UTC"):
 import logging
 import platform
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 from html import escape as html_escape
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s %(message)s")
@@ -4159,12 +4159,6 @@ try:
                     status_code=403,
                     detail="You cannot review your own content. Ask another reviewer.",
                 )
-            if not payload.approve and row[2] == "approved":
-                conn.rollback(); cur.close()
-                raise HTTPException(
-                    status_code=400,
-                    detail="Approved courses cannot be rejected.",
-                )
 
             new_status = "approved" if payload.approve else "rejected"
             cur.execute(
@@ -4454,7 +4448,9 @@ try:
         'pending_verification' and only an administrator can verify it. The previous
         UI set status 'Confirmed' on submit.
         """
-        _require_sponsor(actor)
+        is_admin = actor.get("role") in ("admin", "super_admin")
+        if not is_admin:
+            _require_sponsor(actor)
         conn = _get_db()
         try:
             cur = conn.cursor()
@@ -4465,7 +4461,7 @@ try:
             if not row:
                 conn.rollback(); cur.close()
                 raise HTTPException(status_code=404, detail="Sponsorship not found")
-            if row[0] != actor["id"]:
+            if not is_admin and row[0] != actor["id"]:
                 conn.rollback(); cur.close()
                 raise HTTPException(
                     status_code=403,
@@ -4485,21 +4481,36 @@ try:
                 )
 
             payment_id = "pay-" + str(uuid.uuid4())[:8]
+            target_sponsor_id = row[0]
+            status_val = "verified" if is_admin else "pending_verification"
+            verified_by = actor["id"] if is_admin else None
+            verified_by_name = (actor.get("full_name") or actor.get("email") or "") if is_admin else ""
+            verified_at = datetime.datetime.now(datetime.UTC) if is_admin else None
+
             cur.execute(
                 "INSERT INTO sponsorship_payments (id, sponsorship_id, sponsor_id, amount, "
-                "currency, method, reference, notes, status, proof_file_url) "
-                "VALUES (%s,%s,%s,%s,'GHS',%s,%s,%s,'pending_verification',%s)",
-                (payment_id, sponsorship_id, actor["id"], payload.amount,
+                "currency, method, reference, notes, status, verified_by, verified_by_name, "
+                "verified_at, proof_file_url) "
+                "VALUES (%s,%s,%s,%s,'GHS',%s,%s,%s,%s,%s,%s,%s,%s)",
+                (payment_id, sponsorship_id, target_sponsor_id, payload.amount,
                  payload.method, payload.reference.strip(), payload.notes,
+                 status_val, verified_by, verified_by_name, verified_at,
                  payload.proof_file_url.strip() or None),
             )
+            if is_admin:
+                cur.execute(
+                    "INSERT INTO audit_logs (action, usr, time, type) VALUES (%s,%s,%s,%s)",
+                    (f"Admin recorded and verified payment {payment_id} ref {payload.reference.strip()} for GHS {_money(payload.amount)}",
+                     actor.get("email") or actor["id"],
+                     datetime.datetime.now(datetime.UTC).isoformat(), "system"),
+                )
             conn.commit()
             cur.close()
         finally:
             release_db_connection(conn)
         broadcast_async({"type": "data_changed", "collection": "sponsorship_payments"})
         return {
-            "id": payment_id, "status": "pending_verification",
+            "id": payment_id, "status": status_val,
             "amount": _money(payload.amount),
         }
 
@@ -4558,9 +4569,140 @@ try:
             release_db_connection(conn)
         return [_shape_payment(r) for r in rows]
 
+    @app.get("/api/sponsorships/payments")
+    def list_all_sponsor_payments(
+        status: str = "all",
+        _admin: dict = Depends(require_admin),
+    ):
+        """Complete financial ledger of all sponsor remittances for administrators.
+
+        Filterable by status: 'all', 'pending_verification', 'verified', 'rejected'.
+        """
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            query = _PAYMENT_SELECT
+            params: list[Any] = []
+            if status in ("pending_verification", "verified", "rejected"):
+                query += "WHERE p.status = %s "
+                params.append(status)
+            query += "ORDER BY p.created_at DESC"
+            cur.execute(query, tuple(params))
+            rows = cur.fetchall()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+        return [_shape_payment(r) for r in rows]
+
     class VerifyPaymentPayload(BaseModel):
         verified: bool
         reason: str = Field(default="", max_length=2000)
+
+    class EmailReceiptPayload(BaseModel):
+        recipient_email: Optional[str] = None
+
+    def _send_sponsor_payment_receipt_email(
+        to_email: str,
+        to_name: str,
+        org: str,
+        reference: str,
+        amount: str,
+        method: str,
+        verified: bool,
+        reason: str = "",
+        verified_by_name: str = "",
+    ) -> bool:
+        """Dispatches an authentic institutional Brevo email notification and CSR receipt confirmation."""
+        if not to_email:
+            return False
+
+        status_label = "Cleared &amp; Verified" if verified else "Verification Declined"
+        status_color = "#16a34a" if verified else "#dc2626"
+        header_badge = "Official CSR Tax Receipt" if verified else "Remittance Claim Notice"
+        subject = (
+            f"[NTIC Ghana] Official CSR Tax Receipt & Remittance Confirmation — Ref: {reference}"
+            if verified
+            else f"[NTIC Ghana] Remittance Claim Update — Ref: {reference}"
+        )
+
+        reason_block = ""
+        if not verified and reason:
+            reason_block = f"""
+            <div style="margin: 16px 0; padding: 12px 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; font-size: 13px; color: #991b1b;">
+              <strong>Reason Provided by Treasury:</strong> {reason}
+            </div>
+            """
+
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 30px 15px; color: #0f172a;">
+          <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);">
+            <tr>
+              <td style="padding: 24px 30px; background-color: #003f87; color: #ffffff;">
+                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; opacity: 0.9;">Ministry of Education STEM Initiative &middot; Republic of Ghana</div>
+                <h1 style="margin: 6px 0 0 0; font-size: 18px; font-weight: 800; letter-spacing: -0.2px;">National Technology &amp; Innovation Championship</h1>
+                <div style="font-size: 12px; margin-top: 4px; opacity: 0.85;">Treasury &amp; Corporate Partnerships Secretariat</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 30px;">
+                <div style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; background: {'#f0fdf4' if verified else '#fef2f2'}; color: {status_color}; border: 1px solid {'#bbf7d0' if verified else '#fecaca'}; margin-bottom: 16px;">
+                  {header_badge}
+                </div>
+                <p style="font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 20px 0;">
+                  Dear <strong>{to_name or org}</strong>,
+                </p>
+                <p style="font-size: 14px; line-height: 1.6; color: #334155; margin: 0 0 20px 0;">
+                  {'This is an official confirmation that your corporate sponsorship remittance has been verified by the NTIC Treasury Secretariat. Your payment has been credited to the STEM Innovation Fund, and your official CSR Tax Receipt is recorded below.' if verified else 'An administrative review was conducted on your submitted remittance claim. The treasury secretariat was unable to verify this transaction against bank records.'}
+                </p>
+
+                <table width="100%" cellpadding="8" cellspacing="0" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; margin-bottom: 20px;">
+                  <tr>
+                    <td style="color: #64748b; font-weight: 600; width: 40%; border-bottom: 1px solid #edf2f7;">Contributing Entity</td>
+                    <td style="color: #0f172a; font-weight: 700; border-bottom: 1px solid #edf2f7;">{org}</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #64748b; font-weight: 600; border-bottom: 1px solid #edf2f7;">Transaction Reference</td>
+                    <td style="color: #003f87; font-weight: 700; font-family: monospace; border-bottom: 1px solid #edf2f7;">{reference}</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #64748b; font-weight: 600; border-bottom: 1px solid #edf2f7;">Settlement Amount</td>
+                    <td style="color: #15803d; font-weight: 800; font-size: 15px; border-bottom: 1px solid #edf2f7;">GH₵ {amount}</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #64748b; font-weight: 600; border-bottom: 1px solid #edf2f7;">Payment Channel</td>
+                    <td style="color: #334155; border-bottom: 1px solid #edf2f7;">{method or 'Direct Bank Settlement'}</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #64748b; font-weight: 600;">Status</td>
+                    <td style="color: {status_color}; font-weight: 700;">{status_label}</td>
+                  </tr>
+                </table>
+
+                {reason_block}
+
+                <div style="font-size: 12px; color: #64748b; line-height: 1.5; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+                  This certified electronic document confirms educational grant funding under Ghana Revenue Authority (GRA) Corporate Philanthropy and Social Responsibility tax incentives.<br/>
+                  Certified by: <strong>{verified_by_name or 'NTIC National Treasury'}</strong>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 16px 30px; background-color: #f1f5f9; text-align: center; font-size: 11px; color: #64748b;">
+                National Technology &amp; Innovation Championship &middot; Accra, Ghana<br/>
+                Empowering Youth Innovation &middot; Science, Technology, Engineering &amp; Mathematics
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+        """
+        try:
+            return _send_brevo_email(to_email=to_email, to_name=to_name or org, subject=subject, html_content=html_body)
+        except Exception as exc:
+            logger.warning(f"Could not deliver sponsor payment notification email: {exc}")
+            return False
 
     @app.patch("/api/sponsorships/payments/{payment_id}/verify")
     def verify_payment(
@@ -4580,7 +4722,10 @@ try:
         try:
             cur = conn.cursor()
             cur.execute(
-                "SELECT amount, reference, sponsor_id FROM sponsorship_payments WHERE id = %s",
+                "SELECT p.amount, p.reference, p.sponsor_id, p.method, u.email, u.full_name, u.organization "
+                "FROM sponsorship_payments p "
+                "LEFT JOIN users u ON u.id = p.sponsor_id "
+                "WHERE p.id = %s",
                 (payment_id,),
             )
             row = cur.fetchone()
@@ -4589,11 +4734,12 @@ try:
                 raise HTTPException(status_code=404, detail="Payment not found")
 
             new_status = "verified" if payload.verified else "rejected"
+            verifier_name = actor.get("full_name") or actor.get("email") or ""
             cur.execute(
                 "UPDATE sponsorship_payments SET status=%s, verified_by=%s, "
                 "verified_by_name=%s, verified_at=CURRENT_TIMESTAMP, rejection_reason=%s "
                 "WHERE id=%s",
-                (new_status, actor["id"], actor.get("full_name") or actor.get("email") or "",
+                (new_status, actor["id"], verifier_name,
                  payload.reason if not payload.verified else None, payment_id),
             )
             # Audit in the same transaction: money state must not change unrecorded.
@@ -4608,8 +4754,68 @@ try:
             cur.close()
         finally:
             release_db_connection(conn)
+
+        # Dispatch authoritative Brevo email confirmation to the sponsor's corporate contact
+        sponsor_email = (row[4] or "").strip()
+        if sponsor_email:
+            _send_sponsor_payment_receipt_email(
+                to_email=sponsor_email,
+                to_name=row[5] or row[6] or "",
+                org=row[6] or row[5] or "Corporate Partner",
+                reference=row[1],
+                amount=_money(row[0]),
+                method=row[3] or "Bank Transfer",
+                verified=payload.verified,
+                reason=payload.reason if not payload.verified else "",
+                verified_by_name=verifier_name or "NTIC Treasury",
+            )
+
         broadcast_async({"type": "data_changed", "collection": "sponsorship_payments"})
         return {"id": payment_id, "status": new_status}
+
+    @app.post("/api/sponsorships/payments/{payment_id}/email-receipt")
+    def email_payment_receipt(
+        payment_id: str,
+        payload: EmailReceiptPayload = Body(default_factory=EmailReceiptPayload),
+        actor: dict = Depends(require_admin),
+    ):
+        """Sends or re-sends the official CSR tax receipt for a verified payment via Brevo."""
+        conn = _get_db()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT p.amount, p.reference, p.method, p.status, p.verified_by_name, "
+                "u.email, u.full_name, u.organization "
+                "FROM sponsorship_payments p "
+                "LEFT JOIN users u ON u.id = p.sponsor_id "
+                "WHERE p.id = %s",
+                (payment_id,),
+            )
+            row = cur.fetchone()
+            cur.close()
+        finally:
+            release_db_connection(conn)
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Payment not found")
+        if row[3] != "verified":
+            raise HTTPException(status_code=400, detail="Only verified payments have official CSR tax receipts.")
+
+        target_email = (payload.recipient_email or "").strip() or (row[5] or "").strip()
+        if not target_email:
+            raise HTTPException(status_code=422, detail="No destination email address found for this sponsor.")
+
+        delivered = _send_sponsor_payment_receipt_email(
+            to_email=target_email,
+            to_name=row[6] or row[7] or "",
+            org=row[7] or row[6] or "Corporate Partner",
+            reference=row[1],
+            amount=_money(row[0]),
+            method=row[2] or "Bank Transfer",
+            verified=True,
+            verified_by_name=row[4] or actor.get("full_name") or "NTIC Treasury",
+        )
+        return {"success": True, "delivered": delivered, "recipient": target_email, "reference": row[1]}
 
     # ── Ecosystem aggregates ──────────────────────────────────────────
 

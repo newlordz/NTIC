@@ -33,9 +33,17 @@
           <span class="material-symbols-outlined">verified</span> Approve &amp; Publish Course
         </button>
       </ng-container>
-      <span class="badge badge-success" *ngIf="isApproved" style="padding:6px 12px; font-size:13px; display:inline-flex; align-items:center; gap:6px;">
-        <span class="material-symbols-outlined" style="font-size:16px;">verified</span> Curriculum Approved &amp; Live
-      </span>
+      <ng-container *ngIf="isApproved">
+        <button type="button" class="btn btn-outline warning" (click)="openRejectModal()" [disabled]="isSaving" title="Return this approved course to instructor for revisions">
+          <span class="material-symbols-outlined">assignment_return</span> Send Back for Review
+        </button>
+        <button type="button" class="btn btn-outline" (click)="onSendFeedback()" [disabled]="isSaving" title="Send section comments to instructor">
+          <span class="material-symbols-outlined">send</span> Send Revision Notes
+        </button>
+        <span class="badge badge-success" style="padding:6px 12px; font-size:13px; display:inline-flex; align-items:center; gap:6px;">
+          <span class="material-symbols-outlined" style="font-size:16px;">verified</span> Approved Live
+        </span>
+      </ng-container>
     </div>
   </header>
 
@@ -53,15 +61,46 @@
               <p class="text-xs text-subtle">Authored by <strong>{{ course?.submittedBy || course?.submitted_by || 'Instructor' }}</strong></p>
             </div>
           </div>
-          <button type="button" class="btn-quote" (click)="quoteSection('Course Overview', stripHtml(course?.description), 'review-section-overview')" title="Quote this overview in review notes">
-            <span class="material-symbols-outlined">format_quote</span> Quote Section
-          </button>
+          <div class="header-quote-actions">
+            <button type="button" class="btn-quote" (click)="quoteSection('Course Overview', stripHtml(course?.description), 'review-section-overview')" title="Quote this overview in review notes">
+              <span class="material-symbols-outlined">format_quote</span> Quote
+            </button>
+            <button type="button" class="btn-quote" (click)="openInlineComment('Course Overview', 'review-section-overview')" title="Comment under Course Overview">
+              <span class="material-symbols-outlined">add_comment</span> Comment
+            </button>
+          </div>
         </div>
         <div class="review-card-body">
           <div class="ql-snow" *ngIf="course?.description">
             <div class="ql-editor p-0" [innerHTML]="course?.description"></div>
           </div>
           <p class="text-subtle italic text-sm" *ngIf="!course?.description">No syllabus description provided.</p>
+
+          <!-- Attached Review Comments on Overview -->
+          <div class="section-review-comments-box mt-3" *ngIf="getCommentsForSection('Course Overview', 'review-section-overview').length > 0">
+            <div *ngFor="let c of getCommentsForSection('Course Overview', 'review-section-overview')" class="section-review-comment-chip">
+              <span class="material-symbols-outlined text-warning" style="font-size:16px;">rate_review</span>
+              <div class="chip-text">
+                <span class="chip-author">Revision Comment:</span>
+                <p>{{ c.note }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Inline Comment Composer for Overview -->
+          <div class="inline-comment-composer mt-3" *ngIf="activeInlineSection === 'Course Overview'">
+            <div class="composer-header">
+              <span class="material-symbols-outlined text-primary" style="font-size:18px;">rate_review</span>
+              <strong>Requested Changes for Course Overview</strong>
+            </div>
+            <textarea [(ngModel)]="inlineCommentText" rows="2" class="form-control" placeholder="Specify what the instructor should change in the overview..."></textarea>
+            <div class="composer-actions mt-2">
+              <button type="button" class="btn btn-xs btn-subtle" (click)="cancelInlineComment()">Cancel</button>
+              <button type="button" class="btn btn-xs btn-primary" (click)="saveInlineComment('Course Overview', 'review-section-overview')">
+                <span class="material-symbols-outlined">check</span> Save Comment
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -85,12 +124,43 @@
             <span class="module-order-pill">Module #{{ mod.order_num || (mIdx + 1) }}</span>
             <h4>{{ mod.title }}</h4>
           </div>
-          <button type="button" class="btn-quote" (click)="quoteSection('Module #' + (mIdx + 1) + ': ' + mod.title, mod.title, 'review-mod-' + mIdx)" title="Quote this module">
-            <span class="material-symbols-outlined">format_quote</span> Quote Module
-          </button>
+          <div class="header-quote-actions">
+            <button type="button" class="btn-quote" (click)="quoteSection('Module #' + (mIdx + 1) + ': ' + mod.title, mod.title, 'review-mod-' + mIdx)" title="Quote this module">
+              <span class="material-symbols-outlined">format_quote</span> Quote
+            </button>
+            <button type="button" class="btn-quote" (click)="openInlineComment('Module #' + (mIdx + 1) + ': ' + mod.title, 'review-mod-' + mIdx)" title="Comment under this module">
+              <span class="material-symbols-outlined">add_comment</span> Comment
+            </button>
+          </div>
         </div>
 
         <p class="module-summary-text text-sm" *ngIf="mod.description">{{ getFormattedDescription(mod.description) }}</p>
+
+        <!-- Attached Comments on Module -->
+        <div class="section-review-comments-box mt-2" *ngIf="getCommentsForSection('Module #' + (mIdx + 1) + ': ' + mod.title, 'review-mod-' + mIdx).length > 0">
+          <div *ngFor="let c of getCommentsForSection('Module #' + (mIdx + 1) + ': ' + mod.title, 'review-mod-' + mIdx)" class="section-review-comment-chip">
+            <span class="material-symbols-outlined text-warning" style="font-size:16px;">rate_review</span>
+            <div class="chip-text">
+              <span class="chip-author">Revision Comment:</span>
+              <p>{{ c.note }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inline Comment Composer for Module -->
+        <div class="inline-comment-composer mt-2 mb-2" *ngIf="activeInlineSection === ('Module #' + (mIdx + 1) + ': ' + mod.title)">
+          <div class="composer-header">
+            <span class="material-symbols-outlined text-primary" style="font-size:18px;">rate_review</span>
+            <strong>Requested Changes for Module #{{ mIdx + 1 }}: {{ mod.title }}</strong>
+          </div>
+          <textarea [(ngModel)]="inlineCommentText" rows="2" class="form-control" placeholder="Specify changes required in this module..."></textarea>
+          <div class="composer-actions mt-2">
+            <button type="button" class="btn btn-xs btn-subtle" (click)="cancelInlineComment()">Cancel</button>
+            <button type="button" class="btn btn-xs btn-primary" (click)="saveInlineComment('Module #' + (mIdx + 1) + ': ' + mod.title, 'review-mod-' + mIdx)">
+              <span class="material-symbols-outlined">check</span> Save Comment
+            </button>
+          </div>
+        </div>
 
         <!-- Module Interactive Units Grid -->
         <div class="review-units-list mt-2">
@@ -100,9 +170,40 @@
                 <span class="material-symbols-outlined">{{ blk.type === 'text' ? 'menu_book' : blk.type === 'video' ? 'play_circle' : blk.type === 'quiz' ? 'quiz' : blk.type === 'code' ? 'terminal' : 'attach_file' }}</span>
                 <span>Unit {{ uIdx + 1 }}: {{ blk.type === 'text' ? 'Rich Lesson Guide' : blk.type === 'video' ? 'Video Lecture' : blk.type === 'quiz' ? 'Interactive Quiz' : blk.type === 'code' ? 'Coding Challenge' : 'Downloadable Resource' }}</span>
               </div>
-              <button type="button" class="btn-quote-sm" (click)="quoteSection(mod.title + ' -> ' + (blk.title || 'Unit ' + (uIdx + 1)), stripHtml(blk.content || blk.quizQuestion || blk.codeInstructions), 'review-unit-' + mIdx + '-' + uIdx)" title="Quote this unit">
-                <span class="material-symbols-outlined">format_quote</span> Quote Unit
-              </button>
+              <div class="unit-quote-actions">
+                <button type="button" class="btn-quote-sm" (click)="quoteSection(mod.title + ' -> ' + (blk.title || 'Unit ' + (uIdx + 1)), stripHtml(blk.content || blk.quizQuestion || blk.codeInstructions), 'review-unit-' + mIdx + '-' + uIdx)" title="Quote this unit">
+                  <span class="material-symbols-outlined">format_quote</span>
+                </button>
+                <button type="button" class="btn-quote-sm" (click)="openInlineComment('Unit: ' + (blk.title || 'Unit ' + (uIdx + 1)), 'review-unit-' + mIdx + '-' + uIdx)" title="Comment under this unit">
+                  <span class="material-symbols-outlined">add_comment</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Attached Comments on Unit -->
+            <div class="section-review-comments-box mt-2" *ngIf="getCommentsForSection('Unit: ' + (blk.title || 'Unit ' + (uIdx + 1)), 'review-unit-' + mIdx + '-' + uIdx).length > 0">
+              <div *ngFor="let c of getCommentsForSection('Unit: ' + (blk.title || 'Unit ' + (uIdx + 1)), 'review-unit-' + mIdx + '-' + uIdx)" class="section-review-comment-chip">
+                <span class="material-symbols-outlined text-warning" style="font-size:16px;">rate_review</span>
+                <div class="chip-text">
+                  <span class="chip-author">Revision Comment:</span>
+                  <p>{{ c.note }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Inline Comment Composer for Unit -->
+            <div class="inline-comment-composer mt-2" *ngIf="activeInlineSection === ('Unit: ' + (blk.title || 'Unit ' + (uIdx + 1)))">
+              <div class="composer-header">
+                <span class="material-symbols-outlined text-primary" style="font-size:18px;">rate_review</span>
+                <strong>Requested Changes for Unit {{ uIdx + 1 }}</strong>
+              </div>
+              <textarea [(ngModel)]="inlineCommentText" rows="2" class="form-control" placeholder="Specify changes for this unit..."></textarea>
+              <div class="composer-actions mt-2">
+                <button type="button" class="btn btn-xs btn-subtle" (click)="cancelInlineComment()">Cancel</button>
+                <button type="button" class="btn btn-xs btn-primary" (click)="saveInlineComment('Unit: ' + (blk.title || 'Unit ' + (uIdx + 1)), 'review-unit-' + mIdx + '-' + uIdx)">
+                  <span class="material-symbols-outlined">check</span> Save Comment
+                </button>
+              </div>
             </div>
 
             <!-- Content for Rich Guide -->
@@ -294,10 +395,18 @@
               <span class="material-symbols-outlined">check_circle</span> Approve &amp; Publish Live
             </button>
           </ng-container>
-          <div *ngIf="isApproved" class="text-center p-3 text-success font-bold" style="background: rgba(16, 185, 129, 0.1); border-radius: 8px;">
-            <span class="material-symbols-outlined" style="vertical-align:middle; margin-right:4px;">verified</span>
-            Curriculum Approved
-          </div>
+          <ng-container *ngIf="isApproved">
+            <button type="button" class="btn btn-outline warning btn-block mb-2" (click)="openRejectModal()">
+              <span class="material-symbols-outlined">assignment_return</span> Send Back for Review
+            </button>
+            <button type="button" class="btn btn-outline btn-block mb-2" (click)="onSendFeedback()">
+              <span class="material-symbols-outlined">send</span> Send Revision Feedback
+            </button>
+            <div class="text-center p-2 text-success font-bold" style="background: rgba(16, 185, 129, 0.1); border-radius: 8px; font-size:12px;">
+              <span class="material-symbols-outlined" style="vertical-align:middle; margin-right:4px; font-size:15px;">verified</span>
+              Curriculum Currently Live
+            </div>
+          </ng-container>
         </div>
       </div>
     </aside>

@@ -111,94 +111,127 @@
 }
 
 /* ══ FIRST-TIME LOGIN PASSWORD SETUP MODAL ══ */
+/* ── Institutional Password Setup Modal (Clean, Non-AI Enterprise Aesthetic) ── */
 .pass-modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 100000;
-  background: rgba(3, 7, 18, 0.82);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  animation: fadeInModal 0.3s ease-out;
+  animation: fadeInModal 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .pass-modal-card {
   width: 100%;
-  max-width: 480px;
-  background: #0b1426;
-  border: 1px solid rgba(99, 161, 255, 0.3);
-  border-radius: 20px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(37, 99, 235, 0.25);
+  max-width: 440px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
   overflow: hidden;
-  color: #fff;
+  color: #0f172a;
 }
 
 .pass-modal-header {
-  padding: 24px 24px 18px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(124, 58, 237, 0.1));
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 20px 24px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: 14px;
+  position: relative;
 
   .pass-modal-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #1d4ed8, #7c3aed);
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: #eef5ff;
+    border: 1px solid #d0e1fd;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
-    .material-symbols-outlined { font-size: 26px; color: #fff; }
+    .material-symbols-outlined {
+      font-size: 20px;
+      color: #003f87;
+    }
   }
 
-  h2 {
-    margin: 0 0 6px;
-    font-size: 17px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: #fff;
+  .pass-modal-titles {
+    flex: 1;
+    min-width: 0;
+
+    h2 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: #0f172a;
+    }
+
+    p {
+      margin: 0;
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.45;
+    }
   }
 
-  p {
-    margin: 0;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.65);
-    line-height: 1.5;
+  .pass-modal-close {
+    background: none;
+    border: none;
+    padding: 4px;
+    margin: -4px -4px 0 0;
+    color: #94a3b8;
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s;
+
+    &:hover {
+      color: #0f172a;
+      background: #f1f5f9;
+    }
+
+    .material-symbols-outlined {
+      font-size: 18px;
+    }
   }
 }
 
 .pass-modal-body {
-  padding: 22px 24px;
+  padding: 20px 24px;
 
   .pass-alert {
     padding: 10px 14px;
-    border-radius: 10px;
-    font-size: 12px;
-    font-weight: 600;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 500;
     display: flex;
     align-items: center;
     gap: 8px;
     margin-bottom: 16px;
 
     &.pass-alert-danger {
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #fca5a5;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
     }
   }
 
   .form-group {
     label {
       display: block;
-      font-size: 12px;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.85);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #334155;
       margin-bottom: 6px;
     }
 
@@ -211,56 +244,74 @@
         position: absolute;
         left: 12px;
         font-size: 18px;
-        color: #60a5fa;
+        color: #94a3b8;
         pointer-events: none;
       }
 
       .form-control {
         width: 100%;
-        padding: 11px 40px 11px 38px;
-        border-radius: 10px;
-        background: rgba(15, 23, 42, 0.8);
-        border: 1px solid rgba(99, 161, 255, 0.25);
-        color: #fff;
-        font-size: 13px;
+        height: 40px;
+        padding: 8px 36px 8px 38px;
+        border-radius: 8px;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        color: #0f172a;
+        font-size: 13.5px;
+        font-family: inherit;
         outline: none;
-        transition: all 0.2s;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+        &::placeholder {
+          color: #94a3b8;
+        }
 
         &:focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+          border-color: #003f87;
+          box-shadow: 0 0 0 3px rgba(0, 63, 135, 0.12);
         }
       }
 
       .eye-btn {
         position: absolute;
-        right: 10px;
+        right: 8px;
         background: none;
         border: none;
-        color: rgba(255, 255, 255, 0.5);
+        color: #94a3b8;
         cursor: pointer;
         padding: 4px;
-        &:hover { color: #fff; }
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: color 0.15s;
+
+        &:hover {
+          color: #334155;
+        }
+
+        .material-symbols-outlined {
+          font-size: 18px;
+        }
       }
     }
   }
 
   .pass-notice {
-    margin-top: 18px;
-    padding: 12px 14px;
-    border-radius: 10px;
-    background: rgba(37, 99, 235, 0.1);
-    border: 1px solid rgba(59, 130, 246, 0.2);
+    margin-top: 16px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     display: flex;
     align-items: flex-start;
     gap: 10px;
-    font-size: 11px;
-    color: #93c5fd;
-    line-height: 1.5;
+    font-size: 12px;
+    color: #475569;
+    line-height: 1.45;
 
     .material-symbols-outlined {
       font-size: 16px;
-      color: #34d399;
+      color: #0284c7;
       flex-shrink: 0;
       margin-top: 1px;
     }
@@ -268,58 +319,192 @@
 }
 
 .pass-modal-footer {
-  padding: 16px 24px 22px;
-  background: rgba(15, 23, 42, 0.5);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 14px 24px 20px;
+  background: #f8fafc;
+  border-top: 1px solid #f1f5f9;
   display: flex;
+  justify-content: flex-end;
   gap: 10px;
 
   .btn-cancel-pass {
-    flex: 0 0 auto;
-    padding: 13px 20px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #cbd5e1;
-    font-size: 14px;
-    font-weight: 700;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 8px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    font-size: 13.5px;
+    font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.12);
-      color: #f8fafc;
+      background: #f1f5f9;
+      color: #0f172a;
+      border-color: #94a3b8;
     }
+
     &:disabled {
-      opacity: 0.6;
+      opacity: 0.5;
       cursor: not-allowed;
     }
   }
 
   .btn-save-pass {
     width: 100%;
-    padding: 13px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #1d4ed8, #3b82f6);
-    border: none;
-    color: #fff;
-    font-size: 14px;
-    font-weight: 800;
+    height: 40px;
+    padding: 0 20px;
+    border-radius: 8px;
+    background: #003f87;
+    border: 1px solid transparent;
+    color: #ffffff;
+    font-size: 13.5px;
+    font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
-    transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: background 0.15s ease, transform 0.1s ease;
 
-    &:hover {
-      box-shadow: 0 6px 28px rgba(37, 99, 235, 0.6);
+    &:hover:not(:disabled) {
+      background: #002f6b;
       transform: translateY(-1px);
+      box-shadow: 0 3px 6px -1px rgba(0, 0, 0, 0.08);
     }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
     &:disabled {
       opacity: 0.6;
       cursor: not-allowed;
+    }
+
+    .material-symbols-outlined {
+      font-size: 18px;
+    }
+  }
+}
+
+/* ── Dark Theme Adaptation (Clinical & Grounded, Not Cyberpunk Neon) ── */
+:host-context(body.dark-theme) {
+  .pass-modal-overlay {
+    background: rgba(0, 0, 0, 0.68);
+  }
+
+  .pass-modal-card {
+    background: #1e293b;
+    border-color: #334155;
+    color: #f8fafc;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.55);
+  }
+
+  .pass-modal-header {
+    background: #1e293b;
+    border-bottom-color: #334155;
+
+    .pass-modal-icon {
+      background: rgba(59, 130, 246, 0.12);
+      border-color: rgba(59, 130, 246, 0.25);
+      .material-symbols-outlined {
+        color: #60a5fa;
+      }
+    }
+
+    .pass-modal-titles {
+      h2 {
+        color: #f8fafc;
+      }
+      p {
+        color: #94a3b8;
+      }
+    }
+
+    .pass-modal-close {
+      color: #64748b;
+      &:hover {
+        color: #f8fafc;
+        background: rgba(255, 255, 255, 0.06);
+      }
+    }
+  }
+
+  .pass-modal-body {
+    .pass-alert.pass-alert-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+    }
+
+    .form-group {
+      label {
+        color: #cbd5e1;
+      }
+
+      .input-with-icon {
+        .icon {
+          color: #64748b;
+        }
+
+        .form-control {
+          background: #0f172a;
+          border-color: #334155;
+          color: #f8fafc;
+
+          &::placeholder {
+            color: #475569;
+          }
+
+          &:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+          }
+        }
+
+        .eye-btn {
+          color: #64748b;
+          &:hover {
+            color: #cbd5e1;
+          }
+        }
+      }
+    }
+
+    .pass-notice {
+      background: rgba(15, 23, 42, 0.55);
+      border-color: #334155;
+      color: #94a3b8;
+
+      .material-symbols-outlined {
+        color: #38bdf8;
+      }
+    }
+  }
+
+  .pass-modal-footer {
+    background: rgba(15, 23, 42, 0.4);
+    border-top-color: #334155;
+
+    .btn-cancel-pass {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: #334155;
+      color: #cbd5e1;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+      }
+    }
+
+    .btn-save-pass {
+      background: #2563eb;
+
+      &:hover:not(:disabled) {
+        background: #1d4ed8;
+      }
     }
   }
 }
@@ -330,21 +515,21 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 100001;
-  background: linear-gradient(135deg, #064e3b, #059669);
+  background: #064e3b;
   color: #fff;
-  padding: 14px 24px;
-  border-radius: 999px;
+  padding: 10px 20px;
+  border-radius: 8px;
   font-size: 13px;
-  font-weight: 700;
-  box-shadow: 0 10px 30px rgba(5, 150, 105, 0.4);
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
   display: flex;
   align-items: center;
-  gap: 10px;
-  animation: fadeInModal 0.3s ease-out;
+  gap: 8px;
+  animation: fadeInModal 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes fadeInModal {
-  from { opacity: 0; transform: scale(0.96); }
+  from { opacity: 0; transform: scale(0.98); }
   to   { opacity: 1; transform: scale(1); }
 }
 

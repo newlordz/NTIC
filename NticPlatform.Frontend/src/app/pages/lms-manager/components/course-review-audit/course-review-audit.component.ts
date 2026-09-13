@@ -300,6 +300,48 @@ export class CourseReviewAuditComponent {
     }
   }
 
+  // ── Inline Section Commenting Engine ───────────────────────
+  activeInlineSection: string | null = null;
+  activeInlineElementId: string | null = null;
+  inlineCommentText: string = '';
+
+  openInlineComment(sectionName: string, elementId?: string): void {
+    this.activeInlineSection = sectionName;
+    this.activeInlineElementId = elementId || '';
+    this.inlineCommentText = '';
+    this.cdr.markForCheck();
+  }
+
+  cancelInlineComment(): void {
+    this.activeInlineSection = null;
+    this.activeInlineElementId = null;
+    this.inlineCommentText = '';
+    this.cdr.markForCheck();
+  }
+
+  saveInlineComment(sectionName: string, elementId?: string): void {
+    if (!this.inlineCommentText.trim()) {
+      this.dialogService.toast('Please enter a revision comment before saving.', 'warning');
+      return;
+    }
+    this.reviewFeedbackComments.push({
+      id: 'rfc-' + Math.random().toString(36).slice(2, 7),
+      section: sectionName,
+      quote: '',
+      note: this.inlineCommentText.trim(),
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      elementId: elementId || undefined
+    });
+    this.dialogService.toast(`Comment attached to "${sectionName}".`, 'success');
+    this.cancelInlineComment();
+  }
+
+  getCommentsForSection(sectionName: string, elementId?: string): ReviewFeedbackItem[] {
+    return this.reviewFeedbackComments.filter(c =>
+      c.section === sectionName || (elementId && c.elementId === elementId)
+    );
+  }
+
   // ── Action Handlers ─────────────────────────────────────────
   onSendFeedback(): void {
     if (this.reviewFeedbackComments.length === 0 && !this.reviewFeedbackNote.trim()) {
@@ -314,7 +356,8 @@ export class CourseReviewAuditComponent {
     const lines = this.reviewFeedbackComments.map((c, i) =>
       `${i + 1}. [${c.section}]${c.quote ? `\n   Quoted snippet: "${c.quote}"\n   Recommendation: ` : ' Recommendation: '}${c.note}`
     );
-    const payload = `Curriculum Review & Revision Recommendations:\n\n${lines.join('\n\n')}`;
+    const structuredMarker = `\n\n<!-- REVIEW_FEEDBACK_DATA:${JSON.stringify(this.reviewFeedbackComments)} -->`;
+    const payload = `Curriculum Review & Revision Recommendations:\n\n${lines.join('\n\n')}${structuredMarker}`;
     this.sendFeedback.emit({ payload, items: [...this.reviewFeedbackComments] });
   }
 
@@ -323,10 +366,6 @@ export class CourseReviewAuditComponent {
   }
 
   openRejectModal(): void {
-    if (this.isApproved) {
-      this.dialogService.toast('Approved courses cannot be rejected.', 'warning');
-      return;
-    }
     this.rejectionReason = '';
     this.rejectionChecklist.forEach(c => c.checked = false);
     this.isRejectModalOpen = true;
@@ -339,14 +378,9 @@ export class CourseReviewAuditComponent {
   }
 
   confirmRejection(): void {
-    if (this.isApproved) {
-      this.dialogService.toast('Approved courses cannot be rejected.', 'warning');
-      this.closeRejectModal();
-      return;
-    }
     const selectedChecks = this.rejectionChecklist.filter(c => c.checked).map(c => c.label);
-    if (!this.rejectionReason.trim() && selectedChecks.length === 0) {
-      this.dialogService.toast('Please provide a reason or select at least one issue checklist item.', 'warning');
+    if (!this.rejectionReason.trim() && selectedChecks.length === 0 && this.reviewFeedbackComments.length === 0) {
+      this.dialogService.toast('Please provide revision comments or select at least one checklist item.', 'warning');
       return;
     }
 
@@ -354,8 +388,17 @@ export class CourseReviewAuditComponent {
     if (selectedChecks.length > 0) {
       finalReason += `Rejection Grounds:\n- ` + selectedChecks.join('\n- ') + `\n\n`;
     }
+    if (this.reviewFeedbackComments.length > 0) {
+      const sectionLines = this.reviewFeedbackComments.map((c, i) =>
+        `${i + 1}. [${c.section}]${c.quote ? `\n   Quoted: "${c.quote}"` : ''}\n   Action Required: ${c.note}`
+      ).join('\n\n');
+      finalReason += `Section-by-Section Comments:\n${sectionLines}\n\n`;
+    }
     if (this.rejectionReason.trim()) {
-      finalReason += `Detailed Remediation Instructions:\n${this.rejectionReason.trim()}`;
+      finalReason += `Detailed Remediation Instructions:\n${this.rejectionReason.trim()}\n\n`;
+    }
+    if (this.reviewFeedbackComments.length > 0) {
+      finalReason += `<!-- REVIEW_FEEDBACK_DATA:${JSON.stringify(this.reviewFeedbackComments)} -->`;
     }
 
     this.reject.emit({ reason: finalReason.trim(), checklist: selectedChecks });

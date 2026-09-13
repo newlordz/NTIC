@@ -307,6 +307,7 @@ export interface SponsorPayment {
   organization: string;
   sponsor_email: string;
   sponsor_name?: string;
+  tier?: string;
 }
 
 /**
@@ -829,10 +830,23 @@ export class ApiService {
     return this.http.get<SponsorPayment[]>(this.apiUrl + '/sponsorships/payments/pending');
   }
 
+  /** The complete admin financial ledger of all remittances. Filterable by status. */
+  getAllSponsorPayments(status: string = 'all'): Observable<SponsorPayment[]> {
+    const params = status && status !== 'all' ? `?status=${encodeURIComponent(status)}` : '';
+    return this.http.get<SponsorPayment[]>(`${this.apiUrl}/sponsorships/payments${params}`);
+  }
+
   verifySponsorPayment(paymentId: string, verified: boolean, reason: string = ''): Observable<any> {
     return this.http.patch(
       `${this.apiUrl}/sponsorships/payments/${encodeURIComponent(paymentId)}/verify`,
       { verified, reason }
+    );
+  }
+
+  emailSponsorPaymentReceipt(paymentId: string, recipientEmail?: string): Observable<{ success: boolean; delivered: boolean; recipient: string; reference: string }> {
+    return this.http.post<{ success: boolean; delivered: boolean; recipient: string; reference: string }>(
+      `${this.apiUrl}/sponsorships/payments/${encodeURIComponent(paymentId)}/email-receipt`,
+      { recipient_email: recipientEmail }
     );
   }
 

@@ -1,0 +1,337 @@
+<div class="admin-tab-body treasury-portal-wrapper">
+  <!-- Top Navigation & Action Header -->
+  <div class="ac-top-bar">
+    <button class="ac-back-btn" (click)="backToControl.emit()">
+      <span class="material-symbols-outlined">arrow_back</span>Admin Control
+    </button>
+    <div class="treasury-header-titles">
+      <h2 class="treasury-portal-title">Sponsorship &amp; Treasury Ledger</h2>
+      <span class="treasury-portal-subtitle">Authoritative repository of partner commitments, verified bank wire slips, and official CSR tax receipts</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-left:auto;">
+      <button class="btn btn-secondary btn-sm" 
+              (click)="loadTreasuryData()" 
+              [disabled]="isLoadingTreasury"
+              title="Synchronize treasury ledger and verification queue">
+        <span class="material-symbols-outlined" [class.spin-active]="isLoadingTreasury">refresh</span>
+        <span>{{ isLoadingTreasury ? 'Refreshing...' : 'Refresh' }}</span>
+      </button>
+      <button class="btn btn-primary btn-sm" (click)="openDirectSettlementModal()" title="Record an offline bank deposit, cheque, or direct wire settlement">
+        <span class="material-symbols-outlined">add_card</span>
+        <span>Record Direct Remittance</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Institutional Treasury KPI Cards -->
+  <div class="treasury-stat-grid">
+    <div class="treasury-stat-card" [class.active-filter]="treasuryFilter === 'all'" (click)="treasuryFilter = 'all'">
+      <div class="treasury-stat-header">
+        <span class="treasury-stat-label">Accumulated Verified Funds</span>
+        <span class="material-symbols-outlined stat-icon stat-icon-green">verified</span>
+      </div>
+      <div class="treasury-stat-value">{{ formatCedis(sponsorSummary?.total_received) }}</div>
+      <div class="treasury-stat-sub">
+        Pledged: {{ formatCedis(sponsorSummary?.total_committed) }} ({{ sponsorSummary?.received_pct || 0 }}% settled)
+      </div>
+    </div>
+
+    <div class="treasury-stat-card stat-pending-card" [class.active-filter]="treasuryFilter === 'pending_verification'" (click)="treasuryFilter = 'pending_verification'">
+      <div class="treasury-stat-header">
+        <span class="treasury-stat-label">Awaiting Verification</span>
+        <span class="material-symbols-outlined stat-icon stat-icon-amber">hourglass_top</span>
+      </div>
+      <div class="treasury-stat-value">{{ treasuryPendingCount }}</div>
+      <div class="treasury-stat-sub">
+        {{ formatCedis(sponsorSummary?.awaiting_verification) }} awaiting admin confirmation
+      </div>
+    </div>
+
+    <div class="treasury-stat-card" [class.active-filter]="treasuryFilter === 'verified'" (click)="treasuryFilter = 'verified'">
+      <div class="treasury-stat-header">
+        <span class="treasury-stat-label">Verified Transactions</span>
+        <span class="material-symbols-outlined stat-icon stat-icon-blue">receipt_long</span>
+      </div>
+      <div class="treasury-stat-value">{{ treasuryVerifiedCount }}</div>
+      <div class="treasury-stat-sub">
+        Audited and official CSR receipts generated
+      </div>
+    </div>
+
+    <div class="treasury-stat-card" (click)="treasuryFilter = 'all'">
+      <div class="treasury-stat-header">
+        <span class="treasury-stat-label">Active Sponsors</span>
+        <span class="material-symbols-outlined stat-icon stat-icon-purple">domain</span>
+      </div>
+      <div class="treasury-stat-value">{{ sponsorSummary?.partner_count || 0 }}</div>
+      <div class="treasury-stat-sub">
+        {{ allSponsorships.length }} formal commitments on registry
+      </div>
+    </div>
+  </div>
+
+  <!-- Ledger Toolbar (Search & Filter Tabs) -->
+  <div class="treasury-toolbar">
+    <div class="treasury-search-box">
+      <span class="material-symbols-outlined">search</span>
+      <input type="text" 
+             [(ngModel)]="treasurySearch" 
+             placeholder="Search by reference, sponsor entity, email, or payment method..." />
+      <button class="treasury-search-clear" *ngIf="treasurySearch" (click)="treasurySearch = ''">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="treasury-filter-pills">
+      <button class="treasury-pill" [class.active]="treasuryFilter === 'all'" (click)="treasuryFilter = 'all'">
+        <span>All Records</span>
+        <span class="pill-badge">{{ treasuryPayments.length }}</span>
+      </button>
+      <button class="treasury-pill pill-amber" [class.active]="treasuryFilter === 'pending_verification'" (click)="treasuryFilter = 'pending_verification'">
+        <span>Verification Queue</span>
+        <span class="pill-badge" *ngIf="treasuryPendingCount > 0">{{ treasuryPendingCount }}</span>
+      </button>
+      <button class="treasury-pill pill-green" [class.active]="treasuryFilter === 'verified'" (click)="treasuryFilter = 'verified'">
+        <span>Verified</span>
+        <span class="pill-badge">{{ treasuryVerifiedCount }}</span>
+      </button>
+      <button class="treasury-pill pill-red" [class.active]="treasuryFilter === 'rejected'" (click)="treasuryFilter = 'rejected'">
+        <span>Rejected</span>
+        <span class="pill-badge">{{ treasuryRejectedCount }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Ledger Content Table -->
+  <div class="treasury-table-container">
+    <div class="treasury-loading-state" *ngIf="isLoadingTreasury && treasuryPayments.length === 0">
+      <span class="material-symbols-outlined spin-active">sync</span>
+      <span>Loading verified treasury ledger...</span>
+    </div>
+
+    <div class="treasury-empty-state" *ngIf="!isLoadingTreasury && filteredTreasuryPayments.length === 0">
+      <span class="material-symbols-outlined empty-icon">receipt_long</span>
+      <h4>No remittance records found</h4>
+      <p *ngIf="treasurySearch">No transactions match your search query "{{ treasurySearch }}".</p>
+      <p *ngIf="!treasurySearch && treasuryFilter !== 'all'">No transactions under the selected status filter.</p>
+      <p *ngIf="!treasurySearch && treasuryFilter === 'all'">No sponsor remittances or offline deposits recorded yet. Use the "Record Direct Remittance" button above to log bank wires or cheque settlements.</p>
+      <button class="btn btn-secondary btn-sm" *ngIf="treasurySearch || treasuryFilter !== 'all'" (click)="treasurySearch = ''; treasuryFilter = 'all'">
+        Clear Filters
+      </button>
+    </div>
+
+    <table class="treasury-table" *ngIf="filteredTreasuryPayments.length > 0">
+      <thead>
+        <tr>
+          <th>Reference &amp; Date</th>
+          <th>Sponsor Organization</th>
+          <th>Amount</th>
+          <th>Payment Method</th>
+          <th>Deposit Slip / Bank Proof</th>
+          <th>Status</th>
+          <th style="text-align:right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let payment of filteredTreasuryPayments" class="treasury-row">
+          <td>
+            <div class="treasury-ref-cell">
+              <span class="treasury-ref-code">{{ payment.reference }}</span>
+              <span class="treasury-ref-date">{{ payment.created_at | date:'dd MMM yyyy, HH:mm' }}</span>
+            </div>
+          </td>
+          <td>
+            <div class="treasury-org-cell">
+              <span class="treasury-org-name">{{ payment.organization || 'Corporate Partner' }}</span>
+              <span class="treasury-org-email">{{ payment.sponsor_email || 'Verified Partner' }}</span>
+              <span class="treasury-org-tier" *ngIf="payment.tier">{{ payment.tier }} Partner</span>
+            </div>
+          </td>
+          <td>
+            <div class="treasury-amount-cell">
+              <span class="treasury-amount">{{ formatCedis(payment.amount) }}</span>
+            </div>
+          </td>
+          <td>
+            <span class="treasury-method-badge">
+              <span class="material-symbols-outlined method-icon">credit_card</span>
+              <span>{{ payment.method || 'Bank Transfer' }}</span>
+            </span>
+            <div class="treasury-notes" *ngIf="payment.notes">{{ payment.notes }}</div>
+          </td>
+          <td>
+            <div *ngIf="payment.proof_file_url" class="treasury-proof-wrap">
+              <a [href]="payment.proof_file_url" target="_blank" rel="noopener noreferrer" class="treasury-proof-btn">
+                <span class="material-symbols-outlined">attachment</span>
+                <span>View Slip</span>
+              </a>
+            </div>
+            <span class="treasury-no-proof" *ngIf="!payment.proof_file_url">No slip attached</span>
+          </td>
+          <td>
+            <span class="treasury-status-badge status-{{ payment.status }}">
+              <span class="material-symbols-outlined status-dot-icon" *ngIf="payment.status === 'verified'">check_circle</span>
+              <span class="material-symbols-outlined status-dot-icon" *ngIf="payment.status === 'pending_verification'">schedule</span>
+              <span class="material-symbols-outlined status-dot-icon" *ngIf="payment.status === 'rejected'">cancel</span>
+              <span>{{ payment.status === 'pending_verification' ? 'Awaiting Verification' : (payment.status === 'verified' ? 'Verified' : 'Rejected') }}</span>
+            </span>
+            <div class="treasury-verify-meta" *ngIf="payment.verified_at">
+              {{ payment.verified_at | date:'dd MMM yyyy' }}
+            </div>
+            <div class="treasury-rejection-reason" *ngIf="payment.status === 'rejected' && payment.rejection_reason">
+              Reason: {{ payment.rejection_reason }}
+            </div>
+          </td>
+          <td style="text-align:right;">
+            <div class="treasury-action-btns">
+              <!-- Verification Queue Actions -->
+              <ng-container *ngIf="payment.status === 'pending_verification'">
+                <button class="btn-treasury-action btn-verify"
+                        (click)="verifyTreasuryPayment(payment, true)"
+                        [disabled]="isVerifyingTreasuryPayment[payment.id]"
+                        title="Verify bank deposit and credit sponsor balance">
+                  <span class="material-symbols-outlined">verified</span>
+                  <span>Verify &amp; Credit</span>
+                </button>
+                <button class="btn-treasury-action btn-reject"
+                        (click)="verifyTreasuryPayment(payment, false)"
+                        [disabled]="isVerifyingTreasuryPayment[payment.id]"
+                        title="Reject deposit claim">
+                  <span class="material-symbols-outlined">close</span>
+                  <span>Reject</span>
+                </button>
+              </ng-container>
+
+                  <!-- Verified Actions: Print & Email CSR Receipt -->
+                  <ng-container *ngIf="payment.status === 'verified'">
+                    <button class="btn-treasury-action btn-email"
+                            (click)="emailReceipt(payment)"
+                            [disabled]="isEmailingReceipt[payment.id]"
+                            title="Email official CSR Tax Receipt to corporate finance contact">
+                      <span class="material-symbols-outlined" [class.spin-active]="isEmailingReceipt[payment.id]">mail</span>
+                      <span>{{ isEmailingReceipt[payment.id] ? 'Sending...' : 'Email Receipt' }}</span>
+                    </button>
+                    <button class="btn-treasury-action btn-receipt"
+                            (click)="printPaymentTaxReceipt(payment)"
+                            title="Generate and print official CSR Tax Receipt">
+                      <span class="material-symbols-outlined">receipt</span>
+                      <span>Print CSR Receipt</span>
+                    </button>
+                  </ng-container>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── MODAL: RECORD DIRECT / OFFLINE REMITTANCE ── -->
+<div *ngIf="isDirectSettlementModalOpen" class="audit-modal-backdrop" (click)="closeDirectSettlementModal()">
+  <div class="audit-modal-card treasury-modal-card" (click)="$event.stopPropagation()">
+    <div class="audit-modal-header">
+      <div class="audit-modal-title-wrap">
+        <span class="material-symbols-outlined audit-title-icon">add_card</span>
+        <div>
+          <h3 class="audit-modal-title">Record Direct / Offline Remittance</h3>
+          <p class="audit-modal-subtitle">Log an offline bank transfer, physical cheque, or wire payment directly into the verified treasury ledger.</p>
+        </div>
+      </div>
+      <button class="audit-modal-close" (click)="closeDirectSettlementModal()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="audit-modal-body treasury-modal-body">
+      <div class="treasury-form-group">
+        <label class="treasury-form-label">Accredited Sponsor Organization *</label>
+        <select class="treasury-form-select" [(ngModel)]="directSettlementForm.sponsorshipId">
+          <option value="" disabled>Select corporate sponsor commitment...</option>
+          <option *ngFor="let s of allSponsorships" [value]="s.id">
+            {{ s.organization }} &mdash; {{ s.tier || 'General' }} (Pledged: {{ formatCedis(s.amount_pledged) }})
+          </option>
+        </select>
+        <span class="treasury-field-hint" *ngIf="allSponsorships.length === 0">
+          No active sponsorship commitments found. Partners must register before direct remittances can be logged.
+        </span>
+      </div>
+
+      <div class="treasury-form-row">
+        <div class="treasury-form-group">
+          <label class="treasury-form-label">Remittance Amount (GH₵) *</label>
+          <input type="number"
+                 step="0.01"
+                 min="1"
+                 class="treasury-form-input"
+                 [(ngModel)]="directSettlementForm.amount"
+                 placeholder="e.g. 50000" />
+        </div>
+
+        <div class="treasury-form-group">
+          <label class="treasury-form-label">Payment Channel / Instrument *</label>
+          <select class="treasury-form-select" [(ngModel)]="directSettlementForm.method">
+            <option value="Bank Wire">Bank Wire / SWIFT</option>
+            <option value="Bank Deposit Slip">Direct Bank Cash/Teller Deposit</option>
+            <option value="Corporate Cheque">Corporate Cheque</option>
+            <option value="ACH / Electronic">ACH / Direct Debit</option>
+            <option value="Corporate Card">Corporate Card</option>
+          </select>
+        </div>
+      </div>
+
+          <div class="treasury-form-group">
+            <label class="treasury-form-label">Bank Transaction Reference / Cheque Number *</label>
+            <input type="text"
+                   class="treasury-form-input font-mono"
+                   [class.input-warn]="isDuplicateReference"
+                   [(ngModel)]="directSettlementForm.reference"
+                   placeholder="e.g. GCB-TXN-2026-0987, SCB-WIRE-4412, or CHQ #004521" />
+            <span class="treasury-field-warn" *ngIf="isDuplicateReference">
+              <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;">warning</span>
+              Warning: A remittance with this reference number already exists on the registry.
+            </span>
+            <span class="treasury-field-hint" *ngIf="!isDuplicateReference">
+              Must match the reference on the bank statement or physical deposit advice.
+            </span>
+          </div>
+
+      <div class="treasury-form-group">
+        <label class="treasury-form-label">Bank Deposit Slip or Remittance Advice (Optional)</label>
+        <div class="treasury-file-upload-box">
+          <input type="file"
+                 id="directProofFileInput"
+                 (change)="onDirectProofFileSelected($event)"
+                 accept=".pdf,.png,.jpg,.jpeg"
+                 style="display:none;" />
+          <label for="directProofFileInput" class="treasury-file-upload-label">
+            <span class="material-symbols-outlined">cloud_upload</span>
+            <span *ngIf="!directProofFileName && !isUploadingDirectProof">Click to upload deposit slip or bank confirmation (PDF/PNG/JPG)</span>
+            <span *ngIf="isUploadingDirectProof">Uploading document to secure storage...</span>
+            <span *ngIf="directProofFileName && !isUploadingDirectProof" class="file-name-tag">Attached: {{ directProofFileName }}</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="treasury-form-group">
+        <label class="treasury-form-label">Treasury Notes / Audit Memo (Optional)</label>
+        <textarea class="treasury-form-textarea"
+                  [(ngModel)]="directSettlementForm.notes"
+                  rows="2"
+                  placeholder="e.g. Received via GCB High Street branch account; clearing confirmed by NTIC finance secretariat."></textarea>
+      </div>
+    </div>
+
+    <div class="audit-modal-footer">
+      <button class="btn btn-secondary btn-sm" (click)="closeDirectSettlementModal()" [disabled]="isSubmittingDirectSettlement">
+        Cancel
+      </button>
+      <button class="btn btn-primary btn-sm" 
+              (click)="submitDirectSettlement()" 
+              [disabled]="isSubmittingDirectSettlement || isUploadingDirectProof || !directSettlementForm.sponsorshipId || !directSettlementForm.amount || !directSettlementForm.reference">
+        <span class="material-symbols-outlined" *ngIf="!isSubmittingDirectSettlement">check_circle</span>
+        <span class="material-symbols-outlined spin-active" *ngIf="isSubmittingDirectSettlement">sync</span>
+        <span>{{ isSubmittingDirectSettlement ? 'Recording & Crediting...' : 'Post to Verified Treasury' }}</span>
+      </button>
+    </div>
+  </div>
+</div>

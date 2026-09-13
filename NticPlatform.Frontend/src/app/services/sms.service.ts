@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { HANDLES_OWN_WRITE_ERRORS } from '../interceptors/http-resilience.interceptor';
 
 export interface SmsResponse {
   success: boolean;
@@ -57,7 +58,9 @@ export class SmsService {
       payload.region = options.region;
     }
 
-    return this.http.post<SmsResponse>(targetUrl, payload).pipe(
+    return this.http.post<SmsResponse>(targetUrl, payload, {
+      context: new HttpContext().set(HANDLES_OWN_WRITE_ERRORS, true)
+    }).pipe(
       map(res => {
         if (!res.success) {
           console.warn('[Textbelt SMS] Warning:', res.error);
