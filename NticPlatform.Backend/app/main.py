@@ -1672,7 +1672,7 @@ try:
                     if exc:
                         cur.execute("""
                             SELECT 1 FROM pending_approvals 
-                            WHERE status = 'pending'
+                            WHERE status IN ('pending', 'approved', 'active')
                               AND id != %s
                               AND lower(COALESCE(details->>'code', '')) != lower(%s)
                               AND (lower(COALESCE(contact, '')) = %s 
@@ -1685,7 +1685,7 @@ try:
                     else:
                         cur.execute("""
                             SELECT 1 FROM pending_approvals 
-                            WHERE status = 'pending'
+                            WHERE status IN ('pending', 'approved', 'active')
                               AND (lower(COALESCE(contact, '')) = %s 
                                OR lower(COALESCE(details->>'schoolEmail', '')) = %s
                                OR lower(COALESCE(details->>'repEmail', '')) = %s
@@ -1738,7 +1738,7 @@ try:
                         if exc:
                             cur.execute("""
                                 SELECT 1 FROM pending_approvals 
-                                WHERE status = 'pending'
+                                WHERE status IN ('pending', 'approved', 'active')
                                   AND id != %s
                                   AND lower(COALESCE(details->>'code', '')) != lower(%s)
                                   AND (right(regexp_replace(COALESCE(contact, ''), '\\D', '', 'g'), 9) = %s 
@@ -1750,7 +1750,7 @@ try:
                         else:
                             cur.execute("""
                                 SELECT 1 FROM pending_approvals 
-                                WHERE status = 'pending'
+                                WHERE status IN ('pending', 'approved', 'active')
                                   AND (right(regexp_replace(COALESCE(contact, ''), '\\D', '', 'g'), 9) = %s 
                                    OR right(regexp_replace(COALESCE(details->>'tel', ''), '\\D', '', 'g'), 9) = %s
                                    OR right(regexp_replace(COALESCE(details->>'repTel', ''), '\\D', '', 'g'), 9) = %s
@@ -8311,7 +8311,7 @@ try:
 
             cur.execute("""
                 SELECT id FROM pending_approvals 
-                WHERE status = 'pending'
+                WHERE status IN ('pending', 'approved', 'active')
                   AND (LOWER(COALESCE(contact, '')) = %s 
                    OR LOWER(COALESCE(details->>'schoolEmail', '')) = %s
                    OR LOWER(COALESCE(details->>'repEmail', '')) = %s
@@ -8324,7 +8324,7 @@ try:
                 release_db_connection(conn)
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail=f"The email '{payload.email}' is currently tied to a pending application under review.",
+                    detail=f"The email '{payload.email}' is currently tied to an existing application under review or on file.",
                 )
 
             if payload.role != "student":
@@ -9449,14 +9449,23 @@ try:
             # the behaviour of POST /api/approvals/mine.
             if contact:
                 cur.execute(
-                    "SELECT id FROM pending_approvals "
-                    "WHERE lower(COALESCE(contact, '')) = %s AND status = 'pending' "
-                    "AND type = %s LIMIT 1",
-                    (contact, req_type),
+                    "SELECT id, type FROM pending_approvals "
+                    "WHERE (lower(COALESCE(contact, '')) = %s "
+                    "   OR lower(COALESCE(details->>'repEmail', '')) = %s "
+                    "   OR lower(COALESCE(details->>'email', '')) = %s) "
+                    "AND status IN ('pending', 'approved', 'active') LIMIT 1",
+                    (contact, contact, contact),
                 )
                 existing = cur.fetchone()
                 if existing:
-                    approval_id = existing[0]
+                    existing_id, existing_type = existing
+                    if (existing_type or "").strip().lower() != req_type.lower():
+                        cur.close()
+                        raise HTTPException(
+                            status_code=409,
+                            detail=f"The email '{contact}' is already registered under an existing '{existing_type}' application. Please use a distinct email address.",
+                        )
+                    approval_id = existing_id
 
             import json as _json
             comp_ref = _validate_competition_ref(cur, payload.competition_id or None)

@@ -1033,9 +1033,7 @@ setAuthValue('activeUserEmail', email);
 
     // Instant local duplicate check (0ms)
     if (this.isDuplicateInForm(fieldName, cleanVal)) {
-      const msg = this.activeTab === 'school' && (fieldName === 'schoolEmail' || fieldName === 'schoolRepEmail')
-        ? 'School email and representative email cannot be the same'
-        : 'This email is already in use by another role or member in your form';
+      const msg = this.getDuplicateEmailMessage(fieldName, cleanVal);
       this.fieldValidation[fieldName] = { status: 'taken', message: msg };
       this.revalidateSiblingFields(fieldName, 'email');
       this.cdr?.markForCheck?.();
@@ -1117,6 +1115,7 @@ setAuthValue('activeUserEmail', email);
       currentEmails.push(
         { name: 'schoolEmail', value: this.schoolForm.email || '' },
         { name: 'schoolRepEmail', value: this.schoolForm.repEmail || '' },
+        { name: 'instEmail', value: this.instructorForm.email || '' },
         { name: 'squadLeadEmail', value: this.teamForm.leadEmail || '' },
         { name: 'squadM2Email', value: this.teamForm.member2Email || '' },
         { name: 'squadM3Email', value: this.teamForm.member3Email || '' },
@@ -1134,6 +1133,12 @@ setAuthValue('activeUserEmail', email);
           if (t.member5Email) currentEmails.push({ name: `staged_team_${idx}_m5`, value: t.member5Email });
         });
       }
+    } else if (this.activeTab === 'instructor') {
+      currentEmails.push(
+        { name: 'instEmail', value: this.instructorForm.email || '' },
+        { name: 'schoolRepEmail', value: this.schoolForm.repEmail || '' },
+        { name: 'schoolEmail', value: this.schoolForm.email || '' }
+      );
     } else if (this.activeTab === 'team' || (this.activeTab === 'student' && this.competitorMode === 'group')) {
       currentEmails.push(
         { name: 'squadLeadEmail', value: this.teamForm.leadEmail || '' },
@@ -1151,21 +1156,31 @@ setAuthValue('activeUserEmail', email);
     const v = value.trim().toLowerCase();
     if (!v) return 'This email is already in use in your form';
 
+    const sch = (this.schoolForm.email || '').trim().toLowerCase();
+    const rep = (this.schoolForm.repEmail || '').trim().toLowerCase();
+    const inst = (this.instructorForm.email || '').trim().toLowerCase();
+
     if (this.activeTab === 'school') {
-      const sch = (this.schoolForm.email || '').trim().toLowerCase();
-      const rep = (this.schoolForm.repEmail || '').trim().toLowerCase();
       if (fieldName === 'squadLeadEmail' || fieldName.startsWith('squadM')) {
         if (v === sch) return 'Team member email cannot be the same as the School official email';
         if (v === rep) return 'Team member email cannot be the same as the School representative email';
+        if (v === inst) return 'Team member email cannot be the same as the Instructor email';
         return 'Duplicate email used by another squad member';
       }
       if (fieldName === 'schoolEmail') {
         if (v === rep) return 'School official email and representative email cannot be the same';
+        if (v === inst) return 'School official email and instructor email cannot be the same';
         return 'School official email is already entered for a team member';
       }
       if (fieldName === 'schoolRepEmail') {
         if (v === sch) return 'School representative email and official email cannot be the same';
+        if (v === inst) return 'School representative email and instructor email cannot be the same';
         return 'School representative email is already entered for a team member';
+      }
+    } else if (this.activeTab === 'instructor') {
+      if (fieldName === 'instEmail') {
+        if (v === rep) return 'Instructor email and school representative email cannot be the same';
+        if (v === sch) return 'Instructor email and school official email cannot be the same';
       }
     }
 
@@ -1187,11 +1202,47 @@ setAuthValue('activeUserEmail', email);
   private isDuplicatePhoneInForm(fieldName: string, value: string): boolean {
     const v = this.normalizePhone(value);
     if (!v) return false;
+    const schTel = this.normalizePhone(this.schoolForm.tel);
+    const repTel = this.normalizePhone(this.schoolForm.repTel);
+    const instTel = this.normalizePhone(this.instructorForm.tel);
+
     if (this.activeTab === 'school') {
-      if (fieldName === 'schoolTel') return this.normalizePhone(this.schoolForm.repTel) === v;
-      if (fieldName === 'schoolRepTel') return this.normalizePhone(this.schoolForm.tel) === v;
+      if (fieldName === 'schoolTel') {
+        return (!!repTel && repTel === v) || (!!instTel && instTel === v);
+      }
+      if (fieldName === 'schoolRepTel') {
+        return (!!schTel && schTel === v) || (!!instTel && instTel === v);
+      }
+    } else if (this.activeTab === 'instructor') {
+      if (fieldName === 'instTel') {
+        return (!!repTel && repTel === v) || (!!schTel && schTel === v);
+      }
     }
     return false;
+  }
+
+  private getDuplicatePhoneMessage(fieldName: string, value: string): string {
+    const v = this.normalizePhone(value);
+    const schTel = this.normalizePhone(this.schoolForm.tel);
+    const repTel = this.normalizePhone(this.schoolForm.repTel);
+    const instTel = this.normalizePhone(this.instructorForm.tel);
+
+    if (this.activeTab === 'school') {
+      if (fieldName === 'schoolTel') {
+        if (repTel && v === repTel) return 'School telephone and representative telephone cannot be the same';
+        if (instTel && v === instTel) return 'School telephone and instructor telephone cannot be the same';
+      }
+      if (fieldName === 'schoolRepTel') {
+        if (schTel && v === schTel) return 'School telephone and representative telephone cannot be the same';
+        if (instTel && v === instTel) return 'School representative telephone and instructor telephone cannot be the same';
+      }
+    } else if (this.activeTab === 'instructor') {
+      if (fieldName === 'instTel') {
+        if (repTel && v === repTel) return 'Instructor telephone and school representative telephone cannot be the same';
+        if (schTel && v === schTel) return 'Instructor telephone and school telephone cannot be the same';
+      }
+    }
+    return 'This telephone number is already used by another role in your form';
   }
 
   private revalidateSiblingFields(currentFieldName: string, type: 'email' | 'phone'): void {
@@ -1200,7 +1251,9 @@ setAuthValue('activeUserEmail', email);
 
     if (type === 'email') {
       const emailFields = this.activeTab === 'school'
-        ? ['schoolEmail', 'schoolRepEmail', 'squadLeadEmail', 'squadM2Email', 'squadM3Email', 'squadM4Email', 'squadM5Email']
+        ? ['schoolEmail', 'schoolRepEmail', 'instEmail', 'squadLeadEmail', 'squadM2Email', 'squadM3Email', 'squadM4Email', 'squadM5Email']
+        : this.activeTab === 'instructor'
+        ? ['instEmail', 'schoolRepEmail', 'schoolEmail']
         : ['squadLeadEmail', 'squadM2Email', 'squadM3Email', 'squadM4Email', 'squadM5Email'];
 
       emailFields.filter(f => f !== currentFieldName).forEach(f => {
@@ -1217,31 +1270,43 @@ setAuthValue('activeUserEmail', email);
           }
         }
       });
-    } else if (type === 'phone' && this.activeTab === 'school') {
-      const sibling = currentFieldName === 'schoolTel' ? 'schoolRepTel' : currentFieldName === 'schoolRepTel' ? 'schoolTel' : null;
-      if (sibling && this.fieldValidation[sibling] && this.fieldValidation[sibling].status !== 'idle') {
-        const val = sibling === 'schoolTel' ? this.schoolForm.tel : this.schoolForm.repTel;
+    } else if (type === 'phone') {
+      const phoneFields = this.activeTab === 'school'
+        ? ['schoolTel', 'schoolRepTel', 'instTel']
+        : this.activeTab === 'instructor'
+        ? ['instTel', 'schoolRepTel', 'schoolTel']
+        : [];
+      phoneFields.filter(f => f !== currentFieldName).forEach(sibling => {
+        const val = this.getPhoneFieldValue(sibling);
         if (val && val.trim()) {
           if (!this.contentService.isValidGhanaPhone(val)) {
             this.fieldValidation[sibling] = { status: 'invalid', message: 'Enter a valid Ghana number (0XX XXX XXXX or +233...)' };
           } else if (this.isDuplicatePhoneInForm(sibling, val)) {
-            this.fieldValidation[sibling] = { status: 'taken', message: 'School telephone and representative telephone cannot be the same' };
+            this.fieldValidation[sibling] = { status: 'taken', message: this.getDuplicatePhoneMessage(sibling, val) };
           } else if (!serverSaysTaken(sibling) && !this.contentService.isPhoneTaken(val, this.editingApprovalId || undefined)) {
             this.fieldValidation[sibling] = { status: 'valid', message: '' };
           }
         }
-      }
+      });
     }
   }
 
   private getEmailFieldValue(fieldName: string): string {
     if (fieldName === 'schoolEmail') return this.schoolForm.email || '';
     if (fieldName === 'schoolRepEmail') return this.schoolForm.repEmail || '';
+    if (fieldName === 'instEmail') return this.instructorForm.email || '';
     if (fieldName === 'squadLeadEmail') return this.teamForm.leadEmail || '';
     if (fieldName === 'squadM2Email') return this.teamForm.member2Email || '';
     if (fieldName === 'squadM3Email') return this.teamForm.member3Email || '';
     if (fieldName === 'squadM4Email') return this.teamForm.member4Email || '';
     if (fieldName === 'squadM5Email') return this.teamForm.member5Email || '';
+    return '';
+  }
+
+  private getPhoneFieldValue(fieldName: string): string {
+    if (fieldName === 'schoolTel') return this.schoolForm.tel || '';
+    if (fieldName === 'schoolRepTel') return this.schoolForm.repTel || '';
+    if (fieldName === 'instTel') return this.instructorForm.tel || '';
     return '';
   }
 

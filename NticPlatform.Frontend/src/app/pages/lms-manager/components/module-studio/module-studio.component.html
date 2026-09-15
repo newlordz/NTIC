@@ -134,7 +134,7 @@
   </div>
 
   <!-- ── Workspace Layout (Left Palette + Center Canvas) ── -->
-  <div class="studio-workspace-grid" [class.sidebar-collapsed]="isPaletteCollapsed || isReadOnly">
+  <div class="studio-workspace-grid" [class.sidebar-collapsed]="isPaletteCollapsed && !isReadOnly" [class.readonly-workspace]="isReadOnly">
     <!-- ── Left Widget Palette ── -->
     <aside class="studio-palette-sidebar" *ngIf="!isReadOnly" [class.palette-disabled]="isCanvasPreviewMode">
       <div class="palette-header">
@@ -536,7 +536,7 @@
 
               <div class="form-group mb-2" *ngIf="blk.videoSource !== 'upload'">
                 <label class="text-xs">YouTube / Video Embed URL</label>
-                <input type="text" [(ngModel)]="blk.url" placeholder="https://www.youtube.com/watch?v=..." class="studio-input-sm" />
+                <input type="text" [(ngModel)]="blk.url" (ngModelChange)="scheduleAutoSave(false)" placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..." class="studio-input-sm" />
               </div>
 
               <div class="form-group mb-2" *ngIf="blk.videoSource === 'upload'">
@@ -547,6 +547,20 @@
                     <span class="material-symbols-outlined">{{ isUploadingBlockFile[blk.id] ? 'cloud_sync' : 'video_file' }}</span>
                     <span>{{ isUploadingBlockFile[blk.id] ? 'Uploading video...' : (blk.fileName || 'Choose MP4 / WebM Video File') }}</span>
                   </label>
+                </div>
+              </div>
+
+              <!-- Live Editor Video Preview -->
+              <div class="video-editor-preview mb-3" *ngIf="blk.url">
+                <div class="video-embed-wrapper" *ngIf="isEmbeddableVideo(blk.url)">
+                  <iframe [src]="getVideoEmbedUrl(blk.url) | safe"
+                          title="Lesson Video Stream Preview"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowfullscreen>
+                  </iframe>
+                </div>
+                <div class="direct-video-wrapper" *ngIf="isDirectVideoFile(blk.url)">
+                  <video [src]="blk.url" controls playsinline class="sim-video-player"></video>
                 </div>
               </div>
 
@@ -944,10 +958,24 @@
 
             <!-- Video Block -->
             <div *ngIf="blk.type === 'video'" class="sim-video-unit mb-4">
-              <div class="video-mock-player">
-                <span class="material-symbols-outlined" style="font-size:48px; color:#ffffff;">play_circle</span>
-                <span>{{ blk.url || blk.fileName || 'Video Player' }}</span>
+              <div class="video-embed-wrapper" *ngIf="isEmbeddableVideo(blk.url)">
+                <iframe [src]="getVideoEmbedUrl(blk.url) | safe"
+                        title="Lesson Video Stream"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowfullscreen>
+                </iframe>
               </div>
+
+              <div class="direct-video-wrapper" *ngIf="isDirectVideoFile(blk.url)">
+                <video [src]="blk.url" controls playsinline class="sim-video-player"></video>
+              </div>
+
+              <div class="video-mock-player" *ngIf="!isEmbeddableVideo(blk.url) && !isDirectVideoFile(blk.url)">
+                <span class="material-symbols-outlined" style="font-size:48px; color:#ffffff;">smart_display</span>
+                <span class="video-mock-title">{{ blk.title || 'Video Lecture' }}</span>
+                <span class="video-mock-url">{{ blk.url || blk.fileName || 'No video source provided' }}</span>
+              </div>
+
               <div class="sim-video-takeaway mt-2" *ngIf="blk.videoTakeaway">
                 <strong>Key Takeaway:</strong> {{ blk.videoTakeaway }}
               </div>

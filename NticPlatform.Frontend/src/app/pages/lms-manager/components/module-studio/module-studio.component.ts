@@ -7,6 +7,7 @@ import { FormsModule } from '@angular/forms';
 import { QuillEditorComponent } from 'ngx-quill';
 import { DialogService } from '../../../../services/dialog.service';
 import { ApiService } from '../../../../services/api.service';
+import { SafePipe } from '../../../../pipes/safe.pipe';
 
 export interface QuizQuestionItem {
   id: string;
@@ -85,7 +86,7 @@ export interface ModuleBlock {
 @Component({
   selector: 'app-module-studio',
   standalone: true,
-  imports: [CommonModule, FormsModule, QuillEditorComponent],
+  imports: [CommonModule, FormsModule, QuillEditorComponent, SafePipe],
   templateUrl: './module-studio.component.html',
   styleUrls: ['./module-studio.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -1460,5 +1461,72 @@ export class ModuleStudioComponent implements OnInit, OnChanges, OnDestroy {
     this.dialogService.toast(`Created new Quiz block with ${newQuestions.length} question(s)!`, 'success');
     this.scheduleAutoSave(true);
     this.closeAiQuestionBuilderModal();
+  }
+
+  // ── Video Embed URL Helpers ─────────────────────────────────
+  getVideoEmbedUrl(rawUrl: string | undefined): string {
+    if (!rawUrl) return '';
+    const url = rawUrl.trim();
+
+    // 1. YouTube watch URL: https://www.youtube.com/watch?v=VIDEO_ID
+    if (url.includes('youtube.com/watch')) {
+      const match = url.match(/[?&]v=([^&]+)/);
+      if (match && match[1]) {
+        const listMatch = url.match(/[?&]list=([^&]+)/);
+        const listParam = listMatch ? `?list=${listMatch[1]}` : '';
+        return `https://www.youtube.com/embed/${match[1]}${listParam}`;
+      }
+    }
+
+    // 2. YouTube short link: https://youtu.be/VIDEO_ID or with query parameters
+    if (url.includes('youtu.be/')) {
+      const afterDomain = url.split('youtu.be/')[1];
+      if (afterDomain) {
+        const idMatch = afterDomain.match(/^([^?&#/]+)/);
+        if (idMatch && idMatch[1]) {
+          const listMatch = url.match(/[?&]list=([^&]+)/);
+          const listParam = listMatch ? `?list=${listMatch[1]}` : '';
+          return `https://www.youtube.com/embed/${idMatch[1]}${listParam}`;
+        }
+      }
+    }
+
+    // 3. YouTube shorts: https://www.youtube.com/shorts/VIDEO_ID
+    if (url.includes('youtube.com/shorts/')) {
+      const afterShorts = url.split('youtube.com/shorts/')[1];
+      if (afterShorts) {
+        const idMatch = afterShorts.match(/^([^?&#/]+)/);
+        if (idMatch && idMatch[1]) {
+          return `https://www.youtube.com/embed/${idMatch[1]}`;
+        }
+      }
+    }
+
+    // 4. YouTube already embed URL
+    if (url.includes('youtube.com/embed/')) {
+      return url;
+    }
+
+    // 5. Vimeo URL: https://vimeo.com/VIDEO_ID
+    if (url.includes('vimeo.com/')) {
+      const match = url.match(/vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/([^\/]*)\/videos\/|album\/(\d+)\/video\/|)(\d+)/);
+      if (match && match[3]) {
+        return `https://player.vimeo.com/video/${match[3]}`;
+      }
+    }
+
+    return url;
+  }
+
+  isEmbeddableVideo(url: string | undefined): boolean {
+    if (!url) return false;
+    const u = url.trim().toLowerCase();
+    return u.includes('youtube.com') || u.includes('youtu.be') || u.includes('vimeo.com');
+  }
+
+  isDirectVideoFile(url: string | undefined): boolean {
+    if (!url) return false;
+    const clean = url.split('?')[0].toLowerCase();
+    return clean.endsWith('.mp4') || clean.endsWith('.webm') || clean.endsWith('.ogg') || clean.startsWith('blob:') || clean.startsWith('data:video');
   }
 }

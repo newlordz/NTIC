@@ -538,7 +538,18 @@
   overflow: hidden;
   transition: grid-template-columns 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 
-  &.sidebar-collapsed {
+  &.readonly-workspace {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: 1fr;
+
+    .studio-canvas-stream {
+      width: 100%;
+      flex: 1;
+    }
+  }
+
+  &.sidebar-collapsed:not(.readonly-workspace) {
     grid-template-columns: 0px 1fr;
 
     .studio-palette-sidebar {
@@ -1875,17 +1886,89 @@
     }
   }
 
+  .video-embed-wrapper {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+    height: 0;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #0f172a;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    border: 1px solid #e2e8f0;
+
+    iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 12px;
+    }
+  }
+
+  .direct-video-wrapper {
+    border-radius: 12px;
+    overflow: hidden;
+    background: #0f172a;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    border: 1px solid #e2e8f0;
+
+    .sim-video-player {
+      width: 100%;
+      max-height: 480px;
+      display: block;
+      border-radius: 12px;
+    }
+  }
+
   .video-mock-player {
     background: #0f172a;
-    border-radius: 10px;
-    height: 240px;
+    border-radius: 12px;
+    padding: 36px 20px;
+    min-height: 180px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     color: #ffffff;
     gap: 8px;
+    text-align: center;
+    border: 1px solid #1e293b;
+
+    .video-mock-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .video-mock-url {
+      font-size: 12px;
+      color: #94a3b8;
+      word-break: break-all;
+      max-width: 90%;
+    }
+  }
+
+  .sim-video-takeaway {
+    background: #f8fafc;
+    border-left: 3px solid #6366f1;
+    border-radius: 6px;
+    padding: 10px 14px;
     font-size: 13px;
+    color: #334155;
+
+    strong {
+      color: #1e1b4b;
+    }
+  }
+
+  .video-editor-preview {
+    margin: 10px 0 14px;
+
+    .video-embed-wrapper {
+      max-width: 100%;
+    }
   }
 
   .sim-code-unit {

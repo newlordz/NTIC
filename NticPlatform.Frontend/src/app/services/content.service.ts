@@ -1817,6 +1817,17 @@ export class ContentService {
     const e = email.trim().toLowerCase();
     if (!e) return false;
     if (this.users.some(u => u.id !== excludeId && u.email?.trim().toLowerCase() === e)) return true;
+    const approvals = [...(this.pendingApprovals || []), ...(this.approvedApprovals || [])];
+    if (approvals.some(a => {
+      if (excludeId && (a.id === excludeId || a.details?.code === excludeId)) return false;
+      const contact = (a.contact || '').trim().toLowerCase();
+      const rep = (a.details?.repEmail || '').trim().toLowerCase();
+      const sch = ((a.details as any)?.schoolEmail || a.details?.email || '').trim().toLowerCase();
+      const lead = (a.details?.leadEmail || '').trim().toLowerCase();
+      return contact === e || rep === e || sch === e || lead === e;
+    })) {
+      return true;
+    }
     return false;
   }
 
@@ -1851,12 +1862,22 @@ export class ContentService {
   isPhoneTaken(phone: string, excludeId?: string): boolean {
     const p = phone.replace(/[\s\-().]/g, '');
     if (!p) return false;
+    const pSuffix = p.length >= 8 ? p.slice(-9) : p;
     const matches = (val: string | undefined) => {
       if (!val) return false;
       const v = val.replace(/[\s\-().]/g, '');
-      return v === p || v.endsWith(p) || p.endsWith(v);
+      if (!v) return false;
+      const vSuffix = v.length >= 8 ? v.slice(-9) : v;
+      return v === p || vSuffix === pSuffix;
     };
     if (this.users.some(u => u.id !== excludeId && matches(u.phone))) return true;
+    const approvals = [...(this.pendingApprovals || []), ...(this.approvedApprovals || [])];
+    if (approvals.some(a => {
+      if (excludeId && (a.id === excludeId || a.details?.code === excludeId)) return false;
+      return matches(a.details?.phone) || matches(a.details?.repTel) || matches((a.details as any)?.tel) || matches(a.contact);
+    })) {
+      return true;
+    }
     return false;
   }
 
