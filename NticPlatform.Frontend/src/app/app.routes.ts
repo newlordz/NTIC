@@ -4,6 +4,8 @@ import { authGuard } from './guards/auth.guard';
 export const routes: Routes = [
   { path: '',             loadComponent: () => import('./pages/landing/landing.component').then(m => m.LandingComponent), pathMatch: 'full' },
   { path: 'news',         loadComponent: () => import('./pages/news/news.component').then(m => m.NewsComponent) },
+  { path: 'news/:id',     loadComponent: () => import('./pages/news/news.component').then(m => m.NewsComponent) },
+  { path: 'events/:id',   loadComponent: () => import('./pages/news/news.component').then(m => m.NewsComponent) },
   { path: 'registration', loadComponent: () => import('./pages/registration/registration.component').then(m => m.RegistrationComponent) },
   { path: 'competitions', loadComponent: () => import('./pages/competitions/competitions.component').then(m => m.CompetitionsComponent) },
   { path: 'admin/competitions', loadComponent: () => import('./pages/admin-competitions/admin-competitions.component').then(m => m.AdminCompetitionsComponent), canActivate: [authGuard] },

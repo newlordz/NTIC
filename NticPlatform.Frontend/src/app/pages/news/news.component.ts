@@ -1,14 +1,15 @@
 import { getAuthValue } from '../../services/session.util';
 import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute } from '@angular/router';
 import { ContentService, ChampionshipStory, NewsFeedItem, UpcomingEvent } from '../../services/content.service';
 import { PublicNavComponent } from '../../components/public-nav/public-nav.component';
+import { SocialShareComponent } from '../../components/social-share/social-share.component';
 
 @Component({
   selector: 'app-news',
   standalone: true,
-  imports: [CommonModule, RouterLink, PublicNavComponent],
+  imports: [CommonModule, RouterLink, PublicNavComponent, SocialShareComponent],
   templateUrl: './news.component.html',
   styleUrl: './news.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -16,16 +17,65 @@ import { PublicNavComponent } from '../../components/public-nav/public-nav.compo
 export class NewsComponent implements OnInit, OnDestroy {
   activeTag = 'all';
   tags = ['all', 'robotics', 'coding', 'cyber', 'ai', 'innovation'];
+  activeShareStoryId: string | null = null;
+  activeShareEventId: string | null = null;
+  highlightedStoryId: string | null = null;
   private liveTimer: any;
 
   constructor(
     public contentService: ContentService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
     this.liveTimer = setInterval(() => this.cdr.detectChanges(), 30_000);
+
+    // Deep link query or route param handler for shared links
+    this.route.params.subscribe(params => {
+      if (params['id']) {
+        this.highlightedStoryId = params['id'];
+        this.scrollToTarget(params['id']);
+      }
+    });
+    this.route.queryParams.subscribe(query => {
+      if (query['story']) {
+        this.highlightedStoryId = query['story'];
+        this.scrollToTarget(query['story']);
+      }
+    });
+
     this.cdr.markForCheck();
+  }
+
+  private scrollToTarget(id: string): void {
+    setTimeout(() => {
+      const el = document.getElementById('story-' + id) || document.getElementById('event-' + id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      this.cdr.detectChanges();
+    }, 300);
+  }
+
+  toggleStoryShare(storyId: string, event?: MouseEvent): void {
+    event?.stopPropagation();
+    this.activeShareStoryId = this.activeShareStoryId === storyId ? null : storyId;
+    this.cdr.markForCheck();
+  }
+
+  toggleEventShare(eventId: string, event?: MouseEvent): void {
+    event?.stopPropagation();
+    this.activeShareEventId = this.activeShareEventId === eventId ? null : eventId;
+    this.cdr.markForCheck();
+  }
+
+  getStoryCanonicalUrl(storyId: string): string {
+    return `/news/${storyId}`;
+  }
+
+  getEventCanonicalUrl(eventId: string): string {
+    return `/events/${eventId}`;
   }
 
   ngOnDestroy(): void {

@@ -8,8 +8,17 @@
     <header class="lms-header">
       <div class="header-content">
         <div class="header-title">
-          <span class="material-symbols-outlined header-icon">{{ isInstructor ? 'school' : 'verified_user' }}</span>
+          <div class="header-icon-wrap">
+            <div class="header-icon-box">
+              <span class="material-symbols-outlined header-icon">{{ isInstructor ? 'school' : 'verified_user' }}</span>
+            </div>
+            <div class="header-icon-ring"></div>
+          </div>
           <div>
+            <div class="header-badge" *ngIf="isAdmin || isInstructor">
+              <span class="header-pulse-dot"></span>
+              <span>{{ isInstructor ? 'Instructor · Course Author' : 'Administrator · Content Moderation' }}</span>
+            </div>
             <h1>{{ isInstructor ? 'Course Studio & Teaching Hub' : 'LMS Management & Content Moderation Desk' }}</h1>
             <p>{{ isInstructor ? 'Author courses, build lesson modules, configure learning assets, and review student assignments.' : 'Review instructor-submitted courses, modules, assets, and assignments. Approve content before it becomes visible to students.' }}</p>
           </div>
@@ -242,21 +251,23 @@
         <div *ngFor="let course of filteredCourses" class="course-card clickable-card" (click)="openCourseConsole(course)">
           <div class="course-card-top">
             <div class="icon-avatar" [class]="'track-' + course.track">
-              <span class="material-symbols-outlined">{{ course.icon }}</span>
+              <span class="material-symbols-outlined">{{ course.icon || 'school' }}</span>
             </div>
             <div class="course-badges">
               <span class="badge" [class]="'badge-' + course.track">{{ course.track | titlecase }}</span>
-              <span class="badge" [class]="course.approvalStatus === 'approved' ? (course.status === 'archived' ? 'badge-subtle' : 'badge-success') : course.approvalStatus === 'pending' ? 'badge-warning' : 'badge-danger'">
-                {{ course.approvalStatus === 'approved' ? (course.status === 'archived' ? 'Archived' : 'Approved Live') : course.approvalStatus === 'pending' ? 'Pending Review' : 'Rejected' }}
+              <span class="badge badge-status" [class]="course.approvalStatus === 'approved' ? (course.status === 'archived' ? 'badge-archived' : 'badge-live') : course.approvalStatus === 'pending' ? 'badge-pending' : 'badge-rejected'">
+                <span class="status-dot"></span>
+                <span>{{ course.approvalStatus === 'approved' ? (course.status === 'archived' ? 'Archived' : 'Approved Live') : course.approvalStatus === 'pending' ? 'Pending Review' : 'Rejected' }}</span>
               </span>
             </div>
           </div>
 
           <div class="course-card-body">
-            <h3>{{ course.title }}</h3>
-            <p>{{ stripHtml(course.description) }}</p>
-            <div class="text-xs text-subtle mt-2" *ngIf="course.submittedBy">
-              Instructor: <strong>{{ course.submittedBy }}</strong>
+            <h3 class="course-title">{{ course.title }}</h3>
+            <p class="course-desc" [title]="stripHtml(course.description)">{{ stripHtml(course.description) || 'No course overview provided.' }}</p>
+            <div class="course-meta-author" *ngIf="course.submittedBy">
+              <span class="material-symbols-outlined icon-author">person</span>
+              <span>Instructor: <strong>{{ course.submittedBy }}</strong></span>
             </div>
 
             <!-- Reviewer Revision Alert Chip on Card (Only for non-admin instructors/authors) -->
@@ -271,10 +282,12 @@
               <span class="metric-val">{{ getModulesForCourse(course.id).length || course.modules || 0 }}</span>
               <span class="metric-lbl">Modules</span>
             </div>
+            <div class="metric-divider"></div>
             <div class="metric-item">
               <span class="metric-val">{{ course.enrolled || 0 }}</span>
               <span class="metric-lbl">Students</span>
             </div>
+            <div class="metric-divider"></div>
             <div class="metric-item">
               <span class="metric-val">{{ course.completion || 0 }}%</span>
               <span class="metric-lbl">Avg Completion</span>
@@ -284,94 +297,107 @@
           <div class="course-card-footer">
             <!-- Instructor Actions (Edit, Clone, Delete, Resubmit, Lifecycle) -->
             <ng-container *ngIf="!isAdmin">
-              <button class="btn btn-xs btn-outline warning" *ngIf="course.approvalStatus === 'rejected'" (click)="resubmitCourseForReview(course); $event.stopPropagation()" [disabled]="isResubmittingCourse[course.id]" title="Resubmit for review">
-                <span class="material-symbols-outlined">send</span> {{ isResubmittingCourse[course.id] ? 'Submitting...' : 'Resubmit' }}
+              <button class="btn btn-sm btn-primary-soft btn-course-view" (click)="openCourseConsole(course); $event.stopPropagation()" title="Open course console and view syllabus">
+                <span class="material-symbols-outlined">tune</span>
+                <span>Console</span>
               </button>
-              <button class="btn btn-xs btn-subtle" (click)="openCourseWizard(course); $event.stopPropagation()">
-                <span class="material-symbols-outlined">edit</span> Edit
-              </button>
-              <button
-                class="btn btn-xs btn-subtle"
-                *ngIf="course.approvalStatus === 'approved' && course.status !== 'archived'"
-                (click)="toggleCourseLifecycle(course, 'archived'); $event.stopPropagation()"
-                [disabled]="isUpdatingCourseStatus[course.id]"
-                title="Unpublish this course from student enrollment (archive)"
-              >
-                <span class="material-symbols-outlined">archive</span> Unpublish
-              </button>
-              <button
-                class="btn btn-xs btn-subtle"
-                *ngIf="course.approvalStatus === 'approved' && course.status === 'archived'"
-                (click)="toggleCourseLifecycle(course, 'active'); $event.stopPropagation()"
-                [disabled]="isUpdatingCourseStatus[course.id]"
-                title="Publish this approved course live to students"
-              >
-                <span class="material-symbols-outlined">unarchive</span> Publish Live
-              </button>
-              <button class="btn btn-xs btn-subtle" (click)="cloneCourse(course); $event.stopPropagation()" [disabled]="isCloningCourse[course.id]" title="Duplicate full course as draft">
-                <span class="material-symbols-outlined">{{ isCloningCourse[course.id] ? 'sync' : 'content_copy' }}</span> {{ isCloningCourse[course.id] ? 'Cloning...' : 'Clone' }}
-              </button>
-              <button class="btn btn-xs btn-danger" (click)="deleteCourse(course.id); $event.stopPropagation()">
-                <span class="material-symbols-outlined">delete</span> Delete
-              </button>
-            </ng-container>
 
-            <!-- Admin Reviewer Actions: View, Approve, Reject, Unpublish/Publish -->
-            <ng-container *ngIf="isAdmin">
-              <button class="btn btn-xs btn-subtle" (click)="openCourseConsole(course); $event.stopPropagation()" title="View curriculum syllabus and materials">
-                <span class="material-symbols-outlined">visibility</span> View
-              </button>
-              <button
-                class="btn btn-xs btn-success"
-                *ngIf="course.approvalStatus !== 'approved'"
-                (click)="approveCourseDirect(course); $event.stopPropagation()"
-                [disabled]="isApprovingCourse[course.id]"
-                title="Approve and publish this course"
-              >
-                <span class="material-symbols-outlined">check_circle</span>
-                {{ isApprovingCourse[course.id] ? 'Approving...' : 'Approve' }}
-              </button>
-              <button
-                class="btn btn-xs btn-outline danger"
-                *ngIf="course.approvalStatus !== 'rejected' && course.approvalStatus !== 'approved'"
-                (click)="openRejectModal(course); $event.stopPropagation()"
-                title="Reject curriculum and request revisions"
-              >
-                <span class="material-symbols-outlined">cancel</span> Reject
-              </button>
-              <ng-container *ngIf="course.approvalStatus === 'approved'">
-                <button
-                  class="btn btn-xs btn-outline warning"
-                  (click)="openReviewInspectionForCourse(course); $event.stopPropagation()"
-                  title="Audit curriculum & send back for review with section comments"
-                >
-                  <span class="material-symbols-outlined">assignment_return</span> Return for Review
+              <div class="card-action-group">
+                <button class="btn btn-sm btn-outline warning" *ngIf="course.approvalStatus === 'rejected'" (click)="resubmitCourseForReview(course); $event.stopPropagation()" [disabled]="isResubmittingCourse[course.id]" title="Resubmit for review">
+                  <span class="material-symbols-outlined">send</span>
+                  <span>{{ isResubmittingCourse[course.id] ? 'Submitting...' : 'Resubmit' }}</span>
+                </button>
+                <button class="btn btn-sm btn-subtle" (click)="openCourseWizard(course); $event.stopPropagation()" title="Edit course settings">
+                  <span class="material-symbols-outlined">edit</span>
+                  <span>Edit</span>
                 </button>
                 <button
-                  class="btn btn-xs btn-subtle"
-                  *ngIf="course.status !== 'archived'"
+                  class="btn btn-sm btn-subtle"
+                  *ngIf="course.approvalStatus === 'approved' && course.status !== 'archived'"
                   (click)="toggleCourseLifecycle(course, 'archived'); $event.stopPropagation()"
                   [disabled]="isUpdatingCourseStatus[course.id]"
                   title="Unpublish this course from student enrollment (archive)"
                 >
-                  <span class="material-symbols-outlined">archive</span> Unpublish
+                  <span class="material-symbols-outlined">archive</span>
+                  <span>Unpublish</span>
                 </button>
                 <button
-                  class="btn btn-xs btn-subtle"
-                  *ngIf="course.status === 'archived'"
+                  class="btn btn-sm btn-subtle"
+                  *ngIf="course.approvalStatus === 'approved' && course.status === 'archived'"
                   (click)="toggleCourseLifecycle(course, 'active'); $event.stopPropagation()"
                   [disabled]="isUpdatingCourseStatus[course.id]"
                   title="Publish this approved course live to students"
                 >
-                  <span class="material-symbols-outlined">unarchive</span> Publish Live
+                  <span class="material-symbols-outlined">unarchive</span>
+                  <span>Publish</span>
                 </button>
-                <span class="badge badge-success status-pill-tag" *ngIf="course.status !== 'archived'">
-                  <span class="material-symbols-outlined" style="font-size:12px; vertical-align:middle; margin-right:2px;">verified</span> Approved Live
-                </span>
-                <span class="badge badge-subtle status-pill-tag" *ngIf="course.status === 'archived'">
-                  <span class="material-symbols-outlined" style="font-size:12px; vertical-align:middle; margin-right:2px;">archive</span> Archived
-                </span>
-              </ng-container>
+                <button class="btn btn-sm btn-icon-subtle" (click)="cloneCourse(course); $event.stopPropagation()" [disabled]="isCloningCourse[course.id]" title="Duplicate full course as draft">
+                  <span class="material-symbols-outlined">{{ isCloningCourse[course.id] ? 'sync' : 'content_copy' }}</span>
+                </button>
+                <button class="btn btn-sm btn-icon-danger" (click)="deleteCourse(course.id); $event.stopPropagation()" title="Delete course">
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </div>
+            </ng-container>
+
+            <!-- Admin Reviewer Actions: View, Approve, Reject, Unpublish/Publish -->
+            <ng-container *ngIf="isAdmin">
+              <button class="btn btn-sm btn-primary-soft btn-course-view" (click)="openCourseConsole(course); $event.stopPropagation()" title="View curriculum syllabus and materials">
+                <span class="material-symbols-outlined">visibility</span>
+                <span>Console</span>
+              </button>
+
+              <div class="card-action-group">
+                <button
+                  class="btn btn-sm btn-success"
+                  *ngIf="course.approvalStatus !== 'approved'"
+                  (click)="approveCourseDirect(course); $event.stopPropagation()"
+                  [disabled]="isApprovingCourse[course.id]"
+                  title="Approve and publish this course"
+                >
+                  <span class="material-symbols-outlined">check_circle</span>
+                  <span>{{ isApprovingCourse[course.id] ? 'Approving...' : 'Approve' }}</span>
+                </button>
+                <button
+                  class="btn btn-sm btn-outline danger"
+                  *ngIf="course.approvalStatus !== 'rejected' && course.approvalStatus !== 'approved'"
+                  (click)="openRejectModal(course); $event.stopPropagation()"
+                  title="Reject curriculum and request revisions"
+                >
+                  <span class="material-symbols-outlined">cancel</span>
+                  <span>Reject</span>
+                </button>
+                <ng-container *ngIf="course.approvalStatus === 'approved'">
+                  <button
+                    class="btn btn-sm btn-subtle-warning"
+                    (click)="openReviewInspectionForCourse(course); $event.stopPropagation()"
+                    title="Audit curriculum & send back for review with section comments"
+                  >
+                    <span class="material-symbols-outlined">assignment_return</span>
+                    <span>Review</span>
+                  </button>
+                  <button
+                    class="btn btn-sm btn-subtle"
+                    *ngIf="course.status !== 'archived'"
+                    (click)="toggleCourseLifecycle(course, 'archived'); $event.stopPropagation()"
+                    [disabled]="isUpdatingCourseStatus[course.id]"
+                    title="Unpublish this course from student enrollment (archive)"
+                  >
+                    <span class="material-symbols-outlined">archive</span>
+                    <span>Unpublish</span>
+                  </button>
+                  <button
+                    class="btn btn-sm btn-subtle"
+                    *ngIf="course.status === 'archived'"
+                    (click)="toggleCourseLifecycle(course, 'active'); $event.stopPropagation()"
+                    [disabled]="isUpdatingCourseStatus[course.id]"
+                    title="Publish this approved course live to students"
+                  >
+                    <span class="material-symbols-outlined">unarchive</span>
+                    <span>Publish</span>
+                  </button>
+                </ng-container>
+              </div>
             </ng-container>
           </div>
         </div>
@@ -874,14 +900,15 @@
         <button class="btn btn-sm btn-success" *ngIf="activeDetailCourse?.approvalStatus !== 'approved'" (click)="approveActiveCourseFromConsole()">
           <span class="material-symbols-outlined">check_circle</span> Approve &amp; Publish Course
         </button>
+        <button
+          class="btn btn-sm btn-outline warning"
+          *ngIf="isAdmin"
+          (click)="openSendReviewModal()"
+          title="Send curriculum back for review with module comments"
+        >
+          <span class="material-symbols-outlined">assignment_return</span> Send Back for Review {{ getStagedCommentsCount() > 0 ? '(' + getStagedCommentsCount() + ')' : '' }}
+        </button>
         <ng-container *ngIf="activeDetailCourse?.approvalStatus === 'approved'">
-          <button
-            class="btn btn-sm btn-outline warning"
-            (click)="openReviewInspectionForCourse(activeDetailCourse)"
-            title="Audit curriculum and send back for review with section comments"
-          >
-            <span class="material-symbols-outlined">assignment_return</span> Send Back for Review
-          </button>
           <button
             class="btn btn-sm btn-outline"
             *ngIf="activeDetailCourse?.status !== 'archived'"
@@ -1030,9 +1057,48 @@
           <h3>Syllabus Structure &amp; Lesson Sequence</h3>
           <p class="text-subtle text-xs">Tap any module to enter its dedicated visual block canvas.</p>
         </div>
-        <button id="tour-btn-add-module" class="btn btn-sm btn-primary" *ngIf="!isAdmin" (click)="onTourAddModuleClick()">
-          <span class="material-symbols-outlined">add</span> Add New Module
-        </button>
+        <div class="console-section-actions">
+          <button
+            class="btn btn-sm btn-outline warning btn-send-review-header"
+            *ngIf="isAdmin"
+            (click)="openSendReviewModal()"
+            title="Send all module comments back to instructor for revisions"
+          >
+            <span class="material-symbols-outlined">assignment_return</span>
+            <span>Send Back for Review {{ getStagedCommentsCount() > 0 ? '(' + getStagedCommentsCount() + ')' : '' }}</span>
+          </button>
+          <button id="tour-btn-add-module" class="btn btn-sm btn-primary" *ngIf="!isAdmin" (click)="onTourAddModuleClick()">
+            <span class="material-symbols-outlined">add</span> Add New Module
+          </button>
+        </div>
+      </div>
+
+      <!-- Curriculum Review Audit Banner (For Reviewers) -->
+      <div class="curriculum-review-banner" *ngIf="isAdmin">
+        <div class="review-banner-left">
+          <span class="material-symbols-outlined review-banner-icon">rate_review</span>
+          <div>
+            <div class="review-banner-title">
+              <strong>Curriculum Audit &amp; Section Review</strong>
+              <span class="review-count-badge" [class.has-notes]="getStagedCommentsCount() > 0">
+                {{ getStagedCommentsCount() }} module {{ getStagedCommentsCount() === 1 ? 'comment' : 'comments' }} attached
+              </span>
+            </div>
+            <p class="review-banner-desc">
+              Comment on individual syllabus modules below. When finished, send all revision notes back to the instructor.
+            </p>
+          </div>
+        </div>
+        <div class="review-banner-right">
+          <button
+            class="btn btn-sm btn-warning"
+            (click)="openSendReviewModal()"
+            title="Package all module comments and return curriculum to instructor"
+          >
+            <span class="material-symbols-outlined">assignment_return</span>
+            <span>Send Back for Review</span>
+          </button>
+        </div>
       </div>
 
       <div class="modules-sequence-grid" *ngIf="getModulesForCourse(activeDetailCourse?.id).length > 0">
@@ -1041,19 +1107,81 @@
           <div class="module-card-main">
             <div class="module-header-row">
               <h4>{{ mod.title }}</h4>
-              <span class="badge" [class.badge-success]="mod.status === 'published' || mod.status === 'active'" [class.badge-warning]="mod.status !== 'published' && mod.status !== 'active'">
-                {{ (mod.status === 'published' || mod.status === 'active') ? 'Published' : 'Draft' }}
-              </span>
+              <div class="module-badges-wrap">
+                <span class="badge badge-comment-indicator" *ngIf="getCommentForModule(mod)">
+                  <span class="material-symbols-outlined">comment</span> Note Attached
+                </span>
+                <span class="badge" [class.badge-success]="mod.status === 'published' || mod.status === 'active'" [class.badge-warning]="mod.status !== 'published' && mod.status !== 'active'">
+                  {{ (mod.status === 'published' || mod.status === 'active') ? 'Published' : 'Draft' }}
+                </span>
+              </div>
             </div>
             <p class="module-desc">{{ getFormattedDescription(mod.description) || 'Continuous learning module with video, guide, micro-quizzes, and challenges.' }}</p>
+
+            <!-- Display Reviewer Note if one exists -->
+            <div class="module-review-note-badge" *ngIf="getCommentForModule(mod)" (click)="$event.stopPropagation()">
+              <div class="review-note-header">
+                <div class="review-note-title">
+                  <span class="material-symbols-outlined">rate_review</span>
+                  <span>Review Note:</span>
+                </div>
+                <div class="review-note-actions" *ngIf="isAdmin">
+                  <button class="btn-icon-xs" (click)="toggleModuleCommentBox(mod); $event.stopPropagation()" title="Edit comment">
+                    <span class="material-symbols-outlined">edit</span>
+                  </button>
+                  <button class="btn-icon-xs text-danger" (click)="deleteModuleComment(mod); $event.stopPropagation()" title="Delete comment">
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                </div>
+              </div>
+              <p class="review-note-content">{{ getCommentForModule(mod) }}</p>
+            </div>
+
+            <!-- Inline Module Comment Editor -->
+            <div class="module-comment-editor" *ngIf="activeCommentModuleId === mod.id" (click)="$event.stopPropagation()">
+              <div class="comment-editor-header">
+                <span class="material-symbols-outlined">chat</span>
+                <span>Review Feedback for {{ mod.title }}</span>
+              </div>
+              <textarea
+                class="comment-textarea"
+                [(ngModel)]="activeModuleCommentText"
+                rows="3"
+                placeholder="Specify changes needed for this module (e.g. Add 2 more quiz questions, explain code syntax in unit 3, fix formatting)..."
+                (keydown.enter)="$event.stopPropagation()"
+              ></textarea>
+              <div class="comment-editor-actions">
+                <button class="btn btn-xs btn-subtle" (click)="cancelModuleComment()">Cancel</button>
+                <button class="btn btn-xs btn-primary" (click)="saveModuleComment(mod)">
+                  <span class="material-symbols-outlined">save</span>
+                  <span>Save Note</span>
+                </button>
+              </div>
+            </div>
+
             <div class="module-footer-row">
               <span class="module-units-count">
                 <span class="material-symbols-outlined">auto_stories</span>
                 {{ getMaterialsForModule(mod.id).length || 3 }} interactive units
               </span>
-              <button class="btn btn-xs btn-primary-soft" (click)="openModuleStudio(mod); $event.stopPropagation()">
-                <span class="material-symbols-outlined">{{ isAdmin ? 'visibility' : 'design_services' }}</span> {{ isAdmin ? 'Inspect Canvas' : 'Open Canvas Studio' }}
-              </button>
+
+              <div class="module-footer-actions">
+                <button
+                  *ngIf="isAdmin"
+                  class="btn btn-xs btn-review-note"
+                  [class.has-note]="!!getCommentForModule(mod)"
+                  (click)="toggleModuleCommentBox(mod); $event.stopPropagation()"
+                  title="Add or edit review comment for this module"
+                >
+                  <span class="material-symbols-outlined">{{ getCommentForModule(mod) ? 'edit_note' : 'add_comment' }}</span>
+                  <span>{{ getCommentForModule(mod) ? 'Edit Comment' : 'Comment' }}</span>
+                </button>
+
+                <button class="btn btn-xs btn-primary-soft" (click)="openModuleStudio(mod); $event.stopPropagation()">
+                  <span class="material-symbols-outlined">{{ isAdmin ? 'visibility' : 'design_services' }}</span>
+                  <span>{{ isAdmin ? 'Inspect Canvas' : 'Open Canvas Studio' }}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -2980,6 +3108,71 @@
         <button class="btn btn-success" (click)="gradeSubmission()" [disabled]="isSaving || gradeScore === null || gradeScore < 0 || gradeScore > (activeSubmission.max_score || 100)">
           <span *ngIf="!isSaving" style="display:flex; align-items:center; gap:4px;"><span class="material-symbols-outlined">task_alt</span> Grade &amp; Score</span>
           <span *ngIf="isSaving" class="spinner-inline"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       MODAL: SEND BACK FOR REVIEW (MODULE REVISIONS DISPATCH)
+       ════════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay-custom" *ngIf="isSendReviewModalOpen" (click)="closeSendReviewModal()">
+    <div class="modal-dialog-custom modal-send-review-card" (click)="$event.stopPropagation()">
+      <div class="modal-header-custom">
+        <div class="flex-align-gap">
+          <span class="material-symbols-outlined text-warning">assignment_return</span>
+          <h3>Send Curriculum Back for Review</h3>
+        </div>
+        <button class="close-btn-custom" (click)="closeSendReviewModal()">&times;</button>
+      </div>
+
+      <div class="modal-body-custom">
+        <p class="text-subtle text-xs mb-3">
+          This will return <strong>{{ activeDetailCourse?.title }}</strong> to the instructor with status <em>Changes Requested</em>. The instructor will see your exact module notes and revision guidelines.
+        </p>
+
+        <!-- Staged Module Comments List -->
+        <div class="review-modules-summary mb-3">
+          <div class="review-modules-header">
+            <strong>Module Revision Notes ({{ getCommentsListForSummary().length }})</strong>
+          </div>
+
+          <div *ngIf="getCommentsListForSummary().length === 0" class="empty-module-comments">
+            <span class="material-symbols-outlined">info</span>
+            <span>No individual module comments attached yet. You can provide general remediation instructions below, or cancel to add comments directly to modules.</span>
+          </div>
+
+          <div class="review-module-comment-item" *ngFor="let item of getCommentsListForSummary()">
+            <div class="comment-item-title">
+              <span class="material-symbols-outlined">view_module</span>
+              <strong>{{ item.title }}</strong>
+            </div>
+            <div class="comment-item-note">{{ item.note }}</div>
+          </div>
+        </div>
+
+        <!-- General Remediation Instructions -->
+        <div class="form-group mb-0">
+          <label class="form-label text-xs font-bold">General Remediation Instructions (Optional)</label>
+          <textarea
+            class="form-control"
+            [(ngModel)]="generalReviewNote"
+            rows="3"
+            placeholder="Add overall instructions, deadlines, or general guidance for the instructor..."
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer-custom">
+        <button class="btn btn-outline" (click)="closeSendReviewModal()" [disabled]="isSendingReview">Cancel</button>
+        <button
+          class="btn btn-warning"
+          (click)="confirmSendReviewBack()"
+          [disabled]="isSendingReview || (getCommentsListForSummary().length === 0 && !generalReviewNote.trim())"
+        >
+          <span class="material-symbols-outlined" *ngIf="!isSendingReview">send</span>
+          <span *ngIf="!isSendingReview">Send Revisions to Instructor</span>
+          <span *ngIf="isSendingReview">Dispatching Feedback...</span>
         </button>
       </div>
     </div>

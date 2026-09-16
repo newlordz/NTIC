@@ -11527,6 +11527,10 @@ try:
             "questions": diverse_questions
         }
 
+    # Mount OpenGraph / Social preview crawler router
+    from app.opengraph import router as opengraph_router
+    app.include_router(opengraph_router)
+
     # Mount static files
     frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "NticPlatform.Frontend", "dist", "ntic-frontend", "browser")
     frontend_dist = os.path.abspath(frontend_dist)

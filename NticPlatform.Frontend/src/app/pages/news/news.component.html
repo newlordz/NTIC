@@ -21,7 +21,9 @@
     <div class="stories-grid">
       <div *ngFor="let story of filteredStories; let i = index; trackBy: trackByStory"
            class="story-card"
-           [class.featured]="i === 0">
+           [class.featured]="i === 0"
+           [id]="'story-' + story.id"
+           [class.highlighted]="highlightedStoryId === story.id">
         <div class="story-img-wrap">
           <img [src]="story.image" [alt]="story.title"
                onerror="this.src='assets/ntic_image_1.jpeg'">
@@ -45,9 +47,18 @@
               <span class="material-symbols-outlined icon">{{ isLikedByUser(story) ? 'favorite' : 'favorite_border' }}</span>
               <span class="count">{{ story.likes || 0 }}</span>
             </button>
-            <button class="btn-story-act share-btn" [attr.data-share]="story.id" (click)="shareStory(story, $event)">
+            <button class="btn-story-act share-btn" [class.active]="activeShareStoryId === story.id" (click)="toggleStoryShare(story.id, $event)" title="Share story">
               <span class="material-symbols-outlined icon">share</span>
             </button>
+          </div>
+          <!-- Expandable Social Share Tray -->
+          <div class="story-share-tray" *ngIf="activeShareStoryId === story.id" (click)="$event.stopPropagation()">
+            <app-social-share
+              [title]="story.title"
+              [summary]="story.body"
+              [url]="getStoryCanonicalUrl(story.id)"
+              [compact]="true"
+            ></app-social-share>
           </div>
           <button class="read-more-btn">
             <span>Read Full Story</span>
@@ -96,7 +107,7 @@
       <h2>Upcoming Events</h2>
     </div>
     <div class="events-grid">
-      <div class="event-card" *ngFor="let event of upcomingEvents">
+      <div class="event-card" *ngFor="let event of upcomingEvents" [id]="'event-' + event.id">
         <div class="event-date-block">
           <span class="event-month">{{ event.month }}</span>
           <span class="event-day">{{ event.day }}</span>
@@ -104,10 +115,24 @@
         <div class="event-info">
           <h4>{{ event.title }}</h4>
           <p>{{ event.description }}</p>
-          <span class="event-location">
-            <span class="material-symbols-outlined">location_on</span>
-            {{ event.location }}
-          </span>
+          <div class="event-footer">
+            <span class="event-location">
+              <span class="material-symbols-outlined">location_on</span>
+              {{ event.location }}
+            </span>
+            <button class="btn-event-share" (click)="toggleEventShare(event.id, $event)" title="Share event">
+              <span class="material-symbols-outlined icon">share</span>
+            </button>
+          </div>
+          <!-- Expandable Event Share Tray -->
+          <div class="event-share-tray" *ngIf="activeShareEventId === event.id" (click)="$event.stopPropagation()">
+            <app-social-share
+              [title]="event.title"
+              [summary]="event.description"
+              [url]="getEventCanonicalUrl(event.id)"
+              [compact]="true"
+            ></app-social-share>
+          </div>
         </div>
       </div>
     </div>

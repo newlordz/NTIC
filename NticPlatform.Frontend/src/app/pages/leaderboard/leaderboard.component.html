@@ -1,38 +1,87 @@
 <div class="leaderboard-page">
 
-  <!-- Top Nav -->
+  <!-- Top Nav for public visitors -->
   <app-public-nav *ngIf="!isLoggedIn" activePage="leaderboard"></app-public-nav>
 
-  <!-- ═══ ADMIN TOOLBAR ═══ -->
-  <div class="lb-admin-bar" *ngIf="isAdmin">
-    <div class="container">
-      <div class="admin-bar-inner">
-        <div class="admin-bar-title">
-          <span class="material-symbols-outlined">admin_panel_settings</span>
-          <span>Admin Controls</span>
+  <div class="lb-main-container">
+
+    <!-- ═══ ENTERPRISE INSTITUTIONAL HEADER ═══ -->
+    <header class="lb-hero">
+      <div class="lb-hero-inner">
+        <div class="lb-hero-left">
+          <div class="lb-shield-wrap">
+            <div class="lb-shield">
+              <span class="material-symbols-outlined">emoji_events</span>
+            </div>
+            <div class="lb-shield-ring"></div>
+          </div>
+          <div class="lb-hero-text">
+            <div class="lb-badge">
+              <span class="lb-pulse-dot"></span>
+              <span>NTIC Championship 2026 · Official Standings</span>
+            </div>
+            <h1>National School Championship Leaderboard</h1>
+            <p>Live standings for the National Advanced NTI Championship 2026 — tracking performance across all 16 regions of Ghana.</p>
+          </div>
         </div>
-        <div class="admin-bar-actions">
-          <button class="btn btn-export" (click)="exportCSV()">
-            <span class="material-symbols-outlined">download</span>Export CSV
+
+        <div class="lb-hero-actions">
+          <button class="lb-btn lb-btn-secondary" (click)="exportCSV()">
+            <span class="material-symbols-outlined">download</span>
+            <span>Export CSV</span>
           </button>
-          <button class="btn btn-primary btn-sm" (click)="openAddForm()">
-            <span class="material-symbols-outlined">add</span>Add School
+          <button *ngIf="isAdmin" class="lb-btn lb-btn-primary" (click)="openAddForm()">
+            <span class="material-symbols-outlined">add</span>
+            <span>Add School</span>
           </button>
         </div>
       </div>
-    </div>
-  </div>
+    </header>
 
-  <!-- ═══ ADD/EDIT FORM ═══ -->
-  <div class="lb-form-section" *ngIf="isAdmin && showAddForm">
-    <div class="container">
+    <!-- ═══ KPI METRIC CARDS ═══ -->
+    <div class="lb-kpi-row" *ngIf="firstPlace">
+      <div class="lb-kpi kpi-blue">
+        <div class="lb-kpi-top">
+          <div class="lb-kpi-icon"><span class="material-symbols-outlined">domain</span></div>
+        </div>
+        <div class="lb-kpi-num">{{ totalSchools }}</div>
+        <div class="lb-kpi-lbl">Competing Schools</div>
+      </div>
+
+      <div class="lb-kpi kpi-amber">
+        <div class="lb-kpi-top">
+          <div class="lb-kpi-icon"><span class="material-symbols-outlined">military_tech</span></div>
+        </div>
+        <div class="lb-kpi-num">{{ (highestScore | number) || '0' }}</div>
+        <div class="lb-kpi-lbl">Top Score (Leader)</div>
+      </div>
+
+      <div class="lb-kpi kpi-green">
+        <div class="lb-kpi-top">
+          <div class="lb-kpi-icon"><span class="material-symbols-outlined">location_on</span></div>
+        </div>
+        <div class="lb-kpi-num">{{ totalRegions }} Regions</div>
+        <div class="lb-kpi-lbl">Leader: {{ topRegion }}</div>
+      </div>
+
+      <div class="lb-kpi kpi-purple">
+        <div class="lb-kpi-top">
+          <div class="lb-kpi-icon"><span class="material-symbols-outlined">category</span></div>
+        </div>
+        <div class="lb-kpi-num">4 Tracks</div>
+        <div class="lb-kpi-lbl">Coding · Robotics · AI · Cyber</div>
+      </div>
+    </div>
+
+    <!-- ═══ ADD/EDIT FORM (Admin) ═══ -->
+    <div class="lb-form-section" *ngIf="isAdmin && showAddForm">
       <div class="lb-form-card">
         <div class="lb-form-header">
           <h4>
             <span class="material-symbols-outlined">leaderboard</span>
-            {{ editId ? 'Edit School' : 'Add School to Leaderboard' }}
+            {{ editId ? 'Edit School Record' : 'Add School to Leaderboard' }}
           </h4>
-          <button class="lb-form-close" (click)="closeForm()">
+          <button class="lb-form-close" (click)="closeForm()" aria-label="Close form">
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
@@ -51,7 +100,7 @@
             <input type="text" [(ngModel)]="lbForm.region" placeholder="e.g. Greater Accra">
           </div>
           <div class="lb-points-group">
-            <label>Track Points</label>
+            <label>Track Points Breakdown</label>
             <div class="lb-points-row">
               <div class="lb-point-field">
                 <span>Coding</span>
@@ -77,72 +126,91 @@
           </div>
         </div>
         <div class="lb-form-actions">
-          <button class="btn btn-subtle" (click)="closeForm()">Cancel</button>
-          <button class="btn btn-primary" (click)="submitForm()">
+          <button class="lb-btn lb-btn-secondary" (click)="closeForm()">Cancel</button>
+          <button class="lb-btn lb-btn-primary" (click)="submitForm()">
             <span class="material-symbols-outlined">save</span>
             {{ editId ? 'Save Changes' : 'Add to Leaderboard' }}
           </button>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- ═══ PUBLIC VIEW ═══ -->
-
-  <!-- Header -->
-  <header class="lb-header">
-    <div class="container">
-      <span class="lb-badge">
-        <span class="material-symbols-outlined">emoji_events</span>
-        NTIC 2026
-      </span>
-      <h1>National School Championship Leaderboard</h1>
-      <p>Live standings for the National Advanced NTI Championship 2026 -- tracking performance across all 16 regions of Ghana.</p>
-    </div>
-  </header>
-
-  <!-- Podium -->
-  <section class="lb-podium-section" *ngIf="firstPlace">
-    <div class="container">
+    <!-- ═══ PODIUM CARDS (Top 3) ═══ -->
+    <section class="lb-podium-section" *ngIf="firstPlace">
       <div class="podium-grid">
-        <!-- 2nd -->
+        <!-- 2nd Place (Silver) -->
         <div class="podium-card silver" *ngIf="secondPlace">
-          <div class="podium-rank">2</div>
+          <div class="podium-header-bar">
+            <div class="podium-medal-badge">
+              <span class="material-symbols-outlined">workspace_premium</span>
+              <span>2nd Place</span>
+            </div>
+            <span class="podium-rank-num">#2</span>
+          </div>
           <div class="podium-avatar">{{ getInitials(secondPlace.schoolName) }}</div>
           <h4>{{ secondPlace.schoolName }}</h4>
-          <span class="podium-region">{{ secondPlace.region }}</span>
-          <span class="podium-pts">{{ secondPlace.points | number }} pts</span>
-        </div>
-        <!-- 1st -->
-        <div class="podium-card gold" *ngIf="firstPlace">
-          <div class="podium-crown">
-            <span class="material-symbols-outlined">workspace_premium</span>
+          <span class="podium-region">
+            <span class="material-symbols-outlined">location_on</span>
+            {{ secondPlace.region || 'Ghana' }}
+          </span>
+          <div class="podium-pts-box">
+            <span class="podium-pts-val">{{ secondPlace.points | number }}</span>
+            <span class="podium-pts-lbl">pts</span>
           </div>
-          <div class="podium-rank">1</div>
+        </div>
+
+        <!-- 1st Place (Gold / Champion Leader) -->
+        <div class="podium-card gold" *ngIf="firstPlace">
+          <div class="podium-header-bar">
+            <div class="podium-medal-badge">
+              <span class="material-symbols-outlined">military_tech</span>
+              <span>1st Place · Champion Leader</span>
+            </div>
+            <span class="podium-rank-num">#1</span>
+          </div>
           <div class="podium-avatar">{{ getInitials(firstPlace.schoolName) }}</div>
           <h4>{{ firstPlace.schoolName }}</h4>
-          <span class="podium-region">{{ firstPlace.region }}</span>
-          <span class="podium-pts">{{ firstPlace.points | number }} pts</span>
+          <span class="podium-region">
+            <span class="material-symbols-outlined">location_on</span>
+            {{ firstPlace.region || 'Ghana' }}
+          </span>
+          <div class="podium-pts-box">
+            <span class="podium-pts-val">{{ firstPlace.points | number }}</span>
+            <span class="podium-pts-lbl">pts</span>
+          </div>
         </div>
-        <!-- 3rd -->
+
+        <!-- 3rd Place (Bronze) -->
         <div class="podium-card bronze" *ngIf="thirdPlace">
-          <div class="podium-rank">3</div>
+          <div class="podium-header-bar">
+            <div class="podium-medal-badge">
+              <span class="material-symbols-outlined">workspace_premium</span>
+              <span>3rd Place</span>
+            </div>
+            <span class="podium-rank-num">#3</span>
+          </div>
           <div class="podium-avatar">{{ getInitials(thirdPlace.schoolName) }}</div>
           <h4>{{ thirdPlace.schoolName }}</h4>
-          <span class="podium-region">{{ thirdPlace.region }}</span>
-          <span class="podium-pts">{{ thirdPlace.points | number }} pts</span>
+          <span class="podium-region">
+            <span class="material-symbols-outlined">location_on</span>
+            {{ thirdPlace.region || 'Ghana' }}
+          </span>
+          <div class="podium-pts-box">
+            <span class="podium-pts-val">{{ thirdPlace.points | number }}</span>
+            <span class="podium-pts-lbl">pts</span>
+          </div>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Full Rankings Table -->
-  <section class="lb-table-section" *ngIf="restStandings.length">
-    <div class="container">
+    <!-- ═══ FULL RANKINGS TABLE ═══ -->
+    <section class="lb-table-section" *ngIf="restStandings.length">
       <div class="lb-table-card">
         <div class="lb-table-header">
-          <h3>School Rankings</h3>
-          <span class="lb-table-count">{{ restStandings.length + 3 }} schools</span>
+          <div class="lb-table-title-group">
+            <h3>Championship Standings</h3>
+            <span class="lb-table-count">{{ totalSchools }} schools ranked</span>
+          </div>
         </div>
         <div class="lb-table-wrap">
           <table>
@@ -152,42 +220,47 @@
                 <th class="col-school">School</th>
                 <th class="col-region">Region</th>
                 <th class="col-pts">Points</th>
-                <th class="col-edit" *ngIf="isAdmin"></th>
+                <th class="col-edit" *ngIf="isAdmin">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <ng-container *ngFor="let s of restStandings; let i = index; trackBy: trackBySchool">
-                <tr>
-                  <td class="col-rank">
-                    <span class="rank-num">#{{ s.rank }}</span>
-                  </td>
-                  <td class="col-school">{{ s.school }}</td>
-                  <td class="col-region">{{ s.region }}</td>
-                  <td class="col-pts">{{ s.pts | number }}</td>
-                  <td class="col-edit" *ngIf="isAdmin">
-                    <button class="row-edit-btn" title="Edit" (click)="editEntry(contentService.leaderboardData[i + 3])">
-                      <span class="material-symbols-outlined">edit</span>
-                    </button>
-                    <button class="row-del-btn" title="Remove" (click)="removeEntry(contentService.leaderboardData[i + 3].id)">
-                      <span class="material-symbols-outlined">delete</span>
-                    </button>
-                  </td>
-                </tr>
-              </ng-container>
+              <tr *ngFor="let s of restStandings; let i = index; trackBy: trackBySchool">
+                <td class="col-rank">
+                  <span class="rank-num">#{{ s.rank }}</span>
+                </td>
+                <td class="col-school">
+                  <div class="school-cell">
+                    <span class="school-mini-avatar">{{ getInitials(s.school) }}</span>
+                    <span class="school-name">{{ s.school }}</span>
+                  </div>
+                </td>
+                <td class="col-region">
+                  <span class="region-pill">{{ s.region }}</span>
+                </td>
+                <td class="col-pts">{{ s.pts | number }} pts</td>
+                <td class="col-edit" *ngIf="isAdmin">
+                  <button class="row-edit-btn" title="Edit" (click)="editEntry(contentService.leaderboardData[i + 3])">
+                    <span class="material-symbols-outlined">edit</span>
+                  </button>
+                  <button class="row-del-btn" title="Remove" (click)="removeEntry(contentService.leaderboardData[i + 3].id)">
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- Empty State -->
-  <section class="lb-empty" *ngIf="!firstPlace">
-    <div class="container">
-      <span class="material-symbols-outlined">emoji_events</span>
-      <h3>Leaderboard Coming Soon</h3>
-      <p>Championship standings will appear here once competition data is available.</p>
-    </div>
-  </section>
+    <!-- ═══ EMPTY STATE ═══ -->
+    <section class="lb-empty" *ngIf="!firstPlace">
+      <div class="lb-empty-card">
+        <span class="material-symbols-outlined">emoji_events</span>
+        <h3>Leaderboard Standings Forthcoming</h3>
+        <p>Official championship rankings will update automatically as school tournament scores are verified.</p>
+      </div>
+    </section>
 
+  </div>
 </div>

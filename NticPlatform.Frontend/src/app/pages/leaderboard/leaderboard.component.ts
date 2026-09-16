@@ -49,6 +49,23 @@ export class LeaderboardComponent implements OnInit {
     return this.contentService.leaderboardData[2] || null;
   }
 
+  get totalSchools(): number {
+    return this.contentService.leaderboardData.length;
+  }
+
+  get totalRegions(): number {
+    const regions = new Set(this.contentService.leaderboardData.map(e => e.region).filter(Boolean));
+    return regions.size;
+  }
+
+  get topRegion(): string {
+    return this.firstPlace?.region || 'Ghana';
+  }
+
+  get highestScore(): number {
+    return this.firstPlace?.points || 0;
+  }
+
   getInitials(name: string): string {
     if (!name) return '??';
     return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();

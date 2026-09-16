@@ -327,6 +327,14 @@ export class LmsManagerComponent implements OnInit {
   activeRejectItem: PendingModerationItem | null = null;
   rejectionReasonInput: string = '';
 
+  // ── Curriculum Module Review Comments Desk ──────────────────────────
+  moduleReviewComments: { [moduleId: string]: string } = {};
+  activeCommentModuleId: string | null = null;
+  activeModuleCommentText: string = '';
+  isSendReviewModalOpen: boolean = false;
+  generalReviewNote: string = '';
+  isSendingReview: boolean = false;
+
   // ── Server-backed state ─────────────────────────────────────────────
   // These replace reads of contentService.lmsModules / lmsMaterials /
   // lmsAssignments / lmsSubmissions / lmsEnrollments, every one of which defaults
@@ -1460,6 +1468,7 @@ export class LmsManagerComponent implements OnInit {
     this.currentView = 'course_console';
     this.courseConsoleTab = 'modules';
     this.showCourseInsights = false;
+    this.loadModuleReviewComments(course);
     this.cdr.markForCheck();
 
     // Check if course has 0 modules, activate wizard tour if empty
@@ -1478,7 +1487,201 @@ export class LmsManagerComponent implements OnInit {
     this.activeDetailCourse = null;
     this.selectedCourseId = 'all';
     this.showCourseInsights = false;
+    this.activeCommentModuleId = null;
     this.cdr.markForCheck();
+  }
+
+  // ── Module Review & Section Feedback Methods ──────────────────────
+  loadModuleReviewComments(course: any): void {
+    this.moduleReviewComments = {};
+    this.activeCommentModuleId = null;
+    this.activeModuleCommentText = '';
+    const raw = course?.rejectionReason || course?.rejection_reason || '';
+    const match = raw.match(/<!-- REVIEW_FEEDBACK_DATA:([\s\S]*?)-->/);
+    if (match && match[1]) {
+      try {
+        const parsed = JSON.parse(match[1]);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((item: any) => {
+            if (item.elementId) {
+              this.moduleReviewComments[item.elementId] = item.note || '';
+            }
+          });
+        }
+      } catch {}
+    }
+  }
+
+  getCommentForModule(mod: any): string {
+    if (!mod) return '';
+    if (this.moduleReviewComments[mod.id] !== undefined) {
+      return this.moduleReviewComments[mod.id];
+    }
+    const raw = this.activeDetailCourse?.rejectionReason || this.activeDetailCourse?.rejection_reason || '';
+    const match = raw.match(/<!-- REVIEW_FEEDBACK_DATA:([\s\S]*?)-->/);
+    if (match && match[1]) {
+      try {
+        const parsed = JSON.parse(match[1]);
+        if (Array.isArray(parsed)) {
+          const found = parsed.find((item: any) =>
+            item.elementId === mod.id ||
+            (item.section && mod.title && item.section.toLowerCase().includes(mod.title.toLowerCase())) ||
+            (item.section && mod.title && mod.title.toLowerCase().includes(item.section.toLowerCase()))
+          );
+          if (found) return found.note || '';
+        }
+      } catch {}
+    }
+    return '';
+  }
+
+  getStagedCommentsCount(): number {
+    if (!this.activeDetailCourse) return 0;
+    const modules = this.getModulesForCourse(this.activeDetailCourse.id);
+    let count = 0;
+    modules.forEach(m => {
+      if (this.getCommentForModule(m)) count++;
+    });
+    return count;
+  }
+
+  toggleModuleCommentBox(mod: any): void {
+    if (this.activeCommentModuleId === mod.id) {
+      this.activeCommentModuleId = null;
+      this.activeModuleCommentText = '';
+    } else {
+      this.activeCommentModuleId = mod.id;
+      this.activeModuleCommentText = this.getCommentForModule(mod) || '';
+    }
+    this.cdr.markForCheck();
+  }
+
+  cancelModuleComment(): void {
+    this.activeCommentModuleId = null;
+    this.activeModuleCommentText = '';
+    this.cdr.markForCheck();
+  }
+
+  saveModuleComment(mod: any): void {
+    const text = (this.activeModuleCommentText || '').trim();
+    if (!text) {
+      delete this.moduleReviewComments[mod.id];
+    } else {
+      this.moduleReviewComments[mod.id] = text;
+    }
+    this.activeCommentModuleId = null;
+    this.activeModuleCommentText = '';
+    this.dialogService.toast(`Review note saved for "${mod.title}".`, 'success');
+    this.cdr.markForCheck();
+  }
+
+  deleteModuleComment(mod: any): void {
+    this.moduleReviewComments[mod.id] = '';
+    if (this.activeCommentModuleId === mod.id) {
+      this.activeCommentModuleId = null;
+      this.activeModuleCommentText = '';
+    }
+    this.dialogService.toast(`Review note removed for "${mod.title}".`, 'info');
+    this.cdr.markForCheck();
+  }
+
+  getCommentsListForSummary(): Array<{ id: string; title: string; note: string; order: number }> {
+    if (!this.activeDetailCourse) return [];
+    const modules = this.getModulesForCourse(this.activeDetailCourse.id);
+    const list: Array<{ id: string; title: string; note: string; order: number }> = [];
+    modules.forEach(m => {
+      const note = this.getCommentForModule(m);
+      if (note && note.trim()) {
+        list.push({
+          id: m.id,
+          title: m.title || `Module ${m.order_num}`,
+          note: note.trim(),
+          order: m.order_num || 0
+        });
+      }
+    });
+    return list.sort((a, b) => a.order - b.order);
+  }
+
+  openSendReviewModal(): void {
+    this.generalReviewNote = '';
+    this.isSendReviewModalOpen = true;
+    this.cdr.markForCheck();
+  }
+
+  closeSendReviewModal(): void {
+    this.isSendReviewModalOpen = false;
+    this.cdr.markForCheck();
+  }
+
+  confirmSendReviewBack(): void {
+    const courseId = this.activeDetailCourse?.id;
+    if (!courseId) return;
+
+    const modules = this.getModulesForCourse(courseId);
+    const feedbackItems: ReviewFeedbackItem[] = [];
+
+    modules.forEach(m => {
+      const note = this.getCommentForModule(m);
+      if (note && note.trim()) {
+        feedbackItems.push({
+          id: 'rf-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+          section: m.title || `Module ${m.order_num}`,
+          quote: '',
+          note: note.trim(),
+          timestamp: new Date().toISOString(),
+          elementId: m.id
+        });
+      }
+    });
+
+    if (feedbackItems.length === 0 && !this.generalReviewNote.trim()) {
+      this.dialogService.toast('Please add at least one module review note or general instructions before sending back.', 'warning');
+      return;
+    }
+
+    const lines = feedbackItems.map((c, i) =>
+      `${i + 1}. [${c.section}]\n   Recommendation: ${c.note}`
+    );
+
+    let text = `Curriculum Review & Revision Recommendations:\n\n`;
+    if (this.generalReviewNote.trim()) {
+      text += `General Remediation Instructions:\n${this.generalReviewNote.trim()}\n\n`;
+    }
+    if (lines.length > 0) {
+      text += `Module Breakdown:\n${lines.join('\n\n')}\n\n`;
+    }
+    const structuredMarker = `<!-- REVIEW_FEEDBACK_DATA:${JSON.stringify(feedbackItems)} -->`;
+    const payload = text + structuredMarker;
+
+    this.isSendingReview = true;
+    this.apiService.moderateCourse(courseId, false, payload).subscribe({
+      next: () => {
+        this.isSendingReview = false;
+        this.isSendReviewModalOpen = false;
+        if (this.activeDetailCourse) {
+          this.activeDetailCourse.approvalStatus = 'rejected';
+          this.activeDetailCourse.approval_status = 'rejected';
+          this.activeDetailCourse.rejectionReason = payload;
+          this.activeDetailCourse.rejection_reason = payload;
+        }
+        const match = this.authoredCourses.find(c => c.id === courseId);
+        if (match) {
+          match.approval_status = 'rejected';
+          (match as any).approvalStatus = 'rejected';
+          match.rejection_reason = payload;
+          (match as any).rejectionReason = payload;
+        }
+        this.dialogService.toast(`Curriculum sent back for review (${feedbackItems.length} module notes attached).`, 'success');
+        this.reload();
+        this.cdr.markForCheck();
+      },
+      error: (err: any) => {
+        this.isSendingReview = false;
+        this.dialogService.toast(err?.error?.detail || 'Could not record review decision.', 'error');
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   openCourseWizard(course?: any): void {
