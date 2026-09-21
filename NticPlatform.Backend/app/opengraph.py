@@ -32,9 +32,10 @@ def _make_absolute_url(request: Request, path_or_url: str) -> str:
         return ""
     if path_or_url.startswith("http://") or path_or_url.startswith("https://"):
         return path_or_url
-    base = str(request.base_url).rstrip("/")
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme or "https")
+    host = request.headers.get("x-forwarded-host", request.headers.get("host") or str(request.base_url).replace("http://", "").replace("https://", "").rstrip("/"))
     path = path_or_url if path_or_url.startswith("/") else f"/{path_or_url}"
-    return f"{base}{path}"
+    return f"{proto}://{host}{path}"
 
 def _render_og_html(
     title: str,
@@ -48,6 +49,10 @@ def _render_og_html(
     safe_image = html.escape(image_url, quote=True)
     safe_url = html.escape(canonical_url, quote=True)
 
+    # Determine image MIME type from URL extension
+    img_lower = (image_url or "").lower()
+    img_mime = "image/png" if ".png" in img_lower else ("image/webp" if ".webp" in img_lower else "image/jpeg")
+
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -59,6 +64,10 @@ def _render_og_html(
     <meta property="og:title" content="{safe_title}">
     <meta property="og:description" content="{safe_desc}">
     <meta property="og:image" content="{safe_image}">
+    <meta property="og:image:secure_url" content="{safe_image}">
+    <meta property="og:image:type" content="{img_mime}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
     <meta property="og:url" content="{safe_url}">
     <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary_large_image">

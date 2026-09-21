@@ -106,7 +106,7 @@ export class CompetitionsComponent implements OnInit {
   ];
 
   get activeRoleId(): string {
-    return (typeof localStorage !== 'undefined' && getAuthValue('activeRoleId')) || 'student';
+    return (typeof localStorage !== 'undefined' && getAuthValue('activeRoleId')) || '';
   }
 
   get isLoggedIn(): boolean {
@@ -114,7 +114,7 @@ export class CompetitionsComponent implements OnInit {
   }
 
   get isStudent(): boolean {
-    return this.activeRoleId === 'student';
+    return this.isLoggedIn && this.activeRoleId === 'student';
   }
 
   get canManageCompetitions(): boolean {
@@ -129,27 +129,26 @@ export class CompetitionsComponent implements OnInit {
     if (raw.includes('ai') || raw.includes('data') || raw.includes('mach')) return 'ai';
     if (raw.includes('cyber') || raw.includes('secur') || raw.includes('netw')) return 'cyber';
     if (raw.includes('innovat') || raw.includes('proj')) return 'innovation';
-    return raw || 'coding';
+    return raw || '';
   }
 
   get displayTracks(): string[] {
-    if (this.isStudent && this.studentTrackKey) {
-      return ['all', this.studentTrackKey];
+    const list = [...this.tracks];
+    for (const c of this.competitions) {
+      if (c.track && c.track.trim() && c.track.toLowerCase() !== 'all') {
+        const t = c.track.toLowerCase().trim();
+        if (!list.includes(t)) {
+          list.push(t);
+        }
+      }
     }
-    return this.tracks;
+    return list;
   }
 
   get visibleCompetitions(): Competition[] {
     let list = this.competitions;
     if (!this.canManageCompetitions) {
       list = list.filter(c => c.status !== 'draft');
-    }
-    if (this.isStudent) {
-      const trackKey = this.studentTrackKey;
-      list = list.filter(c => {
-        const cTrack = (c.track || '').toLowerCase();
-        return cTrack === 'all' || cTrack === trackKey || cTrack.includes(trackKey);
-      });
     }
     return list;
   }
@@ -323,38 +322,53 @@ export class CompetitionsComponent implements OnInit {
     }
 
     if (this.activeTrackFilter !== 'all') {
-      filtered = filtered.filter(c => c.track === this.activeTrackFilter);
+      const selectedTrack = this.activeTrackFilter.toLowerCase().trim();
+      filtered = filtered.filter(c => {
+        const cTrack = (c.track || '').toLowerCase().trim();
+        return cTrack === selectedTrack || cTrack.includes(selectedTrack) || selectedTrack.includes(cTrack);
+      });
     }
 
     if (this.activeTypeFilter !== 'all') {
-      filtered = filtered.filter(c => c.type === this.activeTypeFilter);
+      const selectedType = this.activeTypeFilter.toLowerCase().trim();
+      filtered = filtered.filter(c => {
+        const cType = (c.type || '').toLowerCase().trim();
+        const normSelected = selectedType.replace(/s$/, '');
+        const normCType = cType.replace(/s$/, '');
+        return normCType === normSelected || cType === selectedType || cType.includes(normSelected);
+      });
     }
 
-    if (this.searchQuery.trim()) {
-      const q = this.searchQuery.toLowerCase();
+    if (this.searchQuery && this.searchQuery.trim()) {
+      const q = this.searchQuery.toLowerCase().trim();
       filtered = filtered.filter(c =>
         (c.title || '').toLowerCase().includes(q) ||
+        (c.description || '').toLowerCase().includes(q) ||
         (c.track || '').toLowerCase().includes(q) ||
         (c.category || '').toLowerCase().includes(q)
       );
     }
 
     this.filteredCompetitions = filtered;
+    this.cdr.markForCheck();
   }
 
   setTab(tabId: string): void {
     this.activeTab = tabId;
     this.applyFilters();
+    this.cdr.markForCheck();
   }
 
   setTrackFilter(track: string): void {
     this.activeTrackFilter = track;
     this.applyFilters();
+    this.cdr.markForCheck();
   }
 
   setTypeFilter(type: string): void {
     this.activeTypeFilter = type;
     this.applyFilters();
+    this.cdr.markForCheck();
   }
 
   clearFilters(): void {
@@ -362,10 +376,11 @@ export class CompetitionsComponent implements OnInit {
     this.activeTrackFilter = 'all';
     this.activeTypeFilter = 'all';
     this.applyFilters();
+    this.cdr.markForCheck();
   }
 
   get hasActiveFilters(): boolean {
-    return this.searchQuery.trim().length > 0 ||
+    return (this.searchQuery && this.searchQuery.trim().length > 0) ||
       this.activeTrackFilter !== 'all' ||
       this.activeTypeFilter !== 'all';
   }
@@ -635,7 +650,12 @@ export class CompetitionsComponent implements OnInit {
 
   /* Helpers */
   getTypeLabel(type: string): string {
-    if (type === 'finals') return 'Finals (Championship)';
+    if (!type) return 'Cycle';
+    const norm = type.toLowerCase().trim();
+    if (norm === 'finals' || norm === 'final' || norm === 'championship') return 'Finals (Championship)';
+    if (norm === 'quarter-finals' || norm === 'quarter-final') return 'Quarter Finals';
+    if (norm === 'semi-finals' || norm === 'semi-final') return 'Semi Finals';
+    if (norm === 'qualifier') return 'Qualifier';
     return type.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
   }
 
@@ -670,7 +690,12 @@ export class CompetitionsComponent implements OnInit {
     return {
       'qualifier': 'filter_1',
       'quarter-finals': 'filter_2',
-      'finals': 'workspace_premium'
+      'quarter-final': 'filter_2',
+      'semi-finals': 'filter_3',
+      'semi-final': 'filter_3',
+      'finals': 'workspace_premium',
+      'final': 'workspace_premium',
+      'championship': 'workspace_premium'
     };
   }
 

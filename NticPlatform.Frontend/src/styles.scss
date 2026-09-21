@@ -3713,7 +3713,8 @@ body.dark-theme {
   .admin-card,
   .modal-content,
   .modal-card,
-  .dialog-card {
+  .dialog-card,
+  .wizard-card-centered {
     background: #0e2530 !important;
     border-color: #21404c !important;
     color: #e1f3fc !important;
@@ -4671,6 +4672,35 @@ body.dark-theme {
     background-position: right 12px center !important;
     background-size: 16px 16px !important;
     padding-right: 36px !important;
+  }
+
+  // Quill WYSIWYG Editor in Dark Mode
+  .ql-toolbar.ql-snow {
+    background: #091a22 !important;
+    border-color: #21404c !important;
+
+    .ql-stroke { stroke: #cbd5e1 !important; }
+    .ql-fill { fill: #cbd5e1 !important; }
+    .ql-picker { color: #cbd5e1 !important; }
+    .ql-picker-label { color: #cbd5e1 !important; }
+    .ql-picker-options {
+      background: #0e2530 !important;
+      border-color: #21404c !important;
+    }
+    .ql-picker-item { color: #cbd5e1 !important; }
+  }
+
+  .ql-container.ql-snow {
+    background: #0e2530 !important;
+    border-color: #21404c !important;
+
+    .ql-editor {
+      color: #e1f3fc !important;
+
+      &.ql-blank::before {
+        color: #899296 !important;
+      }
+    }
   }
 
   /* ── Admin Users Table -- dark mode fixes ── */

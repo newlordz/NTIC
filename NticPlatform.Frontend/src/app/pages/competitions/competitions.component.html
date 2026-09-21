@@ -6,137 +6,158 @@
   <div class="competitions-page">
 
   <!-- ═══════════════════════════════════
-       CINEMATIC HERO
+       ENTERPRISE INSTITUTIONAL HEADER
   ═══════════════════════════════════ -->
-  <header class="hero">
-    <div class="hero-bg">
-      <div class="hero-orbs">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="orb orb-3"></div>
-      </div>
-      <div class="hero-particles">
-        <span class="particle" *ngFor="let p of [1,2,3,4,5,6,7,8]" [style.--i]="p"></span>
-      </div>
-    </div>
-    <div class="hero-content">
-      <div class="hero-left">
-        <div class="hero-badge">
-          <span class="material-symbols-outlined">emoji_events</span>
-          Championship Arena
+  <header class="comp-hero">
+    <div class="comp-hero-inner">
+      <div class="comp-hero-left">
+        <div class="comp-shield-wrap">
+          <div class="comp-shield">
+            <span class="material-symbols-outlined">emoji_events</span>
+          </div>
+          <div class="comp-shield-ring"></div>
         </div>
-        <h1 class="hero-title">
-          Competition <span class="hero-title-accent">Cycles</span>
-        </h1>
-        <p class="hero-sub">
-          {{ isStudent
-            ? 'Explore active championship cycles, register your squad, and track every phase of the competition.'
-            : 'Forge the battleground -- create qualifiers, semi-finals, finals, and championship events. Manage every phase from registration to results.' }}
-        </p>
-        <div class="hero-stats">
-          <div class="hero-stat">
-            <span class="hero-stat-value">{{ totalCycles }}</span>
-            <span class="hero-stat-label">Total Cycles</span>
+        <div class="comp-hero-text">
+          <div class="comp-badge">
+            <span class="comp-pulse-dot"></span>
+            <span>Championship Arena · Active Cycles</span>
           </div>
-          <div class="hero-stat">
-            <span class="hero-stat-value">{{ liveCycles }}</span>
-            <span class="hero-stat-label">Live Now</span>
-          </div>
-          <div class="hero-stat">
-            <span class="hero-stat-value">{{ openRegistrationCycles }}</span>
-            <span class="hero-stat-label">Open Registration</span>
-          </div>
+          <h1>Competition Cycles</h1>
+          <p>
+            {{ isStudent
+              ? 'Explore active championship cycles, register your squad, and track every phase of the competition.'
+              : 'Forge the battleground -- create qualifiers, semi-finals, finals, and championship events. Manage every phase from registration to results.' }}
+          </p>
         </div>
       </div>
-      <div class="hero-right" *ngIf="canManageCompetitions">
-        <button class="btn-create" (click)="openCreateModal()">
-          <span class="btn-create-ring"></span>
-          <span class="btn-create-content">
+
+      <div class="comp-hero-right">
+        <div class="comp-hero-stats">
+          <div class="comp-stat-card">
+            <div class="stat-top">
+              <span class="material-symbols-outlined stat-icon">event_repeat</span>
+              <span class="stat-num">{{ totalCycles }}</span>
+            </div>
+            <span class="stat-lbl">Total Cycles</span>
+          </div>
+          <div class="comp-stat-card">
+            <div class="stat-top">
+              <span class="material-symbols-outlined stat-icon">play_circle</span>
+              <span class="stat-num">{{ liveCycles }}</span>
+            </div>
+            <span class="stat-lbl">Live Now</span>
+          </div>
+          <div class="comp-stat-card">
+            <div class="stat-top">
+              <span class="material-symbols-outlined stat-icon">how_to_reg</span>
+              <span class="stat-num">{{ openRegistrationCycles }}</span>
+            </div>
+            <span class="stat-lbl">Open Registration</span>
+          </div>
+        </div>
+
+        <div class="comp-hero-actions" *ngIf="canManageCompetitions">
+          <button class="comp-btn-primary" (click)="openCreateModal()">
             <span class="material-symbols-outlined">add</span>
             <span>New Cycle</span>
-          </span>
-        </button>
-        <div class="hero-role-tag">
-          <span class="material-symbols-outlined">admin_panel_settings</span>
-          Competition Manager
+          </button>
         </div>
       </div>
     </div>
   </header>
 
   <!-- ═══════════════════════════════════
-       SMART TOOLBAR + FILTERS
+       ENTERPRISE UNIFIED CONTROL BAR
   ═══════════════════════════════════ -->
-  <div class="arena-toolbar">
-    <!-- Search -->
-    <div class="search-wrap">
-      <span class="material-symbols-outlined search-icon">search</span>
-      <input type="text" class="search-input" placeholder="Search cycles..."
-             [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()">
-      <span class="search-hint" *ngIf="searchQuery && filteredCompetitions.length">{{ filteredCompetitions.length }} result{{ filteredCompetitions.length !== 1 ? 's' : '' }}</span>
-    </div>
-
-    <!-- Filter pills: Tracks -->
-    <div class="filter-pill-group">
-      <span class="filter-label">Track:</span>
-      <button *ngFor="let t of displayTracks"
-              class="filter-pill"
-              [class.active]="activeTrackFilter === t"
-              (click)="setTrackFilter(t)">
-        <span class="material-symbols-outlined">{{ trackIcons[t] || 'label' }}</span>
-        {{ t === 'all' ? 'All' : (t | titlecase) }}
-      </button>
-      <span *ngIf="isStudent" style="font-size:11px; font-weight:700; color:var(--primary); background:rgba(6,95,70,0.08); border:1px solid rgba(6,95,70,0.2); padding:4px 10px; border-radius:12px; margin-left:6px; display:inline-flex; align-items:center; gap:4px;">
-        <span class="material-symbols-outlined" style="font-size:14px;">verified</span>
-        Program Track: {{ studentTrackKey | uppercase }}
-      </span>
-    </div>
-
-    <!-- Filter pills: Types -->
-    <div class="filter-pill-group">
-      <span class="filter-label">Type:</span>
-      <button class="filter-pill" [class.active]="activeTypeFilter === 'all'" (click)="setTypeFilter('all')">
-        <span class="material-symbols-outlined">apps</span> All
-      </button>
-      <button *ngFor="let t of cycleTypes"
-              class="filter-pill"
-              [class.active]="activeTypeFilter === t"
-              (click)="setTypeFilter(t)">
-        <span class="material-symbols-outlined">{{ typeIcons[t] }}</span>
-        {{ getTypeLabel(t) }}
-      </button>
-    </div>
-
-    <!-- Right side: clear + view toggle -->
-    <div class="toolbar-right">
-      <button class="btn-clear-filters" *ngIf="hasActiveFilters" (click)="clearFilters()">
-        <span class="material-symbols-outlined">filter_list_off</span>
-        Clear Filters
-      </button>
-      <div class="view-toggle">
-        <button class="view-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'" title="Grid View">
-          <span class="material-symbols-outlined">grid_view</span>
+  <div class="arena-control-bar">
+    <!-- Row 1: Lifecycle Tabs + Search + Actions -->
+    <div class="control-row-primary">
+      <nav class="arena-tabs" *ngIf="viewMode === 'grid'">
+        <button *ngFor="let tab of displayTabs"
+                class="arena-tab"
+                [class.active]="activeTab === tab.id"
+                (click)="setTab(tab.id)">
+          <span class="material-symbols-outlined arena-tab-icon">{{ tab.icon }}</span>
+          <span class="arena-tab-label">{{ tab.label }}</span>
+          <span class="arena-tab-count" *ngIf="getTabCount(tab.id) > 0">{{ getTabCount(tab.id) }}</span>
         </button>
-        <button class="view-btn" [class.active]="viewMode === 'board'" (click)="viewMode = 'board'" title="Board View">
-          <span class="material-symbols-outlined">view_kanban</span>
+      </nav>
+
+      <div class="board-mode-heading" *ngIf="viewMode === 'board'">
+        <span class="material-symbols-outlined icon">view_kanban</span>
+        <span>Kanban Pipeline Board</span>
+      </div>
+
+      <div class="control-primary-actions">
+        <!-- Search Input -->
+        <div class="search-wrap">
+          <span class="material-symbols-outlined search-icon">search</span>
+          <input type="text" class="search-input" placeholder="Search cycles..."
+                 [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()">
+          <span class="search-hint" *ngIf="searchQuery && filteredCompetitions.length">{{ filteredCompetitions.length }}</span>
+        </div>
+
+        <!-- Clear Filters (if active) -->
+        <button class="btn-clear-filters" *ngIf="hasActiveFilters" (click)="clearFilters()" title="Reset all filters">
+          <span class="material-symbols-outlined">filter_alt_off</span>
+          <span>Clear</span>
         </button>
+
+        <!-- View Mode Segmented Control -->
+        <div class="view-toggle">
+          <button class="view-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'" title="Grid View">
+            <span class="material-symbols-outlined">grid_view</span>
+          </button>
+          <button class="view-btn" [class.active]="viewMode === 'board'" (click)="viewMode = 'board'" title="Board View">
+            <span class="material-symbols-outlined">view_kanban</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Secondary Refinement Filters (Track & Type) -->
+    <div class="control-row-secondary">
+      <div class="filter-strip-left">
+        <span class="filter-strip-label">
+          <span class="material-symbols-outlined">tune</span>
+          Filters
+        </span>
+
+        <!-- Filter pills: Tracks -->
+        <div class="filter-pill-group">
+          <span class="filter-label">Track:</span>
+          <button *ngFor="let t of displayTracks"
+                  class="filter-pill"
+                  [class.active]="activeTrackFilter === t"
+                  (click)="setTrackFilter(t)">
+            <span class="material-symbols-outlined">{{ trackIcons[t] || 'label' }}</span>
+            {{ t === 'all' ? 'All' : (t | titlecase) }}
+          </button>
+          <span *ngIf="isStudent" class="student-track-badge">
+            <span class="material-symbols-outlined">verified</span>
+            Track: {{ studentTrackKey | uppercase }}
+          </span>
+        </div>
+
+        <span class="filter-divider"></span>
+
+        <!-- Filter pills: Types -->
+        <div class="filter-pill-group">
+          <span class="filter-label">Type:</span>
+          <button class="filter-pill" [class.active]="activeTypeFilter === 'all'" (click)="setTypeFilter('all')">
+            <span class="material-symbols-outlined">apps</span> All
+          </button>
+          <button *ngFor="let t of cycleTypes"
+                  class="filter-pill"
+                  [class.active]="activeTypeFilter === t"
+                  (click)="setTypeFilter(t)">
+            <span class="material-symbols-outlined">{{ typeIcons[t] }}</span>
+            {{ getTypeLabel(t) }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
-
-  <!-- ═══════════════════════════════════
-       BATTLE TABS
-  ═══════════════════════════════════ -->
-  <nav class="arena-tabs" *ngIf="viewMode === 'grid'">
-    <button *ngFor="let tab of displayTabs"
-            class="arena-tab"
-            [class.active]="activeTab === tab.id"
-            (click)="setTab(tab.id)">
-      <span class="material-symbols-outlined arena-tab-icon">{{ tab.icon }}</span>
-      <span class="arena-tab-label">{{ tab.label }}</span>
-      <span class="arena-tab-count" *ngIf="getTabCount(tab.id) > 0">{{ getTabCount(tab.id) }}</span>
-    </button>
-  </nav>
 
   <!-- ═══════════════════════════════════
        CHAMPIONSHIP GRID VIEW

@@ -10,7 +10,7 @@
       <p>Monitor active competitions, evaluate submission queues, and analyze judges' impact across all championship tracks.</p>
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
-      <a class="jw-btn jw-btn-ghost" routerLink="/profile-completion" style="text-decoration:none;">
+      <a *ngIf="!isAdmin" class="jw-btn jw-btn-ghost" routerLink="/profile-completion" style="text-decoration:none;">
         <span class="material-symbols-outlined">manage_accounts</span>Profile Settings
       </a>
       <button class="jw-btn jw-btn-ghost" (click)="refresh()" [disabled]="loading">

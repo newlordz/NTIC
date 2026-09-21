@@ -3,17 +3,62 @@
   <app-public-nav activePage="news"></app-public-nav>
 
   <div class="page-canvas">
-    <!-- Hero Banner -->
-  <div class="news-hero">
-    <div class="news-hero-content">
-      <span class="news-eyebrow">
-        <span class="material-symbols-outlined">newspaper</span>
-        News &amp; Events
-      </span>
-      <h1>Championship <span class="highlight">Stories</span> &amp; Updates</h1>
-      <p>Discover how Ghana's next generation of scientists, developers, engineers and innovators are scaling technical hurdles, building local solutions charting their path, and defining the future.</p>
+    <!-- ═══ ENTERPRISE INSTITUTIONAL HEADER ═══ -->
+    <header class="news-hero">
+      <div class="news-hero-inner">
+        <div class="news-hero-left">
+          <div class="news-shield-wrap">
+            <div class="news-shield">
+              <span class="material-symbols-outlined">newspaper</span>
+            </div>
+            <div class="news-shield-ring"></div>
+          </div>
+          <div class="news-hero-text">
+            <div class="news-badge">
+              <span class="news-pulse-dot"></span>
+              <span>NTIC Press &amp; Media · Championship Dispatches</span>
+            </div>
+            <h1>Championship Stories &amp; Updates</h1>
+            <p>Discover how Ghana's next generation of scientists, developers, engineers and innovators are scaling technical hurdles, building local solutions charting their path, and defining the future.</p>
+          </div>
+        </div>
+
+        <div class="news-hero-stats">
+          <div class="news-stat-card">
+            <div class="stat-top">
+              <span class="material-symbols-outlined stat-icon">article</span>
+              <span class="stat-num">{{ contentService.championshipStories.length }}</span>
+            </div>
+            <span class="stat-lbl">Stories</span>
+          </div>
+          <div class="news-stat-card">
+            <div class="stat-top">
+              <span class="material-symbols-outlined stat-icon">event</span>
+              <span class="stat-num">{{ upcomingEvents.length }}</span>
+            </div>
+            <span class="stat-lbl">Events</span>
+          </div>
+          <div class="news-stat-card">
+            <div class="stat-top">
+              <span class="material-symbols-outlined stat-icon">bolt</span>
+              <span class="stat-num">{{ latestNews.length }}</span>
+            </div>
+            <span class="stat-lbl">Bulletins</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Category / Tag Filter Bar -->
+    <div class="tag-filter-bar" *ngIf="tags.length > 0">
+      <button *ngFor="let t of tags"
+              class="tag-chip"
+              [class.active]="activeTag === t"
+              (click)="filterByTag(t)">
+        <span class="material-symbols-outlined">{{ getTagIcon(t) }}</span>
+        <span>{{ getTagLabel(t) }}</span>
+      </button>
     </div>
-  </div>
 
 
   <!-- Stories Grid -->
@@ -40,7 +85,7 @@
               {{ timeAgo(story.date) }}
             </span>
           </div>
-          <h3 class="story-title">{{ story.title }}</h3>
+          <h3 class="story-title" (click)="openStoryModal(story, $event)" [title]="'Read ' + story.title">{{ story.title }}</h3>
           <p class="story-excerpt">{{ story.body }}</p>
           <div class="story-card-actions">
             <button class="btn-story-act like-btn" [class.liked]="isLikedByUser(story)" (click)="likeStory(story.id, $event)">
@@ -57,10 +102,12 @@
               [title]="story.title"
               [summary]="story.body"
               [url]="getStoryCanonicalUrl(story.id)"
+              [image]="story.image"
               [compact]="true"
+              [showPreviewCard]="true"
             ></app-social-share>
           </div>
-          <button class="read-more-btn">
+          <button class="read-more-btn" type="button" (click)="openStoryModal(story, $event)" aria-label="Read full story">
             <span>Read Full Story</span>
             <span class="material-symbols-outlined">arrow_right_alt</span>
           </button>
@@ -130,12 +177,107 @@
               [title]="event.title"
               [summary]="event.description"
               [url]="getEventCanonicalUrl(event.id)"
+              [image]="'assets/ntic_image_1.jpeg'"
               [compact]="true"
+              [showPreviewCard]="true"
             ></app-social-share>
           </div>
         </div>
       </div>
     </div>
   </div>
+  </div>
+
+  <!-- Institutional Editorial Modal / Reader Canvas -->
+  <div class="story-modal-backdrop" *ngIf="readingStory" (click)="closeStoryModal()">
+    <div class="story-modal-container" role="dialog" aria-modal="true" [attr.aria-label]="readingStory.title" (click)="$event.stopPropagation()">
+      <!-- Modal Top Bar -->
+      <div class="story-modal-header">
+        <div class="modal-header-meta">
+          <span class="story-tag-badge" [class]="'tag-' + readingStory.tagColor">{{ readingStory.tag }}</span>
+          <span class="modal-read-time">
+            <span class="material-symbols-outlined">auto_stories</span>
+            {{ getStoryReadTime(readingStory) }}
+          </span>
+        </div>
+        <div class="modal-header-actions">
+          <span class="reading-progress-percent" *ngIf="readingProgress > 0">{{ readingProgress }}% read</span>
+          <button class="btn-modal-close" (click)="closeStoryModal()" title="Close story (Esc)" aria-label="Close story">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+      <!-- Unobtrusive Editorial Scroll Progress Bar -->
+      <div class="modal-reading-progress-track" aria-hidden="true">
+        <div class="modal-reading-progress-fill" [style.width.%]="readingProgress"></div>
+      </div>
+
+      <!-- Modal Scrollable Content Area -->
+      <div class="story-modal-scroll" (scroll)="onModalScroll($event)">
+        <!-- Masthead Banner -->
+        <div class="story-modal-masthead" *ngIf="readingStory.image">
+          <img [src]="readingStory.image" [alt]="readingStory.title" onerror="this.src='assets/ntic_image_1.jpeg'">
+        </div>
+
+        <!-- Article Canvas -->
+        <article class="story-modal-article">
+          <div class="article-meta-row">
+            <div class="meta-left">
+              <span class="meta-item">
+                <span class="material-symbols-outlined">calendar_today</span>
+                {{ readingStory.date }}
+              </span>
+              <span class="meta-item">
+                <span class="material-symbols-outlined">schedule</span>
+                {{ timeAgo(readingStory.date) }}
+              </span>
+            </div>
+            <div class="meta-right">
+              <button class="btn-modal-like" [class.liked]="isLikedByUser(readingStory)" (click)="likeStory(readingStory.id, $event)">
+                <span class="material-symbols-outlined icon">{{ isLikedByUser(readingStory) ? 'favorite' : 'favorite_border' }}</span>
+                <span>{{ readingStory.likes || 0 }}</span>
+              </button>
+            </div>
+          </div>
+
+          <h1 class="story-modal-title">{{ readingStory.title }}</h1>
+
+          <!-- Editorial Lead Quote Callout -->
+          <div class="story-callout" *ngIf="readingStory.body">
+            <span class="material-symbols-outlined callout-icon">format_quote</span>
+            <p class="callout-text">{{ readingStory.body.slice(0, 180) }}{{ readingStory.body.length > 180 ? '...' : '' }}</p>
+          </div>
+
+          <!-- Body Paragraphs -->
+          <div class="story-modal-body">
+            <p *ngFor="let p of getStoryParagraphs(readingStory.body)">{{ p }}</p>
+          </div>
+
+          <!-- Social Share Tray Inside Reader -->
+          <div class="story-modal-share-box">
+            <span class="share-box-label">Share this story:</span>
+            <app-social-share
+              [title]="readingStory.title"
+              [summary]="readingStory.body"
+              [url]="getStoryCanonicalUrl(readingStory.id)"
+              [image]="readingStory.image"
+              [compact]="false"
+              [showPreviewCard]="true"
+            ></app-social-share>
+          </div>
+        </article>
+      </div>
+
+      <!-- Modal Footer Action Bar -->
+      <div class="story-modal-footer">
+        <button class="btn-modal-secondary" (click)="closeStoryModal()">
+          <span class="material-symbols-outlined">arrow_back</span>
+          <span>Back to Newsfeed</span>
+        </button>
+        <button class="btn-modal-done" (click)="closeStoryModal()">
+          <span>Done Reading</span>
+        </button>
+      </div>
+    </div>
   </div>
 </div>

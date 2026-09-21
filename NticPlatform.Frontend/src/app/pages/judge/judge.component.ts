@@ -149,6 +149,11 @@ export class JudgeComponent implements OnInit {
     return getAuthValue('activeUserName') || 'Observatory Lead';
   }
 
+  get isAdmin(): boolean {
+    const role = (getAuthValue('activeRoleId') || '').toLowerCase();
+    return role === 'admin' || role === 'super_admin' || role === 'national_admin';
+  }
+
   refresh(): void {
     this.loading = true;
     this.loadError = '';

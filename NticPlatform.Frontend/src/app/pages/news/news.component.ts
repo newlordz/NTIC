@@ -1,7 +1,7 @@
 import { getAuthValue } from '../../services/session.util';
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, ActivatedRoute } from '@angular/router';
+import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { ContentService, ChampionshipStory, NewsFeedItem, UpcomingEvent } from '../../services/content.service';
 import { PublicNavComponent } from '../../components/public-nav/public-nav.component';
 import { SocialShareComponent } from '../../components/social-share/social-share.component';
@@ -20,12 +20,15 @@ export class NewsComponent implements OnInit, OnDestroy {
   activeShareStoryId: string | null = null;
   activeShareEventId: string | null = null;
   highlightedStoryId: string | null = null;
+  readingStory: ChampionshipStory | null = null;
+  readingProgress = 0;
   private liveTimer: any;
 
   constructor(
     public contentService: ContentService,
     private cdr: ChangeDetectorRef,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -35,17 +38,102 @@ export class NewsComponent implements OnInit, OnDestroy {
     this.route.params.subscribe(params => {
       if (params['id']) {
         this.highlightedStoryId = params['id'];
+        this.checkAndOpenStory(params['id']);
         this.scrollToTarget(params['id']);
       }
     });
     this.route.queryParams.subscribe(query => {
       if (query['story']) {
         this.highlightedStoryId = query['story'];
+        this.checkAndOpenStory(query['story']);
         this.scrollToTarget(query['story']);
+      } else if (this.readingStory && !this.route.snapshot.params['id']) {
+        // Handle browser hardware back button navigation seamlessly
+        this.readingStory = null;
+        this.readingProgress = 0;
+        if (typeof document !== 'undefined') {
+          document.body.style.overflow = '';
+        }
+        this.cdr.markForCheck();
       }
     });
 
     this.cdr.markForCheck();
+  }
+
+  private checkAndOpenStory(id: string): void {
+    const found = this.contentService.championshipStories.find(s => s.id === id);
+    if (found) {
+      this.readingStory = found;
+      this.readingProgress = 0;
+      if (typeof document !== 'undefined') {
+        document.body.style.overflow = 'hidden';
+      }
+      this.cdr.markForCheck();
+    }
+  }
+
+  openStoryModal(story: ChampionshipStory, event?: MouseEvent): void {
+    event?.stopPropagation();
+    this.readingStory = story;
+    this.readingProgress = 0;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = 'hidden';
+    }
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { story: story.id },
+      queryParamsHandling: 'merge'
+    });
+    this.cdr.markForCheck();
+  }
+
+  onModalScroll(event: Event): void {
+    const el = event.target as HTMLElement;
+    if (!el) return;
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    this.readingProgress = maxScroll > 0 ? Math.min(100, Math.max(0, Math.round((el.scrollTop / maxScroll) * 100))) : 0;
+    this.cdr.markForCheck();
+  }
+
+  closeStoryModal(): void {
+    this.readingStory = null;
+    this.readingProgress = 0;
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+    }
+    if (this.route.snapshot.params['id']) {
+      this.router.navigate(['/news'], {
+        queryParams: { story: null },
+        queryParamsHandling: 'merge'
+      });
+    } else {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { story: null },
+        queryParamsHandling: 'merge'
+      });
+    }
+    this.cdr.markForCheck();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapePress(): void {
+    if (this.readingStory) {
+      this.closeStoryModal();
+    }
+  }
+
+  getStoryParagraphs(body: string): string[] {
+    if (!body) return [];
+    return body.split(/\n\s*\n|\n/).map(p => p.trim()).filter(p => p.length > 0);
+  }
+
+  getStoryReadTime(story: ChampionshipStory): string {
+    if (story.readTime) return story.readTime;
+    const words = (story.body || '').split(/\s+/).length;
+    const mins = Math.max(1, Math.round(words / 160));
+    return `${mins} min read`;
   }
 
   private scrollToTarget(id: string): void {
@@ -80,6 +168,9 @@ export class NewsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.liveTimer) clearInterval(this.liveTimer);
+    if (typeof document !== 'undefined') {
+      document.body.style.overflow = '';
+    }
   }
 
   timeAgo(date: string): string {
