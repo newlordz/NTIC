@@ -654,6 +654,261 @@ def run_standalone_server(port):
                 self._send_cors()
                 self.end_headers()
                 self.wfile.write(json.dumps(results).encode('utf-8'))
+            elif path == '/api/judge/queue':
+                conn = _safe_get_db()
+                pending_total = 0
+                by_track = []
+                submissions = []
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute("SELECT COUNT(*) FROM assignment_submissions WHERE score IS NULL")
+                        r = cur.fetchone()
+                        if r: pending_total = r[0] or 0
+                        cur.execute(
+                            "SELECT COALESCE(lower(st.track), ''), COUNT(*) "
+                            "FROM assignment_submissions s LEFT JOIN students st ON st.id = s.student_id "
+                            "WHERE s.score IS NULL GROUP BY lower(st.track) ORDER BY 2 DESC"
+                        )
+                        by_track = [{"track": r[0], "pending": r[1]} for r in cur.fetchall()]
+                        cur.execute(
+                            "SELECT s.id, s.student_id, s.source_code_path, s.video_url, s.status, "
+                            "s.created_at, st.first_name, st.last_name, st.email, st.track "
+                            "FROM assignment_submissions s "
+                            "LEFT JOIN students st ON st.id = s.student_id "
+                            "WHERE s.score IS NULL "
+                            "ORDER BY s.created_at ASC NULLS LAST LIMIT 200"
+                        )
+                        rows = cur.fetchall()
+                        for r in rows:
+                            first, last = (r[6] or ""), (r[7] or "")
+                            source = r[2] or ""
+                            submissions.append({
+                                "id": r[0],
+                                "student_id": r[1] or "",
+                                "student_name": (first + " " + last).strip(),
+                                "student_email": r[8] or "",
+                                "track": r[9] or "",
+                                "source_code_path": source,
+                                "source_is_url": source.lower().startswith(("http://", "https://")),
+                                "video_url": r[3] or "",
+                                "status": r[4] or "Pending",
+                                "submitted_at": str(r[5]) if r[5] else None,
+                                "max_score": 100,
+                                "lms_context": None
+                            })
+                        cur.close()
+                    except Exception as q_err:
+                        print(f"[run.py] /api/judge/queue error: {q_err}", flush=True)
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "pending_total": pending_total,
+                    "by_track": by_track,
+                    "submissions": submissions
+                }).encode('utf-8'))
+            elif path == '/api/judge/history':
+                conn = _safe_get_db()
+                graded_total = 0
+                average_score = None
+                graded = []
+                auth_hdr = self.headers.get('Authorization', '')
+                token = auth_hdr.replace('Bearer ', '').strip() if 'Bearer ' in auth_hdr else ''
+                user_id = None
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        if token:
+                            cur.execute("SELECT user_id FROM auth_sessions WHERE token = %s", (token,))
+                            row = cur.fetchone()
+                            if row: user_id = row[0]
+                        if user_id:
+                            cur.execute(
+                                "SELECT s.id, s.student_id, s.source_code_path, s.video_url, s.status, "
+                                "s.created_at, st.first_name, st.last_name, st.email, st.track, "
+                                "s.score, s.feedback, s.graded_at "
+                                "FROM assignment_submissions s "
+                                "LEFT JOIN students st ON st.id = s.student_id "
+                                "WHERE s.graded_by = %s "
+                                "ORDER BY s.graded_at DESC NULLS LAST LIMIT 50",
+                                (user_id,)
+                            )
+                            rows = cur.fetchall()
+                            for r in rows:
+                                first, last = (r[6] or ""), (r[7] or "")
+                                source = r[2] or ""
+                                graded.append({
+                                    "id": r[0],
+                                    "student_id": r[1] or "",
+                                    "student_name": (first + " " + last).strip(),
+                                    "student_email": r[8] or "",
+                                    "track": r[9] or "",
+                                    "source_code_path": source,
+                                    "source_is_url": source.lower().startswith(("http://", "https://")),
+                                    "video_url": r[3] or "",
+                                    "status": r[4] or "graded",
+                                    "submitted_at": str(r[5]) if r[5] else None,
+                                    "score": r[10],
+                                    "feedback": r[11] or "",
+                                    "graded_at": str(r[12]) if r[12] else None
+                                })
+                            cur.execute(
+                                "SELECT COUNT(*), AVG(score) FROM assignment_submissions "
+                                "WHERE graded_by = %s AND score IS NOT NULL",
+                                (user_id,)
+                            )
+                            tr = cur.fetchone()
+                            if tr:
+                                graded_total = tr[0] or 0
+                                average_score = round(float(tr[1]), 2) if tr[1] is not None else None
+                        cur.close()
+                    except Exception as h_err:
+                        print(f"[run.py] /api/judge/history error: {h_err}", flush=True)
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "graded_total": graded_total,
+                    "average_score": average_score,
+                    "graded": graded
+                }).encode('utf-8'))
+            elif path == '/api/competitions':
+                conn = _safe_get_db()
+                results = []
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute(
+                            "SELECT c.id, c.title, c.description, c.track, c.category, c.deadline, c.status, "
+                            "c.created_at, c.comp_type, c.max_teams, c.prize, c.start_date, c.end_date, "
+                            "c.phases, c.rules, c.criteria, c.progress "
+                            "FROM competitions c ORDER BY c.created_at DESC"
+                        )
+                        rows = cur.fetchall()
+                        results = [
+                            {
+                                "id": r[0], "title": r[1], "description": r[2] or "", "track": r[3] or "",
+                                "category": r[4] or "", "deadline": r[5] or "", "status": r[6] or "Active",
+                                "created_at": str(r[7]), "type": r[8] or "qualifier", "maxTeams": r[9] or 50,
+                                "prize": r[10] or "", "startDate": r[11] or "", "endDate": r[12] or "",
+                                "phases": r[13] or "[]", "rules": r[14] or "", "criteria": r[15] or "",
+                                "progress": r[16] or 0, "teams": 0, "entrants": 0
+                            }
+                            for r in rows
+                        ]
+                        cur.close()
+                    except Exception as comp_err:
+                        print(f"[run.py] /api/competitions error: {comp_err}", flush=True)
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps(results).encode('utf-8'))
+            elif path == '/api/submissions':
+                conn = _safe_get_db()
+                results = []
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute(
+                            "SELECT s.id, s.student_id, s.source_code_path, s.video_url, s.status, "
+                            "s.score, s.feedback, s.created_at, s.graded_at, st.first_name, st.last_name, st.email, st.track "
+                            "FROM assignment_submissions s "
+                            "LEFT JOIN students st ON st.id = s.student_id "
+                            "ORDER BY s.created_at DESC LIMIT 200"
+                        )
+                        rows = cur.fetchall()
+                        results = [
+                            {
+                                "id": r[0], "student_id": r[1], "source_code_path": r[2] or "", "video_url": r[3] or "",
+                                "status": r[4] or "Pending", "score": r[5], "feedback": r[6] or "",
+                                "created_at": str(r[7]), "graded_at": str(r[8]) if r[8] else None,
+                                "first_name": r[9] or "", "last_name": r[10] or "", "email": r[11] or "", "track": r[12] or ""
+                            }
+                            for r in rows
+                        ]
+                        cur.close()
+                    except Exception:
+                        pass
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps(results).encode('utf-8'))
+            elif path == '/api/events':
+                conn = _safe_get_db()
+                results = []
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute("SELECT id, title, date, time, location, description, type, created_at FROM events ORDER BY created_at DESC")
+                        rows = cur.fetchall()
+                        results = [{"id": r[0], "title": r[1], "date": r[2] or "", "time": r[3] or "", "location": r[4] or "", "description": r[5] or "", "type": r[6] or "", "created_at": str(r[7])} for r in rows]
+                        cur.close()
+                    except Exception:
+                        pass
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps(results).encode('utf-8'))
+            elif path == '/api/stories':
+                conn = _safe_get_db()
+                results = []
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute("SELECT id, title, quote, author, role, track, image, created_at FROM stories ORDER BY created_at DESC")
+                        rows = cur.fetchall()
+                        results = [{"id": r[0], "title": r[1], "quote": r[2] or "", "author": r[3] or "", "role": r[4] or "", "track": r[5] or "", "image": r[6] or "", "created_at": str(r[7])} for r in rows]
+                        cur.close()
+                    except Exception:
+                        pass
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps(results).encode('utf-8'))
+            elif path == '/api/news':
+                conn = _safe_get_db()
+                results = []
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute("SELECT id, title, snippet, category, date, read_time, image, created_at FROM news_items ORDER BY created_at DESC")
+                        rows = cur.fetchall()
+                        results = [{"id": r[0], "title": r[1], "snippet": r[2] or "", "category": r[3] or "", "date": r[4] or "", "read_time": r[5] or "", "image": r[6] or "", "created_at": str(r[7])} for r in rows]
+                        cur.close()
+                    except Exception:
+                        pass
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps(results).encode('utf-8'))
+            elif path in ('/api/leaderboard', '/api/lms/courses', '/api/hero-slides', '/api/csr', '/api/talent', '/api/philosophy'):
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps([]).encode('utf-8'))
             elif path in ('/api/auth/heartbeat', '/api/heartbeat'):
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
@@ -868,6 +1123,44 @@ def run_standalone_server(port):
                 self._send_cors()
                 self.end_headers()
                 self.wfile.write(json.dumps({"detail": f"Endpoint not found: {path}"}).encode('utf-8'))
+
+        def do_PATCH(self):
+            path = self.path.split('?')[0]
+            content_length = int(self.headers.get('Content-Length', 0))
+            patch_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(patch_data.decode('utf-8'))
+            except Exception:
+                data = {}
+            if '/grade' in path:
+                sub_id = path.replace('/api/submissions/', '').replace('/grade', '').strip()
+                score = data.get('score')
+                feedback = data.get('feedback', '')
+                conn = _safe_get_db()
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute(
+                            "UPDATE assignment_submissions SET score = %s, feedback = %s, status = 'Graded', graded_at = CURRENT_TIMESTAMP WHERE id = %s",
+                            (score, feedback, sub_id)
+                        )
+                        conn.commit()
+                        cur.close()
+                    except Exception as g_err:
+                        print(f"[run.py] grade error: {g_err}", flush=True)
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"id": sub_id, "status": "Graded", "score": score}).encode('utf-8'))
+            else:
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "ok"}).encode('utf-8'))
 
     _safe_init_db()
     server = HTTPServer(('0.0.0.0', port), StandaloneHandler)
