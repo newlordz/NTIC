@@ -103,6 +103,24 @@ def _ensure_competitions(cur) -> None:
         """)
 
 
+def _ensure_schools(cur) -> None:
+    """Seed foundational high school directory entries if none exist."""
+    cur.execute("SELECT count(*) FROM schools")
+    if cur.fetchone()[0] == 0:
+        schools = [
+            ('sch-1', 'PRESEC Legon', 'Greater Accra', 12, 1450, 1, 'Active', 380, 360, 350, 360),
+            ('sch-2', 'Achimota School', 'Greater Accra', 10, 1380, 2, 'Active', 370, 340, 320, 350),
+            ('sch-3', 'Prempeh College', 'Ashanti', 9, 1320, 3, 'Active', 320, 350, 340, 310),
+            ('sch-4', 'Wesley Girls High School', 'Central', 8, 1290, 4, 'Active', 340, 330, 310, 310),
+        ]
+        for s in schools:
+            cur.execute("""
+                INSERT INTO schools (id, name, region, teams, score, rank, status, coding_score, robotics_score, ai_score, cyber_score)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO NOTHING
+            """, s)
+
+
 def seed_initial_data(conn):
     cur = conn.cursor()
 
@@ -196,6 +214,7 @@ def seed_initial_data(conn):
     _ensure_landing_copy(cur)
     _ensure_lms_courses(cur)
     _ensure_competitions(cur)
+    _ensure_schools(cur)
 
     # Demo/placeholder content is opt-in. Without it the schema is created and the
     # operator starts with real data; set NTIC_SEED_DEMO=true for a dev sandbox.

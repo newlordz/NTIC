@@ -228,12 +228,13 @@ def run_standalone_server(port):
                                 print(f"[run.py] Schema auto-init error: {schema_e}", flush=True)
                         else:
                             try:
-                                cur.execute("SELECT count(*) FROM competitions")
-                                comp_cnt = cur.fetchone()[0]
-                                if comp_cnt == 0:
-                                    from app.seed import seed_initial_data
-                                    seed_initial_data(conn)
-                                    print("[run.py] Seeded baseline data via /api/health", flush=True)
+                                cur.execute("SELECT count(*) FROM schools")
+                                sch_cnt = cur.fetchone()[0]
+                                if sch_cnt == 0:
+                                    from app.seed import _ensure_schools
+                                    _ensure_schools(cur)
+                                    conn.commit()
+                                    print("[run.py] Seeded baseline schools via /api/health", flush=True)
                             except Exception as seed_e:
                                 print(f"[run.py] Health baseline seed notice: {seed_e}", flush=True)
                         cur.close()
