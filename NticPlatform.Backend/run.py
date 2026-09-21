@@ -98,47 +98,53 @@ def _safe_get_db():
         print(f"[run.py] DB connection helper error: {direct_err}", flush=True)
     return None
 
+def _sync_super_admin(conn):
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM users WHERE lower(email) = %s OR id = 'USR-000'", (ADMIN_EMAIL.lower(),))
+        row = cur.fetchone()
+        from app.security import hash_password
+        if not row:
+            cur.execute(
+                "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status) "
+                "VALUES (%s, %s, %s, %s, %s, %s, 'Active')",
+                ("USR-000", ADMIN_EMAIL, "System Administrator", "super_admin", "NTIC-ADM-0000", hash_password(DEFAULT_ADMIN_PASSWORD))
+            )
+            conn.commit()
+            print(f"[run.py] Bootstrapped super-admin: {ADMIN_EMAIL}", flush=True)
+        else:
+            cur.execute(
+                "UPDATE users SET password_hash = %s, status = 'Active' WHERE id = %s OR lower(email) = %s",
+                (hash_password(DEFAULT_ADMIN_PASSWORD), row[0], ADMIN_EMAIL.lower())
+            )
+            conn.commit()
+            print(f"[run.py] Synchronized admin password for: {ADMIN_EMAIL}", flush=True)
+        cur.close()
+    except Exception as admin_err:
+        print(f"[run.py] Super-admin bootstrap error: {admin_err}", flush=True)
+
+
 def _safe_init_db():
+    os.environ.setdefault("NTIC_SEED_DEMO", "true")
+    schema_ok = False
     try:
         from app.database import init_postgres_db
         ok, msg = init_postgres_db()
         if ok:
             print(f"[run.py] Full schema initialized via init_postgres_db(): {msg}", flush=True)
-            return True, msg
+            schema_ok = True
     except Exception as e:
         print(f"[run.py] init_postgres_db notice: {e}", flush=True)
 
     conn = _safe_get_db()
     if conn:
         try:
-            from app.database import _create_tables
-            _create_tables(conn)
-            # Ensure super-admin account exists
-            try:
-                cur = conn.cursor()
-                cur.execute("SELECT id FROM users WHERE lower(email) = %s OR id = 'USR-000'", (ADMIN_EMAIL.lower(),))
-                row = cur.fetchone()
-                from app.security import hash_password
-                if not row:
-                    cur.execute(
-                        "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status) "
-                        "VALUES (%s, %s, %s, %s, %s, %s, 'Active')",
-                        ("USR-000", ADMIN_EMAIL, "System Administrator", "super_admin", "NTIC-ADM-0000", hash_password(DEFAULT_ADMIN_PASSWORD))
-                    )
-                    conn.commit()
-                    print(f"[run.py] Bootstrapped super-admin: {ADMIN_EMAIL}", flush=True)
-                else:
-                    cur.execute(
-                        "UPDATE users SET password_hash = %s, status = 'Active' WHERE id = %s OR lower(email) = %s",
-                        (hash_password(DEFAULT_ADMIN_PASSWORD), row[0], ADMIN_EMAIL.lower())
-                    )
-                    conn.commit()
-                    print(f"[run.py] Synchronized admin password for: {ADMIN_EMAIL}", flush=True)
-                cur.close()
-            except Exception as admin_err:
-                print(f"[run.py] Super-admin bootstrap error: {admin_err}", flush=True)
+            if not schema_ok:
+                from app.database import _create_tables
+                _create_tables(conn)
+            _sync_super_admin(conn)
             conn.close()
-            print("[run.py] Initialized full PostgreSQL database schema via _create_tables", flush=True)
+            print("[run.py] Initialized full PostgreSQL database schema and verified super-admin", flush=True)
             return True, "OK"
         except Exception as e:
             print(f"[run.py] _create_tables fallback error: {e}", flush=True)
@@ -176,6 +182,11 @@ _FRONTEND_CANDIDATES = [
     Path("/app/NticPlatform.Frontend/dist/browser"),
 ]
 _FRONTEND_DIST = next((p for p in _FRONTEND_CANDIDATES if p.is_dir()), None)
+
+# In-memory sliding window rate limiter for login attempts (per IP)
+_LOGIN_FAILURES = {}  # ip -> list of float timestamps
+_RATE_LIMIT_WINDOW = 900  # 15 minutes
+_RATE_LIMIT_MAX_ATTEMPTS = 5
 
 def run_standalone_server(port):
     """Fallback standalone Python HTTP server if uvicorn/fastapi are not installed or fail."""
@@ -852,12 +863,12 @@ def run_standalone_server(port):
                 if conn:
                     try:
                         cur = conn.cursor()
-                        cur.execute("SELECT id, title, date, time, location, description, type, created_at FROM events ORDER BY created_at DESC")
+                        cur.execute("SELECT id, title, date, time, location, description, type FROM events ORDER BY id ASC")
                         rows = cur.fetchall()
-                        results = [{"id": r[0], "title": r[1], "date": r[2] or "", "time": r[3] or "", "location": r[4] or "", "description": r[5] or "", "type": r[6] or "", "created_at": str(r[7])} for r in rows]
+                        results = [{"id": r[0], "title": r[1], "date": r[2] or "", "time": r[3] or "", "location": r[4] or "", "description": r[5] or "", "type": r[6] or ""} for r in rows]
                         cur.close()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        print(f"[run.py] /api/events error: {e}", flush=True)
                     finally:
                         conn.close()
                 self.send_response(200)
@@ -871,12 +882,19 @@ def run_standalone_server(port):
                 if conn:
                     try:
                         cur = conn.cursor()
-                        cur.execute("SELECT id, title, quote, author, role, track, image, created_at FROM stories ORDER BY created_at DESC")
+                        cur.execute("SELECT id, title, excerpt, date, image, tag, tag_color, read_time, likes FROM stories ORDER BY date DESC NULLS LAST")
                         rows = cur.fetchall()
-                        results = [{"id": r[0], "title": r[1], "quote": r[2] or "", "author": r[3] or "", "role": r[4] or "", "track": r[5] or "", "image": r[6] or "", "created_at": str(r[7])} for r in rows]
+                        results = [
+                            {
+                                "id": r[0], "title": r[1], "body": r[2] or "", "date": r[3] or "", "image": r[4] or "",
+                                "tag": r[5] or "", "tagColor": r[6] or "", "readTime": r[7] or "5 min",
+                                "likes": r[8] or 0, "likedBy": []
+                            }
+                            for r in rows
+                        ]
                         cur.close()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        print(f"[run.py] /api/stories error: {e}", flush=True)
                     finally:
                         conn.close()
                 self.send_response(200)
@@ -890,12 +908,12 @@ def run_standalone_server(port):
                 if conn:
                     try:
                         cur = conn.cursor()
-                        cur.execute("SELECT id, title, snippet, category, date, read_time, image, created_at FROM news_items ORDER BY created_at DESC")
+                        cur.execute("SELECT id, headline, tag, date, link FROM news_items ORDER BY id ASC")
                         rows = cur.fetchall()
-                        results = [{"id": r[0], "title": r[1], "snippet": r[2] or "", "category": r[3] or "", "date": r[4] or "", "read_time": r[5] or "", "image": r[6] or "", "created_at": str(r[7])} for r in rows]
+                        results = [{"id": r[0], "headline": r[1], "tag": r[2] or "", "date": r[3] or "", "link": r[4] or ""} for r in rows]
                         cur.close()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        print(f"[run.py] /api/news error: {e}", flush=True)
                     finally:
                         conn.close()
                 self.send_response(200)
@@ -903,12 +921,187 @@ def run_standalone_server(port):
                 self._send_cors()
                 self.end_headers()
                 self.wfile.write(json.dumps(results).encode('utf-8'))
-            elif path in ('/api/leaderboard', '/api/lms/courses', '/api/hero-slides', '/api/csr', '/api/talent', '/api/philosophy'):
+            elif path in ('/api/schools', '/api/leaderboard'):
+                conn = _safe_get_db()
+                results = []
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute(
+                            "SELECT id, name, region, teams, score, rank, status, "
+                            "coding_score, robotics_score, ai_score, cyber_score "
+                            "FROM schools ORDER BY rank ASC NULLS LAST"
+                        )
+                        rows = cur.fetchall()
+                        results = [
+                            {
+                                "id": r[0], "name": r[1], "region": r[2] or "", "teams": r[3] or 0, "score": r[4] or 0,
+                                "rank": r[5] or 1, "status": r[6] or "Active", "coding_score": r[7] or 0,
+                                "robotics_score": r[8] or 0, "ai_score": r[9] or 0, "cyber_score": r[10] or 0,
+                                "students": 0
+                            }
+                            for r in rows
+                        ]
+                        cur.close()
+                    except Exception as e:
+                        print(f"[run.py] /api/schools error: {e}", flush=True)
+                    finally:
+                        conn.close()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self._send_cors()
                 self.end_headers()
-                self.wfile.write(json.dumps([]).encode('utf-8'))
+                self.wfile.write(json.dumps(results).encode('utf-8'))
+            elif path == '/api/hero-slides':
+                conn = _safe_get_db()
+                results = []
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute("SELECT id, tag, title, description, image, image_file_id, video_file_id, video_url, sort_order FROM hero_slides ORDER BY sort_order ASC")
+                        rows = cur.fetchall()
+                        results = [
+                            {
+                                "id": r[0], "tag": r[1] or "", "title": r[2] or "", "description": r[3] or "",
+                                "image": r[4] or "", "imageFileId": r[5] or "", "videoFileId": r[6] or "",
+                                "videoUrl": r[7] or "", "sortOrder": r[8] or 0
+                            }
+                            for r in rows
+                        ]
+                        cur.close()
+                    except Exception as e:
+                        print(f"[run.py] /api/hero-slides error: {e}", flush=True)
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps(results).encode('utf-8'))
+            elif path == '/api/philosophy':
+                conn = _safe_get_db()
+                results = []
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute("SELECT id, title, description, image FROM philosophy_cards ORDER BY id ASC")
+                        rows = cur.fetchall()
+                        results = [{"id": r[0], "title": r[1] or "", "description": r[2] or "", "image": r[3] or ""} for r in rows]
+                        cur.close()
+                    except Exception as e:
+                        print(f"[run.py] /api/philosophy error: {e}", flush=True)
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps(results).encode('utf-8'))
+            elif path in ('/api/talent', '/api/talent-discovery'):
+                conn = _safe_get_db()
+                results = []
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute("SELECT id, student_name, school, track, project_title, talent_tags, description, mentor, status FROM talent_discovery ORDER BY created_at DESC")
+                        rows = cur.fetchall()
+                        results = [
+                            {
+                                "id": r[0], "studentName": r[1] or "", "school": r[2] or "", "track": r[3] or "",
+                                "projectTitle": r[4] or "", "talentTags": r[5] or "", "description": r[6] or "",
+                                "mentor": r[7] or "", "status": r[8] or "active"
+                            }
+                            for r in rows
+                        ]
+                        cur.close()
+                    except Exception as e:
+                        print(f"[run.py] /api/talent error: {e}", flush=True)
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps(results).encode('utf-8'))
+            elif path == '/api/csr':
+                conn = _safe_get_db()
+                results = []
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute("SELECT id, title, description, date, icon FROM csr_updates ORDER BY created_at DESC")
+                        rows = cur.fetchall()
+                        results = [{"id": r[0], "title": r[1] or "", "description": r[2] or "", "date": r[3] or "", "icon": r[4] or ""} for r in rows]
+                        cur.close()
+                    except Exception as e:
+                        print(f"[run.py] /api/csr error: {e}", flush=True)
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps(results).encode('utf-8'))
+            elif path == '/api/lms/courses':
+                conn = _safe_get_db()
+                results = []
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute("SELECT id, title, track, icon, level, description, modules, enrolled, completion, status, created_at, submitted_by, approval_status FROM lms_courses WHERE approval_status = 'approved' OR approval_status IS NULL ORDER BY id ASC")
+                        rows = cur.fetchall()
+                        results = [
+                            {
+                                "id": r[0], "title": r[1], "track": r[2] or "", "icon": r[3] or "school", "level": r[4] or "Beginner",
+                                "description": r[5] or "", "modules": r[6] or 0, "enrolled": r[7] or 0, "completion": r[8] or 0,
+                                "status": r[9] or "active", "created_at": str(r[10]), "submitted_by": r[11] or "", "approval_status": r[12] or "approved"
+                            }
+                            for r in rows
+                        ]
+                        cur.close()
+                    except Exception as e:
+                        print(f"[run.py] /api/lms/courses error: {e}", flush=True)
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps(results).encode('utf-8'))
+            elif path == '/api/platform-stats':
+                conn = _safe_get_db()
+                stats = {
+                    "regions": 16, "mentors": 0, "schools": 0, "students": 0,
+                    "projects": 0, "grants": 0, "sponsors": 0, "countdownDate": "2026-08-15T09:00:00"
+                }
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute("SELECT COUNT(DISTINCT region) FROM schools WHERE region IS NOT NULL AND region <> ''")
+                        row = cur.fetchone()
+                        if row and row[0]: stats["regions"] = row[0]
+                        cur.execute("SELECT COUNT(*) FROM users WHERE role IN ('instructor','school_admin')")
+                        row = cur.fetchone()
+                        if row: stats["mentors"] = row[0]
+                        cur.execute("SELECT COUNT(DISTINCT id) FROM schools")
+                        row = cur.fetchone()
+                        if row: stats["schools"] = row[0]
+                        cur.execute("SELECT COUNT(*) FROM users WHERE role = 'student'")
+                        row = cur.fetchone()
+                        if row: stats["students"] = row[0]
+                        cur.execute("SELECT COUNT(*) FROM assignment_submissions")
+                        row = cur.fetchone()
+                        if row: stats["projects"] = row[0]
+                        cur.close()
+                    except Exception as e:
+                        print(f"[run.py] /api/platform-stats error: {e}", flush=True)
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps(stats).encode('utf-8'))
             elif path in ('/api/auth/heartbeat', '/api/heartbeat'):
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
@@ -922,7 +1115,7 @@ def run_standalone_server(port):
                 self.end_headers()
                 self.wfile.write(json.dumps({"detail": f"Endpoint not found: {path}"}).encode('utf-8'))
             else:
-                # Static file serving (SPA support)
+                # Static file serving (SPA support with caching and security headers)
                 clean_path = path.lstrip('/')
                 served = False
                 if _FRONTEND_DIST:
@@ -939,6 +1132,12 @@ def run_standalone_server(port):
                         mime_type, _ = mimetypes.guess_type(str(target_file))
                         self.send_response(200)
                         self.send_header('Content-Type', mime_type or 'application/octet-stream')
+                        self.send_header('X-Content-Type-Options', 'nosniff')
+                        suffix = target_file.suffix.lower()
+                        if suffix in ('.js', '.css', '.woff2', '.woff', '.ttf', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.ico'):
+                            self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
+                        else:
+                            self.send_header('Cache-Control', 'public, max-age=86400')
                         self._send_cors()
                         self.end_headers()
                         with open(target_file, 'rb') as f:
@@ -947,6 +1146,8 @@ def run_standalone_server(port):
                     elif (_FRONTEND_DIST / "index.html").is_file():
                         self.send_response(200)
                         self.send_header('Content-Type', 'text/html; charset=utf-8')
+                        self.send_header('X-Content-Type-Options', 'nosniff')
+                        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                         self._send_cors()
                         self.end_headers()
                         with open(_FRONTEND_DIST / "index.html", 'rb') as f:
@@ -1016,6 +1217,20 @@ def run_standalone_server(port):
                     cur.close()
                     conn.close()
             elif path == '/api/login':
+                client_ip = self.headers.get('X-Forwarded-For', '').split(',')[0].strip() or self.client_address[0]
+                now_ts = time.time()
+                recent_fails = [t for t in _LOGIN_FAILURES.get(client_ip, []) if now_ts - t < _RATE_LIMIT_WINDOW]
+                _LOGIN_FAILURES[client_ip] = recent_fails
+
+                if len(recent_fails) >= _RATE_LIMIT_MAX_ATTEMPTS:
+                    self.send_response(429)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Retry-After', str(_RATE_LIMIT_WINDOW))
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"detail": "Too many failed login attempts. Please try again in 15 minutes."}).encode('utf-8'))
+                    return
+
                 conn = _safe_get_db()
                 if not conn:
                     self.send_response(503)
@@ -1043,6 +1258,8 @@ def run_standalone_server(port):
                 if not user_row:
                     cur.close()
                     conn.close()
+                    recent_fails.append(now_ts)
+                    _LOGIN_FAILURES[client_ip] = recent_fails
                     self.send_response(401)
                     self.send_header('Content-Type', 'application/json')
                     self._send_cors()
@@ -1056,12 +1273,17 @@ def run_standalone_server(port):
                 if not verify_password(password, password_hash):
                     cur.close()
                     conn.close()
+                    recent_fails.append(now_ts)
+                    _LOGIN_FAILURES[client_ip] = recent_fails
                     self.send_response(401)
                     self.send_header('Content-Type', 'application/json')
                     self._send_cors()
                     self.end_headers()
                     self.wfile.write(json.dumps({"detail": "Invalid credentials"}).encode('utf-8'))
                     return
+
+                # Success: clear failed attempts
+                _LOGIN_FAILURES.pop(client_ip, None)
 
                 if account_is_disabled(status):
                     cur.close()

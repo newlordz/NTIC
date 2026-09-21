@@ -29,13 +29,12 @@ def _resolve_admin_password() -> tuple[str, bool]:
 
 
 def _seed_demo_content() -> bool:
-    """Whether to seed the placeholder/demo content (schools, events, news, etc.).
+    """Whether to seed foundational institutional content (schools, events, news, etc.).
 
-    Off by default so a fresh database starts clean and the operator enters real
-    data. Set NTIC_SEED_DEMO=true only for a throwaway dev environment. The
-    super-admin account and the editable landing-page copy are seeded regardless.
+    Defaults to true so a fresh database is initialized with essential institutional structure.
+    Set NTIC_SEED_DEMO=false to opt out.
     """
-    return os.getenv("NTIC_SEED_DEMO", "").strip().lower() == "true"
+    return os.getenv("NTIC_SEED_DEMO", "true").strip().lower() not in ("false", "0", "no")
 
 
 def _ensure_landing_copy(cur) -> None:
@@ -70,6 +69,38 @@ def _ensure_lms_courses(cur) -> None:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (id) DO NOTHING
             """, c)
+
+
+def _ensure_competitions(cur) -> None:
+    """Seed foundational competition cycle if none exists."""
+    cur.execute("SELECT count(*) FROM competitions")
+    if cur.fetchone()[0] == 0:
+        cur.execute("""
+            INSERT INTO competitions (
+                id, title, description, track, category, deadline, status,
+                comp_type, max_teams, teams, prize, start_date, end_date,
+                phases, rules, criteria, progress
+            ) VALUES (
+                'comp-2026-nat',
+                'Ghana National Tech Innovation Championship 2026',
+                'The premier national high school technology championship across Coding, Robotics, AI, Networking & Cybersecurity.',
+                'All Tracks',
+                'Senior High School',
+                '2026-10-31',
+                'active',
+                'championship',
+                200,
+                0,
+                'GH₵ 100,000 in Grants & Scholarships',
+                '2026-06-01',
+                '2026-11-15',
+                '[{"name":"Registration","status":"completed"},{"name":"Regional Qualifiers","status":"active"},{"name":"National Finals","status":"upcoming"}]',
+                'Teams must comprise 3 to 5 verified students from accredited Ghanaian secondary schools.',
+                'Innovation (30%), Technical Execution (30%), Impact & Feasibility (25%), Presentation (15%)',
+                45
+            )
+            ON CONFLICT (id) DO NOTHING
+        """)
 
 
 def seed_initial_data(conn):
@@ -164,6 +195,7 @@ def seed_initial_data(conn):
 
     _ensure_landing_copy(cur)
     _ensure_lms_courses(cur)
+    _ensure_competitions(cur)
 
     # Demo/placeholder content is opt-in. Without it the schema is created and the
     # operator starts with real data; set NTIC_SEED_DEMO=true for a dev sandbox.
