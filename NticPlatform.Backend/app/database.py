@@ -46,14 +46,12 @@ def _get_connect_kwargs(timeout=10) -> dict:
 
 def init_postgres_db():
     """Ensure NticPlatformDb database and schema exist."""
+    import os
     try:
         import psycopg2
         from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
     except ImportError:
-        logger.warning("psycopg2 not installed yet. Run 'pip install -r requirements.txt'")
-        return False, "psycopg2 not installed"
-
-    import os
+        psycopg2 = None
 
     # ── Diagnose available connection vars ──────────────────────────
     # Never log raw values: DATABASE_URL contains the password in the
@@ -69,13 +67,18 @@ def init_postgres_db():
         else:
             logger.info(f"  env {k} = {v}")
 
-    # ── URL-based connection (works when env var is a real URL) ─────
+    # ── Connection-based schema initialization (psycopg2 or pg8000) ─────
     conn = get_db_connection()
     if conn:
-        _create_tables(conn)
-        conn.close()
-        logger.info("Database connected and schema verified via URL-based connection.")
-        return True, "OK"
+        try:
+            _create_tables(conn)
+            release_db_connection(conn)
+            logger.info("Database connected and schema verified via connection.")
+            return True, "OK"
+        except Exception as schema_err:
+            logger.error(f"Database schema initialization failed: {schema_err}")
+            release_db_connection(conn)
+            return False, str(schema_err)
 
     if _is_wasm_env():
         logger.warning("Database direct connection failed on Wasmer/WASM environment.")
@@ -1230,34 +1233,62 @@ def get_db_connection():
                     pass
 
     # Fallback direct connect if pool is unavailable
-    import os, psycopg2
-    conn_kwargs = _get_connect_kwargs(timeout=10)
-    for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
-        db_url = os.environ.get(url_key, "").strip()
-        if db_url:
+    import os
+    try:
+        import psycopg2
+    except ImportError:
+        psycopg2 = None
+
+    if psycopg2 is not None:
+        conn_kwargs = _get_connect_kwargs(timeout=10)
+        for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
+            db_url = os.environ.get(url_key, "").strip()
+            if db_url:
+                try:
+                    conn = psycopg2.connect(db_url, **conn_kwargs)
+                    if _is_conn_alive(conn):
+                        return conn
+                except Exception:
+                    pass
+        db_host = settings.POSTGRES_HOST
+        if db_host in ("localhost", ""):
+            db_host = "127.0.0.1"
+        try:
+            conn = psycopg2.connect(
+                host=db_host,
+                port=settings.POSTGRES_PORT,
+                user=settings.POSTGRES_USER,
+                password=settings.POSTGRES_PASSWORD,
+                dbname=settings.POSTGRES_DB,
+                **conn_kwargs
+            )
+            if _is_conn_alive(conn):
+                return conn
+        except Exception as e:
+            logger.error(f"PostgreSQL direct connection failed: {e}")
+
+    # Fallback pure-Python pg8000 driver (essential for WASIX / WebAssembly)
+    try:
+        import pg8000.dbapi
+        import ssl
+        for use_ssl in [ssl.create_default_context(), None]:
             try:
-                conn = psycopg2.connect(db_url, **conn_kwargs)
+                conn = pg8000.dbapi.connect(
+                    host=settings.POSTGRES_HOST,
+                    port=settings.POSTGRES_PORT,
+                    user=settings.POSTGRES_USER,
+                    password=settings.POSTGRES_PASSWORD,
+                    database=settings.POSTGRES_DB,
+                    ssl_context=use_ssl,
+                    timeout=5,
+                )
                 if _is_conn_alive(conn):
                     return conn
             except Exception:
                 pass
-    db_host = settings.POSTGRES_HOST
-    if db_host in ("localhost", ""):
-        db_host = "127.0.0.1"
-    try:
-        conn = psycopg2.connect(
-            host=db_host,
-            port=settings.POSTGRES_PORT,
-            user=settings.POSTGRES_USER,
-            password=settings.POSTGRES_PASSWORD,
-            dbname=settings.POSTGRES_DB,
-            **conn_kwargs
-        )
-        if _is_conn_alive(conn):
-            return conn
-    except Exception as e:
-        logger.error(f"PostgreSQL direct connection failed: {e}")
-        return None
+    except Exception as pg_err:
+        logger.error(f"pg8000 driver failed: {pg_err}")
+
     return None
 
 

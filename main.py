@@ -46,6 +46,11 @@ except Exception as app_err:
             while True:
                 msg = await receive()
                 if msg["type"] == "lifespan.startup":
+                    try:
+                        from run import _safe_init_db
+                        _safe_init_db()
+                    except Exception as startup_err:
+                        print(f"[main.py] Startup schema init error: {startup_err}", flush=True)
                     await send({"type": "lifespan.startup.complete"})
                 elif msg["type"] == "lifespan.shutdown":
                     await send({"type": "lifespan.shutdown.complete"})
@@ -53,7 +58,42 @@ except Exception as app_err:
         elif scope["type"] == "http":
             path = scope.get("path", "/")
             if path == "/api/health":
-                content = json.dumps({"status": "ok", "service": "ntic-platform"}).encode("utf-8")
+                table_count = 0
+                tables = []
+                conn = None
+                try:
+                    from run import _safe_get_db
+                    conn = _safe_get_db()
+                    if conn:
+                        cur = conn.cursor()
+                        cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name")
+                        tables = [r[0] for r in cur.fetchall()]
+                        table_count = len(tables)
+                        if table_count <= 2:
+                            try:
+                                from app.database import _create_tables
+                                _create_tables(conn)
+                                cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name")
+                                tables = [r[0] for r in cur.fetchall()]
+                                table_count = len(tables)
+                            except Exception as schema_err:
+                                print(f"[main.py] Schema auto-init error: {schema_err}", flush=True)
+                        cur.close()
+                        conn.close()
+                except Exception as db_err:
+                    if conn:
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
+                    print(f"[main.py] Health check DB error: {db_err}", flush=True)
+
+                content = json.dumps({
+                    "status": "ok",
+                    "service": "ntic-platform",
+                    "table_count": table_count,
+                    "tables": tables
+                }).encode("utf-8")
                 await send({
                     "type": "http.response.start",
                     "status": 200,

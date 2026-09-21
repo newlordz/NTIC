@@ -96,34 +96,43 @@ def _safe_init_db():
         from app.database import init_postgres_db
         ok, msg = init_postgres_db()
         if ok:
+            print(f"[run.py] Full schema initialized via init_postgres_db(): {msg}", flush=True)
             return True, msg
     except Exception as e:
-        pass
+        print(f"[run.py] init_postgres_db notice: {e}", flush=True)
 
     conn = _safe_get_db()
     if conn:
         try:
-            cur = conn.cursor()
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS students (
-                    id VARCHAR(64) PRIMARY KEY,
-                    tenant_id VARCHAR(64) NOT NULL,
-                    first_name VARCHAR(100),
-                    last_name VARCHAR(100),
-                    email VARCHAR(255) UNIQUE,
-                    track VARCHAR(50),
-                    consent_granted BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-            """)
-            conn.commit()
-            cur.close()
+            from app.database import _create_tables
+            _create_tables(conn)
             conn.close()
-            print("[run.py] Initialized students table via fallback driver", flush=True)
+            print("[run.py] Initialized full PostgreSQL database schema via _create_tables", flush=True)
             return True, "OK"
         except Exception as e:
-            print(f"[run.py] Fallback DB init error: {e}", flush=True)
-            return False, str(e)
+            print(f"[run.py] _create_tables fallback error: {e}", flush=True)
+            try:
+                cur = conn.cursor()
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS students (
+                        id VARCHAR(64) PRIMARY KEY,
+                        tenant_id VARCHAR(64) NOT NULL,
+                        first_name VARCHAR(100),
+                        last_name VARCHAR(100),
+                        email VARCHAR(255) UNIQUE,
+                        track VARCHAR(50),
+                        consent_granted BOOLEAN DEFAULT TRUE,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+                conn.commit()
+                cur.close()
+                conn.close()
+                print("[run.py] Initialized students table via fallback driver", flush=True)
+                return True, "OK (students only)"
+            except Exception as e2:
+                print(f"[run.py] Minimal DB init error: {e2}", flush=True)
+                return False, str(e2)
     return False, "DB unreachable"
 
 _FRONTEND_CANDIDATES = [
@@ -158,7 +167,26 @@ def run_standalone_server(port):
             if path == '/api/health':
                 conn = _safe_get_db()
                 status_msg = "connected" if conn else "disconnected"
+                table_count = 0
+                tables = []
                 if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name")
+                        tables = [r[0] for r in cur.fetchall()]
+                        table_count = len(tables)
+                        if table_count <= 2:
+                            try:
+                                from app.database import _create_tables
+                                _create_tables(conn)
+                                cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name")
+                                tables = [r[0] for r in cur.fetchall()]
+                                table_count = len(tables)
+                            except Exception as schema_e:
+                                print(f"[run.py] Schema auto-init error: {schema_e}", flush=True)
+                        cur.close()
+                    except Exception as info_e:
+                        print(f"[run.py] Information schema check notice: {info_e}", flush=True)
                     conn.close()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
@@ -167,6 +195,8 @@ def run_standalone_server(port):
                 self.wfile.write(json.dumps({
                     "status": "ok",
                     "database": status_msg,
+                    "table_count": table_count,
+                    "tables": tables,
                     "db_error": getattr(sys, "_last_db_error", None),
                     "config": {
                         "host": settings.POSTGRES_HOST,
@@ -316,6 +346,7 @@ def run_standalone_server(port):
     server.serve_forever()
 
 if __name__ == "__main__":
+    _safe_init_db()
     port = settings.PORT
     is_cloud_env = (
         bool(os.getenv("PORT"))
