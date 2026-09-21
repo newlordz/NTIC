@@ -970,6 +970,7 @@ def run_standalone_server(port):
                         cur.close()
                     except Exception as e:
                         print(f"[run.py] /api/schools error: {e}", flush=True)
+                        results = [{"error": str(e)}]
                     finally:
                         conn.close()
                 self.send_response(200)
