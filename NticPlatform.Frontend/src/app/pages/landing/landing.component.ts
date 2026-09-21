@@ -1838,6 +1838,7 @@ print(f"[!] FLAG{{NTIC{{{decoded.split('-')[-1]}}}}}")`,
 
   private completeLogin(role: string, user: any, credential: string): void {
     this.isLoggingIn = false;
+    this.closeLoginModal();
     if (typeof document !== 'undefined') {
       document.body.style.overflow = '';
     }

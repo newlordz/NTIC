@@ -182,7 +182,7 @@ def run_standalone_server(port):
     class StandaloneHandler(BaseHTTPRequestHandler):
         def _send_cors(self):
             self.send_header('Access-Control-Allow-Origin', '*')
-            self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+            self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
             self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Tenant-ID')
 
         def do_OPTIONS(self):
@@ -323,12 +323,110 @@ def run_standalone_server(port):
                     "organization": org,
                     "must_change_password": bool(must_change)
                 }).encode('utf-8'))
+            elif path == '/api/auth/verify':
+                auth_hdr = self.headers.get('Authorization', '')
+                token = auth_hdr.replace('Bearer ', '').strip() if 'Bearer ' in auth_hdr else ''
+                if not token:
+                    self.send_response(401)
+                    self.send_header('Content-Type', 'application/json')
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"detail": "Authentication required"}).encode('utf-8'))
+                    return
+                conn = _safe_get_db()
+                if not conn:
+                    self.send_response(503)
+                    self.send_header('Content-Type', 'application/json')
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"detail": "Database unavailable"}).encode('utf-8'))
+                    return
+                cur = conn.cursor()
+                try:
+                    cur.execute(
+                        "SELECT u.role, u.email, u.must_change_password "
+                        "FROM auth_sessions s "
+                        "JOIN users u ON s.user_id = u.id "
+                        "WHERE s.token = %s",
+                        (token,)
+                    )
+                    row = cur.fetchone()
+                except Exception as verify_err:
+                    row = None
+                    print(f"[run.py] /api/auth/verify query error: {verify_err}", flush=True)
+                finally:
+                    cur.close()
+                    conn.close()
+
+                if not row:
+                    self.send_response(401)
+                    self.send_header('Content-Type', 'application/json')
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"detail": "Invalid or expired session"}).encode('utf-8'))
+                    return
+
+                role, email, must_change = row
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "role": role,
+                    "email": email,
+                    "must_change_password": bool(must_change)
+                }).encode('utf-8'))
+            elif path == '/api/platform-stats':
+                conn = _safe_get_db()
+                regions, mentors, schools, students, projects = 0, 0, 0, 0, 0
+                countdown_date = "2026-08-15T09:00:00"
+                if conn:
+                    try:
+                        cur = conn.cursor()
+                        cur.execute("SELECT COUNT(DISTINCT region) FROM schools WHERE region IS NOT NULL AND region <> ''")
+                        r = cur.fetchone()
+                        if r: regions = r[0] or 0
+                        cur.execute("SELECT COUNT(*) FROM users WHERE role IN ('instructor','school_admin')")
+                        r = cur.fetchone()
+                        if r: mentors = r[0] or 0
+                        cur.execute("SELECT COUNT(*) FROM users WHERE role = 'student'")
+                        r = cur.fetchone()
+                        if r: students = r[0] or 0
+                        cur.execute("SELECT COUNT(*) FROM teams")
+                        r = cur.fetchone()
+                        if r: projects = r[0] or 0
+                        cur.close()
+                    except Exception:
+                        pass
+                    finally:
+                        conn.close()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "countdown_date": countdown_date,
+                    "countdownDate": countdown_date,
+                    "regions": regions,
+                    "mentors": mentors,
+                    "schools": schools,
+                    "students": students,
+                    "projects": projects,
+                    "grants": 0,
+                    "sponsors": 0
+                }).encode('utf-8'))
             elif path in ('/api/auth/heartbeat', '/api/heartbeat'):
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self._send_cors()
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "ok", "authenticated": True}).encode('utf-8'))
+            elif path.startswith('/api/'):
+                self.send_response(404)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"detail": f"Endpoint not found: {path}"}).encode('utf-8'))
             else:
                 # Static file serving (SPA support)
                 clean_path = path.lstrip('/')
@@ -516,11 +614,21 @@ def run_standalone_server(port):
                 self.send_header('Content-Type', 'application/json')
                 self._send_cors()
                 self.end_headers()
-                self.wfile.write(json.dumps({"status": "ok"}).encode('utf-8'))
-            else:
-                self.send_response(404)
+            elif path in ('/api/auth/heartbeat', '/api/heartbeat'):
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
                 self._send_cors()
                 self.end_headers()
+                self.wfile.write(json.dumps({
+                    "expires_in_seconds": 604800,
+                    "session_idle_seconds": 1800
+                }).encode('utf-8'))
+            else:
+                self.send_response(404)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"detail": f"Endpoint not found: {path}"}).encode('utf-8'))
 
     _safe_init_db()
     server = HTTPServer(('0.0.0.0', port), StandaloneHandler)
