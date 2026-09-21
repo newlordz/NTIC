@@ -226,6 +226,16 @@ def run_standalone_server(port):
                                 table_count = len(tables)
                             except Exception as schema_e:
                                 print(f"[run.py] Schema auto-init error: {schema_e}", flush=True)
+                        else:
+                            try:
+                                cur.execute("SELECT count(*) FROM competitions")
+                                comp_cnt = cur.fetchone()[0]
+                                if comp_cnt == 0:
+                                    from app.seed import seed_initial_data
+                                    seed_initial_data(conn)
+                                    print("[run.py] Seeded baseline data via /api/health", flush=True)
+                            except Exception as seed_e:
+                                print(f"[run.py] Health baseline seed notice: {seed_e}", flush=True)
                         cur.close()
                     except Exception as info_e:
                         print(f"[run.py] Information schema check notice: {info_e}", flush=True)
