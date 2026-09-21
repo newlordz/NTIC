@@ -939,17 +939,29 @@ def run_standalone_server(port):
                     try:
                         cur = conn.cursor()
                         # Auto-seed schools if table has 0 rows
+                        seed_err = None
                         try:
                             cur.execute("SELECT count(*) FROM schools")
-                            if cur.fetchone()[0] == 0:
-                                from app.seed import _ensure_schools
-                                _ensure_schools(cur)
+                            cnt = cur.fetchone()[0]
+                            if cnt == 0:
+                                for s in [
+                                    ('sch-1', 'PRESEC Legon', 'Greater Accra', 12, 1450, 1, 'Active', 380, 360, 350, 360),
+                                    ('sch-2', 'Achimota School', 'Greater Accra', 10, 1380, 2, 'Active', 370, 340, 320, 350),
+                                    ('sch-3', 'Prempeh College', 'Ashanti', 9, 1320, 3, 'Active', 320, 350, 340, 310),
+                                    ('sch-4', 'Wesley Girls High School', 'Central', 8, 1290, 4, 'Active', 340, 330, 310, 310),
+                                ]:
+                                    cur.execute("""
+                                        INSERT INTO schools (id, name, region, teams, score, "rank", status, coding_score, robotics_score, ai_score, cyber_score)
+                                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                        ON CONFLICT (id) DO NOTHING
+                                    """, s)
                                 conn.commit()
                         except Exception as sch_seed_err:
                             try:
                                 conn.rollback()
                             except Exception:
                                 pass
+                            seed_err = str(sch_seed_err)
                             print(f"[run.py] Inline school seed notice: {sch_seed_err}", flush=True)
 
                         cur.execute(
@@ -967,6 +979,8 @@ def run_standalone_server(port):
                             }
                             for r in rows
                         ]
+                        if not results and seed_err:
+                            results = [{"seed_error": seed_err}]
                         cur.close()
                     except Exception as e:
                         print(f"[run.py] /api/schools error: {e}", flush=True)
