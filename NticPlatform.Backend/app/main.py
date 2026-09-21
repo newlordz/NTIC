@@ -7249,19 +7249,42 @@ try:
         if not conn:
             raise HTTPException(status_code=503, detail="Database unreachable")
         cur = conn.cursor()
+        try:
+            cur.execute("SELECT count(*) FROM schools")
+            cnt = cur.fetchone()[0]
+            if cnt == 0:
+                for s in [
+                    ('sch-1', 'PRESEC Legon', 'Greater Accra', 12, 1450, 1, 'Active', 380, 360, 350, 360),
+                    ('sch-2', 'Achimota School', 'Greater Accra', 10, 1380, 2, 'Active', 370, 340, 320, 350),
+                    ('sch-3', 'Prempeh College', 'Ashanti', 9, 1320, 3, 'Active', 320, 350, 340, 310),
+                    ('sch-4', 'Wesley Girls High School', 'Central', 8, 1290, 4, 'Active', 340, 330, 310, 310),
+                ]:
+                    cur.execute("""
+                        INSERT INTO schools (id, name, region, teams, score, "rank", status, coding_score, robotics_score, ai_score, cyber_score)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (id) DO NOTHING
+                    """, s)
+                conn.commit()
+        except Exception as seed_err:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            logger.warning(f"Schools auto-seed notice: {seed_err}")
+
         # `students` is a real per-school count of active student accounts whose
         # organisation matches this school directory entry (case/space-insensitive).
         cur.execute(
-            "SELECT s.id, s.name, s.region, s.teams, s.score, s.rank, s.status, "
-            "s.coding_score, s.robotics_score, s.ai_score, s.cyber_score, "
-            "COUNT(u.id) AS students "
-            "FROM schools s "
-            "LEFT JOIN users u "
+            'SELECT s.id, s.name, s.region, s.teams, s.score, s."rank", s.status, '
+            's.coding_score, s.robotics_score, s.ai_score, s.cyber_score, '
+            'COUNT(u.id) AS students '
+            'FROM schools s '
+            'LEFT JOIN users u '
             "  ON u.role = 'student' AND u.status <> 'banned' "
             " AND LOWER(TRIM(COALESCE(u.organization,''))) = LOWER(TRIM(s.name)) "
-            "GROUP BY s.id, s.name, s.region, s.teams, s.score, s.rank, s.status, "
-            "s.coding_score, s.robotics_score, s.ai_score, s.cyber_score "
-            "ORDER BY s.rank ASC"
+            'GROUP BY s.id, s.name, s.region, s.teams, s.score, s."rank", s.status, '
+            's.coding_score, s.robotics_score, s.ai_score, s.cyber_score '
+            'ORDER BY s."rank" ASC'
         )
         rows = cur.fetchall()
         cur.close()
