@@ -619,25 +619,6 @@ def run_standalone_server(port):
                 self._send_cors()
                 self.end_headers()
                 self.wfile.write(json.dumps(results).encode('utf-8'))
-            elif path == '/api/schools':
-                conn = _safe_get_db()
-                results = []
-                if conn:
-                    try:
-                        cur = conn.cursor()
-                        cur.execute("SELECT id, name, region, district, created_at FROM schools ORDER BY name ASC")
-                        rows = cur.fetchall()
-                        results = [{"id": r[0], "name": r[1], "region": r[2] or "", "district": r[3] or "", "created_at": str(r[4])} for r in rows]
-                        cur.close()
-                    except Exception:
-                        pass
-                    finally:
-                        conn.close()
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self._send_cors()
-                self.end_headers()
-                self.wfile.write(json.dumps(results).encode('utf-8'))
             elif path == '/api/teams':
                 conn = _safe_get_db()
                 results = []
