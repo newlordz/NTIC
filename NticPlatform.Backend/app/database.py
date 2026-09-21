@@ -27,6 +27,23 @@ def _redact_db_url(url: str) -> str:
         return "<unparseable url redacted>"
 
 
+def _is_wasm_env() -> bool:
+    import sys, os
+    return bool(os.getenv("WASMER_APP_ID") or sys.platform in ("wasi", "wasix"))
+
+
+def _get_connect_kwargs(timeout=10) -> dict:
+    kw = {"connect_timeout": timeout}
+    if not _is_wasm_env():
+        kw.update({
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 5
+        })
+    return kw
+
+
 def init_postgres_db():
     """Ensure NticPlatformDb database and schema exist."""
     try:
@@ -59,6 +76,10 @@ def init_postgres_db():
         conn.close()
         logger.info("Database connected and schema verified via URL-based connection.")
         return True, "OK"
+
+    if _is_wasm_env():
+        logger.warning("Database direct connection failed on Wasmer/WASM environment.")
+        return False, "Database unreachable"
 
     # ── local-dev fallback (will never work on Railway) ─────────────
     db_host = settings.POSTGRES_HOST
@@ -1134,6 +1155,8 @@ def init_connection_pool():
         logger.warning("psycopg2.pool not available")
         return None
 
+    conn_kwargs = _get_connect_kwargs(timeout=10)
+
     # Try URL connections first (Railway environment standard)
     for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
         db_url = os.environ.get(url_key, "").strip()
@@ -1143,11 +1166,7 @@ def init_connection_pool():
                     minconn=2,
                     maxconn=35,
                     dsn=db_url,
-                    connect_timeout=10,
-                    keepalives=1,
-                    keepalives_idle=30,
-                    keepalives_interval=10,
-                    keepalives_count=5
+                    **conn_kwargs
                 )
                 logger.info(f"Initialized PostgreSQL ThreadedConnectionPool via {url_key} (max 35 connections)")
                 return _pool
@@ -1167,11 +1186,7 @@ def init_connection_pool():
             user=settings.POSTGRES_USER,
             password=settings.POSTGRES_PASSWORD,
             dbname=settings.POSTGRES_DB,
-            connect_timeout=10,
-            keepalives=1,
-            keepalives_idle=30,
-            keepalives_interval=10,
-            keepalives_count=5
+            **conn_kwargs
         )
         logger.info(f"Initialized PostgreSQL ThreadedConnectionPool via host vars ({db_host}:{settings.POSTGRES_PORT})")
         return _pool
@@ -1216,18 +1231,12 @@ def get_db_connection():
 
     # Fallback direct connect if pool is unavailable
     import os, psycopg2
+    conn_kwargs = _get_connect_kwargs(timeout=10)
     for url_key in ("DATABASE_PRIVATE_URL", "DATABASE_URL"):
         db_url = os.environ.get(url_key, "").strip()
         if db_url:
             try:
-                conn = psycopg2.connect(
-                    db_url,
-                    connect_timeout=10,
-                    keepalives=1,
-                    keepalives_idle=30,
-                    keepalives_interval=10,
-                    keepalives_count=5
-                )
+                conn = psycopg2.connect(db_url, **conn_kwargs)
                 if _is_conn_alive(conn):
                     return conn
             except Exception:
@@ -1242,11 +1251,7 @@ def get_db_connection():
             user=settings.POSTGRES_USER,
             password=settings.POSTGRES_PASSWORD,
             dbname=settings.POSTGRES_DB,
-            connect_timeout=10,
-            keepalives=1,
-            keepalives_idle=30,
-            keepalives_interval=10,
-            keepalives_count=5
+            **conn_kwargs
         )
         if _is_conn_alive(conn):
             return conn

@@ -320,13 +320,28 @@ try:
         # Hand the running loop to the WebSocket manager so that broadcasts from
         # sync endpoints (which execute in a worker thread) can be scheduled.
         ws_manager.set_event_loop(asyncio.get_running_loop())
-        for attempt in range(1, 13):
-            ok, msg = init_postgres_db()
-            if ok:
-                break
-            wait = min(attempt * 2, 20)
-            print(f"[Startup] DB init attempt {attempt}/12 failed ({msg}) — retrying in {wait}s...")
-            await asyncio.sleep(wait)
+        # Non-blocking DB initialization: verify immediately, and continue in background
+        # if the database is still warming up so that the web server binds immediately.
+        async def _background_db_init():
+            for attempt in range(1, 13):
+                try:
+                    ok, msg = init_postgres_db()
+                    if ok:
+                        logger.info(f"[Startup] Database initialized successfully on attempt {attempt}.")
+                        break
+                    wait = min(attempt * 2, 20)
+                    logger.warning(f"[Startup] DB init attempt {attempt}/12 failed ({msg}) — retrying in {wait}s...")
+                    await asyncio.sleep(wait)
+                except Exception as ex:
+                    logger.warning(f"[Startup] DB init exception: {ex}")
+                    await asyncio.sleep(5)
+
+        try:
+            ok, _ = init_postgres_db()
+            if not ok:
+                asyncio.create_task(_background_db_init())
+        except Exception:
+            asyncio.create_task(_background_db_init())
 
         async def daily_audit_maintenance():
             while True:
@@ -11586,5 +11601,8 @@ try:
     else:
         print(f"[Warning] Frontend dist directory not found at: {frontend_dist}")
 
-except ImportError:
-    app = None
+except ImportError as err:
+    import traceback
+    print(f"[CRITICAL] FastAPI or dependency import failed: {err}", flush=True)
+    traceback.print_exc()
+    raise

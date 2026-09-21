@@ -5,9 +5,16 @@ import secrets
 import sys
 import time
 from collections import defaultdict
-from fastapi import HTTPException, status, Request
+
+try:
+    from fastapi import HTTPException, status, Request
+except Exception:
+    from starlette.exceptions import HTTPException
+    from starlette import status
+    from starlette.requests import Request
 
 def _get_iterations() -> int:
+
     env_iter = os.getenv("PBKDF2_ITERATIONS")
     if env_iter:
         try:

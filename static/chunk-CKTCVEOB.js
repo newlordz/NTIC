@@ -1,0 +1,1 @@
+import{Hb as s,P as i,ka as r}from"./chunk-3I7Y5M5O.js";var c=(()=>{class t{constructor(e){this.sanitizer=e}transform(e){return this.sanitizer.bypassSecurityTrustResourceUrl(e)}static{this.\u0275fac=function(a){return new(a||t)(r(s,16))}}static{this.\u0275pipe=i({name:"safe",type:t,pure:!0,standalone:!0})}}return t})();export{c as a};

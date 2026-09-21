@@ -1,0 +1,8 @@
+version: '1.0'
+rules:
+  image-alt:
+    enabled: false
+  select-name:
+    enabled: false
+  label:
+    enabled: false

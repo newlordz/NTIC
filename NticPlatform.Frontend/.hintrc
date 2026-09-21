@@ -1,0 +1,15 @@
+{
+  "hints": {
+    "inline-styles": "off",
+    "compat-api/css": "off",
+    "compat-api/html": "off",
+    "axe/text-alternatives": "off",
+    "axe/forms": "off",
+    "axe/structure": "off",
+    "axe/name-role-value": "off",
+    "axe/color-contrast": "off",
+    "axe/keyboard": "off",
+    "axe/aria": "off",
+    "axe": "off"
+  }
+}

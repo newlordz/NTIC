@@ -1,0 +1,30 @@
+kind: wasmer.io/App.v0
+name: ntic
+app_id: da_nzrI7tJUbg7k
+owner: newlordz
+package: .
+capabilities:
+  database:
+    engine: postgres
+debug: true
+enableDatabase: true
+annotations:
+  anybuild.run/config:
+    asgi_application: main:app
+    name: out
+    python_cross_platform: wasix_wasm32
+    python_extra_index_url: https://python-registry.wasix.org/simple
+    python_framework: fastapi
+    python_install_inputs:
+    - requirements.txt
+    - NticPlatform.Backend/requirements.txt
+    python_main_file: main.py
+    python_server: uvicorn
+    services:
+    - engine: postgres
+      name: database
+    commands:
+      start: python NticPlatform.Backend/run.py
+  anybuild.run/provider: python
+  anybuild.run/version: 0.28.4
+  wasmer.io/version: 7.4.1

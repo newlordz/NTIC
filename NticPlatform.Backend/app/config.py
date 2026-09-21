@@ -21,16 +21,38 @@ def _get_nonempty_env(key: str, default: str = "") -> str:
     return val if val and val.strip() else default
 
 class Config:
-    # Supports both local .env vars and Railway automatic PostgreSQL env vars
-    POSTGRES_HOST: str = _get_nonempty_env("POSTGRES_HOST") or _get_nonempty_env("PGHOST", "localhost")
+    # Supports local .env vars, Railway PGHOST vars, and Wasmer DB_HOST vars
+    POSTGRES_HOST: str = (
+        _get_nonempty_env("POSTGRES_HOST")
+        or _get_nonempty_env("PGHOST")
+        or _get_nonempty_env("DB_HOST")
+        or "localhost"
+    )
     POSTGRES_PORT: int = int(
         _get_nonempty_env("POSTGRES_PORT")
         or _get_nonempty_env("PGPORT")
+        or _get_nonempty_env("DB_PORT")
         or "5432"
     )
-    POSTGRES_USER: str = _get_nonempty_env("POSTGRES_USER") or _get_nonempty_env("PGUSER", "postgres")
-    POSTGRES_PASSWORD: str = _get_nonempty_env("POSTGRES_PASSWORD") or _get_nonempty_env("PGPASSWORD", "")
-    POSTGRES_DB: str = _get_nonempty_env("POSTGRES_DB") or _get_nonempty_env("PGDATABASE", "NticPlatformDb")
+    POSTGRES_USER: str = (
+        _get_nonempty_env("POSTGRES_USER")
+        or _get_nonempty_env("PGUSER")
+        or _get_nonempty_env("DB_USERNAME")
+        or _get_nonempty_env("DB_USER")
+        or "postgres"
+    )
+    POSTGRES_PASSWORD: str = (
+        _get_nonempty_env("POSTGRES_PASSWORD")
+        or _get_nonempty_env("PGPASSWORD")
+        or _get_nonempty_env("DB_PASSWORD")
+        or ""
+    )
+    POSTGRES_DB: str = (
+        _get_nonempty_env("POSTGRES_DB")
+        or _get_nonempty_env("PGDATABASE")
+        or _get_nonempty_env("DB_NAME")
+        or "NticPlatformDb"
+    )
 
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
@@ -49,13 +71,20 @@ class Config:
     SMTP_PASSWORD: str = _get_nonempty_env("SMTP_PASSWORD", "")
     SMTP_USE_TLS: bool = _get_nonempty_env("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
 
-    PORT: int = int(os.getenv("PORT", 5000))
+    _is_cloud: bool = bool(
+        os.getenv("PORT")
+        or os.getenv("WASMER_APP_ID")
+        or os.getenv("WASMER_APP_URL")
+        or os.path.exists("/opt/venv")
+        or os.path.exists("/app")
+    )
+    PORT: int = int(os.getenv("PORT", "80" if _is_cloud else "5000"))
 
     ALLOWED_ORIGINS: list = [
         origin.strip()
         for origin in os.getenv(
             "ALLOWED_ORIGINS",
-            "http://localhost:4200,http://localhost:8080,https://ntic.up.railway.app",
+            "http://localhost:4200,http://localhost:8080,https://ntic.up.railway.app,https://ntic-87120.wasmer.app",
         ).split(",")
         if origin.strip()
     ]

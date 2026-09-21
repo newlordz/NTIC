@@ -1,0 +1,25 @@
+{
+  "name": "NTIC Championship Portal",
+  "short_name": "NTIC Portal",
+  "description": "Ghana National Technical Innovation Championship — compete, learn, and lead.",
+  "theme_color": "#003f87",
+  "background_color": "#091322",
+  "display": "standalone",
+  "orientation": "any",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["education", "technology"]
+}
