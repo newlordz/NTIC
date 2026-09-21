@@ -68,6 +68,14 @@ except Exception as app_err:
             if _FRONTEND_DIR:
                 clean = path.lstrip("/")
                 fpath = _FRONTEND_DIR / clean if clean else _FRONTEND_DIR / "index.html"
+                if not fpath.is_file() and clean.startswith("assets/"):
+                    alt = _FRONTEND_DIR / clean[7:]
+                    if alt.is_file():
+                        fpath = alt
+                elif not fpath.is_file() and not clean.startswith("assets/"):
+                    alt = _FRONTEND_DIR / "assets" / clean
+                    if alt.is_file():
+                        fpath = alt
                 if not fpath.is_file():
                     fpath = _FRONTEND_DIR / "index.html"
                 if fpath.is_file():

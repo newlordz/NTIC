@@ -213,6 +213,14 @@ def run_standalone_server(port):
                 served = False
                 if _FRONTEND_DIST:
                     target_file = _FRONTEND_DIST / clean_path
+                    if not target_file.is_file() and clean_path.startswith('assets/'):
+                        alt = _FRONTEND_DIST / clean_path[7:]
+                        if alt.is_file():
+                            target_file = alt
+                    elif not target_file.is_file() and not clean_path.startswith('assets/'):
+                        alt = _FRONTEND_DIST / 'assets' / clean_path
+                        if alt.is_file():
+                            target_file = alt
                     if target_file.is_file():
                         mime_type, _ = mimetypes.guess_type(str(target_file))
                         self.send_response(200)
