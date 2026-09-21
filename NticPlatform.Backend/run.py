@@ -61,7 +61,7 @@ def _safe_get_db():
                 conn = pg8000.dbapi.connect(
                     user=settings.POSTGRES_USER,
                     host=settings.POSTGRES_HOST,
-                    port=int(settings.POSTGRES_PORT),
+                    port=settings.POSTGRES_PORT,
                     database=settings.POSTGRES_DB,
                     password=settings.POSTGRES_PASSWORD,
                     ssl_context=use_ssl,
