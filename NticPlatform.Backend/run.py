@@ -2,6 +2,7 @@ import sys
 import os
 import json
 import uuid
+import datetime
 from pathlib import Path
 
 # Ensure virtual environment site-packages are first on sys.path in Wasmer / container environments
@@ -36,6 +37,9 @@ except Exception:
         POSTGRES_USER = os.getenv("DB_USERNAME", "postgres")
         POSTGRES_PASSWORD = os.getenv("DB_PASSWORD", "")
     settings = _FallbackSettings()
+
+ADMIN_EMAIL = "admin@ntic.org.gh"
+DEFAULT_ADMIN_PASSWORD = os.getenv("NTIC_ADMIN_PASSWORD", "NticChampionship#2026").strip()
 
 def _safe_get_db():
     try:
@@ -106,6 +110,22 @@ def _safe_init_db():
         try:
             from app.database import _create_tables
             _create_tables(conn)
+            # Ensure super-admin account exists
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT id FROM users WHERE lower(email) = %s OR id = 'USR-000'", (ADMIN_EMAIL.lower(),))
+                if not cur.fetchone():
+                    from app.security import hash_password
+                    cur.execute(
+                        "INSERT INTO users (id, email, full_name, role, ticket, password_hash, status) "
+                        "VALUES (%s, %s, %s, %s, %s, %s, 'Active')",
+                        ("USR-000", ADMIN_EMAIL, "System Administrator", "super_admin", "NTIC-ADM-0000", hash_password(DEFAULT_ADMIN_PASSWORD))
+                    )
+                    conn.commit()
+                    print(f"[run.py] Bootstrapped super-admin: {ADMIN_EMAIL}", flush=True)
+                cur.close()
+            except Exception as admin_err:
+                print(f"[run.py] Super-admin bootstrap error: {admin_err}", flush=True)
             conn.close()
             print("[run.py] Initialized full PostgreSQL database schema via _create_tables", flush=True)
             return True, "OK"
@@ -237,6 +257,70 @@ def run_standalone_server(port):
                 self._send_cors()
                 self.end_headers()
                 self.wfile.write(json.dumps(results).encode('utf-8'))
+            elif path == '/api/users/me':
+                auth_hdr = self.headers.get('Authorization', '')
+                token = auth_hdr.replace('Bearer ', '').strip() if 'Bearer ' in auth_hdr else ''
+                if not token:
+                    self.send_response(401)
+                    self.send_header('Content-Type', 'application/json')
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"detail": "Authentication required"}).encode('utf-8'))
+                    return
+                conn = _safe_get_db()
+                if not conn:
+                    self.send_response(503)
+                    self.send_header('Content-Type', 'application/json')
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"detail": "Database unavailable"}).encode('utf-8'))
+                    return
+                cur = conn.cursor()
+                try:
+                    cur.execute(
+                        "SELECT u.id, u.email, u.full_name, u.role, u.ticket, u.status, u.organization, u.must_change_password "
+                        "FROM auth_sessions s "
+                        "JOIN users u ON s.user_id = u.id "
+                        "WHERE s.token = %s",
+                        (token,)
+                    )
+                    row = cur.fetchone()
+                except Exception as me_err:
+                    row = None
+                    print(f"[run.py] /users/me query error: {me_err}", flush=True)
+                finally:
+                    cur.close()
+                    conn.close()
+
+                if not row:
+                    self.send_response(401)
+                    self.send_header('Content-Type', 'application/json')
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"detail": "Invalid or expired session"}).encode('utf-8'))
+                    return
+
+                u_id, email, full_name, role, ticket, status, org, must_change = row
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "id": u_id,
+                    "email": email,
+                    "full_name": full_name,
+                    "role": role,
+                    "ticket": ticket,
+                    "status": status,
+                    "organization": org,
+                    "must_change_password": bool(must_change)
+                }).encode('utf-8'))
+            elif path in ('/api/auth/heartbeat', '/api/heartbeat'):
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "ok", "authenticated": True}).encode('utf-8'))
             else:
                 # Static file serving (SPA support)
                 clean_path = path.lstrip('/')
@@ -331,6 +415,100 @@ def run_standalone_server(port):
                 finally:
                     cur.close()
                     conn.close()
+            elif path == '/api/login':
+                conn = _safe_get_db()
+                if not conn:
+                    self.send_response(503)
+                    self.send_header('Content-Type', 'application/json')
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"detail": "Database unavailable"}).encode('utf-8'))
+                    return
+                credential = (data.get("email") or "").strip()
+                password = (data.get("password") or "").strip()
+
+                cur = conn.cursor()
+                try:
+                    cur.execute(
+                        "SELECT id, email, full_name, role, ticket, password_hash, status, organization, must_change_password "
+                        "FROM users "
+                        "WHERE lower(email) = %s OR upper(ticket) = %s OR phone = %s",
+                        (credential.lower(), credential.upper(), credential)
+                    )
+                    user_row = cur.fetchone()
+                except Exception as e:
+                    user_row = None
+                    print(f"[run.py] User query error: {e}", flush=True)
+
+                if not user_row:
+                    cur.close()
+                    conn.close()
+                    self.send_response(401)
+                    self.send_header('Content-Type', 'application/json')
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"detail": "Invalid credentials"}).encode('utf-8'))
+                    return
+
+                user_id, db_email, full_name, role, ticket, password_hash, status, organization, must_change_password = user_row
+
+                from app.security import verify_password, create_token, account_is_disabled
+                if not verify_password(password, password_hash):
+                    cur.close()
+                    conn.close()
+                    self.send_response(401)
+                    self.send_header('Content-Type', 'application/json')
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"detail": "Invalid credentials"}).encode('utf-8'))
+                    return
+
+                if account_is_disabled(status):
+                    cur.close()
+                    conn.close()
+                    self.send_response(403)
+                    self.send_header('Content-Type', 'application/json')
+                    self._send_cors()
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"detail": "This account has been disabled"}).encode('utf-8'))
+                    return
+
+                token = create_token()
+                expires_at = datetime.datetime.now(datetime.UTC if hasattr(datetime, "UTC") else datetime.timezone.utc) + datetime.timedelta(hours=2)
+                try:
+                    cur.execute(
+                        "INSERT INTO auth_sessions (token, user_id, email, expires_at) VALUES (%s, %s, %s, %s)",
+                        (token, user_id, db_email, expires_at)
+                    )
+                    conn.commit()
+                except Exception as ex:
+                    print(f"[run.py] Session insert notice: {ex}", flush=True)
+
+                cur.close()
+                conn.close()
+
+                resp_data = {
+                    "token": token,
+                    "user_id": user_id,
+                    "email": db_email,
+                    "full_name": full_name,
+                    "role": role,
+                    "ticket": ticket,
+                    "status": status,
+                    "organization": organization,
+                    "must_change_password": bool(must_change_password)
+                }
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps(resp_data).encode('utf-8'))
+            elif path == '/api/logout':
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self._send_cors()
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "ok"}).encode('utf-8'))
             else:
                 self.send_response(404)
                 self._send_cors()
