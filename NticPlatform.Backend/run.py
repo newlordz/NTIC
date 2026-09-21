@@ -938,10 +938,20 @@ def run_standalone_server(port):
                 if conn:
                     try:
                         cur = conn.cursor()
+                        # Auto-seed schools if table has 0 rows
+                        try:
+                            cur.execute("SELECT count(*) FROM schools")
+                            if cur.fetchone()[0] == 0:
+                                from app.seed import _ensure_schools
+                                _ensure_schools(cur)
+                                conn.commit()
+                        except Exception as sch_seed_err:
+                            print(f"[run.py] Inline school seed notice: {sch_seed_err}", flush=True)
+
                         cur.execute(
-                            "SELECT id, name, region, teams, score, rank, status, "
-                            "coding_score, robotics_score, ai_score, cyber_score "
-                            "FROM schools ORDER BY rank ASC NULLS LAST"
+                            'SELECT s.id, s.name, s.region, s.teams, s.score, s."rank", s.status, '
+                            's.coding_score, s.robotics_score, s.ai_score, s.cyber_score '
+                            'FROM schools s ORDER BY s."rank" ASC NULLS LAST'
                         )
                         rows = cur.fetchall()
                         results = [
